@@ -1,0 +1,256 @@
+{
+  "planId": "fitness-health-object-only-refill-2026-07-06",
+  "categorySlug": "fitness-health",
+  "profileId": "fitness-health",
+  "readinessSource": ".tmp/carousel-readiness-scale-audit/report.json",
+  "reviewPolicy": {
+    "approvalRequired": true,
+    "allowedSubjectClasses": ["object-only"],
+    "blockedSubjectSignals": [
+      "human",
+      "hands",
+      "faces",
+      "bodies",
+      "silhouettes",
+      "people in background"
+    ],
+    "doNotAutoApproveSeededAssets": true,
+    "seededAssetReviewStatus": "unreviewed",
+    "selectableAssetRequirements": {
+      "face_count": 0,
+      "has_human": false,
+      "image_subject_class": "object-only",
+      "person_count": 0,
+      "status": "ready",
+      "subject_review_status": "approved"
+    }
+  },
+  "seedBatch": {
+    "batchSize": 20,
+    "candidateFetchLimit": 80,
+    "subjectAnalysisMode": "manual"
+  },
+  "buckets": [
+    {
+      "priority": 1,
+      "phase": "zero-count",
+      "bucketId": "meal-moments",
+      "selectableCount": 0,
+      "targetCount": 40,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "balanced meal plate still life",
+        "macro bowl ingredients overhead flat lay",
+        "healthy breakfast bowl empty table",
+        "salad plate nutrition journal still life",
+        "meal tray with nutrition label close up",
+        "colorful dinner plate tabletop still life"
+      ]
+    },
+    {
+      "priority": 2,
+      "phase": "zero-count",
+      "bucketId": "phone-in-hand",
+      "selectableCount": 0,
+      "targetCount": 40,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "smartphone nutrition app beside meal plate still life",
+        "smartphone on empty kitchen counter",
+        "fitness app smartphone desk flat lay",
+        "smartphone water bottle gym towel still life",
+        "phone meal tracking screen tabletop",
+        "mobile health dashboard empty nightstand"
+      ]
+    },
+    {
+      "priority": 3,
+      "phase": "zero-count",
+      "bucketId": "meal-prep",
+      "selectableCount": 0,
+      "targetCount": 40,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "meal prep containers overhead flat lay",
+        "portion containers chicken rice vegetables still life",
+        "weekly meal prep boxes empty kitchen counter",
+        "healthy lunch containers refrigerator shelf close up",
+        "macro meal prep boxes top view",
+        "organized meal containers tabletop"
+      ]
+    },
+    {
+      "priority": 4,
+      "phase": "zero-count",
+      "bucketId": "grocery-aisle",
+      "selectableCount": 0,
+      "targetCount": 35,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "grocery basket vegetables still life",
+        "supermarket produce shelf close up empty aisle",
+        "healthy groceries basket flat lay",
+        "nutrition label cereal boxes shelf close up",
+        "fresh produce display close up",
+        "shopping basket fruit vegetables still life"
+      ]
+    },
+    {
+      "priority": 5,
+      "phase": "zero-count",
+      "bucketId": "food-scale",
+      "selectableCount": 0,
+      "targetCount": 35,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "digital food scale apple countertop still life",
+        "food scale meal prep containers flat lay",
+        "kitchen scale oats bowl close up",
+        "digital scale nutrition ingredients still life",
+        "food scale rice bowl empty kitchen",
+        "kitchen scale fruit bowl countertop close up"
+      ]
+    },
+    {
+      "priority": 6,
+      "phase": "zero-count",
+      "bucketId": "gym-phone",
+      "selectableCount": 0,
+      "targetCount": 35,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "smartphone dumbbells still life",
+        "mobile phone sports equipment flat lay",
+        "phone resistance bands top view",
+        "smartphone gym accessories still life",
+        "phone water bottle towel flat lay",
+        "fitness tracker screen phone still life"
+      ]
+    },
+    {
+      "priority": 7,
+      "phase": "zero-count",
+      "bucketId": "healthy-snacks",
+      "selectableCount": 0,
+      "targetCount": 30,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "healthy snack board fruit nuts flat lay",
+        "protein bars fruit water bottle still life",
+        "nuts berries yogurt bowl empty table",
+        "apple almond snack plate close up",
+        "vegetable sticks hummus container flat lay",
+        "healthy pantry snacks shelf close up"
+      ]
+    },
+    {
+      "priority": 8,
+      "phase": "zero-count",
+      "bucketId": "post-workout",
+      "selectableCount": 0,
+      "targetCount": 30,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "dumbbells towel water bottle flat lay",
+        "protein shaker gym accessories still life",
+        "foam roller resistance bands top view",
+        "sports recovery equipment flat lay",
+        "empty gym bench water bottle towel",
+        "massage ball foam roller still life"
+      ]
+    },
+    {
+      "priority": 9,
+      "phase": "zero-count",
+      "bucketId": "tired-couch",
+      "selectableCount": 0,
+      "targetCount": 25,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "phone on couch beside snack wrappers",
+        "water bottle on sofa blanket evening",
+        "smartwatch on coffee table near couch",
+        "takeout containers on sofa table dim light",
+        "laptop on couch health dashboard",
+        "empty couch blanket phone low light"
+      ]
+    },
+    {
+      "priority": 10,
+      "phase": "zero-count",
+      "bucketId": "water-glass",
+      "selectableCount": 0,
+      "targetCount": 25,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "water glass on bedside table",
+        "water bottle desk reminder app",
+        "hydration bottle gym mat",
+        "glass of water kitchen counter",
+        "reusable water bottle beside notebook",
+        "water glass sunlight table close up"
+      ]
+    },
+    {
+      "priority": 11,
+      "phase": "zero-count",
+      "bucketId": "night-routine",
+      "selectableCount": 0,
+      "targetCount": 25,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "sleep tracker phone on nightstand",
+        "bedside table water glass phone",
+        "nightstand vitamins glass of water",
+        "dim bedroom lamp journal tea",
+        "smartwatch charging beside alarm clock",
+        "sleep routine objects bedside table"
+      ]
+    },
+    {
+      "priority": 12,
+      "phase": "zero-count",
+      "bucketId": "clean-still-life",
+      "selectableCount": 0,
+      "targetCount": 25,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "minimal wellness objects neutral table",
+        "vitamins water bottle clean still life",
+        "fitness tracker towel water bottle",
+        "clean kitchen counter fruit bowl",
+        "minimal health journal tea cup",
+        "wellness app phone plant desk"
+      ]
+    },
+    {
+      "priority": 13,
+      "phase": "zero-count",
+      "bucketId": "abstract-data",
+      "selectableCount": 0,
+      "targetCount": 20,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "health analytics dashboard screen close up",
+        "nutrition chart app screen",
+        "fitness progress graph monitor",
+        "calorie tracking dashboard laptop",
+        "sleep score chart phone screen",
+        "wellness metrics data visualization"
+      ]
+    }
+  ]
+}

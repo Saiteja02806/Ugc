@@ -1,0 +1,46 @@
+{
+  "categorySlug": "shared",
+  "reviewSource": "manual-shared-home-lifestyle-contact-sheets-2026-07-07",
+  "buckets": [
+    {
+      "bucketId": "home-lifestyle",
+      "bucketKind": "broad",
+      "sourceReport": ".tmp/carousel-broad-matcher/broad-bucket-contact-sheets/shared/home-lifestyle/manifest.json",
+      "expectedCount": 80,
+      "rejectDecisions": [
+        {
+          "index": 4,
+          "reason": "human-face-on-printed-material"
+        },
+        {
+          "index": 37,
+          "reason": "human-person"
+        },
+        {
+          "index": 40,
+          "reason": "background-human-person"
+        },
+        {
+          "index": 45,
+          "reason": "human-body"
+        },
+        {
+          "index": 53,
+          "reason": "human-body"
+        },
+        {
+          "index": 55,
+          "reason": "human-person"
+        },
+        {
+          "index": 65,
+          "reason": "human-face-hands-body"
+        },
+        {
+          "index": 74,
+          "reason": "human-figures-in-wall-art"
+        }
+      ]
+    }
+  ]
+}

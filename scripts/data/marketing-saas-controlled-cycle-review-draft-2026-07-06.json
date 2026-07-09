@@ -1,0 +1,117 @@
+{
+  "categorySlug": "marketing-saas",
+  "reviewSource": "manual-contact-sheet-review",
+  "policyNote": "Approve only strict object-only assets. Reject anything with hands, faces, humans, bodies, silhouettes, people in background, duplicate/off-target/low-quality images. Use rejectDecisions with exact reasons per index.",
+  "requiresManualCompletion": true,
+  "preserveSubjectMetadataOnApprove": false,
+  "buckets": [
+    {
+      "bucketId": "phone-in-hand",
+      "expectedCount": 80,
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-controlled-cycle-2026-07-06/marketing-saas/visual-qa-report.json",
+      "rejectReason": "manual-reject",
+      "rejectIndexes": [],
+      "rejectDecisions": [],
+      "contactSheetPath": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\carousel-visual-qa-marketing-controlled-cycle-2026-07-06\\marketing-saas\\phone-in-hand-contact-sheet.png"
+    },
+    {
+      "bucketId": "tired-couch",
+      "expectedCount": 10,
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-controlled-cycle-2026-07-06/marketing-saas/visual-qa-report.json",
+      "rejectReason": "manual-reject",
+      "rejectIndexes": [],
+      "rejectDecisions": [],
+      "contactSheetPath": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\carousel-visual-qa-marketing-controlled-cycle-2026-07-06\\marketing-saas\\tired-couch-contact-sheet.png"
+    },
+    {
+      "bucketId": "desk-chaos",
+      "expectedCount": 8,
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-controlled-cycle-2026-07-06/marketing-saas/visual-qa-report.json",
+      "rejectReason": "manual-reject",
+      "rejectIndexes": [],
+      "rejectDecisions": [],
+      "contactSheetPath": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\carousel-visual-qa-marketing-controlled-cycle-2026-07-06\\marketing-saas\\desk-chaos-contact-sheet.png"
+    },
+    {
+      "bucketId": "laptop-work",
+      "expectedCount": 9,
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-controlled-cycle-2026-07-06/marketing-saas/visual-qa-report.json",
+      "rejectReason": "manual-reject",
+      "rejectIndexes": [],
+      "rejectDecisions": [],
+      "contactSheetPath": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\carousel-visual-qa-marketing-controlled-cycle-2026-07-06\\marketing-saas\\laptop-work-contact-sheet.png"
+    },
+    {
+      "bucketId": "night-routine",
+      "expectedCount": 7,
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-controlled-cycle-2026-07-06/marketing-saas/visual-qa-report.json",
+      "rejectReason": "manual-reject",
+      "rejectIndexes": [],
+      "rejectDecisions": [],
+      "contactSheetPath": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\carousel-visual-qa-marketing-controlled-cycle-2026-07-06\\marketing-saas\\night-routine-contact-sheet.png"
+    },
+    {
+      "bucketId": "clean-still-life",
+      "expectedCount": 80,
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-controlled-cycle-2026-07-06/marketing-saas/visual-qa-report.json",
+      "rejectReason": "manual-reject",
+      "rejectIndexes": [],
+      "rejectDecisions": [],
+      "contactSheetPath": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\carousel-visual-qa-marketing-controlled-cycle-2026-07-06\\marketing-saas\\clean-still-life-contact-sheet.png"
+    },
+    {
+      "bucketId": "abstract-data",
+      "expectedCount": 80,
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-controlled-cycle-2026-07-06/marketing-saas/visual-qa-report.json",
+      "rejectReason": "manual-reject",
+      "rejectIndexes": [],
+      "rejectDecisions": [],
+      "contactSheetPath": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\carousel-visual-qa-marketing-controlled-cycle-2026-07-06\\marketing-saas\\abstract-data-contact-sheet.png"
+    },
+    {
+      "bucketId": "laptop-desk",
+      "expectedCount": 80,
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-controlled-cycle-2026-07-06/marketing-saas/visual-qa-report.json",
+      "rejectReason": "manual-reject",
+      "rejectIndexes": [],
+      "rejectDecisions": [],
+      "contactSheetPath": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\carousel-visual-qa-marketing-controlled-cycle-2026-07-06\\marketing-saas\\laptop-desk-contact-sheet.png"
+    },
+    {
+      "bucketId": "calendar-overload",
+      "expectedCount": 4,
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-controlled-cycle-2026-07-06/marketing-saas/visual-qa-report.json",
+      "rejectReason": "manual-reject",
+      "rejectIndexes": [],
+      "rejectDecisions": [],
+      "contactSheetPath": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\carousel-visual-qa-marketing-controlled-cycle-2026-07-06\\marketing-saas\\calendar-overload-contact-sheet.png"
+    },
+    {
+      "bucketId": "spreadsheet-chaos",
+      "expectedCount": 80,
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-controlled-cycle-2026-07-06/marketing-saas/visual-qa-report.json",
+      "rejectReason": "manual-reject",
+      "rejectIndexes": [],
+      "rejectDecisions": [],
+      "contactSheetPath": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\carousel-visual-qa-marketing-controlled-cycle-2026-07-06\\marketing-saas\\spreadsheet-chaos-contact-sheet.png"
+    },
+    {
+      "bucketId": "phone-notification",
+      "expectedCount": 7,
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-controlled-cycle-2026-07-06/marketing-saas/visual-qa-report.json",
+      "rejectReason": "manual-reject",
+      "rejectIndexes": [],
+      "rejectDecisions": [],
+      "contactSheetPath": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\carousel-visual-qa-marketing-controlled-cycle-2026-07-06\\marketing-saas\\phone-notification-contact-sheet.png"
+    },
+    {
+      "bucketId": "team-meeting",
+      "expectedCount": 20,
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-controlled-cycle-2026-07-06/marketing-saas/visual-qa-report.json",
+      "rejectReason": "manual-reject",
+      "rejectIndexes": [],
+      "rejectDecisions": [],
+      "contactSheetPath": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\carousel-visual-qa-marketing-controlled-cycle-2026-07-06\\marketing-saas\\team-meeting-contact-sheet.png"
+    }
+  ]
+}

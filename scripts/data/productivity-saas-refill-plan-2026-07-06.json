@@ -1,0 +1,239 @@
+{
+  "planId": "productivity-saas-object-only-refill-2026-07-06",
+  "categorySlug": "productivity-saas",
+  "profileId": "productivity-saas",
+  "readinessSource": ".tmp/carousel-readiness-scale-audit/report.json",
+  "reviewPolicy": {
+    "approvalRequired": true,
+    "allowedSubjectClasses": ["object-only"],
+    "blockedSubjectSignals": [
+      "human",
+      "hands",
+      "faces",
+      "bodies",
+      "silhouettes",
+      "people in background"
+    ],
+    "doNotAutoApproveSeededAssets": true,
+    "seededAssetReviewStatus": "unreviewed",
+    "selectableAssetRequirements": {
+      "face_count": 0,
+      "has_human": false,
+      "image_subject_class": "object-only",
+      "person_count": 0,
+      "status": "ready",
+      "subject_review_status": "approved"
+    }
+  },
+  "seedBatch": {
+    "batchSize": 20,
+    "candidateFetchLimit": 80,
+    "subjectAnalysisMode": "manual"
+  },
+  "buckets": [
+    {
+      "priority": 1,
+      "phase": "zero-count",
+      "bucketId": "phone-in-hand",
+      "selectableCount": 0,
+      "targetCount": 25,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "smartphone on desk task app screen",
+        "phone on table beside laptop",
+        "smartphone notification screen workspace",
+        "mobile app screen beside notebook",
+        "phone on office desk calendar app",
+        "smartphone beside keyboard productivity alert"
+      ]
+    },
+    {
+      "priority": 2,
+      "phase": "zero-count",
+      "bucketId": "tired-couch",
+      "selectableCount": 0,
+      "targetCount": 25,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "laptop on sofa evening workspace",
+        "phone on rumpled couch blanket",
+        "unfinished notes coffee living room desk",
+        "sofa laptop notebook dim lamp",
+        "remote work aftermath couch laptop",
+        "blanket sofa laptop low light"
+      ]
+    },
+    {
+      "priority": 3,
+      "phase": "zero-count",
+      "bucketId": "desk-chaos",
+      "selectableCount": 0,
+      "targetCount": 35,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "messy office desk laptop sticky notes",
+        "cluttered work desk papers laptop",
+        "unfinished paperwork laptop desk",
+        "startup desk cables notebook",
+        "overloaded desk sticky notes keyboard",
+        "paperwork chaos desk close up"
+      ]
+    },
+    {
+      "priority": 4,
+      "phase": "zero-count",
+      "bucketId": "laptop-work",
+      "selectableCount": 0,
+      "targetCount": 30,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "laptop desk productivity app screen",
+        "laptop coffee table workspace",
+        "laptop desk natural light notebook",
+        "remote work desk laptop planner",
+        "minimal laptop workspace plant",
+        "laptop keyboard notebook coffee"
+      ]
+    },
+    {
+      "priority": 5,
+      "phase": "zero-count",
+      "bucketId": "night-routine",
+      "selectableCount": 0,
+      "targetCount": 20,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "late night laptop desk lamp",
+        "phone bedside table night",
+        "open laptop desk late night room",
+        "dark desk lamp laptop night",
+        "nightstand phone notebook lamp",
+        "evening workspace laptop coffee"
+      ]
+    },
+    {
+      "priority": 6,
+      "phase": "zero-count",
+      "bucketId": "clean-still-life",
+      "selectableCount": 0,
+      "targetCount": 30,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "minimal desk objects natural light",
+        "clean office still life neutral desk",
+        "stationery objects negative space",
+        "notebook coffee minimal desk",
+        "minimal laptop desk plant",
+        "clean workspace objects overhead"
+      ]
+    },
+    {
+      "priority": 7,
+      "phase": "zero-count",
+      "bucketId": "abstract-data",
+      "selectableCount": 0,
+      "targetCount": 35,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "productivity dashboard screen close up",
+        "workflow analytics laptop screen",
+        "task completion charts monitor",
+        "project metrics dashboard display",
+        "data visualization monitor close up",
+        "kanban analytics screen dark mode"
+      ]
+    },
+    {
+      "priority": 8,
+      "phase": "zero-count",
+      "bucketId": "laptop-desk",
+      "selectableCount": 0,
+      "targetCount": 40,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "modern laptop desk productivity software",
+        "task manager dashboard laptop desk",
+        "laptop workspace natural light",
+        "project management app laptop screen",
+        "laptop desk notebook coffee",
+        "office desk laptop monitor close up"
+      ]
+    },
+    {
+      "priority": 9,
+      "phase": "zero-count",
+      "bucketId": "calendar-overload",
+      "selectableCount": 0,
+      "targetCount": 35,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "busy calendar schedule laptop screen",
+        "planner notebook calendar desk",
+        "calendar app laptop screen close up",
+        "monthly planner pages desk",
+        "deadline sticky notes calendar desk",
+        "schedule board sticky notes close up"
+      ]
+    },
+    {
+      "priority": 10,
+      "phase": "zero-count",
+      "bucketId": "spreadsheet-chaos",
+      "selectableCount": 0,
+      "targetCount": 30,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "spreadsheet laptop screen close up",
+        "excel spreadsheet monitor close up",
+        "data table laptop screen",
+        "messy spreadsheet screen close up",
+        "operations spreadsheet display",
+        "csv table screen close up"
+      ]
+    },
+    {
+      "priority": 11,
+      "phase": "zero-count",
+      "bucketId": "phone-notification",
+      "selectableCount": 0,
+      "targetCount": 35,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "phone notifications work desk",
+        "smartphone task alerts desk close up",
+        "phone messages on office desk",
+        "mobile notifications beside keyboard",
+        "smartphone screen beside laptop",
+        "phone alerts coffee desk"
+      ]
+    },
+    {
+      "priority": 12,
+      "phase": "zero-count",
+      "bucketId": "team-meeting",
+      "selectableCount": 0,
+      "targetCount": 35,
+      "unreviewedCount": 0,
+      "humanPositiveCount": 0,
+      "seedQueries": [
+        "project planning table sticky notes overhead",
+        "whiteboard project planning notes empty office",
+        "printed project plan conference table",
+        "shared laptops notebooks table overhead",
+        "conference room whiteboard workspace",
+        "kanban board sticky notes close up"
+      ]
+    }
+  ]
+}

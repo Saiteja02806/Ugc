@@ -1,0 +1,128 @@
+{
+  "abstract-data": {
+    "broadVisualBucket": "abstract-backgrounds",
+    "contentTags": ["abstract", "data", "analytics", "dashboard", "background"],
+    "objectTags": ["screen", "chart", "dashboard"],
+    "moodTags": ["analytical", "technical"]
+  },
+  "calendar-overload": {
+    "broadVisualBucket": "notes-and-planning",
+    "contentTags": ["calendar", "schedule", "planning", "deadline", "overload"],
+    "objectTags": ["calendar", "planner", "notes"],
+    "moodTags": ["busy", "time-pressured"]
+  },
+  "clean-still-life": {
+    "broadVisualBucket": "clean-texture-backgrounds",
+    "contentTags": ["clean", "minimal", "negative-space", "still-life", "calm"],
+    "objectTags": ["desk", "stationery", "notebook"],
+    "moodTags": ["clean", "premium"]
+  },
+  "desk-chaos": {
+    "broadVisualBucket": "workspace-objects",
+    "contentTags": ["workspace", "messy", "clutter", "overload", "planning"],
+    "objectTags": ["desk", "papers", "notes", "laptop"],
+    "moodTags": ["chaotic", "unfinished"]
+  },
+  "food-scale": {
+    "broadVisualBucket": "food-and-table",
+    "contentTags": ["food-scale", "portion", "tracking", "nutrition", "accuracy"],
+    "objectTags": ["scale", "food", "plate"],
+    "moodTags": ["precise", "analytical"]
+  },
+  "grocery-aisle": {
+    "broadVisualBucket": "food-and-table",
+    "contentTags": ["grocery", "shopping", "food", "label", "nutrition"],
+    "objectTags": ["grocery-cart", "shelf", "food-package"],
+    "moodTags": ["choice-overload", "everyday"]
+  },
+  "gym-phone": {
+    "broadVisualBucket": "phone-and-devices",
+    "contentTags": ["phone", "fitness", "tracking", "gym", "workout"],
+    "objectTags": ["smartphone", "phone", "dumbbells", "gym-equipment"],
+    "moodTags": ["active", "focused"]
+  },
+  "healthy-snacks": {
+    "broadVisualBucket": "food-and-table",
+    "contentTags": ["snack", "healthy", "nutrition", "food", "wellness"],
+    "objectTags": ["fruit", "nuts", "bowl"],
+    "moodTags": ["fresh", "healthy"]
+  },
+  "laptop-desk": {
+    "broadVisualBucket": "workspace-objects",
+    "contentTags": ["laptop", "desk", "workspace", "software", "productivity"],
+    "objectTags": ["laptop", "desk", "monitor", "notebook"],
+    "moodTags": ["focused", "modern"]
+  },
+  "laptop-work": {
+    "broadVisualBucket": "workspace-objects",
+    "contentTags": ["laptop", "workspace", "remote", "focus", "software"],
+    "objectTags": ["laptop", "desk", "coffee"],
+    "moodTags": ["focused", "casual"]
+  },
+  "meal-moments": {
+    "broadVisualBucket": "food-and-table",
+    "contentTags": ["meal", "food", "table", "everyday", "nutrition"],
+    "objectTags": ["meal", "plate", "table"],
+    "moodTags": ["casual", "everyday", "real-life"]
+  },
+  "meal-prep": {
+    "broadVisualBucket": "food-and-table",
+    "contentTags": ["meal-prep", "food", "planning", "nutrition", "prepared"],
+    "objectTags": ["food-container", "ingredients", "kitchen"],
+    "moodTags": ["organized", "practical"]
+  },
+  "night-routine": {
+    "broadVisualBucket": "home-lifestyle",
+    "contentTags": ["night", "routine", "evening", "bedside", "late"],
+    "objectTags": ["phone", "bedside-table", "lamp"],
+    "moodTags": ["evening", "reflective"]
+  },
+  "phone-in-hand": {
+    "broadVisualBucket": "phone-and-devices",
+    "contentTags": ["phone", "app", "tracking", "notification", "checking"],
+    "objectTags": ["smartphone", "phone"],
+    "moodTags": ["busy", "connected"]
+  },
+  "phone-notification": {
+    "broadVisualBucket": "phone-and-devices",
+    "contentTags": ["phone", "notification", "message", "follow-up", "alert"],
+    "objectTags": ["smartphone", "phone"],
+    "moodTags": ["urgent", "distracted"]
+  },
+  "post-workout": {
+    "broadVisualBucket": "fitness-wellness-objects",
+    "contentTags": ["post-workout", "fitness", "recovery", "water", "progress"],
+    "objectTags": ["towel", "water-bottle", "shoes", "gym-bag"],
+    "moodTags": ["recovery", "accomplished"]
+  },
+  "skincare-products": {
+    "broadVisualBucket": "product-still-life",
+    "contentTags": ["skincare", "product", "beauty", "routine", "bottle"],
+    "objectTags": ["skincare-bottle", "serum", "cosmetic-jar"],
+    "moodTags": ["clean", "premium", "calm"]
+  },
+  "spreadsheet-chaos": {
+    "broadVisualBucket": "data-and-screens",
+    "contentTags": ["spreadsheet", "data", "csv", "manual", "reporting"],
+    "objectTags": ["screen", "spreadsheet", "laptop"],
+    "moodTags": ["complex", "overwhelming"]
+  },
+  "team-meeting": {
+    "broadVisualBucket": "notes-and-planning",
+    "contentTags": ["collaboration", "planning", "whiteboard", "project", "team"],
+    "objectTags": ["whiteboard", "sticky-notes", "meeting-table", "notebook"],
+    "moodTags": ["organized", "collaborative"]
+  },
+  "tired-couch": {
+    "broadVisualBucket": "home-lifestyle",
+    "contentTags": ["home", "couch", "after-hours", "fatigue", "overwhelmed"],
+    "objectTags": ["couch", "sofa", "phone", "laptop"],
+    "moodTags": ["tired", "low-energy"]
+  },
+  "water-glass": {
+    "broadVisualBucket": "fitness-wellness-objects",
+    "contentTags": ["water", "hydration", "habit", "wellness", "reset"],
+    "objectTags": ["water-glass", "glass"],
+    "moodTags": ["calm", "minimal"]
+  }
+}

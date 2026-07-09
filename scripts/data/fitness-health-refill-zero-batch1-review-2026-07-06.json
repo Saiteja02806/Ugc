@@ -1,0 +1,36 @@
+{
+  "categorySlug": "fitness-health",
+  "reviewedAt": "2026-07-06T00:00:00.000Z",
+  "reviewSource": "manual-contact-sheet-review",
+  "policyNote": "User rejected grocery-aisle index 26 and approved the rest. Additional reject indexes are enforced because carousel runtime policy does not allow visible hands, faces, bodies, silhouettes, or people in background.",
+  "buckets": [
+    {
+      "bucketId": "meal-moments",
+      "expectedCount": 40,
+      "rejectIndexes": [1, 2, 4, 5, 9, 23, 27, 30, 40],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-refill-zero-batch1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "phone-in-hand",
+      "expectedCount": 40,
+      "rejectIndexes": [2, 4, 6, 8, 13, 14, 16, 19, 20, 21, 23, 27, 28, 30, 35, 36, 40],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-refill-zero-batch1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "meal-prep",
+      "expectedCount": 40,
+      "rejectIndexes": [2, 3, 9, 15, 20, 23, 24, 25, 30, 32, 35, 38, 40],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-refill-zero-batch1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "grocery-aisle",
+      "expectedCount": 35,
+      "rejectIndexes": [1, 3, 8, 9, 10, 12, 15, 16, 21, 26, 28, 32, 34],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-refill-zero-batch1/fitness-health/visual-qa-report.json"
+    }
+  ]
+}

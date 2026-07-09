@@ -1,0 +1,36 @@
+{
+  "categorySlug": "productivity-saas",
+  "requiresManualCompletion": true,
+  "reviewedAt": "2026-07-06T00:00:00.000Z",
+  "reviewSource": "manual-contact-sheet-review",
+  "buckets": [
+    {
+      "bucketId": "phone-in-hand",
+      "expectedCount": 25,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-productivity-refill-zero-batch1/productivity-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "tired-couch",
+      "expectedCount": 25,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-productivity-refill-zero-batch1/productivity-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "desk-chaos",
+      "expectedCount": 35,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-productivity-refill-zero-batch1/productivity-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "laptop-work",
+      "expectedCount": 30,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-productivity-refill-zero-batch1/productivity-saas/visual-qa-report.json"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "categorySlug": "fitness-health",
+  "reviewedAt": "2026-07-06T00:00:00.000Z",
+  "reviewSource": "manual-contact-sheet-review",
+  "policyNote": "User manually reviewed the first missing-bucket contact sheets. Only the listed human-positive indexes are rejected; every other reviewed asset is approved as object-only.",
+  "buckets": [
+    {
+      "bucketId": "food-scale",
+      "expectedCount": 20,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-missing-batch1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "gym-phone",
+      "expectedCount": 20,
+      "rejectIndexes": [11, 15, 17],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-missing-batch1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "healthy-snacks",
+      "expectedCount": 20,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-missing-batch1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "post-workout",
+      "expectedCount": 20,
+      "rejectIndexes": [1, 3, 6, 7, 9, 10, 12, 15, 18, 19],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-missing-batch1/fitness-health/visual-qa-report.json"
+    }
+  ]
+}

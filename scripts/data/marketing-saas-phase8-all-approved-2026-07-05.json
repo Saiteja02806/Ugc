@@ -1,0 +1,64 @@
+{
+  "categorySlug": "marketing-saas",
+  "reviewedAt": "2026-07-05T00:00:00.000Z",
+  "reviewSource": "manual-all-approved-preserve-safety",
+  "preserveSubjectMetadataOnApprove": true,
+  "buckets": [
+    {
+      "bucketId": "calendar-overload",
+      "expectedCount": 1,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-phase8-manual-review/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "phone-notification",
+      "expectedCount": 10,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-phase8-manual-review/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "desk-chaos",
+      "expectedCount": 3,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-phase8-manual-review/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "spreadsheet-chaos",
+      "expectedCount": 3,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-phase8-manual-review/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "team-meeting",
+      "expectedCount": 10,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-phase8-manual-review/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "tired-couch",
+      "expectedCount": 10,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-phase8-manual-review/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "laptop-work",
+      "expectedCount": 5,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-phase8-manual-review/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "night-routine",
+      "expectedCount": 7,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-phase8-manual-review/marketing-saas/visual-qa-report.json"
+    }
+  ]
+}

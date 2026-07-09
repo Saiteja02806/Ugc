@@ -1,0 +1,55 @@
+{
+  "categorySlug": "marketing-saas",
+  "reviewSource": "manual-marketing-saas-broad-contact-sheets-2026-07-07",
+  "buckets": [
+    {
+      "bucketId": "workspace-objects",
+      "bucketKind": "broad",
+      "sourceReport": ".tmp/carousel-broad-matcher/broad-bucket-contact-sheets/marketing-saas/workspace-objects/manifest.json",
+      "expectedCount": 97,
+      "rejectIndexes": [10, 28, 29, 67, 72],
+      "rejectReason": "manual-reject"
+    },
+    {
+      "bucketId": "phone-and-devices",
+      "bucketKind": "broad",
+      "sourceReport": ".tmp/carousel-broad-matcher/broad-bucket-contact-sheets/marketing-saas/phone-and-devices/manifest.json",
+      "expectedCount": 87,
+      "rejectIndexes": [21, 33, 39, 86],
+      "rejectReason": "human-hand"
+    },
+    {
+      "bucketId": "data-and-screens",
+      "bucketKind": "broad",
+      "sourceReport": ".tmp/carousel-broad-matcher/broad-bucket-contact-sheets/marketing-saas/data-and-screens/manifest.json",
+      "expectedCount": 80,
+      "rejectIndexes": [44, 45, 48, 50, 59],
+      "rejectReason": "manual-reject"
+    },
+    {
+      "bucketId": "notes-and-planning",
+      "bucketKind": "broad",
+      "sourceReport": ".tmp/carousel-broad-matcher/broad-bucket-contact-sheets/marketing-saas/notes-and-planning/manifest.json",
+      "expectedCount": 24,
+      "rejectIndexes": [2, 3, 6, 7, 9, 11, 15, 18, 19, 20, 22, 23, 24],
+      "allowSubjectMetadataResetIndexes": [10],
+      "rejectReason": "human-hand"
+    },
+    {
+      "bucketId": "abstract-backgrounds",
+      "bucketKind": "broad",
+      "sourceReport": ".tmp/carousel-broad-matcher/broad-bucket-contact-sheets/marketing-saas/abstract-backgrounds/manifest.json",
+      "expectedCount": 80,
+      "rejectIndexes": [3, 6, 9, 14, 15, 19, 32, 35, 44, 71, 73, 79],
+      "rejectReason": "manual-reject"
+    },
+    {
+      "bucketId": "clean-texture-backgrounds",
+      "bucketKind": "broad",
+      "sourceReport": ".tmp/carousel-broad-matcher/broad-bucket-contact-sheets/marketing-saas/clean-texture-backgrounds/manifest.json",
+      "expectedCount": 80,
+      "rejectIndexes": [],
+      "rejectReason": "manual-reject"
+    }
+  ]
+}

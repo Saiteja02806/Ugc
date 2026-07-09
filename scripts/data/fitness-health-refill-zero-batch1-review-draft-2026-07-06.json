@@ -1,0 +1,36 @@
+{
+  "categorySlug": "fitness-health",
+  "requiresManualCompletion": true,
+  "reviewedAt": "2026-07-06T00:00:00.000Z",
+  "reviewSource": "manual-contact-sheet-review",
+  "buckets": [
+    {
+      "bucketId": "meal-moments",
+      "expectedCount": 40,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-refill-zero-batch1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "phone-in-hand",
+      "expectedCount": 40,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-refill-zero-batch1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "meal-prep",
+      "expectedCount": 40,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-refill-zero-batch1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "grocery-aisle",
+      "expectedCount": 35,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-refill-zero-batch1/fitness-health/visual-qa-report.json"
+    }
+  ]
+}

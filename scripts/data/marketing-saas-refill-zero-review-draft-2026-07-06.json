@@ -1,0 +1,36 @@
+{
+  "categorySlug": "marketing-saas",
+  "requiresManualCompletion": true,
+  "reviewedAt": "2026-07-06T00:00:00.000Z",
+  "reviewSource": "manual-contact-sheet-review",
+  "buckets": [
+    {
+      "bucketId": "phone-in-hand",
+      "expectedCount": 17,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-refill-zero/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "clean-still-life",
+      "expectedCount": 6,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-refill-zero/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "abstract-data",
+      "expectedCount": 22,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-refill-zero/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "spreadsheet-chaos",
+      "expectedCount": 40,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-marketing-refill-zero/marketing-saas/visual-qa-report.json"
+    }
+  ]
+}

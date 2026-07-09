@@ -1,0 +1,14 @@
+{
+  "categorySlug": "marketing-saas",
+  "reviewedAt": "2026-07-05T00:00:00.000Z",
+  "reviewSource": "manual-contact-sheet-review",
+  "buckets": [
+    {
+      "bucketId": "laptop-desk",
+      "expectedCount": 4,
+      "rejectIndexes": [2],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-visual-qa-refill/marketing-saas/visual-qa-report.json"
+    }
+  ]
+}

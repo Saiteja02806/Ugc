@@ -1,0 +1,36 @@
+{
+  "categorySlug": "fitness-health",
+  "reviewedAt": "2026-07-06T00:00:00.000Z",
+  "reviewSource": "manual-contact-sheet-review",
+  "policyNote": "User confirmed the top-up review. Only object-only images are approved; visible humans, hands, faces, bodies, silhouettes, and people in background remain rejected.",
+  "buckets": [
+    {
+      "bucketId": "meal-moments",
+      "expectedCount": 9,
+      "rejectIndexes": [9],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-refill-zero-topup1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "phone-in-hand",
+      "expectedCount": 17,
+      "rejectIndexes": [1, 2, 4, 6, 10, 12, 13, 14, 16, 17],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-refill-zero-topup1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "meal-prep",
+      "expectedCount": 13,
+      "rejectIndexes": [3, 7, 9, 10, 12],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-refill-zero-topup1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "grocery-aisle",
+      "expectedCount": 13,
+      "rejectIndexes": [1, 3, 9, 11, 12, 13],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-refill-zero-topup1/fitness-health/visual-qa-report.json"
+    }
+  ]
+}

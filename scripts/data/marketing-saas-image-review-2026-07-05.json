@@ -1,0 +1,93 @@
+{
+  "categorySlug": "marketing-saas",
+  "reviewedAt": "2026-07-05T00:00:00.000Z",
+  "reviewSource": "manual-contact-sheet-review",
+  "buckets": [
+    {
+      "bucketId": "laptop-desk",
+      "expectedCount": 40,
+      "rejectIndexes": [12, 15, 28, 31, 34, 39],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-production-final-40/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "calendar-overload",
+      "expectedCount": 40,
+      "rejectIndexes": [15],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-production-final-40/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "phone-notification",
+      "expectedCount": 40,
+      "rejectIndexes": [3, 5, 8, 15, 19, 22, 23, 25, 28, 29, 32, 34, 35, 38],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-production-40/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "spreadsheet-chaos",
+      "expectedCount": 40,
+      "rejectIndexes": [26, 32, 35],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-production-40/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "abstract-data",
+      "expectedCount": 30,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-production-final-v2-30/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "clean-still-life",
+      "expectedCount": 30,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-production-30/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "desk-chaos",
+      "expectedCount": 30,
+      "rejectIndexes": [3, 10, 28],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-production-30/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "team-meeting",
+      "expectedCount": 30,
+      "rejectAll": true,
+      "rejectIndexes": [],
+      "rejectReason": "concept-redesign",
+      "sourceReport": ".tmp/carousel-visual-qa-production-30/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "phone-in-hand",
+      "expectedCount": 20,
+      "rejectIndexes": [],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-production-20/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "tired-couch",
+      "expectedCount": 20,
+      "rejectAll": true,
+      "rejectIndexes": [],
+      "rejectReason": "concept-redesign",
+      "sourceReport": ".tmp/carousel-visual-qa-production-20/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "laptop-work",
+      "expectedCount": 20,
+      "rejectIndexes": [1, 6, 7, 10, 20],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-production-20/marketing-saas/visual-qa-report.json"
+    },
+    {
+      "bucketId": "night-routine",
+      "expectedCount": 20,
+      "rejectIndexes": [1, 3, 5, 11, 12, 14, 18],
+      "rejectReason": "clear-face",
+      "sourceReport": ".tmp/carousel-visual-qa-production-20/marketing-saas/visual-qa-report.json"
+    }
+  ]
+}

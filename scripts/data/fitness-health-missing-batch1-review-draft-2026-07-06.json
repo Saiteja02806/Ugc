@@ -1,0 +1,37 @@
+{
+  "categorySlug": "fitness-health",
+  "requiresManualCompletion": true,
+  "reviewedAt": "2026-07-06T00:00:00.000Z",
+  "reviewSource": "manual-contact-sheet-review",
+  "policyNote": "Reject every image containing a face, hand, body, silhouette, cropped human, or person in the background.",
+  "buckets": [
+    {
+      "bucketId": "food-scale",
+      "expectedCount": 20,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-missing-batch1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "gym-phone",
+      "expectedCount": 20,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-missing-batch1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "healthy-snacks",
+      "expectedCount": 20,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-missing-batch1/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "post-workout",
+      "expectedCount": 20,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-missing-batch1/fitness-health/visual-qa-report.json"
+    }
+  ]
+}

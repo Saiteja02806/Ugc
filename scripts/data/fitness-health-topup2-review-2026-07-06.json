@@ -1,0 +1,36 @@
+{
+  "categorySlug": "fitness-health",
+  "reviewedAt": "2026-07-06T00:00:00.000Z",
+  "reviewSource": "manual-contact-sheet-review",
+  "policyNote": "User manually reviewed the top-up contact sheets. Only the listed human-positive indexes are rejected; every other reviewed asset is approved as object-only.",
+  "buckets": [
+    {
+      "bucketId": "meal-moments",
+      "expectedCount": 1,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-topup2/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "phone-in-hand",
+      "expectedCount": 10,
+      "rejectIndexes": [3],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-topup2/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "meal-prep",
+      "expectedCount": 5,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-topup2/fitness-health/visual-qa-report.json"
+    },
+    {
+      "bucketId": "grocery-aisle",
+      "expectedCount": 6,
+      "rejectIndexes": [],
+      "rejectReason": "human-presence",
+      "sourceReport": ".tmp/carousel-visual-qa-fitness-health-topup2/fitness-health/visual-qa-report.json"
+    }
+  ]
+}

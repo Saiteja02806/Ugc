@@ -1,0 +1,60 @@
+const DEFAULT_TIMEOUT_MS = 120_000;
+const DEFAULT_MAX_BYTES = 500 * 1024 * 1024;
+
+export async function downloadVideoToBuffer(
+  url: string,
+  options: {
+    maxBytes?: number;
+    timeoutMs?: number;
+  } = {},
+) {
+  const parsedUrl = new URL(url);
+
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    throw new Error("Only http and https video URLs are supported.");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(parsedUrl, {
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Could not download source video: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+
+    if (
+      contentType &&
+      !contentType.toLowerCase().startsWith("video/") &&
+      !contentType.toLowerCase().includes("octet-stream")
+    ) {
+      throw new Error(`Source URL did not return a video. Got ${contentType}.`);
+    }
+
+    const contentLength = Number(response.headers.get("content-length") ?? 0);
+    const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+
+    if (contentLength > maxBytes) {
+      throw new Error("Source video is too large to render.");
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+
+    if (buffer.length > maxBytes) {
+      throw new Error("Source video is too large to render.");
+    }
+
+    return buffer;
+  } finally {
+    clearTimeout(timeout);
+  }
+}

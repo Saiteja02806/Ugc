@@ -1,0 +1,23 @@
+{
+  "name": "ugc-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1075.0",
+    "@aws-sdk/client-sqs": "^3.1076.0",
+    "@google/genai": "^2.10.0",
+    "@runwayml/sdk": "^4.4.0",
+    "@supabase/supabase-js": "^2.108.2",
+    "openai": "^6.45.0",
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5"
+  }
+}

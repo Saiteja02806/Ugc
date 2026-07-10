@@ -26,6 +26,10 @@ import {
 } from "@/lib/carousel/readiness-diagnostics";
 import { getCarouselRenderStyle } from "@/lib/carousel/render-style";
 import type { CarouselBusinessVisualProfileId } from "@/lib/carousel/business-visual-profile";
+import {
+  FirebaseAuthRequestError,
+  requireFirebaseUser,
+} from "@/lib/firebase/server-auth";
 
 export const runtime = "nodejs";
 
@@ -116,6 +120,34 @@ async function getCategoryReadinessOptions(params: {
 }
 
 export async function POST(request: Request) {
+  let userId: string;
+
+  try {
+    userId = (await requireFirebaseUser(request)).uid;
+  } catch (error) {
+    if (error instanceof FirebaseAuthRequestError) {
+      return jsonResponse(
+        {
+          ok: false,
+          message:
+            error.status === 401
+              ? "Sign in before generating a carousel."
+              : error.message,
+        },
+        error.status,
+      );
+    }
+
+    console.error("Failed to verify carousel generation requester:", error);
+    return jsonResponse(
+      {
+        ok: false,
+        message: "Could not verify your sign-in session.",
+      },
+      500,
+    );
+  }
+
   const missingRuntimeEnv = getMissingRuntimeEnv();
 
   if (missingRuntimeEnv.length > 0) {
@@ -158,6 +190,16 @@ export async function POST(request: Request) {
     const websiteAnalysis = await getWebsiteAnalysisForCarousel(analysisId);
 
     if (!websiteAnalysis) {
+      return jsonResponse(
+        {
+          ok: false,
+          message: "Website analysis was not found.",
+        },
+        404,
+      );
+    }
+
+    if (websiteAnalysis.userId !== userId) {
       return jsonResponse(
         {
           ok: false,
@@ -248,7 +290,7 @@ export async function POST(request: Request) {
     }> = [];
 
     for (const [candidateIndex, angle] of candidateAngles.entries()) {
-      const projectId = getString(body.projectId) || websiteAnalysis.projectId;
+      const projectId = websiteAnalysis.projectId;
       const carouselId = await createCarouselGeneration({
         candidateCount,
         candidateIndex,

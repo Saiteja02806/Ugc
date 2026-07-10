@@ -38,25 +38,29 @@ type WebsiteAnalysisInsert = {
   main_problem: string | null;
   main_promise: string | null;
   missing_info: string[];
-  normalized_domain: string;
+  normalized_domain: string | null;
   pain_points: string[];
   pexels_image_queries: string[];
   product_summary: string | null;
   project_id: string;
   recommended_carousel_structure: string[];
+  source_context?: string | null;
+  source_type?: "manual" | "mobile_app_ai_prompt" | "website";
   target_audience: string[];
   user_id: string;
   value_props: string[];
   visual_keywords: string[];
-  website_url: string;
+  website_url: string | null;
 };
 
 type InsertWebsiteAnalysisInput = {
   analysis: WebsiteBusinessAnalysis;
-  normalizedDomain: string;
+  normalizedDomain?: string | null;
   projectId: string;
+  sourceContext?: string | null;
+  sourceType?: "manual" | "mobile_app_ai_prompt" | "website";
   userId: string;
-  websiteUrl: string;
+  websiteUrl?: string | null;
 };
 
 let supabaseServerClient: SupabaseClient<WebsiteAnalysisDatabase> | null = null;
@@ -123,6 +127,8 @@ export async function insertWebsiteAnalysis({
   analysis,
   normalizedDomain,
   projectId,
+  sourceContext,
+  sourceType = "website",
   userId,
   websiteUrl,
 }: InsertWebsiteAnalysisInput) {
@@ -142,17 +148,19 @@ export async function insertWebsiteAnalysis({
       main_problem: analysis.mainProblem,
       main_promise: analysis.mainPromise,
       missing_info: analysis.missingInfo,
-      normalized_domain: normalizedDomain,
+      normalized_domain: normalizedDomain ?? null,
       pain_points: analysis.painPoints,
       pexels_image_queries: analysis.pexelsImageQueries,
       product_summary: analysis.productSummary,
       project_id: projectId,
       recommended_carousel_structure: analysis.recommendedCarouselStructure,
+      source_context: sourceContext?.slice(0, 24_000) ?? null,
+      source_type: sourceType,
       target_audience: analysis.targetAudience,
       user_id: userId,
       value_props: analysis.valueProps,
       visual_keywords: analysis.visualKeywords,
-      website_url: websiteUrl,
+      website_url: websiteUrl ?? null,
     })
     .select("id")
     .single();

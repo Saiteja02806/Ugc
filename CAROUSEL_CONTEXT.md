@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-07-07
+Last updated: 2026-07-10
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -360,6 +360,52 @@ Core tables:
 - `category_image_assets`
 - `carousel_generations`
 - `carousel_slides`
+
+## Trending Carousel Outputs
+
+As of 2026-07-10, the Trending page's `Carousel` tab is an owner-scoped
+frontend feed for real generated carousel outputs. It reads
+`GET /api/carousel/history`, which requires a Firebase bearer token and returns
+only the caller's carousel generations for the caller's single business profile.
+
+- The feed uses the first ready, runtime-safe `renderedUrl` as the thumbnail.
+- Processing and failed generations keep their real lifecycle state; they are
+  not represented as template artwork.
+- The `Carousel` tab must show a clear profile-needed, preparing, ready, or
+  failed/retry state. It must never fall back to static template artwork.
+- The `All` tab may continue to show public templates and inspiration. It is
+  separate from personalized generated carousel output.
+- New website analyses, initial Carousel generation, and additional candidate
+  generation require Firebase authentication so their stored `user_id` matches
+  the owner used by the Trending feed.
+- Existing legacy rows owned by the former test user are intentionally not
+  re-assigned by this frontend slice. Migrate them explicitly only after the
+  intended owner is confirmed.
+
+## Business Profile Automation
+
+As of 2026-07-10, Carousel generation is business-profile-driven, not
+Generate-button-driven.
+
+1. One Firebase account has one business profile for the current product phase.
+   `project_id` remains an internal default reference; no project selector is
+   part of Trending.
+2. Business context enters through one of three paths: website scrape with
+   Firecrawl plus structured LLM analysis, an AI-IDE context paste parsed into
+   the same structured analysis, or direct manual fields.
+3. Saving a completed profile automatically prepares a small initial Carousel
+   batch in the background. The profile's normalized analysis remains the
+   worker input so the existing AWS planner, safe matcher, and Sharp renderer
+   do not need to change.
+4. Automatic generation rows carry the real Firebase `user_id`,
+   `business_profile_id`, profile version, and `generation_source =
+   auto_generated`. This makes repeat submissions idempotent per profile
+   version and keeps future profile refreshes distinct.
+5. The Generate button is intentionally unchanged in this phase. It must not
+   enqueue, open, or otherwise initiate Carousel generation.
+6. Legacy `test-user-001` rows are development data until audited. Do not
+   migrate or delete them blindly. Any cleanup must first confirm they are not
+   demo or seed content and must remove dependent rows/assets deliberately.
 
 ## Current Implementation Status
 

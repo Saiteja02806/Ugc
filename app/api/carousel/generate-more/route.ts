@@ -24,6 +24,10 @@ import {
   getNoSafeCarouselAssetsMessage,
 } from "@/lib/carousel/readiness-diagnostics";
 import { getCarouselRenderStyle } from "@/lib/carousel/render-style";
+import {
+  FirebaseAuthRequestError,
+  requireFirebaseUser,
+} from "@/lib/firebase/server-auth";
 
 export const runtime = "nodejs";
 
@@ -78,6 +82,34 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 export async function POST(request: Request) {
+  let userId: string;
+
+  try {
+    userId = (await requireFirebaseUser(request)).uid;
+  } catch (error) {
+    if (error instanceof FirebaseAuthRequestError) {
+      return jsonResponse(
+        {
+          ok: false,
+          message:
+            error.status === 401
+              ? "Sign in before generating more carousel versions."
+              : error.message,
+        },
+        error.status,
+      );
+    }
+
+    console.error("Failed to verify carousel generation requester:", error);
+    return jsonResponse(
+      {
+        ok: false,
+        message: "Could not verify your sign-in session.",
+      },
+      500,
+    );
+  }
+
   const missingRuntimeEnv = getMissingRuntimeEnv();
 
   if (missingRuntimeEnv.length > 0) {
@@ -131,6 +163,16 @@ export async function POST(request: Request) {
     }
 
     const baseGeneration = existingGenerations[0];
+
+    if (baseGeneration.userId !== userId) {
+      return jsonResponse(
+        {
+          ok: false,
+          message: "Carousel generation batch was not found.",
+        },
+        404,
+      );
+    }
 
     if (!baseGeneration.websiteAnalysisId) {
       return jsonResponse(

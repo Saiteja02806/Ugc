@@ -92,6 +92,8 @@ type CategoryImageAssetRow = {
 };
 
 type CarouselGenerationRow = {
+  business_profile_id: string | null;
+  business_profile_version: number | null;
   candidate_count: number;
   candidate_index: number;
   category_slug: string | null;
@@ -99,6 +101,7 @@ type CarouselGenerationRow = {
   error_message: string | null;
   format: CarouselFormat;
   generation_batch_id: string;
+  generation_source: "auto_generated" | "manual";
   goal: string | null;
   id: string;
   project_id: string;
@@ -112,12 +115,15 @@ type CarouselGenerationRow = {
 };
 
 type CarouselGenerationInsert = {
+  business_profile_id?: string | null;
+  business_profile_version?: number | null;
   candidate_count?: number;
   candidate_index?: number;
   category_slug?: string | null;
   error_message?: string | null;
   format?: CarouselFormat;
   generation_batch_id?: string;
+  generation_source?: "auto_generated" | "manual";
   goal?: string | null;
   project_id: string;
   selected_angle?: string | null;
@@ -256,6 +262,8 @@ export type ReadyCategoryImageAsset = {
 };
 
 export type CarouselGenerationRecord = {
+  businessProfileId: string | null;
+  businessProfileVersion: number | null;
   candidateCount: number;
   candidateIndex: number;
   categorySlug: string | null;
@@ -263,6 +271,7 @@ export type CarouselGenerationRecord = {
   errorMessage: string | null;
   format: CarouselFormat;
   generationBatchId: string;
+  generationSource: "auto_generated" | "manual";
   goal: string | null;
   id: string;
   projectId: string;
@@ -346,6 +355,8 @@ function getSupabaseServerClient() {
 
 function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
   return {
+    businessProfileId: row.business_profile_id,
+    businessProfileVersion: row.business_profile_version,
     candidateCount: row.candidate_count,
     candidateIndex: row.candidate_index,
     categorySlug: row.category_slug,
@@ -353,6 +364,7 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     errorMessage: row.error_message,
     format: row.format,
     generationBatchId: row.generation_batch_id,
+    generationSource: row.generation_source,
     goal: row.goal,
     id: row.id,
     projectId: row.project_id,
@@ -694,11 +706,14 @@ export async function listReadyCategoryImageAssets(params: {
 }
 
 export async function createCarouselGeneration(input: {
+  businessProfileId?: string | null;
+  businessProfileVersion?: number | null;
   candidateCount: number;
   candidateIndex: number;
   categorySlug: string;
   format: CarouselFormat;
   generationBatchId: string;
+  generationSource?: "auto_generated" | "manual";
   goal?: string | null;
   projectId: string;
   selectedAngle?: string | null;
@@ -709,11 +724,14 @@ export async function createCarouselGeneration(input: {
   const { data, error } = await getSupabaseServerClient()
     .from(CAROUSEL_GENERATIONS_TABLE)
     .insert({
+      business_profile_id: input.businessProfileId ?? null,
+      business_profile_version: input.businessProfileVersion ?? null,
       candidate_count: input.candidateCount,
       candidate_index: input.candidateIndex,
       category_slug: input.categorySlug,
       format: input.format,
       generation_batch_id: input.generationBatchId,
+      generation_source: input.generationSource ?? "manual",
       goal: input.goal ?? null,
       project_id: input.projectId,
       selected_angle: input.selectedAngle ?? null,
@@ -894,17 +912,23 @@ export async function getCarouselGenerationStatusPageByBatchId(params: {
   generationBatchId: string;
   limit: number;
   offset: number;
+  userId?: string;
 }) {
   const from = Math.max(Math.trunc(params.offset), 0);
   const limit = Math.max(Math.trunc(params.limit), 1);
   const to = from + limit - 1;
-  const { data: generationRows, error: generationError, count } =
-    await getSupabaseServerClient()
-      .from(CAROUSEL_GENERATIONS_TABLE)
-      .select("*", { count: "exact" })
-      .eq("generation_batch_id", params.generationBatchId)
-      .order("candidate_index", { ascending: true })
-      .range(from, to);
+  let query = getSupabaseServerClient()
+    .from(CAROUSEL_GENERATIONS_TABLE)
+    .select("*", { count: "exact" })
+    .eq("generation_batch_id", params.generationBatchId);
+
+  if (params.userId) {
+    query = query.eq("user_id", params.userId);
+  }
+
+  const { data: generationRows, error: generationError, count } = await query
+    .order("candidate_index", { ascending: true })
+    .range(from, to);
 
   if (generationError) {
     throw new Error(
@@ -935,4 +959,53 @@ export async function getCarouselGenerationStatusesByBatchId(params: {
   });
 
   return page.statuses;
+}
+
+export async function listCarouselGenerationStatusesForUser(params: {
+  businessProfileId?: string | null;
+  limit: number;
+  projectId?: string | null;
+  userId: string;
+}) {
+  const limit = Math.min(Math.max(Math.trunc(params.limit), 1), 50);
+  let query = getSupabaseServerClient()
+    .from(CAROUSEL_GENERATIONS_TABLE)
+    .select("*")
+    .eq("user_id", params.userId);
+
+  if (params.projectId) {
+    query = query.eq("project_id", params.projectId);
+  }
+
+  if (params.businessProfileId) {
+    query = query.eq("business_profile_id", params.businessProfileId);
+  }
+
+  const { data, error } = await query
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Could not list carousel generations: ${error.message}`);
+  }
+
+  return getCarouselGenerationStatusesForRows((data ?? []).map(mapGeneration));
+}
+
+export async function listAutoCarouselGenerationsForBusinessProfile(params: {
+  businessProfileId: string;
+  profileVersion: number;
+}) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(CAROUSEL_GENERATIONS_TABLE)
+    .select("*")
+    .eq("business_profile_id", params.businessProfileId)
+    .eq("business_profile_version", params.profileVersion)
+    .order("candidate_index", { ascending: true });
+
+  if (error) {
+    throw new Error(`Could not list profile carousel generations: ${error.message}`);
+  }
+
+  return (data ?? []).map(mapGeneration);
 }

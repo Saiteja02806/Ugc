@@ -3,19 +3,32 @@
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowUpRight,
   Check,
   ChevronLeft,
   ChevronRight,
+  CircleAlert,
   ImageIcon,
   Layers3,
+  Loader2,
   PlaySquare,
+  RefreshCw,
   Search,
   Sparkles,
   UserRound,
   X,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
+import { useRouter } from "next/navigation";
 
+import { useAuth } from "@/contexts/auth-context";
+import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
 
 type CreativeCategory = "All" | "Carousel" | "Video" | "Avatar" | "Image";
@@ -35,6 +48,38 @@ type CreativeTemplate = {
   slides: CreativeSlide[];
   tone: "coral" | "green" | "navy" | "sky" | "violet";
 };
+
+type CarouselHistoryState = "error" | "idle" | "loading" | "ready";
+
+type GeneratedCarousel = {
+  carouselId: string;
+  categorySlug: string | null;
+  generationBatchId: string;
+  projectId: string;
+  readySlideCount: number;
+  selectedAngle: string | null;
+  slideCount: number;
+  status: "completed" | "failed" | "processing";
+  thumbnailUrl: string | null;
+  updatedAt: string;
+};
+
+type CarouselProfileFeed = {
+  error?: string | null;
+  id?: string;
+  state: "failed" | "missing" | "preparing" | "ready";
+};
+
+type CarouselHistoryResponse =
+  | {
+      ok: true;
+      carousels: GeneratedCarousel[];
+      profile: CarouselProfileFeed;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
 
 const filters: CreativeCategory[] = ["All", "Carousel", "Video", "Avatar", "Image"];
 
@@ -176,22 +221,62 @@ const toneClassName: Record<CreativeTemplate["tone"], string> = {
 };
 
 export function TrendingWorkspace() {
+  const router = useRouter();
+  const { loading: authLoading, user } = useAuth();
   const [activeFilter, setActiveFilter] = useState<CreativeCategory>("All");
   const [activeTemplateIndex, setActiveTemplateIndex] = useState(0);
   const [activeSlideByTemplateId, setActiveSlideByTemplateId] = useState<
     Record<string, number>
   >({});
   const [drawerTemplate, setDrawerTemplate] = useState<CreativeTemplate | null>(null);
+  const [generatedCarousels, setGeneratedCarousels] = useState<
+    GeneratedCarousel[]
+  >([]);
+  const [carouselHistoryError, setCarouselHistoryError] = useState<string | null>(null);
+  const [carouselHistoryState, setCarouselHistoryState] =
+    useState<CarouselHistoryState>("idle");
+  const [carouselProfile, setCarouselProfile] = useState<CarouselProfileFeed | null>(null);
+  const [carouselHistoryRefreshKey, setCarouselHistoryRefreshKey] = useState(0);
   const [avatarSource, setAvatarSource] = useState<AvatarSource>("global");
   const [prompt, setPrompt] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [dragStartX, setDragStartX] = useState<number | null>(null);
   const deckRef = useRef<HTMLDivElement | null>(null);
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const visibleTemplates = useMemo(() => {
-    return activeFilter === "All"
+    const categoryTemplates = activeFilter === "All"
       ? templates
       : templates.filter((template) => template.category === activeFilter);
-  }, [activeFilter]);
+
+    if (!normalizedSearchQuery) {
+      return categoryTemplates;
+    }
+
+    return categoryTemplates.filter((template) =>
+      [
+        template.category,
+        template.name,
+        ...template.slides.flatMap((slide) => [slide.accent, slide.hook, slide.label]),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearchQuery),
+    );
+  }, [activeFilter, normalizedSearchQuery]);
+  const filteredGeneratedCarousels = useMemo(() => {
+    if (!normalizedSearchQuery) {
+      return generatedCarousels;
+    }
+
+    return generatedCarousels.filter((carousel) =>
+      [carousel.selectedAngle, carousel.categorySlug]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearchQuery),
+    );
+  }, [generatedCarousels, normalizedSearchQuery]);
   const activeTemplate =
     visibleTemplates[
       Math.min(activeTemplateIndex, Math.max(visibleTemplates.length - 1, 0))
@@ -199,13 +284,149 @@ export function TrendingWorkspace() {
   const activeSlideIndex = activeTemplate
     ? activeSlideByTemplateId[activeTemplate.id] ?? 0
     : 0;
+  const showGeneratedCarousels = activeFilter === "Carousel";
+  const carouselFeedProfile: CarouselProfileFeed | null = user
+    ? carouselProfile
+    : { state: "missing" };
+  const carouselFeedLoading =
+    showGeneratedCarousels &&
+    (authLoading ||
+      (Boolean(user) &&
+        (carouselHistoryState === "idle" || carouselHistoryState === "loading")));
+  const carouselSearchEmpty =
+    Boolean(normalizedSearchQuery) &&
+    generatedCarousels.length > 0 &&
+    filteredGeneratedCarousels.length === 0;
+
+  useEffect(() => {
+    if (activeFilter !== "Carousel") {
+      return;
+    }
+
+    if (!user) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadCarouselHistory() {
+      setCarouselHistoryState("loading");
+      setCarouselHistoryError(null);
+
+      try {
+        const idToken = await getCurrentUserIdToken();
+
+        if (!idToken) {
+          throw new Error("Sign in before viewing generated carousels.");
+        }
+
+        const response = await fetch("/api/carousel/history?limit=12", {
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+          signal: controller.signal,
+        });
+        const data = (await response.json().catch(() => null)) as
+          | CarouselHistoryResponse
+          | null;
+
+        if (!response.ok || !data?.ok) {
+          const message = data && !data.ok ? data.message : "Generated carousels are unavailable.";
+          throw new Error(message);
+        }
+
+        setGeneratedCarousels(data.carousels);
+        setCarouselProfile(data.profile);
+        setCarouselHistoryState("ready");
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setGeneratedCarousels([]);
+        setCarouselProfile(null);
+        setCarouselHistoryError(
+          error instanceof Error ? error.message : "Generated carousels are unavailable.",
+        );
+        setCarouselHistoryState("error");
+      }
+    }
+
+    void loadCarouselHistory();
+
+    return () => controller.abort();
+  }, [activeFilter, carouselHistoryRefreshKey, user]);
 
   function setFilter(filter: CreativeCategory) {
     setActiveFilter(filter);
     setActiveTemplateIndex(0);
   }
 
+  function handleFilterKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    filterIndex: number,
+  ) {
+    let nextIndex = filterIndex;
+
+    if (event.key === "ArrowRight") {
+      nextIndex = (filterIndex + 1) % filters.length;
+    } else if (event.key === "ArrowLeft") {
+      nextIndex = (filterIndex - 1 + filters.length) % filters.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = filters.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    const nextFilter = filters[nextIndex];
+    setFilter(nextFilter);
+    requestAnimationFrame(() => {
+      document.getElementById(`trending-tab-${nextFilter.toLowerCase()}`)?.focus();
+    });
+  }
+
+  function updateSearchQuery(value: string) {
+    setSearchQuery(value);
+    setActiveTemplateIndex(0);
+  }
+
+  function openBusinessProfile() {
+    const previewSuffix =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("preview") === "1"
+        ? "?preview=1"
+        : "";
+
+    router.push(`/onboarding${previewSuffix}`);
+  }
+
+  async function retryCarouselPreparation() {
+    setCarouselHistoryError(null);
+    try {
+      const idToken = await getCurrentUserIdToken();
+      if (!idToken) throw new Error("Sign in before retrying carousel preparation.");
+      const response = await fetch("/api/business-profile/retry", {
+        headers: { Authorization: `Bearer ${idToken}` },
+        method: "POST",
+      });
+      const data = (await response.json().catch(() => null)) as { message?: string; ok?: boolean } | null;
+      if (!response.ok || !data?.ok) throw new Error(data?.message ?? "Could not retry carousel preparation.");
+      setCarouselHistoryRefreshKey((current) => current + 1);
+    } catch (error) {
+      setCarouselHistoryError(error instanceof Error ? error.message : "Could not retry carousel preparation.");
+      setCarouselHistoryState("error");
+    }
+  }
+
   function moveTemplate(direction: number) {
+    if (visibleTemplates.length === 0) {
+      return;
+    }
+
     setActiveTemplateIndex((currentIndex) => {
       const nextIndex =
         (currentIndex + direction + visibleTemplates.length) %
@@ -260,101 +481,172 @@ export function TrendingWorkspace() {
   }
 
   return (
-    <section className="relative min-h-screen flex-1 overflow-hidden bg-background px-4 py-4 text-foreground sm:px-7 lg:px-10 lg:py-6">
+    <section className="relative min-h-screen flex-1 overflow-x-hidden bg-background px-4 py-5 text-foreground sm:px-7 lg:px-10 lg:py-7">
       <div className="mx-auto flex h-full max-w-7xl flex-col">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-xl font-bold tracking-normal text-foreground">
+            <h1 className="text-2xl font-semibold text-foreground-strong">
               Trending
             </h1>
-            <p className="mt-1 text-sm font-medium text-muted">
-              Pick a creative idea and generate from it.
+            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted">
+              {getWorkspaceDescription(activeFilter)}
             </p>
           </div>
 
-          <label className="flex h-10 w-full items-center gap-2 rounded-full border border-border bg-white px-3 text-sm font-semibold text-[#405977] shadow-sm sm:w-[260px]">
-            <Search className="size-4 shrink-0" aria-hidden="true" />
-            <span className="sr-only">Search creative templates</span>
+          <label className="flex h-11 w-full items-center gap-2.5 rounded-md border border-border-strong bg-white px-3 text-sm text-muted transition-[border-color,box-shadow] focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/15 sm:w-[280px]">
+            <Search className="size-4 shrink-0 text-muted-subtle" aria-hidden="true" />
+            <span className="sr-only">
+              {activeFilter === "Carousel"
+                ? "Search personalized carousels"
+                : "Search creative inspiration"}
+            </span>
             <input
               type="search"
-              placeholder="Search"
-              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-[#8a97a8]"
+              name="creativeSearch"
+              autoComplete="off"
+              value={searchQuery}
+              onChange={(event) => updateSearchQuery(event.target.value)}
+              placeholder={activeFilter === "Carousel" ? "Search carousels" : "Search inspiration"}
+              className="min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-subtle"
             />
           </label>
         </header>
 
-        <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
-          {filters.map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => setFilter(filter)}
-              className={cn(
-                "h-8 shrink-0 rounded-full border px-3 text-xs font-bold transition",
-                activeFilter === filter
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-border bg-white/75 text-[#52677d] hover:bg-white",
-              )}
-            >
-              {filter}
-            </button>
-          ))}
+        <div className="mt-6 border-b border-border">
+          <div
+            role="tablist"
+            aria-label="Creative type"
+            className="flex gap-6 overflow-x-auto"
+          >
+            {filters.map((filter, filterIndex) => (
+              <button
+                key={filter}
+                id={`trending-tab-${filter.toLowerCase()}`}
+                type="button"
+                role="tab"
+                aria-controls="trending-content"
+                aria-selected={activeFilter === filter}
+                onClick={() => setFilter(filter)}
+                onKeyDown={(event) => handleFilterKeyDown(event, filterIndex)}
+                tabIndex={activeFilter === filter ? 0 : -1}
+                className={cn(
+                  "relative h-11 shrink-0 touch-manipulation border-b-2 px-0.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
+                  activeFilter === filter
+                    ? "border-brand text-foreground-strong"
+                    : "border-transparent text-muted hover:text-foreground",
+                )}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div
           ref={deckRef}
-          className="relative mt-5 flex min-h-[590px] flex-1 items-center justify-center overflow-hidden rounded-[2rem] bg-[#f8f4ef] px-2 py-7 sm:min-h-[620px] sm:px-8"
-          onPointerDown={(event) => setDragStartX(event.clientX)}
-          onPointerCancel={() => setDragStartX(null)}
-          onPointerUp={(event) => handlePointerEnd(event.clientX)}
+          id="trending-content"
+          role="tabpanel"
+          aria-labelledby={`trending-tab-${activeFilter.toLowerCase()}`}
+          className={cn(
+            "relative mt-6 flex flex-1 justify-center",
+            showGeneratedCarousels
+              ? "min-h-[500px] items-start overflow-visible py-2"
+              : "min-h-[520px] items-center overflow-hidden rounded-lg border border-border bg-white px-2 py-6 sm:min-h-[min(610px,calc(100dvh-190px))] sm:px-8",
+          )}
+          onPointerDown={
+            showGeneratedCarousels || visibleTemplates.length === 0
+              ? undefined
+              : (event) => setDragStartX(event.clientX)
+          }
+          onPointerCancel={
+            showGeneratedCarousels || visibleTemplates.length === 0
+              ? undefined
+              : () => setDragStartX(null)
+          }
+          onPointerUp={
+            showGeneratedCarousels || visibleTemplates.length === 0
+              ? undefined
+              : (event) => handlePointerEnd(event.clientX)
+          }
         >
-          <button
-            type="button"
-            onClick={() => moveTemplate(-1)}
-            className="absolute left-3 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white/85 text-[#173454] shadow-sm backdrop-blur transition hover:bg-white md:flex"
-            aria-label="Previous creative"
-          >
-            <ChevronLeft className="size-5" />
-          </button>
+          {showGeneratedCarousels ? (
+            <GeneratedCarouselGallery
+              carousels={filteredGeneratedCarousels}
+              error={carouselHistoryError}
+              loading={carouselFeedLoading}
+              profile={carouselFeedProfile}
+              searchEmpty={carouselSearchEmpty}
+              onOpen={(carousel) => {
+                const searchParams = new URLSearchParams(
+                  carousel.generationBatchId
+                    ? { generationBatchId: carousel.generationBatchId }
+                    : { carouselId: carousel.carouselId },
+                );
 
-          <div className="relative flex h-[520px] w-full max-w-[940px] items-center justify-center sm:h-[560px]">
-            {visibleTemplates.map((template, index) => {
-              const offset = getCircularOffset(
-                index,
-                activeTemplateIndex,
-                visibleTemplates.length,
-              );
+                router.push(`/carousel?${searchParams.toString()}`);
+              }}
+              onCompleteProfile={openBusinessProfile}
+              onRetryHistory={() => setCarouselHistoryRefreshKey((current) => current + 1)}
+              onRetryPreparation={() => void retryCarouselPreparation()}
+            />
+          ) : visibleTemplates.length === 0 ? (
+            <SearchEmptyState onClear={() => updateSearchQuery("")} />
+          ) : (
+            <>
+              {visibleTemplates.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => moveTemplate(-1)}
+                  className="absolute left-3 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-strong bg-white text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 md:flex"
+                  aria-label="Previous creative"
+                >
+                  <ChevronLeft className="size-5" aria-hidden="true" />
+                </button>
+              ) : null}
 
-              if (Math.abs(offset) > 2) {
-                return null;
-              }
+              <div className="relative flex h-[440px] w-full max-w-[940px] items-center justify-center sm:h-[min(540px,calc(100dvh-230px))]">
+                {visibleTemplates.map((template, index) => {
+                  const offset = getCircularOffset(
+                    index,
+                    activeTemplateIndex,
+                    visibleTemplates.length,
+                  );
 
-              return (
-                <CreativePreviewCard
-                  key={template.id}
-                  active={offset === 0}
-                  offset={offset}
-                  slideIndex={activeSlideByTemplateId[template.id] ?? 0}
-                  template={template}
-                  onGenerate={() => setDrawerTemplate(template)}
-                  onSelect={() => selectTemplate(template.id)}
-                  onSlideChange={(slideIndex) =>
-                    setActiveSlide(template.id, slideIndex)
+                  if (Math.abs(offset) > 2) {
+                    return null;
                   }
-                  onSlideMove={offset === 0 ? moveSlide : undefined}
-                />
-              );
-            })}
-          </div>
 
-          <button
-            type="button"
-            onClick={() => moveTemplate(1)}
-            className="absolute right-3 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white/85 text-[#173454] shadow-sm backdrop-blur transition hover:bg-white md:flex"
-            aria-label="Next creative"
-          >
-            <ChevronRight className="size-5" />
-          </button>
+                  return (
+                    <CreativePreviewCard
+                      key={template.id}
+                      active={offset === 0}
+                      offset={offset}
+                      showTemplateBadge={template.category === "Carousel"}
+                      slideIndex={activeSlideByTemplateId[template.id] ?? 0}
+                      template={template}
+                      onGenerate={() => setDrawerTemplate(template)}
+                      onSelect={() => selectTemplate(template.id)}
+                      onSlideChange={(slideIndex) =>
+                        setActiveSlide(template.id, slideIndex)
+                      }
+                      onSlideMove={offset === 0 ? moveSlide : undefined}
+                    />
+                  );
+                })}
+              </div>
+
+              {visibleTemplates.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => moveTemplate(1)}
+                  className="absolute right-3 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-strong bg-white text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 md:flex"
+                  aria-label="Next creative"
+                >
+                  <ChevronRight className="size-5" aria-hidden="true" />
+                </button>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
 
@@ -385,6 +677,41 @@ function getCircularOffset(index: number, activeIndex: number, itemCount: number
   return offset;
 }
 
+function getWorkspaceDescription(filter: CreativeCategory) {
+  if (filter === "Carousel") {
+    return "Personalized carousel ideas prepared from your business profile.";
+  }
+
+  if (filter === "All") {
+    return "Browse creative inspiration across every format.";
+  }
+
+  return `Browse ${filter.toLowerCase()} inspiration for your next creative.`;
+}
+
+function SearchEmptyState({ onClear }: { onClear: () => void }) {
+  return (
+    <div className="flex min-h-[360px] max-w-md flex-col items-center justify-center px-6 text-center">
+      <span className="flex size-11 items-center justify-center rounded-md bg-surface-subtle text-muted">
+        <Search className="size-5" aria-hidden="true" />
+      </span>
+      <h2 className="mt-5 text-xl font-semibold text-foreground-strong">
+        No inspiration found
+      </h2>
+      <p className="mt-2 text-sm leading-6 text-muted">
+        Try a broader term or clear the search to browse every idea.
+      </p>
+      <button
+        type="button"
+        onClick={onClear}
+        className="mt-5 inline-flex h-11 items-center rounded-md border border-border-strong bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+      >
+        Clear search
+      </button>
+    </div>
+  );
+}
+
 function CreativePreviewCard({
   active,
   offset,
@@ -392,6 +719,7 @@ function CreativePreviewCard({
   onSelect,
   onSlideChange,
   onSlideMove,
+  showTemplateBadge,
   slideIndex,
   template,
 }: {
@@ -401,6 +729,7 @@ function CreativePreviewCard({
   onSelect: () => void;
   onSlideChange: (slideIndex: number) => void;
   onSlideMove?: (direction: number) => void;
+  showTemplateBadge?: boolean;
   slideIndex: number;
   template: CreativeTemplate;
 }) {
@@ -414,7 +743,7 @@ function CreativePreviewCard({
     <article
       aria-hidden={!active}
       className={cn(
-        "absolute aspect-[4/5] w-[min(82vw,420px)] overflow-hidden rounded-[28px] border border-white/35 bg-[#102033] text-white shadow-[0_28px_80px_rgb(16_32_51_/_0.28)] transition-all duration-300 ease-out",
+        "absolute aspect-[4/5] w-[min(82vw,380px)] overflow-hidden rounded-lg bg-foreground-strong text-white shadow-[0_18px_48px_rgb(9_9_11_/_0.24)] transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none",
         active ? "opacity-100" : "cursor-pointer opacity-72 hover:opacity-88",
       )}
       style={{
@@ -430,10 +759,15 @@ function CreativePreviewCard({
       <div className={cn("absolute inset-0 bg-gradient-to-br", toneClassName[template.tone])} />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(0_0_0_/_0.08)_0%,rgb(0_0_0_/_0.06)_45%,rgb(0_0_0_/_0.68)_100%)]" />
       <div className="absolute left-8 top-7 flex gap-2">
-        <span className="rounded-full border border-white/25 bg-white/18 px-3 py-1 text-xs font-bold backdrop-blur">
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-foreground-strong">
           {template.category}
         </span>
-        <span className="rounded-full border border-white/20 bg-black/20 px-3 py-1 text-xs font-bold backdrop-blur">
+        {showTemplateBadge ? (
+          <span className="rounded-full bg-black/45 px-3 py-1 text-xs font-semibold text-white">
+            Template
+          </span>
+        ) : null}
+        <span className="rounded-full bg-black/45 px-3 py-1 text-xs font-semibold text-white">
           {slide.accent}
         </span>
       </div>
@@ -457,10 +791,10 @@ function CreativePreviewCard({
               event.stopPropagation();
               onSlideMove?.(-1);
             }}
-            className="absolute left-5 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/18 bg-black/28 text-white shadow-sm backdrop-blur transition hover:bg-black/42"
+            className="absolute left-5 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white transition-colors hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
             aria-label="Previous slide"
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className="size-4" aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -468,10 +802,10 @@ function CreativePreviewCard({
               event.stopPropagation();
               onSlideMove?.(1);
             }}
-            className="absolute right-5 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/18 bg-black/28 text-white shadow-sm backdrop-blur transition hover:bg-black/42"
+            className="absolute right-5 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white transition-colors hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
             aria-label="Next slide"
           >
-            <ArrowRight className="size-4" />
+            <ArrowRight className="size-4" aria-hidden="true" />
           </button>
         </>
       ) : null}
@@ -483,13 +817,13 @@ function CreativePreviewCard({
             event.stopPropagation();
             onGenerate();
           }}
-          className="inline-flex h-11 items-center gap-2 rounded-full border border-white/18 bg-white px-4 text-sm font-black text-foreground shadow-[0_10px_24px_rgb(0_0_0_/_0.18)] transition hover:scale-[1.02]"
+          className="inline-flex h-11 items-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-foreground-strong transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
         >
           <Sparkles className="size-4 text-primary" />
           Generate
         </button>
 
-        <div className="flex rounded-full bg-black/34 px-3 py-2 backdrop-blur">
+        <div className="flex rounded-full bg-black/45 px-3 py-2">
           {template.slides.map((item, itemIndex) => (
             <button
               key={item.accent}
@@ -500,7 +834,7 @@ function CreativePreviewCard({
               }}
               aria-label={`Show slide ${itemIndex + 1}`}
               className={cn(
-                "mx-1 h-2 rounded-full transition-all",
+                "mx-1 h-2 rounded-full transition-[width,background-color]",
                 slideIndex === itemIndex ? "w-5 bg-white" : "w-2 bg-white/42",
               )}
             />
@@ -523,10 +857,247 @@ function DecorativeScene({ tone }: { tone: CreativeTemplate["tone"] }) {
           : PlaySquare;
 
   return (
-    <div className="absolute right-8 top-[48%] flex size-28 items-center justify-center rounded-[2rem] border border-white/12 bg-white/12 shadow-[0_18px_46px_rgb(0_0_0_/_0.16)] backdrop-blur-md">
+    <div className="absolute right-8 top-[48%] flex size-24 items-center justify-center rounded-lg bg-white/15">
       <Icon className={iconClass} strokeWidth={1.6} />
     </div>
   );
+}
+
+function GeneratedCarouselGallery({
+  carousels,
+  error,
+  loading,
+  onCompleteProfile,
+  onOpen,
+  onRetryHistory,
+  onRetryPreparation,
+  profile,
+  searchEmpty,
+}: {
+  carousels: GeneratedCarousel[];
+  error: string | null;
+  loading: boolean;
+  onCompleteProfile: () => void;
+  onOpen: (carousel: GeneratedCarousel) => void;
+  onRetryHistory: () => void;
+  onRetryPreparation: () => void;
+  profile: CarouselProfileFeed | null;
+  searchEmpty: boolean;
+}) {
+  if (loading) {
+    return <GeneratedCarouselSkeletons />;
+  }
+
+  if (error) {
+    return (
+      <CarouselFeedState
+        actionIcon="refresh"
+        actionLabel="Try again"
+        icon="failed"
+        message={error}
+        onAction={onRetryHistory}
+        title="Could not load carousels"
+      />
+    );
+  }
+
+  if (profile?.state === "missing") {
+    return <CarouselFeedState actionLabel="Complete business profile" icon="missing" message="Complete your business profile to prepare personalized carousel ideas." onAction={onCompleteProfile} title="Business profile needed" />;
+  }
+
+  if (profile?.state === "failed") {
+    return <CarouselFeedState actionLabel="Retry preparation" icon="failed" message={profile.error ?? "Carousel preparation did not finish."} onAction={onRetryPreparation} title="Carousel preparation failed" />;
+  }
+
+  if (searchEmpty) {
+    return (
+      <CarouselFeedState
+        icon="missing"
+        message="Try a different carousel angle or category."
+        title="No matching carousels"
+      />
+    );
+  }
+
+  if (carousels.length === 0) {
+    return <CarouselFeedState icon="preparing" message="Your personalized carousel ideas are being prepared." title="Preparing carousel ideas" />;
+  }
+
+  return (
+    <div className="grid w-full grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+      {carousels.map((carousel) => (
+        <article
+          key={carousel.carouselId}
+          className="group overflow-hidden rounded-lg border border-border bg-white transition-colors hover:border-border-strong"
+        >
+          <div className="relative aspect-[4/5] bg-foreground-strong">
+            {carousel.thumbnailUrl ? (
+              // Rendered slides are immutable CloudFront assets and need no Next image transform.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={carousel.thumbnailUrl}
+                alt={carousel.selectedAngle ?? "Generated carousel preview"}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-white/70">
+                {carousel.status === "failed" ? (
+                  <CircleAlert className="size-8" aria-label="Carousel generation failed" />
+                ) : (
+                  <Loader2 className="size-8 animate-spin motion-reduce:animate-none" aria-label="Carousel is rendering" />
+                )}
+              </div>
+            )}
+            <span
+              className={cn(
+                "absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                carousel.status === "completed" && "bg-white text-foreground-strong",
+                carousel.status === "failed" && "bg-error text-white",
+                carousel.status === "processing" && "bg-foreground-strong text-white",
+              )}
+            >
+              {getCarouselStatusLabel(carousel.status)}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 px-4 py-4">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-foreground">
+                {getCarouselCardTitle(carousel)}
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                {getCarouselCardMeta(carousel)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpen(carousel)}
+              className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border-strong text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+              aria-label="Open carousel"
+              title="Open carousel"
+            >
+              <ArrowUpRight className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function CarouselFeedState({
+  actionIcon = "sparkles",
+  actionLabel,
+  icon,
+  message,
+  onAction,
+  title,
+}: {
+  actionIcon?: "refresh" | "sparkles";
+  actionLabel?: string;
+  icon: "failed" | "missing" | "preparing";
+  message: string;
+  onAction?: () => void;
+  title: string;
+}) {
+  const Icon = icon === "failed" ? CircleAlert : icon === "preparing" ? Loader2 : Sparkles;
+  const ActionIcon = actionIcon === "refresh" ? RefreshCw : Sparkles;
+  return (
+    <div className="flex min-h-[420px] w-full max-w-lg flex-col items-center justify-center px-6 text-center">
+      <span
+        className={cn(
+          "flex size-11 items-center justify-center rounded-md",
+          icon === "failed" ? "bg-error/10 text-error" : "bg-brand-soft text-primary",
+        )}
+      >
+        <Icon className={cn("size-5", icon === "preparing" && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
+      </span>
+      <div>
+        <h2 className="mt-5 text-xl font-semibold text-foreground-strong">{title}</h2>
+        <p className="mt-2 max-w-md text-sm leading-6 text-muted">{message}</p>
+      </div>
+      {actionLabel && onAction ? (
+        <button
+          type="button"
+          onClick={onAction}
+          className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-brand px-4 text-sm font-semibold text-foreground-strong transition-[filter,transform] hover:brightness-95 active:translate-y-px active:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+        >
+          <ActionIcon className="size-4" aria-hidden="true" />
+          {actionLabel}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function GeneratedCarouselSkeletons() {
+  return (
+    <div
+      role="status"
+      aria-label="Loading generated carousels"
+      className="grid w-full grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3"
+    >
+      {[0, 1, 2].map((item) => (
+        <div
+          key={item}
+          className="overflow-hidden rounded-lg border border-border bg-white"
+        >
+          <div className="aspect-[4/5] animate-pulse bg-border motion-reduce:animate-none" />
+          <div className="space-y-2 px-4 py-4">
+            <div className="h-4 w-2/3 animate-pulse rounded bg-border motion-reduce:animate-none" />
+            <div className="h-3 w-1/3 animate-pulse rounded bg-border motion-reduce:animate-none" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function getCarouselStatusLabel(status: GeneratedCarousel["status"]) {
+  if (status === "completed") {
+    return "Ready";
+  }
+
+  if (status === "failed") {
+    return "Failed";
+  }
+
+  return "Preparing";
+}
+
+function getCarouselCardTitle(carousel: GeneratedCarousel) {
+  if (carousel.status === "completed") {
+    return carousel.selectedAngle ?? "Generated carousel";
+  }
+
+  if (carousel.status === "failed") {
+    return "Carousel generation failed";
+  }
+
+  if (
+    carousel.slideCount > 1 &&
+    carousel.readySlideCount >= carousel.slideCount - 1
+  ) {
+    return "Almost ready";
+  }
+
+  if (carousel.readySlideCount > 0) {
+    return "Rendering slides";
+  }
+
+  if (carousel.selectedAngle) {
+    return "Writing content";
+  }
+
+  return "Preparing carousel idea";
+}
+
+function getCarouselCardMeta(carousel: GeneratedCarousel) {
+  if (carousel.status === "failed") {
+    return "Open to review details";
+  }
+
+  return `${carousel.readySlideCount}/${carousel.slideCount} slides ready`;
 }
 
 function GenerateDrawer({

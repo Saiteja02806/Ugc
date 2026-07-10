@@ -1,3 +1,5 @@
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
 
 import { AuthProvider } from "@/contexts/auth-context";
@@ -18,8 +20,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full bg-background text-foreground">
+    <html
+      lang="en"
+      className={`${GeistSans.variable} ${GeistMono.variable} h-full`}
+    >
+      <body
+        className={`${GeistSans.className} min-h-full bg-background text-foreground antialiased`}
+      >
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

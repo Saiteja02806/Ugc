@@ -14,6 +14,7 @@ import {
   type CarouselTextStyle,
   type WebsiteAnalysisState,
 } from "@/components/carousel/carousel-setup-panel";
+import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
 type WorkspaceStatus = "empty" | "loading" | "completed" | "failed";
 
@@ -103,6 +104,19 @@ type LoadCandidatesParams =
 
 function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function getAuthenticatedJsonHeaders() {
+  const idToken = await getCurrentUserIdToken();
+
+  if (!idToken) {
+    throw new Error("Sign in before generating a carousel.");
+  }
+
+  return {
+    Authorization: `Bearer ${idToken}`,
+    "Content-Type": "application/json",
+  };
 }
 
 function preloadSlideImage(url: string) {
@@ -489,7 +503,7 @@ export function CarouselWorkspace({
     try {
       const response = await fetch("/api/carousel/generate-more", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthenticatedJsonHeaders(),
         body: JSON.stringify({
           generationBatchId: batchId,
           candidateCount: Math.min(CANDIDATE_PAGE_SIZE, remainingCandidates),
@@ -596,7 +610,7 @@ export function CarouselWorkspace({
     try {
       const response = await fetch("/api/website-analysis/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthenticatedJsonHeaders(),
         body: JSON.stringify({
           projectId: "test-project-001",
           websiteUrl: websiteUrl.trim(),
@@ -644,7 +658,7 @@ export function CarouselWorkspace({
     try {
       const response = await fetch("/api/carousel/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthenticatedJsonHeaders(),
         body: JSON.stringify({
           analysisId,
           candidateCount,

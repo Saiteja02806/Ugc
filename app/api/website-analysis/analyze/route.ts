@@ -11,10 +11,13 @@ import {
   buildImportantPageUrls,
   validateWebsiteUrl,
 } from "@/lib/website-analysis/url";
+import {
+  FirebaseAuthRequestError,
+  requireFirebaseUser,
+} from "@/lib/firebase/server-auth";
 
 export const runtime = "nodejs";
 
-const TEST_USER_ID = "test-user-001";
 const DEFAULT_PROJECT_ID = "test-project-001";
 
 type AnalyzeWebsiteBody = {
@@ -45,6 +48,22 @@ function errorResponse(message: string, status: number) {
 }
 
 export async function POST(request: Request) {
+  let userId: string;
+
+  try {
+    userId = (await requireFirebaseUser(request)).uid;
+  } catch (error) {
+    if (error instanceof FirebaseAuthRequestError) {
+      return errorResponse(
+        error.status === 401 ? "Sign in before analyzing a website." : error.message,
+        error.status,
+      );
+    }
+
+    console.error("Failed to verify website analysis requester:", error);
+    return errorResponse("Could not verify your sign-in session.", 500);
+  }
+
   const missingEnvVars = getMissingWebsiteAnalysisEnvVars();
 
   if (missingEnvVars.length > 0) {
@@ -80,7 +99,7 @@ export async function POST(request: Request) {
       analysis,
       normalizedDomain: website.normalizedDomain,
       projectId,
-      userId: TEST_USER_ID,
+      userId,
       websiteUrl: website.url,
     });
 

@@ -21,7 +21,7 @@ const cases = [
     format: "4:5",
     slide: {
       body:
-        "you skip one meal, then a day, then a week, and suddenly the whole system collapses because it demanded too much effort",
+        "you skip one meal, then a day, then a week, and suddenly the routine breaks because the system demanded too much effort every time",
       ctaText: null,
       headline: "consistency dies fast",
       imageDirection: "Object-only organized desk with open center space.",
@@ -30,7 +30,7 @@ const cases = [
       slideNumber: 1,
       slideType: "problem",
       subtext:
-        "you skip one meal, then a day, then a week, and suddenly the whole system collapses because it demanded too much effort",
+        "you skip one meal, then a day, then a week, and suddenly the routine breaks because the system demanded too much effort every time",
       textMode: "headline_body",
       textPosition: "center",
     },
@@ -41,7 +41,7 @@ const cases = [
     format: "4:5",
     slide: {
       body:
-        "most people are not failing because they eat terribly. they are failing because close enough adds up every single day",
+        "most people are not failing because they eat terribly. they lose confidence because close enough entries keep adding up every single day",
       ctaText: null,
       headline: null,
       imageDirection: "Object-only evening desk with lamp and open middle space.",
@@ -50,7 +50,7 @@ const cases = [
       slideNumber: 2,
       slideType: "problem",
       subtext:
-        "most people are not failing because they eat terribly. they are failing because close enough adds up every single day",
+        "most people are not failing because they eat terribly. they lose confidence because close enough entries keep adding up every single day",
       textMode: "body_only",
       textPosition: "center",
     },
@@ -84,7 +84,8 @@ const cases = [
     backgroundKind: "clean-still-life",
     format: "1:1",
     slide: {
-      body: "tracking should feel lighter than the life around it",
+      body:
+        "tracking should feel lighter than the life around it, so the routine still works when meals, plans, and timing change.",
       ctaText: null,
       headline: null,
       imageDirection: "Object-only clean still life with large open text-safe space.",
@@ -92,7 +93,8 @@ const cases = [
       layoutPreset: "middle-statement",
       slideNumber: 4,
       slideType: "benefit",
-      subtext: "tracking should feel lighter than the life around it",
+      subtext:
+        "tracking should feel lighter than the life around it, so the routine still works when meals, plans, and timing change.",
       textMode: "single_statement",
       textPosition: "center",
     },
@@ -102,7 +104,8 @@ const cases = [
     backgroundKind: "clean-still-life",
     format: "1:1",
     slide: {
-      body: "make the system fit the week you actually live",
+      body:
+        "make the system fit the week you actually live, then use the pattern to make better choices without restarting every Monday",
       ctaText: "start with one easier food log",
       headline: "start smaller",
       imageDirection: "Object-only clean still life with large open text-safe space.",
@@ -110,7 +113,8 @@ const cases = [
       layoutPreset: "bottom-message",
       slideNumber: 5,
       slideType: "cta",
-      subtext: null,
+      subtext:
+        "make the system fit the week you actually live, then use the pattern to make better choices without restarting every Monday",
       textMode: "cta_takeaway",
       textPosition: "center",
     },

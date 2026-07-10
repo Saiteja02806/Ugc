@@ -325,6 +325,28 @@ on every slide. Rendering is performed with Sharp in the worker. Text must be
 rendered into the final image with measured typography, safe wrapping, adaptive
 font sizing, proper padding, and no heading-pill overflow.
 
+Balanced carousel copy rules:
+
+- A heading or hook is optional, should normally be 4-12 words, may use one or
+  two visual lines, and must not be forced into a single line by over-shrinking.
+- Supporting content should normally be 18-35 words, use one or two short
+  sentences, render as three or four visual lines, explain the idea clearly,
+  and avoid repeating the heading.
+- The five-slide default story is Hook, Problem, Consequence, Solution, and
+  Result/CTA. Because the current slide schema does not have a separate
+  `consequence` slide type, consequence remains problem-style copy internally
+  until the schema is deliberately expanded.
+- The renderer is the final source of truth for line limits. It must wrap using
+  the production font stack, actual font size, available width, padding, and
+  card dimensions, then keep headings to at most two rendered lines and body
+  text to at most four rendered lines.
+- A headline and its supporting copy remain two distinct text groups. Within
+  either group, wrapped line backgrounds overlap vertically into one connected
+  white silhouette with measured per-line widths, compact padding, and a
+  consistent modest radius. Do not leave visible gaps that make wrapped copy
+  look like floating chips, and do not replace the measured silhouette with one
+  oversized rectangular panel.
+
 The renderer must avoid fake app UI:
 
 - no role chips
@@ -372,6 +394,12 @@ only the caller's carousel generations for the caller's single business profile.
   including `renderedUrl`, slide number, type, text metadata, and status.
 - Processing and failed generations keep their real lifecycle state; they are
   not represented as template artwork.
+- Pending generations are summarized in one aggregate preparation state with a
+  controlled three-card skeleton and total slide progress. Never render one
+  large lifecycle card for every pending candidate. When completed candidates
+  already exist, use the compact aggregate progress row instead. Failed
+  candidates use one aggregate retry state rather than a wall of repeated
+  failure cards.
 - Generated candidates appear in a focused candidate stack: the selected
   carousel is one clean portrait card, while the partially visible cards behind
   it are adjacent *carousel candidates*, never neighboring slides from that
@@ -381,6 +409,10 @@ only the caller's carousel generations for the caller's single business profile.
   once: far-left, near-left, centre, near-right, and far-right. Cards must stay
   vertically straight and use only horizontal translation, scale, opacity, and
   z-index for depth. Do not rotate, skew, or fan the cards.
+- The active desktop portrait card is capped at 320px wide, with 300px at the
+  tablet breakpoint and 260px on narrow mobile screens. Side offsets shrink in
+  the same proportion so the five-card stack remains overlapping rather than
+  spreading into a normal row.
 - Every candidate owns its own active-slide state. The centre card renders only
   that candidate's active slide; its left/right controls and five dots are
   positioned inside the image card and move only through that candidate's five
@@ -479,6 +511,11 @@ Implemented:
   broad matcher version, image safety policy, and renderer version.
 - LLM slide planner with deterministic fallback.
 - Professional Sharp text renderer and AWS Carousel worker path.
+- Local source includes balanced Carousel planner
+  `llm-carousel-planner-v2-balanced-copy` and connected text-group renderer
+  `social-bubble-renderer-v5-connected-text-groups`. AWS will not use renderer
+  v5 until a new worker Docker image is built, pushed to ECR, deployed to ECS,
+  and confirmed in the worker startup log.
 - Supabase relevance metadata `runtime_exclusion_reason` and
   `near_duplicate_group`, including database constraints and a ready-pool index.
 - Marketing SaaS asset cleanup for wrong-bucket, human-form, people-on-screen,

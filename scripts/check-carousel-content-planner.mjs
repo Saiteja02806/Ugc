@@ -60,7 +60,7 @@ const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
 if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
-  fallbackPlan.plannerVersion !== "llm-carousel-planner-v1"
+  fallbackPlan.plannerVersion !== "llm-carousel-planner-v2-balanced-copy"
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");
 }
@@ -122,7 +122,8 @@ function createPlanFixture() {
     concept: "The campaign workday that never ends",
     slides: [
       {
-        body: "Scattered work turns every launch into an after-hours scramble.",
+        body:
+          "Scattered work turns every launch into an after-hours scramble because updates, reminders, and reporting never stay in one reliable place.",
         ctaText: null,
         headline: "Your campaign should not follow you home",
         imageDirection:
@@ -134,7 +135,7 @@ function createPlanFixture() {
       },
       {
         body:
-          "Every update becomes another file, and the next action gets harder to find.",
+          "Every update becomes another file, and the next action gets harder to find when the team is trying to move quickly.",
         ctaText: null,
         headline: null,
         imageDirection:
@@ -160,7 +161,8 @@ function createPlanFixture() {
         textMode: "question_list",
       },
       {
-        body: "The next action is already clear before tomorrow begins.",
+        body:
+          "The next action is already clear before tomorrow begins, so the team can keep momentum without rebuilding the plan again.",
         ctaText: null,
         headline: null,
         imageDirection:
@@ -171,7 +173,8 @@ function createPlanFixture() {
         textMode: "single_statement",
       },
       {
-        body: "Build your campaign",
+        body:
+          "Put planning, reminders, and reporting in one place so the next campaign is easier to launch and easier to understand.",
         ctaText: "Build your campaign",
         headline: "Put the next launch in one place",
         imageDirection:

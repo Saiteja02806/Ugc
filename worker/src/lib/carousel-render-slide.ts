@@ -33,6 +33,7 @@ type BubbleLineMetrics = {
   baselineOffset: number;
   bubbleWidth: number;
   groupHeight: number;
+  lineOverlap: number;
   lineStep: number;
   rectHeight: number;
   rects: Array<{
@@ -45,7 +46,8 @@ type BalancedLines = {
   truncated: boolean;
 };
 
-export const CAROUSEL_RENDERER_VERSION = "social-bubble-renderer-v3";
+export const CAROUSEL_RENDERER_VERSION =
+  "social-bubble-renderer-v5-connected-text-groups";
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
   "1:1": { height: 1080, width: 1080 },
@@ -56,10 +58,17 @@ const DARK_TEXT = "#111316";
 const BODY_TEXT = "#15171a";
 const HEADLINE_BUBBLE_FILL = "#fffdf9";
 const BODY_BUBBLE_FILL = "#ffffff";
-const TEXT_FONT_FAMILY = "Arial, Helvetica, sans-serif";
-const HEADLINE_FONT_WEIGHT = 820;
-const BODY_FONT_WEIGHT = 720;
-const HEADLINE_STROKE_ALLOWANCE = 6;
+const TEXT_FONT_FAMILY = "Geist, Arial, Helvetica, sans-serif";
+const HEADLINE_FONT_WEIGHT = 700;
+const BODY_FONT_WEIGHT = 600;
+const TEXT_WIDTH_ALLOWANCE = 8;
+
+function getMeasuredLineWidths(value: WrappedText) {
+  return "measuredLineWidths" in value &&
+    Array.isArray(value.measuredLineWidths)
+    ? value.measuredLineWidths
+    : undefined;
+}
 
 function escapeXml(value: string) {
   return value
@@ -306,58 +315,6 @@ function buildBalancedLines(params: {
   }
 
   return { lines: lines.slice(0, params.maxLines), truncated };
-}
-
-function fitText(value: string, params: {
-  lineHeightRatio: number;
-  maxLines: number;
-  maxWidth: number;
-  minFontSize: number;
-  startFontSize: number;
-}): WrappedText {
-  let fallback: WrappedText | null = null;
-
-  for (
-    let fontSize = params.startFontSize;
-    fontSize >= params.minFontSize;
-    fontSize -= 2
-  ) {
-    const wrapped = buildBalancedLines({
-      fontSize,
-      maxLines: params.maxLines,
-      maxWidth: params.maxWidth,
-      value,
-    });
-    const fits = wrapped.lines.every(
-      (line) => estimateTextWidth(line, fontSize) <= params.maxWidth,
-    );
-    const result = {
-      fontSize,
-      lineHeight: Math.round(fontSize * params.lineHeightRatio),
-      lines: wrapped.lines,
-    };
-
-    if (!fallback && fits) {
-      fallback = result;
-    }
-
-    if (fits && !wrapped.truncated) {
-      return result;
-    }
-  }
-
-  return (
-    fallback ?? {
-      fontSize: params.minFontSize,
-      lineHeight: Math.round(params.minFontSize * params.lineHeightRatio),
-      lines: buildBalancedLines({
-        fontSize: params.minFontSize,
-        maxLines: params.maxLines,
-        maxWidth: params.maxWidth,
-        value,
-      }).lines,
-    }
-  );
 }
 
 async function fitMeasuredText(value: string, params: {
@@ -608,19 +565,25 @@ function measureBubbleLines(params: {
   lines: string[];
   maxBubbleWidth: number;
   measuredLineWidths?: number[];
-  mode: "single" | "stitched";
+  mode: "connected" | "single";
   paddingX: number;
   paddingY: number;
+  lineOverlap?: number;
   widthAllowance?: number;
 }): BubbleLineMetrics {
   const rectHeight = Math.round(params.fontSize + params.paddingY * 2);
+  const lineOverlap =
+    params.lineOverlap ??
+    (params.mode === "connected"
+      ? clamp(Math.round(params.fontSize * 0.22), 7, 11)
+      : 0);
   const lineStep =
-    params.mode === "stitched"
-      ? Math.round(params.fontSize * 1.02)
+    params.mode === "connected"
+      ? rectHeight - lineOverlap
       : Math.round(params.lineHeight);
   const widthSafety =
     params.widthAllowance ??
-    Math.round(params.fontSize * (params.mode === "stitched" ? 0.46 : 0.24));
+    Math.round(params.fontSize * (params.mode === "connected" ? 0.46 : 0.24));
   const rects = params.lines.map((line, index) => {
     const measuredLineWidth = params.measuredLineWidths?.[index];
     const lineWidth =
@@ -647,6 +610,7 @@ function measureBubbleLines(params: {
       params.lines.length > 0
         ? Math.round(rectHeight + (params.lines.length - 1) * lineStep)
         : 0,
+    lineOverlap,
     lineStep,
     rectHeight,
     rects,
@@ -661,9 +625,10 @@ function buildBubbleText(params: {
   lines: string[];
   maxBubbleWidth: number;
   measuredLineWidths?: number[];
-  mode: "single" | "stitched";
+  mode: "connected" | "single";
   paddingX: number;
   paddingY: number;
+  lineOverlap?: number;
   radius: number;
   shadow?: boolean;
   widthAllowance?: number;
@@ -679,6 +644,7 @@ function buildBubbleText(params: {
     mode: params.mode,
     paddingX: params.paddingX,
     paddingY: params.paddingY,
+    lineOverlap: params.lineOverlap,
     widthAllowance: params.widthAllowance,
   });
 
@@ -764,11 +730,11 @@ async function buildOverlaySvg(params: {
   width: number;
 }) {
   const isSquare = params.format === "1:1";
-  const safeMarginX = isSquare ? 116 : 104;
+  const safeMarginX = isSquare ? 108 : 96;
   const safeMarginY = isSquare ? 112 : 136;
   const maxBubbleWidth = Math.min(
     params.width - safeMarginX * 2,
-    isSquare ? 750 : 760,
+    Math.round(params.width * 0.78),
   );
   const textMode = getSlideTextMode(params.slide);
   const rawHeadlineText = normalizeText(params.slide.headline);
@@ -783,36 +749,44 @@ async function buildOverlaySvg(params: {
   const bodyText =
     shouldRenderHeadline || rawBodyText ? rawBodyText : rawHeadlineText;
   const bodyOnlyMode = !headlineText;
-  const headlinePaddingX = 32;
-  const headlinePaddingY = 11;
-  const headlineWidthAllowance = HEADLINE_STROKE_ALLOWANCE + 10;
+  const headlinePaddingX = 18;
+  const headlinePaddingY = 7;
+  const headlineLineOverlap = 8;
+  const bodyPaddingX = 18;
+  const bodyPaddingY = 6;
+  const bodyLineOverlap = 9;
+  const textWidthAllowance = TEXT_WIDTH_ALLOWANCE;
   const headline = await fitMeasuredText(headlineText, {
     fontFamily: TEXT_FONT_FAMILY,
     fontWeight: HEADLINE_FONT_WEIGHT,
-    horizontalAllowance: headlineWidthAllowance,
-    lineHeightRatio: 1.08,
+    horizontalAllowance: textWidthAllowance,
+    lineHeightRatio: 1.04,
     maxLines: 2,
     maxWidth: maxBubbleWidth,
-    minFontSize: isSquare ? 28 : 30,
+    minFontSize: isSquare ? 40 : 42,
     paddingX: headlinePaddingX,
-    startFontSize: isSquare ? 37 : 40,
+    startFontSize: isSquare ? 50 : 54,
   });
   const body = hasStackedBody
     ? fitStackedText(stackedBodyLines, {
-        lineHeightRatio: 1.08,
-        maxLines: 6,
-        maxWidth: bodyOnlyMode ? (isSquare ? 690 : 680) : isSquare ? 620 : 610,
-        minFontSize: bodyOnlyMode ? (isSquare ? 26 : 28) : isSquare ? 24 : 25,
-        startFontSize: bodyOnlyMode ? (isSquare ? 34 : 36) : isSquare ? 30 : 32,
+        lineHeightRatio: 1.04,
+        maxLines: 4,
+        maxWidth: maxBubbleWidth - bodyPaddingX * 2 - textWidthAllowance,
+        minFontSize: bodyOnlyMode ? (isSquare ? 32 : 34) : isSquare ? 30 : 32,
+        startFontSize: bodyOnlyMode ? (isSquare ? 40 : 42) : isSquare ? 36 : 38,
       })
     : bodyText
-      ? fitText(bodyText, {
-        lineHeightRatio: bodyOnlyMode ? 1.04 : 1.06,
-        maxLines: 5,
-        maxWidth: bodyOnlyMode ? (isSquare ? 690 : 680) : isSquare ? 620 : 610,
-        minFontSize: bodyOnlyMode ? (isSquare ? 28 : 30) : isSquare ? 25 : 26,
-        startFontSize: bodyOnlyMode ? (isSquare ? 39 : 42) : isSquare ? 32 : 34,
-      })
+      ? await fitMeasuredText(bodyText, {
+          fontFamily: TEXT_FONT_FAMILY,
+          fontWeight: BODY_FONT_WEIGHT,
+          horizontalAllowance: textWidthAllowance,
+          lineHeightRatio: bodyOnlyMode ? 1.04 : 1.05,
+          maxLines: 4,
+          maxWidth: maxBubbleWidth,
+          minFontSize: bodyOnlyMode ? (isSquare ? 34 : 36) : isSquare ? 32 : 34,
+          paddingX: bodyPaddingX,
+          startFontSize: bodyOnlyMode ? (isSquare ? 42 : 44) : isSquare ? 38 : 40,
+        })
       : { fontSize: 0, lineHeight: 0, lines: [] };
   const headlineMetrics = measureBubbleLines({
     fontSize: headline.fontSize,
@@ -820,22 +794,26 @@ async function buildOverlaySvg(params: {
     lines: headline.lines,
     maxBubbleWidth,
     measuredLineWidths: headline.measuredLineWidths,
-    mode: "single",
+    mode: "connected",
     paddingX: headlinePaddingX,
     paddingY: headlinePaddingY,
-    widthAllowance: headlineWidthAllowance,
+    lineOverlap: headlineLineOverlap,
+    widthAllowance: textWidthAllowance,
   });
   const bodyMetrics = measureBubbleLines({
     fontSize: body.fontSize,
     lineHeight: body.lineHeight,
     lines: body.lines,
     maxBubbleWidth,
-    mode: "stitched",
-    paddingX: 19,
-    paddingY: 5,
+    measuredLineWidths: getMeasuredLineWidths(body),
+    mode: "connected",
+    paddingX: bodyPaddingX,
+    paddingY: bodyPaddingY,
+    lineOverlap: bodyLineOverlap,
+    widthAllowance: textWidthAllowance,
   });
   const blockGap =
-    body.lines.length > 0 ? clamp(Math.round(body.fontSize * 0.48), 14, 24) : 0;
+    body.lines.length > 0 ? clamp(Math.round(body.fontSize * 0.56), 20, 28) : 0;
   const blockHeight = headlineMetrics.groupHeight + blockGap + bodyMetrics.groupHeight;
   const preferredCenterY = Math.round(
     params.height * getPreferredCenterRatio(params.slide.textPosition),
@@ -853,7 +831,7 @@ async function buildOverlaySvg(params: {
 <svg width="${params.width}" height="${params.height}" viewBox="0 0 ${params.width} ${params.height}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <filter id="bubbleShadow" x="-25%" y="-35%" width="150%" height="170%">
-      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#000000" flood-opacity="0.14"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000000" flood-opacity="0.16"/>
     </filter>
   </defs>
   ${buildBubbleText({
@@ -864,12 +842,13 @@ async function buildOverlaySvg(params: {
     lines: headline.lines,
     maxBubbleWidth,
     measuredLineWidths: headline.measuredLineWidths,
-    mode: "single",
+    mode: "connected",
     paddingX: headlinePaddingX,
     paddingY: headlinePaddingY,
-    radius: Math.round(headline.fontSize * 0.28),
+    lineOverlap: headlineLineOverlap,
+    radius: clamp(Math.round(headline.fontSize * 0.2), 8, 12),
     shadow: true,
-    widthAllowance: headlineWidthAllowance,
+    widthAllowance: textWidthAllowance,
     x: textX,
     y: headlineY,
   })}
@@ -880,11 +859,14 @@ async function buildOverlaySvg(params: {
     lineHeight: body.lineHeight,
     lines: body.lines,
     maxBubbleWidth,
-    mode: "stitched",
-    paddingX: 19,
-    paddingY: 5,
-    radius: Math.round(Math.max(8, body.fontSize * 0.24)),
+    measuredLineWidths: getMeasuredLineWidths(body),
+    mode: "connected",
+    paddingX: bodyPaddingX,
+    paddingY: bodyPaddingY,
+    lineOverlap: bodyLineOverlap,
+    radius: clamp(Math.round(body.fontSize * 0.22), 8, 12),
     shadow: true,
+    widthAllowance: textWidthAllowance,
     x: textX,
     y: bodyY,
   })}

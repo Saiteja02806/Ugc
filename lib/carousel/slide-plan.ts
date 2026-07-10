@@ -146,10 +146,10 @@ function cleanSupport(value: string | null) {
   }
 
   const support = capitalizeSentence(
-    truncateText(improveWeakPhrase(value).replace(/\s+/g, " "), 88),
+    truncateText(improveWeakPhrase(value).replace(/\s+/g, " "), 230),
   );
 
-  if (support.split(/\s+/).filter(Boolean).length < 3) {
+  if (support.split(/\s+/).filter(Boolean).length < 10) {
     return null;
   }
 
@@ -254,15 +254,15 @@ function getStoryTypes(slideCount: number): CarouselSlideType[] {
   }
 
   if (slideCount === 5) {
-    return ["hook", "problem", "solution", "benefit", "cta"];
+    return ["hook", "problem", "problem", "solution", "cta"];
   }
 
   return [
     "hook",
     "problem",
+    "problem",
     "solution",
     "benefit",
-    "differentiator",
     "cta",
     ...Array.from(
       { length: Math.max(0, slideCount - 6) },
@@ -315,23 +315,26 @@ export function buildCarouselSlidePlan(params: {
   const isFitnessHealth = isFitnessHealthAnalysis(analysis);
   const fallbackHeadlines = getFallbackHeadlines(analysis);
   const hookAudienceFallback = isFitnessHealth
-    ? `For people trying to keep ${businessName} consistent.`
-    : `For teams evaluating ${businessName}.`;
+    ? `For people trying to keep ${businessName} consistent while dealing with busy days, mixed portions, and routines that never stay perfect.`
+    : `For teams evaluating ${businessName} while too many updates, files, and follow-ups compete for attention during real campaign work.`;
   const hookSupportFallback = isFitnessHealth
-    ? "Built for real meals, busy days, and imperfect routines."
-    : "Built for teams tired of manual busywork.";
+    ? "Built for real meals, busy days, and imperfect routines, so tracking can feel useful without demanding a perfect schedule."
+    : "Built for teams tired of manual busywork, scattered reporting, and the slow handoffs that make simple launches harder than they should be.";
   const problemSupportFallback = isFitnessHealth
-    ? "Small food decisions become hard to track once life gets busy."
-    : "The old process creates extra work.";
+    ? "Small food decisions become harder to track when meals are mixed, portions change, and the day gets too busy to log carefully."
+    : "The old process creates extra work because planning, approvals, reminders, and reporting live in different places that do not stay aligned.";
   const solutionSupportFallback = isFitnessHealth
-    ? "One easier routine replaces daily logging friction."
-    : "One workflow replaces scattered manual steps.";
+    ? "Use a system that understands mixed dishes, flexible portions, and the way people actually eat during busy days."
+    : "Bring the scattered steps into one clearer workflow so the next action is easier to find before the launch slows down.";
   const benefitSupportFallback = isFitnessHealth
-    ? "Stay consistent without turning every meal into homework."
-    : "Move faster without adding more tools.";
+    ? "When logging takes less effort, it becomes easier to track regularly and use the information to make better choices."
+    : "When every follow-up and report has a clear place, the team can move faster without adding another tool to check.";
   const differentiatorSupportFallback = isFitnessHealth
-    ? "Designed around real eating habits, not perfect days."
-    : "Designed around the way modern teams work.";
+    ? "Designed around real eating habits, not perfect days, so the routine survives takeout, leftovers, restaurant meals, and rushed weeks."
+    : "Designed around the way modern teams work, where campaign context, next steps, and reporting need to stay connected.";
+  const ctaSupportFallback = isFitnessHealth
+    ? "Start with one easier food log, then keep building a routine that stays useful during the week you actually live."
+    : "Start with one cleaner campaign workflow, then keep the next launch organized from planning through reporting.";
 
   function distinctHeadline(value: string, fallback: string) {
     const cleaned = cleanHeadline(value || fallback);
@@ -468,10 +471,14 @@ export function buildCarouselSlidePlan(params: {
     }
 
     const ctaText = cleanCtaText(pick(ctaIdeas, candidateIndex, `Try ${businessName}`));
+    const ctaBody = cleanSupportOrFallback(
+      goal || mainPromise || pick(valueProps, sourceIndex, ctaSupportFallback),
+      ctaSupportFallback,
+    );
 
     return {
       ...preset,
-      body: ctaText,
+      body: ctaBody,
       ctaText,
       headline: distinctHeadline(
         goal || mainPromise || fallbackHeadlines[5],
@@ -481,7 +488,7 @@ export function buildCarouselSlidePlan(params: {
       listItems: [],
       slideNumber,
       slideType,
-      subtext: null,
+      subtext: ctaBody,
       textMode: "cta_takeaway",
     } satisfies PlannedCarouselSlide;
   });

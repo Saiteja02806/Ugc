@@ -18,8 +18,12 @@ const serviceName =
 const expected = {
   broadMatcherMode: args["broad-mode"] || "dry-run",
   broadMatcherVersion: args["broad-version"] || "broad-runtime-matcher-v2",
+  contentPlannerVersion:
+    args["planner-version"] || "llm-carousel-planner-v2-balanced-copy",
   fallbackDisabled: args["fallback-disabled"] || "true",
-  rendererVersion: args["renderer-version"] || "social-bubble-renderer-v3",
+  rendererVersion:
+    args["renderer-version"] ||
+    "social-bubble-renderer-v5-connected-text-groups",
   safetyPolicyVersion:
     args["safety-version"] || "object-only-no-human-v1",
 };
@@ -61,6 +65,11 @@ const checks = [
     "log.carouselImageSafetyPolicyVersion",
     startupLog?.metadata?.carouselImageSafetyPolicyVersion,
     expected.safetyPolicyVersion,
+  ),
+  checkEqual(
+    "log.carouselContentPlannerVersion",
+    startupLog?.metadata?.carouselContentPlannerVersion,
+    expected.contentPlannerVersion,
   ),
   checkEqual(
     "log.carouselRendererVersion",

@@ -7,13 +7,19 @@ import type {
   PlannedCarouselSlide,
 } from "./carousel-slide-plan.js";
 
-export const CAROUSEL_CONTENT_PLANNER_VERSION = "llm-carousel-planner-v1";
+export const CAROUSEL_CONTENT_PLANNER_VERSION =
+  "llm-carousel-planner-v2-balanced-copy";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
-const MAX_BODY_LENGTH = 190;
-const MAX_HEADLINE_LENGTH = 72;
+const MAX_BODY_LENGTH = 260;
+const MAX_HEADLINE_LENGTH = 96;
 const MAX_CTA_LENGTH = 34;
 const MAX_IMAGE_DIRECTION_LENGTH = 180;
+const TARGET_BODY_MIN_WORDS = 18;
+const TARGET_BODY_MAX_WORDS = 35;
+const MIN_REQUIRED_BODY_WORDS = 12;
+const MAX_ALLOWED_BODY_WORDS = 42;
+const MAX_HEADLINE_WORDS = 12;
 const VISUAL_SUBJECT_TERMS =
   "(?:human|humans|person|people|face|faces|hand|hands|body|bodies|silhouette|silhouettes|man|men|woman|women|child|children|team|customer|customers|worker|workers)";
 const PROHIBITED_VISUAL_SUBJECT_PATTERN =
@@ -221,6 +227,12 @@ export function parseCarouselContentPlan(
       slideNumber,
       textMode,
     });
+    validateBalancedTextContent({
+      body,
+      headline,
+      slideNumber,
+      textMode,
+    });
 
     const normalizedHeadline = headline?.toLowerCase();
 
@@ -403,6 +415,49 @@ function validateTextContent(params: {
   }
 }
 
+function countWords(value: string) {
+  return value.match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)?/g)?.length ?? 0;
+}
+
+function validateBalancedTextContent(params: {
+  body: string | null;
+  headline: string | null;
+  slideNumber: number;
+  textMode: CarouselTextMode;
+}) {
+  if (params.headline) {
+    const headlineWords = countWords(params.headline);
+
+    if (headlineWords > MAX_HEADLINE_WORDS) {
+      throw new Error(
+        `Slide ${params.slideNumber} headline exceeds ${MAX_HEADLINE_WORDS} words.`,
+      );
+    }
+  }
+
+  if (
+    !params.body ||
+    params.textMode === "question_list" ||
+    params.textMode === "checklist"
+  ) {
+    return;
+  }
+
+  const bodyWords = countWords(params.body);
+
+  if (bodyWords < MIN_REQUIRED_BODY_WORDS) {
+    throw new Error(
+      `Slide ${params.slideNumber} body is too thin for a carousel slide.`,
+    );
+  }
+
+  if (bodyWords > MAX_ALLOWED_BODY_WORDS) {
+    throw new Error(
+      `Slide ${params.slideNumber} body exceeds ${TARGET_BODY_MAX_WORDS} target words.`,
+    );
+  }
+}
+
 function buildPlannerMessages(input: CarouselContentPlanInput & { slideCount: number }) {
   const analysis = input.analysis;
   const candidateNumber = Math.max(0, input.candidateIndex ?? 0) + 1;
@@ -423,8 +478,9 @@ function buildPlannerMessages(input: CarouselContentPlanInput & { slideCount: nu
         input.goal?.trim() ? `Generation goal: ${input.goal.trim()}` : null,
         "",
         "Planning rules:",
-        "- Start with a hook and end with a CTA, but choose the middle story roles based on the concept instead of repeating a fixed template.",
-        "- Slide role semantics are strict: problem describes friction, solution explains the supported mechanism or better process, benefit states the resulting outcome, and differentiator states a supported reason this product is distinct.",
+        "- For a 5-slide carousel, use this story shape: Slide 1 - Hook, Slide 2 - Problem, Slide 3 - Consequence, Slide 4 - Solution, Slide 5 - Result or CTA.",
+        "- For other slide counts, keep the same arc: hook, friction, consequence, solution, useful result.",
+        "- Slide role semantics are strict: problem describes friction or consequence, solution explains the supported mechanism or better process, benefit states the resulting outcome, and differentiator states a supported reason this product is distinct.",
         "- Never place problem copy under a solution, benefit, or differentiator slide type.",
         "- Choose the best textMode for each slide: headline_body, body_only, single_statement, question_list, checklist, or cta_takeaway.",
         "- Do not force every slide to have a headline. Middle slides can use body_only or single_statement when the body is stronger than a label.",
@@ -435,12 +491,18 @@ function buildPlannerMessages(input: CarouselContentPlanInput & { slideCount: nu
         "- For a calorie tracker, examples include dinner fatigue, portion confusion, late-night snacks, grocery decisions, and forgetting to log.",
         "- For SaaS, examples include deadline overload, scattered reports, notification clutter, dashboard confusion, and after-hours work.",
         "- Keep every slide focused on one idea. Do not repeat headlines or paraphrase the same claim.",
-        "- Headline style must feel like social carousel overlay copy: 2-7 words, punchy, concrete, lowercase or sentence case, never title-case blog headings.",
-        "- Good headline examples for a calorie tracker: consistency dies fast, you're just guessing, it's way too slow, tracking should be effortless.",
+        `- Headlines should normally be ${4}-${MAX_HEADLINE_WORDS} words and must fit in one or two visual lines. Do not force every heading into one line.`,
+        "- Headlines can be omitted when the slide works better without one.",
+        "- Headline style must feel like social carousel overlay copy: punchy, concrete, lowercase or sentence case, never title-case blog headings.",
+        "- Good headline examples for a calorie tracker: meal tracking should not feel like homework, every meal becomes a search, small mistakes change the result.",
         "- Avoid abstract headline labels such as tracking fatigue sets in, inaccurate portions lead to frustration, unlock efficiency, or take it to the next level.",
-        "- Body copy should be 8-28 words, plain, connected to the previous slide, and strong enough to stand alone when textMode is body_only.",
+        `- Body copy should normally be ${TARGET_BODY_MIN_WORDS}-${TARGET_BODY_MAX_WORDS} words, plain, connected to the previous slide, and strong enough to stand alone when textMode is body_only.`,
+        "- Body copy can be one or two short sentences, but should read as three or four visual lines after rendering.",
+        "- Body copy must explain the idea properly. Do not write empty support such as Save time or Save time faster.",
+        "- Body copy must not simply repeat the headline, and it must not become a large paragraph.",
         "- For question_list and checklist, use 3-5 short listItems and keep body null unless a short setup line is needed.",
         "- Headlines must be punchy and concrete. Avoid generic phrases such as boost productivity, streamline your business, unlock efficiency, or take it to the next level.",
+        "- The CTA slide should explain the result the customer receives and may end with a concrete next action.",
         "- The CTA headline must name a concrete next action or outcome; do not use generic copy such as unify your workflow.",
         "- Use only claims supported by the analysis and respect claimsToAvoid.",
         "- imageDirection must name a concrete object-only scene and useful text-safe space.",

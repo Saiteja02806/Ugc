@@ -89,13 +89,13 @@ const STACK_CARD_STYLES: Record<
   [-2]: {
     opacity: 0.9,
     scale: 0.82,
-    translateX: "clamp(-330px, -30vw, -140px)",
+    translateX: "clamp(-260px, -24vw, -108px)",
     zIndex: 3,
   },
   [-1]: {
     opacity: 1,
     scale: 0.9,
-    translateX: "clamp(-170px, -15vw, -72px)",
+    translateX: "clamp(-136px, -12vw, -58px)",
     zIndex: 4,
   },
   0: {
@@ -107,16 +107,21 @@ const STACK_CARD_STYLES: Record<
   1: {
     opacity: 1,
     scale: 0.9,
-    translateX: "clamp(72px, 15vw, 170px)",
+    translateX: "clamp(58px, 12vw, 136px)",
     zIndex: 4,
   },
   2: {
     opacity: 0.9,
     scale: 0.82,
-    translateX: "clamp(140px, 30vw, 330px)",
+    translateX: "clamp(108px, 24vw, 260px)",
     zIndex: 3,
   },
 };
+const LOADING_STACK_PLACEHOLDERS = [
+  { opacity: 0.72, scale: 0.88, translateX: "-112px", zIndex: 1 },
+  { opacity: 1, scale: 1, translateX: "0px", zIndex: 3 },
+  { opacity: 0.72, scale: 0.88, translateX: "112px", zIndex: 1 },
+] as const;
 
 export function TrendingWorkspace() {
   const router = useRouter();
@@ -507,6 +512,12 @@ function GeneratedCarouselFeed({
       slides.length === carousel.slideCount
     );
   });
+  const processingCarousels = lifecycleCarousels.filter(
+    (carousel) => carousel.status !== "failed",
+  );
+  const failedCarousels = lifecycleCarousels.filter(
+    (carousel) => carousel.status === "failed",
+  );
 
   function setActiveSlide(carouselId: string, nextIndex: number) {
     setActiveSlideByCarouselId((current) => ({
@@ -527,16 +538,18 @@ function GeneratedCarouselFeed({
         />
       ) : null}
 
-      {lifecycleCarousels.length > 0 ? (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {lifecycleCarousels.map((carousel) => (
-            <CarouselLifecycleCard
-              key={carousel.carouselId}
-              carousel={carousel}
-              onRetry={onRetryPreparation}
-            />
-          ))}
-        </div>
+      {processingCarousels.length > 0 ? (
+        <CarouselPreparationState
+          carousels={processingCarousels}
+          compact={completeCarousels.length > 0}
+        />
+      ) : null}
+
+      {failedCarousels.length > 0 ? (
+        <CarouselFailureState
+          count={failedCarousels.length}
+          onRetry={onRetryPreparation}
+        />
       ) : null}
     </div>
   );
@@ -569,7 +582,7 @@ function CarouselCandidateStack({
 
   return (
     <section aria-label="Personalized carousel ideas" className="w-full">
-      <div className="relative isolate mx-auto h-[470px] w-full max-w-6xl overflow-hidden sm:h-[545px] lg:h-[620px]">
+      <div className="relative isolate mx-auto h-[390px] w-full max-w-5xl overflow-hidden sm:h-[425px] lg:h-[460px]">
         {visibleCarouselSlots.map((slot) => (
           <CarouselStackCard
             key={slot.candidate.carousel.carouselId}
@@ -658,7 +671,7 @@ function CarouselStackCard({
     <article
       aria-label={`${title}, idea ${carouselIndex + 1} of ${carouselCount}`}
       className={cn(
-        "absolute left-1/2 top-0 w-[min(78vw,330px)] origin-top overflow-visible transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none sm:w-[min(54vw,370px)] lg:w-[min(36vw,400px)]",
+        "absolute left-1/2 top-0 w-[min(72vw,260px)] origin-top overflow-visible transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none sm:w-[min(48vw,300px)] lg:w-[min(30vw,320px)]",
         !isActive &&
           "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
       )}
@@ -808,105 +821,143 @@ function getWrappedCarouselIndex(index: number, length: number) {
   return ((index % length) + length) % length;
 }
 
-function CarouselLifecycleCard({
-  carousel,
-  onRetry,
+function CarouselPreparationState({
+  carousels,
+  compact,
 }: {
-  carousel: GeneratedCarousel;
-  onRetry: () => void;
+  carousels: GeneratedCarousel[];
+  compact: boolean;
 }) {
-  const isFailed = carousel.status === "failed";
-  const title = getCarouselTitle(carousel);
-  const lifecycleTitle = getLifecycleTitle(carousel);
-  const Icon = isFailed ? CircleAlert : Loader2;
+  const readySlideCount = carousels.reduce(
+    (total, carousel) => total + carousel.readySlideCount,
+    0,
+  );
+  const slideCount = carousels.reduce(
+    (total, carousel) => total + carousel.slideCount,
+    0,
+  );
+  const progress =
+    slideCount > 0
+      ? Math.min(Math.max((readySlideCount / slideCount) * 100, 0), 100)
+      : 0;
+  const status = getPreparationTitle(carousels);
+  const ideaLabel = carousels.length === 1 ? "idea" : "ideas";
 
   return (
-    <article className="overflow-hidden rounded-lg border border-border bg-white shadow-[0_8px_20px_rgb(9_9_11_/_0.04)]">
-      <div className="relative flex aspect-[11/10] items-center justify-center overflow-hidden border-b border-border bg-card-muted px-8 text-center">
-        <div className="absolute left-[11%] top-1/2 h-[72%] w-[47%] -translate-y-1/2 rounded-md border border-border bg-white/70" />
-        <div className="absolute right-[11%] top-1/2 h-[72%] w-[47%] -translate-y-1/2 rounded-md border border-border bg-white/70" />
-        <div className="relative z-10 flex aspect-[4/5] h-[88%] flex-col items-center justify-center rounded-md border border-border-strong bg-white px-7 shadow-[0_8px_18px_rgb(9_9_11_/_0.08)]">
-          <Icon
-            className={cn(
-              "size-6 text-muted",
-              !isFailed && "animate-spin motion-reduce:animate-none",
-              isFailed && "text-error",
-            )}
+    <section
+      role="status"
+      aria-live="polite"
+      className={cn(
+        "w-full",
+        compact && "border-y border-border py-5",
+      )}
+    >
+      {!compact ? <CarouselLoadingStackVisual /> : null}
+
+      <div
+        className={cn(
+          "mx-auto flex max-w-2xl items-start gap-4",
+          !compact && "mt-5 px-4",
+        )}
+      >
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-brand-soft text-primary">
+          <Loader2
+            className="size-5 animate-spin motion-reduce:animate-none"
             aria-hidden="true"
           />
-          <p className="mt-3 text-sm font-semibold text-foreground-strong">
-            {lifecycleTitle}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <div>
+              <p className="text-sm font-semibold text-foreground-strong">
+                {status}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted">
+                {carousels.length} personalized carousel {ideaLabel} in progress
+              </p>
+            </div>
+            <span className="text-xs font-medium tabular-nums text-muted">
+              {readySlideCount}/{slideCount} slides ready
+            </span>
+          </div>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-border">
+            <div
+              className="h-full rounded-full bg-brand transition-[width] duration-500 motion-reduce:transition-none"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CarouselLoadingStackVisual() {
+  return (
+    <div
+      className="relative isolate mx-auto h-[320px] w-full max-w-2xl overflow-hidden"
+      aria-hidden="true"
+    >
+      {LOADING_STACK_PLACEHOLDERS.map((placeholder, index) => (
+        <div
+          key={placeholder.translateX}
+          className="absolute left-1/2 top-0 aspect-[4/5] w-[230px] origin-top overflow-hidden rounded-xl border border-border bg-card-muted shadow-[0_8px_18px_rgb(9_9_11_/_0.08)]"
+          style={{
+            opacity: placeholder.opacity,
+            transform: `translateX(calc(-50% + ${placeholder.translateX})) scale(${placeholder.scale})`,
+            zIndex: placeholder.zIndex,
+          }}
+        >
+          <div className="size-full animate-pulse bg-card-muted p-6 motion-reduce:animate-none">
+            <div className="h-2.5 w-16 rounded-full bg-border-strong/70" />
+            <div className="mt-28 space-y-2.5">
+              <div className="h-3 w-4/5 rounded-full bg-border-strong/70" />
+              <div className="h-3 w-full rounded-full bg-border-strong/70" />
+              <div className="h-3 w-3/5 rounded-full bg-border-strong/70" />
+            </div>
+            {index === 1 ? (
+              <div className="absolute bottom-5 left-1/2 h-1.5 w-20 -translate-x-1/2 rounded-full bg-border-strong/70" />
+            ) : null}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CarouselFailureState({
+  count,
+  onRetry,
+}: {
+  count: number;
+  onRetry: () => void;
+}) {
+  const ideaLabel = count === 1 ? "idea needs" : "ideas need";
+
+  return (
+    <section className="flex flex-col gap-4 border-y border-error/20 py-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-error/10 text-error">
+          <CircleAlert className="size-4" aria-hidden="true" />
+        </span>
+        <div>
+          <p className="text-sm font-semibold text-foreground-strong">
+            {count} carousel {ideaLabel} attention
           </p>
           <p className="mt-1 text-xs leading-5 text-muted">
-            {carousel.readySlideCount}/{carousel.slideCount} slides ready
+            The worker did not finish these carousel renders.
           </p>
         </div>
       </div>
-
-      <div className="flex min-h-32 flex-col gap-3 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="line-clamp-1 text-sm font-semibold text-foreground-strong">
-              {title}
-            </p>
-            <p className="mt-1 text-xs leading-5 text-muted">
-              {isFailed
-                ? "This creative did not finish rendering."
-                : "This creative will appear here as its slides finish rendering."}
-            </p>
-          </div>
-          <span
-            className={cn(
-              "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold",
-              isFailed
-                ? "bg-error/10 text-error"
-                : "bg-foreground-strong/8 text-foreground-strong",
-            )}
-          >
-            {isFailed ? "Failed" : "Preparing"}
-          </span>
-        </div>
-
-        <div className="mt-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5" aria-label="Carousel slide progress">
-            {Array.from({ length: carousel.slideCount }, (_, index) => (
-              <span
-                key={index}
-                className={cn(
-                  "h-1.5 rounded-full",
-                  index < carousel.readySlideCount
-                    ? "w-4 bg-foreground-strong"
-                    : "w-1.5 bg-border-strong",
-                )}
-              />
-            ))}
-          </div>
-
-          {isFailed ? (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-border-strong bg-white px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-            >
-              <RefreshCw className="size-3.5" aria-hidden="true" />
-              Retry
-            </button>
-          ) : (
-            <span title="Generation from Trending is coming soon.">
-              <button
-                type="button"
-                disabled
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-border bg-card-muted px-3 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-80"
-                aria-label="Generate carousel, coming soon"
-              >
-                <Sparkles className="size-3.5" aria-hidden="true" />
-                Generate
-              </button>
-            </span>
-          )}
-        </div>
-      </div>
-    </article>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-border-strong bg-white px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+      >
+        <RefreshCw className="size-3.5" aria-hidden="true" />
+        Retry generation
+      </button>
+    </section>
   );
 }
 
@@ -970,14 +1021,16 @@ function GeneratedCarouselFeedSkeleton() {
     <div
       role="status"
       aria-label="Loading generated carousels"
-      className="grid w-full grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3"
+      className="w-full"
     >
-      {Array.from({ length: 3 }, (_, index) => (
-        <div
-          key={index}
-          className="aspect-[4/5] animate-pulse rounded-lg border border-border bg-card-muted motion-reduce:animate-none"
-        />
-      ))}
+      <CarouselLoadingStackVisual />
+      <div className="mx-auto mt-5 flex max-w-2xl items-center gap-4 px-4">
+        <div className="size-10 shrink-0 animate-pulse rounded-md bg-brand-soft motion-reduce:animate-none" />
+        <div className="min-w-0 flex-1 animate-pulse space-y-2 motion-reduce:animate-none">
+          <div className="h-3 w-44 rounded-full bg-border-strong/70" />
+          <div className="h-2.5 w-64 max-w-full rounded-full bg-border" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -1009,27 +1062,26 @@ function getSlideRoleLabel(slide: GeneratedCarouselSlide) {
   return `${titleCaseSlug(role)} - slide ${slide.slideNumber}`;
 }
 
-function getLifecycleTitle(carousel: GeneratedCarousel) {
-  if (carousel.status === "failed") {
-    return "Carousel generation failed";
-  }
-
+function getPreparationTitle(carousels: GeneratedCarousel[]) {
   if (
-    carousel.slideCount > 1 &&
-    carousel.readySlideCount >= carousel.slideCount - 1
+    carousels.some(
+      (carousel) =>
+        carousel.slideCount > 1 &&
+        carousel.readySlideCount >= carousel.slideCount - 1,
+    )
   ) {
     return "Almost ready";
   }
 
-  if (carousel.readySlideCount > 0) {
+  if (carousels.some((carousel) => carousel.readySlideCount > 0)) {
     return "Rendering slides";
   }
 
-  if (carousel.selectedAngle) {
-    return "Writing content";
+  if (carousels.some((carousel) => carousel.selectedAngle)) {
+    return "Writing carousel content";
   }
 
-  return "Preparing carousel idea";
+  return "Preparing carousel ideas";
 }
 
 function titleCaseSlug(value: string | null | undefined) {

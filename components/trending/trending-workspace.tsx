@@ -45,6 +45,11 @@ type GeneratedCarousel = {
   updatedAt: string;
 };
 
+type CompleteCarousel = {
+  carousel: GeneratedCarousel;
+  slides: ReadyCarouselSlide[];
+};
+
 type CarouselProfileFeed = {
   error?: string | null;
   id?: string;
@@ -435,6 +440,24 @@ function GeneratedCarouselFeed({
   const [activeSlideByCarouselId, setActiveSlideByCarouselId] = useState<
     Record<string, number>
   >({});
+  const [activeCarouselId, setActiveCarouselId] = useState<string | null>(null);
+
+  const completeCarousels = carousels.flatMap<CompleteCarousel>((carousel) => {
+    const slides = getReadySlides(carousel);
+    const hasCompleteCreative =
+      carousel.status === "completed" &&
+      slides.length === carousel.slideCount;
+
+    return hasCompleteCreative ? [{ carousel, slides }] : [];
+  });
+  const lifecycleCarousels = carousels.filter((carousel) => {
+    const slides = getReadySlides(carousel);
+
+    return !(
+      carousel.status === "completed" &&
+      slides.length === carousel.slideCount
+    );
+  });
 
   function setActiveSlide(carouselId: string, nextIndex: number) {
     setActiveSlideByCarouselId((current) => ({
@@ -444,177 +467,230 @@ function GeneratedCarouselFeed({
   }
 
   return (
-    <div className="grid w-full grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
-      {carousels.map((carousel) => {
-        const readySlides = getReadySlides(carousel);
-        const hasCompleteCreative =
-          carousel.status === "completed" &&
-          readySlides.length === carousel.slideCount;
+    <div className="w-full space-y-10">
+      {completeCarousels.length > 0 ? (
+        <CarouselCandidateStack
+          activeCarouselId={activeCarouselId}
+          activeSlideByCarouselId={activeSlideByCarouselId}
+          candidates={completeCarousels}
+          onActiveCarouselChange={setActiveCarouselId}
+          onActiveSlideChange={setActiveSlide}
+        />
+      ) : null}
 
-        if (hasCompleteCreative) {
-          const storedIndex = activeSlideByCarouselId[carousel.carouselId] ?? 0;
-          const activeSlideIndex = Math.min(
-            storedIndex,
-            Math.max(readySlides.length - 1, 0),
-          );
-
-          return (
-            <CompactCarouselCard
+      {lifecycleCarousels.length > 0 ? (
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {lifecycleCarousels.map((carousel) => (
+            <CarouselLifecycleCard
               key={carousel.carouselId}
-              activeSlideIndex={activeSlideIndex}
               carousel={carousel}
-              slides={readySlides}
-              onActiveSlideChange={(nextIndex) =>
-                setActiveSlide(carousel.carouselId, nextIndex)
-              }
+              onRetry={onRetryPreparation}
             />
-          );
-        }
-
-        return (
-          <CarouselLifecycleCard
-            key={carousel.carouselId}
-            carousel={carousel}
-            onRetry={onRetryPreparation}
-          />
-        );
-      })}
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function CompactCarouselCard({
-  activeSlideIndex,
-  carousel,
+function CarouselCandidateStack({
+  activeCarouselId,
+  activeSlideByCarouselId,
+  candidates,
+  onActiveCarouselChange,
   onActiveSlideChange,
-  slides,
 }: {
-  activeSlideIndex: number;
-  carousel: GeneratedCarousel;
-  onActiveSlideChange: (nextIndex: number) => void;
-  slides: ReadyCarouselSlide[];
+  activeCarouselId: string | null;
+  activeSlideByCarouselId: Record<string, number>;
+  candidates: CompleteCarousel[];
+  onActiveCarouselChange: (carouselId: string) => void;
+  onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
 }) {
-  const title = getCarouselTitle(carousel);
-  const activeSlide = slides[activeSlideIndex];
-  const previousSlide = slides[(activeSlideIndex - 1 + slides.length) % slides.length];
-  const nextSlide = slides[(activeSlideIndex + 1) % slides.length];
+  const selectedCarouselIndex = activeCarouselId
+    ? candidates.findIndex(
+        (candidate) => candidate.carousel.carouselId === activeCarouselId,
+      )
+    : -1;
+  const activeCarouselIndex =
+    selectedCarouselIndex >= 0 ? selectedCarouselIndex : 0;
+  const activeCandidate = candidates[activeCarouselIndex];
+  const title = getCarouselTitle(activeCandidate.carousel);
+  const storedSlideIndex =
+    activeSlideByCarouselId[activeCandidate.carousel.carouselId] ?? 0;
+  const activeSlideIndex = Math.min(
+    storedSlideIndex,
+    Math.max(activeCandidate.slides.length - 1, 0),
+  );
+  const activeSlide = activeCandidate.slides[activeSlideIndex];
+  const previousCandidate =
+    candidates.length > 1
+      ? candidates[
+          (activeCarouselIndex - 1 + candidates.length) % candidates.length
+        ]
+      : null;
+  const nextCandidate =
+    candidates.length > 2
+      ? candidates[(activeCarouselIndex + 1) % candidates.length]
+      : null;
 
   function moveSlide(direction: number) {
     onActiveSlideChange(
-      (activeSlideIndex + direction + slides.length) % slides.length,
+      activeCandidate.carousel.carouselId,
+      (activeSlideIndex + direction + activeCandidate.slides.length) %
+        activeCandidate.slides.length,
     );
   }
 
   return (
-    <article className="overflow-hidden rounded-lg border border-border bg-white shadow-[0_8px_20px_rgb(9_9_11_/_0.06)]">
-      <div className="relative isolate aspect-[11/10] overflow-hidden border-b border-border bg-card-muted">
-        {slides.length > 1 ? (
-          // Rendered Carousel slides are immutable CloudFront creative assets.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={previousSlide.renderedUrl}
-            alt=""
-            aria-hidden="true"
-            className="absolute left-[-12%] top-1/2 h-[84%] w-auto -translate-y-1/2 rounded-md object-cover opacity-45 shadow-[0_8px_16px_rgb(9_9_11_/_0.1)]"
+    <section aria-label="Personalized carousel ideas" className="w-full">
+      <div className="relative isolate mx-auto h-[470px] w-full max-w-6xl sm:h-[540px] lg:h-[610px]">
+        {previousCandidate ? (
+          <CarouselCandidatePreview
+            candidate={previousCandidate}
+            activeSlideByCarouselId={activeSlideByCarouselId}
+            onSelect={onActiveCarouselChange}
+            position="left"
           />
         ) : null}
 
-        {slides.length > 1 ? (
-          // Rendered Carousel slides are immutable CloudFront creative assets.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={nextSlide.renderedUrl}
-            alt=""
-            aria-hidden="true"
-            className="absolute right-[-12%] top-1/2 h-[84%] w-auto -translate-y-1/2 rounded-md object-cover opacity-45 shadow-[0_8px_16px_rgb(9_9_11_/_0.1)]"
+        {nextCandidate ? (
+          <CarouselCandidatePreview
+            candidate={nextCandidate}
+            activeSlideByCarouselId={activeSlideByCarouselId}
+            onSelect={onActiveCarouselChange}
+            position="right"
           />
         ) : null}
 
-        <figure className="absolute left-1/2 top-1/2 z-10 h-[94%] max-w-[74%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-md bg-foreground-strong shadow-[0_10px_22px_rgb(9_9_11_/_0.16)]">
-          {/* Rendered Carousel slides are immutable CloudFront creative assets. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={activeSlide.renderedUrl}
-            alt={`${title}, slide ${activeSlide.slideNumber}`}
-            className="size-full object-cover"
-          />
-        </figure>
+        <article className="absolute left-1/2 top-0 z-20 w-[min(70vw,310px)] -translate-x-1/2 sm:w-[min(50vw,360px)] lg:w-[min(34vw,400px)]">
+          <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-foreground-strong shadow-[0_12px_20px_rgb(9_9_11_/_0.2)]">
+            {/* Rendered Carousel slides are immutable CloudFront creative assets. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={activeSlide.renderedUrl}
+              alt={`${title}, slide ${activeSlide.slideNumber}`}
+              className="size-full object-contain"
+            />
 
-        {slides.length > 1 ? (
-          <>
-            <button
-              type="button"
-              onClick={() => moveSlide(-1)}
-              className="absolute left-3 top-1/2 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-border-strong bg-white/95 text-foreground-strong shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-              aria-label={`Previous slide for ${title}`}
+            {activeCandidate.slides.length > 1 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => moveSlide(-1)}
+                  className="absolute left-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white transition-[background-color,transform] hover:scale-105 hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none"
+                  aria-label={`Previous slide for ${title}`}
+                >
+                  <ArrowLeft className="size-4" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveSlide(1)}
+                  className="absolute right-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white transition-[background-color,transform] hover:scale-105 hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none"
+                  aria-label={`Next slide for ${title}`}
+                >
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </button>
+              </>
+            ) : null}
+
+            <div
+              className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1.5"
+              aria-label={`${title} slides`}
             >
-              <ArrowLeft className="size-4" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={() => moveSlide(1)}
-              className="absolute right-3 top-1/2 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-border-strong bg-white/95 text-foreground-strong shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-              aria-label={`Next slide for ${title}`}
-            >
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </button>
-          </>
-        ) : null}
-      </div>
-
-      <div className="flex min-h-32 flex-col gap-3 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="line-clamp-1 text-sm font-semibold text-foreground-strong">
-              {title}
-            </p>
-            <p className="mt-1 text-xs leading-5 text-muted">
-              {getSlideRoleLabel(activeSlide)}
-            </p>
-          </div>
-          <span className="shrink-0 rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-semibold text-success">
-            Ready
-          </span>
-        </div>
-
-        <div className="mt-auto flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="shrink-0 text-xs font-medium text-muted">
-              {activeSlideIndex + 1} / {slides.length}
-            </span>
-            <div className="flex min-w-0 items-center gap-1.5" aria-label={`${title} slides`}>
-              {slides.map((slide, index) => (
+              {activeCandidate.slides.map((slide, index) => (
                 <button
                   key={slide.slideNumber}
                   type="button"
-                  onClick={() => onActiveSlideChange(index)}
+                  onClick={() =>
+                    onActiveSlideChange(activeCandidate.carousel.carouselId, index)
+                  }
                   aria-label={`Show slide ${index + 1} for ${title}`}
                   aria-current={activeSlideIndex === index ? "true" : undefined}
                   className={cn(
                     "h-1.5 rounded-full transition-[width,background-color] motion-reduce:transition-none",
                     activeSlideIndex === index
-                      ? "w-4 bg-foreground-strong"
-                      : "w-1.5 bg-border-strong hover:bg-muted",
+                      ? "w-4 bg-white"
+                      : "w-1.5 bg-white/45 hover:bg-white/80",
                   )}
                 />
               ))}
             </div>
           </div>
 
-          <span title="Generation from Trending is coming soon.">
-            <button
-              type="button"
-              disabled
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-border bg-card-muted px-3 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-80"
-              aria-label="Generate carousel, coming soon"
-            >
-              <Sparkles className="size-3.5" aria-hidden="true" />
-              Generate
-            </button>
-          </span>
-        </div>
+          <div className="mt-3 flex items-start justify-between gap-3 px-1">
+            <div className="min-w-0">
+              <p className="line-clamp-1 text-sm font-semibold text-foreground-strong">
+                {title}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted">
+                {getSlideRoleLabel(activeSlide)} | Idea {activeCarouselIndex + 1} of {candidates.length}
+              </p>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-semibold text-success">
+                Ready
+              </span>
+              <span title="Generation from Trending is coming soon.">
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card-muted px-2.5 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-80"
+                  aria-label="Generate carousel, coming soon"
+                >
+                  <Sparkles className="size-3.5" aria-hidden="true" />
+                  Generate
+                </button>
+              </span>
+            </div>
+          </div>
+        </article>
       </div>
-    </article>
+    </section>
+  );
+}
+
+function CarouselCandidatePreview({
+  activeSlideByCarouselId,
+  candidate,
+  onSelect,
+  position,
+}: {
+  activeSlideByCarouselId: Record<string, number>;
+  candidate: CompleteCarousel;
+  onSelect: (carouselId: string) => void;
+  position: "left" | "right";
+}) {
+  const title = getCarouselTitle(candidate.carousel);
+  const storedSlideIndex =
+    activeSlideByCarouselId[candidate.carousel.carouselId] ?? 0;
+  const activeSlideIndex = Math.min(
+    storedSlideIndex,
+    Math.max(candidate.slides.length - 1, 0),
+  );
+  const activeSlide = candidate.slides[activeSlideIndex];
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(candidate.carousel.carouselId)}
+      aria-label={`Show ${title}`}
+      className={cn(
+        "absolute top-[43%] z-10 aspect-[4/5] w-[min(54vw,225px)] -translate-y-1/2 overflow-hidden rounded-xl bg-foreground-strong opacity-85 shadow-[0_8px_14px_rgb(9_9_11_/_0.16)] transition-[opacity,transform] hover:scale-[1.02] hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 motion-reduce:transition-none sm:w-[min(32vw,265px)] lg:w-[min(22vw,300px)]",
+        position === "left"
+          ? "left-[2%] -rotate-[5deg] sm:left-[11%] lg:left-[17%]"
+          : "right-[2%] rotate-[5deg] sm:right-[11%] lg:right-[17%]",
+      )}
+    >
+      {/* Rendered Carousel slides are immutable CloudFront creative assets. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={activeSlide.renderedUrl}
+        alt=""
+        aria-hidden="true"
+        className="size-full object-contain"
+      />
+    </button>
   );
 }
 

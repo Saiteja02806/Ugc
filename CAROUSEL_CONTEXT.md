@@ -372,11 +372,18 @@ only the caller's carousel generations for the caller's single business profile.
   including `renderedUrl`, slide number, type, text metadata, and status.
 - Processing and failed generations keep their real lifecycle state; they are
   not represented as template artwork.
-- Generated candidates appear as a compact, scrollable feed of independent
-  five-slide carousel creatives. Every candidate owns its own active slide
-  state, left/right controls, dots, and slide counter. The active slide may use
-  adjacent real slides as subtle layered previews, but page scrolling discovers
-  other creatives.
+- Generated candidates appear in a focused candidate stack: the selected
+  carousel is one clean portrait card, while the partially visible cards behind
+  it are adjacent *carousel candidates*, never neighboring slides from that
+  same carousel. Selecting a background candidate brings that real candidate to
+  the centre without leaving Trending.
+- Every candidate owns its own active-slide state. The centre card renders only
+  that candidate's active slide; its left/right controls and five dots are
+  positioned inside the image card and move only through that candidate's five
+  slides. The dots, controls, and image must not create a wide three-slide
+  strip or show neighboring slides from the same carousel.
+- Title, lifecycle status, and the visually disabled Generate action remain a
+  compact row below the image card rather than a large information footer.
 - Trending is a browse-only destination. Clicking an image, slide, dots, slide
   arrows, or its visual Generate control must never open the Carousel Ads
   workspace. The Trending Generate control is intentionally disabled until a

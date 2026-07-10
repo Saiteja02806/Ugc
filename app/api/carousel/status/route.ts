@@ -5,6 +5,10 @@ import {
   getCarouselGenerationStatusPageByBatchId,
   getMissingCarouselDbEnvVars,
 } from "@/lib/carousel/db";
+import {
+  FirebaseAuthRequestError,
+  requireFirebaseUser,
+} from "@/lib/firebase/server-auth";
 
 export const runtime = "nodejs";
 
@@ -59,6 +63,34 @@ function mapCandidate(status: NonNullable<CarouselStatusItem>) {
 }
 
 export async function GET(request: NextRequest) {
+  let userId: string;
+
+  try {
+    userId = (await requireFirebaseUser(request)).uid;
+  } catch (error) {
+    if (error instanceof FirebaseAuthRequestError) {
+      return jsonResponse(
+        {
+          ok: false,
+          message:
+            error.status === 401
+              ? "Sign in before viewing carousel versions."
+              : error.message,
+        },
+        error.status,
+      );
+    }
+
+    console.error("Failed to verify carousel status requester:", error);
+    return jsonResponse(
+      {
+        ok: false,
+        message: "Could not verify your sign-in session.",
+      },
+      500,
+    );
+  }
+
   const missingRuntimeEnv = getMissingCarouselDbEnvVars();
 
   if (missingRuntimeEnv.length > 0) {
@@ -138,6 +170,7 @@ export async function GET(request: NextRequest) {
         generationBatchId,
         limit,
         offset,
+        userId,
       });
 
       if (page.totalCandidates === 0) {
@@ -165,7 +198,11 @@ export async function GET(request: NextRequest) {
       carouselIds.map((carouselId) => getCarouselGenerationStatus(carouselId)),
     );
 
-    if (statuses.some((status) => !status)) {
+    if (
+      statuses.some(
+        (status) => !status || status.generation.userId !== userId,
+      )
+    ) {
       return jsonResponse(
         {
           ok: false,

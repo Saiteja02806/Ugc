@@ -363,21 +363,24 @@ Core tables:
 
 ## Trending Carousel Outputs
 
-As of 2026-07-10, the Trending page's `Carousel` tab is an owner-scoped
-frontend feed for real generated carousel outputs. It reads
+As of 2026-07-10, Trending is a carousel-only, owner-scoped frontend feed for
+real generated carousel outputs. It reads
 `GET /api/carousel/history`, which requires a Firebase bearer token and returns
 only the caller's carousel generations for the caller's single business profile.
 
 - The feed uses the first ready, runtime-safe `renderedUrl` as the thumbnail.
 - Processing and failed generations keep their real lifecycle state; they are
   not represented as template artwork.
-- The `Carousel` tab must show a clear profile-needed, preparing, ready, or
+- Trending must show a clear profile-needed, preparing, ready, or
   failed/retry state. It must never fall back to static template artwork.
-- The `All` tab may continue to show public templates and inspiration. It is
-  separate from personalized generated carousel output.
+- Trending must not expose `All`, `Video`, `Avatar`, or `Image` format tabs,
+  and it must not render template/inspiration cards. The separate Carousel
+  Studio and its existing Generate button remain unchanged.
 - New website analyses, initial Carousel generation, and additional candidate
   generation require Firebase authentication so their stored `user_id` matches
   the owner used by the Trending feed.
+- Carousel status reads require Firebase authentication and are limited to the
+  owner of the requested candidate or generation batch.
 - Existing legacy rows owned by the former test user are intentionally not
   re-assigned by this frontend slice. Migrate them explicitly only after the
   intended owner is confirmed.

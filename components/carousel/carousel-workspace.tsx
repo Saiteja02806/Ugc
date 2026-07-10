@@ -307,6 +307,7 @@ export function CarouselWorkspace({
 
     const response = await fetch(`/api/carousel/status?${searchParams.toString()}`, {
       cache: "no-store",
+      headers: await getAuthenticatedJsonHeaders(),
     });
     const data = (await response.json().catch(() => null)) as CarouselStatusResponse | null;
 

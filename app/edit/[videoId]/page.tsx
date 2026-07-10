@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { FocusedVideoEditorShell } from "@/components/edit/focused-video-editor-shell";
-import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "Edit video",
@@ -18,9 +18,8 @@ export default async function EditVideoPage({ params }: EditVideoPageProps) {
   const { videoId } = await params;
 
   return (
-    <main className="flex min-h-screen flex-col bg-background text-foreground lg:flex-row">
-      <AppSidebar activeKey="edit" />
+    <AppShell activeKey="edit" defaultSidebarCollapsed>
       <FocusedVideoEditorShell videoId={videoId} />
-    </main>
+    </AppShell>
   );
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppShell } from "@/components/layout/app-shell";
 import { SchedulingWorkspace } from "@/components/scheduling/scheduling-workspace";
 
 export const metadata: Metadata = {
@@ -10,9 +10,8 @@ export const metadata: Metadata = {
 
 export default function SchedulingPage() {
   return (
-    <main className="flex min-h-screen flex-col bg-background text-foreground lg:flex-row">
-      <AppSidebar activeKey="scheduling" />
+    <AppShell activeKey="scheduling">
       <SchedulingWorkspace />
-    </main>
+    </AppShell>
   );
 }

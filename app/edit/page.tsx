@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { EditLibraryWorkspace } from "@/components/edit/edit-library-workspace";
-import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "Edit",
@@ -10,9 +10,8 @@ export const metadata: Metadata = {
 
 export default function EditPage() {
   return (
-    <main className="flex min-h-screen flex-col bg-background text-foreground lg:flex-row">
-      <AppSidebar activeKey="edit" />
+    <AppShell activeKey="edit">
       <EditLibraryWorkspace />
-    </main>
+    </AppShell>
   );
 }

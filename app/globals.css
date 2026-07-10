@@ -20,7 +20,16 @@
   --warning: #b45309;
   --error: #b91c1c;
   --info: #2563eb;
-  --shadow-soft: 0 12px 32px rgb(24 24 27 / 0.08);
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  --space-unit: 4px;
+  --z-sidebar: 30;
+  --z-sticky: 40;
+  --z-overlay: 80;
+  --z-modal: 100;
+  --z-tooltip: 120;
+  --shadow-floating: 0 12px 28px rgb(24 24 27 / 0.12);
+  --shadow-soft: var(--shadow-floating);
 }
 
 @theme inline {
@@ -43,6 +52,10 @@
   --color-warning: var(--warning);
   --color-error: var(--error);
   --color-info: var(--info);
+  --radius-control: var(--radius-control);
+  --radius-panel: var(--radius-panel);
+  --spacing-unit: var(--space-unit);
+  --shadow-floating: var(--shadow-floating);
   --shadow-soft: var(--shadow-soft);
   --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
@@ -88,4 +101,15 @@ button:not(:disabled),
 
 a {
   text-decoration: none;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--foreground-strong);
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
 }

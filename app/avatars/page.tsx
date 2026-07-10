@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { AvatarsWorkspace } from "@/components/avatars/avatars-workspace";
-import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "Avatars",
@@ -10,9 +10,8 @@ export const metadata: Metadata = {
 
 export default function AvatarsPage() {
   return (
-    <main className="flex min-h-screen flex-col bg-background text-foreground lg:flex-row">
-      <AppSidebar activeKey="avatars" />
+    <AppShell activeKey="avatars">
       <AvatarsWorkspace />
-    </main>
+    </AppShell>
   );
 }

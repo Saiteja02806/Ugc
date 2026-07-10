@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { DemoEditorShell } from "@/components/demos/demo-editor-shell";
-import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "Edit demo",
@@ -18,9 +18,8 @@ export default async function DemoEditorPage({ params }: DemoEditorPageProps) {
   const { demoId } = await params;
 
   return (
-    <main className="flex min-h-screen flex-col bg-background text-foreground lg:flex-row">
-      <AppSidebar activeKey="demos" />
+    <AppShell activeKey="demos">
       <DemoEditorShell demoId={demoId} />
-    </main>
+    </AppShell>
   );
 }

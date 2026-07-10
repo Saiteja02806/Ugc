@@ -2,6 +2,7 @@
 
 import {
   CalendarDays,
+  ChartNoAxesCombined,
   Edit3,
   FileVideo,
   Home,
@@ -30,11 +31,22 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 
+export type AppSidebarActiveKey =
+  | "trending"
+  | "img-gen"
+  | "video-gen"
+  | "demos"
+  | "avatars"
+  | "edit"
+  | "scheduling"
+  | "analytics";
+
 type SidebarItem = {
   href: string;
   icon: typeof Home;
-  key: string;
+  key: AppSidebarActiveKey;
   label: string;
+  unavailable?: boolean;
 };
 
 type SidebarGroup = {
@@ -65,13 +77,20 @@ const navigationGroups: SidebarGroup[] = [
     ],
   },
   {
-    label: "Plan",
+    label: "Operations",
     items: [
       {
         key: "scheduling",
         label: "Scheduling",
         href: "/scheduling",
         icon: CalendarDays,
+      },
+      {
+        key: "analytics",
+        label: "Analytics",
+        href: "/dashboard",
+        icon: ChartNoAxesCombined,
+        unavailable: true,
       },
     ],
   },
@@ -80,7 +99,13 @@ const navigationGroups: SidebarGroup[] = [
 const SIDEBAR_STORAGE_KEY = "ugc-studio.sidebar-collapsed";
 const SIDEBAR_CHANGE_EVENT = "ugc-studio:sidebar-change";
 
-export function AppSidebar({ activeKey = "trending" }: { activeKey?: string }) {
+export function AppSidebar({
+  activeKey = "trending",
+  defaultCollapsed = false,
+}: {
+  activeKey?: AppSidebarActiveKey;
+  defaultCollapsed?: boolean;
+}) {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
@@ -91,8 +116,8 @@ export function AppSidebar({ activeKey = "trending" }: { activeKey?: string }) {
   const mobileCloseButtonRef = useRef<HTMLButtonElement>(null);
   const collapsed = useSyncExternalStore(
     subscribeToSidebarPreference,
-    getSidebarPreference,
-    getServerSidebarPreference,
+    () => getSidebarPreference(defaultCollapsed),
+    () => getServerSidebarPreference(defaultCollapsed),
   );
   const displayName =
     user?.displayName || user?.email?.split("@")[0] || "UGC Studio user";
@@ -171,7 +196,7 @@ export function AppSidebar({ activeKey = "trending" }: { activeKey?: string }) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-border bg-white/95 px-4 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-[var(--z-sticky)] flex h-16 w-full items-center justify-between border-b border-border bg-white/95 px-4 backdrop-blur lg:hidden">
         <Brand />
         <button
           type="button"
@@ -189,7 +214,7 @@ export function AppSidebar({ activeKey = "trending" }: { activeKey?: string }) {
       <aside
         id="ugc-desktop-sidebar"
         className={cn(
-          "sticky top-0 z-30 hidden h-screen shrink-0 flex-col border-r border-border bg-white transition-[width] duration-200 motion-reduce:transition-none lg:flex",
+          "sticky top-0 z-[var(--z-sidebar)] hidden h-screen shrink-0 flex-col border-r border-border bg-white transition-[width] duration-200 motion-reduce:transition-none lg:flex",
           collapsed ? "w-[72px]" : "w-[240px]",
         )}
       >
@@ -206,7 +231,7 @@ export function AppSidebar({ activeKey = "trending" }: { activeKey?: string }) {
         </div>
 
         {collapsed ? (
-          <div className="absolute -right-[21px] top-[74px] z-40">
+          <div className="absolute -right-[21px] top-[74px] z-[var(--z-sticky)]">
             <SidebarToggle collapsed={collapsed} onToggle={toggleSidebar} floating />
           </div>
         ) : null}
@@ -226,7 +251,7 @@ export function AppSidebar({ activeKey = "trending" }: { activeKey?: string }) {
       </aside>
 
       {isMobileNavigationOpen ? (
-        <div className="fixed inset-0 z-[100] lg:hidden">
+        <div className="fixed inset-0 z-[var(--z-modal)] lg:hidden">
           <button
             type="button"
             tabIndex={-1}
@@ -240,7 +265,7 @@ export function AppSidebar({ activeKey = "trending" }: { activeKey?: string }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${mobileNavigationId}-title`}
-            className="absolute inset-y-0 left-0 flex w-[min(320px,88vw)] flex-col border-r border-border bg-white shadow-2xl"
+            className="absolute inset-y-0 left-0 flex w-[min(320px,88vw)] flex-col border-r border-border bg-white shadow-floating"
           >
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4">
               <div id={`${mobileNavigationId}-title`}>
@@ -324,7 +349,7 @@ function SidebarToggle({
       className={cn(
         "inline-flex items-center justify-center text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
         floating
-          ? "size-10 rounded-full border border-border-strong bg-white shadow-sm"
+          ? "size-10 rounded-full border border-border-strong bg-white shadow-floating"
           : "size-10 rounded-md",
       )}
     >
@@ -338,7 +363,7 @@ function NavigationGroups({
   collapsed = false,
   onNavigate,
 }: {
-  activeKey: string;
+  activeKey: AppSidebarActiveKey;
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
@@ -361,15 +386,17 @@ function NavigationGroups({
             </p>
           )}
           <div className="space-y-1">
-            {group.items.map((item) => (
-              <SidebarLink
-                key={item.key}
-                active={item.key === activeKey}
-                collapsed={collapsed}
-                item={item}
-                onNavigate={onNavigate}
-              />
-            ))}
+            {group.items
+              .filter((item) => !item.unavailable)
+              .map((item) => (
+                <SidebarLink
+                  key={item.key}
+                  active={item.key === activeKey}
+                  collapsed={collapsed}
+                  item={item}
+                  onNavigate={onNavigate}
+                />
+              ))}
           </div>
         </div>
       ))}
@@ -396,16 +423,28 @@ function SidebarLink({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       aria-label={collapsed ? item.label : undefined}
+      title={collapsed ? item.label : undefined}
       className={cn(
         "group relative flex h-11 w-full items-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
         collapsed ? "justify-center px-0" : "gap-3 px-3",
         active
-          ? "bg-foreground-strong text-white"
+          ? "bg-brand-soft text-primary"
           : "text-muted hover:bg-card-muted hover:text-foreground",
       )}
     >
+      {active ? (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute rounded-full bg-brand",
+            collapsed
+              ? "left-1 top-1/2 h-5 w-1 -translate-y-1/2"
+              : "bottom-2 left-0 top-2 w-1",
+          )}
+        />
+      ) : null}
       <Icon
-        className={cn("size-[18px] shrink-0", active && "text-brand")}
+        className={cn("size-[18px] shrink-0", active && "text-primary")}
         strokeWidth={1.8}
         aria-hidden="true"
       />
@@ -413,7 +452,7 @@ function SidebarLink({
       {collapsed ? (
         <span
           role="tooltip"
-          className="pointer-events-none invisible absolute left-full z-50 ml-3 whitespace-nowrap rounded-md bg-foreground-strong px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100"
+          className="pointer-events-none invisible absolute left-full z-[var(--z-tooltip)] ml-3 whitespace-nowrap rounded-md bg-foreground-strong px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-floating transition-opacity group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100"
         >
           {item.label}
         </span>
@@ -453,7 +492,7 @@ function AccountSection({
         ) : (
           <span
             role="tooltip"
-            className="pointer-events-none invisible absolute left-full top-1 z-50 ml-3 whitespace-nowrap rounded-md bg-foreground-strong px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100"
+            className="pointer-events-none invisible absolute left-full top-1 z-[var(--z-tooltip)] ml-3 whitespace-nowrap rounded-md bg-foreground-strong px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-floating transition-opacity group-hover:visible group-hover:opacity-100"
           >
             {displayName}
           </span>
@@ -518,16 +557,22 @@ function subscribeToSidebarPreference(onStoreChange: () => void) {
   };
 }
 
-function getSidebarPreference() {
+function getSidebarPreference(defaultCollapsed = false) {
   try {
-    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+    const storedPreference = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+
+    if (storedPreference === null) {
+      return defaultCollapsed;
+    }
+
+    return storedPreference === "true";
   } catch {
-    return false;
+    return defaultCollapsed;
   }
 }
 
-function getServerSidebarPreference() {
-  return false;
+function getServerSidebarPreference(defaultCollapsed = false) {
+  return defaultCollapsed;
 }
 
 function setSidebarPreference(collapsed: boolean) {

@@ -377,6 +377,10 @@ only the caller's carousel generations for the caller's single business profile.
   it are adjacent *carousel candidates*, never neighboring slides from that
   same carousel. Selecting a background candidate brings that real candidate to
   the centre without leaving Trending.
+- The desktop stack should render up to five different carousel candidates at
+  once: far-left, near-left, centre, near-right, and far-right. Cards must stay
+  vertically straight and use only horizontal translation, scale, opacity, and
+  z-index for depth. Do not rotate, skew, or fan the cards.
 - Every candidate owns its own active-slide state. The centre card renders only
   that candidate's active slide; its left/right controls and five dots are
   positioned inside the image card and move only through that candidate's five
@@ -384,15 +388,17 @@ only the caller's carousel generations for the caller's single business profile.
   strip or show neighboring slides from the same carousel.
 - Title, lifecycle status, and the visually disabled Generate action remain a
   compact row below the image card rather than a large information footer.
-- Trending is a browse-only destination. Clicking an image, slide, dots, slide
-  arrows, or its visual Generate control must never open the Carousel Ads
-  workspace. The Trending Generate control is intentionally disabled until a
-  dedicated generation workflow is defined.
+- Trending is the only visible Carousel product surface in the app. Clicking
+  an image, slide, dots, slide arrows, or its visual Generate control must never
+  open a separate Carousel Ads workspace. The Trending Generate control is
+  intentionally disabled until a dedicated generation workflow is defined.
 - Trending must show a clear profile-needed, preparing, ready, or
   failed/retry state. It must never fall back to static template artwork.
 - Trending must not expose `All`, `Video`, `Avatar`, or `Image` format tabs,
-  and it must not render template/inspiration cards. The separate Carousel
-  Studio and its existing Generate button remain unchanged.
+  and it must not render template/inspiration cards.
+- The standalone `/carousel` Carousel Ads workspace is removed from the visible
+  product. Do not reintroduce that route, link to it, or use it as a fallback
+  destination unless a new product decision explicitly restores it.
 - New website analyses, initial Carousel generation, and additional candidate
   generation require Firebase authentication so their stored `user_id` matches
   the owner used by the Trending feed.
@@ -422,8 +428,9 @@ Generate-button-driven.
    `business_profile_id`, profile version, and `generation_source =
    auto_generated`. This makes repeat submissions idempotent per profile
    version and keeps future profile refreshes distinct.
-5. The Generate button is intentionally unchanged in this phase. It must not
-   enqueue, open, or otherwise initiate Carousel generation.
+5. There is no standalone Carousel Studio Generate screen in this phase. Manual
+   Generate controls must not enqueue, open, or otherwise initiate Carousel
+   generation unless a new product decision explicitly restores that workflow.
 6. When Trending reads an older current-profile batch with fewer than ten
    candidates, it invokes an authenticated, idempotent preparation endpoint to
    complete that same batch. This is automatic profile preparation, not the

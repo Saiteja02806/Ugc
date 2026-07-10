@@ -8,6 +8,10 @@ import {
   type BusinessProfileRecord,
 } from "@/lib/business-profiles/db";
 import { enqueueCarouselGenerationJob } from "@/lib/carousel/aws-generation";
+import {
+  AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
+  AUTOMATIC_CAROUSEL_SLIDE_COUNT,
+} from "@/lib/carousel/automatic-candidate-count";
 import { getCarouselCandidateAngles } from "@/lib/carousel/candidate-angles";
 import { resolveCarouselCategoryProfile } from "@/lib/carousel/category-profile-resolver";
 import {
@@ -16,11 +20,9 @@ import {
   getWebsiteAnalysisForCarousel,
   listAutoCarouselGenerationsForBusinessProfile,
   updateCarouselGeneration,
+  updateCarouselGenerationBatchCandidateCount,
 } from "@/lib/carousel/db";
 import { DEFAULT_CAROUSEL_RENDER_STYLE } from "@/lib/carousel/render-style";
-
-const AUTO_CANDIDATE_COUNT = 3;
-const AUTO_SLIDE_COUNT = 5;
 
 export async function prepareBusinessProfileCarousels(profile: BusinessProfileRecord) {
   if (!profile.analysisId) {
@@ -50,7 +52,7 @@ export async function prepareBusinessProfileCarousels(profile: BusinessProfileRe
   }
 
   const candidateAngles = getCarouselCandidateAngles({
-    candidateCount: AUTO_CANDIDATE_COUNT,
+    candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
     websiteAnalysis: analysis,
   });
   let existing = await listAutoCarouselGenerationsForBusinessProfile({
@@ -68,7 +70,7 @@ export async function prepareBusinessProfileCarousels(profile: BusinessProfileRe
       await createCarouselGeneration({
         businessProfileId: profile.id,
         businessProfileVersion: profile.profileVersion,
-        candidateCount: AUTO_CANDIDATE_COUNT,
+        candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
         candidateIndex,
         categorySlug: resolvedCategory.categorySlug,
         format: "4:5",
@@ -76,7 +78,7 @@ export async function prepareBusinessProfileCarousels(profile: BusinessProfileRe
         generationSource: "auto_generated",
         projectId: profile.projectId,
         selectedAngle: angle,
-        slideCount: AUTO_SLIDE_COUNT,
+        slideCount: AUTOMATIC_CAROUSEL_SLIDE_COUNT,
         userId: profile.userId,
         websiteAnalysisId: analysis.id,
       });
@@ -95,6 +97,11 @@ export async function prepareBusinessProfileCarousels(profile: BusinessProfileRe
   existing = await listAutoCarouselGenerationsForBusinessProfile({
     businessProfileId: profile.id,
     profileVersion: profile.profileVersion,
+  });
+
+  await updateCarouselGenerationBatchCandidateCount({
+    candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
+    generationBatchId,
   });
 
   let activeCandidates = 0;
@@ -136,7 +143,7 @@ export async function prepareBusinessProfileCarousels(profile: BusinessProfileRe
   });
 
   return {
-    candidateCount: existing.length,
+    candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
     generationBatchId,
   };
 }

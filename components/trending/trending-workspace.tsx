@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  ArrowLeft,
+  ArrowRight,
   ArrowUpRight,
   CircleAlert,
   Loader2,
@@ -8,9 +10,10 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { AUTOMATIC_CAROUSEL_CANDIDATE_COUNT } from "@/lib/carousel/automatic-candidate-count";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
@@ -18,6 +21,7 @@ import { cn } from "@/lib/utils";
 type CarouselHistoryState = "error" | "idle" | "loading" | "ready";
 
 type GeneratedCarousel = {
+  candidateIndex: number;
   carouselId: string;
   categorySlug: string | null;
   generationBatchId: string;
@@ -48,10 +52,12 @@ type CarouselHistoryResponse =
     };
 
 const HISTORY_POLL_INTERVAL_MS = 6_000;
+const SWIPE_THRESHOLD_PX = 42;
 
 export function TrendingWorkspace() {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
+  const expandedProfileIds = useRef(new Set<string>());
   const [generatedCarousels, setGeneratedCarousels] = useState<
     GeneratedCarousel[]
   >([]);
@@ -67,16 +73,18 @@ export function TrendingWorkspace() {
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const filteredGeneratedCarousels = useMemo(() => {
-    if (!normalizedSearchQuery) {
-      return generatedCarousels;
-    }
+    const matchingCarousels = normalizedSearchQuery
+      ? generatedCarousels.filter((carousel) =>
+          [carousel.selectedAngle, carousel.categorySlug]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(normalizedSearchQuery),
+        )
+      : generatedCarousels;
 
-    return generatedCarousels.filter((carousel) =>
-      [carousel.selectedAngle, carousel.categorySlug]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedSearchQuery),
+    return [...matchingCarousels].sort(
+      (first, second) => first.candidateIndex - second.candidateIndex,
     );
   }, [generatedCarousels, normalizedSearchQuery]);
   const carouselFeedProfile: CarouselProfileFeed | null = user
@@ -99,6 +107,53 @@ export function TrendingWorkspace() {
     const controller = new AbortController();
     let pollTimer: number | null = null;
 
+    async function ensureAutomaticCandidates(
+      profile: CarouselProfileFeed,
+      carouselCount: number,
+      idToken: string,
+    ) {
+      if (
+        !profile.id ||
+        profile.state === "failed" ||
+        profile.state === "missing" ||
+        carouselCount >= AUTOMATIC_CAROUSEL_CANDIDATE_COUNT ||
+        expandedProfileIds.current.has(profile.id)
+      ) {
+        return;
+      }
+
+      expandedProfileIds.current.add(profile.id);
+
+      try {
+        const response = await fetch(
+          "/api/business-profile/ensure-carousel-candidates",
+          {
+            headers: { Authorization: `Bearer ${idToken}` },
+            method: "POST",
+            signal: controller.signal,
+          },
+        );
+        const data = (await response.json().catch(() => null)) as {
+          message?: string;
+          ok?: boolean;
+        } | null;
+
+        if (!response.ok || !data?.ok) {
+          throw new Error(
+            data?.message ?? "Could not prepare additional carousel ideas.",
+          );
+        }
+
+        if (!controller.signal.aborted) {
+          setCarouselHistoryRefreshKey((current) => current + 1);
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error("Could not expand the automatic carousel batch:", error);
+        }
+      }
+    }
+
     async function loadCarouselHistory() {
       setCarouselHistoryState("loading");
       setCarouselHistoryError(null);
@@ -112,9 +167,7 @@ export function TrendingWorkspace() {
 
         const response = await fetch("/api/carousel/history?limit=12", {
           cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
+          headers: { Authorization: `Bearer ${idToken}` },
           signal: controller.signal,
         });
         const data = (await response.json().catch(() => null)) as
@@ -122,11 +175,11 @@ export function TrendingWorkspace() {
           | null;
 
         if (!response.ok || !data?.ok) {
-          const message =
+          throw new Error(
             data && !data.ok
               ? data.message
-              : "Generated carousels are unavailable.";
-          throw new Error(message);
+              : "Generated carousels are unavailable.",
+          );
         }
 
         if (controller.signal.aborted) {
@@ -136,6 +189,11 @@ export function TrendingWorkspace() {
         setGeneratedCarousels(data.carousels);
         setCarouselProfile(data.profile);
         setCarouselHistoryState("ready");
+        void ensureAutomaticCandidates(
+          data.profile,
+          data.carousels.length,
+          idToken,
+        );
 
         if (
           data.profile.state === "preparing" ||
@@ -218,17 +276,15 @@ export function TrendingWorkspace() {
   }
 
   function openCarousel(carousel: GeneratedCarousel) {
-    const searchParams = new URLSearchParams(
-      carousel.generationBatchId
-        ? { generationBatchId: carousel.generationBatchId }
-        : { carouselId: carousel.carouselId },
-    );
+    const searchParams = new URLSearchParams({
+      generationBatchId: carousel.generationBatchId,
+    });
 
     router.push(`/carousel?${searchParams.toString()}`);
   }
 
   return (
-    <section className="min-h-screen flex-1 bg-background px-4 py-5 text-foreground sm:px-7 lg:px-10 lg:py-7">
+    <section className="min-h-screen flex-1 overflow-x-hidden bg-background px-4 py-5 text-foreground sm:px-7 lg:px-10 lg:py-7">
       <div className="mx-auto flex min-h-full max-w-7xl flex-col">
         <header className="flex flex-col gap-5 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -241,10 +297,7 @@ export function TrendingWorkspace() {
           </div>
 
           <label className="flex h-11 w-full items-center gap-2.5 rounded-md border border-border-strong bg-white px-3 text-sm text-muted transition-[border-color,box-shadow] focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/15 sm:w-[280px]">
-            <Search
-              className="size-4 shrink-0 text-muted-subtle"
-              aria-hidden="true"
-            />
+            <Search className="size-4 shrink-0 text-muted-subtle" aria-hidden="true" />
             <span className="sr-only">Search personalized carousels</span>
             <input
               type="search"
@@ -300,7 +353,7 @@ function GeneratedCarouselGallery({
   searchEmpty: boolean;
 }) {
   if (loading) {
-    return <GeneratedCarouselSkeletons />;
+    return <GeneratedCarouselCoverFlowSkeleton />;
   }
 
   if (error) {
@@ -360,76 +413,216 @@ function GeneratedCarouselGallery({
     );
   }
 
-  return (
-    <div className="grid w-full grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
-      {carousels.map((carousel) => (
-        <article
-          key={carousel.carouselId}
-          className="overflow-hidden rounded-lg border border-border bg-white transition-colors hover:border-border-strong"
-        >
-          <button
-            type="button"
-            onClick={() => onOpen(carousel)}
-            className="group block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-            aria-label={`Open ${getCarouselCardTitle(carousel)}`}
-          >
-            <div className="relative aspect-[4/5] bg-foreground-strong">
-              {carousel.thumbnailUrl ? (
-                // Rendered slides are immutable CloudFront assets and need no Next image transform.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={carousel.thumbnailUrl}
-                  alt={carousel.selectedAngle ?? "Generated carousel preview"}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-white/70">
-                  {carousel.status === "failed" ? (
-                    <CircleAlert
-                      className="size-8"
-                      aria-label="Carousel generation failed"
-                    />
-                  ) : (
-                    <Loader2
-                      className="size-8 animate-spin motion-reduce:animate-none"
-                      aria-label="Carousel is rendering"
-                    />
-                  )}
-                </div>
-              )}
-              <span
-                className={cn(
-                  "absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                  carousel.status === "completed" &&
-                    "bg-white text-foreground-strong",
-                  carousel.status === "failed" && "bg-error text-white",
-                  carousel.status === "processing" &&
-                    "bg-foreground-strong text-white",
-                )}
-              >
-                {getCarouselStatusLabel(carousel.status)}
-              </span>
-            </div>
+  return <GeneratedCarouselCoverFlow carousels={carousels} onOpen={onOpen} />;
+}
 
-            <div className="flex min-h-[88px] items-start justify-between gap-3 px-4 py-4">
-              <div className="min-w-0">
-                <p className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-foreground">
-                  {getCarouselCardTitle(carousel)}
-                </p>
-                <p className="mt-1 text-xs text-muted">
-                  {getCarouselCardMeta(carousel)}
-                </p>
-              </div>
-              <span
-                className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md border border-border text-muted transition-colors group-hover:border-border-strong group-hover:bg-card-muted group-hover:text-foreground"
-                aria-hidden="true"
-              >
-                <ArrowUpRight className="size-4" />
-              </span>
-            </div>
-          </button>
-        </article>
-      ))}
+function GeneratedCarouselCoverFlow({
+  carousels,
+  onOpen,
+}: {
+  carousels: GeneratedCarousel[];
+  onOpen: (carousel: GeneratedCarousel) => void;
+}) {
+  const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
+  const [dragStartX, setDragStartX] = useState<number | null>(null);
+  const activeIndex = Math.min(
+    activeCarouselIndex,
+    Math.max(carousels.length - 1, 0),
+  );
+
+  function moveCarousel(direction: number) {
+    setActiveCarouselIndex(
+      (currentIndex) =>
+        (currentIndex + direction + carousels.length) % carousels.length,
+    );
+  }
+
+  function handlePointerEnd(clientX: number) {
+    if (dragStartX === null) {
+      return;
+    }
+
+    const delta = clientX - dragStartX;
+    setDragStartX(null);
+
+    if (Math.abs(delta) < SWIPE_THRESHOLD_PX) {
+      return;
+    }
+
+    moveCarousel(delta > 0 ? -1 : 1);
+  }
+
+  return (
+    <section
+      aria-label="Personalized carousel ideas"
+      className="relative min-h-[520px] w-full overflow-hidden rounded-lg border border-border bg-white px-2 py-6 sm:min-h-[min(610px,calc(100dvh-190px))] sm:px-8"
+      onPointerCancel={() => setDragStartX(null)}
+      onPointerDown={(event) => setDragStartX(event.clientX)}
+      onPointerUp={(event) => handlePointerEnd(event.clientX)}
+    >
+      {carousels.length > 1 ? (
+        <button
+          type="button"
+          onClick={() => moveCarousel(-1)}
+          className="absolute left-3 top-1/2 z-40 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-strong bg-white text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 md:flex"
+          aria-label="Previous carousel"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+        </button>
+      ) : null}
+
+      <div className="relative mx-auto flex h-[440px] w-full max-w-[940px] items-center justify-center sm:h-[min(540px,calc(100dvh-230px))]">
+        {carousels.map((carousel, index) => {
+          const offset = getCircularOffset(index, activeIndex, carousels.length);
+
+          if (Math.abs(offset) > 2) {
+            return null;
+          }
+
+          return (
+            <GeneratedCarouselCoverFlowCard
+              key={carousel.carouselId}
+              active={offset === 0}
+              carousel={carousel}
+              offset={offset}
+              onOpen={() => onOpen(carousel)}
+            />
+          );
+        })}
+      </div>
+
+      {carousels.length > 1 ? (
+        <button
+          type="button"
+          onClick={() => moveCarousel(1)}
+          className="absolute right-3 top-1/2 z-40 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-strong bg-white text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 md:flex"
+          aria-label="Next carousel"
+        >
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </button>
+      ) : null}
+
+      {carousels.length > 1 ? (
+        <div className="absolute inset-x-4 bottom-5 z-40 flex justify-center">
+          <div className="flex max-w-full items-center gap-1.5 rounded-full bg-foreground-strong/82 px-3 py-2">
+            {carousels.map((carousel, index) => (
+              <button
+                key={carousel.carouselId}
+                type="button"
+                onClick={() => setActiveCarouselIndex(index)}
+                aria-label={`Show carousel ${index + 1}`}
+                aria-current={activeIndex === index ? "true" : undefined}
+                className={cn(
+                  "h-2 rounded-full transition-[width,background-color] motion-reduce:transition-none",
+                  activeIndex === index ? "w-5 bg-white" : "w-2 bg-white/45 hover:bg-white/70",
+                )}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function GeneratedCarouselCoverFlowCard({
+  active,
+  carousel,
+  offset,
+  onOpen,
+}: {
+  active: boolean;
+  carousel: GeneratedCarousel;
+  offset: number;
+  onOpen: () => void;
+}) {
+  const distance = Math.abs(offset);
+  const scale = active ? 1 : distance === 1 ? 0.84 : 0.7;
+  const opacity = active ? 1 : distance === 1 ? 0.72 : 0.3;
+  const translateX = offset * 232;
+  const zIndex = active ? 30 : 20 - distance;
+
+  return (
+    <article
+      className="absolute aspect-[4/5] w-[min(80vw,390px)] overflow-hidden rounded-lg bg-foreground-strong text-white shadow-[0_12px_24px_rgb(9_9_11_/_0.2)] transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none"
+      style={{
+        opacity,
+        transform: `translateX(${translateX}px) scale(${scale}) rotate(${offset * -2.5}deg)`,
+        zIndex,
+      }}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        className="group relative block size-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-foreground-strong"
+        aria-label={`Open ${getCarouselCardTitle(carousel)}`}
+      >
+        {carousel.thumbnailUrl ? (
+          // Rendered slides are immutable CloudFront assets and need no Next image transform.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={carousel.thumbnailUrl}
+            alt={carousel.selectedAngle ?? "Generated carousel preview"}
+            className="absolute inset-0 size-full object-cover"
+          />
+        ) : (
+          <ProcessingCarouselPreview carousel={carousel} />
+        )}
+
+        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+        <span
+          className={cn(
+            "absolute left-5 top-5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
+            carousel.status === "completed" && "bg-white text-foreground-strong",
+            carousel.status === "failed" && "bg-error text-white",
+            carousel.status === "processing" && "bg-foreground-strong/85 text-white",
+          )}
+        >
+          {getCarouselStatusLabel(carousel.status)}
+        </span>
+
+        <div className="absolute inset-x-6 bottom-7 flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="line-clamp-2 text-lg font-semibold leading-6 text-white drop-shadow-sm">
+              {getCarouselCardTitle(carousel)}
+            </p>
+            <p className="mt-1 text-xs font-medium text-white/75">
+              {getCarouselCardMeta(carousel)}
+            </p>
+          </div>
+          {active ? (
+            <span
+              className="flex size-10 shrink-0 items-center justify-center rounded-md bg-white text-foreground-strong transition-transform group-hover:-translate-y-0.5"
+              aria-hidden="true"
+            >
+              <ArrowUpRight className="size-4" />
+            </span>
+          ) : null}
+        </div>
+      </button>
+    </article>
+  );
+}
+
+function ProcessingCarouselPreview({ carousel }: { carousel: GeneratedCarousel }) {
+  const Icon = carousel.status === "failed" ? CircleAlert : Loader2;
+
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center bg-foreground-strong px-10 text-center">
+      <Icon
+        className={cn(
+          "size-8 text-white/70",
+          carousel.status === "processing" && "animate-spin motion-reduce:animate-none",
+          carousel.status === "failed" && "text-error",
+        )}
+        aria-hidden="true"
+      />
+      <p className="mt-4 text-balance text-lg font-semibold leading-6 text-white">
+        {getCarouselCardTitle(carousel)}
+      </p>
+      <p className="mt-2 text-sm leading-5 text-white/65">
+        {getCarouselCardMeta(carousel)}
+      </p>
     </div>
   );
 }
@@ -489,24 +682,31 @@ function CarouselFeedState({
   );
 }
 
-function GeneratedCarouselSkeletons() {
+function GeneratedCarouselCoverFlowSkeleton() {
   return (
     <div
       role="status"
       aria-label="Loading generated carousels"
-      className="grid w-full grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 xl:grid-cols-3"
+      className="relative min-h-[520px] w-full overflow-hidden rounded-lg border border-border bg-white sm:min-h-[min(610px,calc(100dvh-190px))]"
     >
-      {[0, 1, 2].map((item) => (
-        <div key={item} className="overflow-hidden rounded-lg border border-border bg-white">
-          <div className="aspect-[4/5] animate-pulse bg-border motion-reduce:animate-none" />
-          <div className="space-y-2 px-4 py-4">
-            <div className="h-4 w-2/3 animate-pulse rounded bg-border motion-reduce:animate-none" />
-            <div className="h-3 w-1/3 animate-pulse rounded bg-border motion-reduce:animate-none" />
-          </div>
-        </div>
-      ))}
+      <div className="absolute left-1/2 top-1/2 aspect-[4/5] w-[min(80vw,390px)] -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-lg bg-border motion-reduce:animate-none" />
     </div>
   );
+}
+
+function getCircularOffset(index: number, activeIndex: number, itemCount: number) {
+  let offset = index - activeIndex;
+  const midpoint = itemCount / 2;
+
+  if (offset > midpoint) {
+    offset -= itemCount;
+  }
+
+  if (offset < -midpoint) {
+    offset += itemCount;
+  }
+
+  return offset;
 }
 
 function getCarouselStatusLabel(status: GeneratedCarousel["status"]) {

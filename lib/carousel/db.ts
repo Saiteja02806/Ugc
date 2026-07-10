@@ -963,6 +963,7 @@ export async function getCarouselGenerationStatusesByBatchId(params: {
 
 export async function listCarouselGenerationStatusesForUser(params: {
   businessProfileId?: string | null;
+  businessProfileVersion?: number | null;
   limit: number;
   projectId?: string | null;
   userId: string;
@@ -979,6 +980,10 @@ export async function listCarouselGenerationStatusesForUser(params: {
 
   if (params.businessProfileId) {
     query = query.eq("business_profile_id", params.businessProfileId);
+  }
+
+  if (params.businessProfileVersion) {
+    query = query.eq("business_profile_version", params.businessProfileVersion);
   }
 
   const { data, error } = await query

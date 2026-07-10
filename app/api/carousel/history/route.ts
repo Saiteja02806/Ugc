@@ -90,6 +90,7 @@ export async function GET(request: Request) {
 
     const statuses = await listCarouselGenerationStatusesForUser({
       businessProfileId: profile.id,
+      businessProfileVersion: profile.profileVersion,
       limit: getLimit(new URL(request.url).searchParams.get("limit")),
       projectId: profile.projectId,
       userId,
@@ -116,6 +117,7 @@ export async function GET(request: Request) {
         );
 
         return {
+          candidateIndex: generation.candidateIndex,
           carouselId: generation.id,
           categorySlug: generation.categorySlug,
           generationBatchId: generation.generationBatchId,

@@ -371,6 +371,10 @@ only the caller's carousel generations for the caller's single business profile.
 - The feed uses the first ready, runtime-safe `renderedUrl` as the thumbnail.
 - Processing and failed generations keep their real lifecycle state; they are
   not represented as template artwork.
+- Generated candidates are presented in a real-data cover-flow deck: the active
+  candidate is centered, neighboring candidates remain visible behind it, and
+  arrow, dot, and swipe controls move through the same real records. Clicking a
+  candidate opens its real `generationBatchId` preview/editor.
 - Trending must show a clear profile-needed, preparing, ready, or
   failed/retry state. It must never fall back to static template artwork.
 - Trending must not expose `All`, `Video`, `Avatar`, or `Image` format tabs,
@@ -396,8 +400,9 @@ Generate-button-driven.
 2. Business context enters through one of three paths: website scrape with
    Firecrawl plus structured LLM analysis, an AI-IDE context paste parsed into
    the same structured analysis, or direct manual fields.
-3. Saving a completed profile automatically prepares a small initial Carousel
-   batch in the background. The profile's normalized analysis remains the
+3. Saving a completed profile automatically prepares ten Carousel candidates,
+   each with five slides, in the background. This targets fifty rendered slides
+   per business-profile version. The profile's normalized analysis remains the
    worker input so the existing AWS planner, safe matcher, and Sharp renderer
    do not need to change.
 4. Automatic generation rows carry the real Firebase `user_id`,
@@ -406,7 +411,11 @@ Generate-button-driven.
    version and keeps future profile refreshes distinct.
 5. The Generate button is intentionally unchanged in this phase. It must not
    enqueue, open, or otherwise initiate Carousel generation.
-6. Legacy `test-user-001` rows are development data until audited. Do not
+6. When Trending reads an older current-profile batch with fewer than ten
+   candidates, it invokes an authenticated, idempotent preparation endpoint to
+   complete that same batch. This is automatic profile preparation, not the
+   manual Generate-button workflow.
+7. Legacy `test-user-001` rows are development data until audited. Do not
    migrate or delete them blindly. Any cleanup must first confirm they are not
    demo or seed content and must remove dependent rows/assets deliberately.
 

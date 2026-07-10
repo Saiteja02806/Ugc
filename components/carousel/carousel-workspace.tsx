@@ -14,6 +14,7 @@ import {
   type CarouselTextStyle,
   type WebsiteAnalysisState,
 } from "@/components/carousel/carousel-setup-panel";
+import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
 type WorkspaceStatus = "empty" | "loading" | "completed" | "failed";
@@ -251,6 +252,7 @@ export function CarouselWorkspace({
   initialCarouselIds?: string[];
   initialGenerationBatchId?: string | null;
 }) {
+  const { loading: authLoading, user } = useAuth();
   const [activeCandidateIndex, setActiveCandidateIndex] = useState(0);
   const [activeSlideByCandidateId, setActiveSlideByCandidateId] = useState<
     Record<string, number>
@@ -576,7 +578,17 @@ export function CarouselWorkspace({
       return;
     }
 
+    if (authLoading) {
+      return;
+    }
+
     const startupTimer = window.setTimeout(() => {
+      if (!user) {
+        setStatusError("Sign in before viewing carousel versions.");
+        setStatus("failed");
+        return;
+      }
+
       void loadCandidatesUntilTerminal(
         initialGenerationBatchId
           ? { generationBatchId: initialGenerationBatchId }
@@ -590,7 +602,7 @@ export function CarouselWorkspace({
     };
     // URL-provided batch/candidate IDs are intentionally loaded only when the page opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialGenerationBatchId, initialCarouselIds.join(",")]);
+  }, [authLoading, initialGenerationBatchId, initialCarouselIds.join(","), user]);
 
   function replaceCarouselUrl(nextGenerationBatchId: string) {
     const searchParams = new URLSearchParams({

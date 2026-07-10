@@ -511,11 +511,14 @@ Implemented:
   broad matcher version, image safety policy, and renderer version.
 - LLM slide planner with deterministic fallback.
 - Professional Sharp text renderer and AWS Carousel worker path.
-- Local source includes balanced Carousel planner
-  `llm-carousel-planner-v2-balanced-copy` and connected text-group renderer
-  `social-bubble-renderer-v5-connected-text-groups`. AWS will not use renderer
-  v5 until a new worker Docker image is built, pushed to ECR, deployed to ECS,
-  and confirmed in the worker startup log.
+- AWS Carousel worker revision 14 runs image
+  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260710171432`
+  from git commit `4971ac2a33a98ef55cafd2924fe79c785f8ba8b6`. The verified
+  startup log reports balanced planner
+  `llm-carousel-planner-v2-balanced-copy`, connected text-group renderer
+  `social-bubble-renderer-v5-connected-text-groups`, broad matcher
+  `broad-runtime-matcher-v2` in `dry-run`, and safety policy
+  `object-only-no-human-v1`.
 - Supabase relevance metadata `runtime_exclusion_reason` and
   `near_duplicate_group`, including database constraints and a ready-pool index.
 - Marketing SaaS asset cleanup for wrong-bucket, human-form, people-on-screen,

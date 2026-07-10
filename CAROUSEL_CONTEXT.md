@@ -368,13 +368,19 @@ real generated carousel outputs. It reads
 `GET /api/carousel/history`, which requires a Firebase bearer token and returns
 only the caller's carousel generations for the caller's single business profile.
 
-- The feed uses the first ready, runtime-safe `renderedUrl` as the thumbnail.
+- The feed receives the real ordered slide records for every returned candidate,
+  including `renderedUrl`, slide number, type, text metadata, and status.
 - Processing and failed generations keep their real lifecycle state; they are
   not represented as template artwork.
-- Generated candidates are presented in a real-data cover-flow deck: the active
-  candidate is centered, neighboring candidates remain visible behind it, and
-  arrow, dot, and swipe controls move through the same real records. Clicking a
-  candidate opens its real `generationBatchId` preview/editor.
+- Generated candidates appear as a compact, scrollable feed of independent
+  five-slide carousel creatives. Every candidate owns its own active slide
+  state, left/right controls, dots, and slide counter. The active slide may use
+  adjacent real slides as subtle layered previews, but page scrolling discovers
+  other creatives.
+- Trending is a browse-only destination. Clicking an image, slide, dots, slide
+  arrows, or its visual Generate control must never open the Carousel Ads
+  workspace. The Trending Generate control is intentionally disabled until a
+  dedicated generation workflow is defined.
 - Trending must show a clear profile-needed, preparing, ready, or
   failed/retry state. It must never fall back to static template artwork.
 - Trending must not expose `All`, `Video`, `Avatar`, or `Image` format tabs,

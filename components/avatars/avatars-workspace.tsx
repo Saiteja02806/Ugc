@@ -458,6 +458,8 @@ function AvatarCard({
               src={avatar.asset.thumbnailUrl}
               alt=""
               className="size-full object-cover"
+              decoding="async"
+              loading="lazy"
             />
           ) : (
             <video
@@ -465,7 +467,7 @@ function AvatarCard({
               className="size-full object-cover"
               muted
               playsInline
-              preload="metadata"
+              preload="none"
             />
           )}
         </div>
@@ -532,8 +534,27 @@ function AvatarDetailPanel({
   trimDraft: TrimDraft;
   usingAvatar: boolean;
 }) {
+  const [measuredVideoRatio, setMeasuredVideoRatio] = useState<{
+    avatarId: string;
+    ratio: number;
+  } | null>(null);
+  const [loadingPreviewAvatarId, setLoadingPreviewAvatarId] = useState<
+    string | null
+  >(null);
+  const fallbackVideoRatio = getNumericPreviewAspectRatio(
+    avatar?.asset.ratio ?? "9:16",
+  );
+  const previewVideoRatio =
+    avatar && measuredVideoRatio?.avatarId === avatar.asset.id
+      ? measuredVideoRatio.ratio
+      : fallbackVideoRatio;
+  const previewWidth =
+    previewVideoRatio < 1
+      ? `min(100%, ${Math.round(520 * previewVideoRatio)}px, calc(52vh * ${previewVideoRatio}))`
+      : "100%";
+
   return (
-    <aside className="flex min-h-[360px] flex-col overflow-hidden rounded-[28px] border border-border/70 bg-white/72 p-4 shadow-[0_18px_50px_rgb(16_32_51_/_0.08)] backdrop-blur sm:p-5 lg:min-h-0">
+    <aside className="flex min-h-[360px] flex-col overflow-y-auto rounded-[28px] border border-border/70 bg-white/72 p-4 shadow-[0_18px_50px_rgb(16_32_51_/_0.08)] backdrop-blur sm:p-5 lg:min-h-0">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-foreground">Preview and trim</h2>
@@ -546,19 +567,57 @@ function AvatarDetailPanel({
 
       {avatar ? (
         <>
-          <div className="overflow-hidden rounded-2xl bg-[#102033] text-white shadow-sm">
+          <div className="flex w-full justify-center">
             <div
-              className="flex items-center justify-center"
-              style={{ aspectRatio: getPreviewAspectRatio(avatar.asset.ratio) }}
+              className="relative flex max-h-[520px] items-center justify-center overflow-hidden rounded-2xl bg-[#102033] text-white shadow-sm"
+              style={{
+                aspectRatio: previewVideoRatio,
+                width: previewWidth,
+              }}
             >
               <video
-                key={avatar.asset.sourceVideoUrl}
+                key={avatar.asset.id}
                 src={avatar.asset.sourceVideoUrl}
-                className="size-full object-cover"
+                poster={avatar.asset.thumbnailUrl ?? undefined}
+                className="block size-full object-contain object-center"
                 controls
                 playsInline
-                preload="metadata"
+                preload="auto"
+                onCanPlay={() => {
+                  setLoadingPreviewAvatarId((currentAvatarId) =>
+                    currentAvatarId === avatar.asset.id ? null : currentAvatarId,
+                  );
+                }}
+                onError={() => {
+                  setLoadingPreviewAvatarId((currentAvatarId) =>
+                    currentAvatarId === avatar.asset.id ? null : currentAvatarId,
+                  );
+                }}
+                onLoadStart={() => {
+                  setLoadingPreviewAvatarId(avatar.asset.id);
+                }}
+                onLoadedMetadata={(event) => {
+                  const video = event.currentTarget;
+
+                  if (video.videoWidth > 0 && video.videoHeight > 0) {
+                    setMeasuredVideoRatio({
+                      avatarId: avatar.asset.id,
+                      ratio: video.videoWidth / video.videoHeight,
+                    });
+                  }
+                }}
               />
+              {loadingPreviewAvatarId === avatar.asset.id ? (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[#102033]/45 backdrop-blur-[1px]">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-black/55 px-3 py-2 text-xs font-semibold text-white">
+                    <Loader2
+                      className="size-4 animate-spin motion-reduce:animate-none"
+                      aria-hidden="true"
+                    />
+                    Loading preview
+                  </span>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -915,6 +974,18 @@ function formatTrimInput(seconds: number) {
 
 function getPreviewAspectRatio(ratio: AvatarRatio) {
   return ratio === "other" ? "9 / 16" : ratio.replace(":", " / ");
+}
+
+function getNumericPreviewAspectRatio(ratio: AvatarRatio) {
+  const ratios: Record<AvatarRatio, number> = {
+    "1:1": 1,
+    "4:5": 4 / 5,
+    "9:16": 9 / 16,
+    "16:9": 16 / 9,
+    other: 9 / 16,
+  };
+
+  return ratios[ratio];
 }
 
 function getDimensionsLabel(asset: AvatarAsset) {

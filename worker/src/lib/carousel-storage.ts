@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { uploadBufferToS3 } from "./s3.js";
 
 const IMAGE_WEBP_CONTENT_TYPE = "image/webp";
@@ -15,10 +17,16 @@ export async function uploadRenderedCarouselSlide(params: {
   carouselId: string;
   format: string;
   projectId: string;
+  rendererVersion: string;
   slideNumber: number;
   userId: string;
 }) {
+  const contentHash = createHash("sha256")
+    .update(params.buffer)
+    .digest("hex")
+    .slice(0, 16);
   const formatSlug = cleanPathPart(params.format.replace(":", "x"));
+  const rendererSlug = cleanPathPart(params.rendererVersion);
   const slideSlug = params.slideNumber.toString().padStart(2, "0");
   const key = [
     "carousels",
@@ -26,7 +34,8 @@ export async function uploadRenderedCarouselSlide(params: {
     cleanPathPart(params.userId),
     cleanPathPart(params.projectId),
     cleanPathPart(params.carouselId),
-    `slide-${slideSlug}-${formatSlug}.webp`,
+    rendererSlug,
+    `slide-${slideSlug}-${formatSlug}-${contentHash}.webp`,
   ].join("/");
 
   return uploadBufferToS3({

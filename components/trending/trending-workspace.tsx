@@ -87,15 +87,15 @@ const STACK_CARD_STYLES: Record<
   { opacity: number; scale: number; translateX: string; zIndex: number }
 > = {
   [-2]: {
-    opacity: 0.84,
-    scale: 0.76,
-    translateX: "clamp(-330px, -29vw, -118px)",
+    opacity: 0.82,
+    scale: 0.72,
+    translateX: "clamp(-272px, -24vw, -112px)",
     zIndex: 3,
   },
   [-1]: {
     opacity: 0.96,
-    scale: 0.88,
-    translateX: "clamp(-176px, -15vw, -62px)",
+    scale: 0.86,
+    translateX: "clamp(-144px, -12vw, -60px)",
     zIndex: 4,
   },
   0: {
@@ -106,14 +106,14 @@ const STACK_CARD_STYLES: Record<
   },
   1: {
     opacity: 0.96,
-    scale: 0.88,
-    translateX: "clamp(62px, 15vw, 176px)",
+    scale: 0.86,
+    translateX: "clamp(60px, 12vw, 144px)",
     zIndex: 4,
   },
   2: {
-    opacity: 0.84,
-    scale: 0.76,
-    translateX: "clamp(118px, 29vw, 330px)",
+    opacity: 0.82,
+    scale: 0.72,
+    translateX: "clamp(112px, 24vw, 272px)",
     zIndex: 3,
   },
 };
@@ -589,7 +589,7 @@ function CarouselCandidateStack({
 
   return (
     <section aria-label="Personalized carousel ideas" className="w-full">
-      <div className="relative isolate mx-auto mt-3 h-[365px] w-full max-w-6xl overflow-hidden sm:mt-8 sm:h-[425px] lg:mt-10 lg:h-[440px]">
+      <div className="relative isolate mx-auto mt-3 h-[340px] w-full max-w-5xl overflow-hidden sm:mt-8 sm:h-[376px] lg:mt-10 lg:h-96">
         {visibleCarouselSlots.map((slot) => (
           <CarouselStackCard
             key={slot.candidate.carousel.carouselId}
@@ -690,7 +690,7 @@ function CarouselStackCard({
       <article
         aria-label={`${title}, idea ${carouselIndex + 1} of ${carouselCount}`}
         className={cn(
-          "pointer-events-auto w-[min(72vw,260px)] origin-center overflow-visible transition-[opacity,transform] duration-300 ease-out will-change-transform motion-reduce:transition-none sm:w-[min(48vw,300px)] lg:w-[min(30vw,320px)]",
+          "pointer-events-auto w-[min(72vw,244px)] origin-center overflow-visible transition-[opacity,transform] duration-300 ease-out will-change-transform motion-reduce:transition-none sm:w-[min(46vw,280px)] lg:w-[min(26vw,280px)]",
           !isActive &&
             "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
         )}
@@ -702,10 +702,10 @@ function CarouselStackCard({
       >
         <div
           className={cn(
-            "relative aspect-[4/5] overflow-hidden rounded-lg bg-foreground-strong ring-1 ring-black/10",
+            "relative aspect-[4/5] overflow-hidden rounded-xl bg-foreground-strong",
             isActive
-              ? "shadow-[0_18px_36px_rgb(9_9_11_/_0.22)]"
-              : "shadow-[0_12px_26px_rgb(9_9_11_/_0.16)]",
+              ? "shadow-[0_14px_28px_rgb(9_9_11_/_0.22)]"
+              : "shadow-[0_10px_20px_rgb(9_9_11_/_0.16)]",
           )}
         >
           {/* Rendered Carousel slides are immutable CloudFront creative assets. */}
@@ -782,7 +782,7 @@ function CarouselStackSummary({
   title: string;
 }) {
   return (
-    <div className="mx-auto mt-5 flex w-full max-w-[480px] flex-col gap-3 px-4 sm:flex-row sm:items-start sm:justify-between sm:px-0">
+    <div className="mx-auto mt-4 flex w-full max-w-[440px] flex-col gap-3 px-4 sm:flex-row sm:items-start sm:justify-between sm:px-0">
       <div className="min-w-0">
         <p className="line-clamp-1 text-sm font-semibold text-foreground-strong">
           {title}

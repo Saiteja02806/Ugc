@@ -534,6 +534,13 @@ Implemented:
   `social-bubble-renderer-v5-connected-text-groups`, broad matcher
   `broad-runtime-matcher-v2` in `dry-run`, and safety policy
   `object-only-no-human-v1`.
+- Current repository source contains connected-background renderer
+  `social-bubble-renderer-v6-unified-text-silhouette`. It draws every wrapped
+  heading or body group as one clipped white silhouette, registers the same
+  Geist font used by the web application inside the worker image, and writes
+  renderer-versioned, content-hashed S3 keys. This source is not live until a
+  newer Carousel worker image is deployed and verified; revision 14 still
+  renders v5 assets.
 - Supabase relevance metadata `runtime_exclusion_reason` and
   `near_duplicate_group`, including database constraints and a ready-pool index.
 - Marketing SaaS asset cleanup for wrong-bucket, human-form, people-on-screen,
@@ -870,4 +877,8 @@ Name: **Finish dry-run shadow validation before live broad matcher enablement**
 - Never silently fall back to an unrelated category.
 - Never trim approved surplus assets.
 - Never claim AWS behavior changed until the deployed worker version is verified.
+- Never overwrite a rendered Carousel asset behind an immutable URL. Rendered
+  keys must change when either the renderer version or output bytes change.
+- Keep the production Carousel worker font files in sync with the font family
+  used for text measurement and SVG rendering.
 - Update this file whenever a product rule or architecture decision changes.

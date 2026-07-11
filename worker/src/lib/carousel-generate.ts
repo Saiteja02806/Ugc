@@ -11,7 +11,10 @@ import {
   getCarouselBroadMatcherMode,
   selectBroadRuntimeVisualAssets,
 } from "./carousel-broad-runtime-visual-matcher.js";
-import { renderCarouselSlide } from "./carousel-render-slide.js";
+import {
+  CAROUSEL_RENDERER_VERSION,
+  renderCarouselSlide,
+} from "./carousel-render-slide.js";
 import { selectRuntimeVisualBucketAssets } from "./carousel-runtime-visual-bucket-matcher.js";
 import {
   DEFAULT_CAROUSEL_RENDER_STYLE,
@@ -375,6 +378,7 @@ export async function generateCarousel({
         carouselId,
         format: generation.format,
         projectId: generation.project_id,
+        rendererVersion: CAROUSEL_RENDERER_VERSION,
         slideNumber: slide.slideNumber,
         userId: generation.user_id,
       });

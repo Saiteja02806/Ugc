@@ -13,6 +13,7 @@
     "@google/genai": "^2.10.0",
     "@runwayml/sdk": "^4.4.0",
     "@supabase/supabase-js": "^2.108.2",
+    "geist": "^1.7.0",
     "openai": "^6.45.0",
     "sharp": "^0.34.5"
   },

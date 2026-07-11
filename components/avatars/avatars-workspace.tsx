@@ -10,9 +10,9 @@ import {
   Scissors,
   Sparkles,
   UserRound,
-  Video,
+  X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
@@ -90,10 +90,14 @@ type TrimDraft = {
 export function AvatarsWorkspace() {
   const [avatars, setAvatars] = useState<AvatarLibraryItem[]>([]);
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [trimDraft, setTrimDraft] = useState<TrimDraft>({
     end: "",
     start: "0",
   });
+  const [thumbnailFailures, setThumbnailFailures] = useState<
+    Record<string, true>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
@@ -104,6 +108,19 @@ export function AvatarsWorkspace() {
   const selectedAvatar = useMemo(() => {
     return avatars.find((avatar) => avatar.asset.id === selectedAvatarId) ?? null;
   }, [avatars, selectedAvatarId]);
+  const missingThumbnailCount = useMemo(() => {
+    return avatars.filter((avatar) => !avatar.asset.thumbnailUrl).length;
+  }, [avatars]);
+  const thumbnailFailureCount = useMemo(() => {
+    return Object.keys(thumbnailFailures).filter((avatarId) =>
+      avatars.some((avatar) => avatar.asset.id === avatarId),
+    ).length;
+  }, [avatars, thumbnailFailures]);
+  const hasUnsavedTrimChanges = useMemo(() => {
+    return selectedAvatar
+      ? !isSameTrimDraft(trimDraft, getAvatarTrimDraft(selectedAvatar))
+      : false;
+  }, [selectedAvatar, trimDraft]);
 
   const commitSelectedAvatarId = useCallback((avatarId: string | null) => {
     selectedAvatarIdRef.current = avatarId;
@@ -136,12 +153,15 @@ export function AvatarsWorkspace() {
       }
 
       setAvatars(data.avatars);
+      setThumbnailFailures({});
+      logAvatarLibraryDiagnostics(data.avatars);
+
       const currentSelectedAvatarId = selectedAvatarIdRef.current;
       const nextSelectedAvatarId =
         currentSelectedAvatarId &&
         data.avatars.some((avatar) => avatar.asset.id === currentSelectedAvatarId)
           ? currentSelectedAvatarId
-          : data.avatars[0]?.asset.id ?? null;
+          : null;
 
       commitSelectedAvatarId(nextSelectedAvatarId);
       setTrimDraft(
@@ -288,17 +308,138 @@ export function AvatarsWorkspace() {
   }
 
   function handleSelectAvatar(avatarId: string) {
+    if (
+      isPreviewOpen &&
+      selectedAvatarId !== avatarId &&
+      hasUnsavedTrimChanges &&
+      !window.confirm("Discard unsaved trim changes?")
+    ) {
+      return;
+    }
+
     commitSelectedAvatarId(avatarId);
     setTrimDraft(
       getAvatarTrimDraft(
         avatars.find((avatar) => avatar.asset.id === avatarId) ?? null,
       ),
     );
+    setErrorMessage(null);
+    setNoticeMessage(null);
+    setIsPreviewOpen(true);
   }
 
+  function handleRequestClosePreview() {
+    if (
+      hasUnsavedTrimChanges &&
+      !window.confirm("Discard unsaved trim changes?")
+    ) {
+      return;
+    }
+
+    if (selectedAvatar) {
+      setTrimDraft(getAvatarTrimDraft(selectedAvatar));
+    }
+
+    setIsPreviewOpen(false);
+  }
+
+  const handleThumbnailError = useCallback(
+    (avatarId: string, thumbnailUrl: string) => {
+      setThumbnailFailures((currentFailures) => {
+        if (currentFailures[avatarId]) {
+          return currentFailures;
+        }
+
+        return {
+          ...currentFailures,
+          [avatarId]: true,
+        };
+      });
+
+      console.warn("[avatar-thumbnail] failed", {
+        avatarId,
+        hostname: getSafeUrlHostname(thumbnailUrl),
+      });
+    },
+    [],
+  );
+
+  const libraryStatus = getLibraryStatus({
+    avatarCount: avatars.length,
+    isLoading,
+    missingThumbnailCount,
+    thumbnailFailureCount,
+  });
+
+  const previewHealthLabel = getPreviewHealthLabel({
+    avatarCount: avatars.length,
+    isLoading,
+    missingThumbnailCount,
+    thumbnailFailureCount,
+  });
+
+  const shouldShowPageStatus = !isPreviewOpen && Boolean(errorMessage || noticeMessage);
+
+  const thumbnailIssueCount = missingThumbnailCount + thumbnailFailureCount;
+
+  const selectedAvatarThumbnailFailed =
+    selectedAvatarId !== null && thumbnailFailures[selectedAvatarId] === true;
+
+  const selectedAvatarForModal =
+    isPreviewOpen && selectedAvatar ? selectedAvatar : null;
+
+  const selectedAvatarHasThumbnailIssue =
+    selectedAvatarForModal !== null &&
+    (!selectedAvatarForModal.asset.thumbnailUrl || selectedAvatarThumbnailFailed);
+
+  const selectedAvatarIssueLabel = selectedAvatarHasThumbnailIssue
+    ? !selectedAvatarForModal?.asset.thumbnailUrl
+      ? "Thumbnail missing"
+      : "Thumbnail failed"
+    : null;
+
+  const pageStatus = shouldShowPageStatus ? (
+    <div className="mx-auto mt-4 w-full max-w-7xl">
+      <StatusMessages errorMessage={errorMessage} noticeMessage={noticeMessage} />
+    </div>
+  ) : null;
+
+  const previewModal = selectedAvatarForModal ? (
+    <AvatarPreviewModal
+      avatar={selectedAvatarForModal}
+      errorMessage={errorMessage}
+      hasUnsavedTrimChanges={hasUnsavedTrimChanges}
+      noticeMessage={noticeMessage}
+      savingTrim={savingTrim}
+      thumbnailIssueLabel={selectedAvatarIssueLabel}
+      trimDraft={trimDraft}
+      usingAvatar={usingAvatar}
+      onClose={handleRequestClosePreview}
+      onResetTrim={() => void handleResetTrim()}
+      onSaveTrim={() => void handleSaveTrim()}
+      onTrimDraftChange={setTrimDraft}
+      onUseAvatar={() => void handleUseAvatar()}
+    />
+  ) : null;
+
+  const refreshDisabled = isLoading;
+
+  const refreshIconClassName = cn("size-4", isLoading && "animate-spin");
+
+  const libraryBadgeClassName = getLibraryStatusBadgeClassName(libraryStatus.kind);
+
+  const libraryDotClassName = getLibraryStatusDotClassName(libraryStatus.kind);
+
+  const libraryButtonTitle =
+    thumbnailIssueCount > 0
+      ? `${thumbnailIssueCount} avatar preview issue${
+          thumbnailIssueCount === 1 ? "" : "s"
+        } detected`
+      : "Avatar library media status";
+
   return (
-    <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
-      <header className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <section className="flex min-h-screen flex-1 flex-col bg-background px-4 py-4 text-foreground sm:px-6 lg:px-8 lg:py-6">
+      <header className="mx-auto flex w-full max-w-7xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
             Avatars
@@ -309,47 +450,44 @@ export function AvatarsWorkspace() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex h-8 w-fit items-center gap-2 rounded-full border border-border/80 bg-white/70 px-3 text-xs font-semibold text-[#405977] shadow-sm">
-            <span className="size-2 rounded-full bg-success" />
-            Library ready
+          <div
+            className={libraryBadgeClassName}
+            title={libraryButtonTitle}
+          >
+            <span className={libraryDotClassName} />
+            {libraryStatus.label}
           </div>
           <button
             type="button"
             onClick={() => void loadAvatars()}
-            disabled={isLoading}
+            disabled={refreshDisabled}
             aria-label="Refresh avatars"
             title="Refresh avatars"
-            className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white/80 text-[#173454] shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex size-9 items-center justify-center rounded-md border border-border bg-white text-[#173454] transition-colors hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw
-              className={cn("size-4", isLoading && "animate-spin")}
+              className={refreshIconClassName}
               aria-hidden="true"
             />
           </button>
         </div>
       </header>
 
-      <div className="mx-auto grid min-h-0 w-full max-w-6xl flex-1 gap-5 pt-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+      {pageStatus}
+
+      <div className="mx-auto w-full max-w-7xl flex-1 pt-5">
         <AvatarLibrary
           avatars={avatars}
           isLoading={isLoading}
+          previewHealthLabel={previewHealthLabel}
           selectedAvatarId={selectedAvatarId}
+          thumbnailFailures={thumbnailFailures}
+          onThumbnailError={handleThumbnailError}
           onSelectAvatar={handleSelectAvatar}
         />
-
-        <AvatarDetailPanel
-          avatar={selectedAvatar}
-          errorMessage={errorMessage}
-          noticeMessage={noticeMessage}
-          savingTrim={savingTrim}
-          trimDraft={trimDraft}
-          usingAvatar={usingAvatar}
-          onResetTrim={() => void handleResetTrim()}
-          onSaveTrim={() => void handleSaveTrim()}
-          onTrimDraftChange={setTrimDraft}
-          onUseAvatar={() => void handleUseAvatar()}
-        />
       </div>
+
+      {previewModal}
     </section>
   );
 }
@@ -358,23 +496,29 @@ function AvatarLibrary({
   avatars,
   isLoading,
   onSelectAvatar,
+  onThumbnailError,
+  previewHealthLabel,
   selectedAvatarId,
+  thumbnailFailures,
 }: {
   avatars: AvatarLibraryItem[];
   isLoading: boolean;
   onSelectAvatar: (avatarId: string) => void;
+  onThumbnailError: (avatarId: string, thumbnailUrl: string) => void;
+  previewHealthLabel: string;
   selectedAvatarId: string | null;
+  thumbnailFailures: Record<string, true>;
 }) {
   return (
-    <div className="flex min-h-[360px] flex-col overflow-hidden rounded-[28px] border border-border/70 bg-white/40 p-4 sm:p-5">
+    <div className="flex min-h-[360px] flex-col rounded-[var(--radius-panel)] border border-border bg-white p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-foreground">Avatar library</h2>
           <p className="mt-1 text-xs font-semibold text-muted">
-            Global avatar videos available to this workspace.
+            {previewHealthLabel}
           </p>
         </div>
-        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-muted shadow-sm">
+        <span className="rounded-md border border-border bg-card-muted px-2.5 py-1 text-xs font-bold text-muted">
           {isLoading
             ? "Loading"
             : `${avatars.length} ${avatars.length === 1 ? "avatar" : "avatars"}`}
@@ -382,19 +526,21 @@ function AvatarLibrary({
       </div>
 
       {isLoading ? (
-        <div className="flex flex-1 items-center justify-center rounded-3xl border border-border/70 bg-white/45">
+        <div className="flex flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card-muted">
           <div className="flex items-center gap-3 text-sm font-semibold text-muted">
             <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
             Loading avatars...
           </div>
         </div>
       ) : avatars.length > 0 ? (
-        <div className="grid auto-rows-min grid-cols-1 gap-4 overflow-y-auto pb-1 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid auto-rows-min grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {avatars.map((avatar) => (
             <AvatarCard
               key={avatar.asset.id}
               avatar={avatar}
               selected={avatar.asset.id === selectedAvatarId}
+              thumbnailFailed={thumbnailFailures[avatar.asset.id] === true}
+              onThumbnailError={onThumbnailError}
               onSelect={() => onSelectAvatar(avatar.asset.id)}
             />
           ))}
@@ -408,9 +554,9 @@ function AvatarLibrary({
 
 function AvatarEmptyState() {
   return (
-    <div className="flex flex-1 items-center justify-center rounded-3xl border border-border/70 bg-white/45 px-6 py-12 text-center">
+    <div className="flex flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card-muted px-6 py-12 text-center">
       <div className="max-w-sm">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#173454] text-white shadow-sm">
+        <div className="mx-auto flex size-14 items-center justify-center rounded-md bg-[#173454] text-white">
           <UserRound className="size-6" aria-hidden="true" />
         </div>
         <p className="mt-4 text-base font-bold text-foreground">
@@ -420,7 +566,7 @@ function AvatarEmptyState() {
           Once global avatar videos are added to the avatar library, they will
           appear here for preview, trimming, and selection.
         </p>
-        <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-white px-3 py-2 text-xs font-bold text-[#405977] shadow-sm">
+        <div className="mt-5 inline-flex items-center gap-2 rounded-md border border-border bg-white px-3 py-2 text-xs font-bold text-[#405977]">
           <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
           Ready for real avatar assets
         </div>
@@ -432,51 +578,67 @@ function AvatarEmptyState() {
 function AvatarCard({
   avatar,
   onSelect,
+  onThumbnailError,
   selected,
+  thumbnailFailed,
 }: {
   avatar: AvatarLibraryItem;
   onSelect: () => void;
+  onThumbnailError: (avatarId: string, thumbnailUrl: string) => void;
   selected: boolean;
+  thumbnailFailed: boolean;
 }) {
+  const [loadedThumbnailUrl, setLoadedThumbnailUrl] = useState<string | null>(
+    null,
+  );
+  const thumbnailUrl = avatar.asset.thumbnailUrl;
+  const shouldRenderThumbnail = Boolean(thumbnailUrl) && !thumbnailFailed;
+  const thumbnailLoaded =
+    thumbnailUrl !== null && loadedThumbnailUrl === thumbnailUrl;
+
   return (
     <button
       type="button"
       onClick={onSelect}
       className={cn(
-        "group min-w-0 rounded-2xl border bg-white p-2 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgb(16_32_51_/_0.10)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        "group min-w-0 rounded-[var(--radius-panel)] border bg-white p-2 text-left transition hover:border-border-strong hover:bg-card-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
         selected ? "border-primary/60 ring-2 ring-primary/15" : "border-border",
       )}
     >
-      <div className="relative overflow-hidden rounded-xl bg-[#102033] text-white">
+      <div className="relative overflow-hidden rounded-md bg-[#102033] text-white">
         <div
-          className="flex items-center justify-center"
+          className="relative flex items-center justify-center"
           style={{ aspectRatio: getPreviewAspectRatio(avatar.asset.ratio) }}
         >
-          {avatar.asset.thumbnailUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatar.asset.thumbnailUrl}
-              alt=""
-              className="size-full object-cover"
-              decoding="async"
-              loading="lazy"
-            />
+          {shouldRenderThumbnail && thumbnailUrl ? (
+            <>
+              {!thumbnailLoaded ? <AvatarThumbnailSkeleton /> : null}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={thumbnailUrl}
+                alt=""
+                className={cn(
+                  "size-full object-cover transition-opacity duration-200 motion-reduce:transition-none",
+                  thumbnailLoaded ? "opacity-100" : "opacity-0",
+                )}
+                decoding="async"
+                loading="lazy"
+                onLoad={() => setLoadedThumbnailUrl(thumbnailUrl)}
+                onError={() => onThumbnailError(avatar.asset.id, thumbnailUrl)}
+              />
+            </>
           ) : (
-            <video
-              src={avatar.asset.sourceVideoUrl}
-              className="size-full object-cover"
-              muted
-              playsInline
-              preload="none"
+            <AvatarPreviewFallback
+              label={thumbnailUrl ? "Preview unavailable" : "Thumbnail missing"}
             />
           )}
         </div>
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-linear-to-t from-black/60 to-transparent p-3">
-          <span className="inline-flex size-8 items-center justify-center rounded-full bg-white/16 backdrop-blur">
+          <span className="inline-flex size-8 items-center justify-center rounded-full bg-white/16">
             <Play className="ml-0.5 size-3.5 fill-white text-white" aria-hidden="true" />
           </span>
           {avatar.avatarSelection.isTrimmed ? (
-            <span className="rounded-full bg-primary px-2 py-1 text-[11px] font-bold text-white shadow-sm">
+            <span className="rounded-md bg-primary px-2 py-1 text-[11px] font-bold text-white">
               Trimmed
             </span>
           ) : null}
@@ -511,29 +673,57 @@ function AvatarCard({
   );
 }
 
-function AvatarDetailPanel({
+function AvatarThumbnailSkeleton() {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-[#14263b]">
+      <div className="size-9 animate-pulse rounded-full bg-white/15 motion-reduce:animate-none" />
+    </div>
+  );
+}
+
+function AvatarPreviewFallback({ label }: { label: string }) {
+  return (
+    <div className="flex size-full flex-col items-center justify-center gap-2 px-3 text-center">
+      <UserRound className="size-8 text-white/60" aria-hidden="true" />
+      <span className="text-xs font-semibold text-white/72">{label}</span>
+    </div>
+  );
+}
+
+function AvatarPreviewModal({
   avatar,
   errorMessage,
+  hasUnsavedTrimChanges,
   noticeMessage,
+  onClose,
   onResetTrim,
   onSaveTrim,
   onTrimDraftChange,
   onUseAvatar,
   savingTrim,
+  thumbnailIssueLabel,
   trimDraft,
   usingAvatar,
 }: {
-  avatar: AvatarLibraryItem | null;
+  avatar: AvatarLibraryItem;
   errorMessage: string | null;
+  hasUnsavedTrimChanges: boolean;
   noticeMessage: string | null;
+  onClose: () => void;
   onResetTrim: () => void;
   onSaveTrim: () => void;
   onTrimDraftChange: (draft: TrimDraft) => void;
   onUseAvatar: () => void;
   savingTrim: boolean;
+  thumbnailIssueLabel: string | null;
   trimDraft: TrimDraft;
   usingAvatar: boolean;
 }) {
+  const dialogTitleId = useId();
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const onCloseRef = useRef(onClose);
   const [measuredVideoRatio, setMeasuredVideoRatio] = useState<{
     avatarId: string;
     ratio: number;
@@ -541,41 +731,129 @@ function AvatarDetailPanel({
   const [loadingPreviewAvatarId, setLoadingPreviewAvatarId] = useState<
     string | null
   >(null);
-  const fallbackVideoRatio = getNumericPreviewAspectRatio(
-    avatar?.asset.ratio ?? "9:16",
-  );
+  const fallbackVideoRatio = getNumericPreviewAspectRatio(avatar.asset.ratio);
   const previewVideoRatio =
-    avatar && measuredVideoRatio?.avatarId === avatar.asset.id
+    measuredVideoRatio?.avatarId === avatar.asset.id
       ? measuredVideoRatio.ratio
       : fallbackVideoRatio;
   const previewWidth =
     previewVideoRatio < 1
-      ? `min(100%, ${Math.round(520 * previewVideoRatio)}px, calc(52vh * ${previewVideoRatio}))`
+      ? `min(100%, ${Math.round(620 * previewVideoRatio)}px, calc(66vh * ${previewVideoRatio}))`
       : "100%";
 
-  return (
-    <aside className="flex min-h-[360px] flex-col overflow-y-auto rounded-[28px] border border-border/70 bg-white/72 p-4 shadow-[0_18px_50px_rgb(16_32_51_/_0.08)] backdrop-blur sm:p-5 lg:min-h-0">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-bold text-foreground">Preview and trim</h2>
-          <p className="mt-1 text-xs font-semibold text-muted">
-            Save the usable segment before generation.
-          </p>
-        </div>
-        <Scissors className="size-4 text-primary" aria-hidden="true" />
-      </div>
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
-      {avatar ? (
-        <>
-          <div className="flex w-full justify-center">
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const previousBodyOverflow = document.body.style.overflow;
+    const videoElement = videoRef.current;
+
+    document.body.style.overflow = "hidden";
+    window.setTimeout(() => closeButtonRef.current?.focus(), 0);
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), video[controls], [tabindex]:not([tabindex="-1"])',
+      );
+
+      if (!focusableElements?.length) {
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      releaseVideoElement(videoElement);
+      document.body.style.overflow = previousBodyOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+
+      if (previouslyFocused?.isConnected) {
+        previouslyFocused.focus();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const videoElement = videoRef.current;
+
+    return () => releaseVideoElement(videoElement);
+  }, [avatar.asset.id]);
+
+  return (
+    <div className="fixed inset-0 z-[var(--z-modal)] flex items-end justify-center bg-black/48 p-0 sm:items-center sm:p-4">
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label="Close avatar preview"
+        onClick={onClose}
+        className="absolute inset-0 cursor-default"
+      />
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={dialogTitleId}
+        className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-floating sm:h-[min(760px,90vh)] sm:w-[min(1050px,92vw)] sm:rounded-[var(--radius-panel)]"
+      >
+        <header className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-border px-4 sm:px-5">
+          <div className="min-w-0">
+            <h2
+              id={dialogTitleId}
+              className="truncate text-base font-bold text-foreground"
+            >
+              {avatar.asset.name}
+            </h2>
+            <p className="mt-0.5 text-xs font-semibold text-muted">
+              Preview, trim, and choose this avatar.
+            </p>
+          </div>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Close preview"
+            title="Close preview"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          >
+            <X className="size-5" aria-hidden="true" />
+          </button>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5 lg:grid lg:grid-cols-[minmax(300px,0.44fr)_minmax(360px,0.56fr)] lg:gap-5 lg:overflow-hidden">
+          <div className="flex min-h-[340px] items-center justify-center rounded-[var(--radius-panel)] bg-[#102033] p-3 text-white lg:min-h-0">
             <div
-              className="relative flex max-h-[520px] items-center justify-center overflow-hidden rounded-2xl bg-[#102033] text-white shadow-sm"
+              className="relative flex max-h-[620px] items-center justify-center overflow-hidden rounded-md bg-[#102033] text-white"
               style={{
                 aspectRatio: previewVideoRatio,
                 width: previewWidth,
               }}
             >
               <video
+                ref={videoRef}
                 key={avatar.asset.id}
                 src={avatar.asset.sourceVideoUrl}
                 poster={avatar.asset.thumbnailUrl ?? undefined}
@@ -608,8 +886,8 @@ function AvatarDetailPanel({
                 }}
               />
               {loadingPreviewAvatarId === avatar.asset.id ? (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[#102033]/45 backdrop-blur-[1px]">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-black/55 px-3 py-2 text-xs font-semibold text-white">
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[#102033]/55">
+                  <span className="inline-flex items-center gap-2 rounded-md bg-black/55 px-3 py-2 text-xs font-semibold text-white">
                     <Loader2
                       className="size-4 animate-spin motion-reduce:animate-none"
                       aria-hidden="true"
@@ -621,74 +899,83 @@ function AvatarDetailPanel({
             </div>
           </div>
 
-          <div className="mt-4">
-            <h3 className="text-base font-bold tracking-normal text-foreground">
-              {avatar.asset.name}
-            </h3>
-            {avatar.asset.description ? (
-              <p className="mt-1 text-sm font-medium leading-6 text-muted">
-                {avatar.asset.description}
-              </p>
-            ) : null}
+          <div className="mt-4 min-h-0 lg:mt-0 lg:overflow-y-auto lg:pr-1">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold tracking-normal text-foreground">
+                  {avatar.asset.name}
+                </h3>
+                {avatar.asset.description ? (
+                  <p className="mt-1 text-sm font-medium leading-6 text-muted">
+                    {avatar.asset.description}
+                  </p>
+                ) : null}
+              </div>
+              <Scissors
+                className="mt-1 size-4 shrink-0 text-primary"
+                aria-hidden="true"
+              />
+            </div>
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-muted">
-              <span className="rounded-full border border-border bg-white px-2.5 py-1">
+              <span className="rounded-md border border-border bg-white px-2.5 py-1">
                 {formatDuration(avatar.asset.durationSeconds)}
               </span>
-              <span className="rounded-full border border-border bg-white px-2.5 py-1">
+              <span className="rounded-md border border-border bg-white px-2.5 py-1">
                 {avatar.asset.ratio === "other"
                   ? getDimensionsLabel(avatar.asset)
                   : avatar.asset.ratio}
               </span>
-              <span className="rounded-full border border-border bg-white px-2.5 py-1 capitalize">
+              <span className="rounded-md border border-border bg-white px-2.5 py-1 capitalize">
                 {avatar.asset.avatarType}
               </span>
+              {thumbnailIssueLabel ? (
+                <span className="rounded-md border border-warning/25 bg-warning/10 px-2.5 py-1 text-warning">
+                  {thumbnailIssueLabel}
+                </span>
+              ) : null}
+              {hasUnsavedTrimChanges ? (
+                <span className="rounded-md border border-info/25 bg-info/10 px-2.5 py-1 text-info">
+                  Unsaved trim
+                </span>
+              ) : null}
             </div>
-          </div>
 
-          <TrimControls
-            avatar={avatar}
-            savingTrim={savingTrim}
-            trimDraft={trimDraft}
-            onResetTrim={onResetTrim}
-            onSaveTrim={onSaveTrim}
-            onTrimDraftChange={onTrimDraftChange}
-          />
+            <TrimControls
+              avatar={avatar}
+              savingTrim={savingTrim}
+              trimDraft={trimDraft}
+              onResetTrim={onResetTrim}
+              onSaveTrim={onSaveTrim}
+              onTrimDraftChange={onTrimDraftChange}
+            />
 
-          <button
-            type="button"
-            onClick={onUseAvatar}
-            disabled={usingAvatar}
-            className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {usingAvatar ? (
-              <>
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                Selecting
-              </>
-            ) : (
-              <>
-                <UserRound className="size-4" aria-hidden="true" />
-                Use avatar
-              </>
-            )}
-          </button>
-        </>
-      ) : (
-        <div className="flex flex-1 items-center justify-center rounded-3xl border border-dashed border-border bg-[#fffaf6] px-6 py-10 text-center">
-          <div>
-            <Video className="mx-auto size-8 text-[#9aa7b8]" aria-hidden="true" />
-            <p className="mt-3 text-sm font-semibold text-[#405977]">
-              Select an avatar to preview it.
-            </p>
-            <p className="mt-1 text-sm font-medium text-muted">
-              The preview panel will activate when avatar assets are available.
-            </p>
+            <button
+              type="button"
+              onClick={onUseAvatar}
+              disabled={usingAvatar}
+              className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {usingAvatar ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Selecting
+                </>
+              ) : (
+                <>
+                  <UserRound className="size-4" aria-hidden="true" />
+                  Use avatar
+                </>
+              )}
+            </button>
+
+            <StatusMessages
+              errorMessage={errorMessage}
+              noticeMessage={noticeMessage}
+            />
           </div>
         </div>
-      )}
-
-      <StatusMessages errorMessage={errorMessage} noticeMessage={noticeMessage} />
-    </aside>
+      </div>
+    </div>
   );
 }
 
@@ -718,7 +1005,7 @@ function TrimControls({
     (duration === null || trimEnd <= duration);
 
   return (
-    <div className="mt-5 rounded-2xl border border-border bg-[#fffaf6] p-3">
+    <div className="mt-5 rounded-[var(--radius-panel)] border border-border bg-card-muted p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-foreground">Trim window</p>
@@ -726,7 +1013,7 @@ function TrimControls({
             {avatar.avatarSelection.isTrimmed ? "Saved custom trim" : "Full clip"}
           </p>
         </div>
-        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#405977] shadow-sm">
+        <span className="rounded-md border border-border bg-white px-2.5 py-1 text-xs font-bold text-[#405977]">
           {hasValidDraft
             ? `${formatSeconds(trimEnd - trimStart)} selected`
             : "Set trim"}
@@ -748,7 +1035,7 @@ function TrimControls({
                 start: event.target.value,
               })
             }
-            className="mt-1 h-10 w-full rounded-xl border border-border bg-white px-3 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+            className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm font-bold text-foreground outline-none transition focus:border-primary"
           />
         </label>
         <label className="block">
@@ -765,7 +1052,7 @@ function TrimControls({
                 end: event.target.value,
               })
             }
-            className="mt-1 h-10 w-full rounded-xl border border-border bg-white px-3 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+            className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm font-bold text-foreground outline-none transition focus:border-primary"
           />
         </label>
       </div>
@@ -781,7 +1068,7 @@ function TrimControls({
           type="button"
           onClick={onResetTrim}
           disabled={savingTrim || !avatar.avatarSelection.isTrimmed}
-          className="inline-flex h-9 flex-1 items-center justify-center rounded-full border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-[#fff8f4] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-9 flex-1 items-center justify-center rounded-md border border-border bg-white px-3 text-xs font-bold text-[#173454] transition-colors hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-50"
         >
           Reset
         </button>
@@ -789,7 +1076,7 @@ function TrimControls({
           type="button"
           onClick={onSaveTrim}
           disabled={savingTrim || !hasValidDraft}
-          className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-[#173454] px-3 text-xs font-bold text-white transition hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-md bg-[#173454] px-3 text-xs font-bold text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
         >
           {savingTrim ? (
             <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
@@ -851,7 +1138,7 @@ function StatusMessages({
       {errorMessage ? (
         <div
           role="alert"
-          className="rounded-2xl border border-error/20 bg-error/5 px-3 py-2 text-sm font-semibold text-error"
+          className="rounded-[var(--radius-panel)] border border-error/20 bg-error/5 px-3 py-2 text-sm font-semibold text-error"
         >
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -860,7 +1147,7 @@ function StatusMessages({
         </div>
       ) : null}
       {noticeMessage ? (
-        <div className="rounded-2xl border border-success/20 bg-success/5 px-3 py-2 text-sm font-semibold text-[#087443]">
+        <div className="rounded-[var(--radius-panel)] border border-success/20 bg-success/5 px-3 py-2 text-sm font-semibold text-[#087443]">
           <div className="flex items-start gap-2">
             <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <span>{noticeMessage}</span>
@@ -869,6 +1156,129 @@ function StatusMessages({
       ) : null}
     </div>
   );
+}
+
+function getLibraryStatus({
+  avatarCount,
+  isLoading,
+  missingThumbnailCount,
+  thumbnailFailureCount,
+}: {
+  avatarCount: number;
+  isLoading: boolean;
+  missingThumbnailCount: number;
+  thumbnailFailureCount: number;
+}) {
+  if (isLoading) {
+    return {
+      kind: "loading",
+      label: "Loading avatars",
+    } as const;
+  }
+
+  if (avatarCount === 0) {
+    return {
+      kind: "empty",
+      label: "No avatars",
+    } as const;
+  }
+
+  const issueCount = missingThumbnailCount + thumbnailFailureCount;
+
+  if (issueCount > 0) {
+    return {
+      kind: "warning",
+      label: `${issueCount} preview ${issueCount === 1 ? "issue" : "issues"}`,
+    } as const;
+  }
+
+  return {
+    kind: "ready",
+    label: "Library ready",
+  } as const;
+}
+
+function getPreviewHealthLabel({
+  avatarCount,
+  isLoading,
+  missingThumbnailCount,
+  thumbnailFailureCount,
+}: {
+  avatarCount: number;
+  isLoading: boolean;
+  missingThumbnailCount: number;
+  thumbnailFailureCount: number;
+}) {
+  if (isLoading) {
+    return "Checking avatar thumbnails.";
+  }
+
+  if (avatarCount === 0) {
+    return "Global avatar videos available to this workspace.";
+  }
+
+  const availableThumbnailCount = Math.max(0, avatarCount - missingThumbnailCount);
+
+  if (missingThumbnailCount > 0 || thumbnailFailureCount > 0) {
+    return `${availableThumbnailCount}/${avatarCount} avatars have thumbnail URLs. Repair missing or failed previews without loading source videos in the library.`;
+  }
+
+  return `${avatarCount} avatars loaded with thumbnail previews.`;
+}
+
+function getLibraryStatusBadgeClassName(kind: ReturnType<typeof getLibraryStatus>["kind"]) {
+  return cn(
+    "inline-flex h-8 w-fit items-center gap-2 rounded-md border px-3 text-xs font-semibold",
+    kind === "ready" &&
+      "border-success/20 bg-success/10 text-[#087443]",
+    kind === "warning" &&
+      "border-warning/25 bg-warning/10 text-warning",
+    kind === "loading" &&
+      "border-info/25 bg-info/10 text-info",
+    kind === "empty" && "border-border bg-white text-muted",
+  );
+}
+
+function getLibraryStatusDotClassName(kind: ReturnType<typeof getLibraryStatus>["kind"]) {
+  return cn(
+    "size-2 rounded-full",
+    kind === "ready" && "bg-success",
+    kind === "warning" && "bg-warning",
+    kind === "loading" && "bg-info",
+    kind === "empty" && "bg-muted-subtle",
+  );
+}
+
+function logAvatarLibraryDiagnostics(avatars: AvatarLibraryItem[]) {
+  const withoutThumbnail = avatars.filter((avatar) => !avatar.asset.thumbnailUrl);
+
+  console.info("[avatars] library diagnostics", {
+    total: avatars.length,
+    withThumbnail: avatars.length - withoutThumbnail.length,
+    withoutThumbnail: withoutThumbnail.length,
+  });
+}
+
+function getSafeUrlHostname(url: string) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "invalid-url";
+  }
+}
+
+function releaseVideoElement(video: HTMLVideoElement | null) {
+  if (!video) {
+    return;
+  }
+
+  video.pause();
+  video.removeAttribute("src");
+  video.load();
+}
+
+function isSameTrimDraft(left: TrimDraft, right: TrimDraft) {
+  return left.start === right.start && left.end === right.end;
 }
 
 async function patchAvatarPreference({

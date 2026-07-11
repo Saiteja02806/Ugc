@@ -4,15 +4,18 @@ import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
-  ExternalLink,
   Loader2,
+  Pencil,
+  RefreshCw,
   Save,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   FocusedVideoEditor,
+  type FocusedVideoEditorDetail,
   type FocusedVideoEditorDraftState,
 } from "@/components/edit/focused-video-editor";
 import {
@@ -79,10 +82,13 @@ type DemoDetailResponse =
 type SaveState = "idle" | "saving" | "saved" | "failed";
 
 export function DemoEditorShell({ demoId }: { demoId: string }) {
+  const router = useRouter();
   const [demo, setDemo] = useState<DemoVideo | null>(null);
   const [draft, setDraft] = useState<FocusedVideoEditorDraftState | null>(null);
+  const [editorResetKey, setEditorResetKey] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [title, setTitle] = useState("");
@@ -91,8 +97,20 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
     () => (demo ? mapDemoToEditableVideo(demo) : null),
     [demo],
   );
-  const hasTitleChanged = Boolean(demo && title.trim() && title.trim() !== demo.title);
-  const canSave = Boolean(demo && draft && saveState !== "saving");
+  const editorDetails = useMemo(
+    () => (demo ? getDemoEditorDetails(demo) : []),
+    [demo],
+  );
+  const hasTitleChanged = Boolean(demo && title.trim() !== demo.title);
+  const hasDraftChanged = Boolean(
+    demo &&
+      draft &&
+      !areDraftInputsEqual(normalizeDraftForSave(draft), getSavedDraftInput(demo)),
+  );
+  const hasUnsavedChanges = hasTitleChanged || hasDraftChanged;
+  const canSave = Boolean(
+    demo && draft && hasUnsavedChanges && saveState !== "saving",
+  );
 
   const loadDemo = useCallback(async () => {
     setErrorMessage(null);
@@ -124,6 +142,10 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
 
       setDemo(data.demo);
       setTitle(data.demo.title);
+      setDraft(null);
+      setEditorResetKey((current) => current + 1);
+      setSaveState("idle");
+      setSaveMessage(null);
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Could not load this demo."));
     } finally {
@@ -155,6 +177,32 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
       setSaveState("idle");
       setSaveMessage(null);
     }
+  }
+
+  function handleBackToDemos() {
+    if (hasUnsavedChanges) {
+      setShowLeaveDialog(true);
+      return;
+    }
+
+    router.push("/demos");
+  }
+
+  function handleLeaveWithoutSaving() {
+    setShowLeaveDialog(false);
+    router.push("/demos");
+  }
+
+  function handleDiscardChanges() {
+    if (!demo) {
+      return;
+    }
+
+    setTitle(demo.title);
+    setDraft(null);
+    setEditorResetKey((current) => current + 1);
+    setSaveState("idle");
+    setSaveMessage(null);
   }
 
   async function handleSaveDraft() {
@@ -217,23 +265,31 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
         hasTitleChanged={hasTitleChanged}
         saveState={saveState}
         title={title}
+        onBackToDemos={handleBackToDemos}
         onRefresh={() => void loadDemo()}
         onSaveDraft={() => void handleSaveDraft()}
         onTitleChange={handleTitleChange}
       />
 
       <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col pt-5">
-        {saveMessage ? (
-          <SaveNotice message={saveMessage} state={saveState} />
-        ) : null}
-
         {isLoading ? (
           <EditorLoadingState />
         ) : errorMessage ? (
           <EditorErrorState message={errorMessage} onRetry={() => void loadDemo()} />
         ) : editableVideo ? (
           <FocusedVideoEditor
-            key={editableVideo.id}
+            key={`${editableVideo.id}-${editorResetKey}`}
+            actionFooter={
+              <DemoEditorActionFooter
+                canDiscard={hasUnsavedChanges && saveState !== "saving"}
+                canSave={canSave}
+                message={saveMessage}
+                saveState={saveState}
+                onDiscard={handleDiscardChanges}
+                onSaveDraft={() => void handleSaveDraft()}
+              />
+            }
+            details={editorDetails}
             video={editableVideo}
             onDraftChange={handleDraftChange}
           />
@@ -244,6 +300,13 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
           />
         )}
       </div>
+
+      {showLeaveDialog ? (
+        <UnsavedChangesDialog
+          onLeave={handleLeaveWithoutSaving}
+          onStay={() => setShowLeaveDialog(false)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -252,6 +315,7 @@ function DemoEditorTopBar({
   canSave,
   demo,
   hasTitleChanged,
+  onBackToDemos,
   onRefresh,
   onSaveDraft,
   onTitleChange,
@@ -261,6 +325,7 @@ function DemoEditorTopBar({
   canSave: boolean;
   demo: DemoVideo | null;
   hasTitleChanged: boolean;
+  onBackToDemos: () => void;
   onRefresh: () => void;
   onSaveDraft: () => void;
   onTitleChange: (title: string) => void;
@@ -270,39 +335,43 @@ function DemoEditorTopBar({
   return (
     <header className="mx-auto flex w-full max-w-6xl flex-col gap-4 border-b border-border/70 pb-4 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0 flex-1">
-        <Link
-          href="/demos"
-          className="inline-flex items-center gap-2 text-sm font-bold text-[#405977] transition hover:text-foreground"
+        <button
+          type="button"
+          onClick={onBackToDemos}
+          className="inline-flex h-9 items-center gap-2 rounded-md px-1 text-sm font-semibold text-muted transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
-          Demos
-        </Link>
+          Back to Demos
+        </button>
 
         <div className="mt-2 flex max-w-2xl flex-col gap-2">
-          <label className="sr-only" htmlFor="demo-title">
-            Demo title
-          </label>
-          <input
-            id="demo-title"
-            value={title}
-            onChange={(event) => onTitleChange(event.target.value)}
-            disabled={!demo}
-            maxLength={140}
-            className="min-w-0 rounded-2xl border border-transparent bg-transparent px-0 text-2xl font-bold tracking-normal text-foreground outline-none transition placeholder:text-muted focus:border-border focus:bg-white focus:px-3 focus:py-2 focus:shadow-sm sm:text-3xl"
-            placeholder="Untitled demo"
-          />
+          <div className="group flex max-w-2xl items-center gap-2">
+            <label className="sr-only" htmlFor="demo-title">
+              Demo title
+            </label>
+            <input
+              id="demo-title"
+              value={title}
+              onChange={(event) => onTitleChange(event.target.value)}
+              disabled={!demo}
+              maxLength={140}
+              className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-0 py-1 text-2xl font-semibold tracking-normal text-foreground-strong outline-none transition placeholder:text-muted focus:border-border focus:bg-white focus:px-3 sm:text-3xl"
+              placeholder="Untitled demo"
+            />
+            <Pencil className="size-4 shrink-0 text-muted-subtle transition group-focus-within:text-primary" aria-hidden="true" />
+          </div>
           <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-muted">
-            <span className="rounded-full border border-border bg-white px-3 py-1.5">
+            <span className="rounded-md border border-border bg-white px-2.5 py-1">
               {demo ? getFileTypeLabel(demo.file_type) : "Video"}
             </span>
-            <span className="rounded-full border border-border bg-white px-3 py-1.5">
+            <span className="rounded-md border border-border bg-white px-2.5 py-1">
               {demo ? getDemoRatioLabel(demo) : "Ratio"}
             </span>
-            <span className="rounded-full border border-border bg-white px-3 py-1.5">
+            <span className="rounded-md border border-border bg-white px-2.5 py-1">
               {demo ? formatVideoDuration(demo.duration_seconds) : "Duration"}
             </span>
             {hasTitleChanged ? (
-              <span className="rounded-full bg-primary/10 px-3 py-1.5 text-primary">
+              <span className="rounded-md bg-primary/10 px-2.5 py-1 text-primary">
                 Unsaved title
               </span>
             ) : null}
@@ -311,29 +380,19 @@ function DemoEditorTopBar({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {demo?.source_video_url ? (
-          <a
-            href={demo.source_video_url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-border bg-white px-4 text-sm font-bold text-[#173454] shadow-sm transition hover:bg-[#fff8f4]"
-          >
-            <ExternalLink className="size-4" aria-hidden="true" />
-            Source
-          </a>
-        ) : null}
         <button
           type="button"
           onClick={onRefresh}
-          className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-white px-4 text-sm font-bold text-[#173454] shadow-sm transition hover:bg-[#fff8f4]"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
+          <RefreshCw className="size-4" aria-hidden="true" />
           Refresh
         </button>
         <button
           type="button"
           onClick={onSaveDraft}
           disabled={!canSave}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.20)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saveState === "saving" ? (
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -353,20 +412,113 @@ function DemoEditorTopBar({
   );
 }
 
-function SaveNotice({ message, state }: { message: string; state: SaveState }) {
-  const failed = state === "failed";
+function DemoEditorActionFooter({
+  canDiscard,
+  canSave,
+  message,
+  onDiscard,
+  onSaveDraft,
+  saveState,
+}: {
+  canDiscard: boolean;
+  canSave: boolean;
+  message: string | null;
+  onDiscard: () => void;
+  onSaveDraft: () => void;
+  saveState: SaveState;
+}) {
+  const failed = saveState === "failed";
 
   return (
+    <div className="rounded-panel border border-border bg-card p-3 shadow-sm">
+      {message ? (
+        <div
+          role={failed ? "alert" : "status"}
+          className={cn(
+            "mb-3 rounded-md border px-3 py-2 text-xs font-semibold",
+            failed
+              ? "border-error/20 bg-error/5 text-error"
+              : "border-border bg-card-muted text-muted",
+          )}
+        >
+          {message}
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={onDiscard}
+          disabled={!canDiscard}
+          className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Discard changes
+        </button>
+        <button
+          type="button"
+          onClick={onSaveDraft}
+          disabled={!canSave}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saveState === "saving" ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          ) : saveState === "saved" ? (
+            <CheckCircle2 className="size-4" aria-hidden="true" />
+          ) : (
+            <Save className="size-4" aria-hidden="true" />
+          )}
+          {saveState === "saving"
+            ? "Saving..."
+            : saveState === "saved"
+              ? "Saved"
+              : "Save draft"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function UnsavedChangesDialog({
+  onLeave,
+  onStay,
+}: {
+  onLeave: () => void;
+  onStay: () => void;
+}) {
+  return (
     <div
-      role={failed ? "alert" : "status"}
-      className={cn(
-        "mb-4 w-fit rounded-full border px-3 py-2 text-xs font-semibold shadow-sm",
-        failed
-          ? "border-error/20 bg-error/5 text-error"
-          : "border-border bg-white/85 text-[#405977]",
-      )}
+      className="fixed inset-0 z-modal flex items-center justify-center bg-black/45 px-4"
+      role="presentation"
     >
-      {message}
+      <section
+        aria-labelledby="unsaved-demo-title"
+        aria-modal="true"
+        className="w-full max-w-sm rounded-panel bg-card p-5 shadow-floating"
+        role="dialog"
+      >
+        <h2 id="unsaved-demo-title" className="text-base font-semibold text-foreground-strong">
+          You have unsaved changes.
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          Leaving now will discard the edits you made to this demo draft.
+        </p>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onStay}
+            className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          >
+            Stay here
+          </button>
+          <button
+            type="button"
+            onClick={onLeave}
+            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          >
+            Leave without saving
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -462,6 +614,46 @@ function normalizeDraftForSave(
     trimEndSeconds: normalizeNullableNumber(draft.trimEndSeconds),
     trimStartSeconds: normalizeNumber(draft.trimStartSeconds) ?? 0,
   };
+}
+
+function getSavedDraftInput(demo: DemoVideo): EditableVideoDraftInput {
+  const savedDraft = normalizeDemoDraft(demo.draft_json, demo.updated_at);
+
+  if (savedDraft) {
+    return normalizeDraftForSave(savedDraft);
+  }
+
+  return {
+    textOverlay: {
+      position: "bottom",
+      style: "bubble",
+      text: "",
+    },
+    trimEndSeconds: demo.duration_seconds,
+    trimStartSeconds: 0,
+  };
+}
+
+function areDraftInputsEqual(
+  first: EditableVideoDraftInput,
+  second: EditableVideoDraftInput,
+) {
+  return (
+    first.trimStartSeconds === second.trimStartSeconds &&
+    first.trimEndSeconds === second.trimEndSeconds &&
+    first.textOverlay.text === second.textOverlay.text &&
+    first.textOverlay.position === second.textOverlay.position &&
+    first.textOverlay.style === second.textOverlay.style
+  );
+}
+
+function getDemoEditorDetails(demo: DemoVideo): FocusedVideoEditorDetail[] {
+  return [
+    { label: "File type", value: getFileTypeLabel(demo.file_type) },
+    { label: "Aspect ratio", value: getDemoRatioLabel(demo) },
+    { label: "Duration", value: formatVideoDuration(demo.duration_seconds) },
+    { label: "Status", value: getDemoStatusLabel(demo.status) },
+  ];
 }
 
 function normalizeTextOverlay(value: unknown): TextOverlay {
@@ -566,6 +758,20 @@ function getFileTypeLabel(contentType: DemoVideo["file_type"]) {
   };
 
   return labels[contentType];
+}
+
+function getDemoStatusLabel(status: DemoStatus) {
+  const labels: Record<DemoStatus, string> = {
+    draft: "Draft",
+    failed: "Failed",
+    processing: "Processing",
+    ready: "Ready",
+    rendered: "Rendered",
+    rendering: "Rendering",
+    uploading: "Uploading",
+  };
+
+  return labels[status];
 }
 
 function getErrorMessage(error: unknown, fallback: string) {

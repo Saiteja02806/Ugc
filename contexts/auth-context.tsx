@@ -13,6 +13,7 @@ import {
 import {
   listenToAuthState,
   logout,
+  refreshCurrentFirebaseUser,
   type AuthUser,
 } from "@/lib/firebase/auth";
 
@@ -20,6 +21,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   error: Error | null;
+  refreshUser: () => Promise<AuthUser | null>;
   signOut: () => Promise<void>;
 };
 
@@ -60,14 +62,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    setError(null);
+
+    try {
+      const refreshedUser = await refreshCurrentFirebaseUser();
+      setUser(refreshedUser);
+
+      return refreshedUser;
+    } catch (refreshError) {
+      const normalizedError = normalizeError(refreshError);
+      setError(normalizedError);
+      throw normalizedError;
+    }
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
       loading,
       error,
+      refreshUser,
       signOut,
     }),
-    [user, loading, error, signOut],
+    [user, loading, error, refreshUser, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

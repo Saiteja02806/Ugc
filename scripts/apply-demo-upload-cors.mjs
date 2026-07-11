@@ -19,12 +19,27 @@ const client = new S3Client({
   ...(credentials ? { credentials } : {}),
 });
 
-await client.send(
-  new PutBucketCorsCommand({
-    Bucket: bucket,
-    CORSConfiguration: configuration,
-  }),
-);
+try {
+  await client.send(
+    new PutBucketCorsCommand({
+      Bucket: bucket,
+      CORSConfiguration: configuration,
+    }),
+  );
+} catch (error) {
+  if (isAccessDenied(error)) {
+    console.error(
+      [
+        `Could not apply S3 CORS to bucket ${bucket}: the selected AWS identity lacks s3:PutBucketCORS.`,
+        "Use AWS_DEPLOY_ACCESS_KEY_ID/AWS_DEPLOY_SECRET_ACCESS_KEY with bucket admin permissions,",
+        "or apply infra/s3-demo-upload-cors.json in the AWS console.",
+      ].join(" "),
+    );
+    process.exit(1);
+  }
+
+  throw error;
+}
 
 const applied = await client.send(new GetBucketCorsCommand({ Bucket: bucket }));
 const expectedOrigins = configuration.CORSRules.flatMap(
@@ -53,25 +68,34 @@ console.log(
 
 function getCredentials() {
   const accessKeyId =
-    process.env.AWS_ACCESS_KEY_ID?.trim() ||
-    process.env.AWS_DEPLOY_ACCESS_KEY_ID?.trim();
+    process.env.AWS_DEPLOY_ACCESS_KEY_ID?.trim() ||
+    process.env.AWS_ACCESS_KEY_ID?.trim();
   const secretAccessKey =
-    process.env.AWS_SECRET_ACCESS_KEY?.trim() ||
-    process.env.AWS_DEPLOY_SECRET_ACCESS_KEY?.trim();
+    process.env.AWS_DEPLOY_SECRET_ACCESS_KEY?.trim() ||
+    process.env.AWS_SECRET_ACCESS_KEY?.trim();
 
   if (!accessKeyId || !secretAccessKey) {
     return null;
   }
 
   const sessionToken =
-    process.env.AWS_SESSION_TOKEN?.trim() ||
-    process.env.AWS_DEPLOY_SESSION_TOKEN?.trim();
+    process.env.AWS_DEPLOY_SESSION_TOKEN?.trim() ||
+    process.env.AWS_SESSION_TOKEN?.trim();
 
   return {
     accessKeyId,
     secretAccessKey,
     ...(sessionToken ? { sessionToken } : {}),
   };
+}
+
+function isAccessDenied(error) {
+  return (
+    error &&
+    typeof error === "object" &&
+    ("name" in error || "Code" in error) &&
+    (error.name === "AccessDenied" || error.Code === "AccessDenied")
+  );
 }
 
 function loadEnvFile(envPath) {

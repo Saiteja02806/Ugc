@@ -1,13 +1,17 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { createClient } from "@supabase/supabase-js";
+import ffmpegPath from "ffmpeg-static";
 import { execFileSync } from "node:child_process";
 import {
   createReadStream,
   existsSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
+  rmSync,
   statSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, extname, join, resolve } from "node:path";
 
 const DEFAULT_EMMA_FOLDER =
@@ -18,6 +22,8 @@ const DEFAULT_EXPECTED_COUNT = 9;
 const DEFAULT_DURATION_SECONDS = 3;
 const DEFAULT_RATIO = "9:16";
 const MAX_AVATAR_UPLOAD_BYTES = 500 * 1024 * 1024;
+const AVATAR_THUMBNAIL_WIDTH = 450;
+const AVATAR_THUMBNAIL_HEIGHT = 800;
 
 const AVATAR_FILE_MAPPINGS = {
   amara: [
@@ -504,16 +510,31 @@ async function uploadAvatarAsset(item) {
   }
 
   console.log(`Uploading ${item.localFileName}`);
+  const thumbnail = createAvatarThumbnail(item);
 
-  await s3.send(
-    new PutObjectCommand({
-      Body: createReadStream(item.localPath),
-      Bucket: getRequiredEnv("AWS_S3_BUCKET"),
-      CacheControl: "public, max-age=31536000, immutable",
-      ContentType: "video/mp4",
-      Key: item.s3Key,
-    }),
-  );
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Body: createReadStream(item.localPath),
+        Bucket: getRequiredEnv("AWS_S3_BUCKET"),
+        CacheControl: "public, max-age=31536000, immutable",
+        ContentType: "video/mp4",
+        Key: item.s3Key,
+      }),
+    );
+
+    await s3.send(
+      new PutObjectCommand({
+        Body: thumbnail.buffer,
+        Bucket: getRequiredEnv("AWS_S3_BUCKET"),
+        CacheControl: "public, max-age=31536000, immutable",
+        ContentType: "image/webp",
+        Key: item.thumbnailS3Key,
+      }),
+    );
+  } finally {
+    rmSync(thumbnail.tempDir, { force: true, recursive: true });
+  }
 
   const { error } = await supabase.from("avatar_assets").insert({
     avatar_type: "global",
@@ -527,7 +548,7 @@ async function uploadAvatarAsset(item) {
     source_s3_key: item.s3Key,
     source_video_url: item.cloudFrontUrl,
     status: "ready",
-    thumbnail_url: null,
+    thumbnail_url: item.thumbnailCloudFrontUrl,
     width: item.width,
   });
 
@@ -660,6 +681,7 @@ function buildUploadPlanItem({
   }
 
   const s3Key = `avatars/global/${avatarKey}/${mapping.slug}.mp4`;
+  const thumbnailS3Key = `avatars/thumbnails/${avatarKey}/${mapping.slug}.webp`;
 
   return {
     cloudFrontUrl: buildCloudFrontUrl(s3Key),
@@ -679,9 +701,64 @@ function buildUploadPlanItem({
     s3Key,
     sizeBytes: fileSize,
     slug: mapping.slug,
+    thumbnailCloudFrontUrl: buildCloudFrontUrl(thumbnailS3Key),
+    thumbnailS3Key,
     sortOrder,
     width: videoMetadata?.width ?? null,
   };
+}
+
+function createAvatarThumbnail(item) {
+  const tempDir = mkdtempSync(join(tmpdir(), "ugc-avatar-thumb-"));
+  const outputPath = join(tempDir, `${item.slug}.webp`);
+  const ffmpegExecutable = ffmpegPath || "ffmpeg";
+  const seekSeconds = getThumbnailSeekSeconds(item.durationSeconds);
+
+  try {
+    execFileSync(
+      ffmpegExecutable,
+      [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-ss",
+        String(seekSeconds),
+        "-i",
+        item.localPath,
+        "-frames:v",
+        "1",
+        "-vf",
+        `scale=${AVATAR_THUMBNAIL_WIDTH}:${AVATAR_THUMBNAIL_HEIGHT}:force_original_aspect_ratio=decrease,pad=${AVATAR_THUMBNAIL_WIDTH}:${AVATAR_THUMBNAIL_HEIGHT}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1`,
+        "-c:v",
+        "libwebp",
+        "-quality",
+        "82",
+        "-preset",
+        "picture",
+        "-y",
+        outputPath,
+      ],
+      { stdio: "pipe" },
+    );
+  } catch (error) {
+    rmSync(tempDir, { force: true, recursive: true });
+    throw new Error(
+      `Could not create thumbnail for ${item.localFileName}: ${error.message}`,
+    );
+  }
+
+  return {
+    buffer: readFileSync(outputPath),
+    tempDir,
+  };
+}
+
+function getThumbnailSeekSeconds(durationSeconds) {
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    return 0.8;
+  }
+
+  return Math.min(1.5, Math.max(0.25, durationSeconds * 0.3));
 }
 
 function probeVideoMetadata(filePath) {
@@ -758,6 +835,7 @@ function printPlan(plan, { dryRun, execute }) {
     console.log(`${item.sortOrder + 1}. ${item.localFileName}`);
     console.log(`   Name: ${item.name}`);
     console.log(`   S3: ${item.s3Key}`);
+    console.log(`   Thumbnail: ${item.thumbnailS3Key}`);
     console.log(`   URL: ${item.cloudFrontUrl}`);
     console.log(
       `   Metadata: duration=${item.durationSeconds ?? "null"} dimensions=${

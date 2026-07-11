@@ -85,6 +85,8 @@
     "demo:cors:check": "node scripts/check-demo-upload-cors.mjs",
     "worker:test:e2e": "node scripts/test-worker-job-e2e.mjs",
     "worker:start": "node worker/dist/index.js",
+    "avatars:thumbnails:backfill": "node scripts/backfill-avatar-thumbnails.mjs",
+    "avatars:thumbnails:backfill:dry-run": "node scripts/backfill-avatar-thumbnails.mjs --dry-run --check-existing",
     "trigger:dev": "trigger dev --env-file .env.local",
     "trigger:deploy": "trigger deploy"
   },

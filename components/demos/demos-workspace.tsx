@@ -962,6 +962,15 @@ function uploadFileToS3({
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve();
       } else {
+        console.error(
+          "Demo S3 upload failed",
+          getStorageUploadDiagnostics({
+            contentType,
+            responseBody: getSafeXhrResponseText(xhr),
+            uploadUrl,
+            xhr,
+          }),
+        );
         reject(
           new Error(
             `Storage upload failed with status ${xhr.status}. Please try again.`,
@@ -971,9 +980,17 @@ function uploadFileToS3({
     };
 
     xhr.onerror = () => {
+      console.error(
+        "Demo S3 upload network error",
+        getStorageUploadDiagnostics({
+          contentType,
+          uploadUrl,
+          xhr,
+        }),
+      );
       reject(
         new Error(
-          "Storage rejected the upload. Check the storage connection and try again.",
+          "Storage blocked the upload before it reached UGC Pilot. Check the storage connection and try again.",
         ),
       );
     };
@@ -992,6 +1009,71 @@ function uploadFileToS3({
 
     xhr.send(file);
   });
+}
+
+function getStorageUploadDiagnostics({
+  contentType,
+  responseBody,
+  uploadUrl,
+  xhr,
+}: {
+  contentType: DemoContentType;
+  responseBody?: string;
+  uploadUrl: string;
+  xhr: XMLHttpRequest;
+}) {
+  const uploadTarget = getUploadTargetDiagnostics(uploadUrl);
+
+  return {
+    browserOnline: navigator.onLine,
+    contentType,
+    readyState: xhr.readyState,
+    responseBody: responseBody ? sanitizeStorageResponse(responseBody) : undefined,
+    status: xhr.status,
+    statusText: xhr.statusText,
+    uploadHostname: uploadTarget.hostname,
+    uploadPathname: uploadTarget.pathname,
+    uploadRegion: uploadTarget.region,
+  };
+}
+
+function getUploadTargetDiagnostics(uploadUrl: string) {
+  try {
+    const parsedUrl = new URL(uploadUrl);
+
+    return {
+      hostname: parsedUrl.hostname,
+      pathname: parsedUrl.pathname,
+      region: getS3RegionFromHostname(parsedUrl.hostname),
+    };
+  } catch {
+    return {
+      hostname: "unparseable",
+      pathname: "unparseable",
+      region: "unknown",
+    };
+  }
+}
+
+function getS3RegionFromHostname(hostname: string) {
+  const match = hostname.match(/\.s3[.-]([a-z0-9-]+)\.amazonaws\.com$/i);
+
+  return match?.[1] ?? "unknown";
+}
+
+function getSafeXhrResponseText(xhr: XMLHttpRequest) {
+  try {
+    return xhr.responseText;
+  } catch {
+    return "";
+  }
+}
+
+function sanitizeStorageResponse(responseText: string) {
+  return responseText
+    .replace(/<AWSAccessKeyId>[^<]*<\/AWSAccessKeyId>/gi, "<AWSAccessKeyId>[redacted]</AWSAccessKeyId>")
+    .replace(/X-Amz-Credential=[^&<\s]+/gi, "X-Amz-Credential=[redacted]")
+    .slice(0, 1200);
 }
 
 function throwIfUploadCancelled(cancelled: boolean) {

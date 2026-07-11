@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { EmailAuthForm } from "@/components/auth/email-auth-form";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -14,7 +15,7 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/dashboard");
+      router.replace(user.emailVerified ? "/dashboard" : "/verify-email");
     }
   }, [user, loading, router]);
 
@@ -46,12 +47,13 @@ export default function SignInPage() {
               Sign in to create AI UGC ads
             </h1>
             <p className="mt-3 text-sm leading-6 text-muted">
-              Use Google to access your workspace, saved brand context, and
-              generated videos.
+              Use Google or email to access your workspace, saved brand
+              context, and generated videos.
             </p>
           </div>
 
           <GoogleSignInButton />
+          <EmailAuthForm />
 
           <p className="mt-6 text-center text-xs leading-5 text-[#98a2b3]">
             By continuing, you agree to use UGC Studio for your own SaaS

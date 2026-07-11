@@ -81,6 +81,8 @@
     "worker:test:ecs": "node scripts/run-ecs-test-worker-job.mjs",
     "worker:test:carousel:e2e": "node scripts/test-carousel-generation-aws.mjs",
     "demo:test:e2e": "node scripts/test-demo-upload-draft-e2e.mjs",
+    "demo:cors:apply": "node scripts/apply-demo-upload-cors.mjs",
+    "demo:cors:check": "node scripts/check-demo-upload-cors.mjs",
     "worker:test:e2e": "node scripts/test-worker-job-e2e.mjs",
     "worker:start": "node worker/dist/index.js",
     "trigger:dev": "trigger dev --env-file .env.local",

@@ -6,6 +6,7 @@ import {
   ChevronDown,
   Clock3,
   Film,
+  Lock,
   Loader2,
   Plus,
   Sparkles,
@@ -108,6 +109,7 @@ type GeneratedVideo = {
 
 const videoRatios: VideoRatio[] = ["9:16", "1:1", "4:5", "16:9"];
 const videoCountOptions: VideoCount[] = [1, 2, 4];
+const VIDEO_GENERATION_LOCKED = true;
 
 export function VideoGenerationWorkspace() {
   const router = useRouter();
@@ -226,7 +228,7 @@ export function VideoGenerationWorkspace() {
   function handleSubmit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
 
-    if (!prompt.trim() || isGenerating) {
+    if (VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating) {
       return;
     }
 
@@ -590,10 +592,16 @@ function VideoPromptBar({
 
         <button
           type="submit"
-          disabled={!prompt.trim() || isGenerating || !avatar}
+          disabled={VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating || !avatar}
+          title={VIDEO_GENERATION_LOCKED ? "Video generation is locked" : undefined}
           className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[118px]"
         >
-          {isGenerating ? (
+          {VIDEO_GENERATION_LOCKED ? (
+            <>
+              <span className="hidden sm:inline">Locked</span>
+              <Lock className="size-4" aria-hidden="true" />
+            </>
+          ) : isGenerating ? (
             <>
               <span className="hidden sm:inline">Generating</span>
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />

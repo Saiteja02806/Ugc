@@ -346,6 +346,10 @@ Balanced carousel copy rules:
   consistent modest radius. Do not leave visible gaps that make wrapped copy
   look like floating chips, and do not replace the measured silhouette with one
   oversized rectangular panel.
+- Paint each connected silhouette once through the union of its measured line
+  shapes. Do not paint a separate semi-transparent white rectangle per line;
+  overlapping alpha creates darker seams and makes one text group look like a
+  stack of independent labels.
 
 The renderer must avoid fake app UI:
 
@@ -409,17 +413,28 @@ only the caller's carousel generations for the caller's single business profile.
   once: far-left, near-left, centre, near-right, and far-right. Cards must stay
   vertically straight and use only horizontal translation, scale, opacity, and
   z-index for depth. Do not rotate, skew, or fan the cards.
+- Every creative card is vertically centered inside one shared stage and scales
+  from its center. Do not anchor cards at `top: 0` or use a top transform origin;
+  smaller side candidates must step inward and downward naturally around the
+  active card's visual center. Near cards use the stronger secondary layer and
+  far cards use the smaller tertiary layer with enough horizontal offset to
+  keep both outside corners visible.
 - The active desktop portrait card is capped at 320px wide, with 300px at the
   tablet breakpoint and 260px on narrow mobile screens. Side offsets shrink in
   the same proportion so the five-card stack remains overlapping rather than
   spreading into a normal row.
+- The far-left and far-right tertiary cards are desktop-only. Tablet and mobile
+  show the active card plus the near previous/next candidates so the stack does
+  not become cramped or horizontally scroll.
 - Every candidate owns its own active-slide state. The centre card renders only
   that candidate's active slide; its left/right controls and five dots are
   positioned inside the image card and move only through that candidate's five
   slides. The dots, controls, and image must not create a wide three-slide
   strip or show neighboring slides from the same carousel.
 - Title, lifecycle status, and the visually disabled Generate action remain a
-  compact row below the image card rather than a large information footer.
+  compact row below the stack rather than a large information footer. This row
+  is outside every card's transformed box so its height cannot shift or distort
+  the stack geometry.
 - Trending is the only visible Carousel product surface in the app. Clicking
   an image, slide, dots, slide arrows, or its visual Generate control must never
   open a separate Carousel Ads workspace. The Trending Generate control is

@@ -47,7 +47,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-bubble-renderer-v5-connected-text-groups";
+  "social-bubble-renderer-v6-unified-text-silhouette";
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
   "1:1": { height: 1080, width: 1080 },
@@ -670,7 +670,8 @@ function buildBubbleText(params: {
   }
 
   const groupY = Math.round(params.y);
-  const rects = params.lines
+  const clipId = `${params.className}-bubble-silhouette`;
+  const silhouetteRects = params.lines
     .map((_, index) => {
       const rect = metrics.rects[index];
 
@@ -680,7 +681,7 @@ function buildBubbleText(params: {
 
       return `<rect x="${Math.round(params.x - rect.width / 2)}" y="${Math.round(
         groupY + index * metrics.lineStep,
-      )}" width="${rect.width}" height="${metrics.rectHeight}" rx="${params.radius}" fill="${params.fill}" fill-opacity="0.97"/>`;
+      )}" width="${rect.width}" height="${metrics.rectHeight}" rx="${params.radius}"/>`;
     })
     .join("");
   const textLines = params.lines
@@ -691,8 +692,13 @@ function buildBubbleText(params: {
     })
     .join("");
 
-  return `<g${params.shadow ? ' filter="url(#bubbleShadow)"' : ""}>
-    ${rects}
+  return `<defs>
+    <clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">
+      ${silhouetteRects}
+    </clipPath>
+  </defs>
+  <g${params.shadow ? ' filter="url(#bubbleShadow)"' : ""}>
+    <rect x="${Math.round(params.x - metrics.bubbleWidth / 2)}" y="${groupY}" width="${metrics.bubbleWidth}" height="${metrics.groupHeight}" fill="${params.fill}" fill-opacity="0.97" clip-path="url(#${clipId})"/>
     ${textLines}
   </g>`;
 }

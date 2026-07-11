@@ -10,6 +10,23 @@ Before changing any Carousel API, worker, matcher, image sourcing, review,
 readiness, rendering, schema, or frontend behavior, read `CAROUSEL_CONTEXT.md`.
 Update that file when a Carousel product or architecture decision changes.
 
+## Push and deployment scope
+
+When the user asks to push or deploy all current changes, treat every
+intentional project change in the worktree as part of the release, regardless
+of whether it is a small fix or a large feature.
+
+- Audit the complete `git status` before staging.
+- Include all intentional source, configuration, migration, script, test, and
+  documentation changes. Never silently omit a smaller fix because another
+  change appears more important.
+- Run validation appropriate to the combined release scope before pushing.
+- Exclude only secrets and local environment files, caches/build output,
+  temporary generated artifacts, or work the user explicitly defers.
+- Report every excluded path and the reason before declaring the push complete.
+- After pushing, verify that the remote commit and each relevant deployment
+  target contain the complete intended release.
+
 
 <!-- TRIGGER.DEV advanced-tasks START -->
 # Trigger.dev Advanced Tasks (v4)

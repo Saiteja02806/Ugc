@@ -1,0 +1,16 @@
+{
+  "CORSRules": [
+    {
+      "AllowedHeaders": ["*"],
+      "AllowedMethods": ["GET", "HEAD", "PUT"],
+      "AllowedOrigins": [
+        "https://getugcpilot.com",
+        "https://www.getugcpilot.com",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+      ],
+      "ExposeHeaders": ["ETag"],
+      "MaxAgeSeconds": 3600
+    }
+  ]
+}

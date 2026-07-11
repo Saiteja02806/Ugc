@@ -87,15 +87,15 @@ const STACK_CARD_STYLES: Record<
   { opacity: number; scale: number; translateX: string; zIndex: number }
 > = {
   [-2]: {
-    opacity: 0.9,
-    scale: 0.82,
-    translateX: "clamp(-260px, -24vw, -108px)",
+    opacity: 0.84,
+    scale: 0.76,
+    translateX: "clamp(-330px, -29vw, -118px)",
     zIndex: 3,
   },
   [-1]: {
-    opacity: 1,
-    scale: 0.9,
-    translateX: "clamp(-136px, -12vw, -58px)",
+    opacity: 0.96,
+    scale: 0.88,
+    translateX: "clamp(-176px, -15vw, -62px)",
     zIndex: 4,
   },
   0: {
@@ -105,15 +105,15 @@ const STACK_CARD_STYLES: Record<
     zIndex: 5,
   },
   1: {
-    opacity: 1,
-    scale: 0.9,
-    translateX: "clamp(58px, 12vw, 136px)",
+    opacity: 0.96,
+    scale: 0.88,
+    translateX: "clamp(62px, 15vw, 176px)",
     zIndex: 4,
   },
   2: {
-    opacity: 0.9,
-    scale: 0.82,
-    translateX: "clamp(108px, 24vw, 260px)",
+    opacity: 0.84,
+    scale: 0.76,
+    translateX: "clamp(118px, 29vw, 330px)",
     zIndex: 3,
   },
 };
@@ -575,6 +575,13 @@ function CarouselCandidateStack({
   );
   const activeCandidate = candidates[safeActiveCarouselIndex];
   const title = getCarouselTitle(activeCandidate.carousel);
+  const storedActiveSlideIndex =
+    activeSlideByCarouselId[activeCandidate.carousel.carouselId] ?? 0;
+  const activeSlideIndex = Math.min(
+    storedActiveSlideIndex,
+    Math.max(activeCandidate.slides.length - 1, 0),
+  );
+  const activeSlide = activeCandidate.slides[activeSlideIndex];
   const visibleCarouselSlots = getVisibleCarouselSlots(
     candidates,
     safeActiveCarouselIndex,
@@ -582,7 +589,7 @@ function CarouselCandidateStack({
 
   return (
     <section aria-label="Personalized carousel ideas" className="w-full">
-      <div className="relative isolate mx-auto h-[390px] w-full max-w-5xl overflow-hidden sm:h-[425px] lg:h-[460px]">
+      <div className="relative isolate mx-auto mt-3 h-[365px] w-full max-w-6xl overflow-hidden sm:mt-8 sm:h-[425px] lg:mt-10 lg:h-[440px]">
         {visibleCarouselSlots.map((slot) => (
           <CarouselStackCard
             key={slot.candidate.carousel.carouselId}
@@ -597,6 +604,12 @@ function CarouselCandidateStack({
           />
         ))}
       </div>
+      <CarouselStackSummary
+        activeSlide={activeSlide}
+        carouselCount={candidates.length}
+        carouselIndex={safeActiveCarouselIndex}
+        title={title}
+      />
       <span className="sr-only" aria-live="polite">
         Showing {title}, idea {safeActiveCarouselIndex + 1} of {candidates.length}
       </span>
@@ -634,8 +647,7 @@ function CarouselStackCard({
   const stackStyle = STACK_CARD_STYLES[relativePosition];
   const cardStyle: CSSProperties = {
     opacity: stackStyle.opacity,
-    transform: `translateX(calc(-50% + ${stackStyle.translateX})) scale(${stackStyle.scale})`,
-    zIndex: stackStyle.zIndex,
+    transform: `translateX(${stackStyle.translateX}) scale(${stackStyle.scale})`,
   };
 
   function selectCard() {
@@ -668,115 +680,135 @@ function CarouselStackCard({
   }
 
   return (
-    <article
-      aria-label={`${title}, idea ${carouselIndex + 1} of ${carouselCount}`}
+    <div
       className={cn(
-        "absolute left-1/2 top-0 w-[min(72vw,260px)] origin-top overflow-visible transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none sm:w-[min(48vw,300px)] lg:w-[min(30vw,320px)]",
-        !isActive &&
-          "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
+        "pointer-events-none absolute inset-0 flex items-center justify-center",
+        Math.abs(relativePosition) === 2 && "hidden lg:flex",
       )}
-      onClick={selectCard}
-      onKeyDown={handleCardKeyDown}
-      role={isActive ? undefined : "button"}
-      style={cardStyle}
-      tabIndex={isActive ? undefined : 0}
+      style={{ zIndex: stackStyle.zIndex }}
     >
-      <div
+      <article
+        aria-label={`${title}, idea ${carouselIndex + 1} of ${carouselCount}`}
         className={cn(
-          "relative aspect-[4/5] overflow-hidden rounded-xl bg-foreground-strong",
-          isActive
-            ? "shadow-[0_12px_20px_rgb(9_9_11_/_0.2)]"
-            : "shadow-[0_8px_14px_rgb(9_9_11_/_0.16)]",
+          "pointer-events-auto w-[min(72vw,260px)] origin-center overflow-visible transition-[opacity,transform] duration-300 ease-out will-change-transform motion-reduce:transition-none sm:w-[min(48vw,300px)] lg:w-[min(30vw,320px)]",
+          !isActive &&
+            "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
         )}
+        onClick={selectCard}
+        onKeyDown={handleCardKeyDown}
+        role={isActive ? undefined : "button"}
+        style={cardStyle}
+        tabIndex={isActive ? undefined : 0}
       >
-        {/* Rendered Carousel slides are immutable CloudFront creative assets. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={activeSlide.renderedUrl}
-          alt={isActive ? `${title}, slide ${activeSlide.slideNumber}` : ""}
-          aria-hidden={isActive ? undefined : "true"}
-          className="size-full object-contain"
-        />
-
-        {candidate.slides.length > 1 ? (
-          <>
-            <button
-              type="button"
-              onClick={(event) => moveSlide(event, -1)}
-              className={cn(
-                "absolute left-3 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white transition-[background-color,transform] hover:scale-105 hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none",
-                isActive ? "size-9" : "size-8",
-              )}
-              aria-label={`Previous slide for ${title}`}
-            >
-              <ArrowLeft className={isActive ? "size-4" : "size-3.5"} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={(event) => moveSlide(event, 1)}
-              className={cn(
-                "absolute right-3 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white transition-[background-color,transform] hover:scale-105 hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none",
-                isActive ? "size-9" : "size-8",
-              )}
-              aria-label={`Next slide for ${title}`}
-            >
-              <ArrowRight className={isActive ? "size-4" : "size-3.5"} aria-hidden="true" />
-            </button>
-          </>
-        ) : null}
-
         <div
-          className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1.5"
-          aria-label={`${title} slides`}
+          className={cn(
+            "relative aspect-[4/5] overflow-hidden rounded-lg bg-foreground-strong ring-1 ring-black/10",
+            isActive
+              ? "shadow-[0_18px_36px_rgb(9_9_11_/_0.22)]"
+              : "shadow-[0_12px_26px_rgb(9_9_11_/_0.16)]",
+          )}
         >
-          {candidate.slides.map((slide, index) => (
-            <button
-              key={slide.slideNumber}
-              type="button"
-              onClick={(event) => selectSlide(event, index)}
-              aria-label={`Show slide ${index + 1} for ${title}`}
-              aria-current={activeSlideIndex === index ? "true" : undefined}
-              className={cn(
-                "h-1.5 rounded-full transition-[width,background-color] motion-reduce:transition-none",
-                activeSlideIndex === index
-                  ? "w-4 bg-white"
-                  : "w-1.5 bg-white/45 hover:bg-white/80",
-              )}
-            />
-          ))}
-        </div>
-      </div>
+          {/* Rendered Carousel slides are immutable CloudFront creative assets. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={activeSlide.renderedUrl}
+            alt={isActive ? `${title}, slide ${activeSlide.slideNumber}` : ""}
+            aria-hidden={isActive ? undefined : "true"}
+            className="size-full object-contain"
+          />
 
-      {isActive ? (
-        <div className="mt-3 flex items-start justify-between gap-3 px-1">
-          <div className="min-w-0">
-            <p className="line-clamp-1 text-sm font-semibold text-foreground-strong">
-              {title}
-            </p>
-            <p className="mt-1 text-xs leading-5 text-muted">
-              {getSlideRoleLabel(activeSlide)} | Idea {carouselIndex + 1} of {carouselCount}
-            </p>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2">
-            <span className="rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-semibold text-success">
-              Ready
-            </span>
-            <span title="Generation from Trending is coming soon.">
+          {candidate.slides.length > 1 ? (
+            <>
               <button
                 type="button"
-                disabled
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card-muted px-2.5 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-80"
-                aria-label="Generate carousel, coming soon"
+                onClick={(event) => moveSlide(event, -1)}
+                className={cn(
+                  "absolute left-3 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white transition-[background-color,transform] hover:scale-105 hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none",
+                  isActive ? "size-9" : "size-8",
+                )}
+                aria-label={`Previous slide for ${title}`}
               >
-                <Sparkles className="size-3.5" aria-hidden="true" />
-                Generate
+                <ArrowLeft className={isActive ? "size-4" : "size-3.5"} aria-hidden="true" />
               </button>
-            </span>
+              <button
+                type="button"
+                onClick={(event) => moveSlide(event, 1)}
+                className={cn(
+                  "absolute right-3 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white transition-[background-color,transform] hover:scale-105 hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none",
+                  isActive ? "size-9" : "size-8",
+                )}
+                aria-label={`Next slide for ${title}`}
+              >
+                <ArrowRight className={isActive ? "size-4" : "size-3.5"} aria-hidden="true" />
+              </button>
+            </>
+          ) : null}
+
+          <div
+            className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1.5"
+            aria-label={`${title} slides`}
+          >
+            {candidate.slides.map((slide, index) => (
+              <button
+                key={slide.slideNumber}
+                type="button"
+                onClick={(event) => selectSlide(event, index)}
+                aria-label={`Show slide ${index + 1} for ${title}`}
+                aria-current={activeSlideIndex === index ? "true" : undefined}
+                className={cn(
+                  "h-1.5 rounded-full transition-[width,background-color] motion-reduce:transition-none",
+                  activeSlideIndex === index
+                    ? "w-4 bg-white"
+                    : "w-1.5 bg-white/45 hover:bg-white/80",
+                )}
+              />
+            ))}
           </div>
         </div>
-      ) : null}
-    </article>
+      </article>
+    </div>
+  );
+}
+
+function CarouselStackSummary({
+  activeSlide,
+  carouselCount,
+  carouselIndex,
+  title,
+}: {
+  activeSlide: ReadyCarouselSlide;
+  carouselCount: number;
+  carouselIndex: number;
+  title: string;
+}) {
+  return (
+    <div className="mx-auto mt-5 flex w-full max-w-[480px] flex-col gap-3 px-4 sm:flex-row sm:items-start sm:justify-between sm:px-0">
+      <div className="min-w-0">
+        <p className="line-clamp-1 text-sm font-semibold text-foreground-strong">
+          {title}
+        </p>
+        <p className="mt-1 text-xs leading-5 text-muted">
+          {getSlideRoleLabel(activeSlide)} | Idea {carouselIndex + 1} of {carouselCount}
+        </p>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <span className="rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-semibold text-success">
+          Ready
+        </span>
+        <span title="Generation from Trending is coming soon.">
+          <button
+            type="button"
+            disabled
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card-muted px-2.5 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-80"
+            aria-label="Generate carousel, coming soon"
+          >
+            <Sparkles className="size-3.5" aria-hidden="true" />
+            Generate
+          </button>
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -901,23 +933,27 @@ function CarouselLoadingStackVisual() {
       {LOADING_STACK_PLACEHOLDERS.map((placeholder, index) => (
         <div
           key={placeholder.translateX}
-          className="absolute left-1/2 top-0 aspect-[4/5] w-[230px] origin-top overflow-hidden rounded-xl border border-border bg-card-muted shadow-[0_8px_18px_rgb(9_9_11_/_0.08)]"
-          style={{
-            opacity: placeholder.opacity,
-            transform: `translateX(calc(-50% + ${placeholder.translateX})) scale(${placeholder.scale})`,
-            zIndex: placeholder.zIndex,
-          }}
+          className="absolute inset-0 flex items-center justify-center"
+          style={{ zIndex: placeholder.zIndex }}
         >
-          <div className="size-full animate-pulse bg-card-muted p-6 motion-reduce:animate-none">
-            <div className="h-2.5 w-16 rounded-full bg-border-strong/70" />
-            <div className="mt-28 space-y-2.5">
-              <div className="h-3 w-4/5 rounded-full bg-border-strong/70" />
-              <div className="h-3 w-full rounded-full bg-border-strong/70" />
-              <div className="h-3 w-3/5 rounded-full bg-border-strong/70" />
+          <div
+            className="relative aspect-[4/5] w-[230px] origin-center overflow-hidden rounded-lg border border-border bg-card-muted shadow-[0_8px_18px_rgb(9_9_11_/_0.08)]"
+            style={{
+              opacity: placeholder.opacity,
+              transform: `translateX(${placeholder.translateX}) scale(${placeholder.scale})`,
+            }}
+          >
+            <div className="size-full animate-pulse bg-card-muted p-6 motion-reduce:animate-none">
+              <div className="h-2.5 w-16 rounded-full bg-border-strong/70" />
+              <div className="mt-28 space-y-2.5">
+                <div className="h-3 w-4/5 rounded-full bg-border-strong/70" />
+                <div className="h-3 w-full rounded-full bg-border-strong/70" />
+                <div className="h-3 w-3/5 rounded-full bg-border-strong/70" />
+              </div>
+              {index === 1 ? (
+                <div className="absolute bottom-5 left-1/2 h-1.5 w-20 -translate-x-1/2 rounded-full bg-border-strong/70" />
+              ) : null}
             </div>
-            {index === 1 ? (
-              <div className="absolute bottom-5 left-1/2 h-1.5 w-20 -translate-x-1/2 rounded-full bg-border-strong/70" />
-            ) : null}
           </div>
         </div>
       ))}

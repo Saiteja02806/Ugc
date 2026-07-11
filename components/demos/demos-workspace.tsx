@@ -8,10 +8,12 @@ import {
   Loader2,
   Pencil,
   Play,
+  RotateCcw,
   RefreshCw,
   Trash2,
   Upload,
   Video,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -21,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 const DEFAULT_PROJECT_ID = "test-project-001";
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+const DEMO_UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
 const MIN_DURATION_SECONDS = 1;
 const MAX_DURATION_SECONDS = 60;
 const ALLOWED_EXTENSIONS = new Set(["mp4", "mov", "webm"]);
@@ -98,6 +101,9 @@ type ApiErrorResponse = {
 
 export function DemosWorkspace() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const activeUploadRequestRef = useRef<XMLHttpRequest | null>(null);
+  const failedUploadFileRef = useRef<File | null>(null);
+  const uploadCancelledRef = useRef(false);
   const [demos, setDemos] = useState<DemoVideo[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -160,6 +166,12 @@ export function DemosWorkspace() {
     return () => window.clearTimeout(timer);
   }, [loadDemos]);
 
+  useEffect(() => {
+    return () => {
+      activeUploadRequestRef.current?.abort();
+    };
+  }, []);
+
   function openFilePicker() {
     fileInputRef.current?.click();
   }
@@ -175,6 +187,11 @@ export function DemosWorkspace() {
   }
 
   async function uploadDemo(file: File) {
+    let token: string | null = null;
+    let uploadTarget: CreateUploadResponse | null = null;
+
+    uploadCancelledRef.current = false;
+    failedUploadFileRef.current = null;
     setErrorMessage(null);
     setUploadState({
       fileName: file.name,
@@ -186,6 +203,7 @@ export function DemosWorkspace() {
     try {
       const contentType = getSupportedContentType(file);
       const metadata = await readVideoMetadata(file);
+      throwIfUploadCancelled(uploadCancelledRef.current);
 
       setUploadState({
         fileName: file.name,
@@ -194,12 +212,14 @@ export function DemosWorkspace() {
         status: "creating",
       });
 
-      const token = await getAuthToken();
-      const uploadTarget = await createUploadTarget({
+      token = await getAuthToken();
+      throwIfUploadCancelled(uploadCancelledRef.current);
+      uploadTarget = await createUploadTarget({
         contentType,
         file,
         token,
       });
+      throwIfUploadCancelled(uploadCancelledRef.current);
 
       setUploadState({
         fileName: file.name,
@@ -219,8 +239,14 @@ export function DemosWorkspace() {
             status: "uploading",
           });
         },
+        onRequestCreated: (request) => {
+          activeUploadRequestRef.current = request;
+        },
         uploadUrl: uploadTarget.uploadUrl,
+      }).finally(() => {
+        activeUploadRequestRef.current = null;
       });
+      throwIfUploadCancelled(uploadCancelledRef.current);
 
       setUploadState({
         fileName: file.name,
@@ -228,6 +254,7 @@ export function DemosWorkspace() {
         progress: 96,
         status: "finalizing",
       });
+      failedUploadFileRef.current = null;
 
       await completeUpload({
         demoId: uploadTarget.demoId,
@@ -253,13 +280,42 @@ export function DemosWorkspace() {
         });
       }, 1500);
     } catch (error) {
+      failedUploadFileRef.current = file;
       setUploadState({
         fileName: file.name,
         message: getErrorMessage(error, "Upload failed."),
         progress: 0,
         status: "failed",
       });
+
+      if (token && uploadTarget) {
+        await cleanupIncompleteUpload({
+          demoId: uploadTarget.demoId,
+          key: uploadTarget.key,
+          token,
+        });
+        await loadDemos();
+      }
     }
+  }
+
+  function handleCancelUpload() {
+    if (!hasActiveUpload) {
+      return;
+    }
+
+    uploadCancelledRef.current = true;
+    activeUploadRequestRef.current?.abort();
+  }
+
+  function handleRetryUpload() {
+    const file = failedUploadFileRef.current;
+
+    if (!file || hasActiveUpload) {
+      return;
+    }
+
+    void uploadDemo(file);
   }
 
   async function handleDeleteDemo(demo: DemoVideo) {
@@ -358,8 +414,10 @@ export function DemosWorkspace() {
           isDragActive={isDragActive}
           uploadState={uploadState}
           onBrowse={openFilePicker}
+          onCancel={handleCancelUpload}
           onDragActiveChange={setIsDragActive}
           onFiles={handleFiles}
+          onRetry={handleRetryUpload}
         />
 
         {errorMessage ? (
@@ -389,15 +447,19 @@ function UploadPanel({
   demosCount,
   isDragActive,
   onBrowse,
+  onCancel,
   onDragActiveChange,
   onFiles,
+  onRetry,
   uploadState,
 }: {
   demosCount: number;
   isDragActive: boolean;
   onBrowse: () => void;
+  onCancel: () => void;
   onDragActiveChange: (active: boolean) => void;
   onFiles: (files: FileList | File[]) => Promise<void>;
+  onRetry: () => void;
   uploadState: UploadState;
 }) {
   const activeUpload = uploadState.status !== "idle";
@@ -469,7 +531,11 @@ function UploadPanel({
 
         <div className="rounded-2xl border border-dashed border-border bg-[#fffaf6] p-3">
           {activeUpload ? (
-            <UploadProgress uploadState={uploadState} />
+            <UploadProgress
+              uploadState={uploadState}
+              onCancel={onCancel}
+              onRetry={onRetry}
+            />
           ) : (
             <button
               type="button"
@@ -493,9 +559,21 @@ function UploadPanel({
   );
 }
 
-function UploadProgress({ uploadState }: { uploadState: UploadState }) {
+function UploadProgress({
+  onCancel,
+  onRetry,
+  uploadState,
+}: {
+  onCancel: () => void;
+  onRetry: () => void;
+  uploadState: UploadState;
+}) {
   const isFailed = uploadState.status === "failed";
   const isDone = uploadState.status === "done";
+  const isInProgress = !isFailed && !isDone;
+  const isCancellable = ["creating", "uploading", "validating"].includes(
+    uploadState.status,
+  );
 
   return (
     <div className="rounded-xl bg-white p-4 shadow-sm">
@@ -541,6 +619,30 @@ function UploadProgress({ uploadState }: { uploadState: UploadState }) {
           style={{ width: `${Math.max(4, uploadState.progress)}%` }}
         />
       </div>
+      {isFailed || isInProgress ? (
+        <div className="mt-4 flex justify-end gap-2">
+          {isFailed ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover"
+            >
+              <RotateCcw className="size-3.5" aria-hidden="true" />
+              Retry
+            </button>
+          ) : null}
+          {isCancellable ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-border bg-white px-3 text-xs font-bold text-[#405977] transition hover:bg-[#fff8f4]"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+              Cancel
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -789,22 +891,63 @@ async function completeUpload({
   }
 }
 
+async function cleanupIncompleteUpload({
+  demoId,
+  key,
+  token,
+}: {
+  demoId: string;
+  key: string;
+  token: string;
+}) {
+  try {
+    const response = await fetch("/api/demo/delete", {
+      body: JSON.stringify({
+        demoId,
+        key,
+        projectId: DEFAULT_PROJECT_ID,
+      }),
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      console.error("Could not clean up incomplete demo upload", {
+        demoId,
+        status: response.status,
+      });
+    }
+  } catch (error) {
+    console.error("Could not clean up incomplete demo upload", {
+      demoId,
+      error,
+    });
+  }
+}
+
 function uploadFileToS3({
   contentType,
   file,
   onProgress,
+  onRequestCreated,
   uploadUrl,
 }: {
   contentType: DemoContentType;
   file: File;
   onProgress: (progress: number) => void;
+  onRequestCreated: (request: XMLHttpRequest) => void;
   uploadUrl: string;
 }) {
   return new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
 
     xhr.open("PUT", uploadUrl);
+    xhr.timeout = DEMO_UPLOAD_TIMEOUT_MS;
     xhr.setRequestHeader("Content-Type", contentType);
+    onRequestCreated(xhr);
 
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) {
@@ -819,16 +962,42 @@ function uploadFileToS3({
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve();
       } else {
-        reject(new Error("S3 upload failed. Check bucket CORS and try again."));
+        reject(
+          new Error(
+            `Storage upload failed with status ${xhr.status}. Please try again.`,
+          ),
+        );
       }
     };
 
     xhr.onerror = () => {
-      reject(new Error("S3 upload failed. Check bucket CORS and try again."));
+      reject(
+        new Error(
+          "Storage rejected the upload. Check the storage connection and try again.",
+        ),
+      );
+    };
+
+    xhr.onabort = () => {
+      reject(new Error("Upload cancelled."));
+    };
+
+    xhr.ontimeout = () => {
+      reject(
+        new Error(
+          "The upload stopped responding. Check your connection and retry.",
+        ),
+      );
     };
 
     xhr.send(file);
   });
+}
+
+function throwIfUploadCancelled(cancelled: boolean) {
+  if (cancelled) {
+    throw new Error("Upload cancelled.");
+  }
 }
 
 function getSupportedContentType(file: File): DemoContentType {

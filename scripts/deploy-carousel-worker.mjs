@@ -22,6 +22,7 @@ const imageTag =
   `carousel-${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}`;
 const imageUri = `${repositoryUri}:${imageTag}`;
 const latestImageUri = `${repositoryUri}:latest`;
+const workerGitCommit = getWorkerGitCommit();
 const registryHost = repositoryUri.split("/")[0];
 const serviceName =
   process.env.ECS_CAROUSEL_SERVICE_NAME?.trim() ||
@@ -239,16 +240,18 @@ function buildTaskDefinitionRegistrationInput(taskDefinition, newImageUri) {
         AWS_REGION: region,
         AWS_S3_BUCKET: getRequiredEnv("AWS_S3_BUCKET"),
         CAROUSEL_BROAD_MATCHER_MODE:
-          process.env.CAROUSEL_BROAD_MATCHER_MODE?.trim() || "off",
+          process.env.CAROUSEL_BROAD_MATCHER_MODE?.trim() || "dry-run",
         CAROUSEL_DISABLE_CATEGORY_FALLBACK:
           process.env.CAROUSEL_DISABLE_CATEGORY_FALLBACK?.trim() || "true",
         CLOUDFRONT_DOMAIN: getRequiredEnv("CLOUDFRONT_DOMAIN"),
+        WORKER_GIT_COMMIT: workerGitCommit,
         WORKER_JOB_TYPES: "generate_carousel",
         WORKER_POLL_MAX_MESSAGES: "1",
         WORKER_QUEUE_NAME: "carousel",
         WORKER_QUEUE_URL: carouselQueueUrl,
         WORKER_VISIBILITY_TIMEOUT_SECONDS:
           process.env.ECS_CAROUSEL_VISIBILITY_TIMEOUT_SECONDS?.trim() || "900",
+        WORKER_VERSION: imageTag,
       }),
       secrets: upsertSecrets(container.secrets ?? [], {
         SUPABASE_SERVICE_ROLE_KEY: `${workerSecretArn}:SUPABASE_SERVICE_ROLE_KEY::`,
@@ -379,6 +382,27 @@ function splitCsvEnv(name) {
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
+}
+
+function getWorkerGitCommit() {
+  const configuredCommit =
+    process.env.WORKER_GIT_COMMIT?.trim() ||
+    process.env.GIT_COMMIT?.trim();
+
+  if (configuredCommit) {
+    return configuredCommit;
+  }
+
+  const result = spawnSync("git", ["rev-parse", "HEAD"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: commandEnv(),
+    stdio: "pipe",
+  });
+
+  return result.status === 0 && result.stdout.trim()
+    ? result.stdout.trim()
+    : "unknown";
 }
 
 function docker(args, options = {}) {

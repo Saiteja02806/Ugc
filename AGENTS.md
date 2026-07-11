@@ -27,6 +27,14 @@ of whether it is a small fix or a large feature.
 - After pushing, verify that the remote commit and each relevant deployment
   target contain the complete intended release.
 
+## Production verification
+
+When verifying user-facing flows that depend on authentication, production data,
+or hosted integrations, use the real production domain instead of localhost.
+Localhost checks are acceptable for quick compile, layout, or isolated preview
+sanity checks, but final acceptance must be checked against the deployed site
+such as `https://www.getugcpilot.com`.
+
 
 <!-- TRIGGER.DEV advanced-tasks START -->
 # Trigger.dev Advanced Tasks (v4)

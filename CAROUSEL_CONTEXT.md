@@ -526,21 +526,20 @@ Implemented:
   broad matcher version, image safety policy, and renderer version.
 - LLM slide planner with deterministic fallback.
 - Professional Sharp text renderer and AWS Carousel worker path.
-- AWS Carousel worker revision 14 runs image
-  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260710171432`
-  from git commit `4971ac2a33a98ef55cafd2924fe79c785f8ba8b6`. The verified
+- AWS Carousel worker revision 16 runs image
+  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:carousel-20260711053138`
+  from git commit `455bcd0044d2c49f3453b62ddefd20a2c7f39c62`. The verified
   startup log reports balanced planner
-  `llm-carousel-planner-v2-balanced-copy`, connected text-group renderer
-  `social-bubble-renderer-v5-connected-text-groups`, broad matcher
+  `llm-carousel-planner-v2-balanced-copy`, connected silhouette renderer
+  `social-bubble-renderer-v6-unified-text-silhouette`, broad matcher
   `broad-runtime-matcher-v2` in `dry-run`, and safety policy
   `object-only-no-human-v1`.
-- Current repository source contains connected-background renderer
+- The connected-background renderer
   `social-bubble-renderer-v6-unified-text-silhouette`. It draws every wrapped
   heading or body group as one clipped white silhouette, registers the same
   Geist font used by the web application inside the worker image, and writes
-  renderer-versioned, content-hashed S3 keys. This source is not live until a
-  newer Carousel worker image is deployed and verified; revision 14 still
-  renders v5 assets.
+  renderer-versioned, content-hashed S3 keys so regenerated slides do not reuse
+  old immutable CloudFront URLs.
 - Supabase relevance metadata `runtime_exclusion_reason` and
   `near_duplicate_group`, including database constraints and a ready-pool index.
 - Marketing SaaS asset cleanup for wrong-bucket, human-form, people-on-screen,

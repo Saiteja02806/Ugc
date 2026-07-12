@@ -361,14 +361,14 @@ export function DemosWorkspace() {
   }
 
   return (
-    <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
-      <header className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <section className="min-h-screen flex-1 bg-background px-4 py-5 text-foreground sm:px-6 lg:px-10 lg:py-8">
+      <header className="mx-auto flex w-full max-w-[1360px] flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-normal text-foreground-strong sm:text-[28px]">
             Demos
           </h1>
-          <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-            Upload product footage for edits, hooks, and social-ready cuts.
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
+            Keep product footage ready for trims, hooks, and social-ready edits.
           </p>
         </div>
 
@@ -379,7 +379,7 @@ export function DemosWorkspace() {
             disabled={isLoading}
             aria-label="Refresh demos"
             title="Refresh demos"
-            className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white/80 text-[#173454] shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex size-10 items-center justify-center rounded-md border border-border bg-white text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw
               className={cn("size-4", isLoading && "animate-spin")}
@@ -390,7 +390,7 @@ export function DemosWorkspace() {
             type="button"
             onClick={openFilePicker}
             disabled={hasActiveUpload}
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Upload className="size-4" aria-hidden="true" />
             Upload demo
@@ -398,7 +398,7 @@ export function DemosWorkspace() {
         </div>
       </header>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-5 pt-5">
+      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-7 pt-6">
         <input
           ref={fileInputRef}
           type="file"
@@ -427,7 +427,7 @@ export function DemosWorkspace() {
         {errorMessage ? (
           <div
             role="alert"
-            className="rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm font-semibold text-error"
+            className="rounded-md border border-error/20 bg-error/5 px-4 py-3 text-sm font-semibold text-error"
           >
             <div className="flex items-start gap-2">
               <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -493,49 +493,36 @@ function UploadPanel({
         void onFiles(event.dataTransfer.files);
       }}
       className={cn(
-        "relative overflow-hidden rounded-[28px] border bg-white/74 p-4 shadow-[0_18px_50px_rgb(16_32_51_/_0.08)] backdrop-blur sm:p-5",
-        isDragActive ? "border-primary/60" : "border-border/80",
+        "relative rounded-lg border bg-white p-4 transition-colors sm:p-5",
+        isDragActive ? "border-primary bg-brand-soft/35" : "border-border",
       )}
     >
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
-        <div className="flex min-w-0 items-start gap-4">
-          <div className="hidden size-14 shrink-0 items-center justify-center rounded-2xl bg-[#173454] text-white shadow-sm sm:flex">
-            <FileVideo className="size-6" aria-hidden="true" />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
+        <div className="flex min-w-0 items-start gap-3.5">
+          <div className="hidden size-11 shrink-0 items-center justify-center rounded-md bg-foreground-strong text-white sm:flex">
+            <FileVideo className="size-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-bold tracking-normal text-foreground">
-                Upload product demo footage
+              <h2 className="text-base font-semibold text-foreground-strong">
+                Add product footage
               </h2>
-              <span className="inline-flex h-7 items-center rounded-full bg-card-muted px-2.5 text-xs font-bold text-[#8a4b39]">
+              <span className="inline-flex h-6 items-center rounded-full bg-card-muted px-2.5 text-xs font-semibold text-muted">
                 {demosCount} {demosCount === 1 ? "demo" : "demos"}
               </span>
             </div>
-            <p className="mt-1 max-w-2xl text-sm font-medium leading-6 text-[#405977]">
-              MP4 recommended. MOV and WebM are supported, and final exports will
-              be rendered as MP4.
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
+              Upload a walkthrough or screen recording. Final exports are MP4.
             </p>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-muted">
-              <span className="rounded-full border border-border bg-white px-2.5 py-1">
-                MP4
-              </span>
-              <span className="rounded-full border border-border bg-white px-2.5 py-1">
-                MOV
-              </span>
-              <span className="rounded-full border border-border bg-white px-2.5 py-1">
-                WebM
-              </span>
-              <span className="rounded-full border border-border bg-white px-2.5 py-1">
-                100MB max
-              </span>
-              <span className="rounded-full border border-border bg-white px-2.5 py-1">
-                1-60s
-              </span>
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-muted-subtle">
+              <span>MP4, MOV or WebM</span>
+              <span>Up to 100 MB</span>
+              <span>1-60 seconds</span>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-dashed border-border bg-[#fffaf6] p-3">
+        <div className="rounded-md border border-dashed border-border-strong bg-surface-subtle p-2">
           {activeUpload ? (
             <UploadProgress
               uploadState={uploadState}
@@ -546,16 +533,18 @@ function UploadPanel({
             <button
               type="button"
               onClick={onBrowse}
-              className="flex w-full flex-col items-center justify-center rounded-xl px-5 py-6 text-center transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="flex min-h-20 w-full items-center justify-center gap-3 rounded-md px-4 py-3 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
-              <span className="flex size-11 items-center justify-center rounded-full bg-primary text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.20)]">
-                <Upload className="size-5" aria-hidden="true" />
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-brand-soft text-primary">
+                <Upload className="size-4" aria-hidden="true" />
               </span>
-              <span className="mt-3 text-sm font-bold text-foreground">
-                Drop or browse
-              </span>
-              <span className="mt-1 text-xs font-semibold text-muted">
-                Product walkthroughs and screen recordings
+              <span>
+                <span className="block text-sm font-semibold text-foreground-strong">
+                  Drop a video or browse
+                </span>
+                <span className="mt-0.5 block text-xs font-medium text-muted">
+                  Your upload starts immediately
+                </span>
               </span>
             </button>
           )}
@@ -582,7 +571,7 @@ function UploadProgress({
   );
 
   return (
-    <div className="rounded-xl bg-white p-4 shadow-sm">
+    <div className="p-2">
       <div className="flex items-start gap-3">
         <div
           className={cn(
@@ -669,10 +658,17 @@ function DemoLibrary({
   playingDemoId: string | null;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-bold text-foreground">Demo library</h2>
-        <span className="text-xs font-semibold text-muted">
+    <section aria-labelledby="demo-library-heading">
+      <div className="mb-4 flex items-end justify-between gap-3 border-b border-border pb-3">
+        <div>
+          <h2 id="demo-library-heading" className="text-base font-semibold text-foreground-strong">
+            Demo library
+          </h2>
+          <p className="mt-0.5 text-sm text-muted">
+            Preview footage, open an edit, or remove an asset.
+          </p>
+        </div>
+        <span className="shrink-0 text-xs font-semibold text-muted">
           {isLoading
             ? "Loading"
             : `${demos.length} ${demos.length === 1 ? "asset" : "assets"}`}
@@ -680,14 +676,19 @@ function DemoLibrary({
       </div>
 
       {isLoading ? (
-        <div className="flex min-h-[280px] flex-1 items-center justify-center rounded-[28px] border border-border/70 bg-white/40">
-          <div className="flex items-center gap-3 text-sm font-semibold text-muted">
-            <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
-            Loading demos...
-          </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Loading demos">
+          {Array.from({ length: 4 }, (_, index) => (
+            <div key={index} className="overflow-hidden rounded-lg border border-border bg-white">
+              <div className="aspect-[4/3] animate-pulse bg-[#e9eaec] motion-reduce:animate-none" />
+              <div className="space-y-3 p-4">
+                <div className="h-4 w-3/4 animate-pulse rounded bg-[#e9eaec] motion-reduce:animate-none" />
+                <div className="h-3 w-1/2 animate-pulse rounded bg-[#eff0f1] motion-reduce:animate-none" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : demos.length > 0 ? (
-        <div className="grid auto-rows-min grid-cols-[repeat(auto-fill,minmax(180px,240px))] justify-center gap-3 overflow-y-auto pb-4 sm:grid-cols-[repeat(auto-fill,minmax(210px,240px))] sm:justify-start">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {demos.map((demo) => (
             <DemoCard
               key={demo.id}
@@ -700,7 +701,7 @@ function DemoLibrary({
           ))}
         </div>
       ) : (
-        <div className="flex min-h-[280px] flex-1 items-center justify-center rounded-[28px] border border-border/70 bg-white/35 px-6 text-center">
+        <div className="flex min-h-[280px] items-center justify-center rounded-lg border border-dashed border-border-strong bg-white px-6 text-center">
           <div>
             <Video className="mx-auto size-8 text-[#9aa7b8]" aria-hidden="true" />
             <p className="mt-3 text-sm font-semibold text-[#405977]">
@@ -712,7 +713,7 @@ function DemoLibrary({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -732,40 +733,9 @@ function DemoCard({
   const playable = isPlayableDemo(demo);
 
   return (
-    <article className="group min-w-0 rounded-panel border border-border bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgb(16_32_51_/_0.08)]">
-      <div className="relative overflow-hidden rounded-md bg-[#102033] text-white">
-        <div
-          className="flex items-center justify-center"
-          style={{ aspectRatio: getPreviewAspectRatio(demo) }}
-        >
-          {playing && playable ? (
-            <video
-              src={demo.source_video_url}
-              className="size-full object-contain"
-              autoPlay
-              controls
-              muted
-              playsInline
-              preload="metadata"
-            />
-          ) : demo.thumbnail_url ? (
-            <div
-              role="img"
-              aria-label={`Thumbnail for ${demo.title}`}
-              className="size-full bg-contain bg-center bg-no-repeat"
-              style={{
-                backgroundImage: `url(${JSON.stringify(demo.thumbnail_url)})`,
-              }}
-            />
-          ) : (
-            <div className="flex size-full flex-col items-center justify-center gap-2 px-4 text-center">
-              <FileVideo className="size-7 text-white/75" aria-hidden="true" />
-              <span className="text-[11px] font-semibold text-white/70">
-                {getFileTypeLabel(demo.file_type)}
-              </span>
-            </div>
-          )}
-        </div>
+    <article className="group min-w-0 overflow-hidden rounded-lg border border-border bg-white transition-colors hover:border-border-strong">
+      <div className="relative aspect-[4/3] overflow-hidden bg-[#17181b] text-white">
+        <DemoMediaPreview demo={demo} playing={playing} />
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-linear-to-t from-black/60 to-transparent p-3">
           <button
             type="button"
@@ -773,18 +743,18 @@ function DemoCard({
             disabled={!playable}
             aria-label={`Play ${demo.title}`}
             title="Play preview"
-            className="inline-flex size-8 items-center justify-center rounded-full bg-white/16 backdrop-blur transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex size-9 items-center justify-center rounded-full bg-white text-foreground-strong shadow-sm transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/40 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Play className="ml-0.5 size-3.5 fill-white text-white" aria-hidden="true" />
+            <Play className="ml-0.5 size-3.5 fill-current" aria-hidden="true" />
           </button>
           <StatusBadge status={demo.status} />
         </div>
       </div>
 
-      <div className="mt-2 space-y-2 px-1 pb-1">
+      <div className="space-y-3 p-4">
         <div>
           <div className="flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 min-h-9 text-sm font-bold leading-[1.15rem] text-foreground">
+            <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-foreground-strong">
               {demo.title}
             </h3>
             <button
@@ -793,7 +763,7 @@ function DemoCard({
               title="Delete demo"
               onClick={onDelete}
               disabled={deleting}
-              className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
             >
               {deleting ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -802,7 +772,7 @@ function DemoCard({
               )}
             </button>
           </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-muted">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted">
             <span className="inline-flex items-center gap-1">
               <Clock3 className="size-3" aria-hidden="true" />
               {formatDuration(demo.duration_seconds)}
@@ -812,9 +782,9 @@ function DemoCard({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t border-border/70 pt-2">
+        <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
           <div className="min-w-0">
-            <p className="truncate text-xs font-bold text-[#405977]">
+            <p className="truncate text-xs font-semibold text-foreground">
               {getFileTypeLabel(demo.file_type)}
             </p>
             <p className="truncate text-[11px] font-semibold text-muted">
@@ -823,7 +793,7 @@ function DemoCard({
           </div>
           <Link
             href={`/demos/${encodeURIComponent(demo.id)}`}
-            className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md bg-foreground-strong px-3 text-xs font-semibold text-white transition-colors hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             <Pencil className="size-3.5" aria-hidden="true" />
             Edit
@@ -831,6 +801,125 @@ function DemoCard({
         </div>
       </div>
     </article>
+  );
+}
+
+function DemoMediaPreview({
+  demo,
+  playing,
+}: {
+  demo: DemoVideo;
+  playing: boolean;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [previewState, setPreviewState] = useState<"loading" | "ready" | "error">(
+    demo.thumbnail_url ? "ready" : "loading",
+  );
+  const [previewKey, setPreviewKey] = useState(0);
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  const playable = isPlayableDemo(demo);
+
+  useEffect(() => {
+    const videoElement = videoRef.current;
+
+    if (!videoElement || !playable) {
+      return;
+    }
+
+    if (playing) {
+      void videoElement.play().catch(() => setPreviewState("error"));
+    } else {
+      videoElement.pause();
+    }
+  }, [playable, playing, previewKey]);
+
+  useEffect(() => {
+    if ((demo.thumbnail_url && !thumbnailFailed) || previewState !== "loading") {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setPreviewState("error"), 8000);
+    return () => window.clearTimeout(timer);
+  }, [demo.thumbnail_url, previewKey, previewState, thumbnailFailed]);
+
+  if (demo.thumbnail_url && !thumbnailFailed && !playing) {
+    return (
+      // Demo thumbnails are already delivered from the configured media CDN.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={demo.thumbnail_url}
+        alt={`Preview of ${demo.title}`}
+        className="size-full object-contain"
+        onError={() => {
+          setThumbnailFailed(true);
+          setPreviewState("loading");
+        }}
+      />
+    );
+  }
+
+  if (!playable || previewState === "error") {
+    return (
+      <div className="flex size-full flex-col items-center justify-center gap-2 px-5 text-center">
+        <FileVideo className="size-6 text-white/65" aria-hidden="true" />
+        <p className="text-xs font-semibold text-white/80">
+          {playable ? "Preview could not load" : "Video unavailable"}
+        </p>
+        {playable ? (
+          <button
+            type="button"
+            onClick={() => {
+              setPreviewState("loading");
+              setPreviewKey((current) => current + 1);
+            }}
+            className="rounded-md bg-white/10 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            Retry preview
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {previewState === "loading" ? (
+        <div className="absolute inset-0 animate-pulse bg-[#25272b] motion-reduce:animate-none">
+          <div className="flex size-full items-center justify-center">
+            <Loader2 className="size-5 animate-spin text-white/65 motion-reduce:animate-none" aria-hidden="true" />
+            <span className="sr-only">Loading video preview</span>
+          </div>
+        </div>
+      ) : null}
+      <video
+        key={previewKey}
+        ref={videoRef}
+        src={demo.source_video_url}
+        poster={demo.thumbnail_url ?? undefined}
+        aria-label={`Preview of ${demo.title}`}
+        className={cn(
+          "size-full object-contain transition-opacity duration-200",
+          previewState === "ready" ? "opacity-100" : "opacity-0",
+        )}
+        controls={playing}
+        muted
+        playsInline
+        preload="metadata"
+        onLoadedData={() => setPreviewState("ready")}
+        onLoadedMetadata={(event) => {
+          const element = event.currentTarget;
+          const previewTime = Math.min(0.15, Math.max(0, element.duration / 20));
+
+          if (previewTime > 0) {
+            element.currentTime = previewTime;
+          } else {
+            setPreviewState("ready");
+          }
+        }}
+        onSeeked={() => setPreviewState("ready")}
+        onError={() => setPreviewState("error")}
+      />
+    </>
   );
 }
 
@@ -1303,14 +1392,6 @@ function getFileTypeLabel(contentType: DemoContentType) {
 
 function getDimensionsLabel(demo: DemoVideo) {
   return demo.width && demo.height ? `${demo.width}x${demo.height}` : "Custom";
-}
-
-function getPreviewAspectRatio(demo: DemoVideo) {
-  if (demo.width && demo.height) {
-    return `${demo.width} / ${demo.height}`;
-  }
-
-  return demo.ratio === "other" ? "9 / 16" : demo.ratio.replace(":", " / ");
 }
 
 function isPlayableDemo(demo: DemoVideo) {

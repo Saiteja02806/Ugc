@@ -251,7 +251,7 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
   }
 
   return (
-    <section className="flex min-h-screen flex-1 flex-col bg-background px-4 py-4 text-foreground sm:px-6 lg:px-10 lg:py-6">
+    <section className="flex min-h-screen flex-1 flex-col bg-background px-4 py-5 text-foreground sm:px-6 lg:px-10 lg:py-8">
       <DemoEditorTopBar
         canSave={canSave}
         demo={demo}
@@ -264,7 +264,7 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
         onTitleChange={handleTitleChange}
       />
 
-      <div className="mx-auto flex w-full max-w-[1360px] flex-1 flex-col pt-5">
+      <div className="mx-auto flex w-full max-w-[1360px] flex-1 flex-col pb-8 pt-4">
         {isLoading ? (
           <EditorLoadingState />
         ) : errorMessage ? (
@@ -325,18 +325,18 @@ function DemoEditorTopBar({
   title: string;
 }) {
   return (
-    <header className="mx-auto flex w-full max-w-[1360px] flex-col gap-4 pb-4 lg:flex-row lg:items-center lg:justify-between">
+    <header className="mx-auto flex w-full max-w-[1360px] flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
       <div className="min-w-0 flex-1">
         <button
           type="button"
           onClick={onBackToDemos}
-          className="inline-flex h-9 items-center gap-2 rounded-md px-1 text-sm font-semibold text-muted transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          className="inline-flex h-8 items-center gap-2 rounded-md px-1 text-sm font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
           Back to Demos
         </button>
 
-        <div className="mt-2 flex max-w-2xl flex-col gap-2">
+        <div className="mt-2 flex max-w-3xl flex-col gap-2">
           <div className="group flex max-w-2xl items-center gap-2">
             <label className="sr-only" htmlFor="demo-title">
               Demo title
@@ -347,26 +347,26 @@ function DemoEditorTopBar({
               onChange={(event) => onTitleChange(event.target.value)}
               disabled={!demo}
               maxLength={140}
-              className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-0 py-1 text-2xl font-semibold tracking-normal text-foreground-strong outline-none transition placeholder:text-muted focus:border-border focus:bg-white focus:px-3 sm:text-3xl"
+              className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-0 py-1 text-xl font-semibold text-foreground-strong outline-none transition-[border-color,background-color,padding] placeholder:text-muted focus:border-border focus:bg-white focus:px-3 sm:text-2xl"
               placeholder="Untitled demo"
             />
             <Pencil className="size-4 shrink-0 text-muted-subtle transition group-focus-within:text-primary" aria-hidden="true" />
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-muted">
-            <span className="rounded-md border border-border bg-white px-2.5 py-1">
+          <div className="flex flex-wrap items-center gap-y-1 text-xs font-medium text-muted">
+            <span className="border-r border-border pr-3">
               {demo ? getFileTypeLabel(demo.file_type) : "Video"}
             </span>
-            <span className="rounded-md border border-border bg-white px-2.5 py-1">
+            <span className="border-r border-border px-3">
               {demo ? getDemoRatioLabel(demo) : "Ratio"}
             </span>
-            <span className="rounded-md border border-border bg-white px-2.5 py-1">
+            <span className="border-r border-border px-3">
               {demo ? formatVideoDuration(demo.duration_seconds) : "Duration"}
             </span>
-            <span className="rounded-md border border-border bg-white px-2.5 py-1">
+            <span className="px-3">
               {demo ? getDemoStatusLabel(demo.status) : "Status"}
             </span>
             {hasTitleChanged ? (
-              <span className="rounded-md bg-primary/10 px-2.5 py-1 text-primary">
+              <span className="ml-2 rounded-full bg-brand-soft px-2.5 py-1 font-semibold text-primary">
                 Unsaved title
               </span>
             ) : null}
@@ -378,7 +378,7 @@ function DemoEditorTopBar({
         <button
           type="button"
           onClick={onRefresh}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           <RefreshCw className="size-4" aria-hidden="true" />
           Refresh
@@ -520,10 +520,24 @@ function UnsavedChangesDialog({
 
 function EditorLoadingState() {
   return (
-    <section className="flex min-h-[520px] flex-1 items-center justify-center rounded-[28px] border border-border/70 bg-white/35 px-5 py-10">
-      <div className="flex items-center gap-3 text-sm font-semibold text-muted">
-        <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
-        Loading demo editor...
+    <section className="grid min-h-[560px] flex-1 overflow-hidden rounded-lg border border-border bg-white lg:grid-cols-[344px_minmax(0,1fr)]">
+      <div className="border-b border-border bg-[#f5f5f6] p-6 lg:border-b-0 lg:border-r">
+        <div className="mx-auto aspect-[9/16] w-full max-w-[280px] animate-pulse rounded-md bg-[#dedfe2] motion-reduce:animate-none" />
+      </div>
+      <div className="space-y-8 p-6">
+        <div className="space-y-3">
+          <div className="h-4 w-24 animate-pulse rounded bg-[#dedfe2] motion-reduce:animate-none" />
+          <div className="h-16 animate-pulse rounded-md bg-[#eff0f1] motion-reduce:animate-none" />
+          <div className="h-10 animate-pulse rounded-md bg-[#eff0f1] motion-reduce:animate-none" />
+        </div>
+        <div className="space-y-3 border-t border-border pt-6">
+          <div className="h-4 w-32 animate-pulse rounded bg-[#dedfe2] motion-reduce:animate-none" />
+          <div className="h-20 animate-pulse rounded-md bg-[#eff0f1] motion-reduce:animate-none" />
+        </div>
+        <div className="flex items-center gap-2 text-sm font-medium text-muted">
+          <Loader2 className="size-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+          Loading editor
+        </div>
       </div>
     </section>
   );
@@ -537,9 +551,9 @@ function EditorErrorState({
   onRetry: () => void;
 }) {
   return (
-    <section className="flex min-h-[520px] flex-1 items-center justify-center rounded-[28px] border border-border/70 bg-white/35 px-5 py-10 text-center">
+    <section className="flex min-h-[520px] flex-1 items-center justify-center rounded-lg border border-border bg-white px-5 py-10 text-center">
       <div>
-        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-error/20 bg-error/5 text-error shadow-sm">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-md bg-error/10 text-error">
           <AlertCircle className="size-6" aria-hidden="true" />
         </div>
         <h2 className="mt-5 text-lg font-bold text-foreground">
@@ -552,13 +566,13 @@ function EditorErrorState({
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-white px-4 text-sm font-bold text-[#173454] shadow-sm transition hover:bg-[#fff8f4]"
+            className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted"
           >
             Retry
           </button>
           <Link
             href="/demos"
-            className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.20)] transition hover:bg-primary-hover"
+            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
           >
             Back to demos
           </Link>

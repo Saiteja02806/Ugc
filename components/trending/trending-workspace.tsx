@@ -574,13 +574,6 @@ function CarouselCandidateStack({
   );
   const activeCandidate = candidates[safeActiveCarouselIndex];
   const title = getCarouselTitle(activeCandidate.carousel);
-  const storedActiveSlideIndex =
-    activeSlideByCarouselId[activeCandidate.carousel.carouselId] ?? 0;
-  const activeSlideIndex = Math.min(
-    storedActiveSlideIndex,
-    Math.max(activeCandidate.slides.length - 1, 0),
-  );
-  const activeSlide = activeCandidate.slides[activeSlideIndex];
   const deckSlots = getCarouselDeckSlots(
     candidates,
     safeActiveCarouselIndex,
@@ -774,17 +767,6 @@ function CarouselCandidateStack({
           />
         ))}
       </div>
-      <CarouselDeckSummary
-        activeSlide={activeSlide}
-        canGoNext={canGoNext}
-        canGoPrevious={canGoPrevious}
-        carouselCount={candidates.length}
-        carouselIndex={safeActiveCarouselIndex}
-        disabled={Boolean(exitDirection)}
-        onNext={() => goToCarousel(safeActiveCarouselIndex + 1)}
-        onPrevious={() => goToCarousel(safeActiveCarouselIndex - 1)}
-        title={title}
-      />
       <span className="sr-only" aria-live="polite">
         Showing {title}, idea {safeActiveCarouselIndex + 1} of {candidates.length}
       </span>
@@ -952,89 +934,6 @@ function CarouselDeckCard({
           ) : null}
         </div>
       </article>
-    </div>
-  );
-}
-
-function CarouselDeckSummary({
-  activeSlide,
-  canGoNext,
-  canGoPrevious,
-  carouselCount,
-  carouselIndex,
-  disabled,
-  onNext,
-  onPrevious,
-  title,
-}: {
-  activeSlide: ReadyCarouselSlide;
-  canGoNext: boolean;
-  canGoPrevious: boolean;
-  carouselCount: number;
-  carouselIndex: number;
-  disabled: boolean;
-  onNext: () => void;
-  onPrevious: () => void;
-  title: string;
-}) {
-  return (
-    <div className="mx-auto mt-4 w-full max-w-[480px] px-4 sm:px-0">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <p className="line-clamp-1 text-sm font-semibold text-foreground-strong">
-            {title}
-          </p>
-          <p className="mt-1 text-xs leading-5 text-muted">
-            {getSlideRoleLabel(activeSlide)} | Idea {carouselIndex + 1} of {carouselCount}
-          </p>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-semibold text-success">
-            Ready
-          </span>
-          <span title="Generation from Trending is coming soon.">
-            <button
-              type="button"
-              data-deck-control
-              disabled
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card-muted px-2.5 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-80"
-              aria-label="Generate carousel, coming soon"
-            >
-              <Sparkles className="size-3.5" aria-hidden="true" />
-              Generate
-            </button>
-          </span>
-        </div>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-        <button
-          type="button"
-          data-deck-control
-          disabled={disabled || !canGoPrevious}
-          onClick={onPrevious}
-          aria-label="Previous carousel idea"
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border-strong bg-white px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          <span className="hidden sm:inline">Previous idea</span>
-        </button>
-        <span className="text-xs font-medium tabular-nums text-muted" aria-hidden="true">
-          {carouselIndex + 1} / {carouselCount}
-        </span>
-        <button
-          type="button"
-          data-deck-control
-          disabled={disabled || !canGoNext}
-          onClick={onNext}
-          aria-label="Next carousel idea"
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border-strong bg-white px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <span className="hidden sm:inline">Next idea</span>
-          <ArrowRight className="size-4" aria-hidden="true" />
-        </button>
-      </div>
     </div>
   );
 }
@@ -1284,16 +1183,6 @@ function getCarouselTitle(carousel: GeneratedCarousel) {
     titleCaseSlug(carousel.categorySlug) ||
     `Carousel idea ${carousel.candidateIndex + 1}`
   );
-}
-
-function getSlideRoleLabel(slide: GeneratedCarouselSlide) {
-  const role = slide.slideType?.trim();
-
-  if (!role) {
-    return `Slide ${slide.slideNumber}`;
-  }
-
-  return `${titleCaseSlug(role)} - slide ${slide.slideNumber}`;
 }
 
 function getPreparationTitle(carousels: GeneratedCarousel[]) {

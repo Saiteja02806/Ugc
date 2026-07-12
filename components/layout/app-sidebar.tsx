@@ -189,7 +189,7 @@ export function AppSidebar({
 
   return (
     <>
-      <header className="sticky top-0 z-[var(--z-sticky)] flex h-16 w-full items-center justify-between border-b border-border bg-white/95 px-4 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-[var(--z-sticky)] flex h-16 w-full items-center justify-between border-b border-border bg-white/95 px-4 backdrop-blur md:hidden">
         <Brand />
         <button
           type="button"
@@ -207,7 +207,7 @@ export function AppSidebar({
       <aside
         id="ugc-desktop-sidebar"
         className={cn(
-          "sticky top-0 z-[var(--z-sidebar)] hidden h-screen shrink-0 flex-col border-r border-border bg-white transition-[width] duration-200 motion-reduce:transition-none lg:flex",
+          "sticky top-0 z-[var(--z-sidebar)] hidden h-screen shrink-0 flex-col border-r border-border bg-white transition-[width] duration-200 motion-reduce:transition-none md:flex",
           collapsed ? "w-[72px]" : "w-[232px]",
         )}
       >
@@ -237,7 +237,7 @@ export function AppSidebar({
       </aside>
 
       {isMobileNavigationOpen ? (
-        <div className="fixed inset-0 z-[var(--z-modal)] lg:hidden">
+        <div className="fixed inset-0 z-[var(--z-modal)] md:hidden">
           <button
             type="button"
             tabIndex={-1}

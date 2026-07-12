@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   Film,
+  Loader2,
   Play,
   Plus,
   RotateCcw,
@@ -65,6 +66,9 @@ export function FocusedVideoEditor({
   const [trimEnd, setTrimEnd] = useState(initialTrimEnd);
   const [trimMessage, setTrimMessage] = useState<string | null>(null);
   const [trimStart, setTrimStart] = useState(initialTrimStart);
+  const [videoLoadState, setVideoLoadState] = useState<"loading" | "ready" | "error">(
+    video.videoUrl ? "loading" : "error",
+  );
 
   const selectedOverlay =
     textOverlays.find((overlay) => overlay.id === selectedOverlayId) ??
@@ -84,6 +88,15 @@ export function FocusedVideoEditor({
       trimStartSeconds: trimStart,
     });
   }, [onDraftChange, textOverlays, trimEnd, trimStart]);
+
+  useEffect(() => {
+    if (videoLoadState !== "loading") {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setVideoLoadState("error"), 10000);
+    return () => window.clearTimeout(timer);
+  }, [videoLoadState]);
 
   function handleLoadedMetadata() {
     const videoElement = videoRef.current;
@@ -109,6 +122,7 @@ export function FocusedVideoEditor({
     setCurrentTime(initialRange.start);
     videoElement.currentTime = initialRange.start;
     setTrimMessage(null);
+    setVideoLoadState("ready");
   }
 
   function handleTimeUpdate() {
@@ -256,56 +270,85 @@ export function FocusedVideoEditor({
   }
 
   return (
-    <section className="flex flex-1 flex-col overflow-hidden rounded-panel border border-border bg-card shadow-sm">
-      <div className="grid gap-0 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)]">
-        <section className="flex items-start justify-center border-b border-border bg-white px-4 py-5 sm:px-5 lg:border-b-0 lg:border-r lg:py-6">
-          <div
-            className="relative overflow-hidden rounded-md bg-black text-white shadow-sm [container-type:size]"
-            style={{
-              aspectRatio: previewAspectRatio,
-              maxHeight: "72vh",
-              width: `min(100%, ${maxPreviewWidth}px)`,
-            }}
-          >
-            {video.videoUrl ? (
-              <video
-                ref={videoRef}
-                src={video.videoUrl}
-                controls
-                onLoadedMetadata={handleLoadedMetadata}
-                onTimeUpdate={handleTimeUpdate}
-                className="size-full object-contain object-center"
-              />
-            ) : (
-              <div className="flex size-full items-center justify-center px-6 text-center">
-                <div>
-                  <Film className="mx-auto size-9 text-white/75" aria-hidden="true" />
-                  <p className="mt-3 text-sm font-semibold text-white/75">
-                    Video preview unavailable.
-                  </p>
-                </div>
-              </div>
-            )}
+    <section className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
+      <div className="grid gap-0 lg:grid-cols-[344px_minmax(0,1fr)] xl:grid-cols-[368px_minmax(0,1fr)]">
+        <section className="border-b border-border bg-[#f5f5f6] px-4 py-5 sm:px-5 lg:border-b-0 lg:border-r lg:py-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Film className="size-4 text-muted" aria-hidden="true" />
+              <h2 className="text-sm font-semibold text-foreground-strong">Preview</h2>
+            </div>
+            <span className="text-xs font-medium text-muted">
+              {formatPreciseTime(selectedDuration)} selected
+            </span>
+          </div>
 
-            {textOverlays.map((overlay) =>
-              overlay.text.trim() ? (
-                <div
-                  key={overlay.id}
-                  className={getOverlayPositionClass(overlay.position)}
-                >
-                  <div
-                    className={getOverlayStyleClass(overlay.style)}
-                  >
-                    {overlay.text}
+          <div className="flex justify-center">
+            <div
+              className="relative overflow-hidden rounded-md bg-black text-white [container-type:size]"
+              style={{
+                aspectRatio: previewAspectRatio,
+                maxHeight: "68vh",
+                width: `min(100%, ${maxPreviewWidth}px)`,
+              }}
+            >
+              {video.videoUrl ? (
+                <video
+                  ref={videoRef}
+                  src={video.videoUrl}
+                  poster={video.thumbnailUrl ?? undefined}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  onCanPlay={() => setVideoLoadState("ready")}
+                  onError={() => setVideoLoadState("error")}
+                  onLoadedMetadata={handleLoadedMetadata}
+                  onTimeUpdate={handleTimeUpdate}
+                  className="size-full object-contain object-center"
+                />
+              ) : null}
+
+              {videoLoadState === "loading" ? (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35">
+                  <div className="flex items-center gap-2 rounded-md bg-black/65 px-3 py-2 text-xs font-semibold text-white">
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                    Loading preview
                   </div>
                 </div>
-              ) : null,
-            )}
+              ) : null}
+
+              {videoLoadState === "error" ? (
+                <div className="absolute inset-0 flex size-full items-center justify-center bg-[#17181b] px-6 text-center">
+                  <div>
+                    <Film className="mx-auto size-8 text-white/60" aria-hidden="true" />
+                    <p className="mt-3 text-sm font-semibold text-white/85">
+                      Preview unavailable
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-white/60">
+                      Refresh the demo to try loading it again.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {textOverlays.map((overlay) =>
+                overlay.text.trim() ? (
+                  <div
+                    key={overlay.id}
+                    className={getOverlayPositionClass(overlay.position)}
+                  >
+                    <div className={getOverlayStyleClass(overlay.style)}>
+                      {overlay.text}
+                    </div>
+                  </div>
+                ) : null,
+              )}
+            </div>
           </div>
         </section>
 
         <aside className="min-w-0 bg-card">
-          <div className="space-y-6 px-4 py-5 sm:px-5 lg:py-6">
+          <div className="space-y-7 px-4 py-5 sm:px-6 lg:py-6 xl:px-7">
             <TrimControls
               canPreviewTrim={canPreviewTrim}
               currentTime={currentTime}
@@ -334,7 +377,7 @@ export function FocusedVideoEditor({
       </div>
 
       {actionFooter ? (
-        <footer className="border-t border-border bg-white px-4 py-3 sm:px-5">
+        <footer className="border-t border-border bg-card-muted px-4 py-3 sm:px-6">
           {actionFooter}
         </footer>
       ) : null}
@@ -469,38 +512,38 @@ function TrimControls({
   }
 
   return (
-    <section className="border-b border-border pb-6">
+    <section className="border-b border-border pb-7">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Scissors className="size-4 text-primary" aria-hidden="true" />
           <h3 className="text-sm font-semibold text-foreground-strong">
-            Trim
+            Trim clip
           </h3>
         </div>
-        <span className="text-xs font-semibold text-muted">
-          Selected {formatPreciseTime(selectedDuration)}
+        <span className="rounded-full bg-card-muted px-2.5 py-1 text-xs font-semibold text-muted">
+          {formatPreciseTime(selectedDuration)} selected
         </span>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-6">
         <div
           ref={trackRef}
-          className="relative h-[72px]"
+          className="relative mx-5 h-[72px]"
           onPointerDown={handleTrackPointerDown}
         >
           <span
-            className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-md border border-border bg-white px-2 py-1 text-[11px] font-semibold text-[#173454] shadow-sm"
+            className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-md bg-foreground-strong px-2 py-1 text-[11px] font-semibold text-white"
             style={{ left: `${selectedLeft}%` }}
           >
             {formatPreciseTime(trimStart)}
           </span>
           <span
-            className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-md border border-border bg-white px-2 py-1 text-[11px] font-semibold text-[#173454] shadow-sm"
+            className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-md bg-foreground-strong px-2 py-1 text-[11px] font-semibold text-white"
             style={{ left: `${selectedRight}%` }}
           >
             {formatPreciseTime(trimEnd || duration)}
           </span>
-          <div className="absolute inset-x-0 top-11 h-1 -translate-y-1/2 rounded-full bg-border" />
+          <div className="absolute inset-x-0 top-11 h-1 -translate-y-1/2 rounded-full bg-[#dedfe2]" />
           <div
             className="absolute top-11 h-0.5 -translate-y-1/2 rounded-full bg-brand"
             style={{
@@ -569,7 +612,7 @@ function TrimControls({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(120px,1fr)_minmax(120px,1fr)_auto_auto] lg:items-end">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(116px,1fr)_minmax(116px,1fr)_auto_auto] lg:items-end">
         <label className="block">
           <span className="text-xs font-semibold text-muted">Start</span>
           <input
@@ -598,7 +641,7 @@ function TrimControls({
           type="button"
           onClick={onPlayTrimmedPreview}
           disabled={!canPreviewTrim}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#173454] px-3 text-sm font-semibold text-white transition hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-1"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-foreground-strong px-3.5 text-sm font-semibold text-white transition-colors hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-1"
         >
           <Play className="size-3.5" aria-hidden="true" />
           Preview selection
@@ -607,7 +650,7 @@ function TrimControls({
           type="button"
           onClick={onResetTrim}
           disabled={!canEditTrim}
-          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-1"
+          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-1"
         >
           <RotateCcw className="size-3.5" aria-hidden="true" />
           Reset
@@ -670,7 +713,7 @@ function TextOverlayControls({
         </button>
       </div>
 
-      <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_270px]">
+      <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
         <div className="min-w-0 space-y-4">
           {overlays.length > 0 ? (
             <ol className="space-y-2">
@@ -681,8 +724,10 @@ function TextOverlayControls({
                   <li
                     key={overlay.id}
                     className={cn(
-                      "flex items-stretch gap-2 rounded-md border bg-white p-2 transition",
-                      selected ? "border-brand bg-brand-soft/70" : "border-border",
+                      "flex items-stretch gap-2 rounded-md border bg-white p-2.5 transition-colors",
+                      selected
+                        ? "border-brand bg-brand-soft/55"
+                        : "border-border hover:border-border-strong",
                     )}
                   >
                     <button
@@ -760,7 +805,7 @@ function TextOverlayControls({
           ) : null}
         </div>
 
-        <aside className="border-t border-border pt-4 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-0">
+        <aside className="border-t border-border pt-5 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
           {selectedOverlay ? (
             <div className="space-y-5">
               <SegmentedControl
@@ -845,7 +890,7 @@ function SegmentedControl<TValue extends string>({
                 "h-8 rounded-[5px] px-3 text-sm font-semibold capitalize transition",
                 layout === "row" && "flex-1",
                 selected
-                  ? "border border-brand/45 bg-white text-primary shadow-sm"
+                  ? "border border-brand/45 bg-white text-primary"
                   : "text-muted hover:text-foreground",
                 isDisabled && "cursor-not-allowed opacity-45 hover:text-muted",
               )}
@@ -867,7 +912,7 @@ function StylePreview({
   text: string;
 }) {
   return (
-    <div className="mt-4 flex min-h-16 items-center justify-center rounded-md border border-border bg-white px-4 py-5 text-center">
+    <div className="mt-4 flex min-h-16 items-center justify-center rounded-md border border-border bg-card-muted px-4 py-5 text-center">
       <span className={getStylePreviewClass(style)}>
         {text.trim() || "Text"}
       </span>

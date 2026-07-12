@@ -412,9 +412,9 @@ only the caller's carousel generations for the caller's single business profile.
   and non-interactive. The deck stops at the first and last candidates rather
   than looping or deleting an item after a swipe.
 - Dragging the active card left selects the next complete carousel; dragging it
-  right selects the previous complete carousel. Pointer, keyboard, and explicit
-  Previous/Next idea controls all update only the active candidate index. This
-  browsing interaction is local frontend state and must not refetch history.
+  right selects the previous complete carousel. Pointer and keyboard navigation
+  update only the active candidate index. This browsing interaction is local
+  frontend state and must not refetch history.
 - The active card may rotate by at most five degrees while dragged and exits in
   the swipe direction before the next candidate becomes active. Reduced-motion
   users get an immediate state change. Inner controls must be excluded from the
@@ -429,14 +429,12 @@ only the caller's carousel generations for the caller's single business profile.
   strip or show neighboring slides from the same carousel. Background deck
   cards never expose slide controls, and a candidate's selected slide is
   preserved when the user leaves and returns.
-- Title, lifecycle status, and the visually disabled Generate action remain a
-  compact row below the stack rather than a large information footer. This row
-  is outside every card's transformed box so its height cannot shift or distort
-  the stack geometry.
-- Trending is the only visible Carousel product surface in the app. Clicking
-  an image, slide, dots, slide arrows, or its visual Generate control must never
-  open a separate Carousel Ads workspace. The Trending Generate control is
-  intentionally disabled until a dedicated generation workflow is defined.
+- Completed carousel decks do not render a title, lifecycle badge, Generate
+  action, idea counter, or Previous/Next idea controls below the card. Keep the
+  deck visually focused and navigate complete ideas through swipe or keyboard.
+- Trending is the only visible Carousel product surface in the app. Clicking an
+  image, slide, dots, or slide arrows must never open a separate Carousel Ads
+  workspace.
 - Trending must show a clear profile-needed, preparing, ready, or
   failed/retry state. It must never fall back to static template artwork.
 - Trending must not expose `All`, `Video`, `Avatar`, or `Image` format tabs,

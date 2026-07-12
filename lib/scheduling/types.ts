@@ -12,6 +12,7 @@ export const scheduleSourceTypes = [
   "edit_video",
   "demo_video",
   "generated_video",
+  "generated_carousel",
 ] as const;
 
 export const schedulePostTypes = [

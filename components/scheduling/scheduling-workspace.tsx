@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock3,
   FileVideo,
+  Images,
   Info,
   List,
   Plus,
@@ -69,7 +70,7 @@ export function SchedulingWorkspace() {
     getEditableVideos,
     getEmptyEditableVideos,
   );
-  const [activeTab, setActiveTab] = useState<ScheduleTab>("upcoming");
+  const [activeTab, setActiveTab] = useState<ScheduleTab>(getInitialScheduleTab);
   const [viewMode, setViewMode] = useState<ScheduleViewMode>("list");
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -340,6 +341,8 @@ function ScheduleContent({
 }
 
 function ScheduleDraftPreview({ draft }: { draft: ScheduleDraft }) {
+  const FallbackIcon = draft.sourceType === "generated_carousel" ? Images : Video;
+
   return (
     <article className="grid gap-3 rounded-2xl border border-border bg-white p-3 shadow-sm sm:grid-cols-[96px_minmax(0,1fr)]">
       <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-[#102033] text-white sm:aspect-[9/12]">
@@ -347,7 +350,7 @@ function ScheduleDraftPreview({ draft }: { draft: ScheduleDraft }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={draft.thumbnailUrl} alt="" className="size-full object-cover" />
         ) : (
-          <Video className="size-6 text-white/70" aria-hidden="true" />
+          <FallbackIcon className="size-6 text-white/70" aria-hidden="true" />
         )}
       </div>
 
@@ -668,7 +671,7 @@ function ScheduleMediaPicker({
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-bold text-foreground">Select video</span>
+        <span className="text-sm font-bold text-foreground">Select media</span>
         <span className="text-xs font-semibold text-muted">
           {mediaOptions.length} local {mediaOptions.length === 1 ? "asset" : "assets"}
         </span>
@@ -726,10 +729,10 @@ function ScheduleMediaPicker({
         <div className="mt-2 rounded-2xl border border-dashed border-border bg-[#fffaf6] px-4 py-5 text-center">
           <Video className="mx-auto size-7 text-[#9aa7b8]" aria-hidden="true" />
           <p className="mt-3 text-sm font-bold text-foreground">
-            No ready videos found.
+            No ready media found.
           </p>
           <p className="mt-1 text-sm font-medium leading-6 text-muted">
-            Finish editing or rendering a video before scheduling.
+            Finish editing or rendering content before scheduling.
           </p>
         </div>
       )}
@@ -931,10 +934,23 @@ function getMediaSourceLabel(option: ScheduleMediaOption) {
   const sourceLabels: Record<ScheduleMediaOption["sourceType"], string> = {
     demo_video: "Demo video",
     edit_video: "Edited video",
+    generated_carousel: "Generated carousel",
     generated_video: "Generated video",
   };
 
   return sourceLabels[option.sourceType];
+}
+
+function getInitialScheduleTab(): ScheduleTab {
+  if (typeof window === "undefined") {
+    return "upcoming";
+  }
+
+  const tab = new URLSearchParams(window.location.search).get("tab");
+
+  return scheduleTabs.includes(tab as ScheduleTab)
+    ? (tab as ScheduleTab)
+    : "upcoming";
 }
 
 function getDraftStatusPreview({

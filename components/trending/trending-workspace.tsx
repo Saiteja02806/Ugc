@@ -3,24 +3,34 @@
 import {
   ArrowLeft,
   ArrowRight,
+  CalendarCheck,
+  Check,
   CircleAlert,
   Loader2,
   RefreshCw,
+  Save,
   Search,
   Sparkles,
+  X,
 } from "lucide-react";
 import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
+  ReactNode,
 } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AUTOMATIC_CAROUSEL_CANDIDATE_COUNT } from "@/lib/carousel/automatic-candidate-count";
+import { saveCarouselLibraryItem } from "@/lib/carousel/local-library";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import {
+  createScheduleDraft,
+  saveScheduleDraft,
+} from "@/lib/scheduling/local-storage";
 import { cn } from "@/lib/utils";
 
 type CarouselHistoryState = "error" | "idle" | "loading" | "ready";
@@ -559,9 +569,14 @@ function CarouselCandidateStack({
   onActiveCarouselChange: (carouselIndex: number) => void;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
 }) {
+  const router = useRouter();
   const swipeTimerRef = useRef<number | null>(null);
+  const actionNoticeTimerRef = useRef<number | null>(null);
   const dragStartXRef = useRef<number | null>(null);
   const dragXRef = useRef(0);
+  const [actionCandidate, setActionCandidate] =
+    useState<CompleteCarousel | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(
@@ -612,9 +627,25 @@ function CarouselCandidateStack({
       if (swipeTimerRef.current !== null) {
         window.clearTimeout(swipeTimerRef.current);
       }
+
+      if (actionNoticeTimerRef.current !== null) {
+        window.clearTimeout(actionNoticeTimerRef.current);
+      }
     },
     [],
   );
+
+  function showActionNotice(message: string) {
+    if (actionNoticeTimerRef.current !== null) {
+      window.clearTimeout(actionNoticeTimerRef.current);
+    }
+
+    setActionNotice(message);
+    actionNoticeTimerRef.current = window.setTimeout(() => {
+      actionNoticeTimerRef.current = null;
+      setActionNotice(null);
+    }, 2400);
+  }
 
   function resetDrag() {
     dragStartXRef.current = null;
@@ -639,10 +670,13 @@ function CarouselCandidateStack({
   }
 
   function completeCarouselSwipe(direction: "left" | "right") {
-    const nextIndex =
-      direction === "left"
-        ? safeActiveCarouselIndex + 1
-        : safeActiveCarouselIndex - 1;
+    if (direction === "right") {
+      resetDrag();
+      setActionCandidate(activeCandidate);
+      return;
+    }
+
+    const nextIndex = safeActiveCarouselIndex + 1;
 
     if (nextIndex < 0 || nextIndex > lastCarouselIndex) {
       resetDrag();
@@ -738,6 +772,37 @@ function CarouselCandidateStack({
     }
   }
 
+  function handleSaveToLibrary() {
+    if (!actionCandidate) {
+      return;
+    }
+
+    saveCarouselToLibrary(actionCandidate);
+    setActionCandidate(null);
+    showActionNotice("Saved to Library.");
+  }
+
+  function handleSchedulePost() {
+    if (!actionCandidate) {
+      return;
+    }
+
+    const draft = createScheduleDraftFromCarousel(actionCandidate);
+    saveScheduleDraft(draft);
+    setActionCandidate(null);
+
+    const params = new URLSearchParams({
+      draft: draft.id,
+      tab: "drafts",
+    });
+
+    if (isPreviewMode()) {
+      params.set("preview", "1");
+    }
+
+    router.push(`/scheduling?${params.toString()}`);
+  }
+
   return (
     <section aria-label="Personalized carousel ideas" className="w-full">
       <div
@@ -770,7 +835,204 @@ function CarouselCandidateStack({
       <span className="sr-only" aria-live="polite">
         Showing {title}, idea {safeActiveCarouselIndex + 1} of {candidates.length}
       </span>
+      {actionCandidate ? (
+        <CarouselActionDialog
+          candidate={actionCandidate}
+          onClose={() => setActionCandidate(null)}
+          onSaveToLibrary={handleSaveToLibrary}
+          onSchedulePost={handleSchedulePost}
+        />
+      ) : null}
+      {actionNotice ? <CarouselActionToast message={actionNotice} /> : null}
     </section>
+  );
+}
+
+function CarouselActionDialog({
+  candidate,
+  onClose,
+  onSaveToLibrary,
+  onSchedulePost,
+}: {
+  candidate: CompleteCarousel;
+  onClose: () => void;
+  onSaveToLibrary: () => void;
+  onSchedulePost: () => void;
+}) {
+  const firstActionRef = useRef<HTMLButtonElement>(null);
+  const title = getCarouselTitle(candidate.carousel);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const previousBodyOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    firstActionRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+
+      if (previouslyFocused?.isConnected) {
+        previouslyFocused.focus();
+      }
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      role="presentation"
+      className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-black/45 px-4 py-5"
+      onMouseDown={(event) => {
+        if (event.currentTarget === event.target) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="carousel-action-dialog-title"
+        className="flex h-[min(700px,calc(100vh-2.5rem))] w-full max-w-[960px] flex-col overflow-hidden rounded-[24px] border border-border bg-white shadow-[0_28px_90px_rgb(9_9_11_/_0.28)]"
+      >
+        <div className="border-b border-border bg-white">
+          <div className="flex items-start justify-between gap-4 px-5 py-5 sm:px-6">
+            <div className="min-w-0">
+              <h2
+                id="carousel-action-dialog-title"
+                className="text-xl font-semibold text-foreground-strong"
+              >
+                What would you like to do?
+              </h2>
+              <p className="mt-1 text-sm font-medium text-muted">Step 1 of 4</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <span className="hidden rounded-full bg-card-muted px-2.5 py-1 text-xs font-semibold lowercase text-muted sm:inline-flex">
+                esc
+              </span>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="inline-flex size-9 items-center justify-center rounded-full text-muted transition hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+              >
+                <X className="size-5" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+          <div className="h-1 bg-card-muted">
+            <div className="h-full w-1/4 bg-primary" />
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+          <div className="space-y-3">
+            <CarouselActionOption
+              ref={firstActionRef}
+              description="Save this carousel for later"
+              icon={<Save className="size-5" aria-hidden="true" />}
+              label="Save to Library"
+              selected
+              onClick={onSaveToLibrary}
+            />
+            <CarouselActionOption
+              description="Post or schedule to your platforms"
+              icon={<CalendarCheck className="size-5" aria-hidden="true" />}
+              label="Schedule Post"
+              onClick={onSchedulePost}
+            />
+          </div>
+          <p className="sr-only">Selected carousel: {title}</p>
+        </div>
+
+        <div className="border-t border-border bg-white px-5 py-5 sm:px-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm font-semibold text-muted transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type CarouselActionOptionProps = {
+  description: string;
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+  selected?: boolean;
+};
+
+const CarouselActionOption = forwardRef<
+  HTMLButtonElement,
+  CarouselActionOptionProps
+>(function CarouselActionOption(
+  {
+    description,
+    icon,
+    label,
+    onClick,
+    selected = false,
+  },
+  ref,
+) {
+  return (
+    <button
+      type="button"
+      ref={ref}
+      onClick={onClick}
+      className={cn(
+        "group grid min-h-24 w-full grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 rounded-[20px] border bg-white px-5 py-4 text-left transition hover:border-primary/60 hover:bg-[#fffaf6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
+        selected ? "border-primary ring-2 ring-primary/15" : "border-border",
+      )}
+    >
+      <span
+        className={cn(
+          "flex size-12 items-center justify-center rounded-full",
+          selected ? "bg-brand-soft text-primary" : "bg-[#e9fff2] text-[#12b76a]",
+        )}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-base font-semibold text-foreground-strong">
+          {label}
+        </span>
+        <span className="mt-1 block text-sm font-medium leading-5 text-muted">
+          {description}
+        </span>
+      </span>
+      <Check
+        className={cn(
+          "size-4 text-muted-subtle opacity-0 transition group-hover:opacity-100",
+          selected && "opacity-100 text-primary",
+        )}
+        aria-hidden="true"
+      />
+    </button>
+  );
+});
+
+function CarouselActionToast({ message }: { message: string }) {
+  return (
+    <div
+      role="status"
+      className="fixed bottom-5 left-1/2 z-[var(--z-modal)] -translate-x-1/2 rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground-strong shadow-floating"
+    >
+      {message}
+    </div>
   );
 }
 
@@ -1165,6 +1427,43 @@ function GeneratedCarouselFeedSkeleton() {
         </div>
       </div>
     </div>
+  );
+}
+
+function saveCarouselToLibrary(candidate: CompleteCarousel) {
+  const title = getCarouselTitle(candidate.carousel);
+
+  saveCarouselLibraryItem({
+    categorySlug: candidate.carousel.categorySlug,
+    carouselId: candidate.carousel.carouselId,
+    generationBatchId: candidate.carousel.generationBatchId,
+    projectId: candidate.carousel.projectId,
+    slideUrls: candidate.slides.map((slide) => slide.renderedUrl),
+    thumbnailUrl:
+      candidate.carousel.thumbnailUrl ?? candidate.slides[0]?.renderedUrl ?? null,
+    title,
+  });
+}
+
+function createScheduleDraftFromCarousel(candidate: CompleteCarousel) {
+  const title = getCarouselTitle(candidate.carousel);
+  const firstSlideUrl = candidate.slides[0]?.renderedUrl;
+
+  return createScheduleDraft({
+    caption: "",
+    mediaTitle: title,
+    mediaUrl: firstSlideUrl,
+    sourceId: candidate.carousel.carouselId,
+    sourceType: "generated_carousel",
+    status: "draft",
+    thumbnailUrl: candidate.carousel.thumbnailUrl ?? firstSlideUrl,
+  });
+}
+
+function isPreviewMode() {
+  return (
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("preview") === "1"
   );
 }
 

@@ -411,9 +411,10 @@ only the caller's carousel generations for the caller's single business profile.
   Background candidates are vertically offset, slightly smaller, less opaque,
   and non-interactive. The deck stops at the first and last candidates rather
   than looping or deleting an item after a swipe.
-- Dragging the active card left selects the next complete carousel; dragging it
-  right selects the previous complete carousel. Pointer and keyboard navigation
-  update only the active candidate index. This browsing interaction is local
+- Dragging the active card left selects the next complete carousel. Dragging it
+  right opens the action choice dialog for the active carousel with Save to
+  Library and Schedule Post options. Keyboard left/right navigation remains for
+  accessible browsing between complete ideas. These interactions are local
   frontend state and must not refetch history.
 - The active card may rotate by at most five degrees while dragged and exits in
   the swipe direction before the next candidate becomes active. Reduced-motion
@@ -432,6 +433,12 @@ only the caller's carousel generations for the caller's single business profile.
 - Completed carousel decks do not render a title, lifecycle badge, Generate
   action, idea counter, or Previous/Next idea controls below the card. Keep the
   deck visually focused and navigate complete ideas through swipe or keyboard.
+- The right-swipe action dialog is the only post-swipe action surface on
+  completed carousel cards. Save to Library stores the rendered carousel in the
+  browser-local carousel library. Schedule Post creates a browser-local
+  scheduling draft with `sourceType = generated_carousel` and opens Scheduling
+  on the Drafts tab. This does not create a Supabase Auth session or call a
+  publishing API.
 - Trending is the only visible Carousel product surface in the app. Clicking an
   image, slide, dots, or slide arrows must never open a separate Carousel Ads
   workspace.

@@ -41,7 +41,7 @@ type SidebarItem = {
   label: string;
 };
 
-const navigationItems: SidebarItem[] = [
+const primaryNavigationItems: SidebarItem[] = [
   {
     key: "trending",
     label: "Trending",
@@ -78,9 +78,12 @@ const navigationItems: SidebarItem[] = [
     href: "/edit",
     icon: "edit",
   },
+];
+
+const libraryNavigationItems: SidebarItem[] = [
   {
     key: "scheduling",
-    label: "Scheduling",
+    label: "Scheduled",
     href: "/scheduling",
     icon: "scheduling",
   },
@@ -355,7 +358,7 @@ function SidebarNavigation({
       )}
     >
       <div className="space-y-1.5">
-        {navigationItems.map((item) => (
+        {primaryNavigationItems.map((item) => (
           <SidebarLink
             key={item.key}
             active={item.key === activeKey}
@@ -364,6 +367,27 @@ function SidebarNavigation({
             onNavigate={onNavigate}
           />
         ))}
+      </div>
+
+      <div className={cn(collapsed ? "mt-4" : "mt-6")}>
+        {collapsed ? (
+          <div className="mx-2 mb-3 border-t border-border" aria-hidden="true" />
+        ) : (
+          <p className="mb-2 px-3.5 text-xs font-semibold text-muted-subtle">
+            Library
+          </p>
+        )}
+        <div className="space-y-1.5">
+          {libraryNavigationItems.map((item) => (
+            <SidebarLink
+              key={item.key}
+              active={item.key === activeKey}
+              collapsed={collapsed}
+              item={item}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
       </div>
     </nav>
   );

@@ -13,6 +13,7 @@ import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
 } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -55,12 +56,12 @@ type CompleteCarousel = {
   slides: ReadyCarouselSlide[];
 };
 
-type StackRelativePosition = -2 | -1 | 0 | 1 | 2;
+type DeckDepth = 0 | 1 | 2;
 
-type VisibleCarouselSlot = {
+type CarouselDeckSlot = {
   candidate: CompleteCarousel;
   carouselIndex: number;
-  relativePosition: StackRelativePosition;
+  depth: DeckDepth;
 };
 
 type CarouselProfileFeed = {
@@ -81,46 +82,36 @@ type CarouselHistoryResponse =
     };
 
 const HISTORY_POLL_INTERVAL_MS = 6_000;
-const STACK_COLLECTION_ORDER: StackRelativePosition[] = [0, -1, 1, -2, 2];
-const STACK_CARD_STYLES: Record<
-  StackRelativePosition,
-  { opacity: number; scale: number; translateX: string; zIndex: number }
+const SWIPE_THRESHOLD_PX = 90;
+const SWIPE_EXIT_DURATION_MS = 220;
+const MAX_ROTATION_DEGREES = 5;
+const DECK_CARD_STYLES: Record<
+  DeckDepth,
+  { opacity: number; scale: number; translateY: number; zIndex: number }
 > = {
-  [-2]: {
-    opacity: 0.82,
-    scale: 0.72,
-    translateX: "clamp(-272px, -24vw, -112px)",
-    zIndex: 3,
-  },
-  [-1]: {
-    opacity: 0.96,
-    scale: 0.86,
-    translateX: "clamp(-144px, -12vw, -60px)",
-    zIndex: 4,
-  },
   0: {
     opacity: 1,
     scale: 1,
-    translateX: "0px",
-    zIndex: 5,
+    translateY: 0,
+    zIndex: 3,
   },
   1: {
-    opacity: 0.96,
-    scale: 0.86,
-    translateX: "clamp(60px, 12vw, 144px)",
-    zIndex: 4,
+    opacity: 0.9,
+    scale: 0.965,
+    translateY: 12,
+    zIndex: 2,
   },
   2: {
-    opacity: 0.82,
-    scale: 0.72,
-    translateX: "clamp(112px, 24vw, 272px)",
-    zIndex: 3,
+    opacity: 0.65,
+    scale: 0.93,
+    translateY: 24,
+    zIndex: 1,
   },
 };
 const LOADING_STACK_PLACEHOLDERS = [
-  { opacity: 0.72, scale: 0.88, translateX: "-112px", zIndex: 1 },
-  { opacity: 1, scale: 1, translateX: "0px", zIndex: 3 },
-  { opacity: 0.72, scale: 0.88, translateX: "112px", zIndex: 1 },
+  { opacity: 0.65, scale: 0.93, translateY: 24, zIndex: 1 },
+  { opacity: 0.9, scale: 0.965, translateY: 12, zIndex: 2 },
+  { opacity: 1, scale: 1, translateY: 0, zIndex: 3 },
 ] as const;
 
 export function TrendingWorkspace() {
@@ -568,6 +559,14 @@ function CarouselCandidateStack({
   onActiveCarouselChange: (carouselIndex: number) => void;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
 }) {
+  const swipeTimerRef = useRef<number | null>(null);
+  const dragStartXRef = useRef<number | null>(null);
+  const dragXRef = useRef(0);
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(
+    null,
+  );
   const lastCarouselIndex = candidates.length - 1;
   const safeActiveCarouselIndex = Math.min(
     Math.max(activeCarouselIndex, 0),
@@ -582,32 +581,208 @@ function CarouselCandidateStack({
     Math.max(activeCandidate.slides.length - 1, 0),
   );
   const activeSlide = activeCandidate.slides[activeSlideIndex];
-  const visibleCarouselSlots = getVisibleCarouselSlots(
+  const deckSlots = getCarouselDeckSlots(
     candidates,
     safeActiveCarouselIndex,
   );
+  const canGoPrevious = safeActiveCarouselIndex > 0;
+  const canGoNext = safeActiveCarouselIndex < lastCarouselIndex;
+
+  useEffect(() => {
+    const nextCandidate = candidates[safeActiveCarouselIndex + 1];
+    const nextSlideIndex = nextCandidate
+      ? Math.min(
+          activeSlideByCarouselId[nextCandidate.carousel.carouselId] ?? 0,
+          Math.max(nextCandidate.slides.length - 1, 0),
+        )
+      : 0;
+    const urls = [
+      ...activeCandidate.slides.map((slide) => slide.renderedUrl),
+      nextCandidate?.slides[nextSlideIndex]?.renderedUrl,
+    ].filter((url): url is string => Boolean(url));
+
+    urls.forEach((url) => {
+      const image = new window.Image();
+      image.decoding = "async";
+      image.src = url;
+      void image.decode().catch(() => undefined);
+    });
+  }, [
+    activeCandidate,
+    activeSlideByCarouselId,
+    candidates,
+    safeActiveCarouselIndex,
+  ]);
+
+  useEffect(
+    () => () => {
+      if (swipeTimerRef.current !== null) {
+        window.clearTimeout(swipeTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  function resetDrag() {
+    dragStartXRef.current = null;
+    dragXRef.current = 0;
+    setDragX(0);
+    setIsDragging(false);
+    setExitDirection(null);
+  }
+
+  function goToCarousel(nextIndex: number) {
+    if (
+      exitDirection ||
+      nextIndex < 0 ||
+      nextIndex > lastCarouselIndex ||
+      nextIndex === safeActiveCarouselIndex
+    ) {
+      return;
+    }
+
+    resetDrag();
+    onActiveCarouselChange(nextIndex);
+  }
+
+  function completeCarouselSwipe(direction: "left" | "right") {
+    const nextIndex =
+      direction === "left"
+        ? safeActiveCarouselIndex + 1
+        : safeActiveCarouselIndex - 1;
+
+    if (nextIndex < 0 || nextIndex > lastCarouselIndex) {
+      resetDrag();
+      return;
+    }
+
+    dragStartXRef.current = null;
+    setIsDragging(false);
+    setExitDirection(direction);
+
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    swipeTimerRef.current = window.setTimeout(
+      () => {
+        swipeTimerRef.current = null;
+        onActiveCarouselChange(nextIndex);
+        resetDrag();
+      },
+      reduceMotion ? 0 : SWIPE_EXIT_DURATION_MS,
+    );
+  }
+
+  function handlePointerDown(event: ReactPointerEvent<HTMLElement>) {
+    const target = event.target as HTMLElement;
+
+    if (
+      exitDirection ||
+      (event.pointerType === "mouse" && event.button !== 0) ||
+      target.closest("[data-deck-control]")
+    ) {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragStartXRef.current = event.clientX;
+    dragXRef.current = 0;
+    setDragX(0);
+    setIsDragging(true);
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLElement>) {
+    if (!isDragging || dragStartXRef.current === null) {
+      return;
+    }
+
+    const nextDragX = event.clientX - dragStartXRef.current;
+    dragXRef.current = nextDragX;
+    setDragX(nextDragX);
+  }
+
+  function finishPointerInteraction(event: ReactPointerEvent<HTMLElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    if (!isDragging) {
+      return;
+    }
+
+    if (dragXRef.current <= -SWIPE_THRESHOLD_PX) {
+      completeCarouselSwipe("left");
+      return;
+    }
+
+    if (dragXRef.current >= SWIPE_THRESHOLD_PX) {
+      completeCarouselSwipe("right");
+      return;
+    }
+
+    resetDrag();
+  }
+
+  function cancelPointerInteraction(event: ReactPointerEvent<HTMLElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    resetDrag();
+  }
+
+  function handleDeckKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget || exitDirection) {
+      return;
+    }
+
+    if (event.key === "ArrowLeft" && canGoPrevious) {
+      event.preventDefault();
+      goToCarousel(safeActiveCarouselIndex - 1);
+    } else if (event.key === "ArrowRight" && canGoNext) {
+      event.preventDefault();
+      goToCarousel(safeActiveCarouselIndex + 1);
+    }
+  }
 
   return (
     <section aria-label="Personalized carousel ideas" className="w-full">
-      <div className="relative isolate mx-auto mt-3 h-[340px] w-full max-w-5xl overflow-hidden sm:mt-8 sm:h-[376px] lg:mt-10 lg:h-96">
-        {visibleCarouselSlots.map((slot) => (
-          <CarouselStackCard
+      <div
+        role="group"
+        aria-roledescription="carousel idea deck"
+        tabIndex={0}
+        aria-label={`Carousel idea deck. Showing idea ${safeActiveCarouselIndex + 1} of ${candidates.length}. Use left and right arrow keys to change ideas.`}
+        onKeyDown={handleDeckKeyDown}
+        className="relative isolate mx-auto mt-3 h-[410px] w-full max-w-xl overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:mt-7"
+      >
+        {[...deckSlots].reverse().map((slot) => (
+          <CarouselDeckCard
             key={slot.candidate.carousel.carouselId}
             activeSlideByCarouselId={activeSlideByCarouselId}
             candidate={slot.candidate}
             carouselCount={candidates.length}
             carouselIndex={slot.carouselIndex}
-            isActive={slot.carouselIndex === safeActiveCarouselIndex}
-            relativePosition={slot.relativePosition}
+            depth={slot.depth}
+            dragX={slot.depth === 0 ? dragX : 0}
+            exitDirection={slot.depth === 0 ? exitDirection : null}
+            isDragging={slot.depth === 0 && isDragging}
             onActiveSlideChange={onActiveSlideChange}
-            onSelect={() => onActiveCarouselChange(slot.carouselIndex)}
+            onPointerCancel={cancelPointerInteraction}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={finishPointerInteraction}
           />
         ))}
       </div>
-      <CarouselStackSummary
+      <CarouselDeckSummary
         activeSlide={activeSlide}
+        canGoNext={canGoNext}
+        canGoPrevious={canGoPrevious}
         carouselCount={candidates.length}
         carouselIndex={safeActiveCarouselIndex}
+        disabled={Boolean(exitDirection)}
+        onNext={() => goToCarousel(safeActiveCarouselIndex + 1)}
+        onPrevious={() => goToCarousel(safeActiveCarouselIndex - 1)}
         title={title}
       />
       <span className="sr-only" aria-live="polite">
@@ -617,25 +792,36 @@ function CarouselCandidateStack({
   );
 }
 
-function CarouselStackCard({
+function CarouselDeckCard({
   activeSlideByCarouselId,
   candidate,
   carouselCount,
   carouselIndex,
-  isActive,
-  onSelect,
+  depth,
+  dragX,
+  exitDirection,
+  isDragging,
   onActiveSlideChange,
-  relativePosition,
+  onPointerCancel,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
 }: {
   activeSlideByCarouselId: Record<string, number>;
   candidate: CompleteCarousel;
   carouselCount: number;
   carouselIndex: number;
-  isActive: boolean;
+  depth: DeckDepth;
+  dragX: number;
+  exitDirection: "left" | "right" | null;
+  isDragging: boolean;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
-  onSelect: () => void;
-  relativePosition: StackRelativePosition;
+  onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
 }) {
+  const isActive = depth === 0;
   const title = getCarouselTitle(candidate.carousel);
   const storedSlideIndex =
     activeSlideByCarouselId[candidate.carousel.carouselId] ?? 0;
@@ -644,26 +830,22 @@ function CarouselStackCard({
     Math.max(candidate.slides.length - 1, 0),
   );
   const activeSlide = candidate.slides[activeSlideIndex];
-  const stackStyle = STACK_CARD_STYLES[relativePosition];
+  const deckStyle = DECK_CARD_STYLES[depth];
+  const clampedRotation = Math.max(
+    -MAX_ROTATION_DEGREES,
+    Math.min(MAX_ROTATION_DEGREES, dragX / 28),
+  );
+  const translateX = exitDirection
+    ? exitDirection === "left"
+      ? "-115vw"
+      : "115vw"
+    : `${dragX}px`;
   const cardStyle: CSSProperties = {
-    opacity: stackStyle.opacity,
-    transform: `translateX(${stackStyle.translateX}) scale(${stackStyle.scale})`,
+    opacity: deckStyle.opacity,
+    touchAction: isActive ? "pan-y" : undefined,
+    transform: `translateX(${isActive ? translateX : "0px"}) translateY(${deckStyle.translateY}px) rotate(${isActive ? clampedRotation : 0}deg) scale(${deckStyle.scale})`,
+    transition: isDragging ? "none" : undefined,
   };
-
-  function selectCard() {
-    if (!isActive) {
-      onSelect();
-    }
-  }
-
-  function handleCardKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
-    if (isActive || (event.key !== "Enter" && event.key !== " ")) {
-      return;
-    }
-
-    event.preventDefault();
-    onSelect();
-  }
 
   function moveSlide(event: ReactMouseEvent<HTMLButtonElement>, direction: number) {
     event.stopPropagation();
@@ -681,31 +863,30 @@ function CarouselStackCard({
 
   return (
     <div
-      className={cn(
-        "pointer-events-none absolute inset-0 flex items-center justify-center",
-        Math.abs(relativePosition) === 2 && "hidden lg:flex",
-      )}
-      style={{ zIndex: stackStyle.zIndex }}
+      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-1"
+      style={{ zIndex: deckStyle.zIndex }}
     >
       <article
         aria-label={`${title}, idea ${carouselIndex + 1} of ${carouselCount}`}
+        aria-hidden={isActive ? undefined : "true"}
         className={cn(
-          "pointer-events-auto w-[min(72vw,244px)] origin-center overflow-visible transition-[opacity,transform] duration-300 ease-out will-change-transform motion-reduce:transition-none sm:w-[min(46vw,280px)] lg:w-[min(26vw,280px)]",
-          !isActive &&
-            "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
+          "w-[min(86vw,300px)] origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none sm:w-[300px]",
+          isActive
+            ? "pointer-events-auto cursor-grab active:cursor-grabbing"
+            : "pointer-events-none",
         )}
-        onClick={selectCard}
-        onKeyDown={handleCardKeyDown}
-        role={isActive ? undefined : "button"}
+        onPointerCancel={isActive ? onPointerCancel : undefined}
+        onPointerDown={isActive ? onPointerDown : undefined}
+        onPointerMove={isActive ? onPointerMove : undefined}
+        onPointerUp={isActive ? onPointerUp : undefined}
         style={cardStyle}
-        tabIndex={isActive ? undefined : 0}
       >
         <div
           className={cn(
-            "relative aspect-[4/5] overflow-hidden rounded-xl bg-foreground-strong",
+            "relative aspect-[4/5] overflow-hidden rounded-lg bg-foreground-strong",
             isActive
-              ? "shadow-[0_14px_28px_rgb(9_9_11_/_0.22)]"
-              : "shadow-[0_10px_20px_rgb(9_9_11_/_0.16)]",
+              ? "shadow-[0_10px_18px_rgb(9_9_11_/_0.2)]"
+              : "shadow-[0_6px_12px_rgb(9_9_11_/_0.14)]",
           )}
         >
           {/* Rendered Carousel slides are immutable CloudFront creative assets. */}
@@ -714,143 +895,160 @@ function CarouselStackCard({
             src={activeSlide.renderedUrl}
             alt={isActive ? `${title}, slide ${activeSlide.slideNumber}` : ""}
             aria-hidden={isActive ? undefined : "true"}
-            className="size-full object-contain"
+            draggable={false}
+            className="size-full pointer-events-none object-contain"
           />
 
-          {candidate.slides.length > 1 ? (
+          {isActive && candidate.slides.length > 1 ? (
             <>
               <button
                 type="button"
+                data-deck-control
+                onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => moveSlide(event, -1)}
-                className={cn(
-                  "absolute left-3 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white transition-[background-color,transform] hover:scale-105 hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none",
-                  isActive ? "size-9" : "size-8",
-                )}
+                className="absolute left-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white transition-[background-color,transform] hover:scale-105 hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none"
                 aria-label={`Previous slide for ${title}`}
               >
-                <ArrowLeft className={isActive ? "size-4" : "size-3.5"} aria-hidden="true" />
+                <ArrowLeft className="size-4" aria-hidden="true" />
               </button>
               <button
                 type="button"
+                data-deck-control
+                onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => moveSlide(event, 1)}
-                className={cn(
-                  "absolute right-3 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white transition-[background-color,transform] hover:scale-105 hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none",
-                  isActive ? "size-9" : "size-8",
-                )}
+                className="absolute right-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white transition-[background-color,transform] hover:scale-105 hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none"
                 aria-label={`Next slide for ${title}`}
               >
-                <ArrowRight className={isActive ? "size-4" : "size-3.5"} aria-hidden="true" />
+                <ArrowRight className="size-4" aria-hidden="true" />
               </button>
             </>
           ) : null}
 
-          <div
-            className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1.5"
-            aria-label={`${title} slides`}
-          >
-            {candidate.slides.map((slide, index) => (
-              <button
-                key={slide.slideNumber}
-                type="button"
-                onClick={(event) => selectSlide(event, index)}
-                aria-label={`Show slide ${index + 1} for ${title}`}
-                aria-current={activeSlideIndex === index ? "true" : undefined}
-                className={cn(
-                  "h-1.5 rounded-full transition-[width,background-color] motion-reduce:transition-none",
-                  activeSlideIndex === index
-                    ? "w-4 bg-white"
-                    : "w-1.5 bg-white/45 hover:bg-white/80",
-                )}
-              />
-            ))}
-          </div>
+          {isActive ? (
+            <div
+              data-deck-control
+              onPointerDown={(event) => event.stopPropagation()}
+              className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1.5"
+              aria-label={`${title} slides`}
+            >
+              {candidate.slides.map((slide, index) => (
+                <button
+                  key={slide.slideNumber}
+                  type="button"
+                  data-deck-control
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => selectSlide(event, index)}
+                  aria-label={`Show slide ${index + 1} for ${title}`}
+                  aria-current={activeSlideIndex === index ? "true" : undefined}
+                  className={cn(
+                    "h-1.5 rounded-full transition-[width,background-color] motion-reduce:transition-none",
+                    activeSlideIndex === index
+                      ? "w-4 bg-white"
+                      : "w-1.5 bg-white/45 hover:bg-white/80",
+                  )}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       </article>
     </div>
   );
 }
 
-function CarouselStackSummary({
+function CarouselDeckSummary({
   activeSlide,
+  canGoNext,
+  canGoPrevious,
   carouselCount,
   carouselIndex,
+  disabled,
+  onNext,
+  onPrevious,
   title,
 }: {
   activeSlide: ReadyCarouselSlide;
+  canGoNext: boolean;
+  canGoPrevious: boolean;
   carouselCount: number;
   carouselIndex: number;
+  disabled: boolean;
+  onNext: () => void;
+  onPrevious: () => void;
   title: string;
 }) {
   return (
-    <div className="mx-auto mt-4 flex w-full max-w-[440px] flex-col gap-3 px-4 sm:flex-row sm:items-start sm:justify-between sm:px-0">
-      <div className="min-w-0">
-        <p className="line-clamp-1 text-sm font-semibold text-foreground-strong">
-          {title}
-        </p>
-        <p className="mt-1 text-xs leading-5 text-muted">
-          {getSlideRoleLabel(activeSlide)} | Idea {carouselIndex + 1} of {carouselCount}
-        </p>
+    <div className="mx-auto mt-4 w-full max-w-[480px] px-4 sm:px-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="line-clamp-1 text-sm font-semibold text-foreground-strong">
+            {title}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            {getSlideRoleLabel(activeSlide)} | Idea {carouselIndex + 1} of {carouselCount}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-semibold text-success">
+            Ready
+          </span>
+          <span title="Generation from Trending is coming soon.">
+            <button
+              type="button"
+              data-deck-control
+              disabled
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card-muted px-2.5 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-80"
+              aria-label="Generate carousel, coming soon"
+            >
+              <Sparkles className="size-3.5" aria-hidden="true" />
+              Generate
+            </button>
+          </span>
+        </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        <span className="rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-semibold text-success">
-          Ready
+      <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+        <button
+          type="button"
+          data-deck-control
+          disabled={disabled || !canGoPrevious}
+          onClick={onPrevious}
+          aria-label="Previous carousel idea"
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border-strong bg-white px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Previous idea</span>
+        </button>
+        <span className="text-xs font-medium tabular-nums text-muted" aria-hidden="true">
+          {carouselIndex + 1} / {carouselCount}
         </span>
-        <span title="Generation from Trending is coming soon.">
-          <button
-            type="button"
-            disabled
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card-muted px-2.5 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-80"
-            aria-label="Generate carousel, coming soon"
-          >
-            <Sparkles className="size-3.5" aria-hidden="true" />
-            Generate
-          </button>
-        </span>
+        <button
+          type="button"
+          data-deck-control
+          disabled={disabled || !canGoNext}
+          onClick={onNext}
+          aria-label="Next carousel idea"
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border-strong bg-white px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <span className="hidden sm:inline">Next idea</span>
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </button>
       </div>
     </div>
   );
 }
 
-function getVisibleCarouselSlots(
+function getCarouselDeckSlots(
   candidates: CompleteCarousel[],
   activeCarouselIndex: number,
-): VisibleCarouselSlot[] {
-  if (candidates.length === 0) {
-    return [];
-  }
+): CarouselDeckSlot[] {
+  return ([0, 1, 2] as DeckDepth[]).flatMap((depth) => {
+    const carouselIndex = activeCarouselIndex + depth;
+    const candidate = candidates[carouselIndex];
 
-  const usedCarouselIndexes = new Set<number>();
-  const slots = STACK_COLLECTION_ORDER.flatMap<VisibleCarouselSlot>(
-    (relativePosition) => {
-      const carouselIndex = getWrappedCarouselIndex(
-        activeCarouselIndex + relativePosition,
-        candidates.length,
-      );
-
-      if (usedCarouselIndexes.has(carouselIndex)) {
-        return [];
-      }
-
-      usedCarouselIndexes.add(carouselIndex);
-
-      return [
-        {
-          candidate: candidates[carouselIndex],
-          carouselIndex,
-          relativePosition,
-        },
-      ];
-    },
-  );
-
-  return slots.sort(
-    (first, second) => first.relativePosition - second.relativePosition,
-  );
-}
-
-function getWrappedCarouselIndex(index: number, length: number) {
-  return ((index % length) + length) % length;
+    return candidate ? [{ candidate, carouselIndex, depth }] : [];
+  });
 }
 
 function CarouselPreparationState({
@@ -927,20 +1125,20 @@ function CarouselPreparationState({
 function CarouselLoadingStackVisual() {
   return (
     <div
-      className="relative isolate mx-auto h-[320px] w-full max-w-2xl overflow-hidden"
+      className="relative isolate mx-auto h-[390px] w-full max-w-xl overflow-hidden"
       aria-hidden="true"
     >
       {LOADING_STACK_PLACEHOLDERS.map((placeholder, index) => (
         <div
-          key={placeholder.translateX}
-          className="absolute inset-0 flex items-center justify-center"
+          key={placeholder.translateY}
+          className="absolute inset-0 flex items-start justify-center pt-1"
           style={{ zIndex: placeholder.zIndex }}
         >
           <div
-            className="relative aspect-[4/5] w-[230px] origin-center overflow-hidden rounded-lg border border-border bg-card-muted shadow-[0_8px_18px_rgb(9_9_11_/_0.08)]"
+            className="relative aspect-[4/5] w-[min(86vw,280px)] origin-center overflow-hidden rounded-lg bg-card-muted shadow-[0_6px_12px_rgb(9_9_11_/_0.1)]"
             style={{
               opacity: placeholder.opacity,
-              transform: `translateX(${placeholder.translateX}) scale(${placeholder.scale})`,
+              transform: `translateY(${placeholder.translateY}px) scale(${placeholder.scale})`,
             }}
           >
             <div className="size-full animate-pulse bg-card-muted p-6 motion-reduce:animate-none">
@@ -950,7 +1148,7 @@ function CarouselLoadingStackVisual() {
                 <div className="h-3 w-full rounded-full bg-border-strong/70" />
                 <div className="h-3 w-3/5 rounded-full bg-border-strong/70" />
               </div>
-              {index === 1 ? (
+              {index === LOADING_STACK_PLACEHOLDERS.length - 1 ? (
                 <div className="absolute bottom-5 left-1/2 h-1.5 w-20 -translate-x-1/2 rounded-full bg-border-strong/70" />
               ) : null}
             </div>

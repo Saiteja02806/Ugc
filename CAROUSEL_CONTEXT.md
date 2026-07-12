@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-07-10
+Last updated: 2026-07-12
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -404,33 +404,31 @@ only the caller's carousel generations for the caller's single business profile.
   already exist, use the compact aggregate progress row instead. Failed
   candidates use one aggregate retry state rather than a wall of repeated
   failure cards.
-- Generated candidates appear in a focused candidate stack: the selected
-  carousel is one clean portrait card, while the partially visible cards behind
-  it are adjacent *carousel candidates*, never neighboring slides from that
-  same carousel. Selecting a background candidate brings that real candidate to
-  the centre without leaving Trending.
-- The desktop stack should render up to five different carousel candidates at
-  once: far-left, near-left, centre, near-right, and far-right. Cards must stay
-  vertically straight and use only horizontal translation, scale, opacity, and
-  z-index for depth. Do not rotate, skew, or fan the cards.
-- Every creative card is vertically centered inside one shared stage and scales
-  from its center. Do not anchor cards at `top: 0` or use a top transform origin;
-  smaller side candidates must step inward and downward naturally around the
-  active card's visual center. Near cards use the stronger secondary layer and
-  far cards use the smaller tertiary layer with enough horizontal offset to
-  keep both outside corners visible.
-- The active desktop portrait card is capped at 320px wide, with 300px at the
-  tablet breakpoint and 260px on narrow mobile screens. Side offsets shrink in
-  the same proportion so the five-card stack remains overlapping rather than
-  spreading into a normal row.
-- The far-left and far-right tertiary cards are desktop-only. Tablet and mobile
-  show the active card plus the near previous/next candidates so the stack does
-  not become cramped or horizontally scroll.
+- Generated candidates appear in a focused Tinder-style deck. One complete
+  carousel candidate, including all five slides, is one outer deck card. Never
+  flatten slides into the outer deck.
+- The deck renders the active candidate plus at most the next two candidates.
+  Background candidates are vertically offset, slightly smaller, less opaque,
+  and non-interactive. The deck stops at the first and last candidates rather
+  than looping or deleting an item after a swipe.
+- Dragging the active card left selects the next complete carousel; dragging it
+  right selects the previous complete carousel. Pointer, keyboard, and explicit
+  Previous/Next idea controls all update only the active candidate index. This
+  browsing interaction is local frontend state and must not refetch history.
+- The active card may rotate by at most five degrees while dragged and exits in
+  the swipe direction before the next candidate becomes active. Reduced-motion
+  users get an immediate state change. Inner controls must be excluded from the
+  outer pointer gesture at pointer-down time.
+- The active portrait card is approximately 300px wide and capped for narrow
+  mobile viewports. All slides for the active candidate and the selected slide
+  of the next candidate are preloaded when the active candidate changes.
 - Every candidate owns its own active-slide state. The centre card renders only
   that candidate's active slide; its left/right controls and five dots are
   positioned inside the image card and move only through that candidate's five
   slides. The dots, controls, and image must not create a wide three-slide
-  strip or show neighboring slides from the same carousel.
+  strip or show neighboring slides from the same carousel. Background deck
+  cards never expose slide controls, and a candidate's selected slide is
+  preserved when the user leaves and returns.
 - Title, lifecycle status, and the visually disabled Generate action remain a
   compact row below the stack rather than a large information footer. This row
   is outside every card's transformed box so its height cannot shift or distort

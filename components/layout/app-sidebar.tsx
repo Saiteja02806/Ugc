@@ -349,8 +349,9 @@ function SidebarNavigation({
     <nav
       aria-label="Primary navigation"
       className={cn(
-        "min-h-0 flex-1 overflow-y-auto py-4",
+        "min-h-0 flex-1 py-4",
         collapsed ? "px-2" : "px-3",
+        collapsed ? "overflow-visible" : "overflow-y-auto overflow-x-hidden",
       )}
     >
       <div className="space-y-1.5">

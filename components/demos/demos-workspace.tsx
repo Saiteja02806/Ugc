@@ -109,6 +109,7 @@ export function DemosWorkspace() {
   const [isLoading, setIsLoading] = useState(true);
   const [deletingDemoId, setDeletingDemoId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [playingDemoId, setPlayingDemoId] = useState<string | null>(null);
   const [uploadState, setUploadState] = useState<UploadState>({
     fileName: "",
     message: "",
@@ -349,6 +350,9 @@ export function DemosWorkspace() {
       setDemos((currentDemos) =>
         currentDemos.filter((currentDemo) => currentDemo.id !== demo.id),
       );
+      setPlayingDemoId((currentDemoId) =>
+        currentDemoId === demo.id ? null : currentDemoId,
+      );
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Could not delete the demo."));
     } finally {
@@ -436,7 +440,9 @@ export function DemosWorkspace() {
           deletingDemoId={deletingDemoId}
           demos={demos}
           isLoading={isLoading}
+          playingDemoId={playingDemoId}
           onDeleteDemo={(demo) => void handleDeleteDemo(demo)}
+          onPlayDemo={setPlayingDemoId}
         />
       </div>
     </section>
@@ -652,11 +658,15 @@ function DemoLibrary({
   demos,
   isLoading,
   onDeleteDemo,
+  onPlayDemo,
+  playingDemoId,
 }: {
   deletingDemoId: string | null;
   demos: DemoVideo[];
   isLoading: boolean;
   onDeleteDemo: (demo: DemoVideo) => void;
+  onPlayDemo: (demoId: string) => void;
+  playingDemoId: string | null;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -677,13 +687,15 @@ function DemoLibrary({
           </div>
         </div>
       ) : demos.length > 0 ? (
-        <div className="grid auto-rows-min grid-cols-1 gap-4 overflow-y-auto pb-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid auto-rows-min grid-cols-[repeat(auto-fill,minmax(180px,240px))] justify-center gap-3 overflow-y-auto pb-4 sm:grid-cols-[repeat(auto-fill,minmax(210px,240px))] sm:justify-start">
           {demos.map((demo) => (
             <DemoCard
               key={demo.id}
               demo={demo}
               deleting={deletingDemoId === demo.id}
+              playing={playingDemoId === demo.id}
               onDelete={() => onDeleteDemo(demo)}
+              onPlay={() => onPlayDemo(demo.id)}
             />
           ))}
         </div>
@@ -708,42 +720,71 @@ function DemoCard({
   deleting,
   demo,
   onDelete,
+  onPlay,
+  playing,
 }: {
   deleting: boolean;
   demo: DemoVideo;
   onDelete: () => void;
+  onPlay: () => void;
+  playing: boolean;
 }) {
+  const playable = isPlayableDemo(demo);
+
   return (
-    <article className="group min-w-0 rounded-2xl border border-border bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgb(16_32_51_/_0.10)]">
-      <div className="relative overflow-hidden rounded-xl bg-[#102033] text-white">
+    <article className="group min-w-0 rounded-panel border border-border bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgb(16_32_51_/_0.08)]">
+      <div className="relative overflow-hidden rounded-md bg-[#102033] text-white">
         <div
           className="flex items-center justify-center"
-          style={{ aspectRatio: getPreviewAspectRatio(demo.ratio) }}
+          style={{ aspectRatio: getPreviewAspectRatio(demo) }}
         >
-          {isPlayableDemo(demo) ? (
+          {playing && playable ? (
             <video
               src={demo.source_video_url}
-              className="size-full object-cover"
+              className="size-full object-contain"
+              autoPlay
+              controls
               muted
               playsInline
               preload="metadata"
             />
+          ) : demo.thumbnail_url ? (
+            <div
+              role="img"
+              aria-label={`Thumbnail for ${demo.title}`}
+              className="size-full bg-contain bg-center bg-no-repeat"
+              style={{
+                backgroundImage: `url(${JSON.stringify(demo.thumbnail_url)})`,
+              }}
+            />
           ) : (
-            <FileVideo className="size-8 text-white/75" aria-hidden="true" />
+            <div className="flex size-full flex-col items-center justify-center gap-2 px-4 text-center">
+              <FileVideo className="size-7 text-white/75" aria-hidden="true" />
+              <span className="text-[11px] font-semibold text-white/70">
+                {getFileTypeLabel(demo.file_type)}
+              </span>
+            </div>
           )}
         </div>
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-linear-to-t from-black/60 to-transparent p-3">
-          <span className="inline-flex size-8 items-center justify-center rounded-full bg-white/16 backdrop-blur">
+          <button
+            type="button"
+            onClick={onPlay}
+            disabled={!playable}
+            aria-label={`Play ${demo.title}`}
+            title="Play preview"
+            className="inline-flex size-8 items-center justify-center rounded-full bg-white/16 backdrop-blur transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
             <Play className="ml-0.5 size-3.5 fill-white text-white" aria-hidden="true" />
-          </span>
+          </button>
           <StatusBadge status={demo.status} />
         </div>
       </div>
 
-      <div className="mt-3 space-y-3 px-1 pb-1">
+      <div className="mt-2 space-y-2 px-1 pb-1">
         <div>
           <div className="flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-foreground">
+            <h3 className="line-clamp-2 min-h-9 text-sm font-bold leading-[1.15rem] text-foreground">
               {demo.title}
             </h3>
             <button
@@ -761,7 +802,7 @@ function DemoCard({
               )}
             </button>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-muted">
             <span className="inline-flex items-center gap-1">
               <Clock3 className="size-3" aria-hidden="true" />
               {formatDuration(demo.duration_seconds)}
@@ -771,7 +812,7 @@ function DemoCard({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t border-border/70 pt-3">
+        <div className="flex items-center justify-between gap-2 border-t border-border/70 pt-2">
           <div className="min-w-0">
             <p className="truncate text-xs font-bold text-[#405977]">
               {getFileTypeLabel(demo.file_type)}
@@ -782,7 +823,7 @@ function DemoCard({
           </div>
           <Link
             href={`/demos/${encodeURIComponent(demo.id)}`}
-            className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-[#fff8f4]"
+            className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             <Pencil className="size-3.5" aria-hidden="true" />
             Edit
@@ -1264,8 +1305,12 @@ function getDimensionsLabel(demo: DemoVideo) {
   return demo.width && demo.height ? `${demo.width}x${demo.height}` : "Custom";
 }
 
-function getPreviewAspectRatio(ratio: DemoRatio) {
-  return ratio === "other" ? "9 / 16" : ratio.replace(":", " / ");
+function getPreviewAspectRatio(demo: DemoVideo) {
+  if (demo.width && demo.height) {
+    return `${demo.width} / ${demo.height}`;
+  }
+
+  return demo.ratio === "other" ? "9 / 16" : demo.ratio.replace(":", " / ");
 }
 
 function isPlayableDemo(demo: DemoVideo) {

@@ -9,6 +9,7 @@ import type { BackgroundJobRow, Json } from "../types.js";
 const videoRatios = new Set(["9:16", "1:1", "4:5", "16:9"]);
 const textOverlayPositions = new Set(["top", "middle", "bottom"]);
 const textOverlayStyles = new Set(["clean", "bubble"]);
+const MAX_TEXT_OVERLAYS = 3;
 
 export async function runRenderEditVideoJob(
   job: BackgroundJobRow,
@@ -65,7 +66,6 @@ export async function runRenderEditVideoJob(
 function parseRenderEditVideoPayload(value: Json): RenderEditVideoPayload {
   const input = getJsonRecord(value, "input_json");
   const draft = getJsonRecord(input.draft, "draft");
-  const textOverlay = getJsonRecord(draft.textOverlay, "draft.textOverlay");
   const trimStartSeconds = getNumber(
     draft.trimStartSeconds,
     "draft.trimStartSeconds",
@@ -84,21 +84,7 @@ function parseRenderEditVideoPayload(value: Json): RenderEditVideoPayload {
     draft: {
       trimStartSeconds,
       trimEndSeconds,
-      textOverlay: {
-        position: getChoice(
-          textOverlay.position,
-          "draft.textOverlay.position",
-          textOverlayPositions,
-          "bottom",
-        ) as RenderEditVideoPayload["draft"]["textOverlay"]["position"],
-        style: getChoice(
-          textOverlay.style,
-          "draft.textOverlay.style",
-          textOverlayStyles,
-          "bubble",
-        ) as RenderEditVideoPayload["draft"]["textOverlay"]["style"],
-        text: getOptionalString(textOverlay.text, 180),
-      },
+      textOverlays: getTextOverlays(draft),
     },
     projectId: getRequiredString(input.projectId, "projectId"),
     ratio: getChoice(
@@ -112,6 +98,64 @@ function parseRenderEditVideoPayload(value: Json): RenderEditVideoPayload {
     sourceVideoUrl: getHttpUrl(input.sourceVideoUrl, "sourceVideoUrl"),
     userId: getRequiredString(input.userId, "userId"),
   };
+}
+
+function getTextOverlays(
+  draft: Record<string, Json | undefined>,
+): RenderEditVideoPayload["draft"]["textOverlays"] {
+  const rawOverlays = Array.isArray(draft.textOverlays)
+    ? draft.textOverlays
+    : draft.textOverlay
+      ? [draft.textOverlay]
+      : [];
+  const overlays: RenderEditVideoPayload["draft"]["textOverlays"] = [];
+  const usedPositions = new Set<string>();
+
+  for (let index = 0; index < rawOverlays.length; index += 1) {
+    const record = getJsonRecord(
+      rawOverlays[index],
+      `draft.textOverlays[${index}]`,
+    );
+    const fallbackPosition = getAvailableTextOverlayPosition(usedPositions);
+
+    if (!fallbackPosition) {
+      break;
+    }
+
+    const position = getChoice(
+      record.position,
+      `draft.textOverlays[${index}].position`,
+      textOverlayPositions,
+      fallbackPosition,
+    ) as RenderEditVideoPayload["draft"]["textOverlays"][number]["position"];
+
+    if (usedPositions.has(position)) {
+      continue;
+    }
+
+    overlays.push({
+      id: getOptionalString(record.id, 96) || crypto.randomUUID(),
+      position,
+      style: getChoice(
+        record.style,
+        `draft.textOverlays[${index}].style`,
+        textOverlayStyles,
+        "bubble",
+      ) as RenderEditVideoPayload["draft"]["textOverlays"][number]["style"],
+      text: getOptionalString(record.text, 180),
+    });
+    usedPositions.add(position);
+
+    if (overlays.length === MAX_TEXT_OVERLAYS) {
+      break;
+    }
+  }
+
+  return overlays.sort(
+    (first, second) =>
+      getTextOverlayPositionOrder(first.position) -
+      getTextOverlayPositionOrder(second.position),
+  );
 }
 
 function getJsonRecord(
@@ -200,4 +244,24 @@ function getChoice(
   }
 
   throw new Error(`${fieldName} is not supported.`);
+}
+
+function getAvailableTextOverlayPosition(usedPositions: Set<string>) {
+  return ["top", "middle", "bottom"].find(
+    (position) => !usedPositions.has(position),
+  );
+}
+
+function getTextOverlayPositionOrder(
+  position: RenderEditVideoPayload["draft"]["textOverlays"][number]["position"],
+) {
+  if (position === "top") {
+    return 0;
+  }
+
+  if (position === "middle") {
+    return 1;
+  }
+
+  return 2;
 }

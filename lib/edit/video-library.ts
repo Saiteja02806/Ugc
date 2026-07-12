@@ -9,13 +9,14 @@ export type TextOverlayPosition = "top" | "middle" | "bottom";
 export type TextOverlayStyle = "clean" | "bubble";
 
 export type TextOverlay = {
+  id: string;
   position: TextOverlayPosition;
   style: TextOverlayStyle;
   text: string;
 };
 
 export type EditableVideoDraft = {
-  textOverlay: TextOverlay;
+  textOverlays: TextOverlay[];
   trimEndSeconds: number | null;
   trimStartSeconds: number;
   updatedAt: string;
@@ -58,6 +59,7 @@ const EDITABLE_VIDEO_LIBRARY_CHANGED_EVENT =
   "ugc-studio:editable-video-library-changed";
 const MAX_EDITABLE_VIDEO_LIBRARY_ITEMS = 80;
 const EMPTY_EDITABLE_VIDEOS: EditableVideo[] = [];
+export const MAX_TEXT_OVERLAYS = 3;
 
 const editableVideoRatios: EditableVideoRatio[] = ["9:16", "1:1", "4:5", "16:9"];
 const editableVideoSources: EditableVideoSource[] = [
@@ -71,8 +73,12 @@ const editableVideoStatuses: EditableVideoStatus[] = [
   "draft",
   "rendered",
 ];
-const textOverlayPositions: TextOverlayPosition[] = ["top", "middle", "bottom"];
-const textOverlayStyles: TextOverlayStyle[] = ["clean", "bubble"];
+export const textOverlayPositions: TextOverlayPosition[] = [
+  "top",
+  "middle",
+  "bottom",
+];
+export const textOverlayStyles: TextOverlayStyle[] = ["clean", "bubble"];
 
 let cachedEditableVideoRawValue: string | null = null;
 let cachedEditableVideos: EditableVideo[] = EMPTY_EDITABLE_VIDEOS;
@@ -179,12 +185,15 @@ export function saveEditableVideoDraft(
     return null;
   }
 
+  const normalizedDraft = normalizeEditableVideoDraftInput(draft) ?? {
+    textOverlays: [],
+    trimEndSeconds: null,
+    trimStartSeconds: 0,
+  };
   const updatedVideo: EditableVideo = {
     ...currentVideos[videoIndex],
     draft: {
-      ...draft,
-      trimEndSeconds: normalizeNullableNumber(draft.trimEndSeconds),
-      trimStartSeconds: normalizeNumber(draft.trimStartSeconds) ?? 0,
+      ...normalizedDraft,
       updatedAt: new Date().toISOString(),
     },
     status: "draft",
@@ -293,6 +302,67 @@ export function getEditableVideoStatusLabel(status: EditableVideoStatus) {
   return labels[status];
 }
 
+export function createTextOverlay(
+  position: TextOverlayPosition,
+  input?: Partial<Pick<TextOverlay, "id" | "style" | "text">>,
+): TextOverlay {
+  return {
+    id: normalizeString(input?.id) ?? createTextOverlayId(position),
+    position,
+    style: normalizeTextOverlayStyle(input?.style) ?? "bubble",
+    text: normalizeStringPreserveEmpty(input?.text)?.slice(0, 100) ?? "",
+  };
+}
+
+export function normalizeEditableVideoDraftInput(
+  value: unknown,
+): EditableVideoDraftInput | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return {
+    textOverlays: normalizeTextOverlays(
+      record.textOverlays,
+      record.textOverlay,
+    ),
+    trimEndSeconds: normalizeNullableNumber(record.trimEndSeconds),
+    trimStartSeconds: normalizeNumber(record.trimStartSeconds) ?? 0,
+  };
+}
+
+export function normalizeTextOverlays(
+  value: unknown,
+  legacyValue?: unknown,
+): TextOverlay[] {
+  const source = Array.isArray(value) ? value : legacyValue ? [legacyValue] : [];
+  const overlays: TextOverlay[] = [];
+  const usedPositions = new Set<TextOverlayPosition>();
+
+  for (const item of source) {
+    const overlay = normalizeTextOverlay(item);
+
+    if (!overlay || usedPositions.has(overlay.position)) {
+      continue;
+    }
+
+    overlays.push(overlay);
+    usedPositions.add(overlay.position);
+
+    if (overlays.length === MAX_TEXT_OVERLAYS) {
+      break;
+    }
+  }
+
+  return overlays.sort(
+    (first, second) =>
+      textOverlayPositions.indexOf(first.position) -
+      textOverlayPositions.indexOf(second.position),
+  );
+}
+
 function writeEditableVideos(videos: EditableVideo[]) {
   if (!canUseBrowserStorage()) {
     return;
@@ -344,41 +414,33 @@ function normalizeEditableVideo(value: unknown): EditableVideo | null {
 }
 
 function normalizeDraft(value: unknown): EditableVideoDraft | null {
+  const draft = normalizeEditableVideoDraftInput(value);
+
+  if (!draft || !value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return {
+    ...draft,
+    updatedAt: normalizeStringOrNull(record.updatedAt) ?? new Date().toISOString(),
+  };
+}
+
+function normalizeTextOverlay(value: unknown): TextOverlay | null {
   if (!value || typeof value !== "object") {
     return null;
   }
 
   const record = value as Record<string, unknown>;
-  const textOverlay = normalizeTextOverlay(record.textOverlay);
-  const trimStartSeconds = normalizeNumber(record.trimStartSeconds) ?? 0;
+  const position = normalizeTextOverlayPosition(record.position) ?? "bottom";
 
   return {
-    textOverlay,
-    trimEndSeconds: normalizeNullableNumber(record.trimEndSeconds),
-    trimStartSeconds,
-    updatedAt: normalizeStringOrNull(record.updatedAt) ?? new Date().toISOString(),
-  };
-}
-
-function normalizeTextOverlay(value: unknown): TextOverlay {
-  if (!value || typeof value !== "object") {
-    return getEmptyTextOverlay();
-  }
-
-  const record = value as Record<string, unknown>;
-
-  return {
-    position: normalizeTextOverlayPosition(record.position) ?? "bottom",
+    id: normalizeString(record.id) ?? createTextOverlayId(position),
+    position,
     style: normalizeTextOverlayStyle(record.style) ?? "bubble",
-    text: normalizeString(record.text) ?? "",
-  };
-}
-
-function getEmptyTextOverlay(): TextOverlay {
-  return {
-    position: "bottom",
-    style: "bubble",
-    text: "",
+    text: normalizeStringPreserveEmpty(record.text)?.slice(0, 100) ?? "",
   };
 }
 
@@ -424,6 +486,10 @@ function normalizeString(value: unknown) {
   return normalized || null;
 }
 
+function normalizeStringPreserveEmpty(value: unknown) {
+  return typeof value === "string" ? value.trim() : null;
+}
+
 function normalizeStringOrNull(value: unknown) {
   return normalizeString(value);
 }
@@ -440,4 +506,15 @@ function normalizeNullableNumber(value: unknown) {
   }
 
   return normalizeNumber(value);
+}
+
+function createTextOverlayId(position: TextOverlayPosition) {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+
+  return `overlay-${position}-${Math.random().toString(36).slice(2, 10)}`;
 }

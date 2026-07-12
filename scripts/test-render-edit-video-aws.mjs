@@ -33,11 +33,14 @@ const sourceVideoUrl = buildCloudFrontUrl(sourceKey);
 const draft = {
   trimStartSeconds: 0,
   trimEndSeconds: null,
-  textOverlay: {
-    position: "bottom",
-    style: "bubble",
-    text: overlayText,
-  },
+  textOverlays: [
+    {
+      id: `overlay-${renderId.slice(0, 8)}`,
+      position: "bottom",
+      style: "bubble",
+      text: overlayText,
+    },
+  ],
 };
 const renderPayload = {
   draft,

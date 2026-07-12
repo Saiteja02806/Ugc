@@ -115,11 +115,14 @@ try {
   console.log("Verified demo detail route");
 
   const draft = {
-    textOverlay: {
-      position: "bottom",
-      style: "bubble",
-      text: DRAFT_TEXT,
-    },
+    textOverlays: [
+      {
+        id: "overlay-bottom",
+        position: "bottom",
+        style: "bubble",
+        text: DRAFT_TEXT,
+      },
+    ],
     trimEndSeconds: 4,
     trimStartSeconds: 1,
   };
@@ -144,7 +147,7 @@ try {
   assertEqual(databaseRow.status, "draft", "database status");
   assertEqual(databaseRow.source_s3_key, key, "database source_s3_key");
   assertEqual(
-    databaseRow.draft_json?.textOverlay?.text,
+    databaseRow.draft_json?.textOverlays?.[0]?.text,
     DRAFT_TEXT,
     "database draft text",
   );

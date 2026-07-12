@@ -29,15 +29,18 @@ const videoRatios = new Set(["9:16", "1:1", "4:5", "16:9"]);
 const videoSources = new Set(["hook", "demo", "draft", "final"]);
 const textOverlayPositions = new Set(["top", "middle", "bottom"]);
 const textOverlayStyles = new Set(["clean", "bubble"]);
+const MAX_TEXT_OVERLAYS = 3;
 const AWS_RENDER_JOB_TYPE = "render_edit_video";
 
 type RenderRequestBody = {
   draft?: {
     textOverlay?: {
+      id?: unknown;
       position?: unknown;
       style?: unknown;
       text?: unknown;
     };
+    textOverlays?: unknown;
     trimEndSeconds?: unknown;
     trimStartSeconds?: unknown;
   };
@@ -50,6 +53,22 @@ type RenderRequestBody = {
   thumbnailUrl?: unknown;
   title?: unknown;
 };
+
+type RawTextOverlay = {
+  id?: unknown;
+  position?: unknown;
+  style?: unknown;
+  text?: unknown;
+};
+
+type RenderTextOverlay = {
+  id: string;
+  position: "top" | "middle" | "bottom";
+  style: "clean" | "bubble";
+  text: string;
+};
+
+type RenderDraftBody = NonNullable<RenderRequestBody["draft"]>;
 
 function cleanText(value: unknown, fallback = "", maxLength = 180) {
   if (typeof value !== "string") {
@@ -84,6 +103,55 @@ function cleanChoice<TValue extends string>(
   return typeof value === "string" && allowedValues.has(value)
     ? (value as TValue)
     : fallback;
+}
+
+function cleanTextOverlays(draft: RenderDraftBody | undefined): RenderTextOverlay[] {
+  const rawOverlays = Array.isArray(draft?.textOverlays)
+    ? draft.textOverlays
+    : draft?.textOverlay
+      ? [draft.textOverlay]
+      : [];
+  const overlays: RenderTextOverlay[] = [];
+  const usedPositions = new Set<string>();
+
+  for (const rawOverlay of rawOverlays) {
+    if (
+      !rawOverlay ||
+      typeof rawOverlay !== "object" ||
+      Array.isArray(rawOverlay)
+    ) {
+      continue;
+    }
+
+    const record = rawOverlay as RawTextOverlay;
+    const position =
+      typeof record.position === "string" &&
+      textOverlayPositions.has(record.position)
+        ? record.position
+        : getAvailableTextOverlayPosition(usedPositions);
+
+    if (!position || usedPositions.has(position)) {
+      continue;
+    }
+
+    overlays.push({
+      id: cleanText(record.id, crypto.randomUUID(), 96),
+      position: position as RenderTextOverlay["position"],
+      style: cleanChoice(record.style, textOverlayStyles, "bubble"),
+      text: cleanText(record.text),
+    });
+    usedPositions.add(position);
+
+    if (overlays.length === MAX_TEXT_OVERLAYS) {
+      break;
+    }
+  }
+
+  return overlays.sort(
+    (first, second) =>
+      getTextOverlayPositionOrder(first.position) -
+      getTextOverlayPositionOrder(second.position),
+  );
 }
 
 function cleanSeconds(value: unknown) {
@@ -213,19 +281,7 @@ export async function POST(request: Request) {
   const draft = {
     trimStartSeconds,
     trimEndSeconds,
-    textOverlay: {
-      position: cleanChoice(
-        body.draft?.textOverlay?.position,
-        textOverlayPositions,
-        "bottom",
-      ),
-      style: cleanChoice(
-        body.draft?.textOverlay?.style,
-        textOverlayStyles,
-        "bubble",
-      ),
-      text: cleanText(body.draft?.textOverlay?.text),
-    },
+    textOverlays: cleanTextOverlays(body.draft),
   };
   const renderId = crypto.randomUUID();
   const persistenceEnabled = isEditRenderPersistenceConfigured();
@@ -358,4 +414,22 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+function getAvailableTextOverlayPosition(usedPositions: Set<string>) {
+  return ["top", "middle", "bottom"].find(
+    (position) => !usedPositions.has(position),
+  );
+}
+
+function getTextOverlayPositionOrder(position: RenderTextOverlay["position"]) {
+  if (position === "top") {
+    return 0;
+  }
+
+  if (position === "middle") {
+    return 1;
+  }
+
+  return 2;
 }

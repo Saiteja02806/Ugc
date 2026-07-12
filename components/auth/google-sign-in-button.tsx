@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { signInWithGoogle } from "@/lib/firebase/auth";
+import {
+  getFirebaseAuthErrorMessage,
+  signInWithGoogle,
+} from "@/lib/firebase/auth";
 
 export function GoogleSignInButton() {
   const router = useRouter();
@@ -15,8 +18,8 @@ export function GoogleSignInButton() {
     setErrorMessage(null);
 
     try {
-      await signInWithGoogle();
-      router.push("/dashboard");
+      const user = await signInWithGoogle();
+      router.push(user.emailVerified ? "/dashboard" : "/verify-email");
     } catch (error) {
       if (isFirebaseError(error, "auth/popup-closed-by-user")) {
         setErrorMessage("Sign-in was cancelled. Try again when you are ready.");
@@ -27,7 +30,7 @@ export function GoogleSignInButton() {
           "Your browser lost the Google sign-in state. Refresh this page and try again.",
         );
       } else {
-        setErrorMessage("Google sign-in failed. Please try again.");
+        setErrorMessage(getFirebaseAuthErrorMessage(error));
       }
     } finally {
       setIsLoading(false);

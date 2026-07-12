@@ -15,6 +15,7 @@ import {
   type DemoVideoStatus,
   type Json,
 } from "@/lib/demo/demo-storage";
+import { normalizeEditableVideoDraftInput } from "@/lib/edit/video-library";
 
 export const runtime = "nodejs";
 
@@ -257,7 +258,16 @@ function getDraftUpdate(body: PatchDemoBody):
   }
 
   try {
-    const rawDraft = JSON.stringify(body.draft);
+    const normalizedDraft = normalizeEditableVideoDraftInput(body.draft);
+
+    if (!normalizedDraft) {
+      return {
+        ok: false,
+        error: "Demo draft must include valid trim and text overlay settings.",
+      };
+    }
+
+    const rawDraft = JSON.stringify(normalizedDraft);
 
     if (rawDraft.length > MAX_DEMO_DRAFT_JSON_LENGTH) {
       return {

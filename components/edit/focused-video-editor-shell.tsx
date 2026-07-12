@@ -362,18 +362,14 @@ function getDraftForRender(
 
   if (video.draft) {
     return {
-      textOverlay: video.draft.textOverlay,
+      textOverlays: video.draft.textOverlays,
       trimEndSeconds: video.draft.trimEndSeconds,
       trimStartSeconds: video.draft.trimStartSeconds,
     };
   }
 
   return {
-    textOverlay: {
-      position: "bottom",
-      style: "bubble",
-      text: "",
-    },
+    textOverlays: [],
     trimEndSeconds: null,
     trimStartSeconds: 0,
   };

@@ -3,15 +3,21 @@ import "server-only";
 export type VerifiedFirebaseUser = {
   displayName: string | null;
   email: string | null;
+  emailVerified: boolean;
   photoURL: string | null;
+  providerIds: string[];
   uid: string;
 };
 
 type FirebaseLookupUser = {
   displayName?: string;
   email?: string;
+  emailVerified?: boolean;
   localId?: string;
   photoUrl?: string;
+  providerUserInfo?: Array<{
+    providerId?: string;
+  }>;
 };
 
 type FirebaseLookupResponse = {
@@ -79,10 +85,26 @@ export async function requireFirebaseUser(request: Request) {
     throw new FirebaseAuthRequestError("Your sign-in session could not be verified.");
   }
 
+  if (!firebaseUser.emailVerified) {
+    throw new FirebaseAuthRequestError(
+      "Verify your email before using this feature.",
+      403,
+    );
+  }
+
   return {
     displayName: firebaseUser.displayName ?? null,
     email: firebaseUser.email ?? null,
+    emailVerified: true,
     photoURL: firebaseUser.photoUrl ?? null,
+    providerIds: Array.from(
+      new Set(
+        firebaseUser.providerUserInfo
+          ?.map((provider) => provider.providerId)
+          .filter((providerId): providerId is string => Boolean(providerId)) ??
+          [],
+      ),
+    ),
     uid: firebaseUser.localId,
   } satisfies VerifiedFirebaseUser;
 }
@@ -101,7 +123,9 @@ function getEditRenderE2ETestUser(idToken: string) {
   return {
     displayName: "Edit Render E2E",
     email: "edit-render-e2e@localhost",
+    emailVerified: true,
     photoURL: null,
+    providerIds: ["password"],
     uid: process.env.EDIT_RENDER_E2E_USER_ID?.trim() || "edit-render-e2e",
   } satisfies VerifiedFirebaseUser;
 }

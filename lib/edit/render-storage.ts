@@ -84,12 +84,15 @@ type RenderDatabase = {
   };
 };
 
+type RenderTextOverlayInput = {
+  id: string;
+  position: string;
+  style: string;
+  text: string;
+};
+
 type RenderDraftInput = {
-  textOverlay: {
-    position: string;
-    style: string;
-    text: string;
-  };
+  textOverlays: RenderTextOverlayInput[];
   trimEndSeconds: number | null;
   trimStartSeconds: number;
 };
@@ -323,11 +326,12 @@ export async function markRenderJobFailed(params: {
 
 function toJson(value: RenderDraftInput): Json {
   return {
-    textOverlay: {
-      position: value.textOverlay.position,
-      style: value.textOverlay.style,
-      text: value.textOverlay.text,
-    },
+    textOverlays: value.textOverlays.map((overlay) => ({
+      id: overlay.id,
+      position: overlay.position,
+      style: overlay.style,
+      text: overlay.text,
+    })),
     trimEndSeconds: value.trimEndSeconds,
     trimStartSeconds: value.trimStartSeconds,
   };

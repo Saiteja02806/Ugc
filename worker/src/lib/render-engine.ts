@@ -13,17 +13,22 @@ export type TextOverlayStyle = "clean" | "bubble";
 type PreparedTextOverlay = {
   boxBorderWidth: number;
   fontSize: number;
+  position: TextOverlayPosition;
+  style: TextOverlayStyle;
   text: string;
   textFilePath: string;
 };
 
+type RenderTextOverlay = {
+  id: string;
+  position: TextOverlayPosition;
+  style: TextOverlayStyle;
+  text: string;
+};
+
 export type RenderEditVideoPayload = {
   draft: {
-    textOverlay: {
-      position: TextOverlayPosition;
-      style: TextOverlayStyle;
-      text: string;
-    };
+    textOverlays: RenderTextOverlay[];
     trimEndSeconds: number | null;
     trimStartSeconds: number;
   };
@@ -58,24 +63,32 @@ export async function renderEditedVideoToS3(
 ): Promise<RenderEditedVideoOutput> {
   const workDir = await mkdtemp(join(tmpdir(), "ugc-render-"));
   const inputPath = join(workDir, "source-video");
-  const overlayTextPath = join(workDir, "overlay-text.txt");
   const outputPath = join(workDir, "rendered.mp4");
 
   try {
     const sourceBuffer = await downloadVideoToBuffer(payload.sourceVideoUrl);
-    const preparedTextOverlay = buildPreparedTextOverlay({
-      overlay: payload.draft.textOverlay,
-      ratio: payload.ratio,
-      textFilePath: overlayTextPath,
-    });
+    const preparedTextOverlays = payload.draft.textOverlays
+      .map((overlay, index) =>
+        buildPreparedTextOverlay({
+          overlay,
+          ratio: payload.ratio,
+          textFilePath: join(workDir, `overlay-text-${index}.txt`),
+        }),
+      )
+      .filter(
+        (overlay): overlay is PreparedTextOverlay => Boolean(overlay),
+      );
 
     await writeFile(inputPath, sourceBuffer);
 
-    if (preparedTextOverlay) {
-      await writeFile(overlayTextPath, preparedTextOverlay.text, "utf8");
-    }
+    await Promise.all(
+      preparedTextOverlays.map((overlay) =>
+        writeFile(overlay.textFilePath, overlay.text, "utf8"),
+      ),
+    );
 
     logger.info("Source video downloaded for render", {
+      overlayCount: preparedTextOverlays.length,
       renderId: payload.renderId,
       sourceSize: sourceBuffer.length,
     });
@@ -84,7 +97,7 @@ export async function renderEditedVideoToS3(
       inputPath,
       outputPath,
       payload,
-      preparedTextOverlay,
+      preparedTextOverlays,
     });
 
     const renderedBuffer = await readFile(outputPath);
@@ -123,19 +136,19 @@ async function runFfmpeg({
   inputPath,
   outputPath,
   payload,
-  preparedTextOverlay,
+  preparedTextOverlays,
 }: {
   inputPath: string;
   outputPath: string;
   payload: RenderEditVideoPayload;
-  preparedTextOverlay: PreparedTextOverlay | null;
+  preparedTextOverlays: PreparedTextOverlay[];
 }) {
   const ffmpegPath = process.env.FFMPEG_PATH || "ffmpeg";
   const args = buildFfmpegArgs({
     inputPath,
     outputPath,
     payload,
-    preparedTextOverlay,
+    preparedTextOverlays,
   });
 
   logger.info("Running ffmpeg edited video render", {
@@ -177,16 +190,16 @@ function buildFfmpegArgs({
   inputPath,
   outputPath,
   payload,
-  preparedTextOverlay,
+  preparedTextOverlays,
 }: {
   inputPath: string;
   outputPath: string;
   payload: RenderEditVideoPayload;
-  preparedTextOverlay: PreparedTextOverlay | null;
+  preparedTextOverlays: PreparedTextOverlay[];
 }) {
   const args = ["-y", "-i", inputPath];
   const trimDuration = getTrimDuration(payload);
-  const filters = buildVideoFilters(payload, preparedTextOverlay);
+  const filters = buildVideoFilters(payload, preparedTextOverlays);
 
   if (payload.draft.trimStartSeconds > 0) {
     args.push("-ss", formatSeconds(payload.draft.trimStartSeconds));
@@ -226,21 +239,14 @@ function buildFfmpegArgs({
 
 function buildVideoFilters(
   payload: RenderEditVideoPayload,
-  preparedTextOverlay: PreparedTextOverlay | null,
+  preparedTextOverlays: PreparedTextOverlay[],
 ) {
   const filters = [
     buildRatioScaleCropFilter(payload.ratio),
     "setsar=1",
     "fps=30",
   ];
-  const overlayFilter = buildDrawTextFilter(
-    payload.draft.textOverlay,
-    preparedTextOverlay,
-  );
-
-  if (overlayFilter) {
-    filters.push(overlayFilter);
-  }
+  filters.push(...preparedTextOverlays.map(buildDrawTextFilter));
 
   return filters.join(",");
 }
@@ -254,18 +260,10 @@ function buildRatioScaleCropFilter(ratio: RenderRatio) {
   ].join(",");
 }
 
-function buildDrawTextFilter(overlay: {
-  position: TextOverlayPosition;
-  style: TextOverlayStyle;
-  text: string;
-}, preparedTextOverlay: PreparedTextOverlay | null) {
-  if (!preparedTextOverlay) {
-    return null;
-  }
-
-  const lineSpacing = overlay.style === "bubble" ? 10 : 8;
+function buildDrawTextFilter(preparedTextOverlay: PreparedTextOverlay) {
+  const lineSpacing = preparedTextOverlay.style === "bubble" ? 10 : 8;
   const boxOptions =
-    overlay.style === "bubble"
+    preparedTextOverlay.style === "bubble"
       ? `:box=1:boxcolor=black@0.62:boxborderw=${preparedTextOverlay.boxBorderWidth}`
       : "";
 
@@ -279,7 +277,7 @@ function buildDrawTextFilter(overlay: {
     ":fontfile=",
     escapeDrawText(getFontPath()),
     ":x=(w-text_w)/2",
-    `:y=${getDrawTextYExpression(overlay.position)}`,
+    `:y=${getDrawTextYExpression(preparedTextOverlay.position)}`,
     ":fix_bounds=1",
     ":shadowcolor=black@0.45",
     ":shadowx=2",
@@ -289,11 +287,7 @@ function buildDrawTextFilter(overlay: {
 }
 
 function buildPreparedTextOverlay(params: {
-  overlay: {
-    position: TextOverlayPosition;
-    style: TextOverlayStyle;
-    text: string;
-  };
+  overlay: RenderTextOverlay;
   ratio: RenderRatio;
   textFilePath: string;
 }) {
@@ -311,6 +305,8 @@ function buildPreparedTextOverlay(params: {
 
   return {
     ...textLayout,
+    position: params.overlay.position,
+    style: params.overlay.style,
     textFilePath: params.textFilePath,
   };
 }

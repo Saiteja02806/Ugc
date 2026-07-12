@@ -15,19 +15,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   FocusedVideoEditor,
-  type FocusedVideoEditorDetail,
   type FocusedVideoEditorDraftState,
 } from "@/components/edit/focused-video-editor";
 import {
   formatVideoDuration,
+  normalizeEditableVideoDraftInput,
   type EditableVideo,
   type EditableVideoDraft,
   type EditableVideoDraftInput,
   type EditableVideoRatio,
   type EditableVideoStatus,
-  type TextOverlay,
-  type TextOverlayPosition,
-  type TextOverlayStyle,
 } from "@/lib/edit/video-library";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
@@ -95,10 +92,6 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
 
   const editableVideo = useMemo(
     () => (demo ? mapDemoToEditableVideo(demo) : null),
-    [demo],
-  );
-  const editorDetails = useMemo(
-    () => (demo ? getDemoEditorDetails(demo) : []),
     [demo],
   );
   const hasTitleChanged = Boolean(demo && title.trim() !== demo.title);
@@ -289,7 +282,6 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
                 onSaveDraft={() => void handleSaveDraft()}
               />
             }
-            details={editorDetails}
             video={editableVideo}
             onDraftChange={handleDraftChange}
           />
@@ -370,6 +362,9 @@ function DemoEditorTopBar({
             <span className="rounded-md border border-border bg-white px-2.5 py-1">
               {demo ? formatVideoDuration(demo.duration_seconds) : "Duration"}
             </span>
+            <span className="rounded-md border border-border bg-white px-2.5 py-1">
+              {demo ? getDemoStatusLabel(demo.status) : "Status"}
+            </span>
             {hasTitleChanged ? (
               <span className="rounded-md bg-primary/10 px-2.5 py-1 text-primary">
                 Unsaved title
@@ -430,7 +425,7 @@ function DemoEditorActionFooter({
   const failed = saveState === "failed";
 
   return (
-    <div className="rounded-panel border border-border bg-card p-3 shadow-sm">
+    <div>
       {message ? (
         <div
           role={failed ? "alert" : "status"}
@@ -598,10 +593,14 @@ function normalizeDemoDraft(
     return null;
   }
 
+  const draft = normalizeEditableVideoDraftInput(value);
+
+  if (!draft) {
+    return null;
+  }
+
   return {
-    textOverlay: normalizeTextOverlay(value.textOverlay),
-    trimEndSeconds: normalizeNullableNumber(value.trimEndSeconds),
-    trimStartSeconds: normalizeNumber(value.trimStartSeconds) ?? 0,
+    ...draft,
     updatedAt,
   };
 }
@@ -609,11 +608,13 @@ function normalizeDemoDraft(
 function normalizeDraftForSave(
   draft: EditableVideoDraftInput,
 ): EditableVideoDraftInput {
-  return {
-    textOverlay: normalizeTextOverlay(draft.textOverlay),
-    trimEndSeconds: normalizeNullableNumber(draft.trimEndSeconds),
-    trimStartSeconds: normalizeNumber(draft.trimStartSeconds) ?? 0,
-  };
+  return (
+    normalizeEditableVideoDraftInput(draft) ?? {
+      textOverlays: [],
+      trimEndSeconds: null,
+      trimStartSeconds: 0,
+    }
+  );
 }
 
 function getSavedDraftInput(demo: DemoVideo): EditableVideoDraftInput {
@@ -624,11 +625,7 @@ function getSavedDraftInput(demo: DemoVideo): EditableVideoDraftInput {
   }
 
   return {
-    textOverlay: {
-      position: "bottom",
-      style: "bubble",
-      text: "",
-    },
+    textOverlays: [],
     trimEndSeconds: demo.duration_seconds,
     trimStartSeconds: 0,
   };
@@ -641,69 +638,28 @@ function areDraftInputsEqual(
   return (
     first.trimStartSeconds === second.trimStartSeconds &&
     first.trimEndSeconds === second.trimEndSeconds &&
-    first.textOverlay.text === second.textOverlay.text &&
-    first.textOverlay.position === second.textOverlay.position &&
-    first.textOverlay.style === second.textOverlay.style
+    areTextOverlaysEqual(first.textOverlays, second.textOverlays)
   );
 }
 
-function getDemoEditorDetails(demo: DemoVideo): FocusedVideoEditorDetail[] {
-  return [
-    { label: "File type", value: getFileTypeLabel(demo.file_type) },
-    { label: "Aspect ratio", value: getDemoRatioLabel(demo) },
-    { label: "Duration", value: formatVideoDuration(demo.duration_seconds) },
-    { label: "Status", value: getDemoStatusLabel(demo.status) },
-  ];
-}
-
-function normalizeTextOverlay(value: unknown): TextOverlay {
-  if (!value || typeof value !== "object") {
-    return {
-      position: "bottom",
-      style: "bubble",
-      text: "",
-    };
+function areTextOverlaysEqual(
+  first: EditableVideoDraftInput["textOverlays"],
+  second: EditableVideoDraftInput["textOverlays"],
+) {
+  if (first.length !== second.length) {
+    return false;
   }
 
-  const record = value as Record<string, unknown>;
+  return first.every((overlay, index) => {
+    const otherOverlay = second[index];
 
-  return {
-    position: normalizeTextOverlayPosition(record.position) ?? "bottom",
-    style: normalizeTextOverlayStyle(record.style) ?? "bubble",
-    text: normalizeString(record.text) ?? "",
-  };
-}
-
-function normalizeTextOverlayPosition(
-  value: unknown,
-): TextOverlayPosition | null {
-  return value === "top" || value === "middle" || value === "bottom"
-    ? value
-    : null;
-}
-
-function normalizeTextOverlayStyle(value: unknown): TextOverlayStyle | null {
-  return value === "clean" || value === "bubble" ? value : null;
-}
-
-function normalizeString(value: unknown) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const normalized = value.trim();
-
-  return normalized || null;
-}
-
-function normalizeNumber(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0
-    ? value
-    : null;
-}
-
-function normalizeNullableNumber(value: unknown) {
-  return value === null || value === undefined ? null : normalizeNumber(value);
+    return (
+      otherOverlay &&
+      overlay.position === otherOverlay.position &&
+      overlay.style === otherOverlay.style &&
+      overlay.text === otherOverlay.text
+    );
+  });
 }
 
 function mapDemoRatioToEditableRatio(demo: DemoVideo): EditableVideoRatio {

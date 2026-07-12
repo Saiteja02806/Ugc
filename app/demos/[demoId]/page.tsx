@@ -5,7 +5,7 @@ import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "Edit demo",
-  description: "Trim a demo video and save text overlay draft settings.",
+  description: "Trim a demo video and save text overlays.",
 };
 
 type DemoEditorPageProps = {

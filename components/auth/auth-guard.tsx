@@ -18,25 +18,39 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isDevPreviewBypass && !loading && !user) {
       router.replace("/sign-in");
+      return;
+    }
+
+    if (!isDevPreviewBypass && !loading && user && !user.emailVerified) {
+      router.replace("/verify-email");
     }
   }, [isDevPreviewBypass, loading, router, user]);
 
-  if (!isDevPreviewBypass && loading) {
-    return (
-      <main
-        aria-busy="true"
-        className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground"
-      >
-        <div className="flex items-center gap-3 text-sm font-semibold text-muted">
-          <LoaderCircle className="size-5 animate-spin text-primary" aria-hidden="true" />
-          Opening your workspace...
-        </div>
-      </main>
-    );
-  }
+  if (!isDevPreviewBypass) {
+    if (loading) {
+      return (
+        <main
+          aria-busy="true"
+          className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground"
+        >
+          <div className="flex items-center gap-3 text-sm font-semibold text-muted">
+            <LoaderCircle
+              className="size-5 animate-spin text-primary"
+              aria-hidden="true"
+            />
+            Opening your workspace...
+          </div>
+        </main>
+      );
+    }
 
-  if (!isDevPreviewBypass && !user) {
-    return null;
+    if (!user) {
+      return null;
+    }
+
+    if (!user.emailVerified) {
+      return null;
+    }
   }
 
   return children;

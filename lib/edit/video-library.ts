@@ -6,7 +6,7 @@ export type EditableVideoStatus = "ready" | "draft" | "rendered";
 
 export type TextOverlayPosition = "top" | "middle" | "bottom";
 
-export type TextOverlayStyle = "clean" | "bubble";
+export type TextOverlayStyle = "clean" | "minimal" | "bubble";
 
 export type TextOverlay = {
   id: string;
@@ -78,7 +78,7 @@ export const textOverlayPositions: TextOverlayPosition[] = [
   "middle",
   "bottom",
 ];
-export const textOverlayStyles: TextOverlayStyle[] = ["clean", "bubble"];
+export const textOverlayStyles: TextOverlayStyle[] = ["clean", "minimal", "bubble"];
 
 let cachedEditableVideoRawValue: string | null = null;
 let cachedEditableVideos: EditableVideo[] = EMPTY_EDITABLE_VIDEOS;

@@ -65,7 +65,6 @@ export function FocusedVideoEditor({
   const [trimEnd, setTrimEnd] = useState(initialTrimEnd);
   const [trimMessage, setTrimMessage] = useState<string | null>(null);
   const [trimStart, setTrimStart] = useState(initialTrimStart);
-  const [viewportHeight, setViewportHeight] = useState(820);
 
   const selectedOverlay =
     textOverlays.find((overlay) => overlay.id === selectedOverlayId) ??
@@ -76,21 +75,7 @@ export function FocusedVideoEditor({
   const selectedDuration = Math.max(0, trimEnd - trimStart);
   const canPreviewTrim =
     hasVideoSource && effectiveDuration > 0 && selectedDuration >= MIN_TRIM_SECONDS;
-  const maxPreviewWidth = Math.min(
-    420,
-    Math.max(220, Math.round(viewportHeight * 0.66 * previewAspectRatio)),
-  );
-
-  useEffect(() => {
-    function updateViewportHeight() {
-      setViewportHeight(window.innerHeight || 820);
-    }
-
-    updateViewportHeight();
-    window.addEventListener("resize", updateViewportHeight);
-
-    return () => window.removeEventListener("resize", updateViewportHeight);
-  }, []);
+  const maxPreviewWidth = 320;
 
   useEffect(() => {
     onDraftChange?.({
@@ -271,14 +256,14 @@ export function FocusedVideoEditor({
   }
 
   return (
-    <section className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[minmax(260px,0.72fr)_minmax(0,1.28fr)] lg:items-start lg:gap-6">
-      <div className="min-w-0 lg:sticky lg:top-4">
-        <section className="flex min-h-[320px] items-start justify-center rounded-panel border border-border/70 bg-surface-subtle px-3 py-4 sm:px-4 lg:min-h-[calc(100vh-184px)]">
+    <section className="flex flex-1 flex-col overflow-hidden rounded-panel border border-border bg-card shadow-sm">
+      <div className="grid gap-0 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)]">
+        <section className="flex items-start justify-center border-b border-border bg-white px-4 py-5 sm:px-5 lg:border-b-0 lg:border-r lg:py-6">
           <div
             className="relative overflow-hidden rounded-md bg-black text-white shadow-sm [container-type:size]"
             style={{
               aspectRatio: previewAspectRatio,
-              maxHeight: "66vh",
+              maxHeight: "72vh",
               width: `min(100%, ${maxPreviewWidth}px)`,
             }}
           >
@@ -309,11 +294,7 @@ export function FocusedVideoEditor({
                   className={getOverlayPositionClass(overlay.position)}
                 >
                   <div
-                    className={cn(
-                      getOverlayStyleClass(overlay.style),
-                      overlay.id === selectedOverlayId &&
-                        "ring-2 ring-white/90 ring-offset-2 ring-offset-transparent",
-                    )}
+                    className={getOverlayStyleClass(overlay.style)}
                   >
                     {overlay.text}
                   </div>
@@ -322,17 +303,9 @@ export function FocusedVideoEditor({
             )}
           </div>
         </section>
-      </div>
 
-      <aside className="min-h-0 lg:max-h-[calc(100vh-166px)]">
-        <section className="flex min-h-0 flex-col rounded-panel border border-border bg-card shadow-sm lg:max-h-[calc(100vh-166px)]">
-          <div className="border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold text-foreground-strong">
-              Editor
-            </h2>
-          </div>
-
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4">
+        <aside className="min-w-0 bg-card">
+          <div className="space-y-6 px-4 py-5 sm:px-5 lg:py-6">
             <TrimControls
               canPreviewTrim={canPreviewTrim}
               currentTime={currentTime}
@@ -357,14 +330,14 @@ export function FocusedVideoEditor({
               onUpdateOverlay={updateTextOverlay}
             />
           </div>
+        </aside>
+      </div>
 
-          {actionFooter ? (
-            <div className="sticky bottom-0 z-10 border-t border-border bg-card px-4 py-3">
-              {actionFooter}
-            </div>
-          ) : null}
-        </section>
-      </aside>
+      {actionFooter ? (
+        <footer className="border-t border-border bg-white px-4 py-3 sm:px-5">
+          {actionFooter}
+        </footer>
+      ) : null}
     </section>
   );
 }
@@ -398,10 +371,7 @@ function TrimControls({
   const [activeHandle, setActiveHandle] = useState<TrimHandle | null>(null);
   const selectedLeft = getTimePercent(trimStart, duration);
   const selectedRight = getTimePercent(trimEnd, duration);
-  const currentLeft = getTimePercent(currentTime, duration);
   const canEditTrim = duration > 0;
-  const activeHandleTime =
-    activeHandle === "start" ? trimStart : activeHandle === "end" ? trimEnd : null;
 
   function updateHandleFromPointer(
     handle: TrimHandle,
@@ -499,7 +469,7 @@ function TrimControls({
   }
 
   return (
-    <section className="border-b border-border pb-5">
+    <section className="border-b border-border pb-6">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Scissors className="size-4 text-primary" aria-hidden="true" />
@@ -512,42 +482,32 @@ function TrimControls({
         </span>
       </div>
 
-      <div className="mt-4 rounded-md border border-border bg-white p-3">
-        <div className="flex items-center justify-between gap-3 text-xs font-semibold text-muted">
-          <span>{formatPreciseTime(trimStart)}</span>
-          <span>{formatPreciseTime(trimEnd || duration)}</span>
-        </div>
-
+      <div className="mt-5">
         <div
           ref={trackRef}
-          className="relative mt-4 h-14 rounded-md bg-card-muted"
+          className="relative h-[72px]"
           onPointerDown={handleTrackPointerDown}
         >
-          <div className="absolute inset-x-3 top-1/2 h-3 -translate-y-1/2 rounded-full bg-border" />
+          <span
+            className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-md border border-border bg-white px-2 py-1 text-[11px] font-semibold text-[#173454] shadow-sm"
+            style={{ left: `${selectedLeft}%` }}
+          >
+            {formatPreciseTime(trimStart)}
+          </span>
+          <span
+            className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-md border border-border bg-white px-2 py-1 text-[11px] font-semibold text-[#173454] shadow-sm"
+            style={{ left: `${selectedRight}%` }}
+          >
+            {formatPreciseTime(trimEnd || duration)}
+          </span>
+          <div className="absolute inset-x-0 top-11 h-1 -translate-y-1/2 rounded-full bg-border" />
           <div
-            className="absolute top-1/2 h-3 -translate-y-1/2 rounded-full bg-primary"
+            className="absolute top-11 h-0.5 -translate-y-1/2 rounded-full bg-brand"
             style={{
-              left: `calc(${selectedLeft}% + 12px)`,
-              width: `calc(${Math.max(0, selectedRight - selectedLeft)}% - 24px)`,
+              left: `${selectedLeft}%`,
+              width: `${Math.max(0, selectedRight - selectedLeft)}%`,
             }}
           />
-          <div
-            className="pointer-events-none absolute top-1/2 h-9 w-px -translate-y-1/2 bg-[#173454]"
-            style={{ left: `${currentLeft}%` }}
-          >
-            <span className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rotate-45 bg-[#173454]" />
-          </div>
-
-          {activeHandle && activeHandleTime !== null ? (
-            <span
-              className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-md bg-[#173454] px-2 py-1 text-[11px] font-semibold text-white"
-              style={{
-                left: `${getTimePercent(activeHandleTime, duration)}%`,
-              }}
-            >
-              {formatPreciseTime(activeHandleTime)}
-            </span>
-          ) : null}
 
           <button
             type="button"
@@ -562,9 +522,16 @@ function TrimControls({
             onPointerMove={(event) => handleHandlePointerMove("start", event)}
             onPointerUp={handleHandlePointerUp}
             disabled={!canEditTrim}
-            className="absolute top-1/2 h-9 w-5 -translate-x-1/2 -translate-y-1/2 rounded-md border border-primary bg-white shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className="absolute top-11 flex h-11 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md bg-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
             style={{ left: `${selectedLeft}%` }}
           >
+            <span
+              className={cn(
+                "block h-6 w-3 rounded-[4px] border border-brand bg-white shadow-sm transition",
+                activeHandle === "start" && "bg-brand-soft",
+              )}
+              aria-hidden="true"
+            />
             <span className="sr-only">Drag trim start</span>
           </button>
 
@@ -581,21 +548,28 @@ function TrimControls({
             onPointerMove={(event) => handleHandlePointerMove("end", event)}
             onPointerUp={handleHandlePointerUp}
             disabled={!canEditTrim}
-            className="absolute top-1/2 h-9 w-5 -translate-x-1/2 -translate-y-1/2 rounded-md border border-primary bg-white shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className="absolute top-11 flex h-11 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md bg-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
             style={{ left: `${selectedRight}%` }}
           >
+            <span
+              className={cn(
+                "block h-6 w-3 rounded-[4px] border border-brand bg-white shadow-sm transition",
+                activeHandle === "end" && "bg-brand-soft",
+              )}
+              aria-hidden="true"
+            />
             <span className="sr-only">Drag trim end</span>
           </button>
         </div>
 
-        <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-muted">
+        <div className="flex items-center justify-between text-[11px] font-semibold text-muted">
           <span>{formatPreciseTime(0)}</span>
           <span>Current {formatPreciseTime(currentTime)}</span>
           <span>{formatPreciseTime(duration)}</span>
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(120px,1fr)_minmax(120px,1fr)_auto_auto] lg:items-end">
         <label className="block">
           <span className="text-xs font-semibold text-muted">Start</span>
           <input
@@ -620,14 +594,11 @@ function TrimControls({
             className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
           />
         </label>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
         <button
           type="button"
           onClick={onPlayTrimmedPreview}
           disabled={!canPreviewTrim}
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-[#173454] px-3 text-sm font-semibold text-white transition hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#173454] px-3 text-sm font-semibold text-white transition hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-1"
         >
           <Play className="size-3.5" aria-hidden="true" />
           Preview selection
@@ -636,7 +607,7 @@ function TrimControls({
           type="button"
           onClick={onResetTrim}
           disabled={!canEditTrim}
-          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-1"
         >
           <RotateCcw className="size-3.5" aria-hidden="true" />
           Reset
@@ -699,126 +670,137 @@ function TextOverlayControls({
         </button>
       </div>
 
-      {overlays.length > 0 ? (
-        <ol className="mt-3 space-y-2">
-          {overlays.map((overlay, index) => {
-            const selected = overlay.id === selectedOverlayId;
+      <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_270px]">
+        <div className="min-w-0 space-y-4">
+          {overlays.length > 0 ? (
+            <ol className="space-y-2">
+              {overlays.map((overlay, index) => {
+                const selected = overlay.id === selectedOverlayId;
 
-            return (
-              <li
-                key={overlay.id}
-                className={cn(
-                  "flex items-stretch gap-2 rounded-md border bg-white p-2 transition",
-                  selected ? "border-primary bg-brand-soft/55" : "border-border",
+                return (
+                  <li
+                    key={overlay.id}
+                    className={cn(
+                      "flex items-stretch gap-2 rounded-md border bg-white p-2 transition",
+                      selected ? "border-brand bg-brand-soft/70" : "border-border",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onSelectOverlay(overlay.id)}
+                      className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+                    >
+                      <span className="block text-xs font-semibold text-foreground-strong">
+                        {index + 1}. {getPositionLabel(overlay.position)} text
+                      </span>
+                      <span className="mt-1 block truncate text-xs font-medium text-muted">
+                        {overlay.text.trim() || "Empty text"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteOverlay(overlay.id)}
+                      aria-label={`Delete ${getPositionLabel(overlay.position)} text`}
+                      title="Delete overlay"
+                      className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+                    >
+                      <Trash2 className="size-3.5" aria-hidden="true" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : (
+            <div className="rounded-md border border-dashed border-border bg-white px-3 py-4 text-sm font-semibold text-muted">
+              No text overlays.
+            </div>
+          )}
+
+          {!canAddOverlay && overlays.length >= MAX_TEXT_OVERLAYS ? (
+            <p className="text-xs font-semibold text-muted">
+              All three positions are already used.
+            </p>
+          ) : null}
+
+          {selectedOverlay ? (
+            <div className="border-t border-border pt-4">
+              <div className="flex items-center justify-between gap-3">
+                <label
+                  className="text-xs font-semibold text-muted"
+                  htmlFor={`text-overlay-${selectedOverlay.id}`}
+                >
+                  Text
+                </label>
+                <button
+                  type="button"
+                  onClick={() => onUpdateOverlay(selectedOverlay.id, { text: "" })}
+                  disabled={!selectedOverlay.text}
+                  className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-white px-2 text-xs font-semibold text-muted transition hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <X className="size-3" aria-hidden="true" />
+                  Clear
+                </button>
+              </div>
+              <textarea
+                id={`text-overlay-${selectedOverlay.id}`}
+                value={selectedOverlay.text}
+                onChange={(event) =>
+                  onUpdateOverlay(selectedOverlay.id, {
+                    text: event.target.value,
+                  })
+                }
+                maxLength={TEXT_OVERLAY_MAX_LENGTH}
+                rows={4}
+                className="mt-2 min-h-28 w-full resize-none rounded-md border border-border bg-white px-3 py-2.5 text-sm font-semibold leading-5 text-foreground outline-none transition placeholder:text-muted-subtle focus:border-primary focus:ring-2 focus:ring-primary/15"
+              />
+              <div className="mt-2 flex justify-end text-xs font-medium text-muted">
+                {characterCount} / {TEXT_OVERLAY_MAX_LENGTH} characters
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <aside className="border-t border-border pt-4 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-0">
+          {selectedOverlay ? (
+            <div className="space-y-5">
+              <SegmentedControl
+                disabledOptions={textOverlayPositions.filter(
+                  (position) =>
+                    position !== selectedOverlay.position &&
+                    usedPositions.has(position),
                 )}
-              >
-                <button
-                  type="button"
-                  onClick={() => onSelectOverlay(overlay.id)}
-                  className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-                >
-                  <span className="block text-xs font-semibold text-foreground-strong">
-                    {index + 1}. {getPositionLabel(overlay.position)} text
-                  </span>
-                  <span className="mt-1 block truncate text-xs font-medium text-muted">
-                    {overlay.text.trim() || "Empty text"}
-                  </span>
-                  <span className="mt-2 inline-flex rounded-md border border-border bg-card-muted px-2 py-0.5 text-[11px] font-semibold capitalize text-muted">
-                    {overlay.style}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDeleteOverlay(overlay.id)}
-                  aria-label={`Delete ${getPositionLabel(overlay.position)} text`}
-                  title="Delete overlay"
-                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-                >
-                  <Trash2 className="size-3.5" aria-hidden="true" />
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-      ) : (
-        <div className="mt-3 rounded-md border border-dashed border-border bg-white px-3 py-4 text-sm font-semibold text-muted">
-          No text overlays.
-        </div>
-      )}
+                label="Position"
+                options={textOverlayPositions}
+                value={selectedOverlay.position}
+                onChange={(position) =>
+                  onUpdateOverlay(selectedOverlay.id, { position })
+                }
+              />
 
-      {!canAddOverlay && overlays.length >= MAX_TEXT_OVERLAYS ? (
-        <p className="mt-2 text-xs font-semibold text-muted">
-          All three positions are already used.
-        </p>
-      ) : null}
-
-      {selectedOverlay ? (
-        <div className="mt-4 rounded-md border border-border bg-white p-3">
-          <div className="flex items-center justify-between gap-3">
-            <label
-              className="text-xs font-semibold text-muted"
-              htmlFor={`text-overlay-${selectedOverlay.id}`}
-            >
-              Text
-            </label>
-            <button
-              type="button"
-              onClick={() => onUpdateOverlay(selectedOverlay.id, { text: "" })}
-              disabled={!selectedOverlay.text}
-              className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-white px-2 text-xs font-semibold text-muted transition hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <X className="size-3" aria-hidden="true" />
-              Clear
-            </button>
-          </div>
-          <textarea
-            id={`text-overlay-${selectedOverlay.id}`}
-            value={selectedOverlay.text}
-            onChange={(event) =>
-              onUpdateOverlay(selectedOverlay.id, {
-                text: event.target.value,
-              })
-            }
-            maxLength={TEXT_OVERLAY_MAX_LENGTH}
-            rows={3}
-            className="mt-2 min-h-20 w-full resize-none rounded-md border border-border bg-white px-3 py-2.5 text-sm font-semibold leading-5 text-foreground outline-none transition placeholder:text-muted-subtle focus:border-primary focus:ring-2 focus:ring-primary/15"
-          />
-          <div className="mt-2 flex justify-end text-xs font-medium text-muted">
-            {characterCount} / {TEXT_OVERLAY_MAX_LENGTH} characters
-          </div>
-
-          <div className="mt-4 grid gap-3 xl:grid-cols-2">
-            <SegmentedControl
-              disabledOptions={textOverlayPositions.filter(
-                (position) =>
-                  position !== selectedOverlay.position &&
-                  usedPositions.has(position),
-              )}
-              label="Position"
-              options={textOverlayPositions}
-              value={selectedOverlay.position}
-              onChange={(position) =>
-                onUpdateOverlay(selectedOverlay.id, { position })
-              }
-            />
-            <SegmentedControl
-              label="Style"
-              options={textOverlayStyles}
-              value={selectedOverlay.style}
-              onChange={(style) => onUpdateOverlay(selectedOverlay.id, { style })}
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => onDeleteOverlay(selectedOverlay.id)}
-            className="mt-4 inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-error/25 bg-error/5 px-3 text-sm font-semibold text-error transition hover:bg-error/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-          >
-            <Trash2 className="size-3.5" aria-hidden="true" />
-            Delete overlay
-          </button>
-        </div>
-      ) : null}
+              <div className="border-t border-border pt-5">
+                <SegmentedControl
+                  label="Style"
+                  layout="stack"
+                  options={textOverlayStyles}
+                  value={selectedOverlay.style}
+                  onChange={(style) => onUpdateOverlay(selectedOverlay.id, { style })}
+                />
+                <p className="mt-2 text-xs font-medium leading-5 text-muted">
+                  {getOverlayStyleDescription(selectedOverlay.style)}
+                </p>
+                <StylePreview
+                  style={selectedOverlay.style}
+                  text={selectedOverlay.text || "Text"}
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-md border border-dashed border-border bg-white px-3 py-4 text-sm font-semibold text-muted">
+              Add a text overlay to edit its position and style.
+            </p>
+          )}
+        </aside>
+      </div>
     </section>
   );
 }
@@ -826,12 +808,14 @@ function TextOverlayControls({
 function SegmentedControl<TValue extends string>({
   disabledOptions,
   label,
+  layout = "row",
   onChange,
   options,
   value,
 }: {
   disabledOptions?: TValue[];
   label: string;
+  layout?: "row" | "stack";
   onChange: (value: TValue) => void;
   options: readonly TValue[];
   value: TValue;
@@ -841,7 +825,12 @@ function SegmentedControl<TValue extends string>({
   return (
     <div>
       <span className="text-xs font-semibold text-muted">{label}</span>
-      <div className="mt-1 flex rounded-md border border-border bg-card-muted p-1">
+      <div
+        className={cn(
+          "mt-1 rounded-md border border-border bg-card-muted p-1",
+          layout === "row" ? "flex" : "grid gap-1",
+        )}
+      >
         {options.map((option) => {
           const selected = option === value;
           const isDisabled = disabled.has(option);
@@ -853,18 +842,35 @@ function SegmentedControl<TValue extends string>({
               onClick={() => onChange(option)}
               disabled={isDisabled}
               className={cn(
-                "h-8 flex-1 rounded-[5px] px-3 text-sm font-semibold capitalize transition",
+                "h-8 rounded-[5px] px-3 text-sm font-semibold capitalize transition",
+                layout === "row" && "flex-1",
                 selected
-                  ? "bg-white text-primary shadow-sm"
+                  ? "border border-brand/45 bg-white text-primary shadow-sm"
                   : "text-muted hover:text-foreground",
                 isDisabled && "cursor-not-allowed opacity-45 hover:text-muted",
               )}
             >
-              {option}
+              {formatOverlayStyleLabel(option)}
             </button>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function StylePreview({
+  style,
+  text,
+}: {
+  style: TextOverlayStyle;
+  text: string;
+}) {
+  return (
+    <div className="mt-4 flex min-h-16 items-center justify-center rounded-md border border-border bg-white px-4 py-5 text-center">
+      <span className={getStylePreviewClass(style)}>
+        {text.trim() || "Text"}
+      </span>
     </div>
   );
 }
@@ -900,7 +906,38 @@ function getOverlayStyleClass(style: TextOverlayStyle) {
     return `${base} rounded-md bg-black/65 px-[clamp(0.6rem,4cqw,1rem)] py-[clamp(0.35rem,2cqw,0.65rem)] shadow-lg`;
   }
 
+  if (style === "minimal") {
+    return `${base} rounded-sm bg-black/35 px-[clamp(0.45rem,3cqw,0.8rem)] py-[clamp(0.25rem,1.8cqw,0.45rem)] shadow-sm backdrop-blur-[1px]`;
+  }
+
   return `${base} drop-shadow-lg`;
+}
+
+function getStylePreviewClass(style: TextOverlayStyle) {
+  const base =
+    "inline-flex max-w-full whitespace-pre-line break-words px-2 py-1 text-sm font-semibold leading-5";
+
+  if (style === "bubble") {
+    return `${base} rounded-md bg-[#173454] text-white shadow-sm`;
+  }
+
+  if (style === "minimal") {
+    return `${base} rounded-sm bg-card-muted text-foreground-strong`;
+  }
+
+  return `${base} text-foreground-strong`;
+}
+
+function getOverlayStyleDescription(style: TextOverlayStyle) {
+  if (style === "bubble") {
+    return "Bubble style adds a dark rounded background behind the text.";
+  }
+
+  if (style === "minimal") {
+    return "Minimal style adds a subtle backing for lighter footage.";
+  }
+
+  return "Clean style shows simple text without background.";
 }
 
 function getInitialTrimRange({
@@ -991,4 +1028,8 @@ function getPositionLabel(position: TextOverlayPosition) {
   }
 
   return "Bottom";
+}
+
+function formatOverlayStyleLabel(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }

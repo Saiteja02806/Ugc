@@ -113,3 +113,68 @@ h3 {
 p {
   text-wrap: pretty;
 }
+
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes section-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-rise {
+  animation: hero-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero-rise-delay-1 {
+  animation-delay: 80ms;
+}
+
+.hero-rise-delay-2 {
+  animation-delay: 160ms;
+}
+
+.hero-rise-delay-3 {
+  animation-delay: 240ms;
+}
+
+@supports (animation-timeline: view()) {
+  .landing-reveal {
+    animation: section-reveal 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-range: entry 12% cover 28%;
+    animation-timeline: view();
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+
+  .hero-rise,
+  .landing-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

@@ -251,7 +251,7 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
   }
 
   return (
-    <section className="flex min-h-screen flex-1 flex-col bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
+    <section className="flex min-h-screen flex-1 flex-col bg-background px-4 py-4 text-foreground sm:px-6 lg:px-10 lg:py-6">
       <DemoEditorTopBar
         canSave={canSave}
         demo={demo}
@@ -264,7 +264,7 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
         onTitleChange={handleTitleChange}
       />
 
-      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col pt-5">
+      <div className="mx-auto flex w-full max-w-[1360px] flex-1 flex-col pt-5">
         {isLoading ? (
           <EditorLoadingState />
         ) : errorMessage ? (
@@ -325,7 +325,7 @@ function DemoEditorTopBar({
   title: string;
 }) {
   return (
-    <header className="mx-auto flex w-full max-w-6xl flex-col gap-4 border-b border-border/70 pb-4 lg:flex-row lg:items-center lg:justify-between">
+    <header className="mx-auto flex w-full max-w-[1360px] flex-col gap-4 pb-4 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0 flex-1">
         <button
           type="button"

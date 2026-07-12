@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-
-import { DemosWorkspace } from "@/components/demos/demos-workspace";
-import { AppShell } from "@/components/layout/app-shell";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Demos",
-  description: "Upload and manage product demo videos.",
+  title: "Library",
+  description: "Manage uploaded posts and saved content.",
 };
 
 export default function DemosPage() {
-  return (
-    <AppShell activeKey="demos">
-      <DemosWorkspace />
-    </AppShell>
-  );
+  redirect("/library?tab=posts");
 }

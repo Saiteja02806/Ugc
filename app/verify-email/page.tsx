@@ -6,12 +6,12 @@ import {
   MailCheck,
   RefreshCw,
   Send,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ProductLogoMark } from "@/components/brand/product-logo";
 import { buttonClassName } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -104,9 +104,7 @@ export default function VerifyEmailPage() {
     <main className="min-h-screen bg-background px-5 text-foreground sm:px-8">
       <header className="mx-auto flex h-20 max-w-6xl items-center justify-between">
         <Link href="/" className="flex items-center gap-3 font-bold">
-          <span className="flex size-10 items-center justify-center rounded-2xl bg-foreground text-white shadow-sm">
-            <Sparkles className="size-5" aria-hidden="true" />
-          </span>
+          <ProductLogoMark className="h-8 w-12" sizes="52px" />
           <span>UGC Studio</span>
         </Link>
 

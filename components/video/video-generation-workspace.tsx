@@ -167,7 +167,7 @@ export function VideoGenerationWorkspace() {
         setAvatarLibrary([]);
         setSelectedAvatarId(null);
         setAvatarLoading(false);
-        setAvatarErrorMessage("Sign in before choosing avatars.");
+        setAvatarErrorMessage("Sign in before choosing influencers.");
         return;
       }
 
@@ -177,7 +177,7 @@ export function VideoGenerationWorkspace() {
         const token = await getCurrentUserIdToken();
 
         if (!token) {
-          throw new Error("Sign in before choosing avatars.");
+          throw new Error("Sign in before choosing influencers.");
         }
 
         const response = await fetch("/api/avatars", {
@@ -189,7 +189,7 @@ export function VideoGenerationWorkspace() {
         const data = (await response.json()) as AvatarListResponse;
 
         if (!response.ok || data.ok !== true) {
-          throw new Error(getApiErrorMessage(data, "Could not load avatars."));
+          throw new Error(getApiErrorMessage(data, "Could not load influencers."));
         }
 
         if (ignore) {
@@ -208,7 +208,7 @@ export function VideoGenerationWorkspace() {
           setAvatarLibrary([]);
           setSelectedAvatarId(null);
           setAvatarErrorMessage(
-            getErrorMessage(error, "Could not load avatars."),
+            getErrorMessage(error, "Could not load influencers."),
           );
         }
       } finally {
@@ -235,8 +235,8 @@ export function VideoGenerationWorkspace() {
     if (!selectedAvatar) {
       setActionNotice(
         avatarLoading
-          ? "Avatar library is still loading."
-          : "Choose an avatar before generating.",
+          ? "Influencer library is still loading."
+          : "Choose an influencer before generating.",
       );
       return;
     }
@@ -313,7 +313,7 @@ export function VideoGenerationWorkspace() {
             Video generation
           </h1>
           <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-            Create avatar-led hooks and short-form ad videos.
+            Create influencer-led hooks and short-form ad videos.
           </p>
         </div>
 
@@ -923,7 +923,7 @@ function AvatarPicker({
           {avatarLoading ? (
             <div className="flex items-center gap-2 rounded-xl px-2 py-3 text-sm font-semibold text-muted">
               <Loader2 className="size-4 animate-spin text-primary" />
-              Loading avatar library...
+              Loading influencer library...
             </div>
           ) : avatarErrorMessage ? (
             <div className="rounded-xl border border-error/20 bg-error/5 px-3 py-2 text-sm font-semibold text-error">
@@ -932,16 +932,16 @@ function AvatarPicker({
           ) : (
             <>
               <AvatarGroup
-                emptyMessage="No personal avatars yet. Choose a global avatar to start."
-                label="My avatars"
+                emptyMessage="No personal influencers yet. Choose a global influencer to start."
+                label="My influencers"
                 options={personalAvatars}
                 selectedAvatarId={selectedAvatarId}
                 onSelect={selectAvatar}
               />
               <div className="mt-2 border-t border-border pt-2">
                 <AvatarGroup
-                  emptyMessage="No global avatar videos are ready yet."
-                  label={`Global avatars (${globalAvatars.length})`}
+                  emptyMessage="No global influencer videos are ready yet."
+                  label={`Global influencers (${globalAvatars.length})`}
                   options={globalAvatars}
                   selectedAvatarId={selectedAvatarId}
                   onSelect={selectAvatar}
@@ -963,8 +963,8 @@ function AvatarPicker({
         <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
         <span className="truncate">
           {avatarLoading
-            ? "Loading avatars"
-            : selectedAvatar?.label ?? "Choose avatar"}
+            ? "Loading influencers"
+            : selectedAvatar?.label ?? "Choose influencer"}
         </span>
         <ChevronDown
           className={cn(

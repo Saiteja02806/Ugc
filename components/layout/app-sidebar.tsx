@@ -4,7 +4,6 @@ import {
   LoaderCircle,
   LogOut,
   Menu,
-  Sparkles,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -22,6 +21,7 @@ import {
   SidebarIcon,
   type SidebarIconName,
 } from "@/components/icons/sidebar-icon";
+import { ProductLogoMark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +29,7 @@ export type AppSidebarActiveKey =
   | "trending"
   | "img-gen"
   | "video-gen"
-  | "demos"
+  | "library"
   | "avatars"
   | "edit"
   | "scheduling";
@@ -61,16 +61,10 @@ const primaryNavigationItems: SidebarItem[] = [
     icon: "video-gen",
   },
   {
-    key: "demos",
-    label: "Demos",
-    href: "/demos",
-    icon: "demos",
-  },
-  {
     key: "avatars",
-    label: "Avatars",
+    label: "Influencers",
     href: "/avatars",
-    icon: "avatars",
+    icon: "influencers",
   },
   {
     key: "edit",
@@ -81,6 +75,12 @@ const primaryNavigationItems: SidebarItem[] = [
 ];
 
 const libraryNavigationItems: SidebarItem[] = [
+  {
+    key: "library",
+    label: "Library",
+    href: "/library?tab=posts",
+    icon: "library",
+  },
   {
     key: "scheduling",
     label: "Scheduled",
@@ -300,8 +300,16 @@ function Brand({ compact = false }: { compact?: boolean }) {
         compact && "justify-center",
       )}
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-brand text-foreground-strong">
-        <Sparkles className="size-[18px]" aria-hidden="true" />
+      <span
+        className={cn(
+          "flex h-9 shrink-0 items-center justify-center overflow-hidden rounded-md",
+          compact ? "w-10" : "w-12",
+        )}
+      >
+        <ProductLogoMark
+          className={compact ? "h-6 w-9" : "h-7 w-10"}
+          sizes={compact ? "40px" : "48px"}
+        />
       </span>
       {!compact ? (
         <span className="truncate text-base font-semibold text-foreground-strong">

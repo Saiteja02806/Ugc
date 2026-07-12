@@ -100,6 +100,16 @@ type ApiErrorResponse = {
 };
 
 export function DemosWorkspace() {
+  return <UploadedPostsTab showPageHeader />;
+}
+
+export function UploadedPostsTab({
+  embeddedInLibrary = false,
+  showPageHeader = false,
+}: {
+  embeddedInLibrary?: boolean;
+  showPageHeader?: boolean;
+} = {}) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const activeUploadRequestRef = useRef<XMLHttpRequest | null>(null);
   const failedUploadFileRef = useRef<File | null>(null);
@@ -123,6 +133,9 @@ export function DemosWorkspace() {
     "uploading",
     "finalizing",
   ].includes(uploadState.status);
+  const loadErrorFallback = embeddedInLibrary
+    ? "Could not load uploaded posts."
+    : "Could not load demo videos.";
 
   const loadDemos = useCallback(async () => {
     setErrorMessage(null);
@@ -143,21 +156,21 @@ export function DemosWorkspace() {
           },
         },
       );
-      const data = (await response.json()) as
-        | { demos: DemoVideo[]; ok: true }
-        | ApiErrorResponse;
+      const data = await readJsonResponse<
+        { demos: DemoVideo[]; ok: true } | ApiErrorResponse
+      >(response, loadErrorFallback);
 
       if (!response.ok || data.ok !== true) {
-        throw new Error(getApiErrorMessage(data, "Could not load demo videos."));
+        throw new Error(getApiErrorMessage(data, loadErrorFallback));
       }
 
       setDemos(data.demos);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not load demo videos."));
+      setErrorMessage(getErrorMessage(error, loadErrorFallback));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [loadErrorFallback]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -361,44 +374,59 @@ export function DemosWorkspace() {
   }
 
   return (
-    <section className="min-h-screen flex-1 bg-background px-4 py-5 text-foreground sm:px-6 lg:px-10 lg:py-8">
-      <header className="mx-auto flex w-full max-w-[1360px] flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-normal text-foreground-strong sm:text-[28px]">
-            Demos
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-            Keep product footage ready for trims, hooks, and social-ready edits.
-          </p>
-        </div>
+    <section
+      className={cn(
+        "text-foreground",
+        showPageHeader
+          ? "min-h-screen flex-1 bg-background px-4 py-5 sm:px-6 lg:px-10 lg:py-8"
+          : "w-full",
+      )}
+    >
+      {showPageHeader ? (
+        <header className="mx-auto flex w-full max-w-[1360px] flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-normal text-foreground-strong sm:text-[28px]">
+              Demos
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
+              Keep product footage ready for trims, hooks, and social-ready edits.
+            </p>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void loadDemos()}
-            disabled={isLoading}
-            aria-label="Refresh demos"
-            title="Refresh demos"
-            className="inline-flex size-10 items-center justify-center rounded-md border border-border bg-white text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <RefreshCw
-              className={cn("size-4", isLoading && "animate-spin")}
-              aria-hidden="true"
-            />
-          </button>
-          <button
-            type="button"
-            onClick={openFilePicker}
-            disabled={hasActiveUpload}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Upload className="size-4" aria-hidden="true" />
-            Upload demo
-          </button>
-        </div>
-      </header>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void loadDemos()}
+              disabled={isLoading}
+              aria-label="Refresh demos"
+              title="Refresh demos"
+              className="inline-flex size-10 items-center justify-center rounded-md border border-border bg-white text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw
+                className={cn("size-4", isLoading && "animate-spin")}
+                aria-hidden="true"
+              />
+            </button>
+            <button
+              type="button"
+              onClick={openFilePicker}
+              disabled={hasActiveUpload}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Upload className="size-4" aria-hidden="true" />
+              Upload demo
+            </button>
+          </div>
+        </header>
+      ) : null}
 
-      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-7 pt-6">
+      <div
+        className={cn(
+          "flex w-full flex-col",
+          embeddedInLibrary ? "gap-5" : "mx-auto max-w-[1360px] gap-7",
+          showPageHeader ? "pt-6" : "pt-0",
+        )}
+      >
         <input
           ref={fileInputRef}
           type="file"
@@ -413,16 +441,48 @@ export function DemosWorkspace() {
           }}
         />
 
-        <UploadPanel
-          demosCount={demos.length}
-          isDragActive={isDragActive}
-          uploadState={uploadState}
-          onBrowse={openFilePicker}
-          onCancel={handleCancelUpload}
-          onDragActiveChange={setIsDragActive}
-          onFiles={handleFiles}
-          onRetry={handleRetryUpload}
-        />
+        {embeddedInLibrary ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground-strong">
+                My posts
+              </h2>
+              <p className="mt-1 max-w-xl text-sm leading-6 text-muted">
+                Uploaded product footage for trims, edits, and scheduled posts.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex min-h-9 items-center rounded-md bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-border">
+                {isLoading
+                  ? "Loading"
+                  : `${demos.length} ${demos.length === 1 ? "post" : "posts"}`}
+              </span>
+              <button
+                type="button"
+                onClick={() => void loadDemos()}
+                disabled={isLoading}
+                aria-label="Refresh posts"
+                title="Refresh posts"
+                className="inline-flex size-9 items-center justify-center rounded-md border border-border bg-white text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <RefreshCw
+                  className={cn("size-4", isLoading && "animate-spin")}
+                  aria-hidden="true"
+                />
+              </button>
+              <button
+                type="button"
+                onClick={openFilePicker}
+                disabled={hasActiveUpload}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-xs font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Upload className="size-3.5" aria-hidden="true" />
+                Upload post
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {errorMessage ? (
           <div
@@ -436,20 +496,62 @@ export function DemosWorkspace() {
           </div>
         ) : null}
 
-        <DemoLibrary
-          deletingDemoId={deletingDemoId}
-          demos={demos}
-          isLoading={isLoading}
-          playingDemoId={playingDemoId}
-          onDeleteDemo={(demo) => void handleDeleteDemo(demo)}
-          onPlayDemo={setPlayingDemoId}
-        />
+        {embeddedInLibrary ? (
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
+            <DemoLibrary
+              deletingDemoId={deletingDemoId}
+              description="Preview, edit, or remove uploaded post footage."
+              demos={demos}
+              emptyDescription="Upload product footage to start building your post library."
+              emptyTitle="No posts yet."
+              heading="Uploaded posts"
+              isLoading={isLoading}
+              itemLabel="post"
+              playingDemoId={playingDemoId}
+              onDeleteDemo={(demo) => void handleDeleteDemo(demo)}
+              onPlayDemo={setPlayingDemoId}
+            />
+            <DemoUploadPanel
+              demosCount={demos.length}
+              isDragActive={isDragActive}
+              layout="compact"
+              uploadState={uploadState}
+              workspaceLabel="post"
+              onBrowse={openFilePicker}
+              onCancel={handleCancelUpload}
+              onDragActiveChange={setIsDragActive}
+              onFiles={handleFiles}
+              onRetry={handleRetryUpload}
+            />
+          </div>
+        ) : (
+          <>
+            <DemoUploadPanel
+              demosCount={demos.length}
+              isDragActive={isDragActive}
+              uploadState={uploadState}
+              onBrowse={openFilePicker}
+              onCancel={handleCancelUpload}
+              onDragActiveChange={setIsDragActive}
+              onFiles={handleFiles}
+              onRetry={handleRetryUpload}
+            />
+            <DemoLibrary
+              deletingDemoId={deletingDemoId}
+              demos={demos}
+              isLoading={isLoading}
+              playingDemoId={playingDemoId}
+              onDeleteDemo={(demo) => void handleDeleteDemo(demo)}
+              onPlayDemo={setPlayingDemoId}
+            />
+          </>
+        )}
       </div>
     </section>
   );
 }
 
-function UploadPanel({
+export function DemoUploadPanel({
   demosCount,
   isDragActive,
   onBrowse,
@@ -458,17 +560,29 @@ function UploadPanel({
   onFiles,
   onRetry,
   uploadState,
+  layout = "default",
+  workspaceLabel = "demo",
 }: {
   demosCount: number;
   isDragActive: boolean;
+  layout?: "compact" | "default";
   onBrowse: () => void;
   onCancel: () => void;
   onDragActiveChange: (active: boolean) => void;
   onFiles: (files: FileList | File[]) => Promise<void>;
   onRetry: () => void;
   uploadState: UploadState;
+  workspaceLabel?: "demo" | "post";
 }) {
   const activeUpload = uploadState.status !== "idle";
+  const assetLabel = workspaceLabel === "post" ? "post" : "demo";
+  const assetPluralLabel = workspaceLabel === "post" ? "posts" : "demos";
+  const title =
+    workspaceLabel === "post" ? "Add another post" : "Add product footage";
+  const description =
+    workspaceLabel === "post"
+      ? "Upload product footage when you have another post ready to edit."
+      : "Upload a walkthrough or screen recording. Final exports are MP4.";
 
   return (
     <div
@@ -497,7 +611,12 @@ function UploadPanel({
         isDragActive ? "border-primary bg-brand-soft/35" : "border-border",
       )}
     >
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
+      <div
+        className={cn(
+          "grid gap-4",
+          layout === "default" && "lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center",
+        )}
+      >
         <div className="flex min-w-0 items-start gap-3.5">
           <div className="hidden size-11 shrink-0 items-center justify-center rounded-md bg-foreground-strong text-white sm:flex">
             <FileVideo className="size-5" aria-hidden="true" />
@@ -505,14 +624,14 @@ function UploadPanel({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-base font-semibold text-foreground-strong">
-                Add product footage
+                {title}
               </h2>
               <span className="inline-flex h-6 items-center rounded-full bg-card-muted px-2.5 text-xs font-semibold text-muted">
-                {demosCount} {demosCount === 1 ? "demo" : "demos"}
+                {demosCount} {demosCount === 1 ? assetLabel : assetPluralLabel}
               </span>
             </div>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-              Upload a walkthrough or screen recording. Final exports are MP4.
+              {description}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-muted-subtle">
               <span>MP4, MOV or WebM</span>
@@ -642,17 +761,27 @@ function UploadProgress({
   );
 }
 
-function DemoLibrary({
+export function DemoLibrary({
   deletingDemoId,
+  description = "Preview footage, open an edit, or remove an asset.",
   demos,
+  emptyDescription = "Upload product footage to start building your demo library.",
+  emptyTitle = "No demo videos yet.",
+  heading = "Demo library",
   isLoading,
+  itemLabel = "asset",
   onDeleteDemo,
   onPlayDemo,
   playingDemoId,
 }: {
   deletingDemoId: string | null;
+  description?: string;
   demos: DemoVideo[];
+  emptyDescription?: string;
+  emptyTitle?: string;
+  heading?: string;
   isLoading: boolean;
+  itemLabel?: string;
   onDeleteDemo: (demo: DemoVideo) => void;
   onPlayDemo: (demoId: string) => void;
   playingDemoId: string | null;
@@ -662,16 +791,16 @@ function DemoLibrary({
       <div className="mb-4 flex items-end justify-between gap-3 border-b border-border pb-3">
         <div>
           <h2 id="demo-library-heading" className="text-base font-semibold text-foreground-strong">
-            Demo library
+            {heading}
           </h2>
           <p className="mt-0.5 text-sm text-muted">
-            Preview footage, open an edit, or remove an asset.
+            {description}
           </p>
         </div>
         <span className="shrink-0 text-xs font-semibold text-muted">
           {isLoading
             ? "Loading"
-            : `${demos.length} ${demos.length === 1 ? "asset" : "assets"}`}
+            : `${demos.length} ${demos.length === 1 ? itemLabel : `${itemLabel}s`}`}
         </span>
       </div>
 
@@ -679,7 +808,7 @@ function DemoLibrary({
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Loading demos">
           {Array.from({ length: 4 }, (_, index) => (
             <div key={index} className="overflow-hidden rounded-lg border border-border bg-white">
-              <div className="aspect-[4/3] animate-pulse bg-[#e9eaec] motion-reduce:animate-none" />
+              <div className="aspect-[4/5] animate-pulse bg-[#e9eaec] motion-reduce:animate-none" />
               <div className="space-y-3 p-4">
                 <div className="h-4 w-3/4 animate-pulse rounded bg-[#e9eaec] motion-reduce:animate-none" />
                 <div className="h-3 w-1/2 animate-pulse rounded bg-[#eff0f1] motion-reduce:animate-none" />
@@ -701,14 +830,16 @@ function DemoLibrary({
           ))}
         </div>
       ) : (
-        <div className="flex min-h-[280px] items-center justify-center rounded-lg border border-dashed border-border-strong bg-white px-6 text-center">
-          <div>
-            <Video className="mx-auto size-8 text-[#9aa7b8]" aria-hidden="true" />
-            <p className="mt-3 text-sm font-semibold text-[#405977]">
-              No demo videos yet.
+        <div className="flex min-h-[260px] items-center justify-center rounded-lg border border-border bg-surface-subtle px-6 text-center">
+          <div className="max-w-md">
+            <div className="mx-auto flex size-11 items-center justify-center rounded-md bg-white text-muted ring-1 ring-border">
+              <Video className="size-5" aria-hidden="true" />
+            </div>
+            <p className="mt-4 text-sm font-semibold text-foreground-strong">
+              {emptyTitle}
             </p>
-            <p className="mt-1 text-sm font-medium text-muted">
-              Upload product footage to start building your demo library.
+            <p className="mt-1 text-sm leading-6 text-muted">
+              {emptyDescription}
             </p>
           </div>
         </div>
@@ -717,7 +848,7 @@ function DemoLibrary({
   );
 }
 
-function DemoCard({
+export function DemoCard({
   deleting,
   demo,
   onDelete,
@@ -734,7 +865,7 @@ function DemoCard({
 
   return (
     <article className="group min-w-0 overflow-hidden rounded-lg border border-border bg-white transition-colors hover:border-border-strong">
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#17181b] text-white">
+      <div className="relative aspect-[4/5] overflow-hidden bg-[#17181b] text-white">
         <DemoMediaPreview demo={demo} playing={playing} />
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-linear-to-t from-black/60 to-transparent p-3">
           <button
@@ -1331,6 +1462,14 @@ function getFileExtension(fileName: string) {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+async function readJsonResponse<T>(response: Response, fallback: string) {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new Error(fallback);
+  }
 }
 
 function getApiErrorMessage(response: unknown, fallback: string) {

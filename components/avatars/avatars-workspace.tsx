@@ -148,14 +148,14 @@ export function AvatarsWorkspace({
         setAvatars([]);
         commitSelectedAvatarId(null);
         setTrimDraft(getAvatarTrimDraft(null));
-        setErrorMessage("Sign in before managing avatars.");
+        setErrorMessage("Sign in before managing influencers.");
         return;
       }
 
       const token = await getCurrentUserIdToken();
 
       if (!token) {
-        throw new Error("Sign in before managing avatars.");
+          throw new Error("Sign in before managing influencers.");
       }
 
       const response = await fetch("/api/avatars", {
@@ -167,7 +167,7 @@ export function AvatarsWorkspace({
       const data = (await response.json()) as AvatarListResponse;
 
       if (!response.ok || data.ok !== true) {
-        throw new Error(getApiErrorMessage(data, "Could not load avatars."));
+        throw new Error(getApiErrorMessage(data, "Could not load influencers."));
       }
 
       setAvatars(data.avatars);
@@ -195,7 +195,7 @@ export function AvatarsWorkspace({
         ),
       );
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not load avatars."));
+      setErrorMessage(getErrorMessage(error, "Could not load influencers."));
     } finally {
       setIsLoading(false);
     }
@@ -243,9 +243,9 @@ export function AvatarsWorkspace({
       });
 
       updateAvatar(data);
-      setNoticeMessage("Avatar trim saved.");
+      setNoticeMessage("Influencer trim saved.");
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not save avatar trim."));
+      setErrorMessage(getErrorMessage(error, "Could not save influencer trim."));
     } finally {
       setSavingTrim(false);
     }
@@ -269,9 +269,9 @@ export function AvatarsWorkspace({
       });
 
       updateAvatar(data);
-      setNoticeMessage("Avatar trim reset.");
+      setNoticeMessage("Influencer trim reset.");
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not reset avatar trim."));
+      setErrorMessage(getErrorMessage(error, "Could not reset influencer trim."));
     } finally {
       setSavingTrim(false);
     }
@@ -300,13 +300,13 @@ export function AvatarsWorkspace({
       const data = (await response.json()) as AvatarActionResponse;
 
       if (!response.ok || data.ok !== true) {
-        throw new Error(getApiErrorMessage(data, "Could not use avatar."));
+        throw new Error(getApiErrorMessage(data, "Could not use influencer."));
       }
 
       updateAvatar(data);
-      setNoticeMessage("Avatar selected for generation.");
+      setNoticeMessage("Influencer selected for generation.");
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not use avatar."));
+      setErrorMessage(getErrorMessage(error, "Could not use influencer."));
     } finally {
       setUsingAvatar(false);
     }
@@ -418,10 +418,10 @@ export function AvatarsWorkspace({
 
   const libraryButtonTitle =
     thumbnailIssueCount > 0
-      ? `${thumbnailIssueCount} avatar preview issue${
+      ? `${thumbnailIssueCount} influencer preview issue${
           thumbnailIssueCount === 1 ? "" : "s"
         } detected`
-      : "Avatar library media status";
+      : "Influencer library media status";
 
   if (isEditorMode) {
     const editorAvatarWasNotFound =
@@ -462,10 +462,10 @@ export function AvatarsWorkspace({
       <header className="mx-auto flex w-full max-w-[1560px] flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
-            Avatars
+            Influencers
           </h1>
           <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-            Choose and trim reusable avatar videos for UGC creation.
+            Choose and trim reusable influencer videos for UGC creation.
           </p>
         </div>
 
@@ -481,8 +481,8 @@ export function AvatarsWorkspace({
             type="button"
             onClick={() => void loadAvatars()}
             disabled={refreshDisabled}
-            aria-label="Refresh avatars"
-            title="Refresh avatars"
+            aria-label="Refresh influencers"
+            title="Refresh influencers"
             className="inline-flex size-9 items-center justify-center rounded-md border border-border bg-white text-[#173454] transition-colors hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw
@@ -531,7 +531,7 @@ function AvatarLibrary({
     <div className="flex min-h-[360px] flex-col rounded-[var(--radius-panel)] border border-border bg-white p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-bold text-foreground">Avatar library</h2>
+          <h2 className="text-sm font-bold text-foreground">Influencer library</h2>
           <p className="mt-1 text-xs font-semibold text-muted">
             {previewHealthLabel}
           </p>
@@ -539,7 +539,9 @@ function AvatarLibrary({
         <span className="rounded-md border border-border bg-card-muted px-2.5 py-1 text-xs font-bold text-muted">
           {isLoading
             ? "Loading"
-            : `${avatars.length} ${avatars.length === 1 ? "avatar" : "avatars"}`}
+            : `${avatars.length} ${
+                avatars.length === 1 ? "influencer" : "influencers"
+              }`}
         </span>
       </div>
 
@@ -547,7 +549,7 @@ function AvatarLibrary({
         <div className="flex flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card-muted">
           <div className="flex items-center gap-3 text-sm font-semibold text-muted">
             <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
-            Loading avatars...
+            Loading influencers...
           </div>
         </div>
       ) : avatars.length > 0 ? (
@@ -578,15 +580,15 @@ function AvatarEmptyState() {
           <UserRound className="size-6" aria-hidden="true" />
         </div>
         <p className="mt-4 text-base font-bold text-foreground">
-          No avatar videos yet.
+          No influencer videos yet.
         </p>
         <p className="mt-2 text-sm font-medium leading-6 text-muted">
-          Once global avatar videos are added to the avatar library, they will
+          Once global influencer videos are added to the influencer library, they will
           appear here for preview, trimming, and selection.
         </p>
         <div className="mt-5 inline-flex items-center gap-2 rounded-md border border-border bg-white px-3 py-2 text-xs font-bold text-[#405977]">
           <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-          Ready for real avatar assets
+          Ready for real influencer assets
         </div>
       </div>
     </div>
@@ -728,7 +730,7 @@ function AvatarEditorShell({
           className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
-          Back to Avatars
+          Back to Influencers
         </button>
       </header>
 
@@ -746,16 +748,16 @@ function AvatarEditorShell({
           </div>
           <p className="mt-4 text-base font-bold text-foreground">
             {isLoading
-              ? "Loading avatar"
+              ? "Loading influencer"
               : notFound
-                ? "Avatar not found"
-                : "Avatar unavailable"}
+                ? "Influencer not found"
+                : "Influencer unavailable"}
           </p>
           <p className="mt-2 text-sm font-medium leading-6 text-muted">
             {errorMessage ??
               (notFound
-                ? "This avatar is no longer available in the library."
-                : "Open the library and choose another avatar.")}
+                ? "This influencer is no longer available in the library."
+                : "Open the library and choose another influencer.")}
           </p>
         </div>
       </div>
@@ -827,7 +829,7 @@ function AvatarFullPageEditor({
             className="inline-flex h-9 w-fit shrink-0 items-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
-            Back to Avatars
+            Back to Influencers
           </button>
           <div className="min-w-0">
             <h1
@@ -837,7 +839,7 @@ function AvatarFullPageEditor({
               {avatar.asset.name}
             </h1>
             <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-              Preview, trim, and choose this avatar.
+              Preview, trim, and choose this influencer.
             </p>
           </div>
         </div>
@@ -911,7 +913,7 @@ function AvatarFullPageEditor({
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-base font-bold tracking-normal text-foreground">
-                Avatar information
+                Influencer information
               </h2>
               <p className="mt-1 text-sm font-semibold text-foreground">
                 {avatar.asset.name}
@@ -969,7 +971,7 @@ function AvatarFullPageEditor({
             ) : (
               <>
                 <UserRound className="size-4" aria-hidden="true" />
-                Use avatar
+                Use influencer
               </>
             )}
           </button>
@@ -1177,14 +1179,14 @@ function getLibraryStatus({
   if (isLoading) {
     return {
       kind: "loading",
-      label: "Loading avatars",
+      label: "Loading influencers",
     } as const;
   }
 
   if (avatarCount === 0) {
     return {
       kind: "empty",
-      label: "No avatars",
+      label: "No influencers",
     } as const;
   }
 
@@ -1215,20 +1217,20 @@ function getPreviewHealthLabel({
   thumbnailFailureCount: number;
 }) {
   if (isLoading) {
-    return "Checking avatar thumbnails.";
+    return "Checking influencer thumbnails.";
   }
 
   if (avatarCount === 0) {
-    return "Global avatar videos available to this workspace.";
+    return "Global influencer videos available to this workspace.";
   }
 
   const availableThumbnailCount = Math.max(0, avatarCount - missingThumbnailCount);
 
   if (missingThumbnailCount > 0 || thumbnailFailureCount > 0) {
-    return `${availableThumbnailCount}/${avatarCount} avatars have thumbnail URLs. Repair missing or failed previews without loading source videos in the library.`;
+    return `${availableThumbnailCount}/${avatarCount} influencers have thumbnail URLs. Repair missing or failed previews without loading source videos in the library.`;
   }
 
-  return `${avatarCount} avatars loaded with thumbnail previews.`;
+  return `${avatarCount} influencers loaded with thumbnail previews.`;
 }
 
 function getLibraryStatusBadgeClassName(kind: ReturnType<typeof getLibraryStatus>["kind"]) {
@@ -1312,7 +1314,7 @@ async function patchAvatarPreference({
   const data = (await response.json()) as AvatarActionResponse;
 
   if (!response.ok || data.ok !== true) {
-    throw new Error(getApiErrorMessage(data, "Could not save avatar preference."));
+    throw new Error(getApiErrorMessage(data, "Could not save influencer preference."));
   }
 
   return data;
@@ -1322,7 +1324,7 @@ async function getAuthToken() {
   const token = await getCurrentUserIdToken();
 
   if (!token) {
-    throw new Error("Sign in before managing avatars.");
+    throw new Error("Sign in before managing influencers.");
   }
 
   return token;

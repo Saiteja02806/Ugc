@@ -18,7 +18,7 @@ export default async function DemoEditorPage({ params }: DemoEditorPageProps) {
   const { demoId } = await params;
 
   return (
-    <AppShell activeKey="demos">
+    <AppShell activeKey="library">
       <DemoEditorShell demoId={demoId} />
     </AppShell>
   );

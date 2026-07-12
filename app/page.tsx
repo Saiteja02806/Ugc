@@ -9,9 +9,10 @@ import {
   MessageSquareText,
   PenLine,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+
+import { ProductLogoMark } from "@/components/brand/product-logo";
 
 const authHref = "/sign-in";
 const startHref = authHref;
@@ -30,7 +31,7 @@ const walkthroughSteps = [
   {
     title: "Choose a creative direction",
     description:
-      "Pick from UGC hooks, carousel concepts, product demos, or avatar-led ideas.",
+      "Pick from UGC hooks, carousel concepts, product demos, or influencer-led ideas.",
   },
   {
     title: "Generate creative options",
@@ -68,8 +69,8 @@ const creativeDirections = [
     icon: Layers3,
   },
   {
-    title: "Avatar Concepts",
-    description: "Plan avatar-led hooks and short-form ad scripts.",
+    title: "Influencer Concepts",
+    description: "Plan influencer-led hooks and short-form ad scripts.",
     icon: Compass,
   },
 ];
@@ -108,9 +109,7 @@ export default function Home() {
             className="flex min-w-0 items-center gap-3"
             aria-label="UGC Studio home"
           >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#18181b] text-white shadow-[0_8px_18px_rgb(24_24_27_/_0.16)]">
-              <Sparkles className="size-5" aria-hidden="true" />
-            </span>
+            <ProductLogoMark className="h-8 w-12" sizes="52px" />
             <span className="truncate text-base font-bold tracking-normal text-[#18181b] sm:text-lg">
               UGC Studio
             </span>
@@ -189,7 +188,7 @@ export default function Home() {
             <span className="block">your product assets.</span>
           </h1>
           <p className="hero-rise hero-rise-delay-2 mt-6 max-w-[610px] text-base font-medium leading-7 text-[#52535c] sm:text-lg sm:leading-8">
-            Generate avatar concepts, carousel ad ideas, scripts, and creative
+            Generate influencer concepts, carousel ad ideas, scripts, and creative
             directions from your product details without starting from a blank
             page.
           </p>
@@ -391,7 +390,7 @@ export default function Home() {
             Start building your next ad creative
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-[#d9d9df]">
-            Create structured ad ideas, carousel concepts, and avatar-led
+            Create structured ad ideas, carousel concepts, and influencer-led
             scripts from your product context.
           </p>
           <Link
@@ -413,7 +412,7 @@ export default function Home() {
             href="/"
             className="inline-flex items-center gap-2 font-black text-[#19191d]"
           >
-            <Sparkles className="size-4 text-[#c2410c]" aria-hidden="true" />
+            <ProductLogoMark className="h-5 w-7" sizes="28px" />
             UGC Studio
           </Link>
           <nav className="flex flex-wrap gap-x-5 gap-y-2 font-semibold">

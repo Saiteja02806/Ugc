@@ -5,7 +5,7 @@ import { VideoGenerationWorkspace } from "@/components/video/video-generation-wo
 
 export const metadata: Metadata = {
   title: "Video Gen",
-  description: "Generate avatar-led UGC hook videos.",
+  description: "Generate influencer-led UGC hook videos.",
 };
 
 export default function VideoGenPage() {

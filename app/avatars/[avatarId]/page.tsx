@@ -4,8 +4,8 @@ import { AvatarsWorkspace } from "@/components/avatars/avatars-workspace";
 import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
-  title: "Avatar Editor",
-  description: "Preview, trim, and choose an avatar video.",
+  title: "Influencer Editor",
+  description: "Preview, trim, and choose an influencer video.",
 };
 
 export default async function AvatarEditorPage({

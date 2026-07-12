@@ -24,6 +24,16 @@ type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+type CategoryImageAssetScope = "category" | "shared";
+type CategoryImageAssetSourceProvider = "local" | "pexels";
+type CategoryImageAssetVariant =
+  | "canonical"
+  | "cropped_only"
+  | "derived_crop"
+  | "duplicate"
+  | "flat"
+  | "preview";
+
 export type CarouselFormat = "1:1" | "4:5";
 export type CarouselGenerationStatus = "completed" | "failed" | "processing";
 export type CarouselSlideStatus = "failed" | "processing" | "ready";
@@ -47,6 +57,8 @@ type WebsiteAnalysisRow = {
 };
 
 type CategoryImageAssetRow = {
+  asset_scope: CategoryImageAssetScope;
+  asset_variant: CategoryImageAssetVariant;
   avg_color: string | null;
   base_s3_key: string;
   base_url: string;
@@ -74,8 +86,17 @@ type CategoryImageAssetRow = {
   person_count: number | null;
   primary_vertical: string | null;
   quality_score: number | null;
+  canonical_asset_id: string | null;
+  license_information: string | null;
   source_query: string | null;
-  source_provider: "pexels";
+  source_provider: CategoryImageAssetSourceProvider;
+  source_file_sha256: string | null;
+  source_filename: string | null;
+  source_folder: string | null;
+  source_metadata: Json;
+  source_original_s3_key: string | null;
+  source_original_url: string | null;
+  source_perceptual_hash: string | null;
   status: "archived" | "failed" | "processing" | "ready";
   subject_review_status: "approved" | "rejected" | "unreviewed";
   runtime_exclusion_reason: string | null;
@@ -83,6 +104,7 @@ type CategoryImageAssetRow = {
   thumb_url: string | null;
   updated_at: string;
   usage_count: number;
+  usable_profiles: Json;
   usable_verticals: Json;
   visual_bucket: string | null;
   visual_setting: string | null;
@@ -226,6 +248,8 @@ export type WebsiteAnalysisForCarousel = {
 };
 
 export type ReadyCategoryImageAsset = {
+  assetScope: CategoryImageAssetScope;
+  assetVariant: CategoryImageAssetVariant;
   baseS3Key: string;
   baseUrl: string;
   bestForSlideTypes: Json;
@@ -233,6 +257,7 @@ export type ReadyCategoryImageAsset = {
   bucketTaxonomyVersion: string | null;
   bucketType: "universal" | "vertical" | null;
   categorySlug: string;
+  canonicalAssetId: string | null;
   contentTags: Json;
   faceCount: number | null;
   hasHuman: boolean | null;
@@ -250,11 +275,15 @@ export type ReadyCategoryImageAsset = {
   pexelsPhotographer: string | null;
   personCount: number | null;
   primaryVertical: string | null;
+  sourceFileSha256: string | null;
+  sourcePerceptualHash: string | null;
+  sourceProvider: CategoryImageAssetSourceProvider;
   sourceQuery: string | null;
   status: CategoryImageAssetRow["status"];
   subjectReviewStatus: CategoryImageAssetRow["subject_review_status"];
   runtimeExclusionReason: string | null;
   usageCount: number;
+  usableProfiles: Json;
   usableVerticals: Json;
   visualBucket: string | null;
   visualSetting: string | null;
@@ -673,35 +702,42 @@ export async function listReadyCategoryImageAssets(params: {
       );
     })
     .map((asset) => ({
-    baseS3Key: asset.base_s3_key,
-    baseUrl: asset.base_url,
-    bestForSlideTypes: asset.best_for_slide_types,
-    broadVisualBucket: asset.broad_visual_bucket,
-    bucketTaxonomyVersion: asset.bucket_taxonomy_version,
-    bucketType: asset.bucket_type,
-    categorySlug: asset.category_slug,
-    contentTags: asset.content_tags,
-    faceCount: asset.face_count,
-    hasHuman: asset.has_human,
-    id: asset.id,
-    imageSubjectClass: asset.image_subject_class,
-    imageQuery: asset.image_query,
-    moodTags: asset.mood_tags,
-    nearDuplicateGroup: asset.near_duplicate_group,
-    objectTags: asset.object_tags,
-    pexelsPhotoId: asset.pexels_photo_id,
-    pexelsPhotographer: asset.pexels_photographer,
-    personCount: asset.person_count,
-    primaryVertical: asset.primary_vertical,
-    sourceQuery: asset.source_query,
-    status: asset.status,
-    subjectReviewStatus: asset.subject_review_status,
-    runtimeExclusionReason: asset.runtime_exclusion_reason,
-    usageCount: asset.usage_count,
-    usableVerticals: asset.usable_verticals,
-    visualBucket: asset.visual_bucket,
-    visualSetting: asset.visual_setting,
-    visualStyle: asset.visual_style,
+      assetScope: asset.asset_scope,
+      assetVariant: asset.asset_variant,
+      baseS3Key: asset.base_s3_key,
+      baseUrl: asset.base_url,
+      bestForSlideTypes: asset.best_for_slide_types,
+      broadVisualBucket: asset.broad_visual_bucket,
+      bucketTaxonomyVersion: asset.bucket_taxonomy_version,
+      bucketType: asset.bucket_type,
+      categorySlug: asset.category_slug,
+      canonicalAssetId: asset.canonical_asset_id,
+      contentTags: asset.content_tags,
+      faceCount: asset.face_count,
+      hasHuman: asset.has_human,
+      id: asset.id,
+      imageSubjectClass: asset.image_subject_class,
+      imageQuery: asset.image_query,
+      moodTags: asset.mood_tags,
+      nearDuplicateGroup: asset.near_duplicate_group,
+      objectTags: asset.object_tags,
+      pexelsPhotoId: asset.pexels_photo_id,
+      pexelsPhotographer: asset.pexels_photographer,
+      personCount: asset.person_count,
+      primaryVertical: asset.primary_vertical,
+      sourceFileSha256: asset.source_file_sha256,
+      sourcePerceptualHash: asset.source_perceptual_hash,
+      sourceProvider: asset.source_provider,
+      sourceQuery: asset.source_query,
+      status: asset.status,
+      subjectReviewStatus: asset.subject_review_status,
+      runtimeExclusionReason: asset.runtime_exclusion_reason,
+      usageCount: asset.usage_count,
+      usableProfiles: asset.usable_profiles,
+      usableVerticals: asset.usable_verticals,
+      visualBucket: asset.visual_bucket,
+      visualSetting: asset.visual_setting,
+      visualStyle: asset.visual_style,
     })) satisfies ReadyCategoryImageAsset[];
 }
 
@@ -959,6 +995,34 @@ export async function getCarouselGenerationStatusesByBatchId(params: {
   });
 
   return page.statuses;
+}
+
+export async function getCarouselGenerationStatusesByIds(carouselIds: string[]) {
+  const uniqueCarouselIds = Array.from(new Set(carouselIds.filter(Boolean)));
+
+  if (uniqueCarouselIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await getSupabaseServerClient()
+    .from(CAROUSEL_GENERATIONS_TABLE)
+    .select("*")
+    .in("id", uniqueCarouselIds);
+
+  if (error) {
+    throw new Error(`Could not load carousel generations: ${error.message}`);
+  }
+
+  const statuses = await getCarouselGenerationStatusesForRows(
+    (data ?? []).map(mapGeneration),
+  );
+  const statusByCarouselId = new Map(
+    statuses.map((status) => [status.generation.id, status]),
+  );
+
+  return uniqueCarouselIds
+    .map((carouselId) => statusByCarouselId.get(carouselId))
+    .filter((status): status is NonNullable<typeof status> => Boolean(status));
 }
 
 export async function listCarouselGenerationStatusesForUser(params: {

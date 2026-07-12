@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-07-12
+Last updated: 2026-07-13
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -246,6 +246,251 @@ Fitness Health food/wellness/product pools and Marketing SaaS clean textures,
 but it may not reuse Marketing SaaS analytics/data screens as Wellness abstract
 backgrounds.
 
+## Local Curated Image Packs
+
+As of 2026-07-12, local curated carousel image packs are being audited before
+any upload or production selection change. The known source folders are:
+
+- `C:\Users\chund\Downloads\calory tracking` -> `calorie_tracking`
+- `C:\Users\chund\Downloads\gym_carousel_images_pack\...` -> `gym`
+- `C:\Users\chund\Downloads\personal_finance_carousel_images_pack\...` ->
+  `personal_finance`
+- `C:\Users\chund\Downloads\productivity` -> `productivity`
+
+The audit command is:
+
+```text
+npm run carousel:local-images:audit
+```
+
+This command is intentionally read-only. It creates a local report under
+`.tmp/local-carousel-image-pack-audit`, does not upload files, does not write to
+Supabase, does not rename source folders, and does not approve any asset.
+
+The local pack import model must extend the existing `category_image_assets`
+pipeline. Do not create a disconnected runtime table such as
+`carousel_image_assets` unless the app, worker, matcher, review tooling, and
+slide foreign keys are deliberately migrated together.
+
+Local source folder categories are not always runtime categories. The current
+runtime mapping is:
+
+- `calorie_tracking` -> `fitness-health`
+- `gym` -> `fitness-health`
+- `personal_finance` -> `personal-finance`
+- `productivity` -> `productivity-saas`
+
+Keep the original local category in source metadata for provenance and review
+debugging.
+
+The local tag-manifest command is:
+
+```text
+npm run carousel:local-images:tag -- --manual-review-approved
+```
+
+It reads the latest audit report and writes a structured manifest under
+`.tmp/local-carousel-image-tags`. The manifest includes one asset entry per
+visual family, inferred category tags, object tags, broad runtime bucket,
+caption, quality score, duplicate-family ID, text-safe areas, and source-file
+links. It does not upload files and does not write to Supabase.
+
+The local prepare command is:
+
+```text
+npm run carousel:local-images:prepare
+```
+
+It reads the latest tag manifest and writes an upload-ready local package under
+`.tmp/local-carousel-image-import`. It normalizes every runtime image to
+`base-1080x1350.webp`, creates a `thumb-320x400.webp`, keeps the original file
+for provenance, and writes the exact `category_image_assets` row payload that
+the importer will use. This command does not upload files and does not write to
+Supabase.
+
+The local import command is:
+
+```text
+npm run carousel:local-images:import
+```
+
+Before importing, run the checkpoint validator:
+
+```text
+npm run carousel:local-images:check
+```
+
+It verifies runtime category mapping, allowed broad buckets, strict safety
+fields, duplicate S3/hash identities, and prepared base/thumb dimensions.
+
+Then run the live structure preflight:
+
+```text
+npm run carousel:local-images:remote-structure
+```
+
+It checks the remote `category_image_assets` schema, samples existing row
+shape, counts current strict-approved assets, and confirms the prepared
+`base_s3_key` and `source_file_sha256` values do not already exist.
+
+It is dry-run by default. The execute form is:
+
+```text
+npm run carousel:local-images:import -- --execute --yes
+```
+
+The importer uploads original, base, and thumbnail files to S3/CloudFront under
+`category-library/<runtime-category>/<broad-bucket>/<asset-id>/`, then inserts
+the corresponding rows into `category_image_assets`. It checks for existing
+local rows by `base_s3_key` and `source_file_sha256` before inserting, and it
+preflights the remote schema before the first S3 upload.
+
+After importing, run:
+
+```text
+npm run carousel:local-images:verify-import
+```
+
+It reads the import manifest and import result, verifies all production rows
+match the manifest, and can optionally sample uploaded CloudFront URLs.
+
+Original files are the canonical source when an `originals` folder is present.
+`carousel_4x5` or `carousel_1080x1350` files are derived renditions of the same
+visual family, not separate fresh images. A crop and its original must share
+canonical identity or duplicate-family metadata so the matcher cannot select
+both inside one carousel or count both as unique inventory. Cropped-only packs
+may be imported as lower-resolution canonical candidates only when originals
+cannot be recovered.
+
+For carousel runtime, prefer the manually prepared 4:5 rendition
+(`carousel_4x5` or `carousel_1080x1350`) whenever it exists. Keep the original
+as the provenance/canonical source and store it separately. A 9:16 vertical
+image is not the preferred carousel runtime source; use it only when no 4:5
+rendition exists and crop it to 4:5 during import.
+
+All local imported assets must start as unreviewed and non-selectable. They
+become selectable only after the same strict manual object-only review used for
+Pexels assets. The importer must preserve source/provenance metadata when
+available and store SHA-256 plus perceptual/near-duplicate metadata for
+cross-crop and cross-pack duplicate control.
+
+When the user explicitly confirms a local pack has already been manually
+reviewed as strict object-only, the tag manifest may mark those entries as
+manual-approved for the import pipeline. That still does not publish them by
+itself; upload, database import, and runtime selectability remain separate
+steps.
+
+Current local checkpoint from the reviewed folders:
+
+- Tagged assets: 184
+- Skipped source files represented by canonical/crop pairs or rejected
+  recommendations: 100
+- Prepared import assets: 184
+- Preparation errors: 0
+- Runtime category split:
+  - `fitness-health`: 84 assets (`food-and-table`: 26,
+    `fitness-wellness-objects`: 58)
+  - `personal-finance`: 80 assets (`home-lifestyle`: 11,
+    `notes-and-planning`: 66, `phone-and-devices`: 2,
+    `workspace-objects`: 1)
+  - `productivity-saas`: 20 assets (`phone-and-devices`: 1,
+    `workspace-objects`: 19)
+- Runtime crop split:
+  - 98 assets used an existing carousel-ready 4:5 rendition.
+  - 86 assets were normalized/cropped to 4:5 during preparation.
+- Latest tag manifest:
+  `.tmp/local-carousel-image-tags/2026-07-12T19-35-03-831Z/tag-manifest.json`
+- Latest import manifest:
+  `.tmp/local-carousel-image-import/2026-07-12T19-35-09-675Z/import-manifest.json`
+
+Production upload checkpoint:
+
+- The local-image metadata migration `20260712170500` was applied to the
+  linked Supabase project and marked applied in migration history.
+- Remote structure preflight passed before upload. It confirmed the live schema,
+  existing row shape, and duplicate checks against the prepared S3 keys and
+  source hashes.
+- Import completed with 184 inserted rows and 0 skipped existing rows.
+- Production row verification found 184/184 manifest rows.
+- Imported category split:
+  - `fitness-health`: 84 rows (`food-and-table`: 26,
+    `fitness-wellness-objects`: 58)
+  - `personal-finance`: 80 rows (`home-lifestyle`: 11,
+    `notes-and-planning`: 66, `phone-and-devices`: 2,
+    `workspace-objects`: 1)
+  - `productivity-saas`: 20 rows (`phone-and-devices`: 1,
+    `workspace-objects`: 19)
+- Six uploaded CloudFront base URL samples were checked successfully.
+- Import result:
+  `.tmp/local-carousel-image-import/2026-07-12T19-35-09-675Z/import-result.json`
+- Post-import verification:
+  `.tmp/local-carousel-image-import/2026-07-12T19-35-09-675Z/post-import-verification.json`
+
+The schema foundation for this is migration
+`20260712170500_add_local_carousel_image_asset_metadata.sql`. It extends
+`category_image_assets` with local source, original, hash, canonical identity,
+asset-scope, and usable-profile metadata, and creates `carousel_image_usage`
+for future per-user image freshness tracking. This does not by itself import
+or approve any local image. Runtime duplicate identity now prefers
+`canonical_asset_id`, then `source_file_sha256`, then `source_perceptual_hash`,
+then existing Pexels/S3 identity.
+
+## Daily Trending Feed
+
+As of 2026-07-12, Trending has a first server-backed daily feed layer. The
+frontend should not treat the generic carousel history endpoint as the product
+feed. It now requests:
+
+```text
+GET /api/trending/feed?timezone=<iana-timezone>
+```
+
+The route uses Firebase bearer authentication, keeps Firebase UID as the user
+ID, resolves the user's local date from the browser-supplied IANA timezone, and
+creates or returns one persisted feed for:
+
+```text
+user_id + local_date
+```
+
+The schema foundation is migration
+`20260712173000_create_daily_carousel_feeds.sql`. It creates:
+
+- `subscription_entitlements`
+- `user_subscription_plans`
+- `user_carousel_assignments`
+- `daily_carousel_feeds`
+- `daily_carousel_feed_items`
+
+Default entitlement rows are `pro` with 10 daily carousels and `ultra_pro` with
+20 daily carousels. The frontend must read `dailyCarouselLimit` from the feed
+response and must not hardcode plan limits.
+
+Completion is recorded through:
+
+```text
+POST /api/trending/feed/actions
+```
+
+Allowed completion actions are:
+
+- left swipe succeeds -> `completed_skipped`
+- right swipe + Library save succeeds -> `completed_saved`
+- right swipe + schedule draft creation succeeds -> `completed_scheduled`
+
+Changing between slides, opening a card, closing the page, cancelling the
+right-swipe modal, or failing a save/schedule request must not complete an
+assignment.
+
+This first feed layer reuses completed carousel generations that already exist
+for the current business profile. It carries unfinished assignments forward on
+the next local day and fills new feed slots only from ready, unassigned
+generated carousels. It does not yet add a scheduled daily worker, server-backed
+social scheduling, semantic near-duplicate concept rejection, visual-preset
+rotation, or automatic generation beyond the existing carousel preparation
+flow. Those should remain follow-up work before enabling high-volume Pro or
+Ultra Pro daily limits in production.
+
 ## Readiness and Sourcing
 
 Readiness is diagnostic in the current product phase. It must not block normal
@@ -386,6 +631,8 @@ Core tables:
 - `category_image_assets`
 - `carousel_generations`
 - `carousel_slides`
+- `library_items`
+- `library_carousel_slides`
 
 ## Trending Carousel Outputs
 
@@ -434,11 +681,22 @@ only the caller's carousel generations for the caller's single business profile.
   action, idea counter, or Previous/Next idea controls below the card. Keep the
   deck visually focused and navigate complete ideas through swipe or keyboard.
 - The right-swipe action dialog is the only post-swipe action surface on
-  completed carousel cards. Save to Library stores the rendered carousel in the
-  browser-local carousel library. Schedule Post creates a browser-local
+  completed carousel cards. Save to Library calls the authenticated
+  `POST /api/library/carousels` route with only the `carouselId`. The server
+  verifies Firebase ownership, confirms the generation is completed, loads the
+  ordered ready slides, and saves one Library parent item with ordered child
+  slide rows. Duplicate saves return the existing Library item. After a
+  successful save, Trending stays on the page, shows a View Library action, and
+  advances to the next complete carousel. Schedule Post first creates or reuses
+  the same server-backed Library item, then creates the current browser-local
   scheduling draft with `sourceType = generated_carousel` and opens Scheduling
-  on the Drafts tab. This does not create a Supabase Auth session or call a
-  publishing API.
+  on the Drafts tab. Replacing scheduling drafts with server-backed publishing
+  remains a separate slice.
+- The Library content tab lists server-backed carousel Library items first. As
+  a transition path for older sessions, it may also display legacy
+  browser-local entries from `ugc-studio.carousel-library.v1` when the same
+  carousel is not already present on the server. This compatibility display
+  must not replace the server-backed save API for new saves.
 - Trending is the only visible Carousel product surface in the app. Clicking an
   image, slide, dots, or slide arrows must never open a separate Carousel Ads
   workspace.
@@ -529,9 +787,10 @@ Implemented:
   broad matcher version, image safety policy, and renderer version.
 - LLM slide planner with deterministic fallback.
 - Professional Sharp text renderer and AWS Carousel worker path.
-- AWS Carousel worker revision 16 runs image
-  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:carousel-20260711053138`
-  from git commit `455bcd0044d2c49f3453b62ddefd20a2c7f39c62`. The verified
+- AWS Carousel worker revision 17 runs image
+  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260712200953`.
+  It was deployed from the current local workspace, and startup metadata reports
+  git commit `2b364349897f59ee0855a043a85390fdb8eb876f`. The verified
   startup log reports balanced planner
   `llm-carousel-planner-v2-balanced-copy`, connected silhouette renderer
   `social-bubble-renderer-v6-unified-text-silhouette`, broad matcher

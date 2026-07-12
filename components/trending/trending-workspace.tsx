@@ -13,6 +13,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
@@ -24,7 +25,6 @@ import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AUTOMATIC_CAROUSEL_CANDIDATE_COUNT } from "@/lib/carousel/automatic-candidate-count";
-import { saveCarouselLibraryItem } from "@/lib/carousel/local-library";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
@@ -47,9 +47,13 @@ type GeneratedCarouselSlide = {
 type ReadyCarouselSlide = GeneratedCarouselSlide & { renderedUrl: string };
 
 type GeneratedCarousel = {
+  assignmentId?: string;
   candidateIndex: number;
   carouselId: string;
   categorySlug: string | null;
+  feedItemId?: string;
+  feedPosition?: number;
+  feedSource?: "carried" | "new";
   generationBatchId: string;
   projectId: string;
   readySlideCount: number;
@@ -84,12 +88,80 @@ type CarouselHistoryResponse =
   | {
       ok: true;
       carousels: GeneratedCarousel[];
+      entitlement: {
+        dailyCarouselLimit: number;
+        planKey: string;
+      } | null;
+      feed: {
+        assignedCount: number;
+        id: string;
+        localDate: string;
+        pendingSlotCount: number;
+        timezone: string;
+      } | null;
       profile: CarouselProfileFeed;
     }
   | {
       ok: false;
       message: string;
     };
+
+type LibraryCarouselItem = {
+  coverUrl: string | null;
+  id: string;
+  slideCount: number;
+  slides: Array<{
+    renderedUrl: string;
+    slideNumber: number;
+  }>;
+  title: string;
+};
+
+type SaveCarouselLibraryResponse =
+  | {
+      created: boolean;
+      item: LibraryCarouselItem;
+      ok: true;
+    }
+  | {
+      message: string;
+      ok: false;
+    };
+
+type CompleteTrendingActionResponse =
+  | {
+      assignment: {
+        completedAt: string | null;
+        id: string;
+        state: string;
+      };
+      ok: true;
+    }
+  | {
+      message: string;
+      ok: false;
+    };
+
+type TrendingCompletionAction = "saved" | "scheduled" | "skipped";
+
+type CarouselActionState =
+  | {
+      status: "idle";
+    }
+  | {
+      message?: string;
+      status: "saving" | "scheduling";
+    }
+  | {
+      message: string;
+      status: "error";
+    };
+
+type CarouselActionNotice = {
+  actionHref?: string;
+  actionLabel?: string;
+  message: string;
+};
 
 const HISTORY_POLL_INTERVAL_MS = 6_000;
 const SWIPE_THRESHOLD_PX = 90;
@@ -159,7 +231,9 @@ export function TrendingWorkspace() {
       : generatedCarousels;
 
     return [...matchingCarousels].sort(
-      (first, second) => first.candidateIndex - second.candidateIndex,
+      (first, second) =>
+        (first.feedPosition ?? first.candidateIndex) -
+        (second.feedPosition ?? second.candidateIndex),
     );
   }, [generatedCarousels, normalizedSearchQuery]);
   const carouselFeedProfile: CarouselProfileFeed | null = user
@@ -185,13 +259,14 @@ export function TrendingWorkspace() {
     async function ensureAutomaticCandidates(
       profile: CarouselProfileFeed,
       carouselCount: number,
+      targetCount: number,
       idToken: string,
     ) {
       if (
         !profile.id ||
         profile.state === "failed" ||
         profile.state === "missing" ||
-        carouselCount >= AUTOMATIC_CAROUSEL_CANDIDATE_COUNT ||
+        carouselCount >= targetCount ||
         expandedProfileIds.current.has(profile.id)
       ) {
         return;
@@ -240,11 +315,16 @@ export function TrendingWorkspace() {
           throw new Error("Sign in before viewing generated carousels.");
         }
 
-        const response = await fetch("/api/carousel/history?limit=12", {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${idToken}` },
-          signal: controller.signal,
-        });
+        const timezone =
+          Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+        const response = await fetch(
+          `/api/trending/feed?timezone=${encodeURIComponent(timezone)}`,
+          {
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${idToken}` },
+            signal: controller.signal,
+          },
+        );
         const data = (await response.json().catch(() => null)) as
           | CarouselHistoryResponse
           | null;
@@ -267,6 +347,8 @@ export function TrendingWorkspace() {
         void ensureAutomaticCandidates(
           data.profile,
           data.carousels.length,
+          data.entitlement?.dailyCarouselLimit ??
+            AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
           idToken,
         );
 
@@ -497,14 +579,16 @@ function GeneratedCarouselFeed({
   >({});
   const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
 
-  const completeCarousels = carousels.flatMap<CompleteCarousel>((carousel) => {
-    const slides = getReadySlides(carousel);
-    const hasCompleteCreative =
-      carousel.status === "completed" &&
-      slides.length === carousel.slideCount;
+  const completeCarousels = carousels
+    .map<CompleteCarousel | null>((carousel) => {
+      const slides = getReadySlides(carousel);
+      const hasCompleteCreative =
+        carousel.status === "completed" &&
+        slides.length === carousel.slideCount;
 
-    return hasCompleteCreative ? [{ carousel, slides }] : [];
-  });
+      return hasCompleteCreative ? { carousel, slides } : null;
+    })
+    .filter((candidate): candidate is CompleteCarousel => Boolean(candidate));
   const lifecycleCarousels = carousels.filter((carousel) => {
     const slides = getReadySlides(carousel);
 
@@ -576,9 +660,17 @@ function CarouselCandidateStack({
   const dragXRef = useRef(0);
   const [actionCandidate, setActionCandidate] =
     useState<CompleteCarousel | null>(null);
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<CarouselActionNotice | null>(
+    null,
+  );
+  const [actionState, setActionState] = useState<CarouselActionState>({
+    status: "idle",
+  });
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [pendingSkipCarouselId, setPendingSkipCarouselId] = useState<
+    string | null
+  >(null);
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(
     null,
   );
@@ -635,16 +727,16 @@ function CarouselCandidateStack({
     [],
   );
 
-  function showActionNotice(message: string) {
+  function showActionNotice(notice: CarouselActionNotice) {
     if (actionNoticeTimerRef.current !== null) {
       window.clearTimeout(actionNoticeTimerRef.current);
     }
 
-    setActionNotice(message);
+    setActionNotice(notice);
     actionNoticeTimerRef.current = window.setTimeout(() => {
       actionNoticeTimerRef.current = null;
       setActionNotice(null);
-    }, 2400);
+    }, notice.actionHref ? 5200 : 2400);
   }
 
   function resetDrag() {
@@ -658,6 +750,7 @@ function CarouselCandidateStack({
   function goToCarousel(nextIndex: number) {
     if (
       exitDirection ||
+      pendingSkipCarouselId ||
       nextIndex < 0 ||
       nextIndex > lastCarouselIndex ||
       nextIndex === safeActiveCarouselIndex
@@ -669,13 +762,7 @@ function CarouselCandidateStack({
     onActiveCarouselChange(nextIndex);
   }
 
-  function completeCarouselSwipe(direction: "left" | "right") {
-    if (direction === "right") {
-      resetDrag();
-      setActionCandidate(activeCandidate);
-      return;
-    }
-
+  function advancePastActiveCarousel(direction: "left" | "right") {
     const nextIndex = safeActiveCarouselIndex + 1;
 
     if (nextIndex < 0 || nextIndex > lastCarouselIndex) {
@@ -700,11 +787,23 @@ function CarouselCandidateStack({
     );
   }
 
+  function completeCarouselSwipe(direction: "left" | "right") {
+    if (direction === "right") {
+      resetDrag();
+      setActionState({ status: "idle" });
+      setActionCandidate(activeCandidate);
+      return;
+    }
+
+    void handleSkipCarousel();
+  }
+
   function handlePointerDown(event: ReactPointerEvent<HTMLElement>) {
     const target = event.target as HTMLElement;
 
     if (
       exitDirection ||
+      pendingSkipCarouselId ||
       (event.pointerType === "mouse" && event.button !== 0) ||
       target.closest("[data-deck-control]")
     ) {
@@ -772,35 +871,91 @@ function CarouselCandidateStack({
     }
   }
 
-  function handleSaveToLibrary() {
-    if (!actionCandidate) {
+  async function handleSkipCarousel() {
+    if (!activeCandidate || pendingSkipCarouselId) {
       return;
     }
 
-    saveCarouselToLibrary(actionCandidate);
-    setActionCandidate(null);
-    showActionNotice("Saved to Library.");
+    if (!activeCandidate.carousel.assignmentId) {
+      advancePastActiveCarousel("left");
+      return;
+    }
+
+    resetDrag();
+    setPendingSkipCarouselId(activeCandidate.carousel.carouselId);
+
+    try {
+      await completeTrendingCarouselAction(activeCandidate, "skipped");
+      showActionNotice({ message: "Skipped." });
+      advancePastActiveCarousel("left");
+    } catch (error) {
+      showActionNotice({
+        message: getErrorMessage(error, "Could not skip this carousel."),
+      });
+    } finally {
+      setPendingSkipCarouselId(null);
+    }
   }
 
-  function handleSchedulePost() {
+  async function handleSaveToLibrary() {
     if (!actionCandidate) {
       return;
     }
 
-    const draft = createScheduleDraftFromCarousel(actionCandidate);
-    saveScheduleDraft(draft);
-    setActionCandidate(null);
+    setActionState({ status: "saving" });
 
-    const params = new URLSearchParams({
-      draft: draft.id,
-      tab: "drafts",
-    });
+    try {
+      const result = await saveCarouselToLibrary(actionCandidate);
 
-    if (isPreviewMode()) {
-      params.set("preview", "1");
+      await completeTrendingCarouselAction(actionCandidate, "saved");
+      setActionCandidate(null);
+      setActionState({ status: "idle" });
+      showActionNotice({
+        actionHref: "/library?tab=content",
+        actionLabel: "View Library",
+        message: result.created ? "Saved to Library." : "Already in Library.",
+      });
+      advancePastActiveCarousel("right");
+    } catch (error) {
+      setActionState({
+        message: getErrorMessage(error, "Could not save this carousel."),
+        status: "error",
+      });
+    }
+  }
+
+  async function handleSchedulePost() {
+    if (!actionCandidate) {
+      return;
     }
 
-    router.push(`/scheduling?${params.toString()}`);
+    setActionState({ status: "scheduling" });
+
+    try {
+      const result = await saveCarouselToLibrary(actionCandidate);
+      const draft = createScheduleDraftFromCarousel(actionCandidate, result.item);
+
+      saveScheduleDraft(draft);
+      await completeTrendingCarouselAction(actionCandidate, "scheduled");
+      setActionCandidate(null);
+      setActionState({ status: "idle" });
+
+      const params = new URLSearchParams({
+        draft: draft.id,
+        tab: "drafts",
+      });
+
+      if (isPreviewMode()) {
+        params.set("preview", "1");
+      }
+
+      router.push(`/scheduling?${params.toString()}`);
+    } catch (error) {
+      setActionState({
+        message: getErrorMessage(error, "Could not prepare this carousel for scheduling."),
+        status: "error",
+      });
+    }
   }
 
   return (
@@ -837,30 +992,39 @@ function CarouselCandidateStack({
       </span>
       {actionCandidate ? (
         <CarouselActionDialog
+          actionState={actionState}
           candidate={actionCandidate}
-          onClose={() => setActionCandidate(null)}
+          onClose={() => {
+            setActionState({ status: "idle" });
+            setActionCandidate(null);
+          }}
           onSaveToLibrary={handleSaveToLibrary}
           onSchedulePost={handleSchedulePost}
         />
       ) : null}
-      {actionNotice ? <CarouselActionToast message={actionNotice} /> : null}
+      {actionNotice ? <CarouselActionToast notice={actionNotice} /> : null}
     </section>
   );
 }
 
 function CarouselActionDialog({
+  actionState,
   candidate,
   onClose,
   onSaveToLibrary,
   onSchedulePost,
 }: {
+  actionState: CarouselActionState;
   candidate: CompleteCarousel;
   onClose: () => void;
-  onSaveToLibrary: () => void;
-  onSchedulePost: () => void;
+  onSaveToLibrary: () => void | Promise<void>;
+  onSchedulePost: () => void | Promise<void>;
 }) {
   const firstActionRef = useRef<HTMLButtonElement>(null);
   const title = getCarouselTitle(candidate.carousel);
+  const isSaving = actionState.status === "saving";
+  const isScheduling = actionState.status === "scheduling";
+  const isBusy = isSaving || isScheduling;
 
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -938,18 +1102,49 @@ function CarouselActionDialog({
             <CarouselActionOption
               ref={firstActionRef}
               description="Save this carousel for later"
-              icon={<Save className="size-5" aria-hidden="true" />}
-              label="Save to Library"
+              disabled={isBusy}
+              icon={
+                isSaving ? (
+                  <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save className="size-5" aria-hidden="true" />
+                )
+              }
+              label={isSaving ? "Saving..." : "Save to Library"}
               selected
               onClick={onSaveToLibrary}
             />
             <CarouselActionOption
               description="Post or schedule to your platforms"
-              icon={<CalendarCheck className="size-5" aria-hidden="true" />}
-              label="Schedule Post"
+              disabled={isBusy}
+              icon={
+                isScheduling ? (
+                  <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <CalendarCheck className="size-5" aria-hidden="true" />
+                )
+              }
+              label={isScheduling ? "Preparing..." : "Schedule Post"}
               onClick={onSchedulePost}
             />
           </div>
+          {actionState.status === "error" ? (
+            <div
+              role="alert"
+              className="mt-4 rounded-md border border-error/20 bg-error/5 px-4 py-3 text-sm font-semibold text-error"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <span>{actionState.message}</span>
+                <button
+                  type="button"
+                  onClick={onSaveToLibrary}
+                  className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-error px-3 text-xs font-semibold text-white transition hover:bg-error/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          ) : null}
           <p className="sr-only">Selected carousel: {title}</p>
         </div>
 
@@ -969,9 +1164,10 @@ function CarouselActionDialog({
 
 type CarouselActionOptionProps = {
   description: string;
+  disabled?: boolean;
   icon: ReactNode;
   label: string;
-  onClick: () => void;
+  onClick: () => void | Promise<void>;
   selected?: boolean;
 };
 
@@ -981,6 +1177,7 @@ const CarouselActionOption = forwardRef<
 >(function CarouselActionOption(
   {
     description,
+    disabled = false,
     icon,
     label,
     onClick,
@@ -993,8 +1190,9 @@ const CarouselActionOption = forwardRef<
       type="button"
       ref={ref}
       onClick={onClick}
+      disabled={disabled}
       className={cn(
-        "group grid min-h-24 w-full grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 rounded-[20px] border bg-white px-5 py-4 text-left transition hover:border-primary/60 hover:bg-[#fffaf6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
+        "group grid min-h-24 w-full grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 rounded-[20px] border bg-white px-5 py-4 text-left transition hover:border-primary/60 hover:bg-[#fffaf6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-65",
         selected ? "border-primary ring-2 ring-primary/15" : "border-border",
       )}
     >
@@ -1025,13 +1223,21 @@ const CarouselActionOption = forwardRef<
   );
 });
 
-function CarouselActionToast({ message }: { message: string }) {
+function CarouselActionToast({ notice }: { notice: CarouselActionNotice }) {
   return (
     <div
       role="status"
-      className="fixed bottom-5 left-1/2 z-[var(--z-modal)] -translate-x-1/2 rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground-strong shadow-floating"
+      className="fixed bottom-5 left-1/2 z-[var(--z-modal)] flex -translate-x-1/2 items-center gap-3 rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground-strong shadow-floating"
     >
-      {message}
+      <span>{notice.message}</span>
+      {notice.actionHref && notice.actionLabel ? (
+        <Link
+          href={notice.actionHref}
+          className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-primary transition-colors hover:bg-primary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          {notice.actionLabel}
+        </Link>
+      ) : null}
     </div>
   );
 }
@@ -1430,34 +1636,100 @@ function GeneratedCarouselFeedSkeleton() {
   );
 }
 
-function saveCarouselToLibrary(candidate: CompleteCarousel) {
-  const title = getCarouselTitle(candidate.carousel);
+async function saveCarouselToLibrary(candidate: CompleteCarousel) {
+  const token = await getCurrentUserIdToken();
 
-  saveCarouselLibraryItem({
-    categorySlug: candidate.carousel.categorySlug,
-    carouselId: candidate.carousel.carouselId,
-    generationBatchId: candidate.carousel.generationBatchId,
-    projectId: candidate.carousel.projectId,
-    slideUrls: candidate.slides.map((slide) => slide.renderedUrl),
-    thumbnailUrl:
-      candidate.carousel.thumbnailUrl ?? candidate.slides[0]?.renderedUrl ?? null,
-    title,
+  if (!token) {
+    throw new Error("Sign in before saving to Library.");
+  }
+
+  const response = await fetch("/api/library/carousels", {
+    body: JSON.stringify({
+      carouselId: candidate.carousel.carouselId,
+    }),
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
   });
+  const data = (await response.json().catch(() => null)) as
+    | SaveCarouselLibraryResponse
+    | null;
+
+  if (!response.ok || data?.ok !== true) {
+    throw new Error(
+      data?.ok === false
+        ? data.message
+        : "Could not save this carousel to Library.",
+    );
+  }
+
+  return data;
 }
 
-function createScheduleDraftFromCarousel(candidate: CompleteCarousel) {
+async function completeTrendingCarouselAction(
+  candidate: CompleteCarousel,
+  action: TrendingCompletionAction,
+) {
+  const assignmentId = candidate.carousel.assignmentId;
+
+  if (!assignmentId) {
+    return;
+  }
+
+  const token = await getCurrentUserIdToken();
+
+  if (!token) {
+    throw new Error("Sign in before updating this Trending carousel.");
+  }
+
+  const response = await fetch("/api/trending/feed/actions", {
+    body: JSON.stringify({
+      action,
+      assignmentId,
+    }),
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+  const data = (await response.json().catch(() => null)) as
+    | CompleteTrendingActionResponse
+    | null;
+
+  if (!response.ok || data?.ok !== true) {
+    throw new Error(
+      data?.ok === false
+        ? data.message
+        : "Could not update this Trending carousel.",
+    );
+  }
+}
+
+function createScheduleDraftFromCarousel(
+  candidate: CompleteCarousel,
+  libraryItem?: LibraryCarouselItem,
+) {
   const title = getCarouselTitle(candidate.carousel);
-  const firstSlideUrl = candidate.slides[0]?.renderedUrl;
+  const firstSlideUrl =
+    libraryItem?.slides[0]?.renderedUrl ?? candidate.slides[0]?.renderedUrl;
 
   return createScheduleDraft({
     caption: "",
-    mediaTitle: title,
+    mediaTitle: libraryItem?.title ?? title,
     mediaUrl: firstSlideUrl,
-    sourceId: candidate.carousel.carouselId,
+    sourceId: libraryItem?.id ?? candidate.carousel.carouselId,
     sourceType: "generated_carousel",
     status: "draft",
-    thumbnailUrl: candidate.carousel.thumbnailUrl ?? firstSlideUrl,
+    thumbnailUrl:
+      libraryItem?.coverUrl ?? candidate.carousel.thumbnailUrl ?? firstSlideUrl,
   });
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
 }
 
 function isPreviewMode() {

@@ -19,13 +19,13 @@ export default async function AvatarPreviewE2EPage() {
       <div className="mx-auto max-w-6xl">
         <header className="mb-6">
           <p className="text-sm font-semibold text-primary">
-            Local avatar preview
+            Local influencer preview
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-normal">
-            {avatars.length} avatar videos
+            {avatars.length} influencer videos
           </h1>
           <p className="mt-2 text-sm font-medium text-muted">
-            Dev-only unauthenticated preview for verifying uploaded avatar assets.
+            Dev-only unauthenticated preview for verifying uploaded influencer assets.
           </p>
         </header>
 

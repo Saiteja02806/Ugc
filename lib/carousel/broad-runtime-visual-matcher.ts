@@ -299,6 +299,18 @@ function isStrictSafeBroadAsset(
 }
 
 function getAssetIdentity(asset: ReadyCategoryImageAsset) {
+  if (asset.canonicalAssetId) {
+    return `canonical:${asset.canonicalAssetId}`;
+  }
+
+  if (asset.sourceFileSha256) {
+    return `sha256:${asset.sourceFileSha256}`;
+  }
+
+  if (asset.sourcePerceptualHash) {
+    return `phash:${asset.sourcePerceptualHash}`;
+  }
+
   return asset.pexelsPhotoId
     ? `pexels:${asset.pexelsPhotoId}`
     : `s3:${asset.baseS3Key}`;

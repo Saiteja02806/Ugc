@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type FormEvent } from "react";
 
+import { ProductLogoMark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
@@ -623,8 +624,8 @@ function OnboardingFrame({
               onClick={handleNavigation}
               className="flex min-h-11 touch-manipulation items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-foreground-strong"
             >
-              <span className="flex size-9 items-center justify-center rounded-md bg-brand text-foreground-strong">
-                <Sparkles className="size-[18px]" aria-hidden="true" />
+              <span className="flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white shadow-sm">
+                <ProductLogoMark className="h-6 w-9" sizes="40px" />
               </span>
               <span className="text-base font-semibold text-white">UGC Studio</span>
             </Link>

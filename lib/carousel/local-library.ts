@@ -91,6 +91,26 @@ export function saveCarouselLibraryItem(input: CarouselLibraryItemInput) {
   return nextItems;
 }
 
+export function removeCarouselLibraryItem(itemIdOrCarouselId: string) {
+  if (!canUseBrowserStorage()) {
+    return getCarouselLibraryItems();
+  }
+
+  const normalizedId = normalizeString(itemIdOrCarouselId);
+
+  if (!normalizedId) {
+    return getCarouselLibraryItems();
+  }
+
+  const nextItems = getCarouselLibraryItems().filter(
+    (item) => item.id !== normalizedId && item.carouselId !== normalizedId,
+  );
+
+  writeCarouselLibraryItems(nextItems);
+
+  return nextItems;
+}
+
 export function listenToCarouselLibrary(
   onChange: (items: CarouselLibraryItem[]) => void,
 ) {

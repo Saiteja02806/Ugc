@@ -78,6 +78,15 @@ type VideoRenderJobUpdate = Partial<{
 export type CarouselFormat = "1:1" | "4:5";
 export type CarouselGenerationStatus = "completed" | "failed" | "processing";
 export type CarouselSlideStatus = "failed" | "processing" | "ready";
+export type CategoryImageAssetScope = "category" | "shared";
+export type CategoryImageAssetSourceProvider = "local" | "pexels";
+export type CategoryImageAssetVariant =
+  | "canonical"
+  | "cropped_only"
+  | "derived_crop"
+  | "duplicate"
+  | "flat"
+  | "preview";
 
 export type WebsiteBusinessAnalysis = {
   brandTone?: string | null;
@@ -120,6 +129,8 @@ export type WebsiteAnalysisRow = {
 };
 
 export type CategoryImageAssetRow = {
+  asset_scope: CategoryImageAssetScope;
+  asset_variant: CategoryImageAssetVariant;
   avg_color: string | null;
   base_s3_key: string;
   base_url: string;
@@ -147,8 +158,17 @@ export type CategoryImageAssetRow = {
   person_count: number | null;
   primary_vertical: string | null;
   quality_score: number | null;
+  canonical_asset_id: string | null;
+  license_information: string | null;
   source_query: string | null;
-  source_provider: "pexels";
+  source_provider: CategoryImageAssetSourceProvider;
+  source_file_sha256: string | null;
+  source_filename: string | null;
+  source_folder: string | null;
+  source_metadata: Json;
+  source_original_s3_key: string | null;
+  source_original_url: string | null;
+  source_perceptual_hash: string | null;
   status: "archived" | "failed" | "processing" | "ready";
   subject_review_status: "approved" | "rejected" | "unreviewed";
   runtime_exclusion_reason: string | null;
@@ -156,6 +176,7 @@ export type CategoryImageAssetRow = {
   thumb_url: string | null;
   updated_at: string;
   usage_count: number;
+  usable_profiles: Json;
   usable_verticals: Json;
   visual_bucket: string | null;
   visual_keywords: Json;

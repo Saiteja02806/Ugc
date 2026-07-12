@@ -15,7 +15,7 @@ export default function AvatarEditorLoading() {
               />
             </div>
             <p className="mt-4 text-base font-bold text-foreground">
-              Loading avatar
+              Loading influencer
             </p>
           </div>
         </div>

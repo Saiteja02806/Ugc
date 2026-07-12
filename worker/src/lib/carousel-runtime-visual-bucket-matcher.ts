@@ -273,16 +273,36 @@ function assetSupportsIntent(
   return slideIntents.length === 0 || slideIntents.includes(intent);
 }
 
+function getAssetIdentity(asset: CategoryImageAssetRow) {
+  if (asset.canonical_asset_id) {
+    return `canonical:${asset.canonical_asset_id}`;
+  }
+
+  if (asset.source_file_sha256) {
+    return `sha256:${asset.source_file_sha256}`;
+  }
+
+  if (asset.source_perceptual_hash) {
+    return `phash:${asset.source_perceptual_hash}`;
+  }
+
+  return asset.pexels_photo_id
+    ? `pexels:${asset.pexels_photo_id}`
+    : `s3:${asset.base_s3_key}`;
+}
+
 function uniqueAssets(items: CategoryImageAssetRow[]) {
   const seen = new Set<string>();
   const assets: CategoryImageAssetRow[] = [];
 
   for (const item of items) {
-    if (seen.has(item.id)) {
+    const assetIdentity = getAssetIdentity(item);
+
+    if (seen.has(assetIdentity)) {
       continue;
     }
 
-    seen.add(item.id);
+    seen.add(assetIdentity);
     assets.push(item);
   }
 
@@ -396,7 +416,7 @@ function pickBucketAsset(params: {
   intent: CarouselSlideIntent;
   seed: string;
   slideNumber: number;
-  usedAssetIds: Set<string>;
+  usedAssetIdentities: Set<string>;
   visualBucketId: string;
 }) {
   const bucketAssets = params.assets.filter(
@@ -405,7 +425,7 @@ function pickBucketAsset(params: {
       assetSupportsIntent(asset, params.intent),
   );
   const unusedBucketAssets = bucketAssets.filter(
-    (asset) => !params.usedAssetIds.has(asset.id),
+    (asset) => !params.usedAssetIdentities.has(getAssetIdentity(asset)),
   );
   const candidateAssets = params.allowReuse ? bucketAssets : unusedBucketAssets;
 
@@ -428,10 +448,10 @@ function pickFallbackAsset(params: {
   fallbackAssets: CategoryImageAssetRow[];
   seed: string;
   slideNumber: number;
-  usedAssetIds: Set<string>;
+  usedAssetIdentities: Set<string>;
 }) {
   const unusedAssets = params.fallbackAssets.filter(
-    (asset) => !params.usedAssetIds.has(asset.id),
+    (asset) => !params.usedAssetIdentities.has(getAssetIdentity(asset)),
   );
   const rankedAssets = rankAssets({
     assets: unusedAssets.length > 0 ? unusedAssets : params.fallbackAssets,
@@ -459,7 +479,7 @@ export function selectRuntimeVisualBucketAssets({
     assets.filter((asset) => Boolean(asset.visual_bucket)),
   );
   const uniqueFallbackAssets = uniqueAssets(fallbackAssets);
-  const usedAssetIds = new Set<string>();
+  const usedAssetIdentities = new Set<string>();
   const selections: RuntimeVisualBucketAssetSelection[] = [];
 
   for (const slide of slides) {
@@ -484,7 +504,7 @@ export function selectRuntimeVisualBucketAssets({
         intent,
         seed,
         slideNumber: slide.slideNumber,
-        usedAssetIds,
+        usedAssetIdentities,
         visualBucketId: bucket.id,
       });
 
@@ -504,7 +524,7 @@ export function selectRuntimeVisualBucketAssets({
       selectedAsset =
         rankAssets({
           assets: profileBucketAssets.filter(
-            (asset) => !usedAssetIds.has(asset.id),
+            (asset) => !usedAssetIdentities.has(getAssetIdentity(asset)),
           ),
           candidateIndex,
           seed: `${seed}:profile-bucket`,
@@ -531,7 +551,7 @@ export function selectRuntimeVisualBucketAssets({
         fallbackAssets: uniqueFallbackAssets,
         seed,
         slideNumber: slide.slideNumber,
-        usedAssetIds,
+        usedAssetIdentities,
       });
       selectedBucketId = selectedAsset?.visual_bucket ?? null;
       selectedMode = "fallback-category";
@@ -542,7 +562,7 @@ export function selectRuntimeVisualBucketAssets({
       continue;
     }
 
-    usedAssetIds.add(selectedAsset.id);
+    usedAssetIdentities.add(getAssetIdentity(selectedAsset));
     selections.push({
       asset: selectedAsset,
       bucketId: selectedBucketId,

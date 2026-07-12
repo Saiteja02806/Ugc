@@ -4,8 +4,8 @@ import { AvatarsWorkspace } from "@/components/avatars/avatars-workspace";
 import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
-  title: "Avatars",
-  description: "Choose and trim avatar videos for UGC generation.",
+  title: "Influencers",
+  description: "Choose and trim influencer videos for UGC generation.",
 };
 
 export default function AvatarsPage() {

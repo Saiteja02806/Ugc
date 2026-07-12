@@ -119,16 +119,36 @@ function rotateByOffset<T>(items: T[], offset: number) {
   return [...items.slice(normalizedOffset), ...items.slice(0, normalizedOffset)];
 }
 
-function uniqueById(items: ReadyAsset[]) {
+function getCandidateAssetIdentity(asset: ReadyAsset) {
+  if (asset.canonicalAssetId) {
+    return `canonical:${asset.canonicalAssetId}`;
+  }
+
+  if (asset.sourceFileSha256) {
+    return `sha256:${asset.sourceFileSha256}`;
+  }
+
+  if (asset.sourcePerceptualHash) {
+    return `phash:${asset.sourcePerceptualHash}`;
+  }
+
+  return asset.pexelsPhotoId
+    ? `pexels:${asset.pexelsPhotoId}`
+    : `s3:${asset.baseS3Key}`;
+}
+
+function uniqueByAssetIdentity(items: ReadyAsset[]) {
   const seen = new Set<string>();
   const uniqueItems: ReadyAsset[] = [];
 
   for (const item of items) {
-    if (seen.has(item.id)) {
+    const assetIdentity = getCandidateAssetIdentity(item);
+
+    if (seen.has(assetIdentity)) {
       continue;
     }
 
-    seen.add(item.id);
+    seen.add(assetIdentity);
     uniqueItems.push(item);
   }
 
@@ -155,13 +175,15 @@ function selectCandidateAssets(params: {
     return [];
   }
 
-  const usedAssetIds = new Set<string>();
+  const usedAssetIdentities = new Set<string>();
   let selectedAssets: ReadyAsset[] = [];
 
   for (let index = 0; index <= params.candidateIndex; index += 1) {
     const profile = ASSET_PROFILES[index % ASSET_PROFILES.length];
     const profileCycle = Math.floor(index / ASSET_PROFILES.length);
-    const unusedAssets = params.assets.filter((asset) => !usedAssetIds.has(asset.id));
+    const unusedAssets = params.assets.filter(
+      (asset) => !usedAssetIdentities.has(getCandidateAssetIdentity(asset)),
+    );
     const preferredAssets = unusedAssets.filter((asset) =>
       assetMatchesProfile(asset, profile),
     );
@@ -177,21 +199,21 @@ function selectCandidateAssets(params: {
       index * params.slideCount,
     );
 
-    selectedAssets = uniqueById([
+    selectedAssets = uniqueByAssetIdentity([
       ...preferredSelection,
       ...fallbackSelection,
     ]).slice(0, params.slideCount);
 
     if (selectedAssets.length < params.slideCount) {
-      selectedAssets = uniqueById([...selectedAssets, ...params.assets]).slice(
-        0,
-        params.slideCount,
-      );
+      selectedAssets = uniqueByAssetIdentity([
+        ...selectedAssets,
+        ...params.assets,
+      ]).slice(0, params.slideCount);
     }
 
     if (index < params.candidateIndex) {
       for (const asset of selectedAssets) {
-        usedAssetIds.add(asset.id);
+        usedAssetIdentities.add(getCandidateAssetIdentity(asset));
       }
     }
   }

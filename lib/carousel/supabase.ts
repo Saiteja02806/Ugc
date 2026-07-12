@@ -11,7 +11,19 @@ type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+type CategoryImageAssetScope = "category" | "shared";
+type CategoryImageAssetSourceProvider = "local" | "pexels";
+type CategoryImageAssetVariant =
+  | "canonical"
+  | "cropped_only"
+  | "derived_crop"
+  | "duplicate"
+  | "flat"
+  | "preview";
+
 type CategoryImageAssetRow = {
+  asset_scope: CategoryImageAssetScope;
+  asset_variant: CategoryImageAssetVariant;
   avg_color: string | null;
   base_s3_key: string;
   base_url: string;
@@ -37,9 +49,18 @@ type CategoryImageAssetRow = {
   object_tags: Json;
   primary_vertical: string | null;
   quality_score: number | null;
+  canonical_asset_id: string | null;
+  license_information: string | null;
   runtime_exclusion_reason: string | null;
   source_query: string | null;
-  source_provider: "pexels";
+  source_provider: CategoryImageAssetSourceProvider;
+  source_file_sha256: string | null;
+  source_filename: string | null;
+  source_folder: string | null;
+  source_metadata: Json;
+  source_original_s3_key: string | null;
+  source_original_url: string | null;
+  source_perceptual_hash: string | null;
   status: "archived" | "failed" | "processing" | "ready";
   subject_analysis: Json | null;
   subject_analyzed_at: string | null;
@@ -52,6 +73,7 @@ type CategoryImageAssetRow = {
   thumb_url: string | null;
   updated_at: string;
   usage_count: number;
+  usable_profiles: Json;
   usable_verticals: Json;
   visual_bucket: string | null;
   visual_setting: string | null;
@@ -70,6 +92,8 @@ export type CategoryImageAssetSourcingState = {
 };
 
 export type CategoryImageAssetInsert = {
+  asset_scope?: CategoryImageAssetScope;
+  asset_variant?: CategoryImageAssetVariant;
   avg_color?: string | null;
   base_s3_key: string;
   base_url: string;
@@ -83,6 +107,8 @@ export type CategoryImageAssetInsert = {
   image_subject_class?: "clear-face" | "faceless-human" | "object-only" | null;
   height?: number | null;
   image_query?: string | null;
+  canonical_asset_id?: string | null;
+  license_information?: string | null;
   orientation?: "landscape" | "portrait" | "square";
   pexels_photo_id?: string | null;
   pexels_photo_url?: string | null;
@@ -95,7 +121,14 @@ export type CategoryImageAssetInsert = {
   quality_score?: number | null;
   runtime_exclusion_reason?: string | null;
   source_query?: string | null;
-  source_provider?: "pexels";
+  source_provider?: CategoryImageAssetSourceProvider;
+  source_file_sha256?: string | null;
+  source_filename?: string | null;
+  source_folder?: string | null;
+  source_metadata?: Json;
+  source_original_s3_key?: string | null;
+  source_original_url?: string | null;
+  source_perceptual_hash?: string | null;
   status?: "archived" | "failed" | "processing" | "ready";
   subject_analysis?: Json | null;
   subject_analyzed_at?: string | null;
@@ -106,6 +139,7 @@ export type CategoryImageAssetInsert = {
   max_face_area_ratio?: number | null;
   thumb_s3_key?: string | null;
   thumb_url?: string | null;
+  usable_profiles?: Json;
   usable_verticals?: Json;
   visual_bucket?: string | null;
   visual_setting?: string | null;

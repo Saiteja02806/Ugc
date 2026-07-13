@@ -606,6 +606,9 @@ Balanced carousel copy rules:
   `body_only`; it must not force the whole repaired LLM plan into fallback.
 - Object-only safety validation treats clock and watch hands as object parts,
   while continuing to reject human hands and other prohibited human subjects.
+- Unsupported-claim validation rejects unsubstantiated quantified social proof
+  and revenue/profit/sales/conversion outcomes, plus CamelCase product or brand
+  names that do not appear in the stored website analysis.
 - Every generation stores raw initial/repair LLM responses, the normalized
   plan, planner version/model/source/fallback reason, validation result, and
   renderer version on `carousel_generations`.

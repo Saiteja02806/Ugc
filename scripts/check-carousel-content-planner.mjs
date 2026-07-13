@@ -70,7 +70,7 @@ const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
 if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
-  fallbackPlan.plannerVersion !== "llm-carousel-planner-v4-optional-headline-repair" ||
+  fallbackPlan.plannerVersion !== "llm-carousel-planner-v5-supported-claims" ||
   !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");
@@ -104,6 +104,41 @@ const qualityIssues = workerPlanner.validateCarouselContentPlan({
 
 if (!qualityIssues.some((issue) => issue.code === "generic_copy")) {
   failures.push("Planner quality validation missed generic copy.");
+}
+
+const unsupportedClaimFixture = structuredClone(workerParsed);
+unsupportedClaimFixture.slides[4] = {
+  ...unsupportedClaimFixture.slides[4],
+  body: "Join millions of users and regain control over your marketing.",
+  subtext: "Join millions of users and regain control over your marketing.",
+};
+const unsupportedClaimIssues = workerPlanner.validateCarouselContentPlan(
+  unsupportedClaimFixture,
+  analysis,
+);
+
+if (!unsupportedClaimIssues.some((issue) => issue.code === "unsupported_claim")) {
+  failures.push("Planner quality validation missed quantified social proof.");
+}
+
+const unsupportedBrandFixture = structuredClone(workerParsed);
+unsupportedBrandFixture.slides[3] = {
+  ...unsupportedBrandFixture.slides[3],
+  imageDirection: "A laptop displaying the OtherFlow campaign dashboard.",
+};
+const unsupportedBrandIssues = workerPlanner.validateCarouselContentPlan(
+  unsupportedBrandFixture,
+  analysis,
+);
+
+if (
+  !unsupportedBrandIssues.some(
+    (issue) =>
+      issue.code === "unsupported_claim" &&
+      issue.message.includes("OtherFlow"),
+  )
+) {
+  failures.push("Planner quality validation missed an invented product name.");
 }
 
 const shortHeadlineFixture = structuredClone(workerParsed);

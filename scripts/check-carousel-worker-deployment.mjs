@@ -23,7 +23,7 @@ const expected = {
   fallbackDisabled: args["fallback-disabled"] || "true",
   rendererVersion:
     args["renderer-version"] ||
-    "social-bubble-renderer-v7-contained-line-rectangles",
+    "social-bubble-renderer-v8-connected-step-path",
   safetyPolicyVersion:
     args["safety-version"] || "object-only-no-human-v1",
 };

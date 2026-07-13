@@ -113,7 +113,7 @@ export function AppSidebar({
     () => getServerSidebarPreference(defaultCollapsed),
   );
   const displayName =
-    user?.displayName || user?.email?.split("@")[0] || "UGC Studio user";
+    user?.displayName || user?.email?.split("@")[0] || "UGC Pilot user";
   const initials = getInitials(displayName);
 
   useEffect(() => {
@@ -294,7 +294,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link
       href="/dashboard"
-      aria-label={compact ? "UGC Studio home" : undefined}
+      aria-label={compact ? "UGC Pilot home" : undefined}
       className={cn(
         "flex min-w-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
         compact && "justify-center",
@@ -313,7 +313,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
       </span>
       {!compact ? (
         <span className="truncate text-base font-semibold text-foreground-strong">
-          UGC Studio
+          UGC Pilot
         </span>
       ) : null}
     </Link>

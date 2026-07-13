@@ -105,7 +105,7 @@ export default function VerifyEmailPage() {
       <header className="mx-auto flex h-20 max-w-6xl items-center justify-between">
         <Link href="/" className="flex items-center gap-3 font-bold">
           <ProductLogoMark className="h-8 w-12" sizes="52px" />
-          <span>UGC Studio</span>
+          <span>UGC Pilot</span>
         </Link>
 
         <button

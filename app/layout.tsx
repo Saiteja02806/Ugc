@@ -30,10 +30,11 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "UGC Studio",
-    template: "%s | UGC Studio",
+    default: "UGC Pilot",
+    template: "%s | UGC Pilot",
   },
-  description: "Generate AI UGC ads for SaaS products.",
+  description:
+    "Create, edit, schedule, and publish AI-assisted social videos and carousels for SaaS products and mobile apps.",
 };
 
 export default function RootLayout({

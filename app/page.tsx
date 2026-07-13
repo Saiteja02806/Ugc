@@ -19,7 +19,7 @@ const startHref = authHref;
 
 const navItems = [
   { label: "Product", href: "#product" },
-  { label: "Examples", href: "#directions" },
+  { label: "Workflow", href: "#directions" },
   { label: "Pricing", href: "#final-cta" },
 ];
 
@@ -46,13 +46,13 @@ const walkthroughSteps = [
 
 const creativeDirections = [
   {
-    title: "Problem Hook",
+    title: "Problem hook",
     description:
       "Open with a clear pain point your audience already understands.",
     icon: MessageSquareText,
   },
   {
-    title: "Product Demo",
+    title: "Product demo",
     description:
       "Turn product features into simple demo-style creative ideas.",
     icon: FileText,
@@ -63,13 +63,13 @@ const creativeDirections = [
     icon: PenLine,
   },
   {
-    title: "Carousel Ads",
+    title: "Carousel ads",
     description:
       "Generate slide-by-slide ad concepts for Instagram-style carousel posts.",
     icon: Layers3,
   },
   {
-    title: "Influencer Concepts",
+    title: "UGC hooks",
     description: "Plan influencer-led hooks and short-form ad scripts.",
     icon: Compass,
   },
@@ -94,10 +94,18 @@ const howItWorksSteps = [
 const safetyPoints = [
   "No automatic posting without user action",
   "Connected accounts are only used with permission",
-  "Users can review and edit creative content before publishing",
+  "Users review rights and disclosures before publishing",
 ];
 
-const footerLinks = ["Product", "Examples", "Pricing", "Privacy", "Terms"];
+const footerLinks = [
+  { label: "Product", href: "#product" },
+  { label: "Workflow", href: "#directions" },
+  { label: "Pricing", href: "#final-cta" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
+  { label: "Data deletion", href: "/data-deletion" },
+  { label: "Contact", href: "/contact" },
+];
 
 export default function Home() {
   return (
@@ -107,11 +115,11 @@ export default function Home() {
           <Link
             href="/"
             className="flex min-w-0 items-center gap-3"
-            aria-label="UGC Studio home"
+            aria-label="UGC Pilot home"
           >
             <ProductLogoMark className="h-8 w-12" sizes="52px" />
             <span className="truncate text-base font-bold tracking-normal text-[#18181b] sm:text-lg">
-              UGC Studio
+              UGC Pilot
             </span>
           </Link>
 
@@ -180,17 +188,18 @@ export default function Home() {
         />
         <div className="relative mx-auto flex max-w-[780px] flex-col items-center">
           <p className="hero-rise rounded-full border border-[#ffd4c2] bg-white px-4 py-2 text-sm font-bold text-[#b84010] shadow-[0_8px_18px_rgb(24_24_27_/_0.04)]">
-            AI creative workspace for social ads
+            Social video creation and scheduling platform
           </p>
           <h1 className="hero-rise hero-rise-delay-1 mt-6 max-w-[760px] text-5xl font-black leading-[0.96] tracking-normal text-[#17171b] sm:text-6xl lg:text-[4.25rem]">
-            Create social-ready
-            <span className="block">ad creatives from</span>
+            Create and schedule
+            <span className="block">social videos from</span>
             <span className="block">your product assets.</span>
           </h1>
           <p className="hero-rise hero-rise-delay-2 mt-6 max-w-[610px] text-base font-medium leading-7 text-[#52535c] sm:text-lg sm:leading-8">
-            Generate influencer concepts, carousel ad ideas, scripts, and creative
-            directions from your product details without starting from a blank
-            page.
+            UGC Pilot helps SaaS and mobile app teams turn product demos,
+            screen recordings, UGC hooks, and AI-assisted creative into posts
+            they can review, approve, and prepare for TikTok, Instagram, and
+            YouTube.
           </p>
           <div className="hero-rise hero-rise-delay-3 mt-8 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
             <Link
@@ -221,12 +230,12 @@ export default function Home() {
                 Product planning
               </p>
               <h2 className="mt-3 max-w-xl text-3xl font-black leading-[1.04] tracking-normal text-[#19191d] sm:text-4xl lg:text-5xl">
-                How UGC Studio helps you plan ad creatives
+                How UGC Pilot helps you prepare social content
               </h2>
               <p className="mt-5 max-w-xl text-base leading-7 text-[#555660]">
-                Use a structured workspace to turn product context into ad
-                ideas, scripts, carousel concepts, and review-ready creative
-                directions.
+                Use a structured workspace to turn product context, uploaded
+                media, and campaign goals into review-ready videos, carousel
+                concepts, scripts, and publishing drafts.
               </p>
             </div>
 
@@ -268,7 +277,7 @@ export default function Home() {
               Explore creative directions
             </h2>
             <p className="mt-4 text-base leading-7 text-[#555660]">
-              Start from structured ad formats instead of a blank page.
+              Start from structured social formats instead of a blank page.
             </p>
           </div>
 
@@ -313,8 +322,8 @@ export default function Home() {
                 How it works
               </h2>
               <p className="mt-5 text-base leading-7 text-[#555660]">
-                A simple process for turning product context into social-ready
-                creative ideas you can review before using.
+              A simple process for turning product context and media into
+                social-ready posts you can review before using.
               </p>
             </div>
 
@@ -357,8 +366,9 @@ export default function Home() {
               Built for user-controlled creative workflows
             </h2>
             <p className="mt-5 text-base leading-7 text-[#555660]">
-              UGC Studio helps users create and organize ad creatives. Users
-              stay in control of what they generate, edit, export, and publish.
+              UGC Pilot helps users create, organize, and schedule social
+              content. Users stay in control of what they upload, generate,
+              edit, approve, and publish.
             </p>
           </div>
 
@@ -387,11 +397,11 @@ export default function Home() {
             <Lightbulb className="size-6" aria-hidden="true" />
           </div>
           <h2 className="mx-auto mt-6 max-w-3xl text-3xl font-black leading-[1.05] tracking-normal text-white sm:text-4xl lg:text-5xl">
-            Start building your next ad creative
+            Start preparing your next social post
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-[#d9d9df]">
-            Create structured ad ideas, carousel concepts, and influencer-led
-            scripts from your product context.
+            Create structured UGC hooks, product-demo edits, carousel concepts,
+            and publishing drafts from your product context.
           </p>
           <Link
             href={authHref}
@@ -413,28 +423,20 @@ export default function Home() {
             className="inline-flex items-center gap-2 font-black text-[#19191d]"
           >
             <ProductLogoMark className="h-5 w-7" sizes="28px" />
-            UGC Studio
+            UGC Pilot
           </Link>
           <nav className="flex flex-wrap gap-x-5 gap-y-2 font-semibold">
             {footerLinks.map((link) => (
               <Link
-                key={link}
-                href={
-                  link === "Product"
-                    ? "#product"
-                    : link === "Examples"
-                      ? "#directions"
-                      : link === "Pricing"
-                        ? "#final-cta"
-                        : "#"
-                }
+                key={link.href}
+                href={link.href}
                 className="transition hover:text-[#19191d]"
               >
-                {link}
+                {link.label}
               </Link>
             ))}
           </nav>
-          <p>&copy; 2026 UGC Studio</p>
+          <p>&copy; 2026 UGC Pilot</p>
         </div>
       </footer>
     </main>

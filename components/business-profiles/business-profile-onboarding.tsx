@@ -627,7 +627,7 @@ function OnboardingFrame({
               <span className="flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white shadow-sm">
                 <ProductLogoMark className="h-6 w-9" sizes="40px" />
               </span>
-              <span className="text-base font-semibold text-white">UGC Studio</span>
+              <span className="text-base font-semibold text-white">UGC Pilot</span>
             </Link>
             <Link
               href="/dashboard"

@@ -834,29 +834,28 @@ Implemented:
   plan, planner version, actual model, source, fallback reason, validation
   result, and renderer version.
 - Professional Sharp text renderer and AWS Carousel worker path.
-- AWS Carousel worker revision 29 runs image
-  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260713163246`
+- AWS Carousel worker revision 30 runs image
+  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260713175953`
   from task definition
-  `arn:aws:ecs:us-east-2:831963379461:task-definition/ugc-carousel-worker-task:29`.
+  `arn:aws:ecs:us-east-2:831963379461:task-definition/ugc-carousel-worker-task:30`.
   Startup metadata reports git commit
-  `e07777b4cd1c494303a58c923607ac62c9798a24`, planner
+  `f5370c4f7b06133a364509d9501f9d7baa350858`, planner
   `llm-carousel-planner-v16-solution-story-guard`, renderer
-  `social-bubble-renderer-v8-connected-step-path`, broad matcher
+  `social-bubble-renderer-v9-smoothed-connected-path`, broad matcher
   `broad-runtime-matcher-v2` in `dry-run`, safety policy
   `object-only-no-human-v1`, and Geist Regular available at
   `/usr/local/share/fonts/geist/Geist-Regular.ttf`.
-- Renderer `social-bubble-renderer-v8-connected-step-path` draws one connected
-  rounded orthogonal path for each text group and uses the same geometry for
-  the visible bubble and containment mask. Adjacent width differences below
-  16px are normalized, outer corners use a 14-16px radius, and line transitions
-  use a 10-12px radius. Width remains based on measured visible ink plus
-  horizontal padding and `radius + 6px` corner safety; over-wide lines rewrap
-  before any font reduction.
-- Fresh production canary `56b54bda-6206-4e08-8554-280a167a4b02` completed on
-  worker revision 29 with five new renderer-v8 CloudFront URLs. Its stored plan
-  uses the actual configured model `gpt-4o-mini`, source `llm`, planner v16,
-  renderer v8, and one successful copy-repair pass. Visual review passed all
-  five WebPs. CloudWatch containment diagnostics reported
+- Renderer `social-bubble-renderer-v9-smoothed-connected-path` preserves each
+  measured line's safe `requiredWidth` and derives a separate `visualWidth`
+  before building the same connected rounded path. Forward and backward passes
+  limit adjacent half-width movement to
+  `clamp(round(fontSize * 0.38), 18, 24)` pixels per side, and differences below
+  10px per side snap together. Smoothing only expands narrow backgrounds; it
+  does not change text, wrapping, padding, margins, or containment geometry.
+- Fresh production canary `0dc10055-bae9-4bc5-8db6-c504beca7884` completed on
+  worker revision 30 with five new renderer-v9 CloudFront URLs. Visual review
+  passed all five WebPs. CloudWatch diagnostics confirmed every line used its
+  final `visualWidth` and reported
   `escapedTextPixels = 0` and
   `textPixelContainmentPassed = true` on slides 1 through 5.
 - Supabase relevance metadata `runtime_exclusion_reason` and

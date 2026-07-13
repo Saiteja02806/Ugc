@@ -18,16 +18,17 @@ import { useRouter } from "next/navigation";
 
 import { UploadedPostsTab } from "@/components/demos/demos-workspace";
 import {
+  PlatformSelectionModal,
+  type SchedulePlatformContext,
+} from "@/components/social/platform-selection-modal";
+import {
   getCarouselLibraryItems,
   listenToCarouselLibrary,
   removeCarouselLibraryItem as removeBrowserCarouselLibraryItem,
   type CarouselLibraryItem as BrowserCarouselLibraryItem,
 } from "@/lib/carousel/local-library";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import {
-  createScheduleDraft,
-  saveScheduleDraft,
-} from "@/lib/scheduling/local-storage";
+import type { SocialPlatform } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
 type LibraryTab = "content" | "posts";
@@ -169,7 +170,6 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
 }
 
 function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
-  const router = useRouter();
   const [serverItems, setServerItems] = useState<LibraryCarouselItem[]>([]);
   const [browserItems, setBrowserItems] = useState<LibraryCarouselItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -179,6 +179,8 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [scheduleContext, setScheduleContext] =
+    useState<SchedulePlatformContext | null>(null);
 
   const loadItems = useCallback(async () => {
     setErrorMessage(null);
@@ -315,29 +317,27 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
   }
 
   function scheduleItem(item: LibraryCarouselItem) {
-    const firstSlide = item.slides[0];
-    const draft = createScheduleDraft({
-      caption: "",
-      mediaTitle: item.title,
-      mediaUrl: firstSlide?.renderedUrl,
-      sourceId: item.storageSource === "server" ? item.id : item.sourceId,
-      sourceType: "generated_carousel",
-      status: "draft",
-      thumbnailUrl: item.coverUrl ?? firstSlide?.renderedUrl,
-    });
-
-    saveScheduleDraft(draft);
-
-    const params = new URLSearchParams({
-      draft: draft.id,
-      tab: "drafts",
-    });
-
-    if (isPreviewMode()) {
-      params.set("preview", "1");
+    if (item.storageSource !== "server") {
+      setErrorMessage(
+        "Save this carousel to your online Library before scheduling.",
+      );
+      return;
     }
 
-    router.push(`/scheduling?${params.toString()}`);
+    setErrorMessage(null);
+    setNotice(null);
+    setScheduleContext({
+      carouselId: item.sourceId,
+      libraryItemId: item.id,
+      returnTo: "library",
+    });
+  }
+
+  function confirmPlatforms(platforms: SocialPlatform[]) {
+    setNotice(
+      `${formatPlatformList(platforms)} selected. No post has been scheduled yet.`,
+    );
+    setScheduleContext(null);
   }
 
   return (
@@ -415,12 +415,13 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
       {showSkeleton ? (
         <LibraryContentSkeleton />
       ) : items.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="flex flex-wrap items-start gap-4">
           {items.map((item) => (
             <LibraryCarouselCard
               key={item.id}
               item={item}
               removing={removingItemId === item.id}
+              scheduleDisabled={item.storageSource !== "server"}
               onRemove={() => void removeItem(item)}
               onSchedule={() => scheduleItem(item)}
               onView={() => setSelectedItem(item)}
@@ -437,6 +438,16 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
           onClose={() => setSelectedItem(null)}
         />
       ) : null}
+      <PlatformSelectionModal
+        context={scheduleContext}
+        open={Boolean(scheduleContext)}
+        onConfirmed={confirmPlatforms}
+        onOpenChange={(open) => {
+          if (!open) {
+            setScheduleContext(null);
+          }
+        }}
+      />
     </section>
   );
 }
@@ -506,21 +517,23 @@ function LibraryCarouselCard({
   onSchedule,
   onView,
   removing,
+  scheduleDisabled,
 }: {
   item: LibraryCarouselItem;
   onRemove: () => void;
   onSchedule: () => void;
   onView: () => void;
   removing: boolean;
+  scheduleDisabled: boolean;
 }) {
   const coverUrl = item.coverUrl ?? item.slides[0]?.renderedUrl;
 
   return (
-    <article className="group min-w-0 overflow-hidden rounded-lg border border-border bg-white transition-colors hover:border-border-strong">
+    <article className="group w-full min-w-0 overflow-hidden rounded-lg border border-border bg-white transition-colors hover:border-border-strong sm:w-[280px]">
       <button
         type="button"
         onClick={onView}
-        className="relative block aspect-[4/5] w-full overflow-hidden bg-foreground-strong text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+        className="relative block aspect-[4/5] max-h-[440px] w-full overflow-hidden bg-foreground-strong text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
       >
         {coverUrl ? (
           // Saved carousel slides are already rendered media assets.
@@ -572,7 +585,13 @@ function LibraryCarouselCard({
           <button
             type="button"
             onClick={onSchedule}
-            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            disabled={scheduleDisabled}
+            title={
+              scheduleDisabled
+                ? "Available after this carousel is saved to your online Library"
+                : "Select platforms"
+            }
+            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CalendarCheck className="size-3.5" aria-hidden="true" />
             Schedule
@@ -807,9 +826,17 @@ function getSortableDate(value: string) {
   return Number.isFinite(time) ? time : 0;
 }
 
-function isPreviewMode() {
-  return (
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("preview") === "1"
-  );
+function formatPlatformList(platforms: SocialPlatform[]) {
+  return platforms
+    .map((platform) => {
+      switch (platform) {
+        case "instagram":
+          return "Instagram";
+        case "tiktok":
+          return "TikTok";
+        case "youtube":
+          return "YouTube";
+      }
+    })
+    .join(", ");
 }

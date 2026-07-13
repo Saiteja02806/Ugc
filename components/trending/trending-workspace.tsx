@@ -26,11 +26,12 @@ import { useRouter } from "next/navigation";
 
 import { AUTOMATIC_CAROUSEL_CANDIDATE_COUNT } from "@/lib/carousel/automatic-candidate-count";
 import { useAuth } from "@/contexts/auth-context";
-import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
-  createScheduleDraft,
-  saveScheduleDraft,
-} from "@/lib/scheduling/local-storage";
+  PlatformSelectionModal,
+  type SchedulePlatformContext,
+} from "@/components/social/platform-selection-modal";
+import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import type { SocialPlatform } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
 type CarouselHistoryState = "error" | "idle" | "loading" | "ready";
@@ -114,6 +115,7 @@ type LibraryCarouselItem = {
     renderedUrl: string;
     slideNumber: number;
   }>;
+  sourceId: string;
   title: string;
 };
 
@@ -142,7 +144,7 @@ type CompleteTrendingActionResponse =
       ok: false;
     };
 
-type TrendingCompletionAction = "saved" | "scheduled" | "skipped";
+type TrendingCompletionAction = "saved" | "skipped";
 
 type CarouselActionState =
   | {
@@ -653,7 +655,6 @@ function CarouselCandidateStack({
   onActiveCarouselChange: (carouselIndex: number) => void;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
 }) {
-  const router = useRouter();
   const swipeTimerRef = useRef<number | null>(null);
   const actionNoticeTimerRef = useRef<number | null>(null);
   const dragStartXRef = useRef<number | null>(null);
@@ -666,6 +667,8 @@ function CarouselCandidateStack({
   const [actionState, setActionState] = useState<CarouselActionState>({
     status: "idle",
   });
+  const [scheduleContext, setScheduleContext] =
+    useState<SchedulePlatformContext | null>(null);
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [pendingSkipCarouselId, setPendingSkipCarouselId] = useState<
@@ -933,23 +936,13 @@ function CarouselCandidateStack({
 
     try {
       const result = await saveCarouselToLibrary(actionCandidate);
-      const draft = createScheduleDraftFromCarousel(actionCandidate, result.item);
-
-      saveScheduleDraft(draft);
-      await completeTrendingCarouselAction(actionCandidate, "scheduled");
       setActionCandidate(null);
       setActionState({ status: "idle" });
-
-      const params = new URLSearchParams({
-        draft: draft.id,
-        tab: "drafts",
+      setScheduleContext({
+        carouselId: actionCandidate.carousel.carouselId,
+        libraryItemId: result.item.id,
+        returnTo: "trending",
       });
-
-      if (isPreviewMode()) {
-        params.set("preview", "1");
-      }
-
-      router.push(`/scheduling?${params.toString()}`);
     } catch (error) {
       setActionState({
         message: getErrorMessage(error, "Could not prepare this carousel for scheduling."),
@@ -1002,6 +995,21 @@ function CarouselCandidateStack({
           onSchedulePost={handleSchedulePost}
         />
       ) : null}
+      <PlatformSelectionModal
+        context={scheduleContext}
+        open={Boolean(scheduleContext)}
+        onConfirmed={(platforms) => {
+          setScheduleContext(null);
+          showActionNotice({
+            message: `${formatPlatformList(platforms)} selected. No post has been scheduled yet.`,
+          });
+        }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setScheduleContext(null);
+          }
+        }}
+      />
       {actionNotice ? <CarouselActionToast notice={actionNotice} /> : null}
     </section>
   );
@@ -1708,35 +1716,23 @@ async function completeTrendingCarouselAction(
   }
 }
 
-function createScheduleDraftFromCarousel(
-  candidate: CompleteCarousel,
-  libraryItem?: LibraryCarouselItem,
-) {
-  const title = getCarouselTitle(candidate.carousel);
-  const firstSlideUrl =
-    libraryItem?.slides[0]?.renderedUrl ?? candidate.slides[0]?.renderedUrl;
-
-  return createScheduleDraft({
-    caption: "",
-    mediaTitle: libraryItem?.title ?? title,
-    mediaUrl: firstSlideUrl,
-    sourceId: libraryItem?.id ?? candidate.carousel.carouselId,
-    sourceType: "generated_carousel",
-    status: "draft",
-    thumbnailUrl:
-      libraryItem?.coverUrl ?? candidate.carousel.thumbnailUrl ?? firstSlideUrl,
-  });
-}
-
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-function isPreviewMode() {
-  return (
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("preview") === "1"
-  );
+function formatPlatformList(platforms: SocialPlatform[]) {
+  return platforms
+    .map((platform) => {
+      switch (platform) {
+        case "instagram":
+          return "Instagram";
+        case "tiktok":
+          return "TikTok";
+        case "youtube":
+          return "YouTube";
+      }
+    })
+    .join(", ");
 }
 
 function getReadySlides(carousel: GeneratedCarousel): ReadyCarouselSlide[] {

@@ -8,25 +8,15 @@ import {
   Plug,
   Trash2,
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import type {
+  SocialConnection as Connection,
+  SocialPlatform,
+} from "@/lib/social/types";
 import { cn } from "@/lib/utils";
-
-type SocialPlatform = "instagram" | "tiktok" | "youtube";
-
-type Connection = {
-  connectedAt: string;
-  expiresAt: string | null;
-  id: string;
-  platform: SocialPlatform;
-  platformAccountId: string;
-  platformAccountName: string | null;
-  platformAccountUsername: string | null;
-  scopes: string[];
-  updatedAt: string;
-};
 
 type ConnectionsResponse = {
   connections?: Connection[];
@@ -63,25 +53,27 @@ const platformStyles: Record<SocialPlatform, string> = {
 };
 
 export function ConnectedAccountsWorkspace() {
-  const searchParams = useSearchParams();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionPlatform, setActionPlatform] = useState<SocialPlatform | null>(
-    null,
-  );
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const connectedPlatform = searchParams.get("connected");
-  const callbackError = searchParams.get("error");
-  const callbackMessage = connectedPlatform
-    ? `${getPlatformLabel(connectedPlatform)} account connected.`
-    : null;
-  const callbackErrorMessage = callbackError
-    ? `Connection failed: ${callbackError}`
-    : null;
-  const displayedMessage = message ?? callbackMessage;
-  const displayedError = error ?? callbackErrorMessage;
+  const {
+    connectingPlatform,
+    popupError,
+    startConnection,
+  } = useSocialOAuthPopup({
+    onResult: async (result) => {
+      if (result.status !== "success") {
+        return;
+      }
+
+      await loadConnections();
+      setMessage(`${getPlatformLabel(result.platform)} account connected.`);
+    },
+  });
+  const displayedMessage = message;
+  const displayedError = error ?? popupError;
 
   useEffect(() => {
     void loadConnections();
@@ -126,37 +118,9 @@ export function ConnectedAccountsWorkspace() {
   }
 
   async function connectPlatform(platform: SocialPlatform) {
-    setActionPlatform(platform);
     setError(null);
     setMessage(null);
-
-    try {
-      const token = await getRequiredToken();
-      const response = await fetch(`/api/auth/${platform}/start`, {
-        body: JSON.stringify({ redirectTo: "/connected-accounts" }),
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-      });
-      const data = (await response.json().catch(() => null)) as
-        | { message?: string; ok?: boolean; url?: string }
-        | null;
-
-      if (!response.ok || !data?.ok || !data.url) {
-        throw new Error(data?.message ?? `Could not start ${platform} OAuth.`);
-      }
-
-      window.location.assign(data.url);
-    } catch (connectError) {
-      setError(
-        connectError instanceof Error
-          ? connectError.message
-          : "Could not start account connection.",
-      );
-      setActionPlatform(null);
-    }
+    await startConnection({ platform, returnTo: "accounts" });
   }
 
   async function disconnectConnection(connectionId: string) {
@@ -282,10 +246,10 @@ export function ConnectedAccountsWorkspace() {
               <button
                 type="button"
                 onClick={() => void connectPlatform(platform.value)}
-                disabled={Boolean(actionPlatform)}
+                disabled={Boolean(connectingPlatform)}
                 className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-foreground-strong px-4 text-sm font-bold text-white transition hover:bg-[#2a2a30] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {actionPlatform === platform.value ? (
+                {connectingPlatform === platform.value ? (
                   <LoaderCircle
                     className="size-4 animate-spin"
                     aria-hidden="true"

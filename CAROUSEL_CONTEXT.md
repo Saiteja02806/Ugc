@@ -829,34 +829,35 @@ Implemented:
   definition env and the latest CloudWatch startup log for matcher mode,
   broad matcher version, image safety policy, planner version, renderer
   version, and Geist font availability.
-- LLM slide planner with one copy-repair pass, validated deterministic
-  fallback, and `gpt-4.1-mini` as the default quality model. Generated rows
-  store the raw initial/repair responses, normalized plan, planner version,
-  model, source, fallback reason, validation result, and renderer version.
+- LLM slide planner with one copy-repair pass and validated deterministic
+  fallback. Generated rows store the raw initial/repair responses, normalized
+  plan, planner version, actual model, source, fallback reason, validation
+  result, and renderer version.
 - Professional Sharp text renderer and AWS Carousel worker path.
-- AWS Carousel worker revision 28 runs image
-  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:carousel-20260713152632`
+- AWS Carousel worker revision 29 runs image
+  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260713163246`
   from task definition
-  `arn:aws:ecs:us-east-2:831963379461:task-definition/ugc-carousel-worker-task:28`.
+  `arn:aws:ecs:us-east-2:831963379461:task-definition/ugc-carousel-worker-task:29`.
   Startup metadata reports git commit
-  `fa9b0a6733086d26419fcdd19a53a774e9279dc5`, planner
+  `e07777b4cd1c494303a58c923607ac62c9798a24`, planner
   `llm-carousel-planner-v16-solution-story-guard`, renderer
-  `social-bubble-renderer-v7-contained-line-rectangles`, broad matcher
+  `social-bubble-renderer-v8-connected-step-path`, broad matcher
   `broad-runtime-matcher-v2` in `dry-run`, safety policy
   `object-only-no-human-v1`, and Geist Regular available at
   `/usr/local/share/fonts/geist/Geist-Regular.ttf`.
-- Renderer `social-bubble-renderer-v7-contained-line-rectangles` replaces the
-  clipped connected silhouette with one radius-safe rounded rectangle per text
-  line. Rectangles overlap vertically to read as one bubble. Width is based on
-  measured visible ink plus horizontal padding and `radius + 6px` corner
-  safety; over-wide lines rewrap before any font reduction. A separate text
-  and background mask rejects a render whenever a visible text pixel falls
-  outside the white background.
-- Fresh production canary `167c2dd7-8372-4d25-ad7f-26429cb428fa` completed on
-  worker revision 28 with five new renderer-v7 CloudFront URLs. Its stored plan
-  uses model `gpt-4.1-mini`, source `llm`, planner v16, renderer v7, and a clean
-  five-step story. Visual review passed all five WebPs. CloudWatch containment
-  diagnostics reported `escapedTextPixels = 0` and
+- Renderer `social-bubble-renderer-v8-connected-step-path` draws one connected
+  rounded orthogonal path for each text group and uses the same geometry for
+  the visible bubble and containment mask. Adjacent width differences below
+  16px are normalized, outer corners use a 14-16px radius, and line transitions
+  use a 10-12px radius. Width remains based on measured visible ink plus
+  horizontal padding and `radius + 6px` corner safety; over-wide lines rewrap
+  before any font reduction.
+- Fresh production canary `56b54bda-6206-4e08-8554-280a167a4b02` completed on
+  worker revision 29 with five new renderer-v8 CloudFront URLs. Its stored plan
+  uses the actual configured model `gpt-4o-mini`, source `llm`, planner v16,
+  renderer v8, and one successful copy-repair pass. Visual review passed all
+  five WebPs. CloudWatch containment diagnostics reported
+  `escapedTextPixels = 0` and
   `textPixelContainmentPassed = true` on slides 1 through 5.
 - Supabase relevance metadata `runtime_exclusion_reason` and
   `near_duplicate_group`, including database constraints and a ready-pool index.

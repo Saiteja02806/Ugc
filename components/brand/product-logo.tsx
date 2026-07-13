@@ -24,11 +24,11 @@ export function ProductLogoMark({
       <Image
         src={LOGO_SRC}
         alt=""
-        width={426}
-        height={283}
+        width={500}
+        height={500}
         sizes={sizes}
         unoptimized
-        className={cn("h-auto w-full object-contain", imageClassName)}
+        className={cn("h-full w-full object-contain", imageClassName)}
       />
     </span>
   );

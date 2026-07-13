@@ -70,7 +70,7 @@ const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
 if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
-  fallbackPlan.plannerVersion !== "llm-carousel-planner-v10-contextual-copy-repair" ||
+  fallbackPlan.plannerVersion !== "llm-carousel-planner-v12-concrete-outcome-guard" ||
   !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");
@@ -355,6 +355,72 @@ if (
     .length > 0
 ) {
   failures.push("Planner did not apply contextual short-copy repairs.");
+}
+
+const specificCopyFixture = structuredClone(workerParsed);
+specificCopyFixture.slides[2] = {
+  ...specificCopyFixture.slides[2],
+  body: "Missed leads and delayed decisions hinder growth.",
+  headline: null,
+  listItems: [],
+  slideType: "problem",
+  subtext: "Missed leads and delayed decisions hinder growth.",
+  textMode: "body_only",
+};
+specificCopyFixture.slides[3] = {
+  ...specificCopyFixture.slides[3],
+  body: "Automate workflows and consolidate analytics in one platform.",
+  headline: "Enhance your marketing efforts",
+  slideType: "solution",
+  subtext: "Automate workflows and consolidate analytics in one platform.",
+  textMode: "headline_body",
+};
+specificCopyFixture.slides[4] = {
+  ...specificCopyFixture.slides[4],
+  body: "Start planning campaigns effectively with CampaignFlow today!",
+  headline: null,
+  subtext: "Start planning campaigns effectively with CampaignFlow today!",
+};
+const normalizedSpecificCopy =
+  workerPlanner.normalizeRepairedCarouselCopy(specificCopyFixture);
+
+if (
+  normalizedSpecificCopy.slides[2]?.body !==
+    "Missed leads and delayed decisions create gaps in campaign follow-ups." ||
+  normalizedSpecificCopy.slides[3]?.headline !==
+    "connect planning and reporting" ||
+  normalizedSpecificCopy.slides[4]?.body !==
+    "Start planning campaigns in one workflow with CampaignFlow today!" ||
+  workerPlanner.validateCarouselContentPlan(normalizedSpecificCopy, analysis)
+    .length > 0
+) {
+  failures.push("Planner did not replace the exact v10 generic copy regressions.");
+}
+
+const vagueOutcomeFixture = structuredClone(workerParsed);
+vagueOutcomeFixture.slides[3] = {
+  ...vagueOutcomeFixture.slides[3],
+  body:
+    "Centralize your campaigns with CampaignFlow for better organization.",
+  headline: null,
+  slideType: "solution",
+  subtext:
+    "Centralize your campaigns with CampaignFlow for better organization.",
+  textMode: "body_only",
+};
+const vagueOutcomeIssues =
+  workerPlanner.validateCarouselContentPlan(vagueOutcomeFixture, analysis);
+const normalizedVagueOutcome =
+  workerPlanner.normalizeRepairedCarouselCopy(vagueOutcomeFixture);
+
+if (
+  !vagueOutcomeIssues.some((issue) => issue.code === "generic_copy") ||
+  normalizedVagueOutcome.slides[3]?.body !==
+    "Centralize your campaigns with CampaignFlow to keep planning and reporting connected." ||
+  workerPlanner.validateCarouselContentPlan(normalizedVagueOutcome, analysis)
+    .length > 0
+) {
+  failures.push("Planner did not replace a vague better-organization outcome.");
 }
 
 const shortHeadlineFixture = structuredClone(workerParsed);

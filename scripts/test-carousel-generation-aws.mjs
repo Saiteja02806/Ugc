@@ -58,7 +58,7 @@ if (result.backgroundJob.status !== "completed") {
   result.carousel.status !== "completed" ||
   result.slides.length !== template.slide_count ||
   result.carousel.content_planner_version !==
-    "llm-carousel-planner-v10-contextual-copy-repair" ||
+    "llm-carousel-planner-v12-concrete-outcome-guard" ||
   !["deterministic-fallback", "llm"].includes(
     result.carousel.content_plan_source,
   ) ||

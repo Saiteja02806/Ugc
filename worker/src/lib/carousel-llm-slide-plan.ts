@@ -8,7 +8,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v10-contextual-copy-repair";
+  "llm-carousel-planner-v12-concrete-outcome-guard";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 const MAX_BODY_LENGTH = 120;
@@ -788,7 +788,7 @@ export function validateCarouselContentPlan(
         )?.[0];
         const unsupportedOutcome =
           analysis &&
-          (normalizedText.match(/\b(?:conversions?|money|profits?|revenue|sales)\b/g) ?? [])
+          (normalizedText.match(/\b(?:conversions?|growth|money|profits?|revenue|sales)\b/g) ?? [])
             .some((term) => !new RegExp(`\\b${term}\\b`).test(evidenceText));
 
         return (
@@ -895,7 +895,7 @@ function getTokenOverlap(left: string, right: string) {
 }
 
 function hasGenericCopy(value: string) {
-  return /\b(better management|boost your productivity|efficiently|effortlessly|game changer|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|stay on top|streamline your workflow|transform your campaign management|unify your (?:planning and reporting|workflow)|unlock efficiency|with ease|work smarter)\b/i.test(
+  return /\b(better (?:management|organization|outcomes?|results?)|boost your productivity|effectively|efficiently|effortlessly|enhance your marketing efforts|game changer|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|stay on top|streamline your workflow|transform your campaign management|unify your (?:planning and reporting|workflow)|unlock efficiency|with ease|work smarter)\b/i.test(
     value,
   );
 }
@@ -1021,9 +1021,9 @@ function buildRepairMessages(params: {
         "List modes may use at most four total visual lines.",
         "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors such as lead to missed leads.",
         "Do not repeat a connector within one short sentence, such as for better management for clearer decisions.",
-        "Remove quantified social proof unless it appears verbatim in the analysis, and remove money, revenue, profit, sales, or conversion claims not supported by the analysis.",
+        "Remove quantified social proof unless it appears verbatim in the analysis, and remove growth, money, revenue, profit, sales, or conversion claims not supported by the analysis.",
         "Use businessName exactly when naming the product. Never invent or substitute another product or brand in copy or imageDirection.",
-        "Never use these phrases: boost productivity, efficiently, effortlessly, seamless, streamline your workflow, transform your campaign management, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
+        "Never use these phrases: better management, better organization, boost productivity, effectively, efficiently, effortlessly, enhance your marketing efforts, seamless, streamline your workflow, transform your campaign management, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
         "If a headline repeats its body, set headline to null and use body_only instead of paraphrasing it.",
         "The final slide must use slideType cta and include a non-null ctaText.",
         "Keep one clear story: hook, friction, consequence, solution, useful result or CTA.",
@@ -1126,6 +1126,8 @@ function repairCopyText(
     .replace(/\bone workspace for everything\b/gi, "campaign work in one place")
     .replace(/\bseamless(?:ly)?\b/gi, "connected")
     .replace(/\befficiently\b/gi, "with fewer handoffs")
+    .replace(/\beffectively\b/gi, "in one workflow")
+    .replace(/\benhance your marketing efforts\b/gi, "connect planning and reporting")
     .replace(/\bunify your (?:planning and reporting|workflow)\b/gi, "connect campaign plans and reports")
     .replace(/\bwith ease\b/gi, "with clear next steps")
     .replace(/\blead to (?:missed|lost) leads\b/gi, "cause missed follow-ups")
@@ -1135,8 +1137,16 @@ function repairCopyText(
       "to keep campaign handoffs connected",
     )
     .replace(
+      /\bfor better organization\b/gi,
+      "to keep planning and reporting connected",
+    )
+    .replace(
       /\btransform your campaign management\b/gi,
       "organize your next campaign handoff",
+    )
+    .replace(
+      /\b(?:hinder|impact|limit|slow) growth\b/gi,
+      "create gaps in campaign follow-ups",
     )
     .replace(/\s+/g, " ")
     .trim();

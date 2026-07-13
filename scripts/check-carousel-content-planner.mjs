@@ -70,7 +70,7 @@ const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
 if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
-  fallbackPlan.plannerVersion !== "llm-carousel-planner-v8-brand-safe-fallback" ||
+  fallbackPlan.plannerVersion !== "llm-carousel-planner-v9-copy-grammar-guard" ||
   !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");
@@ -229,6 +229,86 @@ const repeatedWordIssues =
 
 if (!repeatedWordIssues.some((issue) => issue.code === "grammar")) {
   failures.push("Planner quality validation missed a nearby repeated word.");
+}
+
+const pluralRepeatedWordFixture = structuredClone(workerParsed);
+pluralRepeatedWordFixture.slides[2] = {
+  ...pluralRepeatedWordFixture.slides[2],
+  body: "Scattered tools lead to missed leads and delayed responses.",
+  listItems: [],
+  subtext: "Scattered tools lead to missed leads and delayed responses.",
+  textMode: "body_only",
+};
+const pluralRepeatedWordIssues =
+  workerPlanner.validateCarouselContentPlan(pluralRepeatedWordFixture);
+
+if (!pluralRepeatedWordIssues.some((issue) => issue.code === "grammar")) {
+  failures.push("Planner quality validation missed lead/leads repetition.");
+}
+
+const repeatedConnectorFixture = structuredClone(workerParsed);
+repeatedConnectorFixture.slides[3] = {
+  ...repeatedConnectorFixture.slides[3],
+  body:
+    "Automate workflows with CampaignFlow for better management for clearer campaign decisions.",
+  listItems: [],
+  subtext:
+    "Automate workflows with CampaignFlow for better management for clearer campaign decisions.",
+  textMode: "body_only",
+};
+const repeatedConnectorIssues =
+  workerPlanner.validateCarouselContentPlan(repeatedConnectorFixture, analysis);
+
+if (
+  !repeatedConnectorIssues.some(
+    (issue) => issue.code === "grammar" || issue.code === "generic_copy",
+  )
+) {
+  failures.push("Planner quality validation missed a repeated connector.");
+}
+
+const canaryRepairFixture = structuredClone(workerParsed);
+canaryRepairFixture.slides[2] = pluralRepeatedWordFixture.slides[2];
+canaryRepairFixture.slides[3] = repeatedConnectorFixture.slides[3];
+const normalizedCanaryRepair =
+  workerPlanner.normalizeRepairedCarouselCopy(canaryRepairFixture);
+
+if (
+  normalizedCanaryRepair.slides[2]?.body !==
+    "Scattered tools cause missed follow-ups and delayed responses." ||
+  normalizedCanaryRepair.slides[3]?.body !==
+    "Automate workflows with CampaignFlow to keep campaign handoffs connected." ||
+  workerPlanner.validateCarouselContentPlan(normalizedCanaryRepair, analysis)
+    .length > 0
+) {
+  failures.push("Planner did not repair the exact v8 canary grammar regressions.");
+}
+
+const mislabeledConsequenceFixture = structuredClone(workerParsed);
+mislabeledConsequenceFixture.slides[2] = {
+  ...mislabeledConsequenceFixture.slides[2],
+  body:
+    "This scattered approach leads to missed deadlines and late-night checks.",
+  headline: null,
+  listItems: [],
+  slideType: "solution",
+  subtext:
+    "This scattered approach leads to missed deadlines and late-night checks.",
+  textMode: "body_only",
+};
+const mislabeledConsequenceIssues =
+  workerPlanner.validateCarouselContentPlan(mislabeledConsequenceFixture);
+const normalizedConsequence =
+  workerPlanner.normalizeRepairedCarouselCopy(mislabeledConsequenceFixture);
+
+if (
+  !mislabeledConsequenceIssues.some(
+    (issue) => issue.code === "story_structure",
+  ) ||
+  normalizedConsequence.slides[2]?.slideType !== "problem" ||
+  workerPlanner.validateCarouselContentPlan(normalizedConsequence).length > 0
+) {
+  failures.push("Planner did not repair a consequence mislabeled as a solution.");
 }
 
 const shortHeadlineFixture = structuredClone(workerParsed);

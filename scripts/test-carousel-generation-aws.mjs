@@ -58,7 +58,7 @@ if (result.backgroundJob.status !== "completed") {
   result.carousel.status !== "completed" ||
   result.slides.length !== template.slide_count ||
   result.carousel.content_planner_version !==
-    "llm-carousel-planner-v8-brand-safe-fallback" ||
+    "llm-carousel-planner-v9-copy-grammar-guard" ||
   !["deterministic-fallback", "llm"].includes(
     result.carousel.content_plan_source,
   ) ||

@@ -19,7 +19,7 @@ const expected = {
   broadMatcherMode: args["broad-mode"] || "dry-run",
   broadMatcherVersion: args["broad-version"] || "broad-runtime-matcher-v2",
   contentPlannerVersion:
-    args["planner-version"] || "llm-carousel-planner-v3-validated-repair",
+    args["planner-version"] || "llm-carousel-planner-v4-optional-headline-repair",
   fallbackDisabled: args["fallback-disabled"] || "true",
   rendererVersion:
     args["renderer-version"] ||

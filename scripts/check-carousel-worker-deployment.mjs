@@ -19,11 +19,11 @@ const expected = {
   broadMatcherMode: args["broad-mode"] || "dry-run",
   broadMatcherVersion: args["broad-version"] || "broad-runtime-matcher-v2",
   contentPlannerVersion:
-    args["planner-version"] || "llm-carousel-planner-v2-balanced-copy",
+    args["planner-version"] || "llm-carousel-planner-v3-validated-repair",
   fallbackDisabled: args["fallback-disabled"] || "true",
   rendererVersion:
     args["renderer-version"] ||
-    "social-bubble-renderer-v6-unified-text-silhouette",
+    "social-bubble-renderer-v7-contained-line-rectangles",
   safetyPolicyVersion:
     args["safety-version"] || "object-only-no-human-v1",
 };
@@ -75,6 +75,11 @@ const checks = [
     "log.carouselRendererVersion",
     startupLog?.metadata?.carouselRendererVersion,
     expected.rendererVersion,
+  ),
+  checkEqual(
+    "log.carouselFont.available",
+    startupLog?.metadata?.carouselFont?.available,
+    true,
   ),
 ];
 const failures = checks.filter((check) => !check.ok);

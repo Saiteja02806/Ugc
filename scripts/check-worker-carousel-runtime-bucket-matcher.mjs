@@ -184,6 +184,7 @@ function mockAsset(id, visualBucketId, usageCount) {
   }
 
   return {
+    base_s3_key: `category-library/marketing-saas/${visualBucketId}/${id}/base.webp`,
     base_url: `https://cdn.example.test/${id}.webp`,
     best_for_slide_types: [...bucket.bestForSlideTypes],
     face_count: 0,

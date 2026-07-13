@@ -60,9 +60,61 @@ const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
 if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
-  fallbackPlan.plannerVersion !== "llm-carousel-planner-v2-balanced-copy"
+  fallbackPlan.plannerVersion !== "llm-carousel-planner-v3-validated-repair" ||
+  !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");
+}
+
+const badCopyFixture = structuredClone(fixture);
+badCopyFixture.slides[1].body =
+  "Traditional tracking lacks guidance.. Need for context in tracking";
+
+try {
+  workerPlanner.parseCarouselContentPlan(badCopyFixture, 5);
+  failures.push("Planner accepted repeated punctuation and an incomplete ending.");
+} catch (error) {
+  if (!String(error).includes("repeated punctuation")) {
+    failures.push("Planner rejected bad punctuation for the wrong reason.");
+  }
+}
+
+const qualityIssues = workerPlanner.validateCarouselContentPlan({
+  ...workerParsed,
+  slides: workerParsed.slides.map((slide, index) =>
+    index === 1
+      ? {
+          ...slide,
+          body: "Boost your productivity effortlessly.",
+          subtext: "Boost your productivity effortlessly.",
+        }
+      : slide,
+  ),
+});
+
+if (!qualityIssues.some((issue) => issue.code === "generic_copy")) {
+  failures.push("Planner quality validation missed generic copy.");
+}
+
+const exactRegressionFixture = structuredClone(workerParsed);
+exactRegressionFixture.slides[3] = {
+  ...exactRegressionFixture.slides[3],
+  body:
+    "Bring the scattered steps into one clearer workflow so the next action is easier to find before the launch slows down.",
+  headline: "Plan your day smarter with AI insights and reminders.",
+  subtext:
+    "Bring the scattered steps into one clearer workflow so the next action is easier to find before the launch slows down.",
+  textMode: "headline_body",
+};
+const exactRegressionIssues = workerPlanner.validateCarouselContentPlan(
+  exactRegressionFixture,
+);
+
+if (
+  !exactRegressionIssues.some((issue) => issue.code === "headline_length") ||
+  !exactRegressionIssues.some((issue) => issue.code === "body_length")
+) {
+  failures.push("Planner accepted the exact overlong production regression copy.");
 }
 
 let livePlan = null;
@@ -94,10 +146,13 @@ console.log(
         ? {
             broadSituations: livePlan.broadSituations,
             concept: livePlan.concept,
+            fallbackReason: livePlan.fallbackReason,
             model: livePlan.model,
             plannerVersion: livePlan.plannerVersion,
+            rawLlmResponse: livePlan.rawLlmResponse,
             slides: livePlan.slides,
             source: livePlan.source,
+            validationResult: livePlan.validationResult,
           }
         : null,
       plannerVersion: workerPlanner.CAROUSEL_CONTENT_PLANNER_VERSION,
@@ -123,7 +178,7 @@ function createPlanFixture() {
     slides: [
       {
         body:
-          "Scattered work turns every launch into an after-hours scramble because updates, reminders, and reporting never stay in one reliable place.",
+          "Scattered updates turn each launch into an after-hours scramble when reminders and reporting live in separate places.",
         ctaText: null,
         headline: "Your campaign should not follow you home",
         imageDirection:
@@ -135,7 +190,7 @@ function createPlanFixture() {
       },
       {
         body:
-          "Every update becomes another file, and the next action gets harder to find when the team is trying to move quickly.",
+          "Every update becomes another file while the next action gets harder to find before launch.",
         ctaText: null,
         headline: null,
         imageDirection:
@@ -162,7 +217,7 @@ function createPlanFixture() {
       },
       {
         body:
-          "The next action is already clear before tomorrow begins, so the team can keep momentum without rebuilding the plan again.",
+          "A visible next action keeps tomorrow moving without rebuilding the campaign plan again.",
         ctaText: null,
         headline: null,
         imageDirection:
@@ -174,7 +229,7 @@ function createPlanFixture() {
       },
       {
         body:
-          "Put planning, reminders, and reporting in one place so the next campaign is easier to launch and easier to understand.",
+          "Connected planning and reporting keep the next campaign easier to launch and review.",
         ctaText: "Build your campaign",
         headline: "Put the next launch in one place",
         imageDirection:

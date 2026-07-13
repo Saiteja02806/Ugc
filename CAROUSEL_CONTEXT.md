@@ -572,11 +572,13 @@ font sizing, proper padding, and no heading-pill overflow.
 
 Balanced carousel copy rules:
 
-- A heading or hook is optional, should normally be 4-12 words, may use one or
-  two visual lines, and must not be forced into a single line by over-shrinking.
-- Supporting content should normally be 18-35 words, use one or two short
-  sentences, render as three or four visual lines, explain the idea clearly,
-  and avoid repeating the heading.
+- A heading or hook is optional. When present, it must be 3-8 words, at most 50
+  characters, use no more than two visual lines, and must not be forced into a
+  single line by over-shrinking.
+- Supporting content must be one complete sentence of 8-20 words, at most 120
+  characters, normally render as no more than three visual lines, explain one
+  specific idea, and avoid repeating the heading. List modes may use four total
+  visual lines.
 - The five-slide default story is Hook, Problem, Consequence, Solution, and
   Result/CTA. Because the current slide schema does not have a separate
   `consequence` slide type, consequence remains problem-style copy internally
@@ -586,15 +588,22 @@ Balanced carousel copy rules:
   card dimensions, then keep headings to at most two rendered lines and body
   text to at most four rendered lines.
 - A headline and its supporting copy remain two distinct text groups. Within
-  either group, wrapped line backgrounds overlap vertically into one connected
-  white silhouette with measured per-line widths, compact padding, and a
-  consistent modest radius. Do not leave visible gaps that make wrapped copy
-  look like floating chips, and do not replace the measured silhouette with one
-  oversized rectangular panel.
-- Paint each connected silhouette once through the union of its measured line
-  shapes. Do not paint a separate semi-transparent white rectangle per line;
-  overlapping alpha creates darker seams and makes one text group look like a
-  stack of independent labels.
+  either group, paint one measured rounded rectangle directly behind each line
+  and overlap adjacent rectangles vertically by 6-9px. Use an opaque-enough
+  fill so overlap does not create a visible dark seam. Do not clip one large
+  rectangle through a fragile silhouette.
+- Reserve horizontal corner safety of at least `radius + 6px` on each side in
+  addition to normal padding. Never cap a line rectangle below its required
+  visible text width. Rewrap first, reduce type slightly only when rewrapping
+  cannot fit, and reject the render if a text-mask pixel falls outside the
+  white-background mask.
+- Planner validation rejects repeated punctuation, fragments, incomplete
+  endings, generic copy, repeated ideas, unsupported claims, grammar problems,
+  and overlong copy. Invalid LLM output receives one short repair pass before a
+  validated deterministic fallback is considered.
+- Every generation stores raw initial/repair LLM responses, the normalized
+  plan, planner version/model/source/fallback reason, validation result, and
+  renderer version on `carousel_generations`.
 
 The renderer must avoid fake app UI:
 
@@ -787,10 +796,12 @@ Implemented:
   broad matcher version, image safety policy, and renderer version.
 - LLM slide planner with deterministic fallback.
 - Professional Sharp text renderer and AWS Carousel worker path.
-- AWS Carousel worker revision 17 runs image
-  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260712200953`.
+- AWS Carousel worker revision 18 runs image
+  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260713121938`
+  from task definition
+  `arn:aws:ecs:us-east-2:831963379461:task-definition/ugc-carousel-worker-task:18`.
   It was deployed from the current local workspace, and startup metadata reports
-  git commit `2b364349897f59ee0855a043a85390fdb8eb876f`. The verified
+  git commit `58ae1d9fccb79ebcc1cff4bbb5ef8b5f03586f82`. The verified
   startup log reports balanced planner
   `llm-carousel-planner-v2-balanced-copy`, connected silhouette renderer
   `social-bubble-renderer-v6-unified-text-silhouette`, broad matcher

@@ -2,7 +2,10 @@ import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { basename, join, resolve } from "node:path";
+
+import sharp from "sharp";
 
 loadEnvFile(resolve(".env.local"));
 
@@ -53,17 +56,30 @@ if (result.backgroundJob.status !== "completed") {
 } else if (
   result.carousel.status !== "completed" ||
   result.slides.length !== template.slide_count ||
+  result.carousel.content_planner_version !==
+    "llm-carousel-planner-v3-validated-repair" ||
+  result.carousel.renderer_version !==
+    "social-bubble-renderer-v7-contained-line-rectangles" ||
+  result.carousel.content_plan_validation?.ok !== true ||
+  result.carousel.content_plan_normalized?.slides?.length !== 5 ||
   result.slides.some(
-    (slide) => slide.status !== "ready" || !slide.rendered_url,
+    (slide) =>
+      slide.status !== "ready" ||
+      !slide.rendered_url ||
+      !slide.rendered_url.includes(
+        "/social-bubble-renderer-v7-contained-line-rectangles/",
+      ),
   )
 ) {
   console.error(JSON.stringify(result, null, 2));
   throw new Error("Carousel worker completed without a full ready slide set.");
 } else {
+  const artifact = await saveFreshCarouselArtifact(result);
+
   console.log(
     `Carousel AWS smoke test passed with ${result.slides.length} rendered slides.`,
   );
-  console.log(`First slide: ${result.slides[0].rendered_url}`);
+  console.log(JSON.stringify({ artifact, generation: result.carousel }, null, 2));
 }
 
 async function findCanaryTemplate() {
@@ -74,6 +90,7 @@ async function findCanaryTemplate() {
     )
     .like("user_id", "test-%")
     .eq("status", "completed")
+    .eq("slide_count", 5)
     .not("website_analysis_id", "is", null)
     .not("category_slug", "is", null)
     .order("created_at", { ascending: false })
@@ -188,12 +205,14 @@ async function pollCarousel(backgroundJobId, carouselId) {
           .single(),
         supabase
           .from("carousel_generations")
-          .select("id,status,error_message")
+          .select(
+            "id,status,error_message,created_at,content_plan_raw_response,content_plan_normalized,content_planner_version,content_planner_model,content_plan_source,content_plan_fallback_reason,content_plan_validation,renderer_version",
+          )
           .eq("id", carouselId)
           .single(),
         supabase
           .from("carousel_slides")
-          .select("slide_number,status,rendered_url")
+          .select("slide_number,status,headline,subtext,cta_text,rendered_url")
           .eq("carousel_generation_id", carouselId)
           .order("slide_number", { ascending: true }),
       ]);
@@ -236,6 +255,72 @@ async function pollCarousel(backgroundJobId, carouselId) {
   }
 
   throw new Error("Timed out waiting for carousel generation.");
+}
+
+async function saveFreshCarouselArtifact(result) {
+  const outputDir = resolve(".tmp", "carousel-aws-e2e", result.carousel.id);
+  const files = [];
+
+  await mkdir(outputDir, { recursive: true });
+
+  for (const slide of result.slides) {
+    const response = await fetch(slide.rendered_url, { cache: "no-store" });
+
+    if (!response.ok) {
+      throw new Error(
+        `Could not download fresh slide ${slide.slide_number}: ${response.status}`,
+      );
+    }
+
+    const outputPath = join(
+      outputDir,
+      `slide-${String(slide.slide_number).padStart(2, "0")}.webp`,
+    );
+
+    await writeFile(outputPath, Buffer.from(await response.arrayBuffer()));
+    files.push(outputPath);
+  }
+
+  const contactSheet = join(outputDir, "contact-sheet.webp");
+  const tileWidth = 324;
+  const tileHeight = 405;
+  const gap = 20;
+  const labelHeight = 38;
+  const composites = [];
+
+  for (const [index, file] of files.entries()) {
+    const image = await sharp(file)
+      .resize(tileWidth, tileHeight, { fit: "contain", background: "#f5f5f5" })
+      .webp()
+      .toBuffer();
+    const left = gap + index * (tileWidth + gap);
+    const label = Buffer.from(`<svg width="${tileWidth}" height="${labelHeight}" xmlns="http://www.w3.org/2000/svg"><text x="${tileWidth / 2}" y="25" text-anchor="middle" font-family="Arial" font-size="16" fill="#111111">${basename(file)}</text></svg>`);
+
+    composites.push({ input: image, left, top: gap });
+    composites.push({ input: label, left, top: gap + tileHeight });
+  }
+
+  await sharp({
+    create: {
+      background: "#ffffff",
+      channels: 4,
+      height: tileHeight + labelHeight + gap * 2,
+      width: files.length * tileWidth + (files.length + 1) * gap,
+    },
+  })
+    .composite(composites)
+    .webp({ quality: 92 })
+    .toFile(contactSheet);
+
+  const auditPath = join(outputDir, "generation-audit.json");
+
+  await writeFile(
+    auditPath,
+    `${JSON.stringify({ generation: result.carousel, slides: result.slides }, null, 2)}\n`,
+    "utf8",
+  );
+
+  return { auditPath, contactSheet, files, outputDir };
 }
 
 function getSqsCredentials() {

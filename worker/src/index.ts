@@ -12,6 +12,7 @@ import {
 } from "./lib/carousel-broad-runtime-visual-matcher.js";
 import { CAROUSEL_CONTENT_PLANNER_VERSION } from "./lib/carousel-llm-slide-plan.js";
 import { CAROUSEL_RENDERER_VERSION } from "./lib/carousel-render-slide.js";
+import { getCarouselFontRuntimeInfo } from "./lib/carousel-font-runtime.js";
 import { processWorkerMessage } from "./processor.js";
 
 let shouldStop = false;
@@ -50,6 +51,7 @@ async function main() {
     carouselBroadMatcherMode: getCarouselBroadMatcherMode(),
     carouselBroadMatcherVersion: CAROUSEL_BROAD_RUNTIME_MATCHER_VERSION,
     carouselContentPlannerVersion: CAROUSEL_CONTENT_PLANNER_VERSION,
+    carouselFont: getCarouselFontRuntimeInfo(),
     carouselRuntimeMatcherVersion: CAROUSEL_RUNTIME_MATCHER_VERSION,
     carouselRendererVersion: CAROUSEL_RENDERER_VERSION,
   });

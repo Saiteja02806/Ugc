@@ -19,7 +19,14 @@ type WrappedText = {
 };
 
 type MeasuredWrappedText = WrappedText & {
+  measuredLineExtents: RenderedTextExtents[];
   measuredLineWidths: number[];
+};
+
+type RenderedTextExtents = {
+  left: number;
+  right: number;
+  width: number;
 };
 
 type TextMode = PlannedCarouselSlide["textMode"];
@@ -37,8 +44,35 @@ type BubbleLineMetrics = {
   lineStep: number;
   rectHeight: number;
   rects: Array<{
+    estimatedTextWidth: number;
+    measuredTextWidth: number;
+    requiredWidth: number;
     width: number;
   }>;
+};
+
+export type CarouselBubbleLineDiagnostic = {
+  cornerSafety: number;
+  estimatedTextWidth: number;
+  fontFamily: string;
+  fontSize: number;
+  measuredTextWidth: number;
+  paddingX: number;
+  radius: number;
+  rectangleWidth: number;
+  requiredWidth: number;
+  text: string;
+};
+
+export type CarouselRenderDiagnostics = {
+  escapedTextPixels: number;
+  fontFamily: string;
+  lineRectStrategy: "direct-overlapping-rectangles";
+  maxBubbleWidth: number;
+  repaired: boolean;
+  textPixels: number;
+  textPixelContainmentPassed: boolean;
+  lines: CarouselBubbleLineDiagnostic[];
 };
 
 type BalancedLines = {
@@ -47,7 +81,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-bubble-renderer-v6-unified-text-silhouette";
+  "social-bubble-renderer-v7-contained-line-rectangles";
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
   "1:1": { height: 1080, width: 1080 },
@@ -56,17 +90,24 @@ const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number 
 
 const DARK_TEXT = "#111316";
 const BODY_TEXT = "#15171a";
-const HEADLINE_BUBBLE_FILL = "#fffdf9";
+const HEADLINE_BUBBLE_FILL = "#ffffff";
 const BODY_BUBBLE_FILL = "#ffffff";
 const TEXT_FONT_FAMILY = "Geist, Arial, Helvetica, sans-serif";
 const HEADLINE_FONT_WEIGHT = 700;
 const BODY_FONT_WEIGHT = 600;
-const TEXT_WIDTH_ALLOWANCE = 8;
+const MIN_CORNER_SAFETY = 6;
 
 function getMeasuredLineWidths(value: WrappedText) {
   return "measuredLineWidths" in value &&
     Array.isArray(value.measuredLineWidths)
     ? value.measuredLineWidths
+    : undefined;
+}
+
+function getMeasuredLineExtents(value: WrappedText) {
+  return "measuredLineExtents" in value &&
+    Array.isArray(value.measuredLineExtents)
+    ? value.measuredLineExtents
     : undefined;
 }
 
@@ -101,7 +142,7 @@ function estimateTextWidth(value: string, fontSize: number) {
   }, 0);
 }
 
-async function measureRenderedTextWidths(params: {
+async function measureRenderedTextExtents(params: {
   fontFamily: string;
   fontSize: number;
   fontWeight: number;
@@ -115,10 +156,11 @@ async function measureRenderedTextWidths(params: {
       const estimatedWidth = Math.ceil(estimateTextWidth(line, params.fontSize));
       const width = Math.max(320, estimatedWidth * 2 + padding * 2);
       const height = Math.ceil(params.fontSize * 3 + padding * 2);
+      const anchorX = Math.round(width / 2);
       const baselineY = Math.round(padding + params.fontSize * 1.45);
       const svg = Buffer.from(`
         <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-          <text x="${padding}" y="${baselineY}" fill="#000000" font-family="${params.fontFamily}" font-size="${params.fontSize}" font-weight="${params.fontWeight}" letter-spacing="${params.letterSpacing}">${escapeXml(line)}</text>
+          <text x="${anchorX}" y="${baselineY}" fill="#000000" font-family="${params.fontFamily}" font-size="${params.fontSize}" font-weight="${params.fontWeight}" letter-spacing="${params.letterSpacing}" text-anchor="middle">${escapeXml(line)}</text>
         </svg>
       `);
       const { data, info } = await sharp(svg)
@@ -139,7 +181,19 @@ async function measureRenderedTextWidths(params: {
         }
       }
 
-      return maxX >= minX ? maxX - minX + 1 : estimatedWidth;
+      if (maxX < minX) {
+        return {
+          left: estimatedWidth / 2,
+          right: estimatedWidth / 2,
+          width: estimatedWidth,
+        };
+      }
+
+      return {
+        left: Math.max(0, anchorX - minX),
+        right: Math.max(0, maxX - anchorX + 1),
+        width: maxX - minX + 1,
+      };
     }),
   );
 }
@@ -320,7 +374,7 @@ function buildBalancedLines(params: {
 async function fitMeasuredText(value: string, params: {
   fontFamily: string;
   fontWeight: number;
-  horizontalAllowance: number;
+  getCornerSafety: (fontSize: number) => number;
   lineHeightRatio: number;
   maxLines: number;
   maxWidth: number;
@@ -328,85 +382,135 @@ async function fitMeasuredText(value: string, params: {
   paddingX: number;
   startFontSize: number;
 }): Promise<MeasuredWrappedText> {
-  let fallback: MeasuredWrappedText | null = null;
-
   for (
     let fontSize = params.startFontSize;
     fontSize >= params.minFontSize;
     fontSize -= 2
   ) {
-    const wrapped = buildBalancedLines({
+    const cornerSafety = params.getCornerSafety(fontSize);
+    const maxTextWidth =
+      params.maxWidth - 2 * (params.paddingX + cornerSafety);
+    const wrapped = await buildMeasuredLines({
+      fontFamily: params.fontFamily,
       fontSize,
+      fontWeight: params.fontWeight,
       maxLines: params.maxLines,
-      maxWidth: params.maxWidth - params.paddingX * 2 - params.horizontalAllowance,
+      maxTextWidth,
       value,
     });
-    const measuredLineWidths = await measureRenderedTextWidths({
+
+    if (!wrapped.truncated && wrapped.fits) {
+      return {
+        fontSize,
+        lineHeight: Math.round(fontSize * params.lineHeightRatio),
+        lines: wrapped.lines,
+        measuredLineExtents: wrapped.extents,
+        measuredLineWidths: wrapped.extents.map((extent) => extent.width),
+      };
+    }
+  }
+
+  throw new Error(
+    `Carousel text could not fit within ${params.maxLines} lines without truncation.`,
+  );
+}
+
+async function buildMeasuredLines(params: {
+  fontFamily: string;
+  fontSize: number;
+  fontWeight: number;
+  maxLines: number;
+  maxTextWidth: number;
+  value: string;
+}) {
+  let estimatedMaxWidth = params.maxTextWidth;
+  let lastResult: {
+    extents: RenderedTextExtents[];
+    fits: boolean;
+    lines: string[];
+    truncated: boolean;
+  } | null = null;
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const wrapped = buildBalancedLines({
+      fontSize: params.fontSize,
+      maxLines: params.maxLines,
+      maxWidth: estimatedMaxWidth,
+      value: params.value,
+    });
+    const extents = await measureRenderedTextExtents({
       fontFamily: params.fontFamily,
-      fontSize,
+      fontSize: params.fontSize,
       fontWeight: params.fontWeight,
       letterSpacing: 0,
       lines: wrapped.lines,
     });
-    const fits = measuredLineWidths.every(
-      (lineWidth) =>
-        lineWidth + params.paddingX * 2 + params.horizontalAllowance <=
-        params.maxWidth,
+    const symmetricWidths = extents.map(
+      (extent) => Math.max(extent.left, extent.right) * 2,
     );
-    const result = {
-      fontSize,
-      lineHeight: Math.round(fontSize * params.lineHeightRatio),
+    const fits = symmetricWidths.every(
+      (lineWidth) => lineWidth <= params.maxTextWidth,
+    );
+
+    lastResult = {
+      extents,
+      fits,
       lines: wrapped.lines,
-      measuredLineWidths,
+      truncated: wrapped.truncated,
     };
 
-    if (!fallback && fits) {
-      fallback = result;
+    if (fits) {
+      return lastResult;
     }
 
-    if (fits && !wrapped.truncated) {
-      return result;
+    const largestOverflowRatio = symmetricWidths.reduce(
+      (ratio, lineWidth) => Math.max(ratio, lineWidth / params.maxTextWidth),
+      1,
+    );
+
+    estimatedMaxWidth = Math.max(
+      Math.round(estimatedMaxWidth / largestOverflowRatio) - 2,
+      Math.round(params.maxTextWidth * 0.7),
+    );
+  }
+
+  return (
+    lastResult ?? {
+      extents: [],
+      fits: true,
+      lines: [],
+      truncated: false,
     }
-  }
-
-  if (fallback) {
-    return fallback;
-  }
-
-  const fontSize = params.minFontSize;
-  const wrapped = buildBalancedLines({
-    fontSize,
-    maxLines: params.maxLines,
-    maxWidth: params.maxWidth - params.paddingX * 2 - params.horizontalAllowance,
-    value,
-  });
-
-  return {
-    fontSize,
-    lineHeight: Math.round(fontSize * params.lineHeightRatio),
-    lines: wrapped.lines,
-    measuredLineWidths: await measureRenderedTextWidths({
-      fontFamily: params.fontFamily,
-      fontSize,
-      fontWeight: params.fontWeight,
-      letterSpacing: 0,
-      lines: wrapped.lines,
-    }),
-  };
+  );
 }
 
-function fitStackedText(values: string[], params: {
+async function fitStackedText(values: string[], params: {
+  fontFamily: string;
+  fontWeight: number;
+  getCornerSafety: (fontSize: number) => number;
   lineHeightRatio: number;
   maxLines: number;
   maxWidth: number;
   minFontSize: number;
+  paddingX: number;
   startFontSize: number;
-}): WrappedText {
+}): Promise<MeasuredWrappedText> {
   const cleanValues = values.map(normalizeText).filter(Boolean);
-  let fallback: WrappedText | null = null;
 
   if (cleanValues.length === 0) {
-    return { fontSize: 0, lineHeight: 0, lines: [] };
+    return {
+      fontSize: 0,
+      lineHeight: 0,
+      lines: [],
+      measuredLineExtents: [],
+      measuredLineWidths: [],
+    };
+  }
+
+  if (cleanValues.length > params.maxLines) {
+    throw new Error(
+      `Carousel list needs ${cleanValues.length} visual lines but only ${params.maxLines} are allowed.`,
+    );
   }
 
   for (
@@ -414,51 +518,44 @@ function fitStackedText(values: string[], params: {
     fontSize >= params.minFontSize;
     fontSize -= 2
   ) {
+    const cornerSafety = params.getCornerSafety(fontSize);
+    const maxTextWidth =
+      params.maxWidth - 2 * (params.paddingX + cornerSafety);
     const lines: string[] = [];
+    const extents: RenderedTextExtents[] = [];
+    let fits = true;
 
     for (const value of cleanValues) {
-      const remainingLines = params.maxLines - lines.length;
-
-      if (remainingLines <= 0) {
-        break;
-      }
-
-      const wrapped = buildBalancedLines({
+      const wrapped = await buildMeasuredLines({
+        fontFamily: params.fontFamily,
         fontSize,
-        maxLines: Math.min(2, remainingLines),
-        maxWidth: params.maxWidth,
+        fontWeight: params.fontWeight,
+        maxLines: 1,
+        maxTextWidth,
         value,
       });
 
-      lines.push(...wrapped.lines);
+      if (wrapped.truncated || !wrapped.fits || wrapped.lines.length !== 1) {
+        fits = false;
+        break;
+      }
+
+      lines.push(wrapped.lines[0]);
+      extents.push(wrapped.extents[0]);
     }
 
-    const fits =
-      lines.length > 0 &&
-      lines.length <= params.maxLines &&
-      lines.every((line) => estimateTextWidth(line, fontSize) <= params.maxWidth);
-    const result = {
-      fontSize,
-      lineHeight: Math.round(fontSize * params.lineHeightRatio),
-      lines,
-    };
-
-    if (!fallback && fits) {
-      fallback = result;
-    }
-
-    if (fits && lines.length >= Math.min(cleanValues.length, params.maxLines)) {
-      return result;
+    if (fits) {
+      return {
+        fontSize,
+        lineHeight: Math.round(fontSize * params.lineHeightRatio),
+        lines,
+        measuredLineExtents: extents,
+        measuredLineWidths: extents.map((extent) => extent.width),
+      };
     }
   }
 
-  return (
-    fallback ?? {
-      fontSize: params.minFontSize,
-      lineHeight: Math.round(params.minFontSize * params.lineHeightRatio),
-      lines: cleanValues.slice(0, params.maxLines),
-    }
-  );
+  throw new Error("Carousel list text could not fit without truncation.");
 }
 
 async function downloadImageBuffer(imageUrl: string) {
@@ -560,16 +657,18 @@ function getBodyText(slide: PlannedCarouselSlide) {
 }
 
 function measureBubbleLines(params: {
+  cornerSafety: number;
   fontSize: number;
   lineHeight: number;
   lines: string[];
   maxBubbleWidth: number;
+  measuredLineExtents?: RenderedTextExtents[];
   measuredLineWidths?: number[];
   mode: "connected" | "single";
   paddingX: number;
   paddingY: number;
   lineOverlap?: number;
-  widthAllowance?: number;
+  radius: number;
 }): BubbleLineMetrics {
   const rectHeight = Math.round(params.fontSize + params.paddingY * 2);
   const lineOverlap =
@@ -581,21 +680,32 @@ function measureBubbleLines(params: {
     params.mode === "connected"
       ? rectHeight - lineOverlap
       : Math.round(params.lineHeight);
-  const widthSafety =
-    params.widthAllowance ??
-    Math.round(params.fontSize * (params.mode === "connected" ? 0.46 : 0.24));
   const rects = params.lines.map((line, index) => {
+    const measuredExtents = params.measuredLineExtents?.[index];
     const measuredLineWidth = params.measuredLineWidths?.[index];
     const lineWidth =
       typeof measuredLineWidth === "number"
         ? measuredLineWidth
         : estimateTextWidth(line, params.fontSize);
+    const symmetricTextWidth = measuredExtents
+      ? Math.max(measuredExtents.left, measuredExtents.right) * 2
+      : lineWidth;
+    const requiredWidth = Math.ceil(
+      symmetricTextWidth +
+        2 * (params.paddingX + params.cornerSafety),
+    );
+
+    if (requiredWidth > params.maxBubbleWidth) {
+      throw new Error(
+        `Carousel bubble needs ${requiredWidth}px for visible text but maxBubbleWidth is ${params.maxBubbleWidth}px.`,
+      );
+    }
 
     return {
-      width: Math.min(
-        Math.round(lineWidth + params.paddingX * 2 + widthSafety),
-        params.maxBubbleWidth,
-      ),
+      estimatedTextWidth: Math.round(estimateTextWidth(line, params.fontSize)),
+      measuredTextWidth: Math.round(lineWidth),
+      requiredWidth,
+      width: requiredWidth,
     };
   });
   const maxLineWidth = rects.reduce(
@@ -617,13 +727,22 @@ function measureBubbleLines(params: {
   };
 }
 
+type BubbleMarkup = {
+  bubble: string;
+  diagnostics: CarouselBubbleLineDiagnostic[];
+  mask: string;
+  text: string;
+};
+
 function buildBubbleText(params: {
   className: string;
+  cornerSafety: number;
   fill: string;
   fontSize: number;
   lineHeight: number;
   lines: string[];
   maxBubbleWidth: number;
+  measuredLineExtents?: RenderedTextExtents[];
   measuredLineWidths?: number[];
   mode: "connected" | "single";
   paddingX: number;
@@ -631,47 +750,30 @@ function buildBubbleText(params: {
   lineOverlap?: number;
   radius: number;
   shadow?: boolean;
-  widthAllowance?: number;
   x: number;
   y: number;
-}) {
+}): BubbleMarkup {
   const metrics = measureBubbleLines({
+    cornerSafety: params.cornerSafety,
     fontSize: params.fontSize,
     lineHeight: params.lineHeight,
     lines: params.lines,
     maxBubbleWidth: params.maxBubbleWidth,
+    measuredLineExtents: params.measuredLineExtents,
     measuredLineWidths: params.measuredLineWidths,
     mode: params.mode,
     paddingX: params.paddingX,
     paddingY: params.paddingY,
     lineOverlap: params.lineOverlap,
-    widthAllowance: params.widthAllowance,
+    radius: params.radius,
   });
 
   if (params.lines.length === 0) {
-    return "";
-  }
-
-  if (params.mode === "single") {
-    const rectX = Math.round(params.x - metrics.bubbleWidth / 2);
-    const rectY = Math.round(params.y);
-    const textLines = params.lines
-      .map((line, index) => {
-        const textY = rectY + metrics.baselineOffset + index * metrics.lineStep;
-
-        return `<text x="${params.x}" y="${textY}" class="${params.className}" font-size="${params.fontSize}" text-anchor="middle">${escapeXml(line)}</text>`;
-      })
-      .join("");
-
-    return `<g${params.shadow ? ' filter="url(#bubbleShadow)"' : ""}>
-      <rect x="${rectX}" y="${rectY}" width="${metrics.bubbleWidth}" height="${metrics.groupHeight}" rx="${params.radius}" fill="${params.fill}" fill-opacity="0.97"/>
-      ${textLines}
-    </g>`;
+    return { bubble: "", diagnostics: [], mask: "", text: "" };
   }
 
   const groupY = Math.round(params.y);
-  const clipId = `${params.className}-bubble-silhouette`;
-  const silhouetteRects = params.lines
+  const rects = params.lines
     .map((_, index) => {
       const rect = metrics.rects[index];
 
@@ -681,7 +783,20 @@ function buildBubbleText(params: {
 
       return `<rect x="${Math.round(params.x - rect.width / 2)}" y="${Math.round(
         groupY + index * metrics.lineStep,
-      )}" width="${rect.width}" height="${metrics.rectHeight}" rx="${params.radius}"/>`;
+      )}" width="${rect.width}" height="${metrics.rectHeight}" rx="${params.radius}" fill="${params.fill}" fill-opacity="0.97"/>`;
+    })
+    .join("");
+  const maskRects = params.lines
+    .map((_, index) => {
+      const rect = metrics.rects[index];
+
+      if (!rect) {
+        return "";
+      }
+
+      return `<rect x="${Math.round(params.x - rect.width / 2)}" y="${Math.round(
+        groupY + index * metrics.lineStep,
+      )}" width="${rect.width}" height="${metrics.rectHeight}" rx="${params.radius}" fill="#ffffff"/>`;
     })
     .join("");
   const textLines = params.lines
@@ -692,15 +807,23 @@ function buildBubbleText(params: {
     })
     .join("");
 
-  return `<defs>
-    <clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">
-      ${silhouetteRects}
-    </clipPath>
-  </defs>
-  <g${params.shadow ? ' filter="url(#bubbleShadow)"' : ""}>
-    <rect x="${Math.round(params.x - metrics.bubbleWidth / 2)}" y="${groupY}" width="${metrics.bubbleWidth}" height="${metrics.groupHeight}" fill="${params.fill}" fill-opacity="0.97" clip-path="url(#${clipId})"/>
-    ${textLines}
-  </g>`;
+  return {
+    bubble: `<g${params.shadow ? ' filter="url(#bubbleShadow)"' : ""}>${rects}</g>`,
+    diagnostics: params.lines.map((line, index) => ({
+      cornerSafety: params.cornerSafety,
+      estimatedTextWidth: metrics.rects[index].estimatedTextWidth,
+      fontFamily: TEXT_FONT_FAMILY,
+      fontSize: params.fontSize,
+      measuredTextWidth: metrics.rects[index].measuredTextWidth,
+      paddingX: params.paddingX,
+      radius: params.radius,
+      rectangleWidth: metrics.rects[index].width,
+      requiredWidth: metrics.rects[index].requiredWidth,
+      text: line,
+    })),
+    mask: maskRects,
+    text: textLines,
+  };
 }
 
 function getPreferredCenterRatio(position: PlannedCarouselSlide["textPosition"]) {
@@ -729,12 +852,50 @@ function getImageBrightness(signal: RegionSignal, textStyle: CarouselRenderStyle
   return 0.96 + styleAdjustment;
 }
 
+type OverlayLayers = {
+  bubbleMask: Buffer;
+  diagnostics: Omit<
+    CarouselRenderDiagnostics,
+    | "escapedTextPixels"
+    | "repaired"
+    | "textPixelContainmentPassed"
+    | "textPixels"
+  >;
+  overlay: Buffer;
+  textMask: Buffer;
+};
+
+function getHeadlineRadius(fontSize: number) {
+  return clamp(Math.round(fontSize * 0.2), 8, 12);
+}
+
+function getBodyRadius(fontSize: number) {
+  return clamp(Math.round(fontSize * 0.22), 8, 12);
+}
+
+function buildSvgDocument(params: {
+  content: string;
+  definitions?: string;
+  height: number;
+  style?: string;
+  width: number;
+}) {
+  return Buffer.from(`
+<svg width="${params.width}" height="${params.height}" viewBox="0 0 ${params.width} ${params.height}" xmlns="http://www.w3.org/2000/svg">
+  ${params.definitions ? `<defs>${params.definitions}</defs>` : ""}
+  ${params.content}
+  ${params.style ? `<style>${params.style}</style>` : ""}
+</svg>`);
+}
+
 async function buildOverlaySvg(params: {
   format: CarouselFormat;
   height: number;
+  safetyBoost: number;
   slide: PlannedCarouselSlide;
+  typographyScale: number;
   width: number;
-}) {
+}): Promise<OverlayLayers> {
   const isSquare = params.format === "1:1";
   const safeMarginX = isSquare ? 108 : 96;
   const safeMarginY = isSquare ? 112 : 136;
@@ -761,62 +922,93 @@ async function buildOverlaySvg(params: {
   const bodyPaddingX = 18;
   const bodyPaddingY = 6;
   const bodyLineOverlap = 9;
-  const textWidthAllowance = TEXT_WIDTH_ALLOWANCE;
+  const scaledFont = (value: number) => Math.max(1, Math.round(value * params.typographyScale));
   const headline = await fitMeasuredText(headlineText, {
     fontFamily: TEXT_FONT_FAMILY,
     fontWeight: HEADLINE_FONT_WEIGHT,
-    horizontalAllowance: textWidthAllowance,
+    getCornerSafety: (fontSize) =>
+      getHeadlineRadius(fontSize) + MIN_CORNER_SAFETY + params.safetyBoost,
     lineHeightRatio: 1.04,
     maxLines: 2,
     maxWidth: maxBubbleWidth,
-    minFontSize: isSquare ? 40 : 42,
+    minFontSize: scaledFont(isSquare ? 40 : 42),
     paddingX: headlinePaddingX,
-    startFontSize: isSquare ? 50 : 54,
+    startFontSize: scaledFont(isSquare ? 50 : 54),
   });
   const body = hasStackedBody
-    ? fitStackedText(stackedBodyLines, {
+    ? await fitStackedText(stackedBodyLines, {
+        fontFamily: TEXT_FONT_FAMILY,
+        fontWeight: BODY_FONT_WEIGHT,
+        getCornerSafety: (fontSize) =>
+          getBodyRadius(fontSize) + MIN_CORNER_SAFETY + params.safetyBoost,
         lineHeightRatio: 1.04,
         maxLines: 4,
-        maxWidth: maxBubbleWidth - bodyPaddingX * 2 - textWidthAllowance,
-        minFontSize: bodyOnlyMode ? (isSquare ? 32 : 34) : isSquare ? 30 : 32,
-        startFontSize: bodyOnlyMode ? (isSquare ? 40 : 42) : isSquare ? 36 : 38,
+        maxWidth: maxBubbleWidth,
+        minFontSize: scaledFont(
+          bodyOnlyMode ? (isSquare ? 32 : 34) : isSquare ? 30 : 32,
+        ),
+        paddingX: bodyPaddingX,
+        startFontSize: scaledFont(
+          bodyOnlyMode ? (isSquare ? 40 : 42) : isSquare ? 36 : 38,
+        ),
       })
     : bodyText
       ? await fitMeasuredText(bodyText, {
           fontFamily: TEXT_FONT_FAMILY,
           fontWeight: BODY_FONT_WEIGHT,
-          horizontalAllowance: textWidthAllowance,
+          getCornerSafety: (fontSize) =>
+            getBodyRadius(fontSize) + MIN_CORNER_SAFETY + params.safetyBoost,
           lineHeightRatio: bodyOnlyMode ? 1.04 : 1.05,
           maxLines: 4,
           maxWidth: maxBubbleWidth,
-          minFontSize: bodyOnlyMode ? (isSquare ? 34 : 36) : isSquare ? 32 : 34,
+          minFontSize: scaledFont(
+            bodyOnlyMode ? (isSquare ? 34 : 36) : isSquare ? 32 : 34,
+          ),
           paddingX: bodyPaddingX,
-          startFontSize: bodyOnlyMode ? (isSquare ? 42 : 44) : isSquare ? 38 : 40,
+          startFontSize: scaledFont(
+            bodyOnlyMode ? (isSquare ? 42 : 44) : isSquare ? 38 : 40,
+          ),
         })
-      : { fontSize: 0, lineHeight: 0, lines: [] };
+      : {
+          fontSize: 0,
+          lineHeight: 0,
+          lines: [],
+          measuredLineExtents: [],
+          measuredLineWidths: [],
+        };
+  const headlineRadius = getHeadlineRadius(headline.fontSize);
+  const headlineCornerSafety =
+    headlineRadius + MIN_CORNER_SAFETY + params.safetyBoost;
+  const bodyRadius = getBodyRadius(body.fontSize);
+  const bodyCornerSafety =
+    bodyRadius + MIN_CORNER_SAFETY + params.safetyBoost;
   const headlineMetrics = measureBubbleLines({
+    cornerSafety: headlineCornerSafety,
     fontSize: headline.fontSize,
     lineHeight: headline.lineHeight,
     lines: headline.lines,
     maxBubbleWidth,
+    measuredLineExtents: headline.measuredLineExtents,
     measuredLineWidths: headline.measuredLineWidths,
     mode: "connected",
     paddingX: headlinePaddingX,
     paddingY: headlinePaddingY,
     lineOverlap: headlineLineOverlap,
-    widthAllowance: textWidthAllowance,
+    radius: headlineRadius,
   });
   const bodyMetrics = measureBubbleLines({
+    cornerSafety: bodyCornerSafety,
     fontSize: body.fontSize,
     lineHeight: body.lineHeight,
     lines: body.lines,
     maxBubbleWidth,
+    measuredLineExtents: getMeasuredLineExtents(body),
     measuredLineWidths: getMeasuredLineWidths(body),
     mode: "connected",
     paddingX: bodyPaddingX,
     paddingY: bodyPaddingY,
     lineOverlap: bodyLineOverlap,
-    widthAllowance: textWidthAllowance,
+    radius: bodyRadius,
   });
   const blockGap =
     body.lines.length > 0 ? clamp(Math.round(body.fontSize * 0.56), 20, 28) : 0;
@@ -832,58 +1024,163 @@ async function buildOverlaySvg(params: {
   const textX = Math.round(params.width / 2);
   const headlineY = blockTop;
   const bodyY = headlineY + headlineMetrics.groupHeight + blockGap;
-
-  return Buffer.from(`
-<svg width="${params.width}" height="${params.height}" viewBox="0 0 ${params.width} ${params.height}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <filter id="bubbleShadow" x="-25%" y="-35%" width="150%" height="170%">
-      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000000" flood-opacity="0.16"/>
-    </filter>
-  </defs>
-  ${buildBubbleText({
+  const headlineMarkup = buildBubbleText({
     className: "headline",
+    cornerSafety: headlineCornerSafety,
     fill: HEADLINE_BUBBLE_FILL,
     fontSize: headline.fontSize,
     lineHeight: headline.lineHeight,
     lines: headline.lines,
     maxBubbleWidth,
+    measuredLineExtents: headline.measuredLineExtents,
     measuredLineWidths: headline.measuredLineWidths,
     mode: "connected",
     paddingX: headlinePaddingX,
     paddingY: headlinePaddingY,
     lineOverlap: headlineLineOverlap,
-    radius: clamp(Math.round(headline.fontSize * 0.2), 8, 12),
+    radius: headlineRadius,
     shadow: true,
-    widthAllowance: textWidthAllowance,
     x: textX,
     y: headlineY,
-  })}
-  ${buildBubbleText({
+  });
+  const bodyMarkup = buildBubbleText({
     className: "body",
+    cornerSafety: bodyCornerSafety,
     fill: BODY_BUBBLE_FILL,
     fontSize: body.fontSize,
     lineHeight: body.lineHeight,
     lines: body.lines,
     maxBubbleWidth,
+    measuredLineExtents: getMeasuredLineExtents(body),
     measuredLineWidths: getMeasuredLineWidths(body),
     mode: "connected",
     paddingX: bodyPaddingX,
     paddingY: bodyPaddingY,
     lineOverlap: bodyLineOverlap,
-    radius: clamp(Math.round(body.fontSize * 0.22), 8, 12),
+    radius: bodyRadius,
     shadow: true,
-    widthAllowance: textWidthAllowance,
     x: textX,
     y: bodyY,
-  })}
-  <style>
+  });
+  const style = `
     .headline { fill: ${DARK_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${HEADLINE_FONT_WEIGHT}; letter-spacing: 0; }
     .body { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; }
-  </style>
-</svg>`);
+  `;
+  const definitions = `
+    <filter id="bubbleShadow" x="-25%" y="-35%" width="150%" height="170%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000000" flood-opacity="0.16"/>
+    </filter>
+  `;
+
+  return {
+    bubbleMask: buildSvgDocument({
+      content: `${headlineMarkup.mask}${bodyMarkup.mask}`,
+      height: params.height,
+      width: params.width,
+    }),
+    diagnostics: {
+      fontFamily: TEXT_FONT_FAMILY,
+      lineRectStrategy: "direct-overlapping-rectangles",
+      lines: [...headlineMarkup.diagnostics, ...bodyMarkup.diagnostics],
+      maxBubbleWidth,
+    },
+    overlay: buildSvgDocument({
+      content: `${headlineMarkup.bubble}${bodyMarkup.bubble}${headlineMarkup.text}${bodyMarkup.text}`,
+      definitions,
+      height: params.height,
+      style,
+      width: params.width,
+    }),
+    textMask: buildSvgDocument({
+      content: `${headlineMarkup.text}${bodyMarkup.text}`,
+      height: params.height,
+      style,
+      width: params.width,
+    }),
+  };
 }
 
-export async function renderCarouselSlide(input: RenderCarouselSlideInput) {
+async function validateTextPixelContainment(layers: OverlayLayers) {
+  const [bubble, text] = await Promise.all([
+    sharp(layers.bubbleMask).ensureAlpha().raw().toBuffer({ resolveWithObject: true }),
+    sharp(layers.textMask).ensureAlpha().raw().toBuffer({ resolveWithObject: true }),
+  ]);
+  let escapedTextPixels = 0;
+  let textPixels = 0;
+
+  for (let index = 3; index < text.data.length; index += text.info.channels) {
+    const textAlpha = text.data[index] ?? 0;
+
+    if (textAlpha <= 8) {
+      continue;
+    }
+
+    textPixels += 1;
+    const pixelIndex = Math.floor(index / text.info.channels);
+    const bubbleAlpha =
+      bubble.data[pixelIndex * bubble.info.channels + 3] ?? 0;
+
+    if (bubbleAlpha <= 8) {
+      escapedTextPixels += 1;
+    }
+  }
+
+  return { escapedTextPixels, textPixels };
+}
+
+async function buildValidatedOverlay(params: {
+  format: CarouselFormat;
+  height: number;
+  slide: PlannedCarouselSlide;
+  width: number;
+}) {
+  const attempts = [
+    { safetyBoost: 0, typographyScale: 1 },
+    { safetyBoost: 8, typographyScale: 0.94 },
+  ];
+  let lastContainment = { escapedTextPixels: 0, textPixels: 0 };
+
+  for (const [attemptIndex, attempt] of attempts.entries()) {
+    const layers = await buildOverlaySvg({ ...params, ...attempt });
+    const containment = await validateTextPixelContainment(layers);
+
+    lastContainment = containment;
+
+    if (containment.escapedTextPixels === 0) {
+      return {
+        diagnostics: {
+          ...layers.diagnostics,
+          ...containment,
+          repaired: attemptIndex > 0,
+          textPixelContainmentPassed: true,
+        } satisfies CarouselRenderDiagnostics,
+        overlay: layers.overlay,
+      };
+    }
+  }
+
+  throw new Error(
+    `Carousel text containment failed after repair: ${lastContainment.escapedTextPixels} visible text pixels escaped the bubble.`,
+  );
+}
+
+export async function inspectCarouselSlideLayout(input: {
+  format: CarouselFormat;
+  slide: PlannedCarouselSlide;
+}) {
+  const dimensions = FORMAT_DIMENSIONS[input.format];
+
+  return (await buildValidatedOverlay({
+    format: input.format,
+    height: dimensions.height,
+    slide: input.slide,
+    width: dimensions.width,
+  })).diagnostics;
+}
+
+export async function renderCarouselSlideWithDiagnostics(
+  input: RenderCarouselSlideInput,
+) {
   const dimensions = FORMAT_DIMENSIONS[input.format];
   const backgroundBuffer = await downloadImageBuffer(input.assetUrl);
   const signal = await getRegionSignal({
@@ -892,14 +1189,14 @@ export async function renderCarouselSlide(input: RenderCarouselSlideInput) {
     position: input.slide.textPosition,
     width: dimensions.width,
   });
-  const overlay = await buildOverlaySvg({
+  const overlay = await buildValidatedOverlay({
     format: input.format,
     height: dimensions.height,
     slide: input.slide,
     width: dimensions.width,
   });
 
-  return sharp(backgroundBuffer)
+  const buffer = await sharp(backgroundBuffer)
     .rotate()
     .resize(dimensions.width, dimensions.height, {
       fit: "cover",
@@ -911,11 +1208,17 @@ export async function renderCarouselSlide(input: RenderCarouselSlideInput) {
     })
     .composite([
       {
-        input: overlay,
+        input: overlay.overlay,
         left: 0,
         top: 0,
       },
     ])
     .webp({ quality: 90 })
     .toBuffer();
+
+  return { buffer, diagnostics: overlay.diagnostics };
+}
+
+export async function renderCarouselSlide(input: RenderCarouselSlideInput) {
+  return (await renderCarouselSlideWithDiagnostics(input)).buffer;
 }

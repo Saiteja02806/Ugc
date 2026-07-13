@@ -10,7 +10,7 @@ const outputDir = path.join(
   workspaceRoot,
   ".tmp",
   "carousel-connected-bubbles",
-  "v9-smoothed-patterns",
+  "v10-soft-union-patterns",
 );
 
 const {
@@ -18,12 +18,11 @@ const {
   buildConnectedBubblePath,
   inspectCarouselSlideLayout,
   renderCarouselSlide,
-  smoothConnectedBubbleWidths,
 } = await import("../lib/carousel/render-slide.ts");
 
 if (
   CAROUSEL_RENDERER_VERSION !==
-  "social-bubble-renderer-v9-smoothed-connected-path"
+  "social-bubble-renderer-v10-soft-union-contour"
 ) {
   throw new Error(`Unexpected renderer version: ${CAROUSEL_RENDERER_VERSION}`);
 }
@@ -98,6 +97,15 @@ const cases = [
           ? "WWW MMM @2026: 100% contained 111i today now."
           : "WWW MMM @2026: 100% contained iiiii today now.",
       ]),
+  },
+  {
+    id: "11-reference-silhouette",
+    slide: createStackedSlide([
+      "opening apps, searching foods,",
+      "picking servings, adjusting",
+      "portions, no busy person keeps",
+      "weeks",
+    ]),
   },
 ];
 
@@ -196,65 +204,53 @@ function checkPathGeometry() {
     groupY: 300,
     lineCenterOffset: 30,
     lineStep: 50,
-    outerRadius: 16,
-    stepRadius: 12,
+    outerRadius: 22,
+    stepRadius: 22,
     widths: [300],
   });
-  const snappedWidths = smoothConnectedBubbleWidths({
-    maxSideInset: 24,
-    requiredWidths: [302, 318],
-  });
-  const snapped = buildConnectedBubblePath({
+  const smallStep = buildConnectedBubblePath({
     centerX: 540,
     groupHeight: 110,
     groupY: 300,
     lineCenterOffset: 30,
     lineStep: 50,
-    outerRadius: 16,
-    stepRadius: 12,
-    widths: snappedWidths,
+    outerRadius: 22,
+    stepRadius: 22,
+    widths: [302, 318],
   });
-  const controlledWidths = smoothConnectedBubbleWidths({
-    maxSideInset: 24,
-    requiredWidths: [700, 570],
-  });
-  const controlled = buildConnectedBubblePath({
+  const referenceContour = buildConnectedBubblePath({
     centerX: 540,
-    groupHeight: 110,
+    groupHeight: 260,
     groupY: 300,
     lineCenterOffset: 30,
     lineStep: 50,
-    outerRadius: 16,
-    stepRadius: 12,
-    widths: controlledWidths,
-  });
-  const bidirectionalWidths = smoothConnectedBubbleWidths({
-    maxSideInset: 22,
-    requiredWidths: [700, 570, 690],
+    outerRadius: 22,
+    stepRadius: 22,
+    widths: [730, 650, 710, 620, 230],
   });
 
   if (!oneLine.pathData.startsWith("M ") || !oneLine.pathData.endsWith(" Z")) {
     throw new Error("One-line bubble did not produce one closed SVG path.");
   }
 
-  if (snapped.widths[0] !== 318 || snapped.widths[1] !== 318) {
-    throw new Error("Adjacent side-width differences below 10px were not snapped.");
+  if (smallStep.widths.join(",") !== "302,318") {
+    throw new Error("Small reference contour steps were incorrectly equalized.");
   }
 
-  if (controlled.widths[0] !== 700 || controlled.widths[1] !== 652) {
-    throw new Error("The connected-bubble side inset was not limited to 24px.");
+  if (referenceContour.widths.join(",") !== "730,650,710,620,230") {
+    throw new Error("The reference contour did not preserve tight line widths.");
   }
 
-  if (bidirectionalWidths.join(",") !== "700,656,690") {
-    throw new Error(
-      `Bidirectional smoothing produced unexpected widths: ${bidirectionalWidths.join(",")}.`,
-    );
+  const curvedCorners = referenceContour.pathData.match(/ Q /g)?.length ?? 0;
+
+  if (curvedCorners < 12) {
+    throw new Error("The reference contour did not retain rounded transitions.");
   }
 }
 
 function assertLayout(id, diagnostics) {
-  if (diagnostics.bubbleShapeStrategy !== "connected-step-path") {
-    throw new Error(`${id} did not use the connected path strategy.`);
+  if (diagnostics.bubbleShapeStrategy !== "soft-union-connected-path") {
+    throw new Error(`${id} did not use the soft-union connected path strategy.`);
   }
 
   if (
@@ -273,12 +269,16 @@ function assertLayout(id, diagnostics) {
       throw new Error(`${id} did not build the path from visualWidth.`);
     }
 
+    if (line.visualWidth !== line.requiredWidth) {
+      throw new Error(`${id} expanded a tight reference-style line background.`);
+    }
+
     if (line.rectangleWidth > diagnostics.maxBubbleWidth) {
       throw new Error(`${id} crossed the maximum bubble width.`);
     }
 
-    if (line.cornerSafety < line.radius + 6) {
-      throw new Error(`${id} did not preserve radius-aware corner safety.`);
+    if (line.cornerSafety < 8 || line.stepRadius < 18) {
+      throw new Error(`${id} did not preserve soft-union corner safety.`);
     }
   }
 }

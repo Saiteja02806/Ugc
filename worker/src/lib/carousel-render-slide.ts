@@ -73,13 +73,13 @@ export type CarouselBubbleLineDiagnostic = {
   radius: number;
   rectangleWidth: number;
   requiredWidth: number;
-  maxSideInset: number;
+  stepRadius: number;
   text: string;
   visualWidth: number;
 };
 
 export type CarouselRenderDiagnostics = {
-  bubbleShapeStrategy: "connected-step-path";
+  bubbleShapeStrategy: "soft-union-connected-path";
   escapedTextPixels: number;
   fontFamily: string;
   maxBubbleWidth: number;
@@ -95,7 +95,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-bubble-renderer-v9-smoothed-connected-path";
+  "social-bubble-renderer-v10-soft-union-contour";
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
   "1:1": { height: 1080, width: 1080 },
@@ -110,7 +110,6 @@ const TEXT_FONT_FAMILY = "Geist, Arial, Helvetica, sans-serif";
 const HEADLINE_FONT_WEIGHT = 700;
 const BODY_FONT_WEIGHT = 600;
 const MIN_CORNER_SAFETY = 6;
-const CONNECTED_BUBBLE_SIDE_SNAP = 10;
 
 function getMeasuredLineWidths(value: WrappedText) {
   return "measuredLineWidths" in value &&
@@ -742,67 +741,6 @@ function measureBubbleLines(params: {
   };
 }
 
-export function smoothConnectedBubbleWidths(params: {
-  maxSideInset: number;
-  requiredWidths: number[];
-  snapSideInset?: number;
-}) {
-  const maxSideInset = Math.max(0, params.maxSideInset);
-  const snapSideInset = Math.max(
-    0,
-    params.snapSideInset ?? CONNECTED_BUBBLE_SIDE_SNAP,
-  );
-  const requiredHalfWidths = params.requiredWidths.map((width) => width / 2);
-  const visualHalfWidths = [...requiredHalfWidths];
-
-  const limitAdjacentInsets = () => {
-    for (let index = 1; index < visualHalfWidths.length; index += 1) {
-      visualHalfWidths[index] = Math.max(
-        visualHalfWidths[index],
-        visualHalfWidths[index - 1] - maxSideInset,
-      );
-    }
-
-    for (let index = visualHalfWidths.length - 2; index >= 0; index -= 1) {
-      visualHalfWidths[index] = Math.max(
-        visualHalfWidths[index],
-        visualHalfWidths[index + 1] - maxSideInset,
-      );
-    }
-  };
-
-  limitAdjacentInsets();
-  let groupStart = 0;
-
-  for (let index = 1; index <= visualHalfWidths.length; index += 1) {
-    const staysInGroup =
-      index < visualHalfWidths.length &&
-      Math.abs(visualHalfWidths[index] - visualHalfWidths[index - 1]) <
-        snapSideInset;
-
-    if (staysInGroup) {
-      continue;
-    }
-
-    const groupHalfWidth = Math.max(
-      ...visualHalfWidths.slice(groupStart, index),
-    );
-
-    for (let groupIndex = groupStart; groupIndex < index; groupIndex += 1) {
-      visualHalfWidths[groupIndex] = groupHalfWidth;
-    }
-
-    groupStart = index;
-  }
-
-  // Snapping can widen a boundary line, so enforce the side-inset limit again.
-  limitAdjacentInsets();
-
-  return visualHalfWidths.map((halfWidth, index) =>
-    Math.max(params.requiredWidths[index], Math.ceil(halfWidth * 2)),
-  );
-}
-
 function removeDuplicatePoints(points: Point[]) {
   const unique = points.filter((point, index) => {
     const previous = points[index - 1];
@@ -1052,15 +990,7 @@ function buildBubbleText(params: {
   }
 
   const groupY = Math.round(params.y);
-  const maxSideInset = clamp(Math.round(params.fontSize * 0.38), 18, 24);
-  const visualWidths = smoothConnectedBubbleWidths({
-    maxSideInset,
-    requiredWidths: metrics.rects.map((rect) => rect.requiredWidth),
-  });
-
-  metrics.rects.forEach((rect, index) => {
-    rect.visualWidth = visualWidths[index];
-  });
+  const stepRadius = clamp(Math.round(params.fontSize * 0.5), 18, 24);
 
   const bubbleGeometry = buildConnectedBubblePath({
     centerX: params.x,
@@ -1069,10 +999,10 @@ function buildBubbleText(params: {
     lineCenterOffset: metrics.rectHeight / 2,
     lineStep: metrics.lineStep,
     outerRadius: params.radius,
-    stepRadius: clamp(Math.round(params.radius * 0.75), 10, 12),
+    stepRadius,
     widths: metrics.rects.map((rect) => rect.visualWidth),
   });
-  const bubblePath = `<path d="${bubbleGeometry.pathData}" fill="${params.fill}" fill-opacity="0.97"/>`;
+  const bubblePath = `<path d="${bubbleGeometry.pathData}" fill="${params.fill}"/>`;
   const maskPath = `<path d="${bubbleGeometry.pathData}" fill="#ffffff"/>`;
   const textLines = params.lines
     .map((line, index) => {
@@ -1090,11 +1020,11 @@ function buildBubbleText(params: {
       fontFamily: TEXT_FONT_FAMILY,
       fontSize: params.fontSize,
       measuredTextWidth: metrics.rects[index].measuredTextWidth,
-      maxSideInset,
       paddingX: params.paddingX,
       radius: params.radius,
       rectangleWidth: bubbleGeometry.widths[index],
       requiredWidth: metrics.rects[index].requiredWidth,
+      stepRadius,
       text: line,
       visualWidth: bubbleGeometry.widths[index],
     })),
@@ -1143,11 +1073,23 @@ type OverlayLayers = {
 };
 
 function getHeadlineRadius(fontSize: number) {
-  return clamp(Math.round(fontSize * 0.28), 14, 16);
+  return clamp(Math.round(fontSize * 0.42), 18, 22);
 }
 
 function getBodyRadius(fontSize: number) {
-  return clamp(Math.round(fontSize * 0.3), 14, 16);
+  return clamp(Math.round(fontSize * 0.45), 18, 22);
+}
+
+function getHeadlineWrapCornerSafety(fontSize: number) {
+  return clamp(Math.round(fontSize * 0.28), 14, 16) + MIN_CORNER_SAFETY;
+}
+
+function getBodyWrapCornerSafety(fontSize: number) {
+  return clamp(Math.round(fontSize * 0.3), 14, 16) + MIN_CORNER_SAFETY;
+}
+
+function getBubbleCornerSafety(radius: number, safetyBoost: number) {
+  return clamp(Math.round(radius * 0.45), 8, 10) + safetyBoost;
 }
 
 function buildSvgDocument(params: {
@@ -1204,7 +1146,7 @@ async function buildOverlaySvg(params: {
     fontFamily: TEXT_FONT_FAMILY,
     fontWeight: HEADLINE_FONT_WEIGHT,
     getCornerSafety: (fontSize) =>
-      getHeadlineRadius(fontSize) + MIN_CORNER_SAFETY + params.safetyBoost,
+      getHeadlineWrapCornerSafety(fontSize) + params.safetyBoost,
     lineHeightRatio: 1.04,
     maxLines: 2,
     maxWidth: maxBubbleWidth,
@@ -1217,7 +1159,7 @@ async function buildOverlaySvg(params: {
         fontFamily: TEXT_FONT_FAMILY,
         fontWeight: BODY_FONT_WEIGHT,
         getCornerSafety: (fontSize) =>
-          getBodyRadius(fontSize) + MIN_CORNER_SAFETY + params.safetyBoost,
+          getBodyWrapCornerSafety(fontSize) + params.safetyBoost,
         lineHeightRatio: 1.04,
         maxLines: 4,
         maxWidth: maxBubbleWidth,
@@ -1234,7 +1176,7 @@ async function buildOverlaySvg(params: {
           fontFamily: TEXT_FONT_FAMILY,
           fontWeight: BODY_FONT_WEIGHT,
           getCornerSafety: (fontSize) =>
-            getBodyRadius(fontSize) + MIN_CORNER_SAFETY + params.safetyBoost,
+            getBodyWrapCornerSafety(fontSize) + params.safetyBoost,
           lineHeightRatio: bodyOnlyMode ? 1.04 : 1.05,
           maxLines: 4,
           maxWidth: maxBubbleWidth,
@@ -1254,11 +1196,15 @@ async function buildOverlaySvg(params: {
           measuredLineWidths: [],
         };
   const headlineRadius = getHeadlineRadius(headline.fontSize);
-  const headlineCornerSafety =
-    headlineRadius + MIN_CORNER_SAFETY + params.safetyBoost;
+  const headlineCornerSafety = getBubbleCornerSafety(
+    headlineRadius,
+    params.safetyBoost,
+  );
   const bodyRadius = getBodyRadius(body.fontSize);
-  const bodyCornerSafety =
-    bodyRadius + MIN_CORNER_SAFETY + params.safetyBoost;
+  const bodyCornerSafety = getBubbleCornerSafety(
+    bodyRadius,
+    params.safetyBoost,
+  );
   const headlineMetrics = measureBubbleLines({
     cornerSafety: headlineCornerSafety,
     fontSize: headline.fontSize,
@@ -1356,7 +1302,7 @@ async function buildOverlaySvg(params: {
       width: params.width,
     }),
     diagnostics: {
-      bubbleShapeStrategy: "connected-step-path",
+      bubbleShapeStrategy: "soft-union-connected-path",
       fontFamily: TEXT_FONT_FAMILY,
       lines: [...headlineMarkup.diagnostics, ...bodyMarkup.diagnostics],
       maxBubbleWidth,

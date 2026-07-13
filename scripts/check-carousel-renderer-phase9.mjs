@@ -80,6 +80,26 @@ const cases = [
     },
   },
   {
+    background: "reference-production-copy",
+    backgroundKind: "organized-desk",
+    format: "4:5",
+    slide: {
+      body:
+        "Separate tools hide the next action when deadlines and approvals start moving.",
+      ctaText: null,
+      headline: null,
+      imageDirection: "Object-only organized desk with open center space.",
+      listItems: [],
+      layoutPreset: "bottom-message",
+      slideNumber: 2,
+      slideType: "problem",
+      subtext:
+        "Separate tools hide the next action when deadlines and approvals start moving.",
+      textMode: "body_only",
+      textPosition: "bottom",
+    },
+  },
+  {
     background: "question-list",
     backgroundKind: "spreadsheet-chaos",
     format: "1:1",
@@ -154,7 +174,7 @@ for (const item of cases) {
   });
 
   if (
-    layoutDiagnostics.bubbleShapeStrategy !== "connected-step-path" ||
+    layoutDiagnostics.bubbleShapeStrategy !== "soft-union-connected-path" ||
     !layoutDiagnostics.textPixelContainmentPassed ||
     layoutDiagnostics.escapedTextPixels !== 0 ||
     layoutDiagnostics.lines.some(
@@ -162,7 +182,8 @@ for (const item of cases) {
         line.rectangleWidth < line.requiredWidth ||
         line.visualWidth !== line.rectangleWidth ||
         line.rectangleWidth > layoutDiagnostics.maxBubbleWidth ||
-        line.cornerSafety < line.radius + 6,
+        line.cornerSafety < 8 ||
+        line.stepRadius < 18,
     )
   ) {
     throw new Error(`Text containment failed for ${item.background}.`);

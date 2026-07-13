@@ -30,6 +30,7 @@ export type AppSidebarActiveKey =
   | "img-gen"
   | "video-gen"
   | "library"
+  | "connected-accounts"
   | "avatars"
   | "edit"
   | "scheduling";
@@ -75,6 +76,12 @@ const primaryNavigationItems: SidebarItem[] = [
 ];
 
 const libraryNavigationItems: SidebarItem[] = [
+  {
+    key: "connected-accounts",
+    label: "Accounts",
+    href: "/connected-accounts",
+    icon: "library",
+  },
   {
     key: "library",
     label: "Library",

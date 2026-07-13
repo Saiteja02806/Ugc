@@ -173,8 +173,25 @@ for (const item of cases) {
     slide: item.slide,
   });
 
+  if (item.background === "reference-production-copy") {
+    const widths = layoutDiagnostics.lines.map((line) => line.visualWidth);
+    const transitions = layoutDiagnostics.lines.map(
+      (line) => line.transitionToNext,
+    );
+
+    if (
+      widths.join(",") !== "536,622,638" ||
+      transitions.join(",") !== "rounded-shoulder,soft-curve,none"
+    ) {
+      throw new Error(
+        `Reference copy did not preserve widths with a soft final transition: ${widths.join(",")} (${transitions.join(",")}).`,
+      );
+    }
+  }
+
   if (
-    layoutDiagnostics.bubbleShapeStrategy !== "soft-union-connected-path" ||
+    layoutDiagnostics.bubbleShapeStrategy !==
+      "hybrid-soft-union-connected-path" ||
     !layoutDiagnostics.textPixelContainmentPassed ||
     layoutDiagnostics.escapedTextPixels !== 0 ||
     layoutDiagnostics.lines.some(
@@ -183,7 +200,8 @@ for (const item of cases) {
         line.visualWidth !== line.rectangleWidth ||
         line.rectangleWidth > layoutDiagnostics.maxBubbleWidth ||
         line.cornerSafety < 8 ||
-        line.stepRadius < 18,
+        line.stepRadius < 18 ||
+        line.widthSnapSideThreshold !== 3,
     )
   ) {
     throw new Error(`Text containment failed for ${item.background}.`);

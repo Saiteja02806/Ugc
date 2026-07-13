@@ -10,7 +10,7 @@ const outputDir = path.join(
   workspaceRoot,
   ".tmp",
   "carousel-connected-bubbles",
-  "v10-soft-union-patterns",
+  "v11-hybrid-soft-union-patterns",
 );
 
 const {
@@ -18,11 +18,12 @@ const {
   buildConnectedBubblePath,
   inspectCarouselSlideLayout,
   renderCarouselSlide,
+  snapConnectedBubbleVisualWidths,
 } = await import("../lib/carousel/render-slide.ts");
 
 if (
   CAROUSEL_RENDERER_VERSION !==
-  "social-bubble-renderer-v10-soft-union-contour"
+  "social-bubble-renderer-v11-hybrid-soft-union"
 ) {
   throw new Error(`Unexpected renderer version: ${CAROUSEL_RENDERER_VERSION}`);
 }
@@ -208,6 +209,12 @@ function checkPathGeometry() {
     stepRadius: 22,
     widths: [300],
   });
+  const imperceptibleStepWidths = snapConnectedBubbleVisualWidths({
+    requiredWidths: [302, 306],
+  });
+  const smallStepWidths = snapConnectedBubbleVisualWidths({
+    requiredWidths: [302, 318],
+  });
   const smallStep = buildConnectedBubblePath({
     centerX: 540,
     groupHeight: 110,
@@ -216,7 +223,7 @@ function checkPathGeometry() {
     lineStep: 50,
     outerRadius: 22,
     stepRadius: 22,
-    widths: [302, 318],
+    widths: smallStepWidths,
   });
   const referenceContour = buildConnectedBubblePath({
     centerX: 540,
@@ -233,8 +240,19 @@ function checkPathGeometry() {
     throw new Error("One-line bubble did not produce one closed SVG path.");
   }
 
+  if (imperceptibleStepWidths.join(",") !== "306,306") {
+    throw new Error("An imperceptible sub-3px side difference was not snapped.");
+  }
+
   if (smallStep.widths.join(",") !== "302,318") {
-    throw new Error("Small reference contour steps were incorrectly equalized.");
+    throw new Error("A visible small width difference was incorrectly removed.");
+  }
+
+  if (
+    smallStep.transitions.join(",") !== "soft-curve" ||
+    !smallStep.pathData.includes(" C ")
+  ) {
+    throw new Error("A small width difference did not use a soft curve.");
   }
 
   if (referenceContour.widths.join(",") !== "730,650,710,620,230") {
@@ -246,11 +264,18 @@ function checkPathGeometry() {
   if (curvedCorners < 12) {
     throw new Error("The reference contour did not retain rounded transitions.");
   }
+
+  if (!referenceContour.transitions.includes("rounded-shoulder")) {
+    throw new Error("The reference contour did not retain its deep shoulders.");
+  }
 }
 
 function assertLayout(id, diagnostics) {
-  if (diagnostics.bubbleShapeStrategy !== "soft-union-connected-path") {
-    throw new Error(`${id} did not use the soft-union connected path strategy.`);
+  if (
+    diagnostics.bubbleShapeStrategy !==
+    "hybrid-soft-union-connected-path"
+  ) {
+    throw new Error(`${id} did not use the hybrid connected path strategy.`);
   }
 
   if (
@@ -269,15 +294,22 @@ function assertLayout(id, diagnostics) {
       throw new Error(`${id} did not build the path from visualWidth.`);
     }
 
-    if (line.visualWidth !== line.requiredWidth) {
-      throw new Error(`${id} expanded a tight reference-style line background.`);
+    if (line.visualWidth < line.requiredWidth) {
+      throw new Error(`${id} shrank a line below its required width.`);
     }
 
     if (line.rectangleWidth > diagnostics.maxBubbleWidth) {
       throw new Error(`${id} crossed the maximum bubble width.`);
     }
 
-    if (line.cornerSafety < 8 || line.stepRadius < 18) {
+    if (
+      line.cornerSafety < 8 ||
+      line.stepRadius < 18 ||
+      line.widthSnapSideThreshold !== 3 ||
+      !["none", "soft-curve", "rounded-shoulder"].includes(
+        line.transitionToNext,
+      )
+    ) {
       throw new Error(`${id} did not preserve soft-union corner safety.`);
     }
   }

@@ -57,7 +57,9 @@ if (result.backgroundJob.status !== "completed") {
   result.carousel.status !== "completed" ||
   result.slides.length !== template.slide_count ||
   result.carousel.content_planner_version !==
-    "llm-carousel-planner-v4-optional-headline-repair" ||
+    "llm-carousel-planner-v5-supported-claims" ||
+  result.carousel.content_plan_source !== "llm" ||
+  result.carousel.content_plan_fallback_reason !== null ||
   result.carousel.renderer_version !==
     "social-bubble-renderer-v7-contained-line-rectangles" ||
   result.carousel.content_plan_validation?.ok !== true ||

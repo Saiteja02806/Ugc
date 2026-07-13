@@ -8,7 +8,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v4-optional-headline-repair";
+  "llm-carousel-planner-v5-supported-claims";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 const MAX_BODY_LENGTH = 120;
@@ -565,6 +565,8 @@ export function validateCarouselContentPlan(
   const claimsToAvoid = (analysis?.claimsToAvoid ?? [])
     .map(normalizeValidationText)
     .filter(Boolean);
+  const evidenceText = normalizeValidationText(JSON.stringify(analysis ?? {}));
+  const compactEvidenceText = evidenceText.replace(/\s+/g, "");
 
   for (const slide of plan.slides) {
     const texts = [
@@ -683,11 +685,24 @@ export function validateCarouselContentPlan(
     if (
       texts.some((text) => {
         const normalizedText = normalizeValidationText(text);
+        const quantifiedClaim = normalizedText.match(
+          /\b(?:hundreds|thousands|millions|billions) of (?:businesses|creators|customers|people|teams|users)\b/,
+        )?.[0];
+        const unsupportedOutcome =
+          analysis &&
+          (normalizedText.match(/\b(?:conversions?|profits?|revenue|sales)\b/g) ?? [])
+            .some((term) => !new RegExp(`\\b${term}\\b`).test(evidenceText));
 
         return (
           /\b(always|best|guarantee|guaranteed|never|perfect|number one|100 percent)\b/.test(
             normalizedText,
           ) ||
+          Boolean(
+            analysis &&
+              quantifiedClaim &&
+              !evidenceText.includes(quantifiedClaim),
+          ) ||
+          unsupportedOutcome ||
           claimsToAvoid.some((claim) => claim && normalizedText.includes(claim))
         );
       })
@@ -695,6 +710,25 @@ export function validateCarouselContentPlan(
       issues.push({
         code: "unsupported_claim",
         message: "Copy contains an unsupported or prohibited claim.",
+        slideNumber: slide.slideNumber,
+      });
+    }
+
+    const unrecognizedBrandName = analysis
+      ? [...texts, slide.imageDirection]
+          .flatMap((text) => text.match(/\b[A-Z][a-z]+[A-Z][A-Za-z]*\b/g) ?? [])
+          .find(
+            (name) =>
+              !compactEvidenceText.includes(
+                normalizeValidationText(name).replace(/\s+/g, ""),
+              ),
+          )
+      : null;
+
+    if (unrecognizedBrandName) {
+      issues.push({
+        code: "unsupported_claim",
+        message: `Copy names an unsupported product or brand: ${unrecognizedBrandName}.`,
         slideNumber: slide.slideNumber,
       });
     }
@@ -841,6 +875,8 @@ function buildPlannerMessages(input: CarouselContentPlanInput & { slideCount: nu
         "- The CTA slide should explain the result the customer receives and may end with a concrete next action.",
         "- The CTA headline must name a concrete next action or outcome; do not use generic copy such as unify your workflow.",
         "- Use only claims supported by the analysis and respect claimsToAvoid.",
+        "- Never invent quantified social proof such as millions of users, customers, or businesses.",
+        "- Use businessName exactly when naming the product. Never invent or substitute another product or brand in copy or imageDirection.",
         "- imageDirection must name a concrete object-only scene and useful text-safe space.",
         "- imageDirection must describe only objects, surfaces, room context, food, devices, documents, or still life details.",
         "- Do not write words like humans, people, faces, hands, bodies, silhouettes, teams, customers, or workers in imageDirection, even as exclusions.",
@@ -875,6 +911,8 @@ function buildRepairMessages(params: {
         "Every body must be one complete, specific sentence of 8-20 words and at most 120 characters.",
         "List modes may use at most four total visual lines.",
         "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors.",
+        "Remove quantified social proof unless it appears verbatim in the analysis, and remove revenue, profit, sales, or conversion claims not supported by the analysis.",
+        "Use businessName exactly when naming the product. Never invent or substitute another product or brand in copy or imageDirection.",
         "Never use these phrases: boost productivity, efficiently, effortlessly, seamless, streamline your workflow, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
         "If a headline repeats its body, set headline to null and use body_only instead of paraphrasing it.",
         "The final slide must use slideType cta and include a non-null ctaText.",

@@ -8,7 +8,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v5-supported-claims";
+  "llm-carousel-planner-v6-normalized-modes";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 const MAX_BODY_LENGTH = 120;
@@ -337,7 +337,7 @@ function parseCarouselContentPlanShape(
       );
     }
 
-    const textMode = normalizeTextMode({
+    const preliminaryTextMode = normalizeTextMode({
       body: parsedBody,
       headline: parsedHeadline,
       listItems,
@@ -348,12 +348,19 @@ function parseCarouselContentPlanShape(
       body: parsedBody,
       headline: parsedHeadline,
       slideType,
-      textMode,
+      textMode: preliminaryTextMode,
     })
       ? null
       : parsedHeadline
         ? normalizeHeadlineCase(parsedHeadline)
         : null;
+    const textMode = normalizeTextMode({
+      body: parsedBody,
+      headline,
+      listItems,
+      slideType,
+      textMode: preliminaryTextMode,
+    });
     const body = normalizeBodyForTextMode({
       body: parsedBody,
       ctaText,
@@ -690,7 +697,7 @@ export function validateCarouselContentPlan(
         )?.[0];
         const unsupportedOutcome =
           analysis &&
-          (normalizedText.match(/\b(?:conversions?|profits?|revenue|sales)\b/g) ?? [])
+          (normalizedText.match(/\b(?:conversions?|money|profits?|revenue|sales)\b/g) ?? [])
             .some((term) => !new RegExp(`\\b${term}\\b`).test(evidenceText));
 
         return (
@@ -714,9 +721,19 @@ export function validateCarouselContentPlan(
       });
     }
 
+    const ctaNamedProduct = slide.ctaText
+      ?.match(
+        /^(?:Get|Install|Open|Start|Try|Use)\s+([A-Z][A-Za-z0-9]+)\b/,
+      )?.[1];
     const unrecognizedBrandName = analysis
       ? [...texts, slide.imageDirection]
           .flatMap((text) => text.match(/\b[A-Z][a-z]+[A-Z][A-Za-z]*\b/g) ?? [])
+          .concat(
+            ctaNamedProduct &&
+              !/^(?:A|Free|Now|One|The|This|Today|Your)$/i.test(ctaNamedProduct)
+              ? [ctaNamedProduct]
+              : [],
+          )
           .find(
             (name) =>
               !compactEvidenceText.includes(
@@ -840,6 +857,7 @@ function buildPlannerMessages(input: CarouselContentPlanInput & { slideCount: nu
       role: "user" as const,
       content: [
         `Create carousel candidate ${candidateNumber} with exactly ${input.slideCount} slides.`,
+        `Required businessName: ${analysis.businessName?.trim() || "unnamed business"}.`,
         input.selectedAngle?.trim()
           ? `Preferred angle: ${input.selectedAngle.trim()}`
           : "Choose a distinct angle grounded in the analysis.",
@@ -907,11 +925,12 @@ function buildRepairMessages(params: {
       role: "user" as const,
       content: [
         `Repair this ${params.slideCount}-slide carousel plan.`,
+        `Required businessName: ${params.analysis.businessName?.trim() || "unnamed business"}.`,
         "Every headline is optional; when present it must be 3-8 words, at most 50 characters, and at most two visual lines.",
         "Every body must be one complete, specific sentence of 8-20 words and at most 120 characters.",
         "List modes may use at most four total visual lines.",
         "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors.",
-        "Remove quantified social proof unless it appears verbatim in the analysis, and remove revenue, profit, sales, or conversion claims not supported by the analysis.",
+        "Remove quantified social proof unless it appears verbatim in the analysis, and remove money, revenue, profit, sales, or conversion claims not supported by the analysis.",
         "Use businessName exactly when naming the product. Never invent or substitute another product or brand in copy or imageDirection.",
         "Never use these phrases: boost productivity, efficiently, effortlessly, seamless, streamline your workflow, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
         "If a headline repeats its body, set headline to null and use body_only instead of paraphrasing it.",
@@ -1024,13 +1043,16 @@ function repairCopyText(
 
     if (countWords(repaired) < MIN_REQUIRED_BODY_WORDS) {
       const punctuation = repaired.match(/[.?!]$/)?.[0] ?? ".";
+      const stem = repaired.replace(/[.?!]+$/, "");
       const suffix =
         punctuation === "?"
           ? "during campaign planning"
           : slideType === "cta"
-            ? "with clearer next steps"
+            ? /\bwith\b/i.test(stem)
+              ? "and make the next step clear"
+              : "with clearer next steps"
             : "for clearer campaign decisions";
-      repaired = `${repaired.replace(/[.?!]+$/, "")} ${suffix}${punctuation}`;
+      repaired = `${stem} ${suffix}${punctuation}`;
     }
   }
 

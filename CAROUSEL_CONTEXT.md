@@ -607,8 +607,11 @@ Balanced carousel copy rules:
 - Object-only safety validation treats clock and watch hands as object parts,
   while continuing to reject human hands and other prohibited human subjects.
 - Unsupported-claim validation rejects unsubstantiated quantified social proof
-  and revenue/profit/sales/conversion outcomes, plus CamelCase product or brand
+  and money/revenue/profit/sales/conversion outcomes, plus CamelCase product or brand
   names that do not appear in the stored website analysis.
+- CTA commands that introduce a capitalized product name must use a name found
+  in the analysis. Text mode is normalized again after a repeated or invalid
+  optional headline is removed, so valid body copy remains renderable.
 - Every generation stores raw initial/repair LLM responses, the normalized
   plan, planner version/model/source/fallback reason, validation result, and
   renderer version on `carousel_generations`.

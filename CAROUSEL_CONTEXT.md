@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-07-13
+Last updated: 2026-07-14
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -834,30 +834,31 @@ Implemented:
   plan, planner version, actual model, source, fallback reason, validation
   result, and renderer version.
 - Professional Sharp text renderer and AWS Carousel worker path.
-- AWS Carousel worker revision 30 runs image
-  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260713175953`
+- AWS Carousel worker revision 32 runs image
+  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260713184011`
   from task definition
-  `arn:aws:ecs:us-east-2:831963379461:task-definition/ugc-carousel-worker-task:30`.
+  `arn:aws:ecs:us-east-2:831963379461:task-definition/ugc-carousel-worker-task:32`.
   Startup metadata reports git commit
-  `f5370c4f7b06133a364509d9501f9d7baa350858`, planner
+  `5d604b9805ea6c875af6f44cf247c2ada1212f67`, planner
   `llm-carousel-planner-v16-solution-story-guard`, renderer
-  `social-bubble-renderer-v9-smoothed-connected-path`, broad matcher
+  `social-bubble-renderer-v11-hybrid-soft-union`, broad matcher
   `broad-runtime-matcher-v2` in `dry-run`, safety policy
   `object-only-no-human-v1`, and Geist Regular available at
   `/usr/local/share/fonts/geist/Geist-Regular.ttf`.
-- Renderer `social-bubble-renderer-v9-smoothed-connected-path` preserves each
-  measured line's safe `requiredWidth` and derives a separate `visualWidth`
-  before building the same connected rounded path. Forward and backward passes
-  limit adjacent half-width movement to
-  `clamp(round(fontSize * 0.38), 18, 24)` pixels per side, and differences below
-  10px per side snap together. Smoothing only expands narrow backgrounds; it
-  does not change text, wrapping, padding, margins, or containment geometry.
-- Fresh production canary `0dc10055-bae9-4bc5-8db6-c504beca7884` completed on
-  worker revision 30 with five new renderer-v9 CloudFront URLs. Visual review
-  passed all five WebPs. CloudWatch diagnostics confirmed every line used its
-  final `visualWidth` and reported
-  `escapedTextPixels = 0` and
-  `textPixelContainmentPassed = true` on slides 1 through 5.
+- Renderer `social-bubble-renderer-v11-hybrid-soft-union` preserves each
+  measured line's safe `requiredWidth`. Imperceptible adjacent differences
+  below 3px per side snap to the larger width. Small visible side changes use a
+  vertically extended cubic transition with vertical tangents, while larger
+  changes retain rounded shoulders. The visible bubble and containment mask
+  use the same single connected SVG path. This does not change copy, wrapping,
+  typography, padding, image processing, safe margins, or text placement.
+- Fresh production canary `61b0edb4-0af2-44b0-9211-d1db40f9b1f3` completed on
+  worker revision 32 with five new renderer-v11 CloudFront URLs. All five WebPs
+  were visually inspected at 1080x1350. The exact reference sentence retained
+  widths `542, 628, 636` and used transitions
+  `rounded-shoulder, soft-curve, none`. CloudWatch diagnostics reported
+  `escapedTextPixels = 0`, `textPixelContainmentPassed = true`, and no repair on
+  slides 1 through 5.
 - Supabase relevance metadata `runtime_exclusion_reason` and
   `near_duplicate_group`, including database constraints and a ready-pool index.
 - Marketing SaaS asset cleanup for wrong-bucket, human-form, people-on-screen,

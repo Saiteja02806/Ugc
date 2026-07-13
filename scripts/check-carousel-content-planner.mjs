@@ -70,7 +70,7 @@ const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
 if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
-  fallbackPlan.plannerVersion !== "llm-carousel-planner-v6-normalized-modes" ||
+  fallbackPlan.plannerVersion !== "llm-carousel-planner-v7-repetition-audit" ||
   !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");
@@ -177,6 +177,39 @@ if (
   normalizedRepeatedHeadline.slides[3]?.textMode !== "body_only"
 ) {
   failures.push("Planner retained headline_body after dropping a repeated headline.");
+}
+
+const partialHeadlineRepeatFixture = structuredClone(fixture);
+partialHeadlineRepeatFixture.slides[0] = {
+  ...partialHeadlineRepeatFixture.slides[0],
+  body: "Campaign chaos leads to missed opportunities and confusion.",
+  headline: "Tired of campaign chaos?",
+};
+const normalizedPartialHeadlineRepeat = workerPlanner.parseCarouselContentPlan(
+  partialHeadlineRepeatFixture,
+  5,
+);
+
+if (
+  normalizedPartialHeadlineRepeat.slides[0]?.headline !== null ||
+  normalizedPartialHeadlineRepeat.slides[0]?.textMode !== "body_only"
+) {
+  failures.push("Planner retained a partially repeated headline and body.");
+}
+
+const repeatedWordFixture = structuredClone(workerParsed);
+repeatedWordFixture.slides[2] = {
+  ...repeatedWordFixture.slides[2],
+  body: "This scattered approach leads to lost leads and delayed decisions.",
+  listItems: [],
+  subtext: "This scattered approach leads to lost leads and delayed decisions.",
+  textMode: "body_only",
+};
+const repeatedWordIssues =
+  workerPlanner.validateCarouselContentPlan(repeatedWordFixture);
+
+if (!repeatedWordIssues.some((issue) => issue.code === "grammar")) {
+  failures.push("Planner quality validation missed a nearby repeated word.");
 }
 
 const shortHeadlineFixture = structuredClone(workerParsed);

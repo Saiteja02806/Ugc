@@ -35,6 +35,7 @@ const message = await sqs.send(
     QueueUrl: getRequiredEnv("UGC_CAROUSEL_QUEUE_URL"),
   }),
 );
+sqs.destroy();
 
 if (!message.MessageId) {
   throw new Error("SQS did not return a message id.");
@@ -57,7 +58,7 @@ if (result.backgroundJob.status !== "completed") {
   result.carousel.status !== "completed" ||
   result.slides.length !== template.slide_count ||
   result.carousel.content_planner_version !==
-    "llm-carousel-planner-v6-normalized-modes" ||
+    "llm-carousel-planner-v7-repetition-audit" ||
   result.carousel.content_plan_source !== "llm" ||
   result.carousel.content_plan_fallback_reason !== null ||
   result.carousel.renderer_version !==

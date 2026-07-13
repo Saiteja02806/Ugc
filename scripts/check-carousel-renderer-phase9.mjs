@@ -160,6 +160,7 @@ for (const item of cases) {
     layoutDiagnostics.lines.some(
       (line) =>
         line.rectangleWidth < line.requiredWidth ||
+        line.visualWidth !== line.rectangleWidth ||
         line.rectangleWidth > layoutDiagnostics.maxBubbleWidth ||
         line.cornerSafety < line.radius + 6,
     )

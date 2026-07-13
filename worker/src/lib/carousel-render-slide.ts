@@ -47,7 +47,7 @@ type BubbleLineMetrics = {
     estimatedTextWidth: number;
     measuredTextWidth: number;
     requiredWidth: number;
-    width: number;
+    visualWidth: number;
   }>;
 };
 
@@ -73,7 +73,9 @@ export type CarouselBubbleLineDiagnostic = {
   radius: number;
   rectangleWidth: number;
   requiredWidth: number;
+  maxSideInset: number;
   text: string;
+  visualWidth: number;
 };
 
 export type CarouselRenderDiagnostics = {
@@ -93,7 +95,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-bubble-renderer-v8-connected-step-path";
+  "social-bubble-renderer-v9-smoothed-connected-path";
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
   "1:1": { height: 1080, width: 1080 },
@@ -108,7 +110,7 @@ const TEXT_FONT_FAMILY = "Geist, Arial, Helvetica, sans-serif";
 const HEADLINE_FONT_WEIGHT = 700;
 const BODY_FONT_WEIGHT = 600;
 const MIN_CORNER_SAFETY = 6;
-const CONNECTED_BUBBLE_WIDTH_SNAP = 16;
+const CONNECTED_BUBBLE_SIDE_SNAP = 10;
 
 function getMeasuredLineWidths(value: WrappedText) {
   return "measuredLineWidths" in value &&
@@ -718,11 +720,11 @@ function measureBubbleLines(params: {
       estimatedTextWidth: Math.round(estimateTextWidth(line, params.fontSize)),
       measuredTextWidth: Math.round(lineWidth),
       requiredWidth,
-      width: requiredWidth,
+      visualWidth: requiredWidth,
     };
   });
   const maxLineWidth = rects.reduce(
-    (widestLine, rect) => Math.max(widestLine, rect.width),
+    (widestLine, rect) => Math.max(widestLine, rect.visualWidth),
     0,
   );
 
@@ -740,32 +742,65 @@ function measureBubbleLines(params: {
   };
 }
 
-function normalizeConnectedBubbleWidths(
-  widths: number[],
-  threshold = CONNECTED_BUBBLE_WIDTH_SNAP,
-) {
-  const normalized = widths.map((width) => Math.round(width));
+export function smoothConnectedBubbleWidths(params: {
+  maxSideInset: number;
+  requiredWidths: number[];
+  snapSideInset?: number;
+}) {
+  const maxSideInset = Math.max(0, params.maxSideInset);
+  const snapSideInset = Math.max(
+    0,
+    params.snapSideInset ?? CONNECTED_BUBBLE_SIDE_SNAP,
+  );
+  const requiredHalfWidths = params.requiredWidths.map((width) => width / 2);
+  const visualHalfWidths = [...requiredHalfWidths];
+
+  const limitAdjacentInsets = () => {
+    for (let index = 1; index < visualHalfWidths.length; index += 1) {
+      visualHalfWidths[index] = Math.max(
+        visualHalfWidths[index],
+        visualHalfWidths[index - 1] - maxSideInset,
+      );
+    }
+
+    for (let index = visualHalfWidths.length - 2; index >= 0; index -= 1) {
+      visualHalfWidths[index] = Math.max(
+        visualHalfWidths[index],
+        visualHalfWidths[index + 1] - maxSideInset,
+      );
+    }
+  };
+
+  limitAdjacentInsets();
   let groupStart = 0;
 
-  for (let index = 1; index <= normalized.length; index += 1) {
+  for (let index = 1; index <= visualHalfWidths.length; index += 1) {
     const staysInGroup =
-      index < normalized.length &&
-      Math.abs(widths[index] - widths[index - 1]) < threshold;
+      index < visualHalfWidths.length &&
+      Math.abs(visualHalfWidths[index] - visualHalfWidths[index - 1]) <
+        snapSideInset;
 
     if (staysInGroup) {
       continue;
     }
 
-    const groupWidth = Math.max(...normalized.slice(groupStart, index));
+    const groupHalfWidth = Math.max(
+      ...visualHalfWidths.slice(groupStart, index),
+    );
 
     for (let groupIndex = groupStart; groupIndex < index; groupIndex += 1) {
-      normalized[groupIndex] = groupWidth;
+      visualHalfWidths[groupIndex] = groupHalfWidth;
     }
 
     groupStart = index;
   }
 
-  return normalized;
+  // Snapping can widen a boundary line, so enforce the side-inset limit again.
+  limitAdjacentInsets();
+
+  return visualHalfWidths.map((halfWidth, index) =>
+    Math.max(params.requiredWidths[index], Math.ceil(halfWidth * 2)),
+  );
 }
 
 function removeDuplicatePoints(points: Point[]) {
@@ -946,7 +981,7 @@ export function buildConnectedBubblePath(params: {
     return { pathData: "", widths: [] };
   }
 
-  const widths = normalizeConnectedBubbleWidths(params.widths);
+  const widths = params.widths.map((width) => Math.round(width));
   // Visual band centers keep taller glyphs inside when adjacent widths change.
   const lines = widths.map((width, index): ConnectedBubbleLine => ({
     centerY:
@@ -1017,6 +1052,16 @@ function buildBubbleText(params: {
   }
 
   const groupY = Math.round(params.y);
+  const maxSideInset = clamp(Math.round(params.fontSize * 0.38), 18, 24);
+  const visualWidths = smoothConnectedBubbleWidths({
+    maxSideInset,
+    requiredWidths: metrics.rects.map((rect) => rect.requiredWidth),
+  });
+
+  metrics.rects.forEach((rect, index) => {
+    rect.visualWidth = visualWidths[index];
+  });
+
   const bubbleGeometry = buildConnectedBubblePath({
     centerX: params.x,
     groupHeight: metrics.groupHeight,
@@ -1025,7 +1070,7 @@ function buildBubbleText(params: {
     lineStep: metrics.lineStep,
     outerRadius: params.radius,
     stepRadius: clamp(Math.round(params.radius * 0.75), 10, 12),
-    widths: metrics.rects.map((rect) => rect.width),
+    widths: metrics.rects.map((rect) => rect.visualWidth),
   });
   const bubblePath = `<path d="${bubbleGeometry.pathData}" fill="${params.fill}" fill-opacity="0.97"/>`;
   const maskPath = `<path d="${bubbleGeometry.pathData}" fill="#ffffff"/>`;
@@ -1045,11 +1090,13 @@ function buildBubbleText(params: {
       fontFamily: TEXT_FONT_FAMILY,
       fontSize: params.fontSize,
       measuredTextWidth: metrics.rects[index].measuredTextWidth,
+      maxSideInset,
       paddingX: params.paddingX,
       radius: params.radius,
       rectangleWidth: bubbleGeometry.widths[index],
       requiredWidth: metrics.rects[index].requiredWidth,
       text: line,
+      visualWidth: bubbleGeometry.widths[index],
     })),
     mask: maskPath,
     text: textLines,

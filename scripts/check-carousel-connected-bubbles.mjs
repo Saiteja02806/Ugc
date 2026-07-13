@@ -10,7 +10,7 @@ const outputDir = path.join(
   workspaceRoot,
   ".tmp",
   "carousel-connected-bubbles",
-  "v8-patterns",
+  "v9-smoothed-patterns",
 );
 
 const {
@@ -18,11 +18,12 @@ const {
   buildConnectedBubblePath,
   inspectCarouselSlideLayout,
   renderCarouselSlide,
+  smoothConnectedBubbleWidths,
 } = await import("../lib/carousel/render-slide.ts");
 
 if (
   CAROUSEL_RENDERER_VERSION !==
-  "social-bubble-renderer-v8-connected-step-path"
+  "social-bubble-renderer-v9-smoothed-connected-path"
 ) {
   throw new Error(`Unexpected renderer version: ${CAROUSEL_RENDERER_VERSION}`);
 }
@@ -199,17 +200,11 @@ function checkPathGeometry() {
     stepRadius: 12,
     widths: [300],
   });
-  const normalized = buildConnectedBubblePath({
-    centerX: 540,
-    groupHeight: 110,
-    groupY: 300,
-    lineCenterOffset: 30,
-    lineStep: 50,
-    outerRadius: 16,
-    stepRadius: 12,
-    widths: [302, 309],
+  const snappedWidths = smoothConnectedBubbleWidths({
+    maxSideInset: 24,
+    requiredWidths: [302, 318],
   });
-  const preserved = buildConnectedBubblePath({
+  const snapped = buildConnectedBubblePath({
     centerX: 540,
     groupHeight: 110,
     groupY: 300,
@@ -217,19 +212,43 @@ function checkPathGeometry() {
     lineStep: 50,
     outerRadius: 16,
     stepRadius: 12,
-    widths: [220, 390],
+    widths: snappedWidths,
+  });
+  const controlledWidths = smoothConnectedBubbleWidths({
+    maxSideInset: 24,
+    requiredWidths: [700, 570],
+  });
+  const controlled = buildConnectedBubblePath({
+    centerX: 540,
+    groupHeight: 110,
+    groupY: 300,
+    lineCenterOffset: 30,
+    lineStep: 50,
+    outerRadius: 16,
+    stepRadius: 12,
+    widths: controlledWidths,
+  });
+  const bidirectionalWidths = smoothConnectedBubbleWidths({
+    maxSideInset: 22,
+    requiredWidths: [700, 570, 690],
   });
 
   if (!oneLine.pathData.startsWith("M ") || !oneLine.pathData.endsWith(" Z")) {
     throw new Error("One-line bubble did not produce one closed SVG path.");
   }
 
-  if (normalized.widths[0] !== 309 || normalized.widths[1] !== 309) {
-    throw new Error("Adjacent bubble widths below 16px were not normalized.");
+  if (snapped.widths[0] !== 318 || snapped.widths[1] !== 318) {
+    throw new Error("Adjacent side-width differences below 10px were not snapped.");
   }
 
-  if (preserved.widths[0] !== 220 || preserved.widths[1] !== 390) {
-    throw new Error("A meaningful connected-bubble step was incorrectly removed.");
+  if (controlled.widths[0] !== 700 || controlled.widths[1] !== 652) {
+    throw new Error("The connected-bubble side inset was not limited to 24px.");
+  }
+
+  if (bidirectionalWidths.join(",") !== "700,656,690") {
+    throw new Error(
+      `Bidirectional smoothing produced unexpected widths: ${bidirectionalWidths.join(",")}.`,
+    );
   }
 }
 
@@ -248,6 +267,10 @@ function assertLayout(id, diagnostics) {
   for (const line of diagnostics.lines) {
     if (line.rectangleWidth < line.requiredWidth) {
       throw new Error(`${id} rendered a bubble band narrower than its text.`);
+    }
+
+    if (line.visualWidth !== line.rectangleWidth) {
+      throw new Error(`${id} did not build the path from visualWidth.`);
     }
 
     if (line.rectangleWidth > diagnostics.maxBubbleWidth) {

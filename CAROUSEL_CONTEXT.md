@@ -615,6 +615,9 @@ Balanced carousel copy rules:
 - Headline/body overlap at 60% or more drops the optional headline, and body
   grammar validation rejects nearby repeated content words such as
   `leads to lost leads`.
+- `businessName` is authoritative for CTA brand names. Deterministic fallback
+  sanitizes stale or mismatched CTA ideas, and quantified social proof is
+  rejected even when an old analysis contains it.
 - Every generation stores raw initial/repair LLM responses, the normalized
   plan, planner version/model/source/fallback reason, validation result, and
   renderer version on `carousel_generations`.

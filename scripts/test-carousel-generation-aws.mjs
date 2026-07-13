@@ -58,9 +58,14 @@ if (result.backgroundJob.status !== "completed") {
   result.carousel.status !== "completed" ||
   result.slides.length !== template.slide_count ||
   result.carousel.content_planner_version !==
-    "llm-carousel-planner-v7-repetition-audit" ||
-  result.carousel.content_plan_source !== "llm" ||
-  result.carousel.content_plan_fallback_reason !== null ||
+    "llm-carousel-planner-v8-brand-safe-fallback" ||
+  !["deterministic-fallback", "llm"].includes(
+    result.carousel.content_plan_source,
+  ) ||
+  (result.carousel.content_plan_source === "llm" &&
+    result.carousel.content_plan_fallback_reason !== null) ||
+  (result.carousel.content_plan_source === "deterministic-fallback" &&
+    !result.carousel.content_plan_fallback_reason) ||
   result.carousel.renderer_version !==
     "social-bubble-renderer-v7-contained-line-rectangles" ||
   result.carousel.content_plan_validation?.ok !== true ||

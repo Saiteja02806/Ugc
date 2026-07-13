@@ -8,9 +8,9 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v12-concrete-outcome-guard";
+  "llm-carousel-planner-v16-solution-story-guard";
 
-const DEFAULT_MODEL = "gpt-4o-mini";
+const DEFAULT_MODEL = "gpt-4.1-mini";
 const MAX_BODY_LENGTH = 120;
 const MAX_HEADLINE_LENGTH = 50;
 const MAX_CTA_LENGTH = 34;
@@ -585,7 +585,7 @@ function hasNearbyRepeatedCopy(value: string) {
 
     for (
       let nextIndex = index + 1;
-      nextIndex < Math.min(tokens.length, index + 6);
+      nextIndex < Math.min(tokens.length, index + 11);
       nextIndex += 1
     ) {
       const nextToken = tokens[nextIndex];
@@ -634,12 +634,12 @@ function isProblemFramedCopy(value: string | null) {
     /\b(chaos|confusion|delays?|errors?|friction|harder|late night|missed|missing|overwhelmed|scattered|slows?|wastes?)\b/.test(
       normalized,
     );
-  const startsWithSolutionAction =
-    /^(avoid|automate|bring|connect|consolidate|keep|prevent|reduce|remove|replace|route|stop|use)\b/.test(
+  const hasSolutionAction =
+    /\b(avoid|automate|bring|connect|consolidate|keep|keeps|prevent|reduce|remove|replace|route|stop|use)\b/.test(
       normalized,
     );
 
-  return hasProblemSignal && !startsWithSolutionAction;
+  return hasProblemSignal && !hasSolutionAction;
 }
 
 export function validateCarouselContentPlan(
@@ -734,6 +734,9 @@ export function validateCarouselContentPlan(
       if (
         /^[a-z]/.test(slide.body) ||
         /\b([a-z][a-z'-]{2,})\s+\1\b/i.test(slide.body) ||
+        /\bplanning and reporting\b(?:\s+[a-z'-]+){0,5}\s+creates\b/i.test(
+          slide.body,
+        ) ||
         hasNearbyRepeatedCopy(slide.body) ||
         /\s+[,.!?]/.test(slide.body)
       ) {
@@ -895,7 +898,7 @@ function getTokenOverlap(left: string, right: string) {
 }
 
 function hasGenericCopy(value: string) {
-  return /\b(better (?:management|organization|outcomes?|results?)|boost your productivity|effectively|efficiently|effortlessly|enhance your marketing efforts|game changer|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|stay on top|streamline your workflow|transform your campaign management|unify your (?:planning and reporting|workflow)|unlock efficiency|with ease|work smarter)\b/i.test(
+  return /\b((?:achieve|enjoy|experience|gain) (?:better|greater|improved|more)|better (?:management|organization|outcomes?|results?)|boost your productivity|effectively|efficiently|effortlessly|enhance your marketing efforts|game changer|improved (?:clarity|organization|outcomes?|results?)|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|stay on top|streamline your workflow|transform your campaign management|unify your (?:planning and reporting|workflow)|unlock efficiency|with ease|work smarter)\b/i.test(
     value,
   );
 }
@@ -1023,7 +1026,8 @@ function buildRepairMessages(params: {
         "Do not repeat a connector within one short sentence, such as for better management for clearer decisions.",
         "Remove quantified social proof unless it appears verbatim in the analysis, and remove growth, money, revenue, profit, sales, or conversion claims not supported by the analysis.",
         "Use businessName exactly when naming the product. Never invent or substitute another product or brand in copy or imageDirection.",
-        "Never use these phrases: better management, better organization, boost productivity, effectively, efficiently, effortlessly, enhance your marketing efforts, seamless, streamline your workflow, transform your campaign management, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
+        "Never use abstract outcomes such as experience improved clarity, achieve better results, better management, or better organization.",
+        "Never use these phrases: boost productivity, effectively, efficiently, effortlessly, enhance your marketing efforts, seamless, streamline your workflow, transform your campaign management, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
         "If a headline repeats its body, set headline to null and use body_only instead of paraphrasing it.",
         "The final slide must use slideType cta and include a non-null ctaText.",
         "Keep one clear story: hook, friction, consequence, solution, useful result or CTA.",
@@ -1133,6 +1137,10 @@ function repairCopyText(
     .replace(/\blead to (?:missed|lost) leads\b/gi, "cause missed follow-ups")
     .replace(/\bleads to (?:missed|lost) leads\b/gi, "causes missed follow-ups")
     .replace(
+      /\b(planning and reporting\b(?:\s+[a-z'-]+){0,5})\s+creates\b/gi,
+      "$1 create",
+    )
+    .replace(
       /\bfor better management(?: for clearer campaign decisions)?\b/gi,
       "to keep campaign handoffs connected",
     )
@@ -1147,6 +1155,10 @@ function repairCopyText(
     .replace(
       /\b(?:hinder|impact|limit|slow) growth\b/gi,
       "create gaps in campaign follow-ups",
+    )
+    .replace(
+      /\bexperience improved clarity and organization\b/gi,
+      "keep planning and reporting in one workflow",
     )
     .replace(/\s+/g, " ")
     .trim();
@@ -1170,7 +1182,9 @@ function repairCopyText(
               : "with clearer next steps"
             : slideType === "solution"
               ? "inside one organized workspace"
-              : "during active campaign work";
+              : slideType === "hook"
+                ? "when deadlines start moving"
+                : "during active campaign work";
       repaired = `${stem} ${suffix}${punctuation}`;
     }
   }

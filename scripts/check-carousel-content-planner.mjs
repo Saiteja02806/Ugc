@@ -70,7 +70,7 @@ const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
 if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
-  fallbackPlan.plannerVersion !== "llm-carousel-planner-v12-concrete-outcome-guard" ||
+  fallbackPlan.plannerVersion !== "llm-carousel-planner-v16-solution-story-guard" ||
   !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");
@@ -421,6 +421,106 @@ if (
     .length > 0
 ) {
   failures.push("Planner did not replace a vague better-organization outcome.");
+}
+
+const vagueCtaFixture = structuredClone(workerParsed);
+vagueCtaFixture.slides[4] = {
+  ...vagueCtaFixture.slides[4],
+  body:
+    "Begin with CampaignFlow and experience improved clarity and organization.",
+  headline: null,
+  subtext:
+    "Begin with CampaignFlow and experience improved clarity and organization.",
+};
+const vagueCtaIssues =
+  workerPlanner.validateCarouselContentPlan(vagueCtaFixture, analysis);
+const normalizedVagueCta =
+  workerPlanner.normalizeRepairedCarouselCopy(vagueCtaFixture);
+
+if (
+  !vagueCtaIssues.some((issue) => issue.code === "generic_copy") ||
+  normalizedVagueCta.slides[4]?.body !==
+    "Begin with CampaignFlow and keep planning and reporting in one workflow." ||
+  workerPlanner.validateCarouselContentPlan(normalizedVagueCta, analysis)
+    .length > 0
+) {
+  failures.push("Planner did not replace an abstract improved-clarity CTA.");
+}
+
+const shortHookFixture = structuredClone(workerParsed);
+shortHookFixture.slides[0] = {
+  ...shortHookFixture.slides[0],
+  body: "Campaign work shouldn't spill into your evenings.",
+  headline: null,
+  subtext: "Campaign work shouldn't spill into your evenings.",
+  textMode: "body_only",
+};
+const normalizedShortHook =
+  workerPlanner.normalizeRepairedCarouselCopy(shortHookFixture);
+const repeatedHookFixture = structuredClone(normalizedShortHook);
+repeatedHookFixture.slides[0] = {
+  ...repeatedHookFixture.slides[0],
+  body:
+    "Campaign work shouldn't spill into your evenings during active campaign work.",
+  subtext:
+    "Campaign work shouldn't spill into your evenings during active campaign work.",
+};
+const repeatedHookIssues =
+  workerPlanner.validateCarouselContentPlan(repeatedHookFixture, analysis);
+
+if (
+  normalizedShortHook.slides[0]?.body !==
+    "Campaign work shouldn't spill into your evenings when deadlines start moving." ||
+  !repeatedHookIssues.some((issue) => issue.code === "grammar") ||
+  workerPlanner.validateCarouselContentPlan(normalizedShortHook, analysis)
+    .length > 0
+) {
+  failures.push("Planner did not repair or reject repeated short-hook copy.");
+}
+
+const compoundSubjectFixture = structuredClone(workerParsed);
+compoundSubjectFixture.slides[1] = {
+  ...compoundSubjectFixture.slides[1],
+  body:
+    "Campaign planning and reporting scattered across tools creates chaos.",
+  subtext:
+    "Campaign planning and reporting scattered across tools creates chaos.",
+};
+const compoundSubjectIssues =
+  workerPlanner.validateCarouselContentPlan(compoundSubjectFixture, analysis);
+const normalizedCompoundSubject =
+  workerPlanner.normalizeRepairedCarouselCopy(compoundSubjectFixture);
+
+if (
+  !compoundSubjectIssues.some((issue) => issue.code === "grammar") ||
+  normalizedCompoundSubject.slides[1]?.body !==
+    "Campaign planning and reporting scattered across tools create chaos." ||
+  workerPlanner.validateCarouselContentPlan(normalizedCompoundSubject, analysis)
+    .length > 0
+) {
+  failures.push("Planner did not repair a compound-subject agreement error.");
+}
+
+const supportedSolutionFixture = structuredClone(workerParsed);
+supportedSolutionFixture.slides[3] = {
+  ...supportedSolutionFixture.slides[3],
+  body:
+    "CampaignFlow keeps planning and reporting in one workspace to end scattered work.",
+  headline: "One workspace for your campaigns",
+  slideType: "solution",
+  subtext:
+    "CampaignFlow keeps planning and reporting in one workspace to end scattered work.",
+  textMode: "headline_body",
+};
+const normalizedSupportedSolution =
+  workerPlanner.normalizeRepairedCarouselCopy(supportedSolutionFixture);
+
+if (
+  normalizedSupportedSolution.slides[3]?.slideType !== "solution" ||
+  workerPlanner.validateCarouselContentPlan(normalizedSupportedSolution, analysis)
+    .some((issue) => issue.code === "story_structure")
+) {
+  failures.push("Planner reclassified supported solution copy as a problem.");
 }
 
 const shortHeadlineFixture = structuredClone(workerParsed);

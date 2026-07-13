@@ -70,10 +70,29 @@ const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
 if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
-  fallbackPlan.plannerVersion !== "llm-carousel-planner-v7-repetition-audit" ||
+  fallbackPlan.plannerVersion !== "llm-carousel-planner-v8-brand-safe-fallback" ||
   !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");
+}
+
+const contaminatedFallbackPlan = await workerPlanner.buildCarouselContentPlan({
+  analysis: {
+    ...analysis,
+    ctaIdeas: ["Get Notion free", "Join millions of users"],
+  },
+  candidateIndex: 0,
+  selectedAngle: "Why campaign work keeps leaking into the evening",
+  slideCount: 5,
+});
+const contaminatedFallbackCta =
+  contaminatedFallbackPlan.slides.at(-1)?.ctaText ?? "";
+
+if (
+  /notion|millions of users/i.test(contaminatedFallbackCta) ||
+  !contaminatedFallbackPlan.validationResult.ok
+) {
+  failures.push("Deterministic fallback retained a contaminated CTA idea.");
 }
 
 const badCopyFixture = structuredClone(fixture);

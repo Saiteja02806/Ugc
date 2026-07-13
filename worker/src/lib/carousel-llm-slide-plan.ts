@@ -8,7 +8,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v7-repetition-audit";
+  "llm-carousel-planner-v8-brand-safe-fallback";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 const MAX_BODY_LENGTH = 120;
@@ -574,6 +574,9 @@ export function validateCarouselContentPlan(
     .filter(Boolean);
   const evidenceText = normalizeValidationText(JSON.stringify(analysis ?? {}));
   const compactEvidenceText = evidenceText.replace(/\s+/g, "");
+  const compactBusinessName = normalizeValidationText(
+    analysis?.businessName ?? "",
+  ).replace(/\s+/g, "");
 
   for (const slide of plan.slides) {
     const texts = [
@@ -707,11 +710,7 @@ export function validateCarouselContentPlan(
           /\b(always|best|guarantee|guaranteed|never|perfect|number one|100 percent)\b/.test(
             normalizedText,
           ) ||
-          Boolean(
-            analysis &&
-              quantifiedClaim &&
-              !evidenceText.includes(quantifiedClaim),
-          ) ||
+          Boolean(quantifiedClaim) ||
           unsupportedOutcome ||
           claimsToAvoid.some((claim) => claim && normalizedText.includes(claim))
         );
@@ -728,22 +727,25 @@ export function validateCarouselContentPlan(
       ?.match(
         /^(?:Get|Install|Open|Start|Try|Use)\s+([A-Z][A-Za-z0-9]+)\b/,
       )?.[1];
-    const unrecognizedBrandName = analysis
-      ? [...texts, slide.imageDirection]
+    const ctaBrandMismatch = Boolean(
+      analysis &&
+        ctaNamedProduct &&
+        !compactBusinessName.includes(
+          normalizeValidationText(ctaNamedProduct).replace(/\s+/g, ""),
+        ),
+    );
+    const unrecognizedBrandName = ctaBrandMismatch
+      ? ctaNamedProduct
+      : analysis
+        ? [...texts, slide.imageDirection]
           .flatMap((text) => text.match(/\b[A-Z][a-z]+[A-Z][A-Za-z]*\b/g) ?? [])
-          .concat(
-            ctaNamedProduct &&
-              !/^(?:A|Free|Now|One|The|This|Today|Your)$/i.test(ctaNamedProduct)
-              ? [ctaNamedProduct]
-              : [],
-          )
           .find(
             (name) =>
               !compactEvidenceText.includes(
                 normalizeValidationText(name).replace(/\s+/g, ""),
               ),
-          )
-      : null;
+            )
+        : null;
 
     if (unrecognizedBrandName) {
       issues.push({
@@ -1245,6 +1247,7 @@ function buildValidatedFallbackSlides(
     /\b(calorie|fitness|food|health|meal|nutrition|protein|wellness|workout)\b/.test(
       analysisText,
     );
+  const businessName = analysis.businessName?.trim() ?? "";
   const headlines = isFitness
     ? [
         "Make meal logging fit real life",
@@ -1291,7 +1294,11 @@ function buildValidatedFallbackSlides(
       body,
       ctaText:
         slide.slideType === "cta"
-          ? sanitizeCtaText(slide.ctaText, isFitness ? "Log one meal" : "Open one project")
+          ? sanitizeCtaText(
+              slide.ctaText,
+              isFitness ? "Log one meal" : "Open one project",
+              businessName,
+            )
           : null,
       headline,
       listItems: [],
@@ -1306,13 +1313,33 @@ function buildValidatedFallbackSlides(
   });
 }
 
-function sanitizeCtaText(value: string | null, fallback: string) {
+function sanitizeCtaText(
+  value: string | null,
+  fallback: string,
+  businessName: string,
+) {
   const normalized = value
     ?.replace(/([!?.,])\1+/g, "$1")
     .replace(/\s+/g, " ")
     .trim();
+  const namedProduct = normalized
+    ?.match(/^(?:Get|Install|Open|Start|Try|Use)\s+([A-Z][A-Za-z0-9]+)\b/)?.[1];
+  const namedProductMismatch = Boolean(
+    namedProduct &&
+      !normalizeValidationText(businessName)
+        .replace(/\s+/g, "")
+        .includes(normalizeValidationText(namedProduct).replace(/\s+/g, "")),
+  );
 
-  if (!normalized || normalized.length > MAX_CTA_LENGTH || hasGenericCopy(normalized)) {
+  if (
+    !normalized ||
+    normalized.length > MAX_CTA_LENGTH ||
+    namedProductMismatch ||
+    /\b(?:hundreds|thousands|millions|billions) of (?:businesses|creators|customers|people|teams|users)\b/i.test(
+      normalized,
+    ) ||
+    hasGenericCopy(normalized)
+  ) {
     return fallback;
   }
 

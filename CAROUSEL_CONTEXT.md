@@ -827,26 +827,37 @@ Implemented:
   `scripts/check-carousel-worker-deployment.mjs`, exposed as
   `npm run worker:carousel-deployment:check`. It verifies the ECS task
   definition env and the latest CloudWatch startup log for matcher mode,
-  broad matcher version, image safety policy, and renderer version.
-- LLM slide planner with deterministic fallback.
+  broad matcher version, image safety policy, planner version, renderer
+  version, and Geist font availability.
+- LLM slide planner with one copy-repair pass, validated deterministic
+  fallback, and `gpt-4.1-mini` as the default quality model. Generated rows
+  store the raw initial/repair responses, normalized plan, planner version,
+  model, source, fallback reason, validation result, and renderer version.
 - Professional Sharp text renderer and AWS Carousel worker path.
-- AWS Carousel worker revision 18 runs image
-  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260713121938`
+- AWS Carousel worker revision 28 runs image
+  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:carousel-20260713152632`
   from task definition
-  `arn:aws:ecs:us-east-2:831963379461:task-definition/ugc-carousel-worker-task:18`.
-  It was deployed from the current local workspace, and startup metadata reports
-  git commit `58ae1d9fccb79ebcc1cff4bbb5ef8b5f03586f82`. The verified
-  startup log reports balanced planner
-  `llm-carousel-planner-v2-balanced-copy`, connected silhouette renderer
-  `social-bubble-renderer-v6-unified-text-silhouette`, broad matcher
-  `broad-runtime-matcher-v2` in `dry-run`, and safety policy
-  `object-only-no-human-v1`.
-- The connected-background renderer
-  `social-bubble-renderer-v6-unified-text-silhouette`. It draws every wrapped
-  heading or body group as one clipped white silhouette, registers the same
-  Geist font used by the web application inside the worker image, and writes
-  renderer-versioned, content-hashed S3 keys so regenerated slides do not reuse
-  old immutable CloudFront URLs.
+  `arn:aws:ecs:us-east-2:831963379461:task-definition/ugc-carousel-worker-task:28`.
+  Startup metadata reports git commit
+  `fa9b0a6733086d26419fcdd19a53a774e9279dc5`, planner
+  `llm-carousel-planner-v16-solution-story-guard`, renderer
+  `social-bubble-renderer-v7-contained-line-rectangles`, broad matcher
+  `broad-runtime-matcher-v2` in `dry-run`, safety policy
+  `object-only-no-human-v1`, and Geist Regular available at
+  `/usr/local/share/fonts/geist/Geist-Regular.ttf`.
+- Renderer `social-bubble-renderer-v7-contained-line-rectangles` replaces the
+  clipped connected silhouette with one radius-safe rounded rectangle per text
+  line. Rectangles overlap vertically to read as one bubble. Width is based on
+  measured visible ink plus horizontal padding and `radius + 6px` corner
+  safety; over-wide lines rewrap before any font reduction. A separate text
+  and background mask rejects a render whenever a visible text pixel falls
+  outside the white background.
+- Fresh production canary `167c2dd7-8372-4d25-ad7f-26429cb428fa` completed on
+  worker revision 28 with five new renderer-v7 CloudFront URLs. Its stored plan
+  uses model `gpt-4.1-mini`, source `llm`, planner v16, renderer v7, and a clean
+  five-step story. Visual review passed all five WebPs. CloudWatch containment
+  diagnostics reported `escapedTextPixels = 0` and
+  `textPixelContainmentPassed = true` on slides 1 through 5.
 - Supabase relevance metadata `runtime_exclusion_reason` and
   `near_duplicate_group`, including database constraints and a ready-pool index.
 - Marketing SaaS asset cleanup for wrong-bucket, human-form, people-on-screen,

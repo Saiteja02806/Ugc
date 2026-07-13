@@ -100,6 +100,7 @@ type SocialOAuthDatabase = {
 type OAuthTokenSet = {
   accessToken: string;
   expiresInSeconds?: number | null;
+  platformAccountId?: string | null;
   refreshToken?: string | null;
   scopes: string[];
   tokenType?: string | null;
@@ -113,8 +114,6 @@ type PlatformAccount = {
 };
 
 const STATE_TTL_MINUTES = 10;
-const DEFAULT_META_GRAPH_VERSION = "v20.0";
-
 let supabaseClient: SupabaseClient<SocialOAuthDatabase> | null = null;
 
 export async function createSocialAuthorization(params: {
@@ -218,6 +217,7 @@ export async function completeSocialOAuthCallback(params: {
   const account = await fetchPlatformAccount(
     params.platform,
     tokenSet.accessToken,
+    tokenSet.platformAccountId,
   );
 
   await upsertSocialConnection({
@@ -306,11 +306,11 @@ export function getMissingSocialOAuthEnvVars(platform?: SocialPlatform) {
   }
 
   if (!platform || platform === "instagram") {
-    if (!process.env.META_APP_ID?.trim()) {
-      missing.push("META_APP_ID");
+    if (!process.env.INSTAGRAM_APP_ID?.trim()) {
+      missing.push("INSTAGRAM_APP_ID");
     }
-    if (!process.env.META_APP_SECRET?.trim()) {
-      missing.push("META_APP_SECRET");
+    if (!process.env.INSTAGRAM_APP_SECRET?.trim()) {
+      missing.push("INSTAGRAM_APP_SECRET");
     }
   }
 
@@ -452,19 +452,29 @@ async function exchangeTikTokCode(code: string, redirectUri: string) {
 }
 
 async function exchangeInstagramCode(code: string, redirectUri: string) {
-  const shortTokenUrl = new URL(
-    `https://graph.facebook.com/${getMetaGraphVersion()}/oauth/access_token`,
-  );
-  shortTokenUrl.searchParams.set("client_id", getEnv("META_APP_ID"));
-  shortTokenUrl.searchParams.set("client_secret", getEnv("META_APP_SECRET"));
-  shortTokenUrl.searchParams.set("code", code);
-  shortTokenUrl.searchParams.set("redirect_uri", redirectUri);
+  const body = new URLSearchParams({
+    client_id: getEnv("INSTAGRAM_APP_ID"),
+    client_secret: getEnv("INSTAGRAM_APP_SECRET"),
+    code,
+    grant_type: "authorization_code",
+    redirect_uri: redirectUri,
+  });
 
-  const shortResponse = await fetch(shortTokenUrl);
+  const shortResponse = await fetch(
+    "https://api.instagram.com/oauth/access_token",
+    {
+      body,
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      method: "POST",
+    },
+  );
   const shortData = (await shortResponse.json().catch(() => null)) as {
     access_token?: string;
     expires_in?: number;
+    permissions?: string;
+    scope?: string;
     token_type?: string;
+    user_id?: number | string;
   } | null;
 
   if (!shortResponse.ok || !shortData?.access_token) {
@@ -475,30 +485,51 @@ async function exchangeInstagramCode(code: string, redirectUri: string) {
     );
   }
 
-  const longTokenUrl = new URL(
-    `https://graph.facebook.com/${getMetaGraphVersion()}/oauth/access_token`,
+  const longData = await exchangeInstagramLongLivedToken(
+    shortData.access_token,
+  ).catch(() => null);
+  const tokenData = longData?.access_token ? longData : shortData;
+  const scopes = splitScopes(
+    shortData.permissions ?? shortData.scope,
+    ",",
   );
-  longTokenUrl.searchParams.set("grant_type", "fb_exchange_token");
-  longTokenUrl.searchParams.set("client_id", getEnv("META_APP_ID"));
-  longTokenUrl.searchParams.set("client_secret", getEnv("META_APP_SECRET"));
-  longTokenUrl.searchParams.set("fb_exchange_token", shortData.access_token);
 
-  const longResponse = await fetch(longTokenUrl);
-  const longData = (await longResponse.json().catch(() => null)) as {
+  return {
+    accessToken: tokenData.access_token ?? shortData.access_token,
+    expiresInSeconds: tokenData.expires_in ?? shortData.expires_in ?? 3600,
+    platformAccountId:
+      typeof shortData.user_id === "string" ||
+      typeof shortData.user_id === "number"
+        ? String(shortData.user_id)
+        : null,
+    refreshToken: null,
+    scopes: scopes.length > 0 ? scopes : getInstagramScopes(),
+    tokenType: tokenData.token_type ?? "Bearer",
+  };
+}
+
+async function exchangeInstagramLongLivedToken(accessToken: string) {
+  const url = new URL("https://graph.instagram.com/access_token");
+  url.searchParams.set("grant_type", "ig_exchange_token");
+  url.searchParams.set("client_secret", getEnv("INSTAGRAM_APP_SECRET"));
+  url.searchParams.set("access_token", accessToken);
+
+  const response = await fetch(url);
+  const data = (await response.json().catch(() => null)) as {
     access_token?: string;
     expires_in?: number;
     token_type?: string;
   } | null;
-  const tokenData =
-    longResponse.ok && longData?.access_token ? longData : shortData;
 
-  return {
-    accessToken: tokenData.access_token ?? shortData.access_token,
-    expiresInSeconds: tokenData.expires_in,
-    refreshToken: null,
-    scopes: getInstagramScopes(),
-    tokenType: tokenData.token_type ?? "Bearer",
-  };
+  if (!response.ok || !data?.access_token) {
+    throw new SocialOAuthError(
+      "Instagram did not provide a long-lived access token.",
+      502,
+      "provider_exchange_failed",
+    );
+  }
+
+  return data;
 }
 
 async function exchangeYouTubeCode(
@@ -553,10 +584,11 @@ async function exchangeYouTubeCode(
 async function fetchPlatformAccount(
   platform: SocialPlatform,
   accessToken: string,
+  platformAccountId?: string | null,
 ): Promise<PlatformAccount> {
   switch (platform) {
     case "instagram":
-      return fetchInstagramAccount(accessToken);
+      return fetchInstagramAccount(accessToken, platformAccountId);
     case "tiktok":
       return fetchTikTokAccount(accessToken);
     case "youtube":
@@ -602,49 +634,51 @@ async function fetchTikTokAccount(accessToken: string) {
   };
 }
 
-async function fetchInstagramAccount(accessToken: string) {
-  const pagesUrl = new URL(
-    `https://graph.facebook.com/${getMetaGraphVersion()}/me/accounts`,
-  );
-  pagesUrl.searchParams.set(
+async function fetchInstagramAccount(
+  accessToken: string,
+  fallbackAccountId?: string | null,
+) {
+  const profileUrl = new URL("https://graph.instagram.com/me");
+  profileUrl.searchParams.set(
     "fields",
-    "id,name,instagram_business_account{id,name,username,profile_picture_url}",
+    "id,username,account_type,profile_picture_url",
   );
-  pagesUrl.searchParams.set("access_token", accessToken);
+  profileUrl.searchParams.set("access_token", accessToken);
 
-  const response = await fetch(pagesUrl);
+  const response = await fetch(profileUrl);
   const payload = (await response.json().catch(() => null)) as {
-    data?: Array<{
-      id?: string;
-      instagram_business_account?: {
-        id?: string;
-        name?: string;
-        profile_picture_url?: string;
-        username?: string;
-      };
-      name?: string;
-    }>;
+    account_type?: string;
+    id?: string;
+    name?: string;
+    profile_picture_url?: string;
+    username?: string;
   } | null;
-  const page = payload?.data?.find((item) => item.instagram_business_account?.id);
-  const instagramAccount = page?.instagram_business_account;
 
-  if (!response.ok || !instagramAccount?.id) {
+  if (!response.ok || !payload?.id) {
+    if (fallbackAccountId) {
+      return {
+        id: fallbackAccountId,
+        metadata: { profileLookupFailed: true },
+        name: "Instagram account",
+        username: null,
+      };
+    }
+
     throw new SocialOAuthError(
-      "No eligible Instagram professional account was found. Connect a professional Instagram account to a Facebook Page and try again.",
-      422,
-      "eligible_instagram_account_missing",
+      "Could not load the authorized Instagram account.",
+      502,
+      "account_lookup_failed",
     );
   }
 
   return {
-    id: instagramAccount.id,
+    id: payload.id,
     metadata: {
-      pageId: page?.id ?? null,
-      pageName: page?.name ?? null,
-      profilePictureUrl: instagramAccount.profile_picture_url ?? null,
+      accountType: payload.account_type ?? null,
+      profilePictureUrl: payload.profile_picture_url ?? null,
     },
-    name: instagramAccount.name ?? page?.name ?? "Instagram account",
-    username: instagramAccount.username ?? null,
+    name: payload.name ?? payload.username ?? "Instagram account",
+    username: payload.username ?? null,
   };
 }
 
@@ -774,10 +808,8 @@ function buildInstagramAuthorizationUrl(params: {
   redirectUri: string;
   state: string;
 }) {
-  const url = new URL(
-    `https://www.facebook.com/${getMetaGraphVersion()}/dialog/oauth`,
-  );
-  url.searchParams.set("client_id", getEnv("META_APP_ID"));
+  const url = new URL("https://www.instagram.com/oauth/authorize");
+  url.searchParams.set("client_id", getEnv("INSTAGRAM_APP_ID"));
   url.searchParams.set("redirect_uri", params.redirectUri);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", getInstagramScopes().join(","));
@@ -811,8 +843,8 @@ function getPlatformRedirectUri(platform: SocialPlatform) {
   switch (platform) {
     case "instagram":
       return (
-        process.env.META_REDIRECT_URI?.trim() ||
-        `${getSocialAppBaseUrl()}/api/social/meta/callback`
+        process.env.INSTAGRAM_REDIRECT_URI?.trim() ||
+        `${getSocialAppBaseUrl()}/api/social/instagram/callback`
       );
     case "tiktok":
       return (
@@ -885,10 +917,6 @@ function getSupabaseUrl() {
   );
 }
 
-function getMetaGraphVersion() {
-  return process.env.META_GRAPH_VERSION?.trim() || DEFAULT_META_GRAPH_VERSION;
-}
-
 function getTikTokScopes() {
   return splitScopes(
     process.env.TIKTOK_SCOPES || "user.info.basic,video.upload,video.publish",
@@ -899,7 +927,7 @@ function getTikTokScopes() {
 function getInstagramScopes() {
   return splitScopes(
     process.env.INSTAGRAM_SCOPES ||
-      "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement",
+      "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights",
     ",",
   );
 }

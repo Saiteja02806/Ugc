@@ -16,7 +16,7 @@ const INCREMENT_CATEGORY_IMAGE_USAGE_FUNCTION =
   "increment_category_image_asset_usage";
 const WEBSITE_ANALYSES_TABLE = "website_analyses";
 
-type Json =
+export type Json =
   | boolean
   | null
   | number
@@ -119,6 +119,13 @@ type CarouselGenerationRow = {
   candidate_count: number;
   candidate_index: number;
   category_slug: string | null;
+  content_plan_fallback_reason: string | null;
+  content_plan_normalized: Json | null;
+  content_plan_raw_response: Json | null;
+  content_plan_source: string | null;
+  content_plan_validation: Json | null;
+  content_planner_model: string | null;
+  content_planner_version: string | null;
   created_at: string;
   error_message: string | null;
   format: CarouselFormat;
@@ -127,6 +134,7 @@ type CarouselGenerationRow = {
   goal: string | null;
   id: string;
   project_id: string;
+  renderer_version: string | null;
   selected_angle: string | null;
   slide_count: number;
   status: CarouselGenerationStatus;
@@ -142,12 +150,20 @@ type CarouselGenerationInsert = {
   candidate_count?: number;
   candidate_index?: number;
   category_slug?: string | null;
+  content_plan_fallback_reason?: string | null;
+  content_plan_normalized?: Json | null;
+  content_plan_raw_response?: Json | null;
+  content_plan_source?: string | null;
+  content_plan_validation?: Json | null;
+  content_planner_model?: string | null;
+  content_planner_version?: string | null;
   error_message?: string | null;
   format?: CarouselFormat;
   generation_batch_id?: string;
   generation_source?: "auto_generated" | "manual";
   goal?: string | null;
   project_id: string;
+  renderer_version?: string | null;
   selected_angle?: string | null;
   slide_count?: number;
   status?: CarouselGenerationStatus;

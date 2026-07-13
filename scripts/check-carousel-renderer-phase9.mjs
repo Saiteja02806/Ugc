@@ -8,13 +8,37 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(__dirname, "..");
 const outputDir = path.join(workspaceRoot, ".tmp", "carousel-renderer-phase9");
 
-const { CAROUSEL_RENDERER_VERSION, renderCarouselSlide } = await import(
+const {
+  CAROUSEL_RENDERER_VERSION,
+  inspectCarouselSlideLayout,
+  renderCarouselSlide,
+} = await import(
   "../lib/carousel/render-slide.ts",
 );
 
 await mkdir(outputDir, { recursive: true });
 
 const cases = [
+  {
+    background: "exact-bubble-containment-regression",
+    backgroundKind: "dark-night-desk",
+    format: "4:5",
+    slide: {
+      body:
+        "Bring the scattered steps into one clearer workflow so the next action is easier to find before the launch slows down.",
+      ctaText: null,
+      headline: "Plan your day smarter with AI insights and reminders.",
+      imageDirection: "Object-only workstation with open central text space.",
+      listItems: [],
+      layoutPreset: "middle-statement",
+      slideNumber: 4,
+      slideType: "solution",
+      subtext:
+        "Bring the scattered steps into one clearer workflow so the next action is easier to find before the launch slows down.",
+      textMode: "headline_body",
+      textPosition: "center",
+    },
+  },
   {
     background: "headline-body",
     backgroundKind: "organized-desk",
@@ -67,10 +91,9 @@ const cases = [
       listItems: [
         "late-night snacking",
         "forgetting to log meals",
-        "guessing portions",
-        "eating out every weekend",
-        "losing motivation after 3 days",
-      ],
+          "guessing portions",
+          "eating out every weekend",
+        ],
       layoutPreset: "interactive-list",
       slideNumber: 3,
       slideType: "problem",
@@ -122,8 +145,27 @@ const cases = [
 ];
 
 const outputs = [];
+const diagnostics = [];
 
 for (const item of cases) {
+  const layoutDiagnostics = await inspectCarouselSlideLayout({
+    format: item.format,
+    slide: item.slide,
+  });
+
+  if (
+    !layoutDiagnostics.textPixelContainmentPassed ||
+    layoutDiagnostics.escapedTextPixels !== 0 ||
+    layoutDiagnostics.lines.some(
+      (line) =>
+        line.rectangleWidth < line.requiredWidth ||
+        line.rectangleWidth > layoutDiagnostics.maxBubbleWidth ||
+        line.cornerSafety < line.radius + 6,
+    )
+  ) {
+    throw new Error(`Text containment failed for ${item.background}.`);
+  }
+
   const background = await createBackground(item.backgroundKind);
   const rendered = await renderCarouselSlide({
     assetUrl: `data:image/jpeg;base64,${background.toString("base64")}`,
@@ -135,6 +177,7 @@ for (const item of cases) {
 
   await writeFile(outputPath, rendered);
   outputs.push(outputPath);
+  diagnostics.push({ case: item.background, ...layoutDiagnostics });
 }
 
 await writeContactSheet(outputs, path.join(outputDir, "contact-sheet.webp"));
@@ -144,6 +187,7 @@ console.log(
     {
       outputDir,
       outputs,
+      diagnostics,
       contactSheet: path.join(outputDir, "contact-sheet.webp"),
       rendererVersion: CAROUSEL_RENDERER_VERSION,
     },

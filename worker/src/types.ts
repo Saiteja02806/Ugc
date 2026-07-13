@@ -189,6 +189,13 @@ export type CarouselGenerationRow = {
   candidate_count: number;
   candidate_index: number;
   category_slug: string | null;
+  content_plan_fallback_reason: string | null;
+  content_plan_normalized: Json | null;
+  content_plan_raw_response: Json | null;
+  content_plan_source: string | null;
+  content_plan_validation: Json | null;
+  content_planner_model: string | null;
+  content_planner_version: string | null;
   created_at: string;
   error_message: string | null;
   format: CarouselFormat;
@@ -196,6 +203,7 @@ export type CarouselGenerationRow = {
   goal: string | null;
   id: string;
   project_id: string;
+  renderer_version: string | null;
   selected_angle: string | null;
   slide_count: number;
   status: CarouselGenerationStatus;
@@ -206,7 +214,15 @@ export type CarouselGenerationRow = {
 };
 
 export type CarouselGenerationUpdate = Partial<{
+  content_plan_fallback_reason: string | null;
+  content_plan_normalized: Json | null;
+  content_plan_raw_response: Json | null;
+  content_plan_source: string | null;
+  content_plan_validation: Json | null;
+  content_planner_model: string | null;
+  content_planner_version: string | null;
   error_message: string | null;
+  renderer_version: string | null;
   status: CarouselGenerationStatus;
   updated_at: string;
 }>;

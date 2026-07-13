@@ -6,6 +6,7 @@ import {
   updateCarouselGeneration,
   upsertCarouselSlides,
   type CarouselSlideInsert,
+  type Json,
 } from "@/lib/carousel/db";
 import { resolveCarouselBusinessVisualProfile } from "@/lib/carousel/business-visual-profile";
 import {
@@ -16,7 +17,7 @@ import {
 } from "@/lib/carousel/broad-runtime-visual-matcher";
 import {
   CAROUSEL_RENDERER_VERSION,
-  renderCarouselSlide,
+  renderCarouselSlideWithDiagnostics,
 } from "@/lib/carousel/render-slide";
 import { selectRuntimeVisualBucketAssets } from "@/lib/carousel/runtime-visual-bucket-matcher";
 import {
@@ -288,6 +289,17 @@ export async function generateCarousel({
       model: contentPlan.model,
       plannerVersion: contentPlan.plannerVersion,
       source: contentPlan.source,
+      validationResult: contentPlan.validationResult,
+    });
+    await updateCarouselGeneration(carouselId, {
+      content_plan_fallback_reason: contentPlan.fallbackReason,
+      content_plan_normalized: contentPlan.normalizedPlan as unknown as Json,
+      content_plan_raw_response: contentPlan.rawLlmResponse as unknown as Json,
+      content_plan_source: contentPlan.source,
+      content_plan_validation: contentPlan.validationResult as unknown as Json,
+      content_planner_model: contentPlan.model,
+      content_planner_version: contentPlan.plannerVersion,
+      renderer_version: CAROUSEL_RENDERER_VERSION,
     });
     const selectionSeed = [
       generation.categorySlug,
@@ -368,7 +380,7 @@ export async function generateCarousel({
         throw new Error(`No image asset was available for slide ${slide.slideNumber}.`);
       }
 
-      const slideBuffer = await renderCarouselSlide({
+      const renderedSlide = await renderCarouselSlideWithDiagnostics({
         assetUrl: asset.baseUrl,
         businessName:
           websiteAnalysis.analysis.businessName ?? websiteAnalysis.businessName,
@@ -376,8 +388,14 @@ export async function generateCarousel({
         slide,
         textStyle,
       });
+      console.info("Carousel slide text containment validated", {
+        carouselId,
+        diagnostics: renderedSlide.diagnostics,
+        rendererVersion: CAROUSEL_RENDERER_VERSION,
+        slideNumber: slide.slideNumber,
+      });
       const uploadedSlide = await uploadRenderedCarouselSlide({
-        buffer: slideBuffer,
+        buffer: renderedSlide.buffer,
         carouselId,
         format: generation.format,
         projectId: generation.projectId,
@@ -423,8 +441,10 @@ export async function generateCarousel({
         fallbackReason: contentPlan.fallbackReason,
         model: contentPlan.model,
         source: contentPlan.source,
+        validationResult: contentPlan.validationResult,
         version: contentPlan.plannerVersion,
       },
+      rendererVersion: CAROUSEL_RENDERER_VERSION,
       renderedSlideCount: slideRows.length,
       slideUrls: slideRows
         .map((slide) => slide.rendered_url)

@@ -612,6 +612,9 @@ Balanced carousel copy rules:
 - CTA commands that introduce a capitalized product name must use a name found
   in the analysis. Text mode is normalized again after a repeated or invalid
   optional headline is removed, so valid body copy remains renderable.
+- Headline/body overlap at 60% or more drops the optional headline, and body
+  grammar validation rejects nearby repeated content words such as
+  `leads to lost leads`.
 - Every generation stores raw initial/repair LLM responses, the normalized
   plan, planner version/model/source/fallback reason, validation result, and
   renderer version on `carousel_generations`.

@@ -8,7 +8,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v6-normalized-modes";
+  "llm-carousel-planner-v7-repetition-audit";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 const MAX_BODY_LENGTH = 120;
@@ -448,7 +448,7 @@ function shouldDropHeadline(params: {
   slideType: PlannedCarouselSlide["slideType"];
   textMode: CarouselTextMode;
 }) {
-  if (!params.headline || params.slideType === "hook" || params.slideType === "cta") {
+  if (!params.headline) {
     return false;
   }
 
@@ -475,7 +475,7 @@ function shouldDropHeadline(params: {
     }
   }
 
-  return overlap / headlineTokens.size >= 0.72;
+  return overlap / headlineTokens.size >= 0.6;
 }
 
 function normalizeTextMode(params: {
@@ -644,6 +644,9 @@ export function validateCarouselContentPlan(
       if (
         /^[a-z]/.test(slide.body) ||
         /\b([a-z][a-z'-]{2,})\s+\1\b/i.test(slide.body) ||
+        /\b([a-z][a-z'-]{3,})\b(?:\s+[a-z][a-z'-]*){1,3}\s+\1\b/i.test(
+          slide.body,
+        ) ||
         /\s+[,.!?]/.test(slide.body)
       ) {
         issues.push({
@@ -753,7 +756,7 @@ export function validateCarouselContentPlan(
     if (
       slide.headline &&
       slide.body &&
-      getTokenOverlap(slide.headline, slide.body) >= 0.7
+      getTokenOverlap(slide.headline, slide.body) >= 0.6
     ) {
       issues.push({
         code: "headline_body_repetition",
@@ -929,7 +932,7 @@ function buildRepairMessages(params: {
         "Every headline is optional; when present it must be 3-8 words, at most 50 characters, and at most two visual lines.",
         "Every body must be one complete, specific sentence of 8-20 words and at most 120 characters.",
         "List modes may use at most four total visual lines.",
-        "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors.",
+        "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors such as leads to lost leads.",
         "Remove quantified social proof unless it appears verbatim in the analysis, and remove money, revenue, profit, sales, or conversion claims not supported by the analysis.",
         "Use businessName exactly when naming the product. Never invent or substitute another product or brand in copy or imageDirection.",
         "Never use these phrases: boost productivity, efficiently, effortlessly, seamless, streamline your workflow, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
@@ -969,7 +972,7 @@ export function normalizeRepairedCarouselCopy<
           ? repairedHeadline
           : null;
       const headline =
-        usableHeadline && body && getTokenOverlap(usableHeadline, body) >= 0.7
+        usableHeadline && body && getTokenOverlap(usableHeadline, body) >= 0.6
           ? null
           : usableHeadline;
       const textMode =

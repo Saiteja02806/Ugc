@@ -70,7 +70,7 @@ const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
 if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
-  fallbackPlan.plannerVersion !== "llm-carousel-planner-v5-supported-claims" ||
+  fallbackPlan.plannerVersion !== "llm-carousel-planner-v6-normalized-modes" ||
   !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");
@@ -141,6 +141,44 @@ if (
   failures.push("Planner quality validation missed an invented product name.");
 }
 
+const unsupportedCtaBrandFixture = structuredClone(workerParsed);
+unsupportedCtaBrandFixture.slides[4] = {
+  ...unsupportedCtaBrandFixture.slides[4],
+  ctaText: "Get Notion free",
+};
+const unsupportedCtaBrandIssues = workerPlanner.validateCarouselContentPlan(
+  unsupportedCtaBrandFixture,
+  analysis,
+);
+
+if (
+  !unsupportedCtaBrandIssues.some(
+    (issue) =>
+      issue.code === "unsupported_claim" && issue.message.includes("Notion"),
+  )
+) {
+  failures.push("Planner quality validation missed a foreign CTA brand.");
+}
+
+const repeatedHeadlineFixture = structuredClone(fixture);
+repeatedHeadlineFixture.slides[3] = {
+  ...repeatedHeadlineFixture.slides[3],
+  body: "Automate workflows to keep campaign management in one clear place.",
+  headline: "Automate Workflows",
+  textMode: "headline_body",
+};
+const normalizedRepeatedHeadline = workerPlanner.parseCarouselContentPlan(
+  repeatedHeadlineFixture,
+  5,
+);
+
+if (
+  normalizedRepeatedHeadline.slides[3]?.headline !== null ||
+  normalizedRepeatedHeadline.slides[3]?.textMode !== "body_only"
+) {
+  failures.push("Planner retained headline_body after dropping a repeated headline.");
+}
+
 const shortHeadlineFixture = structuredClone(workerParsed);
 shortHeadlineFixture.slides[3] = {
   ...shortHeadlineFixture.slides[3],
@@ -172,6 +210,23 @@ if (
   workerPlanner.validateCarouselContentPlan(normalizedGenericCta).length > 0
 ) {
   failures.push("Planner did not repair a generic short CTA body.");
+}
+
+const brandedCtaFixture = structuredClone(workerParsed);
+brandedCtaFixture.slides[4] = {
+  ...brandedCtaFixture.slides[4],
+  body: "Start building your campaign with CampaignFlow today!",
+  subtext: "Start building your campaign with CampaignFlow today!",
+};
+const normalizedBrandedCta =
+  workerPlanner.normalizeRepairedCarouselCopy(brandedCtaFixture);
+
+if (
+  /\bwith\b.*\bwith\b/i.test(normalizedBrandedCta.slides[4]?.body ?? "") ||
+  workerPlanner.validateCarouselContentPlan(normalizedBrandedCta, analysis)
+    .length > 0
+) {
+  failures.push("Planner created a repeated preposition in a short branded CTA.");
 }
 
 const exactRegressionFixture = structuredClone(workerParsed);

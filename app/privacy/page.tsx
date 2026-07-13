@@ -55,7 +55,8 @@ export default function PrivacyPolicyPage() {
               Content information, such as uploaded videos, app recordings,
               product demos, screen recordings, images, captions, hashtags,
               titles, thumbnails, scheduled post times, publishing settings,
-              post status, and publishing logs.
+              post status, publishing logs, analytics, and post-performance
+              data returned by connected platforms.
             </li>
             <li>
               AI-assisted content information, such as user instructions,
@@ -83,7 +84,10 @@ export default function PrivacyPolicyPage() {
             <li>Store drafts, uploaded media, generated content, and scheduled posts.</li>
             <li>Connect social accounts at the user request.</li>
             <li>Upload, schedule, publish, and track post status when a user approves it.</li>
-            <li>Show connected account names, publishing settings, and post history.</li>
+            <li>
+              Show connected account names, publishing settings, post history,
+              analytics, and post-performance information.
+            </li>
             <li>Troubleshoot failed uploads, rendering jobs, publishing jobs, or account connections.</li>
             <li>Detect abuse, protect the service, and comply with legal and platform requirements.</li>
           </LegalList>
@@ -100,6 +104,11 @@ export default function PrivacyPolicyPage() {
             We do not sell TikTok, Instagram, or YouTube account data. We do not
             publish posts to connected accounts without the user reviewing and
             approving the post or schedule.
+          </p>
+          <p>
+            Users can disconnect social accounts from UGC Pilot where the
+            product provides that control, or they can revoke access through the
+            connected platform&apos;s account settings.
           </p>
           <p>
             UGC Pilot uses YouTube API Services when a user connects YouTube.
@@ -122,6 +131,13 @@ export default function PrivacyPolicyPage() {
             schedule and publish content. Users can disconnect a connected
             account at any time. When a user disconnects an account, we delete
             or revoke stored tokens where technically possible.
+          </p>
+          <p>
+            Access tokens and refresh tokens are retained while an account
+            remains connected and for only as long as needed to provide
+            authorized account, scheduling, publishing, and analytics features
+            unless a longer retention period is required for security, legal, or
+            dispute-resolution reasons.
           </p>
           <p>
             For YouTube, users can also manage third-party access from Google
@@ -206,6 +222,13 @@ export default function PrivacyPolicyPage() {
               https://getugcpilot.com/data-deletion
             </a>
             .
+          </p>
+          <p>
+            Deletion includes connected platform identifiers, stored access and
+            refresh tokens where technically possible, uploaded or generated
+            media, drafts, scheduled posts, captions, publishing records, and
+            stored analytics associated with the account, subject to limited
+            legal, security, billing, or dispute-resolution retention needs.
           </p>
           <p>
             For YouTube API data, when a user asks us to delete stored

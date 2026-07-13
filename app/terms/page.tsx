@@ -30,7 +30,12 @@ export default function TermsPage() {
           </p>
         </LegalSection>
 
-        <LegalSection title="User accounts">
+        <LegalSection title="Eligibility and user accounts">
+          <p>
+            Users must be old enough to use UGC Pilot under applicable law and
+            able to agree to these terms for themselves or for the business they
+            represent.
+          </p>
           <p>
             Users are responsible for keeping account credentials secure and for
             all activity under their account. Users must provide accurate
@@ -138,11 +143,26 @@ export default function TermsPage() {
           </p>
         </LegalSection>
 
+        <LegalSection title="Account suspension">
+          <p>
+            We may suspend or limit an account, connected account access, or
+            publishing features if we believe the account is being used for
+            prohibited content, unauthorized account access, spam, platform
+            manipulation, security abuse, non-payment, or activity that may
+            violate applicable law or connected platform rules.
+          </p>
+        </LegalSection>
+
         <LegalSection title="Payments">
           <p>
             If billing is enabled, users agree to pay the fees shown at checkout
             or in their subscription settings. Payment processing may be handled
             by a third-party payment provider.
+          </p>
+          <p>
+            Users are responsible for managing cancellations, renewals, and
+            payment-method updates through the billing controls provided in the
+            product or by contacting support.
           </p>
         </LegalSection>
 
@@ -151,6 +171,31 @@ export default function TermsPage() {
             UGC Pilot may change, pause, or discontinue features. Publishing
             features depend on third-party platform APIs, approvals, scopes,
             rate limits, and platform availability.
+          </p>
+          <p>
+            Scheduled posts may fail, be delayed, or require user action because
+            of platform outages, expired permissions, account restrictions,
+            unsupported formats, rights or disclosure settings, or other
+            third-party platform requirements.
+          </p>
+        </LegalSection>
+
+        <LegalSection title="Liability">
+          <p>
+            To the maximum extent permitted by law, UGC Pilot is not liable for
+            indirect, incidental, consequential, special, exemplary, or punitive
+            damages, or for lost profits, lost revenue, lost data, failed
+            publishing, delayed scheduling, account restrictions, or platform
+            actions caused by third-party services or user content.
+          </p>
+        </LegalSection>
+
+        <LegalSection title="Disputes">
+          <p>
+            Users should contact support first so we can try to resolve account,
+            billing, publishing, or content disputes informally. These terms do
+            not limit any rights users may have under laws that cannot be waived
+            by contract.
           </p>
         </LegalSection>
 

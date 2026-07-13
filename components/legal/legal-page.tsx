@@ -4,9 +4,11 @@ import Link from "next/link";
 import { ProductLogoMark } from "@/components/brand/product-logo";
 
 const publicLinks = [
-  { label: "Privacy", href: "/privacy" },
-  { label: "Terms", href: "/terms" },
-  { label: "Data deletion", href: "/data-deletion" },
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms of Service", href: "/terms" },
+  { label: "Data Deletion", href: "/data-deletion" },
+  { label: "Acceptable Use", href: "/acceptable-use" },
+  { label: "Cookie Policy", href: "/cookies" },
   { label: "Contact", href: "/contact" },
 ];
 
@@ -81,12 +83,24 @@ export function LegalPageShell({
       </article>
 
       <footer className="border-t border-[#e1e1e6] bg-white px-5 py-6 sm:px-8 lg:px-10">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm text-[#5a5b64] md:flex-row md:items-center md:justify-between">
-          <p className="font-semibold">&copy; 2026 UGC Pilot</p>
-          <div className="flex flex-wrap gap-x-5 gap-y-2 font-semibold">
-            <a href="mailto:support@getugcpilot.com">support@getugcpilot.com</a>
-            <a href="mailto:privacy@getugcpilot.com">privacy@getugcpilot.com</a>
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm text-[#5a5b64]">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <p className="font-semibold">
+              &copy; 2026 UGC Pilot. All rights reserved.
+            </p>
+            <div className="flex flex-wrap gap-x-5 gap-y-2 font-semibold">
+              <a href="mailto:support@getugcpilot.com">
+                support@getugcpilot.com
+              </a>
+              <a href="mailto:privacy@getugcpilot.com">
+                privacy@getugcpilot.com
+              </a>
+            </div>
           </div>
+          <p>
+            UGC Pilot is an independent service and is not affiliated with,
+            endorsed by, or sponsored by Meta, TikTok, or Google.
+          </p>
         </div>
       </footer>
     </main>
@@ -99,7 +113,7 @@ export function LegalSection({ children, title }: LegalSectionProps) {
       <h2 className="text-xl font-black tracking-normal text-[#19191d]">
         {title}
       </h2>
-      <div className="mt-4 space-y-4 text-[15px] leading-7 text-[#4f5058]">
+      <div className="mt-4 flex flex-col gap-4 text-[15px] leading-7 text-[#4f5058]">
         {children}
       </div>
     </section>
@@ -107,7 +121,7 @@ export function LegalSection({ children, title }: LegalSectionProps) {
 }
 
 export function LegalList({ children }: { children: ReactNode }) {
-  return <ul className="list-disc space-y-2 pl-5">{children}</ul>;
+  return <ul className="flex list-disc flex-col gap-2 pl-5">{children}</ul>;
 }
 
 export function LegalNotice({ children }: { children: ReactNode }) {

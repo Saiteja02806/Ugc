@@ -70,7 +70,7 @@ const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
 if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
-  fallbackPlan.plannerVersion !== "llm-carousel-planner-v9-copy-grammar-guard" ||
+  fallbackPlan.plannerVersion !== "llm-carousel-planner-v10-contextual-copy-repair" ||
   !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");
@@ -309,6 +309,52 @@ if (
   workerPlanner.validateCarouselContentPlan(normalizedConsequence).length > 0
 ) {
   failures.push("Planner did not repair a consequence mislabeled as a solution.");
+}
+
+const contextualRepairFixture = structuredClone(workerParsed);
+contextualRepairFixture.slides[1] = {
+  ...contextualRepairFixture.slides[1],
+  body: "Manual reporting wastes time and increases errors.",
+  subtext: "Manual reporting wastes time and increases errors.",
+};
+contextualRepairFixture.slides[2] = {
+  ...contextualRepairFixture.slides[2],
+  body: "Missed leads create frustration and lost opportunities.",
+  headline: null,
+  listItems: [],
+  slideType: "problem",
+  subtext: "Missed leads create frustration and lost opportunities.",
+  textMode: "body_only",
+};
+contextualRepairFixture.slides[3] = {
+  ...contextualRepairFixture.slides[3],
+  body: "Automate workflows and consolidate your marketing analytics.",
+  headline: null,
+  slideType: "solution",
+  subtext: "Automate workflows and consolidate your marketing analytics.",
+  textMode: "body_only",
+};
+contextualRepairFixture.slides[4] = {
+  ...contextualRepairFixture.slides[4],
+  body: "Try CampaignFlow today and transform your campaign management.",
+  subtext: "Try CampaignFlow today and transform your campaign management.",
+};
+const normalizedContextualRepair =
+  workerPlanner.normalizeRepairedCarouselCopy(contextualRepairFixture);
+
+if (
+  normalizedContextualRepair.slides[1]?.body !==
+    "Manual reporting wastes time and increases errors during active campaign work." ||
+  normalizedContextualRepair.slides[2]?.body !==
+    "Missed leads create frustration and lost opportunities during active campaign work." ||
+  normalizedContextualRepair.slides[3]?.body !==
+    "Automate workflows and consolidate your marketing analytics inside one organized workspace." ||
+  normalizedContextualRepair.slides[4]?.body !==
+    "Try CampaignFlow today and organize your next campaign handoff." ||
+  workerPlanner.validateCarouselContentPlan(normalizedContextualRepair, analysis)
+    .length > 0
+) {
+  failures.push("Planner did not apply contextual short-copy repairs.");
 }
 
 const shortHeadlineFixture = structuredClone(workerParsed);

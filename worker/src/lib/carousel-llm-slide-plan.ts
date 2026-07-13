@@ -8,7 +8,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v9-copy-grammar-guard";
+  "llm-carousel-planner-v10-contextual-copy-repair";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 const MAX_BODY_LENGTH = 120;
@@ -895,7 +895,7 @@ function getTokenOverlap(left: string, right: string) {
 }
 
 function hasGenericCopy(value: string) {
-  return /\b(better management|boost your productivity|efficiently|effortlessly|game changer|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|stay on top|streamline your workflow|unify your (?:planning and reporting|workflow)|unlock efficiency|with ease|work smarter)\b/i.test(
+  return /\b(better management|boost your productivity|efficiently|effortlessly|game changer|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|stay on top|streamline your workflow|transform your campaign management|unify your (?:planning and reporting|workflow)|unlock efficiency|with ease|work smarter)\b/i.test(
     value,
   );
 }
@@ -1023,7 +1023,7 @@ function buildRepairMessages(params: {
         "Do not repeat a connector within one short sentence, such as for better management for clearer decisions.",
         "Remove quantified social proof unless it appears verbatim in the analysis, and remove money, revenue, profit, sales, or conversion claims not supported by the analysis.",
         "Use businessName exactly when naming the product. Never invent or substitute another product or brand in copy or imageDirection.",
-        "Never use these phrases: boost productivity, efficiently, effortlessly, seamless, streamline your workflow, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
+        "Never use these phrases: boost productivity, efficiently, effortlessly, seamless, streamline your workflow, transform your campaign management, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
         "If a headline repeats its body, set headline to null and use body_only instead of paraphrasing it.",
         "The final slide must use slideType cta and include a non-null ctaText.",
         "Keep one clear story: hook, friction, consequence, solution, useful result or CTA.",
@@ -1134,6 +1134,10 @@ function repairCopyText(
       /\bfor better management(?: for clearer campaign decisions)?\b/gi,
       "to keep campaign handoffs connected",
     )
+    .replace(
+      /\btransform your campaign management\b/gi,
+      "organize your next campaign handoff",
+    )
     .replace(/\s+/g, " ")
     .trim();
 
@@ -1154,9 +1158,9 @@ function repairCopyText(
             ? /\bwith\b/i.test(stem)
               ? "and make the next step clear"
               : "with clearer next steps"
-            : /\bfor\b/i.test(stem)
-              ? "to clarify campaign decisions"
-              : "for clearer campaign decisions";
+            : slideType === "solution"
+              ? "inside one organized workspace"
+              : "during active campaign work";
       repaired = `${stem} ${suffix}${punctuation}`;
     }
   }

@@ -42,11 +42,12 @@ export default async function DataDeletionPage({
 
         <LegalSection title="How to request deletion">
           <LegalList>
-            <li>Log in to your UGC Pilot account.</li>
-            <li>Go to Settings or Connected Accounts.</li>
-            <li>Disconnect TikTok, Instagram, YouTube, or another connected account.</li>
-            <li>Delete drafts, uploaded media, generated content, or scheduled posts.</li>
-            <li>Request account deletion from account settings where available.</li>
+            <li>Sign in to UGC Pilot.</li>
+            <li>Open Settings.</li>
+            <li>Select Connected Accounts.</li>
+            <li>Disconnect Instagram, TikTok, or YouTube.</li>
+            <li>Open Account Settings.</li>
+            <li>Select Delete Account and Data.</li>
           </LegalList>
           <p>
             You can also request deletion by emailing{" "}
@@ -59,11 +60,12 @@ export default async function DataDeletionPage({
 
         <LegalSection title="What we delete">
           <LegalList>
-            <li>Connected social account IDs.</li>
+            <li>Connected platform identifiers and social account IDs.</li>
             <li>Access tokens and refresh tokens where technically possible.</li>
             <li>Uploaded media, product demos, app recordings, and screen recordings.</li>
             <li>Generated videos, generated carousels, drafts, captions, and thumbnails.</li>
             <li>Scheduled posts and publishing logs where deletion is legally and technically possible.</li>
+            <li>Stored analytics associated with the account.</li>
             <li>Stored AI disclosure, commercial disclosure, and rights confirmation settings.</li>
           </LegalList>
         </LegalSection>

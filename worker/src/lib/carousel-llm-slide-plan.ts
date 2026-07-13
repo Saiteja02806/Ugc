@@ -8,7 +8,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v3-validated-repair";
+  "llm-carousel-planner-v4-optional-headline-repair";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 const MAX_BODY_LENGTH = 120;
@@ -200,7 +200,7 @@ export async function buildCarouselContentPlan(
       throw new Error("OpenAI returned no repaired carousel plan content.");
     }
 
-    const repairedPlan = repairNormalizedCopy(
+    const repairedPlan = normalizeRepairedCarouselCopy(
       parseCarouselContentPlanShape(
         JSON.parse(repairRawResponse),
         slideCount,
@@ -399,6 +399,7 @@ function parseCarouselContentPlanShape(
 
 function hasProhibitedVisualSubject(value: string) {
   const validationText = value
+    .replace(/\b(?:clock|watch)(?:\s+with)?\s+hands?\b/gi, "")
     .replace(NEGATED_VISUAL_SUBJECT_PATTERN, "")
     .replace(/\b(?:object-only|people-free|person-free|face-free|human-free)\b/gi, "");
 
@@ -753,7 +754,7 @@ function getTokenOverlap(left: string, right: string) {
 }
 
 function hasGenericCopy(value: string) {
-  return /\b(boost your productivity|efficiently|effortlessly|game changer|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|stay on top|streamline your workflow|unify your (?:planning and reporting|workflow)|unlock efficiency|work smarter)\b/i.test(
+  return /\b(boost your productivity|efficiently|effortlessly|game changer|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|stay on top|streamline your workflow|unify your (?:planning and reporting|workflow)|unlock efficiency|with ease|work smarter)\b/i.test(
     value,
   );
 }
@@ -874,7 +875,7 @@ function buildRepairMessages(params: {
         "Every body must be one complete, specific sentence of 8-20 words and at most 120 characters.",
         "List modes may use at most four total visual lines.",
         "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors.",
-        "Never use these phrases: boost productivity, efficiently, effortlessly, seamless, streamline your workflow, unify your planning and reporting, unlock efficiency, next level, one workspace for everything, save time, stay on top, or work smarter.",
+        "Never use these phrases: boost productivity, efficiently, effortlessly, seamless, streamline your workflow, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
         "If a headline repeats its body, set headline to null and use body_only instead of paraphrasing it.",
         "The final slide must use slideType cta and include a non-null ctaText.",
         "Keep one clear story: hook, friction, consequence, solution, useful result or CTA.",
@@ -889,7 +890,9 @@ function buildRepairMessages(params: {
   ];
 }
 
-function repairNormalizedCopy<T extends ReturnType<typeof parseCarouselContentPlanShape>>(
+export function normalizeRepairedCarouselCopy<
+  T extends ReturnType<typeof parseCarouselContentPlanShape>,
+>(
   plan: T,
 ) {
   return {
@@ -901,10 +904,17 @@ function repairNormalizedCopy<T extends ReturnType<typeof parseCarouselContentPl
       const repairedHeadline = slide.headline
         ? repairCopyText(slide.headline, false)
         : null;
+      const usableHeadline =
+        repairedHeadline &&
+        countWords(repairedHeadline) >= MIN_HEADLINE_WORDS &&
+        countWords(repairedHeadline) <= MAX_HEADLINE_WORDS &&
+        repairedHeadline.length <= MAX_HEADLINE_LENGTH
+          ? repairedHeadline
+          : null;
       const headline =
-        repairedHeadline && body && getTokenOverlap(repairedHeadline, body) >= 0.7
+        usableHeadline && body && getTokenOverlap(usableHeadline, body) >= 0.7
           ? null
-          : repairedHeadline;
+          : usableHeadline;
       const textMode =
         slide.textMode === "question_list" || slide.textMode === "checklist"
           ? slide.textMode
@@ -963,6 +973,7 @@ function repairCopyText(
     .replace(/\bseamless(?:ly)?\b/gi, "connected")
     .replace(/\befficiently\b/gi, "with fewer handoffs")
     .replace(/\bunify your (?:planning and reporting|workflow)\b/gi, "connect campaign plans and reports")
+    .replace(/\bwith ease\b/gi, "with clear next steps")
     .replace(/\s+/g, " ")
     .trim();
 

@@ -57,7 +57,7 @@ if (result.backgroundJob.status !== "completed") {
   result.carousel.status !== "completed" ||
   result.slides.length !== template.slide_count ||
   result.carousel.content_planner_version !==
-    "llm-carousel-planner-v3-validated-repair" ||
+    "llm-carousel-planner-v4-optional-headline-repair" ||
   result.carousel.renderer_version !==
     "social-bubble-renderer-v7-contained-line-rectangles" ||
   result.carousel.content_plan_validation?.ok !== true ||

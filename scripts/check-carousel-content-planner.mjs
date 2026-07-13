@@ -48,6 +48,16 @@ try {
   }
 }
 
+const clockHandsFixture = structuredClone(fixture);
+clockHandsFixture.slides[2].imageDirection =
+  "A clock with hands moving quickly beside scattered campaign papers.";
+
+try {
+  workerPlanner.parseCarouselContentPlan(clockHandsFixture, 5);
+} catch {
+  failures.push("Planner treated clock hands as a prohibited human subject.");
+}
+
 process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
 const analysis = createAnalysisFixture();
 const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
@@ -60,7 +70,7 @@ const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
 if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
-  fallbackPlan.plannerVersion !== "llm-carousel-planner-v3-validated-repair" ||
+  fallbackPlan.plannerVersion !== "llm-carousel-planner-v4-optional-headline-repair" ||
   !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");
@@ -94,6 +104,39 @@ const qualityIssues = workerPlanner.validateCarouselContentPlan({
 
 if (!qualityIssues.some((issue) => issue.code === "generic_copy")) {
   failures.push("Planner quality validation missed generic copy.");
+}
+
+const shortHeadlineFixture = structuredClone(workerParsed);
+shortHeadlineFixture.slides[3] = {
+  ...shortHeadlineFixture.slides[3],
+  headline: "Automated Workflows",
+  textMode: "headline_body",
+};
+const normalizedShortHeadline =
+  workerPlanner.normalizeRepairedCarouselCopy(shortHeadlineFixture);
+
+if (
+  normalizedShortHeadline.slides[3]?.headline !== null ||
+  normalizedShortHeadline.slides[3]?.textMode !== "body_only" ||
+  workerPlanner.validateCarouselContentPlan(normalizedShortHeadline).length > 0
+) {
+  failures.push("Planner did not drop an invalid optional repaired headline.");
+}
+
+const genericCtaFixture = structuredClone(workerParsed);
+genericCtaFixture.slides[4] = {
+  ...genericCtaFixture.slides[4],
+  body: "Start building your campaign with ease today.",
+  subtext: "Start building your campaign with ease today.",
+};
+const normalizedGenericCta =
+  workerPlanner.normalizeRepairedCarouselCopy(genericCtaFixture);
+
+if (
+  /\bwith ease\b/i.test(normalizedGenericCta.slides[4]?.body ?? "") ||
+  workerPlanner.validateCarouselContentPlan(normalizedGenericCta).length > 0
+) {
+  failures.push("Planner did not repair a generic short CTA body.");
 }
 
 const exactRegressionFixture = structuredClone(workerParsed);

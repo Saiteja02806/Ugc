@@ -601,6 +601,11 @@ Balanced carousel copy rules:
   endings, generic copy, repeated ideas, unsupported claims, grammar problems,
   and overlong copy. Invalid LLM output receives one short repair pass before a
   validated deterministic fallback is considered.
+- Because headlines are optional, a repaired headline that still violates the
+  3-8 word or 50-character limit is removed and its valid body is preserved as
+  `body_only`; it must not force the whole repaired LLM plan into fallback.
+- Object-only safety validation treats clock and watch hands as object parts,
+  while continuing to reject human hands and other prohibited human subjects.
 - Every generation stores raw initial/repair LLM responses, the normalized
   plan, planner version/model/source/fallback reason, validation result, and
   renderer version on `carousel_generations`.

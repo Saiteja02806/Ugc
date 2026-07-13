@@ -24,6 +24,23 @@ The priority order is:
 
 Relevance and uniqueness may degrade. Safety may not.
 
+## Library-to-Social Scheduling Boundary
+
+Scheduling entry points operate only on complete carousels saved in the server
+Library with a real `library_items.id`. Browser-only fallback items cannot open
+the scheduling flow.
+
+Both Trending and Library use the same platform-selection modal. Trending first
+saves the complete carousel to the server Library, then opens the modal with the
+server `libraryItemId`, source `carouselId`, and return location. Library opens
+the same modal directly for server-backed items.
+
+The current scheduling slice stops after account connection and platform
+selection. It does not create local scheduling drafts, mark Trending assignments
+as scheduled, choose a date or time, enqueue publishing, or publish content.
+After at least one connected platform is selected, the UI confirms the selection
+and closes the modal while clearly stating that no post has been scheduled yet.
+
 ## Non-Negotiable Image Safety
 
 Carousel background images must not contain any human presence:

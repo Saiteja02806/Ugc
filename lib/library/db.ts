@@ -193,7 +193,7 @@ export async function saveGeneratedCarouselToLibrary(input: {
     throw new Error("Library save returned no item.");
   }
 
-  const item = await getLibraryCarouselItem({
+  const item = await getLibraryCarouselItemForUser({
     itemId: data.item_id,
     userId: input.userId,
   });
@@ -262,7 +262,7 @@ export async function removeLibraryCarouselItem(params: {
   return Boolean(data?.id);
 }
 
-async function getLibraryCarouselItem(params: {
+export async function getLibraryCarouselItemForUser(params: {
   itemId: string;
   userId: string;
 }) {

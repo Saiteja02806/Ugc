@@ -154,6 +154,7 @@ for (const item of cases) {
   });
 
   if (
+    layoutDiagnostics.bubbleShapeStrategy !== "connected-step-path" ||
     !layoutDiagnostics.textPixelContainmentPassed ||
     layoutDiagnostics.escapedTextPixels !== 0 ||
     layoutDiagnostics.lines.some(

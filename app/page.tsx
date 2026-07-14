@@ -20,7 +20,7 @@ import { ProductLogoMark } from "@/components/brand/product-logo";
 const authHref = "/sign-in";
 
 const navItems = [
-  { label: "Pricing", href: "#final-cta" },
+  { label: "Pricing", href: "/pricing" },
 ];
 
 const productWorkflowSteps = [
@@ -122,7 +122,7 @@ const responsibilityPoints = [
 
 const productFooterLinks = [
   { label: "How it works", href: "#product" },
-  { label: "Pricing", href: "#final-cta" },
+  { label: "Pricing", href: "/pricing" },
   { label: "Connected accounts", href: "#connected-accounts" },
   { label: "Supported platforms", href: "#connected-accounts" },
 ];

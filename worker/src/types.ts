@@ -23,6 +23,7 @@ export type BackgroundJobType =
   | "publish_social_post"
   | "render_demo_video"
   | "render_edit_video"
+  | "render_schedule_combination"
   | "test_worker_job";
 
 export type BackgroundJobRow = {
@@ -95,7 +96,8 @@ type MediaAssetInsert = {
     | "catalog_influencer"
     | "generated_image"
     | "generated_video"
-    | "edit_export";
+    | "edit_export"
+    | "combined_render";
   status: "uploading" | "processing" | "ready" | "failed";
   storage_key: string;
   thumbnail_url: string | null;
@@ -340,6 +342,23 @@ export type BackgroundJobsDatabase = {
           deleted_at: string | null;
         };
         Update: Partial<MediaAssetInsert> & { deleted_at?: string | null };
+      };
+      scheduled_posts: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: {
+          id: string;
+          media_asset_id: string | null;
+          metadata: Json;
+          project_id: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Update: Partial<{
+          media_asset_id: string | null;
+          metadata: Json;
+          updated_at: string;
+        }>;
       };
       video_render_jobs: {
         Insert: Record<string, never>;

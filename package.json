@@ -93,6 +93,8 @@
     "demo:cors:apply": "node scripts/apply-demo-upload-cors.mjs",
     "demo:cors:check": "node scripts/check-demo-upload-cors.mjs",
     "worker:test:e2e": "node scripts/test-worker-job-e2e.mjs",
+    "social-publish:test": "node --test lambda/social-publish-worker/index.test.mjs",
+    "social-publish:queue-test": "node scripts/test-social-publish-queue.mjs",
     "worker:start": "node worker/dist/index.js",
     "avatars:thumbnails:backfill": "node scripts/backfill-avatar-thumbnails.mjs",
     "avatars:thumbnails:backfill:dry-run": "node scripts/backfill-avatar-thumbnails.mjs --dry-run --check-existing",
@@ -102,6 +104,7 @@
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.1079.0",
     "@aws-sdk/client-s3": "^3.1075.0",
+    "@aws-sdk/client-scheduler": "^3.1087.0",
     "@aws-sdk/client-sqs": "^3.1076.0",
     "@aws-sdk/s3-request-presigner": "^3.1075.0",
     "@base-ui/react": "^1.6.0",

@@ -5,6 +5,7 @@ import {
   scheduleSourceTypes,
   type ScheduleDraft,
   type ScheduleDraftInput,
+  type ScheduleMediaSelection,
   type ScheduleDraftStatus,
   type SchedulePlatform,
   type SchedulePostType,
@@ -70,7 +71,10 @@ export function createScheduleDraft(input: ScheduleDraftInput = {}): ScheduleDra
 
   return {
     caption: input.caption ?? "",
+    combinedMedia: normalizeScheduleMediaSelection(input.combinedMedia) ?? undefined,
     createdAt: now,
+    demoMedia: normalizeScheduleMediaSelection(input.demoMedia) ?? undefined,
+    hookMedia: normalizeScheduleMediaSelection(input.hookMedia) ?? undefined,
     id: input.id ?? createScheduleDraftId(),
     mediaTitle: normalizeOptionalString(input.mediaTitle) ?? undefined,
     mediaUrl: normalizeOptionalString(input.mediaUrl) ?? undefined,
@@ -129,6 +133,9 @@ export function duplicateScheduleDraft(draftId: string) {
 
   const duplicate = createScheduleDraft({
     caption: draft.caption,
+    combinedMedia: draft.combinedMedia,
+    demoMedia: draft.demoMedia,
+    hookMedia: draft.hookMedia,
     mediaTitle: draft.mediaTitle,
     mediaUrl: draft.mediaUrl,
     platforms: draft.platforms,
@@ -202,7 +209,10 @@ function normalizeScheduleDraft(value: unknown): ScheduleDraft | null {
 
   return {
     caption: normalizeString(record.caption) ?? "",
+    combinedMedia: normalizeScheduleMediaSelection(record.combinedMedia) ?? undefined,
     createdAt: normalizeString(record.createdAt) ?? new Date().toISOString(),
+    demoMedia: normalizeScheduleMediaSelection(record.demoMedia) ?? undefined,
+    hookMedia: normalizeScheduleMediaSelection(record.hookMedia) ?? undefined,
     id,
     mediaTitle: normalizeOptionalString(record.mediaTitle) ?? undefined,
     mediaUrl: normalizeOptionalString(record.mediaUrl) ?? undefined,
@@ -216,6 +226,35 @@ function normalizeScheduleDraft(value: unknown): ScheduleDraft | null {
     thumbnailUrl: normalizeOptionalString(record.thumbnailUrl) ?? undefined,
     timezone: normalizeString(record.timezone) ?? getBrowserTimezone(),
     updatedAt: normalizeString(record.updatedAt) ?? new Date().toISOString(),
+  };
+}
+
+function normalizeScheduleMediaSelection(
+  value: unknown,
+): ScheduleMediaSelection | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const id = normalizeString(record.id);
+  const title = normalizeString(record.title);
+  const sourceType = normalizeSourceType(record.sourceType);
+
+  if (!id || !title || !sourceType) {
+    return null;
+  }
+
+  const status = record.status === "missing_render" ? "missing_render" : "ready";
+
+  return {
+    durationLabel: normalizeOptionalString(record.durationLabel) ?? undefined,
+    id,
+    mediaUrl: normalizeOptionalString(record.mediaUrl) ?? undefined,
+    sourceType,
+    status,
+    thumbnailUrl: normalizeOptionalString(record.thumbnailUrl) ?? undefined,
+    title,
   };
 }
 

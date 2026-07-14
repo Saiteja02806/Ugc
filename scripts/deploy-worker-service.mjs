@@ -45,7 +45,7 @@ const workerProfiles = {
     defaultTaskFamily: "ugc-video-render-worker-task",
     defaultVisibilityTimeoutSeconds: "900",
     envPrefix: "ECS_VIDEO_RENDER",
-    jobTypes: ["render_edit_video"],
+    jobTypes: ["render_edit_video", "render_schedule_combination"],
     queueName: "video-render",
     queueUrlEnv: "UGC_VIDEO_RENDER_QUEUE_URL",
   },
@@ -57,6 +57,7 @@ const implementedWorkerJobTypes = new Set([
   "generate_hook_video",
   "generate_image",
   "render_edit_video",
+  "render_schedule_combination",
   "test_worker_job",
 ]);
 

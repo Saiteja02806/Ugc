@@ -186,6 +186,7 @@ export async function createUploadingMediaAsset(
 
 export async function listMediaAssets(params: {
   collection?: MediaCollection | null;
+  sourceTypes?: MediaSourceType[] | null;
   userId: string;
 }) {
   let query = getSupabaseServerClient()
@@ -198,6 +199,10 @@ export async function listMediaAssets(params: {
 
   if (params.collection) {
     query = query.eq("collection", params.collection);
+  }
+
+  if (params.sourceTypes?.length) {
+    query = query.in("source_type", params.sourceTypes);
   }
 
   const { data, error } = await query;

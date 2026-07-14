@@ -69,11 +69,11 @@ type LibraryContentResponse =
 
 const tabs: Array<{ label: string; value: LibraryTab }> = [
   {
-    label: "Demo",
+    label: "Demos",
     value: "posts",
   },
   {
-    label: "Saved",
+    label: "Carousels",
     value: "content",
   },
 ];
@@ -127,7 +127,7 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
               Library
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-              Keep product footage and saved carousels ready for your next post.
+              Keep demo footage and saved carousel assets separate from hook videos.
             </p>
           </div>
 
@@ -384,7 +384,7 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
           <span className="inline-flex h-9 items-center rounded-md bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-border">
             {showSkeleton
               ? "Loading"
-              : `${items.length} ${items.length === 1 ? "carousel" : "carousels"} · ${totalSlides} slides`}
+              : `${items.length} ${items.length === 1 ? "carousel" : "carousels"} - ${totalSlides} slides`}
           </span>
           <button
             type="button"

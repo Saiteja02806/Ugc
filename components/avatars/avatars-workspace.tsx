@@ -19,6 +19,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useAuth } from "@/contexts/auth-context";
 import { UserMediaCollection } from "@/components/media/user-media-collection";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import type { MediaSourceType } from "@/lib/media/types";
 import { cn } from "@/lib/utils";
 
 type AvatarRatio = "9:16" | "1:1" | "4:5" | "16:9" | "other";
@@ -510,10 +511,10 @@ export function AvatarsWorkspace({
       <header className="mx-auto flex w-full max-w-[1560px] flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
-            Influencers & media
+            Influencers
           </h1>
           <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-            Choose talent, then manage every video and image you create or upload.
+            Choose talent and manage hook videos. Library demos stay separate.
           </p>
         </div>
 
@@ -587,10 +588,11 @@ export function AvatarsWorkspace({
         ) : activeTab === "videos" ? (
           <UserMediaCollection
             collection="video"
-            title="User videos"
-            description="Generated videos, uploaded footage, demos, and finished Edit exports in one real library."
-            emptyTitle="No videos yet"
-            emptyDescription="Generate a video or upload footage here. Every ready video can be opened directly in Edit."
+            sourceTypes={hookVideoSourceTypes}
+            title="Hook videos"
+            description="Generated hooks, uploaded footage from this workspace, and finished Edit exports. Demo uploads stay in Library."
+            emptyTitle="No hook videos yet"
+            emptyDescription="Generate a hook video or upload one here. Library demo videos will not appear in this section."
           />
         ) : (
           <UserMediaCollection
@@ -608,9 +610,15 @@ export function AvatarsWorkspace({
 
 type MediaWorkspaceTab = "influencers" | "videos" | "images";
 
+const hookVideoSourceTypes: MediaSourceType[] = [
+  "upload",
+  "generated_video",
+  "edit_export",
+];
+
 const mediaWorkspaceTabs: { id: MediaWorkspaceTab; label: string }[] = [
   { id: "influencers", label: "Influencers" },
-  { id: "videos", label: "User videos" },
+  { id: "videos", label: "Hook videos" },
   { id: "images", label: "User images" },
 ];
 

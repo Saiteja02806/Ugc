@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-07-14
+Last updated: 2026-07-15
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -35,11 +35,17 @@ saves the complete carousel to the server Library, then opens the modal with the
 server `libraryItemId`, source `carouselId`, and return location. Library opens
 the same modal directly for server-backed items.
 
-The current scheduling slice stops after account connection and platform
-selection. It does not create local scheduling drafts, mark Trending assignments
-as scheduled, choose a date or time, enqueue publishing, or publish content.
-After at least one connected platform is selected, the UI confirms the selection
-and closes the modal while clearly stating that no post has been scheduled yet.
+The scheduling backend now stores server-backed `scheduled_posts` and
+`scheduled_post_targets` rows and can create EventBridge Scheduler entries for
+connected social accounts. Scheduler payloads contain only `{ version,
+targetId }`; captions, media URLs, OAuth tokens, cookies, and other secrets do
+not pass through EventBridge.
+
+The provider publishing adapter remains guarded. The social publish Lambda
+accepts scheduler target payloads without retrying forever, but it logs
+`REAL_PUBLISHING_NOT_ENABLED` until platform-specific publish handlers are
+implemented and verified. Do not describe a scheduled post as actually
+published until the worker adapter updates the target row to `published`.
 
 ## Non-Negotiable Image Safety
 
@@ -730,11 +736,9 @@ only the caller's carousel generations for the caller's single business profile.
   ordered ready slides, and saves one Library parent item with ordered child
   slide rows. Duplicate saves return the existing Library item. After a
   successful save, Trending stays on the page, shows a View Library action, and
-  advances to the next complete carousel. Schedule Post first creates or reuses
-  the same server-backed Library item, then creates the current browser-local
-  scheduling draft with `sourceType = generated_carousel` and opens Scheduling
-  on the Drafts tab. Replacing scheduling drafts with server-backed publishing
-  remains a separate slice.
+  advances to the next complete carousel. Schedule Post must use a
+  server-backed Library item and the server scheduling API. Browser-local
+  scheduling drafts are no longer the intended persistence path.
 - The Library content tab lists server-backed carousel Library items first. As
   a transition path for older sessions, it may also display legacy
   browser-local entries from `ugc-studio.carousel-library.v1` when the same

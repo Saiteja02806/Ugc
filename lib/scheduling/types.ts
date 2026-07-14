@@ -1,7 +1,33 @@
 export const schedulePlatforms = ["instagram", "tiktok", "youtube"] as const;
 
+export const scheduleSourceKinds = ["media_asset", "library_item"] as const;
+
+export const scheduledPostStatuses = [
+  "draft",
+  "scheduling",
+  "scheduled",
+  "publishing",
+  "published",
+  "partially_failed",
+  "failed",
+  "cancelled",
+] as const;
+
+export const scheduledPostTargetStatuses = [
+  "draft",
+  "scheduling",
+  "scheduled",
+  "publishing",
+  "published",
+  "failed",
+  "cancelled",
+  "skipped",
+] as const;
+
 export const scheduleDraftStatuses = [
   "draft",
+  "media_required",
+  "rendering",
   "render_required",
   "ready",
   "scheduled_preview",
@@ -13,6 +39,9 @@ export const scheduleSourceTypes = [
   "demo_video",
   "generated_video",
   "generated_carousel",
+  "influencer_video",
+  "user_video",
+  "combined_video",
 ] as const;
 
 export const schedulePostTypes = [
@@ -25,6 +54,13 @@ export const scheduleTabs = ["upcoming", "drafts", "published", "failed"] as con
 
 export type SchedulePlatform = (typeof schedulePlatforms)[number];
 
+export type ScheduleSourceKind = (typeof scheduleSourceKinds)[number];
+
+export type ScheduledPostStatus = (typeof scheduledPostStatuses)[number];
+
+export type ScheduledPostTargetStatus =
+  (typeof scheduledPostTargetStatuses)[number];
+
 export type ScheduleDraftStatus = (typeof scheduleDraftStatuses)[number];
 
 export type ScheduleSourceType = (typeof scheduleSourceTypes)[number];
@@ -35,9 +71,85 @@ export type ScheduleTab = (typeof scheduleTabs)[number];
 
 export type ScheduleViewMode = "calendar" | "list";
 
-export type ScheduleDraft = {
+export type ScheduledPostTarget = {
+  attemptCount: number;
+  cancelledAt: string | null;
+  createdAt: string;
+  id: string;
+  lastErrorCode: string | null;
+  lastErrorMessage: string | null;
+  platform: SchedulePlatform;
+  platformPostId: string | null;
+  platformPostUrl: string | null;
+  publishedAt: string | null;
+  scheduledFor: string;
+  schedulerScheduleArn: string | null;
+  schedulerScheduleName: string | null;
+  settings: Record<string, unknown>;
+  socialConnectionId: string;
+  status: ScheduledPostTargetStatus;
+  updatedAt: string;
+};
+
+export type ScheduledPost = {
+  cancelledAt: string | null;
   caption: string;
   createdAt: string;
+  id: string;
+  idempotencyKey: string | null;
+  lastErrorCode: string | null;
+  libraryItemId: string | null;
+  mediaAssetId: string | null;
+  metadata: Record<string, unknown>;
+  projectId: string | null;
+  publishedAt: string | null;
+  scheduledFor: string | null;
+  sourceKind: ScheduleSourceKind;
+  status: ScheduledPostStatus;
+  targets: ScheduledPostTarget[];
+  timezone: string;
+  title: string;
+  updatedAt: string;
+};
+
+export type ScheduleCreateSourceInput = {
+  id: string;
+  kind: ScheduleSourceKind;
+};
+
+export type ScheduleCreateTargetInput = {
+  connectionId: string;
+  platform?: SchedulePlatform;
+  settings?: Record<string, unknown>;
+};
+
+export type ScheduleCreateInput = {
+  caption?: string;
+  idempotencyKey?: string;
+  metadata?: Record<string, unknown>;
+  scheduledFor?: string;
+  source: ScheduleCreateSourceInput;
+  targets?: ScheduleCreateTargetInput[];
+  timezone?: string;
+  title?: string;
+};
+
+export type ScheduleMediaSelection = {
+  durationLabel?: string;
+  id: string;
+  mediaUrl?: string;
+  sourceType: ScheduleSourceType;
+  status: "missing_render" | "ready";
+  thumbnailUrl?: string;
+  title: string;
+};
+
+export type ScheduleDraft = {
+  caption: string;
+  combinedMedia?: ScheduleMediaSelection;
+  createdAt: string;
+  demoMedia?: ScheduleMediaSelection;
+  hookMedia?: ScheduleMediaSelection;
   id: string;
   mediaTitle?: string;
   mediaUrl?: string;
@@ -55,6 +167,9 @@ export type ScheduleDraft = {
 
 export type ScheduleDraftInput = {
   caption?: string;
+  combinedMedia?: ScheduleMediaSelection;
+  demoMedia?: ScheduleMediaSelection;
+  hookMedia?: ScheduleMediaSelection;
   id?: string;
   mediaTitle?: string;
   mediaUrl?: string;
@@ -69,15 +184,7 @@ export type ScheduleDraftInput = {
   timezone?: string;
 };
 
-export type ScheduleMediaOption = {
-  durationLabel?: string;
-  id: string;
-  mediaUrl?: string;
-  sourceType: ScheduleSourceType;
-  status: "missing_render" | "ready";
-  thumbnailUrl?: string;
-  title: string;
-};
+export type ScheduleMediaOption = ScheduleMediaSelection;
 
 export function getSchedulePlatformLabel(platform: SchedulePlatform) {
   const labels: Record<SchedulePlatform, string> = {
@@ -92,8 +199,10 @@ export function getSchedulePlatformLabel(platform: SchedulePlatform) {
 export function getScheduleStatusLabel(status: ScheduleDraftStatus) {
   const labels: Record<ScheduleDraftStatus, string> = {
     draft: "Draft",
+    media_required: "Media required",
     publishing_unavailable: "Publishing unavailable",
     ready: "Ready",
+    rendering: "Rendering",
     render_required: "Render required",
     scheduled_preview: "Scheduled preview",
   };

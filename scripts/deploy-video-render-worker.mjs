@@ -218,6 +218,7 @@ function isVideoRenderTaskDefinition(service, taskDefinition) {
 
     return (
       workerJobTypes.split(",").map((value) => value.trim()).includes("render_edit_video") ||
+      workerJobTypes.split(",").map((value) => value.trim()).includes("render_schedule_combination") ||
       workerQueueName === "video-render" ||
       workerQueueUrl === videoRenderQueueUrl
     );
@@ -262,7 +263,7 @@ function buildTaskDefinitionRegistrationInput(taskDefinition, newImageUri) {
         AWS_REGION: region,
         AWS_S3_BUCKET: getRequiredEnv("AWS_S3_BUCKET"),
         CLOUDFRONT_DOMAIN: getRequiredEnv("CLOUDFRONT_DOMAIN"),
-        WORKER_JOB_TYPES: "render_edit_video",
+        WORKER_JOB_TYPES: "render_edit_video,render_schedule_combination",
         WORKER_QUEUE_NAME: "video-render",
         WORKER_QUEUE_URL: videoRenderQueueUrl,
       }),

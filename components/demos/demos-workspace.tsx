@@ -389,7 +389,7 @@ export function UploadedPostsTab({
               Demos
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-              Keep product footage ready for trims, hooks, and social-ready edits.
+              Keep product footage ready to pair with hook videos.
             </p>
           </div>
 
@@ -554,7 +554,7 @@ function EmbeddedDemoWorkspace({
               Demo library
             </h2>
             <p className="mt-0.5 max-w-xl text-sm leading-5 text-muted">
-              Product footage ready to preview, edit, and schedule.
+              Product footage for the demo side of a scheduled post.
             </p>
           </div>
         </div>
@@ -689,8 +689,8 @@ function EmbeddedDemoWorkspace({
                 {isDragActive ? "Drop your video here" : "Add your first demo"}
               </h3>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">
-                Upload a product walkthrough or screen recording. Once it is here,
-                you can preview it, open the editor, and prepare it for publishing.
+                Upload a product walkthrough or screen recording. It will stay in
+                Library and can be paired with a hook from Scheduling.
               </p>
               <button
                 type="button"

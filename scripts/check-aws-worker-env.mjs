@@ -67,6 +67,13 @@ const groups = [
       "UGC_SOCIAL_PUBLISH_DLQ_ARN",
     ],
   },
+  {
+    name: "Social scheduling",
+    keys: [
+      "UGC_EVENTBRIDGE_SCHEDULE_GROUP",
+      "UGC_EVENTBRIDGE_SCHEDULER_ROLE_ARN",
+    ],
+  },
 ];
 
 const workerSecretExpectedKeys = [

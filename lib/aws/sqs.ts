@@ -46,6 +46,10 @@ const jobQueueConfig = {
     envName: "UGC_VIDEO_RENDER_QUEUE_URL",
     queueName: "video-render",
   },
+  render_schedule_combination: {
+    envName: "UGC_VIDEO_RENDER_QUEUE_URL",
+    queueName: "video-render",
+  },
   test_worker_job: {
     envName: "UGC_MEDIA_PROCESSING_QUEUE_URL",
     queueName: "media-processing",

@@ -23,6 +23,7 @@ const CATEGORY_IMAGE_ASSETS_TABLE = "category_image_assets";
 const CATEGORY_IMAGE_ASSET_PAGE_SIZE = 1000;
 const EDITABLE_VIDEOS_TABLE = "editable_videos";
 const MEDIA_ASSETS_TABLE = "media_assets";
+const SCHEDULED_POSTS_TABLE = "scheduled_posts";
 const INCREMENT_CATEGORY_IMAGE_USAGE_FUNCTION =
   "increment_category_image_asset_usage";
 const VIDEO_RENDER_JOBS_TABLE = "video_render_jobs";
@@ -245,6 +246,101 @@ export class SupabaseJobStore {
     }
   }
 
+  async markScheduleCombinationRenderStarted(params: {
+    jobId: string;
+    renderId: string;
+    scheduleId: string;
+    userId: string;
+  }) {
+    await this.patchScheduledPost({
+      metadataPatch: {
+        combinedRenderError: null,
+        combinedRenderId: params.renderId,
+        combinedRenderJobId: params.jobId,
+        combinedRenderStatus: "rendering",
+      },
+      scheduleId: params.scheduleId,
+      userId: params.userId,
+    });
+  }
+
+  async markScheduleCombinationRenderCompleted(params: {
+    demoVideoId: string;
+    hookVideoId: string;
+    key: string;
+    mediaAssetId: string;
+    projectId: string;
+    ratio: "1:1" | "4:5" | "9:16" | "16:9";
+    renderId: string;
+    scheduleId: string;
+    title: string;
+    url: string;
+    userId: string;
+  }) {
+    const now = new Date().toISOString();
+
+    await this.saveMediaAsset({
+      collection: "video",
+      duration_seconds: null,
+      file_name: null,
+      file_size_bytes: null,
+      height: null,
+      id: params.mediaAssetId,
+      metadata: {
+        demoVideoId: params.demoVideoId,
+        hookVideoId: params.hookVideoId,
+        renderId: params.renderId,
+        scheduleId: params.scheduleId,
+      },
+      mime_type: "video/mp4",
+      parent_asset_id: isUuid(params.hookVideoId) ? params.hookVideoId : null,
+      project_id: params.projectId,
+      ratio: params.ratio,
+      source_record_id: params.renderId,
+      source_type: "combined_render",
+      status: "ready",
+      storage_key: params.key,
+      thumbnail_url: null,
+      title: params.title,
+      updated_at: now,
+      url: params.url,
+      user_id: params.userId,
+      width: null,
+    });
+
+    await this.patchScheduledPost({
+      mediaAssetId: params.mediaAssetId,
+      metadataPatch: {
+        combinedMediaAssetId: params.mediaAssetId,
+        combinedRenderError: null,
+        combinedRenderId: params.renderId,
+        combinedRenderStatus: "ready",
+        combinedRenderedAt: now,
+        combinedS3Key: params.key,
+        combinedVideoUrl: params.url,
+      },
+      scheduleId: params.scheduleId,
+      userId: params.userId,
+    });
+  }
+
+  async markScheduleCombinationRenderFailed(params: {
+    errorMessage: string;
+    renderId: string;
+    scheduleId: string;
+    userId: string;
+  }) {
+    await this.patchScheduledPost({
+      metadataPatch: {
+        combinedRenderError: params.errorMessage.slice(0, 500),
+        combinedRenderId: params.renderId,
+        combinedRenderStatus: "failed",
+      },
+      scheduleId: params.scheduleId,
+      userId: params.userId,
+    });
+  }
+
   async getCarouselGeneration(carouselId: string) {
     const { data, error } = await this.client
       .from(CAROUSEL_GENERATIONS_TABLE)
@@ -426,6 +522,52 @@ export class SupabaseJobStore {
     return data;
   }
 
+  private async patchScheduledPost(params: {
+    mediaAssetId?: string | null;
+    metadataPatch: Record<string, Json | undefined>;
+    scheduleId: string;
+    userId: string;
+  }) {
+    const { data: current, error: readError } = await this.client
+      .from(SCHEDULED_POSTS_TABLE)
+      .select("metadata")
+      .eq("id", params.scheduleId)
+      .eq("user_id", params.userId)
+      .maybeSingle();
+
+    if (readError) {
+      throw new Error(`Could not read schedule metadata: ${readError.message}`);
+    }
+
+    if (!current) {
+      throw new Error("Schedule was not found for render update.");
+    }
+
+    const patch: BackgroundJobsDatabase["public"]["Tables"]["scheduled_posts"]["Update"] = {
+      metadata: toJsonObject({
+        ...toJsonRecord(current.metadata),
+        ...params.metadataPatch,
+      }),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (params.mediaAssetId !== undefined) {
+      patch.media_asset_id = params.mediaAssetId;
+    }
+
+    const { error } = await this.client
+      .from(SCHEDULED_POSTS_TABLE)
+      .update(patch)
+      .eq("id", params.scheduleId)
+      .eq("user_id", params.userId);
+
+    if (error) {
+      throw new Error(
+        `Could not update schedule render metadata: ${error.message}`,
+      );
+    }
+  }
+
   private async registerGeneratedMediaAsset(
     job: BackgroundJobRow,
     output: Record<string, Json | undefined>,
@@ -507,6 +649,12 @@ function toJsonObject(value: Record<string, Json | undefined>): Json {
       return entry[1] !== undefined;
     }),
   );
+}
+
+function toJsonRecord(value: Json): Record<string, Json | undefined> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value
+    : {};
 }
 
 function getString(value: Json | undefined) {

@@ -27,7 +27,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import type { MediaAsset, MediaCollection, MediaRatio } from "@/lib/media/types";
+import type {
+  MediaAsset,
+  MediaCollection,
+  MediaRatio,
+  MediaSourceType,
+} from "@/lib/media/types";
 
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
@@ -38,12 +43,14 @@ export function UserMediaCollection({
   description,
   emptyDescription,
   emptyTitle,
+  sourceTypes,
   title,
 }: {
   collection: MediaCollection;
   description: string;
   emptyDescription: string;
   emptyTitle: string;
+  sourceTypes?: MediaSourceType[];
   title: string;
 }) {
   const { loading: authLoading, user } = useAuth();
@@ -72,7 +79,13 @@ export function UserMediaCollection({
       }
 
       const token = await requireToken();
-      const response = await fetch(`/api/media?collection=${collection}`, {
+      const params = new URLSearchParams({ collection });
+
+      if (sourceTypes?.length) {
+        params.set("sourceTypes", sourceTypes.join(","));
+      }
+
+      const response = await fetch(`/api/media?${params.toString()}`, {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -88,7 +101,7 @@ export function UserMediaCollection({
     } finally {
       setIsLoading(false);
     }
-  }, [authLoading, collection, user]);
+  }, [authLoading, collection, sourceTypes, user]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadAssets(), 0);
@@ -483,13 +496,14 @@ function CollectionIcon({ collection }: { collection: MediaCollection }) {
 function getUploadLabel(collection: MediaCollection) {
   if (collection === "influencer") return "Upload influencer";
   if (collection === "image") return "Upload image";
-  return "Upload video";
+  return "Upload hook";
 }
 
 function getSourceLabel(asset: MediaAsset) {
   const labels: Record<MediaAsset["sourceType"], string> = {
     demo_upload: "Uploaded demo",
     catalog_influencer: "UGC Pilot influencer",
+    combined_render: "Combined render",
     edit_export: "Edit export",
     generated_image: "Generated image",
     generated_video: "Generated video",

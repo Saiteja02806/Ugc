@@ -29,6 +29,7 @@ export type BackgroundJobType =
   | "publish_social_post"
   | "render_demo_video"
   | "render_edit_video"
+  | "render_schedule_combination"
   | "test_worker_job";
 
 type BackgroundJobInsert = {

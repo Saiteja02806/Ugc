@@ -7,6 +7,7 @@ export const mediaSourceTypes = [
   "generated_image",
   "generated_video",
   "edit_export",
+  "combined_render",
 ] as const;
 export const mediaAssetStatuses = [
   "uploading",
@@ -48,6 +49,13 @@ export function isMediaCollection(value: unknown): value is MediaCollection {
   return (
     typeof value === "string" &&
     mediaCollections.includes(value as MediaCollection)
+  );
+}
+
+export function isMediaSourceType(value: unknown): value is MediaSourceType {
+  return (
+    typeof value === "string" &&
+    mediaSourceTypes.includes(value as MediaSourceType)
   );
 }
 

@@ -807,7 +807,7 @@ export function VideoGenerationPanel({
 async function openServerVideoInEdit(videoUrl: string, router: ReturnType<typeof useRouter>) {
   const token = await getCurrentUserIdToken();
   if (!token) throw new Error("Sign in before opening Edit.");
-  const response = await fetch("/api/media?collection=video", { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  const response = await fetch("/api/media?collection=video&sourceTypes=generated_video", { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
   const data = (await response.json()) as { assets?: Array<{ id: string; url: string }> };
   const asset = data.assets?.find((item) => item.url === videoUrl);
   router.push(asset ? `/edit/${encodeURIComponent(asset.id)}` : "/avatars?tab=videos");

@@ -24,6 +24,12 @@ type ConnectionsResponse = {
   ok?: boolean;
 };
 
+type OAuthTraceInput = {
+  callbackHost?: string;
+  correlationId?: string;
+  platform?: SocialPlatform;
+};
+
 const platforms: Array<{
   description: string;
   label: string;
@@ -58,6 +64,7 @@ export function ConnectedAccountsWorkspace() {
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [renderTrace, setRenderTrace] = useState<OAuthTraceInput | null>(null);
   const {
     connectingPlatform,
     popupError,
@@ -82,7 +89,16 @@ export function ConnectedAccountsWorkspace() {
         return;
       }
 
-      await loadConnections();
+      await loadConnections({
+        callbackHost: result.callbackHost,
+        correlationId: result.correlationId,
+        platform: result.platform,
+      });
+      setRenderTrace({
+        callbackHost: result.callbackHost,
+        correlationId: result.correlationId,
+        platform: result.platform,
+      });
       setMessage(`${getPlatformLabel(result.platform)} account connected.`);
     },
   });
@@ -93,6 +109,23 @@ export function ConnectedAccountsWorkspace() {
     void loadConnections();
   }, []);
 
+  useEffect(() => {
+    if (!renderTrace?.correlationId || !renderTrace.platform) {
+      return;
+    }
+
+    console.info("social_oauth_trace", {
+      callbackHost: renderTrace.callbackHost ?? null,
+      correlationId: renderTrace.correlationId,
+      hasConnectedAccount: connections.some(
+        (connection) =>
+          connection.platform === renderTrace.platform &&
+          connection.status === "connected",
+      ),
+      stage: "frontend_rendering",
+    });
+  }, [connections, renderTrace]);
+
   const groupedConnections = useMemo(() => {
     return platforms.map((platform) => ({
       ...platform,
@@ -102,7 +135,7 @@ export function ConnectedAccountsWorkspace() {
     }));
   }, [connections]);
 
-  async function loadConnections() {
+  async function loadConnections(trace?: OAuthTraceInput) {
     setLoading(true);
     setError(null);
 
@@ -110,7 +143,7 @@ export function ConnectedAccountsWorkspace() {
       const token = await getRequiredToken();
       const response = await fetch("/api/social/connections", {
         cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getConnectionHeaders(token, trace),
       });
       const data = (await response.json().catch(() => null)) as
         | ConnectionsResponse
@@ -370,6 +403,22 @@ async function getRequiredToken() {
   }
 
   return token;
+}
+
+function getConnectionHeaders(token: string, trace?: OAuthTraceInput) {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+  };
+
+  if (trace?.correlationId) {
+    headers["x-ugc-oauth-correlation-id"] = trace.correlationId;
+  }
+
+  if (trace?.callbackHost) {
+    headers["x-ugc-oauth-callback-host"] = trace.callbackHost;
+  }
+
+  return headers;
 }
 
 function getPlatformLabel(value: string) {

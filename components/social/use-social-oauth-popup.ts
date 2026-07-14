@@ -84,7 +84,9 @@ export function useSocialOAuthPopup(params?: {
       }
 
       clearClosePoll();
-      popupRef.current?.close();
+      if (event.data.status === "success") {
+        popupRef.current?.close();
+      }
       popupRef.current = null;
       setConnectingPlatform(null);
 
@@ -242,26 +244,51 @@ function isAllowedOAuthMessageOrigin(origin: string) {
 }
 
 function getOAuthResultErrorMessage(result: SocialOAuthResultMessage) {
+  let message: string;
+
   switch (result.errorCode) {
     case "authorization_denied":
-      return `${getPlatformLabel(result.platform)} authorization was cancelled.`;
+      message = `${getPlatformLabel(result.platform)} authorization was cancelled.`;
+      break;
     case "eligible_instagram_account_missing":
-      return "No eligible Instagram professional account was found. Connect it to a Facebook Page and try again.";
+      message =
+        "No eligible Instagram professional account was found. Connect it to a Facebook Page and try again.";
+      break;
     case "invalid_or_expired_state":
-      return "This connection request expired. Start the connection again.";
+      message = "This connection request expired. Start the connection again.";
+      break;
     case "missing_callback_parameters":
-      return `${getPlatformLabel(result.platform)} did not return a complete authorization response. Try connecting again.`;
+      message = `${getPlatformLabel(result.platform)} did not return a complete authorization response. Try connecting again.`;
+      break;
     case "provider_exchange_failed":
-      return `${getPlatformLabel(result.platform)} authorized the request, but the token exchange failed. Check the app credentials and redirect URI.`;
+      message = `${getPlatformLabel(result.platform)} authorized the request, but the token exchange failed. Check the provider setup and redirect URI.`;
+      break;
     case "account_lookup_failed":
-      return `${getPlatformLabel(result.platform)} connected, but the account profile could not be loaded. Check the granted permissions.`;
+      message = `${getPlatformLabel(result.platform)} connected, but the account profile could not be loaded. Check the granted permissions.`;
+      break;
     case "connection_save_failed":
-      return `${getPlatformLabel(result.platform)} connected, but UGC Pilot could not save the account. Try again.`;
+      message = `${getPlatformLabel(result.platform)} connected, but UGC Pilot could not save the account. Try again.`;
+      break;
     case "youtube_channel_missing":
-      return "No YouTube channel was found for this Google account.";
+      message = "No YouTube channel was found for this Google account.";
+      break;
     default:
-      return `${getPlatformLabel(result.platform)} could not be connected. Try again.`;
+      message = `${getPlatformLabel(result.platform)} could not be connected. Try again.`;
   }
+
+  return appendOAuthTraceDetails(message, result);
+}
+
+function appendOAuthTraceDetails(
+  message: string,
+  result: SocialOAuthResultMessage,
+) {
+  const details = [
+    result.failedStage ? `Stage: ${result.failedStage}` : null,
+    result.correlationId ? `Correlation ID: ${result.correlationId}` : null,
+  ].filter(Boolean);
+
+  return details.length > 0 ? `${message} ${details.join(". ")}.` : message;
 }
 
 function getPlatformLabel(platform: SocialPlatform) {

@@ -58,7 +58,7 @@ if (result.backgroundJob.status !== "completed") {
   result.carousel.status !== "completed" ||
   result.slides.length !== template.slide_count ||
   result.carousel.content_planner_version !==
-    "llm-carousel-planner-v8-brand-safe-fallback" ||
+    "llm-carousel-planner-v16-solution-story-guard" ||
   !["deterministic-fallback", "llm"].includes(
     result.carousel.content_plan_source,
   ) ||
@@ -67,7 +67,7 @@ if (result.backgroundJob.status !== "completed") {
   (result.carousel.content_plan_source === "deterministic-fallback" &&
     !result.carousel.content_plan_fallback_reason) ||
   result.carousel.renderer_version !==
-    "social-bubble-renderer-v7-contained-line-rectangles" ||
+    "social-bubble-renderer-v11-hybrid-soft-union" ||
   result.carousel.content_plan_validation?.ok !== true ||
   result.carousel.content_plan_normalized?.slides?.length !== 5 ||
   result.slides.some(
@@ -75,7 +75,7 @@ if (result.backgroundJob.status !== "completed") {
       slide.status !== "ready" ||
       !slide.rendered_url ||
       !slide.rendered_url.includes(
-        "/social-bubble-renderer-v7-contained-line-rectangles/",
+        "/social-bubble-renderer-v11-hybrid-soft-union/",
       ),
   )
 ) {

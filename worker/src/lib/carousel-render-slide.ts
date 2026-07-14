@@ -47,9 +47,21 @@ type BubbleLineMetrics = {
     estimatedTextWidth: number;
     measuredTextWidth: number;
     requiredWidth: number;
-    width: number;
+    visualWidth: number;
   }>;
 };
+
+type ConnectedBubbleLine = {
+  centerY: number;
+  left: number;
+  right: number;
+  width: number;
+};
+
+type ConnectedBubbleTransition =
+  | "none"
+  | "soft-curve"
+  | "rounded-shoulder";
 
 export type CarouselBubbleLineDiagnostic = {
   cornerSafety: number;
@@ -61,13 +73,17 @@ export type CarouselBubbleLineDiagnostic = {
   radius: number;
   rectangleWidth: number;
   requiredWidth: number;
+  stepRadius: number;
   text: string;
+  transitionToNext: ConnectedBubbleTransition;
+  visualWidth: number;
+  widthSnapSideThreshold: number;
 };
 
 export type CarouselRenderDiagnostics = {
+  bubbleShapeStrategy: "hybrid-soft-union-connected-path";
   escapedTextPixels: number;
   fontFamily: string;
-  lineRectStrategy: "direct-overlapping-rectangles";
   maxBubbleWidth: number;
   repaired: boolean;
   textPixels: number;
@@ -81,7 +97,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-bubble-renderer-v7-contained-line-rectangles";
+  "social-bubble-renderer-v11-hybrid-soft-union";
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
   "1:1": { height: 1080, width: 1080 },
@@ -96,6 +112,7 @@ const TEXT_FONT_FAMILY = "Geist, Arial, Helvetica, sans-serif";
 const HEADLINE_FONT_WEIGHT = 700;
 const BODY_FONT_WEIGHT = 600;
 const MIN_CORNER_SAFETY = 6;
+const CONNECTED_BUBBLE_SIDE_SNAP = 3;
 
 function getMeasuredLineWidths(value: WrappedText) {
   return "measuredLineWidths" in value &&
@@ -705,11 +722,11 @@ function measureBubbleLines(params: {
       estimatedTextWidth: Math.round(estimateTextWidth(line, params.fontSize)),
       measuredTextWidth: Math.round(lineWidth),
       requiredWidth,
-      width: requiredWidth,
+      visualWidth: requiredWidth,
     };
   });
   const maxLineWidth = rects.reduce(
-    (widestLine, rect) => Math.max(widestLine, rect.width),
+    (widestLine, rect) => Math.max(widestLine, rect.visualWidth),
     0,
   );
 
@@ -724,6 +741,258 @@ function measureBubbleLines(params: {
     lineStep,
     rectHeight,
     rects,
+  };
+}
+
+export function snapConnectedBubbleVisualWidths(params: {
+  requiredWidths: number[];
+  sideThreshold?: number;
+}) {
+  const sideThreshold = Math.max(
+    0,
+    params.sideThreshold ?? CONNECTED_BUBBLE_SIDE_SNAP,
+  );
+  const visualWidths = params.requiredWidths.map((width) => Math.round(width));
+  let groupStart = 0;
+
+  for (let index = 1; index <= visualWidths.length; index += 1) {
+    const staysInGroup =
+      index < visualWidths.length &&
+      Math.abs(
+        params.requiredWidths[index] - params.requiredWidths[index - 1],
+      ) /
+        2 <
+        sideThreshold;
+
+    if (staysInGroup) {
+      continue;
+    }
+
+    const groupWidth = Math.max(...visualWidths.slice(groupStart, index));
+
+    for (let groupIndex = groupStart; groupIndex < index; groupIndex += 1) {
+      visualWidths[groupIndex] = groupWidth;
+    }
+
+    groupStart = index;
+  }
+
+  return visualWidths;
+}
+
+function formatPathCoordinate(value: number) {
+  const rounded = Math.round(value * 100) / 100;
+
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+}
+
+function classifyConnectedBubbleTransition(params: {
+  fromX: number;
+  softCurveSideThreshold: number;
+  toX: number;
+}): ConnectedBubbleTransition {
+  const sideChange = Math.abs(params.toX - params.fromX);
+
+  if (sideChange === 0) {
+    return "none";
+  }
+
+  return sideChange <= params.softCurveSideThreshold
+    ? "soft-curve"
+    : "rounded-shoulder";
+}
+
+function appendConnectedBubbleTransition(params: {
+  boundaryY: number;
+  commands: string[];
+  direction: "down" | "up";
+  fromX: number;
+  lineStep: number;
+  softCurveSideThreshold: number;
+  stepRadius: number;
+  toX: number;
+}) {
+  const transition = classifyConnectedBubbleTransition(params);
+
+  if (transition === "none") {
+    return transition;
+  }
+
+  const directionSign = params.direction === "down" ? 1 : -1;
+  const availableHalfHeight = Math.max(1, Math.floor(params.lineStep / 2) - 1);
+
+  if (transition === "soft-curve") {
+    const curveHalfHeight = Math.min(params.stepRadius, availableHalfHeight);
+    const startY = params.boundaryY - directionSign * curveHalfHeight;
+    const endY = params.boundaryY + directionSign * curveHalfHeight;
+
+    params.commands.push(
+      `L ${formatPathCoordinate(params.fromX)} ${formatPathCoordinate(startY)}`,
+      `C ${formatPathCoordinate(params.fromX)} ${formatPathCoordinate(params.boundaryY)} ${formatPathCoordinate(params.toX)} ${formatPathCoordinate(params.boundaryY)} ${formatPathCoordinate(params.toX)} ${formatPathCoordinate(endY)}`,
+    );
+
+    return transition;
+  }
+
+  const sideChange = Math.abs(params.toX - params.fromX);
+  const horizontalSign = Math.sign(params.toX - params.fromX);
+  const radius = Math.min(
+    params.stepRadius,
+    availableHalfHeight,
+    sideChange / 2,
+  );
+  const startY = params.boundaryY - directionSign * radius;
+  const endY = params.boundaryY + directionSign * radius;
+  const firstShoulderX = params.fromX + horizontalSign * radius;
+  const secondShoulderX = params.toX - horizontalSign * radius;
+
+  params.commands.push(
+    `L ${formatPathCoordinate(params.fromX)} ${formatPathCoordinate(startY)}`,
+    `Q ${formatPathCoordinate(params.fromX)} ${formatPathCoordinate(params.boundaryY)} ${formatPathCoordinate(firstShoulderX)} ${formatPathCoordinate(params.boundaryY)}`,
+  );
+
+  if (firstShoulderX !== secondShoulderX) {
+    params.commands.push(
+      `L ${formatPathCoordinate(secondShoulderX)} ${formatPathCoordinate(params.boundaryY)}`,
+    );
+  }
+
+  params.commands.push(
+    `Q ${formatPathCoordinate(params.toX)} ${formatPathCoordinate(params.boundaryY)} ${formatPathCoordinate(params.toX)} ${formatPathCoordinate(endY)}`,
+  );
+
+  return transition;
+}
+
+function buildHybridConnectedBubblePath(params: {
+  bottom: number;
+  lineStep: number;
+  lines: ConnectedBubbleLine[];
+  outerRadius: number;
+  softCurveSideThreshold: number;
+  stepRadius: number;
+  top: number;
+}) {
+  const firstLine = params.lines[0];
+  const lastLine = params.lines.at(-1);
+
+  if (!firstLine || !lastLine) {
+    return { pathData: "", transitions: [] as ConnectedBubbleTransition[] };
+  }
+
+  const boundaries = params.lines.slice(0, -1).map((line, index) => {
+    const nextLine = params.lines[index + 1];
+
+    return Math.round((line.centerY + nextLine.centerY) / 2);
+  });
+  const topRadius = Math.max(
+    0,
+    Math.min(
+      params.outerRadius,
+      firstLine.width / 2,
+      (params.bottom - params.top) / 2,
+    ),
+  );
+  const bottomRadius = Math.max(
+    0,
+    Math.min(
+      params.outerRadius,
+      lastLine.width / 2,
+      (params.bottom - params.top) / 2,
+    ),
+  );
+  const commands = [
+    `M ${formatPathCoordinate(firstLine.left + topRadius)} ${formatPathCoordinate(params.top)}`,
+    `L ${formatPathCoordinate(firstLine.right - topRadius)} ${formatPathCoordinate(params.top)}`,
+    `Q ${formatPathCoordinate(firstLine.right)} ${formatPathCoordinate(params.top)} ${formatPathCoordinate(firstLine.right)} ${formatPathCoordinate(params.top + topRadius)}`,
+  ];
+  const transitions: ConnectedBubbleTransition[] = [];
+
+  for (let index = 0; index < boundaries.length; index += 1) {
+    transitions.push(
+      appendConnectedBubbleTransition({
+        boundaryY: boundaries[index],
+        commands,
+        direction: "down",
+        fromX: params.lines[index].right,
+        lineStep: params.lineStep,
+        softCurveSideThreshold: params.softCurveSideThreshold,
+        stepRadius: params.stepRadius,
+        toX: params.lines[index + 1].right,
+      }),
+    );
+  }
+
+  commands.push(
+    `L ${formatPathCoordinate(lastLine.right)} ${formatPathCoordinate(params.bottom - bottomRadius)}`,
+    `Q ${formatPathCoordinate(lastLine.right)} ${formatPathCoordinate(params.bottom)} ${formatPathCoordinate(lastLine.right - bottomRadius)} ${formatPathCoordinate(params.bottom)}`,
+    `L ${formatPathCoordinate(lastLine.left + bottomRadius)} ${formatPathCoordinate(params.bottom)}`,
+    `Q ${formatPathCoordinate(lastLine.left)} ${formatPathCoordinate(params.bottom)} ${formatPathCoordinate(lastLine.left)} ${formatPathCoordinate(params.bottom - bottomRadius)}`,
+  );
+
+  for (let index = boundaries.length - 1; index >= 0; index -= 1) {
+    appendConnectedBubbleTransition({
+      boundaryY: boundaries[index],
+      commands,
+      direction: "up",
+      fromX: params.lines[index + 1].left,
+      lineStep: params.lineStep,
+      softCurveSideThreshold: params.softCurveSideThreshold,
+      stepRadius: params.stepRadius,
+      toX: params.lines[index].left,
+    });
+  }
+
+  commands.push(
+    `L ${formatPathCoordinate(firstLine.left)} ${formatPathCoordinate(params.top + topRadius)}`,
+    `Q ${formatPathCoordinate(firstLine.left)} ${formatPathCoordinate(params.top)} ${formatPathCoordinate(firstLine.left + topRadius)} ${formatPathCoordinate(params.top)}`,
+    "Z",
+  );
+
+  return { pathData: commands.join(" "), transitions };
+}
+
+export function buildConnectedBubblePath(params: {
+  centerX: number;
+  groupHeight: number;
+  groupY: number;
+  lineCenterOffset: number;
+  lineStep: number;
+  outerRadius: number;
+  stepRadius: number;
+  widths: number[];
+}) {
+  if (params.widths.length === 0) {
+    return {
+      pathData: "",
+      transitions: [] as ConnectedBubbleTransition[],
+      widths: [],
+    };
+  }
+
+  const widths = params.widths.map((width) => Math.round(width));
+  // Visual band centers keep taller glyphs inside when adjacent widths change.
+  const lines = widths.map((width, index): ConnectedBubbleLine => ({
+    centerY:
+      params.groupY + params.lineCenterOffset + index * params.lineStep,
+    left: Math.round(params.centerX - width / 2),
+    right: Math.round(params.centerX + width / 2),
+    width,
+  }));
+  const geometry = buildHybridConnectedBubblePath({
+    bottom: params.groupY + params.groupHeight,
+    lineStep: params.lineStep,
+    lines,
+    outerRadius: params.outerRadius,
+    softCurveSideThreshold: params.stepRadius,
+    stepRadius: params.stepRadius,
+    top: params.groupY,
+  });
+
+  return {
+    pathData: geometry.pathData,
+    transitions: geometry.transitions,
+    widths,
   };
 }
 
@@ -773,32 +1042,27 @@ function buildBubbleText(params: {
   }
 
   const groupY = Math.round(params.y);
-  const rects = params.lines
-    .map((_, index) => {
-      const rect = metrics.rects[index];
+  const stepRadius = clamp(Math.round(params.fontSize * 0.5), 18, 24);
+  const visualWidths = snapConnectedBubbleVisualWidths({
+    requiredWidths: metrics.rects.map((rect) => rect.requiredWidth),
+  });
 
-      if (!rect) {
-        return "";
-      }
+  metrics.rects.forEach((rect, index) => {
+    rect.visualWidth = visualWidths[index];
+  });
 
-      return `<rect x="${Math.round(params.x - rect.width / 2)}" y="${Math.round(
-        groupY + index * metrics.lineStep,
-      )}" width="${rect.width}" height="${metrics.rectHeight}" rx="${params.radius}" fill="${params.fill}" fill-opacity="0.97"/>`;
-    })
-    .join("");
-  const maskRects = params.lines
-    .map((_, index) => {
-      const rect = metrics.rects[index];
-
-      if (!rect) {
-        return "";
-      }
-
-      return `<rect x="${Math.round(params.x - rect.width / 2)}" y="${Math.round(
-        groupY + index * metrics.lineStep,
-      )}" width="${rect.width}" height="${metrics.rectHeight}" rx="${params.radius}" fill="#ffffff"/>`;
-    })
-    .join("");
+  const bubbleGeometry = buildConnectedBubblePath({
+    centerX: params.x,
+    groupHeight: metrics.groupHeight,
+    groupY,
+    lineCenterOffset: metrics.rectHeight / 2,
+    lineStep: metrics.lineStep,
+    outerRadius: params.radius,
+    stepRadius,
+    widths: metrics.rects.map((rect) => rect.visualWidth),
+  });
+  const bubblePath = `<path d="${bubbleGeometry.pathData}" fill="${params.fill}"/>`;
+  const maskPath = `<path d="${bubbleGeometry.pathData}" fill="#ffffff"/>`;
   const textLines = params.lines
     .map((line, index) => {
       const textY = groupY + metrics.baselineOffset + index * metrics.lineStep;
@@ -808,7 +1072,7 @@ function buildBubbleText(params: {
     .join("");
 
   return {
-    bubble: `<g${params.shadow ? ' filter="url(#bubbleShadow)"' : ""}>${rects}</g>`,
+    bubble: `<g${params.shadow ? ' filter="url(#bubbleShadow)"' : ""}>${bubblePath}</g>`,
     diagnostics: params.lines.map((line, index) => ({
       cornerSafety: params.cornerSafety,
       estimatedTextWidth: metrics.rects[index].estimatedTextWidth,
@@ -817,11 +1081,15 @@ function buildBubbleText(params: {
       measuredTextWidth: metrics.rects[index].measuredTextWidth,
       paddingX: params.paddingX,
       radius: params.radius,
-      rectangleWidth: metrics.rects[index].width,
+      rectangleWidth: bubbleGeometry.widths[index],
       requiredWidth: metrics.rects[index].requiredWidth,
+      stepRadius,
       text: line,
+      transitionToNext: bubbleGeometry.transitions[index] ?? "none",
+      visualWidth: bubbleGeometry.widths[index],
+      widthSnapSideThreshold: CONNECTED_BUBBLE_SIDE_SNAP,
     })),
-    mask: maskRects,
+    mask: maskPath,
     text: textLines,
   };
 }
@@ -866,11 +1134,23 @@ type OverlayLayers = {
 };
 
 function getHeadlineRadius(fontSize: number) {
-  return clamp(Math.round(fontSize * 0.2), 8, 12);
+  return clamp(Math.round(fontSize * 0.42), 18, 22);
 }
 
 function getBodyRadius(fontSize: number) {
-  return clamp(Math.round(fontSize * 0.22), 8, 12);
+  return clamp(Math.round(fontSize * 0.45), 18, 22);
+}
+
+function getHeadlineWrapCornerSafety(fontSize: number) {
+  return clamp(Math.round(fontSize * 0.28), 14, 16) + MIN_CORNER_SAFETY;
+}
+
+function getBodyWrapCornerSafety(fontSize: number) {
+  return clamp(Math.round(fontSize * 0.3), 14, 16) + MIN_CORNER_SAFETY;
+}
+
+function getBubbleCornerSafety(radius: number, safetyBoost: number) {
+  return clamp(Math.round(radius * 0.45), 8, 10) + safetyBoost;
 }
 
 function buildSvgDocument(params: {
@@ -927,7 +1207,7 @@ async function buildOverlaySvg(params: {
     fontFamily: TEXT_FONT_FAMILY,
     fontWeight: HEADLINE_FONT_WEIGHT,
     getCornerSafety: (fontSize) =>
-      getHeadlineRadius(fontSize) + MIN_CORNER_SAFETY + params.safetyBoost,
+      getHeadlineWrapCornerSafety(fontSize) + params.safetyBoost,
     lineHeightRatio: 1.04,
     maxLines: 2,
     maxWidth: maxBubbleWidth,
@@ -940,7 +1220,7 @@ async function buildOverlaySvg(params: {
         fontFamily: TEXT_FONT_FAMILY,
         fontWeight: BODY_FONT_WEIGHT,
         getCornerSafety: (fontSize) =>
-          getBodyRadius(fontSize) + MIN_CORNER_SAFETY + params.safetyBoost,
+          getBodyWrapCornerSafety(fontSize) + params.safetyBoost,
         lineHeightRatio: 1.04,
         maxLines: 4,
         maxWidth: maxBubbleWidth,
@@ -957,7 +1237,7 @@ async function buildOverlaySvg(params: {
           fontFamily: TEXT_FONT_FAMILY,
           fontWeight: BODY_FONT_WEIGHT,
           getCornerSafety: (fontSize) =>
-            getBodyRadius(fontSize) + MIN_CORNER_SAFETY + params.safetyBoost,
+            getBodyWrapCornerSafety(fontSize) + params.safetyBoost,
           lineHeightRatio: bodyOnlyMode ? 1.04 : 1.05,
           maxLines: 4,
           maxWidth: maxBubbleWidth,
@@ -977,11 +1257,15 @@ async function buildOverlaySvg(params: {
           measuredLineWidths: [],
         };
   const headlineRadius = getHeadlineRadius(headline.fontSize);
-  const headlineCornerSafety =
-    headlineRadius + MIN_CORNER_SAFETY + params.safetyBoost;
+  const headlineCornerSafety = getBubbleCornerSafety(
+    headlineRadius,
+    params.safetyBoost,
+  );
   const bodyRadius = getBodyRadius(body.fontSize);
-  const bodyCornerSafety =
-    bodyRadius + MIN_CORNER_SAFETY + params.safetyBoost;
+  const bodyCornerSafety = getBubbleCornerSafety(
+    bodyRadius,
+    params.safetyBoost,
+  );
   const headlineMetrics = measureBubbleLines({
     cornerSafety: headlineCornerSafety,
     fontSize: headline.fontSize,
@@ -1079,8 +1363,8 @@ async function buildOverlaySvg(params: {
       width: params.width,
     }),
     diagnostics: {
+      bubbleShapeStrategy: "hybrid-soft-union-connected-path",
       fontFamily: TEXT_FONT_FAMILY,
-      lineRectStrategy: "direct-overlapping-rectangles",
       lines: [...headlineMarkup.diagnostics, ...bodyMarkup.diagnostics],
       maxBubbleWidth,
     },

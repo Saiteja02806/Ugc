@@ -19,11 +19,11 @@ const expected = {
   broadMatcherMode: args["broad-mode"] || "dry-run",
   broadMatcherVersion: args["broad-version"] || "broad-runtime-matcher-v2",
   contentPlannerVersion:
-    args["planner-version"] || "llm-carousel-planner-v8-brand-safe-fallback",
+    args["planner-version"] || "llm-carousel-planner-v16-solution-story-guard",
   fallbackDisabled: args["fallback-disabled"] || "true",
   rendererVersion:
     args["renderer-version"] ||
-    "social-bubble-renderer-v7-contained-line-rectangles",
+    "social-bubble-renderer-v11-hybrid-soft-union",
   safetyPolicyVersion:
     args["safety-version"] || "object-only-no-human-v1",
 };

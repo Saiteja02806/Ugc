@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-07-13
+Last updated: 2026-07-14
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -827,26 +827,38 @@ Implemented:
   `scripts/check-carousel-worker-deployment.mjs`, exposed as
   `npm run worker:carousel-deployment:check`. It verifies the ECS task
   definition env and the latest CloudWatch startup log for matcher mode,
-  broad matcher version, image safety policy, and renderer version.
-- LLM slide planner with deterministic fallback.
+  broad matcher version, image safety policy, planner version, renderer
+  version, and Geist font availability.
+- LLM slide planner with one copy-repair pass and validated deterministic
+  fallback. Generated rows store the raw initial/repair responses, normalized
+  plan, planner version, actual model, source, fallback reason, validation
+  result, and renderer version.
 - Professional Sharp text renderer and AWS Carousel worker path.
-- AWS Carousel worker revision 18 runs image
-  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260713121938`
+- AWS Carousel worker revision 32 runs image
+  `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260713184011`
   from task definition
-  `arn:aws:ecs:us-east-2:831963379461:task-definition/ugc-carousel-worker-task:18`.
-  It was deployed from the current local workspace, and startup metadata reports
-  git commit `58ae1d9fccb79ebcc1cff4bbb5ef8b5f03586f82`. The verified
-  startup log reports balanced planner
-  `llm-carousel-planner-v2-balanced-copy`, connected silhouette renderer
-  `social-bubble-renderer-v6-unified-text-silhouette`, broad matcher
-  `broad-runtime-matcher-v2` in `dry-run`, and safety policy
-  `object-only-no-human-v1`.
-- The connected-background renderer
-  `social-bubble-renderer-v6-unified-text-silhouette`. It draws every wrapped
-  heading or body group as one clipped white silhouette, registers the same
-  Geist font used by the web application inside the worker image, and writes
-  renderer-versioned, content-hashed S3 keys so regenerated slides do not reuse
-  old immutable CloudFront URLs.
+  `arn:aws:ecs:us-east-2:831963379461:task-definition/ugc-carousel-worker-task:32`.
+  Startup metadata reports git commit
+  `5d604b9805ea6c875af6f44cf247c2ada1212f67`, planner
+  `llm-carousel-planner-v16-solution-story-guard`, renderer
+  `social-bubble-renderer-v11-hybrid-soft-union`, broad matcher
+  `broad-runtime-matcher-v2` in `dry-run`, safety policy
+  `object-only-no-human-v1`, and Geist Regular available at
+  `/usr/local/share/fonts/geist/Geist-Regular.ttf`.
+- Renderer `social-bubble-renderer-v11-hybrid-soft-union` preserves each
+  measured line's safe `requiredWidth`. Imperceptible adjacent differences
+  below 3px per side snap to the larger width. Small visible side changes use a
+  vertically extended cubic transition with vertical tangents, while larger
+  changes retain rounded shoulders. The visible bubble and containment mask
+  use the same single connected SVG path. This does not change copy, wrapping,
+  typography, padding, image processing, safe margins, or text placement.
+- Fresh production canary `61b0edb4-0af2-44b0-9211-d1db40f9b1f3` completed on
+  worker revision 32 with five new renderer-v11 CloudFront URLs. All five WebPs
+  were visually inspected at 1080x1350. The exact reference sentence retained
+  widths `542, 628, 636` and used transitions
+  `rounded-shoulder, soft-curve, none`. CloudWatch diagnostics reported
+  `escapedTextPixels = 0`, `textPixelContainmentPassed = true`, and no repair on
+  slides 1 through 5.
 - Supabase relevance metadata `runtime_exclusion_reason` and
   `near_duplicate_group`, including database constraints and a ready-pool index.
 - Marketing SaaS asset cleanup for wrong-bucket, human-form, people-on-screen,

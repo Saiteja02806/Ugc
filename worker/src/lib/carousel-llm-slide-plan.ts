@@ -8,9 +8,9 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v8-brand-safe-fallback";
+  "llm-carousel-planner-v16-solution-story-guard";
 
-const DEFAULT_MODEL = "gpt-4o-mini";
+const DEFAULT_MODEL = "gpt-4.1-mini";
 const MAX_BODY_LENGTH = 120;
 const MAX_HEADLINE_LENGTH = 50;
 const MAX_CTA_LENGTH = 34;
@@ -80,6 +80,7 @@ export type CarouselPlanValidationIssue = {
     | "invalid_plan"
     | "multiple_ideas"
     | "repeated_punctuation"
+    | "story_structure"
     | "story_repetition"
     | "unsupported_claim";
   message: string;
@@ -563,6 +564,84 @@ function countWords(value: string) {
   return value.match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)?/g)?.length ?? 0;
 }
 
+function hasNearbyRepeatedCopy(value: string) {
+  const tokens = normalizeValidationText(value).split(/\s+/).filter(Boolean);
+  const repeatedConnectors = new Set(["by", "for", "from", "to", "with"]);
+  const ignoredContentWords = new Set([
+    "and",
+    "are",
+    "but",
+    "can",
+    "each",
+    "into",
+    "that",
+    "the",
+    "this",
+    "your",
+  ]);
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+
+    for (
+      let nextIndex = index + 1;
+      nextIndex < Math.min(tokens.length, index + 11);
+      nextIndex += 1
+    ) {
+      const nextToken = tokens[nextIndex];
+
+      const betweenTokens = tokens.slice(index + 1, nextIndex);
+
+      if (
+        token === nextToken &&
+        repeatedConnectors.has(token) &&
+        !betweenTokens.some((between) =>
+          ["and", "but", "or", "while"].includes(between),
+        )
+      ) {
+        return true;
+      }
+
+      if (
+        token.length >= 4 &&
+        nextToken.length >= 4 &&
+        !ignoredContentWords.has(token) &&
+        getCopyWordRoot(token) === getCopyWordRoot(nextToken)
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function getCopyWordRoot(value: string) {
+  if (value.length >= 5 && value.endsWith("s") && !value.endsWith("ss")) {
+    return value.slice(0, -1);
+  }
+
+  return value;
+}
+
+function isProblemFramedCopy(value: string | null) {
+  if (!value) {
+    return false;
+  }
+
+  const normalized = normalizeValidationText(value);
+  const hasProblemSignal =
+    /\b(chaos|confusion|delays?|errors?|friction|harder|late night|missed|missing|overwhelmed|scattered|slows?|wastes?)\b/.test(
+      normalized,
+    );
+  const hasSolutionAction =
+    /\b(avoid|automate|bring|connect|consolidate|keep|keeps|prevent|reduce|remove|replace|route|stop|use)\b/.test(
+      normalized,
+    );
+
+  return hasProblemSignal && !hasSolutionAction;
+}
+
 export function validateCarouselContentPlan(
   plan: Pick<CarouselContentPlan, "broadSituations" | "concept" | "slides">,
   analysis?: WebsiteBusinessAnalysis,
@@ -585,6 +664,14 @@ export function validateCarouselContentPlan(
       slide.ctaText,
       ...(slide.listItems ?? []),
     ].filter((value): value is string => Boolean(value));
+
+    if (slide.slideType === "solution" && isProblemFramedCopy(slide.body)) {
+      issues.push({
+        code: "story_structure",
+        message: "A consequence or friction slide cannot be labeled as a solution.",
+        slideNumber: slide.slideNumber,
+      });
+    }
 
     if (slide.headline) {
       const headlineWords = countWords(slide.headline);
@@ -647,9 +734,10 @@ export function validateCarouselContentPlan(
       if (
         /^[a-z]/.test(slide.body) ||
         /\b([a-z][a-z'-]{2,})\s+\1\b/i.test(slide.body) ||
-        /\b([a-z][a-z'-]{3,})\b(?:\s+[a-z][a-z'-]*){1,3}\s+\1\b/i.test(
+        /\bplanning and reporting\b(?:\s+[a-z'-]+){0,5}\s+creates\b/i.test(
           slide.body,
         ) ||
+        hasNearbyRepeatedCopy(slide.body) ||
         /\s+[,.!?]/.test(slide.body)
       ) {
         issues.push({
@@ -703,7 +791,7 @@ export function validateCarouselContentPlan(
         )?.[0];
         const unsupportedOutcome =
           analysis &&
-          (normalizedText.match(/\b(?:conversions?|money|profits?|revenue|sales)\b/g) ?? [])
+          (normalizedText.match(/\b(?:conversions?|growth|money|profits?|revenue|sales)\b/g) ?? [])
             .some((term) => !new RegExp(`\\b${term}\\b`).test(evidenceText));
 
         return (
@@ -810,7 +898,7 @@ function getTokenOverlap(left: string, right: string) {
 }
 
 function hasGenericCopy(value: string) {
-  return /\b(boost your productivity|efficiently|effortlessly|game changer|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|stay on top|streamline your workflow|unify your (?:planning and reporting|workflow)|unlock efficiency|with ease|work smarter)\b/i.test(
+  return /\b((?:achieve|enjoy|experience|gain) (?:better|greater|improved|more)|better (?:management|organization|outcomes?|results?)|boost your productivity|effectively|efficiently|effortlessly|enhance your marketing efforts|game changer|improved (?:clarity|organization|outcomes?|results?)|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|stay on top|streamline your workflow|transform your campaign management|unify your (?:planning and reporting|workflow)|unlock efficiency|with ease|work smarter)\b/i.test(
     value,
   );
 }
@@ -934,13 +1022,16 @@ function buildRepairMessages(params: {
         "Every headline is optional; when present it must be 3-8 words, at most 50 characters, and at most two visual lines.",
         "Every body must be one complete, specific sentence of 8-20 words and at most 120 characters.",
         "List modes may use at most four total visual lines.",
-        "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors such as leads to lost leads.",
-        "Remove quantified social proof unless it appears verbatim in the analysis, and remove money, revenue, profit, sales, or conversion claims not supported by the analysis.",
+        "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors such as lead to missed leads.",
+        "Do not repeat a connector within one short sentence, such as for better management for clearer decisions.",
+        "Remove quantified social proof unless it appears verbatim in the analysis, and remove growth, money, revenue, profit, sales, or conversion claims not supported by the analysis.",
         "Use businessName exactly when naming the product. Never invent or substitute another product or brand in copy or imageDirection.",
-        "Never use these phrases: boost productivity, efficiently, effortlessly, seamless, streamline your workflow, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
+        "Never use abstract outcomes such as experience improved clarity, achieve better results, better management, or better organization.",
+        "Never use these phrases: boost productivity, effectively, efficiently, effortlessly, enhance your marketing efforts, seamless, streamline your workflow, transform your campaign management, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
         "If a headline repeats its body, set headline to null and use body_only instead of paraphrasing it.",
         "The final slide must use slideType cta and include a non-null ctaText.",
         "Keep one clear story: hook, friction, consequence, solution, useful result or CTA.",
+        "A slide describing scattered work, missed steps, delays, or other consequences must use slideType problem, never solution.",
         "Validation failures:",
         JSON.stringify(params.issues),
         "Business analysis:",
@@ -977,10 +1068,14 @@ export function normalizeRepairedCarouselCopy<
         usableHeadline && body && getTokenOverlap(usableHeadline, body) >= 0.6
           ? null
           : usableHeadline;
+      const slideType =
+        slide.slideType === "solution" && isProblemFramedCopy(body)
+          ? "problem"
+          : slide.slideType;
       const textMode =
         slide.textMode === "question_list" || slide.textMode === "checklist"
           ? slide.textMode
-          : slide.slideType === "cta"
+          : slideType === "cta"
             ? "cta_takeaway"
             : headline
               ? slide.textMode
@@ -988,13 +1083,14 @@ export function normalizeRepairedCarouselCopy<
 
       return {
         ...slide,
-        ...getLayoutPreset(slide.slideType, textMode),
+        ...getLayoutPreset(slideType, textMode),
         body,
         ctaText:
-          slide.slideType === "cta"
+          slideType === "cta"
             ? repairCtaText(slide.ctaText)
             : slide.ctaText,
         headline,
+        slideType,
         subtext: body,
         textMode,
       };
@@ -1034,8 +1130,36 @@ function repairCopyText(
     .replace(/\bone workspace for everything\b/gi, "campaign work in one place")
     .replace(/\bseamless(?:ly)?\b/gi, "connected")
     .replace(/\befficiently\b/gi, "with fewer handoffs")
+    .replace(/\beffectively\b/gi, "in one workflow")
+    .replace(/\benhance your marketing efforts\b/gi, "connect planning and reporting")
     .replace(/\bunify your (?:planning and reporting|workflow)\b/gi, "connect campaign plans and reports")
     .replace(/\bwith ease\b/gi, "with clear next steps")
+    .replace(/\blead to (?:missed|lost) leads\b/gi, "cause missed follow-ups")
+    .replace(/\bleads to (?:missed|lost) leads\b/gi, "causes missed follow-ups")
+    .replace(
+      /\b(planning and reporting\b(?:\s+[a-z'-]+){0,5})\s+creates\b/gi,
+      "$1 create",
+    )
+    .replace(
+      /\bfor better management(?: for clearer campaign decisions)?\b/gi,
+      "to keep campaign handoffs connected",
+    )
+    .replace(
+      /\bfor better organization\b/gi,
+      "to keep planning and reporting connected",
+    )
+    .replace(
+      /\btransform your campaign management\b/gi,
+      "organize your next campaign handoff",
+    )
+    .replace(
+      /\b(?:hinder|impact|limit|slow) growth\b/gi,
+      "create gaps in campaign follow-ups",
+    )
+    .replace(
+      /\bexperience improved clarity and organization\b/gi,
+      "keep planning and reporting in one workflow",
+    )
     .replace(/\s+/g, " ")
     .trim();
 
@@ -1056,7 +1180,11 @@ function repairCopyText(
             ? /\bwith\b/i.test(stem)
               ? "and make the next step clear"
               : "with clearer next steps"
-            : "for clearer campaign decisions";
+            : slideType === "solution"
+              ? "inside one organized workspace"
+              : slideType === "hook"
+                ? "when deadlines start moving"
+                : "during active campaign work";
       repaired = `${stem} ${suffix}${punctuation}`;
     }
   }

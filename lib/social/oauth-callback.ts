@@ -329,7 +329,7 @@ function getSafeErrorMessage(error: unknown) {
 }
 
 function countRequestCookies(cookieHeader: string | null) {
-  if (!cookieHeader) {
+  if (typeof cookieHeader !== "string" || !cookieHeader) {
     return 0;
   }
 

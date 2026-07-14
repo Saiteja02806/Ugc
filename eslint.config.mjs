@@ -10,8 +10,16 @@ const eslintConfig = defineConfig([
     // Default ignores of eslint-config-next:
     ".next/**",
     ".trigger/**",
+    ".impeccable/**",
     "out/**",
     "build/**",
+    ".tmp/**",
+    "tmp/**",
+    "local-run-logs/**",
+    ".playwright-mcp/**",
+    "hatch-pet-runs/**",
+    "worker/dist/**",
+    "worker/node_modules/**",
     "next-env.d.ts",
   ]),
 ]);

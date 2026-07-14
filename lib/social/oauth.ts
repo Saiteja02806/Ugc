@@ -1322,6 +1322,10 @@ function encryptSecret(secret: string) {
 }
 
 export function decryptSecret(encryptedSecret: string) {
+  if (typeof encryptedSecret !== "string") {
+    throw new Error("Unsupported encrypted secret format.");
+  }
+
   const [version, iv, tag, ciphertext] = encryptedSecret.split(".");
 
   if (version !== "v1" || !iv || !tag || !ciphertext) {

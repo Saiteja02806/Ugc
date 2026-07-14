@@ -31,6 +31,7 @@
     "carousel:content-planner:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-carousel-content-planner.mjs",
     "carousel:content-planner:live": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-carousel-content-planner.mjs --live",
     "carousel:renderer:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-carousel-renderer-phase9.mjs",
+    "carousel:connected-bubbles:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-carousel-connected-bubbles.mjs",
     "carousel:taxonomy:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/validate-carousel-visual-buckets.mjs",
     "carousel:broad-buckets:backfill": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/backfill-carousel-broad-buckets.mjs",
     "carousel:broad-bucket-contact-sheet": "node scripts/create-carousel-broad-bucket-contact-sheet.mjs",

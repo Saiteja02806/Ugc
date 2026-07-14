@@ -115,23 +115,29 @@ type PlatformAccount = {
 };
 
 export type SocialOAuthTraceStage =
-  | "account_lookup_failed"
-  | "callback_completed"
-  | "code_received"
+  | "callback_received"
   | "connected_accounts_api_response"
-  | "database_reread"
-  | "database_upsert"
+  | "completed"
+  | "exchange_authorization_code"
+  | "fetch_instagram_profile"
+  | "fetch_tiktok_profile"
+  | "fetch_youtube_profile"
   | "frontend_rendering"
-  | "oauth_attempt_found"
-  | "profile_retrieval"
   | "provider_authorization"
-  | "state_validated"
-  | "token_exchange"
-  | "ugc_user_identified";
+  | "read_oauth_state"
+  | "resolve_application_user"
+  | "save_connected_account"
+  | "validate_callback_parameters"
+  | "validate_instagram_configuration"
+  | "validate_oauth_state"
+  | "validate_tiktok_configuration"
+  | "validate_youtube_configuration"
+  | "verify_connected_account";
 
 export type SocialOAuthTraceContext = {
   callbackHost: string;
   correlationId: string;
+  stage: SocialOAuthTraceStage;
 };
 
 const STATE_TTL_MINUTES = 10;
@@ -230,16 +236,53 @@ export async function completeSocialOAuthCallback(params: {
     state: params.state,
     trace: params.trace,
   });
-  logSocialOAuthTrace(params.trace, "ugc_user_identified", {
-    userIdPresent: Boolean(session.user_id),
+
+  logSocialOAuthTrace(params.trace, "resolve_application_user", {
+    authenticatedUserFound: Boolean(session.user_id),
   });
+
+  if (!session.user_id) {
+    throw new SocialOAuthError(
+      "The account connection is not associated with a UGC Pilot user.",
+      400,
+      "oauth_user_missing",
+      "resolve_application_user",
+    );
+  }
+
   const redirectUri = getPlatformRedirectUri(params.platform);
+  const configurationStage = getConfigurationValidationStage(params.platform);
+
+  logSocialOAuthTrace(params.trace, configurationStage, {
+    ...getSocialOAuthConfigurationLogFields(params.platform),
+    hasRedirectUri: Boolean(redirectUri),
+  });
+
+  if (getMissingSocialOAuthEnvVars(params.platform).length > 0 || !redirectUri) {
+    throw new SocialOAuthError(
+      "Social OAuth is not fully configured.",
+      501,
+      "oauth_not_configured",
+      configurationStage,
+    );
+  }
+
+  logSocialOAuthTrace(params.trace, "exchange_authorization_code", {
+    authorizationCodePresent: Boolean(params.code),
+    redirectUriPresent: Boolean(redirectUri),
+  });
   const tokenSet = await exchangeCodeForTokens({
     code: params.code,
     codeVerifier: session.code_verifier,
     platform: params.platform,
     redirectUri,
     trace: params.trace,
+  });
+
+  const profileStage = getProfileRetrievalStage(params.platform);
+  logSocialOAuthTrace(params.trace, profileStage, {
+    accessTokenPresent: Boolean(tokenSet.accessToken),
+    platformAccountIdPresent: Boolean(tokenSet.platformAccountId),
   });
   const account = await fetchPlatformAccount(
     params.platform,
@@ -401,11 +444,14 @@ async function consumeSocialOAuthSession(params: {
       "OAuth state is missing.",
       400,
       "invalid_or_expired_state",
-      "code_received",
+      "validate_callback_parameters",
     );
   }
 
   const now = new Date().toISOString();
+  logSocialOAuthTrace(params.trace, "read_oauth_state", {
+    hasReturnedState: Boolean(params.state),
+  });
   const attempt = await getClient()
     .from("social_oauth_sessions")
     .select("*")
@@ -414,7 +460,7 @@ async function consumeSocialOAuthSession(params: {
     .eq("state_hash", hashState(params.state))
     .maybeSingle();
 
-  logSocialOAuthTrace(params.trace, "oauth_attempt_found", {
+  logSocialOAuthTrace(params.trace, "read_oauth_state", {
     databaseErrorCode: attempt.error?.code ?? null,
     oauthAttemptFound: Boolean(attempt.data),
   });
@@ -424,7 +470,7 @@ async function consumeSocialOAuthSession(params: {
       "Could not validate the account connection.",
       500,
       "state_validation_failed",
-      "oauth_attempt_found",
+      "read_oauth_state",
     );
   }
 
@@ -433,10 +479,17 @@ async function consumeSocialOAuthSession(params: {
       "This account connection is invalid or has expired. Start again.",
       400,
       "invalid_or_expired_state",
-      "oauth_attempt_found",
+      "read_oauth_state",
     );
   }
 
+  logSocialOAuthTrace(params.trace, "validate_oauth_state", {
+    hasReturnedState: Boolean(params.state),
+    hasStoredState: Boolean(attempt.data.state_hash),
+    stateAlreadyConsumed: Boolean(attempt.data.consumed_at),
+    stateExpired: Date.parse(attempt.data.expires_at) <= Date.now(),
+    stateMatches: true,
+  });
   const { data, error } = await getClient()
     .from("social_oauth_sessions")
     .update({ consumed_at: now })
@@ -448,7 +501,7 @@ async function consumeSocialOAuthSession(params: {
     .select("*")
     .maybeSingle();
 
-  logSocialOAuthTrace(params.trace, "state_validated", {
+  logSocialOAuthTrace(params.trace, "validate_oauth_state", {
     databaseErrorCode: error?.code ?? null,
     stateValidated: Boolean(data),
   });
@@ -458,7 +511,7 @@ async function consumeSocialOAuthSession(params: {
       "Could not validate the account connection.",
       500,
       "state_validation_failed",
-      "state_validated",
+      "validate_oauth_state",
     );
   }
 
@@ -467,7 +520,7 @@ async function consumeSocialOAuthSession(params: {
       "This account connection is invalid or has expired. Start again.",
       400,
       "invalid_or_expired_state",
-      "state_validated",
+      "validate_oauth_state",
     );
   }
 
@@ -522,7 +575,7 @@ async function exchangeTikTokCode(
     scope?: string;
     token_type?: string;
   } | null;
-  logSocialOAuthTrace(trace, "token_exchange", {
+  logSocialOAuthTrace(trace, "exchange_authorization_code", {
     accessTokenReceived: Boolean(data?.access_token),
     httpStatus: response.status,
     ...getSafeProviderErrorFields(data),
@@ -533,7 +586,7 @@ async function exchangeTikTokCode(
       "TikTok did not complete the account connection.",
       502,
       "provider_exchange_failed",
-      "token_exchange",
+      "exchange_authorization_code",
     );
   }
 
@@ -581,7 +634,7 @@ async function exchangeInstagramCode(
     token_type?: string;
     user_id?: number | string;
   } | null;
-  logSocialOAuthTrace(trace, "token_exchange", {
+  logSocialOAuthTrace(trace, "exchange_authorization_code", {
     httpStatus: shortResponse.status,
     ...getSafeProviderErrorFields(shortData),
     tokenReceived: Boolean(shortData?.access_token),
@@ -593,7 +646,7 @@ async function exchangeInstagramCode(
       "Instagram did not complete the account connection.",
       502,
       "provider_exchange_failed",
-      "token_exchange",
+      "exchange_authorization_code",
     );
   }
 
@@ -640,7 +693,7 @@ async function exchangeInstagramLongLivedToken(
     expires_in?: number;
     token_type?: string;
   } | null;
-  logSocialOAuthTrace(trace, "token_exchange", {
+  logSocialOAuthTrace(trace, "exchange_authorization_code", {
     httpStatus: response.status,
     longLivedTokenReceived: Boolean(data?.access_token),
     ...getSafeProviderErrorFields(data),
@@ -651,7 +704,7 @@ async function exchangeInstagramLongLivedToken(
       "Instagram did not provide a long-lived access token.",
       502,
       "provider_exchange_failed",
-      "token_exchange",
+      "exchange_authorization_code",
     );
   }
 
@@ -690,7 +743,7 @@ async function exchangeYouTubeCode(
     scope?: string;
     token_type?: string;
   } | null;
-  logSocialOAuthTrace(trace, "token_exchange", {
+  logSocialOAuthTrace(trace, "exchange_authorization_code", {
     accessTokenReceived: Boolean(data?.access_token),
     httpStatus: response.status,
     ...getSafeProviderErrorFields(data),
@@ -701,7 +754,7 @@ async function exchangeYouTubeCode(
       "YouTube did not complete the account connection.",
       502,
       "provider_exchange_failed",
-      "token_exchange",
+      "exchange_authorization_code",
     );
   }
 
@@ -739,6 +792,9 @@ async function fetchTikTokAccount(
   const url = new URL("https://open.tiktokapis.com/v2/user/info/");
   url.searchParams.set("fields", "open_id,union_id,avatar_url,display_name");
 
+  logSocialOAuthTrace(trace, "fetch_tiktok_profile", {
+    profileRequestStarted: true,
+  });
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -756,7 +812,7 @@ async function fetchTikTokAccount(
     };
   } | null;
   const user = payload?.data?.user;
-  logSocialOAuthTrace(trace, "profile_retrieval", {
+  logSocialOAuthTrace(trace, "fetch_tiktok_profile", {
     httpStatus: response.status,
     platformAccountIdPresent: Boolean(user?.open_id),
     ...getSafeProviderErrorFields(payload),
@@ -767,7 +823,7 @@ async function fetchTikTokAccount(
       "Could not load the authorized TikTok account.",
       502,
       "account_lookup_failed",
-      "profile_retrieval",
+      "fetch_tiktok_profile",
     );
   }
 
@@ -791,6 +847,10 @@ async function fetchInstagramAccount(
   profileUrl.searchParams.set("fields", "id,username");
   profileUrl.searchParams.set("access_token", accessToken);
 
+  logSocialOAuthTrace(trace, "fetch_instagram_profile", {
+    fallbackAccountIdPresent: Boolean(fallbackAccountId),
+    profileRequestStarted: true,
+  });
   const response = await fetch(profileUrl);
   const payload = (await response.json().catch(() => null)) as {
     account_type?: string;
@@ -803,7 +863,7 @@ async function fetchInstagramAccount(
     profile_picture_url?: string;
     username?: string;
   } | null;
-  logSocialOAuthTrace(trace, "profile_retrieval", {
+  logSocialOAuthTrace(trace, "fetch_instagram_profile", {
     fallbackAccountIdPresent: Boolean(fallbackAccountId),
     httpStatus: response.status,
     instagramAccountIdPresent: Boolean(payload?.id),
@@ -825,7 +885,7 @@ async function fetchInstagramAccount(
       "Could not load the authorized Instagram account.",
       502,
       "account_lookup_failed",
-      "profile_retrieval",
+      "fetch_instagram_profile",
     );
   }
 
@@ -848,6 +908,9 @@ async function fetchYouTubeAccount(
   url.searchParams.set("mine", "true");
   url.searchParams.set("part", "snippet");
 
+  logSocialOAuthTrace(trace, "fetch_youtube_profile", {
+    profileRequestStarted: true,
+  });
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -868,7 +931,7 @@ async function fetchYouTubeAccount(
     }>;
   } | null;
   const channel = payload?.items?.[0];
-  logSocialOAuthTrace(trace, "profile_retrieval", {
+  logSocialOAuthTrace(trace, "fetch_youtube_profile", {
     httpStatus: response.status,
     platformAccountIdPresent: Boolean(channel?.id),
     ...getSafeProviderErrorFields(payload),
@@ -879,7 +942,7 @@ async function fetchYouTubeAccount(
       "No YouTube channel was found for this Google account.",
       422,
       "youtube_channel_missing",
-      "profile_retrieval",
+      "fetch_youtube_profile",
     );
   }
 
@@ -901,6 +964,9 @@ async function upsertSocialConnection(params: {
   trace: SocialOAuthTraceContext;
   userId: string;
 }) {
+  logSocialOAuthTrace(params.trace, "save_connected_account", {
+    databaseLookupStarted: true,
+  });
   const existing = await getClient()
     .from("social_connections")
     .select("id,refresh_token_ciphertext")
@@ -910,7 +976,7 @@ async function upsertSocialConnection(params: {
     .maybeSingle();
 
   if (existing.error) {
-    logSocialOAuthTrace(params.trace, "database_upsert", {
+    logSocialOAuthTrace(params.trace, "save_connected_account", {
       databaseErrorCode: existing.error.code,
       databaseSaved: false,
     });
@@ -919,7 +985,7 @@ async function upsertSocialConnection(params: {
       "Could not check the existing account connection.",
       500,
       "connection_lookup_failed",
-      "database_upsert",
+      "save_connected_account",
     );
   }
 
@@ -963,7 +1029,7 @@ async function upsertSocialConnection(params: {
       });
 
   if (result.error) {
-    logSocialOAuthTrace(params.trace, "database_upsert", {
+    logSocialOAuthTrace(params.trace, "save_connected_account", {
       databaseErrorCode: result.error.code,
       databaseSaved: false,
     });
@@ -972,14 +1038,17 @@ async function upsertSocialConnection(params: {
       "Could not save the account connection.",
       500,
       "connection_save_failed",
-      "database_upsert",
+      "save_connected_account",
     );
   }
 
-  logSocialOAuthTrace(params.trace, "database_upsert", {
+  logSocialOAuthTrace(params.trace, "save_connected_account", {
     databaseSaved: true,
   });
 
+  logSocialOAuthTrace(params.trace, "verify_connected_account", {
+    databaseRereadStarted: true,
+  });
   const verified = await getClient()
     .from("social_connections")
     .select("*")
@@ -991,7 +1060,7 @@ async function upsertSocialConnection(params: {
     .eq("status", "connected")
     .maybeSingle();
 
-  logSocialOAuthTrace(params.trace, "database_reread", {
+  logSocialOAuthTrace(params.trace, "verify_connected_account", {
     databaseErrorCode: verified.error?.code ?? null,
     databaseRowVerified: Boolean(verified.data),
   });
@@ -1001,7 +1070,7 @@ async function upsertSocialConnection(params: {
       "Could not verify the saved account connection.",
       500,
       "connection_reread_failed",
-      "database_reread",
+      "verify_connected_account",
     );
   }
 
@@ -1010,7 +1079,7 @@ async function upsertSocialConnection(params: {
       "The account connection was not verified after saving.",
       500,
       "connection_verify_failed",
-      "database_reread",
+      "verify_connected_account",
     );
   }
 
@@ -1082,6 +1151,69 @@ function getPlatformRedirectUri(platform: SocialPlatform) {
         process.env.GOOGLE_REDIRECT_URI?.trim() ||
         `${getSocialAppBaseUrl()}/api/social/youtube/callback`
       );
+  }
+}
+
+function getConfigurationValidationStage(
+  platform: SocialPlatform,
+): SocialOAuthTraceStage {
+  switch (platform) {
+    case "instagram":
+      return "validate_instagram_configuration";
+    case "tiktok":
+      return "validate_tiktok_configuration";
+    case "youtube":
+      return "validate_youtube_configuration";
+  }
+}
+
+function getProfileRetrievalStage(
+  platform: SocialPlatform,
+): SocialOAuthTraceStage {
+  switch (platform) {
+    case "instagram":
+      return "fetch_instagram_profile";
+    case "tiktok":
+      return "fetch_tiktok_profile";
+    case "youtube":
+      return "fetch_youtube_profile";
+  }
+}
+
+function getSocialOAuthConfigurationLogFields(platform: SocialPlatform) {
+  const shared = {
+    hasSocialTokenEncryptionKey: Boolean(getEncryptionSecret()),
+    hasSupabaseServiceRoleKey: Boolean(
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
+    ),
+    hasSupabaseUrl: Boolean(getSupabaseUrl()),
+  };
+
+  switch (platform) {
+    case "instagram":
+      return {
+        ...shared,
+        hasInstagramClientId: Boolean(process.env.INSTAGRAM_APP_ID?.trim()),
+        hasInstagramClientSecret: Boolean(
+          process.env.INSTAGRAM_APP_SECRET?.trim(),
+        ),
+      };
+    case "tiktok":
+      return {
+        ...shared,
+        hasTikTokClientKey: Boolean(process.env.TIKTOK_CLIENT_KEY?.trim()),
+        hasTikTokClientSecret: Boolean(
+          process.env.TIKTOK_CLIENT_SECRET?.trim(),
+        ),
+      };
+    case "youtube":
+      return {
+        ...shared,
+        hasGoogleClientId: Boolean(process.env.GOOGLE_CLIENT_ID?.trim()),
+        hasGoogleClientSecret: Boolean(
+          process.env.GOOGLE_CLIENT_SECRET?.trim(),
+        ),
+      };
   }
 }
 
@@ -1297,6 +1429,8 @@ export function logSocialOAuthTrace(
   if (!trace) {
     return;
   }
+
+  trace.stage = stage;
 
   console.info("social_oauth_trace", {
     callbackHost: trace.callbackHost,

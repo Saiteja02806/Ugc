@@ -66,5 +66,6 @@ function getOAuthTraceContext(request: Request): SocialOAuthTraceContext | undef
       request.headers.get("x-ugc-oauth-callback-host")?.trim() ||
       new URL(request.url).host,
     correlationId,
+    stage: "connected_accounts_api_response",
   };
 }

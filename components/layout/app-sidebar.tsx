@@ -9,6 +9,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import {
   useEffect,
   useId,
@@ -33,6 +34,7 @@ export type AppSidebarActiveKey =
   | "connected-accounts"
   | "avatars"
   | "edit"
+  | "analytics"
   | "scheduling";
 
 type SidebarItem = {
@@ -73,6 +75,12 @@ const primaryNavigationItems: SidebarItem[] = [
     href: "/edit",
     icon: "edit",
   },
+  {
+    key: "analytics",
+    label: "Analytics",
+    href: "/analytics",
+    icon: "analytics",
+  },
 ];
 
 const libraryNavigationItems: SidebarItem[] = [
@@ -80,7 +88,7 @@ const libraryNavigationItems: SidebarItem[] = [
     key: "connected-accounts",
     label: "Accounts",
     href: "/connected-accounts",
-    icon: "library",
+    icon: "avatars",
   },
   {
     key: "library",
@@ -196,7 +204,7 @@ export function AppSidebar({
 
   return (
     <>
-      <header className="sticky top-0 z-[var(--z-sticky)] flex h-16 w-full items-center justify-between border-b border-border bg-white/95 px-4 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-[var(--z-sticky)] flex h-16 w-full items-center justify-between border-b border-border bg-card/95 px-4 backdrop-blur md:hidden">
         <Brand />
         <button
           type="button"
@@ -205,7 +213,7 @@ export function AppSidebar({
           aria-expanded={isMobileNavigationOpen}
           aria-label="Open navigation"
           title="Open navigation"
-          className="inline-flex size-10 items-center justify-center rounded-md text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          className="inline-flex size-10 items-center justify-center rounded-control text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           <Menu className="size-5" aria-hidden="true" />
         </button>
@@ -214,19 +222,24 @@ export function AppSidebar({
       <aside
         id="ugc-desktop-sidebar"
         className={cn(
-          "sticky top-0 z-[var(--z-sidebar)] hidden h-screen shrink-0 flex-col border-r border-border bg-white transition-[width] duration-200 motion-reduce:transition-none md:flex",
-          collapsed ? "w-[72px]" : "w-[232px]",
+          "sticky top-0 z-[var(--z-sidebar)] hidden h-dvh shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
+          collapsed ? "w-[68px]" : "w-[224px]",
         )}
       >
-        <SidebarToggle collapsed={collapsed} onToggle={toggleSidebar} />
-
         <div
           className={cn(
             "flex h-16 shrink-0 items-center border-b border-border",
-            collapsed ? "justify-center px-3" : "px-4",
+            collapsed ? "justify-center" : "justify-between gap-3 px-3.5",
           )}
         >
-          <Brand compact={collapsed} />
+          {collapsed ? (
+            <CollapsedBrandToggle onToggle={toggleSidebar} />
+          ) : (
+            <>
+              <Brand />
+              <SidebarCollapseToggle onToggle={toggleSidebar} />
+            </>
+          )}
         </div>
 
         <SidebarNavigation activeKey={activeKey} collapsed={collapsed} />
@@ -258,7 +271,7 @@ export function AppSidebar({
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${mobileNavigationId}-title`}
-            className="absolute inset-y-0 left-0 flex w-[min(320px,88vw)] flex-col border-r border-border bg-white shadow-floating"
+            className="absolute inset-y-0 left-0 flex w-[min(320px,88vw)] flex-col border-r border-border bg-card shadow-floating"
           >
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4">
               <div id={`${mobileNavigationId}-title`}>
@@ -270,7 +283,7 @@ export function AppSidebar({
                 onClick={() => setIsMobileNavigationOpen(false)}
                 aria-label="Close navigation"
                 title="Close navigation"
-                className="inline-flex size-10 items-center justify-center rounded-md text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+                className="inline-flex size-10 items-center justify-center rounded-control text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
               >
                 <X className="size-5" aria-hidden="true" />
               </button>
@@ -297,59 +310,69 @@ export function AppSidebar({
   );
 }
 
-function Brand({ compact = false }: { compact?: boolean }) {
+function Brand() {
   return (
     <Link
       href="/dashboard"
-      aria-label={compact ? "UGC Pilot home" : undefined}
-      className={cn(
-        "flex min-w-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
-        compact && "justify-center",
-      )}
+      className="flex min-w-0 items-center gap-2 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
     >
-      <span
-        className={cn(
-          "flex h-9 shrink-0 items-center justify-center overflow-hidden rounded-md",
-          compact ? "w-10" : "w-12",
-        )}
-      >
+      <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-small bg-brand">
         <ProductLogoMark
-          className={compact ? "h-6 w-9" : "h-7 w-10"}
-          sizes={compact ? "40px" : "48px"}
+          className="size-6"
+          imageClassName="brightness-0 invert"
+          sizes="24px"
         />
       </span>
-      {!compact ? (
-        <span className="truncate text-base font-semibold text-foreground-strong">
-          UGC Pilot
-        </span>
-      ) : null}
+      <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground-strong">
+        UGCPilot
+      </span>
     </Link>
   );
 }
 
-function SidebarToggle({
-  collapsed,
+function CollapsedBrandToggle({
   onToggle,
 }: {
-  collapsed: boolean;
   onToggle: () => void;
 }) {
-  const label = collapsed ? "Expand sidebar" : "Collapse sidebar";
-
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-controls="ugc-desktop-sidebar"
-      aria-expanded={!collapsed}
-      aria-label={label}
-      title={label}
-      className="absolute -right-3.5 top-[18px] z-20 inline-flex size-7 items-center justify-center rounded-full border border-[#e5e7eb] bg-white text-[#667085] shadow-[0_4px_12px_rgb(15_23_42_/_0.12)] transition hover:border-[#f15a24]/30 hover:bg-[#fff8f4] hover:text-[#f15a24] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f15a24]/30 motion-reduce:transition-none"
+      aria-expanded={false}
+      aria-label="Expand sidebar"
+      title="Expand sidebar"
+      className="group/logo-toggle inline-flex size-10 items-center justify-center rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
     >
-      <SidebarIcon
-        name={collapsed ? "expand" : "collapse"}
-        className="size-4"
-      />
+      <span className="relative size-8 overflow-hidden rounded-small">
+        <span className="absolute inset-0 flex items-center justify-center bg-brand opacity-100 transition-opacity duration-150 group-hover/logo-toggle:opacity-0 group-focus-visible/logo-toggle:opacity-0 motion-reduce:transition-none">
+          <ProductLogoMark
+            className="size-6"
+            imageClassName="brightness-0 invert"
+            sizes="24px"
+          />
+        </span>
+        <span className="absolute inset-0 flex items-center justify-center bg-deep-contrast text-white opacity-0 transition-opacity duration-150 group-hover/logo-toggle:opacity-100 group-focus-visible/logo-toggle:opacity-100 motion-reduce:transition-none">
+          <SidebarIcon name="expand" className="size-[18px]" />
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function SidebarCollapseToggle({ onToggle }: { onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-controls="ugc-desktop-sidebar"
+      aria-expanded
+      aria-label="Collapse sidebar"
+      title="Collapse sidebar"
+      className="inline-flex size-8 shrink-0 items-center justify-center rounded-small border border-transparent text-muted-subtle transition-[background-color,color,border-color] duration-[160ms] hover:border-border hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 motion-reduce:transition-none"
+    >
+      <SidebarIcon name="collapse" className="size-[18px]" />
     </button>
   );
 }
@@ -367,12 +390,12 @@ function SidebarNavigation({
     <nav
       aria-label="Primary navigation"
       className={cn(
-        "min-h-0 flex-1 py-4",
-        collapsed ? "px-2" : "px-3",
+        "min-h-0 flex-1 py-3.5",
+        collapsed ? "px-[14px]" : "px-3",
         collapsed ? "overflow-visible" : "overflow-y-auto overflow-x-hidden",
       )}
     >
-      <div className="space-y-1.5">
+      <div className="flex flex-col gap-1">
         {primaryNavigationItems.map((item) => (
           <SidebarLink
             key={item.key}
@@ -384,15 +407,15 @@ function SidebarNavigation({
         ))}
       </div>
 
-      <div className={cn(collapsed ? "mt-4" : "mt-6")}>
+      <div className={cn(collapsed ? "mt-3.5" : "mt-5")}>
         {collapsed ? (
-          <div className="mx-2 mb-3 border-t border-border" aria-hidden="true" />
+          <div className="mx-1 mb-3 border-t border-border" aria-hidden="true" />
         ) : (
-          <p className="mb-2 px-3.5 text-xs font-semibold text-muted-subtle">
+          <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-subtle">
             Library
           </p>
         )}
-        <div className="space-y-1.5">
+        <div className="flex flex-col gap-1">
           {libraryNavigationItems.map((item) => (
             <SidebarLink
               key={item.key}
@@ -419,50 +442,121 @@ function SidebarLink({
   item: SidebarItem;
   onNavigate?: () => void;
 }) {
+  if (collapsed) {
+    return (
+      <CollapsedMagneticNavItem
+        active={active}
+        item={item}
+        onNavigate={onNavigate}
+      />
+    );
+  }
+
   return (
     <Link
       href={item.href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
-      aria-label={collapsed ? item.label : undefined}
-      title={collapsed ? item.label : undefined}
       className={cn(
-        "group relative flex h-11 w-full items-center rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 motion-reduce:transition-none",
-        collapsed ? "justify-center px-0" : "gap-3 px-3.5",
+        "group relative flex h-10 w-full items-center gap-3 rounded-control px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none",
         active
-          ? "bg-[#fff0e7] text-[#c64518]"
-          : "text-[#5f6672] hover:bg-[#f5f5f6] hover:text-[#17191c]",
+          ? "bg-selected text-primary"
+          : "text-muted hover:bg-card-muted hover:text-foreground-strong",
       )}
     >
       {active ? (
         <span
           aria-hidden="true"
-          className={cn(
-            "absolute rounded-full bg-[#f15a24]",
-            collapsed
-              ? "left-0.5 top-1/2 h-5 w-[3px] -translate-y-1/2"
-              : "bottom-2 left-0 top-2 w-[3px]",
-          )}
+          className="absolute bottom-2 left-0 top-2 w-0.5 rounded-full bg-brand"
         />
       ) : null}
       <SidebarIcon
         name={item.icon}
         className={cn(
-          "size-5",
-          active
-            ? "text-[#f15a24]"
-            : "text-[#667085] group-hover:text-[#17191c]",
+          "size-[19px] transition-colors",
+          active ? "text-brand" : "text-muted-subtle group-hover:text-foreground-strong",
         )}
       />
-      {!collapsed ? <span className="truncate">{item.label}</span> : null}
-      {collapsed ? (
+      <span className="truncate">{item.label}</span>
+    </Link>
+  );
+}
+
+function CollapsedMagneticNavItem({
+  active,
+  item,
+  onNavigate,
+}: {
+  active: boolean;
+  item: SidebarItem;
+  onNavigate?: () => void;
+}) {
+  const surfaceRef = useRef<HTMLSpanElement>(null);
+  const tooltipId = useId();
+
+  function resetSurface() {
+    if (surfaceRef.current) {
+      surfaceRef.current.style.transform = "translate3d(0, 0, 0) scale(1)";
+    }
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLAnchorElement>) {
+    if (
+      event.pointerType !== "mouse" ||
+      window.matchMedia("(pointer: coarse)").matches ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const relativeX = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const relativeY = (event.clientY - bounds.top) / bounds.height - 0.5;
+    const translateX = Math.max(-4, Math.min(4, relativeX * 8));
+    const translateY = Math.max(-3, Math.min(3, relativeY * 6));
+
+    if (surfaceRef.current) {
+      surfaceRef.current.style.transform = `translate3d(${translateX}px, ${translateY}px, 0) scale(1.05)`;
+    }
+  }
+
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      onBlur={resetSurface}
+      onPointerCancel={resetSurface}
+      onPointerLeave={resetSurface}
+      onPointerMove={handlePointerMove}
+      aria-current={active ? "page" : undefined}
+      aria-describedby={tooltipId}
+      aria-label={item.label}
+      className="group/rail-item relative flex size-10 items-center justify-center rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+    >
+      {active ? (
         <span
-          role="tooltip"
-          className="pointer-events-none invisible absolute left-full z-[var(--z-tooltip)] ml-3 whitespace-nowrap rounded-lg bg-[#17191c] px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100 motion-reduce:transition-none"
-        >
-          {item.label}
-        </span>
+          aria-hidden="true"
+          className="absolute -left-[14px] top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-brand"
+        />
       ) : null}
+      <span
+        ref={surfaceRef}
+        className={cn(
+          "flex size-10 items-center justify-center rounded-control transition-[transform,background-color,color,box-shadow] duration-[160ms] ease-out will-change-transform motion-reduce:transform-none motion-reduce:transition-none",
+          active
+            ? "bg-selected text-brand"
+            : "text-muted-subtle group-hover/rail-item:bg-deep-contrast group-hover/rail-item:text-white group-hover/rail-item:shadow-[0_8px_20px_rgb(23_52_84_/_0.24)] group-focus-visible/rail-item:bg-deep-contrast group-focus-visible/rail-item:text-white group-focus-visible/rail-item:shadow-[0_8px_20px_rgb(23_52_84_/_0.24)]",
+        )}
+      >
+        <SidebarIcon name={item.icon} className="size-5" />
+      </span>
+      <span
+        id={tooltipId}
+        role="tooltip"
+        className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 delay-0 group-hover/rail-item:visible group-hover/rail-item:opacity-100 group-hover/rail-item:delay-[160ms] group-focus-visible/rail-item:visible group-focus-visible/rail-item:opacity-100 motion-reduce:transition-none"
+      >
+        {item.label}
+      </span>
     </Link>
   );
 }
@@ -489,14 +583,14 @@ function AccountSection({
   return (
     <div
       className={cn(
-        "mt-auto border-t border-[#eceff3]",
-        collapsed ? "p-2.5" : "p-3",
+        "mt-auto border-t border-border",
+        collapsed ? "p-2" : "p-3",
       )}
     >
       <div
         className={cn(
           "flex items-center",
-          collapsed ? "flex-col gap-2.5" : "gap-3",
+          collapsed ? "flex-col gap-2" : "gap-3",
         )}
       >
         <div className="group/avatar relative shrink-0">
@@ -508,7 +602,7 @@ function AccountSection({
           {collapsed ? (
             <span
               role="tooltip"
-              className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-[#17191c] px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover/avatar:visible group-hover/avatar:opacity-100 group-focus-within/avatar:visible group-focus-within/avatar:opacity-100 motion-reduce:transition-none"
+              className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 group-hover/avatar:visible group-hover/avatar:opacity-100 group-focus-within/avatar:visible group-focus-within/avatar:opacity-100 motion-reduce:transition-none"
             >
               {displayName}
             </span>
@@ -516,10 +610,10 @@ function AccountSection({
         </div>
         {!collapsed ? (
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-[#17191c]">
+            <p className="truncate text-sm font-semibold text-foreground-strong">
               {displayName}
             </p>
-            <p className="truncate text-xs font-medium text-[#667085]">
+            <p className="truncate text-xs text-muted-subtle">
               {email}
             </p>
           </div>
@@ -532,7 +626,7 @@ function AccountSection({
             aria-label="Sign out"
             title="Sign out"
             className={cn(
-              "inline-flex shrink-0 items-center justify-center rounded-lg text-[#667085] transition-colors hover:bg-[#fff3ee] hover:text-[#b91c1c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
+              "inline-flex shrink-0 items-center justify-center rounded-control text-muted-subtle transition-colors hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
               collapsed ? "size-9" : "size-10",
             )}
           >
@@ -548,7 +642,7 @@ function AccountSection({
           {collapsed ? (
             <span
               role="tooltip"
-              className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-[#17191c] px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover/signout:visible group-hover/signout:opacity-100 group-focus-within/signout:visible group-focus-within/signout:opacity-100 motion-reduce:transition-none"
+              className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 group-hover/signout:visible group-hover/signout:opacity-100 group-focus-within/signout:visible group-focus-within/signout:opacity-100 motion-reduce:transition-none"
             >
               Sign out
             </span>
@@ -574,7 +668,7 @@ function UserAvatar({
   photoUrl: string | null;
 }) {
   return (
-    <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-foreground-strong text-xs font-semibold text-white">
+    <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-deep-contrast text-xs font-semibold text-white">
       {photoUrl ? (
         <Image
           src={photoUrl}

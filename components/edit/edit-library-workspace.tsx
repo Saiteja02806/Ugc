@@ -1,8 +1,10 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import Link from "next/link";
 
 import { VideoLibraryGrid } from "@/components/edit/video-library-grid";
+import { buttonClassName } from "@/components/ui/button";
 import {
   getEditableVideos,
   listenToEditableVideoLibrary,
@@ -28,10 +30,15 @@ export function EditLibraryWorkspace() {
           </p>
         </div>
 
-        <div className="inline-flex h-8 w-fit items-center gap-2 rounded-full border border-border/80 bg-white/70 px-3 text-xs font-semibold text-[#405977] shadow-sm">
-          <span className="size-2 rounded-full bg-success" />
-          Library
-        </div>
+        <Link
+          href="/library?tab=posts"
+          className={buttonClassName({
+            variant: "secondary",
+            className: "h-9 w-fit px-3 text-xs",
+          })}
+        >
+          Browse uploads
+        </Link>
       </header>
 
       <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col pt-5">

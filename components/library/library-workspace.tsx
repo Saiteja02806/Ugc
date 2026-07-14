@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -66,15 +67,13 @@ type LibraryContentResponse =
       ok: false;
     };
 
-const tabs: Array<{ description: string; label: string; value: LibraryTab }> = [
+const tabs: Array<{ label: string; value: LibraryTab }> = [
   {
-    description: "Uploaded footage ready to edit and schedule.",
-    label: "My posts",
+    label: "Demo",
     value: "posts",
   },
   {
-    description: "Saved carousel ideas with every slide kept together.",
-    label: "My content",
+    label: "Saved",
     value: "content",
   },
 ];
@@ -91,78 +90,87 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
     router.replace(`/library?${params.toString()}`);
   }
 
+  function handleTabKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) {
+    let nextIndex: number | null = null;
+
+    if (event.key === "ArrowRight") {
+      nextIndex = (index + 1) % tabs.length;
+    } else if (event.key === "ArrowLeft") {
+      nextIndex = (index - 1 + tabs.length) % tabs.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = tabs.length - 1;
+    }
+
+    if (nextIndex === null) {
+      return;
+    }
+
+    event.preventDefault();
+    const nextTab = tabs[nextIndex];
+    selectTab(nextTab.value);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`library-tab-${nextTab.value}`)?.focus();
+    });
+  }
+
   return (
     <section className="min-h-screen flex-1 bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8 lg:py-7">
-      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-5">
-        <header className="flex flex-col gap-2">
-          <div>
+      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-4">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-normal text-foreground-strong sm:text-[28px]">
               Library
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-              Manage uploaded posts and saved carousel content from one focused workspace.
+              Keep product footage and saved carousels ready for your next post.
             </p>
+          </div>
+
+          <div
+            role="tablist"
+            aria-label="Library sections"
+            className="inline-flex w-fit items-center rounded-control bg-card-muted p-1 ring-1 ring-inset ring-border"
+          >
+            {tabs.map((tab, index) => (
+              <button
+                key={tab.value}
+                id={`library-tab-${tab.value}`}
+                type="button"
+                role="tab"
+                aria-controls={`library-panel-${tab.value}`}
+                aria-selected={activeTab === tab.value}
+                tabIndex={activeTab === tab.value ? 0 : -1}
+                onClick={() => selectTab(tab.value)}
+                onKeyDown={(event) => handleTabKeyDown(event, index)}
+                className={cn(
+                  "inline-flex h-9 min-w-[76px] items-center justify-center rounded-small px-3 text-sm font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none",
+                  activeTab === tab.value
+                    ? "bg-card text-foreground-strong shadow-[0_1px_2px_rgb(23_23_27_/_0.08)]"
+                    : "text-muted hover:text-foreground-strong",
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </header>
 
         <div
-          role="tablist"
-          aria-label="Library sections"
-          className="grid gap-2 rounded-lg border border-border bg-white p-1 sm:grid-cols-2 lg:w-[620px]"
+          id={`library-panel-${activeTab}`}
+          role="tabpanel"
+          aria-labelledby={`library-tab-${activeTab}`}
+          className="min-w-0 pt-1"
         >
-          {tabs.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === tab.value}
-              onClick={() => selectTab(tab.value)}
-              className={cn(
-                "flex min-h-16 items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-                activeTab === tab.value
-                  ? "bg-foreground-strong text-white"
-                  : "text-muted hover:bg-surface-subtle hover:text-foreground",
-              )}
-            >
-              <span
-                className={cn(
-                  "flex size-9 shrink-0 items-center justify-center rounded-md",
-                  activeTab === tab.value
-                    ? "bg-white/12 text-white"
-                    : "bg-surface-subtle text-muted",
-                )}
-              >
-                {tab.value === "posts" ? (
-                  <FileVideo className="size-4" aria-hidden="true" />
-                ) : (
-                  <Images className="size-4" aria-hidden="true" />
-                )}
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold leading-5">
-                  {tab.label}
-                </span>
-                <span
-                  className={cn(
-                    "mt-0.5 hidden text-xs leading-4 sm:block",
-                    activeTab === tab.value ? "text-white/72" : "text-muted",
-                  )}
-                >
-                  {tab.description}
-                </span>
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <div className="overflow-hidden rounded-lg border border-border bg-white">
-          <div className="p-4 sm:p-5 lg:p-6">
-            {activeTab === "content" ? (
-              <LibraryContentTab onShowPosts={() => selectTab("posts")} />
-            ) : (
-              <UploadedPostsTab embeddedInLibrary />
-            )}
-          </div>
+          {activeTab === "content" ? (
+            <LibraryContentTab onShowPosts={() => selectTab("posts")} />
+          ) : (
+            <UploadedPostsTab embeddedInLibrary />
+          )}
         </div>
       </div>
     </section>
@@ -342,23 +350,23 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
 
   return (
     <section
-      className="flex flex-col gap-5"
+      className="overflow-hidden rounded-card border border-border bg-card shadow-[0_1px_2px_rgb(23_23_27_/_0.03)]"
       aria-labelledby="library-content-heading"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <header className="flex flex-col gap-4 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-brand-soft text-primary">
-            <Images className="size-4" aria-hidden="true" />
-          </div>
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-small bg-brand-soft text-primary">
+            <Images className="size-[18px]" aria-hidden="true" />
+          </span>
           <div className="min-w-0">
             <h2
               id="library-content-heading"
-              className="text-xl font-semibold text-foreground-strong"
+              className="text-base font-semibold text-foreground-strong"
             >
-              My content
+              Saved carousels
             </h2>
-            <p className="mt-1 max-w-xl text-sm leading-6 text-muted">
-              Complete saved carousels stay grouped with their ordered slides.
+            <p className="mt-0.5 max-w-xl text-sm leading-5 text-muted">
+              Reusable carousel ideas, with every slide kept in order.
             </p>
           </div>
         </div>
@@ -366,17 +374,17 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
         <div className="flex flex-wrap items-center gap-2">
           {!showSkeleton && items.length > 0 ? (
             <Link
-              href="/trending"
+              href="/dashboard"
               className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
               Open Trending
               <ArrowRight className="size-3.5" aria-hidden="true" />
             </Link>
           ) : null}
-          <span className="inline-flex min-h-9 items-center rounded-md bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-border">
+          <span className="inline-flex h-9 items-center rounded-md bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-border">
             {showSkeleton
               ? "Loading"
-              : `${items.length} ${items.length === 1 ? "carousel" : "carousels"} - ${totalSlides} slides`}
+              : `${items.length} ${items.length === 1 ? "carousel" : "carousels"} · ${totalSlides} slides`}
           </span>
           <button
             type="button"
@@ -387,50 +395,55 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
             className="inline-flex size-9 items-center justify-center rounded-md border border-border bg-white text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw
-              className={cn("size-4", isLoading && "animate-spin")}
+            className={cn(
+              "size-4",
+              isLoading && "animate-spin motion-reduce:animate-none",
+            )}
               aria-hidden="true"
             />
           </button>
         </div>
+      </header>
+
+      <div className="flex flex-col gap-4 p-4 sm:p-5">
+        {errorMessage ? (
+          <div
+            role="status"
+            className="rounded-md border border-warning/25 bg-warning/5 px-4 py-3 text-sm font-semibold text-warning"
+          >
+            {errorMessage}
+          </div>
+        ) : null}
+
+        {notice ? (
+          <div
+            role="status"
+            className="rounded-md border border-success/20 bg-success/5 px-4 py-3 text-sm font-semibold text-success"
+          >
+            {notice}
+          </div>
+        ) : null}
+
+        {showSkeleton ? (
+          <LibraryContentSkeleton />
+        ) : items.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {items.map((item) => (
+              <LibraryCarouselCard
+                key={item.id}
+                item={item}
+                removing={removingItemId === item.id}
+                scheduleDisabled={item.storageSource !== "server"}
+                onRemove={() => void removeItem(item)}
+                onSchedule={() => scheduleItem(item)}
+                onView={() => setSelectedItem(item)}
+              />
+            ))}
+          </div>
+        ) : (
+          <LibraryContentEmptyState onShowPosts={onShowPosts} />
+        )}
       </div>
-
-      {errorMessage ? (
-        <div
-          role="status"
-          className="rounded-md border border-warning/25 bg-warning/5 px-4 py-3 text-sm font-semibold text-warning"
-        >
-          {errorMessage}
-        </div>
-      ) : null}
-
-      {notice ? (
-        <div
-          role="status"
-          className="rounded-md border border-success/20 bg-success/5 px-4 py-3 text-sm font-semibold text-success"
-        >
-          {notice}
-        </div>
-      ) : null}
-
-      {showSkeleton ? (
-        <LibraryContentSkeleton />
-      ) : items.length > 0 ? (
-        <div className="flex flex-wrap items-start gap-4">
-          {items.map((item) => (
-            <LibraryCarouselCard
-              key={item.id}
-              item={item}
-              removing={removingItemId === item.id}
-              scheduleDisabled={item.storageSource !== "server"}
-              onRemove={() => void removeItem(item)}
-              onSchedule={() => scheduleItem(item)}
-              onView={() => setSelectedItem(item)}
-            />
-          ))}
-        </div>
-      ) : (
-        <LibraryContentEmptyState onShowPosts={onShowPosts} />
-      )}
 
       {selectedItem ? (
         <LibraryCarouselViewer
@@ -458,22 +471,22 @@ function LibraryContentEmptyState({
   onShowPosts: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-white p-5 sm:p-7">
-      <div className="max-w-3xl">
-        <div className="flex size-11 items-center justify-center rounded-md bg-brand-soft text-primary">
+    <div className="flex min-h-[330px] items-center justify-center rounded-lg border border-dashed border-border-strong bg-surface-subtle px-5 py-10 text-center sm:px-8">
+      <div className="max-w-lg">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-white text-primary ring-1 ring-border shadow-[0_1px_2px_rgb(23_23_27_/_0.05)]">
           <Images className="size-5" aria-hidden="true" />
         </div>
-        <h3 className="mt-5 text-xl font-semibold text-foreground-strong">
-          Save complete carousels from Trending
+        <h3 className="mt-4 text-lg font-semibold text-foreground-strong">
+          Build your saved carousel library
         </h3>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-          Save a carousel idea from Trending and every ordered slide will appear
-          here as one reusable set.
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">
+          Save a carousel from Trending and the complete slide set will stay here,
+          ready to review and schedule when you need it.
         </p>
 
-        <div className="mt-5 flex flex-wrap items-center gap-2">
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
           <Link
-            href="/trending"
+            href="/dashboard"
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             Open Trending
@@ -485,27 +498,9 @@ function LibraryContentEmptyState({
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             <FileVideo className="size-4" aria-hidden="true" />
-            View posts
+            View demos
           </button>
         </div>
-
-        <dl className="mt-6 grid max-w-3xl gap-3 sm:grid-cols-3">
-          {[
-            ["Full set", "All slides stay together"],
-            ["Ordered", "Slide sequence is preserved"],
-            ["Ready later", "View or schedule from Library"],
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              className="rounded-md border border-border bg-surface-subtle px-3 py-2.5"
-            >
-              <dt className="text-xs font-semibold text-foreground-strong">
-                {label}
-              </dt>
-              <dd className="mt-1 text-xs leading-4 text-muted">{value}</dd>
-            </div>
-          ))}
-        </dl>
       </div>
     </div>
   );
@@ -529,7 +524,7 @@ function LibraryCarouselCard({
   const coverUrl = item.coverUrl ?? item.slides[0]?.renderedUrl;
 
   return (
-    <article className="group w-full min-w-0 overflow-hidden rounded-lg border border-border bg-white transition-colors hover:border-border-strong sm:w-[280px]">
+    <article className="group min-w-0 overflow-hidden rounded-lg border border-border bg-white transition-colors hover:border-border-strong">
       <button
         type="button"
         onClick={onView}
@@ -721,24 +716,25 @@ function LibraryCarouselViewer({
 function LibraryContentSkeleton() {
   return (
     <div
-      className="rounded-lg border border-border bg-white p-4"
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
       aria-label="Loading Library content"
     >
-      <div className="space-y-3">
-        {Array.from({ length: 3 }, (_, index) => (
-          <div
-            key={index}
-            className="flex items-center gap-3 rounded-md border border-border bg-surface-subtle px-3 py-3"
-          >
-            <div className="size-10 shrink-0 animate-pulse rounded-md bg-[#e9eaec] motion-reduce:animate-none" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="h-3 w-2/3 animate-pulse rounded bg-[#e9eaec] motion-reduce:animate-none" />
-              <div className="h-3 w-1/3 animate-pulse rounded bg-[#eff0f1] motion-reduce:animate-none" />
+      {Array.from({ length: 4 }, (_, index) => (
+        <div
+          key={index}
+          className="overflow-hidden rounded-lg border border-border bg-white"
+        >
+          <div className="aspect-[4/5] animate-pulse bg-[#e9eaec] motion-reduce:animate-none" />
+          <div className="space-y-3 p-4">
+            <div className="h-4 w-3/4 animate-pulse rounded bg-[#e9eaec] motion-reduce:animate-none" />
+            <div className="h-3 w-1/2 animate-pulse rounded bg-[#eff0f1] motion-reduce:animate-none" />
+            <div className="flex gap-2 border-t border-border pt-3">
+              <div className="h-9 flex-1 animate-pulse rounded-md bg-[#e9eaec] motion-reduce:animate-none" />
+              <div className="h-9 flex-1 animate-pulse rounded-md bg-[#eff0f1] motion-reduce:animate-none" />
             </div>
-            <div className="hidden h-8 w-20 animate-pulse rounded-md bg-[#e9eaec] motion-reduce:animate-none sm:block" />
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }

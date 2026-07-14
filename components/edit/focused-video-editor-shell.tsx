@@ -14,6 +14,7 @@ import {
   FocusedVideoEditor,
   type FocusedVideoEditorDraftState,
 } from "@/components/edit/focused-video-editor";
+import { buttonClassName } from "@/components/ui/button";
 import {
   getEditableVideoById,
   listenToEditableVideoLibrary,
@@ -120,7 +121,7 @@ export function FocusedVideoEditorShell({
     setSaveState("saved");
     setSaveMessage("Draft saved for render.");
     setRenderState("starting");
-    setRenderMessage("Starting MP4 render...");
+    setRenderMessage("Preparing MP4 export…");
 
     try {
       const response = await fetch("/api/edit/render", {
@@ -150,7 +151,7 @@ export function FocusedVideoEditorShell({
       }
 
       setRenderState("rendering");
-      setRenderMessage("Rendering final MP4. This can take a minute.");
+      setRenderMessage("Exporting final MP4. This can take a minute.");
 
       const output = await pollEditedVideoRender(data.jobId, idToken);
 
@@ -165,7 +166,7 @@ export function FocusedVideoEditorShell({
       }
 
       setRenderState("rendered");
-      setRenderMessage("Rendered MP4 is ready.");
+      setRenderMessage("MP4 export is ready.");
     } catch (error) {
       console.error("Edited video render failed:", error);
       setRenderState("failed");
@@ -193,7 +194,7 @@ export function FocusedVideoEditorShell({
         {saveMessage ? (
           <p
             role={saveState === "failed" ? "alert" : "status"}
-            className="mb-4 w-fit rounded-full border border-border bg-white/85 px-3 py-2 text-xs font-semibold text-[#405977] shadow-sm"
+            className="mb-4 w-fit rounded-control border border-border bg-card px-3 py-2 text-xs font-semibold text-muted"
           >
             {saveMessage}
           </p>
@@ -249,12 +250,15 @@ function EditorTopBar({
         </h1>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onSaveDraft}
           disabled={!canSaveDraft}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-border bg-white px-4 text-sm font-bold text-[#173454] shadow-sm transition hover:bg-[#fff8f4] disabled:cursor-not-allowed disabled:text-muted disabled:opacity-60"
+          className={buttonClassName({
+            variant: "secondary",
+            className: "gap-2",
+          })}
         >
           <Save className="size-4" aria-hidden="true" />
           {saveState === "saved" ? "Saved" : "Save draft"}
@@ -263,10 +267,16 @@ function EditorTopBar({
           type="button"
           onClick={onRenderVideo}
           disabled={!canRender}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.20)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className={buttonClassName({
+            variant: "primary",
+            className: "gap-2",
+          })}
         >
           {renderState === "starting" || renderState === "rendering" ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            <Loader2
+              className="size-4 animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
           ) : (
             <Download className="size-4" aria-hidden="true" />
           )}
@@ -293,18 +303,21 @@ function RenderStatusNotice({
       role={isFailed ? "alert" : "status"}
       className={
         isFailed
-          ? "mb-4 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm font-semibold text-error"
-          : "mb-4 rounded-2xl border border-border bg-white/85 px-4 py-3 text-sm font-semibold text-[#405977] shadow-sm"
+          ? "mb-4 rounded-card border border-error/20 bg-error/5 px-4 py-3 text-sm font-semibold text-error"
+          : "mb-4 rounded-card border border-border bg-card px-4 py-3 text-sm font-semibold text-muted"
       }
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span>{renderMessage ?? "Rendered MP4 is ready."}</span>
+        <span>{renderMessage ?? "MP4 export is ready."}</span>
         {renderedVideoUrl ? (
           <a
             href={renderedVideoUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-9 w-fit items-center justify-center rounded-full bg-[#173454] px-4 text-xs font-bold text-white transition hover:bg-foreground"
+            className={buttonClassName({
+              variant: "primary",
+              className: "h-9 w-fit px-3 text-xs",
+            })}
           >
             Open MP4
           </a>
@@ -333,7 +346,10 @@ function VideoNotFound({ videoId }: { videoId: string }) {
         </p>
         <Link
           href="/edit"
-          className="mt-5 inline-flex h-10 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.20)] transition hover:bg-primary-hover"
+          className={buttonClassName({
+            variant: "primary",
+            className: "mt-5",
+          })}
         >
           Back to library
         </Link>
@@ -377,18 +393,18 @@ function getDraftForRender(
 
 function getRenderButtonLabel(renderState: RenderState, video: EditableVideo | null) {
   if (renderState === "starting") {
-    return "Starting";
+    return "Preparing export…";
   }
 
   if (renderState === "rendering") {
-    return "Rendering";
+    return "Exporting…";
   }
 
   if (renderState === "rendered" || video?.renderedVideoUrl) {
-    return "Render again";
+    return "Export again";
   }
 
-  return "Render MP4";
+  return "Export MP4";
 }
 
 async function pollEditedVideoRender(

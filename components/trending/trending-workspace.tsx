@@ -30,6 +30,7 @@ import {
   PlatformSelectionModal,
   type SchedulePlatformContext,
 } from "@/components/social/platform-selection-modal";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { SocialPlatform } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
@@ -249,6 +250,13 @@ export function TrendingWorkspace() {
     Boolean(normalizedSearchQuery) &&
     generatedCarousels.length > 0 &&
     filteredGeneratedCarousels.length === 0;
+  const feedStatus = carouselFeedLoading
+    ? { label: "Loading your personalized feed", tone: "bg-warning" }
+    : carouselHistoryError || carouselFeedProfile?.state === "failed"
+      ? { label: "Carousel feed needs attention", tone: "bg-error" }
+      : carouselFeedProfile?.state === "missing"
+        ? { label: "Business profile needed", tone: "bg-warning" }
+        : { label: "Personalized for your profile", tone: "bg-success" };
 
   useEffect(() => {
     if (!user) {
@@ -435,11 +443,11 @@ export function TrendingWorkspace() {
   }
 
   return (
-    <section className="min-h-screen flex-1 bg-background px-4 py-5 text-foreground sm:px-7 lg:px-10 lg:py-7">
-      <div className="mx-auto flex min-h-full max-w-7xl flex-col">
-        <header className="flex flex-col gap-5 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
+    <section className="min-h-dvh flex-1 bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8 lg:py-8 xl:px-10">
+      <div className="mx-auto flex min-h-full max-w-[1360px] flex-col">
+        <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-balance text-2xl font-semibold text-foreground-strong">
+            <h1 className="text-balance text-[30px] font-semibold leading-tight tracking-[-0.035em] text-foreground-strong">
               Trending carousels
             </h1>
             <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted">
@@ -447,7 +455,7 @@ export function TrendingWorkspace() {
             </p>
           </div>
 
-          <label className="flex h-11 w-full items-center gap-2.5 rounded-md border border-border-strong bg-white px-3 text-sm text-muted transition-[border-color,box-shadow] focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/15 sm:w-[280px]">
+          <label className="flex h-10 w-full items-center gap-2.5 rounded-control border border-border-strong bg-card px-3 text-sm text-muted shadow-[0_1px_2px_rgb(23_23_27_/_0.03)] transition-[border-color,box-shadow] focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/15 sm:w-[300px]">
             <Search className="size-4 shrink-0 text-muted-subtle" aria-hidden="true" />
             <span className="sr-only">Search personalized carousels</span>
             <input
@@ -462,20 +470,51 @@ export function TrendingWorkspace() {
           </label>
         </header>
 
-        <div className="flex flex-1 items-start py-7">
-          <GeneratedCarouselGallery
-            carousels={filteredGeneratedCarousels}
-            error={carouselHistoryError}
-            loading={carouselFeedLoading}
-            profile={carouselFeedProfile}
-            searchEmpty={carouselSearchEmpty}
-            onCompleteProfile={openBusinessProfile}
-            onRetryHistory={() =>
-              setCarouselHistoryRefreshKey((current) => current + 1)
-            }
-            onRetryPreparation={() => void retryCarouselPreparation()}
-          />
-        </div>
+        <section className="mt-6 min-h-[560px] overflow-hidden rounded-panel border border-border bg-card shadow-card">
+          <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2.5 sm:px-5">
+            <p className="flex items-center gap-2 text-xs font-semibold text-muted">
+              <span
+                aria-hidden="true"
+                className={cn("size-2 rounded-full", feedStatus.tone)}
+              />
+              {feedStatus.label}
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                setCarouselHistoryRefreshKey((current) => current + 1)
+              }
+              disabled={carouselFeedLoading}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <RefreshCw
+                className={cn(
+                  "size-3.5",
+                  carouselFeedLoading &&
+                    "animate-spin motion-reduce:animate-none",
+                )}
+                aria-hidden="true"
+              />
+              <span className="sm:hidden">Refresh</span>
+              <span className="hidden sm:inline">Refresh ideas</span>
+            </button>
+          </div>
+
+          <div className="flex min-h-[502px] items-start px-4 py-7 sm:px-6 sm:py-8">
+            <GeneratedCarouselGallery
+              carousels={filteredGeneratedCarousels}
+              error={carouselHistoryError}
+              loading={carouselFeedLoading}
+              profile={carouselFeedProfile}
+              searchEmpty={carouselSearchEmpty}
+              onCompleteProfile={openBusinessProfile}
+              onRetryHistory={() =>
+                setCarouselHistoryRefreshKey((current) => current + 1)
+              }
+              onRetryPreparation={() => void retryCarouselPreparation()}
+            />
+          </div>
+        </section>
       </div>
     </section>
   );
@@ -614,7 +653,7 @@ function GeneratedCarouselFeed({
   }
 
   return (
-    <div className="w-full space-y-10">
+    <div className="flex w-full flex-col gap-10">
       {completeCarousels.length > 0 ? (
         <CarouselCandidateStack
           activeCarouselIndex={activeCarouselIndex}
@@ -1465,7 +1504,7 @@ function CarouselPreparationState({
           !compact && "mt-5 px-4",
         )}
       >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-brand-soft text-primary">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
           <Loader2
             className="size-5 animate-spin motion-reduce:animate-none"
             aria-hidden="true"
@@ -1500,7 +1539,7 @@ function CarouselPreparationState({
 function CarouselLoadingStackVisual() {
   return (
     <div
-      className="relative isolate mx-auto h-[390px] w-full max-w-xl overflow-hidden"
+      className="relative isolate mx-auto h-[348px] w-full max-w-lg overflow-hidden"
       aria-hidden="true"
     >
       {LOADING_STACK_PLACEHOLDERS.map((placeholder, index) => (
@@ -1510,21 +1549,32 @@ function CarouselLoadingStackVisual() {
           style={{ zIndex: placeholder.zIndex }}
         >
           <div
-            className="relative aspect-[4/5] w-[min(86vw,280px)] origin-center overflow-hidden rounded-lg bg-card-muted shadow-[0_6px_12px_rgb(9_9_11_/_0.1)]"
+            className="relative aspect-[4/5] w-[min(76vw,252px)] origin-center overflow-hidden rounded-card border border-border bg-card shadow-[0_10px_30px_rgb(23_23_27_/_0.10)]"
             style={{
               opacity: placeholder.opacity,
               transform: `translateY(${placeholder.translateY}px) scale(${placeholder.scale})`,
             }}
           >
-            <div className="size-full animate-pulse bg-card-muted p-6 motion-reduce:animate-none">
-              <div className="h-2.5 w-16 rounded-full bg-border-strong/70" />
-              <div className="mt-28 space-y-2.5">
-                <div className="h-3 w-4/5 rounded-full bg-border-strong/70" />
-                <div className="h-3 w-full rounded-full bg-border-strong/70" />
-                <div className="h-3 w-3/5 rounded-full bg-border-strong/70" />
+            <div className="size-full p-5">
+              <Skeleton className="h-2.5 w-16 rounded-full bg-border" />
+              <Skeleton className="mt-5 h-[150px] w-full rounded-control bg-card-muted" />
+              <div className="mt-5 flex flex-col gap-2.5">
+                <Skeleton className="h-3 w-4/5 rounded-full bg-border" />
+                <Skeleton className="h-3 w-full rounded-full bg-border" />
+                <Skeleton className="h-3 w-3/5 rounded-full bg-border" />
               </div>
               {index === LOADING_STACK_PLACEHOLDERS.length - 1 ? (
-                <div className="absolute bottom-5 left-1/2 h-1.5 w-20 -translate-x-1/2 rounded-full bg-border-strong/70" />
+                <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-1.5">
+                  {[0, 1, 2, 3, 4].map((dot) => (
+                    <span
+                      key={dot}
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        dot === 0 ? "bg-brand" : "bg-border-strong",
+                      )}
+                    />
+                  ))}
+                </div>
               ) : null}
             </div>
           </div>
@@ -1546,7 +1596,7 @@ function CarouselFailureState({
   return (
     <section className="flex flex-col gap-4 border-y border-error/20 py-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-error/10 text-error">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-error/10 text-error">
           <CircleAlert className="size-4" aria-hidden="true" />
         </span>
         <div>
@@ -1561,7 +1611,7 @@ function CarouselFailureState({
       <button
         type="button"
         onClick={onRetry}
-        className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-border-strong bg-white px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+        className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
       >
         <RefreshCw className="size-3.5" aria-hidden="true" />
         Retry generation
@@ -1591,22 +1641,27 @@ function CarouselFeedState({
 
   return (
     <div className="flex min-h-[420px] w-full flex-col items-center justify-center px-6 text-center">
-      <span
-        className={cn(
-          "flex size-11 items-center justify-center rounded-md",
-          icon === "failed" ? "bg-error/10 text-error" : "bg-brand-soft text-primary",
-        )}
-      >
-        <Icon
+      {icon === "preparing" ? (
+        <CarouselLoadingStackVisual />
+      ) : (
+        <span
           className={cn(
-            "size-5",
-            icon === "preparing" && "animate-spin motion-reduce:animate-none",
+            "flex size-11 items-center justify-center rounded-control",
+            icon === "failed"
+              ? "bg-error/10 text-error"
+              : "bg-brand-soft text-primary",
           )}
-          aria-hidden="true"
-        />
-      </span>
+        >
+          <Icon className="size-5" aria-hidden="true" />
+        </span>
+      )}
       <div>
-        <h2 className="mt-5 text-xl font-semibold text-foreground-strong">
+        <h2
+          className={cn(
+            "text-xl font-semibold tracking-[-0.02em] text-foreground-strong",
+            icon === "preparing" ? "mt-1" : "mt-5",
+          )}
+        >
           {title}
         </h2>
         <p className="mt-2 max-w-md text-sm leading-6 text-muted">{message}</p>
@@ -1615,7 +1670,7 @@ function CarouselFeedState({
         <button
           type="button"
           onClick={onAction}
-          className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-brand px-4 text-sm font-semibold text-foreground-strong transition-[filter,transform] hover:brightness-95 active:translate-y-px active:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          className="mt-5 inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-control bg-primary px-4 text-sm font-semibold text-white transition-[background-color,transform] hover:bg-primary-hover active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           <ActionIcon className="size-4" aria-hidden="true" />
           {actionLabel}
@@ -1633,11 +1688,11 @@ function GeneratedCarouselFeedSkeleton() {
       className="w-full"
     >
       <CarouselLoadingStackVisual />
-      <div className="mx-auto mt-5 flex max-w-2xl items-center gap-4 px-4">
-        <div className="size-10 shrink-0 animate-pulse rounded-md bg-brand-soft motion-reduce:animate-none" />
-        <div className="min-w-0 flex-1 animate-pulse space-y-2 motion-reduce:animate-none">
-          <div className="h-3 w-44 rounded-full bg-border-strong/70" />
-          <div className="h-2.5 w-64 max-w-full rounded-full bg-border" />
+      <div className="mx-auto mt-4 flex max-w-sm items-center gap-3 px-4">
+        <Skeleton className="size-10 shrink-0 rounded-control bg-brand-soft" />
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <Skeleton className="h-3 w-44 max-w-full rounded-full bg-border-strong/70" />
+          <Skeleton className="h-2.5 w-64 max-w-full rounded-full bg-border" />
         </div>
       </div>
     </div>

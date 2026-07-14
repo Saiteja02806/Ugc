@@ -3,6 +3,7 @@ import "server-only";
 import {
   completeSocialOAuthCallback,
   createSocialOAuthCorrelationId,
+  createSocialOAuthFingerprint,
   consumeDeniedSocialOAuthCallback,
   getSocialPlatformRedirectUri,
   getSocialAppBaseUrl,
@@ -25,13 +26,15 @@ export async function handleSocialOAuthCallback(
   },
 ) {
   const url = new URL(request.url);
-  const trace: SocialOAuthTraceContext = {
-    callbackHost: url.host,
-    correlationId: createSocialOAuthCorrelationId(),
-    stage: "callback_received",
-  };
   const code = url.searchParams.get("code")?.trim() ?? "";
   const state = url.searchParams.get("state")?.trim() ?? "";
+  const trace: SocialOAuthTraceContext = {
+    callbackHost: url.host,
+    codeFingerprint: createSocialOAuthFingerprint(code),
+    correlationId: createSocialOAuthCorrelationId(),
+    stage: "callback_received",
+    stateFingerprint: createSocialOAuthFingerprint(state),
+  };
   const providerError = url.searchParams.get("error")?.trim();
 
   logSocialOAuthTrace(trace, "callback_received", {
@@ -290,6 +293,7 @@ function logSocialOAuthFailure(
   trace.stage = stage;
   console.error("social_oauth_failure", {
     callbackHost: trace.callbackHost,
+    codeFingerprint: trace.codeFingerprint ?? null,
     correlationId: trace.correlationId,
     errorCode,
     errorCauseCode: getSafeErrorCauseCode(error),
@@ -298,6 +302,7 @@ function logSocialOAuthFailure(
     platform: config.platform,
     provider: config.provider,
     stage,
+    stateFingerprint: trace.stateFingerprint ?? null,
   });
 }
 

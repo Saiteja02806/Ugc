@@ -10,6 +10,7 @@ import {
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { splitScopes } from "@/lib/social/split-scopes";
 import {
   getProviderForPlatform,
   isProviderPlatformPair,
@@ -123,6 +124,7 @@ export type SocialOAuthTraceStage =
   | "fetch_tiktok_profile"
   | "fetch_youtube_profile"
   | "frontend_rendering"
+  | "normalize_token_permissions"
   | "provider_authorization"
   | "read_oauth_state"
   | "resolve_application_user"
@@ -136,8 +138,10 @@ export type SocialOAuthTraceStage =
 
 export type SocialOAuthTraceContext = {
   callbackHost: string;
+  codeFingerprint?: string | null;
   correlationId: string;
   stage: SocialOAuthTraceStage;
+  stateFingerprint?: string | null;
 };
 
 const STATE_TTL_MINUTES = 10;
@@ -590,7 +594,7 @@ async function exchangeTikTokCode(
     );
   }
 
-  const scopes = splitScopes(data.scope, ",");
+  const scopes = splitScopes(data.scope);
 
   return {
     accessToken: data.access_token,
@@ -629,8 +633,8 @@ async function exchangeInstagramCode(
     error_message?: string;
     error_type?: string;
     expires_in?: number;
-    permissions?: string;
-    scope?: string;
+    permissions?: unknown;
+    scope?: unknown;
     token_type?: string;
     user_id?: number | string;
   } | null;
@@ -655,10 +659,11 @@ async function exchangeInstagramCode(
     trace,
   ).catch(() => null);
   const tokenData = longData?.access_token ? longData : shortData;
-  const scopes = splitScopes(
-    shortData.permissions ?? shortData.scope,
-    ",",
-  );
+  logSocialOAuthTrace(trace, "normalize_token_permissions", {
+    permissionsShape: getSafeValueShape(shortData.permissions),
+    scopeShape: getSafeValueShape(shortData.scope),
+  });
+  const scopes = splitScopes(shortData.permissions ?? shortData.scope);
 
   return {
     accessToken: tokenData.access_token ?? shortData.access_token,
@@ -758,7 +763,7 @@ async function exchangeYouTubeCode(
     );
   }
 
-  const scopes = splitScopes(data.scope, " ");
+  const scopes = splitScopes(data.scope);
 
   return {
     accessToken: data.access_token,
@@ -1282,7 +1287,6 @@ function getSupabaseUrl() {
 function getTikTokScopes() {
   return splitScopes(
     process.env.TIKTOK_SCOPES || "user.info.basic,video.upload,video.publish",
-    ",",
   );
 }
 
@@ -1290,7 +1294,6 @@ function getInstagramScopes() {
   return splitScopes(
     process.env.INSTAGRAM_SCOPES ||
       "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights",
-    ",",
   );
 }
 
@@ -1298,19 +1301,7 @@ function getYouTubeScopes() {
   return splitScopes(
     process.env.YOUTUBE_SCOPES ||
       "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
-    " ",
   );
-}
-
-function splitScopes(value: string | undefined, separator: "," | " ") {
-  if (!value) {
-    return [];
-  }
-
-  return value
-    .split(separator)
-    .map((scope) => scope.trim())
-    .filter(Boolean);
 }
 
 function encryptSecret(secret: string) {
@@ -1421,6 +1412,12 @@ export function createSocialOAuthCorrelationId() {
   return randomUUID();
 }
 
+export function createSocialOAuthFingerprint(value: string) {
+  return value
+    ? createHash("sha256").update(value).digest("hex").slice(0, 12)
+    : null;
+}
+
 export function logSocialOAuthTrace(
   trace: SocialOAuthTraceContext | undefined,
   stage: SocialOAuthTraceStage,
@@ -1434,10 +1431,24 @@ export function logSocialOAuthTrace(
 
   console.info("social_oauth_trace", {
     callbackHost: trace.callbackHost,
+    codeFingerprint: trace.codeFingerprint ?? null,
     correlationId: trace.correlationId,
     stage,
+    stateFingerprint: trace.stateFingerprint ?? null,
     ...fields,
   });
+}
+
+function getSafeValueShape(value: unknown) {
+  if (value === null || value === undefined) {
+    return "missing";
+  }
+
+  if (Array.isArray(value)) {
+    return "array";
+  }
+
+  return typeof value;
 }
 
 function getSafeProviderErrorFields(payload: unknown) {

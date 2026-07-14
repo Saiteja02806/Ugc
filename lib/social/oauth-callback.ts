@@ -22,6 +22,21 @@ export async function handleSocialOAuthCallback(
   const url = new URL(request.url);
   const state = url.searchParams.get("state")?.trim() ?? "";
   const providerError = url.searchParams.get("error")?.trim();
+  const providerErrorReason = url.searchParams.get("error_reason")?.trim();
+  const providerErrorDescription = url.searchParams
+    .get("error_description")
+    ?.trim();
+
+  logOAuthCallbackEvent("social_oauth_callback_received", {
+    hasCode: Boolean(url.searchParams.get("code")?.trim()),
+    hasProviderError: Boolean(providerError),
+    hasState: Boolean(state),
+    platform: config.platform,
+    provider: config.provider,
+    providerError: normalizeLogValue(providerError),
+    providerErrorDescription: normalizeLogValue(providerErrorDescription),
+    providerErrorReason: normalizeLogValue(providerErrorReason),
+  });
 
   if (providerError) {
     let errorCode = "authorization_denied";
@@ -47,6 +62,13 @@ export async function handleSocialOAuthCallback(
   const code = url.searchParams.get("code")?.trim() ?? "";
 
   if (!code || !state) {
+    logOAuthCallbackEvent("social_oauth_callback_missing_parameters", {
+      hasCode: Boolean(code),
+      hasState: Boolean(state),
+      platform: config.platform,
+      provider: config.provider,
+    });
+
     return renderCallbackPage({
       errorCode: "missing_callback_parameters",
       message: "The provider did not return a complete authorization response.",
@@ -57,6 +79,12 @@ export async function handleSocialOAuthCallback(
 
   try {
     await completeSocialOAuthCallback({ code, state, ...config });
+
+    logOAuthCallbackEvent("social_oauth_callback_completed", {
+      platform: config.platform,
+      provider: config.provider,
+      status: "success",
+    });
 
     return renderCallbackPage({
       message: `${getPlatformLabel(config.platform)} is connected.`,
@@ -89,7 +117,7 @@ function renderCallbackPage(params: {
   status: "error" | "success";
 }) {
   const appBaseUrl = getSocialAppBaseUrl();
-  const targetOrigin = new URL(appBaseUrl).origin;
+  const targetOrigins = getAllowedTargetOrigins(appBaseUrl);
   const payload: SocialOAuthResultMessage = {
     ...(params.errorCode ? { errorCode: params.errorCode } : {}),
     platform: params.platform,
@@ -98,10 +126,21 @@ function renderCallbackPage(params: {
     type: "ugc-social-oauth-result",
   };
   const safePayload = safeInlineJson(payload);
-  const safeTargetOrigin = safeInlineJson(targetOrigin);
+  const safeTargetOrigins = safeInlineJson(targetOrigins);
   const returnUrl = new URL("/connected-accounts", appBaseUrl).toString();
   const title = params.status === "success" ? "Account connected" : "Connection failed";
   const statusClass = params.status === "success" ? "success" : "error";
+  const fallbackMessage =
+    params.status === "success"
+      ? `${getPlatformLabel(params.platform)} connected successfully. You may close this window.`
+      : "You may close this window and return to UGC Pilot.";
+  logOAuthCallbackEvent("social_oauth_popup_response_sent", {
+    errorCode: params.errorCode ?? null,
+    platform: params.platform,
+    provider: params.provider,
+    status: params.status,
+    targetOriginCount: targetOrigins.length,
+  });
   const html = `<!doctype html>
 <html lang="en">
   <head>
@@ -117,6 +156,7 @@ function renderCallbackPage(params: {
       .error { background: #fee2e2; color: #b91c1c; }
       h1 { font-size: 20px; margin: 18px 0 8px; }
       p { color: #52525b; font-size: 14px; line-height: 1.6; margin: 0; }
+      p[hidden] { display: none; }
       a { color: #9a3412; display: inline-block; font-size: 14px; font-weight: 700; margin-top: 20px; }
     </style>
   </head>
@@ -125,17 +165,31 @@ function renderCallbackPage(params: {
       <span class="mark ${statusClass}" aria-hidden="true">${params.status === "success" ? "&#10003;" : "!"}</span>
       <h1>${escapeHtml(title)}</h1>
       <p>${escapeHtml(params.message)}</p>
+      <p id="manual-close-message" hidden>${escapeHtml(fallbackMessage)}</p>
       <a href="${escapeHtml(returnUrl)}">Return to connected accounts</a>
     </main>
     <script>
       (() => {
         const payload = ${safePayload};
-        const targetOrigin = ${safeTargetOrigin};
+        const targetOrigins = ${safeTargetOrigins};
+        let posted = false;
 
         if (window.opener && !window.opener.closed) {
-          window.opener.postMessage(payload, targetOrigin);
-          window.setTimeout(() => window.close(), 650);
+          for (const targetOrigin of targetOrigins) {
+            try {
+              window.opener.postMessage(payload, targetOrigin);
+              posted = true;
+            } catch {}
+          }
         }
+
+        window.setTimeout(() => window.close(), posted ? 650 : 1200);
+        window.setTimeout(() => {
+          const message = document.getElementById("manual-close-message");
+          if (message) {
+            message.hidden = false;
+          }
+        }, 1600);
       })();
     </script>
   </body>
@@ -157,6 +211,37 @@ function getSafeErrorCode(error: unknown) {
   return error instanceof SocialOAuthError
     ? error.code
     : "connection_failed";
+}
+
+function getAllowedTargetOrigins(appBaseUrl: string) {
+  const appOrigin = new URL(appBaseUrl).origin;
+  const origins = new Set([appOrigin]);
+  const parsed = new URL(appOrigin);
+
+  if (parsed.hostname === "getugcpilot.com") {
+    origins.add(`${parsed.protocol}//www.getugcpilot.com`);
+  }
+
+  if (parsed.hostname === "www.getugcpilot.com") {
+    origins.add(`${parsed.protocol}//getugcpilot.com`);
+  }
+
+  return [...origins];
+}
+
+function logOAuthCallbackEvent(
+  event: string,
+  fields: Record<string, unknown>,
+) {
+  console.info(event, fields);
+}
+
+function normalizeLogValue(value?: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  return value.slice(0, 160);
 }
 
 function getFailureMessage(platform: SocialPlatform, errorCode: string) {

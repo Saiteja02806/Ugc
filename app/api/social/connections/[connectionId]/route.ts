@@ -7,6 +7,7 @@ import {
 import { disconnectSocialConnection } from "@/lib/social/oauth";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function DELETE(
   request: Request,

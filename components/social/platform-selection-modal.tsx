@@ -116,6 +116,7 @@ export function PlatformSelectionModal({
       }
 
       const response = await fetch("/api/social/connections", {
+        cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = (await response.json().catch(() => null)) as
@@ -173,7 +174,25 @@ export function PlatformSelectionModal({
     connectingPlatform,
     popupError,
     startConnection,
-  } = useSocialOAuthPopup({ onResult: handleOAuthResult });
+  } = useSocialOAuthPopup({
+    onPopupClosed: async ({ platform }) => {
+      const refreshedConnections = await loadConnections();
+      const isConnected = refreshedConnections.some(
+        (connection) =>
+          connection.platform === platform && connection.status === "connected",
+      );
+
+      if (isConnected) {
+        setSelectedPlatforms((current) =>
+          current.includes(platform) ? current : [...current, platform],
+        );
+        return true;
+      }
+
+      return false;
+    },
+    onResult: handleOAuthResult,
+  });
 
   useEffect(() => {
     if (!open) {

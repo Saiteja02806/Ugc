@@ -190,6 +190,15 @@ export async function createSocialAuthorization(params: {
       break;
   }
 
+  logSocialOAuthEvent("social_oauth_started", {
+    callbackPath: new URL(redirectUri).pathname,
+    hasCarouselId: Boolean(params.carouselId),
+    hasLibraryItemId: Boolean(params.libraryItemId),
+    platform: params.platform,
+    provider: params.provider,
+    returnTo: params.returnTo,
+  });
+
   return {
     authorizationUrl: authorizationUrl.toString(),
     sessionId: data.id,
@@ -206,6 +215,14 @@ export async function completeSocialOAuthCallback(params: {
     platform: params.platform,
     provider: params.provider,
     state: params.state,
+  });
+  logSocialOAuthEvent("social_oauth_state_validated", {
+    hasCarouselId: Boolean(session.carousel_id),
+    hasLibraryItemId: Boolean(session.library_item_id),
+    platform: params.platform,
+    provider: params.provider,
+    returnTo: session.return_to,
+    userIdPresent: Boolean(session.user_id),
   });
   const redirectUri = getPlatformRedirectUri(params.platform);
   const tokenSet = await exchangeCodeForTokens({
@@ -371,6 +388,12 @@ async function consumeSocialOAuthSession(params: {
     .maybeSingle();
 
   if (error) {
+    logSocialOAuthEvent("social_oauth_state_validation_failed", {
+      platform: params.platform,
+      provider: params.provider,
+      reason: "database_error",
+    });
+
     throw new SocialOAuthError(
       "Could not validate the account connection.",
       500,
@@ -379,6 +402,12 @@ async function consumeSocialOAuthSession(params: {
   }
 
   if (!data) {
+    logSocialOAuthEvent("social_oauth_state_validation_failed", {
+      platform: params.platform,
+      provider: params.provider,
+      reason: "missing_or_expired",
+    });
+
     throw new SocialOAuthError(
       "This account connection is invalid or has expired. Start again.",
       400,
@@ -470,12 +499,23 @@ async function exchangeInstagramCode(code: string, redirectUri: string) {
   );
   const shortData = (await shortResponse.json().catch(() => null)) as {
     access_token?: string;
+    error?: unknown;
+    error_code?: number | string;
+    error_message?: string;
+    error_type?: string;
     expires_in?: number;
     permissions?: string;
     scope?: string;
     token_type?: string;
     user_id?: number | string;
   } | null;
+  logSocialOAuthEvent("instagram_token_exchange_completed", {
+    metaError: getSafeProviderError(shortData),
+    platform: "instagram",
+    tokenExchangeStatus: shortResponse.status,
+    tokenReceived: Boolean(shortData?.access_token),
+    userIdReceived: Boolean(shortData?.user_id),
+  });
 
   if (!shortResponse.ok || !shortData?.access_token) {
     throw new SocialOAuthError(
@@ -517,9 +557,19 @@ async function exchangeInstagramLongLivedToken(accessToken: string) {
   const response = await fetch(url);
   const data = (await response.json().catch(() => null)) as {
     access_token?: string;
+    error?: unknown;
+    error_code?: number | string;
+    error_message?: string;
+    error_type?: string;
     expires_in?: number;
     token_type?: string;
   } | null;
+  logSocialOAuthEvent("instagram_long_lived_token_exchange_completed", {
+    longLivedTokenReceived: Boolean(data?.access_token),
+    metaError: getSafeProviderError(data),
+    platform: "instagram",
+    tokenExchangeStatus: response.status,
+  });
 
   if (!response.ok || !data?.access_token) {
     throw new SocialOAuthError(
@@ -639,20 +689,28 @@ async function fetchInstagramAccount(
   fallbackAccountId?: string | null,
 ) {
   const profileUrl = new URL("https://graph.instagram.com/me");
-  profileUrl.searchParams.set(
-    "fields",
-    "id,username,account_type,profile_picture_url",
-  );
+  profileUrl.searchParams.set("fields", "id,username");
   profileUrl.searchParams.set("access_token", accessToken);
 
   const response = await fetch(profileUrl);
   const payload = (await response.json().catch(() => null)) as {
     account_type?: string;
+    error?: unknown;
+    error_code?: number | string;
+    error_message?: string;
+    error_type?: string;
     id?: string;
     name?: string;
     profile_picture_url?: string;
     username?: string;
   } | null;
+  logSocialOAuthEvent("instagram_profile_fetched", {
+    instagramAccountIdPresent: Boolean(payload?.id),
+    metaError: getSafeProviderError(payload),
+    platform: "instagram",
+    profileStatus: response.status,
+    usernamePresent: Boolean(payload?.username),
+  });
 
   if (!response.ok || !payload?.id) {
     if (fallbackAccountId) {
@@ -789,6 +847,14 @@ async function upsertSocialConnection(params: {
       "connection_save_failed",
     );
   }
+
+  logSocialOAuthEvent("social_connection_saved", {
+    databaseSaved: true,
+    platform: params.platform,
+    platformAccountIdPresent: Boolean(params.account.id),
+    provider: params.provider,
+    userIdPresent: Boolean(params.userId),
+  });
 }
 
 function buildTikTokAuthorizationUrl(params: {
@@ -1053,6 +1119,41 @@ function getEnv(key: string) {
   }
 
   return value;
+}
+
+function logSocialOAuthEvent(event: string, fields: Record<string, unknown>) {
+  console.info(event, fields);
+}
+
+function getSafeProviderError(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const record = payload as Record<string, unknown>;
+  const nestedError =
+    record.error && typeof record.error === "object"
+      ? (record.error as Record<string, unknown>)
+      : null;
+
+  return {
+    code: normalizeLogValue(record.error_code ?? nestedError?.code),
+    message: normalizeLogValue(record.error_message ?? nestedError?.message),
+    subcode: normalizeLogValue(nestedError?.error_subcode),
+    type: normalizeLogValue(record.error_type ?? nestedError?.type),
+  };
+}
+
+function normalizeLogValue(value: unknown) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  return value.slice(0, 160);
 }
 
 export { getProviderForPlatform };

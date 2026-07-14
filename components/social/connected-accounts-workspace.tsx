@@ -63,6 +63,20 @@ export function ConnectedAccountsWorkspace() {
     popupError,
     startConnection,
   } = useSocialOAuthPopup({
+    onPopupClosed: async ({ platform }) => {
+      const refreshedConnections = await loadConnections();
+      const isConnected = refreshedConnections.some(
+        (connection) =>
+          connection.platform === platform && connection.status === "connected",
+      );
+
+      if (isConnected) {
+        setMessage(`${getPlatformLabel(platform)} account connected.`);
+        return true;
+      }
+
+      return false;
+    },
     onResult: async (result) => {
       if (result.status !== "success") {
         return;
@@ -95,6 +109,7 @@ export function ConnectedAccountsWorkspace() {
     try {
       const token = await getRequiredToken();
       const response = await fetch("/api/social/connections", {
+        cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = (await response.json().catch(() => null)) as
@@ -105,13 +120,16 @@ export function ConnectedAccountsWorkspace() {
         throw new Error(data?.message ?? "Could not load connected accounts.");
       }
 
-      setConnections(data.connections ?? []);
+      const nextConnections = data.connections ?? [];
+      setConnections(nextConnections);
+      return nextConnections;
     } catch (loadError) {
       setError(
         loadError instanceof Error
           ? loadError.message
           : "Could not load connected accounts.",
       );
+      return [];
     } finally {
       setLoading(false);
     }

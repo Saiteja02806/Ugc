@@ -17,6 +17,7 @@ import {
 } from "@/lib/social/types";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type StartBody = {
   carouselId?: unknown;

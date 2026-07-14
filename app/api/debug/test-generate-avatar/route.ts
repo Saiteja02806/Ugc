@@ -11,6 +11,7 @@ import {
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
+import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
 
 const AVATAR_JOB_TYPE = "generate_avatar";
 
@@ -64,6 +65,7 @@ function getMissingRuntimeEnv() {
 
 export async function POST(request: Request) {
   try {
+    const user = await requireFirebaseUser(request);
     const body = (await request.json().catch(() => null)) as
       | {
           projectId?: unknown;
@@ -72,7 +74,7 @@ export async function POST(request: Request) {
       | null;
     const rawInput = body?.input ?? {};
     const generationId = crypto.randomUUID();
-    const userId = "test-user-001";
+    const userId = user.uid;
     const projectId = cleanPathSegment(body?.projectId, "test-project-001");
     const input = {
       persona: cleanText(rawInput.persona, defaultInput.persona),
@@ -142,6 +144,10 @@ export async function POST(request: Request) {
       jobId: backgroundJob.id,
     });
   } catch (error) {
+    if (error instanceof FirebaseAuthRequestError) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: error.status });
+    }
+
     console.error("Failed to queue avatar image job:", error);
 
     return NextResponse.json(

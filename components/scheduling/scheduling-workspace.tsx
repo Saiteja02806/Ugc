@@ -13,14 +13,15 @@ import {
   Video,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import {
   formatVideoDuration,
-  getEditableVideos,
-  listenToEditableVideoLibrary,
   type EditableVideo,
 } from "@/lib/edit/video-library";
+import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { mediaAssetToEditableVideo } from "@/lib/media/editable-video";
+import type { MediaAsset } from "@/lib/media/types";
 import {
   createScheduleDraft,
   getScheduleDrafts,
@@ -45,7 +46,6 @@ import {
 import { cn } from "@/lib/utils";
 
 const emptyScheduleDrafts: ScheduleDraft[] = [];
-const emptyEditableVideos: EditableVideo[] = [];
 
 const tabLabels: Record<ScheduleTab, string> = {
   drafts: "Drafts",
@@ -65,15 +65,38 @@ export function SchedulingWorkspace() {
     getScheduleDrafts,
     getEmptyScheduleDrafts,
   );
-  const editableVideos = useSyncExternalStore(
-    subscribeToEditableVideoLibrary,
-    getEditableVideos,
-    getEmptyEditableVideos,
-  );
+  const [editableVideos, setEditableVideos] = useState<EditableVideo[]>([]);
   const [activeTab, setActiveTab] = useState<ScheduleTab>(getInitialScheduleTab);
   const [viewMode, setViewMode] = useState<ScheduleViewMode>("list");
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const loadEditableVideos = useCallback(async () => {
+    try {
+      const token = await getCurrentUserIdToken();
+      if (!token) return;
+      const response = await fetch("/api/media", {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await response.json()) as { assets?: MediaAsset[]; ok?: boolean };
+
+      if (response.ok && data.ok && data.assets) {
+        setEditableVideos(
+          data.assets
+            .filter((asset) => asset.collection !== "image")
+            .map(mediaAssetToEditableVideo),
+        );
+      }
+    } catch {
+      setActionNotice("Could not load your server video library.");
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadEditableVideos(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadEditableVideos]);
 
   const counts = useMemo(() => getTabCounts(drafts), [drafts]);
   const visibleDrafts = useMemo(
@@ -850,18 +873,8 @@ function subscribeToScheduleDrafts(onStoreChange: () => void) {
   });
 }
 
-function subscribeToEditableVideoLibrary(onStoreChange: () => void) {
-  return listenToEditableVideoLibrary(() => {
-    onStoreChange();
-  });
-}
-
 function getEmptyScheduleDrafts() {
   return emptyScheduleDrafts;
-}
-
-function getEmptyEditableVideos() {
-  return emptyEditableVideos;
 }
 
 function getTabCounts(drafts: ScheduleDraft[]): Record<ScheduleTab, number> {

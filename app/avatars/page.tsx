@@ -8,10 +8,17 @@ export const metadata: Metadata = {
   description: "Choose and trim influencer videos for UGC generation.",
 };
 
-export default function AvatarsPage() {
+export default async function AvatarsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
+  const initialTab = tab === "videos" || tab === "images" ? tab : "influencers";
+
   return (
     <AppShell activeKey="avatars">
-      <AvatarsWorkspace />
+      <AvatarsWorkspace initialTab={initialTab} />
     </AppShell>
   );
 }

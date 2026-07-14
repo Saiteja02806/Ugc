@@ -22,6 +22,7 @@ const CAROUSEL_SLIDES_TABLE = "carousel_slides";
 const CATEGORY_IMAGE_ASSETS_TABLE = "category_image_assets";
 const CATEGORY_IMAGE_ASSET_PAGE_SIZE = 1000;
 const EDITABLE_VIDEOS_TABLE = "editable_videos";
+const MEDIA_ASSETS_TABLE = "media_assets";
 const INCREMENT_CATEGORY_IMAGE_USAGE_FUNCTION =
   "increment_category_image_asset_usage";
 const VIDEO_RENDER_JOBS_TABLE = "video_render_jobs";
@@ -83,12 +84,18 @@ export class SupabaseJobStore {
   }) {
     const now = new Date().toISOString();
 
-    return this.updateJob(params.jobId, {
+    const job = await this.updateJob(params.jobId, {
       completed_at: now,
       error_message: null,
       output_json: toJsonObject(params.output),
       status: "completed",
     });
+
+    if (job) {
+      await this.registerGeneratedMediaAsset(job, params.output);
+    }
+
+    return job;
   }
 
   async markFailed(params: {
@@ -148,7 +155,7 @@ export class SupabaseJobStore {
       );
     }
 
-    const { error: editableVideoError } = await this.client
+    const { data: editableVideo, error: editableVideoError } = await this.client
       .from(EDITABLE_VIDEOS_TABLE)
       .update({
         rendered_video_url: params.url,
@@ -158,13 +165,42 @@ export class SupabaseJobStore {
       .eq("user_id", params.userId)
       .eq("project_id", params.projectId)
       .eq("source_video_id", params.sourceVideoId)
-      .eq("latest_render_id", params.renderId);
+      .eq("latest_render_id", params.renderId)
+      .select("title,duration_seconds,ratio,thumbnail_url")
+      .maybeSingle();
 
     if (editableVideoError) {
       throw new Error(
         `Could not mark editable video as rendered: ${editableVideoError.message}`,
       );
     }
+
+    await this.saveMediaAsset({
+      collection: "video",
+      duration_seconds: getNumber(editableVideo?.duration_seconds),
+      file_name: null,
+      file_size_bytes: null,
+      height: null,
+      id: crypto.randomUUID(),
+      metadata: {
+        renderId: params.renderId,
+        sourceVideoId: params.sourceVideoId,
+      },
+      mime_type: "video/mp4",
+      parent_asset_id: isUuid(params.sourceVideoId) ? params.sourceVideoId : null,
+      project_id: params.projectId,
+      ratio: getRatio(editableVideo?.ratio),
+      source_record_id: params.renderId,
+      source_type: "edit_export",
+      status: "ready",
+      storage_key: params.key,
+      thumbnail_url: getString(editableVideo?.thumbnail_url),
+      title: `${getString(editableVideo?.title) ?? "Edited video"} export`,
+      updated_at: now,
+      url: params.url,
+      user_id: params.userId,
+      width: null,
+    });
   }
 
   async markEditRenderFailed(params: {
@@ -389,6 +425,80 @@ export class SupabaseJobStore {
 
     return data;
   }
+
+  private async registerGeneratedMediaAsset(
+    job: BackgroundJobRow,
+    output: Record<string, Json | undefined>,
+  ) {
+    if (!job.user_id || !["generate_avatar", "generate_hook_video", "generate_image"].includes(job.job_type)) {
+      return;
+    }
+
+    const key = getString(output.key);
+    const url = getString(output.url);
+
+    if (!key || !url) {
+      return;
+    }
+
+    const isVideo = job.job_type === "generate_hook_video";
+    await this.saveMediaAsset({
+      collection: isVideo ? "video" : "image",
+      duration_seconds: getNumber(output.durationSeconds),
+      file_name: null,
+      file_size_bytes: null,
+      height: getInteger(output.height),
+      id: crypto.randomUUID(),
+      metadata: {
+        backgroundJobId: job.id,
+        jobType: job.job_type,
+      },
+      mime_type: isVideo ? "video/mp4" : "image/png",
+      parent_asset_id: null,
+      project_id: job.project_id,
+      ratio: getRatio(output.ratio ?? getObjectValue(job.input_json, "aspectRatio")),
+      source_record_id: job.id,
+      source_type: isVideo ? "generated_video" : "generated_image",
+      status: "ready",
+      storage_key: key,
+      thumbnail_url: isVideo ? getString(output.thumbnailUrl) : url,
+      title: isVideo
+        ? "Generated influencer video"
+        : job.job_type === "generate_avatar"
+          ? "Generated influencer image"
+          : "Generated image",
+      updated_at: new Date().toISOString(),
+      url,
+      user_id: job.user_id,
+      width: getInteger(output.width),
+    });
+  }
+
+  private async saveMediaAsset(
+    row: BackgroundJobsDatabase["public"]["Tables"]["media_assets"]["Insert"],
+  ) {
+    const { data: existing, error: readError } = await this.client
+      .from(MEDIA_ASSETS_TABLE)
+      .select("id")
+      .eq("user_id", row.user_id)
+      .eq("source_type", row.source_type)
+      .eq("source_record_id", row.source_record_id ?? row.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (readError) {
+      throw new Error(`Could not find generated media asset: ${readError.message}`);
+    }
+
+    const operation = existing
+      ? this.client.from(MEDIA_ASSETS_TABLE).update(row).eq("id", existing.id)
+      : this.client.from(MEDIA_ASSETS_TABLE).insert(row);
+    const { error } = await operation;
+
+    if (error) {
+      throw new Error(`Could not save generated media asset: ${error.message}`);
+    }
+  }
 }
 
 function toJsonObject(value: Record<string, Json | undefined>): Json {
@@ -397,4 +507,28 @@ function toJsonObject(value: Record<string, Json | undefined>): Json {
       return entry[1] !== undefined;
     }),
   );
+}
+
+function getString(value: Json | undefined) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function getNumber(value: Json | undefined) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function getInteger(value: Json | undefined) {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+}
+
+function getRatio(value: Json | undefined) {
+  return value === "9:16" || value === "1:1" || value === "4:5" || value === "16:9" ? value : "other";
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function getObjectValue(value: Json, key: string) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value[key] : undefined;
 }

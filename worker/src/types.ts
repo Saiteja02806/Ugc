@@ -75,6 +75,37 @@ type VideoRenderJobUpdate = Partial<{
   updated_at: string;
 }>;
 
+type MediaAssetInsert = {
+  collection: "image" | "influencer" | "video";
+  duration_seconds: number | null;
+  file_name: string | null;
+  file_size_bytes: number | null;
+  height: number | null;
+  id: string;
+  metadata: Json;
+  mime_type: string;
+  parent_asset_id: string | null;
+  project_id: string | null;
+  ratio: "9:16" | "1:1" | "4:5" | "16:9" | "other";
+  source_record_id: string | null;
+  source_type:
+    | "upload"
+    | "influencer_upload"
+    | "demo_upload"
+    | "catalog_influencer"
+    | "generated_image"
+    | "generated_video"
+    | "edit_export";
+  status: "uploading" | "processing" | "ready" | "failed";
+  storage_key: string;
+  thumbnail_url: string | null;
+  title: string;
+  updated_at: string;
+  url: string;
+  user_id: string;
+  width: number | null;
+};
+
 export type CarouselFormat = "1:1" | "4:5";
 export type CarouselGenerationStatus = "completed" | "failed" | "processing";
 export type CarouselSlideStatus = "failed" | "processing" | "ready";
@@ -300,6 +331,15 @@ export type BackgroundJobsDatabase = {
         Relationships: [];
         Row: Record<string, Json>;
         Update: EditableVideoUpdate;
+      };
+      media_assets: {
+        Insert: MediaAssetInsert;
+        Relationships: [];
+        Row: MediaAssetInsert & {
+          created_at: string;
+          deleted_at: string | null;
+        };
+        Update: Partial<MediaAssetInsert> & { deleted_at?: string | null };
       };
       video_render_jobs: {
         Insert: Record<string, never>;

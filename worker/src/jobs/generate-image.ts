@@ -39,13 +39,15 @@ export async function runGenerateImageJob(
   job: BackgroundJobRow,
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
+  const userId = getPathSegment(job.user_id, "user");
+  const projectId = getPathSegment(job.project_id, "default");
   const imageBuffer = await generateOpenAiImageBuffer(input.prompt);
 
   const uploaded = await uploadBufferToS3({
     buffer: imageBuffer,
     cacheControl: "public, max-age=31536000, immutable",
     contentType: "image/png",
-    key: `image-tests/${input.generationId}.png`,
+    key: `images/generated/${userId}/${projectId}/${input.generationId}.png`,
   });
 
   return {
@@ -54,4 +56,13 @@ export async function runGenerateImageJob(
     ok: true,
     url: uploaded.url,
   };
+}
+
+function getPathSegment(value: string | null, fallback: string) {
+  return value
+    ?.trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80) || fallback;
 }

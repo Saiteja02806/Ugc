@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock3,
   Loader2,
+  Pencil,
   Play,
   RefreshCw,
   Scissors,
@@ -16,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/contexts/auth-context";
+import { UserMediaCollection } from "@/components/media/user-media-collection";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
 
@@ -91,8 +93,10 @@ type TrimDraft = {
 
 export function AvatarsWorkspace({
   editorAvatarId = null,
+  initialTab = "influencers",
 }: {
   editorAvatarId?: string | null;
+  initialTab?: MediaWorkspaceTab;
 }) {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
@@ -110,8 +114,15 @@ export function AvatarsWorkspace({
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [savingTrim, setSavingTrim] = useState(false);
   const [usingAvatar, setUsingAvatar] = useState(false);
+  const [openingInEdit, setOpeningInEdit] = useState(false);
+  const [activeTab, setActiveTab] = useState<MediaWorkspaceTab>(initialTab);
   const selectedAvatarIdRef = useRef<string | null>(null);
   const isEditorMode = editorAvatarId !== null;
+
+  function handleTabChange(tab: MediaWorkspaceTab) {
+    setActiveTab(tab);
+    window.history.replaceState(null, "", tab === "influencers" ? "/avatars" : `/avatars?tab=${tab}`);
+  }
 
   const selectedAvatar = useMemo(() => {
     return avatars.find((avatar) => avatar.asset.id === selectedAvatarId) ?? null;
@@ -312,6 +323,41 @@ export function AvatarsWorkspace({
     }
   }
 
+  async function handleOpenAvatarInEdit() {
+    if (!selectedAvatar || openingInEdit) {
+      return;
+    }
+
+    setErrorMessage(null);
+    setNoticeMessage(null);
+    setOpeningInEdit(true);
+
+    try {
+      const token = await getAuthToken();
+      const response = await fetch("/api/media/from-avatar", {
+        body: JSON.stringify({ avatarId: selectedAvatar.asset.id }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      const data = (await response.json()) as
+        | { asset: { id: string }; ok: true }
+        | { error?: string; ok?: false };
+
+      if (!response.ok || data.ok !== true) {
+        throw new Error(getApiErrorMessage(data, "Could not open this influencer in Edit."));
+      }
+
+      router.push(`/edit/${encodeURIComponent(data.asset.id)}`);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "Could not open this influencer in Edit."));
+    } finally {
+      setOpeningInEdit(false);
+    }
+  }
+
   function updateAvatar(data: Extract<AvatarActionResponse, { ok: true }>) {
     const updatedAvatar = {
       asset: data.avatar,
@@ -435,11 +481,13 @@ export function AvatarsWorkspace({
             errorMessage={errorMessage}
             hasUnsavedTrimChanges={hasUnsavedTrimChanges}
             noticeMessage={noticeMessage}
+            openingInEdit={openingInEdit}
             savingTrim={savingTrim}
             thumbnailIssueLabel={selectedAvatarIssueLabel}
             trimDraft={trimDraft}
             usingAvatar={usingAvatar}
             onBack={handleRequestBackToLibrary}
+            onOpenInEdit={() => void handleOpenAvatarInEdit()}
             onResetTrim={() => void handleResetTrim()}
             onSaveTrim={() => void handleSaveTrim()}
             onTrimDraftChange={setTrimDraft}
@@ -462,14 +510,14 @@ export function AvatarsWorkspace({
       <header className="mx-auto flex w-full max-w-[1560px] flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
-            Influencers
+            Influencers & media
           </h1>
           <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-            Choose and trim reusable influencer videos for UGC creation.
+            Choose talent, then manage every video and image you create or upload.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {activeTab === "influencers" ? <div className="flex flex-wrap items-center gap-2">
           <div
             className={libraryBadgeClassName}
             title={libraryButtonTitle}
@@ -490,25 +538,81 @@ export function AvatarsWorkspace({
               aria-hidden="true"
             />
           </button>
-        </div>
+        </div> : null}
       </header>
 
-      {pageStatus}
+      {activeTab === "influencers" ? pageStatus : null}
+
+      <nav
+        aria-label="Influencer media collections"
+        className="mx-auto mt-5 flex w-full max-w-[1560px] border-b border-border"
+      >
+        {mediaWorkspaceTabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => handleTabChange(tab.id)}
+            aria-current={activeTab === tab.id ? "page" : undefined}
+            className={cn(
+              "relative h-10 px-4 text-sm font-bold transition-colors",
+              activeTab === tab.id ? "text-foreground" : "text-muted hover:text-foreground",
+            )}
+          >
+            {tab.label}
+            {activeTab === tab.id ? <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary" /> : null}
+          </button>
+        ))}
+      </nav>
 
       <div className="mx-auto w-full max-w-[1560px] flex-1 pt-5">
-        <AvatarLibrary
-          avatars={avatars}
-          isLoading={isLoading}
-          previewHealthLabel={previewHealthLabel}
-          selectedAvatarId={selectedAvatarId}
-          thumbnailFailures={thumbnailFailures}
-          onThumbnailError={handleThumbnailError}
-          onSelectAvatar={handleSelectAvatar}
-        />
+        {activeTab === "influencers" ? (
+          <div className="space-y-4">
+            <UserMediaCollection
+              collection="influencer"
+              title="Your influencers"
+              description="Upload your own on-camera talent or spokesperson footage. These stay private to your account."
+              emptyTitle="Upload your first influencer"
+              emptyDescription="Add a clear MP4, MOV, or WebM clip. Your uploaded talent will stay separate from the UGC Pilot catalog."
+            />
+            <AvatarLibrary
+              avatars={avatars}
+              isLoading={isLoading}
+              previewHealthLabel={previewHealthLabel}
+              selectedAvatarId={selectedAvatarId}
+              thumbnailFailures={thumbnailFailures}
+              onThumbnailError={handleThumbnailError}
+              onSelectAvatar={handleSelectAvatar}
+            />
+          </div>
+        ) : activeTab === "videos" ? (
+          <UserMediaCollection
+            collection="video"
+            title="User videos"
+            description="Generated videos, uploaded footage, demos, and finished Edit exports in one real library."
+            emptyTitle="No videos yet"
+            emptyDescription="Generate a video or upload footage here. Every ready video can be opened directly in Edit."
+          />
+        ) : (
+          <UserMediaCollection
+            collection="image"
+            title="User images"
+            description="Generated and uploaded images owned by your account."
+            emptyTitle="No images yet"
+            emptyDescription="Generate an image or upload one here to build your reusable image library."
+          />
+        )}
       </div>
     </section>
   );
 }
+
+type MediaWorkspaceTab = "influencers" | "videos" | "images";
+
+const mediaWorkspaceTabs: { id: MediaWorkspaceTab; label: string }[] = [
+  { id: "influencers", label: "Influencers" },
+  { id: "videos", label: "User videos" },
+  { id: "images", label: "User images" },
+];
 
 function AvatarLibrary({
   avatars,
@@ -531,7 +635,7 @@ function AvatarLibrary({
     <div className="flex min-h-[360px] flex-col rounded-[var(--radius-panel)] border border-border bg-white p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-bold text-foreground">Influencer library</h2>
+          <h2 className="text-sm font-bold text-foreground">UGC Pilot influencers</h2>
           <p className="mt-1 text-xs font-semibold text-muted">
             {previewHealthLabel}
           </p>
@@ -771,6 +875,7 @@ function AvatarFullPageEditor({
   hasUnsavedTrimChanges,
   noticeMessage,
   onBack,
+  onOpenInEdit,
   onResetTrim,
   onSaveTrim,
   onTrimDraftChange,
@@ -779,12 +884,14 @@ function AvatarFullPageEditor({
   thumbnailIssueLabel,
   trimDraft,
   usingAvatar,
+  openingInEdit,
 }: {
   avatar: AvatarLibraryItem;
   errorMessage: string | null;
   hasUnsavedTrimChanges: boolean;
   noticeMessage: string | null;
   onBack: () => void;
+  onOpenInEdit: () => void;
   onResetTrim: () => void;
   onSaveTrim: () => void;
   onTrimDraftChange: (draft: TrimDraft) => void;
@@ -793,6 +900,7 @@ function AvatarFullPageEditor({
   thumbnailIssueLabel: string | null;
   trimDraft: TrimDraft;
   usingAvatar: boolean;
+  openingInEdit: boolean;
 }) {
   const editorTitleId = useId();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -957,24 +1065,39 @@ function AvatarFullPageEditor({
             onTrimDraftChange={onTrimDraftChange}
           />
 
-          <button
-            type="button"
-            onClick={onUseAvatar}
-            disabled={usingAvatar}
-            className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {usingAvatar ? (
-              <>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={onOpenInEdit}
+              disabled={openingInEdit}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-white px-5 text-sm font-semibold text-[#173454] transition-colors hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {openingInEdit ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                Selecting
-              </>
-            ) : (
-              <>
-                <UserRound className="size-4" aria-hidden="true" />
-                Use influencer
-              </>
-            )}
-          </button>
+              ) : (
+                <Pencil className="size-4" aria-hidden="true" />
+              )}
+              {openingInEdit ? "Opening" : "Open in Edit"}
+            </button>
+            <button
+              type="button"
+              onClick={onUseAvatar}
+              disabled={usingAvatar}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {usingAvatar ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Selecting
+                </>
+              ) : (
+                <>
+                  <UserRound className="size-4" aria-hidden="true" />
+                  Use influencer
+                </>
+              )}
+            </button>
+          </div>
 
           <StatusMessages
             errorMessage={errorMessage}

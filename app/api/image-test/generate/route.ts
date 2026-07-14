@@ -9,8 +9,10 @@ import {
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
+import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
 
 type GenerateRequest = {
+  aspectRatio?: unknown;
   prompt?: unknown;
 };
 
@@ -33,6 +35,18 @@ function getMissingRuntimeEnv() {
 }
 
 export async function POST(request: Request) {
+  let user;
+
+  try {
+    user = await requireFirebaseUser(request);
+  } catch (error) {
+    const status = error instanceof FirebaseAuthRequestError ? error.status : 500;
+    return Response.json(
+      { ok: false, message: error instanceof FirebaseAuthRequestError ? error.message : "Could not verify your session." },
+      { status },
+    );
+  }
+
   let body: GenerateRequest;
 
   try {
@@ -77,11 +91,20 @@ export async function POST(request: Request) {
     const generationId = crypto.randomUUID();
     const backgroundJob = await createBackgroundJob({
       input: {
+        aspectRatio:
+          body.aspectRatio === "9:16" ||
+          body.aspectRatio === "1:1" ||
+          body.aspectRatio === "4:5" ||
+          body.aspectRatio === "16:9"
+            ? body.aspectRatio
+            : "other",
         generationId,
         prompt,
       },
       jobType: IMAGE_JOB_TYPE,
+      projectId: "default",
       queueName: getQueueNameForJobType(IMAGE_JOB_TYPE),
+      userId: user.uid,
     });
 
     try {

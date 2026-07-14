@@ -2,6 +2,7 @@ import { logger, task } from "@trigger.dev/sdk";
 import { z } from "zod";
 
 import { uploadBufferToS3 } from "@/lib/storage/s3";
+import { upsertReadyMediaAsset } from "@/lib/media/media-storage";
 import { generateHeyGenTalkingAvatarVideoBuffer } from "@/lib/video/providers/heygen";
 
 const GenerateTalkingAvatarVideoPayloadSchema = z.object({
@@ -49,6 +50,21 @@ export const generateTalkingAvatarVideoTask = task({
       videoId: payload.videoId,
       key: result.key,
       url: result.url,
+    });
+
+    await upsertReadyMediaAsset({
+      assetId: payload.videoId,
+      collection: "video",
+      metadata: { provider: "heygen" },
+      mimeType: "video/mp4",
+      projectId: payload.projectId,
+      ratio: "9:16",
+      sourceRecordId: payload.videoId,
+      sourceType: "generated_video",
+      storageKey: result.key,
+      title: "Talking influencer video",
+      url: result.url,
+      userId: payload.userId,
     });
 
     return {

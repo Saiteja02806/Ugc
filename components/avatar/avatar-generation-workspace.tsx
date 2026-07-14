@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { buttonClassName } from "@/components/ui/button";
 import { VideoGenerationPanel } from "@/components/avatar/video-generation-panel";
 import { cn } from "@/lib/utils";
+import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
 type AvatarInput = {
   persona: string;
@@ -122,9 +123,12 @@ export function AvatarGenerationWorkspace({
     setPollJobId(null);
 
     try {
+      const token = await getCurrentUserIdToken();
+      if (!token) throw new Error("Sign in before generating influencers.");
       const response = await fetch("/api/debug/test-generate-avatar", {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -163,8 +167,11 @@ export function AvatarGenerationWorkspace({
 
     async function pollStatus() {
       try {
+        const token = await getCurrentUserIdToken();
+        if (!token) throw new Error("Sign in to check generation status.");
         const response = await fetch(
           `/api/debug/avatar-run-status?jobId=${encodeURIComponent(jobId)}`,
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         const data = (await response.json()) as JobStatusResponse;
 

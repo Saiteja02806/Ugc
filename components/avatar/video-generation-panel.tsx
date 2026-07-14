@@ -12,11 +12,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { buttonClassName } from "@/components/ui/button";
-import {
-  createEditableVideo,
-  getEditableVideoHref,
-  saveEditableVideo,
-} from "@/lib/edit/video-library";
+import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
 import type {
   HookVideoCameraStyle,
@@ -278,7 +274,6 @@ export function VideoGenerationPanel({
   const [hookMessage, setHookMessage] = useState("Ready for UGC hook video.");
   const [hookJobId, setHookJobId] = useState<string | null>(null);
   const [hookStatus, setHookStatus] = useState<VideoUiStatus>("idle");
-  const [hookVideoId, setHookVideoId] = useState<string | null>(null);
   const [hookVideoUrl, setHookVideoUrl] = useState<string | null>(null);
 
   const [talkingInput, setTalkingInput] =
@@ -288,7 +283,6 @@ export function VideoGenerationPanel({
   );
   const [talkingRunId, setTalkingRunId] = useState<string | null>(null);
   const [talkingStatus, setTalkingStatus] = useState<VideoUiStatus>("idle");
-  const [talkingVideoId, setTalkingVideoId] = useState<string | null>(null);
   const [talkingVideoUrl, setTalkingVideoUrl] = useState<string | null>(null);
 
   function updateHookInput<TField extends keyof HookInput>(
@@ -318,8 +312,11 @@ export function VideoGenerationPanel({
 
     async function pollHookStatus() {
       try {
+        const token = await getCurrentUserIdToken();
+        if (!token) throw new Error("Sign in to check video status.");
         const response = await fetch(
           `/api/debug/hook-video-run-status?jobId=${encodeURIComponent(jobId)}`,
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         const data = (await response.json()) as HookVideoJobStatusResponse;
 
@@ -339,7 +336,6 @@ export function VideoGenerationPanel({
         }
 
         if (data.job.status === "completed" && data.job.output?.url) {
-          setHookVideoId(data.job.output.videoId);
           setHookVideoUrl(data.job.output.url);
           setHookStatus("success");
           setHookMessage(
@@ -392,10 +388,13 @@ export function VideoGenerationPanel({
 
     async function pollTalkingStatus() {
       try {
+        const token = await getCurrentUserIdToken();
+        if (!token) throw new Error("Sign in to check video status.");
         const response = await fetch(
           `/api/debug/talking-avatar-video-run-status?runId=${encodeURIComponent(
             runId,
           )}`,
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         const data = (await response.json()) as VideoRunStatusResponse;
 
@@ -415,7 +414,6 @@ export function VideoGenerationPanel({
         }
 
         if (data.run.status === "COMPLETED" && data.run.output?.url) {
-          setTalkingVideoId(data.run.output.videoId);
           setTalkingVideoUrl(data.run.output.url);
           setTalkingStatus("success");
           setTalkingMessage("Talking avatar video ready via HeyGen.");
@@ -464,13 +462,15 @@ export function VideoGenerationPanel({
     setHookStatus("submitting");
     setHookMessage("Starting UGC hook video...");
     setHookJobId(null);
-    setHookVideoId(null);
     setHookVideoUrl(null);
 
     try {
+      const token = await getCurrentUserIdToken();
+      if (!token) throw new Error("Sign in before generating videos.");
       const response = await fetch("/api/debug/test-generate-hook-video", {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -493,7 +493,6 @@ export function VideoGenerationPanel({
 
       setHookStatus("queued");
       setHookMessage("UGC hook video queued.");
-      setHookVideoId(data.videoId);
       setHookJobId(data.jobId);
     } catch {
       setHookStatus("error");
@@ -505,15 +504,17 @@ export function VideoGenerationPanel({
     setTalkingStatus("submitting");
     setTalkingMessage("Starting talking avatar video...");
     setTalkingRunId(null);
-    setTalkingVideoId(null);
     setTalkingVideoUrl(null);
 
     try {
+      const token = await getCurrentUserIdToken();
+      if (!token) throw new Error("Sign in before generating videos.");
       const response = await fetch(
         "/api/debug/test-generate-talking-avatar-video",
         {
           method: "POST",
           headers: {
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -537,7 +538,6 @@ export function VideoGenerationPanel({
 
       setTalkingStatus("queued");
       setTalkingMessage("Talking avatar video queued.");
-      setTalkingVideoId(data.videoId);
       setTalkingRunId(data.runId);
     } catch {
       setTalkingStatus("error");
@@ -545,42 +545,18 @@ export function VideoGenerationPanel({
     }
   }
 
-  function openHookVideoInEdit() {
+  async function openHookVideoInEdit() {
     if (!hookVideoUrl) {
       return;
     }
-
-    const editableVideo = createEditableVideo({
-      id: createSafeEditableId("hook", hookVideoId ?? hookVideoUrl),
-      projectId,
-      ratio: "9:16",
-      source: "hook",
-      title: hookInput.productName
-        ? `${hookInput.productName} hook video`
-        : "UGC hook video",
-      videoUrl: hookVideoUrl,
-    });
-
-    saveEditableVideo(editableVideo);
-    router.push(getEditableVideoHref(editableVideo));
+    await openServerVideoInEdit(hookVideoUrl, router);
   }
 
-  function openTalkingVideoInEdit() {
+  async function openTalkingVideoInEdit() {
     if (!talkingVideoUrl) {
       return;
     }
-
-    const editableVideo = createEditableVideo({
-      id: createSafeEditableId("talking", talkingVideoId ?? talkingVideoUrl),
-      projectId,
-      ratio: "9:16",
-      source: "hook",
-      title: "Talking avatar video",
-      videoUrl: talkingVideoUrl,
-    });
-
-    saveEditableVideo(editableVideo);
-    router.push(getEditableVideoHref(editableVideo));
+    await openServerVideoInEdit(talkingVideoUrl, router);
   }
 
   return (
@@ -828,13 +804,11 @@ export function VideoGenerationPanel({
   );
 }
 
-function createSafeEditableId(prefix: string, value: string) {
-  const normalized = value
-    .trim()
-    .replace(/[^A-Za-z0-9_-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 96);
-
-  return `${prefix}-${normalized || crypto.randomUUID()}`;
+async function openServerVideoInEdit(videoUrl: string, router: ReturnType<typeof useRouter>) {
+  const token = await getCurrentUserIdToken();
+  if (!token) throw new Error("Sign in before opening Edit.");
+  const response = await fetch("/api/media?collection=video", { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  const data = (await response.json()) as { assets?: Array<{ id: string; url: string }> };
+  const asset = data.assets?.find((item) => item.url === videoUrl);
+  router.push(asset ? `/edit/${encodeURIComponent(asset.id)}` : "/avatars?tab=videos");
 }

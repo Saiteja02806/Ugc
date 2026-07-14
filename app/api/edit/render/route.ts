@@ -21,6 +21,7 @@ import {
   markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
 import { isTrustedStorageUrl } from "@/lib/storage/s3";
+import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 
 export const runtime = "nodejs";
 
@@ -270,6 +271,24 @@ export async function POST(request: Request) {
     body.sourceVideoId,
     "source-video",
   );
+  const sourceAsset = await getMediaAssetForOwner({
+    assetId: sourceVideoId,
+    userId: user.uid,
+  });
+
+  if (!sourceAsset || sourceAsset.collection === "image") {
+    return NextResponse.json(
+      { ok: false, error: "Choose a video from your account before rendering." },
+      { status: 404 },
+    );
+  }
+
+  if (sourceAsset.url !== sourceVideoUrl) {
+    return NextResponse.json(
+      { ok: false, error: "The render source does not match this media asset." },
+      { status: 409 },
+    );
+  }
   const projectId = cleanPathSegment(body.projectId, DEFAULT_PROJECT_ID);
   const ratio = cleanChoice(body.ratio, videoRatios, "9:16");
   const trimStartSeconds = cleanSeconds(body.draft?.trimStartSeconds) ?? 0;

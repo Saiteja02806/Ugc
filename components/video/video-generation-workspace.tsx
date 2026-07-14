@@ -18,12 +18,8 @@ import type { FormEvent, KeyboardEvent, RefObject } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/contexts/auth-context";
-import {
-  createEditableVideo,
-  getEditableVideoHref,
-  saveEditableVideo,
-} from "@/lib/edit/video-library";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import type { MediaAsset } from "@/lib/media/types";
 import { cn } from "@/lib/utils";
 
 type VideoRatio = "9:16" | "1:1" | "4:5" | "16:9";
@@ -118,6 +114,7 @@ export function VideoGenerationWorkspace() {
   const [ratio, setRatio] = useState<VideoRatio>("9:16");
   const [videoCount, setVideoCount] = useState<VideoCount>(2);
   const [avatarLibrary, setAvatarLibrary] = useState<AvatarLibraryItem[]>([]);
+  const [personalAvatarAssets, setPersonalAvatarAssets] = useState<MediaAsset[]>([]);
   const [avatarLoading, setAvatarLoading] = useState(true);
   const [avatarErrorMessage, setAvatarErrorMessage] = useState<string | null>(
     null,
@@ -130,7 +127,10 @@ export function VideoGenerationWorkspace() {
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const generationTimerRef = useRef<number | null>(null);
 
-  const personalAvatars = useMemo<AvatarOption[]>(() => [], []);
+  const personalAvatars = useMemo(
+    () => personalAvatarAssets.map(mapPersonalMediaToAvatarOption),
+    [personalAvatarAssets],
+  );
   const globalAvatars = useMemo(
     () => avatarLibrary.map(mapAvatarLibraryItemToOption),
     [avatarLibrary],
@@ -165,6 +165,7 @@ export function VideoGenerationWorkspace() {
 
       if (!user) {
         setAvatarLibrary([]);
+        setPersonalAvatarAssets([]);
         setSelectedAvatarId(null);
         setAvatarLoading(false);
         setAvatarErrorMessage("Sign in before choosing influencers.");
@@ -180,16 +181,27 @@ export function VideoGenerationWorkspace() {
           throw new Error("Sign in before choosing influencers.");
         }
 
-        const response = await fetch("/api/avatars", {
-          cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const [response, personalResponse] = await Promise.all([
+          fetch("/api/avatars", {
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch("/api/media?collection=influencer", {
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
         const data = (await response.json()) as AvatarListResponse;
+        const personalData = (await personalResponse.json()) as
+          | { assets: MediaAsset[]; ok: true }
+          | { error?: string; ok?: false };
 
         if (!response.ok || data.ok !== true) {
           throw new Error(getApiErrorMessage(data, "Could not load influencers."));
+        }
+
+        if (!personalResponse.ok || personalData.ok !== true) {
+          throw new Error(getApiErrorMessage(personalData, "Could not load your influencers."));
         }
 
         if (ignore) {
@@ -197,15 +209,18 @@ export function VideoGenerationWorkspace() {
         }
 
         setAvatarLibrary(data.avatars);
+        setPersonalAvatarAssets(personalData.assets);
         setSelectedAvatarId((currentAvatarId) =>
           currentAvatarId &&
-          data.avatars.some((avatar) => avatar.asset.id === currentAvatarId)
+          (data.avatars.some((avatar) => avatar.asset.id === currentAvatarId) ||
+            personalData.assets.some((asset) => asset.id === currentAvatarId))
             ? currentAvatarId
-            : data.avatars[0]?.asset.id ?? null,
+            : personalData.assets[0]?.id ?? data.avatars[0]?.asset.id ?? null,
         );
       } catch (error) {
         if (!ignore) {
           setAvatarLibrary([]);
+          setPersonalAvatarAssets([]);
           setSelectedAvatarId(null);
           setAvatarErrorMessage(
             getErrorMessage(error, "Could not load influencers."),
@@ -287,17 +302,7 @@ export function VideoGenerationWorkspace() {
       return;
     }
 
-    const editableVideo = createEditableVideo({
-      durationSeconds: parseDurationLabel(video.duration),
-      id: `hook-${video.id}`,
-      ratio: video.ratio,
-      source: "hook",
-      title: video.title,
-      videoUrl: video.url,
-    });
-
-    saveEditableVideo(editableVideo);
-    router.push(getEditableVideoHref(editableVideo));
+    router.push(`/edit/${encodeURIComponent(video.id)}`);
   }
 
   function handleUseAsHook(video: GeneratedVideo) {
@@ -370,6 +375,26 @@ function mapAvatarLibraryItemToOption(avatar: AvatarLibraryItem): AvatarOption {
   };
 }
 
+function mapPersonalMediaToAvatarOption(asset: MediaAsset): AvatarOption {
+  return {
+    durationSeconds: asset.durationSeconds,
+    id: asset.id,
+    label: asset.title,
+    previewUrl: asset.thumbnailUrl ?? asset.url,
+    selection: {
+      avatarAssetId: asset.id,
+      isTrimmed: false,
+      sourceVideoUrl: asset.url,
+      trimEnd: asset.durationSeconds,
+      trimStart: 0,
+    },
+    source: "my",
+    subtitle: `${formatDuration(asset.durationSeconds)} - ${
+      asset.width && asset.height ? `${asset.width}x${asset.height}` : asset.ratio
+    } - Your upload`,
+  };
+}
+
 function getAvatarSubtitle(avatar: AvatarLibraryItem) {
   const duration = formatDuration(avatar.asset.durationSeconds);
   const dimensions =
@@ -408,22 +433,6 @@ function formatDuration(seconds: number | null) {
   const remainingSeconds = Math.max(0, Math.round(seconds % 60));
 
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-}
-
-function parseDurationLabel(duration: string | undefined) {
-  if (!duration) {
-    return null;
-  }
-
-  const parts = duration.split(":").map((part) => Number(part));
-
-  if (parts.length !== 2 || parts.some((part) => !Number.isFinite(part))) {
-    return null;
-  }
-
-  const [minutes, seconds] = parts;
-
-  return minutes * 60 + seconds;
 }
 
 function VideoResultsArea({

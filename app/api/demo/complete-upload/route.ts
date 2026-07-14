@@ -25,7 +25,10 @@ import {
   MIN_DEMO_DURATION_SECONDS,
   validateRawDemoKeyForOwner,
 } from "@/lib/demo/demo-upload";
-import { createEditableVideo, type EditableVideoRatio } from "@/lib/edit/video-library";
+import {
+  serializeMediaAsset,
+  upsertReadyMediaAsset,
+} from "@/lib/media/media-storage";
 import { buildCloudFrontUrl, headS3Object } from "@/lib/storage/s3";
 
 export const runtime = "nodejs";
@@ -213,20 +216,31 @@ export async function POST(request: Request) {
       userId: auth.user.uid,
       width,
     });
+    const mediaAsset = await upsertReadyMediaAsset({
+      assetId: demoId,
+      collection: "video",
+      durationSeconds,
+      fileName: demo.file_name,
+      fileSizeBytes: size,
+      height,
+      metadata: { demoId },
+      mimeType: contentType,
+      projectId,
+      ratio: demo.ratio,
+      sourceRecordId: demoId,
+      sourceType: "demo_upload",
+      storageKey: key.key,
+      thumbnailUrl: demo.thumbnail_url,
+      title: demo.title,
+      url: demoUrl,
+      userId: auth.user.uid,
+      width,
+    });
 
     return jsonResponse({
       ok: true,
       demo,
-      editableVideo: createEditableVideo({
-        id: `demo-${demoId}`,
-        createdAt: demo.created_at,
-        durationSeconds,
-        projectId,
-        ratio: toEditableVideoRatio(demo.ratio),
-        source: "demo",
-        title: demo.title,
-        videoUrl: demoUrl,
-      }),
+      mediaAsset: serializeMediaAsset(mediaAsset),
     });
   } catch (error) {
     console.error("Failed to verify demo upload:", error);
@@ -270,8 +284,4 @@ function getDemoRatio(value: unknown) {
   return allowedDemoRatios.has(value as DemoVideoRatio)
     ? (value as DemoVideoRatio)
     : null;
-}
-
-function toEditableVideoRatio(ratio: DemoVideoRatio): EditableVideoRatio {
-  return ratio === "other" ? "9:16" : ratio;
 }

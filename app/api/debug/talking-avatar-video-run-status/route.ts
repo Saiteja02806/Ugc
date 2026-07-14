@@ -1,5 +1,6 @@
 import { runs } from "@trigger.dev/sdk";
 import { NextResponse } from "next/server";
+import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
 
 type VideoRunOutput = {
   ok?: unknown;
@@ -38,6 +39,15 @@ function getSafeOutput(output: unknown) {
 }
 
 export async function GET(request: Request) {
+  let user;
+
+  try {
+    user = await requireFirebaseUser(request);
+  } catch (error) {
+    const status = error instanceof FirebaseAuthRequestError ? error.status : 500;
+    return NextResponse.json({ ok: false, error: error instanceof FirebaseAuthRequestError ? error.message : "Could not verify your session." }, { status });
+  }
+
   const url = new URL(request.url);
   const runId = url.searchParams.get("runId")?.trim();
 
@@ -54,6 +64,13 @@ export async function GET(request: Request) {
   try {
     const run = await runs.retrieve(runId);
     const status = run.status;
+
+    if (!run.tags.includes(`user_${user.uid}`)) {
+      return NextResponse.json(
+        { ok: false, error: "Talking avatar video run was not found." },
+        { status: 404 },
+      );
+    }
 
     return NextResponse.json({
       ok: true,

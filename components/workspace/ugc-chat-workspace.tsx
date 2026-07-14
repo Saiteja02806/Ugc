@@ -14,6 +14,7 @@ import {
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
 
 type AspectRatio = "4:5" | "1:1" | "9:16" | "16:9";
@@ -73,7 +74,7 @@ function sleep(ms: number) {
   });
 }
 
-async function pollImageJob(jobId: string) {
+async function pollImageJob(jobId: string, token: string) {
   for (let attempt = 0; attempt < 72; attempt += 1) {
     await sleep(attempt === 0 ? 900 : 2_500);
 
@@ -81,6 +82,7 @@ async function pollImageJob(jobId: string) {
       `/api/image-test/status?jobId=${encodeURIComponent(jobId)}`,
       {
         cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
       },
     );
     const data = (await response.json()) as StatusResponse;
@@ -122,9 +124,16 @@ export function UgcChatWorkspace() {
     setGenerationFailed(false);
 
     try {
+      const token = await getCurrentUserIdToken();
+
+      if (!token) {
+        throw new Error("Sign in before generating images.");
+      }
+
       const response = await fetch("/api/image-test/generate", {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -139,7 +148,7 @@ export function UgcChatWorkspace() {
         throw new Error("Generation could not start.");
       }
 
-      const imageUrl = await pollImageJob(data.jobId);
+      const imageUrl = await pollImageJob(data.jobId, token);
       const assetId = createMessageId();
 
       setGeneratedAssets((currentAssets) => [

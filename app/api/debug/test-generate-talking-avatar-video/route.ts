@@ -2,6 +2,7 @@ import { tasks } from "@trigger.dev/sdk";
 import { NextResponse } from "next/server";
 
 import type { generateTalkingAvatarVideoTask } from "@/trigger/generate-talking-avatar-video";
+import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
 
 const defaultScript =
   "I tried this tool this morning, and it made the whole workflow feel much faster.";
@@ -63,6 +64,7 @@ function cleanHttpsUrl(value: unknown) {
 
 export async function POST(request: Request) {
   try {
+    const user = await requireFirebaseUser(request);
     const body = (await request.json().catch(() => null)) as
       | Record<string, unknown>
       | null;
@@ -72,13 +74,14 @@ export async function POST(request: Request) {
       "generate-talking-avatar-video",
       {
         videoId,
-        userId: "test-user-001",
+        userId: user.uid,
         projectId: cleanPathSegment(body?.projectId, "test-project-001"),
         avatarImageUrl: cleanHttpsUrl(body?.avatarImageUrl),
         avatarId: cleanOptionalText(body?.avatarId, 160),
         voiceId: cleanOptionalText(body?.voiceId, 160),
         script: cleanText(body?.script, defaultScript, 2_000),
       },
+      { tags: [`user_${user.uid}`] },
     );
 
     return NextResponse.json({
@@ -88,6 +91,10 @@ export async function POST(request: Request) {
       videoId,
     });
   } catch (error) {
+    if (error instanceof FirebaseAuthRequestError) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: error.status });
+    }
+
     console.error("Failed to trigger talking avatar video task:", error);
 
     return NextResponse.json(

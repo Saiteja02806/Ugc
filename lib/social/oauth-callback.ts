@@ -2,9 +2,13 @@ import "server-only";
 
 import {
   completeSocialOAuthCallback,
+  createSocialOAuthCorrelationId,
   consumeDeniedSocialOAuthCallback,
+  getSocialPlatformRedirectUri,
   getSocialAppBaseUrl,
+  logSocialOAuthTrace,
   SocialOAuthError,
+  type SocialOAuthTraceContext,
 } from "@/lib/social/oauth";
 import type {
   SocialOAuthResultMessage,
@@ -20,39 +24,50 @@ export async function handleSocialOAuthCallback(
   },
 ) {
   const url = new URL(request.url);
+  const trace: SocialOAuthTraceContext = {
+    callbackHost: url.host,
+    correlationId: createSocialOAuthCorrelationId(),
+  };
   const state = url.searchParams.get("state")?.trim() ?? "";
   const providerError = url.searchParams.get("error")?.trim();
-  const providerErrorReason = url.searchParams.get("error_reason")?.trim();
-  const providerErrorDescription = url.searchParams
-    .get("error_description")
-    ?.trim();
 
-  logOAuthCallbackEvent("social_oauth_callback_received", {
+  logSocialOAuthTrace(trace, "code_received", {
+    appBaseHostMatchesCallback: hostMatchesCallback(
+      getSocialAppBaseUrl(),
+      url.host,
+    ),
+    configuredRedirectHostMatchesCallback: hostMatchesCallback(
+      getSocialPlatformRedirectUri(config.platform),
+      url.host,
+    ),
     hasCode: Boolean(url.searchParams.get("code")?.trim()),
+    hasCookieHeader: Boolean(request.headers.get("cookie")),
     hasProviderError: Boolean(providerError),
     hasState: Boolean(state),
-    platform: config.platform,
-    provider: config.provider,
-    providerError: normalizeLogValue(providerError),
-    providerErrorDescription: normalizeLogValue(providerErrorDescription),
-    providerErrorReason: normalizeLogValue(providerErrorReason),
+    providerErrorCode: normalizeLogValue(providerError),
   });
 
   if (providerError) {
     let errorCode = "authorization_denied";
+    let failedStage = "provider_authorization";
 
     if (state) {
       try {
-        await consumeDeniedSocialOAuthCallback({ ...config, state });
+        await consumeDeniedSocialOAuthCallback({ ...config, state, trace });
       } catch (error) {
         errorCode = getSafeErrorCode(error);
+        failedStage = getSafeErrorStage(error);
       }
     } else {
       errorCode = "missing_callback_parameters";
+      failedStage = "code_received";
     }
 
     return renderCallbackPage({
+      callbackHost: trace.callbackHost,
+      correlationId: trace.correlationId,
       errorCode,
+      failedStage,
       message: getFailureMessage(config.platform, errorCode),
       ...config,
       status: "error",
@@ -62,15 +77,16 @@ export async function handleSocialOAuthCallback(
   const code = url.searchParams.get("code")?.trim() ?? "";
 
   if (!code || !state) {
-    logOAuthCallbackEvent("social_oauth_callback_missing_parameters", {
+    logSocialOAuthTrace(trace, "code_received", {
       hasCode: Boolean(code),
       hasState: Boolean(state),
-      platform: config.platform,
-      provider: config.provider,
     });
 
     return renderCallbackPage({
+      callbackHost: trace.callbackHost,
+      correlationId: trace.correlationId,
       errorCode: "missing_callback_parameters",
+      failedStage: "code_received",
       message: "The provider did not return a complete authorization response.",
       ...config,
       status: "error",
@@ -78,30 +94,33 @@ export async function handleSocialOAuthCallback(
   }
 
   try {
-    await completeSocialOAuthCallback({ code, state, ...config });
+    await completeSocialOAuthCallback({ code, state, trace, ...config });
 
-    logOAuthCallbackEvent("social_oauth_callback_completed", {
-      platform: config.platform,
-      provider: config.provider,
-      status: "success",
+    logSocialOAuthTrace(trace, "callback_completed", {
+      callbackSucceeded: true,
+      databaseRowVerified: true,
     });
 
     return renderCallbackPage({
+      callbackHost: trace.callbackHost,
+      correlationId: trace.correlationId,
       message: `${getPlatformLabel(config.platform)} is connected.`,
       ...config,
       status: "success",
     });
   } catch (error) {
     const errorCode = getSafeErrorCode(error);
+    const failedStage = getSafeErrorStage(error);
 
-    console.error("Social OAuth callback failed", {
-      code: errorCode,
-      platform: config.platform,
-      provider: config.provider,
+    logSocialOAuthTrace(trace, "callback_completed", {
+      callbackSucceeded: false,
     });
 
     return renderCallbackPage({
+      callbackHost: trace.callbackHost,
+      correlationId: trace.correlationId,
       errorCode,
+      failedStage,
       message: getFailureMessage(config.platform, errorCode),
       ...config,
       status: "error",
@@ -110,7 +129,10 @@ export async function handleSocialOAuthCallback(
 }
 
 function renderCallbackPage(params: {
+  callbackHost: string;
+  correlationId: string;
   errorCode?: string;
+  failedStage?: string;
   message: string;
   platform: SocialPlatform;
   provider: SocialProvider;
@@ -119,7 +141,10 @@ function renderCallbackPage(params: {
   const appBaseUrl = getSocialAppBaseUrl();
   const targetOrigins = getAllowedTargetOrigins(appBaseUrl);
   const payload: SocialOAuthResultMessage = {
+    callbackHost: params.callbackHost,
+    correlationId: params.correlationId,
     ...(params.errorCode ? { errorCode: params.errorCode } : {}),
+    ...(params.failedStage ? { failedStage: params.failedStage } : {}),
     platform: params.platform,
     provider: params.provider,
     status: params.status,
@@ -133,14 +158,8 @@ function renderCallbackPage(params: {
   const fallbackMessage =
     params.status === "success"
       ? `${getPlatformLabel(params.platform)} connected successfully. You may close this window.`
-      : "You may close this window and return to UGC Pilot.";
-  logOAuthCallbackEvent("social_oauth_popup_response_sent", {
-    errorCode: params.errorCode ?? null,
-    platform: params.platform,
-    provider: params.provider,
-    status: params.status,
-    targetOriginCount: targetOrigins.length,
-  });
+      : "Keep this window open while you check the failed stage below.";
+  const failedStage = params.failedStage ?? "unknown";
   const html = `<!doctype html>
 <html lang="en">
   <head>
@@ -156,6 +175,9 @@ function renderCallbackPage(params: {
       .error { background: #fee2e2; color: #b91c1c; }
       h1 { font-size: 20px; margin: 18px 0 8px; }
       p { color: #52525b; font-size: 14px; line-height: 1.6; margin: 0; }
+      dl { border-top: 1px solid #e4e4e7; margin: 18px 0 0; padding-top: 16px; text-align: left; }
+      dt { color: #71717a; font-size: 11px; font-weight: 700; letter-spacing: 0; margin-top: 12px; text-transform: uppercase; }
+      dd { color: #18181b; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; margin: 6px 0 0; overflow-wrap: anywhere; }
       p[hidden] { display: none; }
       a { color: #9a3412; display: inline-block; font-size: 14px; font-weight: 700; margin-top: 20px; }
     </style>
@@ -166,6 +188,7 @@ function renderCallbackPage(params: {
       <h1>${escapeHtml(title)}</h1>
       <p>${escapeHtml(params.message)}</p>
       <p id="manual-close-message" hidden>${escapeHtml(fallbackMessage)}</p>
+      ${params.status === "error" ? `<dl><dt>Failed stage</dt><dd>${escapeHtml(failedStage)}</dd><dt>Correlation ID</dt><dd>${escapeHtml(params.correlationId)}</dd></dl>` : ""}
       <a href="${escapeHtml(returnUrl)}">Return to connected accounts</a>
     </main>
     <script>
@@ -183,7 +206,10 @@ function renderCallbackPage(params: {
           }
         }
 
-        window.setTimeout(() => window.close(), posted ? 650 : 1200);
+        if (payload.status === "success") {
+          window.setTimeout(() => window.close(), posted ? 650 : 1200);
+        }
+
         window.setTimeout(() => {
           const message = document.getElementById("manual-close-message");
           if (message) {
@@ -213,6 +239,20 @@ function getSafeErrorCode(error: unknown) {
     : "connection_failed";
 }
 
+function getSafeErrorStage(error: unknown) {
+  return error instanceof SocialOAuthError && error.stage
+    ? error.stage
+    : "unknown";
+}
+
+function hostMatchesCallback(value: string, callbackHost: string) {
+  try {
+    return new URL(value).host === callbackHost;
+  } catch {
+    return false;
+  }
+}
+
 function getAllowedTargetOrigins(appBaseUrl: string) {
   const appOrigin = new URL(appBaseUrl).origin;
   const origins = new Set([appOrigin]);
@@ -227,13 +267,6 @@ function getAllowedTargetOrigins(appBaseUrl: string) {
   }
 
   return [...origins];
-}
-
-function logOAuthCallbackEvent(
-  event: string,
-  fields: Record<string, unknown>,
-) {
-  console.info(event, fields);
 }
 
 function normalizeLogValue(value?: string | null) {

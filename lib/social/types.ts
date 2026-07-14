@@ -31,7 +31,10 @@ export type SocialConnection = {
 };
 
 export type SocialOAuthResultMessage = {
+  callbackHost?: string;
+  correlationId?: string;
   errorCode?: string;
+  failedStage?: string;
   platform: SocialPlatform;
   provider: SocialProvider;
   status: "error" | "success";

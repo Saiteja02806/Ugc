@@ -61,6 +61,12 @@ type ConnectionsResponse =
   | { connections: SocialConnection[]; ok: true }
   | { message: string; ok: false };
 
+type OAuthTraceInput = {
+  callbackHost?: string;
+  correlationId?: string;
+  platform?: SocialPlatform;
+};
+
 type PlatformDefinition = {
   description: string;
   Icon: LucideIcon;
@@ -103,8 +109,9 @@ export function PlatformSelectionModal({
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [renderTrace, setRenderTrace] = useState<OAuthTraceInput | null>(null);
 
-  const loadConnections = useCallback(async () => {
+  const loadConnections = useCallback(async (trace?: OAuthTraceInput) => {
     setLoading(true);
     setLoadError(null);
 
@@ -117,7 +124,7 @@ export function PlatformSelectionModal({
 
       const response = await fetch("/api/social/connections", {
         cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getConnectionHeaders(token, trace),
       });
       const data = (await response.json().catch(() => null)) as
         | ConnectionsResponse
@@ -151,12 +158,21 @@ export function PlatformSelectionModal({
         return;
       }
 
-      const refreshedConnections = await loadConnections();
+      const refreshedConnections = await loadConnections({
+        callbackHost: result.callbackHost,
+        correlationId: result.correlationId,
+        platform: result.platform,
+      });
       const isConnected = refreshedConnections.some(
         (connection) =>
           connection.platform === result.platform &&
           connection.status === "connected",
       );
+      setRenderTrace({
+        callbackHost: result.callbackHost,
+        correlationId: result.correlationId,
+        platform: result.platform,
+      });
 
       if (isConnected) {
         setSelectedPlatforms((current) =>
@@ -214,6 +230,23 @@ export function PlatformSelectionModal({
     },
     [],
   );
+
+  useEffect(() => {
+    if (!renderTrace?.correlationId || !renderTrace.platform) {
+      return;
+    }
+
+    console.info("social_oauth_trace", {
+      callbackHost: renderTrace.callbackHost ?? null,
+      correlationId: renderTrace.correlationId,
+      hasConnectedAccount: connections.some(
+        (connection) =>
+          connection.platform === renderTrace.platform &&
+          connection.status === "connected",
+      ),
+      stage: "frontend_rendering",
+    });
+  }, [connections, renderTrace]);
 
   const connectedPlatforms = useMemo(
     () =>
@@ -493,6 +526,22 @@ function getPreferredConnection(connections: SocialConnection[]) {
     connections.find((connection) => connection.status === "connected") ??
     connections[0]
   );
+}
+
+function getConnectionHeaders(token: string, trace?: OAuthTraceInput) {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+  };
+
+  if (trace?.correlationId) {
+    headers["x-ugc-oauth-correlation-id"] = trace.correlationId;
+  }
+
+  if (trace?.callbackHost) {
+    headers["x-ugc-oauth-callback-host"] = trace.callbackHost;
+  }
+
+  return headers;
 }
 
 function getStatusDisplay(

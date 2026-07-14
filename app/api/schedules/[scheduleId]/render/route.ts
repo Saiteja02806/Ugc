@@ -14,8 +14,9 @@ import {
 import {
   getMediaAssetForOwner,
   getMissingMediaStorageEnvVars,
+  type MediaAssetRow,
 } from "@/lib/media/media-storage";
-import type { MediaAsset, MediaRatio } from "@/lib/media/types";
+import type { MediaRatio } from "@/lib/media/types";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
@@ -169,7 +170,7 @@ export async function POST(
 
   const renderId = crypto.randomUUID();
   const projectId =
-    schedule.projectId ?? demoAsset.projectId ?? hookAsset.projectId ?? "schedule";
+    schedule.projectId ?? demoAsset.project_id ?? hookAsset.project_id ?? "schedule";
   const title = `${schedule.title || "Scheduled post"} combined`.slice(0, 140);
   const input = {
     demoVideoId: demoAsset.id,
@@ -295,26 +296,26 @@ function authErrorResponse(error: unknown, unauthorizedMessage: string) {
   );
 }
 
-function isHookAsset(asset: MediaAsset) {
+function isHookAsset(asset: MediaAssetRow) {
   return (
     asset.status === "ready" &&
     (asset.collection === "influencer" ||
       (asset.collection === "video" &&
-        ["upload", "generated_video", "edit_export"].includes(asset.sourceType)))
+        ["upload", "generated_video", "edit_export"].includes(asset.source_type)))
   );
 }
 
-function isDemoAsset(asset: MediaAsset) {
+function isDemoAsset(asset: MediaAssetRow) {
   return (
     asset.status === "ready" &&
     asset.collection === "video" &&
-    asset.sourceType === "demo_upload"
+    asset.source_type === "demo_upload"
   );
 }
 
 function getRenderRatio(
-  demoAsset: MediaAsset,
-  hookAsset: MediaAsset,
+  demoAsset: MediaAssetRow,
+  hookAsset: MediaAssetRow,
 ): CombinationRenderRatio {
   if (videoRatios.has(demoAsset.ratio)) {
     return demoAsset.ratio as CombinationRenderRatio;

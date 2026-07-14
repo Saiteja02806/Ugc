@@ -12,6 +12,7 @@ export type SidebarIconName =
   | "avatars"
   | "edit"
   | "scheduling"
+  | "analytics"
   | "expand"
   | "collapse"
   | "time";
@@ -26,6 +27,7 @@ const sidebarIconPaths: Record<SidebarIconName, string> = {
   avatars: "/icons/sidebar/avatars.svg",
   edit: "/icons/sidebar/edit.svg",
   scheduling: "/icons/sidebar/scheduling.svg",
+  analytics: "/icons/sidebar/analytics.svg",
   expand: "/icons/sidebar/expand.svg",
   collapse: "/icons/sidebar/collapse.svg",
   time: "/icons/sidebar/time.svg",

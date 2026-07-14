@@ -16,10 +16,10 @@ export function VideoCard({ video }: { video: EditableVideo }) {
   return (
     <Link
       href={getEditableVideoHref(video)}
-      className="group min-w-0 rounded-2xl border border-border bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgb(16_32_51_/_0.10)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      className="group min-w-0 rounded-card border border-border bg-white p-2 transition-[border-color,background-color] hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
     >
       <div
-        className="flex items-center justify-center overflow-hidden rounded-xl bg-[#102033] text-white"
+        className="flex items-center justify-center overflow-hidden rounded-control bg-[#102033] text-white"
         style={{ aspectRatio: video.ratio.replace(":", " / ") }}
       >
         {video.thumbnailUrl ? (
@@ -27,11 +27,11 @@ export function VideoCard({ video }: { video: EditableVideo }) {
           <img
             src={video.thumbnailUrl}
             alt=""
-            className="size-full object-cover transition group-hover:scale-[1.02]"
+            className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.015] motion-reduce:transition-none"
           />
         ) : (
           <PlaySquare
-            className="size-8 text-white/75 transition group-hover:scale-105"
+            className="size-8 text-white/75 transition-transform duration-200 group-hover:scale-105 motion-reduce:transition-none"
             aria-hidden="true"
           />
         )}

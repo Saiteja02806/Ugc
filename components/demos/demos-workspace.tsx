@@ -441,50 +441,7 @@ export function UploadedPostsTab({
           }}
         />
 
-        {embeddedInLibrary ? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground-strong">
-                My posts
-              </h2>
-              <p className="mt-1 max-w-xl text-sm leading-6 text-muted">
-                Uploaded product footage for trims, edits, and scheduled posts.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex min-h-9 items-center rounded-md bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-border">
-                {isLoading
-                  ? "Loading"
-                  : `${demos.length} ${demos.length === 1 ? "post" : "posts"}`}
-              </span>
-              <button
-                type="button"
-                onClick={() => void loadDemos()}
-                disabled={isLoading}
-                aria-label="Refresh posts"
-                title="Refresh posts"
-                className="inline-flex size-9 items-center justify-center rounded-md border border-border bg-white text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <RefreshCw
-                  className={cn("size-4", isLoading && "animate-spin")}
-                  aria-hidden="true"
-                />
-              </button>
-              <button
-                type="button"
-                onClick={openFilePicker}
-                disabled={hasActiveUpload}
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-xs font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <Upload className="size-3.5" aria-hidden="true" />
-                Upload post
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {errorMessage ? (
+        {!embeddedInLibrary && errorMessage ? (
           <div
             role="alert"
             className="rounded-md border border-error/20 bg-error/5 px-4 py-3 text-sm font-semibold text-error"
@@ -497,33 +454,24 @@ export function UploadedPostsTab({
         ) : null}
 
         {embeddedInLibrary ? (
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
-            <DemoLibrary
-              deletingDemoId={deletingDemoId}
-              description="Preview, edit, or remove uploaded post footage."
-              demos={demos}
-              emptyDescription="Upload product footage to start building your post library."
-              emptyTitle="No posts yet."
-              heading="Uploaded posts"
-              isLoading={isLoading}
-              itemLabel="post"
-              playingDemoId={playingDemoId}
-              onDeleteDemo={(demo) => void handleDeleteDemo(demo)}
-              onPlayDemo={setPlayingDemoId}
-            />
-            <DemoUploadPanel
-              demosCount={demos.length}
-              isDragActive={isDragActive}
-              layout="compact"
-              uploadState={uploadState}
-              workspaceLabel="post"
-              onBrowse={openFilePicker}
-              onCancel={handleCancelUpload}
-              onDragActiveChange={setIsDragActive}
-              onFiles={handleFiles}
-              onRetry={handleRetryUpload}
-            />
-          </div>
+          <EmbeddedDemoWorkspace
+            deletingDemoId={deletingDemoId}
+            demos={demos}
+            errorMessage={errorMessage}
+            hasActiveUpload={hasActiveUpload}
+            isDragActive={isDragActive}
+            isLoading={isLoading}
+            playingDemoId={playingDemoId}
+            uploadState={uploadState}
+            onBrowse={openFilePicker}
+            onCancel={handleCancelUpload}
+            onDeleteDemo={(demo) => void handleDeleteDemo(demo)}
+            onDragActiveChange={setIsDragActive}
+            onFiles={handleFiles}
+            onPlayDemo={setPlayingDemoId}
+            onRefresh={() => void loadDemos()}
+            onRetry={handleRetryUpload}
+          />
         ) : (
           <>
             <DemoUploadPanel
@@ -546,6 +494,229 @@ export function UploadedPostsTab({
             />
           </>
         )}
+      </div>
+    </section>
+  );
+}
+
+function EmbeddedDemoWorkspace({
+  deletingDemoId,
+  demos,
+  errorMessage,
+  hasActiveUpload,
+  isDragActive,
+  isLoading,
+  onBrowse,
+  onCancel,
+  onDeleteDemo,
+  onDragActiveChange,
+  onFiles,
+  onPlayDemo,
+  onRefresh,
+  onRetry,
+  playingDemoId,
+  uploadState,
+}: {
+  deletingDemoId: string | null;
+  demos: DemoVideo[];
+  errorMessage: string | null;
+  hasActiveUpload: boolean;
+  isDragActive: boolean;
+  isLoading: boolean;
+  onBrowse: () => void;
+  onCancel: () => void;
+  onDeleteDemo: (demo: DemoVideo) => void;
+  onDragActiveChange: (active: boolean) => void;
+  onFiles: (files: FileList | File[]) => Promise<void>;
+  onPlayDemo: (demoId: string) => void;
+  onRefresh: () => void;
+  onRetry: () => void;
+  playingDemoId: string | null;
+  uploadState: UploadState;
+}) {
+  const showUploadStatus = uploadState.status !== "idle";
+
+  return (
+    <section
+      aria-labelledby="library-demo-heading"
+      className="overflow-hidden rounded-card border border-border bg-card shadow-[0_1px_2px_rgb(23_23_27_/_0.03)]"
+    >
+      <header className="flex flex-col gap-4 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-small bg-brand-soft text-primary">
+            <FileVideo className="size-[18px]" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h2
+              id="library-demo-heading"
+              className="text-base font-semibold text-foreground-strong"
+            >
+              Demo library
+            </h2>
+            <p className="mt-0.5 max-w-xl text-sm leading-5 text-muted">
+              Product footage ready to preview, edit, and schedule.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <span className="inline-flex h-9 items-center rounded-md bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-border">
+            {isLoading
+              ? "Loading"
+              : `${demos.length} ${demos.length === 1 ? "demo" : "demos"}`}
+          </span>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={isLoading}
+            aria-label="Refresh demos"
+            title="Refresh demos"
+            className="inline-flex size-9 items-center justify-center rounded-md border border-border bg-white text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <RefreshCw
+              className={cn(
+                "size-4",
+                isLoading && "animate-spin motion-reduce:animate-none",
+              )}
+              aria-hidden="true"
+            />
+          </button>
+          <button
+            type="button"
+            onClick={onBrowse}
+            disabled={hasActiveUpload}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3.5 text-xs font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Upload className="size-3.5" aria-hidden="true" />
+            Upload demo
+          </button>
+        </div>
+      </header>
+
+      {errorMessage ? (
+        <div
+          role="alert"
+          className="border-b border-error/15 bg-error/5 px-4 py-3 text-sm font-semibold text-error sm:px-5"
+        >
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span>{errorMessage}</span>
+          </div>
+        </div>
+      ) : null}
+
+      <div
+        onDragEnter={(event) => {
+          event.preventDefault();
+          onDragActiveChange(true);
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          onDragActiveChange(true);
+        }}
+        onDragLeave={(event) => {
+          event.preventDefault();
+
+          if (event.currentTarget === event.target) {
+            onDragActiveChange(false);
+          }
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          onDragActiveChange(false);
+          void onFiles(event.dataTransfer.files);
+        }}
+        className={cn(
+          "relative p-4 transition-colors sm:p-5",
+          isDragActive && "bg-brand-soft/30",
+        )}
+      >
+        {showUploadStatus ? (
+          <div className="mb-4 rounded-lg border border-border bg-surface-subtle p-2 sm:max-w-xl">
+            <UploadProgress
+              uploadState={uploadState}
+              onCancel={onCancel}
+              onRetry={onRetry}
+            />
+          </div>
+        ) : null}
+
+        {isLoading ? (
+          <div
+            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
+            aria-label="Loading demos"
+          >
+            {Array.from({ length: 4 }, (_, index) => (
+              <div
+                key={index}
+                className="overflow-hidden rounded-lg border border-border bg-white"
+              >
+                <div className="aspect-[4/5] animate-pulse bg-[#e9eaec] motion-reduce:animate-none" />
+                <div className="space-y-3 p-4">
+                  <div className="h-4 w-3/4 animate-pulse rounded bg-[#e9eaec] motion-reduce:animate-none" />
+                  <div className="h-3 w-1/2 animate-pulse rounded bg-[#eff0f1] motion-reduce:animate-none" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : demos.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {demos.map((demo) => (
+              <DemoCard
+                key={demo.id}
+                demo={demo}
+                deleting={deletingDemoId === demo.id}
+                playing={playingDemoId === demo.id}
+                onDelete={() => onDeleteDemo(demo)}
+                onPlay={() => onPlayDemo(demo.id)}
+              />
+            ))}
+          </div>
+        ) : !showUploadStatus ? (
+          <div
+            className={cn(
+              "flex min-h-[330px] items-center justify-center rounded-lg border border-dashed px-5 py-10 text-center transition-colors sm:px-8",
+              isDragActive
+                ? "border-primary bg-white"
+                : "border-border-strong bg-surface-subtle",
+            )}
+          >
+            <div className="max-w-lg">
+              <span className="mx-auto flex size-12 items-center justify-center rounded-lg bg-white text-primary ring-1 ring-border shadow-[0_1px_2px_rgb(23_23_27_/_0.05)]">
+                <Upload className="size-5" aria-hidden="true" />
+              </span>
+              <h3 className="mt-4 text-lg font-semibold text-foreground-strong">
+                {isDragActive ? "Drop your video here" : "Add your first demo"}
+              </h3>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">
+                Upload a product walkthrough or screen recording. Once it is here,
+                you can preview it, open the editor, and prepare it for publishing.
+              </p>
+              <button
+                type="button"
+                onClick={onBrowse}
+                className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+              >
+                <Upload className="size-4" aria-hidden="true" />
+                Choose video
+              </button>
+              <p className="mt-3 text-xs font-medium text-muted-subtle">
+                or drop a file anywhere in this area
+              </p>
+              <div className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs font-semibold text-muted">
+                <span>MP4, MOV or WebM</span>
+                <span>Up to 100 MB</span>
+                <span>1-60 seconds</span>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {demos.length > 0 && isDragActive ? (
+          <div className="pointer-events-none absolute inset-4 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-white/95 text-sm font-semibold text-primary shadow-sm sm:inset-5">
+            Drop your video to upload
+          </div>
+        ) : null}
       </div>
     </section>
   );

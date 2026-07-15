@@ -265,7 +265,7 @@ function buildTaskDefinitionRegistrationInput(taskDefinition, newImageUri) {
         CLOUDFRONT_DOMAIN: getRequiredEnv("CLOUDFRONT_DOMAIN"),
         UGC_INTERNAL_APP_URL:
           process.env.UGC_INTERNAL_APP_URL?.trim() ||
-          "https://www.getugcpilot.com",
+          "https://getugcpilot.com",
         WORKER_JOB_TYPES: "render_edit_video,render_schedule_combination",
         WORKER_QUEUE_NAME: "video-render",
         WORKER_QUEUE_URL: videoRenderQueueUrl,

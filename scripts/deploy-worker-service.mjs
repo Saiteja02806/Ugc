@@ -435,7 +435,7 @@ function buildTaskDefinitionRegistrationInput(
                 UGC_INTERNAL_APP_URL:
                   process.env.UGC_INTERNAL_APP_URL?.trim() ||
                   existingEnvironment.get("UGC_INTERNAL_APP_URL") ||
-                  "https://www.getugcpilot.com",
+                  "https://getugcpilot.com",
               }
             : {}),
           WORKER_JOB_TYPES: profile.jobTypes.join(","),

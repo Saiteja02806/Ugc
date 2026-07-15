@@ -67,11 +67,17 @@ const workerProfiles = {
     ],
     secretSources: {
       GOOGLE_CLIENT_ID: {
+        required: false,
         secretArnEnv: "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_ID_SECRET_ARN",
+        workerSecretFallbackEnv:
+          "ECS_SOCIAL_PUBLISH_USE_WORKER_SECRET_GOOGLE_OAUTH",
         workerSecretKey: "GOOGLE_CLIENT_ID",
       },
       GOOGLE_CLIENT_SECRET: {
+        required: false,
         secretArnEnv: "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_SECRET_SECRET_ARN",
+        workerSecretFallbackEnv:
+          "ECS_SOCIAL_PUBLISH_USE_WORKER_SECRET_GOOGLE_OAUTH",
         workerSecretKey: "GOOGLE_CLIENT_SECRET",
       },
     },
@@ -389,6 +395,7 @@ function buildTaskDefinitionRegistrationInput(
       )) {
         profileSecrets[secretName] = valueFrom;
       }
+      const activeProfileSecretNames = new Set(Object.keys(profileSecrets));
 
       return {
         ...container,
@@ -454,6 +461,7 @@ function buildTaskDefinitionRegistrationInput(
             container.secrets ?? [],
             profile,
             selectedProfileSecretKeys,
+            activeProfileSecretNames,
           ),
           profileSecrets,
         ),
@@ -767,8 +775,25 @@ function resolveProfileSecretSources(profile) {
   for (const [secretName, source] of Object.entries(profile.secretSources ?? {})) {
     const externalSecretArn = process.env[source.secretArnEnv]?.trim();
 
+    if (externalSecretArn) {
+      profileSecrets[secretName] = externalSecretArn;
+      continue;
+    }
+
+    if (
+      source.workerSecretFallbackEnv &&
+      !isEnabledEnv(source.workerSecretFallbackEnv)
+    ) {
+      if (source.required === false) {
+        continue;
+      }
+
+      throw new Error(
+        `${source.secretArnEnv} is missing. Set ${source.workerSecretFallbackEnv}=true to read ${source.workerSecretKey ?? secretName} from WORKER_SECRET_ARN.`,
+      );
+    }
+
     profileSecrets[secretName] =
-      externalSecretArn ||
       `${workerSecretArn}:${source.workerSecretKey ?? secretName}::`;
   }
 
@@ -794,19 +819,43 @@ function resolveSecretKeyAlternative(alternative) {
   );
 }
 
-function pruneProfileSecrets(secrets, profile, selectedProfileSecretKeys) {
+function isEnabledEnv(name) {
+  return ["1", "true", "yes"].includes(
+    (process.env[name] ?? "").trim().toLowerCase(),
+  );
+}
+
+function pruneProfileSecrets(
+  secrets,
+  profile,
+  selectedProfileSecretKeys,
+  activeProfileSecretNames,
+) {
   const selectedSecretNames = new Set(selectedProfileSecretKeys);
   const alternativeSecretNames = new Set(
     (profile.secretKeyAlternatives ?? []).flatMap((alternative) =>
       alternative.keys,
     ),
   );
+  const sourceSecretNames = new Set(Object.keys(profile.secretSources ?? {}));
 
-  return secrets.filter(
-    (secret) =>
-      !alternativeSecretNames.has(secret.name) ||
-      selectedSecretNames.has(secret.name),
-  );
+  return secrets.filter((secret) => {
+    if (
+      alternativeSecretNames.has(secret.name) &&
+      !selectedSecretNames.has(secret.name)
+    ) {
+      return false;
+    }
+
+    if (
+      sourceSecretNames.has(secret.name) &&
+      !activeProfileSecretNames.has(secret.name)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
 }
 
 function buildNetworkConfiguration() {

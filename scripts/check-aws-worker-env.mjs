@@ -92,6 +92,7 @@ const groups = [
     keys: [
       "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_ID_SECRET_ARN",
       "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_SECRET_SECRET_ARN",
+      "ECS_SOCIAL_PUBLISH_USE_WORKER_SECRET_GOOGLE_OAUTH",
     ],
   },
 ];
@@ -258,6 +259,8 @@ for (const check of workerSecretExpectedChecks) {
     console.log(
       `CHECK ${check.externalSecret} supplies ${check.suppliesKey}`,
     );
+  } else if (check.note) {
+    console.log(`NOTE ${check.note}`);
   } else {
     console.log(`CHECK one of ${check.oneOf.join(" or ")}`);
   }
@@ -283,8 +286,17 @@ function buildWorkerSecretExpectedChecks(entries) {
       externalSecret: "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_ID_SECRET_ARN",
       suppliesKey: "GOOGLE_CLIENT_ID",
     });
-  } else {
+  } else if (
+    isEnabledEnvValue(
+      getConfiguredValue(entries, "ECS_SOCIAL_PUBLISH_USE_WORKER_SECRET_GOOGLE_OAUTH"),
+    )
+  ) {
     checks.push({ key: "GOOGLE_CLIENT_ID" });
+  } else {
+    checks.push({
+      note:
+        "YouTube token refresh is disabled for the worker until GOOGLE_CLIENT_ID is supplied by ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_ID_SECRET_ARN or the main worker secret fallback is enabled.",
+    });
   }
 
   if (googleClientSecretSecretState === "present") {
@@ -292,9 +304,28 @@ function buildWorkerSecretExpectedChecks(entries) {
       externalSecret: "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_SECRET_SECRET_ARN",
       suppliesKey: "GOOGLE_CLIENT_SECRET",
     });
-  } else {
+  } else if (
+    isEnabledEnvValue(
+      getConfiguredValue(entries, "ECS_SOCIAL_PUBLISH_USE_WORKER_SECRET_GOOGLE_OAUTH"),
+    )
+  ) {
     checks.push({ key: "GOOGLE_CLIENT_SECRET" });
+  } else {
+    checks.push({
+      note:
+        "YouTube token refresh is disabled for the worker until GOOGLE_CLIENT_SECRET is supplied by ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_SECRET_SECRET_ARN or the main worker secret fallback is enabled.",
+    });
   }
 
   return checks;
+}
+
+function getConfiguredValue(entries, key) {
+  const fileValues = entries.get(key) ?? [];
+
+  return fileValues[0] ?? process.env[key] ?? "";
+}
+
+function isEnabledEnvValue(value) {
+  return ["1", "true", "yes"].includes(String(value).trim().toLowerCase());
 }

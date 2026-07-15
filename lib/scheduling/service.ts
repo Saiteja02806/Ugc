@@ -5,6 +5,13 @@ import {
   deleteSocialPublishSchedule,
   getMissingSocialSchedulerEnvVars,
 } from "@/lib/scheduling/aws-scheduler";
+import { getQueueNameForJobType } from "@/lib/aws/sqs";
+import {
+  createBackgroundJob,
+  getMissingBackgroundJobStorageEnvVars,
+  markBackgroundJobFailed,
+  type BackgroundJobRecord,
+} from "@/lib/jobs/background-jobs";
 import {
   cancelScheduledPostRows,
   getConnectedSocialConnection,
@@ -19,6 +26,7 @@ import {
   markScheduledPostStatus,
   markScheduleTargetFailed,
   markScheduleTargetScheduler,
+  prepareScheduledPostForPublishing,
 } from "@/lib/scheduling/db";
 import type {
   ScheduledPost,
@@ -32,6 +40,12 @@ import { isSocialPlatform } from "@/lib/social/types";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MINIMUM_SCHEDULE_LEAD_MS = 60_000;
+
+export type ScheduleRenderedPostInput = {
+  connectionIds?: unknown;
+  scheduledFor?: unknown;
+  timezone?: unknown;
+};
 
 export class SchedulingRequestError extends Error {
   constructor(
@@ -47,6 +61,7 @@ export function getMissingSchedulingRuntimeEnvVars() {
   return [
     ...new Set([
       ...getMissingScheduleDbEnvVars(),
+      ...getMissingBackgroundJobStorageEnvVars(),
       ...getMissingSocialSchedulerEnvVars(),
     ]),
   ];
@@ -91,6 +106,19 @@ export async function createUserSchedule(params: {
     userId: params.userId,
   });
   const isDraft = targetConnections.length === 0;
+
+  if (
+    !isDraft &&
+    normalized.source.kind === "media_asset" &&
+    source.sourceType !== "combined_render"
+  ) {
+    throw new SchedulingRequestError(
+      "Render the hook and demo into one combined video before scheduling.",
+      409,
+      "combined_render_required",
+    );
+  }
+
   const postStatus: ScheduledPostStatus = isDraft ? "draft" : "scheduling";
   const post = await insertScheduledPost({
     caption: normalized.caption,
@@ -139,43 +167,16 @@ export async function createUserSchedule(params: {
     })),
   );
 
-  let scheduledCount = 0;
-  let failedCount = 0;
-
-  for (const target of targetRows) {
-    try {
-      const schedule = await createSocialPublishSchedule({
-        scheduledFor: target.scheduled_for,
-        targetId: target.id,
-      });
-
-      await markScheduleTargetScheduler({
-        scheduleArn: schedule.arn,
-        scheduleName: schedule.name,
-        targetId: target.id,
-        userId: params.userId,
-      });
-      scheduledCount += 1;
-    } catch (error) {
-      failedCount += 1;
-      await markScheduleTargetFailed({
-        errorCode: "scheduler_create_failed",
-        errorMessage: getSafeErrorMessage(error),
-        targetId: target.id,
-        userId: params.userId,
-      });
-    }
-  }
+  const { failedCount, scheduledCount } = await scheduleTargetRows({
+    projectId: post.project_id,
+    targetRows,
+    userId: params.userId,
+  });
 
   await markScheduledPostStatus({
     lastErrorCode: failedCount > 0 ? "scheduler_create_failed" : null,
     postId: post.id,
-    status:
-      scheduledCount > 0 && failedCount > 0
-        ? "partially_failed"
-        : failedCount > 0
-          ? "failed"
-          : "scheduled",
+    status: getPostStatusFromSchedulerCounts({ failedCount, scheduledCount }),
     userId: params.userId,
   });
 
@@ -187,6 +188,153 @@ export async function createUserSchedule(params: {
   return {
     created: true,
     schedule,
+  };
+}
+
+export async function scheduleRenderedPost(params: {
+  input: ScheduleRenderedPostInput;
+  postId: string;
+  userId: string;
+}) {
+  assertUuid(params.postId, "Schedule ID is invalid.");
+
+  const existing = await getScheduledPostForUser({
+    postId: params.postId,
+    userId: params.userId,
+  });
+
+  if (!existing) {
+    throw new SchedulingRequestError("This schedule was not found.", 404);
+  }
+
+  if (
+    existing.targets.length > 0 &&
+    ["scheduled", "scheduling", "publishing", "published"].includes(
+      existing.status,
+    )
+  ) {
+    return {
+      created: false,
+      schedule: existing,
+    };
+  }
+
+  if (existing.targets.length > 0) {
+    throw new SchedulingRequestError(
+      "This schedule already has publishing targets. Create a new draft to retry.",
+      409,
+      "schedule_targets_already_exist",
+    );
+  }
+
+  if (
+    existing.status === "cancelled" ||
+    existing.status === "publishing" ||
+    existing.status === "published"
+  ) {
+    throw new SchedulingRequestError(
+      "This schedule cannot be changed now.",
+      409,
+      "schedule_not_editable",
+    );
+  }
+
+  const combinedMediaAssetId = getMetadataString(
+    existing.metadata.combinedMediaAssetId,
+  );
+  const combinedRenderStatus = getMetadataString(
+    existing.metadata.combinedRenderStatus,
+  );
+
+  if (combinedRenderStatus !== "ready" || !combinedMediaAssetId) {
+    throw new SchedulingRequestError(
+      "Render the hook and demo before scheduling the final post.",
+      409,
+      "combined_render_not_ready",
+    );
+  }
+
+  assertUuid(combinedMediaAssetId, "Combined media ID is invalid.");
+
+  const combinedAsset = await getSchedulableMediaAsset({
+    assetId: combinedMediaAssetId,
+    userId: params.userId,
+  });
+
+  if (
+    !combinedAsset ||
+    combinedAsset.status !== "ready" ||
+    combinedAsset.collection !== "video" ||
+    combinedAsset.source_type !== "combined_render"
+  ) {
+    throw new SchedulingRequestError(
+      "The combined video is not available for scheduling.",
+      409,
+      "combined_media_unavailable",
+    );
+  }
+
+  const normalized = normalizeRenderedScheduleInput(params.input, existing);
+  const targetConnections = await resolveScheduleTargets({
+    targets: normalized.targets,
+    userId: params.userId,
+  });
+
+  if (targetConnections.length === 0) {
+    throw new SchedulingRequestError(
+      "Choose at least one connected account before scheduling.",
+      409,
+      "schedule_targets_required",
+    );
+  }
+
+  await prepareScheduledPostForPublishing({
+    mediaAssetId: combinedAsset.id,
+    metadata: {
+      finalScheduleRequestedAt: new Date().toISOString(),
+      plannedConnectionIds: normalized.connectionIds.join(","),
+      plannedScheduledFor: normalized.scheduledFor,
+    },
+    postId: existing.id,
+    scheduledFor: normalized.scheduledFor,
+    timezone: normalized.timezone,
+    userId: params.userId,
+  });
+
+  const targetRows = await insertScheduledPostTargets(
+    targetConnections.map((connection) => ({
+      metadata: {
+        combinedMediaAssetId,
+      },
+      platform: connection.platform,
+      scheduled_for: normalized.scheduledFor,
+      scheduled_post_id: existing.id,
+      settings: connection.settings,
+      social_connection_id: connection.id,
+      status: "scheduling",
+      user_id: params.userId,
+    })),
+  );
+
+  const { failedCount, scheduledCount } = await scheduleTargetRows({
+    projectId: existing.projectId,
+    targetRows,
+    userId: params.userId,
+  });
+
+  await markScheduledPostStatus({
+    lastErrorCode: failedCount > 0 ? "scheduler_create_failed" : null,
+    postId: existing.id,
+    status: getPostStatusFromSchedulerCounts({ failedCount, scheduledCount }),
+    userId: params.userId,
+  });
+
+  return {
+    created: true,
+    schedule: await getRequiredSchedule({
+      postId: existing.id,
+      userId: params.userId,
+    }),
   };
 }
 
@@ -239,7 +387,7 @@ export async function cancelUserSchedule(params: {
 }
 
 async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
-  if (!input || typeof input !== "object") {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new SchedulingRequestError("Send schedule details as JSON.");
   }
 
@@ -275,6 +423,87 @@ async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
   };
 }
 
+function normalizeRenderedScheduleInput(
+  input: ScheduleRenderedPostInput,
+  existing: ScheduledPost,
+) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new SchedulingRequestError("Send schedule details as JSON.");
+  }
+
+  const connectionIds = normalizeConnectionIds(
+    input.connectionIds,
+    getMetadataString(existing.metadata.plannedConnectionIds),
+  );
+  const targets = normalizeTargets(
+    connectionIds.map((connectionId) => ({ connectionId })),
+  );
+  const scheduledFor = normalizeScheduledFor(
+    input.scheduledFor ?? getPlannedScheduledFor(existing),
+    targets.length,
+  );
+  const timezone = normalizeTimezone(input.timezone ?? existing.timezone);
+
+  if (!scheduledFor) {
+    throw new SchedulingRequestError("Choose a date and time to schedule.");
+  }
+
+  return {
+    connectionIds,
+    scheduledFor,
+    targets,
+    timezone,
+  };
+}
+
+function normalizeConnectionIds(value: unknown, fallbackCsv: string | null) {
+  const rawConnectionIds = Array.isArray(value)
+    ? value
+    : fallbackCsv
+      ? fallbackCsv.split(",")
+      : [];
+  const connectionIds = Array.from(
+    new Set(
+      rawConnectionIds
+        .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+        .filter(Boolean),
+    ),
+  );
+
+  if (connectionIds.length === 0) {
+    throw new SchedulingRequestError(
+      "Choose at least one connected account before scheduling.",
+      409,
+      "schedule_targets_required",
+    );
+  }
+
+  return connectionIds;
+}
+
+function getPlannedScheduledFor(schedule: ScheduledPost) {
+  const plannedScheduledFor = getMetadataString(
+    schedule.metadata.plannedScheduledFor,
+  );
+
+  if (plannedScheduledFor) {
+    return plannedScheduledFor;
+  }
+
+  const scheduledDate = getMetadataString(schedule.metadata.scheduledDate);
+  const scheduledTime = getMetadataString(schedule.metadata.scheduledTime);
+
+  if (!scheduledDate || !scheduledTime) {
+    return null;
+  }
+
+  const scheduledFor = new Date(`${scheduledDate}T${scheduledTime}:00`);
+
+  return Number.isNaN(scheduledFor.getTime())
+    ? null
+    : scheduledFor.toISOString();
+}
+
 async function resolveScheduleSource(params: {
   sourceId: string;
   sourceKind: "media_asset" | "library_item";
@@ -300,6 +529,7 @@ async function resolveScheduleSource(params: {
 
     return {
       projectId: asset.project_id,
+      sourceType: asset.source_type,
       title: asset.title,
     };
   }
@@ -323,6 +553,7 @@ async function resolveScheduleSource(params: {
 
   return {
     projectId: item.project_id,
+    sourceType: item.source_type,
     title: item.title,
   };
 }
@@ -346,7 +577,8 @@ async function resolveScheduleTargets(params: {
     if (
       connection.status !== "connected" ||
       connection.revoked_at ||
-      isExpired(connection.expires_at)
+      (isExpired(connection.expires_at) &&
+        !canRefreshExpiredConnection(connection))
     ) {
       throw new SchedulingRequestError(
         "A selected account must be reconnected before scheduling.",
@@ -544,6 +776,103 @@ async function getRequiredSchedule(params: {
 
 function isExpired(expiresAt: string | null) {
   return Boolean(expiresAt && new Date(expiresAt).getTime() <= Date.now());
+}
+
+function canRefreshExpiredConnection(connection: Awaited<
+  ReturnType<typeof getConnectedSocialConnection>
+>) {
+  return (
+    connection?.platform === "youtube" &&
+    Boolean(connection.refresh_token_ciphertext)
+  );
+}
+
+async function scheduleTargetRows(params: {
+  projectId: string | null;
+  targetRows: Array<{
+    id: string;
+    scheduled_for: string;
+  }>;
+  userId: string;
+}) {
+  let scheduledCount = 0;
+  let failedCount = 0;
+
+  for (const target of params.targetRows) {
+    let publishJob: BackgroundJobRecord | null = null;
+
+    try {
+      publishJob = await createBackgroundJob({
+        input: {
+          targetId: target.id,
+        },
+        jobType: "publish_social_post",
+        projectId: params.projectId,
+        queueName: getQueueNameForJobType("publish_social_post"),
+        userId: params.userId,
+      });
+      const schedule = await createSocialPublishSchedule({
+        jobId: publishJob.id,
+        scheduledFor: target.scheduled_for,
+        targetId: target.id,
+      });
+
+      await markScheduleTargetScheduler({
+        scheduleArn: schedule.arn,
+        scheduleName: schedule.name,
+        targetId: target.id,
+        userId: params.userId,
+      });
+      scheduledCount += 1;
+    } catch (error) {
+      failedCount += 1;
+
+      if (publishJob) {
+        try {
+          await markBackgroundJobFailed({
+            errorMessage: getSafeErrorMessage(error),
+            jobId: publishJob.id,
+          });
+        } catch (jobError) {
+          console.error("Could not fail unscheduled publish job:", jobError);
+        }
+      }
+
+      await markScheduleTargetFailed({
+        errorCode: "scheduler_create_failed",
+        errorMessage: getSafeErrorMessage(error),
+        targetId: target.id,
+        userId: params.userId,
+      });
+    }
+  }
+
+  return {
+    failedCount,
+    scheduledCount,
+  };
+}
+
+function getPostStatusFromSchedulerCounts({
+  failedCount,
+  scheduledCount,
+}: {
+  failedCount: number;
+  scheduledCount: number;
+}): ScheduledPostStatus {
+  if (scheduledCount > 0 && failedCount > 0) {
+    return "partially_failed";
+  }
+
+  if (failedCount > 0) {
+    return "failed";
+  }
+
+  return "scheduled";
+}
+
+function getMetadataString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function getSafeErrorMessage(error: unknown) {

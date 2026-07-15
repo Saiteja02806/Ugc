@@ -75,6 +75,7 @@ type SocialConnectionRow = {
   id: string;
   platform: SchedulePlatform;
   provider: SocialProvider;
+  refresh_token_ciphertext: string | null;
   revoked_at: string | null;
   scopes: string[];
   status: SocialConnectionStatus;
@@ -85,6 +86,7 @@ type SchedulableMediaAssetRow = {
   collection: string;
   id: string;
   project_id: string | null;
+  source_type: string;
   status: string;
   title: string;
   user_id: string;
@@ -321,6 +323,49 @@ export async function markScheduledPostStatus(params: {
   return data;
 }
 
+export async function prepareScheduledPostForPublishing(params: {
+  mediaAssetId: string;
+  metadata: Record<string, Json | undefined>;
+  postId: string;
+  scheduledFor: string;
+  timezone: string;
+  userId: string;
+}) {
+  const current = await getScheduledPostForUser({
+    postId: params.postId,
+    userId: params.userId,
+  });
+
+  if (!current) {
+    return null;
+  }
+
+  const { data, error } = await getSchedulingSupabaseClient()
+    .from(SCHEDULED_POSTS_TABLE)
+    .update({
+      last_error_code: null,
+      media_asset_id: params.mediaAssetId,
+      metadata: toJsonObject({
+        ...current.metadata,
+        ...params.metadata,
+      }),
+      scheduled_for: params.scheduledFor,
+      status: "scheduling",
+      timezone: params.timezone,
+      updated_at: getNowIso(),
+    })
+    .eq("id", params.postId)
+    .eq("user_id", params.userId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(`Could not prepare schedule for publishing: ${error.message}`);
+  }
+
+  return data;
+}
+
 export async function updateScheduledPostRenderState(params: {
   lastErrorCode?: string | null;
   mediaAssetId?: string | null;
@@ -471,7 +516,7 @@ export async function getSchedulableMediaAsset(params: {
 }) {
   const { data, error } = await getSchedulingSupabaseClient()
     .from(MEDIA_ASSETS_TABLE)
-    .select("id,user_id,project_id,collection,status,title")
+    .select("id,user_id,project_id,collection,source_type,status,title")
     .eq("id", params.assetId)
     .eq("user_id", params.userId)
     .is("deleted_at", null)
@@ -490,7 +535,7 @@ export async function getSchedulableLibraryItem(params: {
 }) {
   const { data, error } = await getSchedulingSupabaseClient()
     .from(LIBRARY_ITEMS_TABLE)
-    .select("id,user_id,project_id,status,title")
+    .select("id,user_id,project_id,source_type,status,title")
     .eq("id", params.itemId)
     .eq("user_id", params.userId)
     .eq("media_type", "carousel")
@@ -511,7 +556,9 @@ export async function getConnectedSocialConnection(params: {
 }) {
   const { data, error } = await getSchedulingSupabaseClient()
     .from(SOCIAL_CONNECTIONS_TABLE)
-    .select("id,user_id,platform,provider,status,scopes,expires_at,revoked_at")
+    .select(
+      "id,user_id,platform,provider,status,scopes,expires_at,refresh_token_ciphertext,revoked_at",
+    )
     .eq("id", params.connectionId)
     .eq("user_id", params.userId)
     .maybeSingle();

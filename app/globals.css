@@ -139,12 +139,14 @@
 
 html {
   background: var(--background);
+  scroll-padding-top: 80px;
 }
 
 body {
   margin: 0;
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   letter-spacing: 0;
+  -webkit-tap-highlight-color: rgb(255 90 31 / 0.14);
 }
 
 * {
@@ -175,12 +177,12 @@ button:not(:disabled),
 
 a {
   text-decoration: none;
+  touch-action: manipulation;
 }
 
 h1,
 h2,
 h3 {
-  color: var(--foreground-strong);
   text-wrap: balance;
 }
 

@@ -26,6 +26,34 @@ export type BackgroundJobType =
   | "render_schedule_combination"
   | "test_worker_job";
 
+type ScheduledPostStatus =
+  | "cancelled"
+  | "draft"
+  | "failed"
+  | "partially_failed"
+  | "published"
+  | "publishing"
+  | "scheduled"
+  | "scheduling";
+
+type ScheduledPostTargetStatus =
+  | "cancelled"
+  | "draft"
+  | "failed"
+  | "published"
+  | "publishing"
+  | "scheduled"
+  | "scheduling"
+  | "skipped";
+
+type SchedulePlatform = "instagram" | "tiktok" | "youtube";
+type SocialConnectionStatus =
+  | "connected"
+  | "error"
+  | "expired"
+  | "permission_missing"
+  | "revoked";
+
 export type BackgroundJobRow = {
   attempt_count: number;
   aws_message_id: string | null;
@@ -347,16 +375,88 @@ export type BackgroundJobsDatabase = {
         Insert: Record<string, never>;
         Relationships: [];
         Row: {
+          caption: string;
           id: string;
+          last_error_code: string | null;
           media_asset_id: string | null;
           metadata: Json;
+          published_at: string | null;
           project_id: string | null;
+          status: ScheduledPostStatus;
+          title: string;
           updated_at: string;
           user_id: string;
         };
         Update: Partial<{
+          last_error_code: string | null;
           media_asset_id: string | null;
           metadata: Json;
+          published_at: string | null;
+          status: ScheduledPostStatus;
+          updated_at: string;
+        }>;
+      };
+      scheduled_post_targets: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: {
+          attempt_count: number;
+          id: string;
+          last_error_code: string | null;
+          last_error_message: string | null;
+          metadata: Json;
+          platform: SchedulePlatform;
+          platform_post_id: string | null;
+          platform_post_url: string | null;
+          published_at: string | null;
+          scheduled_for: string;
+          scheduled_post_id: string;
+          social_connection_id: string;
+          status: ScheduledPostTargetStatus;
+          updated_at: string;
+          user_id: string;
+        };
+        Update: Partial<{
+          attempt_count: number;
+          last_error_code: string | null;
+          last_error_message: string | null;
+          metadata: Json;
+          platform_post_id: string | null;
+          platform_post_url: string | null;
+          published_at: string | null;
+          status: ScheduledPostTargetStatus;
+          updated_at: string;
+        }>;
+      };
+      social_connections: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: {
+          access_token_ciphertext: string;
+          connected_at: string;
+          expires_at: string | null;
+          id: string;
+          last_error_code: string | null;
+          metadata: Json;
+          platform: SchedulePlatform;
+          platform_account_id: string;
+          platform_account_name: string | null;
+          platform_account_username: string | null;
+          provider: "google" | "meta" | "tiktok";
+          refresh_token_ciphertext: string | null;
+          revoked_at: string | null;
+          scopes: string[];
+          status: SocialConnectionStatus;
+          token_type: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Update: Partial<{
+          access_token_ciphertext: string;
+          expires_at: string | null;
+          last_error_code: string | null;
+          status: SocialConnectionStatus;
+          token_type: string | null;
           updated_at: string;
         }>;
       };

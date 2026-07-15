@@ -551,16 +551,17 @@ function EmbeddedDemoWorkspace({
               id="library-demo-heading"
               className="text-base font-semibold text-foreground-strong"
             >
-              Demo library
+              Demo footage
             </h2>
             <p className="mt-0.5 max-w-xl text-sm leading-5 text-muted">
-              Product footage for the demo side of a scheduled post.
+              Product walkthroughs and screen recordings you can reuse when
+              preparing posts.
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <span className="inline-flex h-9 items-center rounded-md bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-border">
+          <span className="inline-flex min-h-11 items-center rounded-md bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-border sm:min-h-9">
             {isLoading
               ? "Loading"
               : `${demos.length} ${demos.length === 1 ? "demo" : "demos"}`}
@@ -571,7 +572,7 @@ function EmbeddedDemoWorkspace({
             disabled={isLoading}
             aria-label="Refresh demos"
             title="Refresh demos"
-            className="inline-flex size-9 items-center justify-center rounded-md border border-border bg-white text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex size-11 items-center justify-center rounded-md border border-border bg-white text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:size-9"
           >
             <RefreshCw
               className={cn(
@@ -585,7 +586,7 @@ function EmbeddedDemoWorkspace({
             type="button"
             onClick={onBrowse}
             disabled={hasActiveUpload}
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3.5 text-xs font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-3.5 text-xs font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-9"
           >
             <Upload className="size-3.5" aria-hidden="true" />
             Upload demo
@@ -686,16 +687,16 @@ function EmbeddedDemoWorkspace({
                 <Upload className="size-5" aria-hidden="true" />
               </span>
               <h3 className="mt-4 text-lg font-semibold text-foreground-strong">
-                {isDragActive ? "Drop your video here" : "Add your first demo"}
+                {isDragActive ? "Drop your video here" : "Add demo footage"}
               </h3>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">
-                Upload a product walkthrough or screen recording. It will stay in
-                Library and can be paired with a hook from Scheduling.
+                Upload a product walkthrough or screen recording. It will stay
+                here and can be used later when you prepare a post.
               </p>
               <button
                 type="button"
                 onClick={onBrowse}
-                className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+                className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
               >
                 <Upload className="size-4" aria-hidden="true" />
                 Choose video
@@ -859,6 +860,7 @@ function UploadProgress({
   const isCancellable = ["creating", "uploading", "validating"].includes(
     uploadState.status,
   );
+  const progressValue = Math.max(0, Math.min(100, uploadState.progress));
 
   return (
     <div className="p-2">
@@ -886,6 +888,7 @@ function UploadProgress({
             {uploadState.fileName}
           </p>
           <p
+            aria-live="polite"
             className={cn(
               "mt-1 line-clamp-2 text-xs font-semibold leading-5",
               isFailed ? "text-error" : "text-muted",
@@ -895,13 +898,20 @@ function UploadProgress({
           </p>
         </div>
       </div>
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#edf0f3]">
+      <div
+        role="progressbar"
+        aria-label={`Upload progress for ${uploadState.fileName}`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progressValue)}
+        className="mt-4 h-2 overflow-hidden rounded-full bg-[#edf0f3]"
+      >
         <div
           className={cn(
             "h-full rounded-full transition-all duration-300",
             isFailed ? "bg-error" : isDone ? "bg-success" : "bg-primary",
           )}
-          style={{ width: `${Math.max(4, uploadState.progress)}%` }}
+          style={{ width: `${Math.max(4, progressValue)}%` }}
         />
       </div>
       {isFailed || isInProgress ? (

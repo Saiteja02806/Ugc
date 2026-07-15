@@ -4,8 +4,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { LibraryWorkspace } from "@/components/library/library-workspace";
 
 export const metadata: Metadata = {
-  title: "Library",
-  description: "Manage saved content and uploaded posts.",
+  title: "Content Library",
+  description: "Manage reusable demo footage and saved carousel assets.",
 };
 
 type LibraryPageProps = {

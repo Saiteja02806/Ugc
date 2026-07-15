@@ -1,4 +1,5 @@
 import { runGenerateAvatarJob } from "./generate-avatar.js";
+import { runPublishSocialPostJob } from "./publish-social-post.js";
 import { runTestWorkerJob } from "./test-worker-job.js";
 import { runRenderEditVideoJob } from "./render-edit-video.js";
 import { runRenderScheduleCombinationJob } from "./render-schedule-combination.js";
@@ -13,6 +14,7 @@ const implementedWorkerJobTypes = new Set<BackgroundJobType>([
   "generate_carousel",
   "generate_hook_video",
   "generate_image",
+  "publish_social_post",
   "render_edit_video",
   "render_schedule_combination",
   "test_worker_job",
@@ -46,6 +48,10 @@ export async function runWorkerJob(
 
   if (job.job_type === "generate_image") {
     return runGenerateImageJob(job);
+  }
+
+  if (job.job_type === "publish_social_post") {
+    return runPublishSocialPostJob(job, context);
   }
 
   if (job.job_type === "test_worker_job") {

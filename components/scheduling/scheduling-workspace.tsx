@@ -1,8 +1,11 @@
 "use client";
 
 import {
+  CalendarPlus,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   FileVideo,
   Images,
@@ -27,6 +30,7 @@ import {
   schedulePostTypes,
   scheduleTabs,
   type ScheduledPost,
+  type ScheduledPostTarget,
   type ScheduleDraft,
   type ScheduleDraftStatus,
   type ScheduleMediaOption,
@@ -39,6 +43,17 @@ import { cn } from "@/lib/utils";
 
 const hookVideoSourceTypes = ["upload", "generated_video", "edit_export"];
 const demoVideoSourceTypes = ["demo_upload"];
+const requiredInstagramPublishScopes = new Set([
+  "instagram_business_content_publish",
+  "instagram_content_publish",
+]);
+const requiredTikTokPublishScopes = new Set(["video.publish"]);
+const requiredYouTubePublishScopes = new Set([
+  "https://www.googleapis.com/auth/youtube",
+  "https://www.googleapis.com/auth/youtube.force-ssl",
+  "https://www.googleapis.com/auth/youtube.upload",
+  "https://www.googleapis.com/auth/youtubepartner",
+]);
 
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
@@ -60,6 +75,10 @@ type ScheduleRenderResponse =
       schedule: ScheduledPost;
       status: "queued" | "ready" | "rendering";
     }
+  | { message?: string; ok?: false };
+
+type SchedulePublishResponse =
+  | { created: boolean; ok: true; schedule: ScheduledPost }
   | { message?: string; ok?: false };
 
 type SocialConnectionsResponse =
@@ -99,9 +118,21 @@ export function SchedulingWorkspace() {
   const [demoMediaOptions, setDemoMediaOptions] = useState<ScheduleMediaOption[]>([]);
   const [socialConnections, setSocialConnections] = useState<SocialConnection[]>([]);
   const [activeTab, setActiveTab] = useState<ScheduleTab>(getInitialScheduleTab);
-  const [viewMode, setViewMode] = useState<ScheduleViewMode>("list");
+  const [viewMode, setViewMode] = useState<ScheduleViewMode>("calendar");
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(() =>
+    toDateKey(new Date()),
+  );
+  const [visibleCalendarMonth, setVisibleCalendarMonth] = useState(() =>
+    toMonthKey(new Date()),
+  );
+  const [newScheduleInitialDate, setNewScheduleInitialDate] = useState(() =>
+    toDateKey(new Date()),
+  );
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [schedulingFinalDraftId, setSchedulingFinalDraftId] = useState<
+    string | null
+  >(null);
   const [renderingScheduleId, setRenderingScheduleId] = useState<string | null>(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
 
@@ -238,8 +269,16 @@ export function SchedulingWorkspace() {
     () => filterDraftsByTab(drafts, activeTab),
     [activeTab, drafts],
   );
-  function handleNewSchedulePost() {
+  function handleSelectCalendarDate(dateKey: string) {
+    setSelectedCalendarDate(dateKey);
+    setVisibleCalendarMonth(toMonthKey(parseDateKey(dateKey)));
+  }
+
+  function handleNewSchedulePost(dateKey = selectedCalendarDate) {
     setActionNotice(null);
+    handleSelectCalendarDate(dateKey);
+    setNewScheduleInitialDate(dateKey);
+    setViewMode("calendar");
     setDrawerOpen(true);
   }
 
@@ -268,9 +307,11 @@ export function SchedulingWorkspace() {
             demoMediaTitle: submission.demoMedia.title,
             hookMediaId: submission.hookMedia.id,
             hookMediaTitle: submission.hookMedia.title,
+            plannedConnectionIds: submission.selectedConnectionIds.join(","),
             plannedPlatforms: targetConnections
               .map((connection) => connection.platform)
               .join(","),
+            plannedScheduledFor: scheduledFor ?? "",
             scheduledDate: submission.scheduledDate,
             scheduledTime: submission.scheduledTime,
             postType: submission.postType,
@@ -329,8 +370,11 @@ export function SchedulingWorkspace() {
 
         return [nextSchedule, ...withoutSaved];
       });
+      if (submission.scheduledDate) {
+        handleSelectCalendarDate(submission.scheduledDate);
+      }
       setActiveTab(nextSchedule.status === "draft" ? "drafts" : "upcoming");
-      setViewMode("list");
+      setViewMode("calendar");
       setDrawerOpen(false);
       setActionNotice(nextNotice);
     } catch (error) {
@@ -374,9 +418,60 @@ export function SchedulingWorkspace() {
     }
   }
 
+  async function handleScheduleFinalPost(draft: ScheduleDraft) {
+    setSchedulingFinalDraftId(draft.id);
+    setActionNotice(null);
+
+    try {
+      const token = await getCurrentUserIdToken();
+      if (!token) {
+        throw new Error("Sign in before scheduling this post.");
+      }
+
+      const scheduledFor = getDraftPlannedScheduledFor(draft);
+      const response = await fetch(`/api/schedules/${draft.id}/publish`, {
+        body: JSON.stringify({
+          connectionIds: draft.plannedConnectionIds ?? [],
+          scheduledFor,
+          timezone: draft.timezone,
+        }),
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      const data = (await response.json()) as SchedulePublishResponse;
+
+      if (!response.ok || data.ok !== true) {
+        throw new Error(
+          getApiResponseMessage(data, "Could not schedule the final post."),
+        );
+      }
+
+      setServerSchedules((currentSchedules) => [
+        data.schedule,
+        ...currentSchedules.filter((schedule) => schedule.id !== data.schedule.id),
+      ]);
+      setActiveTab("upcoming");
+      setActionNotice(
+        data.created
+          ? "Final combined video scheduled."
+          : "Final combined video was already scheduled.",
+      );
+    } catch (error) {
+      setActionNotice(
+        getErrorMessage(error, "Could not schedule the final post."),
+      );
+    } finally {
+      setSchedulingFinalDraftId(null);
+    }
+  }
+
   return (
     <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
-      <header className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <header className="mx-auto flex w-full max-w-6xl shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
             Scheduling
@@ -388,7 +483,7 @@ export function SchedulingWorkspace() {
 
         <button
           type="button"
-          onClick={handleNewSchedulePost}
+          onClick={() => handleNewSchedulePost()}
           className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover"
         >
           <Plus className="size-4" aria-hidden="true" />
@@ -399,7 +494,7 @@ export function SchedulingWorkspace() {
       <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-5 pt-5">
         <ConnectionNotice />
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <ScheduleTabs
             activeTab={activeTab}
             counts={counts}
@@ -409,19 +504,26 @@ export function SchedulingWorkspace() {
         </div>
 
         {actionNotice ? (
-          <div className="w-fit rounded-full border border-border bg-white/85 px-3 py-2 text-xs font-semibold text-[#405977] shadow-sm">
+          <div className="w-fit shrink-0 rounded-full border border-border bg-white/85 px-3 py-2 text-xs font-semibold text-[#405977] shadow-sm">
             {actionNotice}
           </div>
         ) : null}
 
         <ScheduleContent
           activeTab={activeTab}
+          calendarMonth={visibleCalendarMonth}
           drafts={visibleDrafts}
           hasAnyDrafts={drafts.length > 0}
           renderingScheduleId={renderingScheduleId}
+          schedulingFinalDraftId={schedulingFinalDraftId}
+          selectedDate={selectedCalendarDate}
           viewMode={viewMode}
-          onCreateDraft={handleNewSchedulePost}
+          onCreateDraft={() => handleNewSchedulePost()}
+          onCreateDraftForDate={handleNewSchedulePost}
+          onMonthChange={setVisibleCalendarMonth}
           onRenderDraft={handleStartCombinationRender}
+          onScheduleDraft={handleScheduleFinalPost}
+          onSelectDate={handleSelectCalendarDate}
         />
       </div>
 
@@ -429,6 +531,8 @@ export function SchedulingWorkspace() {
         <NewScheduleDrawer
           demoMediaOptions={demoMediaOptions}
           hookMediaOptions={hookMediaOptions}
+          initialScheduledDate={newScheduleInitialDate}
+          initialScheduledTime={getDefaultScheduledTime()}
           onClose={() => setDrawerOpen(false)}
           onSave={handleSaveScheduleDraft}
           saving={savingSchedule}
@@ -441,7 +545,7 @@ export function SchedulingWorkspace() {
 
 function ConnectionNotice() {
   return (
-    <div className="overflow-hidden rounded-[24px] border border-border/80 bg-white/74 p-4 shadow-[0_18px_50px_rgb(16_32_51_/_0.08)] backdrop-blur sm:p-5">
+    <div className="shrink-0 overflow-hidden rounded-[24px] border border-border/80 bg-white/74 p-4 shadow-[0_18px_50px_rgb(16_32_51_/_0.08)] backdrop-blur sm:p-5">
       <div className="flex items-start gap-4">
         <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#173454] text-white shadow-sm">
           <Info className="size-5" aria-hidden="true" />
@@ -568,23 +672,51 @@ function ViewButton({
 
 function ScheduleContent({
   activeTab,
+  calendarMonth,
   drafts,
   hasAnyDrafts,
   onCreateDraft,
+  onCreateDraftForDate,
+  onMonthChange,
   onRenderDraft,
+  onScheduleDraft,
+  onSelectDate,
   renderingScheduleId,
+  schedulingFinalDraftId,
+  selectedDate,
   viewMode,
 }: {
   activeTab: ScheduleTab;
+  calendarMonth: string;
   drafts: ScheduleDraft[];
   hasAnyDrafts: boolean;
   onCreateDraft: () => void;
+  onCreateDraftForDate: (dateKey: string) => void;
+  onMonthChange: (monthKey: string) => void;
   onRenderDraft: (draftId: string) => void;
+  onScheduleDraft: (draft: ScheduleDraft) => void;
+  onSelectDate: (dateKey: string) => void;
   renderingScheduleId: string | null;
+  schedulingFinalDraftId: string | null;
+  selectedDate: string;
   viewMode: ScheduleViewMode;
 }) {
   if (viewMode === "calendar") {
-    return <CalendarPreview drafts={drafts} />;
+    return (
+      <CalendarPlanner
+        activeTab={activeTab}
+        calendarMonth={calendarMonth}
+        drafts={drafts}
+        renderingScheduleId={renderingScheduleId}
+        schedulingFinalDraftId={schedulingFinalDraftId}
+        selectedDate={selectedDate}
+        onCreateDraftForDate={onCreateDraftForDate}
+        onMonthChange={onMonthChange}
+        onRenderDraft={onRenderDraft}
+        onScheduleDraft={onScheduleDraft}
+        onSelectDate={onSelectDate}
+      />
+    );
   }
 
   if (drafts.length === 0) {
@@ -605,11 +737,11 @@ function ScheduleContent({
             {tabLabels[activeTab]}
           </h2>
           <p className="mt-1 text-xs font-semibold text-muted">
-            Hook and demo plans waiting for a combined render.
+            {getTabDescription(activeTab)}
           </p>
         </div>
         <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-muted shadow-sm">
-          {drafts.length} {drafts.length === 1 ? "draft" : "drafts"}
+          {drafts.length} {getTabItemName(activeTab, drafts.length)}
         </span>
       </div>
 
@@ -619,7 +751,9 @@ function ScheduleContent({
             key={draft.id}
             draft={draft}
             isRendering={renderingScheduleId === draft.id}
+            isSchedulingFinal={schedulingFinalDraftId === draft.id}
             onRenderDraft={onRenderDraft}
+            onScheduleDraft={onScheduleDraft}
           />
         ))}
       </div>
@@ -630,14 +764,21 @@ function ScheduleContent({
 function ScheduleDraftPreview({
   draft,
   isRendering,
+  isSchedulingFinal,
   onRenderDraft,
+  onScheduleDraft,
 }: {
   draft: ScheduleDraft;
   isRendering: boolean;
+  isSchedulingFinal: boolean;
   onRenderDraft: (draftId: string) => void;
+  onScheduleDraft: (draft: ScheduleDraft) => void;
 }) {
   const { combinedMedia, demoMedia, hookMedia } = getDraftMediaParts(draft);
-  const canRender = draft.status === "render_required";
+  const canRender =
+    draft.status === "render_required" || draft.status === "render_failed";
+  const canScheduleFinal = canScheduleFinalDraft(draft);
+  const finalScheduleMessage = getFinalScheduleUnavailableMessage(draft);
 
   return (
     <article className="grid gap-3 rounded-2xl border border-border bg-white p-3 shadow-sm">
@@ -657,27 +798,17 @@ function ScheduleDraftPreview({
               {draft.caption || "No caption written yet."}
             </p>
           </div>
-          <span className="shrink-0 rounded-full bg-card-muted px-2 py-1 text-[11px] font-bold text-muted">
+          <span
+            className={cn(
+              "shrink-0 rounded-full px-2 py-1 text-[11px] font-bold",
+              getDraftStatusBadgeClass(draft.status),
+            )}
+          >
             {getScheduleStatusLabel(draft.status)}
           </span>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-muted">
-          {draft.platforms.length > 0 ? (
-            draft.platforms.map((platform) => (
-              <span
-                key={platform}
-                className="rounded-full border border-border bg-white px-2.5 py-1"
-              >
-                {getSchedulePlatformLabel(platform)}
-              </span>
-            ))
-          ) : (
-            <span className="rounded-full border border-border bg-white px-2.5 py-1">
-              No platform selected
-            </span>
-          )}
-        </div>
+        <ScheduleTargetStatusList draft={draft} />
 
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
           <Clock3 className="size-3.5" aria-hidden="true" />
@@ -697,7 +828,8 @@ function ScheduleDraftPreview({
             >
               Open combined MP4
             </a>
-          ) : canRender ? (
+          ) : null}
+          {canRender ? (
             <button
               type="button"
               onClick={() => onRenderDraft(draft.id)}
@@ -707,9 +839,124 @@ function ScheduleDraftPreview({
               {isRendering ? "Starting render..." : "Render combined video"}
             </button>
           ) : null}
+          {draft.status === "ready" && combinedMedia?.mediaUrl ? (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => onScheduleDraft(draft)}
+                disabled={!canScheduleFinal || isSchedulingFinal}
+                className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSchedulingFinal ? "Scheduling..." : "Schedule final post"}
+              </button>
+              {finalScheduleMessage ? (
+                <p className="mt-1 text-[11px] font-semibold leading-4 text-muted">
+                  {finalScheduleMessage}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </article>
+  );
+}
+
+function ScheduleTargetStatusList({
+  compact = false,
+  draft,
+}: {
+  compact?: boolean;
+  draft: ScheduleDraft;
+}) {
+  const targets = draft.targets ?? [];
+
+  if (targets.length === 0) {
+    return (
+      <div
+        className={cn(
+          "mt-3 flex flex-wrap gap-2 text-xs font-bold text-muted",
+          compact && "mt-2",
+        )}
+      >
+        {draft.platforms.length > 0 ? (
+          draft.platforms.map((platform) => (
+            <span
+              key={platform}
+              className="rounded-full border border-border bg-white px-2.5 py-1"
+            >
+              {getSchedulePlatformLabel(platform)}
+            </span>
+          ))
+        ) : (
+          <span className="rounded-full border border-border bg-white px-2.5 py-1">
+            No account selected
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "mt-3 overflow-hidden rounded-xl border border-border bg-white",
+        compact && "mt-2",
+      )}
+    >
+      <div className="border-b border-border bg-card-muted px-3 py-2">
+        <p className="text-[11px] font-bold uppercase tracking-normal text-muted">
+          Platform status
+        </p>
+      </div>
+      <div className="divide-y divide-border">
+        {targets.map((target) => (
+          <div
+            key={target.id}
+            className="grid gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
+          >
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-foreground">
+                  {getSchedulePlatformLabel(target.platform)}
+                </span>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[11px] font-bold",
+                    getTargetStatusBadgeClass(target.status),
+                  )}
+                >
+                  {getTargetStatusLabel(target.status)}
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] font-semibold leading-4 text-muted">
+                {getTargetStatusHelpText(target)}
+              </p>
+              {target.lastErrorMessage ? (
+                <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-error">
+                  {target.lastErrorMessage}
+                </p>
+              ) : null}
+            </div>
+
+            {target.platformPostUrl ? (
+              <a
+                href={target.platformPostUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-7 w-fit items-center justify-center rounded-full border border-border bg-white px-2.5 text-[11px] font-bold text-[#173454] transition hover:bg-[#fffaf6]"
+              >
+                View post
+              </a>
+            ) : target.platformPostId ? (
+              <span className="rounded-full bg-card-muted px-2.5 py-1 text-[11px] font-bold text-muted">
+                ID saved
+              </span>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -784,111 +1031,416 @@ function ScheduleEmptyState({
   );
 }
 
-function CalendarPreview({ drafts }: { drafts: ScheduleDraft[] }) {
-  const days = useMemo(() => getCalendarDays(drafts), [drafts]);
+function CalendarPlanner({
+  activeTab,
+  calendarMonth,
+  drafts,
+  onCreateDraftForDate,
+  onMonthChange,
+  onRenderDraft,
+  onScheduleDraft,
+  onSelectDate,
+  renderingScheduleId,
+  schedulingFinalDraftId,
+  selectedDate,
+}: {
+  activeTab: ScheduleTab;
+  calendarMonth: string;
+  drafts: ScheduleDraft[];
+  onCreateDraftForDate: (dateKey: string) => void;
+  onMonthChange: (monthKey: string) => void;
+  onRenderDraft: (draftId: string) => void;
+  onScheduleDraft: (draft: ScheduleDraft) => void;
+  onSelectDate: (dateKey: string) => void;
+  renderingScheduleId: string | null;
+  schedulingFinalDraftId: string | null;
+  selectedDate: string;
+}) {
+  const monthDays = useMemo(
+    () => getMonthCalendarDays(calendarMonth),
+    [calendarMonth],
+  );
   const draftsByDate = useMemo(() => groupDraftsByDate(drafts), [drafts]);
+  const selectedDayDrafts = draftsByDate.get(selectedDate) ?? [];
   const plannedCount = drafts.filter((draft) => draft.scheduledDate).length;
 
+  function moveMonth(monthOffset: number) {
+    const nextMonth = shiftMonth(calendarMonth, monthOffset);
+
+    onMonthChange(nextMonth);
+    onSelectDate(`${nextMonth}-01`);
+  }
+
+  function jumpToToday() {
+    const todayKey = toDateKey(new Date());
+    onSelectDate(todayKey);
+    onMonthChange(toMonthKey(new Date()));
+  }
+
   return (
-    <div className="flex min-h-[360px] flex-1 flex-col overflow-hidden rounded-[28px] border border-border/70 bg-white/35 p-4 sm:p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <div className="flex min-h-[520px] flex-1 flex-col overflow-hidden rounded-[24px] border border-border/70 bg-white/40 p-4 sm:p-5">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-sm font-bold text-foreground">Calendar</h2>
-          <p className="mt-1 text-xs font-semibold text-muted">
-            Drafts appear on the date selected in the schedule drawer.
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-sm font-bold text-foreground">
+              {getMonthLabel(calendarMonth)}
+            </h2>
+            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-muted shadow-sm">
+              {plannedCount} planned
+            </span>
+          </div>
+          <p className="mt-1 text-xs font-semibold leading-5 text-muted">
+            Click a date to build that day&apos;s hook plus demo schedule.
           </p>
         </div>
-        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-muted shadow-sm">
-          {plannedCount} planned
-        </span>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center rounded-xl border border-border bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => moveMonth(-1)}
+              aria-label="Previous month"
+              className="inline-flex size-8 items-center justify-center rounded-lg text-[#405977] transition hover:bg-card-muted hover:text-foreground"
+            >
+              <ChevronLeft className="size-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={jumpToToday}
+              className="inline-flex h-8 items-center justify-center rounded-lg px-3 text-xs font-bold text-[#405977] transition hover:bg-card-muted hover:text-foreground"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => moveMonth(1)}
+              aria-label="Next month"
+              className="inline-flex size-8 items-center justify-center rounded-lg text-[#405977] transition hover:bg-card-muted hover:text-foreground"
+            >
+              <ChevronRight className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => onCreateDraftForDate(selectedDate)}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.18)] transition hover:bg-primary-hover"
+          >
+            <CalendarPlus className="size-4" aria-hidden="true" />
+            Schedule selected day
+          </button>
+        </div>
       </div>
 
-      <div className="grid min-h-[260px] flex-1 grid-cols-1 gap-3 md:grid-cols-7">
-        {days.map((day) => {
-          const dayDrafts = draftsByDate.get(day.dateKey) ?? [];
-
-          return (
-            <div
-              key={day.dateKey}
-              className="rounded-2xl border border-border bg-white/75 p-3 shadow-sm"
-            >
-              <div>
-                <p className="text-xs font-bold text-muted">{day.weekday}</p>
-                <p className="mt-1 text-sm font-bold text-foreground">
-                  {day.label}
-                </p>
-              </div>
-
-              <div className="mt-4 min-h-[150px] space-y-2">
-                {dayDrafts.length > 0 ? (
-                  dayDrafts.map((draft) => (
-                    <CalendarDraftPill key={draft.id} draft={draft} />
-                  ))
-                ) : (
-                  <div className="rounded-xl border border-dashed border-border bg-[#fffaf6] px-3 py-5 text-center text-xs font-semibold leading-5 text-muted">
-                    No post
-                  </div>
-                )}
-              </div>
+      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_310px]">
+        <div className="min-h-0 overflow-auto rounded-2xl border border-border bg-white shadow-sm">
+          <div className="min-w-[620px]">
+            <div className="grid grid-cols-7 border-b border-border bg-card-muted">
+              {calendarWeekdayLabels.map((weekday) => (
+                <div
+                  key={weekday}
+                  className="px-3 py-2 text-xs font-bold uppercase tracking-normal text-muted"
+                >
+                  {weekday}
+                </div>
+              ))}
             </div>
-          );
-        })}
+
+            <div className="grid grid-cols-7">
+              {monthDays.map((day) => {
+                const dayDrafts = draftsByDate.get(day.dateKey) ?? [];
+
+                return (
+                  <CalendarDayCell
+                    key={day.dateKey}
+                    day={day}
+                    drafts={dayDrafts}
+                    selected={day.dateKey === selectedDate}
+                    onSelectDate={onSelectDate}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <SelectedDayPanel
+          activeTab={activeTab}
+          drafts={selectedDayDrafts}
+          isSchedulingFinalDraftId={schedulingFinalDraftId}
+          renderingScheduleId={renderingScheduleId}
+          selectedDate={selectedDate}
+          onCreateDraftForDate={onCreateDraftForDate}
+          onRenderDraft={onRenderDraft}
+          onScheduleDraft={onScheduleDraft}
+        />
       </div>
     </div>
   );
 }
 
-function CalendarDraftPill({ draft }: { draft: ScheduleDraft }) {
-  const { demoMedia, hookMedia } = getDraftMediaParts(draft);
-  const combinationLabel = `${hookMedia?.title ?? "Missing hook"} + ${
-    demoMedia?.title ?? "Missing demo"
-  }`;
+function CalendarDayCell({
+  day,
+  drafts,
+  onSelectDate,
+  selected,
+}: {
+  day: CalendarDay;
+  drafts: ScheduleDraft[];
+  onSelectDate: (dateKey: string) => void;
+  selected: boolean;
+}) {
+  const visibleDrafts = drafts.slice(0, 3);
+  const hiddenDraftCount = Math.max(0, drafts.length - visibleDrafts.length);
 
   return (
-    <div className="rounded-xl border border-border bg-white px-3 py-2 shadow-sm">
+    <button
+      type="button"
+      onClick={() => onSelectDate(day.dateKey)}
+      aria-label={`${getReadableDateLabel(day.dateKey)}${drafts.length ? `, ${drafts.length} scheduled` : ""}`}
+      className={cn(
+        "min-h-[126px] border-b border-r border-border bg-white p-2 text-left transition hover:bg-[#fffaf6] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-focus",
+        !day.isCurrentMonth && "bg-[#fbfaf8] text-muted",
+        selected && "relative z-10 bg-selected ring-2 ring-primary/35",
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 truncate text-xs font-bold text-foreground">
-          {draft.mediaTitle || "Combination draft"}
-        </p>
-        <span className="shrink-0 text-[11px] font-bold text-primary">
-          {draft.scheduledTime || "--:--"}
+        <span
+          className={cn(
+            "inline-flex size-7 items-center justify-center rounded-lg text-sm font-bold",
+            day.isToday
+              ? "bg-[#173454] text-white"
+              : selected
+                ? "bg-primary text-white"
+                : "text-foreground",
+          )}
+        >
+          {day.dayNumber}
+        </span>
+        {drafts.length > 0 ? (
+          <span className="rounded-full bg-card-muted px-2 py-0.5 text-[11px] font-bold text-muted">
+            {drafts.length}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="mt-2 space-y-1.5">
+        {visibleDrafts.map((draft) => (
+          <CalendarDraftPill key={draft.id} draft={draft} />
+        ))}
+        {hiddenDraftCount > 0 ? (
+          <div className="rounded-lg bg-card-muted px-2 py-1 text-[11px] font-bold text-muted">
+            +{hiddenDraftCount} more
+          </div>
+        ) : null}
+      </div>
+    </button>
+  );
+}
+
+function CalendarDraftPill({ draft }: { draft: ScheduleDraft }) {
+  return (
+    <div className="rounded-lg border border-border bg-white px-2 py-1.5 shadow-sm">
+      <div className="flex items-center gap-1.5">
+        <span
+          className={cn(
+            "size-1.5 shrink-0 rounded-full",
+            getDraftStatusDotClass(draft.status),
+          )}
+        />
+        <span className="truncate text-[11px] font-bold text-foreground">
+          {draft.scheduledTime || "--:--"} {draft.mediaTitle || "Combination draft"}
         </span>
       </div>
-      <p className="mt-1 truncate text-[11px] font-semibold text-muted">
-        {combinationLabel}
-      </p>
-      <p className="mt-1 text-[11px] font-bold text-muted">
+      <p className="mt-0.5 truncate text-[10px] font-semibold text-muted">
         {getScheduleStatusLabel(draft.status)}
       </p>
     </div>
   );
 }
 
-function getCalendarDays(drafts: ScheduleDraft[]) {
-  const firstPlannedDate =
-    drafts
-      .map((draft) => draft.scheduledDate)
-      .filter((date): date is string => Boolean(date))
-      .sort()[0] ?? null;
-  const baseDate = firstPlannedDate ? parseDateKey(firstPlannedDate) : new Date();
-  const weekStart = getWeekStart(baseDate);
+function SelectedDayPanel({
+  activeTab,
+  drafts,
+  isSchedulingFinalDraftId,
+  onCreateDraftForDate,
+  onRenderDraft,
+  onScheduleDraft,
+  renderingScheduleId,
+  selectedDate,
+}: {
+  activeTab: ScheduleTab;
+  drafts: ScheduleDraft[];
+  isSchedulingFinalDraftId: string | null;
+  onCreateDraftForDate: (dateKey: string) => void;
+  onRenderDraft: (draftId: string) => void;
+  onScheduleDraft: (draft: ScheduleDraft) => void;
+  renderingScheduleId: string | null;
+  selectedDate: string;
+}) {
+  return (
+    <aside className="flex min-h-[320px] flex-col rounded-2xl border border-border bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-normal text-muted">
+            Selected day
+          </p>
+          <h3 className="mt-1 text-base font-bold text-foreground">
+            {getReadableDateLabel(selectedDate)}
+          </h3>
+          <p className="mt-1 text-xs font-semibold leading-5 text-muted">
+            {drafts.length} {drafts.length === 1 ? "item" : "items"} in{" "}
+            {tabLabels[activeTab].toLowerCase()}
+          </p>
+        </div>
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#173454] text-white">
+          <CalendarDays className="size-4" aria-hidden="true" />
+        </span>
+      </div>
 
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(weekStart);
-    date.setDate(weekStart.getDate() + index);
+      <button
+        type="button"
+        onClick={() => onCreateDraftForDate(selectedDate)}
+        className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover"
+      >
+        <Plus className="size-4" aria-hidden="true" />
+        Schedule for this day
+      </button>
 
-    return {
-      dateKey: toDateKey(date),
-      label: new Intl.DateTimeFormat(undefined, {
-        day: "numeric",
-        month: "short",
-      }).format(date),
-      weekday: new Intl.DateTimeFormat(undefined, {
-        weekday: "short",
-      }).format(date),
-    };
-  });
+      <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+        {drafts.length > 0 ? (
+          drafts.map((draft) => (
+            <SelectedDayDraftCard
+              key={draft.id}
+              draft={draft}
+              isRendering={renderingScheduleId === draft.id}
+              isSchedulingFinal={isSchedulingFinalDraftId === draft.id}
+              onRenderDraft={onRenderDraft}
+              onScheduleDraft={onScheduleDraft}
+            />
+          ))
+        ) : (
+          <div className="rounded-xl border border-dashed border-border bg-[#fffaf6] px-4 py-6 text-center">
+            <CalendarPlus className="mx-auto size-7 text-[#9aa7b8]" aria-hidden="true" />
+            <p className="mt-3 text-sm font-bold text-foreground">
+              Nothing scheduled here.
+            </p>
+            <p className="mt-1 text-xs font-semibold leading-5 text-muted">
+              Choose this day, then add a hook and demo combination.
+            </p>
+          </div>
+        )}
+      </div>
+    </aside>
+  );
 }
+
+function SelectedDayDraftCard({
+  draft,
+  isRendering,
+  isSchedulingFinal,
+  onRenderDraft,
+  onScheduleDraft,
+}: {
+  draft: ScheduleDraft;
+  isRendering: boolean;
+  isSchedulingFinal: boolean;
+  onRenderDraft: (draftId: string) => void;
+  onScheduleDraft: (draft: ScheduleDraft) => void;
+}) {
+  const { combinedMedia, demoMedia, hookMedia } = getDraftMediaParts(draft);
+  const canRender =
+    draft.status === "render_required" || draft.status === "render_failed";
+  const canScheduleFinal = canScheduleFinalDraft(draft);
+  const finalScheduleMessage = getFinalScheduleUnavailableMessage(draft);
+
+  return (
+    <article className="rounded-xl border border-border bg-white px-3 py-3 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-foreground">
+            {draft.mediaTitle || "Combination draft"}
+          </p>
+          <p className="mt-1 text-xs font-semibold text-muted">
+            {draft.scheduledTime || "--:--"} {draft.timezone}
+          </p>
+        </div>
+        <span
+          className={cn(
+            "shrink-0 rounded-full px-2 py-1 text-[11px] font-bold",
+            getDraftStatusBadgeClass(draft.status),
+          )}
+        >
+          {getScheduleStatusLabel(draft.status)}
+        </span>
+      </div>
+
+      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs font-bold">
+        <span className="truncate rounded-lg bg-card-muted px-2 py-1 text-muted">
+          Hook: {hookMedia?.title ?? "Missing"}
+        </span>
+        <span className="text-muted">+</span>
+        <span className="truncate rounded-lg bg-card-muted px-2 py-1 text-muted">
+          Demo: {demoMedia?.title ?? "Missing"}
+        </span>
+      </div>
+
+      {draft.caption ? (
+        <p className="mt-3 line-clamp-2 text-xs font-medium leading-5 text-[#405977]">
+          {draft.caption}
+        </p>
+      ) : null}
+
+      <ScheduleTargetStatusList compact draft={draft} />
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {combinedMedia?.mediaUrl ? (
+          <a
+            href={combinedMedia.mediaUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-8 items-center justify-center rounded-full border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-[#fffaf6]"
+          >
+            Open MP4
+          </a>
+        ) : null}
+        {canRender ? (
+          <button
+            type="button"
+            onClick={() => onRenderDraft(draft.id)}
+            disabled={isRendering}
+            className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isRendering ? "Starting..." : "Render"}
+          </button>
+        ) : null}
+        {draft.status === "ready" && combinedMedia?.mediaUrl ? (
+          <button
+            type="button"
+            onClick={() => onScheduleDraft(draft)}
+            disabled={!canScheduleFinal || isSchedulingFinal}
+            className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSchedulingFinal ? "Scheduling..." : "Schedule final"}
+          </button>
+        ) : null}
+      </div>
+      {finalScheduleMessage && draft.status === "ready" ? (
+        <p className="mt-2 text-[11px] font-semibold leading-4 text-muted">
+          {finalScheduleMessage}
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
+type CalendarDay = {
+  dateKey: string;
+  dayNumber: number;
+  isCurrentMonth: boolean;
+  isToday: boolean;
+};
+
+const calendarWeekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function groupDraftsByDate(drafts: ScheduleDraft[]) {
   const grouped = new Map<string, ScheduleDraft[]>();
@@ -912,15 +1464,207 @@ function groupDraftsByDate(drafts: ScheduleDraft[]) {
   return grouped;
 }
 
-function getWeekStart(date: Date) {
-  const weekStart = new Date(date);
-  const day = weekStart.getDay();
-  const mondayOffset = day === 0 ? -6 : 1 - day;
+function getMonthCalendarDays(monthKey: string): CalendarDay[] {
+  const monthStart = parseMonthKey(monthKey);
+  const gridStart = new Date(monthStart);
 
-  weekStart.setDate(weekStart.getDate() + mondayOffset);
-  weekStart.setHours(0, 0, 0, 0);
+  gridStart.setDate(1 - monthStart.getDay());
+  gridStart.setHours(0, 0, 0, 0);
 
-  return weekStart;
+  const todayKey = toDateKey(new Date());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    const dateKey = toDateKey(date);
+
+    return {
+      dateKey,
+      dayNumber: date.getDate(),
+      isCurrentMonth: date.getMonth() === monthStart.getMonth(),
+      isToday: dateKey === todayKey,
+    };
+  });
+}
+
+function shiftMonth(monthKey: string, monthOffset: number) {
+  const month = parseMonthKey(monthKey);
+
+  month.setMonth(month.getMonth() + monthOffset);
+
+  return toMonthKey(month);
+}
+
+function getMonthLabel(monthKey: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "long",
+    year: "numeric",
+  }).format(parseMonthKey(monthKey));
+}
+
+function getReadableDateLabel(dateKey: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+    weekday: "short",
+    year: "numeric",
+  }).format(parseDateKey(dateKey));
+}
+
+function parseMonthKey(value: string) {
+  const [year, month] = value.split("-").map(Number);
+
+  if (!year || !month) {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+
+  return new Date(year, month - 1, 1);
+}
+
+function toMonthKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  return `${year}-${month}`;
+}
+
+function getDraftStatusDotClass(status: ScheduleDraftStatus) {
+  if (status === "ready" || status === "published") {
+    return "bg-success";
+  }
+
+  if (status === "rendering" || status === "scheduling" || status === "publishing") {
+    return "bg-info";
+  }
+
+  if (status === "scheduled" || status === "scheduled_preview") {
+    return "bg-[#173454]";
+  }
+
+  if (
+    status === "failed" ||
+    status === "partially_failed" ||
+    status === "cancelled" ||
+    status === "render_failed" ||
+    status === "publishing_unavailable"
+  ) {
+    return "bg-error";
+  }
+
+  return "bg-primary";
+}
+
+function getDraftStatusBadgeClass(status: ScheduleDraftStatus) {
+  if (status === "ready" || status === "published") {
+    return "bg-success/10 text-success";
+  }
+
+  if (status === "rendering" || status === "scheduling" || status === "publishing") {
+    return "bg-info/10 text-info";
+  }
+
+  if (status === "scheduled" || status === "scheduled_preview") {
+    return "bg-[#edf3f8] text-[#173454]";
+  }
+
+  if (
+    status === "failed" ||
+    status === "partially_failed" ||
+    status === "cancelled" ||
+    status === "render_failed" ||
+    status === "publishing_unavailable"
+  ) {
+    return "bg-error/10 text-error";
+  }
+
+  return "bg-brand-soft text-primary";
+}
+
+function getTargetStatusLabel(status: ScheduledPostTarget["status"]) {
+  const labels: Record<ScheduledPostTarget["status"], string> = {
+    cancelled: "Cancelled",
+    draft: "Draft",
+    failed: "Failed",
+    published: "Published",
+    publishing: "Publishing",
+    scheduled: "Scheduled",
+    scheduling: "Scheduling",
+    skipped: "Skipped",
+  };
+
+  return labels[status];
+}
+
+function getTargetStatusBadgeClass(status: ScheduledPostTarget["status"]) {
+  if (status === "published") {
+    return "bg-success/10 text-success";
+  }
+
+  if (status === "publishing" || status === "scheduling") {
+    return "bg-info/10 text-info";
+  }
+
+  if (status === "scheduled") {
+    return "bg-[#edf3f8] text-[#173454]";
+  }
+
+  if (status === "failed" || status === "cancelled" || status === "skipped") {
+    return "bg-error/10 text-error";
+  }
+
+  return "bg-card-muted text-muted";
+}
+
+function getTargetStatusHelpText(target: ScheduledPostTarget) {
+  if (target.status === "published") {
+    return target.publishedAt
+      ? `Published ${formatShortDateTime(target.publishedAt)}.`
+      : "Published successfully.";
+  }
+
+  if (target.status === "publishing") {
+    return "The worker is posting this video now.";
+  }
+
+  if (target.status === "scheduled") {
+    return `Will publish ${formatShortDateTime(target.scheduledFor)}.`;
+  }
+
+  if (target.status === "scheduling") {
+    return "Creating the AWS schedule for this account.";
+  }
+
+  if (target.status === "failed") {
+    return target.lastErrorCode
+      ? `Failed with ${target.lastErrorCode}.`
+      : "Publishing failed for this account.";
+  }
+
+  if (target.status === "cancelled") {
+    return "This platform target was cancelled.";
+  }
+
+  if (target.status === "skipped") {
+    return "This platform target was skipped.";
+  }
+
+  return "Waiting for final scheduling.";
+}
+
+function formatShortDateTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+  }).format(date);
 }
 
 function parseDateKey(value: string) {
@@ -947,6 +1691,21 @@ function getTimeKey(date: Date) {
   ).padStart(2, "0")}`;
 }
 
+function getDefaultScheduledTime() {
+  const date = new Date();
+  date.setMinutes(date.getMinutes() + 60);
+  const roundedMinutes = Math.ceil(date.getMinutes() / 15) * 15;
+
+  if (roundedMinutes >= 60) {
+    date.setHours(date.getHours() + 1);
+    date.setMinutes(0, 0, 0);
+  } else {
+    date.setMinutes(roundedMinutes, 0, 0);
+  }
+
+  return getTimeKey(date);
+}
+
 function getScheduledForIso(date: string, time: string) {
   if (!date || !time) {
     return null;
@@ -960,6 +1719,8 @@ function getScheduledForIso(date: string, time: string) {
 function NewScheduleDrawer({
   demoMediaOptions,
   hookMediaOptions,
+  initialScheduledDate,
+  initialScheduledTime,
   onClose,
   onSave,
   saving,
@@ -967,6 +1728,8 @@ function NewScheduleDrawer({
 }: {
   demoMediaOptions: ScheduleMediaOption[];
   hookMediaOptions: ScheduleMediaOption[];
+  initialScheduledDate: string;
+  initialScheduledTime: string;
   onClose: () => void;
   onSave: (submission: ScheduleFormSubmission) => void;
   saving: boolean;
@@ -980,8 +1743,8 @@ function NewScheduleDrawer({
   );
   const [caption, setCaption] = useState("");
   const [selectedConnectionIds, setSelectedConnectionIds] = useState<string[]>([]);
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("");
+  const [scheduledDate, setScheduledDate] = useState(initialScheduledDate);
+  const [scheduledTime, setScheduledTime] = useState(initialScheduledTime);
   const [timezone, setTimezone] = useState(defaultTimezone);
   const [postType, setPostType] = useState<SchedulePostType>("reel");
 
@@ -1004,7 +1767,11 @@ function NewScheduleDrawer({
     hookMedia: selectedHookMedia,
   });
   const canSaveDraft = Boolean(
-    selectedHookMedia && selectedDemoMedia && !saving,
+    selectedHookMedia &&
+      selectedDemoMedia &&
+      scheduledDate &&
+      scheduledTime &&
+      !saving,
   );
 
   useEffect(() => {
@@ -1071,7 +1838,7 @@ function NewScheduleDrawer({
               New schedule draft
             </h2>
             <p className="mt-1 text-sm font-medium leading-6 text-muted">
-              Choose the hook, choose the demo, then save the render-ready plan.
+              Choose the hook, demo, date, and time for this planned post.
             </p>
           </div>
           <button
@@ -1187,7 +1954,9 @@ function NewScheduleDrawer({
               ? "Saving..."
               : canSaveDraft
                 ? "Save and render combination"
-                : "Choose hook and demo"}
+                : selectedHookMedia && selectedDemoMedia
+                  ? "Choose date and time"
+                  : "Choose hook and demo"}
           </button>
           <p className="mt-3 text-center text-xs font-semibold leading-5 text-muted">
             This saves the plan and queues one combined MP4. Real publishing
@@ -1360,17 +2129,22 @@ function ConnectedAccountSelector({
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {connections.map((connection) => {
             const selected = selectedConnectionIds.includes(connection.id);
+            const unavailableMessage = getConnectionPublishUnavailableMessage(connection);
+            const unavailable = Boolean(unavailableMessage);
 
             return (
               <button
                 key={connection.id}
                 type="button"
                 onClick={() => onToggle(connection.id)}
+                disabled={unavailable}
                 className={cn(
                   "rounded-2xl border bg-white px-3 py-3 text-left shadow-sm transition hover:bg-[#fffaf6]",
                   selected
                     ? "border-primary/60 ring-2 ring-primary/15"
                     : "border-border",
+                  unavailable &&
+                    "cursor-not-allowed bg-card-muted/70 opacity-70 hover:bg-card-muted/70",
                 )}
               >
                 <span className="flex items-center justify-between gap-2">
@@ -1389,6 +2163,11 @@ function ConnectedAccountSelector({
                     connection.platformAccountName ||
                     connection.platformAccountId}
                 </span>
+                {unavailableMessage ? (
+                  <span className="mt-2 block text-[11px] font-semibold leading-4 text-error">
+                    {unavailableMessage}
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -1469,12 +2248,62 @@ function StatusPreview({
   );
 }
 
+function getConnectionPublishUnavailableMessage(connection: SocialConnection) {
+  if (connection.status !== "connected") {
+    return "Reconnect this account before scheduling.";
+  }
+
+  if (connection.platform === "instagram") {
+    return connection.scopes.some((scope) =>
+      requiredInstagramPublishScopes.has(scope),
+    )
+      ? null
+      : "Reconnect with Instagram publishing permission.";
+  }
+
+  if (connection.platform === "tiktok") {
+    return connection.scopes.some((scope) => requiredTikTokPublishScopes.has(scope))
+      ? null
+      : "Reconnect with TikTok video.publish permission.";
+  }
+
+  if (connection.platform === "youtube") {
+    return connection.scopes.some((scope) => requiredYouTubePublishScopes.has(scope))
+      ? null
+      : "Reconnect with YouTube upload permission.";
+  }
+
+  return null;
+}
+
+function getTabDescription(tab: ScheduleTab) {
+  const descriptions: Record<ScheduleTab, string> = {
+    drafts: "Saved combinations that still need a date, render, or final schedule.",
+    failed: "Posts that need attention before they can publish successfully.",
+    published: "Completed posts with platform results and links.",
+    upcoming: "Planned posts moving from render to schedule to publish.",
+  };
+
+  return descriptions[tab];
+}
+
+function getTabItemName(tab: ScheduleTab, count: number) {
+  const singular: Record<ScheduleTab, string> = {
+    drafts: "draft",
+    failed: "issue",
+    published: "post",
+    upcoming: "post",
+  };
+  const value = singular[tab];
+
+  return count === 1 ? value : `${value}s`;
+}
+
 function getTabCounts(drafts: ScheduleDraft[]): Record<ScheduleTab, number> {
   return {
-    drafts: drafts.filter((draft) => draft.status === "draft").length,
-    failed: drafts.filter((draft) => draft.status === "publishing_unavailable")
-      .length,
-    published: 0,
+    drafts: drafts.filter(isDraftTabDraft).length,
+    failed: drafts.filter(isFailedDraft).length,
+    published: drafts.filter((draft) => draft.status === "published").length,
     upcoming: drafts.filter((draft) => isUpcomingDraft(draft)).length,
   };
 }
@@ -1485,21 +2314,36 @@ function filterDraftsByTab(drafts: ScheduleDraft[], tab: ScheduleTab) {
   }
 
   if (tab === "drafts") {
-    return drafts.filter((draft) => draft.status === "draft");
+    return drafts.filter(isDraftTabDraft);
   }
 
   if (tab === "failed") {
-    return drafts.filter((draft) => draft.status === "publishing_unavailable");
+    return drafts.filter(isFailedDraft);
   }
 
-  return [];
+  return drafts.filter((draft) => draft.status === "published");
+}
+
+function isDraftTabDraft(draft: ScheduleDraft) {
+  return !draft.scheduledDate && !draft.scheduledTime;
+}
+
+function isFailedDraft(draft: ScheduleDraft) {
+  return (
+    draft.status === "failed" ||
+    draft.status === "partially_failed" ||
+    draft.status === "cancelled" ||
+    draft.status === "render_failed" ||
+    draft.status === "publishing_unavailable"
+  );
 }
 
 function isUpcomingDraft(draft: ScheduleDraft) {
   return Boolean(
     draft.scheduledDate &&
       draft.scheduledTime &&
-      draft.status !== "publishing_unavailable",
+      !isFailedDraft(draft) &&
+      draft.status !== "published",
   );
 }
 
@@ -1512,8 +2356,40 @@ function getDraftTimeLabel(draft: ScheduleDraft) {
 }
 
 function getDraftRenderMessage(draft: ScheduleDraft) {
+  if (draft.status === "published") {
+    return "Published successfully. Platform links appear below when available.";
+  }
+
+  if (draft.status === "publishing") {
+    return "Publishing is in progress on the selected platform accounts.";
+  }
+
+  if (draft.status === "scheduled") {
+    return "Final combined video is scheduled. Publishing will run at the planned time.";
+  }
+
+  if (draft.status === "scheduling") {
+    return "Creating platform schedules for this final video.";
+  }
+
+  if (draft.status === "partially_failed") {
+    return "Some platforms failed. Check the platform status rows below.";
+  }
+
+  if (draft.status === "failed" || draft.status === "publishing_unavailable") {
+    return "Publishing failed. Check the platform status rows below.";
+  }
+
+  if (draft.status === "cancelled") {
+    return "This scheduled post was cancelled.";
+  }
+
   if (draft.status === "ready") {
     return "Combined MP4 is ready for the next scheduling step.";
+  }
+
+  if (draft.status === "render_failed") {
+    return "The combined render failed. Retry the render before scheduling.";
   }
 
   if (draft.status === "rendering") {
@@ -1529,6 +2405,39 @@ function getDraftRenderMessage(draft: ScheduleDraft) {
   }
 
   return "Save a hook and demo pair before rendering.";
+}
+
+function canScheduleFinalDraft(draft: ScheduleDraft) {
+  return Boolean(
+    draft.status === "ready" &&
+      draft.combinedMedia?.mediaUrl &&
+      (draft.plannedConnectionIds?.length ?? 0) > 0 &&
+      getDraftPlannedScheduledFor(draft),
+  );
+}
+
+function getFinalScheduleUnavailableMessage(draft: ScheduleDraft) {
+  if ((draft.plannedConnectionIds?.length ?? 0) === 0) {
+    return "No connected accounts were selected when this draft was saved.";
+  }
+
+  if (!getDraftPlannedScheduledFor(draft)) {
+    return "Choose date and time in a new schedule draft before final scheduling.";
+  }
+
+  return null;
+}
+
+function getDraftPlannedScheduledFor(draft: ScheduleDraft) {
+  if (draft.plannedScheduledFor) {
+    return draft.plannedScheduledFor;
+  }
+
+  if (!draft.scheduledDate || !draft.scheduledTime) {
+    return null;
+  }
+
+  return getScheduledForIso(draft.scheduledDate, draft.scheduledTime);
 }
 
 function hasActiveCombinationRenderStatus(schedule: ScheduledPost) {
@@ -1601,6 +2510,9 @@ function mapScheduledPostToScheduleDraft(schedule: ScheduledPost): ScheduleDraft
     hookMedia,
     id: schedule.id,
     mediaTitle: schedule.title,
+    plannedConnectionIds: getMetadataCsv(metadata.plannedConnectionIds),
+    plannedScheduledFor:
+      getString(metadata.plannedScheduledFor) ?? schedule.scheduledFor ?? undefined,
     platforms: getDraftPlatformsFromSchedule(schedule),
     postType:
       typeof metadata.postType === "string" &&
@@ -1617,6 +2529,7 @@ function mapScheduledPostToScheduleDraft(schedule: ScheduledPost): ScheduleDraft
           ? "generated_carousel"
           : "demo_video",
     status: getDraftStatusFromScheduledPost(schedule),
+    targets: schedule.targets,
     timezone: schedule.timezone,
     updatedAt: schedule.updatedAt,
   };
@@ -1631,12 +2544,40 @@ function getDraftStatusFromScheduledPost(
     return "rendering";
   }
 
-  if (renderStatus === "ready") {
-    return "ready";
+  if (renderStatus === "failed") {
+    return "render_failed";
   }
 
-  if (renderStatus === "failed") {
-    return "render_required";
+  if (schedule.status === "failed") {
+    return "failed";
+  }
+
+  if (schedule.status === "partially_failed") {
+    return "partially_failed";
+  }
+
+  if (schedule.status === "cancelled") {
+    return "cancelled";
+  }
+
+  if (schedule.status === "published") {
+    return "published";
+  }
+
+  if (schedule.status === "publishing") {
+    return "publishing";
+  }
+
+  if (schedule.status === "scheduled") {
+    return "scheduled";
+  }
+
+  if (schedule.status === "scheduling") {
+    return "scheduling";
+  }
+
+  if (renderStatus === "ready") {
+    return "ready";
   }
 
   if (schedule.metadata.hookMediaId && schedule.metadata.demoMediaId) {
@@ -1645,14 +2586,6 @@ function getDraftStatusFromScheduledPost(
 
   if (schedule.status === "draft") {
     return "draft";
-  }
-
-  if (
-    schedule.status === "failed" ||
-    schedule.status === "partially_failed" ||
-    schedule.status === "cancelled"
-  ) {
-    return "publishing_unavailable";
   }
 
   return "scheduled_preview";
@@ -1829,6 +2762,19 @@ function getErrorMessage(error: unknown, fallback = "Something went wrong.") {
 
 function getString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function getMetadataCsv(value: unknown) {
+  return typeof value === "string" && value.trim()
+    ? Array.from(
+        new Set(
+          value
+            .split(",")
+            .map((entry) => entry.trim())
+            .filter(Boolean),
+        ),
+      )
+    : [];
 }
 
 function getInitialScheduleTab(): ScheduleTab {

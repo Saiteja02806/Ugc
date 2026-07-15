@@ -1,17 +1,21 @@
 import {
   ArrowRight,
   BadgeCheck,
+  CalendarClock,
   Camera,
+  Check,
   CheckCircle2,
   CirclePlay,
-  Compass,
-  FileText,
+  FileVideo,
   Layers3,
-  Lightbulb,
+  Library,
   MessageSquareText,
   Music2,
-  PenLine,
+  Play,
   ShieldCheck,
+  Sparkles,
+  Upload,
+  Wand2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -20,111 +24,97 @@ import { ProductLogoMark } from "@/components/brand/product-logo";
 const authHref = "/sign-in";
 
 const navItems = [
+  { label: "Workflow", href: "#workflow" },
+  { label: "Platforms", href: "#platforms" },
   { label: "Pricing", href: "/pricing" },
 ];
 
-const productWorkflowSteps = [
+const pipelineSteps = [
   {
-    title: "Add or generate content",
-    description:
-      "Upload product demos, screen recordings, videos, images, or generate AI-assisted creative assets.",
+    title: "Upload",
+    description: "Drop in demos, product videos, screen recordings, or images.",
+    icon: Upload,
   },
   {
-    title: "Connect a social account",
-    description:
-      "Securely connect your own Instagram, TikTok, or YouTube account using the platform's official authorization flow.",
+    title: "Generate",
+    description: "Create short-form hooks, UGC concepts, carousels, and edits.",
+    icon: Wand2,
   },
   {
-    title: "Review settings and disclosures",
-    description:
-      "Preview the final post, edit the caption, select the destination account, and confirm content rights and required disclosures.",
+    title: "Approve",
+    description: "Review the creative, caption, destination, rights, and disclosures.",
+    icon: ShieldCheck,
   },
   {
-    title: "Schedule or publish",
-    description:
-      "Choose a publishing time and explicitly approve the post before it is sent to the selected platform.",
+    title: "Schedule",
+    description: "Send approved posts to your own connected social accounts.",
+    icon: CalendarClock,
   },
 ];
 
-const creativeDirections = [
+const contentFormats = [
   {
-    title: "Problem hook",
-    description:
-      "Open with a clear pain point your audience already understands.",
+    title: "Product Demo",
+    description: "Turn feature walkthroughs into compact social videos.",
+    icon: FileVideo,
+  },
+  {
+    title: "UGC Hook",
+    description: "Generate opening angles your audience understands quickly.",
     icon: MessageSquareText,
   },
   {
-    title: "Product demo",
-    description:
-      "Turn product features and screen recordings into simple demo-style creative ideas.",
-    icon: FileText,
-  },
-  {
-    title: "Founder POV",
-    description:
-      "Frame the product through a direct explanation from your team or brand.",
-    icon: PenLine,
-  },
-  {
-    title: "Carousel ads",
-    description:
-      "Generate slide-by-slide ad concepts for Instagram-style carousel posts.",
+    title: "Carousel Ad",
+    description: "Plan slide-by-slide posts from product claims and assets.",
     icon: Layers3,
   },
   {
-    title: "UGC hooks",
-    description:
-      "Plan short-form hooks and AI-assisted creative options for review.",
-    icon: Compass,
+    title: "Asset Library",
+    description: "Reuse approved media across campaigns and publishing drafts.",
+    icon: Library,
   },
+];
+
+const approvalChecks = [
+  "Preview the rendered creative before it posts",
+  "Edit captions, hashtags, destinations, and timing",
+  "Confirm ownership, licensing, AI use, and disclosures",
+  "Approve each publishing action explicitly",
 ];
 
 const platformCards = [
   {
     title: "Instagram",
-    description:
-      "Connect an eligible Instagram Business or Creator account to prepare, schedule, and publish supported posts, Reels, and carousels.",
+    description: "Prepare supported posts, Reels, and carousels for eligible Business or Creator accounts.",
     icon: Camera,
+    color: "#e4518c",
   },
   {
     title: "TikTok",
-    description:
-      "Connect a TikTok account to review publishing settings and approve supported video or photo posts.",
+    description: "Review supported video or photo posts before publishing to a connected account.",
     icon: Music2,
+    color: "#19d3c5",
   },
   {
     title: "YouTube",
-    description:
-      "Connect a YouTube channel to upload, schedule, and monitor supported videos.",
+    description: "Upload, schedule, and monitor supported videos from your connected channel.",
     icon: CirclePlay,
+    color: "#ff4a3d",
   },
 ];
 
-const approvalPoints = [
-  "Preview the rendered video, image, or carousel before posting.",
-  "Edit captions, titles, hashtags, destinations, and publishing time.",
-  "Confirm ownership, licensing, commercial use, and platform disclosures.",
-  "Approve the schedule or publishing action before anything is sent.",
-];
-
-const safetyPoints = [
-  "Posts are never published without explicit user approval.",
-  "Connected account access is used only for requested platform features.",
-  "Users review content, destination account, publishing settings, rights, and disclosures before posting.",
-  "Users can disconnect social accounts and request deletion of stored data at any time.",
-];
-
 const responsibilityPoints = [
-  "Confirm ownership or permission before publishing",
-  "Disclose AI-generated or sponsored content where required",
-  "Do not impersonate people or upload copyrighted content without authorization",
+  "Connect and disconnect your own accounts",
+  "Keep publishing approval under user control",
+  "Review rights and disclosures before every post",
+  "Request deletion of stored data when needed",
 ];
 
 const productFooterLinks = [
-  { label: "How it works", href: "#product" },
+  { label: "Workflow", href: "#workflow" },
   { label: "Pricing", href: "/pricing" },
-  { label: "Connected accounts", href: "#connected-accounts" },
-  { label: "Supported platforms", href: "#connected-accounts" },
+  { label: "Platforms", href: "#platforms" },
+  { label: "Approval", href: "#approval" },
 ];
 
 const supportFooterLinks = [
@@ -144,52 +134,52 @@ const legalFooterLinks = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f7f7f8] text-[#1b1b1f]">
-      <header className="sticky top-0 z-40 w-full px-4 pt-5 backdrop-blur-md sm:px-6">
-        <div className="mx-auto flex h-[62px] w-full max-w-[1120px] items-center justify-between gap-5 rounded-[18px] border border-[#dfdfe4] bg-white/92 px-4 shadow-[0_14px_36px_rgb(24_24_27_/_0.08)] sm:px-6">
+    <main className="min-h-screen overflow-x-hidden bg-[#f3f3f1] text-[#17171b]">
+      <header className="sticky top-0 z-40 w-full border-b border-[#deded8] bg-[#f8f8f6]/90 px-4 backdrop-blur-xl sm:px-6">
+        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-5">
           <Link
             href="/"
-            className="flex min-w-0 items-center gap-3"
+            className="flex min-w-0 items-center gap-3 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
             aria-label="UGC Pilot home"
           >
             <ProductLogoMark className="h-8 w-12" sizes="52px" />
-            <span className="truncate text-base font-bold tracking-normal text-[#18181b] sm:text-lg">
+            <span className="truncate text-base font-black tracking-normal text-[#151515] sm:text-lg">
               UGC Pilot
             </span>
           </Link>
 
           <nav
-            className="hidden items-center gap-6 text-sm font-semibold text-[#565760] md:flex"
+            className="hidden items-center gap-7 text-sm font-bold text-[#55554f] md:flex"
             aria-label="Primary navigation"
           >
             {navItems.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
-                className="transition duration-200 hover:text-[#18181b]"
+                className="rounded-full transition-colors duration-200 hover:text-[#17171b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
               >
                 {item.label}
               </Link>
             ))}
             <Link
               href={authHref}
-              className="transition duration-200 hover:text-[#18181b]"
+              className="rounded-full border border-[#d9d9d2] bg-white px-4 py-2 text-[#17171b] transition-colors duration-200 hover:border-[#ffb493] hover:bg-[#fff4ee] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
             >
-              Sign in
+              Sign In
             </Link>
           </nav>
 
           <details className="group relative md:hidden">
-            <summary className="list-none rounded-full border border-[#dfdfe4] px-4 py-2 text-sm font-bold text-[#26262b] transition hover:border-[#ffb493] hover:bg-[#fff4ee] [&::-webkit-details-marker]:hidden">
+            <summary className="list-none rounded-full border border-[#d9d9d2] bg-white px-4 py-2 text-sm font-black text-[#202020] transition-colors duration-200 hover:border-[#ffb493] hover:bg-[#fff4ee] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb] [&::-webkit-details-marker]:hidden">
               Menu
             </summary>
-            <div className="absolute right-0 top-12 w-56 rounded-2xl border border-[#dfdfe4] bg-white p-2 shadow-[0_18px_44px_rgb(24_24_27_/_0.12)]">
-              {[...navItems, { label: "Sign in", href: authHref }].map(
+            <div className="absolute right-0 top-12 w-60 rounded-[16px] border border-[#deded8] bg-white p-2 shadow-[0_16px_32px_rgb(23_23_27_/_0.12)]">
+              {[...navItems, { label: "Sign In", href: authHref }].map(
                 (item) => (
                   <Link
                     key={item.label}
                     href={item.href}
-                    className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-[#565760] transition hover:bg-[#fff4ee] hover:text-[#18181b]"
+                    className="block rounded-[12px] px-3 py-2.5 text-sm font-bold text-[#55554f] transition-colors duration-200 hover:bg-[#fff4ee] hover:text-[#17171b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]"
                   >
                     {item.label}
                   </Link>
@@ -200,137 +190,147 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="relative bg-[#fbfbfc] px-5 pb-16 pt-20 text-center sm:px-8 sm:pb-20 sm:pt-24 lg:px-10">
-        <div
-          className="pointer-events-none absolute left-1/2 top-24 h-72 w-[min(620px,92vw)] -translate-x-1/2 rounded-full opacity-70 blur-3xl"
-          style={{
-            background:
-              "radial-gradient(circle, rgb(255 90 31 / 0.12), rgb(255 90 31 / 0.03) 45%, transparent 72%)",
-          }}
-          aria-hidden="true"
-        />
-        <div className="relative mx-auto flex max-w-[780px] flex-col items-center">
-          <p className="hero-rise rounded-full border border-[#ffd4c2] bg-white px-4 py-2 text-sm font-bold text-[#b84010] shadow-[0_8px_18px_rgb(24_24_27_/_0.04)]">
-            AI-assisted content creation and scheduling
-          </p>
-          <h1 className="hero-rise hero-rise-delay-1 mt-6 max-w-[760px] text-5xl font-black leading-[0.96] tracking-normal text-[#17171b] sm:text-6xl lg:text-[4.25rem]">
-            Create and schedule{" "}
-            <span className="block">social videos from{" "}</span>
-            <span className="block">your product assets.</span>
-          </h1>
-          <p className="hero-rise hero-rise-delay-2 mt-6 max-w-[660px] text-base font-medium leading-7 text-[#52535c] sm:text-lg sm:leading-8">
-            UGC Pilot helps SaaS and mobile app teams turn product demos,
-            screen recordings, uploaded media, and AI-assisted creative assets
-            into social-ready videos and carousels. Users review every post and
-            approve publishing to their own connected Instagram, TikTok, and
-            YouTube accounts.
-          </p>
-          <div className="hero-rise hero-rise-delay-3 mt-8 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
-            <Link
-              href={authHref}
-              className="group inline-flex h-[52px] w-full items-center justify-center rounded-full bg-[#ff5a1f] px-7 text-base font-bold text-white shadow-[0_16px_32px_rgb(255_90_31_/_0.24)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#e64b14] sm:w-auto"
-            >
-              Start creating
-              <ArrowRight
-                className="ml-2 size-4 transition duration-200 group-hover:translate-x-1"
-                aria-hidden="true"
-              />
-            </Link>
-            <Link
-              href="#product"
-              className="inline-flex h-[52px] w-full items-center justify-center rounded-full border border-[#d8d8df] bg-white px-7 text-base font-bold text-[#24242a] shadow-[0_8px_18px_rgb(24_24_27_/_0.04)] transition duration-200 hover:-translate-y-0.5 hover:border-[#ffb493] sm:w-auto"
-            >
-              See how it works
-            </Link>
+      <section className="relative border-b border-[#deded8] bg-[#f8f8f6] px-4 pb-14 pt-10 sm:px-6 sm:pb-16 lg:px-8 lg:pb-20 lg:pt-14">
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-center">
+          <div className="hero-rise max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#ffd2bf] bg-white px-3 py-1.5 text-sm font-black text-[#b84010]">
+              <Sparkles className="size-4" aria-hidden="true" />
+              Product assets in. Approved posts out.
+            </div>
+            <h1 className="mt-6 text-[clamp(2.65rem,5.8vw,4.85rem)] font-black leading-[0.95] tracking-normal text-[#111111]">
+              Create approved posts from product assets.
+            </h1>
+            <p className="mt-6 max-w-xl text-lg font-semibold leading-8 text-[#4f504c]">
+              Upload demos, generate UGC-style videos and carousels, review the
+              caption and disclosures, then schedule to Instagram, TikTok, or
+              YouTube.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href={authHref}
+                className="group inline-flex h-13 items-center justify-center rounded-full bg-[#ff5a1f] px-7 text-base font-black text-white shadow-[0_12px_24px_rgb(255_90_31_/_0.24)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-[#e64b14] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
+              >
+                Start Creating
+                <ArrowRight
+                  className="ml-2 size-4 transition-transform duration-200 group-hover:translate-x-1"
+                  aria-hidden="true"
+                />
+              </Link>
+              <Link
+                href="#workflow"
+                className="inline-flex h-13 items-center justify-center rounded-full border border-[#cfcfca] bg-white px-7 text-base font-black text-[#202020] transition-colors duration-200 hover:border-[#ffb493] hover:bg-[#fff4ee] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
+              >
+                View Workflow
+              </Link>
+            </div>
+            <div className="mt-8 hidden flex-wrap gap-2 text-sm font-bold text-[#565750] sm:flex">
+              <span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-[#deded8]">
+                Videos
+              </span>
+              <span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-[#deded8]">
+                Carousels
+              </span>
+              <span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-[#deded8]">
+                Captions
+              </span>
+              <span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-[#deded8]">
+                Scheduling
+              </span>
+            </div>
+          </div>
+
+          <div className="hero-rise hero-rise-delay-1">
+            <ProductCockpit />
           </div>
         </div>
       </section>
 
-      <section id="product" className="px-5 pb-12 pt-4 sm:px-8 lg:px-10">
-        <div className="landing-reveal mx-auto max-w-6xl rounded-[28px] border border-[#e7e2df] bg-[#fffefd] p-6 shadow-[0_18px_46px_rgb(24_24_27_/_0.06)] sm:p-8 lg:p-10">
-          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+      <section id="workflow" className="px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+        <div className="landing-reveal mx-auto max-w-7xl">
+          <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-end">
             <div>
-              <p className="text-sm font-bold text-[#c2410c]">
-                Product workflow
+              <p className="text-sm font-black text-[#c2410c]">
+                One controlled workflow
               </p>
-              <h2 className="mt-3 max-w-xl text-3xl font-black leading-[1.04] tracking-normal text-[#19191d] sm:text-4xl lg:text-5xl">
-                From product assets to approved social posts
+              <h2 className="mt-3 max-w-xl text-4xl font-black leading-[1.02] tracking-normal text-[#151515] sm:text-5xl">
+                From rough asset to ready-to-publish post.
               </h2>
-              <p className="mt-5 max-w-xl text-base leading-7 text-[#555660]">
-                UGC Pilot connects creation, account authorization, content
-                review, disclosure checks, and publishing approval in one
-                user-controlled process.
-              </p>
             </div>
+            <p className="max-w-2xl text-base font-semibold leading-7 text-[#575852] lg:justify-self-end">
+              The landing page should make the system visible immediately:
+              creation, review, account choice, and scheduling all belong in
+              one product path.
+            </p>
+          </div>
 
-            <div className="relative grid gap-3">
-              <div
-                className="absolute bottom-8 left-[22px] top-8 hidden w-px bg-[#ffd1bd] sm:block"
-                aria-hidden="true"
-              />
-              {productWorkflowSteps.map((step, index) => (
+          <div className="mt-10 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {pipelineSteps.map((step) => {
+              const Icon = step.icon;
+
+              return (
                 <article
                   key={step.title}
-                  className="group relative grid gap-4 rounded-2xl border border-[#ffe0d1] bg-[#fff6f1] p-4 transition duration-200 hover:translate-x-1 hover:border-[#ffb493] sm:grid-cols-[auto_1fr] sm:p-5"
+                  className="rounded-[16px] border border-[#deded8] bg-white p-5 shadow-[0_8px_16px_rgb(23_23_27_/_0.04)]"
                 >
-                  <span className="relative z-10 flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-sm font-black text-[#c2410c] ring-1 ring-[#ffd6c4] transition duration-200 group-hover:bg-[#ff5a1f] group-hover:text-white">
-                    {index + 1}
-                  </span>
-                  <div>
-                    <h3 className="text-lg font-black leading-tight text-[#202025]">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-11 items-center justify-center rounded-[12px] bg-[#17171b] text-white">
+                      <Icon className="size-5" aria-hidden="true" />
+                    </span>
+                    <h3 className="text-xl font-black leading-tight text-[#17171b]">
                       {step.title}
                     </h3>
-                    <p className="mt-1.5 text-sm leading-6 text-[#5a5b64]">
-                      {step.description}
-                    </p>
                   </div>
+                  <p className="mt-4 text-sm font-semibold leading-6 text-[#5b5c56]">
+                    {step.description}
+                  </p>
                 </article>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      <section id="directions" className="px-5 py-16 sm:px-8 lg:px-10">
-        <div className="landing-reveal mx-auto max-w-6xl">
-          <div className="max-w-3xl">
-            <p className="text-sm font-bold text-[#c2410c]">
-              Creative directions
+      <section className="bg-[#17171b] px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-20">
+        <div className="landing-reveal mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.86fr_1.14fr] lg:items-center">
+          <div>
+            <p className="text-sm font-black text-[#ffb493]">
+              More than a generator
             </p>
-            <h2 className="mt-3 text-3xl font-black leading-[1.04] tracking-normal text-[#19191d] sm:text-4xl lg:text-5xl">
-              Generate or upload media, then choose what to use
+            <h2 className="mt-3 max-w-xl text-4xl font-black leading-[1.02] tracking-normal text-white sm:text-5xl">
+              Show the formats buyers actually came for.
             </h2>
-            <p className="mt-4 text-base leading-7 text-[#555660]">
-              Start from structured social formats, AI-assisted creative
-              assets, or uploaded product media instead of a blank page.
+            <p className="mt-5 max-w-xl text-base font-semibold leading-7 text-[#deded8]">
+              The redesign trades generic feature cards for formats that map to
+              real creator workflows: product demos, hook videos, carousel ads,
+              and reusable media.
             </p>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {creativeDirections.map((direction) => {
-              const Icon = direction.icon;
+          <div className="grid gap-3 sm:grid-cols-2">
+            {contentFormats.map((format) => {
+              const Icon = format.icon;
 
               return (
                 <Link
-                  key={direction.title}
+                  key={format.title}
                   href={authHref}
-                  className="group flex min-h-[224px] flex-col rounded-[20px] border border-[#e2e2e7] bg-white p-5 shadow-[0_8px_18px_rgb(24_24_27_/_0.035)] transition duration-200 hover:-translate-y-1.5 hover:border-[#ffb493]"
+                  className="group rounded-[16px] border border-white/12 bg-white/[0.06] p-5 transition-colors duration-200 hover:border-[#ffb493] hover:bg-white/[0.09] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffb493]"
                 >
-                  <span className="flex size-11 items-center justify-center rounded-2xl bg-[#fff4ee] text-[#c2410c] transition duration-200 group-hover:bg-[#ff5a1f] group-hover:text-white">
-                    <Icon className="size-5" aria-hidden="true" />
-                  </span>
-                  <h3 className="mt-5 text-lg font-black leading-tight text-[#202025]">
-                    {direction.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-6 text-[#5a5b64]">
-                    {direction.description}
-                  </p>
-                  <span className="mt-auto flex justify-end pt-5 text-[#c2410c]">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="flex size-11 items-center justify-center rounded-[12px] bg-[#ff5a1f] text-white">
+                      <Icon className="size-5" aria-hidden="true" />
+                    </span>
                     <ArrowRight
-                      className="size-4 transition duration-200 group-hover:translate-x-1"
+                      className="size-4 text-[#ffb493] transition-transform duration-200 group-hover:translate-x-1"
                       aria-hidden="true"
                     />
-                  </span>
+                  </div>
+                  <h3 className="mt-5 text-xl font-black leading-tight text-white">
+                    {format.title}
+                  </h3>
+                  <p className="mt-3 text-sm font-semibold leading-6 text-[#d4d4d0]">
+                    {format.description}
+                  </p>
                 </Link>
               );
             })}
@@ -338,144 +338,103 @@ export default function Home() {
         </div>
       </section>
 
-      <section
-        id="connected-accounts"
-        className="px-5 py-12 sm:px-8 lg:px-10"
-      >
-        <div className="landing-reveal mx-auto max-w-6xl rounded-[28px] bg-[#202024] p-6 text-white shadow-[0_24px_58px_rgb(24_24_27_/_0.18)] sm:p-8 lg:p-10">
-          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-            <div>
-              <p className="text-sm font-bold text-[#ffb493]">
-                Connected accounts
-              </p>
-              <h2 className="mt-3 text-3xl font-black leading-[1.04] tracking-normal text-white sm:text-4xl lg:text-5xl">
-                Connect your own social accounts
-              </h2>
-              <p className="mt-5 text-base leading-7 text-[#e4e4e9]">
-                Users connect their own professional or creator accounts
-                through the official authorization process provided by each
-                platform. UGC Pilot uses the granted access only to provide the
-                account connection, scheduling, publishing, and analytics
-                features selected by the user.
-              </p>
-              <p className="mt-5 rounded-2xl bg-white/10 p-4 text-sm font-bold leading-6 text-white">
-                Users connect and control their own accounts.
-              </p>
-            </div>
+      <section id="approval" className="px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+        <div className="landing-reveal mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
+          <ApprovalConsole />
 
-            <div className="grid gap-4 md:grid-cols-3">
-              {platformCards.map((platform) => {
-                const Icon = platform.icon;
-
-                return (
-                  <article
-                    key={platform.title}
-                    className="rounded-[18px] border border-white/14 bg-white/[0.07] p-5"
-                  >
-                    <span className="flex size-11 items-center justify-center rounded-2xl bg-[#ff5a1f] text-white">
-                      <Icon className="size-5" aria-hidden="true" />
-                    </span>
-                    <h3 className="mt-5 text-xl font-black leading-tight text-white">
-                      {platform.title}
-                    </h3>
-                    <p className="mt-3 text-sm leading-6 text-[#dedee5]">
-                      {platform.description}
-                    </p>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="workflow" className="px-5 py-16 sm:px-8 lg:px-10">
-        <div className="landing-reveal mx-auto max-w-6xl rounded-[28px] bg-[#fff3ed] p-6 shadow-[inset_0_0_0_1px_rgb(255_204_180_/_0.7)] sm:p-8 lg:p-10">
-          <div className="grid gap-9 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
-            <div>
-              <p className="text-sm font-bold text-[#c2410c]">
-                Review, disclose, approve
-              </p>
-              <h2 className="mt-3 text-3xl font-black leading-[1.04] tracking-normal text-[#19191d] sm:text-4xl lg:text-5xl">
-                Publishing stays in the user&apos;s hands
-              </h2>
-              <p className="mt-5 text-base leading-7 text-[#555660]">
-                Generated content may require AI, branded-content, or
-                commercial disclosures depending on the selected platform and
-                the nature of the post.
-              </p>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              {approvalPoints.map((point, index) => (
-                <article
-                  key={point}
-                  className="relative rounded-[18px] border border-[#ebe6e3] bg-white p-5 shadow-[0_8px_18px_rgb(24_24_27_/_0.035)]"
+          <div>
+            <p className="text-sm font-black text-[#c2410c]">
+              Review before publish
+            </p>
+            <h2 className="mt-3 max-w-xl text-4xl font-black leading-[1.02] tracking-normal text-[#151515] sm:text-5xl">
+              The product promise is control, not autopilot.
+            </h2>
+            <p className="mt-5 max-w-xl text-base font-semibold leading-7 text-[#575852]">
+              The new landing page makes approval visible. It shows that users
+              see the post, tune the details, confirm rights, and choose when
+              it goes live.
+            </p>
+            <div className="mt-7 grid gap-3">
+              {approvalChecks.map((check) => (
+                <div
+                  key={check}
+                  className="flex gap-3 rounded-[14px] border border-[#deded8] bg-white p-4"
                 >
-                  <span className="flex size-10 items-center justify-center rounded-full bg-[#fff4ee] text-sm font-black text-[#c2410c] ring-4 ring-[#fff3ed]">
-                    {index + 1}
-                  </span>
-                  <p className="mt-5 text-sm font-bold leading-6 text-[#2d2d32]">
-                    {point}
+                  <CheckCircle2
+                    className="mt-0.5 size-5 shrink-0 text-[#c2410c]"
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm font-black leading-6 text-[#242420]">
+                    {check}
                   </p>
-                </article>
+                </div>
               ))}
             </div>
           </div>
         </div>
       </section>
 
-      <section className="px-5 py-16 sm:px-8 lg:px-10">
-        <div className="landing-reveal mx-auto grid max-w-6xl gap-8 rounded-[28px] border border-[#e7e2df] bg-white p-6 shadow-[0_18px_46px_rgb(24_24_27_/_0.05)] sm:p-8 lg:grid-cols-[0.92fr_1.08fr] lg:p-10">
-          <div>
-            <span className="flex size-12 items-center justify-center rounded-2xl bg-[#fff4ee] text-[#c2410c]">
-              <ShieldCheck className="size-6" aria-hidden="true" />
-            </span>
-            <h2 className="mt-5 text-3xl font-black leading-[1.04] tracking-normal text-[#19191d] sm:text-4xl lg:text-5xl">
-              Built for user-controlled creative workflows
-            </h2>
-            <p className="mt-5 text-base leading-7 text-[#555660]">
-              UGC Pilot helps users create, organize, and schedule social
-              content. Users stay in control of what they upload, generate,
-              edit, approve, publish, disconnect, and delete.
+      <section
+        id="platforms"
+        className="border-y border-[#deded8] bg-[#f8f8f6] px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
+      >
+        <div className="landing-reveal mx-auto max-w-7xl">
+          <div className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-end">
+            <div>
+              <p className="text-sm font-black text-[#c2410c]">
+                Connected accounts
+              </p>
+              <h2 className="mt-3 max-w-xl text-4xl font-black leading-[1.02] tracking-normal text-[#151515] sm:text-5xl">
+                Publish through accounts users already own.
+              </h2>
+            </div>
+            <p className="max-w-2xl text-base font-semibold leading-7 text-[#575852] lg:justify-self-end">
+              Each platform connection is part of the user-controlled path:
+              connect, review settings, approve the post, publish or schedule.
             </p>
           </div>
 
-          <div className="grid content-center gap-3">
-            {safetyPoints.map((point) => (
-              <div
-                key={point}
-                className="group flex gap-3 rounded-2xl bg-[#fff8f4] p-4 transition duration-200 hover:bg-[#fff1e8]"
-              >
-                <CheckCircle2
-                  className="mt-0.5 size-5 shrink-0 text-[#c2410c]"
-                  aria-hidden="true"
-                />
-                <p className="text-sm font-bold leading-6 text-[#2d2d32]">
-                  {point}
-                </p>
-              </div>
-            ))}
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {platformCards.map((platform) => {
+              const Icon = platform.icon;
+
+              return (
+                <article
+                  key={platform.title}
+                  className="rounded-[16px] border border-[#deded8] bg-white p-5"
+                >
+                  <span
+                    className="flex size-11 items-center justify-center rounded-[12px] text-white"
+                    style={{ backgroundColor: platform.color }}
+                  >
+                    <Icon className="size-5" aria-hidden="true" />
+                  </span>
+                  <h3 className="mt-5 text-2xl font-black leading-tight text-[#17171b]">
+                    {platform.title}
+                  </h3>
+                  <p className="mt-3 text-sm font-semibold leading-6 text-[#5b5c56]">
+                    {platform.description}
+                  </p>
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      <section id="responsibility" className="px-5 py-16 sm:px-8 lg:px-10">
-        <div className="landing-reveal mx-auto grid max-w-6xl gap-8 rounded-[28px] border border-[#e1e1e6] bg-[#fffefd] p-6 sm:p-8 lg:grid-cols-[0.9fr_1.1fr] lg:p-10">
+      <section className="px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+        <div className="landing-reveal mx-auto grid max-w-7xl gap-8 rounded-[16px] bg-[#17171b] p-6 text-white sm:p-8 lg:grid-cols-[0.95fr_1.05fr] lg:p-10">
           <div>
-            <p className="text-sm font-bold text-[#c2410c]">
-              Responsible publishing
-            </p>
-            <h2 className="mt-3 text-3xl font-black leading-[1.04] tracking-normal text-[#19191d] sm:text-4xl lg:text-5xl">
-              Content rights and responsible publishing
+            <div className="flex size-12 items-center justify-center rounded-[12px] bg-[#ff5a1f] text-white">
+              <BadgeCheck className="size-6" aria-hidden="true" />
+            </div>
+            <h2 className="mt-5 max-w-xl text-4xl font-black leading-[1.02] tracking-normal text-white sm:text-5xl">
+              Built for responsible creative operations.
             </h2>
-            <p className="mt-5 text-base leading-7 text-[#555660]">
-              Users must own or have permission to use the videos, images,
-              music, voices, likenesses, logos, product materials, and other
-              assets they publish through UGC Pilot. Users are also responsible
-              for complying with applicable AI-generated content,
-              branded-content, sponsorship, and platform disclosure
-              requirements.
+            <p className="mt-5 max-w-xl text-base font-semibold leading-7 text-[#deded8]">
+              UGC Pilot helps teams create and schedule social content while
+              keeping account access, content review, and publishing approval
+              explicit.
             </p>
           </div>
 
@@ -483,13 +442,13 @@ export default function Home() {
             {responsibilityPoints.map((point) => (
               <div
                 key={point}
-                className="flex gap-3 rounded-2xl border border-[#eee8e4] bg-white p-4"
+                className="flex gap-3 rounded-[14px] border border-white/10 bg-white/[0.06] p-4"
               >
-                <CheckCircle2
-                  className="mt-0.5 size-5 shrink-0 text-[#c2410c]"
+                <Check
+                  className="mt-0.5 size-5 shrink-0 text-[#ffb493]"
                   aria-hidden="true"
                 />
-                <p className="text-sm font-bold leading-6 text-[#2d2d32]">
+                <p className="text-sm font-black leading-6 text-white">
                   {point}
                 </p>
               </div>
@@ -498,44 +457,40 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="final-cta" className="px-5 pb-14 pt-4 sm:px-8 lg:px-10">
-        <div className="landing-reveal mx-auto max-w-5xl rounded-[28px] bg-[#202024] px-6 py-12 text-center text-white shadow-[0_24px_58px_rgb(24_24_27_/_0.18)] sm:px-10 sm:py-14">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[#ff5a1f] text-white shadow-[0_12px_26px_rgb(255_90_31_/_0.22)]">
-            <Lightbulb className="size-6" aria-hidden="true" />
-          </div>
-          <h2 className="mx-auto mt-6 max-w-3xl text-3xl font-black leading-[1.05] tracking-normal text-white sm:text-4xl lg:text-5xl">
-            Start preparing your next approved social post
+      <section className="px-4 pb-16 pt-2 sm:px-6 lg:px-8">
+        <div className="landing-reveal mx-auto max-w-5xl text-center">
+          <h2 className="text-4xl font-black leading-[1.02] tracking-normal text-[#151515] sm:text-5xl">
+            Build the next post from assets you already have.
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-[#d9d9df]">
-            Create AI-assisted videos, product-demo edits, carousel concepts,
-            and publishing drafts from your own product assets and connected
-            social accounts.
+          <p className="mx-auto mt-4 max-w-2xl text-base font-semibold leading-7 text-[#575852]">
+            Upload, generate, review, and schedule without separating creative
+            production from publishing approval.
           </p>
           <Link
             href={authHref}
-            className="group mt-8 inline-flex h-[52px] items-center justify-center rounded-full bg-[#ff5a1f] px-7 text-base font-bold text-white shadow-[0_16px_32px_rgb(255_90_31_/_0.24)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#e64b14]"
+            className="group mt-8 inline-flex h-13 items-center justify-center rounded-full bg-[#ff5a1f] px-7 text-base font-black text-white shadow-[0_12px_24px_rgb(255_90_31_/_0.24)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-[#e64b14] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
           >
-            Start creating
-            <BadgeCheck
-              className="ml-2 size-4 transition duration-200 group-hover:translate-x-0.5"
+            Start Creating
+            <ArrowRight
+              className="ml-2 size-4 transition-transform duration-200 group-hover:translate-x-1"
               aria-hidden="true"
             />
           </Link>
         </div>
       </section>
 
-      <footer className="bg-[#111114] px-5 py-10 text-white sm:px-8 lg:px-10">
-        <div className="mx-auto max-w-6xl">
+      <footer className="bg-[#101014] px-4 py-10 text-white sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
           <div className="grid gap-9 md:grid-cols-2 lg:grid-cols-[1.35fr_0.85fr_0.85fr_1fr]">
             <div>
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 font-black text-white"
+                className="inline-flex items-center gap-2 rounded-full font-black text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffb493]"
               >
                 <ProductLogoMark className="h-6 w-9" sizes="36px" />
                 UGC Pilot
               </Link>
-              <p className="mt-4 max-w-sm text-sm leading-6 text-[#d9d9df]">
+              <p className="mt-4 max-w-sm text-sm font-semibold leading-6 text-[#d9d9df]">
                 AI-assisted social content creation and scheduling for SaaS,
                 mobile app, and digital product teams.
               </p>
@@ -554,11 +509,17 @@ export default function Home() {
                 endorsed by, or sponsored by Meta, TikTok, or Google.
               </p>
             </div>
-            <div className="flex flex-wrap gap-x-5 gap-y-2 font-semibold text-white">
-              <a href="mailto:support@getugcpilot.com">
+            <div className="flex flex-wrap gap-x-5 gap-y-2 font-bold text-white">
+              <a
+                href="mailto:support@getugcpilot.com"
+                className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffb493]"
+              >
                 support@getugcpilot.com
               </a>
-              <a href="mailto:privacy@getugcpilot.com">
+              <a
+                href="mailto:privacy@getugcpilot.com"
+                className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffb493]"
+              >
                 privacy@getugcpilot.com
               </a>
             </div>
@@ -566,6 +527,202 @@ export default function Home() {
         </div>
       </footer>
     </main>
+  );
+}
+
+function ProductCockpit() {
+  return (
+    <div className="relative">
+      <div className="absolute -right-3 top-6 hidden h-28 w-28 rounded-full bg-[#ff5a1f] opacity-20 blur-2xl lg:block" />
+      <div className="relative overflow-hidden rounded-[16px] border border-[#2f2f32] bg-[#17171b] p-3 shadow-[0_24px_48px_rgb(23_23_27_/_0.24)]">
+        <div className="flex items-center justify-between border-b border-white/10 px-2 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="size-2.5 rounded-full bg-[#ff5a1f]" />
+            <span className="size-2.5 rounded-full bg-[#ffd166]" />
+            <span className="size-2.5 rounded-full bg-[#45d483]" />
+          </div>
+          <span className="rounded-full bg-white/8 px-3 py-1 text-xs font-black text-[#deded8]">
+            Campaign Draft
+          </span>
+        </div>
+
+        <div className="grid gap-3 pt-3 lg:grid-cols-[1fr_0.72fr]">
+          <div className="grid gap-3">
+            <div className="rounded-[14px] bg-[#242428] p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black text-[#ffb493]">
+                    Uploaded Asset
+                  </p>
+                  <h3 className="mt-1 text-xl font-black leading-tight text-white">
+                    Product walkthrough.mov
+                  </h3>
+                </div>
+                <span className="rounded-full bg-[#45d483]/15 px-3 py-1 text-xs font-black text-[#8af0b5]">
+                  Ready
+                </span>
+              </div>
+
+              <div className="mt-4 grid min-h-48 overflow-hidden rounded-[12px] bg-[#0d0d0f] sm:grid-cols-[0.7fr_1fr]">
+                <div className="relative flex items-center justify-center bg-[#ff5a1f]">
+                  <div className="absolute inset-0 bg-[linear-gradient(140deg,rgb(255_255_255_/_0.18),transparent_45%)]" />
+                  <Play className="relative size-12 fill-white text-white" aria-hidden="true" />
+                </div>
+                <div className="grid content-center gap-3 p-4">
+                  <div className="h-3 w-4/5 rounded-full bg-white/22" />
+                  <div className="h-3 w-3/5 rounded-full bg-white/16" />
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="h-14 rounded-[10px] bg-white/10" />
+                    <div className="h-14 rounded-[10px] bg-white/14" />
+                    <div className="h-14 rounded-[10px] bg-white/10" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {["Hook Video", "Carousel", "Caption"].map((item, index) => (
+                <div
+                  key={item}
+                  className="rounded-[14px] border border-white/10 bg-white/[0.06] p-4"
+                >
+                  <p className="text-xs font-black text-[#c8c8cf]">{item}</p>
+                  <div className="mt-3 h-2 rounded-full bg-white/18" />
+                  <div
+                    className="mt-2 h-2 rounded-full bg-[#ff5a1f]"
+                    style={{ width: `${72 - index * 14}%` }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-3">
+            <div className="rounded-[14px] bg-white p-4 text-[#17171b]">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-black text-[#c2410c]">
+                  Post Preview
+                </p>
+                <span className="rounded-full bg-[#fff1e8] px-2.5 py-1 text-xs font-black text-[#c2410c]">
+                  9:16
+                </span>
+              </div>
+              <div className="mx-auto mt-4 max-w-[170px] rounded-[18px] border border-[#242428] bg-[#111114] p-2">
+                <div className="overflow-hidden rounded-[12px] bg-[#f3f3f1]">
+                  <div className="flex h-52 items-center justify-center bg-[#ff5a1f] text-white">
+                    <Play className="size-10 fill-white" aria-hidden="true" />
+                  </div>
+                  <div className="grid gap-2 p-3">
+                    <div className="h-2 rounded-full bg-[#17171b]/80" />
+                    <div className="h-2 w-3/4 rounded-full bg-[#17171b]/28" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[14px] border border-white/10 bg-white/[0.06] p-4">
+              <p className="text-xs font-black text-[#ffb493]">
+                Approval Checklist
+              </p>
+              <div className="mt-3 grid gap-2">
+                {["Caption edited", "Rights confirmed", "Schedule selected"].map(
+                  (item) => (
+                    <div key={item} className="flex items-center gap-2 text-sm font-bold text-white">
+                      <span className="flex size-5 items-center justify-center rounded-full bg-[#45d483] text-[#101014]">
+                        <Check className="size-3.5" aria-hidden="true" />
+                      </span>
+                      {item}
+                    </div>
+                  ),
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center text-xs font-black">
+              <span className="rounded-full bg-white px-2 py-2 text-[#e4518c]">
+                Instagram
+              </span>
+              <span className="rounded-full bg-white px-2 py-2 text-[#09857e]">
+                TikTok
+              </span>
+              <span className="rounded-full bg-white px-2 py-2 text-[#d53429]">
+                YouTube
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ApprovalConsole() {
+  return (
+    <div className="overflow-hidden rounded-[16px] border border-[#deded8] bg-white shadow-[0_16px_32px_rgb(23_23_27_/_0.08)]">
+      <div className="flex items-center justify-between border-b border-[#e6e6df] px-5 py-4">
+        <div>
+          <p className="text-xs font-black text-[#c2410c]">Publishing Review</p>
+          <h3 className="mt-1 text-2xl font-black leading-tight text-[#17171b]">
+            Launch draft
+          </h3>
+        </div>
+        <span className="rounded-full bg-[#fff1e8] px-3 py-1.5 text-xs font-black text-[#c2410c]">
+          Needs approval
+        </span>
+      </div>
+
+      <div className="grid gap-0 md:grid-cols-[0.72fr_1fr]">
+        <div className="border-b border-[#e6e6df] bg-[#17171b] p-4 md:border-b-0 md:border-r">
+          <div className="mx-auto max-w-[190px] rounded-[18px] border border-white/16 bg-[#0f0f12] p-2">
+            <div className="overflow-hidden rounded-[12px] bg-[#f3f3f1]">
+              <div className="flex h-64 items-center justify-center bg-[#ff5a1f] text-white">
+                <Play className="size-11 fill-white" aria-hidden="true" />
+              </div>
+              <div className="grid gap-2 p-3">
+                <div className="h-2 rounded-full bg-[#17171b]/80" />
+                <div className="h-2 w-4/5 rounded-full bg-[#17171b]/28" />
+                <div className="h-2 w-2/3 rounded-full bg-[#17171b]/20" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5">
+          <div className="grid gap-4">
+            <ReviewRow label="Destination" value="Instagram Reels" />
+            <ReviewRow label="Caption" value="3 edits applied" />
+            <ReviewRow label="Rights" value="Confirmed by user" />
+            <ReviewRow label="Disclosure" value="AI-assisted content noted" />
+            <ReviewRow label="Publish time" value="Tomorrow, 10:30 AM" />
+          </div>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href={authHref}
+              className="inline-flex h-12 flex-1 items-center justify-center rounded-full bg-[#ff5a1f] px-5 text-sm font-black text-white transition-transform duration-200 hover:-translate-y-0.5 hover:bg-[#e64b14] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
+            >
+              Approve Schedule
+            </Link>
+            <Link
+              href={authHref}
+              className="inline-flex h-12 flex-1 items-center justify-center rounded-full border border-[#d8d8d2] px-5 text-sm font-black text-[#242420] transition-colors duration-200 hover:border-[#ffb493] hover:bg-[#fff4ee] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
+            >
+              Edit Draft
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-[12px] bg-[#f5f5f2] px-4 py-3">
+      <span className="text-sm font-bold text-[#696a64]">{label}</span>
+      <span className="text-right text-sm font-black text-[#17171b]">
+        {value}
+      </span>
+    </div>
   );
 }
 
@@ -581,12 +738,12 @@ function FooterColumn({ links, title }: FooterColumnProps) {
   return (
     <div>
       <h2 className="text-sm font-black tracking-normal text-white">{title}</h2>
-      <nav className="mt-4 flex flex-col gap-3 text-sm font-semibold text-[#d9d9df]">
+      <nav className="mt-4 flex flex-col gap-3 text-sm font-bold text-[#d9d9df]">
         {links.map((link) => (
           <Link
             key={`${title}-${link.label}`}
             href={link.href}
-            className="transition hover:text-white"
+            className="rounded-full transition-colors duration-200 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffb493]"
           >
             {link.label}
           </Link>

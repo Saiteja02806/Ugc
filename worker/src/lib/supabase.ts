@@ -24,6 +24,8 @@ const CATEGORY_IMAGE_ASSET_PAGE_SIZE = 1000;
 const EDITABLE_VIDEOS_TABLE = "editable_videos";
 const MEDIA_ASSETS_TABLE = "media_assets";
 const SCHEDULED_POSTS_TABLE = "scheduled_posts";
+const SCHEDULED_POST_TARGETS_TABLE = "scheduled_post_targets";
+const SOCIAL_CONNECTIONS_TABLE = "social_connections";
 const INCREMENT_CATEGORY_IMAGE_USAGE_FUNCTION =
   "increment_category_image_asset_usage";
 const VIDEO_RENDER_JOBS_TABLE = "video_render_jobs";
@@ -341,6 +343,235 @@ export class SupabaseJobStore {
     });
   }
 
+  async getSocialPublishContext(params: {
+    targetId: string;
+    userId: string;
+  }) {
+    const { data: target, error: targetError } = await this.client
+      .from(SCHEDULED_POST_TARGETS_TABLE)
+      .select("*")
+      .eq("id", params.targetId)
+      .eq("user_id", params.userId)
+      .maybeSingle();
+
+    if (targetError) {
+      throw new Error(`Could not load publish target: ${targetError.message}`);
+    }
+
+    if (!target) {
+      throw new Error("Publish target was not found.");
+    }
+
+    const { data: post, error: postError } = await this.client
+      .from(SCHEDULED_POSTS_TABLE)
+      .select("*")
+      .eq("id", target.scheduled_post_id)
+      .eq("user_id", params.userId)
+      .maybeSingle();
+
+    if (postError) {
+      throw new Error(`Could not load scheduled post: ${postError.message}`);
+    }
+
+    if (!post) {
+      throw new Error("Scheduled post was not found.");
+    }
+
+    if (!post.media_asset_id) {
+      throw new Error("Scheduled post is missing final media.");
+    }
+
+    const { data: media, error: mediaError } = await this.client
+      .from(MEDIA_ASSETS_TABLE)
+      .select("*")
+      .eq("id", post.media_asset_id)
+      .eq("user_id", params.userId)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (mediaError) {
+      throw new Error(`Could not load final media: ${mediaError.message}`);
+    }
+
+    if (!media) {
+      throw new Error("Final media was not found.");
+    }
+
+    const { data: connection, error: connectionError } = await this.client
+      .from(SOCIAL_CONNECTIONS_TABLE)
+      .select("*")
+      .eq("id", target.social_connection_id)
+      .eq("user_id", params.userId)
+      .maybeSingle();
+
+    if (connectionError) {
+      throw new Error(
+        `Could not load social connection: ${connectionError.message}`,
+      );
+    }
+
+    if (!connection) {
+      throw new Error("Social connection was not found.");
+    }
+
+    return {
+      connection,
+      media,
+      post,
+      target,
+    };
+  }
+
+  async markSocialPublishTargetPublishing(params: {
+    targetId: string;
+    userId: string;
+  }) {
+    const now = new Date().toISOString();
+    const { data: target, error: targetError } = await this.client
+      .from(SCHEDULED_POST_TARGETS_TABLE)
+      .update({
+        status: "publishing",
+        updated_at: now,
+      })
+      .eq("id", params.targetId)
+      .eq("user_id", params.userId)
+      .select("scheduled_post_id")
+      .maybeSingle();
+
+    if (targetError) {
+      throw new Error(
+        `Could not mark publish target publishing: ${targetError.message}`,
+      );
+    }
+
+    if (!target) {
+      throw new Error("Publish target was not found.");
+    }
+
+    const { error: postError } = await this.client
+      .from(SCHEDULED_POSTS_TABLE)
+      .update({
+        status: "publishing",
+        updated_at: now,
+      })
+      .eq("id", target.scheduled_post_id)
+      .eq("user_id", params.userId);
+
+    if (postError) {
+      throw new Error(`Could not mark schedule publishing: ${postError.message}`);
+    }
+  }
+
+  async markSocialPublishTargetPublished(params: {
+    platformPostId: string;
+    platformPostUrl: string | null;
+    targetId: string;
+    userId: string;
+  }) {
+    const now = new Date().toISOString();
+    const { data: target, error: targetError } = await this.client
+      .from(SCHEDULED_POST_TARGETS_TABLE)
+      .update({
+        platform_post_id: params.platformPostId,
+        platform_post_url: params.platformPostUrl,
+        published_at: now,
+        status: "published",
+        updated_at: now,
+      })
+      .eq("id", params.targetId)
+      .eq("user_id", params.userId)
+      .select("scheduled_post_id")
+      .maybeSingle();
+
+    if (targetError) {
+      throw new Error(
+        `Could not mark publish target published: ${targetError.message}`,
+      );
+    }
+
+    if (!target) {
+      throw new Error("Publish target was not found.");
+    }
+
+    await this.refreshScheduledPostStatus({
+      fallbackStatus: "published",
+      scheduledPostId: target.scheduled_post_id,
+      userId: params.userId,
+    });
+  }
+
+  async markSocialPublishTargetFailed(params: {
+    errorCode: string;
+    errorMessage: string;
+    targetId: string;
+    userId: string;
+  }) {
+    const now = new Date().toISOString();
+    const { data: target, error: readError } = await this.client
+      .from(SCHEDULED_POST_TARGETS_TABLE)
+      .select("id,scheduled_post_id,user_id,attempt_count")
+      .eq("id", params.targetId)
+      .eq("user_id", params.userId)
+      .maybeSingle();
+
+    if (readError) {
+      throw new Error(`Could not read publish target: ${readError.message}`);
+    }
+
+    if (!target) {
+      throw new Error("Publish target was not found.");
+    }
+
+    const { error: targetError } = await this.client
+      .from(SCHEDULED_POST_TARGETS_TABLE)
+      .update({
+        attempt_count: target.attempt_count + 1,
+        last_error_code: params.errorCode,
+        last_error_message: params.errorMessage.slice(0, 500),
+        status: "failed",
+        updated_at: now,
+      })
+      .eq("id", params.targetId)
+      .eq("user_id", params.userId);
+
+    if (targetError) {
+      throw new Error(`Could not mark publish target failed: ${targetError.message}`);
+    }
+
+    await this.refreshScheduledPostStatus({
+      errorCode: params.errorCode,
+      fallbackStatus: "failed",
+      scheduledPostId: target.scheduled_post_id,
+      userId: params.userId,
+    });
+  }
+
+  async updateSocialConnectionAccessToken(params: {
+    accessTokenCiphertext: string;
+    connectionId: string;
+    expiresAt: string | null;
+    tokenType: string | null;
+    userId: string;
+  }) {
+    const now = new Date().toISOString();
+    const { error } = await this.client
+      .from(SOCIAL_CONNECTIONS_TABLE)
+      .update({
+        access_token_ciphertext: params.accessTokenCiphertext,
+        expires_at: params.expiresAt,
+        last_error_code: null,
+        status: "connected",
+        token_type: params.tokenType,
+        updated_at: now,
+      })
+      .eq("id", params.connectionId)
+      .eq("user_id", params.userId);
+
+    if (error) {
+      throw new Error(`Could not update social connection token: ${error.message}`);
+    }
+  }
+
   async getCarouselGeneration(carouselId: string) {
     const { data, error } = await this.client
       .from(CAROUSEL_GENERATIONS_TABLE)
@@ -565,6 +796,60 @@ export class SupabaseJobStore {
       throw new Error(
         `Could not update schedule render metadata: ${error.message}`,
       );
+    }
+  }
+
+  private async refreshScheduledPostStatus(params: {
+    errorCode?: string;
+    fallbackStatus: "failed" | "published";
+    scheduledPostId: string;
+    userId: string;
+  }) {
+    const { data: targets, error: readError } = await this.client
+      .from(SCHEDULED_POST_TARGETS_TABLE)
+      .select("status")
+      .eq("scheduled_post_id", params.scheduledPostId)
+      .eq("user_id", params.userId);
+
+    if (readError) {
+      throw new Error(`Could not read publish targets: ${readError.message}`);
+    }
+
+    const statuses = (targets ?? []).map((target) => target.status);
+    const hasFailure = statuses.includes("failed");
+    const allPublished =
+      statuses.length > 0 && statuses.every((status) => status === "published");
+    const hasPublished = statuses.includes("published");
+    const hasPublishing = statuses.includes("publishing");
+    const hasScheduled = statuses.some((status) =>
+      ["draft", "scheduled", "scheduling"].includes(status),
+    );
+    const nextStatus = allPublished
+      ? "published"
+      : hasFailure && (hasPublished || hasPublishing || hasScheduled)
+        ? "partially_failed"
+        : hasFailure
+          ? "failed"
+          : hasPublishing
+            ? "publishing"
+            : hasScheduled
+              ? "scheduled"
+              : params.fallbackStatus;
+    const now = new Date().toISOString();
+
+    const { error: postError } = await this.client
+      .from(SCHEDULED_POSTS_TABLE)
+      .update({
+        last_error_code: hasFailure ? (params.errorCode ?? null) : null,
+        published_at: allPublished ? now : null,
+        status: nextStatus,
+        updated_at: now,
+      })
+      .eq("id", params.scheduledPostId)
+      .eq("user_id", params.userId);
+
+    if (postError) {
+      throw new Error(`Could not update schedule status: ${postError.message}`);
     }
   }
 

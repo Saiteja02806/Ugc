@@ -7,10 +7,9 @@ import {
   FileVideo,
   Images,
   Loader2,
-  Pencil,
+  MoreHorizontal,
   RefreshCw,
   Trash2,
-  X,
 } from "lucide-react";
 import Link from "next/link";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -22,6 +21,15 @@ import {
   PlatformSelectionModal,
   type SchedulePlatformContext,
 } from "@/components/social/platform-selection-modal";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   getCarouselLibraryItems,
   listenToCarouselLibrary,
@@ -69,11 +77,11 @@ type LibraryContentResponse =
 
 const tabs: Array<{ label: string; value: LibraryTab }> = [
   {
-    label: "Demos",
+    label: "Demo footage",
     value: "posts",
   },
   {
-    label: "Carousels",
+    label: "Saved carousels",
     value: "content",
   },
 ];
@@ -124,10 +132,11 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-normal text-foreground-strong sm:text-[28px]">
-              Library
+              Content Library
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-              Keep demo footage and saved carousel assets separate from hook videos.
+              Store reusable assets for posts. Upload demo footage here, save
+              carousel ideas from Trending, then prepare posts in Scheduling.
             </p>
           </div>
 
@@ -148,7 +157,7 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
                 onClick={() => selectTab(tab.value)}
                 onKeyDown={(event) => handleTabKeyDown(event, index)}
                 className={cn(
-                  "inline-flex h-9 min-w-[76px] items-center justify-center rounded-small px-3 text-sm font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none",
+                  "inline-flex min-h-11 min-w-[112px] items-center justify-center rounded-small px-3 text-sm font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none sm:min-h-9 sm:min-w-[76px]",
                   activeTab === tab.value
                     ? "bg-card text-foreground-strong shadow-[0_1px_2px_rgb(23_23_27_/_0.08)]"
                     : "text-muted hover:text-foreground-strong",
@@ -185,6 +194,8 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
   const [selectedItem, setSelectedItem] = useState<LibraryCarouselItem | null>(
     null,
   );
+  const [pendingRemoveItem, setPendingRemoveItem] =
+    useState<LibraryCarouselItem | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [scheduleContext, setScheduleContext] =
@@ -283,6 +294,7 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
         setSelectedItem((currentItem) =>
           currentItem?.id === item.id ? null : currentItem,
         );
+        setPendingRemoveItem(null);
         setNotice("Removed from this browser.");
         return;
       }
@@ -316,6 +328,7 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
       setSelectedItem((currentItem) =>
         currentItem?.id === item.id ? null : currentItem,
       );
+      setPendingRemoveItem(null);
       setNotice("Removed from Library.");
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Could not remove this carousel."));
@@ -327,7 +340,7 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
   function scheduleItem(item: LibraryCarouselItem) {
     if (item.storageSource !== "server") {
       setErrorMessage(
-        "Save this carousel to your online Library before scheduling.",
+        "This carousel is saved only in this browser. Save it to your online Library before preparing a post.",
       );
       return;
     }
@@ -343,7 +356,7 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
 
   function confirmPlatforms(platforms: SocialPlatform[]) {
     setNotice(
-      `${formatPlatformList(platforms)} selected. No post has been scheduled yet.`,
+      `${formatPlatformList(platforms)} selected. Finish timing and captions in Scheduling before publishing.`,
     );
     setScheduleContext(null);
   }
@@ -366,7 +379,8 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
               Saved carousels
             </h2>
             <p className="mt-0.5 max-w-xl text-sm leading-5 text-muted">
-              Reusable carousel ideas, with every slide kept in order.
+              Complete carousel sets saved from Trending and ready to prepare
+              as posts.
             </p>
           </div>
         </div>
@@ -377,7 +391,7 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
               href="/dashboard"
               className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
-              Open Trending
+              Find carousel ideas
               <ArrowRight className="size-3.5" aria-hidden="true" />
             </Link>
           ) : null}
@@ -392,7 +406,7 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
             disabled={isLoading}
             aria-label="Refresh Library content"
             title="Refresh Library content"
-            className="inline-flex size-9 items-center justify-center rounded-md border border-border bg-white text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex size-11 items-center justify-center rounded-md border border-border bg-white text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:size-9"
           >
             <RefreshCw
             className={cn(
@@ -433,8 +447,8 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
                 key={item.id}
                 item={item}
                 removing={removingItemId === item.id}
-                scheduleDisabled={item.storageSource !== "server"}
-                onRemove={() => void removeItem(item)}
+                scheduleBlocked={item.storageSource !== "server"}
+                onRemove={() => setPendingRemoveItem(item)}
                 onSchedule={() => scheduleItem(item)}
                 onView={() => setSelectedItem(item)}
               />
@@ -448,9 +462,30 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
       {selectedItem ? (
         <LibraryCarouselViewer
           item={selectedItem}
-          onClose={() => setSelectedItem(null)}
+          open={Boolean(selectedItem)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedItem(null);
+            }
+          }}
         />
       ) : null}
+      <RemoveCarouselDialog
+        item={pendingRemoveItem}
+        removing={Boolean(
+          pendingRemoveItem && removingItemId === pendingRemoveItem.id,
+        )}
+        onOpenChange={(open) => {
+          if (!open && !removingItemId) {
+            setPendingRemoveItem(null);
+          }
+        }}
+        onConfirm={() => {
+          if (pendingRemoveItem) {
+            void removeItem(pendingRemoveItem);
+          }
+        }}
+      />
       <PlatformSelectionModal
         context={scheduleContext}
         open={Boolean(scheduleContext)}
@@ -477,11 +512,11 @@ function LibraryContentEmptyState({
           <Images className="size-5" aria-hidden="true" />
         </div>
         <h3 className="mt-4 text-lg font-semibold text-foreground-strong">
-          Build your saved carousel library
+          Build your saved carousel collection
         </h3>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">
-          Save a carousel from Trending and the complete slide set will stay here,
-          ready to review and schedule when you need it.
+          Save carousel ideas from Trending. Each complete slide set will stay
+          here so you can preview it and prepare a post later.
         </p>
 
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
@@ -489,7 +524,7 @@ function LibraryContentEmptyState({
             href="/dashboard"
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
-            Open Trending
+            Find carousel ideas
             <ArrowRight className="size-4" aria-hidden="true" />
           </Link>
           <button
@@ -498,7 +533,7 @@ function LibraryContentEmptyState({
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             <FileVideo className="size-4" aria-hidden="true" />
-            View demos
+            View demo footage
           </button>
         </div>
       </div>
@@ -512,21 +547,23 @@ function LibraryCarouselCard({
   onSchedule,
   onView,
   removing,
-  scheduleDisabled,
+  scheduleBlocked,
 }: {
   item: LibraryCarouselItem;
   onRemove: () => void;
   onSchedule: () => void;
   onView: () => void;
   removing: boolean;
-  scheduleDisabled: boolean;
+  scheduleBlocked: boolean;
 }) {
   const coverUrl = item.coverUrl ?? item.slides[0]?.renderedUrl;
+  const scheduleHelpId = `${item.id.replace(/[^a-zA-Z0-9_-]/g, "-")}-schedule-help`;
 
   return (
     <article className="group min-w-0 overflow-hidden rounded-lg border border-border bg-white transition-colors hover:border-border-strong">
       <button
         type="button"
+        aria-label={`Preview ${item.title}`}
         onClick={onView}
         className="relative block aspect-[4/5] max-h-[440px] w-full overflow-hidden bg-foreground-strong text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
       >
@@ -553,7 +590,7 @@ function LibraryCarouselCard({
         </div>
         {item.storageSource === "browser" ? (
           <span className="absolute bottom-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-muted shadow-sm">
-            Saved in this browser
+            Local only
           </span>
         ) : null}
       </button>
@@ -572,51 +609,53 @@ function LibraryCarouselCard({
           <button
             type="button"
             onClick={onView}
-            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md bg-foreground-strong px-3 text-xs font-semibold text-white transition-colors hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-foreground-strong px-3 text-xs font-semibold text-white transition-colors hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:min-h-9"
           >
             <Eye className="size-3.5" aria-hidden="true" />
-            View
+            Preview
           </button>
           <button
             type="button"
             onClick={onSchedule}
-            disabled={scheduleDisabled}
-            title={
-              scheduleDisabled
-                ? "Available after this carousel is saved to your online Library"
-                : "Select platforms"
-            }
-            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            aria-disabled={scheduleBlocked}
+            aria-describedby={scheduleBlocked ? scheduleHelpId : undefined}
+            className={cn(
+              "inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:min-h-9",
+              scheduleBlocked && "text-muted opacity-75",
+            )}
           >
             <CalendarCheck className="size-3.5" aria-hidden="true" />
-            Schedule
+            Prepare post
           </button>
         </div>
 
-        <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            disabled
-            title="Carousel editing is not available yet"
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-semibold text-muted-subtle disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <Pencil className="size-3.5" aria-hidden="true" />
-            Edit unavailable
-          </button>
-          <button
-            type="button"
-            onClick={onRemove}
-            disabled={removing}
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-semibold text-muted transition-colors hover:bg-error/5 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {removing ? (
-              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-            ) : (
-              <Trash2 className="size-3.5" aria-hidden="true" />
-            )}
-            Remove
-          </button>
-        </div>
+        {scheduleBlocked ? (
+          <p id={scheduleHelpId} className="text-xs font-medium leading-5 text-muted">
+            Online Library save required before preparing a post.
+          </p>
+        ) : null}
+
+        <details className="group/actions">
+          <summary className="flex min-h-10 list-none items-center justify-center gap-1.5 rounded-md text-xs font-semibold text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
+            <MoreHorizontal className="size-3.5" aria-hidden="true" />
+            More actions
+          </summary>
+          <div className="mt-2 rounded-md border border-border bg-surface-subtle p-2">
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={removing}
+              className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-md px-2 text-xs font-semibold text-muted transition-colors hover:bg-error/5 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {removing ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Trash2 className="size-3.5" aria-hidden="true" />
+              )}
+              Remove from library
+            </button>
+          </div>
+        </details>
       </div>
     </article>
   );
@@ -624,66 +663,24 @@ function LibraryCarouselCard({
 
 function LibraryCarouselViewer({
   item,
-  onClose,
+  onOpenChange,
+  open,
 }: {
   item: LibraryCarouselItem;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
 }) {
-  useEffect(() => {
-    const previousBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousBodyOverflow;
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onClose]);
-
   return (
-    <div
-      role="presentation"
-      className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-black/45 px-4 py-5"
-      onMouseDown={(event) => {
-        if (event.currentTarget === event.target) {
-          onClose();
-        }
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="library-carousel-viewer-title"
-        className="flex max-h-[calc(100vh-2.5rem)] w-full max-w-[1120px] flex-col overflow-hidden rounded-lg border border-border bg-white shadow-[0_24px_70px_rgb(9_9_11_/_0.26)]"
-      >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-          <div className="min-w-0">
-            <h2
-              id="library-carousel-viewer-title"
-              className="truncate text-lg font-semibold text-foreground-strong"
-            >
-              {item.title}
-            </h2>
-            <p className="mt-1 text-sm font-medium text-muted">
-              {item.slideCount} ordered slides - saved {formatDate(item.savedAt)}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close carousel preview"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-          >
-            <X className="size-5" aria-hidden="true" />
-          </button>
-        </header>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[calc(100vh-2rem)] max-w-[1120px] flex-col overflow-hidden p-0 sm:max-w-[calc(100%-2rem)]">
+        <DialogHeader className="border-b border-border px-5 py-4 pr-14">
+          <DialogTitle className="truncate text-lg font-semibold text-foreground-strong">
+            {item.title}
+          </DialogTitle>
+          <DialogDescription className="text-sm font-medium text-muted">
+            {item.slideCount} ordered slides - saved {formatDate(item.savedAt)}
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="min-h-0 overflow-y-auto p-5">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -708,8 +705,60 @@ function LibraryCarouselViewer({
             ))}
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RemoveCarouselDialog({
+  item,
+  onConfirm,
+  onOpenChange,
+  removing,
+}: {
+  item: LibraryCarouselItem | null;
+  onConfirm: () => void;
+  onOpenChange: (open: boolean) => void;
+  removing: boolean;
+}) {
+  return (
+    <Dialog open={Boolean(item)} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remove carousel?</DialogTitle>
+          <DialogDescription>
+            {item
+              ? `This removes "${item.title}" from ${
+                  item.storageSource === "server"
+                    ? "your online Library"
+                    : "this browser"
+                }.`
+              : "This carousel will be removed."}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="sm:justify-between">
+          <DialogClose
+            disabled={removing}
+            className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Keep it
+          </DialogClose>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={removing}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-error px-4 text-sm font-semibold text-white transition-colors hover:bg-error/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {removing ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Trash2 className="size-4" aria-hidden="true" />
+            )}
+            Remove
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

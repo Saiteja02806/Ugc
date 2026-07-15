@@ -92,7 +92,7 @@ const libraryNavigationItems: SidebarItem[] = [
   },
   {
     key: "library",
-    label: "Library",
+    label: "Content",
     href: "/library?tab=posts",
     icon: "library",
   },
@@ -412,7 +412,7 @@ function SidebarNavigation({
           <div className="mx-1 mb-3 border-t border-border" aria-hidden="true" />
         ) : (
           <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-subtle">
-            Library
+            Publishing
           </p>
         )}
         <div className="flex flex-col gap-1">

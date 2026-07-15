@@ -78,6 +78,8 @@ export function createScheduleDraft(input: ScheduleDraftInput = {}): ScheduleDra
     id: input.id ?? createScheduleDraftId(),
     mediaTitle: normalizeOptionalString(input.mediaTitle) ?? undefined,
     mediaUrl: normalizeOptionalString(input.mediaUrl) ?? undefined,
+    plannedConnectionIds: normalizeStringList(input.plannedConnectionIds),
+    plannedScheduledFor: normalizeOptionalString(input.plannedScheduledFor) ?? undefined,
     platforms: normalizePlatforms(input.platforms),
     postType: normalizePostType(input.postType) ?? undefined,
     scheduledDate: normalizeOptionalString(input.scheduledDate) ?? undefined,
@@ -138,6 +140,8 @@ export function duplicateScheduleDraft(draftId: string) {
     hookMedia: draft.hookMedia,
     mediaTitle: draft.mediaTitle,
     mediaUrl: draft.mediaUrl,
+    plannedConnectionIds: draft.plannedConnectionIds,
+    plannedScheduledFor: draft.plannedScheduledFor,
     platforms: draft.platforms,
     postType: draft.postType,
     scheduledDate: draft.scheduledDate,
@@ -216,6 +220,9 @@ function normalizeScheduleDraft(value: unknown): ScheduleDraft | null {
     id,
     mediaTitle: normalizeOptionalString(record.mediaTitle) ?? undefined,
     mediaUrl: normalizeOptionalString(record.mediaUrl) ?? undefined,
+    plannedConnectionIds: normalizeStringList(record.plannedConnectionIds),
+    plannedScheduledFor:
+      normalizeOptionalString(record.plannedScheduledFor) ?? undefined,
     platforms: normalizePlatforms(record.platforms),
     postType: normalizePostType(record.postType) ?? undefined,
     scheduledDate: normalizeOptionalString(record.scheduledDate) ?? undefined,
@@ -268,6 +275,20 @@ function normalizePlatforms(value: unknown): SchedulePlatform[] {
       value.filter((platform): platform is SchedulePlatform =>
         schedulePlatforms.includes(platform as SchedulePlatform),
       ),
+    ),
+  );
+}
+
+function normalizeStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .map((entry) => normalizeString(entry))
+        .filter((entry): entry is string => Boolean(entry)),
     ),
   );
 }

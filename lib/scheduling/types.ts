@@ -29,7 +29,15 @@ export const scheduleDraftStatuses = [
   "media_required",
   "rendering",
   "render_required",
+  "render_failed",
   "ready",
+  "scheduling",
+  "scheduled",
+  "publishing",
+  "published",
+  "partially_failed",
+  "failed",
+  "cancelled",
   "scheduled_preview",
   "publishing_unavailable",
 ] as const;
@@ -153,6 +161,8 @@ export type ScheduleDraft = {
   id: string;
   mediaTitle?: string;
   mediaUrl?: string;
+  plannedConnectionIds?: string[];
+  plannedScheduledFor?: string;
   platforms: SchedulePlatform[];
   postType?: SchedulePostType;
   scheduledDate?: string;
@@ -160,6 +170,7 @@ export type ScheduleDraft = {
   sourceId?: string;
   sourceType?: ScheduleSourceType;
   status: ScheduleDraftStatus;
+  targets?: ScheduledPostTarget[];
   thumbnailUrl?: string;
   timezone: string;
   updatedAt: string;
@@ -173,6 +184,8 @@ export type ScheduleDraftInput = {
   id?: string;
   mediaTitle?: string;
   mediaUrl?: string;
+  plannedConnectionIds?: string[];
+  plannedScheduledFor?: string;
   platforms?: SchedulePlatform[];
   postType?: SchedulePostType;
   scheduledDate?: string;
@@ -180,6 +193,7 @@ export type ScheduleDraftInput = {
   sourceId?: string;
   sourceType?: ScheduleSourceType;
   status?: ScheduleDraftStatus;
+  targets?: ScheduledPostTarget[];
   thumbnailUrl?: string;
   timezone?: string;
 };
@@ -198,13 +212,21 @@ export function getSchedulePlatformLabel(platform: SchedulePlatform) {
 
 export function getScheduleStatusLabel(status: ScheduleDraftStatus) {
   const labels: Record<ScheduleDraftStatus, string> = {
+    cancelled: "Cancelled",
     draft: "Draft",
+    failed: "Failed",
     media_required: "Media required",
+    partially_failed: "Partially failed",
+    published: "Published",
+    publishing: "Publishing",
     publishing_unavailable: "Publishing unavailable",
     ready: "Ready",
+    render_failed: "Render failed",
     rendering: "Rendering",
     render_required: "Render required",
+    scheduled: "Scheduled",
     scheduled_preview: "Scheduled preview",
+    scheduling: "Scheduling",
   };
 
   return labels[status];

@@ -49,6 +49,22 @@ const workerProfiles = {
     queueName: "video-render",
     queueUrlEnv: "UGC_VIDEO_RENDER_QUEUE_URL",
   },
+  "social-publish": {
+    defaultDesiredCount: "1",
+    defaultLogStreamPrefix: "social-publish",
+    defaultServiceName: "ugc-social-publish-worker-service",
+    defaultTaskFamily: "ugc-social-publish-worker-task",
+    defaultVisibilityTimeoutSeconds: "300",
+    envPrefix: "ECS_SOCIAL_PUBLISH",
+    jobTypes: ["publish_social_post"],
+    queueName: "social-publish",
+    queueUrlEnv: "UGC_SOCIAL_PUBLISH_QUEUE_URL",
+    secretKeys: [
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "SOCIAL_TOKEN_ENCRYPTION_KEY",
+    ],
+  },
 };
 
 const implementedWorkerJobTypes = new Set([
@@ -56,6 +72,7 @@ const implementedWorkerJobTypes = new Set([
   "generate_carousel",
   "generate_hook_video",
   "generate_image",
+  "publish_social_post",
   "render_edit_video",
   "render_schedule_combination",
   "test_worker_job",

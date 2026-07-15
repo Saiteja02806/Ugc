@@ -11,6 +11,7 @@ const SCHEDULE_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 let schedulerClient: SchedulerClient | null = null;
 
 export type CreateSocialPublishScheduleInput = {
+  jobId: string;
   scheduledFor: string;
   targetId: string;
 };
@@ -69,8 +70,8 @@ export async function createSocialPublishSchedule(
       Target: {
         Arn: getRequiredSocialPublishQueueArn(),
         Input: JSON.stringify({
-          targetId: input.targetId,
-          version: 1,
+          jobId: input.jobId,
+          jobType: "publish_social_post",
         }),
         RoleArn: getSchedulerRoleArn(),
       },

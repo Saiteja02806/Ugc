@@ -2,7 +2,12 @@ export type EditableVideoRatio = "9:16" | "1:1" | "4:5" | "16:9";
 
 export type EditableVideoSource = "hook" | "demo" | "draft" | "final";
 
-export type EditableVideoStatus = "ready" | "draft" | "rendered";
+export type EditableVideoStatus =
+  | "ready"
+  | "draft"
+  | "rendering"
+  | "rendered"
+  | "failed";
 
 export type TextOverlayPosition = "top" | "middle" | "bottom";
 
@@ -71,7 +76,9 @@ const editableVideoSources: EditableVideoSource[] = [
 const editableVideoStatuses: EditableVideoStatus[] = [
   "ready",
   "draft",
+  "rendering",
   "rendered",
+  "failed",
 ];
 export const textOverlayPositions: TextOverlayPosition[] = [
   "top",
@@ -286,7 +293,7 @@ export function getEditableVideoSourceLabel(source: EditableVideoSource) {
     hook: "Opening",
     demo: "Demo",
     draft: "Video",
-    final: "Edit export",
+    final: "Saved edit",
   };
 
   return labels[source];
@@ -294,9 +301,11 @@ export function getEditableVideoSourceLabel(source: EditableVideoSource) {
 
 export function getEditableVideoStatusLabel(status: EditableVideoStatus) {
   const labels: Record<EditableVideoStatus, string> = {
-    ready: "Ready",
+    ready: "Draft",
     draft: "Draft",
-    rendered: "Rendered",
+    rendering: "Saving",
+    rendered: "Saved",
+    failed: "Save failed",
   };
 
   return labels[status];

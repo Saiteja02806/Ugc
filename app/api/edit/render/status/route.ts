@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
 import {
+  getLatestEditableVideoRenderForOwner,
+  type RenderJobStatus,
+} from "@/lib/edit/render-storage";
+import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
 } from "@/lib/firebase/server-auth";
@@ -12,6 +16,7 @@ import {
 } from "@/lib/jobs/background-jobs";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type RenderRunOutput = {
   key?: unknown;
@@ -81,8 +86,62 @@ function getAwsRenderStatusResponse(job: BackgroundJobRecord) {
       output: getSafeOutput(job.output),
       error:
         job.status === "failed"
-          ? job.errorMessage ?? "Edited video render failed in AWS."
+          ? job.errorMessage ?? "Video save failed."
           : null,
+    },
+  });
+}
+
+function mapPersistedRenderStatus(status: RenderJobStatus) {
+  if (status === "queued") {
+    return "QUEUED";
+  }
+
+  if (status === "rendering") {
+    return "EXECUTING";
+  }
+
+  if (status === "completed") {
+    return "COMPLETED";
+  }
+
+  return "FAILED";
+}
+
+async function getLatestRenderStatus(sourceVideoId: string, userId: string) {
+  const render = await getLatestEditableVideoRenderForOwner({
+    sourceVideoId,
+    userId,
+  });
+
+  if (!render) {
+    return NextResponse.json(
+      { ok: false, error: "No save exists for this Edit project." },
+      { status: 404 },
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    run: {
+      error:
+        render.status === "failed"
+          ? render.error_message ?? "Video save failed."
+          : null,
+      id: render.render_id,
+      isTerminal: render.status === "completed" || render.status === "failed",
+      output:
+        render.status === "completed"
+          ? {
+              key: render.output_s3_key ?? null,
+              ok: true,
+              renderId: render.render_id,
+              sourceVideoId: render.source_video_id,
+              url: render.output_url ?? null,
+            }
+          : null,
+      status: mapPersistedRenderStatus(render.status),
+      taskIdentifier: "render_edit_video",
     },
   });
 }
@@ -104,7 +163,7 @@ async function getAwsRenderStatus(jobId: string, userId: string) {
     return NextResponse.json(
       {
         ok: false,
-        error: `AWS render status is not configured. Add ${missingRuntimeEnv.join(
+        error: `Video save status is not configured. Add ${missingRuntimeEnv.join(
           ", ",
         )}.`,
       },
@@ -118,7 +177,7 @@ async function getAwsRenderStatus(jobId: string, userId: string) {
     return NextResponse.json(
       {
         ok: false,
-        error: "AWS render job was not found.",
+        error: "Video save job was not found.",
       },
       { status: 404 },
     );
@@ -128,7 +187,7 @@ async function getAwsRenderStatus(jobId: string, userId: string) {
     return NextResponse.json(
       {
         ok: false,
-        error: "This worker job is not an edited video render.",
+        error: "This worker job is not a video save.",
       },
       { status: 400 },
     );
@@ -138,7 +197,7 @@ async function getAwsRenderStatus(jobId: string, userId: string) {
     return NextResponse.json(
       {
         ok: false,
-        error: "You do not have access to this render.",
+        error: "You do not have access to this save.",
       },
       { status: 403 },
     );
@@ -176,6 +235,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const jobId = url.searchParams.get("jobId")?.trim();
+  const sourceVideoId = url.searchParams.get("sourceVideoId")?.trim();
 
   if (jobId) {
     try {
@@ -186,7 +246,23 @@ export async function GET(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: "Could not retrieve AWS edited video render status.",
+          error: "Could not retrieve video save status.",
+        },
+        { status: 500 },
+      );
+    }
+  }
+
+  if (sourceVideoId) {
+    try {
+      return await getLatestRenderStatus(sourceVideoId, user.uid);
+    } catch (error) {
+      console.error("Failed to retrieve latest Edit project render status:", error);
+
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Could not retrieve the latest Edit project save status.",
         },
         { status: 500 },
       );
@@ -196,7 +272,7 @@ export async function GET(request: Request) {
   return NextResponse.json(
     {
       ok: false,
-      error: "Missing AWS render job id.",
+      error: "Missing save job id or Edit project source video id.",
     },
     { status: 400 },
   );

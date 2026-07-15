@@ -11,7 +11,10 @@ import {
 import { cn } from "@/lib/utils";
 
 export function VideoCard({ video }: { video: EditableVideo }) {
-  const statusLabel = getEditableVideoStatusLabel(video.status);
+  const statusLabel =
+    video.status === "draft" && video.renderedVideoUrl
+      ? "Changes not saved"
+      : getEditableVideoStatusLabel(video.status);
 
   return (
     <Link
@@ -45,11 +48,15 @@ export function VideoCard({ video }: { video: EditableVideo }) {
             <span
               className={cn(
                 "shrink-0 rounded-full px-2 py-1 text-[11px] font-bold",
-                video.status === "ready"
-                  ? "bg-success/10 text-[#087443]"
-                  : video.status === "rendered"
+                video.status === "failed"
+                  ? "bg-error/10 text-error"
+                  : video.status === "rendering"
                     ? "bg-primary/10 text-primary"
-                    : "bg-card-muted text-muted",
+                    : video.status === "ready"
+                      ? "bg-success/10 text-[#087443]"
+                      : video.status === "rendered"
+                        ? "bg-primary/10 text-primary"
+                        : "bg-card-muted text-muted",
               )}
             >
               {statusLabel}

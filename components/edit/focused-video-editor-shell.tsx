@@ -1,8 +1,8 @@
 "use client";
 
-import { AlertCircle, ArrowLeft, Download, Loader2, Save } from "lucide-react";
+import { AlertCircle, ArrowLeft, Loader2, Save } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   FocusedVideoEditor,
@@ -11,13 +11,9 @@ import {
 import { buttonClassName } from "@/components/ui/button";
 import type { EditableVideo } from "@/lib/edit/video-library";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import {
-  isEditableMediaAsset,
-  mediaAssetToEditableVideo,
-} from "@/lib/media/editable-video";
-import type { MediaAsset } from "@/lib/media/types";
 
 type RenderState = "idle" | "starting" | "rendering" | "rendered" | "failed";
+type SaveState = "idle" | "saving" | "saved" | "failed";
 
 type RenderStartResponse =
   | { jobId: string; ok: true; renderId: string; sourceVideoId: string }
@@ -40,33 +36,79 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [draft, setDraft] = useState<FocusedVideoEditorDraftState | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<"idle" | "saved" | "failed">("idle");
+  const [, setSaveState] = useState<SaveState>("idle");
+  const [lastRenderedDraftKey, setLastRenderedDraftKey] = useState<string | null>(
+    null,
+  );
   const [renderState, setRenderState] = useState<RenderState>("idle");
   const [renderMessage, setRenderMessage] = useState<string | null>(null);
+  const activeRenderDraftKeyRef = useRef<string | null>(null);
+  const currentDraftKeyRef = useRef<string | null>(null);
+  const lastSavedDraftKeyRef = useRef<string | null>(null);
+  const lastRenderedDraftKeyRef = useRef<string | null>(null);
 
   const loadVideo = useCallback(async () => {
     setIsLoading(true);
 
     try {
       const token = await requireToken();
-      const response = await fetch(`/api/media/${encodeURIComponent(videoId)}`, {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      let response = await fetch(
+        `/api/edit/videos/${encodeURIComponent(videoId)}`,
+        {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (response.status === 404) {
+        response = await fetch("/api/edit/videos", {
+          body: JSON.stringify({ sourceVideoId: videoId }),
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+        });
+      }
+
       const data = (await response.json()) as
-        | { asset: MediaAsset; ok: true }
+        | { ok: true; video: EditableVideo }
         | { error?: string; ok?: false };
 
       if (!response.ok || data.ok !== true) {
         throw new Error(getApiError(data, "Video not found."));
       }
 
-      if (!isEditableMediaAsset(data.asset)) {
-        throw new Error("Only Creative Assets videos can be opened in Edit.");
-      }
+      const initialDraft = getDraftForRender(data.video, null);
 
-      setVideo(mediaAssetToEditableVideo(data.asset));
+      const initialDraftKey = serializeDraft(initialDraft);
+      const initialRenderedDraftKey =
+        data.video.status === "rendered" ? initialDraftKey : null;
+      currentDraftKeyRef.current = initialDraftKey;
+      activeRenderDraftKeyRef.current =
+        data.video.status === "rendering" ? initialDraftKey : null;
+      lastSavedDraftKeyRef.current = initialDraftKey;
+      lastRenderedDraftKeyRef.current = initialRenderedDraftKey;
+      setLastRenderedDraftKey(initialRenderedDraftKey);
+      setDraft(initialDraft);
+      setVideo(data.video);
+      setSaveState("saved");
       setSaveMessage(null);
+
+      if (data.video.status === "rendering") {
+        setRenderState("rendering");
+        setRenderMessage("Saving continues in the background.");
+      } else if (data.video.status === "failed") {
+        setRenderState("failed");
+        setRenderMessage("The latest save failed. You can try again.");
+      } else if (data.video.status === "rendered") {
+        setRenderState("rendered");
+        setRenderMessage(null);
+      } else {
+        setRenderState("idle");
+        setRenderMessage(null);
+      }
     } catch (error) {
       setVideo(null);
       setSaveState("failed");
@@ -81,60 +123,157 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
     return () => window.clearTimeout(timer);
   }, [loadVideo]);
 
-  async function persistDraft(
-    currentVideo: EditableVideo,
-    currentDraft: FocusedVideoEditorDraftState,
-  ) {
-    const token = await requireToken();
-    const response = await fetch(`/api/media/${encodeURIComponent(currentVideo.id)}`, {
-      body: JSON.stringify({ draft: currentDraft }),
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      method: "PATCH",
-    });
-    const data = (await response.json()) as
-      | { asset: MediaAsset; ok: true }
-      | { error?: string; ok?: false };
+  const persistDraft = useCallback(
+    async (
+      currentVideo: EditableVideo,
+      currentDraft: FocusedVideoEditorDraftState,
+    ) => {
+      const token = await requireToken();
+      const response = await fetch(
+        `/api/edit/videos/${encodeURIComponent(currentVideo.id)}`,
+        {
+          body: JSON.stringify({ draft: currentDraft }),
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          method: "PATCH",
+        },
+      );
+      const data = (await response.json()) as
+        | { ok: true; video: EditableVideo }
+        | { error?: string; ok?: false };
 
-    if (!response.ok || data.ok !== true) {
-      throw new Error(getApiError(data, "Could not save this draft."));
+      if (!response.ok || data.ok !== true) {
+        throw new Error(getApiError(data, "Could not save these changes."));
+      }
+
+      setVideo(data.video);
+      return data.video;
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!video || !draft) {
+      return;
     }
 
-    const updatedVideo = mediaAssetToEditableVideo(data.asset);
-    setVideo(updatedVideo);
-    return updatedVideo;
-  }
+    const draftKey = serializeDraft(draft);
+    currentDraftKeyRef.current = draftKey;
 
-  async function handleSaveDraft() {
-    if (!video || !draft) return;
-
-    try {
-      await persistDraft(video, draft);
-      setSaveState("saved");
-      setSaveMessage("Draft saved to your account.");
-    } catch (error) {
-      setSaveState("failed");
-      setSaveMessage(getErrorMessage(error, "Could not save this draft."));
+    if (draftKey === lastSavedDraftKeyRef.current) {
+      return;
     }
-  }
+
+    setSaveState("idle");
+    setSaveMessage(null);
+
+    const isSavingVideo =
+      renderState === "starting" || renderState === "rendering";
+
+    if (draftKey !== lastRenderedDraftKeyRef.current && !isSavingVideo) {
+      setRenderState("idle");
+      setRenderMessage(null);
+    }
+
+    const timer = window.setTimeout(() => {
+      setSaveState("saving");
+
+      void persistDraft(video, draft)
+        .then(() => {
+          lastSavedDraftKeyRef.current = draftKey;
+          setSaveState("saved");
+          setSaveMessage(null);
+        })
+        .catch((error) => {
+          setSaveState("failed");
+          setSaveMessage(
+            getErrorMessage(error, "Could not save your editing changes."),
+          );
+        });
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [draft, persistDraft, renderState, video]);
+
+  useEffect(() => {
+    if (!video || video.status !== "rendering") {
+      return;
+    }
+
+    const controller = new AbortController();
+    const sourceVideoId = video.id;
+
+    void requireToken()
+      .then((idToken) =>
+        pollEditedVideoRender(sourceVideoId, idToken, controller.signal),
+      )
+      .then((output) => {
+        if (controller.signal.aborted || !output.url) {
+          return;
+        }
+
+        const completedDraftKey =
+          activeRenderDraftKeyRef.current ?? currentDraftKeyRef.current;
+        const isCurrentSave =
+          completedDraftKey !== null &&
+          completedDraftKey === currentDraftKeyRef.current;
+
+        lastRenderedDraftKeyRef.current = completedDraftKey;
+        setLastRenderedDraftKey(completedDraftKey);
+        activeRenderDraftKeyRef.current = null;
+
+        setVideo((current) =>
+          current
+            ? {
+                ...current,
+                renderedVideoUrl: output.url,
+                status: isCurrentSave ? "rendered" : "draft",
+              }
+            : current,
+        );
+        setRenderState("rendered");
+        setRenderMessage(
+          isCurrentSave ? "Saved video is ready." : "Previous save finished.",
+        );
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setVideo((current) =>
+          current ? { ...current, status: "failed" } : current,
+        );
+        activeRenderDraftKeyRef.current = null;
+        setRenderState("failed");
+        setRenderMessage(
+          getErrorMessage(error, "Could not resume this save."),
+        );
+      });
+
+    return () => controller.abort();
+  }, [video]);
 
   async function handleRenderVideo() {
     if (!video?.videoUrl) {
       setRenderState("failed");
-      setRenderMessage("A source video is required before rendering.");
+      setRenderMessage("A source video is required before saving.");
       return;
     }
 
     const draftForRender = getDraftForRender(video, draft);
+    const draftForRenderKey = serializeDraft(draftForRender);
+    activeRenderDraftKeyRef.current = draftForRenderKey;
     setRenderState("starting");
-    setRenderMessage("Preparing MP4 export…");
+    setRenderMessage("Saving video...");
 
     try {
       await persistDraft(video, draftForRender);
+      lastSavedDraftKeyRef.current = draftForRenderKey;
       setSaveState("saved");
-      setSaveMessage("Draft saved for render.");
+      setSaveMessage(null);
       const idToken = await requireToken();
       const response = await fetch("/api/edit/render", {
         body: JSON.stringify({
@@ -157,48 +296,66 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
       const data = (await response.json()) as RenderStartResponse;
 
       if (!response.ok || !data.ok) {
-        throw new Error(data.ok ? "Could not start render." : data.error);
+        throw new Error(data.ok ? "Could not start saving." : data.error);
       }
 
       setRenderState("rendering");
-      setRenderMessage("Exporting final MP4. This can take a minute.");
-      const output = await pollEditedVideoRender(data.jobId, idToken);
+      setRenderMessage("Saving video. This can take a minute.");
+      const output = await pollEditedVideoRender(video.id, idToken);
 
-      if (!output.url) throw new Error("Render finished without a video URL.");
+      if (!output.url) throw new Error("Save finished without a video URL.");
+
+      const isCurrentSave = currentDraftKeyRef.current === draftForRenderKey;
+      lastRenderedDraftKeyRef.current = draftForRenderKey;
+      setLastRenderedDraftKey(draftForRenderKey);
+      activeRenderDraftKeyRef.current = null;
 
       setVideo((current) =>
         current
-          ? { ...current, renderedVideoUrl: output.url, status: "rendered" }
+          ? {
+              ...current,
+              renderedVideoUrl: output.url,
+              status: isCurrentSave ? "rendered" : "draft",
+            }
           : current,
       );
       setRenderState("rendered");
-      setRenderMessage("MP4 export is ready and saved in Videos.");
+      setRenderMessage(
+        isCurrentSave ? "Saved video is ready." : "Previous save finished.",
+      );
     } catch (error) {
       console.error("Edited video render failed:", error);
+      activeRenderDraftKeyRef.current = null;
       setRenderState("failed");
-      setRenderMessage(getErrorMessage(error, "Edited video render failed."));
+      setRenderMessage(getErrorMessage(error, "Could not save this video."));
     }
   }
 
   const isRendering = renderState === "starting" || renderState === "rendering";
+  const currentDraftKey = draft ? serializeDraft(draft) : null;
+  const hasSavedVideoWithNewerChanges =
+    video?.status === "draft" && Boolean(video.renderedVideoUrl);
+  const isCurrentVersionSaved =
+    Boolean(video?.renderedVideoUrl) &&
+    renderState === "rendered" &&
+    currentDraftKey !== null &&
+    currentDraftKey === lastRenderedDraftKey;
 
   return (
     <section className="flex min-h-screen flex-1 flex-col bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
       <EditorTopBar
-        canSaveDraft={Boolean(video && draft)}
-        canRender={Boolean(video?.videoUrl) && !isRendering}
+        canSaveVideo={Boolean(video?.videoUrl) && !isRendering && !isCurrentVersionSaved}
+        isCurrentVersionSaved={isCurrentVersionSaved}
         renderState={renderState}
-        saveState={saveState}
         video={video}
         onRenderVideo={() => void handleRenderVideo()}
-        onSaveDraft={() => void handleSaveDraft()}
       />
 
       <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col pt-5">
         {saveMessage ? (
           <p
-            role={saveState === "failed" ? "alert" : "status"}
-            className="mb-4 w-fit rounded-control border border-border bg-card px-3 py-2 text-xs font-semibold text-muted"
+            role="alert"
+            className="mb-4 w-fit rounded-control border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold text-error"
           >
             {saveMessage}
           </p>
@@ -206,6 +363,7 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
 
         {renderMessage || video?.renderedVideoUrl ? (
           <RenderStatusNotice
+            hasSavedVideoWithNewerChanges={hasSavedVideoWithNewerChanges}
             renderedVideoUrl={video?.renderedVideoUrl ?? null}
             renderMessage={renderMessage}
             renderState={renderState}
@@ -227,20 +385,16 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
 }
 
 function EditorTopBar({
-  canSaveDraft,
-  canRender,
-  onSaveDraft,
+  canSaveVideo,
+  isCurrentVersionSaved,
   onRenderVideo,
   renderState,
-  saveState,
   video,
 }: {
-  canSaveDraft: boolean;
-  canRender: boolean;
-  onSaveDraft: () => void;
+  canSaveVideo: boolean;
+  isCurrentVersionSaved: boolean;
   onRenderVideo: () => void;
   renderState: RenderState;
-  saveState: "idle" | "saved" | "failed";
   video: EditableVideo | null;
 }) {
   return (
@@ -255,26 +409,37 @@ function EditorTopBar({
         </h1>
       </div>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={onSaveDraft} disabled={!canSaveDraft} className={buttonClassName({ variant: "secondary", className: "gap-2" })}>
-          <Save className="size-4" aria-hidden="true" />
-          {saveState === "saved" ? "Saved" : "Save draft"}
-        </button>
-        <button type="button" onClick={onRenderVideo} disabled={!canRender} className={buttonClassName({ variant: "primary", className: "gap-2" })}>
-          {renderState === "starting" || renderState === "rendering" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
-          {getRenderButtonLabel(renderState, video)}
+        <button type="button" onClick={onRenderVideo} disabled={!canSaveVideo} className={buttonClassName({ variant: "primary", className: "gap-2" })}>
+          {renderState === "starting" || renderState === "rendering" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
+          {getSaveButtonLabel(renderState, isCurrentVersionSaved)}
         </button>
       </div>
     </header>
   );
 }
 
-function RenderStatusNotice({ renderedVideoUrl, renderMessage, renderState }: { renderedVideoUrl: string | null; renderMessage: string | null; renderState: RenderState }) {
+function RenderStatusNotice({
+  hasSavedVideoWithNewerChanges,
+  renderedVideoUrl,
+  renderMessage,
+  renderState,
+}: {
+  hasSavedVideoWithNewerChanges: boolean;
+  renderedVideoUrl: string | null;
+  renderMessage: string | null;
+  renderState: RenderState;
+}) {
   const isFailed = renderState === "failed";
+  const message =
+    renderMessage ??
+    (hasSavedVideoWithNewerChanges
+      ? "Changes not saved."
+      : "Saved video is ready.");
   return (
     <div role={isFailed ? "alert" : "status"} className={isFailed ? "mb-4 rounded-card border border-error/20 bg-error/5 px-4 py-3 text-sm font-semibold text-error" : "mb-4 rounded-card border border-border bg-card px-4 py-3 text-sm font-semibold text-muted"}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span>{renderMessage ?? "MP4 export is ready."}</span>
-        {renderedVideoUrl ? <a href={renderedVideoUrl} target="_blank" rel="noreferrer" className={buttonClassName({ variant: "primary", className: "h-9 w-fit px-3 text-xs" })}>Open MP4</a> : null}
+        <span>{message}</span>
+        {renderedVideoUrl ? <a href={renderedVideoUrl} target="_blank" rel="noreferrer" className={buttonClassName({ variant: "primary", className: "h-9 w-fit px-3 text-xs" })}>Open video</a> : null}
       </div>
     </div>
   );
@@ -299,23 +464,46 @@ function getDraftForRender(video: EditableVideo, draft: FocusedVideoEditorDraftS
   return { textOverlays: [], trimEndSeconds: null, trimStartSeconds: 0 };
 }
 
-function getRenderButtonLabel(renderState: RenderState, video: EditableVideo | null) {
-  if (renderState === "starting") return "Preparing export…";
-  if (renderState === "rendering") return "Exporting…";
-  if (renderState === "rendered" || video?.renderedVideoUrl) return "Export again";
-  return "Export MP4";
+function serializeDraft(draft: FocusedVideoEditorDraftState) {
+  return JSON.stringify(draft);
 }
 
-async function pollEditedVideoRender(jobId: string, idToken: string) {
-  for (let attempt = 0; attempt < 120; attempt += 1) {
-    await sleep(attempt === 0 ? 900 : 2_500);
-    const response = await fetch(`/api/edit/render/status?jobId=${encodeURIComponent(jobId)}`, { cache: "no-store", headers: { Authorization: `Bearer ${idToken}` } });
-    const data = (await response.json()) as RenderStatusResponse;
-    if (!response.ok || !data.ok) throw new Error(data.ok ? "Render status unavailable." : data.error);
-    if (data.run.status === "COMPLETED" && data.run.output?.url) return data.run.output;
-    if (data.run.isTerminal) throw new Error(data.run.error ?? "Edited video render failed.");
+function getSaveButtonLabel(
+  renderState: RenderState,
+  isCurrentVersionSaved: boolean,
+) {
+  if (renderState === "starting" || renderState === "rendering") {
+    return "Saving...";
   }
-  throw new Error("Edited video render timed out.");
+
+  if (isCurrentVersionSaved) {
+    return "Saved";
+  }
+
+  return "Save";
+}
+
+async function pollEditedVideoRender(
+  sourceVideoId: string,
+  idToken: string,
+  signal?: AbortSignal,
+) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    await sleep(attempt === 0 ? 900 : 2_500, signal);
+    const response = await fetch(
+      `/api/edit/render/status?sourceVideoId=${encodeURIComponent(sourceVideoId)}`,
+      {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${idToken}` },
+        signal,
+      },
+    );
+    const data = (await response.json()) as RenderStatusResponse;
+    if (!response.ok || !data.ok) throw new Error(data.ok ? "Save status unavailable." : data.error);
+    if (data.run.status === "COMPLETED" && data.run.output?.url) return data.run.output;
+    if (data.run.isTerminal) throw new Error(data.run.error ?? "Video save failed.");
+  }
+  throw new Error("Video save timed out.");
 }
 
 async function requireToken() {
@@ -334,6 +522,23 @@ function getApiError(value: unknown, fallback: string) {
     : fallback;
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
+function sleep(ms: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      signal?.removeEventListener("abort", handleAbort);
+      resolve();
+    }, ms);
+
+    function handleAbort() {
+      window.clearTimeout(timer);
+      reject(new DOMException("Save polling was cancelled.", "AbortError"));
+    }
+
+    if (signal?.aborted) {
+      handleAbort();
+      return;
+    }
+
+    signal?.addEventListener("abort", handleAbort, { once: true });
+  });
 }

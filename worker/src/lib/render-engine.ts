@@ -5,14 +5,24 @@ import { join } from "node:path";
 
 import { uploadBufferToS3 } from "./s3.js";
 import { downloadVideoToBuffer } from "./download-video.js";
+import {
+  EDIT_OVERLAY_FFMPEG_SHADOW_COLOR,
+  EDIT_OVERLAY_OUTPUT_DIMENSIONS,
+  EDIT_OVERLAY_SHADOW_OFFSET_PX,
+  EDIT_OVERLAY_VERTICAL_INSET_PERCENT,
+  getEditOverlayPaddingForFontSize,
+  getEditOverlayRenderMetrics,
+} from "./edit-overlay-render-spec.js";
 import { logger } from "../logger.js";
 
 export type RenderRatio = "9:16" | "1:1" | "4:5" | "16:9";
 export type TextOverlayPosition = "top" | "middle" | "bottom";
 export type TextOverlayStyle = "clean" | "minimal" | "bubble";
 type PreparedTextOverlay = {
+  backgroundOpacity: number | null;
   boxBorderWidth: number;
   fontSize: number;
+  lineSpacing: number;
   position: TextOverlayPosition;
   style: TextOverlayStyle;
   text: string;
@@ -73,13 +83,7 @@ export type RenderScheduleCombinationOutput = {
 
 const OUTPUT_CONTENT_TYPE = "video/mp4";
 const MAX_FFMPEG_LOG_LENGTH = 8_000;
-const renderDimensions: Record<RenderRatio, { height: number; width: number }> =
-  {
-    "9:16": { width: 1080, height: 1920 },
-    "1:1": { width: 1080, height: 1080 },
-    "4:5": { width: 1080, height: 1350 },
-    "16:9": { width: 1920, height: 1080 },
-  };
+const renderDimensions = EDIT_OVERLAY_OUTPUT_DIMENSIONS;
 
 export async function renderEditedVideoToS3(
   payload: RenderEditVideoPayload,
@@ -508,16 +512,10 @@ function buildRatioScaleCropFilter(ratio: RenderRatio) {
 }
 
 function buildDrawTextFilter(preparedTextOverlay: PreparedTextOverlay) {
-  const lineSpacing = preparedTextOverlay.style === "bubble" ? 10 : 8;
-  const boxOpacity =
-    preparedTextOverlay.style === "bubble"
-      ? "0.65"
-      : preparedTextOverlay.style === "minimal"
-        ? "0.35"
-        : null;
-  const boxOptions = boxOpacity
-    ? `:box=1:boxcolor=black@${boxOpacity}:boxborderw=${preparedTextOverlay.boxBorderWidth}`
-    : "";
+  const boxOptions =
+    preparedTextOverlay.backgroundOpacity !== null
+      ? `:box=1:boxcolor=black@${preparedTextOverlay.backgroundOpacity}:boxborderw=${preparedTextOverlay.boxBorderWidth}`
+      : "";
 
   return [
     "drawtext=textfile='",
@@ -525,7 +523,7 @@ function buildDrawTextFilter(preparedTextOverlay: PreparedTextOverlay) {
     "'",
     ":fontcolor=white",
     `:fontsize=${preparedTextOverlay.fontSize}`,
-    `:line_spacing=${lineSpacing}`,
+    `:line_spacing=${preparedTextOverlay.lineSpacing}`,
     ":fontfile=",
     escapeDrawText(getFontPath()),
     ":x=(w-text_w)/2",
@@ -534,9 +532,9 @@ function buildDrawTextFilter(preparedTextOverlay: PreparedTextOverlay) {
       preparedTextOverlay.boxBorderWidth,
     )}`,
     ":fix_bounds=1",
-    ":shadowcolor=black@0.45",
-    ":shadowx=2",
-    ":shadowy=2",
+    `:shadowcolor=${escapeDrawText(EDIT_OVERLAY_FFMPEG_SHADOW_COLOR)}`,
+    `:shadowx=${EDIT_OVERLAY_SHADOW_OFFSET_PX}`,
+    `:shadowy=${EDIT_OVERLAY_SHADOW_OFFSET_PX}`,
     boxOptions,
   ].join("");
 }
@@ -572,12 +570,13 @@ function buildTextOverlayLayout(
   ratio: RenderRatio,
 ) {
   const { height, width } = renderDimensions[ratio];
-  const baseFontSize = style === "bubble" ? 62 : style === "minimal" ? 64 : 68;
-  const minFontSize = style === "bubble" ? 38 : style === "minimal" ? 40 : 42;
-  const maxTextWidth = Math.round(width * 0.84);
-  const maxTextHeight = Math.round(height * (ratio === "16:9" ? 0.42 : 0.34));
-  const lineSpacing = style === "bubble" ? 10 : 8;
-  const averageCharacterWidthFactor = style === "bubble" ? 0.58 : 0.55;
+  const metrics = getEditOverlayRenderMetrics(style, ratio);
+  const baseFontSize = metrics.fontSize;
+  const minFontSize = metrics.minFontSize;
+  const maxTextWidth = Math.round(width * (metrics.maxTextWidthPercent / 100));
+  const maxTextHeight = Math.round(
+    height * (metrics.maxTextHeightPercent / 100),
+  );
 
   for (
     let fontSize = baseFontSize;
@@ -585,32 +584,37 @@ function buildTextOverlayLayout(
     fontSize -= 2
   ) {
     const maxCharactersPerLine = getMaxCharactersPerLine({
-      averageCharacterWidthFactor,
+      averageCharacterWidthFactor: metrics.averageCharacterWidthFactor,
       fontSize,
       maxTextWidth,
     });
     const lines = wrapText(text, maxCharactersPerLine);
     const estimatedTextHeight =
-      lines.length * fontSize + Math.max(0, lines.length - 1) * lineSpacing;
+      lines.length * fontSize +
+      Math.max(0, lines.length - 1) * metrics.lineSpacing;
 
     if (estimatedTextHeight <= maxTextHeight) {
       return {
-        boxBorderWidth: getBoxBorderWidth(fontSize, style),
+        backgroundOpacity: metrics.backgroundOpacity,
+        boxBorderWidth: getEditOverlayPaddingForFontSize(style, fontSize),
         fontSize,
+        lineSpacing: metrics.lineSpacing,
         text: lines.join("\n"),
       };
     }
   }
 
   const maxCharactersPerLine = getMaxCharactersPerLine({
-    averageCharacterWidthFactor,
+    averageCharacterWidthFactor: metrics.averageCharacterWidthFactor,
     fontSize: minFontSize,
     maxTextWidth,
   });
 
   return {
-    boxBorderWidth: getBoxBorderWidth(minFontSize, style),
+    backgroundOpacity: metrics.backgroundOpacity,
+    boxBorderWidth: getEditOverlayPaddingForFontSize(style, minFontSize),
     fontSize: minFontSize,
+    lineSpacing: metrics.lineSpacing,
     text: wrapText(text, maxCharactersPerLine).join("\n"),
   };
 }
@@ -692,24 +696,16 @@ function splitLongWord(word: string, maxCharactersPerLine: number) {
   return chunks;
 }
 
-function getBoxBorderWidth(fontSize: number, style: TextOverlayStyle) {
-  if (style === "clean") {
-    return 0;
-  }
-
-  return style === "bubble"
-    ? Math.max(18, Math.round(fontSize * 0.45))
-    : Math.max(12, Math.round(fontSize * 0.3));
-}
-
 function getDrawTextYExpression(
   position: TextOverlayPosition,
   boxBorderWidth: number,
 ) {
+  const verticalInset = `h*${EDIT_OVERLAY_VERTICAL_INSET_PERCENT / 100}`;
+
   if (position === "top") {
     return boxBorderWidth > 0
-      ? `h*0.12+${boxBorderWidth}`
-      : "h*0.12";
+      ? `${verticalInset}+${boxBorderWidth}`
+      : verticalInset;
   }
 
   if (position === "middle") {
@@ -717,8 +713,8 @@ function getDrawTextYExpression(
   }
 
   return boxBorderWidth > 0
-    ? `h-text_h-h*0.12-${boxBorderWidth}`
-    : "h-text_h-h*0.12";
+    ? `h-text_h-${verticalInset}-${boxBorderWidth}`
+    : `h-text_h-${verticalInset}`;
 }
 
 function getFontPath() {

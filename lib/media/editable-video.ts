@@ -10,9 +10,9 @@ import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
 export const editableMediaSourceTypes: MediaSourceType[] = [
   "upload",
   "influencer_upload",
+  "demo_upload",
   "catalog_influencer",
   "generated_video",
-  "edit_export",
 ];
 
 const editableMediaSourceTypeSet = new Set<MediaSourceType>(
@@ -36,9 +36,9 @@ export function mediaAssetToEditableVideo(asset: MediaAsset): EditableVideo {
     id: asset.id,
     projectId: asset.projectId,
     ratio: asset.ratio === "other" ? "9:16" : asset.ratio,
-    renderedVideoUrl: asset.sourceType === "edit_export" ? asset.url : null,
-    source: getSource(asset),
-    status: asset.sourceType === "edit_export" ? "rendered" : draft ? "draft" : "ready",
+    renderedVideoUrl: null,
+    source: getEditableVideoSource(asset),
+    status: draft ? "draft" : "ready",
     thumbnailUrl: asset.thumbnailUrl,
     title: asset.title,
     videoUrl: asset.url,
@@ -60,9 +60,9 @@ function getDraft(value: unknown): EditableVideoDraft | null {
   };
 }
 
-function getSource(asset: MediaAsset): EditableVideoSource {
-  if (asset.sourceType === "edit_export") {
-    return "final";
+export function getEditableVideoSource(asset: MediaAsset): EditableVideoSource {
+  if (asset.sourceType === "demo_upload") {
+    return "demo";
   }
 
   if (

@@ -1,5 +1,4 @@
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
-import { normalizeEditableVideoDraftInput } from "@/lib/edit/video-library";
 import {
   getMediaAssetForOwner,
   serializeMediaAsset,
@@ -8,14 +7,6 @@ import {
 } from "@/lib/media/media-storage";
 
 export const runtime = "nodejs";
-
-const editableMediaSourceTypes = new Set([
-  "upload",
-  "influencer_upload",
-  "catalog_influencer",
-  "generated_video",
-  "edit_export",
-]);
 
 type UpdateAssetBody = {
   draft?: unknown;
@@ -69,47 +60,22 @@ async function handleRequest(
 
     const body = (await request.json().catch(() => null)) as UpdateAssetBody | null;
     const title = typeof body?.title === "string" ? body.title.trim().slice(0, 140) : undefined;
-    let metadata: Parameters<typeof updateMediaAssetForOwner>[0]["metadata"];
-
     if (body && "draft" in body) {
-      if (asset.collection === "image") {
-        return Response.json(
-          { ok: false, error: "Only videos can store editing changes." },
-          { status: 400 },
-        );
-      }
-
-      if (!editableMediaSourceTypes.has(asset.source_type)) {
-        return Response.json(
-          {
-            ok: false,
-            error: "Only Creative Assets videos can store editing changes.",
-          },
-          { status: 400 },
-        );
-      }
-
-      const draft = normalizeEditableVideoDraftInput(body.draft);
-
-      if (!draft) {
-        return Response.json({ ok: false, error: "The edit draft is invalid." }, { status: 400 });
-      }
-
-      metadata = {
-        draft: {
-          ...draft,
-          updatedAt: new Date().toISOString(),
+      return Response.json(
+        {
+          ok: false,
+          error: "Editing changes must be saved to an Edit project, not a Creative Asset.",
         },
-      };
+        { status: 400 },
+      );
     }
 
-    if (!title && !metadata) {
+    if (!title) {
       return Response.json({ ok: false, error: "No media changes were provided." }, { status: 400 });
     }
 
     const updated = await updateMediaAssetForOwner({
       assetId,
-      metadata,
       title,
       userId: user.uid,
     });

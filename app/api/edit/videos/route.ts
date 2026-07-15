@@ -1,0 +1,124 @@
+import {
+  DEFAULT_EDIT_PROJECT_ID,
+  ensureEditableVideo,
+  listEditableVideosForOwner,
+} from "@/lib/edit/render-storage";
+import {
+  FirebaseAuthRequestError,
+  requireFirebaseUser,
+} from "@/lib/firebase/server-auth";
+import {
+  getMediaAssetForOwner,
+  serializeMediaAsset,
+} from "@/lib/media/media-storage";
+import {
+  getEditableVideoSource,
+  isEditableMediaAsset,
+} from "@/lib/media/editable-video";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+type OpenEditableVideoBody = {
+  sourceVideoId?: unknown;
+};
+
+export async function GET(request: Request) {
+  try {
+    const user = await requireFirebaseUser(request);
+    const videos = await listEditableVideosForOwner(user.uid);
+
+    return Response.json(
+      { ok: true, videos },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (error) {
+    return editVideoErrorResponse(error, "Could not load your Edit projects.");
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const user = await requireFirebaseUser(request);
+    const body = (await request.json().catch(() => null)) as
+      | OpenEditableVideoBody
+      | null;
+    const sourceVideoId =
+      typeof body?.sourceVideoId === "string" ? body.sourceVideoId.trim() : "";
+
+    if (!sourceVideoId) {
+      return Response.json(
+        { ok: false, error: "Choose a Creative Asset before opening Edit." },
+        { status: 400 },
+      );
+    }
+
+    const sourceRow = await getMediaAssetForOwner({
+      assetId: sourceVideoId,
+      userId: user.uid,
+    });
+
+    if (!sourceRow) {
+      return Response.json(
+        { ok: false, error: "The source Creative Asset was not found." },
+        { status: 404 },
+      );
+    }
+
+    const sourceAsset = serializeMediaAsset(sourceRow);
+
+    if (!isEditableMediaAsset(sourceAsset)) {
+      return Response.json(
+        {
+          ok: false,
+          error: "Only raw Creative Assets videos can be opened in Edit.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (sourceAsset.status !== "ready") {
+      return Response.json(
+        { ok: false, error: "This source video is not ready for editing." },
+        { status: 409 },
+      );
+    }
+
+    const video = await ensureEditableVideo({
+      draft: sourceAsset.metadata.draft,
+      durationSeconds: sourceAsset.durationSeconds,
+      projectId: sourceAsset.projectId ?? DEFAULT_EDIT_PROJECT_ID,
+      ratio: sourceAsset.ratio === "other" ? "9:16" : sourceAsset.ratio,
+      source: getEditableVideoSource(sourceAsset),
+      sourceVideoId: sourceAsset.id,
+      sourceVideoUrl: sourceAsset.url,
+      thumbnailUrl: sourceAsset.thumbnailUrl,
+      title: sourceAsset.title,
+      userId: user.uid,
+    });
+
+    return Response.json(
+      { ok: true, video },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (error) {
+    return editVideoErrorResponse(error, "Could not open this video in Edit.");
+  }
+}
+
+function editVideoErrorResponse(error: unknown, fallback: string) {
+  const status = error instanceof FirebaseAuthRequestError ? error.status : 500;
+
+  if (status >= 500) {
+    console.error(fallback, error);
+  }
+
+  return Response.json(
+    {
+      ok: false,
+      error:
+        error instanceof FirebaseAuthRequestError ? error.message : fallback,
+    },
+    { status },
+  );
+}

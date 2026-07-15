@@ -1,7 +1,14 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  normalizeEditableVideoDraftInput,
+  type EditableVideo,
+  type EditableVideoDraftInput,
+} from "@/lib/edit/video-library";
+
 const EDITABLE_VIDEOS_TABLE = "editable_videos";
 const VIDEO_RENDER_JOBS_TABLE = "video_render_jobs";
+export const DEFAULT_EDIT_PROJECT_ID = "test-project-001";
 
 type Json =
   | boolean
@@ -84,6 +91,9 @@ type RenderDatabase = {
   };
 };
 
+type EditableVideoRow =
+  RenderDatabase["public"]["Tables"]["editable_videos"]["Row"];
+
 type RenderTextOverlayInput = {
   id: string;
   position: string;
@@ -117,6 +127,19 @@ export type CompleteRenderJobInput = {
   renderId: string;
   sourceVideoId: string;
   url: string;
+  userId: string;
+};
+
+export type EnsureEditableVideoInput = {
+  draft?: unknown;
+  durationSeconds?: number | null;
+  projectId: string;
+  ratio: PersistedVideoRatio;
+  source: PersistedEditableVideoSource;
+  sourceVideoId: string;
+  sourceVideoUrl: string;
+  thumbnailUrl?: string | null;
+  title: string;
   userId: string;
 };
 
@@ -174,6 +197,138 @@ export function getMissingEditRenderPersistenceEnvVars() {
 
 export function isEditRenderPersistenceConfigured() {
   return getMissingEditRenderPersistenceEnvVars().length === 0;
+}
+
+export async function listEditableVideosForOwner(userId: string) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(EDITABLE_VIDEOS_TABLE)
+    .select("*")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Could not load editable videos: ${error.message}`);
+  }
+
+  return data.map(serializeEditableVideo);
+}
+
+export async function getEditableVideoForOwner(params: {
+  sourceVideoId: string;
+  userId: string;
+}) {
+  const row = await getEditableVideoRowForOwner(params);
+
+  return row ? serializeEditableVideo(row) : null;
+}
+
+export async function getLatestEditableVideoRenderForOwner(params: {
+  sourceVideoId: string;
+  userId: string;
+}) {
+  const editableVideo = await getEditableVideoRowForOwner(params);
+
+  if (!editableVideo?.latest_render_id) {
+    return null;
+  }
+
+  const { data, error } = await getSupabaseServerClient()
+    .from(VIDEO_RENDER_JOBS_TABLE)
+    .select("*")
+    .eq("render_id", editableVideo.latest_render_id)
+    .eq("user_id", params.userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load latest Edit render: ${error.message}`);
+  }
+
+  return data;
+}
+
+export async function ensureEditableVideo(
+  input: EnsureEditableVideoInput,
+) {
+  const existing = await getEditableVideoRowForOwner(input);
+
+  if (existing) {
+    return serializeEditableVideo(existing);
+  }
+
+  const now = new Date().toISOString();
+  const draft = normalizeEditableVideoDraftInput(input.draft);
+  const editableVideo: EditableVideoInsert = {
+    draft_json: draft ? toJson(draft) : null,
+    duration_seconds: input.durationSeconds ?? null,
+    latest_render_id: null,
+    project_id: input.projectId,
+    ratio: input.ratio,
+    rendered_video_url: null,
+    source: input.source,
+    source_video_id: input.sourceVideoId,
+    source_video_url: input.sourceVideoUrl,
+    status: draft ? "draft" : "ready",
+    thumbnail_url: input.thumbnailUrl ?? null,
+    title: input.title,
+    updated_at: now,
+    user_id: input.userId,
+  };
+  const { data, error } = await getSupabaseServerClient()
+    .from(EDITABLE_VIDEOS_TABLE)
+    .upsert(editableVideo, {
+      ignoreDuplicates: true,
+      onConflict: "user_id,project_id,source_video_id",
+    })
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not create editable video: ${error.message}`);
+  }
+
+  const row = data ?? (await getEditableVideoRowForOwner(input));
+
+  if (!row) {
+    throw new Error("Editable video was not available after creation.");
+  }
+
+  return serializeEditableVideo(row);
+}
+
+export async function saveEditableVideoDraftForOwner(params: {
+  draft: EditableVideoDraftInput;
+  sourceVideoId: string;
+  userId: string;
+}) {
+  const current = await getEditableVideoRowForOwner(params);
+
+  if (!current) {
+    return null;
+  }
+
+  const draft = normalizeEditableVideoDraftInput(params.draft);
+
+  if (!draft) {
+    throw new Error("The edit draft is invalid.");
+  }
+
+  const { data, error } = await getSupabaseServerClient()
+    .from(EDITABLE_VIDEOS_TABLE)
+    .update({
+      draft_json: toJson(draft),
+      status: current.status === "rendering" ? "rendering" : "draft",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", current.id)
+    .eq("user_id", params.userId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(`Could not save editable video draft: ${error.message}`);
+  }
+
+  return serializeEditableVideo(data);
 }
 
 export async function createQueuedRenderJob(input: CreateQueuedRenderJobInput) {
@@ -248,7 +403,7 @@ export async function markRenderJobRendering(renderId: string) {
 export async function markRenderJobCompleted(input: CompleteRenderJobInput) {
   const now = new Date().toISOString();
   const client = getSupabaseServerClient();
-  const { error: renderJobError } = await client
+  const { data: completedRenderJob, error: renderJobError } = await client
     .from(VIDEO_RENDER_JOBS_TABLE)
     .update({
       completed_at: now,
@@ -258,18 +413,27 @@ export async function markRenderJobCompleted(input: CompleteRenderJobInput) {
       status: "completed",
       updated_at: now,
     })
-    .eq("render_id", input.renderId);
+    .eq("render_id", input.renderId)
+    .select("draft_json")
+    .maybeSingle();
 
   if (renderJobError) {
     throw new Error(`Could not mark render as completed: ${renderJobError.message}`);
   }
 
+  const current = await getEditableVideoRowForOwner({
+    sourceVideoId: input.sourceVideoId,
+    userId: input.userId,
+  });
+  const draftIsCurrent =
+    current?.latest_render_id === input.renderId &&
+    areJsonValuesEqual(current.draft_json, completedRenderJob?.draft_json);
   const { error: editableVideoError } = await client
     .from(EDITABLE_VIDEOS_TABLE)
     .update({
       rendered_video_url: input.url,
-      status: "rendered",
-      updated_at: now,
+      status: draftIsCurrent ? "rendered" : "draft",
+      ...(draftIsCurrent ? { updated_at: now } : {}),
     })
     .eq("user_id", input.userId)
     .eq("project_id", input.projectId)
@@ -292,7 +456,7 @@ export async function markRenderJobFailed(params: {
 }) {
   const now = new Date().toISOString();
   const client = getSupabaseServerClient();
-  const { error: renderJobError } = await client
+  const { data: failedRenderJob, error: renderJobError } = await client
     .from(VIDEO_RENDER_JOBS_TABLE)
     .update({
       completed_at: now,
@@ -300,17 +464,23 @@ export async function markRenderJobFailed(params: {
       status: "failed",
       updated_at: now,
     })
-    .eq("render_id", params.renderId);
+    .eq("render_id", params.renderId)
+    .select("draft_json")
+    .maybeSingle();
 
   if (renderJobError) {
     throw new Error(`Could not mark render as failed: ${renderJobError.message}`);
   }
 
+  const current = await getEditableVideoRowForOwner(params);
+  const draftIsCurrent =
+    current?.latest_render_id === params.renderId &&
+    areJsonValuesEqual(current.draft_json, failedRenderJob?.draft_json);
   const { error: editableVideoError } = await client
     .from(EDITABLE_VIDEOS_TABLE)
     .update({
-      status: "failed",
-      updated_at: now,
+      status: draftIsCurrent ? "failed" : "draft",
+      ...(draftIsCurrent ? { updated_at: now } : {}),
     })
     .eq("user_id", params.userId)
     .eq("project_id", params.projectId)
@@ -322,6 +492,75 @@ export async function markRenderJobFailed(params: {
       `Could not mark editable video render as failed: ${editableVideoError.message}`,
     );
   }
+}
+
+async function getEditableVideoRowForOwner(params: {
+  sourceVideoId: string;
+  userId: string;
+}) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(EDITABLE_VIDEOS_TABLE)
+    .select("*")
+    .eq("user_id", params.userId)
+    .eq("source_video_id", params.sourceVideoId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load editable video: ${error.message}`);
+  }
+
+  return data;
+}
+
+function serializeEditableVideo(row: EditableVideoRow): EditableVideo {
+  const draft = normalizeEditableVideoDraftInput(row.draft_json);
+
+  return {
+    createdAt: row.created_at,
+    draft: draft
+      ? {
+          ...draft,
+          updatedAt: row.updated_at,
+        }
+      : null,
+    durationSeconds: row.duration_seconds ?? null,
+    id: row.source_video_id,
+    projectId: row.project_id,
+    ratio: row.ratio,
+    renderedVideoUrl: row.rendered_video_url ?? null,
+    source: row.source,
+    status: row.status,
+    thumbnailUrl: row.thumbnail_url ?? null,
+    title: row.title,
+    videoUrl: row.source_video_url ?? null,
+  };
+}
+
+function areJsonValuesEqual(first: Json | undefined, second: Json | undefined) {
+  return stableJsonString(first) === stableJsonString(second);
+}
+
+function stableJsonString(value: Json | undefined) {
+  return JSON.stringify(normalizeJsonValue(value));
+}
+
+function normalizeJsonValue(value: Json | undefined): unknown {
+  if (Array.isArray(value)) {
+    return value.map(normalizeJsonValue);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter((entry): entry is [string, Json] => entry[1] !== undefined)
+        .sort(([firstKey], [secondKey]) => firstKey.localeCompare(secondKey))
+        .map(([key, nestedValue]) => [key, normalizeJsonValue(nestedValue)]),
+    );
+  }
+
+  return value ?? null;
 }
 
 function toJson(value: RenderDraftInput): Json {

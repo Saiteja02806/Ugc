@@ -8,21 +8,17 @@ import { VideoLibraryGrid } from "@/components/edit/video-library-grid";
 import { buttonClassName } from "@/components/ui/button";
 import type { EditableVideo } from "@/lib/edit/video-library";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import {
-  editableMediaSourceTypes,
-  isEditableMediaAsset,
-  mediaAssetToEditableVideo,
-} from "@/lib/media/editable-video";
-import type { MediaAsset } from "@/lib/media/types";
 
 export function EditLibraryWorkspace() {
   const [editableVideos, setEditableVideos] = useState<EditableVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const loadVideos = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage(null);
+  const loadVideos = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setLoading(true);
+      setErrorMessage(null);
+    }
 
     try {
       const token = await getCurrentUserIdToken();
@@ -31,38 +27,69 @@ export function EditLibraryWorkspace() {
         throw new Error("Sign in to open your edit library.");
       }
 
-      const params = new URLSearchParams({
-        sourceTypes: editableMediaSourceTypes.join(","),
-      });
-      const response = await fetch(`/api/media?${params.toString()}`, {
+      const response = await fetch("/api/edit/videos", {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = (await response.json()) as
-        | { assets: MediaAsset[]; ok: true }
+        | { ok: true; videos: EditableVideo[] }
         | { error?: string; ok?: false };
 
       if (!response.ok || data.ok !== true) {
         throw new Error(getApiError(data, "Could not load your edit library."));
       }
 
-      setEditableVideos(
-        data.assets
-          .filter(isEditableMediaAsset)
-          .map(mediaAssetToEditableVideo),
-      );
+      setEditableVideos(data.videos);
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Could not load your edit library.",
-      );
+      if (!options?.silent) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Could not load your edit library.",
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadVideos(), 0);
     return () => window.clearTimeout(timer);
+  }, [loadVideos]);
+
+  useEffect(() => {
+    const hasSavingVideos = editableVideos.some(
+      (video) => video.status === "rendering",
+    );
+
+    if (!hasSavingVideos) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void loadVideos({ silent: true });
+    }, 4_000);
+
+    return () => window.clearInterval(timer);
+  }, [editableVideos, loadVideos]);
+
+  useEffect(() => {
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") {
+        void loadVideos({ silent: true });
+      }
+    }
+
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, [loadVideos]);
 
   return (
@@ -73,7 +100,7 @@ export function EditLibraryWorkspace() {
             Edit
           </h1>
           <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-            Trim, add text, and export videos from Creative Assets.
+            Trim, add text, and save videos from Creative Assets.
           </p>
         </div>
 

@@ -12,15 +12,10 @@ import {
   markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
 import {
-  getLatestReadyMediaAssetForParent,
   getMediaAssetForOwner,
   getMissingMediaStorageEnvVars,
   type MediaAssetRow,
 } from "@/lib/media/media-storage";
-import {
-  getDemoVideo,
-  isDemoVideoStorageConfigured,
-} from "@/lib/demo/demo-storage";
 import type { MediaRatio } from "@/lib/media/types";
 import {
   FirebaseAuthRequestError,
@@ -31,6 +26,11 @@ import {
   getScheduledPostForUser,
   updateScheduledPostRenderState,
 } from "@/lib/scheduling/db";
+import {
+  resolveDemoRenderAsset,
+  resolveOpeningRenderAsset,
+  type RenderableScheduleAsset,
+} from "@/lib/scheduling/render-asset-resolution";
 import { isTrustedStorageUrl } from "@/lib/storage/s3";
 
 export const runtime = "nodejs";
@@ -378,160 +378,6 @@ function isDemoAsset(asset: MediaAssetRow) {
   );
 }
 
-async function resolveOpeningRenderAsset(params: {
-  asset: MediaAssetRow;
-  userId: string;
-}): Promise<RenderAssetResolution> {
-  if (params.asset.source_type === "edit_export") {
-    return { asset: params.asset, ok: true };
-  }
-
-  const latestExport = await getLatestReadyMediaAssetForParent({
-    parentAssetId: params.asset.id,
-    sourceType: "edit_export",
-    userId: params.userId,
-  });
-
-  if (latestExport && isFreshForAssetDraft(params.asset, latestExport)) {
-    return { asset: latestExport, ok: true };
-  }
-
-  if (hasMeaningfulDraftEdits(params.asset.metadata)) {
-    return {
-      ok: false,
-      message:
-        "Export the selected opening video from Edit before scheduling so saved text and trim edits are included.",
-    };
-  }
-
-  return { asset: params.asset, ok: true };
-}
-
-async function resolveDemoRenderAsset(params: {
-  asset: MediaAssetRow;
-  projectId: string;
-  userId: string;
-}): Promise<RenderAssetResolution> {
-  const latestExport = await getLatestReadyMediaAssetForParent({
-    parentAssetId: params.asset.id,
-    sourceType: "edit_export",
-    userId: params.userId,
-  });
-  const demo = await getDemoForAsset(params);
-
-  if (latestExport && (!demo || isFreshForDemoDraft(demo, latestExport))) {
-    return { asset: latestExport, ok: true };
-  }
-
-  if (demo && hasMeaningfulDraftEdits(demo.draft_json)) {
-    return {
-      ok: false,
-      message:
-        "Export the selected demo from Demos before scheduling so saved text and trim edits are included.",
-    };
-  }
-
-  return { asset: params.asset, ok: true };
-}
-
-type RenderAssetResolution =
-  | {
-      asset: MediaAssetRow;
-      ok: true;
-    }
-  | {
-      message: string;
-      ok: false;
-    };
-
-async function getDemoForAsset(params: {
-  asset: MediaAssetRow;
-  projectId: string;
-  userId: string;
-}) {
-  if (!isDemoVideoStorageConfigured()) {
-    return null;
-  }
-
-  const demoId = getStringFromValue(params.asset.source_record_id) ??
-    getStringFromValue(getObjectValue(params.asset.metadata, "demoId"));
-
-  if (!demoId) {
-    return null;
-  }
-
-  try {
-    return await getDemoVideo({
-      demoId,
-      projectId: params.asset.project_id ?? params.projectId,
-      userId: params.userId,
-    });
-  } catch (error) {
-    console.error("Could not load demo draft before schedule render:", error);
-    return null;
-  }
-}
-
-function isFreshForAssetDraft(sourceAsset: MediaAssetRow, exportAsset: MediaAssetRow) {
-  const draft = getDraftRecord(sourceAsset.metadata);
-  const draftUpdatedAt = getStringFromValue(draft?.updatedAt);
-
-  if (!draftUpdatedAt) {
-    return true;
-  }
-
-  return new Date(exportAsset.updated_at).getTime() >=
-    new Date(draftUpdatedAt).getTime();
-}
-
-function isFreshForDemoDraft(
-  demo: { latest_render_id: string | null; updated_at: string },
-  exportAsset: MediaAssetRow,
-) {
-  if (demo.latest_render_id) {
-    return exportAsset.source_record_id === demo.latest_render_id;
-  }
-
-  return new Date(exportAsset.updated_at).getTime() >=
-    new Date(demo.updated_at).getTime();
-}
-
-function hasMeaningfulDraftEdits(value: unknown) {
-  const draft = getDraftRecord(value);
-
-  if (!draft) {
-    return false;
-  }
-
-  const trimStartSeconds = getNumberFromValue(draft.trimStartSeconds);
-  const trimEndSeconds = getNumberFromValue(draft.trimEndSeconds);
-
-  return (
-    (trimStartSeconds ?? 0) > 0 ||
-    trimEndSeconds !== null ||
-    getTextOverlayCount(draft.textOverlays) > 0
-  );
-}
-
-function getDraftRecord(value: unknown) {
-  const record = getRecord(value);
-  const nestedDraft = getRecord(record?.draft);
-
-  return nestedDraft ?? record;
-}
-
-function getTextOverlayCount(value: unknown) {
-  if (!Array.isArray(value)) {
-    return 0;
-  }
-
-  return value.filter((overlay) => {
-    const record = getRecord(overlay);
-
-    return typeof record?.text === "string" && record.text.trim().length > 0;
-  }).length;
-}
-
 function getRecord(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -546,15 +392,9 @@ function getStringFromValue(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function getNumberFromValue(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0
-    ? value
-    : null;
-}
-
 function getRenderRatio(
-  demoAsset: MediaAssetRow,
-  hookAsset: MediaAssetRow,
+  demoAsset: RenderableScheduleAsset,
+  hookAsset: RenderableScheduleAsset,
 ): CombinationRenderRatio {
   if (videoRatios.has(demoAsset.ratio)) {
     return demoAsset.ratio as CombinationRenderRatio;

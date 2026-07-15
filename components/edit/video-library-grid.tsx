@@ -59,10 +59,10 @@ function EmptyVideoLibrary() {
           <FolderOpen className="size-6" aria-hidden="true" />
         </div>
         <h2 className="mt-5 text-lg font-bold text-foreground">
-          No videos to edit yet.
+          No Edit projects yet.
         </h2>
         <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-muted">
-          Add or generate a video in Creative Assets to start.
+          Open an original video from Creative Assets to start an Edit project.
         </p>
       </div>
     </section>

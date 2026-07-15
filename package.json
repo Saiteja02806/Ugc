@@ -8,6 +8,7 @@
     "start": "next start",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test lib/social/split-scopes.test.ts",
     "lint": "eslint",
+    "edit:boundary:check": "node scripts/check-edit-project-boundary.mjs",
     "carousel:buckets:readiness": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-carousel-visual-bucket-readiness.mjs",
     "carousel:business-profiles:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-carousel-business-visual-profiles.mjs",
     "carousel:calorie-test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-carousel-calorie-tracker-bucket-plan.mjs",

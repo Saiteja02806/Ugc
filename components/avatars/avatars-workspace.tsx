@@ -593,9 +593,9 @@ export function AvatarsWorkspace({
             collection="video"
             sourceTypes={hookVideoSourceTypes}
             title="Videos"
-            description="Generated videos, uploaded footage, and finished Edit exports for your UGC workflow."
+            description="Original generated videos and uploaded footage for your UGC workflow. Edited versions stay in Edit."
             emptyTitle="No videos yet"
-            emptyDescription="Generate or upload a video here to build your reusable video library."
+            emptyDescription="Generate or upload an original video here to build your reusable source library."
           />
         ) : (
           <UserMediaCollection
@@ -615,8 +615,8 @@ type MediaWorkspaceTab = "influencers" | "videos" | "images";
 
 const hookVideoSourceTypes: MediaSourceType[] = [
   "upload",
+  "demo_upload",
   "generated_video",
-  "edit_export",
 ];
 
 const mediaWorkspaceTabs: { id: MediaWorkspaceTab; label: string }[] = [

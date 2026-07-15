@@ -141,7 +141,7 @@ export class SupabaseJobStore {
     userId: string;
   }) {
     const now = new Date().toISOString();
-    const { error: renderJobError } = await this.client
+    const { data: completedRenderJob, error: renderJobError } = await this.client
       .from(VIDEO_RENDER_JOBS_TABLE)
       .update({
         completed_at: now,
@@ -151,7 +151,9 @@ export class SupabaseJobStore {
         status: "completed",
         updated_at: now,
       })
-      .eq("render_id", params.renderId);
+      .eq("render_id", params.renderId)
+      .select("draft_json")
+      .maybeSingle();
 
     if (renderJobError) {
       throw new Error(
@@ -159,19 +161,38 @@ export class SupabaseJobStore {
       );
     }
 
-    const { data: editableVideo, error: editableVideoError } = await this.client
+    const renderDraft = completedRenderJob?.draft_json;
+    const { data: editableVideo, error: editableVideoReadError } =
+      await this.client
+        .from(EDITABLE_VIDEOS_TABLE)
+        .select("draft_json")
+        .eq("user_id", params.userId)
+        .eq("project_id", params.projectId)
+        .eq("source_video_id", params.sourceVideoId)
+        .eq("latest_render_id", params.renderId)
+        .maybeSingle();
+
+    if (editableVideoReadError) {
+      throw new Error(
+        `Could not load editable video before marking it rendered: ${editableVideoReadError.message}`,
+      );
+    }
+
+    const draftIsCurrent = areJsonValuesEqual(
+      editableVideo?.draft_json,
+      renderDraft,
+    );
+    const { error: editableVideoError } = await this.client
       .from(EDITABLE_VIDEOS_TABLE)
       .update({
         rendered_video_url: params.url,
-        status: "rendered",
-        updated_at: now,
+        status: draftIsCurrent ? "rendered" : "draft",
+        ...(draftIsCurrent ? { updated_at: now } : {}),
       })
       .eq("user_id", params.userId)
       .eq("project_id", params.projectId)
       .eq("source_video_id", params.sourceVideoId)
-      .eq("latest_render_id", params.renderId)
-      .select("title,duration_seconds,ratio,thumbnail_url")
-      .maybeSingle();
+      .eq("latest_render_id", params.renderId);
 
     if (editableVideoError) {
       throw new Error(
@@ -179,35 +200,9 @@ export class SupabaseJobStore {
       );
     }
 
-    await this.saveMediaAsset({
-      collection: "video",
-      duration_seconds: getNumber(editableVideo?.duration_seconds),
-      file_name: null,
-      file_size_bytes: null,
-      height: null,
-      id: crypto.randomUUID(),
-      metadata: {
-        renderId: params.renderId,
-        sourceVideoId: params.sourceVideoId,
-      },
-      mime_type: "video/mp4",
-      parent_asset_id: isUuid(params.sourceVideoId) ? params.sourceVideoId : null,
-      project_id: params.projectId,
-      ratio: getRatio(editableVideo?.ratio),
-      source_record_id: params.renderId,
-      source_type: "edit_export",
-      status: "ready",
-      storage_key: params.key,
-      thumbnail_url: getString(editableVideo?.thumbnail_url),
-      title: `${getString(editableVideo?.title) ?? "Edited video"} export`,
-      updated_at: now,
-      url: params.url,
-      user_id: params.userId,
-      width: null,
-    });
-
     await this.markDemoRenderCompletedIfPresent({
       projectId: params.projectId,
+      renderDraft,
       renderId: params.renderId,
       sourceVideoId: params.sourceVideoId,
       url: params.url,
@@ -223,7 +218,7 @@ export class SupabaseJobStore {
     userId: string;
   }) {
     const now = new Date().toISOString();
-    const { error: renderJobError } = await this.client
+    const { data: failedRenderJob, error: renderJobError } = await this.client
       .from(VIDEO_RENDER_JOBS_TABLE)
       .update({
         completed_at: now,
@@ -231,7 +226,9 @@ export class SupabaseJobStore {
         status: "failed",
         updated_at: now,
       })
-      .eq("render_id", params.renderId);
+      .eq("render_id", params.renderId)
+      .select("draft_json")
+      .maybeSingle();
 
     if (renderJobError) {
       throw new Error(
@@ -239,11 +236,31 @@ export class SupabaseJobStore {
       );
     }
 
+    const { data: editableVideo, error: editableVideoReadError } =
+      await this.client
+        .from(EDITABLE_VIDEOS_TABLE)
+        .select("draft_json")
+        .eq("user_id", params.userId)
+        .eq("project_id", params.projectId)
+        .eq("source_video_id", params.sourceVideoId)
+        .eq("latest_render_id", params.renderId)
+        .maybeSingle();
+
+    if (editableVideoReadError) {
+      throw new Error(
+        `Could not load editable video before marking render failed: ${editableVideoReadError.message}`,
+      );
+    }
+
+    const draftIsCurrent = areJsonValuesEqual(
+      editableVideo?.draft_json,
+      failedRenderJob?.draft_json,
+    );
     const { error: editableVideoError } = await this.client
       .from(EDITABLE_VIDEOS_TABLE)
       .update({
-        status: "failed",
-        updated_at: now,
+        status: draftIsCurrent ? "failed" : "draft",
+        ...(draftIsCurrent ? { updated_at: now } : {}),
       })
       .eq("user_id", params.userId)
       .eq("project_id", params.projectId)
@@ -256,28 +273,54 @@ export class SupabaseJobStore {
       );
     }
 
-    await this.markDemoRenderFailedIfPresent(params);
+    await this.markDemoRenderFailedIfPresent({
+      ...params,
+      renderDraft: failedRenderJob?.draft_json,
+    });
   }
 
   private async markDemoRenderCompletedIfPresent(params: {
     projectId: string;
+    renderDraft: Json | undefined;
     renderId: string;
     sourceVideoId: string;
     url: string;
     userId: string;
   }) {
+    const { data: demoVideo, error: demoVideoReadError } = await this.client
+      .from(DEMO_VIDEOS_TABLE)
+      .select("draft_json")
+      .eq("id", params.sourceVideoId)
+      .eq("user_id", params.userId)
+      .eq("project_id", params.projectId)
+      .eq("latest_render_id", params.renderId)
+      .maybeSingle();
+
+    if (demoVideoReadError) {
+      throw new Error(`Could not load demo before marking render completed: ${demoVideoReadError.message}`);
+    }
+
+    if (!demoVideo) {
+      return;
+    }
+
+    const draftIsCurrent = areJsonValuesEqual(
+      demoVideo.draft_json,
+      params.renderDraft,
+    );
     const { error } = await this.client
       .from(DEMO_VIDEOS_TABLE)
       .update({
         error_message: null,
         latest_render_id: params.renderId,
         rendered_video_url: params.url,
-        status: "rendered",
-        updated_at: new Date().toISOString(),
+        status: draftIsCurrent ? "rendered" : "draft",
+        ...(draftIsCurrent ? { updated_at: new Date().toISOString() } : {}),
       })
       .eq("id", params.sourceVideoId)
       .eq("user_id", params.userId)
-      .eq("project_id", params.projectId);
+      .eq("project_id", params.projectId)
+      .eq("latest_render_id", params.renderId);
 
     if (error) {
       throw new Error(`Could not mark demo render completed: ${error.message}`);
@@ -287,21 +330,44 @@ export class SupabaseJobStore {
   private async markDemoRenderFailedIfPresent(params: {
     errorMessage: string;
     projectId: string;
+    renderDraft: Json | undefined;
     renderId: string;
     sourceVideoId: string;
     userId: string;
   }) {
+    const { data: demoVideo, error: demoVideoReadError } = await this.client
+      .from(DEMO_VIDEOS_TABLE)
+      .select("draft_json")
+      .eq("id", params.sourceVideoId)
+      .eq("user_id", params.userId)
+      .eq("project_id", params.projectId)
+      .eq("latest_render_id", params.renderId)
+      .maybeSingle();
+
+    if (demoVideoReadError) {
+      throw new Error(`Could not load demo before marking render failed: ${demoVideoReadError.message}`);
+    }
+
+    if (!demoVideo) {
+      return;
+    }
+
+    const draftIsCurrent = areJsonValuesEqual(
+      demoVideo.draft_json,
+      params.renderDraft,
+    );
     const { error } = await this.client
       .from(DEMO_VIDEOS_TABLE)
       .update({
         error_message: params.errorMessage.slice(0, 1_000),
         latest_render_id: params.renderId,
-        status: "failed",
-        updated_at: new Date().toISOString(),
+        status: draftIsCurrent ? "failed" : "draft",
+        ...(draftIsCurrent ? { updated_at: new Date().toISOString() } : {}),
       })
       .eq("id", params.sourceVideoId)
       .eq("user_id", params.userId)
-      .eq("project_id", params.projectId);
+      .eq("project_id", params.projectId)
+      .eq("latest_render_id", params.renderId);
 
     if (error) {
       throw new Error(`Could not mark demo render failed: ${error.message}`);
@@ -1018,6 +1084,31 @@ function getInteger(value: Json | undefined) {
 
 function getRatio(value: Json | undefined) {
   return value === "9:16" || value === "1:1" || value === "4:5" || value === "16:9" ? value : "other";
+}
+
+function areJsonValuesEqual(first: Json | undefined, second: Json | undefined) {
+  return stableJsonString(first) === stableJsonString(second);
+}
+
+function stableJsonString(value: Json | undefined) {
+  return JSON.stringify(normalizeJsonValue(value));
+}
+
+function normalizeJsonValue(value: Json | undefined): unknown {
+  if (Array.isArray(value)) {
+    return value.map(normalizeJsonValue);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter((entry): entry is [string, Json] => entry[1] !== undefined)
+        .sort(([firstKey], [secondKey]) => firstKey.localeCompare(secondKey))
+        .map(([key, nestedValue]) => [key, normalizeJsonValue(nestedValue)]),
+    );
+  }
+
+  return value ?? null;
 }
 
 function isUuid(value: string) {

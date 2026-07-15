@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import type {
+  CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
   ReactNode,
@@ -30,6 +31,12 @@ import {
   type TextOverlayPosition,
   type TextOverlayStyle,
 } from "@/lib/edit/video-library";
+import {
+  EDIT_OVERLAY_HORIZONTAL_INSET_PERCENT,
+  EDIT_OVERLAY_VERTICAL_INSET_PERCENT,
+  getEditOverlayBackgroundColor,
+  getEditOverlayRenderMetrics,
+} from "@/lib/edit/overlay-render-spec";
 import { cn } from "@/lib/utils";
 
 const MIN_TRIM_SECONDS = 1;
@@ -336,8 +343,12 @@ export function FocusedVideoEditor({
                   <div
                     key={overlay.id}
                     className={getOverlayPositionClass(overlay.position)}
+                    style={getOverlayPositionStyle(overlay.position)}
                   >
-                    <div className={getOverlayStyleClass(overlay.style)}>
+                    <div
+                      className={getOverlayStyleClass()}
+                      style={getOverlayStyle(overlay.style, video.ratio)}
+                    >
                       {overlay.text}
                     </div>
                   </div>
@@ -929,33 +940,65 @@ function getAvailableOverlayPosition(overlays: TextOverlay[]) {
 }
 
 function getOverlayPositionClass(position: TextOverlayPosition) {
-  const base =
-    "pointer-events-none absolute left-[8%] right-[8%] z-10 flex justify-center text-center";
+  const base = "pointer-events-none absolute z-10 flex justify-center text-center";
+
+  if (position === "middle") {
+    return `${base} -translate-y-1/2`;
+  }
+
+  return base;
+}
+
+function getOverlayPositionStyle(
+  position: TextOverlayPosition,
+): CSSProperties {
+  const style: CSSProperties = {
+    left: `${EDIT_OVERLAY_HORIZONTAL_INSET_PERCENT}%`,
+    right: `${EDIT_OVERLAY_HORIZONTAL_INSET_PERCENT}%`,
+  };
 
   if (position === "top") {
-    return `${base} top-[7%]`;
+    return {
+      ...style,
+      top: `${EDIT_OVERLAY_VERTICAL_INSET_PERCENT}%`,
+    };
   }
 
   if (position === "middle") {
-    return `${base} top-1/2 -translate-y-1/2`;
+    return { ...style, top: "50%" };
   }
 
-  return `${base} bottom-[8%]`;
+  return {
+    ...style,
+    bottom: `${EDIT_OVERLAY_VERTICAL_INSET_PERCENT}%`,
+  };
 }
 
-function getOverlayStyleClass(style: TextOverlayStyle) {
+function getOverlayStyleClass() {
   const base =
-    "max-w-full whitespace-pre-line break-words text-[clamp(0.875rem,5cqw,1.35rem)] font-semibold leading-tight text-white";
+    "max-w-full whitespace-pre-line break-words font-semibold text-white";
 
-  if (style === "bubble") {
-    return `${base} rounded-md bg-black/65 px-[clamp(0.6rem,4cqw,1rem)] py-[clamp(0.35rem,2cqw,0.65rem)] shadow-lg`;
-  }
+  return base;
+}
 
-  if (style === "minimal") {
-    return `${base} rounded-sm bg-black/35 px-[clamp(0.45rem,3cqw,0.8rem)] py-[clamp(0.25rem,1.8cqw,0.45rem)] shadow-sm backdrop-blur-[1px]`;
-  }
+function getOverlayStyle(
+  style: TextOverlayStyle,
+  ratio: EditableVideo["ratio"],
+): CSSProperties {
+  const metrics = getEditOverlayRenderMetrics(style, ratio);
 
-  return `${base} drop-shadow-lg`;
+  return {
+    backgroundColor: getEditOverlayBackgroundColor(style),
+    fontFamily: metrics.fontFamily,
+    fontSize: `${metrics.fontSizeContainerWidthPercent}cqw`,
+    fontWeight: metrics.fontWeight,
+    lineHeight: metrics.lineHeight,
+    padding:
+      metrics.padding > 0
+        ? `${metrics.paddingContainerWidthPercent}cqw`
+        : undefined,
+    textShadow: metrics.textShadow,
+  };
 }
 
 function getStylePreviewClass(style: TextOverlayStyle) {
@@ -963,11 +1006,11 @@ function getStylePreviewClass(style: TextOverlayStyle) {
     "inline-flex max-w-full whitespace-pre-line break-words px-2 py-1 text-sm font-semibold leading-5";
 
   if (style === "bubble") {
-    return `${base} rounded-md bg-[#173454] text-white shadow-sm`;
+    return `${base} bg-[#173454] text-white shadow-sm`;
   }
 
   if (style === "minimal") {
-    return `${base} rounded-sm bg-card-muted text-foreground-strong`;
+    return `${base} bg-card-muted text-foreground-strong`;
   }
 
   return `${base} text-foreground-strong`;
@@ -975,7 +1018,7 @@ function getStylePreviewClass(style: TextOverlayStyle) {
 
 function getOverlayStyleDescription(style: TextOverlayStyle) {
   if (style === "bubble") {
-    return "Bubble style adds a dark rounded background behind the text.";
+    return "Bubble style adds a strong dark background behind the text.";
   }
 
   if (style === "minimal") {

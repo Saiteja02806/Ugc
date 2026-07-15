@@ -7,6 +7,7 @@ import {
 } from "@/lib/aws/sqs";
 import {
   createQueuedRenderJob,
+  DEFAULT_EDIT_PROJECT_ID,
   isEditRenderPersistenceConfigured,
   markRenderJobFailed,
 } from "@/lib/edit/render-storage";
@@ -29,7 +30,6 @@ import {
 
 export const runtime = "nodejs";
 
-const DEFAULT_PROJECT_ID = "test-project-001";
 const videoRatios = new Set(["9:16", "1:1", "4:5", "16:9"]);
 const videoSources = new Set(["hook", "demo", "draft", "final"]);
 const editableMediaSourceTypes = new Set([
@@ -38,10 +38,9 @@ const editableMediaSourceTypes = new Set([
   "catalog_influencer",
   "demo_upload",
   "generated_video",
-  "edit_export",
 ]);
 const textOverlayPositions = new Set(["top", "middle", "bottom"]);
-const textOverlayStyles = new Set(["clean", "bubble"]);
+const textOverlayStyles = new Set(["clean", "minimal", "bubble"]);
 const MAX_TEXT_OVERLAYS = 3;
 const AWS_RENDER_JOB_TYPE = "render_edit_video";
 
@@ -77,7 +76,7 @@ type RawTextOverlay = {
 type RenderTextOverlay = {
   id: string;
   position: "top" | "middle" | "bottom";
-  style: "clean" | "bubble";
+  style: "clean" | "minimal" | "bubble";
   text: string;
 };
 
@@ -251,7 +250,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: "Send render details as JSON.",
+        error: "Send save details as JSON.",
       },
       { status: 400 },
     );
@@ -273,7 +272,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: "Render source must be an app-owned S3 or CloudFront video URL.",
+        error: "Save source must be an app-owned S3 or CloudFront video URL.",
       },
       { status: 400 },
     );
@@ -296,7 +295,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: "Choose a video from Creative Assets before rendering.",
+        error: "Choose a video from Creative Assets before saving.",
       },
       { status: 404 },
     );
@@ -304,11 +303,11 @@ export async function POST(request: Request) {
 
   if (sourceAsset.url !== sourceVideoUrl) {
     return NextResponse.json(
-      { ok: false, error: "The render source does not match this media asset." },
+      { ok: false, error: "The save source does not match this media asset." },
       { status: 409 },
     );
   }
-  const projectId = cleanPathSegment(body.projectId, DEFAULT_PROJECT_ID);
+  const projectId = cleanPathSegment(body.projectId, DEFAULT_EDIT_PROJECT_ID);
   const ratio = cleanChoice(body.ratio, videoRatios, "9:16");
   const source = cleanChoice(body.source, videoSources, "draft");
   const trimStartSeconds = cleanSeconds(body.draft?.trimStartSeconds) ?? 0;
@@ -364,7 +363,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: "Could not persist the render job before queueing AWS work.",
+          error: "Could not prepare this video save.",
         },
         { status: 500 },
       );
@@ -374,7 +373,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         error:
-          "AWS render canary requires Supabase render persistence to be configured.",
+          "Video saving requires Supabase persistence to be configured.",
       },
       { status: 501 },
     );
@@ -387,7 +386,7 @@ export async function POST(request: Request) {
       try {
         await markDemoVideoFailed({
           demoId: sourceVideoId,
-          errorMessage: "AWS render queue is not configured.",
+          errorMessage: "Video save queue is not configured.",
           projectId,
           userId: user.uid,
         });
@@ -398,7 +397,7 @@ export async function POST(request: Request) {
 
     try {
       await markRenderJobFailed({
-        errorMessage: "AWS render queue is not configured.",
+        errorMessage: "Video save queue is not configured.",
         projectId,
         renderId,
         sourceVideoId,
@@ -411,7 +410,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: `AWS render queue is not configured. Add ${missingAwsEnvVars.join(
+        error: `Video saving is not configured. Add ${missingAwsEnvVars.join(
           ", ",
         )}.`,
       },
@@ -442,7 +441,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       backend: "aws",
-      message: "Edited video render job queued in AWS.",
+      message: "Video save started.",
       renderId,
       jobId: updatedJob.id,
       sourceVideoId,
@@ -456,7 +455,7 @@ export async function POST(request: Request) {
           errorMessage:
             error instanceof Error
               ? error.message
-              : "Failed to queue AWS render.",
+              : "Failed to start video save.",
           jobId: backgroundJob.id,
         });
       } catch (persistenceError) {
@@ -469,7 +468,7 @@ export async function POST(request: Request) {
         errorMessage:
           error instanceof Error
             ? error.message
-            : "Failed to queue AWS render.",
+            : "Failed to start video save.",
         projectId,
         renderId,
         sourceVideoId,
@@ -484,7 +483,7 @@ export async function POST(request: Request) {
         await markDemoVideoFailed({
           demoId: sourceVideoId,
           errorMessage:
-            error instanceof Error ? error.message : "Failed to queue AWS render.",
+            error instanceof Error ? error.message : "Failed to start video save.",
           projectId,
           userId: user.uid,
         });
@@ -496,7 +495,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: "Failed to queue edited video render in AWS.",
+        error: "Failed to start saving this video.",
       },
       { status: 500 },
     );

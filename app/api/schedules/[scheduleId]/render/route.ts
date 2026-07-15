@@ -238,6 +238,7 @@ export async function POST(
   const renderId = crypto.randomUUID();
   const title = `${schedule.title || "Scheduled post"} combined`.slice(0, 140);
   const input = {
+    autoFinalize: hasPlannedFinalSchedule(metadata),
     demoVideoId: resolvedDemoAsset.asset.id,
     demoVideoUrl: resolvedDemoAsset.asset.url,
     hookVideoId: resolvedHookAsset.asset.id,
@@ -268,6 +269,11 @@ export async function POST(
         combinedRenderJobId: backgroundJob.id,
         combinedRenderQueuedAt: new Date().toISOString(),
         combinedRenderStatus: "queued",
+        finalScheduleCompletedAt: null,
+        finalScheduleError: null,
+        finalScheduleFailedAt: null,
+        finalScheduleRenderId: renderId,
+        finalScheduleStatus: null,
       },
       postId: schedule.id,
       userId,
@@ -409,4 +415,14 @@ function getRenderRatio(
 
 function getString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function hasPlannedFinalSchedule(metadata: Record<string, unknown>) {
+  const hasConnections = Boolean(getString(metadata.plannedConnectionIds));
+  const hasTime = Boolean(
+    getString(metadata.plannedScheduledFor) ||
+      (getString(metadata.scheduledDate) && getString(metadata.scheduledTime)),
+  );
+
+  return hasConnections && hasTime;
 }

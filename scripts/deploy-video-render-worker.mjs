@@ -263,6 +263,9 @@ function buildTaskDefinitionRegistrationInput(taskDefinition, newImageUri) {
         AWS_REGION: region,
         AWS_S3_BUCKET: getRequiredEnv("AWS_S3_BUCKET"),
         CLOUDFRONT_DOMAIN: getRequiredEnv("CLOUDFRONT_DOMAIN"),
+        UGC_INTERNAL_APP_URL:
+          process.env.UGC_INTERNAL_APP_URL?.trim() ||
+          "https://www.getugcpilot.com",
         WORKER_JOB_TYPES: "render_edit_video,render_schedule_combination",
         WORKER_QUEUE_NAME: "video-render",
         WORKER_QUEUE_URL: videoRenderQueueUrl,

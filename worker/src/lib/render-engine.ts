@@ -59,6 +59,7 @@ export type RenderEditedVideoOutput = {
 };
 
 export type RenderScheduleCombinationPayload = {
+  autoFinalize: boolean;
   demoVideoId: string;
   demoVideoUrl: string;
   hookVideoId: string;

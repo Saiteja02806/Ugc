@@ -386,6 +386,9 @@ export class SupabaseJobStore {
         combinedRenderId: params.renderId,
         combinedRenderJobId: params.jobId,
         combinedRenderStatus: "rendering",
+        finalScheduleError: null,
+        finalScheduleFailedAt: null,
+        finalScheduleStatus: null,
       },
       scheduleId: params.scheduleId,
       userId: params.userId,
@@ -393,6 +396,7 @@ export class SupabaseJobStore {
   }
 
   async markScheduleCombinationRenderCompleted(params: {
+    autoFinalize: boolean;
     demoVideoId: string;
     hookVideoId: string;
     key: string;
@@ -448,6 +452,48 @@ export class SupabaseJobStore {
         combinedRenderedAt: now,
         combinedS3Key: params.key,
         combinedVideoUrl: params.url,
+        finalScheduleError: null,
+        finalScheduleFailedAt: null,
+        finalScheduleRenderId: params.renderId,
+        finalScheduleStartedAt: params.autoFinalize ? now : null,
+        finalScheduleStatus: params.autoFinalize ? "finalizing" : null,
+      },
+      scheduleId: params.scheduleId,
+      userId: params.userId,
+    });
+  }
+
+  async markScheduleCombinationFinalizationCompleted(params: {
+    finalStatus: string;
+    renderId: string;
+    scheduleId: string;
+    userId: string;
+  }) {
+    await this.patchScheduledPost({
+      metadataPatch: {
+        finalScheduleCompletedAt: new Date().toISOString(),
+        finalScheduleError: null,
+        finalScheduleFailedAt: null,
+        finalScheduleRenderId: params.renderId,
+        finalScheduleStatus: params.finalStatus,
+      },
+      scheduleId: params.scheduleId,
+      userId: params.userId,
+    });
+  }
+
+  async markScheduleCombinationFinalizationFailed(params: {
+    errorMessage: string;
+    renderId: string;
+    scheduleId: string;
+    userId: string;
+  }) {
+    await this.patchScheduledPost({
+      metadataPatch: {
+        finalScheduleError: params.errorMessage.slice(0, 500),
+        finalScheduleFailedAt: new Date().toISOString(),
+        finalScheduleRenderId: params.renderId,
+        finalScheduleStatus: "failed",
       },
       scheduleId: params.scheduleId,
       userId: params.userId,

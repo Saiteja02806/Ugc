@@ -56,6 +56,12 @@ export type ScheduleRenderedPostInput = {
   timezone?: unknown;
 };
 
+export type FinalizeRenderedScheduleInput = {
+  renderId: string;
+  scheduleId: string;
+  userId: string;
+};
+
 export class SchedulingRequestError extends Error {
   constructor(
     message: string,
@@ -318,7 +324,12 @@ export async function scheduleRenderedPost(params: {
   await prepareScheduledPostForPublishing({
     mediaAssetId: combinedAsset.id,
     metadata: {
+      finalScheduleError: null,
+      finalScheduleRenderId: getMetadataString(
+        existing.metadata.combinedRenderId,
+      ),
       finalScheduleRequestedAt: new Date().toISOString(),
+      finalScheduleStatus: "scheduling",
       plannedConnectionIds: normalized.connectionIds.join(","),
       plannedScheduledFor: normalized.scheduledFor,
     },
@@ -362,6 +373,70 @@ export async function scheduleRenderedPost(params: {
       postId: existing.id,
       userId: params.userId,
     }),
+  };
+}
+
+export async function finalizeRenderedScheduleFromWorker(
+  input: FinalizeRenderedScheduleInput,
+) {
+  assertUuid(input.scheduleId, "Schedule ID is invalid.");
+  assertUuid(input.renderId, "Render ID is invalid.");
+
+  const existing = await getScheduledPostForUser({
+    postId: input.scheduleId,
+    userId: input.userId,
+  });
+
+  if (!existing) {
+    throw new SchedulingRequestError("This schedule was not found.", 404);
+  }
+
+  const currentRenderId = getMetadataString(existing.metadata.combinedRenderId);
+
+  if (currentRenderId !== input.renderId) {
+    throw new SchedulingRequestError(
+      "This render is no longer the current version for the schedule.",
+      409,
+      "stale_combined_render",
+    );
+  }
+
+  if (
+    getMetadataString(existing.metadata.combinedRenderStatus) !== "ready" ||
+    !getMetadataString(existing.metadata.combinedMediaAssetId)
+  ) {
+    throw new SchedulingRequestError(
+      "The combined render is not ready for final scheduling.",
+      409,
+      "combined_render_not_ready",
+    );
+  }
+
+  const hasPlannedConnections = Boolean(
+    getMetadataString(existing.metadata.plannedConnectionIds),
+  );
+  const hasPlannedTime = Boolean(getPlannedScheduledFor(existing));
+
+  if (!hasPlannedConnections || !hasPlannedTime) {
+    return {
+      created: false,
+      scheduleId: existing.id,
+      skipped: true,
+      status: existing.status,
+    };
+  }
+
+  const result = await scheduleRenderedPost({
+    input: {},
+    postId: existing.id,
+    userId: input.userId,
+  });
+
+  return {
+    created: result.created,
+    scheduleId: result.schedule.id,
+    skipped: false,
+    status: result.schedule.status,
   };
 }
 

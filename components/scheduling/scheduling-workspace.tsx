@@ -20,7 +20,7 @@ import {
   Video,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
@@ -134,10 +134,6 @@ type ScheduleFormSubmission = {
   timezone: string;
 };
 
-type ScheduleFinalPostOptions = {
-  automatic?: boolean;
-};
-
 const tabLabels: Record<ScheduleTab, string> = {
   drafts: "Drafts",
   failed: "Failed",
@@ -179,7 +175,6 @@ export function SchedulingWorkspace() {
   const [schedulingFinalDraftId, setSchedulingFinalDraftId] = useState<
     string | null
   >(null);
-  const autoFinalScheduleAttemptedIdsRef = useRef<Set<string>>(new Set());
   const [renderingScheduleId, setRenderingScheduleId] = useState<string | null>(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
 
@@ -523,10 +518,7 @@ export function SchedulingWorkspace() {
     }
   }
 
-  const handleScheduleFinalPost = useCallback(async (
-    draft: ScheduleDraft,
-    options: ScheduleFinalPostOptions = {},
-  ) => {
+  const handleScheduleFinalPost = useCallback(async (draft: ScheduleDraft) => {
     setSchedulingFinalDraftId(draft.id);
     setActionNotice(null);
 
@@ -565,47 +557,17 @@ export function SchedulingWorkspace() {
       setActiveTab("upcoming");
       setActionNotice(
         data.created
-          ? options.automatic
-            ? "Final combined video scheduled automatically."
-            : "Final combined video scheduled."
+          ? "Final combined video scheduled."
           : "Final combined video was already scheduled.",
       );
     } catch (error) {
       setActionNotice(
-        options.automatic
-          ? getErrorMessage(
-              error,
-              "The final post could not be scheduled automatically.",
-            )
-          : getErrorMessage(error, "Could not schedule the final post."),
+        getErrorMessage(error, "Could not schedule the final post."),
       );
     } finally {
       setSchedulingFinalDraftId(null);
     }
   }, []);
-
-  useEffect(() => {
-    if (schedulingFinalDraftId) {
-      return;
-    }
-
-    const draftToSchedule = drafts.find(
-      (draft) =>
-        shouldAutoScheduleFinalDraft(draft) &&
-        !autoFinalScheduleAttemptedIdsRef.current.has(draft.id),
-    );
-
-    if (!draftToSchedule) {
-      return;
-    }
-
-    autoFinalScheduleAttemptedIdsRef.current.add(draftToSchedule.id);
-    void handleScheduleFinalPost(draftToSchedule, { automatic: true });
-  }, [
-    drafts,
-    handleScheduleFinalPost,
-    schedulingFinalDraftId,
-  ]);
 
   return (
     <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
@@ -936,7 +898,7 @@ function ScheduleDraftPreview({
     draft.status === "render_required" || draft.status === "render_failed";
   const canScheduleFinal = canScheduleFinalDraft(draft);
   const finalScheduleMessage = getFinalScheduleUnavailableMessage(draft);
-  const autoSchedulesFinal = shouldAutoScheduleFinalDraft(draft);
+  const showFinalScheduleAction = shouldShowFinalScheduleAction(draft);
 
   return (
     <article className="grid gap-3 rounded-2xl border border-border bg-white p-3 shadow-sm">
@@ -997,25 +959,21 @@ function ScheduleDraftPreview({
               {isRendering ? "Starting render..." : "Render combined video"}
             </button>
           ) : null}
-          {draft.status === "ready" && combinedMedia?.mediaUrl ? (
+          {showFinalScheduleAction && combinedMedia?.mediaUrl ? (
             <div className="mt-2">
-              {autoSchedulesFinal ? (
-                <p className="text-[11px] font-semibold leading-4 text-muted">
-                  {isSchedulingFinal
-                    ? "Creating final platform schedule..."
-                    : "Final scheduling starts automatically."}
-                </p>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => onScheduleDraft(draft)}
-                  disabled={!canScheduleFinal || isSchedulingFinal}
-                  className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSchedulingFinal ? "Scheduling..." : "Schedule final post"}
-                </button>
-              )}
-              {!autoSchedulesFinal && finalScheduleMessage ? (
+              <button
+                type="button"
+                onClick={() => onScheduleDraft(draft)}
+                disabled={!canScheduleFinal || isSchedulingFinal}
+                className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSchedulingFinal
+                  ? "Scheduling..."
+                  : draft.status === "ready"
+                    ? "Schedule final post"
+                    : "Retry scheduling"}
+              </button>
+              {finalScheduleMessage ? (
                 <p className="mt-1 text-[11px] font-semibold leading-4 text-muted">
                   {finalScheduleMessage}
                 </p>
@@ -1571,7 +1529,7 @@ function SelectedDayDraftCard({
     draft.status === "render_required" || draft.status === "render_failed";
   const canScheduleFinal = canScheduleFinalDraft(draft);
   const finalScheduleMessage = getFinalScheduleUnavailableMessage(draft);
-  const autoSchedulesFinal = shouldAutoScheduleFinalDraft(draft);
+  const showFinalScheduleAction = shouldShowFinalScheduleAction(draft);
 
   return (
     <article className="rounded-xl border border-border bg-white px-3 py-3 shadow-sm">
@@ -1633,24 +1591,22 @@ function SelectedDayDraftCard({
             {isRendering ? "Starting..." : "Render"}
           </button>
         ) : null}
-        {draft.status === "ready" && combinedMedia?.mediaUrl ? (
-          autoSchedulesFinal ? (
-            <span className="inline-flex h-8 items-center rounded-full bg-card-muted px-3 text-xs font-bold text-muted">
-              {isSchedulingFinal ? "Scheduling final..." : "Auto scheduling"}
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onScheduleDraft(draft)}
-              disabled={!canScheduleFinal || isSchedulingFinal}
-              className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSchedulingFinal ? "Scheduling..." : "Schedule final"}
-            </button>
-          )
+        {showFinalScheduleAction && combinedMedia?.mediaUrl ? (
+          <button
+            type="button"
+            onClick={() => onScheduleDraft(draft)}
+            disabled={!canScheduleFinal || isSchedulingFinal}
+            className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSchedulingFinal
+              ? "Scheduling..."
+              : draft.status === "ready"
+                ? "Schedule final"
+                : "Retry scheduling"}
+          </button>
         ) : null}
       </div>
-      {!autoSchedulesFinal && finalScheduleMessage && draft.status === "ready" ? (
+      {finalScheduleMessage && showFinalScheduleAction ? (
         <p className="mt-2 text-[11px] font-semibold leading-4 text-muted">
           {finalScheduleMessage}
         </p>
@@ -3045,7 +3001,9 @@ function getDraftRenderMessage(draft: ScheduleDraft) {
   }
 
   if (draft.status === "failed" || draft.status === "publishing_unavailable") {
-    return "Publishing failed. Check the platform status rows below.";
+    return draft.status === "publishing_unavailable"
+      ? "The final video is ready, but platform scheduling did not complete. Retry scheduling below."
+      : "Publishing failed. Check the platform status rows below.";
   }
 
   if (draft.status === "cancelled") {
@@ -3081,9 +3039,33 @@ function getDraftRenderMessage(draft: ScheduleDraft) {
 
 function canScheduleFinalDraft(draft: ScheduleDraft) {
   return Boolean(
-    draft.status === "ready" &&
+    (draft.status === "ready" ||
+      draft.status === "publishing_unavailable" ||
+      canRetrySchedulerCreateFailure(draft)) &&
       draft.combinedMedia?.mediaUrl &&
       hasPlannedFinalSchedule(draft),
+  );
+}
+
+function shouldShowFinalScheduleAction(draft: ScheduleDraft) {
+  return (
+    draft.status === "ready" ||
+    draft.status === "publishing_unavailable" ||
+    canRetrySchedulerCreateFailure(draft)
+  );
+}
+
+function canRetrySchedulerCreateFailure(draft: ScheduleDraft) {
+  const targets = draft.targets ?? [];
+
+  return (
+    draft.status === "failed" &&
+    targets.length > 0 &&
+    targets.every(
+      (target) =>
+        target.status === "failed" &&
+        target.lastErrorCode === "scheduler_create_failed",
+    )
   );
 }
 
@@ -3092,10 +3074,6 @@ function hasPlannedFinalSchedule(draft: ScheduleDraft) {
     (draft.plannedConnectionIds?.length ?? 0) > 0 &&
       getDraftPlannedScheduledFor(draft),
   );
-}
-
-function shouldAutoScheduleFinalDraft(draft: ScheduleDraft) {
-  return canScheduleFinalDraft(draft) && (draft.targets?.length ?? 0) === 0;
 }
 
 function getFinalScheduleUnavailableMessage(draft: ScheduleDraft) {
@@ -3124,8 +3102,14 @@ function getDraftPlannedScheduledFor(draft: ScheduleDraft) {
 
 function hasActiveCombinationRenderStatus(schedule: ScheduledPost) {
   const renderStatus = getString(schedule.metadata.combinedRenderStatus);
+  const finalScheduleStatus = getString(schedule.metadata.finalScheduleStatus);
 
-  return renderStatus === "queued" || renderStatus === "rendering";
+  return (
+    renderStatus === "queued" ||
+    renderStatus === "rendering" ||
+    (["draft", "scheduling"].includes(schedule.status) &&
+      ["finalizing", "scheduling"].includes(finalScheduleStatus ?? ""))
+  );
 }
 
 async function queueCombinationRender({
@@ -3221,6 +3205,7 @@ function getDraftStatusFromScheduledPost(
   schedule: ScheduledPost,
 ): ScheduleDraftStatus {
   const renderStatus = getString(schedule.metadata.combinedRenderStatus);
+  const finalScheduleStatus = getString(schedule.metadata.finalScheduleStatus);
 
   if (renderStatus === "queued" || renderStatus === "rendering") {
     return "rendering";
@@ -3258,6 +3243,22 @@ function getDraftStatusFromScheduledPost(
     return "scheduling";
   }
 
+  if (
+    schedule.status === "draft" &&
+    (finalScheduleStatus === "finalizing" ||
+      finalScheduleStatus === "scheduling")
+  ) {
+    return "scheduling";
+  }
+
+  if (
+    schedule.status === "draft" &&
+    (finalScheduleStatus === "failed" ||
+      (renderStatus === "ready" && hasPlannedFinalScheduleMetadata(schedule)))
+  ) {
+    return "publishing_unavailable";
+  }
+
   if (renderStatus === "ready") {
     return "ready";
   }
@@ -3271,6 +3272,16 @@ function getDraftStatusFromScheduledPost(
   }
 
   return "scheduled_preview";
+}
+
+function hasPlannedFinalScheduleMetadata(schedule: ScheduledPost) {
+  const metadata = schedule.metadata;
+
+  return Boolean(
+    getString(metadata.plannedConnectionIds) &&
+      (getString(metadata.plannedScheduledFor) ||
+        (getString(metadata.scheduledDate) && getString(metadata.scheduledTime))),
+  );
 }
 
 function getDraftPlatformsFromSchedule(schedule: ScheduledPost): ScheduleDraft["platforms"] {

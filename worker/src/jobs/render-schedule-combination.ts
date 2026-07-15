@@ -3,6 +3,7 @@ import {
   renderScheduleCombinationToS3,
   type RenderScheduleCombinationPayload,
 } from "../lib/render-engine.js";
+import { finalizeRenderedSchedule } from "../lib/schedule-finalization.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 
@@ -20,6 +21,7 @@ export async function runRenderScheduleCombinationJob(
   logger.info("Schedule combination render worker started", {
     demoVideoId: payload.demoVideoId,
     hookVideoId: payload.hookVideoId,
+    autoFinalize: payload.autoFinalize,
     jobId: job.id,
     renderId: payload.renderId,
     scheduleId: payload.scheduleId,
@@ -33,11 +35,14 @@ export async function runRenderScheduleCombinationJob(
     userId: payload.userId,
   });
 
+  let result: Awaited<ReturnType<typeof renderScheduleCombinationToS3>>;
+  const mediaAssetId = crypto.randomUUID();
+
   try {
-    const result = await renderScheduleCombinationToS3(payload);
-    const mediaAssetId = crypto.randomUUID();
+    result = await renderScheduleCombinationToS3(payload);
 
     await context.store.markScheduleCombinationRenderCompleted({
+      autoFinalize: payload.autoFinalize,
       demoVideoId: payload.demoVideoId,
       hookVideoId: payload.hookVideoId,
       key: result.key,
@@ -51,10 +56,6 @@ export async function runRenderScheduleCombinationJob(
       userId: payload.userId,
     });
 
-    return {
-      ...result,
-      mediaAssetId,
-    } satisfies Record<string, Json>;
   } catch (error) {
     const errorMessage = getErrorMessage(error);
 
@@ -76,6 +77,78 @@ export async function runRenderScheduleCombinationJob(
 
     throw error;
   }
+
+  if (!payload.autoFinalize) {
+    return {
+      ...result,
+      finalScheduleStatus: "not_requested",
+      mediaAssetId,
+    } satisfies Record<string, Json>;
+  }
+
+  try {
+    const finalization = await finalizeRenderedSchedule({
+      renderId: payload.renderId,
+      scheduleId: payload.scheduleId,
+      userId: payload.userId,
+    });
+
+    await context.store.markScheduleCombinationFinalizationCompleted({
+      finalStatus: finalization.status,
+      renderId: payload.renderId,
+      scheduleId: payload.scheduleId,
+      userId: payload.userId,
+    });
+
+    logger.info("Rendered schedule finalized by the server", {
+      created: finalization.created,
+      jobId: job.id,
+      renderId: payload.renderId,
+      scheduleId: payload.scheduleId,
+      skipped: finalization.skipped,
+      status: finalization.status,
+    });
+
+    return {
+      ...result,
+      finalScheduleCreated: finalization.created,
+      finalScheduleSkipped: finalization.skipped,
+      finalScheduleStatus: finalization.status,
+      mediaAssetId,
+    } satisfies Record<string, Json>;
+  } catch (error) {
+    const errorMessage = getErrorMessage(error);
+
+    try {
+      await context.store.markScheduleCombinationFinalizationFailed({
+        errorMessage,
+        renderId: payload.renderId,
+        scheduleId: payload.scheduleId,
+        userId: payload.userId,
+      });
+    } catch (persistenceError) {
+      logger.error("Could not persist final scheduling failure", {
+        error: getErrorMessage(persistenceError),
+        jobId: job.id,
+        renderId: payload.renderId,
+        scheduleId: payload.scheduleId,
+      });
+    }
+
+    logger.error("Rendered video is ready, but final scheduling failed", {
+      error: errorMessage,
+      jobId: job.id,
+      renderId: payload.renderId,
+      scheduleId: payload.scheduleId,
+    });
+
+    return {
+      ...result,
+      finalScheduleError: errorMessage.slice(0, 500),
+      finalScheduleStatus: "failed",
+      mediaAssetId,
+    } satisfies Record<string, Json>;
+  }
 }
 
 function parseRenderScheduleCombinationPayload(
@@ -84,6 +157,7 @@ function parseRenderScheduleCombinationPayload(
   const input = getJsonRecord(value, "input_json");
 
   return {
+    autoFinalize: getOptionalBoolean(input.autoFinalize, "autoFinalize", false),
     demoVideoId: getRequiredString(input.demoVideoId, "demoVideoId"),
     demoVideoUrl: getHttpUrl(input.demoVideoUrl, "demoVideoUrl"),
     hookVideoId: getRequiredString(input.hookVideoId, "hookVideoId"),
@@ -100,6 +174,22 @@ function parseRenderScheduleCombinationPayload(
     title: getOptionalString(input.title, 140) || "Combined scheduled video",
     userId: getRequiredString(input.userId, "userId"),
   };
+}
+
+function getOptionalBoolean(
+  value: Json | undefined,
+  fieldName: string,
+  fallback: boolean,
+) {
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  throw new Error(`${fieldName} must be a boolean.`);
 }
 
 function getJsonRecord(

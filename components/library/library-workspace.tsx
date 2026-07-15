@@ -86,6 +86,17 @@ const tabs: Array<{ label: string; value: LibraryTab }> = [
   },
 ];
 
+const primaryActionClassName =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+const secondaryActionClassName =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+const compactSecondaryActionClassName =
+  "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+const iconActionClassName =
+  "inline-flex size-11 items-center justify-center rounded-control border border-border bg-card text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:size-10";
+const metricChipClassName =
+  "inline-flex min-h-10 items-center rounded-control bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-border";
+
 export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<LibraryTab>(initialTab);
@@ -129,7 +140,7 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
   return (
     <section className="min-h-screen flex-1 bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8 lg:py-7">
       <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-4">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-normal text-foreground-strong sm:text-[28px]">
               Content Library
@@ -143,7 +154,7 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
           <div
             role="tablist"
             aria-label="Library sections"
-            className="inline-flex w-fit items-center rounded-control bg-card-muted p-1 ring-1 ring-inset ring-border"
+            className="grid w-full grid-cols-2 items-center rounded-panel border border-border bg-card p-1 shadow-[0_1px_2px_rgb(23_23_27_/_0.03)] sm:w-fit"
           >
             {tabs.map((tab, index) => (
               <button
@@ -157,12 +168,17 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
                 onClick={() => selectTab(tab.value)}
                 onKeyDown={(event) => handleTabKeyDown(event, index)}
                 className={cn(
-                  "inline-flex min-h-11 min-w-[112px] items-center justify-center rounded-small px-3 text-sm font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none sm:min-h-9 sm:min-w-[76px]",
+                  "inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-control px-3 text-sm font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none sm:min-w-[148px]",
                   activeTab === tab.value
-                    ? "bg-card text-foreground-strong shadow-[0_1px_2px_rgb(23_23_27_/_0.08)]"
-                    : "text-muted hover:text-foreground-strong",
+                    ? "bg-foreground-strong text-white shadow-[0_1px_2px_rgb(23_23_27_/_0.08)]"
+                    : "text-muted hover:bg-card-muted hover:text-foreground-strong",
                 )}
               >
+                {tab.value === "posts" ? (
+                  <FileVideo className="size-4" aria-hidden="true" />
+                ) : (
+                  <Images className="size-4" aria-hidden="true" />
+                )}
                 {tab.label}
               </button>
             ))}
@@ -363,12 +379,12 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
 
   return (
     <section
-      className="overflow-hidden rounded-card border border-border bg-card shadow-[0_1px_2px_rgb(23_23_27_/_0.03)]"
+      className="overflow-hidden rounded-panel border border-border bg-card"
       aria-labelledby="library-content-heading"
     >
-      <header className="flex flex-col gap-4 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <header className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-small bg-brand-soft text-primary">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
             <Images className="size-[18px]" aria-hidden="true" />
           </span>
           <div className="min-w-0">
@@ -385,17 +401,17 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           {!showSkeleton && items.length > 0 ? (
             <Link
               href="/dashboard"
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+              className={compactSecondaryActionClassName}
             >
               Find carousel ideas
               <ArrowRight className="size-3.5" aria-hidden="true" />
             </Link>
           ) : null}
-          <span className="inline-flex h-9 items-center rounded-md bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-border">
+          <span className={metricChipClassName}>
             {showSkeleton
               ? "Loading"
               : `${items.length} ${items.length === 1 ? "carousel" : "carousels"} - ${totalSlides} slides`}
@@ -406,20 +422,20 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
             disabled={isLoading}
             aria-label="Refresh Library content"
             title="Refresh Library content"
-            className="inline-flex size-11 items-center justify-center rounded-md border border-border bg-white text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:size-9"
+            className={iconActionClassName}
           >
             <RefreshCw
-            className={cn(
-              "size-4",
-              isLoading && "animate-spin motion-reduce:animate-none",
-            )}
+              className={cn(
+                "size-4",
+                isLoading && "animate-spin motion-reduce:animate-none",
+              )}
               aria-hidden="true"
             />
           </button>
         </div>
       </header>
 
-      <div className="flex flex-col gap-4 p-4 sm:p-5">
+      <div className="flex flex-col gap-4 border-t border-border bg-surface-subtle/55 p-4 sm:p-5">
         {errorMessage ? (
           <div
             role="status"
@@ -506,23 +522,23 @@ function LibraryContentEmptyState({
   onShowPosts: () => void;
 }) {
   return (
-    <div className="flex min-h-[330px] items-center justify-center rounded-lg border border-dashed border-border-strong bg-surface-subtle px-5 py-10 text-center sm:px-8">
-      <div className="max-w-lg">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-white text-primary ring-1 ring-border shadow-[0_1px_2px_rgb(23_23_27_/_0.05)]">
+    <div className="grid min-h-[330px] items-center gap-8 rounded-panel border border-dashed border-border-strong bg-card px-5 py-8 sm:grid-cols-[minmax(0,1fr)_280px] sm:px-8">
+      <div className="max-w-xl text-left">
+        <div className="flex size-12 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
           <Images className="size-5" aria-hidden="true" />
         </div>
-        <h3 className="mt-4 text-lg font-semibold text-foreground-strong">
+        <h3 className="mt-4 text-xl font-semibold text-foreground-strong">
           Build your saved carousel collection
         </h3>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">
+        <p className="mt-2 max-w-md text-sm leading-6 text-muted">
           Save carousel ideas from Trending. Each complete slide set will stay
           here so you can preview it and prepare a post later.
         </p>
 
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+        <div className="mt-5 flex flex-wrap items-center gap-2">
           <Link
             href="/dashboard"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className={primaryActionClassName}
           >
             Find carousel ideas
             <ArrowRight className="size-4" aria-hidden="true" />
@@ -530,12 +546,37 @@ function LibraryContentEmptyState({
           <button
             type="button"
             onClick={onShowPosts}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className={secondaryActionClassName}
           >
             <FileVideo className="size-4" aria-hidden="true" />
             View demo footage
           </button>
         </div>
+      </div>
+      <div className="rounded-panel border border-border bg-surface-subtle p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-subtle">
+          How it works
+        </p>
+        <ol className="mt-3 space-y-3 text-sm text-muted">
+          <li className="flex gap-3">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-card text-xs font-bold text-primary ring-1 ring-inset ring-border">
+              1
+            </span>
+            Find a complete carousel in Trending.
+          </li>
+          <li className="flex gap-3">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-card text-xs font-bold text-primary ring-1 ring-inset ring-border">
+              2
+            </span>
+            Save the full slide set to Content.
+          </li>
+          <li className="flex gap-3">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-card text-xs font-bold text-primary ring-1 ring-inset ring-border">
+              3
+            </span>
+            Preview it here, then prepare a post.
+          </li>
+        </ol>
       </div>
     </div>
   );
@@ -560,7 +601,7 @@ function LibraryCarouselCard({
   const scheduleHelpId = `${item.id.replace(/[^a-zA-Z0-9_-]/g, "-")}-schedule-help`;
 
   return (
-    <article className="group min-w-0 overflow-hidden rounded-lg border border-border bg-white transition-colors hover:border-border-strong">
+    <article className="group min-w-0 overflow-hidden rounded-panel border border-border bg-card transition-colors hover:border-border-strong">
       <button
         type="button"
         aria-label={`Preview ${item.title}`}
@@ -609,7 +650,7 @@ function LibraryCarouselCard({
           <button
             type="button"
             onClick={onView}
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-foreground-strong px-3 text-xs font-semibold text-white transition-colors hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:min-h-9"
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-control bg-foreground-strong px-3 text-xs font-semibold text-white transition-colors hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:min-h-10"
           >
             <Eye className="size-3.5" aria-hidden="true" />
             Preview
@@ -620,7 +661,7 @@ function LibraryCarouselCard({
             aria-disabled={scheduleBlocked}
             aria-describedby={scheduleBlocked ? scheduleHelpId : undefined}
             className={cn(
-              "inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:min-h-9",
+              "inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:min-h-10",
               scheduleBlocked && "text-muted opacity-75",
             )}
           >
@@ -636,16 +677,16 @@ function LibraryCarouselCard({
         ) : null}
 
         <details className="group/actions">
-          <summary className="flex min-h-10 list-none items-center justify-center gap-1.5 rounded-md text-xs font-semibold text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
+          <summary className="flex min-h-10 list-none items-center justify-center gap-1.5 rounded-control text-xs font-semibold text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
             <MoreHorizontal className="size-3.5" aria-hidden="true" />
             More actions
           </summary>
-          <div className="mt-2 rounded-md border border-border bg-surface-subtle p-2">
+          <div className="mt-2 rounded-control border border-border bg-surface-subtle p-2">
             <button
               type="button"
               onClick={onRemove}
               disabled={removing}
-              className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-md px-2 text-xs font-semibold text-muted transition-colors hover:bg-error/5 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-control px-2 text-xs font-semibold text-muted transition-colors hover:bg-error/5 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
             >
               {removing ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />

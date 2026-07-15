@@ -258,6 +258,7 @@ function normalizeScheduleMediaSelection(
     durationLabel: normalizeOptionalString(record.durationLabel) ?? undefined,
     id,
     mediaUrl: normalizeOptionalString(record.mediaUrl) ?? undefined,
+    sourceRecordId: normalizeOptionalString(record.sourceRecordId) ?? undefined,
     sourceType,
     status,
     thumbnailUrl: normalizeOptionalString(record.thumbnailUrl) ?? undefined,

@@ -65,7 +65,7 @@ const primaryNavigationItems: SidebarItem[] = [
   },
   {
     key: "avatars",
-    label: "Influencers",
+    label: "Creative Assets",
     href: "/avatars",
     icon: "influencers",
   },

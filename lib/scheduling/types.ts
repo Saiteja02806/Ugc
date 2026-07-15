@@ -146,6 +146,7 @@ export type ScheduleMediaSelection = {
   durationLabel?: string;
   id: string;
   mediaUrl?: string;
+  sourceRecordId?: string;
   sourceType: ScheduleSourceType;
   status: "missing_render" | "ready";
   thumbnailUrl?: string;

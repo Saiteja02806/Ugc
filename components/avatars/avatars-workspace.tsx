@@ -457,7 +457,10 @@ export function AvatarsWorkspace({
 
   const refreshDisabled = isLoading;
 
-  const refreshIconClassName = cn("size-4", isLoading && "animate-spin");
+  const refreshIconClassName = cn(
+    "size-4",
+    isLoading && "animate-spin motion-reduce:animate-none",
+  );
 
   const libraryBadgeClassName = getLibraryStatusBadgeClassName(libraryStatus.kind);
 
@@ -511,10 +514,10 @@ export function AvatarsWorkspace({
       <header className="mx-auto flex w-full max-w-[1560px] flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
-            Influencers
+            Creative Assets
           </h1>
           <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-            Choose talent and manage hook videos. Library demos stay separate.
+            Manage influencers, videos, and images for your UGC content.
           </p>
         </div>
 
@@ -545,7 +548,7 @@ export function AvatarsWorkspace({
       {activeTab === "influencers" ? pageStatus : null}
 
       <nav
-        aria-label="Influencer media collections"
+        aria-label="Creative asset collections"
         className="mx-auto mt-5 flex w-full max-w-[1560px] border-b border-border"
       >
         {mediaWorkspaceTabs.map((tab) => (
@@ -555,7 +558,7 @@ export function AvatarsWorkspace({
             onClick={() => handleTabChange(tab.id)}
             aria-current={activeTab === tab.id ? "page" : undefined}
             className={cn(
-              "relative h-10 px-4 text-sm font-bold transition-colors",
+              "relative h-10 px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
               activeTab === tab.id ? "text-foreground" : "text-muted hover:text-foreground",
             )}
           >
@@ -567,14 +570,7 @@ export function AvatarsWorkspace({
 
       <div className="mx-auto w-full max-w-[1560px] flex-1 pt-5">
         {activeTab === "influencers" ? (
-          <div className="space-y-4">
-            <UserMediaCollection
-              collection="influencer"
-              title="Your influencers"
-              description="Upload your own on-camera talent or spokesperson footage. These stay private to your account."
-              emptyTitle="Upload your first influencer"
-              emptyDescription="Add a clear MP4, MOV, or WebM clip. Your uploaded talent will stay separate from the UGC Pilot catalog."
-            />
+          <div className="flex flex-col gap-4">
             <AvatarLibrary
               avatars={avatars}
               isLoading={isLoading}
@@ -584,21 +580,28 @@ export function AvatarsWorkspace({
               onThumbnailError={handleThumbnailError}
               onSelectAvatar={handleSelectAvatar}
             />
+            <UserMediaCollection
+              collection="influencer"
+              title="My uploaded influencers"
+              description="Upload your own on-camera talent or spokesperson footage. These stay private to your account."
+              emptyTitle="Upload your first influencer"
+              emptyDescription="Add a clear MP4, MOV, or WebM clip. Your uploaded talent will stay separate from the UGC Pilot catalog."
+            />
           </div>
         ) : activeTab === "videos" ? (
           <UserMediaCollection
             collection="video"
             sourceTypes={hookVideoSourceTypes}
-            title="Hook videos"
-            description="Generated hooks, uploaded footage from this workspace, and finished Edit exports. Demo uploads stay in Library."
-            emptyTitle="No hook videos yet"
-            emptyDescription="Generate a hook video or upload one here. Library demo videos will not appear in this section."
+            title="Videos"
+            description="Generated videos, uploaded footage, and finished Edit exports for your UGC workflow."
+            emptyTitle="No videos yet"
+            emptyDescription="Generate or upload a video here to build your reusable video library."
           />
         ) : (
           <UserMediaCollection
             collection="image"
-            title="User images"
-            description="Generated and uploaded images owned by your account."
+            title="Images"
+            description="Generated and uploaded images for your UGC content."
             emptyTitle="No images yet"
             emptyDescription="Generate an image or upload one here to build your reusable image library."
           />
@@ -618,8 +621,8 @@ const hookVideoSourceTypes: MediaSourceType[] = [
 
 const mediaWorkspaceTabs: { id: MediaWorkspaceTab; label: string }[] = [
   { id: "influencers", label: "Influencers" },
-  { id: "videos", label: "Hook videos" },
-  { id: "images", label: "User images" },
+  { id: "videos", label: "Videos" },
+  { id: "images", label: "Images" },
 ];
 
 function AvatarLibrary({
@@ -643,7 +646,7 @@ function AvatarLibrary({
     <div className="flex min-h-[360px] flex-col rounded-[var(--radius-panel)] border border-border bg-white p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-bold text-foreground">UGC Pilot influencers</h2>
+          <h2 className="text-sm font-bold text-foreground">Influencer catalog</h2>
           <p className="mt-1 text-xs font-semibold text-muted">
             {previewHealthLabel}
           </p>
@@ -660,7 +663,7 @@ function AvatarLibrary({
       {isLoading ? (
         <div className="flex flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card-muted">
           <div className="flex items-center gap-3 text-sm font-semibold text-muted">
-            <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
+            <Loader2 className="size-5 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
             Loading influencers...
           </div>
         </div>
@@ -732,6 +735,7 @@ function AvatarCard({
     <button
       type="button"
       onClick={onSelect}
+      aria-label={`Preview and trim ${avatar.asset.name}`}
       className={cn(
         "group min-w-0 rounded-[var(--radius-panel)] border bg-white p-2 text-left transition hover:border-border-strong hover:bg-card-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
         selected ? "border-primary/60 ring-2 ring-primary/15" : "border-border",
@@ -800,6 +804,9 @@ function AvatarCard({
               : avatar.asset.ratio}
           </span>
         </div>
+        <span className="inline-flex h-8 w-full items-center justify-center rounded-md bg-card-muted px-3 text-xs font-bold text-[#173454] transition-colors group-hover:bg-white">
+          Preview and trim
+        </span>
       </div>
     </button>
   );
@@ -851,7 +858,7 @@ function AvatarEditorShell({
           <div className="mx-auto flex size-12 items-center justify-center rounded-md bg-card-muted text-[#173454]">
             {isLoading ? (
               <Loader2
-                className="size-5 animate-spin text-primary"
+                className="size-5 animate-spin text-primary motion-reduce:animate-none"
                 aria-hidden="true"
               />
             ) : (
@@ -1081,7 +1088,7 @@ function AvatarFullPageEditor({
               className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-white px-5 text-sm font-semibold text-[#173454] transition-colors hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-60"
             >
               {openingInEdit ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
               ) : (
                 <Pencil className="size-4" aria-hidden="true" />
               )}
@@ -1095,7 +1102,7 @@ function AvatarFullPageEditor({
             >
               {usingAvatar ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
                   Selecting
                 </>
               ) : (
@@ -1162,6 +1169,9 @@ function TrimControls({
         <label className="block">
           <span className="text-xs font-bold text-muted">Start</span>
           <input
+            name="trim-start"
+            autoComplete="off"
+            inputMode="decimal"
             type="number"
             min={0}
             max={duration ?? undefined}
@@ -1173,12 +1183,15 @@ function TrimControls({
                 start: event.target.value,
               })
             }
-            className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+            className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm font-bold text-foreground outline-none transition focus:border-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           />
         </label>
         <label className="block">
           <span className="text-xs font-bold text-muted">End</span>
           <input
+            name="trim-end"
+            autoComplete="off"
+            inputMode="decimal"
             type="number"
             min={0}
             max={duration ?? undefined}
@@ -1190,7 +1203,7 @@ function TrimControls({
                 end: event.target.value,
               })
             }
-            className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+            className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm font-bold text-foreground outline-none transition focus:border-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           />
         </label>
       </div>
@@ -1217,7 +1230,7 @@ function TrimControls({
           className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-md bg-[#173454] px-3 text-xs font-bold text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
         >
           {savingTrim ? (
-            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+            <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
           ) : null}
           Save trim
         </button>

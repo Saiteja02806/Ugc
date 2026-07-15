@@ -189,6 +189,7 @@ export function UserMediaCollection({
         completed.asset as MediaAsset,
         ...current.filter((asset) => asset.id !== completed.asset?.id),
       ]);
+      setSuccessMessage(`${completed.asset.title} uploaded.`);
       incompleteUpload = null;
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Could not upload this media."));
@@ -268,12 +269,13 @@ export function UserMediaCollection({
             className="inline-flex size-9 items-center justify-center rounded-md border border-border bg-white text-muted transition hover:bg-card-muted hover:text-foreground disabled:opacity-50"
             aria-label={`Refresh ${title}`}
           >
-            <RefreshCw className={isLoading ? "size-4 animate-spin" : "size-4"} aria-hidden="true" />
+            <RefreshCw className={isLoading ? "size-4 animate-spin motion-reduce:animate-none" : "size-4"} aria-hidden="true" />
           </button>
           <input
             ref={inputRef}
             type="file"
             accept={collection === "image" ? ".jpg,.jpeg,.png,.webp" : ".mp4,.mov,.webm"}
+            aria-label={getUploadLabel(collection)}
             onChange={(event) => void handleFile(event.target.files?.[0])}
             className="sr-only"
           />
@@ -283,7 +285,7 @@ export function UserMediaCollection({
             disabled={isUploading}
             className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3.5 text-sm font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isUploading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Plus className="size-4" aria-hidden="true" />}
+            {isUploading ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Plus className="size-4" aria-hidden="true" />}
             {isUploading ? "Uploading" : getUploadLabel(collection)}
           </button>
         </div>
@@ -306,8 +308,8 @@ export function UserMediaCollection({
       <div className="mt-5">
         {isLoading ? (
           <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-border bg-card-muted text-sm font-semibold text-muted">
-            <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
-            Loading real media…
+            <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            Loading media...
           </div>
         ) : assets.length > 0 ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -390,7 +392,7 @@ export function UserMediaCollection({
               onClick={() => void removeAsset()}
               disabled={Boolean(deletingAssetId)}
             >
-              {deletingAssetId ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
+              {deletingAssetId ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
               {deletingAssetId ? "Removing" : "Remove asset"}
             </Button>
           </DialogFooter>
@@ -444,7 +446,7 @@ function MediaAssetCard({
             className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-white text-muted transition hover:border-error/30 hover:bg-error/5 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
             aria-label={`Remove ${asset.title}`}
           >
-            {deleting ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="size-3.5" aria-hidden="true" />}
+            {deleting ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Trash2 className="size-3.5" aria-hidden="true" />}
           </button>
         </div>
       </div>
@@ -496,7 +498,7 @@ function CollectionIcon({ collection }: { collection: MediaCollection }) {
 function getUploadLabel(collection: MediaCollection) {
   if (collection === "influencer") return "Upload influencer";
   if (collection === "image") return "Upload image";
-  return "Upload hook";
+  return "Upload video";
 }
 
 function getSourceLabel(asset: MediaAsset) {

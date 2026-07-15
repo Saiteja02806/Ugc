@@ -11,7 +11,10 @@ import {
 import { buttonClassName } from "@/components/ui/button";
 import type { EditableVideo } from "@/lib/edit/video-library";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import { mediaAssetToEditableVideo } from "@/lib/media/editable-video";
+import {
+  isEditableMediaAsset,
+  mediaAssetToEditableVideo,
+} from "@/lib/media/editable-video";
 import type { MediaAsset } from "@/lib/media/types";
 
 type RenderState = "idle" | "starting" | "rendering" | "rendered" | "failed";
@@ -58,8 +61,8 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
         throw new Error(getApiError(data, "Video not found."));
       }
 
-      if (data.asset.collection === "image") {
-        throw new Error("This asset is not an editable video.");
+      if (!isEditableMediaAsset(data.asset)) {
+        throw new Error("Only Creative Assets videos can be opened in Edit.");
       }
 
       setVideo(mediaAssetToEditableVideo(data.asset));
@@ -169,7 +172,7 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
           : current,
       );
       setRenderState("rendered");
-      setRenderMessage("MP4 export is ready and saved in User videos.");
+      setRenderMessage("MP4 export is ready and saved in Videos.");
     } catch (error) {
       console.error("Edited video render failed:", error);
       setRenderState("failed");

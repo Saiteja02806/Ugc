@@ -8,7 +8,11 @@ import { VideoLibraryGrid } from "@/components/edit/video-library-grid";
 import { buttonClassName } from "@/components/ui/button";
 import type { EditableVideo } from "@/lib/edit/video-library";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import { mediaAssetToEditableVideo } from "@/lib/media/editable-video";
+import {
+  editableMediaSourceTypes,
+  isEditableMediaAsset,
+  mediaAssetToEditableVideo,
+} from "@/lib/media/editable-video";
 import type { MediaAsset } from "@/lib/media/types";
 
 export function EditLibraryWorkspace() {
@@ -27,7 +31,10 @@ export function EditLibraryWorkspace() {
         throw new Error("Sign in to open your edit library.");
       }
 
-      const response = await fetch("/api/media", {
+      const params = new URLSearchParams({
+        sourceTypes: editableMediaSourceTypes.join(","),
+      });
+      const response = await fetch(`/api/media?${params.toString()}`, {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -41,7 +48,7 @@ export function EditLibraryWorkspace() {
 
       setEditableVideos(
         data.assets
-          .filter((asset) => asset.collection !== "image")
+          .filter(isEditableMediaAsset)
           .map(mediaAssetToEditableVideo),
       );
     } catch (error) {
@@ -66,7 +73,7 @@ export function EditLibraryWorkspace() {
             Edit
           </h1>
           <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-            Trim, add text, and export any video from your account.
+            Trim, add text, and export videos from Creative Assets.
           </p>
         </div>
 

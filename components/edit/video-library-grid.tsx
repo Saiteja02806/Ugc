@@ -62,7 +62,7 @@ function EmptyVideoLibrary() {
           No videos to edit yet.
         </h2>
         <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-muted">
-          Generate a video or upload a demo to start.
+          Add or generate a video in Creative Assets to start.
         </p>
       </div>
     </section>

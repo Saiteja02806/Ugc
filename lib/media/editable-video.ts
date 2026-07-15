@@ -5,7 +5,26 @@ import {
   type EditableVideoDraft,
   type EditableVideoSource,
 } from "@/lib/edit/video-library";
-import type { MediaAsset } from "@/lib/media/types";
+import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
+
+export const editableMediaSourceTypes: MediaSourceType[] = [
+  "upload",
+  "influencer_upload",
+  "catalog_influencer",
+  "generated_video",
+  "edit_export",
+];
+
+const editableMediaSourceTypeSet = new Set<MediaSourceType>(
+  editableMediaSourceTypes,
+);
+
+export function isEditableMediaAsset(asset: MediaAsset) {
+  return (
+    asset.collection !== "image" &&
+    editableMediaSourceTypeSet.has(asset.sourceType)
+  );
+}
 
 export function mediaAssetToEditableVideo(asset: MediaAsset): EditableVideo {
   const draft = getDraft(asset.metadata.draft);
@@ -42,13 +61,18 @@ function getDraft(value: unknown): EditableVideoDraft | null {
 }
 
 function getSource(asset: MediaAsset): EditableVideoSource {
-  if (asset.sourceType === "generated_video") {
-    return "hook";
-  }
-
   if (asset.sourceType === "edit_export") {
     return "final";
   }
 
-  return "demo";
+  if (
+    asset.collection === "influencer" ||
+    asset.sourceType === "catalog_influencer" ||
+    asset.sourceType === "influencer_upload" ||
+    asset.sourceType === "generated_video"
+  ) {
+    return "hook";
+  }
+
+  return "draft";
 }

@@ -9,6 +9,14 @@ import {
 
 export const runtime = "nodejs";
 
+const editableMediaSourceTypes = new Set([
+  "upload",
+  "influencer_upload",
+  "catalog_influencer",
+  "generated_video",
+  "edit_export",
+]);
+
 type UpdateAssetBody = {
   draft?: unknown;
   title?: unknown;
@@ -67,6 +75,16 @@ async function handleRequest(
       if (asset.collection === "image") {
         return Response.json(
           { ok: false, error: "Only videos can store editing changes." },
+          { status: 400 },
+        );
+      }
+
+      if (!editableMediaSourceTypes.has(asset.source_type)) {
+        return Response.json(
+          {
+            ok: false,
+            error: "Only Creative Assets videos can store editing changes.",
+          },
           { status: 400 },
         );
       }

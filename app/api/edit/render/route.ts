@@ -28,6 +28,13 @@ export const runtime = "nodejs";
 const DEFAULT_PROJECT_ID = "test-project-001";
 const videoRatios = new Set(["9:16", "1:1", "4:5", "16:9"]);
 const videoSources = new Set(["hook", "demo", "draft", "final"]);
+const editableMediaSourceTypes = new Set([
+  "upload",
+  "influencer_upload",
+  "catalog_influencer",
+  "generated_video",
+  "edit_export",
+]);
 const textOverlayPositions = new Set(["top", "middle", "bottom"]);
 const textOverlayStyles = new Set(["clean", "bubble"]);
 const MAX_TEXT_OVERLAYS = 3;
@@ -276,9 +283,16 @@ export async function POST(request: Request) {
     userId: user.uid,
   });
 
-  if (!sourceAsset || sourceAsset.collection === "image") {
+  if (
+    !sourceAsset ||
+    sourceAsset.collection === "image" ||
+    !editableMediaSourceTypes.has(sourceAsset.source_type)
+  ) {
     return NextResponse.json(
-      { ok: false, error: "Choose a video from your account before rendering." },
+      {
+        ok: false,
+        error: "Choose a video from Creative Assets before rendering.",
+      },
       { status: 404 },
     );
   }

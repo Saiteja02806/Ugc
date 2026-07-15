@@ -176,7 +176,7 @@ export function SchedulingWorkspace() {
   const loadScheduleMedia = useCallback(async () => {
     try {
       const token = await getCurrentUserIdToken();
-      if (!token) return;
+      if (!token) return false;
 
       const [influencerResponse, hookResponse, demoResponse] = await Promise.all([
         fetch("/api/media?collection=influencer", {
@@ -242,8 +242,10 @@ export function SchedulingWorkspace() {
       } catch {
         setCatalogInfluencerOptions([]);
       }
+      return true;
     } catch {
       setActionNotice("Could not load video and demo media for scheduling.");
+      return false;
     }
   }, []);
 
@@ -302,6 +304,27 @@ export function SchedulingWorkspace() {
     return () => window.clearTimeout(timer);
   }, [loadScheduleMedia, loadSchedules, loadSocialConnections]);
 
+  useEffect(() => {
+    function refreshSchedulingData() {
+      void loadScheduleMedia();
+      void loadSchedules();
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        refreshSchedulingData();
+      }
+    }
+
+    window.addEventListener("focus", refreshSchedulingData);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", refreshSchedulingData);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [loadScheduleMedia, loadSchedules]);
+
   const hasActiveCombinationRender = useMemo(
     () => serverSchedules.some(hasActiveCombinationRenderStatus),
     [serverSchedules],
@@ -338,12 +361,14 @@ export function SchedulingWorkspace() {
     setDayPlannerOpen(true);
   }
 
-  function handleNewSchedulePost(dateKey = selectedCalendarDate) {
+  async function handleNewSchedulePost(dateKey = selectedCalendarDate) {
     setActionNotice(null);
     handleSelectCalendarDate(dateKey);
     setNewScheduleInitialDate(dateKey);
     setViewMode("calendar");
     setDayPlannerOpen(false);
+    await loadScheduleMedia();
+    await loadSocialConnections();
     setDrawerOpen(true);
   }
 
@@ -549,7 +574,7 @@ export function SchedulingWorkspace() {
 
         <button
           type="button"
-          onClick={() => handleNewSchedulePost()}
+          onClick={() => void handleNewSchedulePost()}
           className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover"
         >
           <Plus className="size-4" aria-hidden="true" />
@@ -584,7 +609,7 @@ export function SchedulingWorkspace() {
           schedulingFinalDraftId={schedulingFinalDraftId}
           selectedDate={selectedCalendarDate}
           viewMode={viewMode}
-          onCreateDraft={() => handleNewSchedulePost()}
+          onCreateDraft={() => void handleNewSchedulePost()}
           onMonthChange={setVisibleCalendarMonth}
           onOpenDate={handleOpenDayPlanner}
           onRenderDraft={handleStartCombinationRender}
@@ -601,7 +626,7 @@ export function SchedulingWorkspace() {
           renderingScheduleId={renderingScheduleId}
           selectedDate={selectedCalendarDate}
           onClose={() => setDayPlannerOpen(false)}
-          onCreateDraftForDate={handleNewSchedulePost}
+          onCreateDraftForDate={(dateKey) => void handleNewSchedulePost(dateKey)}
           onRenderDraft={handleStartCombinationRender}
           onScheduleDraft={handleScheduleFinalPost}
         />

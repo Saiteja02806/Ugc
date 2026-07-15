@@ -283,10 +283,10 @@ export function formatVideoDuration(seconds: number | null) {
 
 export function getEditableVideoSourceLabel(source: EditableVideoSource) {
   const labels: Record<EditableVideoSource, string> = {
-    hook: "Hook",
+    hook: "Opening",
     demo: "Demo",
-    draft: "Draft",
-    final: "Final",
+    draft: "Video",
+    final: "Edit export",
   };
 
   return labels[source];

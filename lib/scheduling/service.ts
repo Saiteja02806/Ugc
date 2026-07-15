@@ -113,7 +113,7 @@ export async function createUserSchedule(params: {
     source.sourceType !== "combined_render"
   ) {
     throw new SchedulingRequestError(
-      "Render the hook and demo into one combined video before scheduling.",
+      "Render the opening video and demo into one combined video before scheduling.",
       409,
       "combined_render_required",
     );
@@ -248,7 +248,7 @@ export async function scheduleRenderedPost(params: {
 
   if (combinedRenderStatus !== "ready" || !combinedMediaAssetId) {
     throw new SchedulingRequestError(
-      "Render the hook and demo before scheduling the final post.",
+      "Render the opening video and demo before scheduling the final post.",
       409,
       "combined_render_not_ready",
     );

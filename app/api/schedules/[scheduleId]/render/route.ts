@@ -124,7 +124,7 @@ export async function POST(
     return jsonResponse(
       {
         ok: false,
-        message: "Choose one hook video and one demo video before rendering.",
+        message: "Choose one opening video and one demo video before rendering.",
       },
       409,
     );
@@ -139,7 +139,7 @@ export async function POST(
     return jsonResponse(
       {
         ok: false,
-        message: "The selected hook video is no longer available.",
+        message: "The selected opening video is no longer available.",
       },
       404,
     );

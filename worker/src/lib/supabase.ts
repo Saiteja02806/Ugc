@@ -21,6 +21,7 @@ const CAROUSEL_GENERATIONS_TABLE = "carousel_generations";
 const CAROUSEL_SLIDES_TABLE = "carousel_slides";
 const CATEGORY_IMAGE_ASSETS_TABLE = "category_image_assets";
 const CATEGORY_IMAGE_ASSET_PAGE_SIZE = 1000;
+const DEMO_VIDEOS_TABLE = "demo_videos";
 const EDITABLE_VIDEOS_TABLE = "editable_videos";
 const MEDIA_ASSETS_TABLE = "media_assets";
 const SCHEDULED_POSTS_TABLE = "scheduled_posts";
@@ -204,6 +205,14 @@ export class SupabaseJobStore {
       user_id: params.userId,
       width: null,
     });
+
+    await this.markDemoRenderCompletedIfPresent({
+      projectId: params.projectId,
+      renderId: params.renderId,
+      sourceVideoId: params.sourceVideoId,
+      url: params.url,
+      userId: params.userId,
+    });
   }
 
   async markEditRenderFailed(params: {
@@ -245,6 +254,57 @@ export class SupabaseJobStore {
       throw new Error(
         `Could not mark editable video render as failed: ${editableVideoError.message}`,
       );
+    }
+
+    await this.markDemoRenderFailedIfPresent(params);
+  }
+
+  private async markDemoRenderCompletedIfPresent(params: {
+    projectId: string;
+    renderId: string;
+    sourceVideoId: string;
+    url: string;
+    userId: string;
+  }) {
+    const { error } = await this.client
+      .from(DEMO_VIDEOS_TABLE)
+      .update({
+        error_message: null,
+        latest_render_id: params.renderId,
+        rendered_video_url: params.url,
+        status: "rendered",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.sourceVideoId)
+      .eq("user_id", params.userId)
+      .eq("project_id", params.projectId);
+
+    if (error) {
+      throw new Error(`Could not mark demo render completed: ${error.message}`);
+    }
+  }
+
+  private async markDemoRenderFailedIfPresent(params: {
+    errorMessage: string;
+    projectId: string;
+    renderId: string;
+    sourceVideoId: string;
+    userId: string;
+  }) {
+    const { error } = await this.client
+      .from(DEMO_VIDEOS_TABLE)
+      .update({
+        error_message: params.errorMessage.slice(0, 1_000),
+        latest_render_id: params.renderId,
+        status: "failed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.sourceVideoId)
+      .eq("user_id", params.userId)
+      .eq("project_id", params.projectId);
+
+    if (error) {
+      throw new Error(`Could not mark demo render failed: ${error.message}`);
     }
   }
 
@@ -313,6 +373,8 @@ export class SupabaseJobStore {
     await this.patchScheduledPost({
       mediaAssetId: params.mediaAssetId,
       metadataPatch: {
+        combinedDemoMediaId: params.demoVideoId,
+        combinedHookMediaId: params.hookVideoId,
         combinedMediaAssetId: params.mediaAssetId,
         combinedRenderError: null,
         combinedRenderId: params.renderId,

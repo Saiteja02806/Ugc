@@ -22,6 +22,10 @@ import {
 } from "@/lib/jobs/background-jobs";
 import { isTrustedStorageUrl } from "@/lib/storage/s3";
 import { getMediaAssetForOwner } from "@/lib/media/media-storage";
+import {
+  markDemoVideoFailed,
+  markDemoVideoRendering,
+} from "@/lib/demo/demo-storage";
 
 export const runtime = "nodejs";
 
@@ -32,6 +36,7 @@ const editableMediaSourceTypes = new Set([
   "upload",
   "influencer_upload",
   "catalog_influencer",
+  "demo_upload",
   "generated_video",
   "edit_export",
 ]);
@@ -305,6 +310,7 @@ export async function POST(request: Request) {
   }
   const projectId = cleanPathSegment(body.projectId, DEFAULT_PROJECT_ID);
   const ratio = cleanChoice(body.ratio, videoRatios, "9:16");
+  const source = cleanChoice(body.source, videoSources, "draft");
   const trimStartSeconds = cleanSeconds(body.draft?.trimStartSeconds) ?? 0;
   const rawTrimEndSeconds = cleanSeconds(body.draft?.trimEndSeconds);
   const trimEndSeconds =
@@ -336,13 +342,22 @@ export async function POST(request: Request) {
         projectId,
         ratio,
         renderId,
-        source: cleanChoice(body.source, videoSources, "draft"),
+        source,
         sourceVideoId,
         sourceVideoUrl,
         thumbnailUrl: cleanOptionalUrl(body.thumbnailUrl),
         title: cleanText(body.title, "Untitled video", 140),
         userId: user.uid,
       });
+
+      if (sourceAsset.source_type === "demo_upload") {
+        await markDemoVideoRendering({
+          demoId: sourceVideoId,
+          projectId,
+          renderId,
+          userId: user.uid,
+        });
+      }
     } catch (error) {
       console.error("Failed to persist queued edited video render:", error);
 
@@ -368,6 +383,31 @@ export async function POST(request: Request) {
   const missingAwsEnvVars = getAwsRenderMissingEnvVars();
 
   if (missingAwsEnvVars.length > 0) {
+    if (sourceAsset.source_type === "demo_upload") {
+      try {
+        await markDemoVideoFailed({
+          demoId: sourceVideoId,
+          errorMessage: "AWS render queue is not configured.",
+          projectId,
+          userId: user.uid,
+        });
+      } catch (persistenceError) {
+        console.error("Failed to mark demo render configuration failure:", persistenceError);
+      }
+    }
+
+    try {
+      await markRenderJobFailed({
+        errorMessage: "AWS render queue is not configured.",
+        projectId,
+        renderId,
+        sourceVideoId,
+        userId: user.uid,
+      });
+    } catch (persistenceError) {
+      console.error("Failed to persist render configuration failure:", persistenceError);
+    }
+
     return NextResponse.json(
       {
         ok: false,
@@ -437,6 +477,20 @@ export async function POST(request: Request) {
       });
     } catch (persistenceError) {
       console.error("Failed to persist render queue failure:", persistenceError);
+    }
+
+    if (sourceAsset.source_type === "demo_upload") {
+      try {
+        await markDemoVideoFailed({
+          demoId: sourceVideoId,
+          errorMessage:
+            error instanceof Error ? error.message : "Failed to queue AWS render.",
+          projectId,
+          userId: user.uid,
+        });
+      } catch (persistenceError) {
+        console.error("Failed to persist demo render queue failure:", persistenceError);
+      }
     }
 
     return NextResponse.json(

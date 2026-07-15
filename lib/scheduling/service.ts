@@ -14,6 +14,7 @@ import {
 } from "@/lib/jobs/background-jobs";
 import {
   cancelScheduledPostRows,
+  deleteFailedScheduleTargetsForRetry,
   getConnectedSocialConnection,
   getMissingScheduleDbEnvVars,
   getSchedulableLibraryItem,
@@ -28,6 +29,15 @@ import {
   markScheduleTargetScheduler,
   prepareScheduledPostForPublishing,
 } from "@/lib/scheduling/db";
+import {
+  getLatestReadyMediaAssetForParent,
+  getMediaAssetForOwner,
+  type MediaAssetRow,
+} from "@/lib/media/media-storage";
+import {
+  getDemoVideo,
+  isDemoVideoStorageConfigured,
+} from "@/lib/demo/demo-storage";
 import type {
   ScheduledPost,
   ScheduledPostStatus,
@@ -198,13 +208,25 @@ export async function scheduleRenderedPost(params: {
 }) {
   assertUuid(params.postId, "Schedule ID is invalid.");
 
-  const existing = await getScheduledPostForUser({
+  let existing = await getScheduledPostForUser({
     postId: params.postId,
     userId: params.userId,
   });
 
   if (!existing) {
     throw new SchedulingRequestError("This schedule was not found.", 404);
+  }
+
+  if (canRetrySchedulerCreateFailure(existing)) {
+    await deleteFailedScheduleTargetsForRetry({
+      errorCode: "scheduler_create_failed",
+      postId: existing.id,
+      userId: params.userId,
+    });
+    existing = {
+      ...existing,
+      targets: [],
+    };
   }
 
   if (
@@ -256,7 +278,7 @@ export async function scheduleRenderedPost(params: {
 
   assertUuid(combinedMediaAssetId, "Combined media ID is invalid.");
 
-  const combinedAsset = await getSchedulableMediaAsset({
+  const combinedAsset = await getMediaAssetForOwner({
     assetId: combinedMediaAssetId,
     userId: params.userId,
   });
@@ -273,6 +295,12 @@ export async function scheduleRenderedPost(params: {
       "combined_media_unavailable",
     );
   }
+
+  await assertCombinedRenderIsCurrent({
+    combinedAsset,
+    schedule: existing,
+    userId: params.userId,
+  });
 
   const normalized = normalizeRenderedScheduleInput(params.input, existing);
   const targetConnections = await resolveScheduleTargets({
@@ -336,6 +364,274 @@ export async function scheduleRenderedPost(params: {
       userId: params.userId,
     }),
   };
+}
+
+function canRetrySchedulerCreateFailure(schedule: ScheduledPost) {
+  return (
+    schedule.status === "failed" &&
+    schedule.targets.length > 0 &&
+    schedule.targets.every(
+      (target) =>
+        target.status === "failed" &&
+        target.lastErrorCode === "scheduler_create_failed",
+    )
+  );
+}
+
+async function assertCombinedRenderIsCurrent(params: {
+  combinedAsset: MediaAssetRow;
+  schedule: ScheduledPost;
+  userId: string;
+}) {
+  const hookMediaId = getMetadataString(params.schedule.metadata.hookMediaId);
+  const demoMediaId =
+    getMetadataString(params.schedule.metadata.demoMediaId) ??
+    params.schedule.mediaAssetId;
+
+  if (!hookMediaId || !demoMediaId) {
+    return;
+  }
+
+  const [hookAsset, demoAsset] = await Promise.all([
+    getMediaAssetForOwner({
+      assetId: hookMediaId,
+      userId: params.userId,
+    }),
+    getMediaAssetForOwner({
+      assetId: demoMediaId,
+      userId: params.userId,
+    }),
+  ]);
+
+  if (!hookAsset || !demoAsset) {
+    throw new SchedulingRequestError(
+      "The selected opening video or demo is no longer available.",
+      409,
+      "schedule_source_unavailable",
+    );
+  }
+
+  const projectId =
+    params.schedule.projectId ??
+    demoAsset.project_id ??
+    hookAsset.project_id ??
+    "schedule";
+  const [resolvedHookAsset, resolvedDemoAsset] = await Promise.all([
+    resolveOpeningRenderAsset({
+      asset: hookAsset,
+      userId: params.userId,
+    }),
+    resolveDemoRenderAsset({
+      asset: demoAsset,
+      projectId,
+      userId: params.userId,
+    }),
+  ]);
+
+  if (!resolvedHookAsset.ok) {
+    throw new SchedulingRequestError(
+      resolvedHookAsset.message,
+      409,
+      "combined_render_stale",
+    );
+  }
+
+  if (!resolvedDemoAsset.ok) {
+    throw new SchedulingRequestError(
+      resolvedDemoAsset.message,
+      409,
+      "combined_render_stale",
+    );
+  }
+
+  const combinedHookMediaId = getMetadataString(
+    getObjectValue(params.combinedAsset.metadata, "hookVideoId"),
+  );
+  const combinedDemoMediaId = getMetadataString(
+    getObjectValue(params.combinedAsset.metadata, "demoVideoId"),
+  );
+
+  if (
+    combinedHookMediaId !== resolvedHookAsset.asset.id ||
+    combinedDemoMediaId !== resolvedDemoAsset.asset.id
+  ) {
+    throw new SchedulingRequestError(
+      "Render the latest opening video and demo before scheduling the final post.",
+      409,
+      "combined_render_stale",
+    );
+  }
+}
+
+async function resolveOpeningRenderAsset(params: {
+  asset: MediaAssetRow;
+  userId: string;
+}): Promise<RenderAssetResolution> {
+  if (params.asset.source_type === "edit_export") {
+    return { asset: params.asset, ok: true };
+  }
+
+  const latestExport = await getLatestReadyMediaAssetForParent({
+    parentAssetId: params.asset.id,
+    sourceType: "edit_export",
+    userId: params.userId,
+  });
+
+  if (latestExport && isFreshForAssetDraft(params.asset, latestExport)) {
+    return { asset: latestExport, ok: true };
+  }
+
+  if (hasMeaningfulDraftEdits(params.asset.metadata)) {
+    return {
+      ok: false,
+      message:
+        "Export the selected opening video from Edit before scheduling so saved text and trim edits are included.",
+    };
+  }
+
+  return { asset: params.asset, ok: true };
+}
+
+async function resolveDemoRenderAsset(params: {
+  asset: MediaAssetRow;
+  projectId: string;
+  userId: string;
+}): Promise<RenderAssetResolution> {
+  const latestExport = await getLatestReadyMediaAssetForParent({
+    parentAssetId: params.asset.id,
+    sourceType: "edit_export",
+    userId: params.userId,
+  });
+  const demo = await getDemoForAsset(params);
+
+  if (latestExport && (!demo || isFreshForDemoDraft(demo, latestExport))) {
+    return { asset: latestExport, ok: true };
+  }
+
+  if (demo && hasMeaningfulDraftEdits(demo.draft_json)) {
+    return {
+      ok: false,
+      message:
+        "Export the selected demo from Demos before scheduling so saved text and trim edits are included.",
+    };
+  }
+
+  return { asset: params.asset, ok: true };
+}
+
+type RenderAssetResolution =
+  | {
+      asset: MediaAssetRow;
+      ok: true;
+    }
+  | {
+      message: string;
+      ok: false;
+    };
+
+async function getDemoForAsset(params: {
+  asset: MediaAssetRow;
+  projectId: string;
+  userId: string;
+}) {
+  if (!isDemoVideoStorageConfigured()) {
+    return null;
+  }
+
+  const demoId =
+    getMetadataString(params.asset.source_record_id) ??
+    getMetadataString(getObjectValue(params.asset.metadata, "demoId"));
+
+  if (!demoId) {
+    return null;
+  }
+
+  try {
+    return await getDemoVideo({
+      demoId,
+      projectId: params.asset.project_id ?? params.projectId,
+      userId: params.userId,
+    });
+  } catch (error) {
+    console.error("Could not load demo draft before final scheduling:", error);
+    return null;
+  }
+}
+
+function isFreshForAssetDraft(sourceAsset: MediaAssetRow, exportAsset: MediaAssetRow) {
+  const draft = getDraftRecord(sourceAsset.metadata);
+  const draftUpdatedAt = getMetadataString(draft?.updatedAt);
+
+  if (!draftUpdatedAt) {
+    return true;
+  }
+
+  return new Date(exportAsset.updated_at).getTime() >=
+    new Date(draftUpdatedAt).getTime();
+}
+
+function isFreshForDemoDraft(
+  demo: { latest_render_id: string | null; updated_at: string },
+  exportAsset: MediaAssetRow,
+) {
+  if (demo.latest_render_id) {
+    return exportAsset.source_record_id === demo.latest_render_id;
+  }
+
+  return new Date(exportAsset.updated_at).getTime() >=
+    new Date(demo.updated_at).getTime();
+}
+
+function hasMeaningfulDraftEdits(value: unknown) {
+  const draft = getDraftRecord(value);
+
+  if (!draft) {
+    return false;
+  }
+
+  const trimStartSeconds = getNumberFromValue(draft.trimStartSeconds);
+  const trimEndSeconds = getNumberFromValue(draft.trimEndSeconds);
+
+  return (
+    (trimStartSeconds ?? 0) > 0 ||
+    trimEndSeconds !== null ||
+    getTextOverlayCount(draft.textOverlays) > 0
+  );
+}
+
+function getDraftRecord(value: unknown) {
+  const record = getRecord(value);
+  const nestedDraft = getRecord(record?.draft);
+
+  return nestedDraft ?? record;
+}
+
+function getTextOverlayCount(value: unknown) {
+  if (!Array.isArray(value)) {
+    return 0;
+  }
+
+  return value.filter((overlay) => {
+    const record = getRecord(overlay);
+
+    return typeof record?.text === "string" && record.text.trim().length > 0;
+  }).length;
+}
+
+function getRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function getObjectValue(value: unknown, key: string) {
+  return getRecord(value)?.[key];
+}
+
+function getNumberFromValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? value
+    : null;
 }
 
 export async function cancelUserSchedule(params: {

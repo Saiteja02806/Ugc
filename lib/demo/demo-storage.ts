@@ -278,6 +278,23 @@ export async function updateDemoVideoDetails(input: UpdateDemoVideoDetailsInput)
   );
 }
 
+export async function markDemoVideoRendering(params: {
+  demoId: string;
+  projectId: string;
+  renderId: string;
+  userId: string;
+}) {
+  return updateDemoVideoForOwner(
+    {
+      error_message: null,
+      latest_render_id: params.renderId,
+      status: "rendering",
+    },
+    params,
+    "Could not mark demo video as rendering",
+  );
+}
+
 export async function markDemoVideoFailed(params: {
   demoId: string;
   errorMessage: string;

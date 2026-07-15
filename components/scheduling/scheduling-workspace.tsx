@@ -14,15 +14,16 @@ import {
   List,
   Loader2,
   Plus,
+  RefreshCw,
   UserRound,
   X,
   Video,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import type { MediaAsset } from "@/lib/media/types";
+import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
 import {
   getSchedulePlatformLabel,
   getSchedulePostTypeLabel,
@@ -42,8 +43,12 @@ import {
 import type { SocialConnection } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
-const hookVideoSourceTypes = ["upload", "generated_video", "edit_export"];
-const demoVideoSourceTypes = ["demo_upload"];
+const hookVideoSourceTypes: MediaSourceType[] = [
+  "upload",
+  "generated_video",
+  "edit_export",
+];
+const demoVideoSourceTypes: MediaSourceType[] = ["demo_upload"];
 const openingVideoSourceTabs = [
   { id: "all", label: "All" },
   { id: "influencers", label: "Influencers" },
@@ -129,6 +134,10 @@ type ScheduleFormSubmission = {
   timezone: string;
 };
 
+type ScheduleFinalPostOptions = {
+  automatic?: boolean;
+};
+
 const tabLabels: Record<ScheduleTab, string> = {
   drafts: "Drafts",
   failed: "Failed",
@@ -170,6 +179,7 @@ export function SchedulingWorkspace() {
   const [schedulingFinalDraftId, setSchedulingFinalDraftId] = useState<
     string | null
   >(null);
+  const autoFinalScheduleAttemptedIdsRef = useRef<Set<string>>(new Set());
   const [renderingScheduleId, setRenderingScheduleId] = useState<string | null>(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
 
@@ -178,51 +188,44 @@ export function SchedulingWorkspace() {
       const token = await getCurrentUserIdToken();
       if (!token) return false;
 
-      const [influencerResponse, hookResponse, demoResponse] = await Promise.all([
+      const [influencerResponse, videoResponse] = await Promise.all([
         fetch("/api/media?collection=influencer", {
           cache: "no-store",
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(
-          `/api/media?collection=video&sourceTypes=${hookVideoSourceTypes.join(",")}`,
-          {
-            cache: "no-store",
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        ),
-        fetch(
-          `/api/media?collection=video&sourceTypes=${demoVideoSourceTypes.join(",")}`,
-          {
-            cache: "no-store",
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        ),
+        fetch("/api/media?collection=video", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
-      const [influencerData, hookData, demoData] = (await Promise.all([
+      const [influencerData, videoData] = (await Promise.all([
         influencerResponse.json(),
-        hookResponse.json(),
-        demoResponse.json(),
-      ])) as [MediaListResponse, MediaListResponse, MediaListResponse];
+        videoResponse.json(),
+      ])) as [MediaListResponse, MediaListResponse];
 
       if (
         !influencerResponse.ok ||
         influencerData.ok !== true ||
-        !hookResponse.ok ||
-        hookData.ok !== true ||
-        !demoResponse.ok ||
-        demoData.ok !== true
+        !videoResponse.ok ||
+        videoData.ok !== true
       ) {
         throw new Error("Could not load scheduling media.");
       }
 
+      const videoAssets = videoData.assets;
+
       setHookMediaOptions(
         dedupeScheduleMediaOptions([
           ...influencerData.assets.map(mapMediaAssetToScheduleMediaOption),
-          ...hookData.assets.map(mapMediaAssetToScheduleMediaOption),
+          ...videoAssets
+            .filter(isOpeningVideoMediaAsset)
+            .map(mapMediaAssetToScheduleMediaOption),
         ]),
       );
       setDemoMediaOptions(
-        demoData.assets.map(mapMediaAssetToScheduleMediaOption),
+        videoAssets
+          .filter(isDemoVideoMediaAsset)
+          .map(mapMediaAssetToScheduleMediaOption),
       );
 
       try {
@@ -361,12 +364,17 @@ export function SchedulingWorkspace() {
     setDayPlannerOpen(true);
   }
 
-  async function handleNewSchedulePost(dateKey = selectedCalendarDate) {
+  async function handleNewSchedulePost(
+    dateKey = selectedCalendarDate,
+    options: { keepDayOpen?: boolean } = {},
+  ) {
     setActionNotice(null);
     handleSelectCalendarDate(dateKey);
     setNewScheduleInitialDate(dateKey);
     setViewMode("calendar");
-    setDayPlannerOpen(false);
+    if (!options.keepDayOpen) {
+      setDayPlannerOpen(false);
+    }
     await loadScheduleMedia();
     await loadSocialConnections();
     setDrawerOpen(true);
@@ -434,8 +442,11 @@ export function SchedulingWorkspace() {
       }
 
       let nextSchedule = data.schedule;
-      let nextNotice =
-        "Combination draft saved, but the render did not start automatically.";
+      const shouldAutoScheduleFinal =
+        submission.selectedConnectionIds.length > 0 && Boolean(scheduledFor);
+      let nextNotice = shouldAutoScheduleFinal
+        ? "Schedule saved. Rendering the final MP4 before automatic platform scheduling."
+        : "Combination draft saved, but the render did not start automatically.";
 
       try {
         const renderResult = await queueCombinationRender({
@@ -443,8 +454,11 @@ export function SchedulingWorkspace() {
           token,
         });
         nextSchedule = renderResult.schedule;
-        nextNotice =
-          renderResult.status === "ready"
+        nextNotice = shouldAutoScheduleFinal
+          ? renderResult.status === "ready"
+            ? "Combined video is ready. Creating the final platform schedule."
+            : "Schedule saved. Rendering the final MP4 before automatic platform scheduling."
+          : renderResult.status === "ready"
             ? "Combined video is already ready."
             : "Combination draft saved and render queued.";
       } catch (renderError) {
@@ -509,7 +523,10 @@ export function SchedulingWorkspace() {
     }
   }
 
-  async function handleScheduleFinalPost(draft: ScheduleDraft) {
+  const handleScheduleFinalPost = useCallback(async (
+    draft: ScheduleDraft,
+    options: ScheduleFinalPostOptions = {},
+  ) => {
     setSchedulingFinalDraftId(draft.id);
     setActionNotice(null);
 
@@ -548,17 +565,47 @@ export function SchedulingWorkspace() {
       setActiveTab("upcoming");
       setActionNotice(
         data.created
-          ? "Final combined video scheduled."
+          ? options.automatic
+            ? "Final combined video scheduled automatically."
+            : "Final combined video scheduled."
           : "Final combined video was already scheduled.",
       );
     } catch (error) {
       setActionNotice(
-        getErrorMessage(error, "Could not schedule the final post."),
+        options.automatic
+          ? getErrorMessage(
+              error,
+              "The final post could not be scheduled automatically.",
+            )
+          : getErrorMessage(error, "Could not schedule the final post."),
       );
     } finally {
       setSchedulingFinalDraftId(null);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (schedulingFinalDraftId) {
+      return;
+    }
+
+    const draftToSchedule = drafts.find(
+      (draft) =>
+        shouldAutoScheduleFinalDraft(draft) &&
+        !autoFinalScheduleAttemptedIdsRef.current.has(draft.id),
+    );
+
+    if (!draftToSchedule) {
+      return;
+    }
+
+    autoFinalScheduleAttemptedIdsRef.current.add(draftToSchedule.id);
+    void handleScheduleFinalPost(draftToSchedule, { automatic: true });
+  }, [
+    drafts,
+    handleScheduleFinalPost,
+    schedulingFinalDraftId,
+  ]);
 
   return (
     <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
@@ -574,7 +621,11 @@ export function SchedulingWorkspace() {
 
         <button
           type="button"
-          onClick={() => void handleNewSchedulePost()}
+          onClick={() =>
+            void handleNewSchedulePost(selectedCalendarDate, {
+              keepDayOpen: dayPlannerOpen,
+            })
+          }
           className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover"
         >
           <Plus className="size-4" aria-hidden="true" />
@@ -583,54 +634,58 @@ export function SchedulingWorkspace() {
       </header>
 
       <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-5 pt-5">
-        <ConnectionNotice />
-
-        <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <ScheduleTabs
-            activeTab={activeTab}
-            counts={counts}
-            onChange={setActiveTab}
-          />
-          <ViewToggle value={viewMode} onChange={setViewMode} />
-        </div>
-
         {actionNotice ? (
           <div className="w-fit shrink-0 rounded-full border border-border bg-white/85 px-3 py-2 text-xs font-semibold text-[#405977] shadow-sm">
             {actionNotice}
           </div>
         ) : null}
 
-        <ScheduleContent
-          activeTab={activeTab}
-          calendarMonth={visibleCalendarMonth}
-          drafts={visibleDrafts}
-          hasAnyDrafts={drafts.length > 0}
-          renderingScheduleId={renderingScheduleId}
-          schedulingFinalDraftId={schedulingFinalDraftId}
-          selectedDate={selectedCalendarDate}
-          viewMode={viewMode}
-          onCreateDraft={() => void handleNewSchedulePost()}
-          onMonthChange={setVisibleCalendarMonth}
-          onOpenDate={handleOpenDayPlanner}
-          onRenderDraft={handleStartCombinationRender}
-          onScheduleDraft={handleScheduleFinalPost}
-          onSelectDate={handleSelectCalendarDate}
-        />
-      </div>
+        {dayPlannerOpen ? (
+          <DayScheduleWorkspace
+            activeTab={activeTab}
+            drafts={selectedDayDrafts}
+            isSchedulingFinalDraftId={schedulingFinalDraftId}
+            renderingScheduleId={renderingScheduleId}
+            selectedDate={selectedCalendarDate}
+            onBackToCalendar={() => setDayPlannerOpen(false)}
+            onCreateDraftForDate={(dateKey) =>
+              void handleNewSchedulePost(dateKey, { keepDayOpen: true })
+            }
+            onRenderDraft={handleStartCombinationRender}
+            onScheduleDraft={handleScheduleFinalPost}
+          />
+        ) : (
+          <>
+            <ConnectionNotice />
 
-      {dayPlannerOpen ? (
-        <DayScheduleDrawer
-          activeTab={activeTab}
-          drafts={selectedDayDrafts}
-          isSchedulingFinalDraftId={schedulingFinalDraftId}
-          renderingScheduleId={renderingScheduleId}
-          selectedDate={selectedCalendarDate}
-          onClose={() => setDayPlannerOpen(false)}
-          onCreateDraftForDate={(dateKey) => void handleNewSchedulePost(dateKey)}
-          onRenderDraft={handleStartCombinationRender}
-          onScheduleDraft={handleScheduleFinalPost}
-        />
-      ) : null}
+            <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <ScheduleTabs
+                activeTab={activeTab}
+                counts={counts}
+                onChange={setActiveTab}
+              />
+              <ViewToggle value={viewMode} onChange={setViewMode} />
+            </div>
+
+            <ScheduleContent
+              activeTab={activeTab}
+              calendarMonth={visibleCalendarMonth}
+              drafts={visibleDrafts}
+              hasAnyDrafts={drafts.length > 0}
+              renderingScheduleId={renderingScheduleId}
+              schedulingFinalDraftId={schedulingFinalDraftId}
+              selectedDate={selectedCalendarDate}
+              viewMode={viewMode}
+              onCreateDraft={() => void handleNewSchedulePost()}
+              onMonthChange={setVisibleCalendarMonth}
+              onOpenDate={handleOpenDayPlanner}
+              onRenderDraft={handleStartCombinationRender}
+              onScheduleDraft={handleScheduleFinalPost}
+              onSelectDate={handleSelectCalendarDate}
+            />
+          </>
+        )}
+      </div>
 
       {drawerOpen ? (
         <NewScheduleDrawer
@@ -640,6 +695,7 @@ export function SchedulingWorkspace() {
           initialScheduledDate={newScheduleInitialDate}
           initialScheduledTime={getDefaultScheduledTime()}
           onClose={() => setDrawerOpen(false)}
+          onRefreshMedia={loadScheduleMedia}
           onSave={handleSaveScheduleDraft}
           saving={savingSchedule}
           socialConnections={socialConnections}
@@ -880,6 +936,7 @@ function ScheduleDraftPreview({
     draft.status === "render_required" || draft.status === "render_failed";
   const canScheduleFinal = canScheduleFinalDraft(draft);
   const finalScheduleMessage = getFinalScheduleUnavailableMessage(draft);
+  const autoSchedulesFinal = shouldAutoScheduleFinalDraft(draft);
 
   return (
     <article className="grid gap-3 rounded-2xl border border-border bg-white p-3 shadow-sm">
@@ -942,15 +999,23 @@ function ScheduleDraftPreview({
           ) : null}
           {draft.status === "ready" && combinedMedia?.mediaUrl ? (
             <div className="mt-2">
-              <button
-                type="button"
-                onClick={() => onScheduleDraft(draft)}
-                disabled={!canScheduleFinal || isSchedulingFinal}
-                className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSchedulingFinal ? "Scheduling..." : "Schedule final post"}
-              </button>
-              {finalScheduleMessage ? (
+              {autoSchedulesFinal ? (
+                <p className="text-[11px] font-semibold leading-4 text-muted">
+                  {isSchedulingFinal
+                    ? "Creating final platform schedule..."
+                    : "Final scheduling starts automatically."}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onScheduleDraft(draft)}
+                  disabled={!canScheduleFinal || isSchedulingFinal}
+                  className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSchedulingFinal ? "Scheduling..." : "Schedule final post"}
+                </button>
+              )}
+              {!autoSchedulesFinal && finalScheduleMessage ? (
                 <p className="mt-1 text-[11px] font-semibold leading-4 text-muted">
                   {finalScheduleMessage}
                 </p>
@@ -1335,11 +1400,11 @@ function CalendarDraftPill({ draft }: { draft: ScheduleDraft }) {
   );
 }
 
-function DayScheduleDrawer({
+function DayScheduleWorkspace({
   activeTab,
   drafts,
   isSchedulingFinalDraftId,
-  onClose,
+  onBackToCalendar,
   onCreateDraftForDate,
   onRenderDraft,
   onScheduleDraft,
@@ -1349,7 +1414,7 @@ function DayScheduleDrawer({
   activeTab: ScheduleTab;
   drafts: ScheduleDraft[];
   isSchedulingFinalDraftId: string | null;
-  onClose: () => void;
+  onBackToCalendar: () => void;
   onCreateDraftForDate: (dateKey: string) => void;
   onRenderDraft: (draftId: string) => void;
   onScheduleDraft: (draft: ScheduleDraft) => void;
@@ -1359,7 +1424,7 @@ function DayScheduleDrawer({
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onClose();
+        onBackToCalendar();
       }
     }
 
@@ -1368,73 +1433,91 @@ function DayScheduleDrawer({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onClose]);
+  }, [onBackToCalendar]);
 
   return (
-    <div
-      role="presentation"
-      className="fixed inset-0 z-50 flex justify-end bg-[#071a33]/28 p-3 backdrop-blur-sm sm:p-4"
-      onMouseDown={(event) => {
-        if (event.currentTarget === event.target) {
-          onClose();
-        }
-      }}
+    <section
+      aria-labelledby="day-schedule-title"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-border/80 bg-[#fbf8f4] shadow-[0_18px_50px_rgb(16_32_51_/_0.08)]"
     >
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="day-schedule-drawer-title"
-        className="flex h-full w-full max-w-[640px] flex-col overflow-hidden rounded-[28px] border border-border bg-[#fbf8f4] shadow-[0_26px_90px_rgb(16_32_51_/_0.22)]"
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-border/80 bg-white/72 px-5 py-4 backdrop-blur sm:px-6">
+      <div className="border-b border-border/80 bg-white/76 px-4 py-4 backdrop-blur sm:px-6">
+        <button
+          type="button"
+          onClick={onBackToCalendar}
+          className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-white px-3 text-xs font-bold text-[#173454] shadow-sm transition hover:bg-[#fff8f4]"
+        >
+          <ChevronLeft className="size-4" aria-hidden="true" />
+          Back to calendar
+        </button>
+
+        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-normal text-muted">
-              Day schedule
+              Selected day
             </p>
             <h2
-              id="day-schedule-drawer-title"
-              className="mt-1 text-lg font-bold tracking-normal text-foreground"
+              id="day-schedule-title"
+              className="mt-1 text-2xl font-bold tracking-normal text-foreground sm:text-3xl"
             >
               {getReadableDateLabel(selectedDate)}
             </h2>
             <p className="mt-1 text-sm font-medium leading-6 text-muted">
               {drafts.length} {drafts.length === 1 ? "item" : "items"} in{" "}
-              {tabLabels[activeTab].toLowerCase()}
+              {tabLabels[activeTab].toLowerCase()} for this day.
             </p>
           </div>
           <button
             type="button"
-            onClick={onClose}
-            aria-label="Close day schedule"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-white text-[#173454] shadow-sm transition hover:bg-[#fff8f4]"
+            onClick={() => onCreateDraftForDate(selectedDate)}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.18)] transition hover:bg-primary-hover sm:w-fit"
           >
-            <X className="size-4" aria-hidden="true" />
+            <Plus className="size-4" aria-hidden="true" />
+            Schedule for this day
           </button>
         </div>
+      </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
-          <div className="rounded-2xl border border-border bg-white/80 p-4 shadow-sm">
+      <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto p-4 sm:p-6 lg:grid-cols-[minmax(260px,0.75fr)_minmax(0,1.25fr)]">
+        <div className="grid content-start gap-4">
+          <div className="rounded-2xl border border-border bg-white/82 p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-bold text-foreground">
-                  Plan this day
+                  Day workflow
                 </p>
                 <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-                  Review what is planned, then add a video and demo combination.
+                  Choose an opening video, choose a Library demo, render one
+                  combined MP4, then schedule the final post.
                 </p>
               </div>
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#173454] text-white">
                 <CalendarDays className="size-4" aria-hidden="true" />
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => onCreateDraftForDate(selectedDate)}
-              className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.18)] transition hover:bg-primary-hover"
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              Schedule for this day
-            </button>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-white/82 p-4 shadow-sm">
+            <p className="text-sm font-bold text-foreground">What appears here</p>
+            <p className="mt-1 text-xs font-semibold leading-5 text-muted">
+              Drafts, rendering jobs, ready combined videos, and scheduled posts
+              for this selected calendar date.
+            </p>
+          </div>
+        </div>
+
+        <div className="min-w-0 rounded-2xl border border-border bg-white/78 p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-bold text-foreground">
+                Schedule for this day
+              </p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-muted">
+                Render and publishing status will update here.
+              </p>
+            </div>
+            <span className="inline-flex w-fit items-center rounded-full bg-card-muted px-3 py-1 text-xs font-bold text-[#405977]">
+              {drafts.length} {drafts.length === 1 ? "item" : "items"}
+            </span>
           </div>
 
           <div className="mt-4 grid gap-3">
@@ -1450,7 +1533,7 @@ function DayScheduleDrawer({
                 />
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-[#fffaf6] px-4 py-8 text-center">
+              <div className="rounded-2xl border border-dashed border-border bg-[#fffaf6] px-4 py-10 text-center">
                 <CalendarPlus
                   className="mx-auto size-8 text-[#9aa7b8]"
                   aria-hidden="true"
@@ -1465,8 +1548,8 @@ function DayScheduleDrawer({
             )}
           </div>
         </div>
-      </aside>
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -1488,6 +1571,7 @@ function SelectedDayDraftCard({
     draft.status === "render_required" || draft.status === "render_failed";
   const canScheduleFinal = canScheduleFinalDraft(draft);
   const finalScheduleMessage = getFinalScheduleUnavailableMessage(draft);
+  const autoSchedulesFinal = shouldAutoScheduleFinalDraft(draft);
 
   return (
     <article className="rounded-xl border border-border bg-white px-3 py-3 shadow-sm">
@@ -1550,17 +1634,23 @@ function SelectedDayDraftCard({
           </button>
         ) : null}
         {draft.status === "ready" && combinedMedia?.mediaUrl ? (
-          <button
-            type="button"
-            onClick={() => onScheduleDraft(draft)}
-            disabled={!canScheduleFinal || isSchedulingFinal}
-            className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isSchedulingFinal ? "Scheduling..." : "Schedule final"}
-          </button>
+          autoSchedulesFinal ? (
+            <span className="inline-flex h-8 items-center rounded-full bg-card-muted px-3 text-xs font-bold text-muted">
+              {isSchedulingFinal ? "Scheduling final..." : "Auto scheduling"}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onScheduleDraft(draft)}
+              disabled={!canScheduleFinal || isSchedulingFinal}
+              className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSchedulingFinal ? "Scheduling..." : "Schedule final"}
+            </button>
+          )
         ) : null}
       </div>
-      {finalScheduleMessage && draft.status === "ready" ? (
+      {!autoSchedulesFinal && finalScheduleMessage && draft.status === "ready" ? (
         <p className="mt-2 text-[11px] font-semibold leading-4 text-muted">
           {finalScheduleMessage}
         </p>
@@ -1859,6 +1949,7 @@ function NewScheduleDrawer({
   initialScheduledDate,
   initialScheduledTime,
   onClose,
+  onRefreshMedia,
   onSave,
   saving,
   socialConnections,
@@ -1869,6 +1960,7 @@ function NewScheduleDrawer({
   initialScheduledDate: string;
   initialScheduledTime: string;
   onClose: () => void;
+  onRefreshMedia: () => Promise<boolean>;
   onSave: (submission: ScheduleFormSubmission) => void;
   saving: boolean;
   socialConnections: SocialConnection[];
@@ -1883,6 +1975,7 @@ function NewScheduleDrawer({
   );
   const [preparingCatalogInfluencerId, setPreparingCatalogInfluencerId] =
     useState<string | null>(null);
+  const [refreshingMedia, setRefreshingMedia] = useState(false);
   const [hookPickerError, setHookPickerError] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
   const [selectedConnectionIds, setSelectedConnectionIds] = useState<string[]>([]);
@@ -1921,6 +2014,7 @@ function NewScheduleDrawer({
       scheduledTime &&
       !saving,
   );
+  const hasSelectedConnections = selectedConnectionIds.length > 0;
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -1947,6 +2041,21 @@ function NewScheduleDrawer({
   function handleSelectHookMedia(mediaId: string) {
     setHookPickerError(null);
     setSelectedHookMediaId(mediaId);
+  }
+
+  async function handleRefreshMedia() {
+    setHookPickerError(null);
+    setRefreshingMedia(true);
+
+    try {
+      const refreshed = await onRefreshMedia();
+
+      if (!refreshed) {
+        setHookPickerError("Could not refresh scheduling media.");
+      }
+    } finally {
+      setRefreshingMedia(false);
+    }
   }
 
   async function handleSelectCatalogInfluencer(
@@ -2017,7 +2126,7 @@ function NewScheduleDrawer({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 z-50 flex justify-end bg-[#071a33]/28 p-3 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-50 flex bg-[#071a33]/28 p-0 backdrop-blur-sm sm:p-4"
       onMouseDown={(event) => {
         if (event.currentTarget === event.target) {
           onClose();
@@ -2028,7 +2137,7 @@ function NewScheduleDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-schedule-drawer-title"
-        className="flex h-full w-full max-w-[560px] flex-col overflow-hidden rounded-[28px] border border-border bg-[#fbf8f4] shadow-[0_26px_90px_rgb(16_32_51_/_0.22)]"
+        className="mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-none border border-border bg-[#fbf8f4] shadow-[0_26px_90px_rgb(16_32_51_/_0.22)] sm:rounded-[28px]"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border/80 bg-white/72 px-5 py-4 backdrop-blur sm:px-6">
           <div>
@@ -2052,94 +2161,102 @@ function NewScheduleDrawer({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
-          <div className="grid gap-3">
-            <ScheduleOpeningMediaPicker
-              catalogInfluencerOptions={catalogInfluencerOptions}
-              errorMessage={hookPickerError}
-              mediaOptions={localHookMediaOptions}
-              preparingCatalogInfluencerId={preparingCatalogInfluencerId}
-              selectedMediaId={activeHookMediaId}
-              onSelectCatalogInfluencer={handleSelectCatalogInfluencer}
-              onSelectMedia={handleSelectHookMedia}
-            />
-            <ScheduleRoleMediaPicker
-              description="Product demo from the Library demo section."
-              emptyDescription="Upload a demo from Library before scheduling."
-              emptyTitle="No demo videos found."
-              icon={<FileVideo className="size-4" aria-hidden="true" />}
-              mediaOptions={demoMediaOptions}
-              selectedMediaId={activeDemoMediaId}
-              title="Demo video"
-              onSelectMedia={setSelectedDemoMediaId}
-            />
-          </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
+            <div className="grid content-start gap-5">
+              <div className="grid gap-3">
+                <ScheduleOpeningMediaPicker
+                  catalogInfluencerOptions={catalogInfluencerOptions}
+                  errorMessage={hookPickerError}
+                  mediaOptions={localHookMediaOptions}
+                  preparingCatalogInfluencerId={preparingCatalogInfluencerId}
+                  refreshingMedia={refreshingMedia}
+                  selectedMediaId={activeHookMediaId}
+                  onRefreshMedia={handleRefreshMedia}
+                  onSelectCatalogInfluencer={handleSelectCatalogInfluencer}
+                  onSelectMedia={handleSelectHookMedia}
+                />
+                <ScheduleRoleMediaPicker
+                  description="Product demo from the Library demo section."
+                  emptyDescription="Upload a demo from Library before scheduling."
+                  emptyTitle="No demo videos found."
+                  icon={<FileVideo className="size-4" aria-hidden="true" />}
+                  mediaOptions={demoMediaOptions}
+                  selectedMediaId={activeDemoMediaId}
+                  title="Demo video"
+                  onSelectMedia={setSelectedDemoMediaId}
+                />
+              </div>
 
-          <CompositionPreview
-            demoMedia={selectedDemoMedia}
-            hookMedia={selectedHookMedia}
-          />
-
-          <label className="block">
-            <span className="text-sm font-bold text-foreground">Caption</span>
-            <textarea
-              rows={5}
-              value={caption}
-              onChange={(event) => setCaption(event.target.value)}
-              placeholder="Write caption..."
-              className="mt-2 min-h-32 w-full resize-none rounded-2xl border border-border bg-white px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-[#8c9aab] focus:border-primary"
-            />
-          </label>
-
-          <ConnectedAccountSelector
-            connections={socialConnections}
-            onToggle={toggleConnection}
-            selectedConnectionIds={selectedConnectionIds}
-          />
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-bold text-foreground">Date</span>
-              <input
-                type="date"
-                value={scheduledDate}
-                onChange={(event) => setScheduledDate(event.target.value)}
-                className="mt-2 h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+              <CompositionPreview
+                demoMedia={selectedDemoMedia}
+                hookMedia={selectedHookMedia}
               />
-            </label>
-            <label className="block">
-              <span className="text-sm font-bold text-foreground">Time</span>
-              <input
-                type="time"
-                value={scheduledTime}
-                onChange={(event) => setScheduledTime(event.target.value)}
-                className="mt-2 h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+            </div>
+
+            <div className="grid content-start gap-5">
+              <label className="block">
+                <span className="text-sm font-bold text-foreground">Caption</span>
+                <textarea
+                  rows={5}
+                  value={caption}
+                  onChange={(event) => setCaption(event.target.value)}
+                  placeholder="Write caption..."
+                  className="mt-2 min-h-32 w-full resize-none rounded-2xl border border-border bg-white px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-[#8c9aab] focus:border-primary"
+                />
+              </label>
+
+              <ConnectedAccountSelector
+                connections={socialConnections}
+                onToggle={toggleConnection}
+                selectedConnectionIds={selectedConnectionIds}
               />
-            </label>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-bold text-foreground">Date</span>
+                  <input
+                    type="date"
+                    value={scheduledDate}
+                    onChange={(event) => setScheduledDate(event.target.value)}
+                    className="mt-2 h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-bold text-foreground">Time</span>
+                  <input
+                    type="time"
+                    value={scheduledTime}
+                    onChange={(event) => setScheduledTime(event.target.value)}
+                    className="mt-2 h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+                  />
+                </label>
+              </div>
+
+              <label className="block">
+                <span className="text-sm font-bold text-foreground">Timezone</span>
+                <select
+                  value={timezone}
+                  onChange={(event) => setTimezone(event.target.value)}
+                  className="mt-2 h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+                >
+                  {getTimezoneOptions(timezone).map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <PostTypeSelector value={postType} onChange={setPostType} />
+
+              <StatusPreview
+                demoMedia={selectedDemoMedia}
+                hookMedia={selectedHookMedia}
+                status={status}
+              />
+            </div>
           </div>
-
-          <label className="block">
-            <span className="text-sm font-bold text-foreground">Timezone</span>
-            <select
-              value={timezone}
-              onChange={(event) => setTimezone(event.target.value)}
-              className="mt-2 h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
-            >
-              {getTimezoneOptions(timezone).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <PostTypeSelector value={postType} onChange={setPostType} />
-
-          <StatusPreview
-            demoMedia={selectedDemoMedia}
-            hookMedia={selectedHookMedia}
-            status={status}
-          />
         </div>
 
         <div className="border-t border-border/80 bg-white/72 px-5 py-4 backdrop-blur sm:px-6">
@@ -2151,16 +2268,21 @@ function NewScheduleDrawer({
           >
             <CheckCircle2 className="size-4" aria-hidden="true" />
             {saving
-              ? "Saving..."
+              ? hasSelectedConnections
+                ? "Scheduling..."
+                : "Saving..."
               : canSaveDraft
-                ? "Save and render combination"
+                ? hasSelectedConnections
+                  ? "Schedule post"
+                  : "Save render draft"
                 : selectedHookMedia && selectedDemoMedia
                   ? "Choose date and time"
                   : "Choose video and demo"}
           </button>
           <p className="mt-3 text-center text-xs font-semibold leading-5 text-muted">
-            This saves the plan and queues one combined MP4. Real publishing
-            starts after that render is ready.
+            {hasSelectedConnections
+              ? "This renders one combined MP4 first, then schedules it automatically when ready."
+              : "Choose an account to schedule automatically, or save a render draft without publishing."}
           </p>
         </div>
       </aside>
@@ -2174,17 +2296,21 @@ function ScheduleOpeningMediaPicker({
   catalogInfluencerOptions,
   errorMessage,
   mediaOptions,
+  onRefreshMedia,
   onSelectCatalogInfluencer,
   onSelectMedia,
   preparingCatalogInfluencerId,
+  refreshingMedia,
   selectedMediaId,
 }: {
   catalogInfluencerOptions: ScheduleCatalogInfluencerOption[];
   errorMessage: string | null;
   mediaOptions: ScheduleMediaOption[];
+  onRefreshMedia: () => void;
   onSelectCatalogInfluencer: (option: ScheduleCatalogInfluencerOption) => void;
   onSelectMedia: (mediaId: string) => void;
   preparingCatalogInfluencerId: string | null;
+  refreshingMedia: boolean;
   selectedMediaId: string;
 }) {
   const [activeSource, setActiveSource] =
@@ -2331,9 +2457,24 @@ function ScheduleOpeningMediaPicker({
             </p>
           </div>
         </div>
-        <span className="shrink-0 text-xs font-semibold text-muted">
-          {sourceCounts.all} available
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-xs font-semibold text-muted">
+            {sourceCounts.all} available
+          </span>
+          <button
+            type="button"
+            onClick={onRefreshMedia}
+            disabled={refreshingMedia}
+            aria-label="Refresh scheduling media"
+            title="Refresh scheduling media"
+            className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-white text-[#405977] shadow-sm transition hover:bg-[#fff8f4] disabled:cursor-wait disabled:opacity-60"
+          >
+            <RefreshCw
+              className={cn("size-4", refreshingMedia ? "animate-spin" : null)}
+              aria-hidden="true"
+            />
+          </button>
+        </div>
       </div>
 
       <div
@@ -2755,7 +2896,7 @@ function StatusPreview({
 }) {
   const message =
     hookMedia && demoMedia
-      ? "The selected videos need a combined render before publishing."
+      ? "We render one combined MP4 first, then schedule it automatically."
       : "Choose one opening video and one demo video before saving.";
 
   return (
@@ -2912,7 +3053,9 @@ function getDraftRenderMessage(draft: ScheduleDraft) {
   }
 
   if (draft.status === "ready") {
-    return "Combined MP4 is ready for the next scheduling step.";
+    return hasPlannedFinalSchedule(draft)
+      ? "Combined MP4 is ready. Creating the final platform schedule automatically."
+      : "Combined MP4 is ready for final scheduling.";
   }
 
   if (draft.status === "render_failed") {
@@ -2920,7 +3063,9 @@ function getDraftRenderMessage(draft: ScheduleDraft) {
   }
 
   if (draft.status === "rendering") {
-    return "Opening video and demo are being combined into one MP4.";
+    return hasPlannedFinalSchedule(draft)
+      ? "Opening video and demo are being combined. Final scheduling starts automatically after render."
+      : "Opening video and demo are being combined into one MP4.";
   }
 
   if (draft.status === "render_required") {
@@ -2938,9 +3083,19 @@ function canScheduleFinalDraft(draft: ScheduleDraft) {
   return Boolean(
     draft.status === "ready" &&
       draft.combinedMedia?.mediaUrl &&
-      (draft.plannedConnectionIds?.length ?? 0) > 0 &&
+      hasPlannedFinalSchedule(draft),
+  );
+}
+
+function hasPlannedFinalSchedule(draft: ScheduleDraft) {
+  return Boolean(
+    (draft.plannedConnectionIds?.length ?? 0) > 0 &&
       getDraftPlannedScheduledFor(draft),
   );
+}
+
+function shouldAutoScheduleFinalDraft(draft: ScheduleDraft) {
+  return canScheduleFinalDraft(draft) && (draft.targets?.length ?? 0) === 0;
 }
 
 function getFinalScheduleUnavailableMessage(draft: ScheduleDraft) {
@@ -3247,6 +3402,14 @@ function getScheduleSourceTypeFromMediaAsset(
   }
 
   return "user_video";
+}
+
+function isOpeningVideoMediaAsset(asset: MediaAsset) {
+  return hookVideoSourceTypes.includes(asset.sourceType);
+}
+
+function isDemoVideoMediaAsset(asset: MediaAsset) {
+  return demoVideoSourceTypes.includes(asset.sourceType);
 }
 
 function dedupeScheduleMediaOptions(options: ScheduleMediaOption[]) {

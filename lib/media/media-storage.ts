@@ -233,6 +233,30 @@ export async function getMediaAssetForOwner(params: {
   return data;
 }
 
+export async function getLatestReadyMediaAssetForParent(params: {
+  parentAssetId: string;
+  sourceType: MediaSourceType;
+  userId: string;
+}) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(MEDIA_ASSETS_TABLE)
+    .select("*")
+    .eq("parent_asset_id", params.parentAssetId)
+    .eq("source_type", params.sourceType)
+    .eq("status", "ready")
+    .eq("user_id", params.userId)
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load rendered media asset: ${error.message}`);
+  }
+
+  return data;
+}
+
 export async function markMediaAssetReady(params: {
   assetId: string;
   durationSeconds?: number | null;

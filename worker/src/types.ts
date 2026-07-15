@@ -94,6 +94,21 @@ type EditableVideoUpdate = Partial<{
   updated_at: string;
 }>;
 
+type DemoVideoUpdate = Partial<{
+  error_message: string | null;
+  latest_render_id: string | null;
+  rendered_video_url: string | null;
+  status:
+    | "uploading"
+    | "processing"
+    | "ready"
+    | "draft"
+    | "rendering"
+    | "rendered"
+    | "failed";
+  updated_at: string;
+}>;
+
 type VideoRenderJobUpdate = Partial<{
   completed_at: string | null;
   error_message: string | null;
@@ -361,6 +376,12 @@ export type BackgroundJobsDatabase = {
         Relationships: [];
         Row: Record<string, Json>;
         Update: EditableVideoUpdate;
+      };
+      demo_videos: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: Record<string, Json>;
+        Update: DemoVideoUpdate;
       };
       media_assets: {
         Insert: MediaAssetInsert;

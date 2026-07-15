@@ -4,6 +4,7 @@ import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  Download,
   Loader2,
   Pencil,
   RefreshCw,
@@ -77,6 +78,23 @@ type DemoDetailResponse =
     };
 
 type SaveState = "idle" | "saving" | "saved" | "failed";
+type RenderState = "idle" | "starting" | "rendering" | "rendered" | "failed";
+
+type RenderStartResponse =
+  | { jobId: string; ok: true; renderId: string; sourceVideoId: string }
+  | { error: string; ok: false };
+
+type RenderStatusResponse =
+  | {
+      ok: true;
+      run: {
+        error: string | null;
+        isTerminal: boolean;
+        output: { renderId: string | null; url: string | null } | null;
+        status: string;
+      };
+    }
+  | { error: string; ok: false };
 
 export function DemoEditorShell({ demoId }: { demoId: string }) {
   const router = useRouter();
@@ -86,6 +104,8 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [renderMessage, setRenderMessage] = useState<string | null>(null);
+  const [renderState, setRenderState] = useState<RenderState>("idle");
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [title, setTitle] = useState("");
@@ -104,6 +124,8 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
   const canSave = Boolean(
     demo && draft && hasUnsavedChanges && saveState !== "saving",
   );
+  const isRendering = renderState === "starting" || renderState === "rendering";
+  const canRender = Boolean(demo?.source_video_url) && !isRendering && saveState !== "saving";
 
   const loadDemo = useCallback(async () => {
     setErrorMessage(null);
@@ -137,6 +159,8 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
       setTitle(data.demo.title);
       setDraft(null);
       setEditorResetKey((current) => current + 1);
+      setRenderState(data.demo.rendered_video_url ? "rendered" : "idle");
+      setRenderMessage(null);
       setSaveState("idle");
       setSaveMessage(null);
     } catch (error) {
@@ -160,6 +184,11 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
     if (saveState === "saved") {
       setSaveState("idle");
       setSaveMessage(null);
+    }
+
+    if (renderState === "rendered") {
+      setRenderState("idle");
+      setRenderMessage(null);
     }
   }
 
@@ -194,8 +223,54 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
     setTitle(demo.title);
     setDraft(null);
     setEditorResetKey((current) => current + 1);
+    setRenderState(demo.rendered_video_url ? "rendered" : "idle");
+    setRenderMessage(null);
     setSaveState("idle");
     setSaveMessage(null);
+  }
+
+  async function persistDemoDraft(
+    currentDemo: DemoVideo,
+    draftForSave: FocusedVideoEditorDraftState,
+  ) {
+    const cleanTitle = title.trim();
+
+    if (!cleanTitle) {
+      throw new Error("Demo title cannot be empty.");
+    }
+
+    const token = await getCurrentUserIdToken();
+
+    if (!token) {
+      throw new Error("Sign in again before saving this draft.");
+    }
+
+    const response = await fetch(`/api/demo/${encodeURIComponent(currentDemo.id)}`, {
+      body: JSON.stringify({
+        draft: normalizeDraftForSave(draftForSave),
+        projectId: currentDemo.project_id,
+        status: "draft",
+        title: cleanTitle,
+      }),
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      method: "PATCH",
+    });
+    const data = (await response.json()) as DemoDetailResponse;
+
+    if (!response.ok || data.ok !== true) {
+      throw new Error(getApiErrorMessage(data, "Could not save this draft."));
+    }
+
+    setDemo(data.demo);
+    setTitle(data.demo.title);
+
+    return {
+      demo: data.demo,
+      token,
+    };
   }
 
   async function handleSaveDraft() {
@@ -215,33 +290,7 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
     setSaveMessage("Saving draft...");
 
     try {
-      const token = await getCurrentUserIdToken();
-
-      if (!token) {
-        throw new Error("Sign in again before saving this draft.");
-      }
-
-      const response = await fetch(`/api/demo/${encodeURIComponent(demo.id)}`, {
-        body: JSON.stringify({
-          draft: normalizeDraftForSave(draft),
-          projectId: demo.project_id,
-          status: "draft",
-          title: cleanTitle,
-        }),
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        method: "PATCH",
-      });
-      const data = (await response.json()) as DemoDetailResponse;
-
-      if (!response.ok || data.ok !== true) {
-        throw new Error(getApiErrorMessage(data, "Could not save this draft."));
-      }
-
-      setDemo(data.demo);
-      setTitle(data.demo.title);
+      await persistDemoDraft(demo, draft);
       setSaveState("saved");
       setSaveMessage("Draft saved to your demo library.");
     } catch (error) {
@@ -250,21 +299,97 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
     }
   }
 
+  async function handleRenderDemo() {
+    if (!demo || isRendering) {
+      return;
+    }
+
+    const draftForRender = normalizeDraftForSave(draft ?? getSavedDraftInput(demo));
+    setRenderState("starting");
+    setRenderMessage("Preparing demo MP4 export...");
+
+    try {
+      const saved = await persistDemoDraft(demo, draftForRender);
+
+      setSaveState("saved");
+      setSaveMessage("Draft saved for export.");
+
+      const response = await fetch("/api/edit/render", {
+        body: JSON.stringify({
+          draft: draftForRender,
+          durationSeconds: saved.demo.duration_seconds,
+          projectId: saved.demo.project_id,
+          ratio: mapDemoRatioToEditableRatio(saved.demo),
+          source: "demo",
+          sourceVideoId: saved.demo.id,
+          sourceVideoUrl: saved.demo.source_video_url,
+          thumbnailUrl: saved.demo.thumbnail_url,
+          title: saved.demo.title,
+        }),
+        headers: {
+          Authorization: `Bearer ${saved.token}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      const data = (await response.json()) as RenderStartResponse;
+
+      if (!response.ok || data.ok !== true) {
+        throw new Error(data.ok ? "Could not start demo export." : data.error);
+      }
+
+      setRenderState("rendering");
+      setRenderMessage("Exporting demo MP4. This can take a minute.");
+      const output = await pollDemoRender(data.jobId, saved.token);
+
+      if (!output.url) {
+        throw new Error("Demo export finished without a video URL.");
+      }
+
+      setDemo((current) =>
+        current
+          ? {
+              ...current,
+              latest_render_id: output.renderId,
+              rendered_video_url: output.url,
+              status: "rendered",
+            }
+          : current,
+      );
+      setRenderState("rendered");
+      setRenderMessage("Demo MP4 export is ready for Scheduling.");
+    } catch (error) {
+      setRenderState("failed");
+      setRenderMessage(getErrorMessage(error, "Demo export failed."));
+    }
+  }
+
   return (
     <section className="flex min-h-screen flex-1 flex-col bg-background px-4 py-5 text-foreground sm:px-6 lg:px-10 lg:py-8">
       <DemoEditorTopBar
         canSave={canSave}
+        canRender={canRender}
         demo={demo}
         hasTitleChanged={hasTitleChanged}
+        renderState={renderState}
         saveState={saveState}
         title={title}
         onBackToDemos={handleBackToDemos}
+        onRenderDemo={() => void handleRenderDemo()}
         onRefresh={() => void loadDemo()}
         onSaveDraft={() => void handleSaveDraft()}
         onTitleChange={handleTitleChange}
       />
 
       <div className="mx-auto flex w-full max-w-[1360px] flex-1 flex-col pb-8 pt-4">
+        {renderMessage || demo?.rendered_video_url ? (
+          <DemoRenderStatusNotice
+            renderedVideoUrl={demo?.rendered_video_url ?? null}
+            renderMessage={renderMessage}
+            renderState={renderState}
+          />
+        ) : null}
+
         {isLoading ? (
           <EditorLoadingState />
         ) : errorMessage ? (
@@ -304,23 +429,29 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
 }
 
 function DemoEditorTopBar({
+  canRender,
   canSave,
   demo,
   hasTitleChanged,
   onBackToDemos,
+  onRenderDemo,
   onRefresh,
   onSaveDraft,
   onTitleChange,
+  renderState,
   saveState,
   title,
 }: {
+  canRender: boolean;
   canSave: boolean;
   demo: DemoVideo | null;
   hasTitleChanged: boolean;
   onBackToDemos: () => void;
+  onRenderDemo: () => void;
   onRefresh: () => void;
   onSaveDraft: () => void;
   onTitleChange: (title: string) => void;
+  renderState: RenderState;
   saveState: SaveState;
   title: string;
 }) {
@@ -385,6 +516,19 @@ function DemoEditorTopBar({
         </button>
         <button
           type="button"
+          onClick={onRenderDemo}
+          disabled={!canRender}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {renderState === "starting" || renderState === "rendering" ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <Download className="size-4" aria-hidden="true" />
+          )}
+          {getRenderButtonLabel(renderState, demo)}
+        </button>
+        <button
+          type="button"
           onClick={onSaveDraft}
           disabled={!canSave}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
@@ -404,6 +548,44 @@ function DemoEditorTopBar({
         </button>
       </div>
     </header>
+  );
+}
+
+function DemoRenderStatusNotice({
+  renderedVideoUrl,
+  renderMessage,
+  renderState,
+}: {
+  renderedVideoUrl: string | null;
+  renderMessage: string | null;
+  renderState: RenderState;
+}) {
+  const isFailed = renderState === "failed";
+
+  return (
+    <div
+      role={isFailed ? "alert" : "status"}
+      className={cn(
+        "mb-4 rounded-md border px-4 py-3 text-sm font-semibold",
+        isFailed
+          ? "border-error/20 bg-error/5 text-error"
+          : "border-border bg-card-muted text-muted",
+      )}
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <span>{renderMessage ?? "Demo MP4 export is ready for Scheduling."}</span>
+        {renderedVideoUrl ? (
+          <a
+            href={renderedVideoUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-9 w-fit items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-white transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          >
+            Open MP4
+          </a>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -742,6 +924,57 @@ function getDemoStatusLabel(status: DemoStatus) {
   };
 
   return labels[status];
+}
+
+function getRenderButtonLabel(renderState: RenderState, demo: DemoVideo | null) {
+  if (renderState === "starting") {
+    return "Preparing";
+  }
+
+  if (renderState === "rendering") {
+    return "Exporting";
+  }
+
+  if (renderState === "rendered" || demo?.rendered_video_url) {
+    return "Export again";
+  }
+
+  return "Export MP4";
+}
+
+async function pollDemoRender(jobId: string, token: string) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    await sleep(attempt === 0 ? 900 : 2_500);
+
+    const response = await fetch(
+      `/api/edit/render/status?jobId=${encodeURIComponent(jobId)}`,
+      {
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+    const data = (await response.json()) as RenderStatusResponse;
+
+    if (!response.ok || data.ok !== true) {
+      throw new Error(data.ok ? "Render status unavailable." : data.error);
+    }
+
+    if (data.run.status === "COMPLETED" && data.run.output?.url) {
+      return data.run.output;
+    }
+
+    if (data.run.isTerminal) {
+      throw new Error(data.run.error ?? "Demo export failed.");
+    }
+  }
+
+  throw new Error("Demo export timed out.");
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function getErrorMessage(error: unknown, fallback: string) {

@@ -298,6 +298,24 @@ export async function insertScheduledPostTargets(
   return data ?? [];
 }
 
+export async function deleteFailedScheduleTargetsForRetry(params: {
+  errorCode: string;
+  postId: string;
+  userId: string;
+}) {
+  const { error } = await getSchedulingSupabaseClient()
+    .from(SCHEDULED_POST_TARGETS_TABLE)
+    .delete()
+    .eq("scheduled_post_id", params.postId)
+    .eq("user_id", params.userId)
+    .eq("status", "failed")
+    .eq("last_error_code", params.errorCode);
+
+  if (error) {
+    throw new Error(`Could not clear failed schedule targets: ${error.message}`);
+  }
+}
+
 export async function markScheduledPostStatus(params: {
   lastErrorCode?: string | null;
   postId: string;

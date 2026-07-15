@@ -6,6 +6,7 @@ import {
 } from "@/lib/firebase/server-auth";
 import {
   createUserSchedule,
+  getMinimumRenderLeadMinutes,
   getMissingSchedulingRuntimeEnvVars,
   listUserSchedules,
   SchedulingRequestError,
@@ -73,6 +74,7 @@ export async function GET(request: Request) {
     });
 
     return jsonResponse({
+      minimumRenderLeadMinutes: getMinimumRenderLeadMinutes(),
       ok: true,
       schedules,
     });

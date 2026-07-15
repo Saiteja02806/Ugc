@@ -135,7 +135,9 @@ export type ScheduleCreateInput = {
   caption?: string;
   idempotencyKey?: string;
   metadata?: Record<string, unknown>;
+  scheduledDate?: string;
   scheduledFor?: string;
+  scheduledTime?: string;
   source: ScheduleCreateSourceInput;
   targets?: ScheduleCreateTargetInput[];
   timezone?: string;
@@ -158,6 +160,8 @@ export type ScheduleDraft = {
   combinedMedia?: ScheduleMediaSelection;
   createdAt: string;
   demoMedia?: ScheduleMediaSelection;
+  finalScheduleError?: string;
+  finalScheduleErrorCode?: string;
   hookMedia?: ScheduleMediaSelection;
   id: string;
   mediaTitle?: string;
@@ -181,6 +185,8 @@ export type ScheduleDraftInput = {
   caption?: string;
   combinedMedia?: ScheduleMediaSelection;
   demoMedia?: ScheduleMediaSelection;
+  finalScheduleError?: string;
+  finalScheduleErrorCode?: string;
   hookMedia?: ScheduleMediaSelection;
   id?: string;
   mediaTitle?: string;

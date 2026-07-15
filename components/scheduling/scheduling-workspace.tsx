@@ -40,6 +40,13 @@ import {
   type ScheduleTab,
   type ScheduleViewMode,
 } from "@/lib/scheduling/types";
+import {
+  DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+  getZonedDateTimeParts,
+  resolveZonedDateTime,
+  ScheduleTimeError,
+  validateScheduleLeadTime,
+} from "@/lib/scheduling/schedule-time";
 import type { SocialConnection } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
@@ -98,7 +105,11 @@ type PreparedCatalogInfluencerResponse =
   | { error?: string; ok?: false };
 
 type ScheduleListResponse =
-  | { ok: true; schedules: ScheduledPost[] }
+  | {
+      minimumRenderLeadMinutes?: number;
+      ok: true;
+      schedules: ScheduledPost[];
+    }
   | { message?: string; ok?: false };
 
 type ScheduleCreateResponse =
@@ -129,6 +140,7 @@ type ScheduleFormSubmission = {
   hookMedia: ScheduleMediaOption;
   postType: SchedulePostType;
   scheduledDate: string;
+  scheduledFor: string;
   scheduledTime: string;
   selectedConnectionIds: string[];
   timezone: string;
@@ -177,6 +189,9 @@ export function SchedulingWorkspace() {
   >(null);
   const [renderingScheduleId, setRenderingScheduleId] = useState<string | null>(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
+  const [minimumRenderLeadMinutes, setMinimumRenderLeadMinutes] = useState(
+    DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+  );
 
   const loadScheduleMedia = useCallback(async () => {
     try {
@@ -263,6 +278,15 @@ export function SchedulingWorkspace() {
       }
 
       setServerSchedules(data.schedules);
+      const configuredLeadMinutes = data.minimumRenderLeadMinutes;
+
+      if (
+        typeof configuredLeadMinutes === "number" &&
+        Number.isInteger(configuredLeadMinutes) &&
+        configuredLeadMinutes >= 1
+      ) {
+        setMinimumRenderLeadMinutes(configuredLeadMinutes);
+      }
     } catch {
       setActionNotice("Could not load server schedules.");
     }
@@ -385,10 +409,6 @@ export function SchedulingWorkspace() {
         throw new Error("Sign in before scheduling posts.");
       }
 
-      const scheduledFor = getScheduledForIso(
-        submission.scheduledDate,
-        submission.scheduledTime,
-      );
       const targetConnections = socialConnections.filter((connection) =>
         submission.selectedConnectionIds.includes(connection.id),
       );
@@ -404,12 +424,14 @@ export function SchedulingWorkspace() {
             plannedPlatforms: targetConnections
               .map((connection) => connection.platform)
               .join(","),
-            plannedScheduledFor: scheduledFor ?? "",
+            plannedScheduledFor: submission.scheduledFor,
             scheduledDate: submission.scheduledDate,
             scheduledTime: submission.scheduledTime,
             postType: submission.postType,
           },
-          scheduledFor,
+          scheduledDate: submission.scheduledDate,
+          scheduledFor: submission.scheduledFor,
+          scheduledTime: submission.scheduledTime,
           source: {
             id: submission.demoMedia.id,
             kind: "media_asset",
@@ -438,7 +460,7 @@ export function SchedulingWorkspace() {
 
       let nextSchedule = data.schedule;
       const shouldAutoScheduleFinal =
-        submission.selectedConnectionIds.length > 0 && Boolean(scheduledFor);
+        submission.selectedConnectionIds.length > 0;
       let nextNotice = shouldAutoScheduleFinal
         ? "Schedule saved. Rendering the final MP4 before automatic platform scheduling."
         : "Combination draft saved, but the render did not start automatically.";
@@ -528,11 +550,9 @@ export function SchedulingWorkspace() {
         throw new Error("Sign in before scheduling this post.");
       }
 
-      const scheduledFor = getDraftPlannedScheduledFor(draft);
       const response = await fetch(`/api/schedules/${draft.id}/publish`, {
         body: JSON.stringify({
           connectionIds: draft.plannedConnectionIds ?? [],
-          scheduledFor,
           timezone: draft.timezone,
         }),
         cache: "no-store",
@@ -656,6 +676,7 @@ export function SchedulingWorkspace() {
           hookMediaOptions={hookMediaOptions}
           initialScheduledDate={newScheduleInitialDate}
           initialScheduledTime={getDefaultScheduledTime()}
+          minimumRenderLeadMinutes={minimumRenderLeadMinutes}
           onClose={() => setDrawerOpen(false)}
           onRefreshMedia={loadScheduleMedia}
           onSave={handleSaveScheduleDraft}
@@ -1054,7 +1075,7 @@ function ScheduleTargetStatusList({
                 </span>
               </div>
               <p className="mt-1 text-[11px] font-semibold leading-4 text-muted">
-                {getTargetStatusHelpText(target)}
+                {getTargetStatusHelpText(target, draft.timezone)}
               </p>
               {target.lastErrorMessage ? (
                 <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-error">
@@ -1798,10 +1819,13 @@ function getTargetStatusBadgeClass(status: ScheduledPostTarget["status"]) {
   return "bg-card-muted text-muted";
 }
 
-function getTargetStatusHelpText(target: ScheduledPostTarget) {
+function getTargetStatusHelpText(
+  target: ScheduledPostTarget,
+  timezone: string,
+) {
   if (target.status === "published") {
     return target.publishedAt
-      ? `Published ${formatShortDateTime(target.publishedAt)}.`
+      ? `Published ${formatShortDateTime(target.publishedAt, timezone)}.`
       : "Published successfully.";
   }
 
@@ -1810,7 +1834,10 @@ function getTargetStatusHelpText(target: ScheduledPostTarget) {
   }
 
   if (target.status === "scheduled") {
-    return `Will publish ${formatShortDateTime(target.scheduledFor)}.`;
+    return `Will publish ${formatShortDateTime(
+      target.scheduledFor,
+      timezone,
+    )}.`;
   }
 
   if (target.status === "scheduling") {
@@ -1834,19 +1861,32 @@ function getTargetStatusHelpText(target: ScheduledPostTarget) {
   return "Waiting for final scheduling.";
 }
 
-function formatShortDateTime(value: string) {
+function formatShortDateTime(value: string, timezone: string) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    month: "short",
-  }).format(date);
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      month: "short",
+      timeZone: timezone,
+    }).format(date);
+  } catch {
+    return value;
+  }
+}
+
+function getSafeZonedDateTimeParts(value: string, timezone: string) {
+  try {
+    return getZonedDateTimeParts(value, timezone);
+  } catch {
+    return null;
+  }
 }
 
 function parseDateKey(value: string) {
@@ -1888,14 +1928,51 @@ function getDefaultScheduledTime() {
   return getTimeKey(date);
 }
 
-function getScheduledForIso(date: string, time: string) {
-  if (!date || !time) {
-    return null;
+function getScheduleTimeValidation(params: {
+  date: string;
+  minimumLeadMinutes: number;
+  now?: number;
+  time: string;
+  timezone: string;
+}) {
+  if (!params.date || !params.time) {
+    return {
+      error: "Choose both a date and time to schedule.",
+      scheduledFor: null,
+    };
   }
 
-  const scheduledAt = new Date(`${date}T${time}:00`);
+  try {
+    const scheduledFor = resolveZonedDateTime({
+      date: params.date,
+      time: params.time,
+      timeZone: params.timezone,
+    });
+    const leadTime = validateScheduleLeadTime({
+      minimumLeadMinutes: params.minimumLeadMinutes,
+      now: params.now,
+      scheduledFor,
+    });
 
-  return Number.isNaN(scheduledAt.getTime()) ? null : scheduledAt.toISOString();
+    if (!leadTime.valid) {
+      return {
+        error: `Choose a time at least ${params.minimumLeadMinutes} ${
+          params.minimumLeadMinutes === 1 ? "minute" : "minutes"
+        } from now so the final video has time to render.`,
+        scheduledFor,
+      };
+    }
+
+    return { error: null, scheduledFor };
+  } catch (error) {
+    return {
+      error:
+        error instanceof ScheduleTimeError
+          ? error.message
+          : "Choose a valid schedule date and time.",
+      scheduledFor: null,
+    };
+  }
 }
 
 function NewScheduleDrawer({
@@ -1904,6 +1981,7 @@ function NewScheduleDrawer({
   hookMediaOptions,
   initialScheduledDate,
   initialScheduledTime,
+  minimumRenderLeadMinutes,
   onClose,
   onRefreshMedia,
   onSave,
@@ -1915,6 +1993,7 @@ function NewScheduleDrawer({
   hookMediaOptions: ScheduleMediaOption[];
   initialScheduledDate: string;
   initialScheduledTime: string;
+  minimumRenderLeadMinutes: number;
   onClose: () => void;
   onRefreshMedia: () => Promise<boolean>;
   onSave: (submission: ScheduleFormSubmission) => void;
@@ -1939,6 +2018,7 @@ function NewScheduleDrawer({
   const [scheduledTime, setScheduledTime] = useState(initialScheduledTime);
   const [timezone, setTimezone] = useState(defaultTimezone);
   const [postType, setPostType] = useState<SchedulePostType>("reel");
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   const localHookMediaOptions = useMemo(
     () => dedupeScheduleMediaOptions([...preparedHookMediaOptions, ...hookMediaOptions]),
@@ -1959,6 +2039,30 @@ function NewScheduleDrawer({
     localHookMediaOptions.find((option) => option.id === activeHookMediaId) ?? null;
   const selectedDemoMedia =
     demoMediaOptions.find((option) => option.id === activeDemoMediaId) ?? null;
+  const scheduleTimeValidation = useMemo(
+    () =>
+      getScheduleTimeValidation({
+        date: scheduledDate,
+        minimumLeadMinutes: minimumRenderLeadMinutes,
+        now: currentTime,
+        time: scheduledTime,
+        timezone,
+      }),
+    [
+      currentTime,
+      minimumRenderLeadMinutes,
+      scheduledDate,
+      scheduledTime,
+      timezone,
+    ],
+  );
+  const minimumScheduledDate = useMemo(() => {
+    try {
+      return getZonedDateTimeParts(currentTime, timezone).date;
+    } catch {
+      return toDateKey(new Date(currentTime));
+    }
+  }, [currentTime, timezone]);
   const status = getDraftStatusPreview({
     demoMedia: selectedDemoMedia,
     hookMedia: selectedHookMedia,
@@ -1968,9 +2072,16 @@ function NewScheduleDrawer({
       selectedDemoMedia &&
       scheduledDate &&
       scheduledTime &&
+      !scheduleTimeValidation.error &&
       !saving,
   );
   const hasSelectedConnections = selectedConnectionIds.length > 0;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -2063,7 +2174,12 @@ function NewScheduleDrawer({
   }
 
   function handleSaveDraft() {
-    if (!selectedHookMedia || !selectedDemoMedia) {
+    if (
+      !selectedHookMedia ||
+      !selectedDemoMedia ||
+      !scheduleTimeValidation.scheduledFor ||
+      scheduleTimeValidation.error
+    ) {
       return;
     }
 
@@ -2073,6 +2189,7 @@ function NewScheduleDrawer({
       hookMedia: selectedHookMedia,
       postType,
       scheduledDate,
+      scheduledFor: scheduleTimeValidation.scheduledFor,
       scheduledTime,
       selectedConnectionIds,
       timezone,
@@ -2173,6 +2290,13 @@ function NewScheduleDrawer({
                   <span className="text-sm font-bold text-foreground">Date</span>
                   <input
                     type="date"
+                    aria-describedby={
+                      scheduleTimeValidation.error
+                        ? "schedule-time-feedback"
+                        : undefined
+                    }
+                    aria-invalid={Boolean(scheduleTimeValidation.error)}
+                    min={minimumScheduledDate}
                     value={scheduledDate}
                     onChange={(event) => setScheduledDate(event.target.value)}
                     className="mt-2 h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
@@ -2182,6 +2306,12 @@ function NewScheduleDrawer({
                   <span className="text-sm font-bold text-foreground">Time</span>
                   <input
                     type="time"
+                    aria-describedby={
+                      scheduleTimeValidation.error
+                        ? "schedule-time-feedback"
+                        : undefined
+                    }
+                    aria-invalid={Boolean(scheduleTimeValidation.error)}
                     value={scheduledTime}
                     onChange={(event) => setScheduledTime(event.target.value)}
                     className="mt-2 h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
@@ -2192,6 +2322,12 @@ function NewScheduleDrawer({
               <label className="block">
                 <span className="text-sm font-bold text-foreground">Timezone</span>
                 <select
+                  aria-describedby={
+                    scheduleTimeValidation.error
+                      ? "schedule-time-feedback"
+                      : undefined
+                  }
+                  aria-invalid={Boolean(scheduleTimeValidation.error)}
                   value={timezone}
                   onChange={(event) => setTimezone(event.target.value)}
                   className="mt-2 h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
@@ -2203,6 +2339,20 @@ function NewScheduleDrawer({
                   ))}
                 </select>
               </label>
+
+              {scheduleTimeValidation.error ? (
+                <div
+                  id="schedule-time-feedback"
+                  role="alert"
+                  className="flex items-start gap-2 rounded-xl bg-error/10 px-3 py-2 text-xs font-semibold leading-5 text-error"
+                >
+                  <Clock3
+                    className="mt-0.5 size-3.5 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span>{scheduleTimeValidation.error}</span>
+                </div>
+              ) : null}
 
               <PostTypeSelector value={postType} onChange={setPostType} />
 
@@ -3001,9 +3151,14 @@ function getDraftRenderMessage(draft: ScheduleDraft) {
   }
 
   if (draft.status === "failed" || draft.status === "publishing_unavailable") {
-    return draft.status === "publishing_unavailable"
-      ? "The final video is ready, but platform scheduling did not complete. Retry scheduling below."
-      : "Publishing failed. Check the platform status rows below.";
+    if (draft.status === "publishing_unavailable") {
+      return (
+        draft.finalScheduleError ??
+        "The final video is ready, but platform scheduling did not complete. Retry scheduling below."
+      );
+    }
+
+    return "Publishing failed. Check the platform status rows below.";
   }
 
   if (draft.status === "cancelled") {
@@ -3043,7 +3198,8 @@ function canScheduleFinalDraft(draft: ScheduleDraft) {
       draft.status === "publishing_unavailable" ||
       canRetrySchedulerCreateFailure(draft)) &&
       draft.combinedMedia?.mediaUrl &&
-      hasPlannedFinalSchedule(draft),
+      hasPlannedFinalSchedule(draft) &&
+      !hasScheduleLeadTimeError(draft),
   );
 }
 
@@ -3085,7 +3241,21 @@ function getFinalScheduleUnavailableMessage(draft: ScheduleDraft) {
     return "Choose date and time in a new schedule draft before final scheduling.";
   }
 
+  if (hasScheduleLeadTimeError(draft)) {
+    return (
+      draft.finalScheduleError ??
+      "The selected publish time is too close. Choose a later date and time."
+    );
+  }
+
   return null;
+}
+
+function hasScheduleLeadTimeError(draft: ScheduleDraft) {
+  return (
+    draft.finalScheduleErrorCode === "schedule_time_too_soon" ||
+    draft.finalScheduleError?.startsWith("Choose a time at least ") === true
+  );
 }
 
 function getDraftPlannedScheduledFor(draft: ScheduleDraft) {
@@ -3097,7 +3267,7 @@ function getDraftPlannedScheduledFor(draft: ScheduleDraft) {
     return null;
   }
 
-  return getScheduledForIso(draft.scheduledDate, draft.scheduledTime);
+  return `${draft.scheduledDate}T${draft.scheduledTime}`;
 }
 
 function hasActiveCombinationRenderStatus(schedule: ScheduledPost) {
@@ -3145,12 +3315,13 @@ function mapScheduledPostToScheduleDraft(schedule: ScheduledPost): ScheduleDraft
     typeof metadata.scheduledTime === "string" && metadata.scheduledTime
       ? metadata.scheduledTime
       : undefined;
-  const scheduledDate = schedule.scheduledFor
-    ? toDateKey(new Date(schedule.scheduledFor))
-    : plannedScheduledDate;
-  const scheduledTime = schedule.scheduledFor
-    ? getTimeKey(new Date(schedule.scheduledFor))
-    : plannedScheduledTime;
+  const plannedScheduledFor =
+    schedule.scheduledFor ?? getString(metadata.plannedScheduledFor);
+  const zonedScheduleParts = plannedScheduledFor
+    ? getSafeZonedDateTimeParts(plannedScheduledFor, schedule.timezone)
+    : null;
+  const scheduledDate = zonedScheduleParts?.date ?? plannedScheduledDate;
+  const scheduledTime = zonedScheduleParts?.time ?? plannedScheduledTime;
   const hookMedia = getMetadataMediaOption({
     id: metadata.hookMediaId,
     sourceType: "influencer_video",
@@ -3173,12 +3344,14 @@ function mapScheduledPostToScheduleDraft(schedule: ScheduledPost): ScheduleDraft
     combinedMedia,
     createdAt: schedule.createdAt,
     demoMedia,
+    finalScheduleError: getString(metadata.finalScheduleError) ?? undefined,
+    finalScheduleErrorCode:
+      getString(metadata.finalScheduleErrorCode) ?? undefined,
     hookMedia,
     id: schedule.id,
     mediaTitle: schedule.title,
     plannedConnectionIds: getMetadataCsv(metadata.plannedConnectionIds),
-    plannedScheduledFor:
-      getString(metadata.plannedScheduledFor) ?? schedule.scheduledFor ?? undefined,
+    plannedScheduledFor: plannedScheduledFor ?? undefined,
     platforms: getDraftPlatformsFromSchedule(schedule),
     postType:
       typeof metadata.postType === "string" &&

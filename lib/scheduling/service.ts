@@ -37,6 +37,14 @@ import {
   resolveDemoRenderAsset,
   resolveOpeningRenderAsset,
 } from "@/lib/scheduling/render-asset-resolution";
+import {
+  getZonedDateTimeParts,
+  parseMinimumRenderLeadMinutes,
+  resolveZonedDateTime,
+  ScheduleTimeError,
+  validateScheduleLeadTime,
+  validateTimeZone,
+} from "@/lib/scheduling/schedule-time";
 import type {
   ScheduledPost,
   ScheduledPostStatus,
@@ -48,11 +56,12 @@ import { isSocialPlatform } from "@/lib/social/types";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const MINIMUM_SCHEDULE_LEAD_MS = 60_000;
 
 export type ScheduleRenderedPostInput = {
   connectionIds?: unknown;
+  scheduledDate?: unknown;
   scheduledFor?: unknown;
+  scheduledTime?: unknown;
   timezone?: unknown;
 };
 
@@ -332,6 +341,8 @@ export async function scheduleRenderedPost(params: {
       finalScheduleStatus: "scheduling",
       plannedConnectionIds: normalized.connectionIds.join(","),
       plannedScheduledFor: normalized.scheduledFor,
+      scheduledDate: normalized.scheduleTime.scheduledDate,
+      scheduledTime: normalized.scheduleTime.scheduledTime,
     },
     postId: existing.id,
     scheduledFor: normalized.scheduledFor,
@@ -374,6 +385,12 @@ export async function scheduleRenderedPost(params: {
       userId: params.userId,
     }),
   };
+}
+
+export function getMinimumRenderLeadMinutes() {
+  return parseMinimumRenderLeadMinutes(
+    process.env.SCHEDULING_MIN_RENDER_LEAD_MINUTES,
+  );
 }
 
 export async function finalizeRenderedScheduleFromWorker(
@@ -613,15 +630,25 @@ async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
 
   assertUuid(input.source.id, "Schedule source ID is invalid.");
 
-  const targets = normalizeTargets(input.targets);
-  const scheduledFor = normalizeScheduledFor(input.scheduledFor, targets.length);
   const timezone = normalizeTimezone(input.timezone);
+  const targets = normalizeTargets(input.targets);
+  const rawMetadata = normalizeMetadata(input.metadata);
+  const scheduleTime = normalizeScheduleTime(
+    {
+      scheduledDate: input.scheduledDate,
+      scheduledFor: input.scheduledFor,
+      scheduledTime: input.scheduledTime,
+      timezone,
+    },
+    targets.length > 0 || Boolean(getMetadataString(rawMetadata.plannedConnectionIds)),
+  );
+  const metadata = applyTrustedScheduleTimeMetadata(rawMetadata, scheduleTime);
 
   return {
     caption: normalizeText(input.caption, 5000),
     idempotencyKey: normalizeOptionalText(input.idempotencyKey, 120),
-    metadata: normalizeMetadata(input.metadata),
-    scheduledFor,
+    metadata,
+    scheduledFor: targets.length > 0 ? scheduleTime?.scheduledFor ?? null : null,
     source: {
       id: input.source.id,
       kind: input.source.kind,
@@ -647,19 +674,31 @@ function normalizeRenderedScheduleInput(
   const targets = normalizeTargets(
     connectionIds.map((connectionId) => ({ connectionId })),
   );
-  const scheduledFor = normalizeScheduledFor(
-    input.scheduledFor ?? getPlannedScheduledFor(existing),
-    targets.length,
-  );
   const timezone = normalizeTimezone(input.timezone ?? existing.timezone);
+  const hasExplicitScheduleTime =
+    input.scheduledDate !== undefined ||
+    input.scheduledFor !== undefined ||
+    input.scheduledTime !== undefined;
+  const scheduleTime = normalizeScheduleTime(
+    hasExplicitScheduleTime
+      ? {
+          scheduledDate: input.scheduledDate,
+          scheduledFor: input.scheduledFor,
+          scheduledTime: input.scheduledTime,
+          timezone,
+        }
+      : getPlannedScheduleTimeInput(existing, timezone),
+    true,
+  );
 
-  if (!scheduledFor) {
+  if (!scheduleTime) {
     throw new SchedulingRequestError("Choose a date and time to schedule.");
   }
 
   return {
     connectionIds,
-    scheduledFor,
+    scheduleTime,
+    scheduledFor: scheduleTime.scheduledFor,
     targets,
     timezone,
   };
@@ -690,27 +729,50 @@ function normalizeConnectionIds(value: unknown, fallbackCsv: string | null) {
   return connectionIds;
 }
 
-function getPlannedScheduledFor(schedule: ScheduledPost) {
+function getPlannedScheduleTimeInput(
+  schedule: ScheduledPost,
+  timezone = schedule.timezone,
+) {
   const plannedScheduledFor = getMetadataString(
     schedule.metadata.plannedScheduledFor,
   );
 
   if (plannedScheduledFor) {
-    return plannedScheduledFor;
+    return {
+      scheduledFor: plannedScheduledFor,
+      timezone,
+    };
   }
 
   const scheduledDate = getMetadataString(schedule.metadata.scheduledDate);
   const scheduledTime = getMetadataString(schedule.metadata.scheduledTime);
 
   if (!scheduledDate || !scheduledTime) {
-    return null;
+    return {
+      scheduledDate: null,
+      scheduledFor: null,
+      scheduledTime: null,
+      timezone,
+    };
   }
 
-  const scheduledFor = new Date(`${scheduledDate}T${scheduledTime}:00`);
+  return {
+    scheduledDate,
+    scheduledTime,
+    timezone,
+  };
+}
 
-  return Number.isNaN(scheduledFor.getTime())
-    ? null
-    : scheduledFor.toISOString();
+function getPlannedScheduledFor(schedule: ScheduledPost) {
+  try {
+    return normalizeScheduleTime(
+      getPlannedScheduleTimeInput(schedule),
+      false,
+      false,
+    )?.scheduledFor ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function resolveScheduleSource(params: {
@@ -865,43 +927,153 @@ function normalizeTargets(
   return normalized;
 }
 
-function normalizeScheduledFor(value: unknown, targetCount: number) {
-  if (targetCount === 0) {
-    return null;
-  }
-
-  if (typeof value !== "string" || !value.trim()) {
-    throw new SchedulingRequestError("Choose a date and time to schedule.");
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    throw new SchedulingRequestError("Choose a valid schedule date and time.");
-  }
-
-  if (date.getTime() < Date.now() + MINIMUM_SCHEDULE_LEAD_MS) {
-    throw new SchedulingRequestError(
-      "Choose a schedule time at least one minute from now.",
-      409,
-      "schedule_time_too_soon",
-    );
-  }
-
-  return date.toISOString();
-}
-
 function normalizeTimezone(value: unknown) {
   const timezone =
     typeof value === "string" && value.trim() ? value.trim() : "UTC";
 
   try {
-    new Intl.DateTimeFormat("en-US", { timeZone: timezone });
-  } catch {
-    throw new SchedulingRequestError("Choose a valid timezone.");
+    return validateTimeZone(timezone);
+  } catch (error) {
+    throw toSchedulingTimeError(error);
+  }
+}
+
+type ScheduleTimeInput = {
+  scheduledDate?: unknown;
+  scheduledFor?: unknown;
+  scheduledTime?: unknown;
+  timezone: string;
+};
+
+type NormalizedScheduleTime = {
+  scheduledDate: string;
+  scheduledFor: string;
+  scheduledTime: string;
+};
+
+function normalizeScheduleTime(
+  input: ScheduleTimeInput,
+  required: boolean,
+  enforceLeadTime = true,
+): NormalizedScheduleTime | null {
+  const scheduledDate = normalizeScheduleField(input.scheduledDate);
+  const scheduledTime = normalizeScheduleField(input.scheduledTime);
+  const hasWallTime = Boolean(scheduledDate || scheduledTime);
+  let normalized: NormalizedScheduleTime | null = null;
+
+  try {
+    if (hasWallTime) {
+      if (!scheduledDate || !scheduledTime) {
+        throw new SchedulingRequestError(
+          "Choose both a date and time to schedule.",
+        );
+      }
+
+      normalized = {
+        scheduledDate,
+        scheduledFor: resolveZonedDateTime({
+          date: scheduledDate,
+          time: scheduledTime,
+          timeZone: input.timezone,
+        }),
+        scheduledTime,
+      };
+    } else if (typeof input.scheduledFor === "string" && input.scheduledFor.trim()) {
+      const rawScheduledFor = input.scheduledFor.trim();
+
+      if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(rawScheduledFor)) {
+        throw new SchedulingRequestError(
+          "Schedule timestamps must include a UTC offset.",
+        );
+      }
+
+      const scheduledFor = new Date(rawScheduledFor);
+
+      if (Number.isNaN(scheduledFor.getTime())) {
+        throw new SchedulingRequestError(
+          "Choose a valid schedule date and time.",
+        );
+      }
+
+      const normalizedInstant = scheduledFor.toISOString();
+      const parts = getZonedDateTimeParts(normalizedInstant, input.timezone);
+
+      normalized = {
+        scheduledDate: parts.date,
+        scheduledFor: normalizedInstant,
+        scheduledTime: parts.time,
+      };
+    }
+  } catch (error) {
+    throw toSchedulingTimeError(error);
   }
 
-  return timezone;
+  if (!normalized) {
+    if (required) {
+      throw new SchedulingRequestError("Choose a date and time to schedule.");
+    }
+
+    return null;
+  }
+
+  if (enforceLeadTime) {
+    assertMinimumScheduleLead(normalized.scheduledFor);
+  }
+
+  return normalized;
+}
+
+function normalizeScheduleField(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function assertMinimumScheduleLead(scheduledFor: string) {
+  const minimumLeadMinutes = getMinimumRenderLeadMinutes();
+  const leadTime = validateScheduleLeadTime({
+    minimumLeadMinutes,
+    scheduledFor,
+  });
+
+  if (!leadTime.valid) {
+    throw new SchedulingRequestError(
+      `Choose a time at least ${minimumLeadMinutes} ${
+        minimumLeadMinutes === 1 ? "minute" : "minutes"
+      } from now so the final video has time to render.`,
+      409,
+      "schedule_time_too_soon",
+    );
+  }
+}
+
+function applyTrustedScheduleTimeMetadata(
+  metadata: ScheduleTargetSettings,
+  scheduleTime: NormalizedScheduleTime | null,
+) {
+  const normalized: ScheduleTargetSettings = { ...metadata };
+
+  delete normalized.plannedScheduledFor;
+  delete normalized.scheduledDate;
+  delete normalized.scheduledTime;
+
+  if (scheduleTime) {
+    normalized.plannedScheduledFor = scheduleTime.scheduledFor;
+    normalized.scheduledDate = scheduleTime.scheduledDate;
+    normalized.scheduledTime = scheduleTime.scheduledTime;
+  }
+
+  return normalized;
+}
+
+function toSchedulingTimeError(error: unknown) {
+  if (error instanceof SchedulingRequestError) {
+    return error;
+  }
+
+  if (error instanceof ScheduleTimeError) {
+    return new SchedulingRequestError(error.message, 400, error.code);
+  }
+
+  return new SchedulingRequestError("Choose a valid schedule date and time.");
 }
 
 function normalizeSettings(value: unknown): ScheduleTargetSettings {
@@ -1011,6 +1183,7 @@ async function scheduleTargetRows(params: {
     let publishJob: BackgroundJobRecord | null = null;
 
     try {
+      assertMinimumScheduleLead(target.scheduled_for);
       publishJob = await createBackgroundJob({
         input: {
           targetId: target.id,
@@ -1048,7 +1221,10 @@ async function scheduleTargetRows(params: {
       }
 
       await markScheduleTargetFailed({
-        errorCode: "scheduler_create_failed",
+        errorCode:
+          error instanceof SchedulingRequestError
+            ? error.code
+            : "scheduler_create_failed",
         errorMessage: getSafeErrorMessage(error),
         targetId: target.id,
         userId: params.userId,

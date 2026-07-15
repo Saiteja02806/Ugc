@@ -59,11 +59,22 @@ const workerProfiles = {
     jobTypes: ["publish_social_post"],
     queueName: "social-publish",
     queueUrlEnv: "UGC_SOCIAL_PUBLISH_QUEUE_URL",
-    secretKeys: [
-      "GOOGLE_CLIENT_ID",
-      "GOOGLE_CLIENT_SECRET",
-      "SOCIAL_TOKEN_ENCRYPTION_KEY",
+    secretKeyAlternatives: [
+      {
+        keys: ["OAUTH_TOKEN_ENCRYPTION_KEY", "SOCIAL_TOKEN_ENCRYPTION_KEY"],
+        overrideEnv: "ECS_SOCIAL_PUBLISH_TOKEN_SECRET_KEY",
+      },
     ],
+    secretSources: {
+      GOOGLE_CLIENT_ID: {
+        secretArnEnv: "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_ID_SECRET_ARN",
+        workerSecretKey: "GOOGLE_CLIENT_ID",
+      },
+      GOOGLE_CLIENT_SECRET: {
+        secretArnEnv: "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_SECRET_SECRET_ARN",
+        workerSecretKey: "GOOGLE_CLIENT_SECRET",
+      },
+    },
   },
 };
 
@@ -367,9 +378,16 @@ function buildTaskDefinitionRegistrationInput(
         SUPABASE_SERVICE_ROLE_KEY: `${workerSecretArn}:SUPABASE_SERVICE_ROLE_KEY::`,
         SUPABASE_URL: `${workerSecretArn}:SUPABASE_URL::`,
       };
+      const selectedProfileSecretKeys = resolveProfileSecretKeys(profile);
 
-      for (const secretName of profile.secretKeys ?? []) {
+      for (const secretName of selectedProfileSecretKeys) {
         profileSecrets[secretName] = `${workerSecretArn}:${secretName}::`;
+      }
+
+      for (const [secretName, valueFrom] of Object.entries(
+        resolveProfileSecretSources(profile),
+      )) {
+        profileSecrets[secretName] = valueFrom;
       }
 
       return {
@@ -431,7 +449,14 @@ function buildTaskDefinitionRegistrationInput(
           profile,
           container.logConfiguration,
         ),
-        secrets: upsertSecrets(container.secrets ?? [], profileSecrets),
+        secrets: upsertSecrets(
+          pruneProfileSecrets(
+            container.secrets ?? [],
+            profile,
+            selectedProfileSecretKeys,
+          ),
+          profileSecrets,
+        ),
       };
     },
   );
@@ -724,6 +749,64 @@ function getWorkerGitCommit() {
 
 function getProfileEnv(profile, suffix, fallback) {
   return process.env[`${profile.envPrefix}_${suffix}`]?.trim() || fallback;
+}
+
+function resolveProfileSecretKeys(profile) {
+  const secretKeys = [...(profile.secretKeys ?? [])];
+
+  for (const alternative of profile.secretKeyAlternatives ?? []) {
+    secretKeys.push(resolveSecretKeyAlternative(alternative));
+  }
+
+  return Array.from(new Set(secretKeys));
+}
+
+function resolveProfileSecretSources(profile) {
+  const profileSecrets = {};
+
+  for (const [secretName, source] of Object.entries(profile.secretSources ?? {})) {
+    const externalSecretArn = process.env[source.secretArnEnv]?.trim();
+
+    profileSecrets[secretName] =
+      externalSecretArn ||
+      `${workerSecretArn}:${source.workerSecretKey ?? secretName}::`;
+  }
+
+  return profileSecrets;
+}
+
+function resolveSecretKeyAlternative(alternative) {
+  const configuredKey = process.env[alternative.overrideEnv]?.trim();
+
+  if (configuredKey) {
+    if (!alternative.keys.includes(configuredKey)) {
+      throw new Error(
+        `${alternative.overrideEnv} must be one of ${alternative.keys.join(", ")}.`,
+      );
+    }
+
+    return configuredKey;
+  }
+
+  return (
+    alternative.keys.find((key) => process.env[key]?.trim()) ||
+    alternative.keys[0]
+  );
+}
+
+function pruneProfileSecrets(secrets, profile, selectedProfileSecretKeys) {
+  const selectedSecretNames = new Set(selectedProfileSecretKeys);
+  const alternativeSecretNames = new Set(
+    (profile.secretKeyAlternatives ?? []).flatMap((alternative) =>
+      alternative.keys,
+    ),
+  );
+
+  return secrets.filter(
+    (secret) =>
+      !alternativeSecretNames.has(secret.name) ||
+      selectedSecretNames.has(secret.name),
+  );
 }
 
 function buildNetworkConfiguration() {

@@ -74,23 +74,44 @@ const groups = [
       "UGC_EVENTBRIDGE_SCHEDULER_ROLE_ARN",
     ],
   },
+  {
+    name: "Social OAuth connections",
+    keys: [
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "TIKTOK_CLIENT_KEY",
+      "TIKTOK_CLIENT_SECRET",
+      "INSTAGRAM_APP_ID",
+      "INSTAGRAM_APP_SECRET",
+    ],
+    oneOf: [["OAUTH_TOKEN_ENCRYPTION_KEY", "SOCIAL_TOKEN_ENCRYPTION_KEY"]],
+  },
+  {
+    name: "Optional social worker secret overrides",
+    optional: true,
+    keys: [
+      "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_ID_SECRET_ARN",
+      "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_SECRET_SECRET_ARN",
+    ],
+  },
 ];
 
-const workerSecretExpectedKeys = [
-  "AWS_REGION",
-  "AWS_S3_BUCKET",
-  "CLOUDFRONT_DOMAIN",
-  "SUPABASE_URL",
-  "SUPABASE_SERVICE_ROLE_KEY",
-  "OPENAI_API_KEY",
-  "GEMINI_API_KEY",
-  "RUNWAYML_API_SECRET",
-  "PEXELS_API_KEY",
-  "UGC_AI_GENERATION_QUEUE_URL",
-  "UGC_CAROUSEL_QUEUE_URL",
-  "UGC_VIDEO_RENDER_QUEUE_URL",
-  "UGC_MEDIA_PROCESSING_QUEUE_URL",
-  "UGC_SOCIAL_PUBLISH_QUEUE_URL",
+const baseWorkerSecretExpectedChecks = [
+  { key: "AWS_REGION" },
+  { key: "AWS_S3_BUCKET" },
+  { key: "CLOUDFRONT_DOMAIN" },
+  { key: "SUPABASE_URL" },
+  { key: "SUPABASE_SERVICE_ROLE_KEY" },
+  { key: "OPENAI_API_KEY" },
+  { key: "GEMINI_API_KEY" },
+  { key: "RUNWAYML_API_SECRET" },
+  { key: "PEXELS_API_KEY" },
+  { key: "UGC_AI_GENERATION_QUEUE_URL" },
+  { key: "UGC_CAROUSEL_QUEUE_URL" },
+  { key: "UGC_VIDEO_RENDER_QUEUE_URL" },
+  { key: "UGC_MEDIA_PROCESSING_QUEUE_URL" },
+  { key: "UGC_SOCIAL_PUBLISH_QUEUE_URL" },
+  { oneOf: ["OAUTH_TOKEN_ENCRYPTION_KEY", "SOCIAL_TOKEN_ENCRYPTION_KEY"] },
 ];
 
 function parseEnvFile(filePath) {
@@ -173,6 +194,7 @@ function checkGitignore() {
 }
 
 const entries = parseEnvFile(envFilePath);
+const workerSecretExpectedChecks = buildWorkerSecretExpectedChecks(entries);
 const gitignoreCheck = checkGitignore();
 let hasFailure = false;
 
@@ -199,15 +221,80 @@ for (const group of groups) {
 
     console.log(`${label} ${key}`);
   }
+
+  for (const alternatives of group.oneOf ?? []) {
+    const states = alternatives.map((key) => ({
+      key,
+      state: getKeyState(entries, key),
+    }));
+    const duplicate = states.find((entry) => entry.state === "duplicate");
+    const present = states.find((entry) => entry.state === "present");
+
+    if (duplicate) {
+      hasFailure = true;
+      console.log(`DUP one of ${alternatives.join(" or ")} (${duplicate.key})`);
+      continue;
+    }
+
+    if (!present) {
+      if (!group.optional) {
+        hasFailure = true;
+      }
+      console.log(`MISS one of ${alternatives.join(" or ")}`);
+      continue;
+    }
+
+    console.log(`OK one of ${alternatives.join(" or ")} (${present.key})`);
+  }
 }
 
 console.log("");
 console.log("Confirm these keys exist inside the ECS worker Secrets Manager secret:");
 
-for (const key of workerSecretExpectedKeys) {
-  console.log(`CHECK ${key}`);
+for (const check of workerSecretExpectedChecks) {
+  if (check.key) {
+    console.log(`CHECK ${check.key}`);
+  } else if (check.externalSecret) {
+    console.log(
+      `CHECK ${check.externalSecret} supplies ${check.suppliesKey}`,
+    );
+  } else {
+    console.log(`CHECK one of ${check.oneOf.join(" or ")}`);
+  }
 }
 
 if (hasFailure) {
   process.exitCode = 1;
+}
+
+function buildWorkerSecretExpectedChecks(entries) {
+  const checks = [...baseWorkerSecretExpectedChecks];
+  const googleClientIdSecretState = getKeyState(
+    entries,
+    "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_ID_SECRET_ARN",
+  );
+  const googleClientSecretSecretState = getKeyState(
+    entries,
+    "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_SECRET_SECRET_ARN",
+  );
+
+  if (googleClientIdSecretState === "present") {
+    checks.push({
+      externalSecret: "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_ID_SECRET_ARN",
+      suppliesKey: "GOOGLE_CLIENT_ID",
+    });
+  } else {
+    checks.push({ key: "GOOGLE_CLIENT_ID" });
+  }
+
+  if (googleClientSecretSecretState === "present") {
+    checks.push({
+      externalSecret: "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_SECRET_SECRET_ARN",
+      suppliesKey: "GOOGLE_CLIENT_SECRET",
+    });
+  } else {
+    checks.push({ key: "GOOGLE_CLIENT_SECRET" });
+  }
+
+  return checks;
 }

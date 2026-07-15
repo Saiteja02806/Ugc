@@ -8,7 +8,12 @@ import {
 } from "../lib/social-token-crypto.js";
 import { publishTikTokVideo } from "../lib/tiktok-publisher.js";
 import { publishYouTubeVideo } from "../lib/youtube-publisher.js";
-import type { BackgroundJobRow, Json } from "../types.js";
+import type {
+  BackgroundJobRow,
+  Json,
+  SocialPublishOperationRow,
+  SocialPublishProviderOperationKind,
+} from "../types.js";
 
 const requiredInstagramScopes = new Set([
   "instagram_business_content_publish",
@@ -22,10 +27,24 @@ const requiredYouTubeScopes = new Set([
   "https://www.googleapis.com/auth/youtubepartner",
 ]);
 const ACCESS_TOKEN_REFRESH_SKEW_MS = 120_000;
+const SOCIAL_PUBLISH_OPERATION_STALE_SECONDS = 900;
+
+type SocialPublishers = {
+  instagram: typeof publishInstagramReel;
+  tiktok: typeof publishTikTokVideo;
+  youtube: typeof publishYouTubeVideo;
+};
+
+const defaultSocialPublishers: SocialPublishers = {
+  instagram: publishInstagramReel,
+  tiktok: publishTikTokVideo,
+  youtube: publishYouTubeVideo,
+};
 
 export async function runPublishSocialPostJob(
   job: BackgroundJobRow,
   context: {
+    publishers?: Partial<SocialPublishers>;
     store: SupabaseJobStore;
   },
 ) {
@@ -34,6 +53,17 @@ export async function runPublishSocialPostJob(
   if (!job.user_id) {
     throw new Error("Publish job is missing user_id.");
   }
+
+  if (!job.claim_token) {
+    throw new Error("Publish job is missing an active claim token.");
+  }
+
+  const claimToken = job.claim_token;
+  const publishers = {
+    ...defaultSocialPublishers,
+    ...context.publishers,
+  };
+  let operation: SocialPublishOperationRow | null = null;
 
   logger.info("Social publish worker started", {
     jobId: job.id,
@@ -47,7 +77,96 @@ export async function runPublishSocialPostJob(
       userId: job.user_id,
     });
 
+    if (
+      publishContext.target.status === "published" &&
+      publishContext.target.platform_post_id
+    ) {
+      return buildExistingPublishResult({
+        platform: publishContext.target.platform,
+        platformPostId: publishContext.target.platform_post_id,
+        platformPostUrl: publishContext.target.platform_post_url,
+        targetId: payload.targetId,
+      });
+    }
+
+    if (publishContext.target.status === "failed") {
+      const completedOperation =
+        await context.store.getSocialPublishOperation({
+          targetId: payload.targetId,
+          userId: job.user_id,
+        });
+
+      if (
+        completedOperation?.status === "published" &&
+        completedOperation.platform_post_id
+      ) {
+        await context.store.markSocialPublishTargetPublished({
+          platformPostId: completedOperation.platform_post_id,
+          platformPostUrl: completedOperation.platform_post_url,
+          targetId: payload.targetId,
+          userId: job.user_id,
+        });
+
+        return buildExistingPublishResult({
+          platform: publishContext.target.platform,
+          platformPostId: completedOperation.platform_post_id,
+          platformPostUrl: completedOperation.platform_post_url,
+          targetId: payload.targetId,
+        });
+      }
+    }
+
     validatePublishContext(publishContext);
+
+    operation = await context.store.claimSocialPublishOperation({
+      claimToken,
+      jobId: job.id,
+      platform: publishContext.target.platform,
+      staleAfterSeconds: SOCIAL_PUBLISH_OPERATION_STALE_SECONDS,
+      targetId: payload.targetId,
+      userId: job.user_id,
+    });
+
+    if (!operation) {
+      const existingOperation =
+        await context.store.getSocialPublishOperation({
+          targetId: payload.targetId,
+          userId: job.user_id,
+        });
+
+      if (
+        existingOperation?.status === "published" &&
+        existingOperation.platform_post_id
+      ) {
+        await context.store.markSocialPublishTargetPublished({
+          platformPostId: existingOperation.platform_post_id,
+          platformPostUrl: existingOperation.platform_post_url,
+          targetId: payload.targetId,
+          userId: job.user_id,
+        });
+
+        return buildExistingPublishResult({
+          platform: publishContext.target.platform,
+          platformPostId: existingOperation.platform_post_id,
+          platformPostUrl: existingOperation.platform_post_url,
+          targetId: payload.targetId,
+        });
+      }
+
+      logger.info("Social publish operation is already active", {
+        idempotencyKey: existingOperation?.idempotency_key ?? null,
+        jobId: job.id,
+        targetId: payload.targetId,
+      });
+
+      return {
+        deduplicated: true,
+        ok: true,
+        platform: publishContext.target.platform,
+        status: "already_processing",
+        targetId: payload.targetId,
+      } satisfies Record<string, Json>;
+    }
 
     await context.store.markSocialPublishTargetPublishing({
       targetId: payload.targetId,
@@ -60,88 +179,163 @@ export async function runPublishSocialPostJob(
       userId: job.user_id,
     });
 
+    let publishedResult: {
+      output: Record<string, Json>;
+      platformPostId: string;
+      platformPostUrl: string | null;
+    };
+
     if (publishContext.target.platform === "instagram") {
-      const result = await publishInstagramReel({
+      const result = await publishers.instagram({
         accessToken,
         caption: publishContext.post.caption,
+        containerId: getProviderOperationId(
+          operation,
+          "instagram_container",
+        ),
         instagramAccountId: publishContext.connection.platform_account_id,
+        onContainerCreated: async (containerId) => {
+          operation = await saveProviderOperationOrThrow({
+            claimToken,
+            operation: requireClaimedOperation(operation),
+            providerOperationId: containerId,
+            providerOperationKind: "instagram_container",
+            store: context.store,
+          });
+        },
         videoUrl: publishContext.media.url,
       });
 
-      await context.store.markSocialPublishTargetPublished({
+      publishedResult = {
+        output: {
+          ok: true,
+          platform: "instagram",
+          platformPostId: result.mediaId,
+          platformPostUrl: result.permalink,
+          targetId: payload.targetId,
+        },
         platformPostId: result.mediaId,
         platformPostUrl: result.permalink,
-        targetId: payload.targetId,
-        userId: job.user_id,
-      });
-
-      return {
-        ok: true,
-        platform: "instagram",
-        platformPostId: result.mediaId,
-        platformPostUrl: result.permalink,
-        targetId: payload.targetId,
-      } satisfies Record<string, Json>;
-    }
-
-    if (publishContext.target.platform === "tiktok") {
-      const result = await publishTikTokVideo({
+      };
+    } else if (publishContext.target.platform === "tiktok") {
+      const result = await publishers.tiktok({
         accessToken,
         caption: publishContext.post.caption,
+        onPublishInitialized: async (publishId) => {
+          operation = await saveProviderOperationOrThrow({
+            claimToken,
+            operation: requireClaimedOperation(operation),
+            providerOperationId: publishId,
+            providerOperationKind: "tiktok_publish",
+            store: context.store,
+          });
+        },
+        publishId: getProviderOperationId(operation, "tiktok_publish"),
         videoUrl: publishContext.media.url,
       });
 
-      await context.store.markSocialPublishTargetPublished({
+      publishedResult = {
+        output: {
+          ok: true,
+          platform: "tiktok",
+          platformPostId: result.platformPostId,
+          platformPostUrl: result.platformPostUrl,
+          publishId: result.publishId,
+          targetId: payload.targetId,
+        },
         platformPostId: result.platformPostId,
         platformPostUrl: result.platformPostUrl,
-        targetId: payload.targetId,
-        userId: job.user_id,
-      });
-
-      return {
-        ok: true,
-        platform: "tiktok",
-        platformPostId: result.platformPostId,
-        platformPostUrl: result.platformPostUrl,
-        publishId: result.publishId,
-        targetId: payload.targetId,
-      } satisfies Record<string, Json>;
-    }
-
-    if (publishContext.target.platform === "youtube") {
-      const result = await publishYouTubeVideo({
+      };
+    } else if (publishContext.target.platform === "youtube") {
+      const result = await publishers.youtube({
         accessToken,
         caption: publishContext.post.caption,
         mimeType: publishContext.media.mime_type,
+        onUploadSessionCreated: async (uploadUrl) => {
+          operation = await saveProviderOperationOrThrow({
+            claimToken,
+            operation: requireClaimedOperation(operation),
+            providerOperationId: uploadUrl,
+            providerOperationKind: "youtube_resumable_upload",
+            store: context.store,
+          });
+        },
         title: publishContext.post.title,
+        uploadUrl: getProviderOperationId(
+          operation,
+          "youtube_resumable_upload",
+        ),
         videoUrl: publishContext.media.url,
       });
 
-      await context.store.markSocialPublishTargetPublished({
+      publishedResult = {
+        output: {
+          ok: true,
+          platform: "youtube",
+          platformPostId: result.videoId,
+          platformPostUrl: result.videoUrl,
+          targetId: payload.targetId,
+        },
         platformPostId: result.videoId,
         platformPostUrl: result.videoUrl,
-        targetId: payload.targetId,
-        userId: job.user_id,
-      });
-
-      return {
-        ok: true,
-        platform: "youtube",
-        platformPostId: result.videoId,
-        platformPostUrl: result.videoUrl,
-        targetId: payload.targetId,
-      } satisfies Record<string, Json>;
+      };
+    } else {
+      throw new Error(
+        `${publishContext.target.platform} publishing is not implemented yet.`,
+      );
     }
 
-    throw new Error(
-      `${publishContext.target.platform} publishing is not implemented yet.`,
-    );
+    const completedOperation =
+      await context.store.markSocialPublishOperationPublished({
+        claimToken,
+        operationId: operation.id,
+        platformPostId: publishedResult.platformPostId,
+        platformPostUrl: publishedResult.platformPostUrl,
+      });
+
+    if (!completedOperation) {
+      throw new Error(
+        "Social publish operation claim was lost before completion.",
+      );
+    }
+
+    operation = completedOperation;
+
+    await context.store.markSocialPublishTargetPublished({
+      platformPostId: publishedResult.platformPostId,
+      platformPostUrl: publishedResult.platformPostUrl,
+      targetId: payload.targetId,
+      userId: job.user_id,
+    });
+
+    return publishedResult.output;
   } catch (error) {
     const errorMessage =
       error instanceof Error && error.message
         ? error.message
         : "Social publishing failed.";
     const errorCode = getPublishErrorCode(errorMessage);
+
+    if (operation?.active_claim_token === claimToken) {
+      try {
+        await context.store.releaseSocialPublishOperation({
+          claimToken,
+          errorCode,
+          errorMessage,
+          operationId: operation.id,
+        });
+      } catch (releaseError) {
+        logger.error("Could not release social publish operation", {
+          error:
+            releaseError instanceof Error
+              ? releaseError.message
+              : "Unknown persistence error",
+          jobId: job.id,
+          operationId: operation.id,
+          targetId: payload.targetId,
+        });
+      }
+    }
 
     try {
       await context.store.markSocialPublishTargetFailed({
@@ -163,6 +357,76 @@ export async function runPublishSocialPostJob(
 
     throw error;
   }
+}
+
+function buildExistingPublishResult(params: {
+  platform: "instagram" | "tiktok" | "youtube";
+  platformPostId: string;
+  platformPostUrl: string | null;
+  targetId: string;
+}) {
+  return {
+    deduplicated: true,
+    ok: true,
+    platform: params.platform,
+    platformPostId: params.platformPostId,
+    platformPostUrl: params.platformPostUrl,
+    targetId: params.targetId,
+  } satisfies Record<string, Json>;
+}
+
+function getProviderOperationId(
+  operation: SocialPublishOperationRow,
+  expectedKind: SocialPublishProviderOperationKind,
+) {
+  if (!operation.provider_operation_id && !operation.provider_operation_kind) {
+    return null;
+  }
+
+  if (
+    operation.provider_operation_kind !== expectedKind ||
+    !operation.provider_operation_id
+  ) {
+    throw new Error(
+      `Stored provider operation does not match ${expectedKind}.`,
+    );
+  }
+
+  return operation.provider_operation_id;
+}
+
+function requireClaimedOperation(
+  operation: SocialPublishOperationRow | null,
+) {
+  if (!operation) {
+    throw new Error("Social publish operation claim is not active.");
+  }
+
+  return operation;
+}
+
+async function saveProviderOperationOrThrow(params: {
+  claimToken: string;
+  operation: SocialPublishOperationRow;
+  providerOperationId: string;
+  providerOperationKind: SocialPublishProviderOperationKind;
+  store: SupabaseJobStore;
+}) {
+  const savedOperation =
+    await params.store.saveSocialPublishProviderOperation({
+      claimToken: params.claimToken,
+      operationId: params.operation.id,
+      providerOperationId: params.providerOperationId,
+      providerOperationKind: params.providerOperationKind,
+    });
+
+  if (!savedOperation) {
+    throw new Error(
+      "Social publish operation claim was lost during provider initialization.",
+    );
+  }
+
+  return savedOperation;
 }
 
 function validatePublishContext(

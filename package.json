@@ -74,6 +74,7 @@
     "avatars:upload:talia:execute": "node scripts/upload-avatar-assets.mjs --folder \"C:\\Users\\chund\\OneDrive\\Desktop\\avatar_video's\\Talia\" --avatar-key talia --avatar-label Talia --expected-count 4 --duration-seconds 4 --ratio 9:16 --probe-metadata --execute --yes",
     "aws-worker:check-env": "node scripts/check-aws-worker-env.mjs",
     "worker:build": "tsc -p worker/tsconfig.json",
+    "worker:test": "npm run worker:build && node --test worker/dist/processor.test.js worker/dist/jobs/publish-social-post.test.js worker/dist/lib/youtube-publisher.test.js",
     "worker:carousel-runtime-matcher:check": "npm run worker:build && node scripts/check-worker-carousel-runtime-bucket-matcher.mjs",
     "worker:carousel-broad-matcher:check": "npm run worker:build && node scripts/check-worker-carousel-broad-runtime-matcher.mjs",
     "worker:carousel-deployment:check": "node scripts/check-carousel-worker-deployment.mjs",

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type { Message, SQSClient } from "@aws-sdk/client-sqs";
 
 import type { WorkerConfig } from "./config.js";
@@ -5,6 +7,7 @@ import { getErrorMessage, logger } from "./logger.js";
 import { hasWorkerJobHandler, runWorkerJob } from "./jobs/index.js";
 import {
   deleteWorkerMessage,
+  extendWorkerMessageVisibility,
   isAllowedWorkerJobType,
   parseWorkerMessage,
 } from "./lib/sqs.js";
@@ -13,6 +16,10 @@ import type { BackgroundJobRow } from "./types.js";
 
 type ProcessMessageParams = {
   config: WorkerConfig;
+  dependencies?: {
+    heartbeatIntervalMs?: number;
+    runJob?: typeof runWorkerJob;
+  };
   message: Message;
   sqsClient: SQSClient;
   store: SupabaseJobStore;
@@ -21,7 +28,7 @@ type ProcessMessageParams = {
 const terminalJobStatuses = new Set(["cancelled", "completed", "failed"]);
 
 export async function processWorkerMessage(params: ProcessMessageParams) {
-  const { config, message, sqsClient, store } = params;
+  const { config, dependencies, message, sqsClient, store } = params;
   const messageId = message.MessageId ?? "unknown-message";
   let parsedMessage;
 
@@ -54,6 +61,17 @@ export async function processWorkerMessage(params: ProcessMessageParams) {
     return;
   }
 
+  if (terminalJobStatuses.has(job.status)) {
+    logger.info("Dropping duplicate SQS message for terminal job", {
+      jobId: job.id,
+      jobStatus: job.status,
+      jobType: job.job_type,
+      messageId,
+    });
+    await deleteWorkerMessage({ client: sqsClient, config, message });
+    return;
+  }
+
   if (job.job_type !== parsedMessage.jobType) {
     await failKnownJobAndDeleteMessage({
       config,
@@ -63,17 +81,6 @@ export async function processWorkerMessage(params: ProcessMessageParams) {
       sqsClient,
       store,
     });
-    return;
-  }
-
-  if (terminalJobStatuses.has(job.status)) {
-    logger.info("Dropping duplicate SQS message for terminal job", {
-      jobId: job.id,
-      jobStatus: job.status,
-      jobType: job.job_type,
-      messageId,
-    });
-    await deleteWorkerMessage({ client: sqsClient, config, message });
     return;
   }
 
@@ -96,28 +103,72 @@ export async function processWorkerMessage(params: ProcessMessageParams) {
     return;
   }
 
-  let activeJob: BackgroundJobRow = job;
+  const claimToken = randomUUID();
+  const processingJob = await store.claimJob({
+    claimToken,
+    jobId: job.id,
+    staleAfterSeconds: getClaimStaleAfterSeconds(config),
+    workerId: config.workerId,
+  });
 
-  try {
-    const processingJob = await store.markProcessing({
-      jobId: job.id,
-      workerId: config.workerId,
-    });
+  if (!processingJob) {
+    const latestJob = await store.getJobById(job.id);
 
-    if (!processingJob) {
-      throw new Error("Background job disappeared before processing.");
+    if (!latestJob || terminalJobStatuses.has(latestJob.status)) {
+      logger.info("Dropping duplicate SQS message after claim was denied", {
+        jobId: job.id,
+        jobStatus: latestJob?.status ?? "missing",
+        jobType: job.job_type,
+        messageId,
+      });
+      await deleteWorkerMessage({ client: sqsClient, config, message });
+      return;
     }
 
-    activeJob = processingJob;
+    logger.info("Background job is already claimed; leaving message for retry", {
+      jobId: job.id,
+      jobStatus: latestJob.status,
+      jobType: job.job_type,
+      messageId,
+      workerId: latestJob.worker_id,
+    });
+    return;
+  }
 
-    const output = await runWorkerJob(processingJob, {
+  let heartbeat: WorkerMessageHeartbeat | null =
+    startWorkerMessageHeartbeat({
+      claimToken,
+      config,
+      heartbeatIntervalMs: dependencies?.heartbeatIntervalMs,
+      job: processingJob,
+      message,
+      sqsClient,
       store,
     });
 
-    await store.markCompleted({
+  try {
+    const output = await (dependencies?.runJob ?? runWorkerJob)(processingJob, {
+      store,
+    });
+
+    await heartbeat.stop();
+
+    if (heartbeat.claimWasLost()) {
+      throw new Error("Background job claim was lost during processing.");
+    }
+
+    heartbeat = null;
+
+    const completedJob = await store.markCompleted({
+      claimToken,
       jobId: processingJob.id,
       output,
     });
+
+    if (!completedJob) {
+      throw new Error("Background job claim was lost before completion.");
+    }
+
     await deleteWorkerMessage({ client: sqsClient, config, message });
 
     logger.info("Worker job completed", {
@@ -126,10 +177,14 @@ export async function processWorkerMessage(params: ProcessMessageParams) {
       messageId,
     });
   } catch (error) {
+    await heartbeat?.stop();
+    heartbeat = null;
+
     await failKnownJobAndDeleteMessage({
+      claimToken,
       config,
       errorMessage: getErrorMessage(error),
-      job: activeJob,
+      job: processingJob,
       message,
       sqsClient,
       store,
@@ -138,6 +193,7 @@ export async function processWorkerMessage(params: ProcessMessageParams) {
 }
 
 async function failKnownJobAndDeleteMessage(params: {
+  claimToken?: string;
   config: WorkerConfig;
   errorMessage: string;
   job: BackgroundJobRow;
@@ -148,10 +204,21 @@ async function failKnownJobAndDeleteMessage(params: {
   const messageId = params.message.MessageId ?? "unknown-message";
 
   try {
-    await params.store.markFailed({
+    const failedJob = await params.store.markFailed({
+      claimToken: params.claimToken,
       errorMessage: params.errorMessage,
       job: params.job,
     });
+
+    if (!failedJob) {
+      logger.warn("Could not fail job because its claim is no longer active", {
+        jobId: params.job.id,
+        jobType: params.job.job_type,
+        messageId,
+      });
+      return;
+    }
+
     await deleteWorkerMessage({
       client: params.sqsClient,
       config: params.config,
@@ -173,4 +240,109 @@ async function failKnownJobAndDeleteMessage(params: {
     });
     throw error;
   }
+}
+
+type WorkerMessageHeartbeat = {
+  claimWasLost: () => boolean;
+  stop: () => Promise<void>;
+};
+
+function startWorkerMessageHeartbeat(params: {
+  claimToken: string;
+  config: WorkerConfig;
+  heartbeatIntervalMs?: number;
+  job: BackgroundJobRow;
+  message: Message;
+  sqsClient: SQSClient;
+  store: SupabaseJobStore;
+}): WorkerMessageHeartbeat {
+  const intervalMs =
+    params.heartbeatIntervalMs ??
+    getHeartbeatIntervalMs(params.config.visibilityTimeoutSeconds);
+  let claimLost = false;
+  let stopped = false;
+  let timer: NodeJS.Timeout | null = null;
+  let tickPromise: Promise<void> | null = null;
+
+  const scheduleTick = () => {
+    if (stopped) {
+      return;
+    }
+
+    timer = setTimeout(() => {
+      tickPromise = runTick().finally(() => {
+        tickPromise = null;
+        scheduleTick();
+      });
+    }, intervalMs);
+  };
+
+  const runTick = async () => {
+    const [visibilityResult, databaseResult] = await Promise.allSettled([
+      extendWorkerMessageVisibility({
+        client: params.sqsClient,
+        config: params.config,
+        message: params.message,
+      }),
+      params.store.heartbeatJob({
+        claimToken: params.claimToken,
+        jobId: params.job.id,
+      }),
+    ]);
+
+    if (visibilityResult.status === "rejected") {
+      logger.warn("Could not extend SQS message visibility", {
+        error: getErrorMessage(visibilityResult.reason),
+        jobId: params.job.id,
+        jobType: params.job.job_type,
+        messageId: params.message.MessageId ?? "unknown-message",
+      });
+    }
+
+    if (databaseResult.status === "rejected") {
+      logger.warn("Could not heartbeat background job", {
+        error: getErrorMessage(databaseResult.reason),
+        jobId: params.job.id,
+        jobType: params.job.job_type,
+        messageId: params.message.MessageId ?? "unknown-message",
+      });
+    } else if (!databaseResult.value) {
+      claimLost = true;
+      logger.warn("Background job heartbeat detected a lost claim", {
+        jobId: params.job.id,
+        jobType: params.job.job_type,
+        messageId: params.message.MessageId ?? "unknown-message",
+      });
+    }
+  };
+
+  scheduleTick();
+
+  return {
+    claimWasLost: () => claimLost,
+    async stop() {
+      stopped = true;
+
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+
+      await tickPromise;
+    },
+  };
+}
+
+function getHeartbeatIntervalMs(visibilityTimeoutSeconds: number) {
+  return Math.max(
+    1_000,
+    Math.min(60_000, Math.floor((visibilityTimeoutSeconds * 1_000) / 3)),
+  );
+}
+
+function getClaimStaleAfterSeconds(config: WorkerConfig) {
+  return Math.max(
+    60,
+    Math.min(43_200, config.visibilityTimeoutSeconds * 2),
+  );
 }

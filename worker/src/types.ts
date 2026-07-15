@@ -57,6 +57,7 @@ type SocialConnectionStatus =
 export type BackgroundJobRow = {
   attempt_count: number;
   aws_message_id: string | null;
+  claim_token: string | null;
   completed_at: string | null;
   created_at: string;
   error_message: string | null;
@@ -77,6 +78,7 @@ export type BackgroundJobRow = {
 
 export type BackgroundJobUpdate = Partial<{
   attempt_count: number;
+  claim_token: string | null;
   completed_at: string | null;
   error_message: string | null;
   last_heartbeat_at: string | null;
@@ -86,6 +88,54 @@ export type BackgroundJobUpdate = Partial<{
   status: BackgroundJobStatus;
   updated_at: string;
   worker_id: string | null;
+}>;
+
+export type SocialPublishOperationStatus =
+  | "initialized"
+  | "pending"
+  | "published";
+
+export type SocialPublishProviderOperationKind =
+  | "instagram_container"
+  | "tiktok_publish"
+  | "youtube_resumable_upload";
+
+export type SocialPublishOperationRow = {
+  active_claim_token: string | null;
+  active_job_id: string | null;
+  claimed_at: string | null;
+  created_at: string;
+  id: string;
+  idempotency_key: string;
+  last_error_code: string | null;
+  last_error_message: string | null;
+  metadata: Json;
+  platform: SchedulePlatform;
+  platform_post_id: string | null;
+  platform_post_url: string | null;
+  provider_operation_id: string | null;
+  provider_operation_kind: SocialPublishProviderOperationKind | null;
+  published_at: string | null;
+  scheduled_post_target_id: string;
+  status: SocialPublishOperationStatus;
+  updated_at: string;
+  user_id: string;
+};
+
+export type SocialPublishOperationUpdate = Partial<{
+  active_claim_token: string | null;
+  active_job_id: string | null;
+  claimed_at: string | null;
+  last_error_code: string | null;
+  last_error_message: string | null;
+  metadata: Json;
+  platform_post_id: string | null;
+  platform_post_url: string | null;
+  provider_operation_id: string | null;
+  provider_operation_kind: SocialPublishProviderOperationKind | null;
+  published_at: string | null;
+  status: SocialPublishOperationStatus;
+  updated_at: string;
 }>;
 
 type EditableVideoUpdate = Partial<{
@@ -341,6 +391,26 @@ export type CarouselSlideInsert = {
 export type BackgroundJobsDatabase = {
   public: {
     Functions: {
+      claim_background_job: {
+        Args: {
+          p_claim_token: string;
+          p_job_id: string;
+          p_stale_after_seconds: number;
+          p_worker_id: string;
+        };
+        Returns: BackgroundJobRow[];
+      };
+      claim_social_publish_operation: {
+        Args: {
+          p_claim_token: string;
+          p_job_id: string;
+          p_platform: SchedulePlatform;
+          p_stale_after_seconds: number;
+          p_target_id: string;
+          p_user_id: string;
+        };
+        Returns: SocialPublishOperationRow[];
+      };
       increment_category_image_asset_usage: {
         Args: { asset_ids: string[] };
         Returns: null;
@@ -448,6 +518,12 @@ export type BackgroundJobsDatabase = {
           status: ScheduledPostTargetStatus;
           updated_at: string;
         }>;
+      };
+      social_publish_operations: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: SocialPublishOperationRow;
+        Update: SocialPublishOperationUpdate;
       };
       social_connections: {
         Insert: Record<string, never>;

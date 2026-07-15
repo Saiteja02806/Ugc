@@ -1,4 +1,5 @@
 import {
+  ChangeMessageVisibilityCommand,
   DeleteMessageCommand,
   ReceiveMessageCommand,
   SQSClient,
@@ -57,6 +58,24 @@ export async function deleteWorkerMessage(params: {
     new DeleteMessageCommand({
       QueueUrl: params.config.queueUrl,
       ReceiptHandle: params.message.ReceiptHandle,
+    }),
+  );
+}
+
+export async function extendWorkerMessageVisibility(params: {
+  client: SQSClient;
+  config: WorkerConfig;
+  message: Message;
+}) {
+  if (!params.message.ReceiptHandle) {
+    throw new Error("Cannot extend SQS visibility without ReceiptHandle.");
+  }
+
+  await params.client.send(
+    new ChangeMessageVisibilityCommand({
+      QueueUrl: params.config.queueUrl,
+      ReceiptHandle: params.message.ReceiptHandle,
+      VisibilityTimeout: params.config.visibilityTimeoutSeconds,
     }),
   );
 }

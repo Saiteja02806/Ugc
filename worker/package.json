@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "npm run build && node --test dist/processor.test.js dist/jobs/publish-social-post.test.js dist/lib/youtube-publisher.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1075.0",

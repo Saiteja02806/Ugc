@@ -35,22 +35,53 @@ export async function publishYouTubeVideo(params: {
   accessToken: string;
   caption: string;
   mimeType: string;
+  onUploadSessionCreated?: (uploadUrl: string) => Promise<void>;
   title: string;
+  uploadUrl?: string | null;
   videoUrl: string;
 }): Promise<YouTubePublishResult> {
   const video = await downloadVideoForYouTube({
     mimeType: params.mimeType,
     videoUrl: params.videoUrl,
   });
-  const uploadUrl = await createYouTubeUploadSession({
+  let uploadUrl = params.uploadUrl ?? null;
+  let videoId: string | null = null;
+
+  if (uploadUrl) {
+    const status = await getYouTubeUploadStatus({
+      accessToken: params.accessToken,
+      contentLength: video.bytes.byteLength,
+      uploadUrl,
+    });
+
+    if (status.completedVideoId) {
+      videoId = status.completedVideoId;
+    } else if (status.expired) {
+      uploadUrl = null;
+    } else {
+      videoId = await uploadVideoToYouTube({
+        accessToken: params.accessToken,
+        startByte: status.nextByte,
+        uploadUrl,
+        video,
+      });
+    }
+  }
+
+  if (!uploadUrl) {
+    uploadUrl = await createYouTubeUploadSession({
+      accessToken: params.accessToken,
+      caption: params.caption,
+      contentLength: video.bytes.byteLength,
+      contentType: video.contentType,
+      title: params.title,
+    });
+    await params.onUploadSessionCreated?.(uploadUrl);
+  }
+
+  videoId ??= await uploadVideoToYouTube({
     accessToken: params.accessToken,
-    caption: params.caption,
-    contentLength: video.bytes.byteLength,
-    contentType: video.contentType,
-    title: params.title,
-  });
-  const videoId = await uploadVideoToYouTube({
-    accessToken: params.accessToken,
+    startByte: 0,
     uploadUrl,
     video,
   });
@@ -162,14 +193,31 @@ async function createYouTubeUploadSession(params: {
 
 async function uploadVideoToYouTube(params: {
   accessToken: string;
+  startByte: number;
   uploadUrl: string;
   video: DownloadedVideo;
 }) {
+  const totalBytes = params.video.bytes.byteLength;
+
+  if (totalBytes === 0) {
+    throw new Error("YouTube media download failed: video is empty.");
+  }
+
+  if (params.startByte < 0 || params.startByte >= totalBytes) {
+    throw new Error("YouTube resumable upload returned an invalid byte range.");
+  }
+
+  const remainingBytes = params.video.bytes.subarray(params.startByte);
   const response = await fetch(params.uploadUrl, {
-    body: toArrayBuffer(params.video.bytes),
+    body: toArrayBuffer(remainingBytes),
     headers: {
       Authorization: `Bearer ${params.accessToken}`,
-      "Content-Length": String(params.video.bytes.byteLength),
+      "Content-Length": String(remainingBytes.byteLength),
+      ...(params.startByte > 0
+        ? {
+            "Content-Range": `bytes ${params.startByte}-${totalBytes - 1}/${totalBytes}`,
+          }
+        : {}),
       "Content-Type": params.video.contentType,
     },
     method: "PUT",
@@ -190,6 +238,72 @@ async function uploadVideoToYouTube(params: {
   }
 
   return payload.id;
+}
+
+async function getYouTubeUploadStatus(params: {
+  accessToken: string;
+  contentLength: number;
+  uploadUrl: string;
+}) {
+  const response = await fetch(params.uploadUrl, {
+    headers: {
+      Authorization: `Bearer ${params.accessToken}`,
+      "Content-Length": "0",
+      "Content-Range": `bytes */${params.contentLength}`,
+    },
+    method: "PUT",
+  });
+
+  if (response.status === 404) {
+    return {
+      completedVideoId: null,
+      expired: true,
+      nextByte: 0,
+    };
+  }
+
+  if (response.status === 308) {
+    return {
+      completedVideoId: null,
+      expired: false,
+      nextByte: getNextYouTubeUploadByte(response.headers.get("range")),
+    };
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `YouTube API request failed: ${await getGoogleErrorMessage(response)}`,
+    );
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | YouTubeVideoResource
+    | null;
+
+  if (!payload?.id) {
+    throw new Error("YouTube did not return an uploaded video id.");
+  }
+
+  return {
+    completedVideoId: payload.id,
+    expired: false,
+    nextByte: params.contentLength,
+  };
+}
+
+function getNextYouTubeUploadByte(range: string | null) {
+  if (!range) {
+    return 0;
+  }
+
+  const match = range.match(/^bytes=0-(\d+)$/i);
+  const lastByte = match ? Number(match[1]) : NaN;
+
+  if (!Number.isSafeInteger(lastByte) || lastByte < 0) {
+    throw new Error("YouTube resumable upload returned an invalid Range header.");
+  }
+
+  return lastByte + 1;
 }
 
 function toArrayBuffer(buffer: Buffer) {

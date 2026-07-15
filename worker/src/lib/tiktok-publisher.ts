@@ -38,17 +38,26 @@ type TikTokPublishStatus = {
 export async function publishTikTokVideo(params: {
   accessToken: string;
   caption: string;
+  onPublishInitialized?: (publishId: string) => Promise<void>;
+  publishId?: string | null;
   videoUrl: string;
 }): Promise<TikTokPublishResult> {
-  const creatorInfo = await queryCreatorInfo(params.accessToken);
-  const privacyLevel = getPrivacyLevel(creatorInfo.privacy_level_options);
-  const publishId = await initializeDirectPost({
-    accessToken: params.accessToken,
-    caption: params.caption,
-    creatorInfo,
-    privacyLevel,
-    videoUrl: params.videoUrl,
-  });
+  let publishId = params.publishId ?? null;
+
+  if (!publishId) {
+    const creatorInfo = await queryCreatorInfo(params.accessToken);
+    const privacyLevel = getPrivacyLevel(creatorInfo.privacy_level_options);
+
+    publishId = await initializeDirectPost({
+      accessToken: params.accessToken,
+      caption: params.caption,
+      creatorInfo,
+      privacyLevel,
+      videoUrl: params.videoUrl,
+    });
+    await params.onPublishInitialized?.(publishId);
+  }
+
   const finalStatus = await waitForTikTokPostStatus({
     accessToken: params.accessToken,
     publishId,

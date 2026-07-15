@@ -8,6 +8,7 @@ import type {
   CarouselGenerationUpdate,
   CarouselSlideInsert,
   Json,
+  SocialPublishProviderOperationKind,
 } from "../types.js";
 import type { CarouselBusinessVisualProfileId } from "./carousel-business-visual-profile.js";
 import {
@@ -27,6 +28,10 @@ const MEDIA_ASSETS_TABLE = "media_assets";
 const SCHEDULED_POSTS_TABLE = "scheduled_posts";
 const SCHEDULED_POST_TARGETS_TABLE = "scheduled_post_targets";
 const SOCIAL_CONNECTIONS_TABLE = "social_connections";
+const SOCIAL_PUBLISH_OPERATIONS_TABLE = "social_publish_operations";
+const CLAIM_BACKGROUND_JOB_FUNCTION = "claim_background_job";
+const CLAIM_SOCIAL_PUBLISH_OPERATION_FUNCTION =
+  "claim_social_publish_operation";
 const INCREMENT_CATEGORY_IMAGE_USAGE_FUNCTION =
   "increment_category_image_asset_usage";
 const VIDEO_RENDER_JOBS_TABLE = "video_render_jobs";
@@ -67,32 +72,69 @@ export class SupabaseJobStore {
     return data;
   }
 
-  async markProcessing(params: {
+  async claimJob(params: {
+    claimToken: string;
     jobId: string;
+    staleAfterSeconds: number;
     workerId: string;
   }) {
-    const now = new Date().toISOString();
+    const { data, error } = await this.client.rpc(
+      CLAIM_BACKGROUND_JOB_FUNCTION,
+      {
+        p_claim_token: params.claimToken,
+        p_job_id: params.jobId,
+        p_stale_after_seconds: params.staleAfterSeconds,
+        p_worker_id: params.workerId,
+      },
+    );
 
-    return this.updateJob(params.jobId, {
-      last_heartbeat_at: now,
-      locked_at: now,
-      started_at: now,
-      status: "processing",
-      worker_id: params.workerId,
-    });
+    if (error) {
+      throw new Error(`Could not claim background job: ${error.message}`);
+    }
+
+    return data?.[0] ?? null;
+  }
+
+  async heartbeatJob(params: {
+    claimToken: string;
+    jobId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(BACKGROUND_JOBS_TABLE)
+      .update({
+        last_heartbeat_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.jobId)
+      .eq("claim_token", params.claimToken)
+      .eq("status", "processing")
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not heartbeat background job: ${error.message}`);
+    }
+
+    return Boolean(data);
   }
 
   async markCompleted(params: {
+    claimToken: string;
     jobId: string;
     output: Record<string, Json | undefined>;
   }) {
     const now = new Date().toISOString();
 
-    const job = await this.updateJob(params.jobId, {
-      completed_at: now,
-      error_message: null,
-      output_json: toJsonObject(params.output),
-      status: "completed",
+    const job = await this.updateClaimedJob({
+      claimToken: params.claimToken,
+      jobId: params.jobId,
+      patch: {
+        claim_token: null,
+        completed_at: now,
+        error_message: null,
+        output_json: toJsonObject(params.output),
+        status: "completed",
+      },
     });
 
     if (job) {
@@ -103,17 +145,45 @@ export class SupabaseJobStore {
   }
 
   async markFailed(params: {
+    claimToken?: string;
     errorMessage: string;
     job: BackgroundJobRow;
   }) {
     const now = new Date().toISOString();
 
-    return this.updateJob(params.job.id, {
-      attempt_count: params.job.attempt_count + 1,
-      completed_at: now,
-      error_message: params.errorMessage.slice(0, 1_000),
-      status: "failed",
-    });
+    if (params.claimToken) {
+      return this.updateClaimedJob({
+        claimToken: params.claimToken,
+        jobId: params.job.id,
+        patch: {
+          attempt_count: params.job.attempt_count + 1,
+          claim_token: null,
+          completed_at: now,
+          error_message: params.errorMessage.slice(0, 1_000),
+          status: "failed",
+        },
+      });
+    }
+
+    const { data, error } = await this.client
+      .from(BACKGROUND_JOBS_TABLE)
+      .update({
+        attempt_count: params.job.attempt_count + 1,
+        completed_at: now,
+        error_message: params.errorMessage.slice(0, 1_000),
+        status: "failed",
+        updated_at: now,
+      })
+      .eq("id", params.job.id)
+      .eq("status", "queued")
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not fail queued background job: ${error.message}`);
+    }
+
+    return data;
   }
 
   async markEditRenderRendering(renderId: string) {
@@ -596,6 +666,142 @@ export class SupabaseJobStore {
     };
   }
 
+  async getSocialPublishOperation(params: {
+    targetId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(SOCIAL_PUBLISH_OPERATIONS_TABLE)
+      .select("*")
+      .eq("scheduled_post_target_id", params.targetId)
+      .eq("user_id", params.userId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not load social publish operation: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  async claimSocialPublishOperation(params: {
+    claimToken: string;
+    jobId: string;
+    platform: "instagram" | "tiktok" | "youtube";
+    staleAfterSeconds: number;
+    targetId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      CLAIM_SOCIAL_PUBLISH_OPERATION_FUNCTION,
+      {
+        p_claim_token: params.claimToken,
+        p_job_id: params.jobId,
+        p_platform: params.platform,
+        p_stale_after_seconds: params.staleAfterSeconds,
+        p_target_id: params.targetId,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (error) {
+      throw new Error(`Could not claim social publish operation: ${error.message}`);
+    }
+
+    return data?.[0] ?? null;
+  }
+
+  async saveSocialPublishProviderOperation(params: {
+    claimToken: string;
+    operationId: string;
+    providerOperationId: string;
+    providerOperationKind: SocialPublishProviderOperationKind;
+  }) {
+    const { data, error } = await this.client
+      .from(SOCIAL_PUBLISH_OPERATIONS_TABLE)
+      .update({
+        last_error_code: null,
+        last_error_message: null,
+        provider_operation_id: params.providerOperationId.slice(0, 4_096),
+        provider_operation_kind: params.providerOperationKind,
+        status: "initialized",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.operationId)
+      .eq("active_claim_token", params.claimToken)
+      .neq("status", "published")
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not save provider publish operation: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  async markSocialPublishOperationPublished(params: {
+    claimToken: string;
+    operationId: string;
+    platformPostId: string;
+    platformPostUrl: string | null;
+  }) {
+    const now = new Date().toISOString();
+    const { data, error } = await this.client
+      .from(SOCIAL_PUBLISH_OPERATIONS_TABLE)
+      .update({
+        active_claim_token: null,
+        active_job_id: null,
+        claimed_at: null,
+        last_error_code: null,
+        last_error_message: null,
+        platform_post_id: params.platformPostId,
+        platform_post_url: params.platformPostUrl,
+        published_at: now,
+        status: "published",
+        updated_at: now,
+      })
+      .eq("id", params.operationId)
+      .eq("active_claim_token", params.claimToken)
+      .neq("status", "published")
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not complete social publish operation: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  async releaseSocialPublishOperation(params: {
+    claimToken: string;
+    errorCode: string;
+    errorMessage: string;
+    operationId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(SOCIAL_PUBLISH_OPERATIONS_TABLE)
+      .update({
+        active_claim_token: null,
+        active_job_id: null,
+        claimed_at: null,
+        last_error_code: params.errorCode,
+        last_error_message: params.errorMessage.slice(0, 500),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.operationId)
+      .eq("active_claim_token", params.claimToken)
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not release social publish operation: ${error.message}`);
+    }
+
+    return Boolean(data);
+  }
+
   async markSocialPublishTargetPublishing(params: {
     targetId: string;
     userId: string;
@@ -909,14 +1115,20 @@ export class SupabaseJobStore {
     }
   }
 
-  private async updateJob(jobId: string, patch: BackgroundJobUpdate) {
+  private async updateClaimedJob(params: {
+    claimToken: string;
+    jobId: string;
+    patch: BackgroundJobUpdate;
+  }) {
     const { data, error } = await this.client
       .from(BACKGROUND_JOBS_TABLE)
       .update({
-        ...patch,
+        ...params.patch,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", jobId)
+      .eq("id", params.jobId)
+      .eq("claim_token", params.claimToken)
+      .eq("status", "processing")
       .select("*")
       .maybeSingle();
 

@@ -22,19 +22,26 @@ type InstagramApiResponse = {
 export async function publishInstagramReel(params: {
   accessToken: string;
   caption: string;
+  containerId?: string | null;
   instagramAccountId: string;
+  onContainerCreated?: (containerId: string) => Promise<void>;
   videoUrl: string;
 }): Promise<InstagramPublishResult> {
-  const container = await createInstagramReelContainer(params);
+  const containerId =
+    params.containerId ?? (await createInstagramReelContainer(params)).id;
+
+  if (!params.containerId) {
+    await params.onContainerCreated?.(containerId);
+  }
 
   await waitForInstagramContainer({
     accessToken: params.accessToken,
-    containerId: container.id,
+    containerId,
   });
 
   const mediaId = await publishInstagramContainer({
     accessToken: params.accessToken,
-    containerId: container.id,
+    containerId,
     instagramAccountId: params.instagramAccountId,
   });
   const permalink = await getInstagramMediaPermalink({

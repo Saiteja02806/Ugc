@@ -529,7 +529,10 @@ function buildDrawTextFilter(preparedTextOverlay: PreparedTextOverlay) {
     ":fontfile=",
     escapeDrawText(getFontPath()),
     ":x=(w-text_w)/2",
-    `:y=${getDrawTextYExpression(preparedTextOverlay.position)}`,
+    `:y=${getDrawTextYExpression(
+      preparedTextOverlay.position,
+      preparedTextOverlay.boxBorderWidth,
+    )}`,
     ":fix_bounds=1",
     ":shadowcolor=black@0.45",
     ":shadowx=2",
@@ -699,16 +702,23 @@ function getBoxBorderWidth(fontSize: number, style: TextOverlayStyle) {
     : Math.max(12, Math.round(fontSize * 0.3));
 }
 
-function getDrawTextYExpression(position: TextOverlayPosition) {
+function getDrawTextYExpression(
+  position: TextOverlayPosition,
+  boxBorderWidth: number,
+) {
   if (position === "top") {
-    return "h*0.12";
+    return boxBorderWidth > 0
+      ? `h*0.12+${boxBorderWidth}`
+      : "h*0.12";
   }
 
   if (position === "middle") {
     return "(h-text_h)/2";
   }
 
-  return "h-text_h-h*0.12";
+  return boxBorderWidth > 0
+    ? `h-text_h-h*0.12-${boxBorderWidth}`
+    : "h-text_h-h*0.12";
 }
 
 function getFontPath() {

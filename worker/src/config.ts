@@ -11,6 +11,8 @@ export type WorkerConfig = {
   pollWaitTimeSeconds: number;
   queueName: string;
   queueUrl: string;
+  socialReconciliationBatchSize: number;
+  socialReconciliationIntervalSeconds: number;
   supabaseServiceRoleKey: string;
   supabaseUrl: string;
   visibilityTimeoutSeconds: number;
@@ -36,6 +38,22 @@ export function loadWorkerConfig(): WorkerConfig {
     }),
     queueName: getOptionalEnv("WORKER_QUEUE_NAME", "media-processing"),
     queueUrl: getWorkerQueueUrl(),
+    socialReconciliationBatchSize: getIntegerEnv(
+      "SOCIAL_RECONCILIATION_BATCH_SIZE",
+      10,
+      {
+        max: 100,
+        min: 1,
+      },
+    ),
+    socialReconciliationIntervalSeconds: getIntegerEnv(
+      "SOCIAL_RECONCILIATION_INTERVAL_SECONDS",
+      15,
+      {
+        max: 300,
+        min: 5,
+      },
+    ),
     supabaseServiceRoleKey: getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
     supabaseUrl: getRequiredEnv("SUPABASE_URL"),
     visibilityTimeoutSeconds: getIntegerEnv(

@@ -118,6 +118,44 @@ export class SupabaseJobStore {
     return Boolean(data);
   }
 
+  async listDueSocialPublishJobIds(params: {
+    limit: number;
+    staleAfterSeconds: number;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "list_due_social_publish_jobs",
+      {
+        p_limit: params.limit,
+        p_stale_after_seconds: params.staleAfterSeconds,
+      },
+    );
+
+    if (error) {
+      throw new Error(`Could not list due social publish jobs: ${error.message}`);
+    }
+
+    return (data ?? []).map((row) => row.job_id);
+  }
+
+  async reconcileSocialScheduleState(params: {
+    limit: number;
+    staleAfterSeconds: number;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "reconcile_social_schedule_state",
+      {
+        p_limit: params.limit,
+        p_stale_after_seconds: params.staleAfterSeconds,
+      },
+    );
+
+    if (error) {
+      throw new Error(`Could not reconcile social schedules: ${error.message}`);
+    }
+
+    return data ?? 0;
+  }
+
   async markCompleted(params: {
     claimToken: string;
     jobId: string;
@@ -132,6 +170,7 @@ export class SupabaseJobStore {
         claim_token: null,
         completed_at: now,
         error_message: null,
+        next_attempt_at: null,
         output_json: toJsonObject(params.output),
         status: "completed",
       },
@@ -160,6 +199,7 @@ export class SupabaseJobStore {
           claim_token: null,
           completed_at: now,
           error_message: params.errorMessage.slice(0, 1_000),
+          next_attempt_at: null,
           status: "failed",
         },
       });
@@ -171,6 +211,7 @@ export class SupabaseJobStore {
         attempt_count: params.job.attempt_count + 1,
         completed_at: now,
         error_message: params.errorMessage.slice(0, 1_000),
+        next_attempt_at: null,
         status: "failed",
         updated_at: now,
       })
@@ -184,6 +225,29 @@ export class SupabaseJobStore {
     }
 
     return data;
+  }
+
+  async markRetrying(params: {
+    claimToken: string;
+    errorMessage: string;
+    job: BackgroundJobRow;
+    retryAt: string;
+  }) {
+    return this.updateClaimedJob({
+      claimToken: params.claimToken,
+      jobId: params.job.id,
+      patch: {
+        attempt_count: params.job.attempt_count + 1,
+        claim_token: null,
+        completed_at: null,
+        error_message: params.errorMessage.slice(0, 1_000),
+        last_heartbeat_at: null,
+        locked_at: null,
+        next_attempt_at: params.retryAt,
+        status: "queued",
+        worker_id: null,
+      },
+    });
   }
 
   async markEditRenderRendering(renderId: string) {
@@ -842,6 +906,57 @@ export class SupabaseJobStore {
     }
   }
 
+  async markSocialPublishTargetRetrying(params: {
+    errorCode: string;
+    errorMessage: string;
+    nextRetryAt: string;
+    targetId: string;
+    userId: string;
+  }) {
+    const now = new Date().toISOString();
+    const { data: target, error: targetError } = await this.client
+      .from(SCHEDULED_POST_TARGETS_TABLE)
+      .update({
+        last_error_code: params.errorCode,
+        last_error_message: params.errorMessage.slice(0, 500),
+        next_retry_at: params.nextRetryAt,
+        status: "publishing",
+        updated_at: now,
+      })
+      .eq("id", params.targetId)
+      .eq("user_id", params.userId)
+      .eq("status", "publishing")
+      .select("scheduled_post_id")
+      .maybeSingle();
+
+    if (targetError) {
+      throw new Error(
+        `Could not record publish retry: ${targetError.message}`,
+      );
+    }
+
+    if (!target) {
+      return false;
+    }
+
+    const { error: postError } = await this.client
+      .from(SCHEDULED_POSTS_TABLE)
+      .update({
+        last_error_code: params.errorCode,
+        status: "publishing",
+        updated_at: now,
+      })
+      .eq("id", target.scheduled_post_id)
+      .eq("user_id", params.userId)
+      .neq("status", "cancelled");
+
+    if (postError) {
+      throw new Error(`Could not record schedule retry: ${postError.message}`);
+    }
+
+    return true;
+  }
+
   async markSocialPublishTargetPublished(params: {
     platformPostId: string;
     platformPostUrl: string | null;
@@ -852,6 +967,7 @@ export class SupabaseJobStore {
     const { data: target, error: targetError } = await this.client
       .from(SCHEDULED_POST_TARGETS_TABLE)
       .update({
+        next_retry_at: null,
         platform_post_id: params.platformPostId,
         platform_post_url: params.platformPostUrl,
         published_at: now,
@@ -887,35 +1003,27 @@ export class SupabaseJobStore {
     userId: string;
   }) {
     const now = new Date().toISOString();
-    const { data: target, error: readError } = await this.client
-      .from(SCHEDULED_POST_TARGETS_TABLE)
-      .select("id,scheduled_post_id,user_id,attempt_count")
-      .eq("id", params.targetId)
-      .eq("user_id", params.userId)
-      .maybeSingle();
-
-    if (readError) {
-      throw new Error(`Could not read publish target: ${readError.message}`);
-    }
-
-    if (!target) {
-      throw new Error("Publish target was not found.");
-    }
-
-    const { error: targetError } = await this.client
+    const { data: target, error: targetError } = await this.client
       .from(SCHEDULED_POST_TARGETS_TABLE)
       .update({
-        attempt_count: target.attempt_count + 1,
         last_error_code: params.errorCode,
         last_error_message: params.errorMessage.slice(0, 500),
+        next_retry_at: null,
         status: "failed",
         updated_at: now,
       })
       .eq("id", params.targetId)
-      .eq("user_id", params.userId);
+      .eq("user_id", params.userId)
+      .in("status", ["scheduling", "scheduled", "publishing"])
+      .select("scheduled_post_id")
+      .maybeSingle();
 
     if (targetError) {
       throw new Error(`Could not mark publish target failed: ${targetError.message}`);
+    }
+
+    if (!target) {
+      return false;
     }
 
     await this.refreshScheduledPostStatus({
@@ -924,6 +1032,8 @@ export class SupabaseJobStore {
       scheduledPostId: target.scheduled_post_id,
       userId: params.userId,
     });
+
+    return true;
   }
 
   async updateSocialConnectionAccessToken(params: {

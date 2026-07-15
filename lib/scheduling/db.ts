@@ -18,6 +18,8 @@ const SOCIAL_CONNECTIONS_TABLE = "social_connections";
 const MEDIA_ASSETS_TABLE = "media_assets";
 const LIBRARY_ITEMS_TABLE = "library_items";
 
+export type ScheduleCancelOutcome = "cancelled" | "not_found" | "too_late";
+
 type Json =
   | boolean
   | null
@@ -52,14 +54,18 @@ type ScheduledPostTargetRow = {
   cancelled_at: string | null;
   created_at: string;
   id: string;
+  last_reconciled_at: string | null;
   last_error_code: string | null;
   last_error_message: string | null;
   metadata: Json;
+  next_retry_at: string | null;
   platform: SchedulePlatform;
   platform_post_id: string | null;
   platform_post_url: string | null;
+  publish_job_id: string | null;
   published_at: string | null;
   scheduled_for: string;
+  scheduler_deleted_at: string | null;
   scheduled_post_id: string;
   scheduler_schedule_arn: string | null;
   scheduler_schedule_name: string | null;
@@ -133,7 +139,15 @@ type ScheduledPostTargetInsert = Pick<
 
 type SchedulingDatabase = {
   public: {
-    Functions: Record<string, never>;
+    Functions: {
+      cancel_scheduled_post: {
+        Args: {
+          p_post_id: string;
+          p_user_id: string;
+        };
+        Returns: string;
+      };
+    };
     Tables: {
       library_items: {
         Insert: Record<string, never>;
@@ -331,8 +345,9 @@ export async function markScheduledPostStatus(params: {
     })
     .eq("id", params.postId)
     .eq("user_id", params.userId)
+    .not("status", "in", "(cancelled,published)")
     .select("*")
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Could not update schedule status: ${error.message}`);
@@ -440,18 +455,90 @@ export async function markScheduleTargetScheduler(params: {
   const { data, error } = await getSchedulingSupabaseClient()
     .from(SCHEDULED_POST_TARGETS_TABLE)
     .update({
+      last_error_code: null,
+      last_error_message: null,
+      last_reconciled_at: getNowIso(),
+      next_retry_at: null,
       scheduler_schedule_arn: params.scheduleArn,
+      scheduler_deleted_at: null,
       scheduler_schedule_name: params.scheduleName,
       status: "scheduled",
       updated_at: getNowIso(),
     })
     .eq("id", params.targetId)
     .eq("user_id", params.userId)
+    .in("status", ["scheduling", "scheduled"])
     .select("*")
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Could not update schedule target: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("Schedule target is no longer available for publishing.");
+  }
+
+  return data;
+}
+
+export async function attachPublishJobToScheduleTarget(params: {
+  jobId: string;
+  targetId: string;
+  userId: string;
+}) {
+  const { data, error } = await getSchedulingSupabaseClient()
+    .from(SCHEDULED_POST_TARGETS_TABLE)
+    .update({
+      publish_job_id: params.jobId,
+      updated_at: getNowIso(),
+    })
+    .eq("id", params.targetId)
+    .eq("user_id", params.userId)
+    .eq("status", "scheduling")
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not attach publish job to target: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("Schedule target is no longer available for publishing.");
+  }
+
+  return data;
+}
+
+export async function markScheduleTargetSchedulerFallback(params: {
+  errorMessage?: string | null;
+  scheduleArn?: string | null;
+  scheduleName?: string | null;
+  schedulerDeletedAt?: string | null;
+  targetId: string;
+  userId: string;
+}) {
+  const now = getNowIso();
+  const { data, error } = await getSchedulingSupabaseClient()
+    .from(SCHEDULED_POST_TARGETS_TABLE)
+    .update({
+      last_error_code: "scheduler_fallback_active",
+      last_error_message: params.errorMessage?.slice(0, 500) ?? null,
+      last_reconciled_at: now,
+      scheduler_deleted_at: params.schedulerDeletedAt ?? null,
+      scheduler_schedule_arn: params.scheduleArn ?? null,
+      scheduler_schedule_name: params.scheduleName ?? null,
+      status: "scheduled",
+      updated_at: now,
+    })
+    .eq("id", params.targetId)
+    .eq("user_id", params.userId)
+    .in("status", ["scheduling", "scheduled"])
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not enable schedule fallback: ${error.message}`);
   }
 
   return data;
@@ -473,8 +560,9 @@ export async function markScheduleTargetFailed(params: {
     })
     .eq("id", params.targetId)
     .eq("user_id", params.userId)
+    .in("status", ["scheduling", "scheduled"])
     .select("*")
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Could not mark schedule target failed: ${error.message}`);
@@ -487,45 +575,91 @@ export async function cancelScheduledPostRows(params: {
   postId: string;
   userId: string;
 }) {
-  const now = getNowIso();
-  const client = getSchedulingSupabaseClient();
-  const { data: post, error: postError } = await client
-    .from(SCHEDULED_POSTS_TABLE)
-    .update({
-      cancelled_at: now,
-      status: "cancelled",
-      updated_at: now,
-    })
-    .eq("id", params.postId)
-    .eq("user_id", params.userId)
-    .neq("status", "published")
+  const { data, error } = await getSchedulingSupabaseClient().rpc(
+    "cancel_scheduled_post",
+    {
+      p_post_id: params.postId,
+      p_user_id: params.userId,
+    },
+  );
+
+  if (error) {
+    throw new Error(`Could not cancel schedule: ${error.message}`);
+  }
+
+  if (data !== "cancelled" && data !== "not_found" && data !== "too_late") {
+    throw new Error("Could not determine the schedule cancellation result.");
+  }
+
+  return data as ScheduleCancelOutcome;
+}
+
+export async function listCancelledScheduleTargetsNeedingCleanup(params: {
+  limit?: number;
+  userId: string;
+}) {
+  const limit = Math.max(1, Math.min(params.limit ?? 10, 50));
+  const { data, error } = await getSchedulingSupabaseClient()
+    .from(SCHEDULED_POST_TARGETS_TABLE)
     .select("*")
-    .maybeSingle();
+    .eq("user_id", params.userId)
+    .eq("status", "cancelled")
+    .not("scheduler_schedule_name", "is", null)
+    .is("scheduler_deleted_at", null)
+    .order("updated_at", { ascending: true })
+    .limit(limit);
 
-  if (postError) {
-    throw new Error(`Could not cancel schedule: ${postError.message}`);
+  if (error) {
+    throw new Error(`Could not load schedule cleanup work: ${error.message}`);
   }
 
-  if (!post) {
-    return null;
-  }
+  return data ?? [];
+}
 
-  const { error: targetError } = await client
+export async function markScheduleTargetSchedulerDeleted(params: {
+  targetId: string;
+  userId: string;
+}) {
+  const now = getNowIso();
+  const { error } = await getSchedulingSupabaseClient()
     .from(SCHEDULED_POST_TARGETS_TABLE)
     .update({
-      cancelled_at: now,
-      status: "cancelled",
+      last_error_code: null,
+      last_error_message: null,
+      last_reconciled_at: now,
+      scheduler_deleted_at: now,
       updated_at: now,
     })
-    .eq("scheduled_post_id", params.postId)
+    .eq("id", params.targetId)
     .eq("user_id", params.userId)
-    .in("status", ["draft", "scheduling", "scheduled", "failed"]);
+    .eq("status", "cancelled");
 
-  if (targetError) {
-    throw new Error(`Could not cancel schedule targets: ${targetError.message}`);
+  if (error) {
+    throw new Error(`Could not finish schedule cleanup: ${error.message}`);
   }
+}
 
-  return post;
+export async function markScheduleTargetCleanupFailed(params: {
+  errorMessage: string;
+  targetId: string;
+  userId: string;
+}) {
+  const now = getNowIso();
+  const { error } = await getSchedulingSupabaseClient()
+    .from(SCHEDULED_POST_TARGETS_TABLE)
+    .update({
+      last_error_code: "scheduler_delete_failed",
+      last_error_message: params.errorMessage.slice(0, 500),
+      last_reconciled_at: now,
+      updated_at: now,
+    })
+    .eq("id", params.targetId)
+    .eq("user_id", params.userId)
+    .eq("status", "cancelled");
+
+  if (error) {
+    throw new Error(`Could not record schedule cleanup failure: ${error.message}`);
+  }
 }
 
 export async function getSchedulableMediaAsset(params: {
@@ -622,13 +756,17 @@ function serializeScheduledPostTarget(
     cancelledAt: row.cancelled_at,
     createdAt: row.created_at,
     id: row.id,
+    lastReconciledAt: row.last_reconciled_at,
     lastErrorCode: row.last_error_code,
     lastErrorMessage: row.last_error_message,
+    nextRetryAt: row.next_retry_at,
     platform: row.platform,
     platformPostId: row.platform_post_id,
     platformPostUrl: row.platform_post_url,
+    publishJobId: row.publish_job_id,
     publishedAt: row.published_at,
     scheduledFor: row.scheduled_for,
+    schedulerDeletedAt: row.scheduler_deleted_at,
     schedulerScheduleArn: row.scheduler_schedule_arn,
     schedulerScheduleName: row.scheduler_schedule_name,
     settings: toRecord(row.settings),

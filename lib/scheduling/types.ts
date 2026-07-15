@@ -84,13 +84,17 @@ export type ScheduledPostTarget = {
   cancelledAt: string | null;
   createdAt: string;
   id: string;
+  lastReconciledAt: string | null;
   lastErrorCode: string | null;
   lastErrorMessage: string | null;
+  nextRetryAt: string | null;
   platform: SchedulePlatform;
   platformPostId: string | null;
   platformPostUrl: string | null;
+  publishJobId: string | null;
   publishedAt: string | null;
   scheduledFor: string;
+  schedulerDeletedAt: string | null;
   schedulerScheduleArn: string | null;
   schedulerScheduleName: string | null;
   settings: Record<string, unknown>;

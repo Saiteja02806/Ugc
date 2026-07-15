@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { runPublishSocialPostJob } from "./publish-social-post.js";
+import {
+  getSocialPublishRetryDecision,
+  runPublishSocialPostJob,
+} from "./publish-social-post.js";
 import { encryptSocialToken } from "../lib/social-token-crypto.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
+import { RetryableJobError } from "../retryable-job-error.js";
 import type {
   BackgroundJobRow,
   SocialPublishOperationRow,
@@ -34,7 +38,6 @@ test("persists provider initialization before completing a publish", async () =>
 
     assert.deepEqual(fixture.calls, [
       "claim-operation",
-      "target-publishing",
       "save-provider-operation",
       "provider-published",
       "operation-published",
@@ -75,6 +78,34 @@ test("reuses a persisted provider operation instead of initializing again", asyn
       false,
     );
     assert.equal(fixture.operation.platform_post_id, "instagram-media-existing");
+  });
+});
+
+test("keeps a provider success when the target projection needs reconciliation", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), {
+      failTargetPublished: true,
+    });
+
+    const output = await runPublishSocialPostJob(createPublishJob(), {
+      publishers: {
+        async instagram() {
+          return {
+            mediaId: "instagram-media-durable-success",
+            permalink: "https://www.instagram.com/reel/durable-success",
+          };
+        },
+      },
+      store: fixture.store,
+    });
+
+    assert.equal(output.platformPostId, "instagram-media-durable-success");
+    assert.equal(fixture.operation.status, "published");
+    assert.deepEqual(fixture.calls, [
+      "claim-operation",
+      "operation-published",
+      "target-published",
+    ]);
   });
 });
 
@@ -147,11 +178,118 @@ test("repairs a failed target when the provider operation already completed", as
   });
 });
 
+test("skips a target when cancellation won before provider publishing", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), {
+      targetStatus: "cancelled",
+    });
+    let providerCalls = 0;
+
+    const output = await runPublishSocialPostJob(createPublishJob(), {
+      publishers: {
+        async instagram() {
+          providerCalls += 1;
+          throw new Error("Provider must not be called.");
+        },
+      },
+      store: fixture.store,
+    });
+
+    assert.equal(providerCalls, 0);
+    assert.equal(output.cancelled, true);
+    assert.deepEqual(fixture.calls, []);
+  });
+});
+
+test("keeps transient provider failures retryable", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), {
+      allowFailure: true,
+    });
+
+    await assert.rejects(
+      runPublishSocialPostJob(createPublishJob(), {
+        publishers: {
+          async instagram() {
+            throw new Error("Instagram API request failed: HTTP 503.");
+          },
+        },
+        store: fixture.store,
+      }),
+      (error) =>
+        error instanceof RetryableJobError &&
+        error.retryAfterSeconds === 30,
+    );
+
+    assert.deepEqual(fixture.calls, [
+      "claim-operation",
+      "release-operation",
+      "target-retrying",
+    ]);
+  });
+});
+
+test("does not retry permanent provider errors", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), {
+      allowFailure: true,
+    });
+
+    await assert.rejects(
+      runPublishSocialPostJob(createPublishJob(), {
+        publishers: {
+          async instagram() {
+            throw new Error("Instagram API request failed: HTTP 400.");
+          },
+        },
+        store: fixture.store,
+      }),
+      /HTTP 400/,
+    );
+
+    assert.deepEqual(fixture.calls, [
+      "claim-operation",
+      "release-operation",
+      "target-failed",
+    ]);
+  });
+});
+
+test("stops retrying at the configured attempt limit", () => {
+  assert.deepEqual(
+    getSocialPublishRetryDecision({
+      attemptCount: 0,
+      baseDelaySeconds: 10,
+      errorMessage: "YouTube API request failed: HTTP 429.",
+      maxAttempts: 3,
+      maxDelaySeconds: 60,
+    }),
+    {
+      attemptNumber: 1,
+      maxAttempts: 3,
+      retryAfterSeconds: 10,
+      shouldRetry: true,
+    },
+  );
+  assert.equal(
+    getSocialPublishRetryDecision({
+      attemptCount: 2,
+      baseDelaySeconds: 10,
+      errorMessage: "YouTube API request failed: HTTP 503.",
+      maxAttempts: 3,
+      maxDelaySeconds: 60,
+    }).shouldRetry,
+    false,
+  );
+});
+
 function createPublishStore(
   initialOperation: SocialPublishOperationRow,
   options: {
+    allowFailure?: boolean;
     denyClaim?: boolean;
-    targetStatus?: "failed" | "scheduled";
+    failTargetPublished?: boolean;
+    targetStatus?: "cancelled" | "failed" | "scheduled";
   } = {},
 ) {
   const calls: string[] = [];
@@ -189,16 +327,36 @@ function createPublishStore(
       return { ...operation };
     },
     async markSocialPublishTargetFailed() {
-      throw new Error("Target should not fail in this test.");
+      if (!options.allowFailure) {
+        throw new Error("Target should not fail in this test.");
+      }
+
+      calls.push("target-failed");
     },
     async markSocialPublishTargetPublished() {
       calls.push("target-published");
+
+      if (options.failTargetPublished) {
+        throw new Error("Could not update target projection: database unavailable.");
+      }
     },
-    async markSocialPublishTargetPublishing() {
-      calls.push("target-publishing");
+    async markSocialPublishTargetRetrying() {
+      if (!options.allowFailure) {
+        throw new Error("Target should not retry in this test.");
+      }
+
+      calls.push("target-retrying");
+      return true;
     },
     async releaseSocialPublishOperation() {
-      throw new Error("Operation should not be released in this test.");
+      if (!options.allowFailure) {
+        throw new Error("Operation should not be released in this test.");
+      }
+
+      calls.push("release-operation");
+      operation.active_claim_token = null;
+      operation.active_job_id = null;
+      return true;
     },
     async saveSocialPublishProviderOperation(params: {
       providerOperationId: string;
@@ -220,7 +378,7 @@ function createPublishStore(
 }
 
 function createPublishContext(
-  targetStatus: "failed" | "scheduled" = "scheduled",
+  targetStatus: "cancelled" | "failed" | "scheduled" = "scheduled",
 ) {
   return {
     connection: {
@@ -252,6 +410,7 @@ function createPublishContext(
     },
     post: {
       caption: "Test caption",
+      status: targetStatus === "cancelled" ? "cancelled" : "scheduled",
       title: "Test title",
     },
     target: {
@@ -307,6 +466,7 @@ function createPublishJob(): BackgroundJobRow {
     job_type: "publish_social_post",
     last_heartbeat_at: now,
     locked_at: now,
+    next_attempt_at: null,
     output_json: null,
     project_id: null,
     queue_name: "social-publish",

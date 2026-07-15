@@ -3,7 +3,6 @@ import "server-only";
 import {
   createSocialPublishSchedule,
   deleteSocialPublishSchedule,
-  getMissingSocialSchedulerEnvVars,
 } from "@/lib/scheduling/aws-scheduler";
 import { getQueueNameForJobType } from "@/lib/aws/sqs";
 import {
@@ -13,6 +12,7 @@ import {
   type BackgroundJobRecord,
 } from "@/lib/jobs/background-jobs";
 import {
+  attachPublishJobToScheduleTarget,
   cancelScheduledPostRows,
   deleteFailedScheduleTargetsForRetry,
   getConnectedSocialConnection,
@@ -23,10 +23,14 @@ import {
   getScheduledPostForUser,
   insertScheduledPost,
   insertScheduledPostTargets,
+  listCancelledScheduleTargetsNeedingCleanup,
   listScheduledPostsForUser,
+  markScheduleTargetCleanupFailed,
   markScheduledPostStatus,
   markScheduleTargetFailed,
   markScheduleTargetScheduler,
+  markScheduleTargetSchedulerDeleted,
+  markScheduleTargetSchedulerFallback,
   prepareScheduledPostForPublishing,
 } from "@/lib/scheduling/db";
 import {
@@ -86,7 +90,6 @@ export function getMissingSchedulingRuntimeEnvVars() {
     ...new Set([
       ...getMissingScheduleDbEnvVars(),
       ...getMissingBackgroundJobStorageEnvVars(),
-      ...getMissingSocialSchedulerEnvVars(),
     ]),
   ];
 }
@@ -97,6 +100,10 @@ export async function listUserSchedules(params: {
   to?: string | null;
   userId: string;
 }) {
+  await reconcileCancelledSchedulerResources(params.userId).catch((error) => {
+    console.error("Could not reconcile cancelled schedule resources:", error);
+  });
+
   return listScheduledPostsForUser(params);
 }
 
@@ -579,32 +586,36 @@ export async function cancelUserSchedule(params: {
     throw new SchedulingRequestError("This schedule was not found.", 404);
   }
 
-  if (existing.status === "published") {
-    throw new SchedulingRequestError(
-      "Published posts cannot be cancelled.",
-      409,
-      "schedule_already_published",
-    );
-  }
-
-  await Promise.all(
-    existing.targets
-      .filter((target) =>
-        ["scheduled", "scheduling"].includes(target.status),
-      )
-      .map((target) =>
-        deleteSocialPublishSchedule(target.schedulerScheduleName),
-      ),
-  );
-
-  const cancelled = await cancelScheduledPostRows({
+  const outcome = await cancelScheduledPostRows({
     postId: params.postId,
     userId: params.userId,
   });
 
-  if (!cancelled) {
-    throw new SchedulingRequestError("This schedule could not be cancelled.", 409);
+  if (outcome === "not_found") {
+    throw new SchedulingRequestError("This schedule was not found.", 404);
   }
+
+  if (outcome === "too_late") {
+    throw new SchedulingRequestError(
+      existing.status === "published"
+        ? "Published posts cannot be cancelled."
+        : "Publishing has already started, so this post can no longer be cancelled.",
+      409,
+      existing.status === "published"
+        ? "schedule_already_published"
+        : "schedule_publish_started",
+    );
+  }
+
+  const cancelled = await getRequiredSchedule({
+    postId: params.postId,
+    userId: params.userId,
+  });
+
+  await cleanupCancelledSchedulerTargets({
+    targets: cancelled.targets,
+    userId: params.userId,
+  });
 
   return getRequiredSchedule({
     postId: params.postId,
@@ -1193,19 +1204,11 @@ async function scheduleTargetRows(params: {
         queueName: getQueueNameForJobType("publish_social_post"),
         userId: params.userId,
       });
-      const schedule = await createSocialPublishSchedule({
+      await attachPublishJobToScheduleTarget({
         jobId: publishJob.id,
-        scheduledFor: target.scheduled_for,
-        targetId: target.id,
-      });
-
-      await markScheduleTargetScheduler({
-        scheduleArn: schedule.arn,
-        scheduleName: schedule.name,
         targetId: target.id,
         userId: params.userId,
       });
-      scheduledCount += 1;
     } catch (error) {
       failedCount += 1;
 
@@ -1216,7 +1219,7 @@ async function scheduleTargetRows(params: {
             jobId: publishJob.id,
           });
         } catch (jobError) {
-          console.error("Could not fail unscheduled publish job:", jobError);
+          console.error("Could not fail unlinked publish job:", jobError);
         }
       }
 
@@ -1224,11 +1227,69 @@ async function scheduleTargetRows(params: {
         errorCode:
           error instanceof SchedulingRequestError
             ? error.code
-            : "scheduler_create_failed",
+            : "publish_job_create_failed",
         errorMessage: getSafeErrorMessage(error),
         targetId: target.id,
         userId: params.userId,
       });
+      continue;
+    }
+
+    let schedule: Awaited<ReturnType<typeof createSocialPublishSchedule>> | null =
+      null;
+    let schedulerDeletedAt: string | null = null;
+
+    try {
+      schedule = await createSocialPublishSchedule({
+        jobId: publishJob.id,
+        scheduledFor: target.scheduled_for,
+        targetId: target.id,
+      });
+
+      try {
+        await markScheduleTargetScheduler({
+          scheduleArn: schedule.arn,
+          scheduleName: schedule.name,
+          targetId: target.id,
+          userId: params.userId,
+        });
+        scheduledCount += 1;
+        continue;
+      } catch (persistenceError) {
+        try {
+          await deleteSocialPublishSchedule(schedule.name);
+          schedulerDeletedAt = new Date().toISOString();
+        } catch (cleanupError) {
+          console.error("Could not compensate orphaned AWS schedule:", {
+            cleanupError,
+            scheduleName: schedule.name,
+            targetId: target.id,
+          });
+        }
+
+        throw persistenceError;
+      }
+    } catch (error) {
+      const errorMessage = getSafeErrorMessage(error);
+
+      await markScheduleTargetSchedulerFallback({
+        scheduleArn: schedule?.arn ?? null,
+        scheduleName: schedule?.name ?? null,
+        schedulerDeletedAt,
+        targetId: target.id,
+        userId: params.userId,
+      }).catch((fallbackError) => {
+        console.error("Could not persist durable scheduler fallback:", {
+          fallbackError,
+          targetId: target.id,
+        });
+      });
+
+      console.warn("AWS schedule handoff failed; durable worker fallback is active", {
+        error: errorMessage,
+        targetId: target.id,
+      });
+      scheduledCount += 1;
     }
   }
 
@@ -1236,6 +1297,61 @@ async function scheduleTargetRows(params: {
     failedCount,
     scheduledCount,
   };
+}
+
+async function reconcileCancelledSchedulerResources(userId: string) {
+  const targets = await listCancelledScheduleTargetsNeedingCleanup({
+    limit: 10,
+    userId,
+  });
+
+  await cleanupCancelledSchedulerTargets({ targets, userId });
+}
+
+async function cleanupCancelledSchedulerTargets(params: {
+  targets: Array<{
+    id: string;
+    schedulerScheduleName?: string | null;
+    scheduler_schedule_name?: string | null;
+  }>;
+  userId: string;
+}) {
+  await Promise.all(
+    params.targets.map(async (target) => {
+      const scheduleName =
+        target.schedulerScheduleName ?? target.scheduler_schedule_name ?? null;
+
+      if (!scheduleName) {
+        return;
+      }
+
+      try {
+        await deleteSocialPublishSchedule(scheduleName);
+        await markScheduleTargetSchedulerDeleted({
+          targetId: target.id,
+          userId: params.userId,
+        });
+      } catch (error) {
+        const errorMessage = getSafeErrorMessage(error);
+
+        console.error("Could not clean up cancelled AWS schedule:", {
+          error: errorMessage,
+          scheduleName,
+          targetId: target.id,
+        });
+        await markScheduleTargetCleanupFailed({
+          errorMessage,
+          targetId: target.id,
+          userId: params.userId,
+        }).catch((persistenceError) => {
+          console.error("Could not record AWS schedule cleanup failure:", {
+            persistenceError,
+            targetId: target.id,
+          });
+        });
+      }
+    }),
+  );
 }
 
 function getPostStatusFromSchedulerCounts({

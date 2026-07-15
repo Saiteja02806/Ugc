@@ -437,6 +437,44 @@ function buildTaskDefinitionRegistrationInput(
                   "https://getugcpilot.com",
               }
             : {}),
+          ...(profile.queueName === "social-publish"
+            ? {
+                SOCIAL_PUBLISH_MAX_ATTEMPTS: getProfileEnv(
+                  profile,
+                  "MAX_ATTEMPTS",
+                  existingEnvironment.get("SOCIAL_PUBLISH_MAX_ATTEMPTS") ||
+                    "4",
+                ),
+                SOCIAL_PUBLISH_RETRY_BASE_SECONDS: getProfileEnv(
+                  profile,
+                  "RETRY_BASE_SECONDS",
+                  existingEnvironment.get(
+                    "SOCIAL_PUBLISH_RETRY_BASE_SECONDS",
+                  ) || "30",
+                ),
+                SOCIAL_PUBLISH_RETRY_MAX_SECONDS: getProfileEnv(
+                  profile,
+                  "RETRY_MAX_SECONDS",
+                  existingEnvironment.get(
+                    "SOCIAL_PUBLISH_RETRY_MAX_SECONDS",
+                  ) || "900",
+                ),
+                SOCIAL_RECONCILIATION_BATCH_SIZE: getProfileEnv(
+                  profile,
+                  "RECONCILIATION_BATCH_SIZE",
+                  existingEnvironment.get(
+                    "SOCIAL_RECONCILIATION_BATCH_SIZE",
+                  ) || "10",
+                ),
+                SOCIAL_RECONCILIATION_INTERVAL_SECONDS: getProfileEnv(
+                  profile,
+                  "RECONCILIATION_INTERVAL_SECONDS",
+                  existingEnvironment.get(
+                    "SOCIAL_RECONCILIATION_INTERVAL_SECONDS",
+                  ) || "15",
+                ),
+              }
+            : {}),
           WORKER_JOB_TYPES: profile.jobTypes.join(","),
           WORKER_POLL_MAX_MESSAGES: getProfileEnv(
             profile,

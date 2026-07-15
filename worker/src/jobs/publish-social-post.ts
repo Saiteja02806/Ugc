@@ -14,6 +14,7 @@ import type {
   SocialPublishOperationRow,
   SocialPublishProviderOperationKind,
 } from "../types.js";
+import { RetryableJobError } from "../retryable-job-error.js";
 
 const requiredInstagramScopes = new Set([
   "instagram_business_content_publish",
@@ -28,6 +29,9 @@ const requiredYouTubeScopes = new Set([
 ]);
 const ACCESS_TOKEN_REFRESH_SKEW_MS = 120_000;
 const SOCIAL_PUBLISH_OPERATION_STALE_SECONDS = 900;
+const DEFAULT_SOCIAL_PUBLISH_MAX_ATTEMPTS = 4;
+const DEFAULT_SOCIAL_PUBLISH_RETRY_BASE_SECONDS = 30;
+const DEFAULT_SOCIAL_PUBLISH_RETRY_MAX_SECONDS = 900;
 
 type SocialPublishers = {
   instagram: typeof publishInstagramReel;
@@ -47,7 +51,7 @@ export async function runPublishSocialPostJob(
     publishers?: Partial<SocialPublishers>;
     store: SupabaseJobStore;
   },
-) {
+): Promise<Record<string, Json>> {
   const payload = parsePublishSocialPostPayload(job.input_json);
 
   if (!job.user_id) {
@@ -76,6 +80,16 @@ export async function runPublishSocialPostJob(
       targetId: payload.targetId,
       userId: job.user_id,
     });
+
+    if (
+      publishContext.post.status === "cancelled" ||
+      publishContext.target.status === "cancelled"
+    ) {
+      return buildCancelledPublishResult({
+        platform: publishContext.target.platform,
+        targetId: payload.targetId,
+      });
+    }
 
     if (
       publishContext.target.status === "published" &&
@@ -133,6 +147,20 @@ export async function runPublishSocialPostJob(
           targetId: payload.targetId,
           userId: job.user_id,
         });
+      const latestContext = await context.store.getSocialPublishContext({
+        targetId: payload.targetId,
+        userId: job.user_id,
+      });
+
+      if (
+        latestContext.post.status === "cancelled" ||
+        latestContext.target.status === "cancelled"
+      ) {
+        return buildCancelledPublishResult({
+          platform: latestContext.target.platform,
+          targetId: payload.targetId,
+        });
+      }
 
       if (
         existingOperation?.status === "published" &&
@@ -167,11 +195,6 @@ export async function runPublishSocialPostJob(
         targetId: payload.targetId,
       } satisfies Record<string, Json>;
     }
-
-    await context.store.markSocialPublishTargetPublishing({
-      targetId: payload.targetId,
-      userId: job.user_id,
-    });
 
     const accessToken = await getPublishAccessToken({
       context: publishContext,
@@ -314,7 +337,36 @@ export async function runPublishSocialPostJob(
       error instanceof Error && error.message
         ? error.message
         : "Social publishing failed.";
+
+    if (operation?.status === "published" && operation.platform_post_id) {
+      logger.error(
+        "Provider publish completed but the target projection needs reconciliation",
+        {
+          error: errorMessage,
+          jobId: job.id,
+          targetId: payload.targetId,
+        },
+      );
+
+      return buildExistingPublishResult({
+        platform: operation.platform,
+        platformPostId: operation.platform_post_id,
+        platformPostUrl: operation.platform_post_url,
+        targetId: payload.targetId,
+      });
+    }
+
     const errorCode = getPublishErrorCode(errorMessage);
+    const retryDecision = getSocialPublishRetryDecision({
+      attemptCount: job.attempt_count,
+      errorMessage,
+    });
+    const retryError = retryDecision.shouldRetry
+      ? new RetryableJobError(errorMessage, {
+          code: errorCode,
+          retryAfterSeconds: retryDecision.retryAfterSeconds,
+        })
+      : null;
 
     if (operation?.active_claim_token === claimToken) {
       try {
@@ -337,6 +389,29 @@ export async function runPublishSocialPostJob(
       }
     }
 
+    if (retryError) {
+      try {
+        await context.store.markSocialPublishTargetRetrying({
+          errorCode,
+          errorMessage,
+          nextRetryAt: retryError.retryAt,
+          targetId: payload.targetId,
+          userId: job.user_id,
+        });
+      } catch (persistenceError) {
+        logger.error("Could not persist social publish retry", {
+          error:
+            persistenceError instanceof Error
+              ? persistenceError.message
+              : "Unknown persistence error",
+          jobId: job.id,
+          targetId: payload.targetId,
+        });
+      }
+
+      throw retryError;
+    }
+
     try {
       await context.store.markSocialPublishTargetFailed({
         errorCode,
@@ -357,6 +432,18 @@ export async function runPublishSocialPostJob(
 
     throw error;
   }
+}
+
+function buildCancelledPublishResult(params: {
+  platform: "instagram" | "tiktok" | "youtube";
+  targetId: string;
+}) {
+  return {
+    cancelled: true,
+    ok: true,
+    platform: params.platform,
+    targetId: params.targetId,
+  } satisfies Record<string, Json>;
 }
 
 function buildExistingPublishResult(params: {
@@ -578,6 +665,136 @@ function getPublishErrorCode(errorMessage: string) {
   }
 
   return "social_publish_failed";
+}
+
+export function getSocialPublishRetryDecision(params: {
+  attemptCount: number;
+  baseDelaySeconds?: number;
+  errorMessage: string;
+  maxAttempts?: number;
+  maxDelaySeconds?: number;
+}) {
+  const attemptNumber = Math.max(1, params.attemptCount + 1);
+  const maxAttempts = normalizeInteger(
+    params.maxAttempts,
+    getIntegerEnv(
+      "SOCIAL_PUBLISH_MAX_ATTEMPTS",
+      DEFAULT_SOCIAL_PUBLISH_MAX_ATTEMPTS,
+      1,
+      10,
+    ),
+    1,
+    10,
+  );
+  const baseDelaySeconds = normalizeInteger(
+    params.baseDelaySeconds,
+    getIntegerEnv(
+      "SOCIAL_PUBLISH_RETRY_BASE_SECONDS",
+      DEFAULT_SOCIAL_PUBLISH_RETRY_BASE_SECONDS,
+      5,
+      3_600,
+    ),
+    1,
+    3_600,
+  );
+  const maxDelaySeconds = normalizeInteger(
+    params.maxDelaySeconds,
+    getIntegerEnv(
+      "SOCIAL_PUBLISH_RETRY_MAX_SECONDS",
+      DEFAULT_SOCIAL_PUBLISH_RETRY_MAX_SECONDS,
+      30,
+      43_200,
+    ),
+    1,
+    43_200,
+  );
+  const retryAfterSeconds = Math.min(
+    maxDelaySeconds,
+    baseDelaySeconds * 2 ** Math.max(0, attemptNumber - 1),
+  );
+
+  return {
+    attemptNumber,
+    maxAttempts,
+    retryAfterSeconds,
+    shouldRetry:
+      attemptNumber < maxAttempts &&
+      isTransientSocialPublishError(params.errorMessage),
+  };
+}
+
+export function isTransientSocialPublishError(errorMessage: string) {
+  const normalized = errorMessage.toLowerCase();
+  const statusMatch = normalized.match(/\bhttp\s+(\d{3})\b/);
+  const status = statusMatch ? Number(statusMatch[1]) : null;
+
+  if (status !== null) {
+    if ([408, 409, 425, 429].includes(status) || status >= 500) {
+      return true;
+    }
+
+    if ([400, 401, 403, 404, 410, 422].includes(status)) {
+      return false;
+    }
+  }
+
+  if (
+    [
+      "econnreset",
+      "enotfound",
+      "etimedout",
+      "fetch failed",
+      "network",
+      "rate limit",
+      "temporarily unavailable",
+      "timed out",
+      "timeout",
+    ].some((fragment) => normalized.includes(fragment))
+  ) {
+    return true;
+  }
+
+  if (
+    [
+      "does not match",
+      "is missing",
+      "is not available",
+      "is not publishable",
+      "must be",
+      "not implemented",
+      "only combined rendered videos",
+      "scope",
+    ].some((fragment) => normalized.includes(fragment))
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function getIntegerEnv(
+  name: string,
+  fallback: number,
+  min: number,
+  max: number,
+) {
+  const rawValue = process.env[name]?.trim();
+  const parsedValue = rawValue ? Number(rawValue) : NaN;
+
+  return Number.isInteger(parsedValue)
+    ? Math.min(Math.max(parsedValue, min), max)
+    : fallback;
+}
+
+function normalizeInteger(
+  value: number | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+) {
+  return Number.isInteger(value)
+    ? Math.min(Math.max(value ?? fallback, min), max)
+    : fallback;
 }
 
 function parsePublishSocialPostPayload(value: Json) {

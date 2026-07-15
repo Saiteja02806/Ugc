@@ -1077,7 +1077,8 @@ function ScheduleTargetStatusList({
               <p className="mt-1 text-[11px] font-semibold leading-4 text-muted">
                 {getTargetStatusHelpText(target, draft.timezone)}
               </p>
-              {target.lastErrorMessage ? (
+              {target.lastErrorMessage &&
+              !(target.status === "publishing" && target.nextRetryAt) ? (
                 <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-error">
                   {target.lastErrorMessage}
                 </p>
@@ -1830,6 +1831,13 @@ function getTargetStatusHelpText(
   }
 
   if (target.status === "publishing") {
+    if (target.nextRetryAt) {
+      return `Temporary platform issue. Retrying ${formatShortDateTime(
+        target.nextRetryAt,
+        timezone,
+      )}.`;
+    }
+
     return "The worker is posting this video now.";
   }
 

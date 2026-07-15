@@ -67,6 +67,18 @@ export async function extendWorkerMessageVisibility(params: {
   config: WorkerConfig;
   message: Message;
 }) {
+  return changeWorkerMessageVisibility({
+    ...params,
+    visibilityTimeoutSeconds: params.config.visibilityTimeoutSeconds,
+  });
+}
+
+export async function changeWorkerMessageVisibility(params: {
+  client: SQSClient;
+  config: WorkerConfig;
+  message: Message;
+  visibilityTimeoutSeconds: number;
+}) {
   if (!params.message.ReceiptHandle) {
     throw new Error("Cannot extend SQS visibility without ReceiptHandle.");
   }
@@ -75,7 +87,10 @@ export async function extendWorkerMessageVisibility(params: {
     new ChangeMessageVisibilityCommand({
       QueueUrl: params.config.queueUrl,
       ReceiptHandle: params.message.ReceiptHandle,
-      VisibilityTimeout: params.config.visibilityTimeoutSeconds,
+      VisibilityTimeout: Math.max(
+        0,
+        Math.min(43_200, Math.ceil(params.visibilityTimeoutSeconds)),
+      ),
     }),
   );
 }

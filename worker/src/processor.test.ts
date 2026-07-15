@@ -5,8 +5,12 @@ import { setTimeout as delay } from "node:timers/promises";
 import type { SQSClient } from "@aws-sdk/client-sqs";
 
 import type { WorkerConfig } from "./config.js";
-import { processWorkerMessage } from "./processor.js";
+import {
+  processRecoveredWorkerJob,
+  processWorkerMessage,
+} from "./processor.js";
 import type { SupabaseJobStore } from "./lib/supabase.js";
+import { RetryableJobError } from "./retryable-job-error.js";
 import type { BackgroundJobRow } from "./types.js";
 
 test("only one delivery can claim and execute a background job", async () => {
@@ -96,6 +100,93 @@ test("extends SQS visibility and the database lease while a job runs", async () 
   );
 });
 
+test("persists retry state and keeps the SQS delivery", async () => {
+  const job = createJob();
+  const commands: string[] = [];
+
+  await processWorkerMessage({
+    config: createConfig(),
+    dependencies: {
+      heartbeatIntervalMs: 1_000,
+      async runJob() {
+        throw new RetryableJobError("Temporary provider outage.", {
+          code: "provider_publish_failed",
+          now: 0,
+          retryAfterSeconds: 30,
+        });
+      },
+    },
+    message: createMessage(),
+    sqsClient: createSqsClient(commands),
+    store: createJobStore(job),
+  });
+
+  assert.equal(job.status, "queued");
+  assert.equal(job.attempt_count, 1);
+  assert.equal(job.next_attempt_at, "1970-01-01T00:00:30.000Z");
+  assert.equal(
+    commands.filter((name) => name === "ChangeMessageVisibilityCommand").length,
+    1,
+  );
+  assert.equal(
+    commands.filter((name) => name === "DeleteMessageCommand").length,
+    0,
+  );
+});
+
+test("defers an early duplicate delivery until the stored retry time", async () => {
+  const job = createJob();
+  const commands: string[] = [];
+  let handlerCalls = 0;
+  job.next_attempt_at = new Date(Date.now() + 30_000).toISOString();
+
+  await processWorkerMessage({
+    config: createConfig(),
+    dependencies: {
+      async runJob() {
+        handlerCalls += 1;
+        return { ok: true };
+      },
+    },
+    message: createMessage(),
+    sqsClient: createSqsClient(commands),
+    store: createJobStore(job),
+  });
+
+  assert.equal(handlerCalls, 0);
+  assert.equal(job.status, "queued");
+  assert.equal(
+    commands.filter((name) => name === "ChangeMessageVisibilityCommand").length,
+    1,
+  );
+  assert.equal(
+    commands.filter((name) => name === "DeleteMessageCommand").length,
+    0,
+  );
+});
+
+test("recovers and completes a due database job without an SQS delivery", async () => {
+  const job = createJob();
+  let handlerCalls = 0;
+
+  const completed = await processRecoveredWorkerJob({
+    config: createConfig(),
+    dependencies: {
+      heartbeatIntervalMs: 1_000,
+      async runJob() {
+        handlerCalls += 1;
+        return { recovered: true };
+      },
+    },
+    jobId: job.id,
+    store: createJobStore(job),
+  });
+
+  assert.equal(completed, true);
+  assert.equal(handlerCalls, 1);
+  assert.equal(job.status, "completed");
+});
+
 function createJob(): BackgroundJobRow {
   const now = new Date().toISOString();
 
@@ -111,6 +202,7 @@ function createJob(): BackgroundJobRow {
     job_type: "test_worker_job",
     last_heartbeat_at: null,
     locked_at: null,
+    next_attempt_at: null,
     output_json: null,
     project_id: null,
     queue_name: "test",
@@ -130,7 +222,11 @@ function createJobStore(job: BackgroundJobRow) {
       staleAfterSeconds: number;
       workerId: string;
     }) {
-      if (job.status !== "queued") {
+      if (
+        job.status !== "queued" ||
+        (job.next_attempt_at !== null &&
+          Date.parse(job.next_attempt_at) > Date.now())
+      ) {
         return null;
       }
 
@@ -171,6 +267,25 @@ function createJobStore(job: BackgroundJobRow) {
     async markFailed() {
       throw new Error("markFailed should not be called in this test.");
     },
+    async markRetrying(params: {
+      claimToken: string;
+      errorMessage: string;
+      retryAt: string;
+    }) {
+      if (
+        job.claim_token !== params.claimToken ||
+        job.status !== "processing"
+      ) {
+        return null;
+      }
+
+      job.attempt_count += 1;
+      job.claim_token = null;
+      job.error_message = params.errorMessage;
+      job.next_attempt_at = params.retryAt;
+      job.status = "queued";
+      return { ...job };
+    },
   };
 
   return store as unknown as SupabaseJobStore;
@@ -184,6 +299,8 @@ function createConfig(): WorkerConfig {
     pollWaitTimeSeconds: 0,
     queueName: "test",
     queueUrl: "https://sqs.us-east-2.amazonaws.com/123456789012/test",
+    socialReconciliationBatchSize: 10,
+    socialReconciliationIntervalSeconds: 15,
     supabaseServiceRoleKey: "test",
     supabaseUrl: "https://example.supabase.co",
     visibilityTimeoutSeconds: 60,

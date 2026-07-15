@@ -13,7 +13,10 @@ import {
 import { CAROUSEL_CONTENT_PLANNER_VERSION } from "./lib/carousel-llm-slide-plan.js";
 import { CAROUSEL_RENDERER_VERSION } from "./lib/carousel-render-slide.js";
 import { getCarouselFontRuntimeInfo } from "./lib/carousel-font-runtime.js";
-import { processWorkerMessage } from "./processor.js";
+import {
+  processRecoveredWorkerJob,
+  processWorkerMessage,
+} from "./processor.js";
 
 let shouldStop = false;
 
@@ -42,6 +45,9 @@ async function main() {
     pollWaitTimeSeconds: config.pollWaitTimeSeconds,
     queueName: config.queueName,
     runOnce: config.workerRunOnce,
+    socialReconciliationBatchSize: config.socialReconciliationBatchSize,
+    socialReconciliationIntervalSeconds:
+      config.socialReconciliationIntervalSeconds,
     visibilityTimeoutSeconds: config.visibilityTimeoutSeconds,
     workerGitCommit: config.workerGitCommit,
     workerId: config.workerId,
@@ -56,8 +62,23 @@ async function main() {
     carouselRendererVersion: CAROUSEL_RENDERER_VERSION,
   });
 
+  let nextSocialReconciliationAt = 0;
+
   while (!shouldStop) {
     try {
+      if (
+        config.allowedJobTypes.includes("publish_social_post") &&
+        Date.now() >= nextSocialReconciliationAt
+      ) {
+        nextSocialReconciliationAt =
+          Date.now() + config.socialReconciliationIntervalSeconds * 1_000;
+        await reconcileDueSocialPublishJobs({ config, store }).catch((error) => {
+          logger.error("Social schedule reconciliation failed", {
+            error: getErrorMessage(error),
+          });
+        });
+      }
+
       const messages = await receiveWorkerMessages({
         client: sqsClient,
         config,
@@ -105,6 +126,43 @@ async function main() {
   logger.info("UGC worker stopped", {
     workerId: config.workerId,
   });
+}
+
+async function reconcileDueSocialPublishJobs(params: {
+  config: ReturnType<typeof loadWorkerConfig>;
+  store: ReturnType<typeof createSupabaseJobStore>;
+}) {
+  const staleAfterSeconds = Math.max(
+    60,
+    Math.min(43_200, params.config.visibilityTimeoutSeconds * 2),
+  );
+  const normalizedCount = await params.store.reconcileSocialScheduleState({
+    limit: params.config.socialReconciliationBatchSize,
+    staleAfterSeconds: Math.min(staleAfterSeconds, 3_600),
+  });
+  const jobIds = await params.store.listDueSocialPublishJobIds({
+    limit: params.config.socialReconciliationBatchSize,
+    staleAfterSeconds,
+  });
+
+  if (normalizedCount > 0 || jobIds.length > 0) {
+    logger.info("Social schedule reconciliation found recovery work", {
+      dueJobCount: jobIds.length,
+      normalizedScheduleCount: normalizedCount,
+    });
+  }
+
+  for (const jobId of jobIds) {
+    if (shouldStop) {
+      break;
+    }
+
+    await processRecoveredWorkerJob({
+      config: params.config,
+      jobId,
+      store: params.store,
+    });
+  }
 }
 
 function requestShutdown(signal: string) {

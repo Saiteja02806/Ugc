@@ -66,6 +66,7 @@ export type BackgroundJobRow = {
   job_type: BackgroundJobType;
   last_heartbeat_at: string | null;
   locked_at: string | null;
+  next_attempt_at: string | null;
   output_json: Json | null;
   project_id: string | null;
   queue_name: string;
@@ -83,6 +84,7 @@ export type BackgroundJobUpdate = Partial<{
   error_message: string | null;
   last_heartbeat_at: string | null;
   locked_at: string | null;
+  next_attempt_at: string | null;
   output_json: Json | null;
   started_at: string | null;
   status: BackgroundJobStatus;
@@ -411,6 +413,20 @@ export type BackgroundJobsDatabase = {
         };
         Returns: SocialPublishOperationRow[];
       };
+      list_due_social_publish_jobs: {
+        Args: {
+          p_limit: number;
+          p_stale_after_seconds: number;
+        };
+        Returns: Array<{ job_id: string }>;
+      };
+      reconcile_social_schedule_state: {
+        Args: {
+          p_limit: number;
+          p_stale_after_seconds: number;
+        };
+        Returns: number;
+      };
       increment_category_image_asset_usage: {
         Args: { asset_ids: string[] };
         Returns: null;
@@ -496,9 +512,11 @@ export type BackgroundJobsDatabase = {
           last_error_code: string | null;
           last_error_message: string | null;
           metadata: Json;
+          next_retry_at: string | null;
           platform: SchedulePlatform;
           platform_post_id: string | null;
           platform_post_url: string | null;
+          publish_job_id: string | null;
           published_at: string | null;
           scheduled_for: string;
           scheduled_post_id: string;
@@ -512,6 +530,7 @@ export type BackgroundJobsDatabase = {
           last_error_code: string | null;
           last_error_message: string | null;
           metadata: Json;
+          next_retry_at: string | null;
           platform_post_id: string | null;
           platform_post_url: string | null;
           published_at: string | null;

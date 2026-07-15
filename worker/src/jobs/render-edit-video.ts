@@ -8,7 +8,7 @@ import type { BackgroundJobRow, Json } from "../types.js";
 
 const videoRatios = new Set(["9:16", "1:1", "4:5", "16:9"]);
 const textOverlayPositions = new Set(["top", "middle", "bottom"]);
-const textOverlayStyles = new Set(["clean", "bubble"]);
+const textOverlayStyles = new Set(["clean", "minimal", "bubble"]);
 const MAX_TEXT_OVERLAYS = 3;
 
 export async function runRenderEditVideoJob(

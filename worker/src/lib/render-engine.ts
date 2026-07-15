@@ -9,7 +9,7 @@ import { logger } from "../logger.js";
 
 export type RenderRatio = "9:16" | "1:1" | "4:5" | "16:9";
 export type TextOverlayPosition = "top" | "middle" | "bottom";
-export type TextOverlayStyle = "clean" | "bubble";
+export type TextOverlayStyle = "clean" | "minimal" | "bubble";
 type PreparedTextOverlay = {
   boxBorderWidth: number;
   fontSize: number;
@@ -84,6 +84,7 @@ const renderDimensions: Record<RenderRatio, { height: number; width: number }> =
 export async function renderEditedVideoToS3(
   payload: RenderEditVideoPayload,
 ): Promise<RenderEditedVideoOutput> {
+  const renderStartedAt = Date.now();
   const workDir = await mkdtemp(join(tmpdir(), "ugc-render-"));
   const inputPath = join(workDir, "source-video");
   const outputPath = join(workDir, "rendered.mp4");
@@ -103,6 +104,7 @@ export async function renderEditedVideoToS3(
       );
 
     await writeFile(inputPath, sourceBuffer);
+    const sourceReadyAt = Date.now();
 
     await Promise.all(
       preparedTextOverlays.map((overlay) =>
@@ -122,6 +124,7 @@ export async function renderEditedVideoToS3(
       payload,
       preparedTextOverlays,
     });
+    const encodedAt = Date.now();
 
     const renderedBuffer = await readFile(outputPath);
     const key = buildRenderedVideoKey(payload);
@@ -131,12 +134,19 @@ export async function renderEditedVideoToS3(
       contentType: OUTPUT_CONTENT_TYPE,
       cacheControl: "public, max-age=31536000, immutable",
     });
+    const uploadedAt = Date.now();
 
     logger.info("Edited video render uploaded to S3", {
       key: result.key,
       renderId: payload.renderId,
       renderedSize: renderedBuffer.length,
       sourceVideoId: payload.sourceVideoId,
+      timingsMs: {
+        downloadAndPrepare: sourceReadyAt - renderStartedAt,
+        encode: encodedAt - sourceReadyAt,
+        total: uploadedAt - renderStartedAt,
+        upload: uploadedAt - encodedAt,
+      },
       url: result.url,
     });
 
@@ -432,13 +442,15 @@ function buildFfmpegArgs({
   payload: RenderEditVideoPayload;
   preparedTextOverlays: PreparedTextOverlay[];
 }) {
-  const args = ["-y", "-i", inputPath];
+  const args = ["-y"];
   const trimDuration = getTrimDuration(payload);
   const filters = buildVideoFilters(payload, preparedTextOverlays);
 
   if (payload.draft.trimStartSeconds > 0) {
     args.push("-ss", formatSeconds(payload.draft.trimStartSeconds));
   }
+
+  args.push("-i", inputPath);
 
   if (trimDuration !== null) {
     args.push("-t", formatSeconds(trimDuration));
@@ -454,9 +466,9 @@ function buildFfmpegArgs({
     "-c:v",
     "libx264",
     "-preset",
-    "medium",
+    "veryfast",
     "-crf",
-    "20",
+    "21",
     "-pix_fmt",
     "yuv420p",
     "-c:a",
@@ -497,10 +509,15 @@ function buildRatioScaleCropFilter(ratio: RenderRatio) {
 
 function buildDrawTextFilter(preparedTextOverlay: PreparedTextOverlay) {
   const lineSpacing = preparedTextOverlay.style === "bubble" ? 10 : 8;
-  const boxOptions =
+  const boxOpacity =
     preparedTextOverlay.style === "bubble"
-      ? `:box=1:boxcolor=black@0.62:boxborderw=${preparedTextOverlay.boxBorderWidth}`
-      : "";
+      ? "0.65"
+      : preparedTextOverlay.style === "minimal"
+        ? "0.35"
+        : null;
+  const boxOptions = boxOpacity
+    ? `:box=1:boxcolor=black@${boxOpacity}:boxborderw=${preparedTextOverlay.boxBorderWidth}`
+    : "";
 
   return [
     "drawtext=textfile='",
@@ -552,9 +569,9 @@ function buildTextOverlayLayout(
   ratio: RenderRatio,
 ) {
   const { height, width } = renderDimensions[ratio];
-  const baseFontSize = style === "bubble" ? 62 : 68;
-  const minFontSize = style === "bubble" ? 38 : 42;
-  const maxTextWidth = Math.round(width * (ratio === "16:9" ? 0.72 : 0.84));
+  const baseFontSize = style === "bubble" ? 62 : style === "minimal" ? 64 : 68;
+  const minFontSize = style === "bubble" ? 38 : style === "minimal" ? 40 : 42;
+  const maxTextWidth = Math.round(width * 0.84);
   const maxTextHeight = Math.round(height * (ratio === "16:9" ? 0.42 : 0.34));
   const lineSpacing = style === "bubble" ? 10 : 8;
   const averageCharacterWidthFactor = style === "bubble" ? 0.58 : 0.55;
@@ -673,11 +690,13 @@ function splitLongWord(word: string, maxCharactersPerLine: number) {
 }
 
 function getBoxBorderWidth(fontSize: number, style: TextOverlayStyle) {
-  if (style !== "bubble") {
+  if (style === "clean") {
     return 0;
   }
 
-  return Math.max(18, Math.round(fontSize * 0.45));
+  return style === "bubble"
+    ? Math.max(18, Math.round(fontSize * 0.45))
+    : Math.max(12, Math.round(fontSize * 0.3));
 }
 
 function getDrawTextYExpression(position: TextOverlayPosition) {
@@ -694,10 +713,18 @@ function getDrawTextYExpression(position: TextOverlayPosition) {
 
 function getFontPath() {
   if (process.platform === "win32") {
-    return "C:/Windows/Fonts/arial.ttf";
+    return join(
+      process.cwd(),
+      "node_modules",
+      "geist",
+      "dist",
+      "fonts",
+      "geist-sans",
+      "Geist-SemiBold.ttf",
+    );
   }
 
-  return "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf";
+  return "/usr/local/share/fonts/geist/Geist-SemiBold.ttf";
 }
 
 function escapeDrawText(value: string) {

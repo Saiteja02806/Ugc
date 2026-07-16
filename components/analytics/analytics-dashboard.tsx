@@ -83,20 +83,6 @@ const connectionStatusLabels: Record<SocialConnectionStatus, string> = {
   revoked: "Access revoked",
 };
 
-const outcomeLabels: Record<OutcomeKey, string> = {
-  cancelled: "Cancelled",
-  failed: "Needs attention",
-  planned: "Planned",
-  published: "Published",
-};
-
-const outcomeBarClasses: Record<OutcomeKey, string> = {
-  cancelled: "bg-muted-subtle",
-  failed: "bg-error",
-  planned: "bg-deep-contrast",
-  published: "bg-success",
-};
-
 export function AnalyticsDashboard() {
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [schedules, setSchedules] = useState<ScheduledPost[]>([]);
@@ -313,17 +299,23 @@ function AnalyticsReadyState({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
-                Activity chart
+                Activity
               </p>
               <h2 className="mt-2 text-lg font-semibold tracking-normal text-foreground-strong">
-                Daily publishing pipeline
+                Publishing trend
               </h2>
+              <p className="mt-1.5 max-w-xl text-sm leading-6 text-muted">
+                Real scheduled and published post counts. Likes and views will appear
+                here after platform metric sync is enabled.
+              </p>
             </div>
-            <OutcomeLegend />
+            <span className="inline-flex w-fit items-center rounded-full border border-border bg-card-muted px-3 py-1.5 text-xs font-semibold text-muted">
+              Posts per day
+            </span>
           </div>
 
           {analytics.activityTotal > 0 ? (
-            <ActivityChart buckets={analytics.activityBuckets} />
+            <ActivityTrendChart buckets={analytics.activityBuckets} />
           ) : (
             <EmptyAnalyticsState
               description={
@@ -468,70 +460,176 @@ function MetricCard({
   );
 }
 
-function ActivityChart({ buckets }: { buckets: ActivityBucket[] }) {
+function ActivityTrendChart({ buckets }: { buckets: ActivityBucket[] }) {
+  const chartWidth = 720;
+  const chartHeight = 260;
+  const paddingX = 38;
+  const paddingY = 28;
   const maxTotal = Math.max(...buckets.map((bucket) => bucket.total), 1);
+  const drawableWidth = chartWidth - paddingX * 2;
+  const drawableHeight = chartHeight - paddingY * 2;
+  const points = buckets.map((bucket, index) => {
+    const x =
+      paddingX +
+      (buckets.length <= 1
+        ? drawableWidth / 2
+        : (index / (buckets.length - 1)) * drawableWidth);
+    const y = paddingY + (1 - bucket.total / maxTotal) * drawableHeight;
+
+    return { bucket, x, y };
+  });
+  const linePath = buildSmoothPath(points);
+  const areaPath =
+    points.length > 0
+      ? `${linePath} L ${points[points.length - 1].x} ${chartHeight - paddingY} L ${
+          points[0].x
+        } ${chartHeight - paddingY} Z`
+      : "";
+  const peak = points.reduce(
+    (currentPeak, point) =>
+      point.bucket.total > currentPeak.bucket.total ? point : currentPeak,
+    points[0],
+  );
+  const publishedTotal = buckets.reduce((sum, bucket) => sum + bucket.published, 0);
+  const attentionTotal = buckets.reduce((sum, bucket) => sum + bucket.failed, 0);
 
   return (
-    <div className="mt-6 space-y-3">
-      {buckets.map((bucket) => (
-        <div key={bucket.dateKey} className="grid gap-2 sm:grid-cols-[84px_minmax(0,1fr)_44px] sm:items-center">
-          <div className="text-xs font-semibold text-muted">
-            {formatShortDate(bucket.dateKey)}
-          </div>
-          <div className="h-9 overflow-hidden rounded-control border border-border bg-card-muted">
-            {bucket.total > 0 ? (
-              <div
-                className="flex h-full min-w-6 overflow-hidden rounded-[inherit]"
-                style={{ width: `${Math.max(10, (bucket.total / maxTotal) * 100)}%` }}
-                aria-label={`${bucket.total} posts on ${formatFullDate(bucket.dateKey)}`}
-              >
-                {(["published", "planned", "failed", "cancelled"] as OutcomeKey[]).map(
-                  (outcome) => {
-                    const count = bucket[outcome];
+    <div className="mt-6 rounded-card border border-border bg-card-muted/35 p-4 sm:p-5">
+      <div className="relative h-[260px] min-w-0">
+        <svg
+          aria-label={`Publishing trend from ${formatShortDate(
+            buckets[0]?.dateKey ?? "",
+          )} to ${formatShortDate(buckets.at(-1)?.dateKey ?? "")}`}
+          className="h-full w-full overflow-visible"
+          preserveAspectRatio="none"
+          role="img"
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+        >
+          {[0, 0.5, 1].map((step) => {
+            const y = paddingY + step * drawableHeight;
 
-                    if (count <= 0) {
-                      return null;
-                    }
+            return (
+              <line
+                key={step}
+                stroke="rgb(232 228 223)"
+                strokeDasharray={step === 1 ? "0" : "6 8"}
+                strokeWidth="1"
+                x1={paddingX}
+                x2={chartWidth - paddingX}
+                y1={y}
+                y2={y}
+              />
+            );
+          })}
+          {areaPath ? (
+            <path d={areaPath} fill="rgb(255 90 31 / 0.10)" stroke="none" />
+          ) : null}
+          {linePath ? (
+            <path
+              d={linePath}
+              fill="none"
+              stroke="rgb(23 52 84)"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="5"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
+          {points.map((point) => (
+            <circle
+              key={point.bucket.dateKey}
+              cx={point.x}
+              cy={point.y}
+              fill={point.bucket.total > 0 ? "rgb(255 90 31)" : "rgb(216 210 203)"}
+              r={point.bucket.total > 0 ? 5 : 3.5}
+              vectorEffect="non-scaling-stroke"
+            >
+              <title>
+                {formatFullDate(point.bucket.dateKey)}: {point.bucket.total} posts
+              </title>
+            </circle>
+          ))}
+          <text
+            fill="rgb(96 99 108)"
+            fontSize="12"
+            fontWeight="700"
+            x={paddingX}
+            y={chartHeight - 5}
+          >
+            {formatShortDate(buckets[0]?.dateKey ?? "")}
+          </text>
+          <text
+            fill="rgb(96 99 108)"
+            fontSize="12"
+            fontWeight="700"
+            textAnchor="end"
+            x={chartWidth - paddingX}
+            y={chartHeight - 5}
+          >
+            {formatShortDate(buckets.at(-1)?.dateKey ?? "")}
+          </text>
+          <text
+            fill="rgb(96 99 108)"
+            fontSize="12"
+            fontWeight="700"
+            textAnchor="end"
+            x={chartWidth - 8}
+            y={paddingY + 4}
+          >
+            {maxTotal}
+          </text>
+          <text
+            fill="rgb(96 99 108)"
+            fontSize="12"
+            fontWeight="700"
+            textAnchor="end"
+            x={chartWidth - 8}
+            y={chartHeight - paddingY}
+          >
+            0
+          </text>
+        </svg>
+      </div>
 
-                    return (
-                      <span
-                        key={outcome}
-                        className={`${outcomeBarClasses[outcome]} block h-full`}
-                        style={{ width: `${Math.max(8, (count / bucket.total) * 100)}%` }}
-                        title={`${outcomeLabels[outcome]}: ${count}`}
-                      />
-                    );
-                  },
-                )}
-              </div>
-            ) : null}
-          </div>
-          <div className="text-right font-mono text-sm font-semibold text-foreground-strong">
-            {bucket.total}
-          </div>
-        </div>
-      ))}
+      <div className="mt-4 grid gap-3 text-xs sm:grid-cols-3">
+        <TrendStat
+          label="Peak day"
+          value={
+            peak
+              ? `${formatShortDate(peak.bucket.dateKey)} - ${peak.bucket.total}`
+              : "No posts"
+          }
+        />
+        <TrendStat label="Published" value={publishedTotal.toString()} />
+        <TrendStat
+          label="Needs attention"
+          tone={attentionTotal > 0 ? "error" : "neutral"}
+          value={attentionTotal.toString()}
+        />
+      </div>
     </div>
   );
 }
 
-function OutcomeLegend() {
+function TrendStat({
+  label,
+  tone = "neutral",
+  value,
+}: {
+  label: string;
+  tone?: "error" | "neutral";
+  value: string;
+}) {
   return (
-    <div className="flex flex-wrap gap-2">
-      {(["published", "planned", "failed", "cancelled"] as OutcomeKey[]).map(
-        (outcome) => (
-          <span
-            key={outcome}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-muted"
-          >
-            <span
-              className={`size-2 rounded-full ${outcomeBarClasses[outcome]}`}
-              aria-hidden="true"
-            />
-            {outcomeLabels[outcome]}
-          </span>
-        ),
-      )}
+    <div
+      className={`rounded-control border bg-card px-3 py-2 ${
+        tone === "error" ? "border-error/25" : "border-border"
+      }`}
+    >
+      <span className="block font-mono text-sm font-semibold text-foreground-strong">
+        {value}
+      </span>
+      <span className={tone === "error" ? "text-error" : "text-muted"}>{label}</span>
     </div>
   );
 }
@@ -1007,6 +1105,34 @@ function getDateKeyForTimezone(value: string, timeZone: string) {
   }
 
   return toDateKey(date);
+}
+
+function buildSmoothPath(points: Array<{ x: number; y: number }>) {
+  if (points.length === 0) {
+    return "";
+  }
+
+  if (points.length === 1) {
+    const point = points[0];
+
+    return point ? `M ${point.x} ${point.y}` : "";
+  }
+
+  return points.reduce((path, point, index) => {
+    if (index === 0) {
+      return `M ${point.x} ${point.y}`;
+    }
+
+    const previous = points[index - 1];
+
+    if (!previous) {
+      return path;
+    }
+
+    const controlX = previous.x + (point.x - previous.x) / 2;
+
+    return `${path} C ${controlX} ${previous.y}, ${controlX} ${point.y}, ${point.x} ${point.y}`;
+  }, "");
 }
 
 function getMetadataString(value: unknown) {

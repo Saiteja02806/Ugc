@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   ArrowRight,
   BadgeCheck,
@@ -22,54 +23,62 @@ import { ProductLogoMark } from "@/components/brand/product-logo";
 
 const authHref = "/sign-in";
 
+export const metadata: Metadata = {
+  title: {
+    absolute: "UGCPilot — Schedule Videos and Carousels",
+  },
+  description:
+    "Plan, schedule, and publish videos and photo carousels to TikTok, Instagram, and YouTube from one dashboard.",
+};
+
 const navItems = [
-  { label: "Workflow", href: "#workflow" },
-  { label: "Review", href: "#review" },
+  { label: "Product", href: "#workflow" },
+  { label: "Social Scheduling", href: "#review" },
   { label: "Pricing", href: "/pricing" },
 ];
 
 const workflowSteps = [
   {
-    title: "Upload source material",
-    description: "Add demos, screen recordings, images, or reusable creator assets.",
+    title: "Choose media",
+    description: "Add videos, images, carousels, or reusable campaign assets.",
     icon: Upload,
   },
   {
-    title: "Generate draft creative",
-    description: "Create hooks, carousels, captions, and cutdowns from one brief.",
+    title: "Prepare post details",
+    description: "Set captions, titles, descriptions, channels, and timing.",
     icon: Wand2,
   },
   {
-    title: "Review the details",
-    description: "Check the rendered post, copy, timing, rights, and disclosures.",
+    title: "Review platform settings",
+    description: "Confirm account, privacy, audience, rights, and disclosures.",
     icon: ShieldCheck,
   },
   {
     title: "Schedule from your account",
-    description: "Publish or schedule only after the user approves the action.",
+    description: "Publish immediately or schedule only after user approval.",
     icon: CalendarClock,
   },
 ];
 
 const contentFormats = [
   {
-    title: "Product demo clips",
-    description: "Turn feature walkthroughs into concise social videos.",
+    title: "Schedule videos",
+    description: "Plan TikTok videos, Instagram Reels, and YouTube uploads.",
     icon: FileVideo,
   },
   {
-    title: "UGC-style hooks",
-    description: "Explore creator-led openings that explain the product quickly.",
+    title: "Publish photo carousels",
+    description: "Prepare slide-by-slide image posts for supported platforms.",
     icon: MessageSquareText,
   },
   {
-    title: "Carousel posts",
-    description: "Plan slide-by-slide posts from product claims and assets.",
+    title: "Platform-specific post settings",
+    description: "Review captions, privacy, audience, and disclosure choices.",
     icon: Layers3,
   },
   {
-    title: "Reusable library",
-    description: "Keep approved media available for future drafts.",
+    title: "Publishing history",
+    description: "Track scheduled, processing, successful, and failed posts.",
     icon: Library,
   },
 ];
@@ -84,27 +93,27 @@ const approvalChecks = [
 const platformCards = [
   {
     title: "Instagram",
-    description: "Prepare supported posts, Reels, and carousels.",
+    description: "Schedule images, Reels, videos, and supported carousels.",
     icon: Camera,
     color: "#c2416f",
   },
   {
     title: "TikTok",
-    description: "Review supported video or photo posts before publishing.",
+    description: "Schedule videos and photo carousel posts after review.",
     icon: Music2,
     color: "#0f766e",
   },
   {
     title: "YouTube",
-    description: "Upload, schedule, and monitor supported videos.",
+    description: "Upload, schedule, and monitor approved video posts.",
     icon: CirclePlay,
     color: "#c24132",
   },
 ];
 
 const productFooterLinks = [
-  { label: "Workflow", href: "#workflow" },
-  { label: "Review", href: "#review" },
+  { label: "Scheduling Workflow", href: "#workflow" },
+  { label: "Publishing Review", href: "#review" },
   { label: "Platforms", href: "#platforms" },
   { label: "Pricing", href: "/pricing" },
 ];
@@ -131,11 +140,11 @@ export default function Home() {
           <Link
             href="/"
             className="flex min-w-0 items-center gap-3 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
-            aria-label="UGC Pilot home"
+            aria-label="UGCPilot home"
           >
             <ProductLogoMark className="h-8 w-12" sizes="52px" />
             <span className="truncate text-base font-semibold text-[#171717] sm:text-lg">
-              UGC Pilot
+              UGCPilot
             </span>
           </Link>
 
@@ -189,22 +198,22 @@ export default function Home() {
           <div className="hero-rise max-w-2xl">
             <p className="inline-flex items-center gap-2 text-sm font-medium text-[#94512c]">
               <span className="size-2 rounded-full bg-[#d85a24]" />
-              AI-assisted social workflow
+              Social scheduling and publishing
             </p>
             <h1 className="mt-5 max-w-3xl text-[clamp(2.65rem,6vw,4.9rem)] font-semibold leading-[1.01] tracking-normal text-[#141414]">
-              Turn product assets into approved social posts.
+              Schedule videos and carousels across your social channels
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-[#55544d] sm:text-xl">
-              UGC Pilot helps teams upload product media, generate short-form
-              creative, review every caption and disclosure, then schedule posts
-              to connected channels.
+              Connect TikTok, Instagram, and YouTube, choose when each post
+              should go live, and track every publishing result from one
+              dashboard.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href={authHref}
                 className="group inline-flex h-12 items-center justify-center rounded-full bg-[#d94f1f] px-6 text-base font-semibold text-white transition-colors duration-200 hover:bg-[#c34419] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
               >
-                Start creating
+                Start scheduling
                 <ArrowRight
                   className="ml-2 size-4 transition-transform duration-200 group-hover:translate-x-0.5"
                   aria-hidden="true"
@@ -214,12 +223,12 @@ export default function Home() {
                 href="#workflow"
                 className="inline-flex h-12 items-center justify-center rounded-full border border-[#d9d3ca] bg-white px-6 text-base font-semibold text-[#242420] transition-colors duration-200 hover:border-[#c7beb1] hover:bg-[#f7f3ed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
               >
-                See workflow
+                Connect social accounts
               </Link>
             </div>
             <p className="mt-6 max-w-lg text-sm leading-6 text-[#66655e]">
-              No blind autopublish. Every post stays in review until your team
-              approves it.
+              Every post stays in review until your team approves the account,
+              timing, content, and publishing action.
             </p>
           </div>
 
@@ -238,12 +247,12 @@ export default function Home() {
             <div>
               <p className="text-sm font-medium text-[#94512c]">Workflow</p>
               <h2 className="mt-3 max-w-xl text-3xl font-semibold leading-tight text-[#171717] sm:text-4xl">
-                One path from source file to scheduled post.
+                One path from selected media to scheduled post.
               </h2>
             </div>
             <p className="max-w-2xl text-base leading-7 text-[#5d5c55] lg:justify-self-end">
-              Keep creation, review, and publishing decisions together so teams
-              can move quickly without losing control.
+              Keep media selection, review, timing, and publishing decisions
+              together so teams can move quickly without losing control.
             </p>
           </div>
 
@@ -279,15 +288,14 @@ export default function Home() {
         <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
           <div>
             <p className="text-sm font-medium text-[#94512c]">
-              Creative formats
+              Publishing formats
             </p>
             <h2 className="mt-3 max-w-xl text-3xl font-semibold leading-tight text-[#171717] sm:text-4xl">
-              Create what a social launch actually needs.
+              Schedule the formats your social channels need.
             </h2>
             <p className="mt-5 max-w-xl text-base leading-7 text-[#5d5c55]">
-              Use one workspace for the formats teams repeatedly request:
-              product clips, creator-style openings, carousel posts, and
-              reusable media.
+              Use one workspace for videos, photo carousels, platform settings,
+              and the publishing history teams need for review.
             </p>
           </div>
 
@@ -324,12 +332,11 @@ export default function Home() {
           <div>
             <p className="text-sm font-medium text-[#94512c]">Review</p>
             <h2 className="mt-3 max-w-xl text-3xl font-semibold leading-tight text-[#171717] sm:text-4xl">
-              Approval stays visible until the post is ready.
+              Approval stays visible until the post is scheduled.
             </h2>
             <p className="mt-5 max-w-xl text-base leading-7 text-[#5d5c55]">
-              AI prepares options. Your team sees the creative, tunes the
-              details, confirms platform requirements, and approves the final
-              publishing action.
+              Your team sees the selected media, tunes the details, confirms
+              platform requirements, and approves the final publishing action.
             </p>
             <div className="mt-7 grid gap-3">
               {approvalChecks.map((check) => (
@@ -361,7 +368,7 @@ export default function Home() {
               </h2>
             </div>
             <p className="max-w-2xl text-base leading-7 text-[#5d5c55] lg:justify-self-end">
-              UGC Pilot keeps platform connection, review, and scheduling in a
+              UGCPilot keeps platform connection, review, and scheduling in a
               user-controlled flow for supported social accounts.
             </p>
           </div>
@@ -402,11 +409,11 @@ export default function Home() {
               <BadgeCheck className="size-5" aria-hidden="true" />
             </div>
             <h2 className="mt-5 max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl">
-              Simple enough for a weekly content rhythm.
+              Simple enough for a weekly publishing rhythm.
             </h2>
             <p className="mt-4 max-w-2xl text-base leading-7 text-[#deded8]">
-              Build posts from assets you already have, keep review in one
-              place, and schedule only when the creative is approved.
+              Schedule posts from assets you already have, keep review in one
+              place, and publish only when the content is approved.
             </p>
           </div>
 
@@ -415,7 +422,7 @@ export default function Home() {
               href={authHref}
               className="group inline-flex h-12 items-center justify-center rounded-full bg-white px-6 text-base font-semibold text-[#1c1c1f] transition-colors duration-200 hover:bg-[#f5eee8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f4c7ae]"
             >
-              Start creating
+              Start scheduling
               <ArrowRight
                 className="ml-2 size-4 transition-transform duration-200 group-hover:translate-x-0.5"
                 aria-hidden="true"
@@ -440,11 +447,11 @@ export default function Home() {
                 className="inline-flex items-center gap-2 rounded-full font-semibold text-[#171717] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
               >
                 <ProductLogoMark className="h-6 w-9" sizes="36px" />
-                UGC Pilot
+                UGCPilot
               </Link>
               <p className="mt-4 max-w-sm text-sm leading-6 text-[#66655e]">
-                AI-assisted social content creation and scheduling for SaaS,
-                mobile app, and digital product teams.
+                Social scheduling and publishing for videos, photo carousels,
+                and connected TikTok, Instagram, and YouTube accounts.
               </p>
             </div>
 
@@ -455,9 +462,9 @@ export default function Home() {
 
           <div className="mt-10 flex flex-col gap-4 border-t border-[#ebe7df] pt-6 text-sm text-[#686760] md:flex-row md:items-end md:justify-between">
             <div className="flex flex-col gap-2">
-              <p>&copy; 2026 UGC Pilot. All rights reserved.</p>
+              <p>&copy; 2026 UGCPilot. All rights reserved.</p>
               <p>
-                UGC Pilot is independent and is not affiliated with, endorsed
+                UGCPilot is independent and is not affiliated with, endorsed
                 by, or sponsored by Meta, TikTok, or Google.
               </p>
             </div>
@@ -489,31 +496,31 @@ function WorkflowPreview() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e7e1d9] pb-4">
           <div>
             <p className="text-sm font-semibold text-[#2f2f2b]">
-              Spring launch draft
+              Spring launch schedule
             </p>
             <p className="mt-1 text-xs text-[#706f68]">
-              Product demo, carousel, and caption set
+              Video, photo carousel, and caption set
             </p>
           </div>
           <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-[#91502d]">
-            Ready for review
+            Ready to schedule
           </span>
         </div>
 
         <div className="grid gap-3 pt-4 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="rounded-[12px] bg-white p-4">
             <p className="text-xs font-medium text-[#8c4c2a]">
-              Source material
+              Selected media
             </p>
             <h3 className="mt-1 text-lg font-semibold leading-tight text-[#1d1d1b]">
-              Campaign inputs
+              Campaign posts
             </h3>
 
             <div className="mt-4 grid gap-2">
               {[
-                ["Product walkthrough.mov", "Demo video", "Ready"],
-                ["Landing page screenshots", "4 images", "Synced"],
-                ["Feature notes", "Creative brief", "Checked"],
+                ["Product walkthrough.mov", "Video", "Ready"],
+                ["Launch carousel images", "4 images", "Synced"],
+                ["Caption notes", "Post details", "Checked"],
               ].map(([title, meta, status]) => (
                 <div
                   key={title}
@@ -534,11 +541,11 @@ function WorkflowPreview() {
 
             <div className="mt-4 rounded-[10px] border border-[#eee8df] p-3">
               <p className="text-xs font-medium text-[#77756d]">
-                Brief focus
+                Schedule focus
               </p>
               <p className="mt-1 text-sm leading-6 text-[#363631]">
-                Turn the onboarding demo into a launch post that highlights the
-                product value without autopublishing.
+                Schedule the launch video and photo carousel after review,
+                account selection, and approval.
               </p>
             </div>
           </div>
@@ -546,10 +553,10 @@ function WorkflowPreview() {
           <div className="grid gap-3">
             <div className="rounded-[12px] bg-white p-4">
               <p className="text-xs font-medium text-[#8c4c2a]">
-                Generated drafts
+                Prepared posts
               </p>
               <div className="mt-3 grid gap-2">
-                {["UGC hook video", "Carousel post", "Caption set"].map(
+                {["Product video", "Photo carousel", "Caption set"].map(
                   (item, index) => (
                     <div
                       key={item}
@@ -560,7 +567,7 @@ function WorkflowPreview() {
                       </span>
                       <span className="text-xs text-[#77756d]">
                         {index === 0
-                          ? "Needs review"
+                          ? "Ready"
                           : index === 1
                             ? "5 slides"
                             : "3 variants"}
@@ -580,7 +587,7 @@ function WorkflowPreview() {
               </div>
               <div className="mt-3 grid gap-2">
                 {[
-                  ["Draft creative", true],
+                  ["Select media", true],
                   ["Check rights", true],
                   ["Approve schedule", false],
                 ].map(([item, complete]) => (

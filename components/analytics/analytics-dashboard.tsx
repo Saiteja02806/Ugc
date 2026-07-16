@@ -4,12 +4,9 @@ import {
   AlertCircle,
   ArrowRight,
   BarChart3,
-  Calendar,
-  CheckCircle2,
   ChevronDown,
   ChevronUp,
   Clock3,
-  ExternalLink,
   Eye,
   Heart,
   ListChecks,
@@ -17,7 +14,6 @@ import {
   RefreshCw,
   ShieldCheck,
   Share2,
-  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -87,27 +83,78 @@ type TikTokAnalyticsAccount = {
   videos: TikTokAnalyticsVideo[];
 };
 
-type ActivityBucket = {
-  cancelled: number;
+type DateRangeDays = 7 | 30 | 90;
+
+type MetricKey = "comments" | "likes" | "posts" | "shares" | "views";
+
+type PerformanceMetricKey = Exclude<MetricKey, "posts">;
+
+type DistributionMode = "account" | "contentType" | "platform";
+
+type MetricTotals = Record<MetricKey, number>;
+
+type MetricBucket = MetricTotals & {
   dateKey: string;
-  failed: number;
-  planned: number;
-  published: number;
-  total: number;
 };
 
-type OutcomeKey = "cancelled" | "failed" | "planned" | "published";
-
-type PlatformOutcome = {
-  cancelled: number;
-  failed: number;
+type AccountInsightRow = {
+  connectionId: string;
+  lastSyncedAt: string | null;
+  message: string | null;
+  name: string;
   platform: SocialPlatform;
-  planned: number;
-  published: number;
-  total: number;
+  status: "connected" | "permission_missing" | "ready" | "unavailable";
+  totals: MetricTotals;
 };
 
-const ACTIVITY_DAYS = 14;
+type PlatformInsightRow = {
+  metricAccess: boolean;
+  platform: SocialPlatform;
+  totals: MetricTotals;
+};
+
+type ContentTypeInsightRow = {
+  label: string;
+  message: string;
+  totals: MetricTotals;
+};
+
+const dateRangeOptions: Array<{ days: DateRangeDays; label: string }> = [
+  { days: 7, label: "7 days" },
+  { days: 30, label: "30 days" },
+  { days: 90, label: "Quarter" },
+];
+
+const metricLabels: Record<MetricKey, string> = {
+  comments: "Comments",
+  likes: "Likes",
+  posts: "Posts",
+  shares: "Shares",
+  views: "Views",
+};
+
+const performanceMetricKeys: PerformanceMetricKey[] = [
+  "views",
+  "likes",
+  "comments",
+  "shares",
+];
+
+const allMetricKeys: MetricKey[] = [
+  "views",
+  "likes",
+  "comments",
+  "shares",
+  "posts",
+];
+
+const emptyTotals: MetricTotals = {
+  comments: 0,
+  likes: 0,
+  posts: 0,
+  shares: 0,
+  views: 0,
+};
 
 const platformLabels: Record<SocialPlatform, string> = {
   instagram: "Instagram",
@@ -130,6 +177,10 @@ export function AnalyticsDashboard() {
     TikTokAnalyticsAccount[]
   >([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [dateRangeDays, setDateRangeDays] = useState<DateRangeDays>(30);
+  const [selectedMetric, setSelectedMetric] = useState<MetricKey>("views");
+  const [distributionMode, setDistributionMode] =
+    useState<DistributionMode>("platform");
   const [loadState, setLoadState] = useState<AnalyticsLoadState>("loading");
 
   const loadAnalytics = useCallback(async (signal?: AbortSignal) => {
@@ -245,12 +296,15 @@ export function AnalyticsDashboard() {
     void loadAnalytics();
   }, [loadAnalytics]);
 
-  const activeConnections = connections.filter(
-    (connection) => connection.status === "connected",
-  );
   const analytics = useMemo(
-    () => buildAnalyticsSummary({ connections, schedules }),
-    [connections, schedules],
+    () =>
+      buildAnalyticsSummary({
+        connections,
+        dateRangeDays,
+        schedules,
+        tiktokAnalyticsAccounts,
+      }),
+    [connections, dateRangeDays, schedules, tiktokAnalyticsAccounts],
   );
 
   return (
@@ -266,15 +320,28 @@ export function AnalyticsDashboard() {
                 Analytics
               </h1>
               <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted">
-                Real publishing activity from your scheduled posts and connected accounts.
+                Track content performance across connected publishing accounts.
               </p>
             </div>
           </div>
 
-          <span className="inline-flex w-fit items-center gap-2 text-xs font-semibold text-muted">
-            <ShieldCheck className="size-4 text-success" aria-hidden="true" />
-            Real data only
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex w-fit items-center gap-2 text-xs font-semibold text-muted">
+              <ShieldCheck className="size-4 text-success" aria-hidden="true" />
+              Real data only
+            </span>
+            <button
+              type="button"
+              onClick={retryAnalytics}
+              className={buttonClassName({
+                className: "h-9 gap-2 px-3 text-xs",
+                variant: "secondary",
+              })}
+            >
+              <RefreshCw className="size-4" aria-hidden="true" />
+              Refresh analytics
+            </button>
+          </div>
         </header>
 
         <div className="mt-6" aria-live="polite">
@@ -284,11 +351,14 @@ export function AnalyticsDashboard() {
           ) : null}
           {loadState === "ready" ? (
             <AnalyticsReadyState
-              activeConnectionCount={activeConnections.length}
               analytics={analytics}
               connections={connections}
-              schedules={schedules}
-              tiktokAnalyticsAccounts={tiktokAnalyticsAccounts}
+              dateRangeDays={dateRangeDays}
+              distributionMode={distributionMode}
+              onDateRangeChange={setDateRangeDays}
+              onDistributionModeChange={setDistributionMode}
+              onMetricChange={setSelectedMetric}
+              selectedMetric={selectedMetric}
             />
           ) : null}
         </div>
@@ -298,140 +368,200 @@ export function AnalyticsDashboard() {
 }
 
 function AnalyticsReadyState({
-  activeConnectionCount,
   analytics,
   connections,
-  schedules,
-  tiktokAnalyticsAccounts,
+  dateRangeDays,
+  distributionMode,
+  onDateRangeChange,
+  onDistributionModeChange,
+  onMetricChange,
+  selectedMetric,
 }: {
-  activeConnectionCount: number;
   analytics: AnalyticsSummary;
   connections: SocialConnection[];
-  schedules: ScheduledPost[];
-  tiktokAnalyticsAccounts: TikTokAnalyticsAccount[];
+  dateRangeDays: DateRangeDays;
+  distributionMode: DistributionMode;
+  onDateRangeChange: (days: DateRangeDays) => void;
+  onDistributionModeChange: (mode: DistributionMode) => void;
+  onMetricChange: (metric: MetricKey) => void;
+  selectedMetric: MetricKey;
 }) {
-  const hasSchedules = schedules.length > 0;
-
   return (
     <div className="space-y-5">
-      <section className="rounded-card border border-border bg-card p-5 shadow-card sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
-              Publishing overview
-            </p>
-            <h2 className="mt-2 text-xl font-semibold tracking-normal text-foreground-strong">
-              What is happening with your posts
-            </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-              This uses UGC Pilot schedule and publish records. TikTok public video
-              views, likes, comments, and shares appear below when analytics access is granted.
-            </p>
-          </div>
-
-          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card-muted px-3 py-1.5 text-xs font-semibold text-muted">
-            <Clock3 className="size-4" aria-hidden="true" />
-            {analytics.activityRangeLabel}
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            icon={<ListChecks className="size-4" aria-hidden="true" />}
-            label="Scheduled posts tracked"
-            value={analytics.totalPosts.toString()}
-          />
-          <MetricCard
-            icon={<CheckCircle2 className="size-4" aria-hidden="true" />}
-            label="Published platform posts"
-            tone="success"
-            value={analytics.publishedTargets.toString()}
-          />
-          <MetricCard
-            icon={<AlertCircle className="size-4" aria-hidden="true" />}
-            label="Targets needing attention"
-            tone={analytics.needsAttentionTargets > 0 ? "error" : "neutral"}
-            value={analytics.needsAttentionTargets.toString()}
-          />
-          <MetricCard
-            icon={<Calendar className="size-4" aria-hidden="true" />}
-            label="Upcoming platform posts"
-            value={analytics.upcomingTargets.toString()}
-          />
-        </div>
-      </section>
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.8fr)]">
-        <section className="rounded-card border border-border bg-card p-5 shadow-card sm:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
-                Activity
-              </p>
-              <h2 className="mt-2 text-lg font-semibold tracking-normal text-foreground-strong">
-                Publishing trend
-              </h2>
-              <p className="mt-1.5 max-w-xl text-sm leading-6 text-muted">
-                Real scheduled and published post counts from UGC Pilot records.
-              </p>
-            </div>
-            <span className="inline-flex w-fit items-center rounded-full border border-border bg-card-muted px-3 py-1.5 text-xs font-semibold text-muted">
-              Posts per day
-            </span>
-          </div>
-
-          {analytics.activityTotal > 0 ? (
-            <ActivityTrendChart buckets={analytics.activityBuckets} />
-          ) : (
-            <EmptyAnalyticsState
-              description={
-                hasSchedules
-                  ? "Your saved posts do not have scheduled dates in this view yet."
-                  : "Schedule a post first. Once it exists, this chart will use the real schedule and publish status."
-              }
-              title="No publishing activity to chart yet"
-            />
-          )}
-        </section>
-
-        <section className="rounded-card border border-border bg-card p-5 shadow-card sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
-                Platforms
-              </p>
-              <h2 className="mt-2 text-lg font-semibold tracking-normal text-foreground-strong">
-                Outcome by channel
-              </h2>
-            </div>
-            <TrendingUp className="size-5 text-muted-subtle" aria-hidden="true" />
-          </div>
-
-          {analytics.platformOutcomes.some((platform) => platform.total > 0) ? (
-            <PlatformOutcomeList outcomes={analytics.platformOutcomes} />
-          ) : (
-            <EmptyAnalyticsState
-              compact
-              description={
-                activeConnectionCount > 0
-                  ? "Choose accounts when scheduling to create platform-level outcomes."
-                  : "Connect Instagram, TikTok, or YouTube before scheduling posts."
-              }
-              title="No platform outcomes yet"
-            />
-          )}
-        </section>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted shadow-card">
+          <Clock3 className="size-4" aria-hidden="true" />
+          {analytics.rangeLabel}
+        </span>
+        <DateRangeSelector
+          selectedDays={dateRangeDays}
+          onChange={onDateRangeChange}
+        />
       </div>
 
-      <TikTokPublicVideoAnalyticsPanel accounts={tiktokAnalyticsAccounts} />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <MetricCard
+          icon={<Eye className="size-4" aria-hidden="true" />}
+          label="Total Views"
+          sourceLabel={analytics.performanceAccessLabel}
+          value={getDisplayMetricValue({
+            available: analytics.hasPerformanceAccess,
+            value: analytics.totals.views,
+          })}
+        />
+        <MetricCard
+          icon={<Heart className="size-4" aria-hidden="true" />}
+          label="Total Likes"
+          sourceLabel={analytics.performanceAccessLabel}
+          value={getDisplayMetricValue({
+            available: analytics.hasPerformanceAccess,
+            value: analytics.totals.likes,
+          })}
+        />
+        <MetricCard
+          icon={<MessageCircle className="size-4" aria-hidden="true" />}
+          label="Total Comments"
+          sourceLabel={analytics.performanceAccessLabel}
+          value={getDisplayMetricValue({
+            available: analytics.hasPerformanceAccess,
+            value: analytics.totals.comments,
+          })}
+        />
+        <MetricCard
+          icon={<Share2 className="size-4" aria-hidden="true" />}
+          label="Total Shares"
+          sourceLabel={analytics.performanceAccessLabel}
+          value={getDisplayMetricValue({
+            available: analytics.hasPerformanceAccess,
+            value: analytics.totals.shares,
+          })}
+        />
+        <MetricCard
+          icon={<ListChecks className="size-4" aria-hidden="true" />}
+          label="Total Posts"
+          sourceLabel="UGC Pilot schedule records"
+          value={formatMetricNumber(analytics.totals.posts)}
+        />
+      </div>
+
+      <AnalyticsPanel
+        actions={
+          <MetricSelector selectedMetric={selectedMetric} onChange={onMetricChange} />
+        }
+        eyebrow="Cumulative growth"
+        title="Cumulative Growth"
+        description="Total accumulated over the selected period from available real records."
+      >
+        <MetricLineChart
+          buckets={analytics.cumulativeBuckets}
+          emptyMessage={
+            selectedMetric === "posts"
+              ? "No scheduled posts in this period."
+              : analytics.emptyChartMessage
+          }
+          metricKey={selectedMetric}
+        />
+      </AnalyticsPanel>
+
+      <AnalyticsPanel
+        actions={
+          <MetricSelector selectedMetric={selectedMetric} onChange={onMetricChange} />
+        }
+        eyebrow="Growth per day"
+        title="Growth Per Day"
+        description="Daily movement for the selected metric using available account data."
+      >
+        <MetricLineChart
+          buckets={analytics.dailyBuckets}
+          emptyMessage={
+            selectedMetric === "posts"
+              ? "No scheduled posts in this period."
+              : analytics.emptyChartMessage
+          }
+          metricKey={selectedMetric}
+        />
+      </AnalyticsPanel>
+
+      <AnalyticsPanel
+        eyebrow="By account"
+        title="By Account"
+        description="Engagement and publishing data grouped by connected account."
+      >
+        <AccountInsightList rows={analytics.accountRows} />
+      </AnalyticsPanel>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        <AnalyticsPanel
+          eyebrow="By platform"
+          title="By Platform"
+          description="Views distribution across connected publishing channels."
+        >
+          <InsightBreakdownList
+            emptyTitle="No platform metric data yet"
+            rows={analytics.platformRows.map((row) => ({
+              id: row.platform,
+              label: platformLabels[row.platform],
+              metricAccess: row.metricAccess,
+              totals: row.totals,
+              visual: (
+                <SocialPlatformIcon platform={row.platform} className="size-5" />
+              ),
+            }))}
+            selectedMetric={selectedMetric}
+          />
+        </AnalyticsPanel>
+
+        <AnalyticsPanel
+          eyebrow="By content type"
+          title="By Content Type"
+          description="Metrics grouped by the content formats we can verify."
+        >
+          <InsightBreakdownList
+            emptyTitle="No content type data yet"
+            rows={analytics.contentTypeRows.map((row) => ({
+              id: row.label,
+              label: row.label,
+              message: row.message,
+              metricAccess: true,
+              totals: row.totals,
+              visual: <BarChart3 className="size-5" aria-hidden="true" />,
+            }))}
+            selectedMetric={selectedMetric}
+          />
+        </AnalyticsPanel>
+      </div>
+
+      <AnalyticsPanel
+        actions={
+          <DistributionSelector
+            mode={distributionMode}
+            onChange={onDistributionModeChange}
+          />
+        }
+        eyebrow="Views distribution"
+        title={`${metricLabels[selectedMetric]} Distribution`}
+        description={`${metricLabels[selectedMetric]} distribution by ${getDistributionLabel(
+          distributionMode,
+        ).toLowerCase()}.`}
+      >
+        <DistributionBars
+          mode={distributionMode}
+          rows={getDistributionRows({
+            analytics,
+            mode: distributionMode,
+            selectedMetric,
+          })}
+          selectedMetric={selectedMetric}
+        />
+      </AnalyticsPanel>
 
       <ConnectedAccountsDisclosure connections={connections} />
 
       <div className="flex items-start gap-2.5 px-1 text-xs leading-5 text-muted">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-subtle" aria-hidden="true" />
         <p>
-          No sample numbers are shown here. When a chart is empty, it means there is no
-          matching account or publishing data yet.
+          No sample numbers are shown here. Views, likes, comments, and shares appear
+          only for accounts with granted analytics access.
         </p>
       </div>
     </div>
@@ -493,47 +623,201 @@ function AnalyticsErrorState({
   );
 }
 
-function MetricCard({
-  icon,
-  label,
-  tone = "neutral",
-  value,
+function DateRangeSelector({
+  onChange,
+  selectedDays,
 }: {
-  icon: ReactNode;
-  label: string;
-  tone?: "error" | "neutral" | "success";
-  value: string;
+  onChange: (days: DateRangeDays) => void;
+  selectedDays: DateRangeDays;
 }) {
-  const toneClassName =
-    tone === "success"
-      ? "bg-success/10 text-success"
-      : tone === "error"
-        ? "bg-error/10 text-error"
-        : "bg-brand-soft text-primary";
-
   return (
-    <div className="rounded-card border border-border bg-card-muted/45 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <span
-          className={`flex size-9 shrink-0 items-center justify-center rounded-control ${toneClassName}`}
-        >
-          {icon}
-        </span>
-        <span className="font-mono text-2xl font-semibold leading-none text-foreground-strong">
-          {value}
-        </span>
-      </div>
-      <p className="mt-4 text-xs font-semibold leading-5 text-muted">{label}</p>
+    <div
+      aria-label="Analytics date range"
+      className="inline-flex w-fit rounded-full bg-card-muted p-1"
+      role="tablist"
+    >
+      {dateRangeOptions.map((option) => {
+        const selected = option.days === selectedDays;
+
+        return (
+          <button
+            key={option.days}
+            type="button"
+            aria-selected={selected}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+              selected
+                ? "bg-card text-foreground-strong shadow-card"
+                : "text-muted hover:text-foreground-strong"
+            }`}
+            onClick={() => onChange(option.days)}
+            role="tab"
+          >
+            {option.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function ActivityTrendChart({ buckets }: { buckets: ActivityBucket[] }) {
+function AnalyticsPanel({
+  actions,
+  children,
+  description,
+  eyebrow,
+  title,
+}: {
+  actions?: ReactNode;
+  children: ReactNode;
+  description: string;
+  eyebrow: string;
+  title: string;
+}) {
+  return (
+    <section className="rounded-card border border-border bg-card p-5 shadow-card sm:p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+            {eyebrow}
+          </p>
+          <h2 className="mt-2 text-lg font-semibold tracking-normal text-foreground-strong">
+            {title}
+          </h2>
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted">
+            {description}
+          </p>
+        </div>
+        {actions ? <div className="shrink-0">{actions}</div> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function MetricSelector({
+  onChange,
+  selectedMetric,
+}: {
+  onChange: (metric: MetricKey) => void;
+  selectedMetric: MetricKey;
+}) {
+  return (
+    <div
+      aria-label="Chart metric"
+      className="inline-flex max-w-full overflow-x-auto rounded-full bg-card-muted p-1"
+      role="tablist"
+    >
+      {allMetricKeys.map((metric) => {
+        const selected = metric === selectedMetric;
+
+        return (
+          <button
+            key={metric}
+            type="button"
+            aria-selected={selected}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+              selected
+                ? "bg-card text-foreground-strong shadow-card"
+                : "text-muted hover:text-foreground-strong"
+            }`}
+            onClick={() => onChange(metric)}
+            role="tab"
+          >
+            {metricLabels[metric]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function DistributionSelector({
+  mode,
+  onChange,
+}: {
+  mode: DistributionMode;
+  onChange: (mode: DistributionMode) => void;
+}) {
+  const options: Array<{ label: string; mode: DistributionMode }> = [
+    { label: "By Platform", mode: "platform" },
+    { label: "By Content Type", mode: "contentType" },
+    { label: "By Account", mode: "account" },
+  ];
+
+  return (
+    <div
+      aria-label="Distribution type"
+      className="inline-flex max-w-full overflow-x-auto rounded-full bg-card-muted p-1"
+      role="tablist"
+    >
+      {options.map((option) => {
+        const selected = option.mode === mode;
+
+        return (
+          <button
+            key={option.mode}
+            type="button"
+            aria-selected={selected}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+              selected
+                ? "bg-card text-foreground-strong shadow-card"
+                : "text-muted hover:text-foreground-strong"
+            }`}
+            onClick={() => onChange(option.mode)}
+            role="tab"
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MetricCard({
+  icon,
+  label,
+  sourceLabel,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  sourceLabel: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-card border border-border bg-card p-4 shadow-card">
+      <span className="flex size-9 items-center justify-center rounded-control bg-card-muted text-muted">
+        {icon}
+      </span>
+      <span className="mt-5 block font-mono text-[26px] font-semibold leading-none text-foreground-strong">
+        {value}
+      </span>
+      <p className="mt-3 text-xs font-semibold leading-5 text-muted">{label}</p>
+      <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-subtle">
+        {sourceLabel}
+      </p>
+    </div>
+  );
+}
+
+function MetricLineChart({
+  buckets,
+  emptyMessage,
+  metricKey,
+}: {
+  buckets: MetricBucket[];
+  emptyMessage: string;
+  metricKey: MetricKey;
+}) {
   const chartWidth = 720;
-  const chartHeight = 260;
-  const paddingX = 38;
-  const paddingY = 28;
-  const maxTotal = Math.max(...buckets.map((bucket) => bucket.total), 1);
+  const chartHeight = 280;
+  const paddingX = 42;
+  const paddingY = 30;
+  const values = buckets.map((bucket) => bucket[metricKey]);
+  const maxValue = Math.max(...values, 1);
+  const totalValue = values.reduce((sum, value) => sum + value, 0);
+  const hasData = values.some((value) => value > 0);
   const drawableWidth = chartWidth - paddingX * 2;
   const drawableHeight = chartHeight - paddingY * 2;
   const points = buckets.map((bucket, index) => {
@@ -542,30 +826,28 @@ function ActivityTrendChart({ buckets }: { buckets: ActivityBucket[] }) {
       (buckets.length <= 1
         ? drawableWidth / 2
         : (index / (buckets.length - 1)) * drawableWidth);
-    const y = paddingY + (1 - bucket.total / maxTotal) * drawableHeight;
+    const y = paddingY + (1 - bucket[metricKey] / maxValue) * drawableHeight;
 
     return { bucket, x, y };
   });
   const linePath = buildSmoothPath(points);
   const areaPath =
-    points.length > 0
+    hasData && points.length > 0
       ? `${linePath} L ${points[points.length - 1].x} ${chartHeight - paddingY} L ${
           points[0].x
         } ${chartHeight - paddingY} Z`
       : "";
   const peak = points.reduce(
     (currentPeak, point) =>
-      point.bucket.total > currentPeak.bucket.total ? point : currentPeak,
+      point.bucket[metricKey] > currentPeak.bucket[metricKey] ? point : currentPeak,
     points[0],
   );
-  const publishedTotal = buckets.reduce((sum, bucket) => sum + bucket.published, 0);
-  const attentionTotal = buckets.reduce((sum, bucket) => sum + bucket.failed, 0);
 
   return (
     <div className="mt-6 rounded-card border border-border bg-card-muted/35 p-4 sm:p-5">
-      <div className="relative h-[260px] min-w-0">
+      <div className="relative h-[280px] min-w-0">
         <svg
-          aria-label={`Publishing trend from ${formatShortDate(
+          aria-label={`${metricLabels[metricKey]} chart from ${formatShortDate(
             buckets[0]?.dateKey ?? "",
           )} to ${formatShortDate(buckets.at(-1)?.dateKey ?? "")}`}
           className="h-full w-full overflow-visible"
@@ -596,10 +878,10 @@ function ActivityTrendChart({ buckets }: { buckets: ActivityBucket[] }) {
             <path
               d={linePath}
               fill="none"
-              stroke="rgb(23 52 84)"
+              stroke={hasData ? "rgb(23 52 84)" : "rgb(255 90 31)"}
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth="5"
+              strokeWidth={hasData ? "5" : "3"}
               vectorEffect="non-scaling-stroke"
             />
           ) : null}
@@ -608,23 +890,28 @@ function ActivityTrendChart({ buckets }: { buckets: ActivityBucket[] }) {
               key={point.bucket.dateKey}
               cx={point.x}
               cy={point.y}
-              fill={point.bucket.total > 0 ? "rgb(255 90 31)" : "rgb(216 210 203)"}
-              r={point.bucket.total > 0 ? 5 : 3.5}
+              fill={point.bucket[metricKey] > 0 ? "rgb(255 90 31)" : "rgb(216 210 203)"}
+              r={point.bucket[metricKey] > 0 ? 5 : 3.5}
               vectorEffect="non-scaling-stroke"
             >
               <title>
-                {formatFullDate(point.bucket.dateKey)}: {point.bucket.total} posts
+                {formatFullDate(point.bucket.dateKey)}:{" "}
+                {formatMetricNumber(point.bucket[metricKey])} {metricLabels[metricKey]}
               </title>
             </circle>
           ))}
+          <text fill="rgb(96 99 108)" fontSize="12" fontWeight="700" x={paddingX} y={chartHeight - 5}>
+            {formatShortDate(buckets[0]?.dateKey ?? "")}
+          </text>
           <text
             fill="rgb(96 99 108)"
             fontSize="12"
             fontWeight="700"
-            x={paddingX}
+            textAnchor="middle"
+            x={chartWidth / 2}
             y={chartHeight - 5}
           >
-            {formatShortDate(buckets[0]?.dateKey ?? "")}
+            {formatShortDate(buckets[Math.floor(buckets.length / 2)]?.dateKey ?? "")}
           </text>
           <text
             fill="rgb(96 99 108)"
@@ -644,7 +931,7 @@ function ActivityTrendChart({ buckets }: { buckets: ActivityBucket[] }) {
             x={chartWidth - 8}
             y={paddingY + 4}
           >
-            {maxTotal}
+            {formatMetricNumber(maxValue)}
           </text>
           <text
             fill="rgb(96 99 108)"
@@ -657,89 +944,162 @@ function ActivityTrendChart({ buckets }: { buckets: ActivityBucket[] }) {
             0
           </text>
         </svg>
+        {!hasData ? (
+          <div className="pointer-events-none absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-full border border-border bg-card/90 px-4 py-2 text-center text-xs font-semibold text-muted shadow-card">
+            {emptyMessage}
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-4 grid gap-3 text-xs sm:grid-cols-3">
-        <TrendStat
+        <ChartStat
           label="Peak day"
           value={
             peak
-              ? `${formatShortDate(peak.bucket.dateKey)} - ${peak.bucket.total}`
-              : "No posts"
+              ? `${formatShortDate(peak.bucket.dateKey)} - ${formatMetricNumber(
+                  peak.bucket[metricKey],
+                )}`
+              : "No data"
           }
         />
-        <TrendStat label="Published" value={publishedTotal.toString()} />
-        <TrendStat
-          label="Needs attention"
-          tone={attentionTotal > 0 ? "error" : "neutral"}
-          value={attentionTotal.toString()}
-        />
+        <ChartStat label="Total" value={formatMetricNumber(totalValue)} />
+        <ChartStat label="Metric" value={metricLabels[metricKey]} />
       </div>
     </div>
   );
 }
 
-function TrendStat({
-  label,
-  tone = "neutral",
-  value,
-}: {
-  label: string;
-  tone?: "error" | "neutral";
-  value: string;
-}) {
+function ChartStat({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      className={`rounded-control border bg-card px-3 py-2 ${
-        tone === "error" ? "border-error/25" : "border-border"
-      }`}
-    >
+    <div className="rounded-control border border-border bg-card px-3 py-2">
       <span className="block font-mono text-sm font-semibold text-foreground-strong">
         {value}
       </span>
-      <span className={tone === "error" ? "text-error" : "text-muted"}>{label}</span>
+      <span className="text-muted">{label}</span>
     </div>
   );
 }
 
-function PlatformOutcomeList({ outcomes }: { outcomes: PlatformOutcome[] }) {
+function AccountInsightList({ rows }: { rows: AccountInsightRow[] }) {
+  if (rows.length === 0) {
+    return (
+      <EmptyAnalyticsState
+        description="Connect Instagram, TikTok, or YouTube to see account-level analytics here."
+        title="No account data yet"
+      />
+    );
+  }
+
   return (
-    <div className="mt-6 space-y-4">
-      {outcomes.map((outcome) => {
-        const hasData = outcome.total > 0;
+    <div className="mt-6 divide-y divide-border">
+      {rows.map((row) => {
+        const metricAccess = row.status === "ready";
+        const lastSyncedLabel = formatDateTime(row.lastSyncedAt);
 
         return (
-          <div key={outcome.platform} className="border-t border-border pt-4 first:border-t-0 first:pt-0">
+          <article
+            key={row.connectionId}
+            className="flex flex-col gap-4 py-4 first:pt-0 last:pb-0 xl:flex-row xl:items-center xl:justify-between"
+          >
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-card-muted">
+                <SocialPlatformIcon platform={row.platform} className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-foreground-strong">
+                  {row.name}
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  {platformLabels[row.platform]}
+                  {lastSyncedLabel ? ` - Refreshed ${lastSyncedLabel}` : ""}
+                </p>
+                {row.message ? (
+                  <p className="mt-2 max-w-xl text-xs leading-5 text-muted">
+                    {row.message}
+                  </p>
+                ) : null}
+                {row.status === "permission_missing" ? (
+                  <ManageAccountsLink className="mt-3" label="Reconnect TikTok" />
+                ) : null}
+              </div>
+            </div>
+
+            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-5 xl:min-w-[520px]">
+              {allMetricKeys.map((metric) => (
+                <SmallMetricPill
+                  key={metric}
+                  label={metricLabels[metric]}
+                  value={
+                    metric === "posts" || metricAccess
+                      ? formatMetricNumber(row.totals[metric])
+                      : "--"
+                  }
+                />
+              ))}
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function InsightBreakdownList({
+  emptyTitle,
+  rows,
+  selectedMetric,
+}: {
+  emptyTitle: string;
+  rows: Array<{
+    id: string;
+    label: string;
+    message?: string;
+    metricAccess: boolean;
+    totals: MetricTotals;
+    visual: ReactNode;
+  }>;
+  selectedMetric: MetricKey;
+}) {
+  if (rows.length === 0) {
+    return (
+      <EmptyAnalyticsState
+        compact
+        description="Analytics will appear after matching real platform data is available."
+        title={emptyTitle}
+      />
+    );
+  }
+
+  return (
+    <div className="mt-6 space-y-3">
+      {rows.map((row) => {
+        const available = selectedMetric === "posts" || row.metricAccess;
+
+        return (
+          <div
+            key={row.id}
+            className="rounded-control border border-border bg-card-muted/45 p-3"
+          >
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-card-muted">
-                  <SocialPlatformIcon platform={outcome.platform} className="size-5" />
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-card text-muted">
+                  {row.visual}
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-foreground-strong">
-                    {platformLabels[outcome.platform]}
+                    {row.label}
                   </p>
-                  <p className="mt-0.5 text-xs text-muted">
-                    {hasData ? `${outcome.total} platform targets` : "No targets yet"}
-                  </p>
+                  {row.message ? (
+                    <p className="mt-0.5 line-clamp-1 text-xs text-muted">
+                      {row.message}
+                    </p>
+                  ) : null}
                 </div>
               </div>
               <span className="font-mono text-lg font-semibold text-foreground-strong">
-                {outcome.published}
+                {available ? formatMetricNumber(row.totals[selectedMetric]) : "--"}
               </span>
             </div>
-
-            {hasData ? (
-              <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                <OutcomePill label="Published" value={outcome.published} />
-                <OutcomePill label="Planned" value={outcome.planned} />
-                <OutcomePill
-                  label="Attention"
-                  tone={outcome.failed > 0 ? "error" : "neutral"}
-                  value={outcome.failed}
-                />
-              </div>
-            ) : null}
           </div>
         );
       })}
@@ -747,256 +1107,73 @@ function PlatformOutcomeList({ outcomes }: { outcomes: PlatformOutcome[] }) {
   );
 }
 
-function OutcomePill({
-  label,
-  tone = "neutral",
-  value,
+function DistributionBars({
+  mode,
+  rows,
+  selectedMetric,
 }: {
-  label: string;
-  tone?: "error" | "neutral";
-  value: number;
+  mode: DistributionMode;
+  rows: Array<{
+    available: boolean;
+    id: string;
+    label: string;
+    value: number;
+  }>;
+  selectedMetric: MetricKey;
 }) {
+  const availableRows = rows.filter((row) => row.available);
+  const total = availableRows.reduce((sum, row) => sum + row.value, 0);
+  const maxValue = Math.max(...availableRows.map((row) => row.value), 1);
+
+  if (availableRows.length === 0 || total === 0) {
+    return (
+      <EmptyAnalyticsState
+        description={`No ${metricLabels[
+          selectedMetric
+        ].toLowerCase()} distribution data is available by ${getDistributionLabel(
+          mode,
+        ).toLowerCase()} yet.`}
+        title="No distribution data yet"
+      />
+    );
+  }
+
   return (
-    <div
-      className={`rounded-control border px-2.5 py-2 ${
-        tone === "error"
-          ? "border-error/20 bg-error/5 text-error"
-          : "border-border bg-card-muted text-muted"
-      }`}
-    >
+    <div className="mt-6 space-y-3">
+      {availableRows.map((row) => {
+        const width = Math.max((row.value / maxValue) * 100, row.value > 0 ? 8 : 0);
+        const percent = total > 0 ? Math.round((row.value / total) * 100) : 0;
+
+        return (
+          <div key={row.id} className="rounded-control border border-border bg-card-muted/45 p-3">
+            <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+              <span className="font-semibold text-foreground-strong">{row.label}</span>
+              <span className="font-mono font-semibold text-foreground-strong">
+                {formatMetricNumber(row.value)}{" "}
+                <span className="text-xs font-semibold text-muted">{percent}%</span>
+              </span>
+            </div>
+            <div className="h-3 overflow-hidden rounded-full bg-card">
+              <div
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${width}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function SmallMetricPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-control border border-border bg-card-muted px-2.5 py-2">
       <span className="block font-mono text-sm font-semibold text-foreground-strong">
         {value}
       </span>
-      <span className="mt-0.5 block font-semibold">{label}</span>
-    </div>
-  );
-}
-
-function TikTokPublicVideoAnalyticsPanel({
-  accounts,
-}: {
-  accounts: TikTokAnalyticsAccount[];
-}) {
-  const videoCount = accounts.reduce(
-    (count, account) => count + account.videos.length,
-    0,
-  );
-
-  return (
-    <section className="rounded-card border border-border bg-card p-5 shadow-card sm:p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-card-muted">
-            <SocialPlatformIcon platform="tiktok" className="size-5" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
-              TikTok analytics
-            </p>
-            <h2 className="mt-2 text-lg font-semibold tracking-normal text-foreground-strong">
-              Public video performance
-            </h2>
-            <p className="mt-1.5 max-w-3xl text-sm leading-6 text-muted">
-              Views, likes, comments, and shares are loaded from TikTok public videos
-              for the connected account that granted video.list.
-            </p>
-          </div>
-        </div>
-
-        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card-muted px-3 py-1.5 text-xs font-semibold text-muted">
-          <BarChart3 className="size-4" aria-hidden="true" />
-          {videoCount > 0 ? `${videoCount} public videos` : "Real TikTok API"}
-        </span>
-      </div>
-
-      {accounts.length > 0 ? (
-        <div className="mt-5 space-y-4">
-          {accounts.map((account) => (
-            <TikTokAnalyticsAccountCard key={account.connectionId} account={account} />
-          ))}
-        </div>
-      ) : (
-        <EmptyAnalyticsState
-          compact
-          description="Connect TikTok before public video views, likes, comments, and shares can be synchronized."
-          title="No TikTok account connected"
-        />
-      )}
-    </section>
-  );
-}
-
-function TikTokAnalyticsAccountCard({
-  account,
-}: {
-  account: TikTokAnalyticsAccount;
-}) {
-  const isReady = account.status === "ready";
-  const statusClassName =
-    account.status === "ready"
-      ? "text-success"
-      : account.status === "permission_missing"
-        ? "text-primary"
-        : "text-muted";
-  const lastSyncedLabel = formatDateTime(account.lastSyncedAt);
-
-  return (
-    <div className="rounded-card border border-border bg-card-muted/35 p-4 sm:p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-foreground-strong">
-            {getTikTokAnalyticsAccountName(account)}
-          </p>
-          <p className="mt-1 text-xs text-muted">Connected TikTok account</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {lastSyncedLabel ? (
-            <span className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-muted">
-              <Clock3 className="size-4" aria-hidden="true" />
-              Last refreshed {lastSyncedLabel}
-            </span>
-          ) : null}
-          <span className={`inline-flex w-fit items-center gap-1.5 text-xs font-semibold ${statusClassName}`}>
-            <span
-              className={`size-1.5 rounded-full ${
-                isReady ? "bg-success" : "bg-muted-subtle"
-              }`}
-              aria-hidden="true"
-            />
-            {getTikTokAnalyticsStatusLabel(account.status)}
-          </span>
-        </div>
-      </div>
-
-      {!isReady ? (
-        <div className="mt-4 rounded-control border border-border bg-card px-4 py-3">
-          <p className="text-sm leading-6 text-muted">
-            {account.message ||
-              "Analytics become available after the TikTok post is publicly accessible."}
-          </p>
-          {account.status === "permission_missing" ? (
-            <ManageAccountsLink className="mt-3" label="Reconnect TikTok" />
-          ) : null}
-        </div>
-      ) : account.videos.length > 0 ? (
-        <div className="mt-4 grid gap-3 xl:grid-cols-2">
-          {account.videos.map((video) => (
-            <TikTokAnalyticsVideoCard
-              key={video.id}
-              lastSyncedAt={account.lastSyncedAt}
-              video={video}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="mt-4 rounded-control border border-border bg-card px-4 py-3">
-          <p className="text-sm leading-6 text-muted">
-            {account.message ||
-              "Analytics become available after the TikTok post is publicly accessible."}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TikTokAnalyticsVideoCard({
-  lastSyncedAt,
-  video,
-}: {
-  lastSyncedAt: string | null;
-  video: TikTokAnalyticsVideo;
-}) {
-  const title = video.title || video.description || "TikTok public video";
-  const publishedLabel = formatDateTime(video.createdAt);
-  const lastSyncedLabel = formatDateTime(lastSyncedAt);
-
-  return (
-    <article className="rounded-card border border-border bg-card p-3">
-      <div className="flex gap-3">
-        {video.coverImageUrl ? (
-          <span
-            aria-label="TikTok video thumbnail"
-            className="block aspect-[9/16] w-20 shrink-0 rounded-control bg-card-muted bg-cover bg-center"
-            role="img"
-            style={{ backgroundImage: `url(${JSON.stringify(video.coverImageUrl)})` }}
-          />
-        ) : (
-          <span className="flex aspect-[9/16] w-20 shrink-0 items-center justify-center rounded-control bg-card-muted text-muted-subtle">
-            <BarChart3 className="size-5" aria-hidden="true" />
-          </span>
-        )}
-
-        <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground-strong">
-            {title}
-          </h3>
-          {video.description && video.description !== title ? (
-            <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">
-              {video.description}
-            </p>
-          ) : null}
-          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
-            {publishedLabel ? <span>Published {publishedLabel}</span> : null}
-            {lastSyncedLabel ? <span>Refreshed {lastSyncedLabel}</span> : null}
-            {video.shareUrl ? (
-              <a
-                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
-                href={video.shareUrl}
-                rel="noreferrer"
-                target="_blank"
-              >
-                Open video
-                <ExternalLink className="size-3.5" aria-hidden="true" />
-              </a>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <TikTokMetricPill
-          icon={<Eye className="size-3.5" aria-hidden="true" />}
-          label="Views"
-          value={video.viewCount}
-        />
-        <TikTokMetricPill
-          icon={<Heart className="size-3.5" aria-hidden="true" />}
-          label="Likes"
-          value={video.likeCount}
-        />
-        <TikTokMetricPill
-          icon={<MessageCircle className="size-3.5" aria-hidden="true" />}
-          label="Comments"
-          value={video.commentCount}
-        />
-        <TikTokMetricPill
-          icon={<Share2 className="size-3.5" aria-hidden="true" />}
-          label="Shares"
-          value={video.shareCount}
-        />
-      </div>
-    </article>
-  );
-}
-
-function TikTokMetricPill({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: number | null;
-}) {
-  return (
-    <div className="rounded-control border border-border bg-card-muted px-2.5 py-2">
-      <span className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
-        {icon}
+      <span className="mt-0.5 block text-[11px] font-semibold text-muted">
         {label}
-      </span>
-      <span className="mt-1 block font-mono text-sm font-semibold text-foreground-strong">
-        {formatMetricValue(value)}
       </span>
     </div>
   );
@@ -1188,145 +1365,364 @@ function ManageAccountsLink({
 }
 
 type AnalyticsSummary = {
-  activityBuckets: ActivityBucket[];
-  activityRangeLabel: string;
-  activityTotal: number;
-  needsAttentionTargets: number;
-  platformOutcomes: PlatformOutcome[];
-  publishedTargets: number;
-  totalPosts: number;
-  upcomingTargets: number;
+  accountRows: AccountInsightRow[];
+  contentTypeRows: ContentTypeInsightRow[];
+  cumulativeBuckets: MetricBucket[];
+  dailyBuckets: MetricBucket[];
+  emptyChartMessage: string;
+  hasPerformanceAccess: boolean;
+  performanceAccessLabel: string;
+  platformRows: PlatformInsightRow[];
+  rangeLabel: string;
+  totals: MetricTotals;
 };
 
 function buildAnalyticsSummary({
   connections,
+  dateRangeDays,
   schedules,
+  tiktokAnalyticsAccounts,
 }: {
   connections: SocialConnection[];
+  dateRangeDays: DateRangeDays;
   schedules: ScheduledPost[];
+  tiktokAnalyticsAccounts: TikTokAnalyticsAccount[];
 }): AnalyticsSummary {
-  const datedSchedules = schedules
-    .map((schedule) => ({
-      dateKey: getScheduleDateKey(schedule),
-      outcome: getScheduleOutcome(schedule),
-      schedule,
-    }))
-    .filter((entry): entry is {
-      dateKey: string;
-      outcome: OutcomeKey;
-      schedule: ScheduledPost;
-    } => Boolean(entry.dateKey));
-  const rangeKeys = getActivityRangeKeys(datedSchedules.map((entry) => entry.dateKey));
+  const rangeKeys = getDateRangeKeys(dateRangeDays);
   const bucketMap = new Map(
     rangeKeys.map((dateKey) => [
       dateKey,
-      {
-        cancelled: 0,
-        dateKey,
-        failed: 0,
-        planned: 0,
-        published: 0,
-        total: 0,
-      } satisfies ActivityBucket,
+      createMetricBucket(dateKey),
     ]),
   );
+  const totals = cloneTotals();
+  const accountTotals = new Map(
+    connections.map((connection) => [connection.id, cloneTotals()]),
+  );
+  const platformTotals = new Map<SocialPlatform, MetricTotals>(
+    schedulePlatforms.map((platform) => [platform, cloneTotals()]),
+  );
+  const tiktokPublicVideoTotals = cloneTotals();
+  const scheduledPostTotals = cloneTotals();
+  const tiktokAccountMap = new Map(
+    tiktokAnalyticsAccounts.map((account) => [account.connectionId, account]),
+  );
 
-  for (const entry of datedSchedules) {
-    const bucket = bucketMap.get(entry.dateKey);
+  for (const schedule of schedules) {
+    const dateKey = getScheduleDateKey(schedule);
 
-    if (!bucket) {
+    if (dateKey && bucketMap.has(dateKey)) {
+      const bucket = bucketMap.get(dateKey);
+
+      if (bucket) {
+        bucket.posts += 1;
+        totals.posts += 1;
+        scheduledPostTotals.posts += 1;
+      }
+    }
+
+    for (const target of schedule.targets) {
+      const targetDateKey = getTargetDateKey({ schedule, target });
+
+      if (!targetDateKey || !bucketMap.has(targetDateKey)) {
+        continue;
+      }
+
+      const platformTotal = platformTotals.get(target.platform);
+      const connectionTotal = accountTotals.get(target.socialConnectionId);
+
+      if (platformTotal) {
+        platformTotal.posts += 1;
+      }
+
+      if (connectionTotal) {
+        connectionTotal.posts += 1;
+      }
+    }
+  }
+
+  for (const account of tiktokAnalyticsAccounts) {
+    if (account.status !== "ready") {
       continue;
     }
 
-    bucket[entry.outcome] += 1;
-    bucket.total += 1;
+    const accountTotal = accountTotals.get(account.connectionId);
+    const platformTotal = platformTotals.get("tiktok");
+
+    for (const video of account.videos) {
+      const dateKey = getVideoDateKey(video);
+
+      if (!dateKey || !bucketMap.has(dateKey)) {
+        continue;
+      }
+
+      const metrics = getVideoMetricTotals(video);
+      const bucket = bucketMap.get(dateKey);
+
+      if (bucket) {
+        addTotals(bucket, metrics);
+      }
+
+      addTotals(totals, metrics);
+      addTotals(tiktokPublicVideoTotals, metrics);
+
+      if (accountTotal) {
+        addTotals(accountTotal, metrics);
+      }
+
+      if (platformTotal) {
+        addTotals(platformTotal, metrics);
+      }
+    }
   }
 
-  const targets = schedules.flatMap((schedule) => schedule.targets);
-  const platformOutcomes = schedulePlatforms.map((platform) => {
-    const platformTargets = targets.filter((target) => target.platform === platform);
-    const outcome: PlatformOutcome = {
-      cancelled: 0,
-      failed: 0,
-      planned: 0,
-      platform,
-      published: 0,
-      total: platformTargets.length,
-    };
-
-    for (const target of platformTargets) {
-      outcome[getTargetOutcome(target)] += 1;
-    }
-
-    return outcome;
-  });
-  const targetsNeedingAttention = targets.filter(
-    (target) => getTargetOutcome(target) === "failed",
-  ).length;
-  const scheduleLevelFailuresWithoutTargets = schedules.filter(
-    (schedule) =>
-      schedule.targets.length === 0 &&
-      (schedule.status === "failed" || schedule.status === "partially_failed"),
-  ).length;
-  const upcomingTargets = targets.filter(
-    (target) => getTargetOutcome(target) === "planned",
-  ).length;
-  const connectedPlatforms = new Set(
-    connections
-      .filter((connection) => connection.status === "connected")
-      .map((connection) => connection.platform),
+  const dailyBuckets = Array.from(bucketMap.values());
+  const cumulativeBuckets = buildCumulativeBuckets(dailyBuckets);
+  const hasPerformanceAccess = tiktokAnalyticsAccounts.some(
+    (account) => account.status === "ready",
   );
+  const needsTikTokReconnect = tiktokAnalyticsAccounts.some(
+    (account) => account.status === "permission_missing",
+  );
+  const performanceAccessLabel = hasPerformanceAccess
+    ? "Real TikTok public video data"
+    : needsTikTokReconnect
+      ? "Reconnect TikTok to grant analytics access"
+      : "Connect TikTok with analytics access";
+  const accountRows = buildAccountRows({
+    accountTotals,
+    connections,
+    tiktokAccountMap,
+  });
+  const platformRows = schedulePlatforms.map((platform) => ({
+    metricAccess: platform === "tiktok" && hasPerformanceAccess,
+    platform,
+    totals: platformTotals.get(platform) ?? cloneTotals(),
+  }));
+  const contentTypeRows: ContentTypeInsightRow[] = [];
+
+  if (hasAnyPerformanceMetric(tiktokPublicVideoTotals) || hasPerformanceAccess) {
+    contentTypeRows.push({
+      label: "TikTok public videos",
+      message: "Views, likes, comments, and shares from TikTok video.list.",
+      totals: tiktokPublicVideoTotals,
+    });
+  }
+
+  if (scheduledPostTotals.posts > 0) {
+    contentTypeRows.push({
+      label: "Scheduled posts",
+      message: "Post count from UGC Pilot schedule records.",
+      totals: scheduledPostTotals,
+    });
+  }
 
   return {
-    activityBuckets: Array.from(bucketMap.values()),
-    activityRangeLabel: getRangeLabel(rangeKeys),
-    activityTotal: Array.from(bucketMap.values()).reduce(
-      (sum, bucket) => sum + bucket.total,
-      0,
-    ),
-    needsAttentionTargets: targetsNeedingAttention + scheduleLevelFailuresWithoutTargets,
-    platformOutcomes: platformOutcomes.sort((first, second) => {
-      const firstConnected = connectedPlatforms.has(first.platform) ? 0 : 1;
-      const secondConnected = connectedPlatforms.has(second.platform) ? 0 : 1;
-
-      return firstConnected - secondConnected || second.total - first.total;
-    }),
-    publishedTargets: targets.filter((target) => target.status === "published").length,
-    totalPosts: schedules.length,
-    upcomingTargets,
+    accountRows,
+    contentTypeRows,
+    cumulativeBuckets,
+    dailyBuckets,
+    emptyChartMessage: hasPerformanceAccess
+      ? "No matching data in this period."
+      : performanceAccessLabel,
+    hasPerformanceAccess,
+    performanceAccessLabel,
+    platformRows,
+    rangeLabel: getRangeLabel(rangeKeys),
+    totals,
   };
 }
 
-function getScheduleOutcome(schedule: ScheduledPost): OutcomeKey {
-  if (schedule.status === "published") {
-    return "published";
-  }
+function buildAccountRows({
+  accountTotals,
+  connections,
+  tiktokAccountMap,
+}: {
+  accountTotals: Map<string, MetricTotals>;
+  connections: SocialConnection[];
+  tiktokAccountMap: Map<string, TikTokAnalyticsAccount>;
+}): AccountInsightRow[] {
+  return connections.map((connection) => {
+    const tiktokAccount =
+      connection.platform === "tiktok" ? tiktokAccountMap.get(connection.id) : null;
+    const totals = accountTotals.get(connection.id) ?? cloneTotals();
+    const status = getAccountInsightStatus({ connection, tiktokAccount });
+    const message =
+      tiktokAccount?.message ??
+      (connection.platform === "tiktok"
+        ? "Reconnect TikTok with analytics access to load public video metrics."
+        : "Publishing is connected. Performance metric sync is not enabled for this platform yet.");
 
-  if (schedule.status === "failed" || schedule.status === "partially_failed") {
-    return "failed";
-  }
-
-  if (schedule.status === "cancelled") {
-    return "cancelled";
-  }
-
-  return "planned";
+    return {
+      connectionId: connection.id,
+      lastSyncedAt: tiktokAccount?.lastSyncedAt ?? null,
+      message: status === "ready" ? null : message,
+      name: getConnectionName(connection),
+      platform: connection.platform,
+      status,
+      totals,
+    };
+  });
 }
 
-function getTargetOutcome(target: ScheduledPostTarget): OutcomeKey {
-  if (target.status === "published") {
-    return "published";
+function getAccountInsightStatus({
+  connection,
+  tiktokAccount,
+}: {
+  connection: SocialConnection;
+  tiktokAccount: TikTokAnalyticsAccount | null | undefined;
+}): AccountInsightRow["status"] {
+  if (connection.platform !== "tiktok") {
+    return connection.status === "connected" ? "connected" : "unavailable";
   }
 
-  if (target.status === "failed" || target.status === "action_required") {
-    return "failed";
+  if (tiktokAccount?.status === "ready") {
+    return "ready";
   }
 
-  if (target.status === "cancelled" || target.status === "skipped") {
-    return "cancelled";
+  if (tiktokAccount?.status === "permission_missing") {
+    return "permission_missing";
   }
 
-  return "planned";
+  return "unavailable";
+}
+
+function getDistributionRows({
+  analytics,
+  mode,
+  selectedMetric,
+}: {
+  analytics: AnalyticsSummary;
+  mode: DistributionMode;
+  selectedMetric: MetricKey;
+}) {
+  if (mode === "account") {
+    return analytics.accountRows.map((row) => ({
+      available: selectedMetric === "posts" || row.status === "ready",
+      id: row.connectionId,
+      label: row.name,
+      value: row.totals[selectedMetric],
+    }));
+  }
+
+  if (mode === "contentType") {
+    return analytics.contentTypeRows.map((row) => ({
+      available: true,
+      id: row.label,
+      label: row.label,
+      value: row.totals[selectedMetric],
+    }));
+  }
+
+  return analytics.platformRows.map((row) => ({
+    available: selectedMetric === "posts" || row.metricAccess,
+    id: row.platform,
+    label: platformLabels[row.platform],
+    value: row.totals[selectedMetric],
+  }));
+}
+
+function createMetricBucket(dateKey: string): MetricBucket {
+  return {
+    ...cloneTotals(),
+    dateKey,
+  };
+}
+
+function cloneTotals(): MetricTotals {
+  return { ...emptyTotals };
+}
+
+function addTotals(target: MetricTotals, source: Partial<MetricTotals>) {
+  for (const metric of allMetricKeys) {
+    target[metric] += source[metric] ?? 0;
+  }
+}
+
+function buildCumulativeBuckets(buckets: MetricBucket[]) {
+  const running = cloneTotals();
+
+  return buckets.map((bucket) => {
+    addTotals(running, bucket);
+
+    return {
+      ...running,
+      dateKey: bucket.dateKey,
+    };
+  });
+}
+
+function getDateRangeKeys(days: DateRangeDays) {
+  const today = startOfDay(new Date());
+  const rangeStart = addDays(today, -(days - 1));
+
+  return Array.from({ length: days }, (_, index) =>
+    toDateKey(addDays(rangeStart, index)),
+  );
+}
+
+function getTargetDateKey({
+  schedule,
+  target,
+}: {
+  schedule: ScheduledPost;
+  target: ScheduledPostTarget;
+}) {
+  return getDateKeyForTimezone(
+    target.scheduledFor || schedule.scheduledFor || "",
+    schedule.timezone,
+  );
+}
+
+function getVideoDateKey(video: TikTokAnalyticsVideo) {
+  if (!video.createdAt) {
+    return null;
+  }
+
+  return getDateKeyForTimezone(video.createdAt, "UTC");
+}
+
+function getVideoMetricTotals(video: TikTokAnalyticsVideo): MetricTotals {
+  return {
+    comments: video.commentCount ?? 0,
+    likes: video.likeCount ?? 0,
+    posts: 0,
+    shares: video.shareCount ?? 0,
+    views: video.viewCount ?? 0,
+  };
+}
+
+function hasAnyPerformanceMetric(totals: MetricTotals) {
+  return performanceMetricKeys.some((metric) => totals[metric] > 0);
+}
+
+function getDisplayMetricValue({
+  available,
+  value,
+}: {
+  available: boolean;
+  value: number;
+}) {
+  return available ? formatMetricNumber(value) : "--";
+}
+
+function formatMetricNumber(value: number) {
+  return new Intl.NumberFormat("en", {
+    maximumFractionDigits: 1,
+    notation: value >= 10_000 ? "compact" : "standard",
+  }).format(value);
+}
+
+function getDistributionLabel(mode: DistributionMode) {
+  switch (mode) {
+    case "account":
+      return "Account";
+    case "contentType":
+      return "Content Type";
+    case "platform":
+    default:
+      return "Platform";
+  }
 }
 
 function getScheduleDateKey(schedule: ScheduledPost) {
@@ -1341,29 +1737,6 @@ function getScheduleDateKey(schedule: ScheduledPost) {
   }
 
   return getDateKeyForTimezone(scheduledFor, schedule.timezone);
-}
-
-function getActivityRangeKeys(dateKeys: string[]) {
-  const today = startOfDay(new Date());
-  const currentRangeStart = addDays(today, -(ACTIVITY_DAYS - 1));
-  const currentRangeKeys = Array.from({ length: ACTIVITY_DAYS }, (_, index) =>
-    toDateKey(addDays(currentRangeStart, index)),
-  );
-  const hasCurrentActivity = dateKeys.some((dateKey) =>
-    currentRangeKeys.includes(dateKey),
-  );
-
-  if (hasCurrentActivity || dateKeys.length === 0) {
-    return currentRangeKeys;
-  }
-
-  const latestKey = [...dateKeys].sort().at(-1) ?? toDateKey(today);
-  const latestDate = parseDateKey(latestKey) ?? today;
-  const rangeStart = addDays(latestDate, -(ACTIVITY_DAYS - 1));
-
-  return Array.from({ length: ACTIVITY_DAYS }, (_, index) =>
-    toDateKey(addDays(rangeStart, index)),
-  );
 }
 
 function getRangeLabel(rangeKeys: string[]) {
@@ -1504,32 +1877,6 @@ function getConnectionName(connection: SocialConnection) {
   return `${platformLabels[connection.platform]} account`;
 }
 
-function getTikTokAnalyticsAccountName(account: TikTokAnalyticsAccount) {
-  if (account.accountName?.trim()) {
-    return account.accountName.trim();
-  }
-
-  if (account.accountUsername?.trim()) {
-    return `@${account.accountUsername.trim().replace(/^@/, "")}`;
-  }
-
-  return "TikTok account";
-}
-
-function getTikTokAnalyticsStatusLabel(status: TikTokAnalyticsAccountStatus) {
-  switch (status) {
-    case "ready":
-      return "Analytics connected";
-    case "permission_missing":
-      return "Permission needed";
-    case "unavailable":
-      return "Unavailable";
-    case "error":
-    default:
-      return "Sync error";
-  }
-}
-
 function formatConnectionDate(value: string) {
   const date = new Date(value);
 
@@ -1562,15 +1909,4 @@ function formatDateTime(value: string | null) {
     month: "short",
     year: "numeric",
   }).format(date);
-}
-
-function formatMetricValue(value: number | null) {
-  if (value === null) {
-    return "Unavailable";
-  }
-
-  return new Intl.NumberFormat("en", {
-    maximumFractionDigits: 1,
-    notation: value >= 10_000 ? "compact" : "standard",
-  }).format(value);
 }

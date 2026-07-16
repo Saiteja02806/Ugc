@@ -3,14 +3,13 @@
 import {
   AlertCircle,
   Camera,
-  CheckCircle2,
   ExternalLink,
   LoaderCircle,
   Music2,
   Play,
   type LucideIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -52,7 +51,7 @@ export type SchedulePlatformContext = {
 
 type PlatformSelectionModalProps = {
   context: SchedulePlatformContext | null;
-  onConfirmed: (platforms: SocialPlatform[]) => void;
+  onConfirmed: (platforms: SocialPlatform[]) => Promise<void> | void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 };
@@ -101,14 +100,14 @@ export function PlatformSelectionModal({
   onOpenChange,
   open,
 }: PlatformSelectionModalProps) {
-  const confirmationTimerRef = useRef<number | null>(null);
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<SocialPlatform[]>(
     [],
   );
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [renderTrace, setRenderTrace] = useState<OAuthTraceInput | null>(null);
 
   const loadConnections = useCallback(async (trace?: OAuthTraceInput) => {
@@ -222,15 +221,6 @@ export function PlatformSelectionModal({
     return () => window.clearTimeout(timer);
   }, [loadConnections, open]);
 
-  useEffect(
-    () => () => {
-      if (confirmationTimerRef.current !== null) {
-        window.clearTimeout(confirmationTimerRef.current);
-      }
-    },
-    [],
-  );
-
   useEffect(() => {
     if (!renderTrace?.correlationId || !renderTrace.platform) {
       return;
@@ -259,17 +249,18 @@ export function PlatformSelectionModal({
       ),
     [connections],
   );
-  const canContinue = selectedPlatforms.length > 0 && !confirmed;
+  const canContinue = selectedPlatforms.length > 0 && !submitting;
 
   function setOpen(nextOpen: boolean) {
-    if (!nextOpen && confirmed) {
+    if (!nextOpen && submitting) {
       return;
     }
 
     if (!nextOpen) {
       closePopup();
       clearPopupError();
-      setConfirmed(false);
+      setConfirmError(null);
+      setSubmitting(false);
       setSelectedPlatforms([]);
     }
 
@@ -286,27 +277,35 @@ export function PlatformSelectionModal({
     );
   }
 
-  function confirmSelection() {
+  async function confirmSelection() {
     if (!canContinue) {
       return;
     }
 
-    setConfirmed(true);
-    confirmationTimerRef.current = window.setTimeout(() => {
-      confirmationTimerRef.current = null;
-      setConfirmed(false);
+    setConfirmError(null);
+    setSubmitting(true);
+
+    try {
+      await onConfirmed([...selectedPlatforms]);
       setSelectedPlatforms([]);
       clearPopupError();
-      onConfirmed(selectedPlatforms);
       onOpenChange(false);
-    }, 850);
+    } catch (error) {
+      setConfirmError(
+        error instanceof Error && error.message
+          ? error.message
+          : "Could not save this platform selection.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl"
-        showCloseButton={!confirmed}
+        showCloseButton={!submitting}
       >
         <DialogHeader className="pr-8">
           <DialogTitle className="text-lg font-semibold">
@@ -318,22 +317,26 @@ export function PlatformSelectionModal({
           </DialogDescription>
         </DialogHeader>
 
-        {confirmed ? (
+        {submitting ? (
           <Alert className="border-success/20 bg-success/5 text-success">
-            <CheckCircle2 />
-            <AlertTitle>Platforms selected</AlertTitle>
+            <LoaderCircle className="animate-spin" />
+            <AlertTitle>Saving selection</AlertTitle>
             <AlertDescription className="text-success">
-              Your selection is ready. No post has been scheduled yet.
+              Please wait while this carousel is prepared for its next step.
             </AlertDescription>
           </Alert>
         ) : (
           <>
-            {loadError || popupError ? (
+            {confirmError || loadError || popupError ? (
               <Alert variant="destructive">
                 <AlertCircle />
-                <AlertTitle>Connection needs attention</AlertTitle>
+                <AlertTitle>
+                  {confirmError
+                    ? "Could not create the schedule draft"
+                    : "Connection needs attention"}
+                </AlertTitle>
                 <AlertDescription>
-                  {popupError ?? loadError}
+                  {confirmError ?? popupError ?? loadError}
                 </AlertDescription>
               </Alert>
             ) : null}
@@ -436,15 +439,15 @@ export function PlatformSelectionModal({
           <Button
             variant="outline"
             onClick={() => setOpen(false)}
-            disabled={confirmed}
+            disabled={submitting}
           >
             Cancel
           </Button>
           <Button
-            onClick={confirmSelection}
+            onClick={() => void confirmSelection()}
             disabled={!canContinue}
           >
-            {confirmed ? (
+            {submitting ? (
               <LoaderCircle data-icon="inline-start" className="animate-spin" />
             ) : null}
             Next

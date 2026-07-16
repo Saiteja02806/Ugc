@@ -1,0 +1,43 @@
+{
+  "categorySlug": "fitness-health",
+  "reviewSource": "manual-production-feed-contact-sheet-2026-07-16",
+  "policyNote": "Manual review of all 50 slides assigned to the production daily feed found five source assets that violate the strict no-human policy. Rendered assets remain immutable; reject these source rows so they cannot be selected again.",
+  "buckets": [
+    {
+      "bucketId": "phone-and-devices",
+      "bucketKind": "broad",
+      "sourceReport": "scripts/data/fitness-health-production-feed-safety-assets-2026-07-16.json",
+      "expectedCount": 3,
+      "rejectDecisions": [
+        {
+          "index": 1,
+          "reason": "hands"
+        },
+        {
+          "index": 2,
+          "reason": "people-on-screen"
+        },
+        {
+          "index": 3,
+          "reason": "human-body-and-hands"
+        }
+      ]
+    },
+    {
+      "bucketId": "food-and-table",
+      "bucketKind": "broad",
+      "sourceReport": "scripts/data/fitness-health-production-feed-safety-assets-2026-07-16.json",
+      "expectedCount": 2,
+      "rejectDecisions": [
+        {
+          "index": 1,
+          "reason": "human-body"
+        },
+        {
+          "index": 2,
+          "reason": "hands-and-arms"
+        }
+      ]
+    }
+  ]
+}

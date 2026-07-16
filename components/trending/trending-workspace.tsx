@@ -36,6 +36,11 @@ import type { SocialPlatform } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
 type CarouselHistoryState = "error" | "idle" | "loading" | "ready";
+type TrendingDailyFeedState =
+  | "caught_up"
+  | "exhausted"
+  | "preparing"
+  | "ready";
 
 type GeneratedCarouselSlide = {
   headline: string;
@@ -99,6 +104,7 @@ type CarouselHistoryResponse =
         id: string;
         localDate: string;
         pendingSlotCount: number;
+        state: TrendingDailyFeedState;
         timezone: string;
       } | null;
       profile: CarouselProfileFeed;
@@ -145,7 +151,21 @@ type CompleteTrendingActionResponse =
       ok: false;
     };
 
-type TrendingCompletionAction = "saved" | "skipped";
+type CreateScheduleDraftResponse =
+  | {
+      created: boolean;
+      ok: true;
+      schedule: {
+        id: string;
+        status: string;
+      };
+    }
+  | {
+      message: string;
+      ok: false;
+    };
+
+type TrendingCompletionAction = "saved" | "scheduled" | "skipped";
 
 type CarouselActionState =
   | {
@@ -214,6 +234,8 @@ export function TrendingWorkspace() {
   const [carouselProfile, setCarouselProfile] = useState<CarouselProfileFeed | null>(
     null,
   );
+  const [dailyFeedState, setDailyFeedState] =
+    useState<TrendingDailyFeedState | null>(null);
   const [carouselHistoryRefreshKey, setCarouselHistoryRefreshKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -256,7 +278,13 @@ export function TrendingWorkspace() {
       ? { label: "Carousel feed needs attention", tone: "bg-error" }
       : carouselFeedProfile?.state === "missing"
         ? { label: "Business profile needed", tone: "bg-warning" }
-        : { label: "Personalized for your profile", tone: "bg-success" };
+        : dailyFeedState === "preparing"
+          ? { label: "Preparing more carousel ideas", tone: "bg-warning" }
+          : dailyFeedState === "caught_up"
+            ? { label: "Caught up for today", tone: "bg-success" }
+            : dailyFeedState === "exhausted"
+              ? { label: "No ready ideas today", tone: "bg-warning" }
+              : { label: "Personalized for your profile", tone: "bg-success" };
 
   useEffect(() => {
     if (!user) {
@@ -353,19 +381,17 @@ export function TrendingWorkspace() {
 
         setGeneratedCarousels(data.carousels);
         setCarouselProfile(data.profile);
+        setDailyFeedState(data.feed?.state ?? null);
         setCarouselHistoryState("ready");
-        void ensureAutomaticCandidates(
-          data.profile,
-          data.carousels.length,
-          data.entitlement?.dailyCarouselLimit ??
-            AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
-          idToken,
-        );
 
-        if (
-          data.profile.state === "preparing" ||
-          data.carousels.some((carousel) => carousel.status === "processing")
-        ) {
+        if (data.feed?.state === "preparing") {
+          void ensureAutomaticCandidates(
+            data.profile,
+            data.carousels.length,
+            data.entitlement?.dailyCarouselLimit ??
+              AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
+            idToken,
+          );
           pollTimer = window.setTimeout(() => {
             setCarouselHistoryRefreshKey((current) => current + 1);
           }, HISTORY_POLL_INTERVAL_MS);
@@ -377,6 +403,7 @@ export function TrendingWorkspace() {
 
         setGeneratedCarousels([]);
         setCarouselProfile(null);
+        setDailyFeedState(null);
         setCarouselHistoryError(
           error instanceof Error
             ? error.message
@@ -504,6 +531,7 @@ export function TrendingWorkspace() {
             <GeneratedCarouselGallery
               carousels={filteredGeneratedCarousels}
               error={carouselHistoryError}
+              feedState={dailyFeedState}
               loading={carouselFeedLoading}
               profile={carouselFeedProfile}
               searchEmpty={carouselSearchEmpty}
@@ -523,6 +551,7 @@ export function TrendingWorkspace() {
 function GeneratedCarouselGallery({
   carousels,
   error,
+  feedState,
   loading,
   onCompleteProfile,
   onRetryHistory,
@@ -532,6 +561,7 @@ function GeneratedCarouselGallery({
 }: {
   carousels: GeneratedCarousel[];
   error: string | null;
+  feedState: TrendingDailyFeedState | null;
   loading: boolean;
   onCompleteProfile: () => void;
   onRetryHistory: () => void;
@@ -591,6 +621,26 @@ function GeneratedCarouselGallery({
   }
 
   if (carousels.length === 0) {
+    if (feedState === "caught_up") {
+      return (
+        <CarouselFeedState
+          icon="missing"
+          message="You have finished every carousel that was available in today's feed."
+          title="You're caught up for today"
+        />
+      );
+    }
+
+    if (feedState === "exhausted" || feedState === "ready") {
+      return (
+        <CarouselFeedState
+          icon="missing"
+          message="No ready carousel ideas remain for today. New ideas will appear after more carousels are prepared."
+          title="No ready carousel ideas"
+        />
+      );
+    }
+
     return (
       <CarouselFeedState
         icon="preparing"
@@ -708,6 +758,8 @@ function CarouselCandidateStack({
   });
   const [scheduleContext, setScheduleContext] =
     useState<SchedulePlatformContext | null>(null);
+  const [pendingScheduleCandidate, setPendingScheduleCandidate] =
+    useState<CompleteCarousel | null>(null);
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [pendingSkipCarouselId, setPendingSkipCarouselId] = useState<
@@ -975,6 +1027,7 @@ function CarouselCandidateStack({
 
     try {
       const result = await saveCarouselToLibrary(actionCandidate);
+      setPendingScheduleCandidate(actionCandidate);
       setActionCandidate(null);
       setActionState({ status: "idle" });
       setScheduleContext({
@@ -1037,15 +1090,34 @@ function CarouselCandidateStack({
       <PlatformSelectionModal
         context={scheduleContext}
         open={Boolean(scheduleContext)}
-        onConfirmed={(platforms) => {
-          setScheduleContext(null);
-          showActionNotice({
-            message: `${formatPlatformList(platforms)} selected. No post has been scheduled yet.`,
+        onConfirmed={async (platforms) => {
+          if (!scheduleContext || !pendingScheduleCandidate) {
+            throw new Error("Choose a Trending carousel before creating a schedule draft.");
+          }
+
+          await createTrendingScheduleDraft({
+            candidate: pendingScheduleCandidate,
+            context: scheduleContext,
+            platforms,
           });
+          await completeTrendingCarouselAction(
+            pendingScheduleCandidate,
+            "scheduled",
+          );
+
+          setScheduleContext(null);
+          setPendingScheduleCandidate(null);
+          showActionNotice({
+            actionHref: "/scheduling",
+            actionLabel: "View schedules",
+            message: `Schedule draft created for ${formatPlatformList(platforms)}.`,
+          });
+          advancePastActiveCarousel("right");
         }}
         onOpenChange={(open) => {
           if (!open) {
             setScheduleContext(null);
+            setPendingScheduleCandidate(null);
           }
         }}
       />
@@ -1769,6 +1841,62 @@ async function completeTrendingCarouselAction(
         : "Could not update this Trending carousel.",
     );
   }
+}
+
+async function createTrendingScheduleDraft(params: {
+  candidate: CompleteCarousel;
+  context: SchedulePlatformContext;
+  platforms: SocialPlatform[];
+}) {
+  const assignmentId = params.candidate.carousel.assignmentId;
+
+  if (!assignmentId) {
+    throw new Error("Refresh Trending before creating a schedule draft.");
+  }
+
+  const token = await getCurrentUserIdToken();
+
+  if (!token) {
+    throw new Error("Sign in before creating a schedule draft.");
+  }
+
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const response = await fetch("/api/schedules", {
+    body: JSON.stringify({
+      idempotencyKey: `trending-schedule-draft:${assignmentId}`,
+      metadata: {
+        assignmentId,
+        carouselId: params.context.carouselId,
+        plannedPlatforms: params.platforms.join(","),
+        sourceSurface: "trending",
+      },
+      source: {
+        id: params.context.libraryItemId,
+        kind: "library_item",
+      },
+      targets: [],
+      timezone,
+      title: getCarouselTitle(params.candidate.carousel),
+    }),
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+  const data = (await response.json().catch(() => null)) as
+    | CreateScheduleDraftResponse
+    | null;
+
+  if (!response.ok || data?.ok !== true || !data.schedule?.id) {
+    throw new Error(
+      data?.ok === false
+        ? data.message
+        : "Could not create this schedule draft.",
+    );
+  }
+
+  return data.schedule;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {

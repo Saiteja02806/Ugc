@@ -95,7 +95,9 @@ export async function GET(request: Request) {
         ? "ready"
         : profile.preparationStatus === "failed"
           ? "failed"
-          : "preparing";
+          : dailyFeed.feed.state === "preparing"
+            ? "preparing"
+            : "ready";
 
     return jsonResponse({
       carousels: dailyFeed.carousels,

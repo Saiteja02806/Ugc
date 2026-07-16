@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test lib/social/split-scopes.test.ts lib/scheduling/finalization-signature.test.ts lib/scheduling/schedule-time.test.ts",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test lib/social/split-scopes.test.ts lib/scheduling/finalization-signature.test.ts lib/scheduling/schedule-time.test.ts lib/trending/completion-integrity-logic.test.ts lib/trending/daily-feed-logic.test.ts",
     "lint": "eslint",
     "edit:boundary:check": "node scripts/check-edit-project-boundary.mjs",
     "carousel:buckets:readiness": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-carousel-visual-bucket-readiness.mjs",

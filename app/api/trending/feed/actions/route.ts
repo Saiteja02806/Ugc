@@ -9,6 +9,11 @@ import {
   getMissingTrendingFeedEnvVars,
   type TrendingFeedCompletionAction,
 } from "@/lib/trending/daily-feed";
+import {
+  assertTrendingFeedCompletionAllowed,
+  assertTrendingFeedCompletionResult,
+  TrendingCompletionIntegrityError,
+} from "@/lib/trending/completion-integrity";
 
 export const runtime = "nodejs";
 
@@ -108,6 +113,22 @@ export async function POST(request: Request) {
   }
 
   try {
+    const guard = await assertTrendingFeedCompletionAllowed({
+      action,
+      assignmentId,
+      userId,
+    });
+
+    if (guard.outcome === "not_found") {
+      return jsonResponse(
+        {
+          ok: false,
+          message: "This Trending carousel is not available for your account.",
+        },
+        404,
+      );
+    }
+
     const assignment = await completeTrendingFeedAssignment({
       action,
       assignmentId,
@@ -124,6 +145,12 @@ export async function POST(request: Request) {
       );
     }
 
+    assertTrendingFeedCompletionResult({
+      action,
+      completionAction: assignment.completionAction,
+      state: assignment.state,
+    });
+
     return jsonResponse({
       assignment: {
         completedAt: assignment.completedAt,
@@ -133,6 +160,17 @@ export async function POST(request: Request) {
       ok: true,
     });
   } catch (error) {
+    if (error instanceof TrendingCompletionIntegrityError) {
+      return jsonResponse(
+        {
+          code: error.code,
+          ok: false,
+          message: error.message,
+        },
+        error.status,
+      );
+    }
+
     console.error("Failed to complete Trending carousel action:", error);
     return jsonResponse(
       {

@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -460,7 +460,7 @@ then existing Pexels/S3 identity.
 
 ## Daily Trending Feed
 
-As of 2026-07-12, Trending has a first server-backed daily feed layer. The
+As of 2026-07-16, Trending has a server-backed daily feed layer. The
 frontend should not treat the generic carousel history endpoint as the product
 feed. It now requests:
 
@@ -489,6 +489,31 @@ Default entitlement rows are `pro` with 10 daily carousels and `ultra_pro` with
 20 daily carousels. The frontend must read `dailyCarouselLimit` from the feed
 response and must not hardcode plan limits.
 
+An existing daily feed is read without rewriting its persisted feed row. Its
+plan and daily limit are a snapshot for that local day. If the feed has fewer
+items than that persisted limit, later GET requests append newly ready items to
+the remaining positions. A partial feed therefore fills as existing generation
+work completes instead of freezing after its first non-empty response.
+
+The response exposes `feed.state` with these values:
+
+- `ready`: at least one runtime-safe active carousel is available and no
+  unfinished slot is waiting on a processing generation.
+- `preparing`: the feed has an unfinished slot and at least one generation for
+  the current profile version is genuinely processing.
+- `caught_up`: the user completed the available assignments and there is no
+  generation work to poll for.
+- `exhausted`: no runtime-safe active carousel or processing inventory remains.
+
+The frontend polls only while `feed.state` is `preparing`. Empty exhausted and
+caught-up feeds must not be inferred as `preparing`. Before an unfinished
+assignment is carried into a new local day, its generation is revalidated as
+complete and strict runtime-safe; invalid carries are marked failed and their
+slots are offered to valid carries or newly ready unassigned carousels.
+If concurrent population requests create an active current-day assignment
+before one feed-item insert loses a uniqueness race, the next top-up recovers
+that unpersisted assignment before claiming another fresh carousel.
+
 Completion is recorded through:
 
 ```text
@@ -505,13 +530,23 @@ Changing between slides, opening a card, closing the page, cancelling the
 right-swipe modal, or failing a save/schedule request must not complete an
 assignment.
 
+The actions API enforces this completion evidence server-side. `saved`
+requires an owner-scoped, non-deleted `generated_carousel` Library item for the
+assignment's carousel. `scheduled` additionally requires an owner-scoped
+`scheduled_posts` row linked to that Library item in a usable created state.
+Same-action retries are idempotent; conflicting completed actions return 409.
+Trending creates the schedule record as an idempotent draft before recording
+`completed_scheduled`. Platform selection alone is not completion and is not a
+claim that a timed post has already been published.
+
 This first feed layer reuses completed carousel generations that already exist
 for the current business profile. It carries unfinished assignments forward on
 the next local day and fills new feed slots only from ready, unassigned
-generated carousels. It does not yet add a scheduled daily worker, server-backed
-social scheduling, semantic near-duplicate concept rejection, visual-preset
-rotation, or automatic generation beyond the existing carousel preparation
-flow. Those should remain follow-up work before enabling high-volume Pro or
+generated carousels. It does not yet add a scheduled daily generation worker,
+semantic near-duplicate concept rejection, visual-preset rotation, automatic
+generation beyond the existing carousel preparation flow, or a carousel-
+specific editor that turns the server-backed schedule draft into a timed
+publish. Those should remain follow-up work before enabling high-volume Pro or
 Ultra Pro daily limits in production.
 
 ## Readiness and Sourcing
@@ -747,8 +782,9 @@ only the caller's carousel generations for the caller's single business profile.
 - Trending is the only visible Carousel product surface in the app. Clicking an
   image, slide, dots, or slide arrows must never open a separate Carousel Ads
   workspace.
-- Trending must show a clear profile-needed, preparing, ready, or
-  failed/retry state. It must never fall back to static template artwork.
+- Trending must show a clear profile-needed, preparing, ready, caught-up,
+  exhausted, or failed/retry state. It must never fall back to static template
+  artwork or label a terminal empty feed as preparing.
 - Trending must not expose `All`, `Video`, `Avatar`, or `Image` format tabs,
   and it must not render template/inspiration cards.
 - The standalone `/carousel` Carousel Ads workspace is removed from the visible
@@ -1167,9 +1203,33 @@ Latest Marketing SaaS validation (2026-07-07):
   matches, 35 partial tag matches, 8 broad-bucket fallback selections, and 44
   unique selected assets across 50 selections. The user manually rejected index
   15, which maps to shared `fitness-wellness-objects` Pexels `4853707`. The
-  archive dry-run targeted the correct row, but the execute step was blocked by
-  the approval/usage system before it could run, so this rejection remains
-  pending.
+  asset is now archived in production and cannot be selected. Its older
+  `subject_review_status = approved` metadata still needs normalization to
+  `rejected`, but the runtime exposure is closed because archived assets are
+  ineligible.
+
+## 2026-07-16 Production Feed and Renderer Audit
+
+- The ten carousels surfaced in the first production feed contain 50/50 stored
+  1080x1350 WebP render URLs. Five older source assets were visually found to
+  violate the no-human rule even though their metadata said object-only. The
+  exact five decisions are recorded in
+  `scripts/data/fitness-health-production-feed-safety-review-2026-07-16.json`;
+  all five assets are now archived, manually rejected, and marked as containing
+  a faceless human so they cannot be selected again.
+- One opened July 10 render showed body text escaping its white bubble. That
+  generation predates renderer provenance and remains immutable evidence; do
+  not overwrite its URL. The current/deployed
+  `social-bubble-renderer-v11-hybrid-soft-union` validates the same bubble mask
+  geometry against rendered text pixels, rejects any escaped pixel after one
+  repair attempt, passes the connected-bubble and renderer regression suites,
+  and rendered the latest five-slide canary with correct white bubbles.
+- The white bubble fill is production behavior, not a test-only fallback.
+  `highlight` is the automatic path. Although `plain` and `soft-gradient` are
+  accepted API values, they are not yet visually distinct style systems;
+  `soft-gradient` currently matches `highlight`, while `plain` only adjusts
+  image brightness slightly. Do not advertise those values as materially
+  different presets until they are deliberately designed.
 
 Do not describe planned behavior as deployed behavior.
 

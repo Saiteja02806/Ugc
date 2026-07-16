@@ -7,10 +7,18 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import {
   getCarouselGenerationStatusesByIds,
+  listAutoCarouselGenerationsForBusinessProfile,
   listCarouselGenerationStatusesForUser,
   type CarouselGenerationRecord,
   type CarouselSlideRecord,
 } from "@/lib/carousel/db";
+import {
+  getDailyFeedTopUpPlan,
+  getOrCreatePersistedDailyFeed,
+  getTrendingDailyFeedState,
+  partitionRuntimeSafeAssignments,
+  type TrendingDailyFeedState,
+} from "@/lib/trending/daily-feed-logic";
 
 const SUBSCRIPTION_ENTITLEMENTS_TABLE = "subscription_entitlements";
 const USER_SUBSCRIPTION_PLANS_TABLE = "user_subscription_plans";
@@ -205,6 +213,7 @@ export type TrendingDailyFeed = {
     id: string;
     localDate: string;
     pendingSlotCount: number;
+    state: TrendingDailyFeedState;
     timezone: string;
   };
 };
@@ -234,18 +243,26 @@ export async function ensureTrendingDailyFeed(params: {
 }): Promise<TrendingDailyFeed> {
   const timezone = normalizeTimezone(params.timezone);
   const localDate = getLocalDateForTimezone(timezone);
-  const entitlement = await getTrendingFeedEntitlement(params.userId);
-  const feed = await upsertDailyFeed({
-    entitlement,
+  const currentEntitlement = await getTrendingFeedEntitlement(params.userId);
+  const feed = await getOrCreateDailyFeed({
+    entitlement: currentEntitlement,
     localDate,
     timezone,
     userId: params.userId,
   });
+  const entitlement = {
+    dailyCarouselLimit: feed.daily_limit,
+    planKey: feed.plan_key,
+  };
   let feedItems = await listFeedItems(feed.id);
+  const topUpPlan = getDailyFeedTopUpPlan({
+    dailyLimit: entitlement.dailyCarouselLimit,
+    existingPositions: feedItems.map((item) => item.position),
+  });
 
-  if (feedItems.length === 0) {
+  if (topUpPlan.remainingSlotCount > 0) {
     await populateDailyFeed({
-      entitlement,
+      existingFeedItems: feedItems,
       feed,
       localDate,
       profile: params.profile,
@@ -258,6 +275,7 @@ export async function ensureTrendingDailyFeed(params: {
     entitlement,
     feed,
     feedItems,
+    profile: params.profile,
     userId: params.userId,
   });
 }
@@ -304,20 +322,67 @@ export async function completeTrendingFeedAssignment(params: {
 }
 
 async function populateDailyFeed(params: {
-  entitlement: TrendingFeedEntitlement;
+  existingFeedItems: DailyCarouselFeedItemRow[];
   feed: DailyCarouselFeedRow;
   localDate: string;
   profile: BusinessProfileRecord;
   userId: string;
 }) {
-  const carried = await listCarryAssignments({
-    dailyLimit: params.entitlement.dailyCarouselLimit,
-    localDate: params.localDate,
-    profile: params.profile,
-    userId: params.userId,
+  const topUpPlan = getDailyFeedTopUpPlan({
+    dailyLimit: params.feed.daily_limit,
+    existingPositions: params.existingFeedItems.map((item) => item.position),
   });
+
+  if (topUpPlan.remainingSlotCount === 0) {
+    return;
+  }
+
+  const [currentDayOrphans, carryCandidates] = await Promise.all([
+    listUnpersistedCurrentDayAssignments({
+      existingAssignmentIds: params.existingFeedItems.map(
+        (item) => item.assignment_id,
+      ),
+      localDate: params.localDate,
+      profile: params.profile,
+      userId: params.userId,
+    }),
+    listCarryAssignments({
+      localDate: params.localDate,
+      profile: params.profile,
+      userId: params.userId,
+    }),
+  ]);
+  const candidateAssignments = [...currentDayOrphans, ...carryCandidates];
+  const carryStatuses = await getCarouselGenerationStatusesByIds(
+    candidateAssignments.map((assignment) => assignment.carouselId),
+  );
+  const runtimeSafeCarouselIds = new Set(
+    carryStatuses
+      .filter(isCompleteReadyCarousel)
+      .map((status) => status.generation.id),
+  );
+  const { invalid: invalidCarries, valid: validCarries } =
+    partitionRuntimeSafeAssignments({
+      assignments: candidateAssignments,
+      getCarouselId: (assignment) => assignment.carouselId,
+      runtimeSafeCarouselIds,
+    });
+
+  await markAssignmentsFailed(
+    invalidCarries.map((assignment) => assignment.id),
+  );
+
+  const orphanIds = new Set(
+    currentDayOrphans.map((assignment) => assignment.id),
+  );
+  const recovered = validCarries
+    .filter((assignment) => orphanIds.has(assignment.id))
+    .slice(0, topUpPlan.remainingSlotCount);
+  const carried = validCarries
+    .filter((assignment) => !orphanIds.has(assignment.id))
+    .slice(0, topUpPlan.remainingSlotCount - recovered.length);
   const remainingSlotCount = Math.max(
-    params.entitlement.dailyCarouselLimit - carried.length,
+    topUpPlan.remainingSlotCount - recovered.length - carried.length,
     0,
   );
   const fresh = await createFreshAssignments({
@@ -327,6 +392,11 @@ async function populateDailyFeed(params: {
     userId: params.userId,
   });
   const selected = [
+    ...recovered.map((assignment) => ({
+      assignment,
+      carriedFromDate: null,
+      source: "new" as const,
+    })),
     ...carried.map((assignment) => ({
       assignment,
       carriedFromDate: assignment.lastAssignedLocalDate,
@@ -337,28 +407,40 @@ async function populateDailyFeed(params: {
       carriedFromDate: null,
       source: "new" as const,
     })),
-  ].slice(0, params.entitlement.dailyCarouselLimit);
+  ].slice(0, topUpPlan.remainingSlotCount);
 
   if (selected.length === 0) {
     return;
   }
 
   const feedItemRows: DailyCarouselFeedItemInsert[] = selected.map(
-    ({ assignment, carriedFromDate, source }, index) => ({
-      assignment_id: assignment.id,
-      carried_from_date:
-        source === "carried" && carriedFromDate ? carriedFromDate : null,
-      feed_id: params.feed.id,
-      position: index + 1,
-      source,
-    }),
+    ({ assignment, carriedFromDate, source }, index) => {
+      const position = topUpPlan.availablePositions[index];
+
+      if (!position) {
+        throw new Error("Could not reserve a Trending feed position.");
+      }
+
+      return {
+        assignment_id: assignment.id,
+        carried_from_date:
+          source === "carried" && carriedFromDate ? carriedFromDate : null,
+        feed_id: params.feed.id,
+        position,
+        source,
+      };
+    },
   );
   const { error } = await getClient()
     .from(DAILY_CAROUSEL_FEED_ITEMS_TABLE)
     .insert(feedItemRows);
 
-  if (error && !isUniqueViolation(error)) {
-    throw new Error(`Could not create Trending feed items: ${error.message}`);
+  if (error) {
+    if (!isUniqueViolation(error)) {
+      throw new Error(`Could not create Trending feed items: ${error.message}`);
+    }
+
+    return;
   }
 
   await updateAssignmentsLastAssignedDate(
@@ -371,6 +453,7 @@ async function buildDailyFeedResponse(params: {
   entitlement: TrendingFeedEntitlement;
   feed: DailyCarouselFeedRow;
   feedItems: DailyCarouselFeedItemRow[];
+  profile: BusinessProfileRecord;
   userId: string;
 }): Promise<TrendingDailyFeed> {
   const visibleFeedItems = params.feedItems.slice(
@@ -399,20 +482,27 @@ async function buildDailyFeedResponse(params: {
   const activeItems = itemsWithAssignments.filter((item) =>
     isActiveAssignmentState(item.assignment.state),
   );
-
-  await markAssignmentsShown(activeItems.map((item) => item.assignment.id));
-
   const statuses = await getCarouselGenerationStatusesByIds(
     activeItems.map((item) => item.assignment.carouselId),
   );
   const statusByCarouselId = new Map(
     statuses.map((status) => [status.generation.id, status]),
   );
-  const carousels = activeItems
+  const runtimeReadyItems = activeItems.filter(({ assignment }) => {
+    const status = statusByCarouselId.get(assignment.carouselId);
+
+    return Boolean(status && isCompleteReadyCarousel(status));
+  });
+
+  await markAssignmentsShown(
+    runtimeReadyItems.map((item) => item.assignment.id),
+  );
+
+  const carousels = runtimeReadyItems
     .map(({ assignment, feedItem }) => {
       const status = statusByCarouselId.get(assignment.carouselId);
 
-      if (!status || !isCompleteReadyCarousel(status)) {
+      if (!status) {
         return null;
       }
 
@@ -424,6 +514,17 @@ async function buildDailyFeedResponse(params: {
       });
     })
     .filter((carousel): carousel is TrendingFeedCarousel => Boolean(carousel));
+  const pendingSlotCount = Math.max(
+    params.entitlement.dailyCarouselLimit - visibleFeedItems.length,
+    0,
+  );
+  const completedAssignmentCount = itemsWithAssignments.filter((item) =>
+    isCompletedAssignmentState(item.assignment.state),
+  ).length;
+  const hasProcessingCandidates =
+    pendingSlotCount > 0
+      ? await hasProcessingCarouselCandidates(params.profile)
+      : false;
 
   return {
     carousels,
@@ -432,10 +533,13 @@ async function buildDailyFeedResponse(params: {
       assignedCount: visibleFeedItems.length,
       id: params.feed.id,
       localDate: params.feed.local_date,
-      pendingSlotCount: Math.max(
-        params.entitlement.dailyCarouselLimit - visibleFeedItems.length,
-        0,
-      ),
+      pendingSlotCount,
+      state: getTrendingDailyFeedState({
+        activeCarouselCount: carousels.length,
+        completedAssignmentCount,
+        hasProcessingCandidates,
+        pendingSlotCount,
+      }),
       timezone: params.feed.timezone,
     },
   };
@@ -533,35 +637,67 @@ async function getFirstActiveEntitlement() {
   return data ? mapEntitlement(data) : null;
 }
 
-async function upsertDailyFeed(params: {
+async function getOrCreateDailyFeed(params: {
   entitlement: TrendingFeedEntitlement;
   localDate: string;
   timezone: string;
   userId: string;
 }) {
+  const findExisting = () =>
+    findDailyFeed({
+      localDate: params.localDate,
+      userId: params.userId,
+    });
+
+  return getOrCreatePersistedDailyFeed({
+    findExisting,
+    create: async () => {
+      const { data, error } = await getClient()
+        .from(DAILY_CAROUSEL_FEEDS_TABLE)
+        .insert({
+          daily_limit: params.entitlement.dailyCarouselLimit,
+          local_date: params.localDate,
+          plan_key: params.entitlement.planKey,
+          status: "ready",
+          timezone: params.timezone,
+          user_id: params.userId,
+        })
+        .select("*")
+        .single();
+
+      if (!error) {
+        return data;
+      }
+
+      if (isUniqueViolation(error)) {
+        const racedFeed = await findExisting();
+
+        if (racedFeed) {
+          return racedFeed;
+        }
+      }
+
+      throw new Error(`Could not create today's Trending feed: ${error.message}`);
+    },
+  });
+}
+
+async function findDailyFeed(params: {
+  localDate: string;
+  userId: string;
+}) {
   const { data, error } = await getClient()
     .from(DAILY_CAROUSEL_FEEDS_TABLE)
-    .upsert(
-      {
-        daily_limit: params.entitlement.dailyCarouselLimit,
-        local_date: params.localDate,
-        plan_key: params.entitlement.planKey,
-        status: "ready",
-        timezone: params.timezone,
-        user_id: params.userId,
-      },
-      {
-        onConflict: "user_id,local_date",
-      },
-    )
     .select("*")
-    .single();
+    .eq("user_id", params.userId)
+    .eq("local_date", params.localDate)
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Could not load today's Trending feed: ${error.message}`);
   }
 
-  return data;
+  return data ?? null;
 }
 
 async function listFeedItems(feedId: string) {
@@ -579,7 +715,6 @@ async function listFeedItems(feedId: string) {
 }
 
 async function listCarryAssignments(params: {
-  dailyLimit: number;
   localDate: string;
   profile: BusinessProfileRecord;
   userId: string;
@@ -593,8 +728,7 @@ async function listCarryAssignments(params: {
     .eq("business_profile_version", params.profile.profileVersion)
     .in("state", [...ACTIVE_ASSIGNMENT_STATES])
     .order("first_assigned_at", { ascending: true })
-    .order("created_at", { ascending: true })
-    .limit(params.dailyLimit);
+    .order("created_at", { ascending: true });
 
   if (error) {
     throw new Error(`Could not load unfinished Trending items: ${error.message}`);
@@ -602,6 +736,37 @@ async function listCarryAssignments(params: {
 
   return (data ?? [])
     .filter((row) => row.last_assigned_local_date !== params.localDate)
+    .map(mapAssignment);
+}
+
+async function listUnpersistedCurrentDayAssignments(params: {
+  existingAssignmentIds: string[];
+  localDate: string;
+  profile: BusinessProfileRecord;
+  userId: string;
+}) {
+  const { data, error } = await getClient()
+    .from(USER_CAROUSEL_ASSIGNMENTS_TABLE)
+    .select("*")
+    .eq("user_id", params.userId)
+    .eq("project_id", params.profile.projectId)
+    .eq("business_profile_id", params.profile.id)
+    .eq("business_profile_version", params.profile.profileVersion)
+    .eq("last_assigned_local_date", params.localDate)
+    .in("state", [...ACTIVE_ASSIGNMENT_STATES])
+    .order("first_assigned_at", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(
+      `Could not recover unpersisted Trending items: ${error.message}`,
+    );
+  }
+
+  const persistedAssignmentIds = new Set(params.existingAssignmentIds);
+
+  return (data ?? [])
+    .filter((row) => !persistedAssignmentIds.has(row.id))
     .map(mapAssignment);
 }
 
@@ -640,9 +805,17 @@ async function createFreshAssignments(params: {
       return false;
     }
 
-    return !existingConceptFingerprints.has(
-      createConceptFingerprint(status.generation, status.slides),
+    const fingerprint = createConceptFingerprint(
+      status.generation,
+      status.slides,
     );
+
+    if (existingConceptFingerprints.has(fingerprint)) {
+      return false;
+    }
+
+    existingConceptFingerprints.add(fingerprint);
+    return true;
   });
   const selected = freshStatuses.slice(0, params.count);
   const assignments: UserCarouselAssignment[] = [];
@@ -808,6 +981,27 @@ async function updateAssignmentsLastAssignedDate(
   }
 }
 
+async function markAssignmentsFailed(assignmentIds: string[]) {
+  const uniqueAssignmentIds = Array.from(new Set(assignmentIds.filter(Boolean)));
+
+  if (uniqueAssignmentIds.length === 0) {
+    return;
+  }
+
+  const { error } = await getClient()
+    .from(USER_CAROUSEL_ASSIGNMENTS_TABLE)
+    .update({
+      state: "failed",
+      updated_at: getNowIso(),
+    })
+    .in("id", uniqueAssignmentIds)
+    .in("state", [...ACTIVE_ASSIGNMENT_STATES]);
+
+  if (error) {
+    throw new Error(`Could not invalidate unsafe Trending items: ${error.message}`);
+  }
+}
+
 async function markAssignmentsShown(assignmentIds: string[]) {
   const uniqueAssignmentIds = Array.from(new Set(assignmentIds.filter(Boolean)));
 
@@ -929,6 +1123,23 @@ function getCompletedState(action: CompletionAction): AssignmentState {
 
 function isActiveAssignmentState(state: AssignmentState) {
   return state === "pending" || state === "in_progress";
+}
+
+function isCompletedAssignmentState(state: AssignmentState) {
+  return (
+    state === "completed_saved" ||
+    state === "completed_scheduled" ||
+    state === "completed_skipped"
+  );
+}
+
+async function hasProcessingCarouselCandidates(profile: BusinessProfileRecord) {
+  const generations = await listAutoCarouselGenerationsForBusinessProfile({
+    businessProfileId: profile.id,
+    profileVersion: profile.profileVersion,
+  });
+
+  return generations.some((generation) => generation.status === "processing");
 }
 
 function mapEntitlement(

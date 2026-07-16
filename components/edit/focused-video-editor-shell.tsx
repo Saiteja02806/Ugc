@@ -1,6 +1,14 @@
 "use client";
 
-import { AlertCircle, ArrowLeft, Loader2, Save } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  Cloud,
+  ExternalLink,
+  Loader2,
+  Save,
+} from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -11,6 +19,7 @@ import {
 import { buttonClassName } from "@/components/ui/button";
 import type { EditableVideo } from "@/lib/edit/video-library";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { cn } from "@/lib/utils";
 
 type RenderState = "idle" | "starting" | "rendering" | "rendered" | "failed";
 type SaveState = "idle" | "saving" | "saved" | "failed";
@@ -36,13 +45,15 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [draft, setDraft] = useState<FocusedVideoEditorDraftState | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const [, setSaveState] = useState<SaveState>("idle");
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [lastRenderedDraftKey, setLastRenderedDraftKey] = useState<string | null>(
     null,
   );
+  const [isDraftValid, setIsDraftValid] = useState(true);
   const [renderState, setRenderState] = useState<RenderState>("idle");
   const [renderMessage, setRenderMessage] = useState<string | null>(null);
   const activeRenderDraftKeyRef = useRef<string | null>(null);
+  const localRenderPollActiveRef = useRef(false);
   const currentDraftKeyRef = useRef<string | null>(null);
   const lastSavedDraftKeyRef = useRef<string | null>(null);
   const lastRenderedDraftKeyRef = useRef<string | null>(null);
@@ -98,7 +109,7 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
 
       if (data.video.status === "rendering") {
         setRenderState("rendering");
-        setRenderMessage("Saving continues in the background.");
+        setRenderMessage("Exporting continues in the background.");
       } else if (data.video.status === "failed") {
         setRenderState("failed");
         setRenderMessage("The latest save failed. You can try again.");
@@ -198,12 +209,18 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
   }, [draft, persistDraft, renderState, video]);
 
   useEffect(() => {
-    if (!video || video.status !== "rendering") {
+    if (
+      !video ||
+      video.status !== "rendering" ||
+      localRenderPollActiveRef.current
+    ) {
       return;
     }
 
     const controller = new AbortController();
     const sourceVideoId = video.id;
+    const renderDraftKey =
+      activeRenderDraftKeyRef.current ?? currentDraftKeyRef.current;
 
     void requireToken()
       .then((idToken) =>
@@ -214,15 +231,16 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
           return;
         }
 
-        const completedDraftKey =
-          activeRenderDraftKeyRef.current ?? currentDraftKeyRef.current;
+        const completedDraftKey = renderDraftKey;
         const isCurrentSave =
           completedDraftKey !== null &&
           completedDraftKey === currentDraftKeyRef.current;
 
         lastRenderedDraftKeyRef.current = completedDraftKey;
         setLastRenderedDraftKey(completedDraftKey);
-        activeRenderDraftKeyRef.current = null;
+        if (activeRenderDraftKeyRef.current === renderDraftKey) {
+          activeRenderDraftKeyRef.current = null;
+        }
 
         setVideo((current) =>
           current
@@ -246,7 +264,9 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
         setVideo((current) =>
           current ? { ...current, status: "failed" } : current,
         );
-        activeRenderDraftKeyRef.current = null;
+        if (activeRenderDraftKeyRef.current === renderDraftKey) {
+          activeRenderDraftKeyRef.current = null;
+        }
         setRenderState("failed");
         setRenderMessage(
           getErrorMessage(error, "Could not resume this save."),
@@ -257,6 +277,14 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
   }, [video]);
 
   async function handleRenderVideo() {
+    if (!isDraftValid) {
+      setRenderState("failed");
+      setRenderMessage(
+        "A text layer has too many line breaks. Shorten it before exporting.",
+      );
+      return;
+    }
+
     if (!video?.videoUrl) {
       setRenderState("failed");
       setRenderMessage("A source video is required before saving.");
@@ -265,9 +293,10 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
 
     const draftForRender = getDraftForRender(video, draft);
     const draftForRenderKey = serializeDraft(draftForRender);
+    localRenderPollActiveRef.current = true;
     activeRenderDraftKeyRef.current = draftForRenderKey;
     setRenderState("starting");
-    setRenderMessage("Saving video...");
+    setRenderMessage("Preparing export...");
 
     try {
       await persistDraft(video, draftForRender);
@@ -300,15 +329,23 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
       }
 
       setRenderState("rendering");
-      setRenderMessage("Saving video. This can take a minute.");
-      const output = await pollEditedVideoRender(video.id, idToken);
+      setRenderMessage("Exporting video. This can take a minute.");
+      const output = await pollEditedVideoRender(
+        video.id,
+        idToken,
+        undefined,
+        data.jobId,
+      );
 
       if (!output.url) throw new Error("Save finished without a video URL.");
 
       const isCurrentSave = currentDraftKeyRef.current === draftForRenderKey;
       lastRenderedDraftKeyRef.current = draftForRenderKey;
       setLastRenderedDraftKey(draftForRenderKey);
-      activeRenderDraftKeyRef.current = null;
+      if (activeRenderDraftKeyRef.current === draftForRenderKey) {
+        activeRenderDraftKeyRef.current = null;
+      }
+      localRenderPollActiveRef.current = false;
 
       setVideo((current) =>
         current
@@ -325,7 +362,10 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
       );
     } catch (error) {
       console.error("Edited video render failed:", error);
-      activeRenderDraftKeyRef.current = null;
+      if (activeRenderDraftKeyRef.current === draftForRenderKey) {
+        activeRenderDraftKeyRef.current = null;
+      }
+      localRenderPollActiveRef.current = false;
       setRenderState("failed");
       setRenderMessage(getErrorMessage(error, "Could not save this video."));
     }
@@ -342,16 +382,23 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
     currentDraftKey === lastRenderedDraftKey;
 
   return (
-    <section className="flex min-h-screen flex-1 flex-col bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
+    <section className="flex min-h-[calc(100dvh-4rem)] flex-1 flex-col overflow-x-hidden bg-background text-foreground md:min-h-dvh lg:h-dvh lg:overflow-hidden">
       <EditorTopBar
-        canSaveVideo={Boolean(video?.videoUrl) && !isRendering && !isCurrentVersionSaved}
+        canSaveVideo={
+          Boolean(video?.videoUrl) &&
+          isDraftValid &&
+          !isRendering &&
+          !isCurrentVersionSaved
+        }
         isCurrentVersionSaved={isCurrentVersionSaved}
         renderState={renderState}
+        renderedVideoUrl={video?.renderedVideoUrl ?? null}
+        saveState={saveState}
         video={video}
         onRenderVideo={() => void handleRenderVideo()}
       />
 
-      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col pt-5">
+      <div className="flex min-h-0 w-full flex-1 flex-col p-3 sm:p-4 lg:p-5">
         {saveMessage ? (
           <p
             role="alert"
@@ -371,11 +418,18 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
         ) : null}
 
         {isLoading ? (
-          <div className="flex min-h-[420px] flex-1 items-center justify-center rounded-[28px] border border-border/70 bg-white/35">
+          <div className="flex min-h-[420px] flex-1 items-center justify-center rounded-card border border-border bg-card">
             <Loader2 className="size-6 animate-spin text-primary" aria-label="Loading video" />
           </div>
         ) : video ? (
-          <FocusedVideoEditor video={video} onDraftChange={setDraft} />
+          <FocusedVideoEditor
+            hasSavedVideoWithNewerChanges={hasSavedVideoWithNewerChanges}
+            isCurrentVersionSaved={isCurrentVersionSaved}
+            renderedVideoUrl={video.renderedVideoUrl}
+            video={video}
+          onDraftChange={setDraft}
+          onDraftValidityChange={setIsDraftValid}
+          />
         ) : (
           <VideoNotFound videoId={videoId} />
         )}
@@ -389,28 +443,93 @@ function EditorTopBar({
   isCurrentVersionSaved,
   onRenderVideo,
   renderState,
+  renderedVideoUrl,
+  saveState,
   video,
 }: {
   canSaveVideo: boolean;
   isCurrentVersionSaved: boolean;
   onRenderVideo: () => void;
   renderState: RenderState;
+  renderedVideoUrl: string | null;
+  saveState: SaveState;
   video: EditableVideo | null;
 }) {
+  const isRendering = renderState === "starting" || renderState === "rendering";
+
   return (
-    <header className="mx-auto flex w-full max-w-6xl flex-col gap-3 border-b border-border/70 pb-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <Link href="/edit" className="inline-flex items-center gap-2 text-sm font-bold text-[#405977] transition hover:text-foreground">
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          Edit
+    <header className="flex w-full shrink-0 flex-col gap-3 border-b border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+      <div className="flex min-w-0 items-center gap-3">
+        <Link
+          href="/edit"
+          aria-label="Back to video library"
+          className="inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-border text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+        >
+          <ArrowLeft aria-hidden="true" />
         </Link>
-        <h1 className="mt-2 truncate text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
-          {video ? video.title : "Video editor"}
-        </h1>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-muted">Edit video</span>
+            <span aria-hidden="true" className="text-border-strong">/</span>
+            <span className="text-xs font-semibold text-muted">
+              {video?.ratio ?? "9:16"}
+            </span>
+          </div>
+          <h1 className="truncate text-lg font-bold tracking-[-0.02em] text-foreground-strong sm:text-xl">
+            {video ? video.title : "Video editor"}
+          </h1>
+        </div>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={onRenderVideo} disabled={!canSaveVideo} className={buttonClassName({ variant: "primary", className: "gap-2" })}>
-          {renderState === "starting" || renderState === "rendering" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
+
+      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+        <div
+          role="status"
+          aria-live="polite"
+          className="mr-1 inline-flex h-10 items-center gap-2 text-xs font-semibold text-muted"
+        >
+          {saveState === "saving" ? (
+            <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          ) : saveState === "failed" ? (
+            <AlertCircle className="text-error" aria-hidden="true" />
+          ) : saveState === "saved" ? (
+            <CheckCircle2 className="text-success" aria-hidden="true" />
+          ) : (
+            <Cloud aria-hidden="true" />
+          )}
+          {getDraftSaveLabel(saveState)}
+        </div>
+
+        {renderedVideoUrl ? (
+          <a
+            href={renderedVideoUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={buttonClassName({
+              variant: "secondary",
+              className: "gap-2",
+            })}
+          >
+            <ExternalLink aria-hidden="true" />
+            Open export
+          </a>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={onRenderVideo}
+          disabled={!canSaveVideo}
+          className={buttonClassName({
+            variant: "primary",
+            className: "min-w-32 gap-2",
+          })}
+        >
+          {isRendering ? (
+            <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          ) : isCurrentVersionSaved ? (
+            <CheckCircle2 aria-hidden="true" />
+          ) : (
+            <Save aria-hidden="true" />
+          )}
           {getSaveButtonLabel(renderState, isCurrentVersionSaved)}
         </button>
       </div>
@@ -436,11 +555,21 @@ function RenderStatusNotice({
       ? "Changes not saved."
       : "Saved video is ready.");
   return (
-    <div role={isFailed ? "alert" : "status"} className={isFailed ? "mb-4 rounded-card border border-error/20 bg-error/5 px-4 py-3 text-sm font-semibold text-error" : "mb-4 rounded-card border border-border bg-card px-4 py-3 text-sm font-semibold text-muted"}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span>{message}</span>
-        {renderedVideoUrl ? <a href={renderedVideoUrl} target="_blank" rel="noreferrer" className={buttonClassName({ variant: "primary", className: "h-9 w-fit px-3 text-xs" })}>Open video</a> : null}
-      </div>
+    <div
+      role={isFailed ? "alert" : "status"}
+      className={cn(
+        "mb-3 flex min-h-10 items-center rounded-control px-3 text-xs font-semibold",
+        isFailed
+          ? "border border-error/20 bg-error/5 text-error"
+          : hasSavedVideoWithNewerChanges
+            ? "border border-warning/25 bg-warning/10 text-foreground"
+            : "bg-selected text-muted",
+      )}
+    >
+      <span>{message}</span>
+      {renderedVideoUrl && hasSavedVideoWithNewerChanges ? (
+        <span className="ml-1 text-muted">The stage can still review the previous export.</span>
+      ) : null}
     </div>
   );
 }
@@ -473,25 +602,45 @@ function getSaveButtonLabel(
   isCurrentVersionSaved: boolean,
 ) {
   if (renderState === "starting" || renderState === "rendering") {
-    return "Saving...";
+    return "Exporting...";
   }
 
   if (isCurrentVersionSaved) {
-    return "Saved";
+    return "Exported";
   }
 
-  return "Save";
+  return "Export video";
+}
+
+function getDraftSaveLabel(saveState: SaveState) {
+  if (saveState === "saving") {
+    return "Saving draft";
+  }
+
+  if (saveState === "failed") {
+    return "Draft save failed";
+  }
+
+  if (saveState === "saved") {
+    return "Draft saved";
+  }
+
+  return "Unsaved changes";
 }
 
 async function pollEditedVideoRender(
   sourceVideoId: string,
   idToken: string,
   signal?: AbortSignal,
+  jobId?: string,
 ) {
   for (let attempt = 0; attempt < 120; attempt += 1) {
     await sleep(attempt === 0 ? 900 : 2_500, signal);
+    const query = jobId
+      ? `jobId=${encodeURIComponent(jobId)}`
+      : `sourceVideoId=${encodeURIComponent(sourceVideoId)}`;
     const response = await fetch(
-      `/api/edit/render/status?sourceVideoId=${encodeURIComponent(sourceVideoId)}`,
+      `/api/edit/render/status?${query}`,
       {
         cache: "no-store",
         headers: { Authorization: `Bearer ${idToken}` },

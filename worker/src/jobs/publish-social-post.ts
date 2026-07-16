@@ -8,6 +8,11 @@ import {
 } from "../lib/social-token-crypto.js";
 import { publishTikTokVideo } from "../lib/tiktok-publisher.js";
 import { publishYouTubeVideo } from "../lib/youtube-publisher.js";
+import {
+  getInstagramTargetPublishSettings,
+  getTikTokTargetPublishSettings,
+  getYouTubeTargetPublishSettings,
+} from "../lib/social-publish-settings.js";
 import type {
   BackgroundJobRow,
   Json,
@@ -226,6 +231,9 @@ export async function runPublishSocialPostJob(
             store: context.store,
           });
         },
+        shareToFeed: getInstagramTargetPublishSettings(
+          publishContext.target.settings,
+        ).shareToFeed,
         videoUrl: publishContext.media.url,
       });
 
@@ -254,6 +262,9 @@ export async function runPublishSocialPostJob(
           });
         },
         publishId: getProviderOperationId(operation, "tiktok_publish"),
+        settings: getTikTokTargetPublishSettings(
+          publishContext.target.settings,
+        ),
         videoUrl: publishContext.media.url,
       });
 
@@ -287,6 +298,9 @@ export async function runPublishSocialPostJob(
         uploadUrl: getProviderOperationId(
           operation,
           "youtube_resumable_upload",
+        ),
+        settings: getYouTubeTargetPublishSettings(
+          publishContext.target.settings,
         ),
         videoUrl: publishContext.media.url,
       });

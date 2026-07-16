@@ -1,14 +1,12 @@
 import {
   scheduleDraftStatuses,
   schedulePlatforms,
-  schedulePostTypes,
   scheduleSourceTypes,
   type ScheduleDraft,
   type ScheduleDraftInput,
   type ScheduleMediaSelection,
   type ScheduleDraftStatus,
   type SchedulePlatform,
-  type SchedulePostType,
   type ScheduleSourceType,
 } from "@/lib/scheduling/types";
 
@@ -81,7 +79,6 @@ export function createScheduleDraft(input: ScheduleDraftInput = {}): ScheduleDra
     plannedConnectionIds: normalizeStringList(input.plannedConnectionIds),
     plannedScheduledFor: normalizeOptionalString(input.plannedScheduledFor) ?? undefined,
     platforms: normalizePlatforms(input.platforms),
-    postType: normalizePostType(input.postType) ?? undefined,
     scheduledDate: normalizeOptionalString(input.scheduledDate) ?? undefined,
     scheduledTime: normalizeOptionalString(input.scheduledTime) ?? undefined,
     sourceId: normalizeOptionalString(input.sourceId) ?? undefined,
@@ -143,7 +140,6 @@ export function duplicateScheduleDraft(draftId: string) {
     plannedConnectionIds: draft.plannedConnectionIds,
     plannedScheduledFor: draft.plannedScheduledFor,
     platforms: draft.platforms,
-    postType: draft.postType,
     scheduledDate: draft.scheduledDate,
     scheduledTime: draft.scheduledTime,
     sourceId: draft.sourceId,
@@ -224,7 +220,6 @@ function normalizeScheduleDraft(value: unknown): ScheduleDraft | null {
     plannedScheduledFor:
       normalizeOptionalString(record.plannedScheduledFor) ?? undefined,
     platforms: normalizePlatforms(record.platforms),
-    postType: normalizePostType(record.postType) ?? undefined,
     scheduledDate: normalizeOptionalString(record.scheduledDate) ?? undefined,
     scheduledTime: normalizeOptionalString(record.scheduledTime) ?? undefined,
     sourceId: normalizeOptionalString(record.sourceId) ?? undefined,
@@ -292,12 +287,6 @@ function normalizeStringList(value: unknown): string[] {
         .filter((entry): entry is string => Boolean(entry)),
     ),
   );
-}
-
-function normalizePostType(value: unknown): SchedulePostType | null {
-  return schedulePostTypes.includes(value as SchedulePostType)
-    ? (value as SchedulePostType)
-    : null;
 }
 
 function normalizeSourceType(value: unknown): ScheduleSourceType | null {

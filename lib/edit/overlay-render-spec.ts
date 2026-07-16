@@ -9,6 +9,7 @@ export {
   EDIT_OVERLAY_SHADOW_OFFSET_PX,
   EDIT_OVERLAY_TEXT_COLOR,
   EDIT_OVERLAY_VERTICAL_INSET_PERCENT,
+  buildEditOverlayTextLayout,
   getEditOverlayBackgroundColor,
   getEditOverlayBackgroundOpacity,
   getEditOverlayOutputDimensions,
@@ -17,4 +18,5 @@ export {
   getEditOverlayTextShadow,
   type EditOverlayRatio,
   type EditOverlayStyle,
+  type EditOverlayTextLayout,
 } from "@/worker/src/lib/edit-overlay-render-spec";

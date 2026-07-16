@@ -125,6 +125,22 @@ type ScheduledPostInsert = Pick<
   | "user_id"
 >;
 
+type ScheduledPostDraftUpdate = Pick<
+  ScheduledPostRow,
+  | "caption"
+  | "last_error_code"
+  | "library_item_id"
+  | "media_asset_id"
+  | "metadata"
+  | "project_id"
+  | "scheduled_for"
+  | "source_kind"
+  | "status"
+  | "timezone"
+  | "title"
+  | "updated_at"
+>;
+
 type ScheduledPostTargetInsert = Pick<
   ScheduledPostTargetRow,
   | "metadata"
@@ -312,6 +328,39 @@ export async function insertScheduledPostTargets(
   return data ?? [];
 }
 
+export async function updateEditableScheduledPost(params: {
+  expectedUpdatedAt: string;
+  postId: string;
+  update: Omit<ScheduledPostDraftUpdate, "metadata" | "updated_at"> & {
+    metadata: Record<string, unknown>;
+  };
+  userId: string;
+}) {
+  const { data, error } = await getSchedulingSupabaseClient()
+    .from(SCHEDULED_POSTS_TABLE)
+    .update({
+      ...params.update,
+      metadata: toJsonObject(params.update.metadata),
+      updated_at: getNowIso(),
+    })
+    .eq("id", params.postId)
+    .eq("user_id", params.userId)
+    .eq("status", "draft")
+    .eq("updated_at", params.expectedUpdatedAt)
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not update schedule draft: ${error.message}`);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return (await attachTargets([data]))[0] ?? null;
+}
+
 export async function deleteFailedScheduleTargetsForRetry(params: {
   errorCode: string;
   postId: string;
@@ -357,6 +406,8 @@ export async function markScheduledPostStatus(params: {
 }
 
 export async function prepareScheduledPostForPublishing(params: {
+  expectedStatus?: ScheduledPostStatus;
+  expectedUpdatedAt?: string;
   mediaAssetId: string;
   metadata: Record<string, Json | undefined>;
   postId: string;
@@ -373,7 +424,7 @@ export async function prepareScheduledPostForPublishing(params: {
     return null;
   }
 
-  const { data, error } = await getSchedulingSupabaseClient()
+  let query = getSchedulingSupabaseClient()
     .from(SCHEDULED_POSTS_TABLE)
     .update({
       last_error_code: null,
@@ -388,9 +439,17 @@ export async function prepareScheduledPostForPublishing(params: {
       updated_at: getNowIso(),
     })
     .eq("id", params.postId)
-    .eq("user_id", params.userId)
+    .eq("user_id", params.userId);
+
+  if (params.expectedUpdatedAt) {
+    query = query
+      .eq("status", params.expectedStatus ?? "draft")
+      .eq("updated_at", params.expectedUpdatedAt);
+  }
+
+  const { data, error } = await query
     .select("*")
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Could not prepare schedule for publishing: ${error.message}`);
@@ -400,6 +459,8 @@ export async function prepareScheduledPostForPublishing(params: {
 }
 
 export async function updateScheduledPostRenderState(params: {
+  expectedStatus?: ScheduledPostStatus;
+  expectedUpdatedAt?: string;
   lastErrorCode?: string | null;
   mediaAssetId?: string | null;
   metadata: Record<string, Json | undefined>;
@@ -428,16 +489,30 @@ export async function updateScheduledPostRenderState(params: {
     update.media_asset_id = params.mediaAssetId;
   }
 
-  const { error } = await getSchedulingSupabaseClient()
+  let query = getSchedulingSupabaseClient()
     .from(SCHEDULED_POSTS_TABLE)
     .update(update)
     .eq("id", params.postId)
-    .eq("user_id", params.userId)
+    .eq("user_id", params.userId);
+
+  if (params.expectedStatus) {
+    query = query.eq("status", params.expectedStatus);
+  }
+
+  if (params.expectedUpdatedAt) {
+    query = query.eq("updated_at", params.expectedUpdatedAt);
+  }
+
+  const { data, error } = await query
     .select("id")
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Could not update schedule render state: ${error.message}`);
+  }
+
+  if (!data) {
+    return null;
   }
 
   return getScheduledPostForUser({

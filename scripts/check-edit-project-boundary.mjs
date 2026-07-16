@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const files = {
+  appLayout: read("app/layout.tsx"),
   creativeAssets: read("components/avatars/avatars-workspace.tsx"),
   editLibrary: read("components/edit/edit-library-workspace.tsx"),
   editor: read("components/edit/focused-video-editor-shell.tsx"),
@@ -16,6 +17,7 @@ const files = {
   schedulingResolution: read("lib/scheduling/render-asset-resolution.ts"),
   schedulingService: read("lib/scheduling/service.ts"),
   workerStore: read("worker/src/lib/supabase.ts"),
+  workerDockerfile: read("worker/Dockerfile"),
 };
 
 assert(
@@ -60,7 +62,8 @@ assert(
   "Scheduling must resolve saved Edit outputs from Edit project records.",
 );
 assert(
-  files.schedulingResolution.includes("getDemoVideo") &&
+  (files.schedulingResolution.includes("getDemoVideo") ||
+    files.schedulingResolution.includes("findDemoVideo")) &&
     files.schedulingResolution.includes("rendered_video_url") &&
     files.schedulingResolution.includes("Save the selected demo"),
   "Scheduling must resolve saved Demo outputs from demo records.",
@@ -77,11 +80,12 @@ assert(
 );
 assert(
   files.editorPreview.includes("EDIT_OVERLAY_VERTICAL_INSET_PERCENT") &&
-    files.editorPreview.includes("getEditOverlayBackgroundColor") &&
-    files.editorPreview.includes("metrics.fontFamily") &&
-    files.editorPreview.includes("metrics.textShadow") &&
+    files.editorPreview.includes("buildEditOverlayTextLayout") &&
+    files.editorPreview.includes("getOverlayPreviewGraphic") &&
+    files.editorPreview.includes("layout.lines.map") &&
     files.renderEngine.includes("./edit-overlay-render-spec.js") &&
-    files.renderEngine.includes("getEditOverlayRenderMetrics") &&
+    files.renderEngine.includes("buildEditOverlayTextLayout") &&
+    files.renderEngine.includes("layout.lines.flatMap") &&
     files.renderEngine.includes("EDIT_OVERLAY_VERTICAL_INSET_PERCENT") &&
     files.overlaySpecReexport.includes("@/worker/src/lib/edit-overlay-render-spec"),
   "Preview and saved MP4 overlays must use the shared overlay render spec.",
@@ -89,7 +93,12 @@ assert(
 assert(
   files.overlaySpec.includes('EDIT_OVERLAY_FONT_FAMILY = "Geist"') &&
     files.overlaySpec.includes("EDIT_OVERLAY_FONT_WEIGHT = 600") &&
-    files.renderEngine.includes("Geist-SemiBold.ttf"),
+    files.appLayout.includes("Geist-SemiBold.woff2") &&
+    files.appLayout.includes('variable: "--font-edit-overlay"') &&
+    files.workerDockerfile.includes("Geist-SemiBold.ttf") &&
+    files.workerDockerfile.includes("fonts-noto-cjk") &&
+    files.renderEngine.includes("getEditOverlayFontDataUri") &&
+    files.renderEngine.includes("@font-face"),
   "Preview and export must use the same font family and weight.",
 );
 assert(
@@ -103,8 +112,9 @@ assert(
   "Saved MP4 overlays must not duplicate preview layout constants.",
 );
 assert(
-  files.editor.includes("status?sourceVideoId="),
-  "Render polling must resume from the persistent Edit project identity.",
+  files.editor.includes("jobId=${encodeURIComponent(jobId)}") &&
+    files.editor.includes("sourceVideoId=${encodeURIComponent(sourceVideoId)}"),
+  "New renders must poll the exact job while resumed renders use the persistent Edit project identity.",
 );
 assert(
   files.editLibrary.includes('video.status === "rendering"') &&

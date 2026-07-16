@@ -25,6 +25,7 @@ export async function publishInstagramReel(params: {
   containerId?: string | null;
   instagramAccountId: string;
   onContainerCreated?: (containerId: string) => Promise<void>;
+  shareToFeed?: boolean;
   videoUrl: string;
 }): Promise<InstagramPublishResult> {
   const containerId =
@@ -59,6 +60,7 @@ async function createInstagramReelContainer(params: {
   accessToken: string;
   caption: string;
   instagramAccountId: string;
+  shareToFeed?: boolean;
   videoUrl: string;
 }) {
   const payload = await postInstagramForm<{ id?: string }>(
@@ -67,7 +69,7 @@ async function createInstagramReelContainer(params: {
       access_token: params.accessToken,
       caption: params.caption,
       media_type: "REELS",
-      share_to_feed: "true",
+      share_to_feed: String(params.shareToFeed ?? true),
       video_url: params.videoUrl,
     },
   );

@@ -28,6 +28,16 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
 });
 
+// The editor renderer uses this exact static face through FFmpeg. Loading the
+// matching browser asset keeps preview glyph metrics stable across hydration
+// and avoids the bare-family fallback that previously rendered as a serif.
+const geistEditOverlay = localFont({
+  src: "../node_modules/geist/dist/fonts/geist-sans/Geist-SemiBold.woff2",
+  display: "swap",
+  variable: "--font-edit-overlay",
+  weight: "600",
+});
+
 export const metadata: Metadata = {
   title: {
     default: "UGC Pilot",
@@ -45,7 +55,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full`}
+      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} h-full`}
     >
       <body
         className={`${geistSans.className} min-h-full bg-background text-foreground antialiased`}

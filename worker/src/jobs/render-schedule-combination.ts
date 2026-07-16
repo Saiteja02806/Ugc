@@ -1,22 +1,46 @@
 import { getErrorMessage, logger } from "../logger.js";
 import {
-  renderScheduleCombinationToS3,
+  renderScheduleCombinationToS3 as defaultRenderScheduleCombinationToS3,
   type RenderScheduleCombinationPayload,
 } from "../lib/render-engine.js";
-import { finalizeRenderedSchedule } from "../lib/schedule-finalization.js";
+import {
+  finalizeRenderedSchedule as defaultFinalizeRenderedSchedule,
+  type ScheduleFinalizationResult,
+} from "../lib/schedule-finalization.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 
 const videoRatios = new Set(["9:16", "1:1", "4:5", "16:9"]);
 type CombinationRenderRatio = RenderScheduleCombinationPayload["ratio"];
 
+type RenderScheduleCombinationDependencies = {
+  createMediaAssetId: () => string;
+  finalizeRenderedSchedule: (params: {
+    renderId: string;
+    scheduleId: string;
+    userId: string;
+  }) => Promise<ScheduleFinalizationResult>;
+  renderScheduleCombinationToS3: typeof defaultRenderScheduleCombinationToS3;
+};
+
+const defaultDependencies: RenderScheduleCombinationDependencies = {
+  createMediaAssetId: () => crypto.randomUUID(),
+  finalizeRenderedSchedule: defaultFinalizeRenderedSchedule,
+  renderScheduleCombinationToS3: defaultRenderScheduleCombinationToS3,
+};
+
 export async function runRenderScheduleCombinationJob(
   job: BackgroundJobRow,
   context: {
+    dependencies?: Partial<RenderScheduleCombinationDependencies>;
     store: SupabaseJobStore;
   },
 ) {
   const payload = parseRenderScheduleCombinationPayload(job.input_json);
+  const dependencies = {
+    ...defaultDependencies,
+    ...context.dependencies,
+  };
 
   logger.info("Schedule combination render worker started", {
     demoVideoId: payload.demoVideoId,
@@ -35,11 +59,13 @@ export async function runRenderScheduleCombinationJob(
     userId: payload.userId,
   });
 
-  let result: Awaited<ReturnType<typeof renderScheduleCombinationToS3>>;
-  const mediaAssetId = crypto.randomUUID();
+  let result: Awaited<
+    ReturnType<typeof defaultRenderScheduleCombinationToS3>
+  >;
+  const mediaAssetId = dependencies.createMediaAssetId();
 
   try {
-    result = await renderScheduleCombinationToS3(payload);
+    result = await dependencies.renderScheduleCombinationToS3(payload);
 
     await context.store.markScheduleCombinationRenderCompleted({
       autoFinalize: payload.autoFinalize,
@@ -87,7 +113,7 @@ export async function runRenderScheduleCombinationJob(
   }
 
   try {
-    const finalization = await finalizeRenderedSchedule({
+    const finalization = await dependencies.finalizeRenderedSchedule({
       renderId: payload.renderId,
       scheduleId: payload.scheduleId,
       userId: payload.userId,

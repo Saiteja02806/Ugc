@@ -69,6 +69,15 @@ export type DemoVideoRow = DemoVideoInsert & {
   width: number | null;
 };
 
+export class DemoVideoNotFoundError extends Error {
+  readonly code = "PGRST116";
+
+  constructor() {
+    super("Demo video was not found.");
+    this.name = "DemoVideoNotFoundError";
+  }
+}
+
 type DemoVideosDatabase = {
   public: {
     Functions: Record<string, never>;
@@ -330,6 +339,20 @@ export async function getDemoVideo(params: {
   projectId: string;
   userId: string;
 }) {
+  const demo = await findDemoVideo(params);
+
+  if (!demo) {
+    throw new DemoVideoNotFoundError();
+  }
+
+  return demo;
+}
+
+export async function findDemoVideo(params: {
+  demoId: string;
+  projectId: string;
+  userId: string;
+}) {
   const { data, error } = await getSupabaseServerClient()
     .from(DEMO_VIDEOS_TABLE)
     .select("*")
@@ -337,7 +360,7 @@ export async function getDemoVideo(params: {
     .eq("user_id", params.userId)
     .eq("project_id", params.projectId)
     .is("deleted_at", null)
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Could not load demo video: ${error.message}`);

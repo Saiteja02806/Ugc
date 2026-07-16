@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Ban,
   CalendarPlus,
   CalendarDays,
   CheckCircle2,
@@ -14,7 +15,10 @@ import {
   List,
   Loader2,
   Plus,
+  Pencil,
   RefreshCw,
+  RotateCcw,
+  Settings2,
   UserRound,
   X,
   Video,
@@ -26,17 +30,16 @@ import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
 import {
   getSchedulePlatformLabel,
-  getSchedulePostTypeLabel,
   getScheduleStatusLabel,
   schedulePlatforms,
-  schedulePostTypes,
   scheduleTabs,
   type ScheduledPost,
   type ScheduledPostTarget,
+  type ScheduleCreateTargetInput,
   type ScheduleDraft,
   type ScheduleDraftStatus,
   type ScheduleMediaOption,
-  type SchedulePostType,
+  type SchedulePlatform,
   type ScheduleTab,
   type ScheduleViewMode,
 } from "@/lib/scheduling/types";
@@ -47,7 +50,18 @@ import {
   ScheduleTimeError,
   validateScheduleLeadTime,
 } from "@/lib/scheduling/schedule-time";
+import {
+  canCancelSchedule,
+  canEditSchedule,
+  getScheduleEditBlockReason,
+} from "@/lib/scheduling/schedule-action-policy";
 import type { SocialConnection } from "@/lib/social/types";
+import {
+  getTikTokPrivacyLabel,
+  isTikTokPrivacyLevel,
+  type TikTokPrivacyLevel,
+  type TikTokPublishCapabilities,
+} from "@/lib/social/tiktok-publishing";
 import { cn } from "@/lib/utils";
 
 const hookVideoSourceTypes: MediaSourceType[] = [
@@ -134,15 +148,29 @@ type SocialConnectionsResponse =
   | { connections: SocialConnection[]; ok: true }
   | { message?: string; ok?: false };
 
+type ScheduleMutationResponse =
+  | { ok: true; schedule: ScheduledPost }
+  | { message?: string; ok?: false };
+
+type TikTokPublishSettingsResponse =
+  | { capabilities: TikTokPublishCapabilities; ok: true }
+  | { message?: string; ok?: false };
+
+type ConnectionPublishingSettings = Record<string, boolean | string>;
+
+type TikTokCapabilitiesState =
+  | { status: "loading" }
+  | { capabilities: TikTokPublishCapabilities; status: "ready" }
+  | { message: string; status: "error" };
+
 type ScheduleFormSubmission = {
   caption: string;
   demoMedia: ScheduleMediaOption;
   hookMedia: ScheduleMediaOption;
-  postType: SchedulePostType;
   scheduledDate: string;
   scheduledFor: string;
   scheduledTime: string;
-  selectedConnectionIds: string[];
+  targets: ScheduleCreateTargetInput[];
   timezone: string;
 };
 
@@ -184,6 +212,13 @@ export function SchedulingWorkspace() {
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [dayPlannerOpen, setDayPlannerOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerError, setDrawerError] = useState<string | null>(null);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  const [schedulePendingCancellation, setSchedulePendingCancellation] =
+    useState<ScheduleDraft | null>(null);
+  const [cancellingScheduleId, setCancellingScheduleId] = useState<string | null>(
+    null,
+  );
   const [schedulingFinalDraftId, setSchedulingFinalDraftId] = useState<
     string | null
   >(null);
@@ -191,6 +226,14 @@ export function SchedulingWorkspace() {
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [minimumRenderLeadMinutes, setMinimumRenderLeadMinutes] = useState(
     DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+  );
+  const editingSchedule = useMemo(
+    () =>
+      editingScheduleId
+        ? serverSchedules.find((schedule) => schedule.id === editingScheduleId) ??
+          null
+        : null,
+    [editingScheduleId, serverSchedules],
   );
 
   const loadScheduleMedia = useCallback(async () => {
@@ -383,11 +426,19 @@ export function SchedulingWorkspace() {
     setDayPlannerOpen(true);
   }
 
+  function handleCloseScheduleDrawer() {
+    setDrawerOpen(false);
+    setDrawerError(null);
+    setEditingScheduleId(null);
+  }
+
   async function handleNewSchedulePost(
     dateKey = selectedCalendarDate,
     options: { keepDayOpen?: boolean } = {},
   ) {
     setActionNotice(null);
+    setDrawerError(null);
+    setEditingScheduleId(null);
     handleSelectCalendarDate(dateKey);
     setNewScheduleInitialDate(dateKey);
     setViewMode("calendar");
@@ -399,9 +450,33 @@ export function SchedulingWorkspace() {
     setDrawerOpen(true);
   }
 
+  async function handleEditSchedule(draft: ScheduleDraft) {
+    const schedule = serverSchedules.find((candidate) => candidate.id === draft.id);
+
+    if (!schedule) {
+      setActionNotice("This schedule could not be found. Refresh and try again.");
+      return;
+    }
+
+    const editBlockReason = getScheduleEditBlockReason(schedule);
+
+    if (editBlockReason) {
+      setActionNotice(editBlockReason);
+      return;
+    }
+
+    setActionNotice(null);
+    setDrawerError(null);
+    setEditingScheduleId(schedule.id);
+    setNewScheduleInitialDate(draft.scheduledDate ?? selectedCalendarDate);
+    await Promise.all([loadScheduleMedia(), loadSocialConnections()]);
+    setDrawerOpen(true);
+  }
+
   async function handleSaveScheduleDraft(submission: ScheduleFormSubmission) {
     setSavingSchedule(true);
     setActionNotice(null);
+    setDrawerError(null);
 
     try {
       const token = await getCurrentUserIdToken();
@@ -409,61 +484,60 @@ export function SchedulingWorkspace() {
         throw new Error("Sign in before scheduling posts.");
       }
 
-      const targetConnections = socialConnections.filter((connection) =>
-        submission.selectedConnectionIds.includes(connection.id),
+      const scheduleBeingEdited = editingScheduleId
+        ? serverSchedules.find((schedule) => schedule.id === editingScheduleId) ??
+          null
+        : null;
+
+      if (editingScheduleId && !scheduleBeingEdited) {
+        throw new Error("This schedule changed. Close it, refresh, and try again.");
+      }
+
+      const selectedConnectionIds = submission.targets.map(
+        (target) => target.connectionId,
       );
-      const response = await fetch("/api/schedules", {
+      const editing = Boolean(scheduleBeingEdited);
+      const response = await fetch(
+        editing
+          ? `/api/schedules/${scheduleBeingEdited?.id}`
+          : "/api/schedules",
+        {
         body: JSON.stringify({
-          caption: submission.caption,
-          metadata: {
-            demoMediaId: submission.demoMedia.id,
-            demoMediaTitle: submission.demoMedia.title,
-            hookMediaId: submission.hookMedia.id,
-            hookMediaTitle: submission.hookMedia.title,
-            plannedConnectionIds: submission.selectedConnectionIds.join(","),
-            plannedPlatforms: targetConnections
-              .map((connection) => connection.platform)
-              .join(","),
-            plannedScheduledFor: submission.scheduledFor,
-            scheduledDate: submission.scheduledDate,
-            scheduledTime: submission.scheduledTime,
-            postType: submission.postType,
-          },
-          scheduledDate: submission.scheduledDate,
-          scheduledFor: submission.scheduledFor,
-          scheduledTime: submission.scheduledTime,
-          source: {
-            id: submission.demoMedia.id,
-            kind: "media_asset",
-          },
-          targets: [],
-          timezone: submission.timezone,
-          title: getCompositeMediaTitle(
-            submission.hookMedia,
-            submission.demoMedia,
-          ),
+          ...buildScheduleRequestBody(submission),
+          expectedUpdatedAt: scheduleBeingEdited?.updatedAt,
         }),
         cache: "no-store",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        method: "POST",
-      });
-      const data = (await response.json()) as ScheduleCreateResponse;
+        method: editing ? "PATCH" : "POST",
+      },
+      );
+      const data = (await response.json()) as
+        | ScheduleCreateResponse
+        | ScheduleMutationResponse;
 
       if (!response.ok || data.ok !== true) {
         throw new Error(
-          getApiResponseMessage(data, "Could not save this schedule."),
+          getApiResponseMessage(
+            data,
+            editing
+              ? "Could not update this schedule."
+              : "Could not save this schedule.",
+          ),
         );
       }
 
       let nextSchedule = data.schedule;
-      const shouldAutoScheduleFinal =
-        submission.selectedConnectionIds.length > 0;
+      const shouldAutoScheduleFinal = selectedConnectionIds.length > 0;
       let nextNotice = shouldAutoScheduleFinal
-        ? "Schedule saved. Rendering the final MP4 before automatic platform scheduling."
-        : "Combination draft saved, but the render did not start automatically.";
+        ? editing
+          ? "Changes saved. Rendering the updated final MP4 before scheduling."
+          : "Schedule saved. Rendering the final MP4 before automatic platform scheduling."
+        : editing
+          ? "Changes saved as a render draft."
+          : "Combination draft saved.";
 
       try {
         const renderResult = await queueCombinationRender({
@@ -471,15 +545,30 @@ export function SchedulingWorkspace() {
           token,
         });
         nextSchedule = renderResult.schedule;
-        nextNotice = shouldAutoScheduleFinal
-          ? renderResult.status === "ready"
-            ? "Combined video is ready. Creating the final platform schedule."
+        if (shouldAutoScheduleFinal && renderResult.status === "ready") {
+          const publishResult = await requestFinalSchedule({
+            connectionIds: selectedConnectionIds,
+            scheduleId: renderResult.schedule.id,
+            timezone: submission.timezone,
+            token,
+          });
+          nextSchedule = publishResult.schedule;
+          nextNotice = publishResult.created
+            ? editing
+              ? "Changes saved and the final post was scheduled."
+              : "Final combined video scheduled."
+            : "The final combined video was already scheduled.";
+        } else {
+          nextNotice = shouldAutoScheduleFinal
+          ? editing
+            ? "Changes saved. Rendering the updated final MP4 before automatic scheduling."
             : "Schedule saved. Rendering the final MP4 before automatic platform scheduling."
           : renderResult.status === "ready"
             ? "Combined video is already ready."
             : "Combination draft saved and render queued.";
+        }
       } catch (renderError) {
-        nextNotice = `Draft saved, but render did not start: ${getErrorMessage(
+        nextNotice = `${editing ? "Changes" : "Draft"} saved, but render did not start: ${getErrorMessage(
           renderError,
         )}`;
       }
@@ -494,13 +583,14 @@ export function SchedulingWorkspace() {
       if (submission.scheduledDate) {
         handleSelectCalendarDate(submission.scheduledDate);
       }
-      setActiveTab(nextSchedule.status === "draft" ? "drafts" : "upcoming");
+      const nextDraft = mapScheduledPostToScheduleDraft(nextSchedule);
+      setActiveTab(getPrimaryTabForDraft(nextDraft));
       setViewMode("calendar");
-      setDrawerOpen(false);
+      handleCloseScheduleDrawer();
       setDayPlannerOpen(true);
       setActionNotice(nextNotice);
     } catch (error) {
-      setActionNotice(
+      setDrawerError(
         error instanceof Error
           ? error.message
           : "Could not save this schedule right now.",
@@ -550,25 +640,12 @@ export function SchedulingWorkspace() {
         throw new Error("Sign in before scheduling this post.");
       }
 
-      const response = await fetch(`/api/schedules/${draft.id}/publish`, {
-        body: JSON.stringify({
-          connectionIds: draft.plannedConnectionIds ?? [],
-          timezone: draft.timezone,
-        }),
-        cache: "no-store",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        method: "POST",
+      const data = await requestFinalSchedule({
+        connectionIds: draft.plannedConnectionIds ?? [],
+        scheduleId: draft.id,
+        timezone: draft.timezone,
+        token,
       });
-      const data = (await response.json()) as SchedulePublishResponse;
-
-      if (!response.ok || data.ok !== true) {
-        throw new Error(
-          getApiResponseMessage(data, "Could not schedule the final post."),
-        );
-      }
 
       setServerSchedules((currentSchedules) => [
         data.schedule,
@@ -588,6 +665,49 @@ export function SchedulingWorkspace() {
       setSchedulingFinalDraftId(null);
     }
   }, []);
+
+  async function handleConfirmScheduleCancellation() {
+    if (!schedulePendingCancellation) {
+      return;
+    }
+
+    const scheduleId = schedulePendingCancellation.id;
+    setCancellingScheduleId(scheduleId);
+    setActionNotice(null);
+
+    try {
+      const token = await getCurrentUserIdToken();
+
+      if (!token) {
+        throw new Error("Sign in before cancelling this schedule.");
+      }
+
+      const response = await fetch(`/api/schedules/${scheduleId}`, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+        method: "DELETE",
+      });
+      const data = (await response.json()) as ScheduleMutationResponse;
+
+      if (!response.ok || data.ok !== true) {
+        throw new Error(
+          getApiResponseMessage(data, "Could not cancel this schedule."),
+        );
+      }
+
+      setServerSchedules((currentSchedules) => [
+        data.schedule,
+        ...currentSchedules.filter((schedule) => schedule.id !== data.schedule.id),
+      ]);
+      setSchedulePendingCancellation(null);
+      setActionNotice("Schedule cancelled. No future platform publish will run.");
+    } catch (error) {
+      setActionNotice(getErrorMessage(error, "Could not cancel this schedule."));
+      setSchedulePendingCancellation(null);
+    } finally {
+      setCancellingScheduleId(null);
+    }
+  }
 
   return (
     <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
@@ -633,6 +753,8 @@ export function SchedulingWorkspace() {
             onCreateDraftForDate={(dateKey) =>
               void handleNewSchedulePost(dateKey, { keepDayOpen: true })
             }
+            onCancelDraft={setSchedulePendingCancellation}
+            onEditDraft={(draft) => void handleEditSchedule(draft)}
             onRenderDraft={handleStartCombinationRender}
             onScheduleDraft={handleScheduleFinalPost}
           />
@@ -659,6 +781,8 @@ export function SchedulingWorkspace() {
               selectedDate={selectedCalendarDate}
               viewMode={viewMode}
               onCreateDraft={() => void handleNewSchedulePost()}
+              onCancelDraft={setSchedulePendingCancellation}
+              onEditDraft={(draft) => void handleEditSchedule(draft)}
               onMonthChange={setVisibleCalendarMonth}
               onOpenDate={handleOpenDayPlanner}
               onRenderDraft={handleStartCombinationRender}
@@ -673,15 +797,26 @@ export function SchedulingWorkspace() {
         <NewScheduleDrawer
           catalogInfluencerOptions={catalogInfluencerOptions}
           demoMediaOptions={demoMediaOptions}
+          editingSchedule={editingSchedule}
+          errorMessage={drawerError}
           hookMediaOptions={hookMediaOptions}
           initialScheduledDate={newScheduleInitialDate}
           initialScheduledTime={getDefaultScheduledTime()}
           minimumRenderLeadMinutes={minimumRenderLeadMinutes}
-          onClose={() => setDrawerOpen(false)}
+          onClose={handleCloseScheduleDrawer}
           onRefreshMedia={loadScheduleMedia}
           onSave={handleSaveScheduleDraft}
           saving={savingSchedule}
           socialConnections={socialConnections}
+        />
+      ) : null}
+
+      {schedulePendingCancellation ? (
+        <CancelScheduleDialog
+          draft={schedulePendingCancellation}
+          cancelling={cancellingScheduleId === schedulePendingCancellation.id}
+          onClose={() => setSchedulePendingCancellation(null)}
+          onConfirm={() => void handleConfirmScheduleCancellation()}
         />
       ) : null}
     </section>
@@ -820,7 +955,9 @@ function ScheduleContent({
   calendarMonth,
   drafts,
   hasAnyDrafts,
+  onCancelDraft,
   onCreateDraft,
+  onEditDraft,
   onMonthChange,
   onOpenDate,
   onRenderDraft,
@@ -835,7 +972,9 @@ function ScheduleContent({
   calendarMonth: string;
   drafts: ScheduleDraft[];
   hasAnyDrafts: boolean;
+  onCancelDraft: (draft: ScheduleDraft) => void;
   onCreateDraft: () => void;
+  onEditDraft: (draft: ScheduleDraft) => void;
   onMonthChange: (monthKey: string) => void;
   onOpenDate: (dateKey: string) => void;
   onRenderDraft: (draftId: string) => void;
@@ -892,6 +1031,8 @@ function ScheduleContent({
             draft={draft}
             isRendering={renderingScheduleId === draft.id}
             isSchedulingFinal={schedulingFinalDraftId === draft.id}
+            onCancelDraft={onCancelDraft}
+            onEditDraft={onEditDraft}
             onRenderDraft={onRenderDraft}
             onScheduleDraft={onScheduleDraft}
           />
@@ -905,21 +1046,20 @@ function ScheduleDraftPreview({
   draft,
   isRendering,
   isSchedulingFinal,
+  onCancelDraft,
+  onEditDraft,
   onRenderDraft,
   onScheduleDraft,
 }: {
   draft: ScheduleDraft;
   isRendering: boolean;
   isSchedulingFinal: boolean;
+  onCancelDraft: (draft: ScheduleDraft) => void;
+  onEditDraft: (draft: ScheduleDraft) => void;
   onRenderDraft: (draftId: string) => void;
   onScheduleDraft: (draft: ScheduleDraft) => void;
 }) {
   const { combinedMedia, demoMedia, hookMedia } = getDraftMediaParts(draft);
-  const canRender =
-    draft.status === "render_required" || draft.status === "render_failed";
-  const canScheduleFinal = canScheduleFinalDraft(draft);
-  const finalScheduleMessage = getFinalScheduleUnavailableMessage(draft);
-  const showFinalScheduleAction = shouldShowFinalScheduleAction(draft);
 
   return (
     <article className="grid gap-3 rounded-2xl border border-border bg-white p-3 shadow-sm">
@@ -970,40 +1110,218 @@ function ScheduleDraftPreview({
               Open combined MP4
             </a>
           ) : null}
-          {canRender ? (
-            <button
-              type="button"
-              onClick={() => onRenderDraft(draft.id)}
-              disabled={isRendering}
-              className="mt-2 inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isRendering ? "Starting render..." : "Render combined video"}
-            </button>
-          ) : null}
-          {showFinalScheduleAction && combinedMedia?.mediaUrl ? (
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={() => onScheduleDraft(draft)}
-                disabled={!canScheduleFinal || isSchedulingFinal}
-                className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSchedulingFinal
-                  ? "Scheduling..."
-                  : draft.status === "ready"
-                    ? "Schedule final post"
-                    : "Retry scheduling"}
-              </button>
-              {finalScheduleMessage ? (
-                <p className="mt-1 text-[11px] font-semibold leading-4 text-muted">
-                  {finalScheduleMessage}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
         </div>
+
+        <ScheduleDraftActions
+          draft={draft}
+          isRendering={isRendering}
+          isSchedulingFinal={isSchedulingFinal}
+          onCancelDraft={onCancelDraft}
+          onEditDraft={onEditDraft}
+          onRenderDraft={onRenderDraft}
+          onScheduleDraft={onScheduleDraft}
+        />
       </div>
     </article>
+  );
+}
+
+function ScheduleDraftActions({
+  draft,
+  isRendering,
+  isSchedulingFinal,
+  onCancelDraft,
+  onEditDraft,
+  onRenderDraft,
+  onScheduleDraft,
+}: {
+  draft: ScheduleDraft;
+  isRendering: boolean;
+  isSchedulingFinal: boolean;
+  onCancelDraft: (draft: ScheduleDraft) => void;
+  onEditDraft: (draft: ScheduleDraft) => void;
+  onRenderDraft: (draftId: string) => void;
+  onScheduleDraft: (draft: ScheduleDraft) => void;
+}) {
+  const showRenderAction =
+    draft.status === "render_required" || draft.status === "render_failed";
+  const showScheduleRetry =
+    draft.status === "publishing_unavailable" ||
+    canRetrySchedulerCreateFailure(draft);
+  const canScheduleFinal = canScheduleFinalDraft(draft);
+  const finalScheduleMessage = showScheduleRetry
+    ? getFinalScheduleUnavailableMessage(draft)
+    : null;
+  const showActions = Boolean(
+    showRenderAction || showScheduleRetry || draft.canEdit || draft.canCancel,
+  );
+
+  if (!showActions) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {showRenderAction ? (
+          <button
+            type="button"
+            onClick={() => onRenderDraft(draft.id)}
+            disabled={isRendering}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <RotateCcw
+              className={cn("size-3.5", isRendering && "animate-spin")}
+              aria-hidden="true"
+            />
+            {isRendering
+              ? "Starting..."
+              : draft.status === "render_failed"
+                ? "Retry render"
+                : "Render video"}
+          </button>
+        ) : null}
+
+        {showScheduleRetry ? (
+          <button
+            type="button"
+            onClick={() => onScheduleDraft(draft)}
+            disabled={!canScheduleFinal || isSchedulingFinal}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <RotateCcw
+              className={cn("size-3.5", isSchedulingFinal && "animate-spin")}
+              aria-hidden="true"
+            />
+            {isSchedulingFinal ? "Retrying..." : "Retry scheduling"}
+          </button>
+        ) : null}
+
+        {draft.canEdit ? (
+          <button
+            type="button"
+            onClick={() => onEditDraft(draft)}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-[#fff8f4]"
+          >
+            <Pencil className="size-3.5" aria-hidden="true" />
+            Edit
+          </button>
+        ) : null}
+
+        {draft.canCancel ? (
+          <button
+            type="button"
+            onClick={() => onCancelDraft(draft)}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-error/30 bg-white px-3 text-xs font-bold text-error transition hover:bg-error/5"
+          >
+            <Ban className="size-3.5" aria-hidden="true" />
+            Cancel
+          </button>
+        ) : null}
+      </div>
+
+      {finalScheduleMessage ? (
+        <p className="mt-2 text-[11px] font-semibold leading-4 text-muted">
+          {finalScheduleMessage}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function CancelScheduleDialog({
+  cancelling,
+  draft,
+  onClose,
+  onConfirm,
+}: {
+  cancelling: boolean;
+  draft: ScheduleDraft;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  useLockBodyScroll();
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && !cancelling) {
+        onClose();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [cancelling, onClose]);
+
+  return (
+    <div
+      role="presentation"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-[#071a33]/32 p-4 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.currentTarget === event.target && !cancelling) {
+          onClose();
+        }
+      }}
+    >
+      <section
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="cancel-schedule-title"
+        aria-describedby="cancel-schedule-description"
+        className="w-full max-w-md rounded-xl border border-border bg-white p-5 shadow-[0_24px_80px_rgb(16_32_51_/_0.24)]"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2
+              id="cancel-schedule-title"
+              className="text-lg font-bold text-foreground"
+            >
+              Cancel scheduled post?
+            </h2>
+            <p
+              id="cancel-schedule-description"
+              className="mt-2 text-sm font-medium leading-6 text-muted"
+            >
+              {draft.mediaTitle || "This post"} will not publish at{" "}
+              {getDraftTimeLabel(draft)}.
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Close cancellation dialog"
+            disabled={cancelling}
+            onClick={onClose}
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-[#173454] transition hover:bg-[#fff8f4] disabled:opacity-50"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            disabled={cancelling}
+            onClick={onClose}
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-bold text-[#173454] transition hover:bg-[#fff8f4] disabled:opacity-50"
+          >
+            Keep schedule
+          </button>
+          <button
+            type="button"
+            disabled={cancelling}
+            onClick={onConfirm}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-error px-4 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+          >
+            {cancelling ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Ban className="size-4" aria-hidden="true" />
+            )}
+            {cancelling ? "Cancelling..." : "Cancel schedule"}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -1385,7 +1703,9 @@ function DayScheduleWorkspace({
   drafts,
   isSchedulingFinalDraftId,
   onBackToCalendar,
+  onCancelDraft,
   onCreateDraftForDate,
+  onEditDraft,
   onRenderDraft,
   onScheduleDraft,
   renderingScheduleId,
@@ -1395,7 +1715,9 @@ function DayScheduleWorkspace({
   drafts: ScheduleDraft[];
   isSchedulingFinalDraftId: string | null;
   onBackToCalendar: () => void;
+  onCancelDraft: (draft: ScheduleDraft) => void;
   onCreateDraftForDate: (dateKey: string) => void;
+  onEditDraft: (draft: ScheduleDraft) => void;
   onRenderDraft: (draftId: string) => void;
   onScheduleDraft: (draft: ScheduleDraft) => void;
   renderingScheduleId: string | null;
@@ -1508,6 +1830,8 @@ function DayScheduleWorkspace({
                   draft={draft}
                   isRendering={renderingScheduleId === draft.id}
                   isSchedulingFinal={isSchedulingFinalDraftId === draft.id}
+                  onCancelDraft={onCancelDraft}
+                  onEditDraft={onEditDraft}
                   onRenderDraft={onRenderDraft}
                   onScheduleDraft={onScheduleDraft}
                 />
@@ -1537,21 +1861,20 @@ function SelectedDayDraftCard({
   draft,
   isRendering,
   isSchedulingFinal,
+  onCancelDraft,
+  onEditDraft,
   onRenderDraft,
   onScheduleDraft,
 }: {
   draft: ScheduleDraft;
   isRendering: boolean;
   isSchedulingFinal: boolean;
+  onCancelDraft: (draft: ScheduleDraft) => void;
+  onEditDraft: (draft: ScheduleDraft) => void;
   onRenderDraft: (draftId: string) => void;
   onScheduleDraft: (draft: ScheduleDraft) => void;
 }) {
   const { combinedMedia, demoMedia, hookMedia } = getDraftMediaParts(draft);
-  const canRender =
-    draft.status === "render_required" || draft.status === "render_failed";
-  const canScheduleFinal = canScheduleFinalDraft(draft);
-  const finalScheduleMessage = getFinalScheduleUnavailableMessage(draft);
-  const showFinalScheduleAction = shouldShowFinalScheduleAction(draft);
 
   return (
     <article className="rounded-xl border border-border bg-white px-3 py-3 shadow-sm">
@@ -1603,36 +1926,17 @@ function SelectedDayDraftCard({
             Open MP4
           </a>
         ) : null}
-        {canRender ? (
-          <button
-            type="button"
-            onClick={() => onRenderDraft(draft.id)}
-            disabled={isRendering}
-            className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isRendering ? "Starting..." : "Render"}
-          </button>
-        ) : null}
-        {showFinalScheduleAction && combinedMedia?.mediaUrl ? (
-          <button
-            type="button"
-            onClick={() => onScheduleDraft(draft)}
-            disabled={!canScheduleFinal || isSchedulingFinal}
-            className="inline-flex h-8 items-center justify-center rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isSchedulingFinal
-              ? "Scheduling..."
-              : draft.status === "ready"
-                ? "Schedule final"
-                : "Retry scheduling"}
-          </button>
-        ) : null}
       </div>
-      {finalScheduleMessage && showFinalScheduleAction ? (
-        <p className="mt-2 text-[11px] font-semibold leading-4 text-muted">
-          {finalScheduleMessage}
-        </p>
-      ) : null}
+
+      <ScheduleDraftActions
+        draft={draft}
+        isRendering={isRendering}
+        isSchedulingFinal={isSchedulingFinal}
+        onCancelDraft={onCancelDraft}
+        onEditDraft={onEditDraft}
+        onRenderDraft={onRenderDraft}
+        onScheduleDraft={onScheduleDraft}
+      />
     </article>
   );
 }
@@ -1986,6 +2290,8 @@ function getScheduleTimeValidation(params: {
 function NewScheduleDrawer({
   catalogInfluencerOptions,
   demoMediaOptions,
+  editingSchedule,
+  errorMessage,
   hookMediaOptions,
   initialScheduledDate,
   initialScheduledTime,
@@ -1998,6 +2304,8 @@ function NewScheduleDrawer({
 }: {
   catalogInfluencerOptions: ScheduleCatalogInfluencerOption[];
   demoMediaOptions: ScheduleMediaOption[];
+  editingSchedule: ScheduledPost | null;
+  errorMessage: string | null;
   hookMediaOptions: ScheduleMediaOption[];
   initialScheduledDate: string;
   initialScheduledTime: string;
@@ -2008,24 +2316,57 @@ function NewScheduleDrawer({
   saving: boolean;
   socialConnections: SocialConnection[];
 }) {
+  useLockBodyScroll();
+
+  const editingDraft = editingSchedule
+    ? mapScheduledPostToScheduleDraft(editingSchedule)
+    : null;
+  const initialPlannedTargets = getSavedPlannedTargets(editingSchedule);
+  const initialConnectionIds = initialPlannedTargets.map(
+    (target) => target.connectionId,
+  );
   const [preparedHookMediaOptions, setPreparedHookMediaOptions] =
     useState<ScheduleMediaOption[]>([]);
   const [selectedHookMediaId, setSelectedHookMediaId] = useState<string>(
-    hookMediaOptions[0]?.id ?? "",
+    getString(editingSchedule?.metadata.hookMediaId) ??
+      hookMediaOptions[0]?.id ??
+      "",
   );
   const [selectedDemoMediaId, setSelectedDemoMediaId] = useState<string>(
-    demoMediaOptions[0]?.id ?? "",
+    getString(editingSchedule?.metadata.demoMediaId) ??
+      editingSchedule?.mediaAssetId ??
+      demoMediaOptions[0]?.id ??
+      "",
   );
   const [preparingCatalogInfluencerId, setPreparingCatalogInfluencerId] =
     useState<string | null>(null);
   const [refreshingMedia, setRefreshingMedia] = useState(false);
   const [hookPickerError, setHookPickerError] = useState<string | null>(null);
-  const [caption, setCaption] = useState("");
-  const [selectedConnectionIds, setSelectedConnectionIds] = useState<string[]>([]);
-  const [scheduledDate, setScheduledDate] = useState(initialScheduledDate);
-  const [scheduledTime, setScheduledTime] = useState(initialScheduledTime);
-  const [timezone, setTimezone] = useState(defaultTimezone);
-  const [postType, setPostType] = useState<SchedulePostType>("reel");
+  const [caption, setCaption] = useState(editingSchedule?.caption ?? "");
+  const [selectedConnectionIds, setSelectedConnectionIds] =
+    useState<string[]>(initialConnectionIds);
+  const [publishingSettings, setPublishingSettings] = useState<
+    Record<string, ConnectionPublishingSettings>
+  >(() =>
+    Object.fromEntries(
+      initialPlannedTargets.map((target) => [
+        target.connectionId,
+        getSavedPublishingSettings(target.settings),
+      ]),
+    ),
+  );
+  const [tiktokCapabilities, setTikTokCapabilities] = useState<
+    Record<string, TikTokCapabilitiesState>
+  >({});
+  const [scheduledDate, setScheduledDate] = useState(
+    editingDraft?.scheduledDate ?? initialScheduledDate,
+  );
+  const [scheduledTime, setScheduledTime] = useState(
+    editingDraft?.scheduledTime ?? initialScheduledTime,
+  );
+  const [timezone, setTimezone] = useState(
+    editingSchedule?.timezone ?? defaultTimezone,
+  );
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   const localHookMediaOptions = useMemo(
@@ -2047,6 +2388,18 @@ function NewScheduleDrawer({
     localHookMediaOptions.find((option) => option.id === activeHookMediaId) ?? null;
   const selectedDemoMedia =
     demoMediaOptions.find((option) => option.id === activeDemoMediaId) ?? null;
+  const selectedConnections = useMemo(
+    () =>
+      socialConnections.filter((connection) =>
+        selectedConnectionIds.includes(connection.id),
+      ),
+    [selectedConnectionIds, socialConnections],
+  );
+  const publishingSettingsError = getPublishingSettingsError({
+    connections: selectedConnections,
+    settings: publishingSettings,
+    tiktokCapabilities,
+  });
   const scheduleTimeValidation = useMemo(
     () =>
       getScheduleTimeValidation({
@@ -2081,9 +2434,10 @@ function NewScheduleDrawer({
       scheduledDate &&
       scheduledTime &&
       !scheduleTimeValidation.error &&
+      !publishingSettingsError &&
       !saving,
   );
-  const hasSelectedConnections = selectedConnectionIds.length > 0;
+  const hasSelectedConnections = selectedConnections.length > 0;
 
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
@@ -2106,12 +2460,141 @@ function NewScheduleDrawer({
   }, [onClose]);
 
   function toggleConnection(connectionId: string) {
+    const connection = socialConnections.find(
+      (candidate) => candidate.id === connectionId,
+    );
+    const selecting = !selectedConnectionIds.includes(connectionId);
+
     setSelectedConnectionIds((currentConnectionIds) =>
       currentConnectionIds.includes(connectionId)
         ? currentConnectionIds.filter((currentId) => currentId !== connectionId)
         : [...currentConnectionIds, connectionId],
     );
+
+    if (!selecting || !connection) {
+      return;
+    }
+
+    setPublishingSettings((current) =>
+      current[connectionId]
+        ? current
+        : {
+            ...current,
+            [connectionId]: getDefaultPublishingSettings(connection.platform),
+          },
+    );
+
+    if (
+      connection.platform === "tiktok" &&
+      tiktokCapabilities[connectionId]?.status !== "ready" &&
+      tiktokCapabilities[connectionId]?.status !== "loading"
+    ) {
+      void loadTikTokCapabilities(connectionId);
+    }
   }
+
+  function updatePublishingSetting(
+    connectionId: string,
+    key: string,
+    value: boolean | string,
+  ) {
+    setPublishingSettings((current) => ({
+      ...current,
+      [connectionId]: {
+        ...(current[connectionId] ?? {}),
+        [key]: value,
+      },
+    }));
+  }
+
+  const loadTikTokCapabilities = useCallback(async (connectionId: string) => {
+    setTikTokCapabilities((current) => ({
+      ...current,
+      [connectionId]: { status: "loading" },
+    }));
+
+    try {
+      const token = await getCurrentUserIdToken();
+
+      if (!token) {
+        throw new Error("Sign in before loading TikTok settings.");
+      }
+
+      const response = await fetch(
+        `/api/social/connections/${connectionId}/publish-settings`,
+        {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = (await response.json()) as TikTokPublishSettingsResponse;
+
+      if (!response.ok || data.ok !== true) {
+        throw new Error(
+          getApiResponseMessage(
+            data,
+            "Could not load TikTok publishing settings.",
+          ),
+        );
+      }
+
+      setTikTokCapabilities((current) => ({
+        ...current,
+        [connectionId]: {
+          capabilities: data.capabilities,
+          status: "ready",
+        },
+      }));
+      setPublishingSettings((current) => {
+        const settings =
+          current[connectionId] ?? getDefaultPublishingSettings("tiktok");
+        const privacyLevel = settings.privacyLevel;
+
+        return {
+          ...current,
+          [connectionId]: {
+            ...settings,
+            allowComment: data.capabilities.interactions.commentsDisabled
+              ? false
+              : settings.allowComment === true,
+            allowDuet: data.capabilities.interactions.duetsDisabled
+              ? false
+              : settings.allowDuet === true,
+            allowStitch: data.capabilities.interactions.stitchesDisabled
+              ? false
+              : settings.allowStitch === true,
+            privacyLevel:
+              isTikTokPrivacyLevel(privacyLevel) &&
+              data.capabilities.privacyLevels.includes(privacyLevel)
+                ? privacyLevel
+                : "",
+          },
+        };
+      });
+    } catch (error) {
+      setTikTokCapabilities((current) => ({
+        ...current,
+        [connectionId]: {
+          message: getErrorMessage(
+            error,
+            "Could not load TikTok publishing settings.",
+          ),
+          status: "error",
+        },
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    for (const connection of selectedConnections) {
+      if (
+        connection.platform === "tiktok" &&
+        !tiktokCapabilities[connection.id]
+      ) {
+        void loadTikTokCapabilities(connection.id);
+      }
+    }
+  }, [loadTikTokCapabilities, selectedConnections, tiktokCapabilities]);
 
   function handleSelectHookMedia(mediaId: string) {
     setHookPickerError(null);
@@ -2195,11 +2678,16 @@ function NewScheduleDrawer({
       caption,
       demoMedia: selectedDemoMedia,
       hookMedia: selectedHookMedia,
-      postType,
       scheduledDate,
       scheduledFor: scheduleTimeValidation.scheduledFor,
       scheduledTime,
-      selectedConnectionIds,
+      targets: selectedConnections.map((connection) => ({
+        connectionId: connection.id,
+        platform: connection.platform,
+        settings:
+          publishingSettings[connection.id] ??
+          getDefaultPublishingSettings(connection.platform),
+      })),
       timezone,
     });
   }
@@ -2217,19 +2705,19 @@ function NewScheduleDrawer({
       <aside
         role="dialog"
         aria-modal="true"
-        aria-labelledby="new-schedule-drawer-title"
-        className="mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-none border border-border bg-[#fbf8f4] shadow-[0_26px_90px_rgb(16_32_51_/_0.22)] sm:rounded-[28px]"
+        aria-labelledby="schedule-drawer-title"
+        className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-none border border-border bg-[#fbf8f4] shadow-[0_26px_90px_rgb(16_32_51_/_0.22)] sm:rounded-xl"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border/80 bg-white/72 px-5 py-4 backdrop-blur sm:px-6">
           <div>
             <h2
-              id="new-schedule-drawer-title"
+              id="schedule-drawer-title"
               className="text-lg font-bold tracking-normal text-foreground"
             >
-              New schedule draft
+              {editingSchedule ? "Edit scheduled post" : "New scheduled post"}
             </h2>
             <p className="mt-1 text-sm font-medium leading-6 text-muted">
-              Choose the video, demo, date, and time for this planned post.
+              Media, account settings, and publish time in one workflow.
             </p>
           </div>
           <button
@@ -2242,10 +2730,15 @@ function NewScheduleDrawer({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
-            <div className="grid content-start gap-5">
-              <div className="grid gap-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">
+          <div className="mx-auto max-w-5xl divide-y divide-border">
+            <ScheduleFlowSection
+              step="1"
+              title="Media"
+              description="Opening video, product demo, and caption"
+            >
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)]">
+                <div className="grid content-start gap-3">
                 <ScheduleOpeningMediaPicker
                   catalogInfluencerOptions={catalogInfluencerOptions}
                   errorMessage={hookPickerError}
@@ -2267,113 +2760,155 @@ function NewScheduleDrawer({
                   title="Demo video"
                   onSelectMedia={setSelectedDemoMediaId}
                 />
+                </div>
+
+                <div className="grid content-start gap-4">
+                  <CompositionPreview
+                    demoMedia={selectedDemoMedia}
+                    hookMedia={selectedHookMedia}
+                  />
+                  <label className="block">
+                    <span className="text-sm font-bold text-foreground">
+                      Caption
+                    </span>
+                    <textarea
+                      rows={5}
+                      value={caption}
+                      onChange={(event) => setCaption(event.target.value)}
+                      placeholder="Write caption..."
+                      className="mt-2 min-h-32 w-full resize-none rounded-lg border border-border bg-white px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-[#8c9aab] focus:border-primary"
+                    />
+                  </label>
+                </div>
               </div>
+            </ScheduleFlowSection>
 
-              <CompositionPreview
-                demoMedia={selectedDemoMedia}
-                hookMedia={selectedHookMedia}
-              />
-            </div>
-
-            <div className="grid content-start gap-5">
-              <label className="block">
-                <span className="text-sm font-bold text-foreground">Caption</span>
-                <textarea
-                  rows={5}
-                  value={caption}
-                  onChange={(event) => setCaption(event.target.value)}
-                  placeholder="Write caption..."
-                  className="mt-2 min-h-32 w-full resize-none rounded-2xl border border-border bg-white px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-[#8c9aab] focus:border-primary"
-                />
-              </label>
-
+            <ScheduleFlowSection
+              step="2"
+              title="Accounts & settings"
+              description="Destinations, visibility, and platform controls"
+            >
               <ConnectedAccountSelector
                 connections={socialConnections}
                 onToggle={toggleConnection}
                 selectedConnectionIds={selectedConnectionIds}
               />
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block">
-                  <span className="text-sm font-bold text-foreground">Date</span>
-                  <input
-                    type="date"
-                    aria-describedby={
-                      scheduleTimeValidation.error
-                        ? "schedule-time-feedback"
-                        : undefined
-                    }
-                    aria-invalid={Boolean(scheduleTimeValidation.error)}
-                    min={minimumScheduledDate}
-                    value={scheduledDate}
-                    onChange={(event) => setScheduledDate(event.target.value)}
-                    className="mt-2 h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold text-foreground">Time</span>
-                  <input
-                    type="time"
-                    aria-describedby={
-                      scheduleTimeValidation.error
-                        ? "schedule-time-feedback"
-                        : undefined
-                    }
-                    aria-invalid={Boolean(scheduleTimeValidation.error)}
-                    value={scheduledTime}
-                    onChange={(event) => setScheduledTime(event.target.value)}
-                    className="mt-2 h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
-                  />
-                </label>
-              </div>
-
-              <label className="block">
-                <span className="text-sm font-bold text-foreground">Timezone</span>
-                <select
-                  aria-describedby={
-                    scheduleTimeValidation.error
-                      ? "schedule-time-feedback"
-                      : undefined
-                  }
-                  aria-invalid={Boolean(scheduleTimeValidation.error)}
-                  value={timezone}
-                  onChange={(event) => setTimezone(event.target.value)}
-                  className="mt-2 h-11 w-full rounded-2xl border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
-                >
-                  {getTimezoneOptions(timezone).map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {scheduleTimeValidation.error ? (
-                <div
-                  id="schedule-time-feedback"
-                  role="alert"
-                  className="flex items-start gap-2 rounded-xl bg-error/10 px-3 py-2 text-xs font-semibold leading-5 text-error"
-                >
-                  <Clock3
-                    className="mt-0.5 size-3.5 shrink-0"
-                    aria-hidden="true"
-                  />
-                  <span>{scheduleTimeValidation.error}</span>
-                </div>
+              {selectedConnections.length > 0 ? (
+                <PlatformPublishingSettings
+                  connections={selectedConnections}
+                  errorMessage={publishingSettingsError}
+                  settings={publishingSettings}
+                  tiktokCapabilities={tiktokCapabilities}
+                  onChange={updatePublishingSetting}
+                  onRetryTikTok={loadTikTokCapabilities}
+                />
               ) : null}
+            </ScheduleFlowSection>
 
-              <PostTypeSelector value={postType} onChange={setPostType} />
+            <ScheduleFlowSection
+              step="3"
+              title="Date & time"
+              description="Publish time in the selected timezone"
+            >
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.72fr)]">
+                <div className="grid content-start gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="text-sm font-bold text-foreground">
+                        Date
+                      </span>
+                      <input
+                        type="date"
+                        aria-describedby={
+                          scheduleTimeValidation.error
+                            ? "schedule-time-feedback"
+                            : undefined
+                        }
+                        aria-invalid={Boolean(scheduleTimeValidation.error)}
+                        min={minimumScheduledDate}
+                        value={scheduledDate}
+                        onChange={(event) => setScheduledDate(event.target.value)}
+                        className="mt-2 h-11 w-full rounded-lg border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-bold text-foreground">
+                        Time
+                      </span>
+                      <input
+                        type="time"
+                        aria-describedby={
+                          scheduleTimeValidation.error
+                            ? "schedule-time-feedback"
+                            : undefined
+                        }
+                        aria-invalid={Boolean(scheduleTimeValidation.error)}
+                        value={scheduledTime}
+                        onChange={(event) => setScheduledTime(event.target.value)}
+                        className="mt-2 h-11 w-full rounded-lg border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+                      />
+                    </label>
+                  </div>
 
-              <StatusPreview
-                demoMedia={selectedDemoMedia}
-                hookMedia={selectedHookMedia}
-                status={status}
-              />
-            </div>
+                <label className="block">
+                    <span className="text-sm font-bold text-foreground">
+                      Timezone
+                    </span>
+                    <select
+                    aria-describedby={
+                      scheduleTimeValidation.error
+                        ? "schedule-time-feedback"
+                        : undefined
+                    }
+                    aria-invalid={Boolean(scheduleTimeValidation.error)}
+                      value={timezone}
+                      onChange={(event) => setTimezone(event.target.value)}
+                      className="mt-2 h-11 w-full rounded-lg border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+                    >
+                      {getTimezoneOptions(timezone).map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                </label>
+
+                  {scheduleTimeValidation.error ? (
+                    <div
+                      id="schedule-time-feedback"
+                      role="alert"
+                      className="flex items-start gap-2 rounded-lg bg-error/10 px-3 py-2 text-xs font-semibold leading-5 text-error"
+                    >
+                      <Clock3
+                        className="mt-0.5 size-3.5 shrink-0"
+                        aria-hidden="true"
+                      />
+                      <span>{scheduleTimeValidation.error}</span>
+                    </div>
+                  ) : null}
+                </div>
+
+                <StatusPreview
+                  demoMedia={selectedDemoMedia}
+                  hookMedia={selectedHookMedia}
+                  status={status}
+                />
+              </div>
+            </ScheduleFlowSection>
           </div>
         </div>
 
         <div className="border-t border-border/80 bg-white/72 px-5 py-4 backdrop-blur sm:px-6">
+          {errorMessage ? (
+            <div
+              role="alert"
+              className="mb-3 flex items-start gap-2 rounded-lg bg-error/10 px-3 py-2 text-xs font-semibold leading-5 text-error"
+            >
+              <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+              <span>{errorMessage}</span>
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={handleSaveDraft}
@@ -2382,25 +2917,62 @@ function NewScheduleDrawer({
           >
             <CheckCircle2 className="size-4" aria-hidden="true" />
             {saving
-              ? hasSelectedConnections
-                ? "Scheduling..."
-                : "Saving..."
+              ? editingSchedule
+                ? "Saving changes..."
+                : hasSelectedConnections
+                  ? "Scheduling..."
+                  : "Saving..."
               : canSaveDraft
-                ? hasSelectedConnections
-                  ? "Schedule post"
-                  : "Save render draft"
+                ? editingSchedule
+                  ? "Save changes"
+                  : hasSelectedConnections
+                    ? "Schedule post"
+                    : "Save render draft"
+                : publishingSettingsError
+                  ? "Review publishing settings"
                 : selectedHookMedia && selectedDemoMedia
                   ? "Choose date and time"
                   : "Choose video and demo"}
           </button>
           <p className="mt-3 text-center text-xs font-semibold leading-5 text-muted">
-            {hasSelectedConnections
+            {editingSchedule
+              ? "Saved changes replace this draft. Active platform jobs cannot be edited."
+              : hasSelectedConnections
               ? "This renders one combined MP4 first, then schedules it automatically when ready."
               : "Choose an account to schedule automatically, or save a render draft without publishing."}
           </p>
         </div>
       </aside>
     </div>
+  );
+}
+
+function ScheduleFlowSection({
+  children,
+  description,
+  step,
+  title,
+}: {
+  children: ReactNode;
+  description: string;
+  step: string;
+  title: string;
+}) {
+  return (
+    <section className="grid gap-4 py-6 md:grid-cols-[180px_minmax(0,1fr)] md:gap-6">
+      <div className="flex items-start gap-3 md:block">
+        <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#173454] text-xs font-bold text-white">
+          {step}
+        </span>
+        <div className="min-w-0 md:mt-3">
+          <h3 className="text-sm font-bold text-foreground">{title}</h3>
+          <p className="mt-1 text-xs font-semibold leading-5 text-muted">
+            {description}
+          </p>
+        </div>
+      </div>
+      <div className="min-w-0">{children}</div>
+    </section>
   );
 }
 
@@ -2964,39 +3536,418 @@ function ConnectedAccountSelector({
   );
 }
 
-function PostTypeSelector({
+function PlatformPublishingSettings({
+  connections,
+  errorMessage,
   onChange,
-  value,
+  onRetryTikTok,
+  settings,
+  tiktokCapabilities,
 }: {
-  onChange: (postType: SchedulePostType) => void;
-  value: SchedulePostType;
+  connections: SocialConnection[];
+  errorMessage: string | null;
+  onChange: (
+    connectionId: string,
+    key: string,
+    value: boolean | string,
+  ) => void;
+  onRetryTikTok: (connectionId: string) => void;
+  settings: Record<string, ConnectionPublishingSettings>;
+  tiktokCapabilities: Record<string, TikTokCapabilitiesState>;
 }) {
   return (
-    <div>
-      <span className="text-sm font-bold text-foreground">Post type</span>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {schedulePostTypes.map((postType) => {
-          const selected = postType === value;
-
-          return (
-            <button
-              key={postType}
-              type="button"
-              onClick={() => onChange(postType)}
-              className={cn(
-                "inline-flex h-9 items-center justify-center rounded-full border px-3 text-sm font-bold transition",
-                selected
-                  ? "border-primary/60 bg-primary/10 text-primary"
-                  : "border-border bg-white text-[#405977] hover:bg-[#fff8f4]",
-              )}
-            >
-              {getSchedulePostTypeLabel(postType)}
-            </button>
-          );
-        })}
+    <section aria-labelledby="publishing-settings-title" className="border-t border-border pt-4">
+      <div className="flex items-center gap-2">
+        <Settings2 className="size-4 text-primary" aria-hidden="true" />
+        <h3
+          id="publishing-settings-title"
+          className="text-sm font-bold text-foreground"
+        >
+          Publishing settings
+        </h3>
       </div>
+
+      <div className="mt-2 divide-y divide-border">
+        {connections.map((connection) => (
+          <PlatformAccountSettings
+            key={connection.id}
+            connection={connection}
+            settings={
+              settings[connection.id] ??
+              getDefaultPublishingSettings(connection.platform)
+            }
+            tiktokCapabilities={tiktokCapabilities[connection.id]}
+            onChange={(key, value) => onChange(connection.id, key, value)}
+            onRetryTikTok={() => onRetryTikTok(connection.id)}
+          />
+        ))}
+      </div>
+
+      {errorMessage ? (
+        <div
+          role="alert"
+          className="mt-3 flex items-start gap-2 rounded-[10px] bg-error/10 px-3 py-2 text-xs font-semibold leading-5 text-error"
+        >
+          <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          <span>{errorMessage}</span>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function PlatformAccountSettings({
+  connection,
+  onChange,
+  onRetryTikTok,
+  settings,
+  tiktokCapabilities,
+}: {
+  connection: SocialConnection;
+  onChange: (key: string, value: boolean | string) => void;
+  onRetryTikTok: () => void;
+  settings: ConnectionPublishingSettings;
+  tiktokCapabilities?: TikTokCapabilitiesState;
+}) {
+  const accountName =
+    connection.platformAccountUsername ||
+    connection.platformAccountName ||
+    connection.platformAccountId;
+
+  return (
+    <div className="py-4 first:pt-2 last:pb-0">
+      <div className="flex min-w-0 items-baseline justify-between gap-3">
+        <p className="text-sm font-bold text-foreground">
+          {getSchedulePlatformLabel(connection.platform)}
+        </p>
+        <p className="truncate text-xs font-semibold text-muted">{accountName}</p>
+      </div>
+
+      {connection.platform === "instagram" ? (
+        <div className="mt-3">
+          <SettingCheckbox
+            checked={getBooleanSetting(settings, "shareToFeed", true)}
+            description="Also show the Reel in the account's main feed."
+            label="Share to feed"
+            onChange={(checked) => onChange("shareToFeed", checked)}
+          />
+        </div>
+      ) : null}
+
+      {connection.platform === "youtube" ? (
+        <div className="mt-3 grid gap-3">
+          <label className="block">
+            <span className="text-xs font-bold text-foreground">Visibility</span>
+            <select
+              value={getStringSetting(settings, "privacyStatus", "private")}
+              onChange={(event) => onChange("privacyStatus", event.target.value)}
+              className="mt-1.5 h-10 w-full rounded-[10px] border border-border bg-white px-3 text-sm font-semibold text-foreground outline-none transition focus:border-primary"
+            >
+              <option value="private">Private</option>
+              <option value="unlisted">Unlisted</option>
+              <option value="public">Public</option>
+            </select>
+          </label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <SettingCheckbox
+              checked={getBooleanSetting(settings, "notifySubscribers", false)}
+              label="Notify subscribers"
+              onChange={(checked) => onChange("notifySubscribers", checked)}
+            />
+            <SettingCheckbox
+              checked={getBooleanSetting(settings, "madeForKids", false)}
+              label="Made for kids"
+              onChange={(checked) => onChange("madeForKids", checked)}
+            />
+          </div>
+          <SettingCheckbox
+            checked={getBooleanSetting(
+              settings,
+              "containsSyntheticMedia",
+              true,
+            )}
+            description="Disclose realistic altered or AI-generated people or events."
+            label="Contains synthetic media"
+            onChange={(checked) =>
+              onChange("containsSyntheticMedia", checked)
+            }
+          />
+        </div>
+      ) : null}
+
+      {connection.platform === "tiktok" ? (
+        <TikTokAccountSettings
+          capabilitiesState={tiktokCapabilities}
+          settings={settings}
+          onChange={onChange}
+          onRetry={onRetryTikTok}
+        />
+      ) : null}
     </div>
   );
+}
+
+function TikTokAccountSettings({
+  capabilitiesState,
+  onChange,
+  onRetry,
+  settings,
+}: {
+  capabilitiesState?: TikTokCapabilitiesState;
+  onChange: (key: string, value: boolean | string) => void;
+  onRetry: () => void;
+  settings: ConnectionPublishingSettings;
+}) {
+  if (!capabilitiesState || capabilitiesState.status === "loading") {
+    return (
+      <div className="mt-3 flex h-10 items-center gap-2 text-xs font-semibold text-muted">
+        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        Loading available TikTok settings...
+      </div>
+    );
+  }
+
+  if (capabilitiesState.status === "error") {
+    return (
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-[10px] bg-error/10 px-3 py-2">
+        <p className="text-xs font-semibold leading-5 text-error">
+          {capabilitiesState.message}
+        </p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-error transition hover:bg-error/10"
+          aria-label="Retry TikTok publishing settings"
+          title="Retry"
+        >
+          <RefreshCw className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+    );
+  }
+
+  const capabilities = capabilitiesState.capabilities;
+  const privacyLevel = getStringSetting(settings, "privacyLevel", "");
+  const brandedContent = getBooleanSetting(settings, "brandedContent", false);
+
+  return (
+    <div className="mt-3 grid gap-3">
+      <label className="block">
+        <span className="flex items-center justify-between gap-3 text-xs font-bold text-foreground">
+          <span>Visibility</span>
+          {capabilities.maxVideoDurationSeconds ? (
+            <span className="font-semibold text-muted">
+              Up to {capabilities.maxVideoDurationSeconds}s
+            </span>
+          ) : null}
+        </span>
+        <select
+          value={privacyLevel}
+          onChange={(event) => onChange("privacyLevel", event.target.value)}
+          className="mt-1.5 h-10 w-full rounded-[10px] border border-border bg-white px-3 text-sm font-semibold text-foreground outline-none transition focus:border-primary"
+        >
+          <option value="">Select visibility</option>
+          {capabilities.privacyLevels.map((level) => (
+            <option
+              key={level}
+              value={level}
+              disabled={brandedContent && level === "SELF_ONLY"}
+            >
+              {getTikTokPrivacyLabel(level)}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <fieldset>
+        <legend className="text-xs font-bold text-foreground">
+          Allow interactions
+        </legend>
+        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+          <SettingCheckbox
+            checked={getBooleanSetting(settings, "allowComment", false)}
+            disabled={capabilities.interactions.commentsDisabled}
+            label="Comments"
+            onChange={(checked) => onChange("allowComment", checked)}
+          />
+          <SettingCheckbox
+            checked={getBooleanSetting(settings, "allowDuet", false)}
+            disabled={capabilities.interactions.duetsDisabled}
+            label="Duets"
+            onChange={(checked) => onChange("allowDuet", checked)}
+          />
+          <SettingCheckbox
+            checked={getBooleanSetting(settings, "allowStitch", false)}
+            disabled={capabilities.interactions.stitchesDisabled}
+            label="Stitches"
+            onChange={(checked) => onChange("allowStitch", checked)}
+          />
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend className="text-xs font-bold text-foreground">
+          Content disclosure
+        </legend>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <SettingCheckbox
+            checked={getBooleanSetting(settings, "brandOrganic", false)}
+            label="Promotes your brand"
+            onChange={(checked) => onChange("brandOrganic", checked)}
+          />
+          <SettingCheckbox
+            checked={brandedContent}
+            label="Paid partnership"
+            onChange={(checked) => {
+              onChange("brandedContent", checked);
+
+              if (checked && privacyLevel === "SELF_ONLY") {
+                onChange("privacyLevel", "");
+              }
+            }}
+          />
+        </div>
+      </fieldset>
+
+      <p className="text-[11px] font-semibold leading-5 text-muted">
+        By posting, you agree to TikTok&apos;s Music Usage Confirmation.
+      </p>
+    </div>
+  );
+}
+
+function SettingCheckbox({
+  checked,
+  description,
+  disabled = false,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  description?: string;
+  disabled?: boolean;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "flex min-h-10 items-start gap-2.5 rounded-[10px] border border-border bg-white px-3 py-2",
+        disabled && "cursor-not-allowed bg-card-muted opacity-65",
+      )}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-0.5 size-4 shrink-0 accent-primary"
+      />
+      <span className="min-w-0">
+        <span className="block text-xs font-bold text-foreground">{label}</span>
+        {description ? (
+          <span className="mt-0.5 block text-[11px] font-semibold leading-4 text-muted">
+            {description}
+          </span>
+        ) : disabled ? (
+          <span className="mt-0.5 block text-[11px] font-semibold leading-4 text-muted">
+            Disabled in TikTok
+          </span>
+        ) : null}
+      </span>
+    </label>
+  );
+}
+
+function getDefaultPublishingSettings(
+  platform: SchedulePlatform,
+): ConnectionPublishingSettings {
+  if (platform === "instagram") {
+    return { shareToFeed: true };
+  }
+
+  if (platform === "tiktok") {
+    return {
+      allowComment: false,
+      allowDuet: false,
+      allowStitch: false,
+      brandOrganic: false,
+      brandedContent: false,
+      privacyLevel: "",
+    };
+  }
+
+  return {
+    containsSyntheticMedia: true,
+    madeForKids: false,
+    notifySubscribers: false,
+    privacyStatus: "private",
+  };
+}
+
+function getPublishingSettingsError(params: {
+  connections: SocialConnection[];
+  settings: Record<string, ConnectionPublishingSettings>;
+  tiktokCapabilities: Record<string, TikTokCapabilitiesState>;
+}) {
+  for (const connection of params.connections) {
+    if (connection.platform !== "tiktok") {
+      continue;
+    }
+
+    const capabilityState = params.tiktokCapabilities[connection.id];
+
+    if (!capabilityState || capabilityState.status === "loading") {
+      return "Wait for TikTok publishing settings to finish loading.";
+    }
+
+    if (capabilityState.status === "error") {
+      return capabilityState.message;
+    }
+
+    const settings =
+      params.settings[connection.id] ?? getDefaultPublishingSettings("tiktok");
+    const privacyLevel = getStringSetting(settings, "privacyLevel", "");
+
+    if (!isTikTokPrivacyLevel(privacyLevel)) {
+      return "Choose who can view the TikTok post.";
+    }
+
+    const selectedPrivacyLevel: TikTokPrivacyLevel = privacyLevel;
+
+    if (!capabilityState.capabilities.privacyLevels.includes(selectedPrivacyLevel)) {
+      return "Choose a TikTok visibility available for this account.";
+    }
+
+    if (
+      getBooleanSetting(settings, "brandedContent", false) &&
+      selectedPrivacyLevel === "SELF_ONLY"
+    ) {
+      return "TikTok paid partnerships cannot use Only me visibility.";
+    }
+  }
+
+  return null;
+}
+
+function getBooleanSetting(
+  settings: ConnectionPublishingSettings,
+  key: string,
+  fallback: boolean,
+) {
+  return typeof settings[key] === "boolean"
+    ? (settings[key] as boolean)
+    : fallback;
+}
+
+function getStringSetting(
+  settings: ConnectionPublishingSettings,
+  key: string,
+  fallback: string,
+) {
+  return typeof settings[key] === "string"
+    ? (settings[key] as string)
+    : fallback;
 }
 
 function StatusPreview({
@@ -3106,6 +4057,18 @@ function filterDraftsByTab(drafts: ScheduleDraft[], tab: ScheduleTab) {
   return drafts.filter((draft) => draft.status === "published");
 }
 
+function getPrimaryTabForDraft(draft: ScheduleDraft): ScheduleTab {
+  if (draft.status === "published") {
+    return "published";
+  }
+
+  if (isFailedDraft(draft)) {
+    return "failed";
+  }
+
+  return isUpcomingDraft(draft) ? "upcoming" : "drafts";
+}
+
 function isDraftTabDraft(draft: ScheduleDraft) {
   return !draft.scheduledDate && !draft.scheduledTime;
 }
@@ -3211,14 +4174,6 @@ function canScheduleFinalDraft(draft: ScheduleDraft) {
   );
 }
 
-function shouldShowFinalScheduleAction(draft: ScheduleDraft) {
-  return (
-    draft.status === "ready" ||
-    draft.status === "publishing_unavailable" ||
-    canRetrySchedulerCreateFailure(draft)
-  );
-}
-
 function canRetrySchedulerCreateFailure(draft: ScheduleDraft) {
   const targets = draft.targets ?? [];
 
@@ -3313,6 +4268,37 @@ async function queueCombinationRender({
   return data;
 }
 
+async function requestFinalSchedule({
+  connectionIds,
+  scheduleId,
+  timezone,
+  token,
+}: {
+  connectionIds: string[];
+  scheduleId: string;
+  timezone: string;
+  token: string;
+}) {
+  const response = await fetch(`/api/schedules/${scheduleId}/publish`, {
+    body: JSON.stringify({ connectionIds, timezone }),
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+  const data = (await response.json()) as SchedulePublishResponse;
+
+  if (!response.ok || data.ok !== true) {
+    throw new Error(
+      getApiResponseMessage(data, "Could not schedule the final post."),
+    );
+  }
+
+  return data;
+}
+
 function mapScheduledPostToScheduleDraft(schedule: ScheduledPost): ScheduleDraft {
   const metadata = schedule.metadata;
   const plannedScheduledDate =
@@ -3348,6 +4334,8 @@ function mapScheduledPostToScheduleDraft(schedule: ScheduledPost): ScheduleDraft
   });
 
   return {
+    canCancel: canCancelSchedule(schedule),
+    canEdit: canEditSchedule(schedule),
     caption: schedule.caption,
     combinedMedia,
     createdAt: schedule.createdAt,
@@ -3361,11 +4349,6 @@ function mapScheduledPostToScheduleDraft(schedule: ScheduledPost): ScheduleDraft
     plannedConnectionIds: getMetadataCsv(metadata.plannedConnectionIds),
     plannedScheduledFor: plannedScheduledFor ?? undefined,
     platforms: getDraftPlatformsFromSchedule(schedule),
-    postType:
-      typeof metadata.postType === "string" &&
-      schedulePostTypes.includes(metadata.postType as SchedulePostType)
-        ? (metadata.postType as SchedulePostType)
-        : undefined,
     scheduledDate,
     scheduledTime,
     sourceId: schedule.mediaAssetId ?? schedule.libraryItemId ?? undefined,
@@ -3666,6 +4649,101 @@ function getOpeningVideoEmptyCopy(source: OpeningVideoSourceTab) {
   };
 }
 
+function buildScheduleRequestBody(submission: ScheduleFormSubmission) {
+  return {
+    caption: submission.caption,
+    metadata: {
+      demoMediaId: submission.demoMedia.id,
+      demoMediaTitle: submission.demoMedia.title,
+      hookMediaId: submission.hookMedia.id,
+      hookMediaTitle: submission.hookMedia.title,
+      plannedScheduledFor: submission.scheduledFor,
+      scheduledDate: submission.scheduledDate,
+      scheduledTime: submission.scheduledTime,
+    },
+    plannedTargets: submission.targets,
+    scheduledDate: submission.scheduledDate,
+    scheduledFor: submission.scheduledFor,
+    scheduledTime: submission.scheduledTime,
+    source: {
+      id: submission.demoMedia.id,
+      kind: "media_asset" as const,
+    },
+    targets: [],
+    timezone: submission.timezone,
+    title: getCompositeMediaTitle(submission.hookMedia, submission.demoMedia),
+  };
+}
+
+function getSavedPlannedTargets(
+  schedule: ScheduledPost | null,
+): ScheduleCreateTargetInput[] {
+  if (!schedule) {
+    return [];
+  }
+
+  const snapshot = getString(schedule.metadata.plannedTargetsJson);
+
+  if (snapshot) {
+    try {
+      const parsed = JSON.parse(snapshot) as unknown;
+
+      if (Array.isArray(parsed)) {
+        return parsed.flatMap((entry): ScheduleCreateTargetInput[] => {
+          if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+            return [];
+          }
+
+          const target = entry as Record<string, unknown>;
+          const connectionId = getString(target.connectionId);
+          const platform = getString(target.platform);
+          const settings =
+            target.settings &&
+            typeof target.settings === "object" &&
+            !Array.isArray(target.settings)
+              ? (target.settings as Record<string, unknown>)
+              : {};
+
+          if (!connectionId) {
+            return [];
+          }
+
+          return [
+            {
+              connectionId,
+              platform:
+                platform &&
+                schedulePlatforms.includes(platform as SchedulePlatform)
+                  ? (platform as SchedulePlatform)
+                  : undefined,
+              settings,
+            },
+          ];
+        });
+      }
+    } catch {
+      // Fall back to the older connection ID snapshot below.
+    }
+  }
+
+  return getMetadataCsv(schedule.metadata.plannedConnectionIds).map(
+    (connectionId) => ({ connectionId }),
+  );
+}
+
+function getSavedPublishingSettings(value: unknown): ConnectionPublishingSettings {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(
+      (entry): entry is [string, boolean | string] =>
+        typeof entry[1] === "boolean" || typeof entry[1] === "string",
+    ),
+  );
+}
+
 function getCompositeMediaTitle(
   hookMedia: ScheduleMediaOption,
   demoMedia: ScheduleMediaOption,
@@ -3757,4 +4835,15 @@ function getTimezoneOptions(currentTimezone: string) {
       "Europe/London",
     ]),
   );
+}
+
+function useLockBodyScroll() {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
 }

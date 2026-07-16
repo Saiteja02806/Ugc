@@ -339,6 +339,32 @@ export async function listSocialConnections(
   return (data ?? []).map(mapSocialConnection);
 }
 
+export async function getSocialConnectionCredentialForOwner(params: {
+  connectionId: string;
+  userId: string;
+}) {
+  const { data, error } = await getClient()
+    .from("social_connections")
+    .select("*")
+    .eq("id", params.connectionId)
+    .eq("user_id", params.userId)
+    .is("revoked_at", null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error("Could not load the connected account credential.");
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    accessToken: decryptSecret(data.access_token_ciphertext),
+    connection: mapSocialConnection(data),
+  };
+}
+
 export async function disconnectSocialConnection(params: {
   connectionId: string;
   userId: string;

@@ -1,4 +1,5 @@
 import { logger } from "../logger.js";
+import type { YouTubeTargetPublishSettings } from "./social-publish-settings.js";
 
 const DEFAULT_MAX_UPLOAD_BYTES = 512 * 1024 * 1024;
 const DEFAULT_VIDEO_CATEGORY_ID = "22";
@@ -36,10 +37,12 @@ export async function publishYouTubeVideo(params: {
   caption: string;
   mimeType: string;
   onUploadSessionCreated?: (uploadUrl: string) => Promise<void>;
+  settings?: YouTubeTargetPublishSettings;
   title: string;
   uploadUrl?: string | null;
   videoUrl: string;
 }): Promise<YouTubePublishResult> {
+  const settings = resolvePublishSettings(params.settings);
   const video = await downloadVideoForYouTube({
     mimeType: params.mimeType,
     videoUrl: params.videoUrl,
@@ -74,6 +77,7 @@ export async function publishYouTubeVideo(params: {
       caption: params.caption,
       contentLength: video.bytes.byteLength,
       contentType: video.contentType,
+      settings,
       title: params.title,
     });
     await params.onUploadSessionCreated?.(uploadUrl);
@@ -88,7 +92,7 @@ export async function publishYouTubeVideo(params: {
   const videoUrl = buildYouTubeWatchUrl(videoId);
 
   logger.info("YouTube video uploaded", {
-    privacyStatus: getPrivacyStatus(),
+    privacyStatus: settings.privacyStatus,
     videoId,
   });
 
@@ -148,9 +152,10 @@ async function createYouTubeUploadSession(params: {
   caption: string;
   contentLength: number;
   contentType: string;
+  settings: ResolvedYouTubePublishSettings;
   title: string;
 }) {
-  const url = buildYouTubeUploadUrl();
+  const url = buildYouTubeUploadUrl(params.settings.notifySubscribers);
   const response = await fetch(url, {
     body: JSON.stringify({
       snippet: {
@@ -159,12 +164,9 @@ async function createYouTubeUploadSession(params: {
         title: normalizeTitle(params.title, params.caption),
       },
       status: {
-        containsSyntheticMedia: getBooleanEnv(
-          "YOUTUBE_CONTAINS_SYNTHETIC_MEDIA",
-          true,
-        ),
-        privacyStatus: getPrivacyStatus(),
-        selfDeclaredMadeForKids: false,
+        containsSyntheticMedia: params.settings.containsSyntheticMedia,
+        privacyStatus: params.settings.privacyStatus,
+        selfDeclaredMadeForKids: params.settings.madeForKids,
       },
     }),
     headers: {
@@ -313,7 +315,7 @@ function toArrayBuffer(buffer: Buffer) {
   ) as ArrayBuffer;
 }
 
-function buildYouTubeUploadUrl() {
+function buildYouTubeUploadUrl(notifySubscribers: boolean) {
   const baseUrl =
     process.env.YOUTUBE_UPLOAD_API_BASE_URL?.trim() ||
     "https://www.googleapis.com";
@@ -323,7 +325,7 @@ function buildYouTubeUploadUrl() {
   url.searchParams.set("uploadType", "resumable");
   url.searchParams.set(
     "notifySubscribers",
-    String(getBooleanEnv("YOUTUBE_NOTIFY_SUBSCRIBERS", false)),
+    String(notifySubscribers),
   );
 
   return url;
@@ -351,6 +353,28 @@ function getPrivacyStatus() {
   return value === "public" || value === "unlisted" || value === "private"
     ? value
     : "private";
+}
+
+type ResolvedYouTubePublishSettings = {
+  containsSyntheticMedia: boolean;
+  madeForKids: boolean;
+  notifySubscribers: boolean;
+  privacyStatus: "private" | "public" | "unlisted";
+};
+
+function resolvePublishSettings(
+  settings: YouTubeTargetPublishSettings | undefined,
+): ResolvedYouTubePublishSettings {
+  return {
+    containsSyntheticMedia:
+      settings?.containsSyntheticMedia ??
+      getBooleanEnv("YOUTUBE_CONTAINS_SYNTHETIC_MEDIA", true),
+    madeForKids: settings?.madeForKids ?? false,
+    notifySubscribers:
+      settings?.notifySubscribers ??
+      getBooleanEnv("YOUTUBE_NOTIFY_SUBSCRIBERS", false),
+    privacyStatus: settings?.privacyStatus ?? getPrivacyStatus(),
+  };
 }
 
 function getVideoCategoryId() {

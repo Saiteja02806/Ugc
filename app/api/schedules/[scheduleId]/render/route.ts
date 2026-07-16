@@ -184,7 +184,7 @@ export async function POST(
         ok: false,
         message: resolvedHookAsset.message,
       },
-      409,
+      resolvedHookAsset.status,
     );
   }
 
@@ -194,7 +194,7 @@ export async function POST(
         ok: false,
         message: resolvedDemoAsset.message,
       },
-      409,
+      resolvedDemoAsset.status,
     );
   }
 
@@ -263,6 +263,8 @@ export async function POST(
     });
 
     const queuedSchedule = await updateScheduledPostRenderState({
+      expectedStatus: "draft",
+      expectedUpdatedAt: schedule.updatedAt,
       metadata: {
         combinedRenderError: null,
         combinedRenderId: renderId,
@@ -279,6 +281,23 @@ export async function POST(
       userId,
     });
 
+    if (!queuedSchedule) {
+      await markBackgroundJobFailed({
+        errorMessage: "The schedule changed before rendering started.",
+        jobId: backgroundJob.id,
+      });
+
+      return jsonResponse(
+        {
+          code: "schedule_version_conflict",
+          ok: false,
+          message:
+            "This schedule changed while rendering was starting. Review it and try again.",
+        },
+        409,
+      );
+    }
+
     const message = await sendJobMessage({
       jobId: backgroundJob.id,
       jobType: COMBINATION_RENDER_JOB_TYPE,
@@ -292,7 +311,7 @@ export async function POST(
       jobId: updatedJob.id,
       ok: true,
       renderId,
-      schedule: queuedSchedule ?? schedule,
+      schedule: queuedSchedule,
       status: "queued",
     });
   } catch (error) {

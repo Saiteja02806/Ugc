@@ -1,6 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
 
 import { logger } from "../logger.js";
+import type { TikTokTargetPublishSettings } from "./social-publish-settings.js";
 
 const DEFAULT_MAX_STATUS_POLLS = 18;
 const DEFAULT_STATUS_POLL_INTERVAL_MS = 10_000;
@@ -40,19 +41,24 @@ export async function publishTikTokVideo(params: {
   caption: string;
   onPublishInitialized?: (publishId: string) => Promise<void>;
   publishId?: string | null;
+  settings?: TikTokTargetPublishSettings;
   videoUrl: string;
 }): Promise<TikTokPublishResult> {
   let publishId = params.publishId ?? null;
 
   if (!publishId) {
     const creatorInfo = await queryCreatorInfo(params.accessToken);
-    const privacyLevel = getPrivacyLevel(creatorInfo.privacy_level_options);
+    const privacyLevel = getPrivacyLevel(
+      creatorInfo.privacy_level_options,
+      params.settings,
+    );
 
     publishId = await initializeDirectPost({
       accessToken: params.accessToken,
       caption: params.caption,
       creatorInfo,
       privacyLevel,
+      settings: params.settings,
       videoUrl: params.videoUrl,
     });
     await params.onPublishInitialized?.(publishId);
@@ -90,6 +96,7 @@ async function initializeDirectPost(params: {
   caption: string;
   creatorInfo: TikTokCreatorInfo;
   privacyLevel: string;
+  settings?: TikTokTargetPublishSettings;
   videoUrl: string;
 }) {
   const payload = await postTikTokJson<{ publish_id?: string }>(
@@ -97,11 +104,17 @@ async function initializeDirectPost(params: {
     params.accessToken,
     {
       post_info: {
-        brand_content_toggle: false,
-        brand_organic_toggle: false,
-        disable_comment: Boolean(params.creatorInfo.comment_disabled),
-        disable_duet: Boolean(params.creatorInfo.duet_disabled),
-        disable_stitch: Boolean(params.creatorInfo.stitch_disabled),
+        brand_content_toggle: params.settings?.brandedContent === true,
+        brand_organic_toggle: params.settings?.brandOrganic === true,
+        disable_comment:
+          params.creatorInfo.comment_disabled === true ||
+          params.settings?.allowComment === false,
+        disable_duet:
+          params.creatorInfo.duet_disabled === true ||
+          params.settings?.allowDuet === false,
+        disable_stitch:
+          params.creatorInfo.stitch_disabled === true ||
+          params.settings?.allowStitch === false,
         privacy_level: params.privacyLevel,
         title: normalizeTikTokCaption(params.caption),
       },
@@ -220,11 +233,30 @@ function buildTikTokUrl(path: string) {
   return new URL(normalizedPath, baseUrl);
 }
 
-function getPrivacyLevel(privacyOptions: string[] | undefined) {
-  const requestedPrivacy =
-    process.env.TIKTOK_DEFAULT_PRIVACY_LEVEL?.trim() || "SELF_ONLY";
+function getPrivacyLevel(
+  privacyOptions: string[] | undefined,
+  settings: TikTokTargetPublishSettings | undefined,
+) {
+  const requestedPrivacy = settings?.privacyLevel;
+
+  if (requestedPrivacy) {
+    if (!privacyOptions?.includes(requestedPrivacy)) {
+      throw new Error(
+        "The selected TikTok visibility is no longer available.",
+      );
+    }
+
+    if (settings.brandedContent && requestedPrivacy === "SELF_ONLY") {
+      throw new Error(
+        "TikTok paid partnerships cannot use Only me visibility.",
+      );
+    }
+
+    return requestedPrivacy;
+  }
+
   const preferences = [
-    requestedPrivacy,
+    process.env.TIKTOK_DEFAULT_PRIVACY_LEVEL?.trim() ?? "SELF_ONLY",
     ...defaultPrivacyPreference,
   ];
   const privacyLevel = preferences.find((entry) =>

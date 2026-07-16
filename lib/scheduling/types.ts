@@ -52,12 +52,6 @@ export const scheduleSourceTypes = [
   "combined_video",
 ] as const;
 
-export const schedulePostTypes = [
-  "reel",
-  "tiktok_video",
-  "youtube_short",
-] as const;
-
 export const scheduleTabs = ["upcoming", "drafts", "published", "failed"] as const;
 
 export type SchedulePlatform = (typeof schedulePlatforms)[number];
@@ -72,8 +66,6 @@ export type ScheduledPostTargetStatus =
 export type ScheduleDraftStatus = (typeof scheduleDraftStatuses)[number];
 
 export type ScheduleSourceType = (typeof scheduleSourceTypes)[number];
-
-export type SchedulePostType = (typeof schedulePostTypes)[number];
 
 export type ScheduleTab = (typeof scheduleTabs)[number];
 
@@ -139,6 +131,7 @@ export type ScheduleCreateInput = {
   caption?: string;
   idempotencyKey?: string;
   metadata?: Record<string, unknown>;
+  plannedTargets?: ScheduleCreateTargetInput[];
   scheduledDate?: string;
   scheduledFor?: string;
   scheduledTime?: string;
@@ -146,6 +139,10 @@ export type ScheduleCreateInput = {
   targets?: ScheduleCreateTargetInput[];
   timezone?: string;
   title?: string;
+};
+
+export type ScheduleUpdateInput = ScheduleCreateInput & {
+  expectedUpdatedAt?: string;
 };
 
 export type ScheduleMediaSelection = {
@@ -160,6 +157,8 @@ export type ScheduleMediaSelection = {
 };
 
 export type ScheduleDraft = {
+  canCancel?: boolean;
+  canEdit?: boolean;
   caption: string;
   combinedMedia?: ScheduleMediaSelection;
   createdAt: string;
@@ -173,7 +172,6 @@ export type ScheduleDraft = {
   plannedConnectionIds?: string[];
   plannedScheduledFor?: string;
   platforms: SchedulePlatform[];
-  postType?: SchedulePostType;
   scheduledDate?: string;
   scheduledTime?: string;
   sourceId?: string;
@@ -186,6 +184,8 @@ export type ScheduleDraft = {
 };
 
 export type ScheduleDraftInput = {
+  canCancel?: boolean;
+  canEdit?: boolean;
   caption?: string;
   combinedMedia?: ScheduleMediaSelection;
   demoMedia?: ScheduleMediaSelection;
@@ -198,7 +198,6 @@ export type ScheduleDraftInput = {
   plannedConnectionIds?: string[];
   plannedScheduledFor?: string;
   platforms?: SchedulePlatform[];
-  postType?: SchedulePostType;
   scheduledDate?: string;
   scheduledTime?: string;
   sourceId?: string;
@@ -241,14 +240,4 @@ export function getScheduleStatusLabel(status: ScheduleDraftStatus) {
   };
 
   return labels[status];
-}
-
-export function getSchedulePostTypeLabel(postType: SchedulePostType) {
-  const labels: Record<SchedulePostType, string> = {
-    reel: "Reel",
-    tiktok_video: "TikTok video",
-    youtube_short: "YouTube Short",
-  };
-
-  return labels[postType];
 }

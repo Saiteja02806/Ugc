@@ -8,7 +8,6 @@ import {
   Film,
   Lock,
   Loader2,
-  Plus,
   Sparkles,
   UserRound,
   Video,
@@ -17,24 +16,38 @@ import { useRouter } from "next/navigation";
 import type { FormEvent, KeyboardEvent, RefObject } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { ReferenceImageAttachment } from "@/components/generation/reference-image-attachment";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset } from "@/lib/media/types";
 import { cn } from "@/lib/utils";
+import {
+  getAvatarDisplayName,
+  getAvatarFallbackText,
+} from "@/lib/video/avatar-display";
 
 type VideoRatio = "9:16" | "1:1" | "4:5" | "16:9";
 type VideoCount = 1 | 2 | 4;
 type GenerationState = "empty" | "generating" | "completed" | "failed";
-type AvatarSource = "my" | "global";
 
 type AvatarOption = {
-  durationSeconds: number | null;
   id: string;
   label: string;
-  previewUrl: string | null;
   selection: AvatarSelection;
-  source: AvatarSource;
-  subtitle: string;
+  thumbnailUrl: string | null;
 };
 
 type AvatarRatio = "9:16" | "1:1" | "4:5" | "16:9" | "other";
@@ -139,10 +152,9 @@ export function VideoGenerationWorkspace() {
     () => [...personalAvatars, ...globalAvatars],
     [globalAvatars, personalAvatars],
   );
-  const selectedAvatar =
-    avatarOptions.find((avatar) => avatar.id === selectedAvatarId) ??
-    avatarOptions[0] ??
-    null;
+  const selectedAvatar = selectedAvatarId
+    ? avatarOptions.find((avatar) => avatar.id === selectedAvatarId) ?? null
+    : null;
   const isGenerating = generationState === "generating";
 
   useEffect(() => {
@@ -181,41 +193,42 @@ export function VideoGenerationWorkspace() {
           throw new Error("Sign in before choosing influencers.");
         }
 
-        const [response, personalResponse] = await Promise.all([
-          fetch("/api/avatars", {
-            cache: "no-store",
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch("/api/media?collection=influencer", {
-            cache: "no-store",
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+        const [libraryResult, personalResult] = await Promise.allSettled([
+          fetchAvatarLibrary(token),
+          fetchPersonalInfluencers(token),
         ]);
-        const data = (await response.json()) as AvatarListResponse;
-        const personalData = (await personalResponse.json()) as
-          | { assets: MediaAsset[]; ok: true }
-          | { error?: string; ok?: false };
-
-        if (!response.ok || data.ok !== true) {
-          throw new Error(getApiErrorMessage(data, "Could not load influencers."));
-        }
-
-        if (!personalResponse.ok || personalData.ok !== true) {
-          throw new Error(getApiErrorMessage(personalData, "Could not load your influencers."));
-        }
 
         if (ignore) {
           return;
         }
 
-        setAvatarLibrary(data.avatars);
-        setPersonalAvatarAssets(personalData.assets);
+        const nextAvatarLibrary =
+          libraryResult.status === "fulfilled" ? libraryResult.value : [];
+        const nextPersonalAssets =
+          personalResult.status === "fulfilled" ? personalResult.value : [];
+        const partialErrors = [libraryResult, personalResult]
+          .filter(
+            (result): result is PromiseRejectedResult =>
+              result.status === "rejected",
+          )
+          .map((result) =>
+            getErrorMessage(result.reason, "Could not load influencers."),
+          );
+
+        setAvatarLibrary(nextAvatarLibrary);
+        setPersonalAvatarAssets(nextPersonalAssets);
+        setAvatarErrorMessage(
+          partialErrors.length > 0 ? partialErrors.join(" ") : null,
+        );
         setSelectedAvatarId((currentAvatarId) =>
           currentAvatarId &&
-          (data.avatars.some((avatar) => avatar.asset.id === currentAvatarId) ||
-            personalData.assets.some((asset) => asset.id === currentAvatarId))
+          (nextAvatarLibrary.some(
+            (avatar) => avatar.asset.id === currentAvatarId,
+          ) || nextPersonalAssets.some((asset) => asset.id === currentAvatarId))
             ? currentAvatarId
-            : personalData.assets[0]?.id ?? data.avatars[0]?.asset.id ?? null,
+            : nextPersonalAssets[0]?.id ??
+              nextAvatarLibrary[0]?.asset.id ??
+              null,
         );
       } catch (error) {
         if (!ignore) {
@@ -365,22 +378,47 @@ export function VideoGenerationWorkspace() {
 
 function mapAvatarLibraryItemToOption(avatar: AvatarLibraryItem): AvatarOption {
   return {
-    durationSeconds: avatar.asset.durationSeconds,
     id: avatar.asset.id,
     label: avatar.asset.name,
-    previewUrl: avatar.asset.thumbnailUrl ?? avatar.asset.sourceVideoUrl,
     selection: avatar.avatarSelection,
-    source: "global",
-    subtitle: getAvatarSubtitle(avatar),
+    thumbnailUrl: avatar.asset.thumbnailUrl,
   };
+}
+
+async function fetchAvatarLibrary(token: string) {
+  const response = await fetch("/api/avatars", {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = (await response.json()) as AvatarListResponse;
+
+  if (!response.ok || data.ok !== true) {
+    throw new Error(getApiErrorMessage(data, "Could not load influencer library."));
+  }
+
+  return data.avatars;
+}
+
+async function fetchPersonalInfluencers(token: string) {
+  const response = await fetch("/api/media?collection=influencer", {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = (await response.json()) as
+    | { assets: MediaAsset[]; ok: true }
+    | { error?: string; ok?: false };
+
+  if (!response.ok || data.ok !== true) {
+    throw new Error(getApiErrorMessage(data, "Could not load your influencers."));
+  }
+
+  return data.assets;
 }
 
 function mapPersonalMediaToAvatarOption(asset: MediaAsset): AvatarOption {
   return {
-    durationSeconds: asset.durationSeconds,
     id: asset.id,
     label: asset.title,
-    previewUrl: asset.thumbnailUrl ?? asset.url,
     selection: {
       avatarAssetId: asset.id,
       isTrimmed: false,
@@ -388,23 +426,8 @@ function mapPersonalMediaToAvatarOption(asset: MediaAsset): AvatarOption {
       trimEnd: asset.durationSeconds,
       trimStart: 0,
     },
-    source: "my",
-    subtitle: `${formatDuration(asset.durationSeconds)} - ${
-      asset.width && asset.height ? `${asset.width}x${asset.height}` : asset.ratio
-    } - Your upload`,
+    thumbnailUrl: asset.thumbnailUrl,
   };
-}
-
-function getAvatarSubtitle(avatar: AvatarLibraryItem) {
-  const duration = formatDuration(avatar.asset.durationSeconds);
-  const dimensions =
-    avatar.asset.width && avatar.asset.height
-      ? `${avatar.asset.width}x${avatar.asset.height}`
-      : avatar.asset.ratio;
-
-  return avatar.avatarSelection.isTrimmed
-    ? `${duration} - ${dimensions} - Trimmed`
-    : `${duration} - ${dimensions}`;
 }
 
 function getApiErrorMessage(response: unknown, fallback: string) {
@@ -422,17 +445,6 @@ function getApiErrorMessage(response: unknown, fallback: string) {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
-}
-
-function formatDuration(seconds: number | null) {
-  if (seconds === null || !Number.isFinite(seconds)) {
-    return "Duration pending";
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.max(0, Math.round(seconds % 60));
-
-  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
 function VideoResultsArea({
@@ -579,15 +591,8 @@ function VideoPromptBar({
       onSubmit={onSubmit}
       className="rounded-[24px] border border-border/80 bg-white/95 p-3 shadow-[0_16px_50px_rgb(16_32_51_/_0.10)] backdrop-blur sm:p-4"
     >
-      <div className="flex items-start gap-2">
-        <button
-          type="button"
-          aria-label="Attach video reference"
-          title="Attach video reference"
-          className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-white text-[#173454] transition hover:bg-[#fff8f4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          <Plus className="size-4" aria-hidden="true" />
-        </button>
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2">
+        <ReferenceImageAttachment disabled={isGenerating} />
 
         <textarea
           ref={textareaRef}
@@ -595,7 +600,7 @@ function VideoPromptBar({
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
           onKeyDown={onTextareaKeyDown}
-          className="max-h-32 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-1 py-2.5 text-sm font-medium leading-6 text-foreground outline-none placeholder:text-[#8c9aab]"
+          className="col-start-2 row-start-1 max-h-32 min-h-11 min-w-0 resize-none bg-transparent px-1 py-2.5 text-sm font-medium leading-6 text-foreground outline-none placeholder:text-[#8c9aab]"
           placeholder="Describe the video you want to create..."
         />
 
@@ -603,7 +608,7 @@ function VideoPromptBar({
           type="submit"
           disabled={VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating || !avatar}
           title={VIDEO_GENERATION_LOCKED ? "Video generation is locked" : undefined}
-          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[118px]"
+          className="col-start-3 row-start-1 inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[118px]"
         >
           {VIDEO_GENERATION_LOCKED ? (
             <>
@@ -905,85 +910,114 @@ function AvatarPicker({
   selectedAvatarId: string | null;
 }) {
   const [open, setOpen] = useState(false);
-  const controlId = useId();
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-
-  useFloatingMenu(open, wrapperRef, triggerRef, setOpen);
+  const hasOptions = personalAvatars.length > 0 || globalAvatars.length > 0;
+  const triggerLabel = avatarLoading
+    ? "Loading influencers"
+    : selectedAvatar
+      ? `Choose influencer, currently ${selectedAvatar.label}`
+      : "Choose influencer";
 
   function selectAvatar(avatarId: string) {
     onChange(avatarId);
     setOpen(false);
-    triggerRef.current?.focus();
   }
 
   return (
-    <div ref={wrapperRef} className="relative">
-      <div
-        id={controlId}
-        className={cn(
-          "absolute bottom-[calc(100%+6px)] left-0 z-30 w-[min(82vw,360px)] overflow-hidden rounded-2xl border border-border bg-white shadow-[0_18px_48px_rgb(16_32_51_/_0.16)] transition-[max-height,opacity,transform] duration-200 ease-out",
-          open
-            ? "max-h-[420px] translate-y-0 opacity-100"
-            : "pointer-events-none max-h-0 translate-y-2 opacity-0",
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="max-w-[190px]"
+            aria-label={triggerLabel}
+            title={selectedAvatar?.label ?? "Choose influencer"}
+          />
+        }
+      >
+        {avatarLoading ? (
+          <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+        ) : selectedAvatar ? (
+          <Avatar size="sm">
+            {selectedAvatar.thumbnailUrl ? (
+              <AvatarImage src={selectedAvatar.thumbnailUrl} alt="" />
+            ) : null}
+            <AvatarFallback>
+              {getAvatarFallbackText(selectedAvatar.label)}
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <UserRound aria-hidden="true" />
         )}
-      >
-        <div className="max-h-[420px] overflow-y-auto p-2">
-          {avatarLoading ? (
-            <div className="flex items-center gap-2 rounded-xl px-2 py-3 text-sm font-semibold text-muted">
-              <Loader2 className="size-4 animate-spin text-primary" />
-              Loading influencer library...
-            </div>
-          ) : avatarErrorMessage ? (
-            <div className="rounded-xl border border-error/20 bg-error/5 px-3 py-2 text-sm font-semibold text-error">
-              {avatarErrorMessage}
-            </div>
-          ) : (
-            <>
-              <AvatarGroup
-                emptyMessage="No personal influencers yet. Choose a global influencer to start."
-                label="My influencers"
-                options={personalAvatars}
-                selectedAvatarId={selectedAvatarId}
-                onSelect={selectAvatar}
-              />
-              <div className="mt-2 border-t border-border pt-2">
-                <AvatarGroup
-                  emptyMessage="No global influencer videos are ready yet."
-                  label={`Global influencers (${globalAvatars.length})`}
-                  options={globalAvatars}
-                  selectedAvatarId={selectedAvatarId}
-                  onSelect={selectAvatar}
-                />
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      <button
-        ref={triggerRef}
-        type="button"
-          aria-expanded={open}
-          aria-controls={controlId}
-          onClick={() => setOpen((currentOpen) => !currentOpen)}
-        className="inline-flex h-9 max-w-[210px] items-center gap-2 rounded-full border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition hover:bg-[#fff8f4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      >
-        <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
         <span className="truncate">
-          {avatarLoading
-            ? "Loading influencers"
-            : selectedAvatar?.label ?? "Choose influencer"}
+          {avatarLoading ? "Loading" : "Influencer"}
         </span>
         <ChevronDown
+          data-icon="inline-end"
           className={cn(
-            "size-4 shrink-0 text-[#405977] transition-transform duration-200",
+            "transition-transform duration-200 motion-reduce:transition-none",
             open && "rotate-180",
           )}
           aria-hidden="true"
         />
-      </button>
-    </div>
+      </PopoverTrigger>
+
+      <PopoverContent
+        side="top"
+        align="start"
+        sideOffset={8}
+        className="w-[min(92vw,440px)] gap-0 p-0"
+      >
+        <PopoverHeader className="border-b border-border p-3">
+          <PopoverTitle>Choose an influencer</PopoverTitle>
+          <PopoverDescription>
+            Select by face so the on-camera style is easy to compare.
+          </PopoverDescription>
+        </PopoverHeader>
+
+        {avatarLoading ? <AvatarPickerSkeleton /> : null}
+
+        {!avatarLoading && avatarErrorMessage ? (
+          <Alert variant="destructive" className="m-3 w-auto">
+            <AlertCircle aria-hidden="true" />
+            <AlertTitle>
+              {hasOptions
+                ? "Some influencers unavailable"
+                : "Influencers unavailable"}
+            </AlertTitle>
+            <AlertDescription>{avatarErrorMessage}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {!avatarLoading && hasOptions ? (
+          <ScrollArea className="h-[min(62vh,430px)]">
+            <div className="flex flex-col gap-5 p-3">
+              <AvatarGroup
+                emptyMessage="No uploaded influencers yet."
+                label="Your influencers"
+                options={personalAvatars}
+                selectedAvatarId={selectedAvatarId}
+                onSelect={selectAvatar}
+              />
+              <AvatarGroup
+                emptyMessage="No library influencers are available yet."
+                label="Influencer library"
+                options={globalAvatars}
+                selectedAvatarId={selectedAvatarId}
+                onSelect={selectAvatar}
+              />
+            </div>
+          </ScrollArea>
+        ) : null}
+
+        {!avatarLoading && !avatarErrorMessage && !hasOptions ? (
+          <div className="p-4 text-sm font-medium text-muted-foreground">
+            No influencers are available yet.
+          </div>
+        ) : null}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -1000,56 +1034,88 @@ function AvatarGroup({
   options: AvatarOption[];
   selectedAvatarId: string | null;
 }) {
+  const groupId = useId();
+
   return (
-    <div>
-      <p className="px-2 py-1 text-xs font-bold uppercase tracking-normal text-muted">
-        {label}
-      </p>
+    <section aria-labelledby={groupId}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 id={groupId} className="text-sm font-semibold text-foreground">
+          {label}
+        </h3>
+        <span className="text-xs font-medium text-muted-foreground">
+          {options.length}
+        </span>
+      </div>
       {options.length > 0 ? (
-        <div className="grid gap-1">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {options.map((avatar) => {
             const selected = avatar.id === selectedAvatarId;
+            const displayName = getAvatarDisplayName(avatar.label);
 
             return (
               <button
                 key={avatar.id}
                 type="button"
+                aria-label={`Choose ${avatar.label}`}
+                aria-pressed={selected}
+                title={avatar.label}
                 onClick={() => onSelect(avatar.id)}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition",
-                  selected ? "bg-primary/10 text-primary" : "hover:bg-[#fff8f4]",
+                  "group min-w-0 rounded-lg p-1.5 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none",
+                  selected
+                    ? "bg-primary/10 ring-2 ring-primary"
+                    : "hover:bg-muted",
                 )}
               >
-                <span
-                  className={cn(
-                    "flex size-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold",
-                    selected
-                      ? "border-primary/30 bg-white text-primary"
-                      : "border-border bg-[#fbf8f4] text-[#173454]",
-                  )}
-                >
-                  {avatar.label.charAt(0)}
+                <span className="relative block aspect-[3/4] overflow-hidden rounded-md bg-muted">
+                  <Avatar className="size-full rounded-[inherit] after:rounded-[inherit]">
+                    {avatar.thumbnailUrl ? (
+                      <AvatarImage
+                        src={avatar.thumbnailUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="rounded-[inherit]"
+                      />
+                    ) : null}
+                    <AvatarFallback className="rounded-[inherit] text-base font-semibold">
+                      {getAvatarFallbackText(avatar.label)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {selected ? (
+                    <span className="absolute right-1.5 top-1.5 inline-flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                      <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                    </span>
+                  ) : null}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-bold">
-                    {avatar.label}
-                  </span>
-                  <span className="block truncate text-xs font-medium text-muted">
-                    {avatar.subtitle}
-                  </span>
+                <span className="mt-1.5 block truncate px-0.5 text-xs font-semibold text-foreground">
+                  {displayName}
                 </span>
-                {selected ? (
-                  <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
-                ) : null}
               </button>
             );
           })}
         </div>
       ) : (
-        <p className="px-2 py-2 text-xs font-semibold leading-5 text-muted">
+        <p className="rounded-lg bg-muted px-3 py-2 text-xs font-medium leading-5 text-muted-foreground">
           {emptyMessage}
         </p>
       )}
+    </section>
+  );
+}
+
+function AvatarPickerSkeleton() {
+  return (
+    <div className="p-3" role="status" aria-label="Loading influencer library">
+      <Skeleton className="mb-3 h-4 w-32" />
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        {Array.from({ length: 8 }, (_, index) => (
+          <div key={index} className="flex flex-col gap-2">
+            <Skeleton className="aspect-[3/4] w-full" />
+            <Skeleton className="h-3 w-3/4" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

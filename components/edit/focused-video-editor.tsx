@@ -2,8 +2,11 @@
 
 import {
   AlertCircle,
+  Clock3,
   Film,
+  Layers3,
   Loader2,
+  Pause,
   Play,
   Plus,
   RotateCcw,
@@ -33,9 +36,9 @@ import {
 } from "@/lib/edit/video-library";
 import {
   EDIT_OVERLAY_HORIZONTAL_INSET_PERCENT,
+  EDIT_OVERLAY_SHADOW_OFFSET_PX,
   EDIT_OVERLAY_VERTICAL_INSET_PERCENT,
-  getEditOverlayBackgroundColor,
-  getEditOverlayRenderMetrics,
+  buildEditOverlayTextLayout,
 } from "@/lib/edit/overlay-render-spec";
 import { cn } from "@/lib/utils";
 
@@ -48,22 +51,32 @@ export type FocusedVideoEditorDraftState = EditableVideoDraftInput;
 
 export function FocusedVideoEditor({
   actionFooter,
+  hasSavedVideoWithNewerChanges = false,
+  isCurrentVersionSaved = false,
   onDraftChange,
+  onDraftValidityChange,
+  renderedVideoUrl,
   video,
 }: {
   actionFooter?: ReactNode;
+  hasSavedVideoWithNewerChanges?: boolean;
+  isCurrentVersionSaved?: boolean;
   onDraftChange?: (draft: FocusedVideoEditorDraftState) => void;
+  onDraftValidityChange?: (isValid: boolean) => void;
+  renderedVideoUrl?: string | null;
   video: EditableVideo;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hasInitializedMetadataRef = useRef(false);
+  const draftPreviewTabRef = useRef<HTMLButtonElement | null>(null);
+  const renderedPreviewTabRef = useRef<HTMLButtonElement | null>(null);
   const initialDuration = video.durationSeconds ?? 0;
   const initialTrimStart = video.draft?.trimStartSeconds ?? 0;
   const initialTrimEnd = video.draft?.trimEndSeconds ?? initialDuration;
   const [currentTime, setCurrentTime] = useState(initialTrimStart);
   const [duration, setDuration] = useState(initialDuration);
-  const [previewAspectRatio, setPreviewAspectRatio] = useState(
-    getPreviewAspectRatioNumber(video.ratio),
-  );
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+  const [previewMode, setPreviewMode] = useState<"draft" | "rendered">("draft");
   const [textOverlays, setTextOverlays] = useState<TextOverlay[]>(
     () => video.draft?.textOverlays ?? [],
   );
@@ -86,7 +99,19 @@ export function FocusedVideoEditor({
   const selectedDuration = Math.max(0, trimEnd - trimStart);
   const canPreviewTrim =
     hasVideoSource && effectiveDuration > 0 && selectedDuration >= MIN_TRIM_SECONDS;
-  const maxPreviewWidth = 320;
+  const previewAspectRatio = getPreviewAspectRatioNumber(video.ratio);
+  const activePreviewMode = renderedVideoUrl ? previewMode : "draft";
+  const truncatedOverlayIds = new Set(
+    textOverlays
+      .filter(
+        (overlay) =>
+          overlay.text.trim() &&
+          buildEditOverlayTextLayout(overlay.text, overlay.style, video.ratio)
+            .isTruncated,
+      )
+      .map((overlay) => overlay.id),
+  );
+  const hasTruncatedOverlay = truncatedOverlayIds.size > 0;
 
   useEffect(() => {
     onDraftChange?.({
@@ -95,6 +120,10 @@ export function FocusedVideoEditor({
       trimStartSeconds: trimStart,
     });
   }, [onDraftChange, textOverlays, trimEnd, trimStart]);
+
+  useEffect(() => {
+    onDraftValidityChange?.(!hasTruncatedOverlay);
+  }, [hasTruncatedOverlay, onDraftValidityChange]);
 
   useEffect(() => {
     if (videoLoadState !== "loading") {
@@ -113,16 +142,20 @@ export function FocusedVideoEditor({
     }
 
     const metadataDuration = Math.max(0, videoElement.duration);
+
+    if (hasInitializedMetadataRef.current) {
+      setDuration(metadataDuration);
+      setVideoLoadState("ready");
+      return;
+    }
+
     const initialRange = getInitialTrimRange({
       duration: metadataDuration,
       trimEnd: video.draft?.trimEndSeconds ?? metadataDuration,
       trimStart: initialTrimStart,
     });
 
-    if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
-      setPreviewAspectRatio(videoElement.videoWidth / videoElement.videoHeight);
-    }
-
+    hasInitializedMetadataRef.current = true;
     setDuration(metadataDuration);
     setTrimStart(initialRange.start);
     setTrimEnd(initialRange.end);
@@ -145,7 +178,29 @@ export function FocusedVideoEditor({
       videoElement.pause();
       videoElement.currentTime = trimStart;
       setCurrentTime(trimStart);
+      setIsPreviewPlaying(false);
     }
+  }
+
+  function togglePreviewPlayback() {
+    const videoElement = videoRef.current;
+
+    if (!videoElement || !canPreviewTrim) {
+      return;
+    }
+
+    if (!videoElement.paused) {
+      videoElement.pause();
+      setIsPreviewPlaying(false);
+      return;
+    }
+
+    if (videoElement.currentTime < trimStart || videoElement.currentTime >= trimEnd) {
+      videoElement.currentTime = trimStart;
+      setCurrentTime(trimStart);
+    }
+
+    void videoElement.play();
   }
 
   function seekPreview(nextTime: number) {
@@ -214,9 +269,45 @@ export function FocusedVideoEditor({
       return;
     }
 
+    setPreviewMode("draft");
     videoElement.currentTime = trimStart;
     setCurrentTime(trimStart);
     void videoElement.play();
+  }
+
+  function switchPreviewMode(nextMode: "draft" | "rendered") {
+    if (nextMode === "rendered") {
+      videoRef.current?.pause();
+    }
+
+    setPreviewMode(nextMode);
+  }
+
+  function handlePreviewTabKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+  ) {
+    let nextMode: "draft" | "rendered" | null = null;
+
+    if (event.key === "ArrowLeft" || event.key === "ArrowUp" || event.key === "Home") {
+      nextMode = "draft";
+    } else if (
+      event.key === "ArrowRight" ||
+      event.key === "ArrowDown" ||
+      event.key === "End"
+    ) {
+      nextMode = "rendered";
+    }
+
+    if (!nextMode) {
+      return;
+    }
+
+    event.preventDefault();
+    switchPreviewMode(nextMode);
+    (nextMode === "draft"
+      ? draftPreviewTabRef.current
+      : renderedPreviewTabRef.current
+    )?.focus();
   }
 
   function addTextOverlay() {
@@ -277,95 +368,224 @@ export function FocusedVideoEditor({
   }
 
   return (
-    <section className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
-      <div className="grid gap-0 lg:grid-cols-[344px_minmax(0,1fr)] xl:grid-cols-[368px_minmax(0,1fr)]">
-        <section className="border-b border-border bg-[#f5f5f6] px-4 py-5 sm:px-5 lg:border-b-0 lg:border-r lg:py-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Film className="size-4 text-muted" aria-hidden="true" />
-              <h2 className="text-sm font-semibold text-foreground-strong">Preview</h2>
-            </div>
-            <span className="text-xs font-medium text-muted">
-              {formatPreciseTime(selectedDuration)} selected
-            </span>
-          </div>
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-card">
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid min-h-0 min-w-0 grid-rows-[minmax(420px,1fr)_auto] bg-deep-contrast lg:grid-rows-[minmax(0,1fr)_auto]">
+          <section className="flex min-h-0 flex-col overflow-hidden px-4 py-4 sm:px-6 sm:py-5">
+            <div className="mb-4 flex items-center justify-between gap-3 text-white">
+              <div className="flex min-w-0 items-center gap-2">
+                <Film className="size-4 text-white/65" aria-hidden="true" />
+                <h2 className="text-sm font-semibold">Stage</h2>
+                <span className="rounded-full bg-white/10 px-2 py-1 text-[11px] font-semibold text-white/70">
+                  {video.ratio} output
+                </span>
+              </div>
 
-          <div className="flex justify-center">
-            <div
-              className="relative overflow-hidden rounded-md bg-black text-white [container-type:size]"
-              style={{
-                aspectRatio: previewAspectRatio,
-                maxHeight: "68vh",
-                width: `min(100%, ${maxPreviewWidth}px)`,
-              }}
-            >
-              {video.videoUrl ? (
-                <video
-                  ref={videoRef}
-                  src={video.videoUrl}
-                  poster={video.thumbnailUrl ?? undefined}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  onCanPlay={() => setVideoLoadState("ready")}
-                  onError={() => setVideoLoadState("error")}
-                  onLoadedMetadata={handleLoadedMetadata}
-                  onTimeUpdate={handleTimeUpdate}
-                  className="size-full object-contain object-center"
-                />
-              ) : null}
-
-              {videoLoadState === "loading" ? (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35">
-                  <div className="flex items-center gap-2 rounded-md bg-black/65 px-3 py-2 text-xs font-semibold text-white">
-                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                    Loading preview
-                  </div>
-                </div>
-              ) : null}
-
-              {videoLoadState === "error" ? (
-                <div className="absolute inset-0 flex size-full items-center justify-center bg-[#17181b] px-6 text-center">
-                  <div>
-                    <Film className="mx-auto size-8 text-white/60" aria-hidden="true" />
-                    <p className="mt-3 text-sm font-semibold text-white/85">
-                      Preview unavailable
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-white/60">
-                      Refresh the demo to try loading it again.
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-
-              {textOverlays.map((overlay) =>
-                overlay.text.trim() ? (
-                  <div
-                    key={overlay.id}
-                    className={getOverlayPositionClass(overlay.position)}
-                    style={getOverlayPositionStyle(overlay.position)}
+              {renderedVideoUrl ? (
+                <div
+                  role="tablist"
+                  aria-label="Preview version"
+                  className="flex rounded-control bg-black/25 p-1"
+                >
+                  <button
+                    ref={draftPreviewTabRef}
+                    id="edit-preview-tab-draft"
+                    type="button"
+                    role="tab"
+                    aria-controls="edit-preview-panel"
+                    aria-selected={activePreviewMode === "draft"}
+                    onClick={() => switchPreviewMode("draft")}
+                    onKeyDown={handlePreviewTabKeyDown}
+                    tabIndex={activePreviewMode === "draft" ? 0 : -1}
+                    className={cn(
+                      "h-8 rounded-[6px] px-3 text-xs font-semibold transition-colors",
+                      activePreviewMode === "draft"
+                        ? "bg-white text-deep-contrast"
+                        : "text-white/65 hover:text-white",
+                    )}
                   >
-                    <div
-                      className={getOverlayStyleClass()}
-                      style={getOverlayStyle(overlay.style, video.ratio)}
-                    >
-                      {overlay.text}
-                    </div>
-                  </div>
-                ) : null,
+                    Draft
+                  </button>
+                  <button
+                    ref={renderedPreviewTabRef}
+                    id="edit-preview-tab-rendered"
+                    type="button"
+                    role="tab"
+                    aria-controls="edit-preview-panel"
+                    aria-selected={activePreviewMode === "rendered"}
+                    onClick={() => switchPreviewMode("rendered")}
+                    onKeyDown={handlePreviewTabKeyDown}
+                    tabIndex={activePreviewMode === "rendered" ? 0 : -1}
+                    className={cn(
+                      "h-8 rounded-[6px] px-3 text-xs font-semibold transition-colors",
+                      activePreviewMode === "rendered"
+                        ? "bg-white text-deep-contrast"
+                        : "text-white/65 hover:text-white",
+                    )}
+                  >
+                    {isCurrentVersionSaved
+                      ? "Export"
+                      : hasSavedVideoWithNewerChanges
+                        ? "Previous export"
+                        : "Export"}
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs font-medium text-white/60">
+                  Exact crop preview
+                </span>
               )}
             </div>
-          </div>
-        </section>
 
-        <aside className="min-w-0 bg-card">
-          <div className="space-y-7 px-4 py-5 sm:px-6 lg:py-6 xl:px-7">
+            <div
+              id={renderedVideoUrl ? "edit-preview-panel" : undefined}
+              role={renderedVideoUrl ? "tabpanel" : undefined}
+              aria-labelledby={
+                renderedVideoUrl
+                  ? `edit-preview-tab-${activePreviewMode}`
+                  : undefined
+              }
+              className="flex min-h-0 flex-1 items-center justify-center"
+            >
+              <div
+                className="relative max-h-full max-w-full overflow-hidden bg-black text-white shadow-[0_12px_28px_rgb(0_0_0_/_0.34)] [container-type:size]"
+                style={{
+                  aspectRatio: previewAspectRatio,
+                  height: "min(100%, 680px)",
+                }}
+              >
+                {video.videoUrl ? (
+                  <video
+                    ref={videoRef}
+                    src={video.videoUrl}
+                    poster={video.thumbnailUrl ?? undefined}
+                    playsInline
+                    preload="metadata"
+                    onCanPlay={() => setVideoLoadState("ready")}
+                    onError={() => setVideoLoadState("error")}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onPause={() => setIsPreviewPlaying(false)}
+                    onPlay={() => setIsPreviewPlaying(true)}
+                    onTimeUpdate={handleTimeUpdate}
+                    className={cn(
+                      "size-full object-cover object-center",
+                      activePreviewMode === "draft" ? "block" : "hidden",
+                    )}
+                  />
+                ) : null}
+
+                {activePreviewMode === "rendered" && renderedVideoUrl ? (
+                  <video
+                    key={renderedVideoUrl}
+                    src={renderedVideoUrl}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="size-full object-cover object-center"
+                  />
+                ) : null}
+
+                {activePreviewMode === "draft" ? (
+                  <>
+                    {videoLoadState === "loading" ? (
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35">
+                        <div className="flex items-center gap-2 rounded-control bg-black/70 px-3 py-2 text-xs font-semibold text-white">
+                          <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                          Loading preview
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {videoLoadState === "error" ? (
+                      <div className="absolute inset-0 flex size-full items-center justify-center bg-deep-contrast px-6 text-center">
+                        <div>
+                          <Film className="mx-auto size-8 text-white/60" aria-hidden="true" />
+                          <p className="mt-3 text-sm font-semibold text-white">
+                            Preview unavailable
+                          </p>
+                          <p className="mt-1 max-w-56 text-xs leading-5 text-white/65">
+                            The source video could not be loaded. Check the media file and try again.
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {videoLoadState === "ready"
+                      ? textOverlays.map((overlay) =>
+                          overlay.text.trim() ? (
+                            <div
+                              key={overlay.id}
+                              className={getOverlayPositionClass(overlay.position)}
+                              style={getOverlayPositionStyle(overlay.position)}
+                            >
+                              <button
+                                type="button"
+                                aria-label={`Edit ${getPositionLabel(overlay.position)} text`}
+                                aria-pressed={overlay.id === selectedOverlayId}
+                                onClick={() => setSelectedOverlayId(overlay.id)}
+                                className={cn(
+                                  getOverlayStyleClass(),
+                                  "pointer-events-auto rounded-[3px] outline-none transition-[box-shadow] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand",
+                                  overlay.id === selectedOverlayId &&
+                                    "ring-1 ring-white/80 ring-offset-2 ring-offset-brand",
+                                )}
+                                style={getOverlayStyle(overlay, video.ratio)}
+                              >
+                                {getOverlayPreviewGraphic(overlay, video.ratio)}
+                              </button>
+                            </div>
+                          ) : null,
+                        )
+                      : null}
+                  </>
+                ) : null}
+              </div>
+            </div>
+
+            {activePreviewMode === "draft" ? (
+              <div className="mx-auto mt-4 flex w-full max-w-3xl items-center gap-3 text-white">
+                <button
+                  type="button"
+                  onClick={togglePreviewPlayback}
+                  disabled={!canPreviewTrim}
+                  aria-label={isPreviewPlaying ? "Pause preview" : "Play preview"}
+                  className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-white text-deep-contrast transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-deep-contrast disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {isPreviewPlaying ? (
+                    <Pause className="size-4" aria-hidden="true" />
+                  ) : (
+                    <Play className="size-4 translate-x-px" aria-hidden="true" />
+                  )}
+                </button>
+                <span className="w-20 shrink-0 text-xs font-semibold tabular-nums text-white/75">
+                  {formatPreciseTime(currentTime)}
+                </span>
+                <input
+                  type="range"
+                  aria-label="Preview playhead"
+                  min={trimStart}
+                  max={Math.max(trimStart, trimEnd)}
+                  step={0.01}
+                  value={clampTime(currentTime, trimStart, Math.max(trimStart, trimEnd))}
+                  onChange={(event) => seekPreview(Number(event.target.value))}
+                  disabled={!canPreviewTrim}
+                  className="h-1 min-w-0 flex-1 cursor-pointer accent-brand disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <span className="w-20 shrink-0 text-right text-xs font-semibold tabular-nums text-white/75">
+                  {formatPreciseTime(trimEnd)}
+                </span>
+              </div>
+            ) : null}
+          </section>
+
+          <div className="border-t border-border bg-card px-4 py-4 sm:px-6">
             <TrimControls
               canPreviewTrim={canPreviewTrim}
               currentTime={currentTime}
               duration={effectiveDuration}
               message={trimMessage}
               selectedDuration={selectedDuration}
+              thumbnailUrl={video.thumbnailUrl}
               trimEnd={trimEnd}
               trimStart={trimStart}
               onPlayTrimmedPreview={playTrimmedPreview}
@@ -373,25 +593,41 @@ export function FocusedVideoEditor({
               onTrimEndChange={updateTrimEnd}
               onTrimStartChange={updateTrimStart}
             />
+          </div>
+        </div>
 
+        <aside className="min-h-0 min-w-0 overflow-y-auto border-t border-border bg-card lg:border-l lg:border-t-0">
+          <div className="px-4 py-5 sm:px-6">
+            <div className="mb-5 flex items-center gap-2">
+              <Layers3 className="size-4 text-primary" aria-hidden="true" />
+              <div>
+                <h2 className="text-sm font-semibold text-foreground-strong">Text inspector</h2>
+                <p className="mt-0.5 text-xs text-muted">Select text on the stage or in the layer list.</p>
+              </div>
+            </div>
             <TextOverlayControls
               overlays={textOverlays}
               selectedOverlay={selectedOverlay}
               selectedOverlayId={selectedOverlayId}
+              selectedOverlayIsTruncated={
+                selectedOverlay
+                  ? truncatedOverlayIds.has(selectedOverlay.id)
+                  : false
+              }
               onAddOverlay={addTextOverlay}
               onDeleteOverlay={deleteTextOverlay}
               onSelectOverlay={setSelectedOverlayId}
               onUpdateOverlay={updateTextOverlay}
             />
           </div>
+
+          {actionFooter ? (
+            <footer className="sticky bottom-0 border-t border-border bg-card px-4 py-3 sm:px-6">
+              {actionFooter}
+            </footer>
+          ) : null}
         </aside>
       </div>
-
-      {actionFooter ? (
-        <footer className="border-t border-border bg-card-muted px-4 py-3 sm:px-6">
-          {actionFooter}
-        </footer>
-      ) : null}
     </section>
   );
 }
@@ -406,6 +642,7 @@ function TrimControls({
   onTrimEndChange,
   onTrimStartChange,
   selectedDuration,
+  thumbnailUrl,
   trimEnd,
   trimStart,
 }: {
@@ -418,14 +655,48 @@ function TrimControls({
   onTrimEndChange: (seconds: number) => void;
   onTrimStartChange: (seconds: number) => void;
   selectedDuration: number;
+  thumbnailUrl: string | null;
   trimEnd: number;
   trimStart: number;
 }) {
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const isEditingStartRef = useRef(false);
+  const isEditingEndRef = useRef(false);
   const [activeHandle, setActiveHandle] = useState<TrimHandle | null>(null);
+  const [startInput, setStartInput] = useState(() => formatNumberInput(trimStart));
+  const [endInput, setEndInput] = useState(() => formatNumberInput(trimEnd));
   const selectedLeft = getTimePercent(trimStart, duration);
   const selectedRight = getTimePercent(trimEnd, duration);
+  const currentPercent = getTimePercent(currentTime, duration);
   const canEditTrim = duration > 0;
+
+  useEffect(() => {
+    if (!isEditingStartRef.current) {
+      setStartInput(formatNumberInput(trimStart));
+    }
+  }, [trimStart]);
+
+  useEffect(() => {
+    if (!isEditingEndRef.current) {
+      setEndInput(formatNumberInput(trimEnd));
+    }
+  }, [trimEnd]);
+
+  function commitTimeInput(
+    input: string,
+    currentValue: number,
+    onCommit: (seconds: number) => void,
+    setInput: (value: string) => void,
+  ) {
+    const nextValue = Number(input);
+
+    if (!input.trim() || !Number.isFinite(nextValue)) {
+      setInput(formatNumberInput(currentValue));
+      return;
+    }
+
+    onCommit(nextValue);
+  }
 
   function updateHandleFromPointer(
     handle: TrimHandle,
@@ -523,45 +794,66 @@ function TrimControls({
   }
 
   return (
-    <section className="border-b border-border pb-7">
+    <section aria-labelledby="trim-heading">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Scissors className="size-4 text-primary" aria-hidden="true" />
-          <h3 className="text-sm font-semibold text-foreground-strong">
+          <h3 id="trim-heading" className="text-sm font-semibold text-foreground-strong">
             Trim clip
           </h3>
         </div>
-        <span className="rounded-full bg-card-muted px-2.5 py-1 text-xs font-semibold text-muted">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-card-muted px-2.5 py-1 text-xs font-semibold text-muted">
+          <Clock3 className="size-3" aria-hidden="true" />
           {formatPreciseTime(selectedDuration)} selected
         </span>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-3">
         <div
           ref={trackRef}
-          className="relative mx-5 h-[72px]"
+          className="relative mx-5 h-[76px] touch-none select-none"
           onPointerDown={handleTrackPointerDown}
         >
-          <span
-            className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-md bg-foreground-strong px-2 py-1 text-[11px] font-semibold text-white"
-            style={{ left: `${selectedLeft}%` }}
-          >
-            {formatPreciseTime(trimStart)}
-          </span>
-          <span
-            className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-md bg-foreground-strong px-2 py-1 text-[11px] font-semibold text-white"
-            style={{ left: `${selectedRight}%` }}
-          >
-            {formatPreciseTime(trimEnd || duration)}
-          </span>
-          <div className="absolute inset-x-0 top-11 h-1 -translate-y-1/2 rounded-full bg-[#dedfe2]" />
+          <div className="pointer-events-none absolute inset-x-0 top-4 flex h-12 overflow-hidden rounded-control bg-deep-contrast">
+            {Array.from({ length: 10 }, (_, index) => (
+              <div
+                key={index}
+                className="relative min-w-0 flex-1 overflow-hidden border-r border-white/10 last:border-r-0"
+              >
+                {thumbnailUrl ? (
+                  <span
+                    className="absolute inset-0 bg-cover bg-center opacity-70 grayscale-[20%]"
+                    style={{
+                      backgroundImage: `url(${JSON.stringify(thumbnailUrl)})`,
+                    }}
+                  />
+                ) : (
+                  <span className="absolute inset-0 bg-white/5" />
+                )}
+              </div>
+            ))}
+          </div>
           <div
-            className="absolute top-11 h-0.5 -translate-y-1/2 rounded-full bg-brand"
+            className="pointer-events-none absolute bottom-3 top-4 rounded-l-control bg-deep-contrast/75"
+            style={{ left: 0, width: `${selectedLeft}%` }}
+          />
+          <div
+            className="pointer-events-none absolute bottom-3 top-4 rounded-r-control bg-deep-contrast/75"
+            style={{ left: `${selectedRight}%`, right: 0 }}
+          />
+          <div
+            className="pointer-events-none absolute bottom-3 top-4 border-y-2 border-brand"
             style={{
               left: `${selectedLeft}%`,
               width: `${Math.max(0, selectedRight - selectedLeft)}%`,
             }}
           />
+          <div
+            className="pointer-events-none absolute bottom-2 top-3 z-10 w-px -translate-x-1/2 bg-white shadow-[0_0_0_1px_rgb(0_0_0_/_0.3)]"
+            style={{ left: `${currentPercent}%` }}
+          >
+            <span className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rotate-45 bg-white" />
+          </div>
 
           <button
             type="button"
@@ -576,13 +868,13 @@ function TrimControls({
             onPointerMove={(event) => handleHandlePointerMove("start", event)}
             onPointerUp={handleHandlePointerUp}
             disabled={!canEditTrim}
-            className="absolute top-11 flex h-11 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md bg-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className="absolute bottom-2 top-3 z-20 flex w-11 -translate-x-1/2 items-center justify-center rounded-control bg-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
             style={{ left: `${selectedLeft}%` }}
           >
             <span
               className={cn(
-                "block h-6 w-3 rounded-[4px] border border-brand bg-white shadow-sm transition",
-                activeHandle === "start" && "bg-brand-soft",
+                "block h-full w-2 rounded-l-[5px] border-2 border-brand bg-white shadow-sm transition",
+                activeHandle === "start" && "bg-brand-soft ring-2 ring-brand/20",
               )}
               aria-hidden="true"
             />
@@ -602,13 +894,13 @@ function TrimControls({
             onPointerMove={(event) => handleHandlePointerMove("end", event)}
             onPointerUp={handleHandlePointerUp}
             disabled={!canEditTrim}
-            className="absolute top-11 flex h-11 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md bg-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className="absolute bottom-2 top-3 z-20 flex w-11 -translate-x-1/2 items-center justify-center rounded-control bg-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
             style={{ left: `${selectedRight}%` }}
           >
             <span
               className={cn(
-                "block h-6 w-3 rounded-[4px] border border-brand bg-white shadow-sm transition",
-                activeHandle === "end" && "bg-brand-soft",
+                "block h-full w-2 rounded-r-[5px] border-2 border-brand bg-white shadow-sm transition",
+                activeHandle === "end" && "bg-brand-soft ring-2 ring-brand/20",
               )}
               aria-hidden="true"
             />
@@ -616,14 +908,14 @@ function TrimControls({
           </button>
         </div>
 
-        <div className="flex items-center justify-between text-[11px] font-semibold text-muted">
+        <div className="flex items-center justify-between text-[11px] font-semibold tabular-nums text-muted">
           <span>{formatPreciseTime(0)}</span>
           <span>Current {formatPreciseTime(currentTime)}</span>
           <span>{formatPreciseTime(duration)}</span>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(116px,1fr)_minmax(116px,1fr)_auto_auto] lg:items-end">
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-[112px_112px_auto_auto] xl:justify-end xl:items-end">
         <label className="block">
           <span className="text-xs font-semibold text-muted">Start</span>
           <input
@@ -631,9 +923,26 @@ function TrimControls({
             min={0}
             max={Math.max(0, trimEnd - MIN_TRIM_SECONDS)}
             step={0.1}
-            value={formatNumberInput(trimStart)}
-            onChange={(event) => onTrimStartChange(Number(event.target.value))}
-            className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            value={startInput}
+            onFocus={() => {
+              isEditingStartRef.current = true;
+            }}
+            onChange={(event) => setStartInput(event.target.value)}
+            onBlur={() => {
+              isEditingStartRef.current = false;
+              commitTimeInput(
+                startInput,
+                trimStart,
+                onTrimStartChange,
+                setStartInput,
+              );
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.currentTarget.blur();
+              }
+            }}
+            className="mt-1 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold tabular-nums text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
           />
         </label>
         <label className="block">
@@ -643,16 +952,33 @@ function TrimControls({
             min={Math.min(duration, trimStart + MIN_TRIM_SECONDS)}
             max={duration}
             step={0.1}
-            value={formatNumberInput(trimEnd)}
-            onChange={(event) => onTrimEndChange(Number(event.target.value))}
-            className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            value={endInput}
+            onFocus={() => {
+              isEditingEndRef.current = true;
+            }}
+            onChange={(event) => setEndInput(event.target.value)}
+            onBlur={() => {
+              isEditingEndRef.current = false;
+              commitTimeInput(
+                endInput,
+                trimEnd,
+                onTrimEndChange,
+                setEndInput,
+              );
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.currentTarget.blur();
+              }
+            }}
+            className="mt-1 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold tabular-nums text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
           />
         </label>
         <button
           type="button"
           onClick={onPlayTrimmedPreview}
           disabled={!canPreviewTrim}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-foreground-strong px-3.5 text-sm font-semibold text-white transition-colors hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-1"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-deep-contrast px-3.5 text-sm font-semibold text-white transition-colors hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Play className="size-3.5" aria-hidden="true" />
           Preview selection
@@ -661,7 +987,7 @@ function TrimControls({
           type="button"
           onClick={onResetTrim}
           disabled={!canEditTrim}
-          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-3 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-1"
+          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <RotateCcw className="size-3.5" aria-hidden="true" />
           Reset
@@ -669,7 +995,7 @@ function TrimControls({
       </div>
 
       {message ? (
-        <p className="mt-3 inline-flex items-center gap-2 rounded-md border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold text-error">
+        <p role="alert" className="mt-3 inline-flex items-center gap-2 rounded-control border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold text-error">
           <AlertCircle className="size-3.5" aria-hidden="true" />
           {message}
         </p>
@@ -686,6 +1012,7 @@ function TextOverlayControls({
   overlays,
   selectedOverlay,
   selectedOverlayId,
+  selectedOverlayIsTruncated,
 }: {
   onAddOverlay: () => void;
   onDeleteOverlay: (overlayId: string) => void;
@@ -697,6 +1024,7 @@ function TextOverlayControls({
   overlays: TextOverlay[];
   selectedOverlay: TextOverlay | null;
   selectedOverlayId: string | null;
+  selectedOverlayIsTruncated: boolean;
 }) {
   const usedPositions = new Set(overlays.map((overlay) => overlay.position));
   const canAddOverlay =
@@ -705,158 +1033,151 @@ function TextOverlayControls({
   const characterCount = selectedOverlay?.text.length ?? 0;
 
   return (
-    <section>
+    <section aria-labelledby="text-layers-heading">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Type className="size-4 text-primary" aria-hidden="true" />
-          <h3 className="text-sm font-semibold text-foreground-strong">
-            Text overlays
+          <h3 id="text-layers-heading" className="text-sm font-semibold text-foreground-strong">
+            Layers
           </h3>
+          <span className="text-xs font-medium text-muted">{overlays.length}/{MAX_TEXT_OVERLAYS}</span>
         </div>
         <button
           type="button"
           onClick={onAddOverlay}
           disabled={!canAddOverlay}
-          className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-border bg-white px-2.5 text-xs font-semibold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          title={canAddOverlay ? "Add text layer" : "All three text positions are in use"}
+          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-semibold text-deep-contrast transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="size-3.5" aria-hidden="true" />
           Add text
         </button>
       </div>
 
-      <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
-        <div className="min-w-0 space-y-4">
-          {overlays.length > 0 ? (
-            <ol className="space-y-2">
-              {overlays.map((overlay, index) => {
-                const selected = overlay.id === selectedOverlayId;
+      {overlays.length > 0 ? (
+        <ol className="mt-3 divide-y divide-border border-y border-border">
+          {overlays.map((overlay) => {
+            const selected = overlay.id === selectedOverlayId;
 
-                return (
-                  <li
-                    key={overlay.id}
-                    className={cn(
-                      "flex items-stretch gap-2 rounded-md border bg-white p-2.5 transition-colors",
-                      selected
-                        ? "border-brand bg-brand-soft/55"
-                        : "border-border hover:border-border-strong",
-                    )}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => onSelectOverlay(overlay.id)}
-                      className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-                    >
-                      <span className="block text-xs font-semibold text-foreground-strong">
-                        {index + 1}. {getPositionLabel(overlay.position)} text
-                      </span>
-                      <span className="mt-1 block truncate text-xs font-medium text-muted">
-                        {overlay.text.trim() || "Empty text"}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onDeleteOverlay(overlay.id)}
-                      aria-label={`Delete ${getPositionLabel(overlay.position)} text`}
-                      title="Delete overlay"
-                      className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-                    >
-                      <Trash2 className="size-3.5" aria-hidden="true" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          ) : (
-            <div className="rounded-md border border-dashed border-border bg-white px-3 py-4 text-sm font-semibold text-muted">
-              No text overlays.
-            </div>
-          )}
-
-          {!canAddOverlay && overlays.length >= MAX_TEXT_OVERLAYS ? (
-            <p className="text-xs font-semibold text-muted">
-              All three positions are already used.
-            </p>
-          ) : null}
-
-          {selectedOverlay ? (
-            <div className="border-t border-border pt-4">
-              <div className="flex items-center justify-between gap-3">
-                <label
-                  className="text-xs font-semibold text-muted"
-                  htmlFor={`text-overlay-${selectedOverlay.id}`}
-                >
-                  Text
-                </label>
+            return (
+              <li key={overlay.id} className={cn("flex items-center gap-2 transition-colors", selected && "bg-selected")}>
                 <button
                   type="button"
-                  onClick={() => onUpdateOverlay(selectedOverlay.id, { text: "" })}
-                  disabled={!selectedOverlay.text}
-                  className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-white px-2 text-xs font-semibold text-muted transition hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => onSelectOverlay(overlay.id)}
+                  aria-pressed={selected}
+                  className="flex min-w-0 flex-1 items-center gap-3 px-2 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
                 >
-                  <X className="size-3" aria-hidden="true" />
-                  Clear
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "inline-flex size-8 shrink-0 items-center justify-center rounded-control text-xs font-bold uppercase",
+                      selected ? "bg-brand text-white" : "bg-card-muted text-muted",
+                    )}
+                  >
+                    {overlay.position.slice(0, 1)}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-foreground-strong">
+                      {getPositionLabel(overlay.position)} · {formatOverlayStyleLabel(overlay.style)}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs font-medium text-muted">
+                      {overlay.text.trim() || "Empty text"}
+                    </span>
+                  </span>
                 </button>
-              </div>
-              <textarea
-                id={`text-overlay-${selectedOverlay.id}`}
-                value={selectedOverlay.text}
-                onChange={(event) =>
-                  onUpdateOverlay(selectedOverlay.id, {
-                    text: event.target.value,
-                  })
-                }
-                maxLength={TEXT_OVERLAY_MAX_LENGTH}
-                rows={4}
-                className="mt-2 min-h-28 w-full resize-none rounded-md border border-border bg-white px-3 py-2.5 text-sm font-semibold leading-5 text-foreground outline-none transition placeholder:text-muted-subtle focus:border-primary focus:ring-2 focus:ring-primary/15"
-              />
-              <div className="mt-2 flex justify-end text-xs font-medium text-muted">
-                {characterCount} / {TEXT_OVERLAY_MAX_LENGTH} characters
-              </div>
-            </div>
-          ) : null}
+                <button
+                  type="button"
+                  onClick={() => onDeleteOverlay(overlay.id)}
+                  aria-label={`Delete ${getPositionLabel(overlay.position)} text`}
+                  title="Delete layer"
+                  className="mr-1 inline-flex size-10 shrink-0 items-center justify-center rounded-control text-muted transition hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  <Trash2 className="size-4" aria-hidden="true" />
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      ) : (
+        <div className="mt-3 border-y border-dashed border-border px-2 py-5 text-sm text-muted">
+          Add a text layer, then choose where it sits on the video.
         </div>
+      )}
 
-        <aside className="border-t border-border pt-5 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
-          {selectedOverlay ? (
-            <div className="space-y-5">
-              <SegmentedControl
-                disabledOptions={textOverlayPositions.filter(
-                  (position) =>
-                    position !== selectedOverlay.position &&
-                    usedPositions.has(position),
-                )}
-                label="Position"
-                options={textOverlayPositions}
-                value={selectedOverlay.position}
-                onChange={(position) =>
-                  onUpdateOverlay(selectedOverlay.id, { position })
-                }
-              />
-
-              <div className="border-t border-border pt-5">
-                <SegmentedControl
-                  label="Style"
-                  layout="stack"
-                  options={textOverlayStyles}
-                  value={selectedOverlay.style}
-                  onChange={(style) => onUpdateOverlay(selectedOverlay.id, { style })}
-                />
-                <p className="mt-2 text-xs font-medium leading-5 text-muted">
-                  {getOverlayStyleDescription(selectedOverlay.style)}
-                </p>
-                <StylePreview
-                  style={selectedOverlay.style}
-                  text={selectedOverlay.text || "Text"}
-                />
-              </div>
+      {selectedOverlay ? (
+        <div className="mt-6 flex flex-col gap-6">
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <label
+                className="text-xs font-semibold text-muted"
+                htmlFor={`text-overlay-${selectedOverlay.id}`}
+              >
+                Text
+              </label>
+              <button
+                type="button"
+                onClick={() => onUpdateOverlay(selectedOverlay.id, { text: "" })}
+                disabled={!selectedOverlay.text}
+                className="inline-flex h-8 items-center gap-1.5 rounded-control px-2 text-xs font-semibold text-muted transition hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <X className="size-3" aria-hidden="true" />
+                Clear
+              </button>
             </div>
-          ) : (
-            <p className="rounded-md border border-dashed border-border bg-white px-3 py-4 text-sm font-semibold text-muted">
-              Add a text overlay to edit its position and style.
+            <textarea
+              id={`text-overlay-${selectedOverlay.id}`}
+              value={selectedOverlay.text}
+              onChange={(event) =>
+                onUpdateOverlay(selectedOverlay.id, {
+                  text: event.target.value,
+                })
+              }
+              maxLength={TEXT_OVERLAY_MAX_LENGTH}
+              rows={5}
+              className="mt-2 min-h-32 w-full resize-y rounded-control border border-border bg-card px-3 py-2.5 text-sm font-semibold leading-5 text-foreground outline-none transition placeholder:text-muted-subtle focus:border-primary focus:ring-2 focus:ring-primary/15"
+            />
+            <div className="mt-1.5 flex justify-between text-xs font-medium text-muted">
+              <span>Line breaks are preserved in the export.</span>
+              <span className="tabular-nums">{characterCount}/{TEXT_OVERLAY_MAX_LENGTH}</span>
+            </div>
+            {selectedOverlayIsTruncated ? (
+              <p
+                role="alert"
+                className="mt-2 inline-flex items-start gap-2 rounded-control border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold leading-5 text-error"
+              >
+                <AlertCircle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                Too many line breaks for this output. Shorten the layer before exporting.
+              </p>
+            ) : null}
+          </div>
+
+          <div className="border-t border-border pt-5">
+            <SegmentedControl
+              disabledOptions={textOverlayPositions.filter(
+                (position) =>
+                  position !== selectedOverlay.position && usedPositions.has(position),
+              )}
+              label="Position"
+              options={textOverlayPositions}
+              value={selectedOverlay.position}
+              onChange={(position) => onUpdateOverlay(selectedOverlay.id, { position })}
+            />
+          </div>
+
+          <div className="border-t border-border pt-5">
+            <SegmentedControl
+              label="Style"
+              layout="stack"
+              options={textOverlayStyles}
+              value={selectedOverlay.style}
+              onChange={(style) => onUpdateOverlay(selectedOverlay.id, { style })}
+            />
+            <p className="mt-2 text-xs font-medium leading-5 text-muted">
+              {getOverlayStyleDescription(selectedOverlay.style)} The stage is the exact preview.
             </p>
-          )}
-        </aside>
-      </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -878,12 +1199,50 @@ function SegmentedControl<TValue extends string>({
 }) {
   const disabled = new Set(disabledOptions ?? []);
 
+  function handleKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    currentOption: TValue,
+  ) {
+    const enabledOptions = options.filter((option) => !disabled.has(option));
+    const currentIndex = enabledOptions.indexOf(currentOption);
+    let nextIndex: number | null = null;
+
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = (currentIndex + 1) % enabledOptions.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextIndex =
+        (currentIndex - 1 + enabledOptions.length) % enabledOptions.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = enabledOptions.length - 1;
+    }
+
+    if (nextIndex === null || enabledOptions.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    const nextOption = enabledOptions[nextIndex];
+    const group = event.currentTarget.parentElement;
+    onChange(nextOption);
+    window.requestAnimationFrame(() => {
+      const buttons = group?.querySelectorAll<HTMLButtonElement>('[role="radio"]');
+
+      Array.from(buttons ?? []).find(
+        (button) => button.dataset.segmentValue === nextOption,
+      )?.focus();
+    });
+  }
+
   return (
-    <div>
-      <span className="text-xs font-semibold text-muted">{label}</span>
+    <fieldset>
+      <legend className="text-xs font-semibold text-muted">{label}</legend>
       <div
+        role="radiogroup"
+        aria-label={label}
         className={cn(
-          "mt-1 rounded-md border border-border bg-card-muted p-1",
+          "mt-2 rounded-control bg-card-muted p-1",
           layout === "row" ? "flex" : "grid gap-1",
         )}
       >
@@ -895,13 +1254,19 @@ function SegmentedControl<TValue extends string>({
             <button
               key={option}
               type="button"
+              role="radio"
+              aria-checked={selected}
+              data-segment-value={option}
               onClick={() => onChange(option)}
+              onKeyDown={(event) => handleKeyDown(event, option)}
               disabled={isDisabled}
+              tabIndex={selected ? 0 : -1}
+              title={isDisabled ? `${formatOverlayStyleLabel(option)} is already used by another layer` : undefined}
               className={cn(
-                "h-8 rounded-[5px] px-3 text-sm font-semibold capitalize transition",
+                "min-h-10 rounded-[6px] px-3 text-sm font-semibold capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
                 layout === "row" && "flex-1",
                 selected
-                  ? "border border-brand/45 bg-white text-primary"
+                  ? "bg-card text-primary shadow-[0_1px_2px_rgb(23_23_27_/_0.08)]"
                   : "text-muted hover:text-foreground",
                 isDisabled && "cursor-not-allowed opacity-45 hover:text-muted",
               )}
@@ -911,23 +1276,7 @@ function SegmentedControl<TValue extends string>({
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function StylePreview({
-  style,
-  text,
-}: {
-  style: TextOverlayStyle;
-  text: string;
-}) {
-  return (
-    <div className="mt-4 flex min-h-16 items-center justify-center rounded-md border border-border bg-card-muted px-4 py-5 text-center">
-      <span className={getStylePreviewClass(style)}>
-        {text.trim() || "Text"}
-      </span>
-    </div>
+    </fieldset>
   );
 }
 
@@ -976,44 +1325,91 @@ function getOverlayPositionStyle(
 
 function getOverlayStyleClass() {
   const base =
-    "max-w-full whitespace-pre-line break-words font-semibold text-white";
+    "m-0 block max-w-full appearance-none border-0 bg-transparent p-0 text-white";
 
   return base;
 }
 
 function getOverlayStyle(
-  style: TextOverlayStyle,
+  overlay: TextOverlay,
   ratio: EditableVideo["ratio"],
 ): CSSProperties {
-  const metrics = getEditOverlayRenderMetrics(style, ratio);
+  const layout = buildEditOverlayTextLayout(overlay.text, overlay.style, ratio);
+  const { canvasWidth, containerWidth } = layout.bounds;
+  const unit = 100 / canvasWidth;
+  const cornerRadius =
+    layout.fontSize * (overlay.style === "bubble" ? 0.32 : 0.18) * unit;
 
   return {
-    backgroundColor: getEditOverlayBackgroundColor(style),
-    fontFamily: metrics.fontFamily,
-    fontSize: `${metrics.fontSizeContainerWidthPercent}cqw`,
-    fontWeight: metrics.fontWeight,
-    lineHeight: metrics.lineHeight,
-    padding:
-      metrics.padding > 0
-        ? `${metrics.paddingContainerWidthPercent}cqw`
-        : undefined,
-    textShadow: metrics.textShadow,
+    backgroundColor: "transparent",
+    borderRadius: `${cornerRadius}cqw`,
+    boxSizing: "border-box",
+    height: `${layout.bounds.containerHeight * unit}cqw`,
+    width: `${containerWidth * unit}cqw`,
   };
 }
 
-function getStylePreviewClass(style: TextOverlayStyle) {
-  const base =
-    "inline-flex max-w-full whitespace-pre-line break-words px-2 py-1 text-sm font-semibold leading-5";
+function getOverlayPreviewGraphic(
+  overlay: TextOverlay,
+  ratio: EditableVideo["ratio"],
+) {
+  const layout = buildEditOverlayTextLayout(overlay.text, overlay.style, ratio);
+  const { containerHeight, containerWidth } = layout.bounds;
+  const centerX = containerWidth / 2;
+  const fontFamily =
+    "var(--font-edit-overlay), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif";
 
-  if (style === "bubble") {
-    return `${base} bg-[#173454] text-white shadow-sm`;
-  }
+  return (
+    <svg
+      aria-hidden="true"
+      className="block size-full overflow-visible"
+      viewBox={`0 0 ${containerWidth} ${containerHeight}`}
+    >
+      {layout.backgroundOpacity !== null ? (
+        <rect
+          width={containerWidth}
+          height={containerHeight}
+          rx={Math.round(
+            layout.fontSize * (overlay.style === "bubble" ? 0.32 : 0.18),
+          )}
+          fill="#000000"
+          fillOpacity={layout.backgroundOpacity}
+        />
+      ) : null}
 
-  if (style === "minimal") {
-    return `${base} bg-card-muted text-foreground-strong`;
-  }
+      {layout.lines.map((line, index) => {
+        if (!line) {
+          return null;
+        }
 
-  return `${base} text-foreground-strong`;
+        const baselineY = Math.round(
+          layout.padding + layout.fontSize * 0.82 + index * layout.lineHeight,
+        );
+        const textProps = {
+          fontFamily,
+          fontSize: layout.fontSize,
+          fontWeight: layout.fontWeight,
+          textAnchor: "middle" as const,
+        };
+
+        return (
+          <g key={`${overlay.id}-line-${index}`}>
+            <text
+              {...textProps}
+              x={centerX + EDIT_OVERLAY_SHADOW_OFFSET_PX}
+              y={baselineY + EDIT_OVERLAY_SHADOW_OFFSET_PX}
+              fill="rgba(0, 0, 0, 0.45)"
+            >
+              {line}
+            </text>
+            <text {...textProps} x={centerX} y={baselineY} fill={layout.textColor}>
+              {line}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
 }
 
 function getOverlayStyleDescription(style: TextOverlayStyle) {

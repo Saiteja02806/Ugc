@@ -9,7 +9,6 @@ import {
   createBackgroundJob,
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
-  type BackgroundJobRecord,
 } from "@/lib/jobs/background-jobs";
 import {
   attachPublishJobToScheduleTarget,
@@ -32,6 +31,7 @@ import {
   markScheduleTargetSchedulerDeleted,
   markScheduleTargetSchedulerFallback,
   prepareScheduledPostForPublishing,
+  updateEditableScheduledPost,
 } from "@/lib/scheduling/db";
 import {
   getMediaAssetForOwner,
@@ -42,6 +42,11 @@ import {
   resolveOpeningRenderAsset,
 } from "@/lib/scheduling/render-asset-resolution";
 import {
+  normalizeScheduleTargetSettings,
+  SchedulePlatformSettingsError,
+  type ScheduleTargetSettings,
+} from "@/lib/scheduling/platform-settings";
+import {
   getZonedDateTimeParts,
   parseMinimumRenderLeadMinutes,
   resolveZonedDateTime,
@@ -49,12 +54,19 @@ import {
   validateScheduleLeadTime,
   validateTimeZone,
 } from "@/lib/scheduling/schedule-time";
+import { getScheduleEditBlockReason } from "@/lib/scheduling/schedule-action-policy";
+import {
+  canRetrySchedulerCreateFailure,
+  getRenderFinalizationDecision,
+} from "@/lib/scheduling/render-finalization-policy";
+import { scheduleTargetRowsWithDependencies } from "@/lib/scheduling/target-scheduling";
 import type {
   ScheduledPost,
   ScheduledPostStatus,
   ScheduleCreateInput,
   ScheduleCreateTargetInput,
   SchedulePlatform,
+  ScheduleUpdateInput,
 } from "@/lib/scheduling/types";
 import { isSocialPlatform } from "@/lib/social/types";
 
@@ -132,9 +144,20 @@ export async function createUserSchedule(params: {
     sourceKind: normalized.source.kind,
     userId: params.userId,
   });
-  const targetConnections = await resolveScheduleTargets({
-    targets: normalized.targets,
-    userId: params.userId,
+  const [targetConnections, plannedTargetConnections] = await Promise.all([
+    resolveScheduleTargets({
+      targets: normalized.targets,
+      userId: params.userId,
+    }),
+    resolveScheduleTargets({
+      targets: normalized.plannedTargets,
+      userId: params.userId,
+    }),
+  ]);
+  const metadata = applyTrustedPlannedTargetMetadata({
+    metadata: normalized.metadata,
+    plannedTargets: plannedTargetConnections,
+    snapshotProvided: normalized.plannedTargetsProvided,
   });
   const isDraft = targetConnections.length === 0;
 
@@ -158,7 +181,7 @@ export async function createUserSchedule(params: {
       normalized.source.kind === "library_item" ? normalized.source.id : null,
     media_asset_id:
       normalized.source.kind === "media_asset" ? normalized.source.id : null,
-    metadata: normalized.metadata,
+    metadata,
     project_id: source.projectId,
     scheduled_for: normalized.scheduledFor,
     source_kind: normalized.source.kind,
@@ -337,7 +360,9 @@ export async function scheduleRenderedPost(params: {
     );
   }
 
-  await prepareScheduledPostForPublishing({
+  const prepared = await prepareScheduledPostForPublishing({
+    expectedStatus: existing.status,
+    expectedUpdatedAt: existing.updatedAt,
     mediaAssetId: combinedAsset.id,
     metadata: {
       finalScheduleError: null,
@@ -356,6 +381,14 @@ export async function scheduleRenderedPost(params: {
     timezone: normalized.timezone,
     userId: params.userId,
   });
+
+  if (!prepared) {
+    throw new SchedulingRequestError(
+      "This schedule changed while platform scheduling was starting. Reload it and try again.",
+      409,
+      "schedule_version_conflict",
+    );
+  }
 
   const targetRows = await insertScheduledPostTargets(
     targetConnections.map((connection) => ({
@@ -394,6 +427,161 @@ export async function scheduleRenderedPost(params: {
   };
 }
 
+export async function updateUserSchedule(params: {
+  input: ScheduleUpdateInput;
+  postId: string;
+  userId: string;
+}) {
+  assertUuid(params.postId, "Schedule ID is invalid.");
+
+  const existing = await getScheduledPostForUser({
+    postId: params.postId,
+    userId: params.userId,
+  });
+
+  if (!existing) {
+    throw new SchedulingRequestError("This schedule was not found.", 404);
+  }
+
+  const editBlockReason = getScheduleEditBlockReason(existing);
+
+  if (editBlockReason) {
+    throw new SchedulingRequestError(
+      editBlockReason,
+      409,
+      "schedule_not_editable",
+    );
+  }
+
+  const expectedUpdatedAt = normalizeOptionalText(
+    params.input.expectedUpdatedAt,
+    64,
+  );
+
+  if (!expectedUpdatedAt) {
+    throw new SchedulingRequestError(
+      "Reload this schedule before editing it.",
+      409,
+      "schedule_version_required",
+    );
+  }
+
+  if (expectedUpdatedAt !== existing.updatedAt) {
+    throw new SchedulingRequestError(
+      "This schedule changed while it was open. Reload it and try again.",
+      409,
+      "schedule_version_conflict",
+    );
+  }
+
+  const normalized = await normalizeScheduleCreateInput(params.input);
+
+  if (normalized.targets.length > 0) {
+    throw new SchedulingRequestError(
+      "Edit planned accounts before platform publishing starts.",
+      409,
+      "schedule_targets_already_exist",
+    );
+  }
+
+  if (normalized.source.kind !== "media_asset") {
+    throw new SchedulingRequestError(
+      "Only video schedule drafts can be edited here.",
+      409,
+      "schedule_source_not_editable",
+    );
+  }
+
+  const hookMediaId = getMetadataString(normalized.metadata.hookMediaId);
+
+  if (!hookMediaId) {
+    throw new SchedulingRequestError(
+      "Choose an opening video before saving this schedule.",
+    );
+  }
+
+  assertUuid(hookMediaId, "Opening video ID is invalid.");
+
+  const source = await resolveScheduleSource({
+    sourceId: normalized.source.id,
+    sourceKind: normalized.source.kind,
+    userId: params.userId,
+  });
+  const plannedTargetConnections = await resolveScheduleTargets({
+    targets: normalized.plannedTargets,
+    userId: params.userId,
+  });
+  const mergedMetadata = {
+    ...normalizeMetadata(existing.metadata),
+    ...normalized.metadata,
+    demoMediaId: normalized.source.id,
+  };
+  const metadata = applyTrustedPlannedTargetMetadata({
+    metadata: mergedMetadata,
+    plannedTargets: plannedTargetConnections,
+    snapshotProvided: normalized.plannedTargetsProvided,
+  });
+  const previousHookMediaId = getMetadataString(existing.metadata.hookMediaId);
+  const previousDemoMediaId =
+    getMetadataString(existing.metadata.demoMediaId) ?? existing.mediaAssetId;
+  const mediaChanged =
+    previousHookMediaId !== hookMediaId ||
+    previousDemoMediaId !== normalized.source.id;
+  const nextMetadata: Record<string, unknown> = {
+    ...metadata,
+    finalScheduleCompletedAt: null,
+    finalScheduleError: null,
+    finalScheduleErrorCode: null,
+    finalScheduleFailedAt: null,
+    finalScheduleRenderId: null,
+    finalScheduleRequestedAt: null,
+    finalScheduleStartedAt: null,
+    finalScheduleStatus: null,
+  };
+
+  if (mediaChanged) {
+    Object.assign(nextMetadata, {
+      combinedMediaAssetId: null,
+      combinedRenderError: null,
+      combinedRenderId: null,
+      combinedRenderJobId: null,
+      combinedRenderQueuedAt: null,
+      combinedRenderedAt: null,
+      combinedRenderStatus: null,
+      combinedVideoUrl: null,
+    });
+  }
+
+  const updated = await updateEditableScheduledPost({
+    expectedUpdatedAt,
+    postId: existing.id,
+    update: {
+      caption: normalized.caption,
+      last_error_code: null,
+      library_item_id: null,
+      media_asset_id: normalized.source.id,
+      metadata: nextMetadata,
+      project_id: source.projectId,
+      scheduled_for: null,
+      source_kind: normalized.source.kind,
+      status: "draft",
+      timezone: normalized.timezone,
+      title: normalized.title || source.title,
+    },
+    userId: params.userId,
+  });
+
+  if (!updated) {
+    throw new SchedulingRequestError(
+      "This schedule changed while it was being saved. Reload it and try again.",
+      409,
+      "schedule_version_conflict",
+    );
+  }
+
+  return updated;
+}
+
 export function getMinimumRenderLeadMinutes() {
   return parseMinimumRenderLeadMinutes(
     process.env.SCHEDULING_MIN_RENDER_LEAD_MINUTES,
@@ -415,37 +603,25 @@ export async function finalizeRenderedScheduleFromWorker(
     throw new SchedulingRequestError("This schedule was not found.", 404);
   }
 
-  const currentRenderId = getMetadataString(existing.metadata.combinedRenderId);
+  const decision = getRenderFinalizationDecision({
+    hasPlannedTime: Boolean(getPlannedScheduledFor(existing)),
+    renderId: input.renderId,
+    schedule: existing,
+  });
 
-  if (currentRenderId !== input.renderId) {
+  if (decision.action === "reject") {
     throw new SchedulingRequestError(
-      "This render is no longer the current version for the schedule.",
+      decision.message,
       409,
-      "stale_combined_render",
+      decision.code,
     );
   }
 
-  if (
-    getMetadataString(existing.metadata.combinedRenderStatus) !== "ready" ||
-    !getMetadataString(existing.metadata.combinedMediaAssetId)
-  ) {
-    throw new SchedulingRequestError(
-      "The combined render is not ready for final scheduling.",
-      409,
-      "combined_render_not_ready",
-    );
-  }
-
-  const hasPlannedConnections = Boolean(
-    getMetadataString(existing.metadata.plannedConnectionIds),
-  );
-  const hasPlannedTime = Boolean(getPlannedScheduledFor(existing));
-
-  if (!hasPlannedConnections || !hasPlannedTime) {
+  if (decision.action === "skip" || decision.action === "already_finalized") {
     return {
       created: false,
       scheduleId: existing.id,
-      skipped: true,
+      skipped: decision.action === "skip",
       status: existing.status,
     };
   }
@@ -462,18 +638,6 @@ export async function finalizeRenderedScheduleFromWorker(
     skipped: false,
     status: result.schedule.status,
   };
-}
-
-function canRetrySchedulerCreateFailure(schedule: ScheduledPost) {
-  return (
-    schedule.status === "failed" &&
-    schedule.targets.length > 0 &&
-    schedule.targets.every(
-      (target) =>
-        target.status === "failed" &&
-        target.lastErrorCode === "scheduler_create_failed",
-    )
-  );
 }
 
 async function assertCombinedRenderIsCurrent(params: {
@@ -643,6 +807,7 @@ async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
 
   const timezone = normalizeTimezone(input.timezone);
   const targets = normalizeTargets(input.targets);
+  const plannedTargets = normalizeTargets(input.plannedTargets);
   const rawMetadata = normalizeMetadata(input.metadata);
   const scheduleTime = normalizeScheduleTime(
     {
@@ -651,7 +816,9 @@ async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
       scheduledTime: input.scheduledTime,
       timezone,
     },
-    targets.length > 0 || Boolean(getMetadataString(rawMetadata.plannedConnectionIds)),
+    targets.length > 0 ||
+      plannedTargets.length > 0 ||
+      Boolean(getMetadataString(rawMetadata.plannedConnectionIds)),
   );
   const metadata = applyTrustedScheduleTimeMetadata(rawMetadata, scheduleTime);
 
@@ -659,6 +826,8 @@ async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
     caption: normalizeText(input.caption, 5000),
     idempotencyKey: normalizeOptionalText(input.idempotencyKey, 120),
     metadata,
+    plannedTargets,
+    plannedTargetsProvided: input.plannedTargets !== undefined,
     scheduledFor: targets.length > 0 ? scheduleTime?.scheduledFor ?? null : null,
     source: {
       id: input.source.id,
@@ -678,12 +847,21 @@ function normalizeRenderedScheduleInput(
     throw new SchedulingRequestError("Send schedule details as JSON.");
   }
 
+  const plannedTargets = getPlannedTargetsFromMetadata(existing.metadata);
   const connectionIds = normalizeConnectionIds(
     input.connectionIds,
-    getMetadataString(existing.metadata.plannedConnectionIds),
+    plannedTargets.length > 0
+      ? plannedTargets.map((target) => target.connectionId).join(",")
+      : getMetadataString(existing.metadata.plannedConnectionIds),
+  );
+  const plannedTargetsByConnectionId = new Map(
+    plannedTargets.map((target) => [target.connectionId, target]),
   );
   const targets = normalizeTargets(
-    connectionIds.map((connectionId) => ({ connectionId })),
+    connectionIds.map(
+      (connectionId) =>
+        plannedTargetsByConnectionId.get(connectionId) ?? { connectionId },
+    ),
   );
   const timezone = normalizeTimezone(input.timezone ?? existing.timezone);
   const hasExplicitScheduleTime =
@@ -875,10 +1053,31 @@ async function resolveScheduleTargets(params: {
       );
     }
 
+    let settings: ScheduleTargetSettings = {};
+
+    if (target.settingsProvided) {
+      try {
+        settings = normalizeScheduleTargetSettings(
+          connection.platform,
+          target.settings,
+        );
+      } catch (error) {
+        if (error instanceof SchedulePlatformSettingsError) {
+          throw new SchedulingRequestError(
+            error.message,
+            400,
+            "invalid_platform_settings",
+          );
+        }
+
+        throw error;
+      }
+    }
+
     connections.push({
       id: connection.id,
       platform: connection.platform,
-      settings: target.settings,
+      settings,
     });
   }
 
@@ -889,9 +1088,8 @@ type NormalizedTargetInput = {
   connectionId: string;
   platform?: SchedulePlatform;
   settings: ScheduleTargetSettings;
+  settingsProvided: boolean;
 };
-
-type ScheduleTargetSettings = Record<string, boolean | number | string>;
 
 function normalizeTargets(
   targets: ScheduleCreateTargetInput[] | undefined,
@@ -928,6 +1126,7 @@ function normalizeTargets(
       connectionId: target.connectionId,
       platform: target.platform,
       settings: normalizeSettings(target.settings),
+      settingsProvided: target.settings !== undefined,
     });
   }
 
@@ -1075,6 +1274,67 @@ function applyTrustedScheduleTimeMetadata(
   return normalized;
 }
 
+function applyTrustedPlannedTargetMetadata(params: {
+  metadata: ScheduleTargetSettings;
+  plannedTargets: Array<{
+    id: string;
+    platform: SchedulePlatform;
+    settings: ScheduleTargetSettings;
+  }>;
+  snapshotProvided: boolean;
+}) {
+  const metadata = { ...params.metadata };
+
+  delete metadata.plannedTargetsJson;
+
+  if (!params.snapshotProvided) {
+    return metadata;
+  }
+
+  delete metadata.plannedConnectionIds;
+  delete metadata.plannedPlatforms;
+
+  if (params.plannedTargets.length === 0) {
+    return metadata;
+  }
+
+  const plannedTargets = params.plannedTargets.map((target) => ({
+    connectionId: target.id,
+    platform: target.platform,
+    settings: target.settings,
+  }));
+
+  metadata.plannedConnectionIds = plannedTargets
+    .map((target) => target.connectionId)
+    .join(",");
+  metadata.plannedPlatforms = plannedTargets
+    .map((target) => target.platform)
+    .join(",");
+  metadata.plannedTargetsJson = JSON.stringify(plannedTargets);
+
+  return metadata;
+}
+
+function getPlannedTargetsFromMetadata(
+  metadata: Record<string, unknown>,
+): NormalizedTargetInput[] {
+  const snapshot = getMetadataString(metadata.plannedTargetsJson);
+
+  if (!snapshot) {
+    return [];
+  }
+
+  try {
+    return normalizeTargets(JSON.parse(snapshot) as ScheduleCreateTargetInput[]);
+  } catch {
+    throw new SchedulingRequestError(
+      "The saved publishing settings are invalid. Edit the schedule and try again.",
+      409,
+      "invalid_saved_platform_settings",
+    );
+  }
+}
+
 function toSchedulingTimeError(error: unknown) {
   if (error instanceof SchedulingRequestError) {
     return error;
@@ -1187,116 +1447,47 @@ async function scheduleTargetRows(params: {
   }>;
   userId: string;
 }) {
-  let scheduledCount = 0;
-  let failedCount = 0;
-
-  for (const target of params.targetRows) {
-    let publishJob: BackgroundJobRecord | null = null;
-
-    try {
-      assertMinimumScheduleLead(target.scheduled_for);
-      publishJob = await createBackgroundJob({
-        input: {
-          targetId: target.id,
-        },
+  return scheduleTargetRowsWithDependencies(params, {
+    assertMinimumLead: assertMinimumScheduleLead,
+    attachPublishJob: attachPublishJobToScheduleTarget,
+    createProviderSchedule: createSocialPublishSchedule,
+    createPublishJob: ({ projectId, targetId, userId }) =>
+      createBackgroundJob({
+        input: { targetId },
         jobType: "publish_social_post",
-        projectId: params.projectId,
+        projectId,
         queueName: getQueueNameForJobType("publish_social_post"),
-        userId: params.userId,
-      });
-      await attachPublishJobToScheduleTarget({
-        jobId: publishJob.id,
-        targetId: target.id,
-        userId: params.userId,
-      });
-    } catch (error) {
-      failedCount += 1;
+        userId,
+      }),
+    deleteProviderSchedule: deleteSocialPublishSchedule,
+    failPublishJob: markBackgroundJobFailed,
+    failTarget: markScheduleTargetFailed,
+    getErrorCode: (error) =>
+      error instanceof SchedulingRequestError
+        ? error.code
+        : "publish_job_create_failed",
+    getErrorMessage: getSafeErrorMessage,
+    markProviderSchedule: markScheduleTargetScheduler,
+    markSchedulerFallback: markScheduleTargetSchedulerFallback,
+    now: () => new Date().toISOString(),
+    reportError: (event, details) => {
+      const messages = {
+        compensation_failed: "Could not compensate orphaned AWS schedule:",
+        fallback_persistence_failed:
+          "Could not persist durable scheduler fallback:",
+        publish_job_failure_persistence_failed:
+          "Could not fail unlinked publish job:",
+      };
 
-      if (publishJob) {
-        try {
-          await markBackgroundJobFailed({
-            errorMessage: getSafeErrorMessage(error),
-            jobId: publishJob.id,
-          });
-        } catch (jobError) {
-          console.error("Could not fail unlinked publish job:", jobError);
-        }
-      }
-
-      await markScheduleTargetFailed({
-        errorCode:
-          error instanceof SchedulingRequestError
-            ? error.code
-            : "publish_job_create_failed",
-        errorMessage: getSafeErrorMessage(error),
-        targetId: target.id,
-        userId: params.userId,
-      });
-      continue;
-    }
-
-    let schedule: Awaited<ReturnType<typeof createSocialPublishSchedule>> | null =
-      null;
-    let schedulerDeletedAt: string | null = null;
-
-    try {
-      schedule = await createSocialPublishSchedule({
-        jobId: publishJob.id,
-        scheduledFor: target.scheduled_for,
-        targetId: target.id,
-      });
-
-      try {
-        await markScheduleTargetScheduler({
-          scheduleArn: schedule.arn,
-          scheduleName: schedule.name,
-          targetId: target.id,
-          userId: params.userId,
-        });
-        scheduledCount += 1;
-        continue;
-      } catch (persistenceError) {
-        try {
-          await deleteSocialPublishSchedule(schedule.name);
-          schedulerDeletedAt = new Date().toISOString();
-        } catch (cleanupError) {
-          console.error("Could not compensate orphaned AWS schedule:", {
-            cleanupError,
-            scheduleName: schedule.name,
-            targetId: target.id,
-          });
-        }
-
-        throw persistenceError;
-      }
-    } catch (error) {
-      const errorMessage = getSafeErrorMessage(error);
-
-      await markScheduleTargetSchedulerFallback({
-        scheduleArn: schedule?.arn ?? null,
-        scheduleName: schedule?.name ?? null,
-        schedulerDeletedAt,
-        targetId: target.id,
-        userId: params.userId,
-      }).catch((fallbackError) => {
-        console.error("Could not persist durable scheduler fallback:", {
-          fallbackError,
-          targetId: target.id,
-        });
-      });
-
-      console.warn("AWS schedule handoff failed; durable worker fallback is active", {
-        error: errorMessage,
-        targetId: target.id,
-      });
-      scheduledCount += 1;
-    }
-  }
-
-  return {
-    failedCount,
-    scheduledCount,
-  };
+      console.error(messages[event], details);
+    },
+    reportWarning: (_event, details) => {
+      console.warn(
+        "AWS schedule handoff failed; durable worker fallback is active",
+        details,
+      );
+    },
+  });
 }
 
 async function reconcileCancelledSchedulerResources(userId: string) {

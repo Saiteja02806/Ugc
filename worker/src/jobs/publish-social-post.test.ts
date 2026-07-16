@@ -25,6 +25,7 @@ test("persists provider initialization before completing a publish", async () =>
       publishers: {
         async instagram(params) {
           assert.equal(params.containerId, null);
+          assert.equal(params.shareToFeed, false);
           await params.onContainerCreated?.("instagram-container-1");
           fixture.calls.push("provider-published");
           return {
@@ -201,6 +202,30 @@ test("skips a target when cancellation won before provider publishing", async ()
   });
 });
 
+test("skips publishing when cancellation wins between context read and operation claim", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), {
+      cancelAfterClaimDenied: true,
+      denyClaim: true,
+    });
+    let providerCalls = 0;
+
+    const output = await runPublishSocialPostJob(createPublishJob(), {
+      publishers: {
+        async instagram() {
+          providerCalls += 1;
+          throw new Error("Provider must not be called.");
+        },
+      },
+      store: fixture.store,
+    });
+
+    assert.equal(providerCalls, 0);
+    assert.equal(output.cancelled, true);
+    assert.deepEqual(fixture.calls, ["claim-operation", "get-operation"]);
+  });
+});
+
 test("keeps transient provider failures retryable", async () => {
   await withEncryptionKey(async () => {
     const fixture = createPublishStore(createOperation(), {
@@ -287,6 +312,7 @@ function createPublishStore(
   initialOperation: SocialPublishOperationRow,
   options: {
     allowFailure?: boolean;
+    cancelAfterClaimDenied?: boolean;
     denyClaim?: boolean;
     failTargetPublished?: boolean;
     targetStatus?: "cancelled" | "failed" | "scheduled";
@@ -295,6 +321,7 @@ function createPublishStore(
   const calls: string[] = [];
   const operation = { ...initialOperation };
   const context = createPublishContext(options.targetStatus);
+  let contextReadCount = 0;
   const store = {
     async claimSocialPublishOperation() {
       calls.push("claim-operation");
@@ -308,6 +335,12 @@ function createPublishStore(
       return { ...operation };
     },
     async getSocialPublishContext() {
+      contextReadCount += 1;
+
+      if (options.cancelAfterClaimDenied && contextReadCount > 1) {
+        return createPublishContext("cancelled");
+      }
+
       return context;
     },
     async getSocialPublishOperation() {
@@ -417,6 +450,7 @@ function createPublishContext(
       platform: "instagram" as const,
       platform_post_id: null,
       platform_post_url: null,
+      settings: { shareToFeed: false },
       status: targetStatus,
     },
   };

@@ -1,7 +1,7 @@
 import "server-only";
 
 import {
-  getDemoVideo,
+  findDemoVideo,
   isDemoVideoStorageConfigured,
   type DemoVideoRow,
 } from "@/lib/demo/demo-storage";
@@ -15,6 +15,11 @@ import {
   type MediaAssetRow,
 } from "@/lib/media/media-storage";
 import type { MediaRatio } from "@/lib/media/types";
+import {
+  hasMeaningfulDraftEdits,
+  isDemoRenderCurrent,
+  isOpeningRenderCurrent,
+} from "@/lib/scheduling/render-asset-policy";
 
 export type RenderableScheduleAsset = Pick<
   MediaAssetRow,
@@ -29,6 +34,7 @@ export type RenderAssetResolution =
   | {
       message: string;
       ok: false;
+      status: 404 | 409 | 503;
     };
 
 export async function resolveOpeningRenderAsset(params: {
@@ -39,33 +45,44 @@ export async function resolveOpeningRenderAsset(params: {
     return { asset: params.asset, ok: true };
   }
 
-  const savedEdit = await getSavedEditRenderAsset({
-    asset: params.asset,
-    userId: params.userId,
-  });
+  let savedEdit: Awaited<ReturnType<typeof getSavedEditRenderAsset>>;
 
-  if (savedEdit?.asset && isFreshForAssetDraft(params.asset, savedEdit.asset)) {
+  try {
+    savedEdit = await getSavedEditRenderAsset({
+      asset: params.asset,
+      userId: params.userId,
+    });
+  } catch (error) {
+    console.error("Could not verify saved opening video before scheduling:", error);
+
+    return {
+      message:
+        "We could not verify the latest saved opening video. Try again before scheduling.",
+      ok: false,
+      status: 503,
+    };
+  }
+
+  if (
+    savedEdit?.asset &&
+    isOpeningRenderCurrent({
+      draftSources: [savedEdit.draft, params.asset.metadata],
+      outputUpdatedAt: savedEdit.asset.updated_at,
+    })
+  ) {
     return { asset: savedEdit.asset, ok: true };
   }
 
-  const latestLegacyExport = await getLatestReadyMediaAssetForParent({
-    parentAssetId: params.asset.id,
-    sourceType: "edit_export",
-    userId: params.userId,
-  });
+  const openingHasEdits =
+    hasMeaningfulDraftEdits(savedEdit?.draft) ||
+    hasMeaningfulDraftEdits(params.asset.metadata);
 
-  if (
-    latestLegacyExport &&
-    isFreshForAssetDraft(params.asset, latestLegacyExport)
-  ) {
-    return { asset: latestLegacyExport, ok: true };
-  }
-
-  if (savedEdit?.status === "rendering") {
+  if (savedEdit?.status === "queued" || savedEdit?.status === "rendering") {
     return {
       ok: false,
       message:
         "Save is still in progress for the selected opening video. Wait until it shows Saved before scheduling.",
+      status: 409,
     };
   }
 
@@ -74,17 +91,73 @@ export async function resolveOpeningRenderAsset(params: {
       ok: false,
       message:
         "Save failed for the selected opening video. Save it again before scheduling.",
+      status: 409,
+    };
+  }
+
+  if (savedEdit?.status === "ready" || savedEdit?.status === "draft") {
+    if (openingHasEdits) {
+      return {
+        ok: false,
+        message:
+          "Save the selected opening video in Edit before scheduling so saved text and trim edits are included.",
+        status: 409,
+      };
+    }
+
+    return { asset: params.asset, ok: true };
+  }
+
+  let latestLegacyExport: Awaited<
+    ReturnType<typeof getLatestReadyMediaAssetForParent>
+  >;
+
+  try {
+    latestLegacyExport = await getLatestReadyMediaAssetForParent({
+      parentAssetId: params.asset.id,
+      sourceType: "edit_export",
+      userId: params.userId,
+    });
+  } catch (error) {
+    console.error("Could not verify opening video exports before scheduling:", error);
+
+    return {
+      message:
+        "We could not verify the latest saved opening video. Try again before scheduling.",
+      ok: false,
+      status: 503,
     };
   }
 
   if (
-    hasMeaningfulDraftEdits(savedEdit?.draft) ||
-    hasMeaningfulDraftEdits(params.asset.metadata)
+    latestLegacyExport &&
+    isOpeningRenderCurrent({
+      draftSources: [savedEdit?.draft, params.asset.metadata],
+      outputUpdatedAt: latestLegacyExport.updated_at,
+    })
+  ) {
+    return { asset: latestLegacyExport, ok: true };
+  }
+
+  if (
+    savedEdit?.status === "unresolved" ||
+    savedEdit?.status === "rendered" ||
+    latestLegacyExport
   ) {
     return {
       ok: false,
       message:
+        "The latest saved opening video could not be resolved. Open it in Edit and save it again.",
+      status: 409,
+    };
+  }
+
+  if (openingHasEdits) {
+    return {
+      ok: false,
+      message:
         "Save the selected opening video in Edit before scheduling so saved text and trim edits are included.",
+      status: 409,
     };
   }
 
@@ -96,50 +169,122 @@ export async function resolveDemoRenderAsset(params: {
   projectId: string;
   userId: string;
 }): Promise<RenderAssetResolution> {
-  const demo = await getDemoForAsset(params);
-  const savedDemo = demo ? getSavedDemoRenderAsset(params.asset, demo) : null;
+  const demoLookup = await getDemoForAsset(params);
 
-  if (savedDemo && (!demo || isFreshForDemoDraft(demo, savedDemo))) {
+  if (demoLookup.kind === "missing") {
+    return {
+      message: "The selected demo is no longer available. Choose another demo.",
+      ok: false,
+      status: 404,
+    };
+  }
+
+  if (demoLookup.kind === "unavailable") {
+    return {
+      message:
+        "We could not verify the selected demo right now. Try again before scheduling.",
+      ok: false,
+      status: 503,
+    };
+  }
+
+  const demo = demoLookup.demo;
+  const savedDemo = getSavedDemoRenderAsset(params.asset, demo);
+
+  if (
+    savedDemo &&
+    isDemoRenderCurrent({
+      latestRenderId: demo.latest_render_id,
+      outputSourceRecordId: savedDemo.source_record_id,
+    })
+  ) {
     return { asset: savedDemo, ok: true };
   }
 
-  const latestLegacyExport = await getLatestReadyMediaAssetForParent({
-    parentAssetId: params.asset.id,
-    sourceType: "edit_export",
-    userId: params.userId,
-  });
-
-  if (
-    latestLegacyExport &&
-    (!demo || isFreshForDemoDraft(demo, latestLegacyExport))
-  ) {
-    return { asset: latestLegacyExport, ok: true };
-  }
-
-  if (demo?.status === "rendering") {
+  if (demo.status === "rendering") {
     return {
       ok: false,
       message:
         "Save is still in progress for the selected demo. Wait until it shows Saved before scheduling.",
+      status: 409,
     };
   }
 
-  if (demo?.status === "failed") {
+  if (demo.status === "failed") {
     return {
       ok: false,
       message: "Save failed for the selected demo. Save it again before scheduling.",
+      status: 409,
     };
   }
 
-  if (demo && hasMeaningfulDraftEdits(demo.draft_json)) {
+  if (demo.status === "uploading" || demo.status === "processing") {
     return {
       ok: false,
       message:
-        "Save the selected demo before scheduling so saved text and trim edits are included.",
+        "The selected demo is still being prepared. Wait until it is ready before scheduling.",
+      status: 409,
     };
   }
 
-  return { asset: params.asset, ok: true };
+  if (demo.status === "ready" || demo.status === "draft") {
+    if (hasMeaningfulDraftEdits(demo.draft_json)) {
+      return {
+        ok: false,
+        message:
+          "Save the selected demo before scheduling so saved text and trim edits are included.",
+        status: 409,
+      };
+    }
+
+    return { asset: params.asset, ok: true };
+  }
+
+  let latestLegacyExport: Awaited<
+    ReturnType<typeof getLatestReadyMediaAssetForParent>
+  >;
+
+  try {
+    latestLegacyExport = await getLatestReadyMediaAssetForParent({
+      parentAssetId: params.asset.id,
+      sourceType: "edit_export",
+      userId: params.userId,
+    });
+  } catch (error) {
+    console.error("Could not verify demo video exports before scheduling:", error);
+
+    return {
+      message:
+        "We could not verify the selected demo right now. Try again before scheduling.",
+      ok: false,
+      status: 503,
+    };
+  }
+
+  if (
+    latestLegacyExport &&
+    isDemoRenderCurrent({
+      latestRenderId: demo.latest_render_id,
+      outputSourceRecordId: latestLegacyExport.source_record_id,
+    })
+  ) {
+    return { asset: latestLegacyExport, ok: true };
+  }
+
+  if (demo.status === "rendered" || latestLegacyExport) {
+    return {
+      ok: false,
+      message:
+        "The latest saved demo video could not be resolved. Open the demo and save it again.",
+      status: 409,
+    };
+  }
+
+  return {
+    ok: false,
+    message: "The selected demo is not ready to schedule. Choose it again.",
+    status: 409,
+  };
 }
 
 async function getSavedEditRenderAsset(params: {
@@ -147,7 +292,7 @@ async function getSavedEditRenderAsset(params: {
   userId: string;
 }) {
   if (!isEditRenderPersistenceConfigured()) {
-    return null;
+    throw new Error("Edit render persistence is not configured.");
   }
 
   const [editableVideo, latestRender] = await Promise.all([
@@ -172,27 +317,33 @@ async function getSavedEditRenderAsset(params: {
     };
   }
 
-  if (latestRender && latestRender.status !== "completed") {
+  if (!latestRender) {
+    return {
+      draft: editableVideo.draft,
+      status: "unresolved" as const,
+    };
+  }
+
+  if (latestRender.status !== "completed") {
     return {
       draft: editableVideo.draft,
       status: latestRender.status,
     };
   }
 
-  const renderedUrl =
-    getString(latestRender?.output_url) ?? getString(editableVideo.renderedVideoUrl);
+  const renderedUrl = getString(latestRender.output_url);
 
   if (!renderedUrl) {
     return {
       draft: editableVideo.draft,
-      status: editableVideo.status,
+      status: "unresolved" as const,
     };
   }
 
-  const renderId = getString(latestRender?.render_id);
+  const renderId = getString(latestRender.render_id);
   const updatedAt =
-    getString(latestRender?.completed_at) ??
-    getString(latestRender?.updated_at) ??
+    getString(latestRender.completed_at) ??
+    getString(latestRender.updated_at) ??
     getString(editableVideo.draft?.updatedAt) ??
     getString(editableVideo.createdAt) ??
     params.asset.updated_at;
@@ -217,7 +368,7 @@ async function getDemoForAsset(params: {
   userId: string;
 }) {
   if (!isDemoVideoStorageConfigured()) {
-    return null;
+    return { kind: "unavailable" as const };
   }
 
   const demoId =
@@ -225,18 +376,22 @@ async function getDemoForAsset(params: {
     getString(getObjectValue(params.asset.metadata, "demoId"));
 
   if (!demoId) {
-    return null;
+    return { kind: "missing" as const };
   }
 
   try {
-    return await getDemoVideo({
+    const demo = await findDemoVideo({
       demoId,
       projectId: params.asset.project_id ?? params.projectId,
       userId: params.userId,
     });
+
+    return demo
+      ? { demo, kind: "found" as const }
+      : { kind: "missing" as const };
   } catch (error) {
     console.error("Could not load demo draft before schedule render:", error);
-    return null;
+    return { kind: "unavailable" as const };
   }
 }
 
@@ -262,73 +417,6 @@ function getSavedDemoRenderAsset(
   };
 }
 
-function isFreshForAssetDraft(
-  sourceAsset: MediaAssetRow,
-  outputAsset: RenderableScheduleAsset,
-) {
-  const draft = getDraftRecord(sourceAsset.metadata);
-  const draftUpdatedAt = getString(draft?.updatedAt);
-
-  if (!draftUpdatedAt) {
-    return true;
-  }
-
-  return (
-    new Date(outputAsset.updated_at).getTime() >=
-    new Date(draftUpdatedAt).getTime()
-  );
-}
-
-function isFreshForDemoDraft(
-  demo: { latest_render_id: string | null; updated_at: string },
-  outputAsset: RenderableScheduleAsset,
-) {
-  if (demo.latest_render_id) {
-    return outputAsset.source_record_id === demo.latest_render_id;
-  }
-
-  return (
-    new Date(outputAsset.updated_at).getTime() >=
-    new Date(demo.updated_at).getTime()
-  );
-}
-
-function hasMeaningfulDraftEdits(value: unknown) {
-  const draft = getDraftRecord(value);
-
-  if (!draft) {
-    return false;
-  }
-
-  const trimStartSeconds = getNumberFromValue(draft.trimStartSeconds);
-  const trimEndSeconds = getNumberFromValue(draft.trimEndSeconds);
-
-  return (
-    (trimStartSeconds ?? 0) > 0 ||
-    trimEndSeconds !== null ||
-    getTextOverlayCount(draft.textOverlays) > 0
-  );
-}
-
-function getDraftRecord(value: unknown) {
-  const record = getRecord(value);
-  const nestedDraft = getRecord(record?.draft);
-
-  return nestedDraft ?? record;
-}
-
-function getTextOverlayCount(value: unknown) {
-  if (!Array.isArray(value)) {
-    return 0;
-  }
-
-  return value.filter((overlay) => {
-    const record = getRecord(overlay);
-
-    return typeof record?.text === "string" && record.text.trim().length > 0;
-  }).length;
-}
-
 function normalizeMediaRatio(value: unknown, fallback: MediaRatio): MediaRatio {
   return value === "9:16" ||
     value === "1:1" ||
@@ -351,10 +439,4 @@ function getObjectValue(value: unknown, key: string) {
 
 function getString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function getNumberFromValue(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0
-    ? value
-    : null;
 }

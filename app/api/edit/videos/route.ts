@@ -88,7 +88,10 @@ export async function POST(request: Request) {
       draft: sourceAsset.metadata.draft,
       durationSeconds: sourceAsset.durationSeconds,
       projectId: sourceAsset.projectId ?? DEFAULT_EDIT_PROJECT_ID,
-      ratio: sourceAsset.ratio === "other" ? "9:16" : sourceAsset.ratio,
+      ratio:
+        sourceAsset.ratio === "other"
+          ? getClosestEditableRatio(sourceAsset.width, sourceAsset.height)
+          : sourceAsset.ratio,
       source: getEditableVideoSource(sourceAsset),
       sourceVideoId: sourceAsset.id,
       sourceVideoUrl: sourceAsset.url,
@@ -104,6 +107,27 @@ export async function POST(request: Request) {
   } catch (error) {
     return editVideoErrorResponse(error, "Could not open this video in Edit.");
   }
+}
+
+function getClosestEditableRatio(width: number | null, height: number | null) {
+  if (!width || !height || width <= 0 || height <= 0) {
+    return "9:16" as const;
+  }
+
+  const sourceRatio = width / height;
+  const supportedRatios = [
+    { ratio: "9:16" as const, value: 9 / 16 },
+    { ratio: "1:1" as const, value: 1 },
+    { ratio: "4:5" as const, value: 4 / 5 },
+    { ratio: "16:9" as const, value: 16 / 9 },
+  ];
+
+  return supportedRatios.reduce((closest, candidate) =>
+    Math.abs(Math.log(sourceRatio / candidate.value)) <
+    Math.abs(Math.log(sourceRatio / closest.value))
+      ? candidate
+      : closest,
+  ).ratio;
 }
 
 function editVideoErrorResponse(error: unknown, fallback: string) {

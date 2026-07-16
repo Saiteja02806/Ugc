@@ -11,6 +11,7 @@ import {
   isEditRenderPersistenceConfigured,
   markRenderJobFailed,
 } from "@/lib/edit/render-storage";
+import { buildEditOverlayTextLayout } from "@/lib/edit/overlay-render-spec";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
@@ -150,7 +151,7 @@ function cleanTextOverlays(draft: RenderDraftBody | undefined): RenderTextOverla
       id: cleanText(record.id, crypto.randomUUID(), 96),
       position: position as RenderTextOverlay["position"],
       style: cleanChoice(record.style, textOverlayStyles, "bubble"),
-      text: cleanText(record.text),
+      text: cleanText(record.text, "", 100),
     });
     usedPositions.add(position);
 
@@ -308,7 +309,15 @@ export async function POST(request: Request) {
     );
   }
   const projectId = cleanPathSegment(body.projectId, DEFAULT_EDIT_PROJECT_ID);
-  const ratio = cleanChoice(body.ratio, videoRatios, "9:16");
+
+  if (typeof body.ratio !== "string" || !videoRatios.has(body.ratio)) {
+    return NextResponse.json(
+      { ok: false, error: "Choose a supported output ratio before exporting." },
+      { status: 400 },
+    );
+  }
+
+  const ratio = body.ratio as "9:16" | "1:1" | "4:5" | "16:9";
   const source = cleanChoice(body.source, videoSources, "draft");
   const trimStartSeconds = cleanSeconds(body.draft?.trimStartSeconds) ?? 0;
   const rawTrimEndSeconds = cleanSeconds(body.draft?.trimEndSeconds);
@@ -321,6 +330,24 @@ export async function POST(request: Request) {
     trimEndSeconds,
     textOverlays: cleanTextOverlays(body.draft),
   };
+
+  if (
+    draft.textOverlays.some(
+      (overlay) =>
+        buildEditOverlayTextLayout(overlay.text, overlay.style, ratio)
+          .isTruncated,
+    )
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          "A text layer has too many line breaks to fit safely. Shorten it before exporting.",
+      },
+      { status: 400 },
+    );
+  }
+
   const renderId = crypto.randomUUID();
   const persistenceEnabled = isEditRenderPersistenceConfigured();
   const renderPayload = {

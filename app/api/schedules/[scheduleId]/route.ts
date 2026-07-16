@@ -8,8 +8,10 @@ import {
   cancelUserSchedule,
   getMissingSchedulingRuntimeEnvVars,
   SchedulingRequestError,
+  updateUserSchedule,
 } from "@/lib/scheduling/service";
 import { getScheduledPostForUser } from "@/lib/scheduling/db";
+import type { ScheduleUpdateInput } from "@/lib/scheduling/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -138,6 +140,82 @@ export async function DELETE(
       {
         ok: false,
         message: "Could not cancel this schedule right now.",
+      },
+      500,
+    );
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ scheduleId: string }> },
+) {
+  let userId: string;
+
+  try {
+    userId = (await requireFirebaseUser(request)).uid;
+  } catch (error) {
+    return authErrorResponse(error, "Sign in before editing this schedule.");
+  }
+
+  const missingRuntimeEnv = getMissingSchedulingRuntimeEnvVars();
+
+  if (missingRuntimeEnv.length > 0) {
+    return jsonResponse(
+      {
+        ok: false,
+        message: `Scheduling is not configured. Add ${missingRuntimeEnv.join(
+          ", ",
+        )}.`,
+      },
+      501,
+    );
+  }
+
+  let body: ScheduleUpdateInput;
+
+  try {
+    body = (await request.json()) as ScheduleUpdateInput;
+  } catch {
+    return jsonResponse(
+      {
+        ok: false,
+        message: "Send schedule details as JSON.",
+      },
+      400,
+    );
+  }
+
+  const { scheduleId } = await params;
+
+  try {
+    const schedule = await updateUserSchedule({
+      input: body,
+      postId: scheduleId,
+      userId,
+    });
+
+    return jsonResponse({
+      ok: true,
+      schedule,
+    });
+  } catch (error) {
+    if (error instanceof SchedulingRequestError) {
+      return jsonResponse(
+        {
+          code: error.code,
+          ok: false,
+          message: error.message,
+        },
+        error.status,
+      );
+    }
+
+    console.error("Failed to edit schedule:", error);
+    return jsonResponse(
+      {
+        ok: false,
+        message: "Could not edit this schedule right now.",
       },
       500,
     );

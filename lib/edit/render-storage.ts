@@ -23,6 +23,7 @@ export type PersistedVideoRatio = "9:16" | "1:1" | "4:5" | "16:9";
 export type RenderJobStatus = "queued" | "rendering" | "completed" | "failed";
 
 type EditableVideoInsert = {
+  deleted_at?: string | null;
   draft_json?: Json | null;
   duration_seconds?: number | null;
   latest_render_id?: string | null;
@@ -63,6 +64,7 @@ type RenderDatabase = {
         Relationships: [];
         Row: EditableVideoInsert & {
           created_at: string;
+          deleted_at: string | null;
           id: string;
           latest_render_id: string | null;
           rendered_video_url: string | null;
@@ -204,6 +206,7 @@ export async function listEditableVideosForOwner(userId: string) {
     .from(EDITABLE_VIDEOS_TABLE)
     .select("*")
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .order("updated_at", { ascending: false });
 
   if (error) {
@@ -321,6 +324,7 @@ export async function saveEditableVideoDraftForOwner(params: {
     })
     .eq("id", current.id)
     .eq("user_id", params.userId)
+    .is("deleted_at", null)
     .select("*")
     .single();
 
@@ -351,16 +355,23 @@ export async function createQueuedRenderJob(input: CreateQueuedRenderJobInput) {
     user_id: input.userId,
   };
 
-  const { error: editableVideoError } = await getSupabaseServerClient()
-    .from(EDITABLE_VIDEOS_TABLE)
-    .upsert(editableVideo, {
-      onConflict: "user_id,project_id,source_video_id",
-    });
+  const { data: editableVideoRow, error: editableVideoError } =
+    await getSupabaseServerClient()
+      .from(EDITABLE_VIDEOS_TABLE)
+      .upsert(editableVideo, {
+        onConflict: "user_id,project_id,source_video_id",
+      })
+      .select("deleted_at")
+      .maybeSingle();
 
   if (editableVideoError) {
     throw new Error(
       `Could not persist editable video: ${editableVideoError.message}`,
     );
+  }
+
+  if (!editableVideoRow || editableVideoRow.deleted_at) {
+    throw new Error("The source video is no longer available for editing.");
   }
 
   const renderJob: RenderJobInsert = {
@@ -438,7 +449,8 @@ export async function markRenderJobCompleted(input: CompleteRenderJobInput) {
     .eq("user_id", input.userId)
     .eq("project_id", input.projectId)
     .eq("source_video_id", input.sourceVideoId)
-    .eq("latest_render_id", input.renderId);
+    .eq("latest_render_id", input.renderId)
+    .is("deleted_at", null);
 
   if (editableVideoError) {
     throw new Error(
@@ -485,7 +497,8 @@ export async function markRenderJobFailed(params: {
     .eq("user_id", params.userId)
     .eq("project_id", params.projectId)
     .eq("source_video_id", params.sourceVideoId)
-    .eq("latest_render_id", params.renderId);
+    .eq("latest_render_id", params.renderId)
+    .is("deleted_at", null);
 
   if (editableVideoError) {
     throw new Error(
@@ -503,6 +516,7 @@ async function getEditableVideoRowForOwner(params: {
     .select("*")
     .eq("user_id", params.userId)
     .eq("source_video_id", params.sourceVideoId)
+    .is("deleted_at", null)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();

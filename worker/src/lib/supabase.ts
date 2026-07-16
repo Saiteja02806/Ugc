@@ -304,6 +304,7 @@ export class SupabaseJobStore {
         .eq("project_id", params.projectId)
         .eq("source_video_id", params.sourceVideoId)
         .eq("latest_render_id", params.renderId)
+        .is("deleted_at", null)
         .maybeSingle();
 
     if (editableVideoReadError) {
@@ -326,7 +327,8 @@ export class SupabaseJobStore {
       .eq("user_id", params.userId)
       .eq("project_id", params.projectId)
       .eq("source_video_id", params.sourceVideoId)
-      .eq("latest_render_id", params.renderId);
+      .eq("latest_render_id", params.renderId)
+      .is("deleted_at", null);
 
     if (editableVideoError) {
       throw new Error(
@@ -378,6 +380,7 @@ export class SupabaseJobStore {
         .eq("project_id", params.projectId)
         .eq("source_video_id", params.sourceVideoId)
         .eq("latest_render_id", params.renderId)
+        .is("deleted_at", null)
         .maybeSingle();
 
     if (editableVideoReadError) {
@@ -399,7 +402,8 @@ export class SupabaseJobStore {
       .eq("user_id", params.userId)
       .eq("project_id", params.projectId)
       .eq("source_video_id", params.sourceVideoId)
-      .eq("latest_render_id", params.renderId);
+      .eq("latest_render_id", params.renderId)
+      .is("deleted_at", null);
 
     if (editableVideoError) {
       throw new Error(
@@ -428,6 +432,7 @@ export class SupabaseJobStore {
       .eq("user_id", params.userId)
       .eq("project_id", params.projectId)
       .eq("latest_render_id", params.renderId)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (demoVideoReadError) {
@@ -454,7 +459,8 @@ export class SupabaseJobStore {
       .eq("id", params.sourceVideoId)
       .eq("user_id", params.userId)
       .eq("project_id", params.projectId)
-      .eq("latest_render_id", params.renderId);
+      .eq("latest_render_id", params.renderId)
+      .is("deleted_at", null);
 
     if (error) {
       throw new Error(`Could not mark demo render completed: ${error.message}`);
@@ -476,6 +482,7 @@ export class SupabaseJobStore {
       .eq("user_id", params.userId)
       .eq("project_id", params.projectId)
       .eq("latest_render_id", params.renderId)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (demoVideoReadError) {
@@ -501,7 +508,8 @@ export class SupabaseJobStore {
       .eq("id", params.sourceVideoId)
       .eq("user_id", params.userId)
       .eq("project_id", params.projectId)
-      .eq("latest_render_id", params.renderId);
+      .eq("latest_render_id", params.renderId)
+      .is("deleted_at", null);
 
     if (error) {
       throw new Error(`Could not mark demo render failed: ${error.message}`);

@@ -125,6 +125,58 @@ test("replaces an expired YouTube resumable session", async () => {
   assert.equal(persistedUrl, replacementUrl);
 });
 
+test("sends the selected YouTube visibility and audience settings", async () => {
+  const sessionUrl = "https://upload.example.com/session-settings";
+  const sessionBodies: Array<Record<string, unknown>> = [];
+  const notifySubscriberValues: Array<string | null> = [];
+
+  await withMockFetch(async (input, init) => {
+    const url = String(input);
+
+    if (url === MEDIA_URL) {
+      return videoResponse();
+    }
+
+    if (url.includes("/upload/youtube/v3/videos")) {
+      const uploadUrl = new URL(url);
+      notifySubscriberValues.push(
+        uploadUrl.searchParams.get("notifySubscribers"),
+      );
+      sessionBodies.push(
+        JSON.parse(String(init?.body)) as Record<string, unknown>,
+      );
+      return new Response(null, {
+        headers: { Location: sessionUrl },
+        status: 200,
+      });
+    }
+
+    assert.equal(url, sessionUrl);
+    return Response.json({ id: "youtube-video-settings" }, { status: 201 });
+  }, async () => {
+    await publishYouTubeVideo({
+      accessToken: "access-token",
+      caption: "Caption",
+      mimeType: "video/mp4",
+      settings: {
+        containsSyntheticMedia: false,
+        madeForKids: true,
+        notifySubscribers: true,
+        privacyStatus: "unlisted",
+      },
+      title: "Title",
+      videoUrl: MEDIA_URL,
+    });
+  });
+
+  assert.equal(notifySubscriberValues[0], "true");
+  assert.deepEqual(sessionBodies[0]?.status, {
+    containsSyntheticMedia: false,
+    privacyStatus: "unlisted",
+    selfDeclaredMadeForKids: true,
+  });
+});
+
 function videoResponse() {
   return new Response(Uint8Array.from([1, 2, 3, 4]), {
     headers: {

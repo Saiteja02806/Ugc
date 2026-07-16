@@ -8,12 +8,12 @@ import {
   ImageIcon,
   Lock,
   Loader2,
-  Plus,
   Sparkles,
 } from "lucide-react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { ReferenceImageAttachment } from "@/components/generation/reference-image-attachment";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
 
@@ -362,15 +362,8 @@ function ImageGenerationComposer({
       onSubmit={onSubmit}
       className="rounded-[24px] border border-border/80 bg-white/95 p-3 shadow-[0_16px_50px_rgb(16_32_51_/_0.10)] backdrop-blur sm:p-4"
     >
-      <div className="flex items-start gap-2">
-        <button
-          type="button"
-          aria-label="Attach reference image"
-          title="Attach reference image"
-          className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-white text-[#173454] transition hover:bg-[#fff8f4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          <Plus className="size-4" aria-hidden="true" />
-        </button>
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2">
+        <ReferenceImageAttachment disabled={isGenerating} />
 
         <textarea
           ref={textareaRef}
@@ -378,7 +371,7 @@ function ImageGenerationComposer({
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
           onKeyDown={onTextareaKeyDown}
-          className="max-h-32 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-1 py-2.5 text-sm font-medium leading-6 text-foreground outline-none placeholder:text-[#8c9aab]"
+          className="col-start-2 row-start-1 max-h-32 min-h-11 min-w-0 resize-none bg-transparent px-1 py-2.5 text-sm font-medium leading-6 text-foreground outline-none placeholder:text-[#8c9aab]"
           placeholder="Describe the image asset you want to create..."
         />
 
@@ -386,7 +379,7 @@ function ImageGenerationComposer({
           type="submit"
           disabled={IMAGE_GENERATION_LOCKED || !prompt.trim() || isGenerating}
           title={IMAGE_GENERATION_LOCKED ? "Image generation is locked" : undefined}
-          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[118px]"
+          className="col-start-3 row-start-1 inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[118px]"
         >
           {IMAGE_GENERATION_LOCKED ? (
             <>

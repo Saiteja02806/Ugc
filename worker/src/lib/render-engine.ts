@@ -3,30 +3,28 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import sharp from "sharp";
+
 import { uploadBufferToS3 } from "./s3.js";
 import { downloadVideoToBuffer } from "./download-video.js";
 import {
-  EDIT_OVERLAY_FFMPEG_SHADOW_COLOR,
   EDIT_OVERLAY_OUTPUT_DIMENSIONS,
+  EDIT_OVERLAY_SHADOW_COLOR,
   EDIT_OVERLAY_SHADOW_OFFSET_PX,
   EDIT_OVERLAY_VERTICAL_INSET_PERCENT,
-  getEditOverlayPaddingForFontSize,
-  getEditOverlayRenderMetrics,
+  buildEditOverlayTextLayout,
+  type EditOverlayTextLayout,
 } from "./edit-overlay-render-spec.js";
 import { logger } from "../logger.js";
 
 export type RenderRatio = "9:16" | "1:1" | "4:5" | "16:9";
 export type TextOverlayPosition = "top" | "middle" | "bottom";
 export type TextOverlayStyle = "clean" | "minimal" | "bubble";
-type PreparedTextOverlay = {
-  backgroundOpacity: number | null;
-  boxBorderWidth: number;
-  fontSize: number;
-  lineSpacing: number;
+export type PreparedTextOverlay = {
+  imagePath: string;
+  layout: EditOverlayTextLayout;
   position: TextOverlayPosition;
   style: TextOverlayStyle;
-  text: string;
-  textFilePath: string;
 };
 
 type RenderTextOverlay = {
@@ -35,6 +33,9 @@ type RenderTextOverlay = {
   style: TextOverlayStyle;
   text: string;
 };
+
+const EDIT_OVERLAY_EMBEDDED_FONT_FAMILY = "UgcEditOverlay";
+let editOverlayFontDataUriPromise: Promise<string> | null = null;
 
 export type RenderEditVideoPayload = {
   draft: {
@@ -99,23 +100,20 @@ export async function renderEditedVideoToS3(
     const preparedTextOverlays = payload.draft.textOverlays
       .map((overlay, index) =>
         buildPreparedTextOverlay({
+          imagePath: join(workDir, `overlay-${index}.png`),
           overlay,
           ratio: payload.ratio,
-          textFilePath: join(workDir, `overlay-text-${index}.txt`),
         }),
       )
       .filter(
         (overlay): overlay is PreparedTextOverlay => Boolean(overlay),
       );
 
-    await writeFile(inputPath, sourceBuffer);
+    await Promise.all([
+      writeFile(inputPath, sourceBuffer),
+      ...preparedTextOverlays.map(renderPreparedTextOverlayImage),
+    ]);
     const sourceReadyAt = Date.now();
-
-    await Promise.all(
-      preparedTextOverlays.map((overlay) =>
-        writeFile(overlay.textFilePath, overlay.text, "utf8"),
-      ),
-    );
 
     logger.info("Source video downloaded for render", {
       overlayCount: preparedTextOverlays.length,
@@ -379,7 +377,7 @@ async function normalizeCombinationSegment({
 
   args.push(
     "-vf",
-    buildVideoFilters(payload, []),
+    buildVideoFilters(payload),
     "-map",
     "0:v:0",
     "-map",
@@ -449,7 +447,6 @@ function buildFfmpegArgs({
 }) {
   const args = ["-y"];
   const trimDuration = getTrimDuration(payload);
-  const filters = buildVideoFilters(payload, preparedTextOverlays);
 
   if (payload.draft.trimStartSeconds > 0) {
     args.push("-ss", formatSeconds(payload.draft.trimStartSeconds));
@@ -457,15 +454,19 @@ function buildFfmpegArgs({
 
   args.push("-i", inputPath);
 
+  for (const overlay of preparedTextOverlays) {
+    args.push("-loop", "1", "-framerate", "30", "-i", overlay.imagePath);
+  }
+
   if (trimDuration !== null) {
     args.push("-t", formatSeconds(trimDuration));
   }
 
   args.push(
-    "-vf",
-    filters,
+    "-filter_complex",
+    buildEditedVideoFilterComplex(payload, preparedTextOverlays),
     "-map",
-    "0:v:0",
+    "[rendered]",
     "-map",
     "0:a?",
     "-c:v",
@@ -489,18 +490,12 @@ function buildFfmpegArgs({
   return args;
 }
 
-function buildVideoFilters(
-  payload: { ratio: RenderRatio },
-  preparedTextOverlays: PreparedTextOverlay[],
-) {
-  const filters = [
+function buildVideoFilters(payload: { ratio: RenderRatio }) {
+  return [
     buildRatioScaleCropFilter(payload.ratio),
     "setsar=1",
     "fps=30",
-  ];
-  filters.push(...preparedTextOverlays.map(buildDrawTextFilter));
-
-  return filters.join(",");
+  ].join(",");
 }
 
 function buildRatioScaleCropFilter(ratio: RenderRatio) {
@@ -512,38 +507,39 @@ function buildRatioScaleCropFilter(ratio: RenderRatio) {
   ].join(",");
 }
 
-function buildDrawTextFilter(preparedTextOverlay: PreparedTextOverlay) {
-  const boxOptions =
-    preparedTextOverlay.backgroundOpacity !== null
-      ? `:box=1:boxcolor=black@${preparedTextOverlay.backgroundOpacity}:boxborderw=${preparedTextOverlay.boxBorderWidth}`
-      : "";
+function buildEditedVideoFilterComplex(
+  payload: { ratio: RenderRatio },
+  preparedTextOverlays: PreparedTextOverlay[],
+) {
+  if (preparedTextOverlays.length === 0) {
+    return `[0:v]${buildVideoFilters(payload)},setpts=PTS-STARTPTS[rendered]`;
+  }
 
-  return [
-    "drawtext=textfile='",
-    escapeDrawText(preparedTextOverlay.textFilePath),
-    "'",
-    ":fontcolor=white",
-    `:fontsize=${preparedTextOverlay.fontSize}`,
-    `:line_spacing=${preparedTextOverlay.lineSpacing}`,
-    ":fontfile=",
-    escapeDrawText(getFontPath()),
-    ":x=(w-text_w)/2",
-    `:y=${getDrawTextYExpression(
-      preparedTextOverlay.position,
-      preparedTextOverlay.boxBorderWidth,
-    )}`,
-    ":fix_bounds=1",
-    `:shadowcolor=${escapeDrawText(EDIT_OVERLAY_FFMPEG_SHADOW_COLOR)}`,
-    `:shadowx=${EDIT_OVERLAY_SHADOW_OFFSET_PX}`,
-    `:shadowy=${EDIT_OVERLAY_SHADOW_OFFSET_PX}`,
-    boxOptions,
-  ].join("");
+  const filters = [
+    `[0:v]${buildVideoFilters(payload)},setpts=PTS-STARTPTS[video0]`,
+  ];
+
+  preparedTextOverlays.forEach((_, index) => {
+    const inputLabel = index === 0 ? "video0" : `video${index}`;
+    const outputLabel =
+      index === preparedTextOverlays.length - 1
+        ? "rendered"
+        : `video${index + 1}`;
+    const overlayInputIndex = index + 1;
+
+    filters.push(
+      `[${overlayInputIndex}:v]format=rgba,setpts=PTS-STARTPTS[image${index}]`,
+      `[${inputLabel}][image${index}]overlay=x=0:y=0:shortest=1:format=auto[${outputLabel}]`,
+    );
+  });
+
+  return filters.join(";");
 }
 
 function buildPreparedTextOverlay(params: {
+  imagePath: string;
   overlay: RenderTextOverlay;
   ratio: RenderRatio;
-  textFilePath: string;
 }) {
   const text = params.overlay.text.trim();
 
@@ -551,198 +547,171 @@ function buildPreparedTextOverlay(params: {
     return null;
   }
 
-  const textLayout = buildTextOverlayLayout(
+  const layout = buildEditOverlayTextLayout(
     text,
     params.overlay.style,
     params.ratio,
   );
 
   return {
-    ...textLayout,
+    imagePath: params.imagePath,
+    layout,
     position: params.overlay.position,
     style: params.overlay.style,
-    textFilePath: params.textFilePath,
   };
 }
 
-function buildTextOverlayLayout(
-  text: string,
-  style: TextOverlayStyle,
-  ratio: RenderRatio,
+async function renderPreparedTextOverlayImage(
+  preparedTextOverlay: PreparedTextOverlay,
 ) {
-  const { height, width } = renderDimensions[ratio];
-  const metrics = getEditOverlayRenderMetrics(style, ratio);
-  const baseFontSize = metrics.fontSize;
-  const minFontSize = metrics.minFontSize;
-  const maxTextWidth = Math.round(width * (metrics.maxTextWidthPercent / 100));
-  const maxTextHeight = Math.round(
-    height * (metrics.maxTextHeightPercent / 100),
+  const fontDataUri = await getEditOverlayFontDataUri();
+  const svg = buildPreparedTextOverlaySvg(
+    preparedTextOverlay,
+    fontDataUri,
   );
 
-  for (
-    let fontSize = baseFontSize;
-    fontSize >= minFontSize;
-    fontSize -= 2
-  ) {
-    const maxCharactersPerLine = getMaxCharactersPerLine({
-      averageCharacterWidthFactor: metrics.averageCharacterWidthFactor,
-      fontSize,
-      maxTextWidth,
-    });
-    const lines = wrapText(text, maxCharactersPerLine);
-    const estimatedTextHeight =
-      lines.length * fontSize +
-      Math.max(0, lines.length - 1) * metrics.lineSpacing;
+  await sharp(Buffer.from(svg))
+    .png({ compressionLevel: 9 })
+    .toFile(preparedTextOverlay.imagePath);
+}
 
-    if (estimatedTextHeight <= maxTextHeight) {
-      return {
-        backgroundOpacity: metrics.backgroundOpacity,
-        boxBorderWidth: getEditOverlayPaddingForFontSize(style, fontSize),
-        fontSize,
-        lineSpacing: metrics.lineSpacing,
-        text: lines.join("\n"),
-      };
+export function buildPreparedTextOverlaySvg(
+  preparedTextOverlay: PreparedTextOverlay,
+  fontDataUri: string,
+) {
+  const { layout, position, style } = preparedTextOverlay;
+  const {
+    canvasHeight,
+    canvasWidth,
+    containerHeight,
+    containerWidth,
+    containerX,
+  } = layout.bounds;
+  const containerY = getOverlayContainerY(layout, position);
+  const textTop = containerY + layout.padding;
+  const centerX = canvasWidth / 2;
+  const fontFamily = escapeXml(
+    `${EDIT_OVERLAY_EMBEDDED_FONT_FAMILY}, Noto Sans CJK SC, sans-serif`,
+  );
+  const background =
+    layout.backgroundOpacity === null
+      ? ""
+      : [
+          `<rect x="${containerX}" y="${containerY}"`,
+          ` width="${containerWidth}" height="${containerHeight}"`,
+          ` rx="${getOverlayCornerRadius(style, layout.fontSize)}"`,
+          ` fill="#000000" fill-opacity="${layout.backgroundOpacity}" />`,
+        ].join("");
+  const textLines = layout.lines.flatMap((line, index) => {
+    if (!line) {
+      return [];
     }
-  }
 
-  const maxCharactersPerLine = getMaxCharactersPerLine({
-    averageCharacterWidthFactor: metrics.averageCharacterWidthFactor,
-    fontSize: minFontSize,
-    maxTextWidth,
+    const baselineY = Math.round(
+      textTop + layout.fontSize * 0.82 + index * layout.lineHeight,
+    );
+    const escapedLine = escapeXml(line);
+    const commonAttributes = [
+      `font-family="${fontFamily}"`,
+      `font-size="${layout.fontSize}"`,
+      `font-weight="${layout.fontWeight}"`,
+      'text-anchor="middle"',
+      'xml:space="preserve"',
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    return [
+      `<text x="${centerX + EDIT_OVERLAY_SHADOW_OFFSET_PX}" y="${baselineY + EDIT_OVERLAY_SHADOW_OFFSET_PX}" ${commonAttributes} fill="${escapeXml(EDIT_OVERLAY_SHADOW_COLOR)}">${escapedLine}</text>`,
+      `<text x="${centerX}" y="${baselineY}" ${commonAttributes} fill="${layout.textColor}">${escapedLine}</text>`,
+    ];
   });
 
-  return {
-    backgroundOpacity: metrics.backgroundOpacity,
-    boxBorderWidth: getEditOverlayPaddingForFontSize(style, minFontSize),
-    fontSize: minFontSize,
-    lineSpacing: metrics.lineSpacing,
-    text: wrapText(text, maxCharactersPerLine).join("\n"),
-  };
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}" viewBox="0 0 ${canvasWidth} ${canvasHeight}" text-rendering="geometricPrecision">`,
+    "<defs><style><![CDATA[",
+    `@font-face { font-family: '${EDIT_OVERLAY_EMBEDDED_FONT_FAMILY}'; src: url('${fontDataUri}') format('truetype'); font-style: normal; font-weight: ${layout.fontWeight}; }`,
+    "]]></style></defs>",
+    background,
+    ...textLines,
+    "</svg>",
+  ].join("");
 }
 
-function getMaxCharactersPerLine(params: {
-  averageCharacterWidthFactor: number;
-  fontSize: number;
-  maxTextWidth: number;
-}) {
-  return Math.max(
-    10,
-    Math.floor(
-      params.maxTextWidth /
-        (params.fontSize * params.averageCharacterWidthFactor),
-    ),
+export function getEditOverlayFontDataUri() {
+  editOverlayFontDataUriPromise ??= loadEditOverlayFontDataUri();
+  return editOverlayFontDataUriPromise;
+}
+
+async function loadEditOverlayFontDataUri() {
+  const packagedFontPath = join(
+    process.cwd(),
+    "node_modules",
+    "geist",
+    "dist",
+    "fonts",
+    "geist-sans",
+    "Geist-SemiBold.ttf",
+  );
+  const candidatePaths =
+    process.platform === "win32"
+      ? [packagedFontPath]
+      : [
+          packagedFontPath,
+          "/usr/local/share/fonts/geist/Geist-SemiBold.ttf",
+        ];
+
+  for (const fontPath of candidatePaths) {
+    try {
+      const font = await readFile(fontPath);
+      return `data:font/ttf;base64,${font.toString("base64")}`;
+    } catch {
+      // Try the next packaged or container font path.
+    }
+  }
+
+  throw new Error(
+    "Geist SemiBold is unavailable; refusing to render with a fallback font.",
   );
 }
 
-function wrapText(text: string, maxCharactersPerLine: number) {
-  const manualLines = text
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .trim()
-    .split("\n");
-
-  const lines = manualLines.flatMap((line) =>
-    wrapManualLine(line, maxCharactersPerLine),
-  );
-
-  return lines.length > 0 ? lines : [text];
-}
-
-function wrapManualLine(line: string, maxCharactersPerLine: number) {
-  const normalizedLine = line.replace(/[^\S\n]+/g, " ").trim();
-
-  if (!normalizedLine) {
-    return [""];
-  }
-
-  const words = normalizedLine
-    .split(" ")
-    .flatMap((word) => splitLongWord(word, maxCharactersPerLine));
-  const lines: string[] = [];
-  let currentLine = "";
-
-  for (const word of words) {
-    const candidateLine = currentLine ? `${currentLine} ${word}` : word;
-
-    if (candidateLine.length <= maxCharactersPerLine) {
-      currentLine = candidateLine;
-      continue;
-    }
-
-    if (currentLine) {
-      lines.push(currentLine);
-    }
-
-    currentLine = word;
-  }
-
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-
-  return lines.length > 0 ? lines : [normalizedLine];
-}
-
-function splitLongWord(word: string, maxCharactersPerLine: number) {
-  if (word.length <= maxCharactersPerLine) {
-    return [word];
-  }
-
-  const chunks: string[] = [];
-
-  for (let index = 0; index < word.length; index += maxCharactersPerLine) {
-    chunks.push(word.slice(index, index + maxCharactersPerLine));
-  }
-
-  return chunks;
-}
-
-function getDrawTextYExpression(
+function getOverlayContainerY(
+  layout: EditOverlayTextLayout,
   position: TextOverlayPosition,
-  boxBorderWidth: number,
 ) {
-  const verticalInset = `h*${EDIT_OVERLAY_VERTICAL_INSET_PERCENT / 100}`;
+  const { canvasHeight, containerHeight } = layout.bounds;
+  const verticalInset = Math.round(
+    canvasHeight * (EDIT_OVERLAY_VERTICAL_INSET_PERCENT / 100),
+  );
 
   if (position === "top") {
-    return boxBorderWidth > 0
-      ? `${verticalInset}+${boxBorderWidth}`
-      : verticalInset;
+    return verticalInset;
   }
 
   if (position === "middle") {
-    return "(h-text_h)/2";
+    return Math.round((canvasHeight - containerHeight) / 2);
   }
 
-  return boxBorderWidth > 0
-    ? `h-text_h-${verticalInset}-${boxBorderWidth}`
-    : `h-text_h-${verticalInset}`;
+  return canvasHeight - verticalInset - containerHeight;
 }
 
-function getFontPath() {
-  if (process.platform === "win32") {
-    return join(
-      process.cwd(),
-      "node_modules",
-      "geist",
-      "dist",
-      "fonts",
-      "geist-sans",
-      "Geist-SemiBold.ttf",
-    );
-  }
-
-  return "/usr/local/share/fonts/geist/Geist-SemiBold.ttf";
+function getOverlayCornerRadius(
+  style: TextOverlayStyle,
+  fontSize: number,
+) {
+  return style === "bubble"
+    ? Math.round(fontSize * 0.32)
+    : Math.round(fontSize * 0.18);
 }
 
-function escapeDrawText(value: string) {
+function escapeXml(value: string) {
   return value
-    .replace(/\\/g, "\\\\")
-    .replace(/\r?\n/g, "\\n")
-    .replace(/:/g, "\\:")
-    .replace(/'/g, "\\'")
-    .replace(/\[/g, "\\[")
-    .replace(/\]/g, "\\]")
-    .replace(/%/g, "\\%");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 function getTrimDuration(payload: RenderEditVideoPayload) {

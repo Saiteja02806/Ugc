@@ -5,7 +5,7 @@ import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "Analytics",
-  description: "View verified performance data from connected publishing accounts.",
+  description: "View real publishing activity from scheduled posts and connected accounts.",
 };
 
 export default function AnalyticsPage() {

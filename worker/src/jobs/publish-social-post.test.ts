@@ -7,9 +7,11 @@ import {
 } from "./publish-social-post.js";
 import { encryptSocialToken } from "../lib/social-token-crypto.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
+import { TikTokPublishError } from "../lib/tiktok-publisher.js";
 import { RetryableJobError } from "../retryable-job-error.js";
 import type {
   BackgroundJobRow,
+  Json,
   SocialPublishOperationRow,
 } from "../types.js";
 
@@ -280,6 +282,159 @@ test("does not retry permanent provider errors", async () => {
   });
 });
 
+test("marks TikTok permission failures as action required", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(
+      createOperation({ platform: "tiktok" }),
+      { allowFailure: true, platform: "tiktok" },
+    );
+
+    await assert.rejects(
+      runPublishSocialPostJob(createPublishJob(), {
+        publishers: {
+          async tiktok() {
+            throw new TikTokPublishError(
+              "TikTok API request failed: missing publishing permission.",
+              "scope_not_authorized",
+              "log-permission-1",
+              403,
+              true,
+            );
+          },
+        },
+        store: fixture.store,
+      }),
+      (error) =>
+        error instanceof TikTokPublishError &&
+        error.code === "scope_not_authorized",
+    );
+
+    assert.deepEqual(fixture.calls, [
+      "claim-operation",
+      "release-operation",
+      "target-action-required",
+    ]);
+    const providerError = getJsonRecord(
+      fixture.targetMetadata.providerError,
+    );
+
+    assert.equal(providerError.code, "scope_not_authorized");
+    assert.equal(providerError.logId, "log-permission-1");
+    assert.equal(
+      providerError.message,
+      "TikTok API request failed: missing publishing permission.",
+    );
+    assert.equal(typeof providerError.occurredAt, "string");
+    assert.equal(providerError.status, 403);
+  });
+});
+
+test("persists the TikTok upload session before provider completion", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(
+      createOperation({ platform: "tiktok" }),
+      { platform: "tiktok" },
+    );
+
+    await runPublishSocialPostJob(createPublishJob(), {
+      publishers: {
+        async tiktok(params) {
+          assert.equal(params.publishId, null);
+          assert.equal(params.uploadUrl, null);
+          await params.onPublishInitialized?.({
+            creatorNickname: "Creator",
+            creatorUsername: "creator_name",
+            logId: "log-init-1",
+            mediaTransferMode: "FILE_UPLOAD",
+            publishId: "publish-session-1",
+            uploadUrl: "https://upload.example.com/session-token",
+          });
+          return {
+            platformPostId: "tiktok-post-1",
+            platformPostUrl: null,
+            publishId: "publish-session-1",
+          };
+        },
+      },
+      store: fixture.store,
+    });
+
+    assert.equal(fixture.operation.provider_operation_id, "publish-session-1");
+    assert.deepEqual(fixture.operation.metadata, {
+      tiktokCreatorNickname: "Creator",
+      tiktokCreatorUsername: "creator_name",
+      tiktokInitializationLogId: "log-init-1",
+      tiktokMediaTransferMode: "FILE_UPLOAD",
+      tiktokUploadUrl: "https://upload.example.com/session-token",
+    });
+  });
+});
+
+test("refreshes an invalid TikTok token once and retries the same operation", async () => {
+  await withEncryptionKey(async () => {
+    await withTikTokEnvironment(async () => {
+      const fixture = createPublishStore(
+        createOperation({ platform: "tiktok" }),
+        { platform: "tiktok", withTikTokRefresh: true },
+      );
+      const seenTokens: string[] = [];
+
+      await withMockFetch(async (_input, init) => {
+        const body = new URLSearchParams(String(init?.body));
+        assert.equal(body.get("refresh_token"), "refresh-token");
+
+        return Response.json({
+          access_token: "access-token-refreshed",
+          expires_in: 86_400,
+          open_id: "tiktok-account-1",
+          refresh_expires_in: 31_536_000,
+          refresh_token: "refresh-token-rotated",
+          scope: "user.info.basic,video.publish",
+          token_type: "Bearer",
+        });
+      }, async () => {
+        await runPublishSocialPostJob(createPublishJob(), {
+          publishers: {
+            async tiktok(params) {
+              seenTokens.push(params.accessToken);
+
+              if (seenTokens.length === 1) {
+                throw new TikTokPublishError(
+                  "TikTok API request failed: invalid access token.",
+                  "access_token_invalid",
+                  "log-token-1",
+                  401,
+                  true,
+                );
+              }
+
+              assert.equal(params.publishId, null);
+              return {
+                platformPostId: "tiktok-post-refreshed",
+                platformPostUrl: null,
+                publishId: "publish-refreshed",
+              };
+            },
+          },
+          store: fixture.store,
+        });
+      });
+
+      assert.deepEqual(seenTokens, [
+        "access-token",
+        "access-token-refreshed",
+      ]);
+      assert.deepEqual(fixture.calls, [
+        "claim-operation",
+        "claim-token-refresh",
+        "complete-token-refresh",
+        "operation-published",
+        "target-published",
+      ]);
+    });
+  });
+});
+
 test("stops retrying at the configured attempt limit", () => {
   assert.deepEqual(
     getSocialPublishRetryDecision({
@@ -315,12 +470,19 @@ function createPublishStore(
     cancelAfterClaimDenied?: boolean;
     denyClaim?: boolean;
     failTargetPublished?: boolean;
+    platform?: "instagram" | "tiktok";
     targetStatus?: "cancelled" | "failed" | "scheduled";
+    withTikTokRefresh?: boolean;
   } = {},
 ) {
   const calls: string[] = [];
   const operation = { ...initialOperation };
-  const context = createPublishContext(options.targetStatus);
+  const context = createPublishContext(
+    options.targetStatus,
+    options.platform,
+    options.withTikTokRefresh,
+  );
+  let targetMetadata: Record<string, Json> = {};
   let contextReadCount = 0;
   const store = {
     async claimSocialPublishOperation() {
@@ -366,6 +528,17 @@ function createPublishStore(
 
       calls.push("target-failed");
     },
+    async markSocialPublishTargetActionRequired(params: {
+      metadata?: Json;
+    }) {
+      if (!options.allowFailure) {
+        throw new Error("Target should not require action in this test.");
+      }
+
+      calls.push("target-action-required");
+      targetMetadata = getJsonRecord(params.metadata);
+      return true;
+    },
     async markSocialPublishTargetPublished() {
       calls.push("target-published");
 
@@ -391,13 +564,52 @@ function createPublishStore(
       operation.active_job_id = null;
       return true;
     },
+    async claimSocialConnectionTokenRefresh() {
+      if (!options.withTikTokRefresh) {
+        throw new Error("Token refresh should not be claimed in this test.");
+      }
+
+      calls.push("claim-token-refresh");
+      return { ...context.connection };
+    },
+    async completeSocialConnectionTokenRefresh(params: {
+      accessTokenCiphertext: string;
+      expiresAt: string;
+      refreshExpiresAt: string;
+      refreshTokenCiphertext: string;
+      scopes: string[];
+      status: "connected" | "permission_missing";
+      tokenType: string;
+    }) {
+      if (!options.withTikTokRefresh) {
+        throw new Error("Token refresh should not complete in this test.");
+      }
+
+      calls.push("complete-token-refresh");
+      Object.assign(context.connection, {
+        access_token_ciphertext: params.accessTokenCiphertext,
+        expires_at: params.expiresAt,
+        refresh_expires_at: params.refreshExpiresAt,
+        refresh_token_ciphertext: params.refreshTokenCiphertext,
+        scopes: params.scopes,
+        status: params.status,
+        token_type: params.tokenType,
+      });
+      return { ...context.connection };
+    },
+    async releaseSocialConnectionTokenRefresh() {
+      calls.push("release-token-refresh");
+      return true;
+    },
     async saveSocialPublishProviderOperation(params: {
+      metadata?: Json;
       providerOperationId: string;
       providerOperationKind: SocialPublishOperationRow["provider_operation_kind"];
     }) {
       calls.push("save-provider-operation");
       operation.provider_operation_id = params.providerOperationId;
       operation.provider_operation_kind = params.providerOperationKind;
+      operation.metadata = params.metadata ?? operation.metadata;
       operation.status = "initialized";
       return { ...operation };
     },
@@ -407,12 +619,19 @@ function createPublishStore(
     calls,
     operation,
     store: store as unknown as SupabaseJobStore,
+    get targetMetadata() {
+      return targetMetadata;
+    },
   };
 }
 
 function createPublishContext(
   targetStatus: "cancelled" | "failed" | "scheduled" = "scheduled",
+  platform: "instagram" | "tiktok" = "instagram",
+  withTikTokRefresh = false,
 ) {
+  const isTikTok = platform === "tiktok";
+
   return {
     connection: {
       access_token_ciphertext: encryptSocialToken("access-token"),
@@ -421,21 +640,34 @@ function createPublishContext(
       id: "e3eb0ce7-4729-4454-88f4-8a07db92cb62",
       last_error_code: null,
       metadata: {},
-      platform: "instagram" as const,
-      platform_account_id: "instagram-account-1",
+      platform,
+      platform_account_id: isTikTok
+        ? "tiktok-account-1"
+        : "instagram-account-1",
       platform_account_name: "Test Account",
       platform_account_username: "test-account",
-      provider: "meta" as const,
-      refresh_token_ciphertext: null,
+      provider: isTikTok ? ("tiktok" as const) : ("meta" as const),
+      refresh_expires_at: withTikTokRefresh
+        ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        : null,
+      refresh_token_ciphertext: withTikTokRefresh
+        ? encryptSocialToken("refresh-token")
+        : null,
       revoked_at: null,
-      scopes: ["instagram_content_publish"],
+      scopes: isTikTok
+        ? ["user.info.basic", "video.publish"]
+        : ["instagram_content_publish"],
       status: "connected" as const,
       token_type: "Bearer",
+      token_refreshed_at: null,
+      token_refresh_claim_token: null,
+      token_refresh_claimed_at: null,
       updated_at: new Date().toISOString(),
       user_id: "user-test",
     },
     media: {
       collection: "video",
+      duration_seconds: 12,
       mime_type: "video/mp4",
       source_type: "combined_render",
       status: "ready",
@@ -447,10 +679,13 @@ function createPublishContext(
       title: "Test title",
     },
     target: {
-      platform: "instagram" as const,
+      metadata: {},
+      platform,
       platform_post_id: null,
       platform_post_url: null,
-      settings: { shareToFeed: false },
+      settings: isTikTok
+        ? { containsSyntheticMedia: true, privacyLevel: "SELF_ONLY" }
+        : { shareToFeed: false },
       status: targetStatus,
     },
   };
@@ -524,5 +759,53 @@ async function withEncryptionKey(run: () => Promise<void>) {
     } else {
       process.env.SOCIAL_TOKEN_ENCRYPTION_KEY = originalKey;
     }
+  }
+}
+
+async function withTikTokEnvironment(run: () => Promise<void>) {
+  const originalKey = process.env.TIKTOK_CLIENT_KEY;
+  const originalSecret = process.env.TIKTOK_CLIENT_SECRET;
+  process.env.TIKTOK_CLIENT_KEY = "client-key";
+  process.env.TIKTOK_CLIENT_SECRET = "client-secret";
+
+  try {
+    await run();
+  } finally {
+    restoreEnv("TIKTOK_CLIENT_KEY", originalKey);
+    restoreEnv("TIKTOK_CLIENT_SECRET", originalSecret);
+  }
+}
+
+async function withMockFetch<T>(
+  mockFetch: typeof fetch,
+  run: () => Promise<T>,
+) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = mockFetch;
+
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+function getJsonRecord(value: Json | undefined): Record<string, Json> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, Json] =>
+      entry[1] !== undefined,
+    ),
+  );
+}
+
+function restoreEnv(name: string, value: string | undefined) {
+  if (value === undefined) {
+    delete process.env[name];
+  } else {
+    process.env[name] = value;
   }
 }

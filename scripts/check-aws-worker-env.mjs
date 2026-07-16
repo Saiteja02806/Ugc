@@ -112,6 +112,8 @@ const baseWorkerSecretExpectedChecks = [
   { key: "UGC_VIDEO_RENDER_QUEUE_URL" },
   { key: "UGC_MEDIA_PROCESSING_QUEUE_URL" },
   { key: "UGC_SOCIAL_PUBLISH_QUEUE_URL" },
+  { key: "TIKTOK_CLIENT_KEY" },
+  { key: "TIKTOK_CLIENT_SECRET" },
   { oneOf: ["OAUTH_TOKEN_ENCRYPTION_KEY", "SOCIAL_TOKEN_ENCRYPTION_KEY"] },
 ];
 
@@ -249,6 +251,18 @@ for (const group of groups) {
   }
 }
 
+const googleWorkerSecretSourceCheck = checkGoogleWorkerSecretSource(entries);
+
+console.log("");
+console.log("Social worker Google OAuth source");
+console.log(
+  `${googleWorkerSecretSourceCheck.ok ? "OK" : "FAIL"} ${googleWorkerSecretSourceCheck.message}`,
+);
+
+if (!googleWorkerSecretSourceCheck.ok) {
+  hasFailure = true;
+}
+
 console.log("");
 console.log("Confirm these keys exist inside the ECS worker Secrets Manager secret:");
 
@@ -318,6 +332,42 @@ function buildWorkerSecretExpectedChecks(entries) {
   }
 
   return checks;
+}
+
+function checkGoogleWorkerSecretSource(entries) {
+  const fallbackEnabled = isEnabledEnvValue(
+    getConfiguredValue(
+      entries,
+      "ECS_SOCIAL_PUBLISH_USE_WORKER_SECRET_GOOGLE_OAUTH",
+    ),
+  );
+  const clientIdSecretPresent =
+    getKeyState(entries, "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_ID_SECRET_ARN") ===
+    "present";
+  const clientSecretSecretPresent =
+    getKeyState(entries, "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_SECRET_SECRET_ARN") ===
+    "present";
+
+  if (fallbackEnabled) {
+    return {
+      ok: true,
+      message:
+        "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET will be read from WORKER_SECRET_ARN.",
+    };
+  }
+
+  if (clientIdSecretPresent && clientSecretSecretPresent) {
+    return {
+      ok: true,
+      message: "Dedicated Google OAuth Secrets Manager sources are configured.",
+    };
+  }
+
+  return {
+    ok: false,
+    message:
+      "Enable ECS_SOCIAL_PUBLISH_USE_WORKER_SECRET_GOOGLE_OAUTH or configure both dedicated Google OAuth secret ARNs.",
+  };
 }
 
 function getConfiguredValue(entries, key) {

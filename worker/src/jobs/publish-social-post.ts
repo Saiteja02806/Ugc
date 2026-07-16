@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+import { setTimeout as delay } from "node:timers/promises";
+
 import { logger } from "../logger.js";
 import { refreshGoogleAccessToken } from "../lib/google-oauth.js";
 import { publishInstagramReel } from "../lib/instagram-publisher.js";
@@ -6,7 +9,15 @@ import {
   decryptSocialToken,
   encryptSocialToken,
 } from "../lib/social-token-crypto.js";
-import { publishTikTokVideo } from "../lib/tiktok-publisher.js";
+import {
+  publishTikTokVideo,
+  TikTokPublishError,
+} from "../lib/tiktok-publisher.js";
+import {
+  isTikTokReconnectErrorCode,
+  refreshTikTokAccessToken,
+  TikTokOAuthError,
+} from "../lib/tiktok-oauth.js";
 import { publishYouTubeVideo } from "../lib/youtube-publisher.js";
 import {
   getInstagramTargetPublishSettings,
@@ -32,7 +43,8 @@ const requiredYouTubeScopes = new Set([
   "https://www.googleapis.com/auth/youtube.upload",
   "https://www.googleapis.com/auth/youtubepartner",
 ]);
-const ACCESS_TOKEN_REFRESH_SKEW_MS = 120_000;
+const ACCESS_TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
+const SOCIAL_TOKEN_REFRESH_STALE_SECONDS = 120;
 const SOCIAL_PUBLISH_OPERATION_STALE_SECONDS = 900;
 const DEFAULT_SOCIAL_PUBLISH_MAX_ATTEMPTS = 4;
 const DEFAULT_SOCIAL_PUBLISH_RETRY_BASE_SECONDS = 30;
@@ -73,6 +85,7 @@ export async function runPublishSocialPostJob(
     ...context.publishers,
   };
   let operation: SocialPublishOperationRow | null = null;
+  let targetMetadata: Json = {};
 
   logger.info("Social publish worker started", {
     jobId: job.id,
@@ -85,6 +98,7 @@ export async function runPublishSocialPostJob(
       targetId: payload.targetId,
       userId: job.user_id,
     });
+    targetMetadata = publishContext.target.metadata;
 
     if (
       publishContext.post.status === "cancelled" ||
@@ -201,9 +215,10 @@ export async function runPublishSocialPostJob(
       } satisfies Record<string, Json>;
     }
 
-    const accessToken = await getPublishAccessToken({
+    let accessToken = await getPublishAccessToken({
       context: publishContext,
       store: context.store,
+      targetId: payload.targetId,
       userId: job.user_id,
     });
 
@@ -249,24 +264,61 @@ export async function runPublishSocialPostJob(
         platformPostUrl: result.permalink,
       };
     } else if (publishContext.target.platform === "tiktok") {
-      const result = await publishers.tiktok({
-        accessToken,
-        caption: publishContext.post.caption,
-        onPublishInitialized: async (publishId) => {
-          operation = await saveProviderOperationOrThrow({
-            claimToken,
-            operation: requireClaimedOperation(operation),
-            providerOperationId: publishId,
-            providerOperationKind: "tiktok_publish",
-            store: context.store,
-          });
-        },
-        publishId: getProviderOperationId(operation, "tiktok_publish"),
-        settings: getTikTokTargetPublishSettings(
-          publishContext.target.settings,
-        ),
-        videoUrl: publishContext.media.url,
-      });
+      const publishToTikTok = (token: string) =>
+        publishers.tiktok({
+          accessToken: token,
+          caption: publishContext.post.caption,
+          onPublishInitialized: async (initialization) => {
+            operation = await saveProviderOperationOrThrow({
+              claimToken,
+              metadata: mergeJsonRecords(
+                requireClaimedOperation(operation).metadata,
+                {
+                  tiktokCreatorNickname: initialization.creatorNickname,
+                  tiktokCreatorUsername: initialization.creatorUsername,
+                  tiktokInitializationLogId: initialization.logId,
+                  tiktokMediaTransferMode: initialization.mediaTransferMode,
+                  tiktokUploadUrl: initialization.uploadUrl,
+                },
+              ),
+              operation: requireClaimedOperation(operation),
+              providerOperationId: initialization.publishId,
+              providerOperationKind: "tiktok_publish",
+              store: context.store,
+            });
+          },
+          publishId: getProviderOperationId(
+            requireClaimedOperation(operation),
+            "tiktok_publish",
+          ),
+          settings: getTikTokTargetPublishSettings(
+            publishContext.target.settings,
+          ),
+          uploadUrl: getTikTokUploadUrl(requireClaimedOperation(operation)),
+          videoDurationSeconds: publishContext.media.duration_seconds,
+          videoMimeType: publishContext.media.mime_type,
+          videoUrl: publishContext.media.url,
+        });
+      let result: Awaited<ReturnType<typeof publishTikTokVideo>>;
+
+      try {
+        result = await publishToTikTok(accessToken);
+      } catch (error) {
+        if (
+          !(error instanceof TikTokPublishError) ||
+          error.code !== "access_token_invalid"
+        ) {
+          throw error;
+        }
+
+        accessToken = await refreshTikTokConnectionToken({
+          context: publishContext,
+          store: context.store,
+          targetId: payload.targetId,
+          userId: job.user_id,
+        });
+        result = await publishToTikTok(accessToken);
+      }
 
       publishedResult = {
         output: {
@@ -370,12 +422,16 @@ export async function runPublishSocialPostJob(
       });
     }
 
-    const errorCode = getPublishErrorCode(errorMessage);
+    const failure = getSocialPublishFailure(error, errorMessage);
+    const errorCode = failure.errorCode;
+    const failureMetadata = mergeJsonRecords(targetMetadata, {
+      providerError: failure.providerError,
+    });
     const retryDecision = getSocialPublishRetryDecision({
       attemptCount: job.attempt_count,
       errorMessage,
     });
-    const retryError = retryDecision.shouldRetry
+    const retryError = !failure.actionRequired && retryDecision.shouldRetry
       ? new RetryableJobError(errorMessage, {
           code: errorCode,
           retryAfterSeconds: retryDecision.retryAfterSeconds,
@@ -388,6 +444,9 @@ export async function runPublishSocialPostJob(
           claimToken,
           errorCode,
           errorMessage,
+          metadata: mergeJsonRecords(operation.metadata, {
+            providerError: failure.providerError,
+          }),
           operationId: operation.id,
         });
       } catch (releaseError) {
@@ -403,11 +462,35 @@ export async function runPublishSocialPostJob(
       }
     }
 
+    if (failure.actionRequired) {
+      try {
+        await context.store.markSocialPublishTargetActionRequired({
+          errorCode,
+          errorMessage: failure.userMessage,
+          metadata: failureMetadata,
+          targetId: payload.targetId,
+          userId: job.user_id,
+        });
+      } catch (persistenceError) {
+        logger.error("Could not persist social publish action requirement", {
+          error:
+            persistenceError instanceof Error
+              ? persistenceError.message
+              : "Unknown persistence error",
+          jobId: job.id,
+          targetId: payload.targetId,
+        });
+      }
+
+      throw error;
+    }
+
     if (retryError) {
       try {
         await context.store.markSocialPublishTargetRetrying({
           errorCode,
           errorMessage,
+          metadata: failureMetadata,
           nextRetryAt: retryError.retryAt,
           targetId: payload.targetId,
           userId: job.user_id,
@@ -430,6 +513,7 @@ export async function runPublishSocialPostJob(
       await context.store.markSocialPublishTargetFailed({
         errorCode,
         errorMessage,
+        metadata: failureMetadata,
         targetId: payload.targetId,
         userId: job.user_id,
       });
@@ -508,6 +592,7 @@ function requireClaimedOperation(
 
 async function saveProviderOperationOrThrow(params: {
   claimToken: string;
+  metadata?: Json;
   operation: SocialPublishOperationRow;
   providerOperationId: string;
   providerOperationKind: SocialPublishProviderOperationKind;
@@ -516,6 +601,7 @@ async function saveProviderOperationOrThrow(params: {
   const savedOperation =
     await params.store.saveSocialPublishProviderOperation({
       claimToken: params.claimToken,
+      metadata: params.metadata,
       operationId: params.operation.id,
       providerOperationId: params.providerOperationId,
       providerOperationKind: params.providerOperationKind,
@@ -590,14 +676,20 @@ function validatePublishContext(
 async function getPublishAccessToken(params: {
   context: Awaited<ReturnType<SupabaseJobStore["getSocialPublishContext"]>>;
   store: SupabaseJobStore;
+  targetId: string;
   userId: string;
 }) {
   const { connection, target } = params.context;
 
-  if (
-    target.platform !== "youtube" ||
-    !isExpired(connection.expires_at, ACCESS_TOKEN_REFRESH_SKEW_MS)
-  ) {
+  if (!isExpired(connection.expires_at, ACCESS_TOKEN_REFRESH_SKEW_MS)) {
+    return decryptSocialToken(connection.access_token_ciphertext);
+  }
+
+  if (target.platform === "tiktok") {
+    return refreshTikTokConnectionToken(params);
+  }
+
+  if (target.platform !== "youtube") {
     return decryptSocialToken(connection.access_token_ciphertext);
   }
 
@@ -627,12 +719,284 @@ async function getPublishAccessToken(params: {
   return refreshedToken.accessToken;
 }
 
+async function refreshTikTokConnectionToken(params: {
+  context: Awaited<ReturnType<SupabaseJobStore["getSocialPublishContext"]>>;
+  store: SupabaseJobStore;
+  targetId: string;
+  userId: string;
+}) {
+  const connection = params.context.connection;
+
+  if (
+    !connection.refresh_token_ciphertext ||
+    isExpired(connection.refresh_expires_at)
+  ) {
+    throw new TikTokOAuthError(
+      "Reconnect TikTok because its authorization has expired.",
+      "refresh_token_expired",
+      null,
+      401,
+    );
+  }
+
+  const claimToken = randomUUID();
+  const claimedConnection =
+    await params.store.claimSocialConnectionTokenRefresh({
+      claimToken,
+      connectionId: connection.id,
+      staleAfterSeconds: SOCIAL_TOKEN_REFRESH_STALE_SECONDS,
+      userId: params.userId,
+    });
+
+  if (!claimedConnection) {
+    return waitForTikTokConnectionRefresh(params);
+  }
+
+  try {
+    if (
+      !claimedConnection.refresh_token_ciphertext ||
+      isExpired(claimedConnection.refresh_expires_at)
+    ) {
+      throw new TikTokOAuthError(
+        "Reconnect TikTok because its authorization has expired.",
+        "refresh_token_expired",
+        null,
+        401,
+      );
+    }
+
+    const refreshedToken = await refreshTikTokAccessToken(
+      decryptSocialToken(claimedConnection.refresh_token_ciphertext),
+    );
+
+    if (
+      !refreshedToken.openId ||
+      refreshedToken.openId !== claimedConnection.platform_account_id
+    ) {
+      throw new TikTokOAuthError(
+        "TikTok refreshed a different account. Reconnect the intended account.",
+        "account_mismatch",
+        refreshedToken.logId,
+        401,
+      );
+    }
+
+    const hasPublishScope = refreshedToken.scopes.some((scope) =>
+      requiredTikTokScopes.has(scope),
+    );
+    const completedConnection =
+      await params.store.completeSocialConnectionTokenRefresh({
+        accessTokenCiphertext: encryptSocialToken(refreshedToken.accessToken),
+        claimToken,
+        connectionId: claimedConnection.id,
+        expiresAt: refreshedToken.expiresAt,
+        refreshExpiresAt: refreshedToken.refreshExpiresAt,
+        refreshTokenCiphertext: encryptSocialToken(
+          refreshedToken.refreshToken,
+        ),
+        scopes: refreshedToken.scopes,
+        status: hasPublishScope ? "connected" : "permission_missing",
+        tokenType: refreshedToken.tokenType,
+        userId: params.userId,
+      });
+
+    if (!completedConnection) {
+      throw new Error("TikTok token refresh claim was lost before completion.");
+    }
+
+    if (!hasPublishScope) {
+      throw new TikTokOAuthError(
+        "Reconnect TikTok to grant publishing permission.",
+        "scope_not_authorized",
+        refreshedToken.logId,
+        403,
+      );
+    }
+
+    return refreshedToken.accessToken;
+  } catch (error) {
+    const refreshErrorCode =
+      error instanceof TikTokOAuthError
+        ? error.code
+        : "tiktok_refresh_failed";
+
+    try {
+      await params.store.releaseSocialConnectionTokenRefresh({
+        claimToken,
+        connectionId: claimedConnection.id,
+        errorCode: refreshErrorCode,
+        userId: params.userId,
+      });
+    } catch (releaseError) {
+      logger.error("Could not release TikTok token refresh claim", {
+        connectionId: claimedConnection.id,
+        error:
+          releaseError instanceof Error
+            ? releaseError.message
+            : "Unknown persistence error",
+      });
+    }
+
+    throw error;
+  }
+}
+
+async function waitForTikTokConnectionRefresh(params: {
+  context: Awaited<ReturnType<SupabaseJobStore["getSocialPublishContext"]>>;
+  store: SupabaseJobStore;
+  targetId: string;
+  userId: string;
+}) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    await delay(250);
+    const latest = await params.store.getSocialPublishContext({
+      targetId: params.targetId,
+      userId: params.userId,
+    });
+
+    if (
+      latest.connection.status === "connected" &&
+      !latest.connection.token_refresh_claim_token &&
+      !isExpired(latest.connection.expires_at, ACCESS_TOKEN_REFRESH_SKEW_MS)
+    ) {
+      return decryptSocialToken(latest.connection.access_token_ciphertext);
+    }
+
+    if (
+      latest.connection.status !== "connected" ||
+      isExpired(latest.connection.refresh_expires_at)
+    ) {
+      throw new TikTokOAuthError(
+        "Reconnect TikTok to continue publishing.",
+        latest.connection.last_error_code || "invalid_refresh_token",
+        null,
+        401,
+      );
+    }
+  }
+
+  throw new Error("TikTok token refresh is already in progress.");
+}
+
 function canRefreshExpiredConnection(
   context: Awaited<ReturnType<SupabaseJobStore["getSocialPublishContext"]>>,
 ) {
   return (
-    context.target.platform === "youtube" &&
-    Boolean(context.connection.refresh_token_ciphertext)
+    (context.target.platform === "youtube" &&
+      Boolean(context.connection.refresh_token_ciphertext)) ||
+    (context.target.platform === "tiktok" &&
+      Boolean(context.connection.refresh_token_ciphertext) &&
+      !isExpired(context.connection.refresh_expires_at))
+  );
+}
+
+function getTikTokUploadUrl(operation: SocialPublishOperationRow) {
+  if (operation.provider_operation_kind !== "tiktok_publish") {
+    return null;
+  }
+
+  const metadata = asJsonRecord(operation.metadata);
+  const uploadUrl = metadata.tiktokUploadUrl;
+  const transferMode = metadata.tiktokMediaTransferMode;
+
+  if (transferMode === "FILE_UPLOAD" && typeof uploadUrl !== "string") {
+    throw new Error("Stored TikTok upload session is missing its upload URL.");
+  }
+
+  return typeof uploadUrl === "string" ? uploadUrl : null;
+}
+
+function getSocialPublishFailure(error: unknown, fallbackMessage: string) {
+  if (error instanceof TikTokPublishError) {
+    return {
+      actionRequired: error.actionRequired,
+      errorCode: `tiktok_${normalizeErrorCode(error.code)}`,
+      providerError: {
+        code: error.code,
+        logId: error.logId,
+        message: error.message,
+        occurredAt: new Date().toISOString(),
+        status: error.status,
+      },
+      userMessage: getTikTokUserMessage(error.code, error.message),
+    };
+  }
+
+  if (error instanceof TikTokOAuthError) {
+    return {
+      actionRequired: isTikTokReconnectErrorCode(error.code) ||
+        error.code === "account_mismatch" ||
+        error.code === "refresh_token_expired",
+      errorCode: `tiktok_${normalizeErrorCode(error.code)}`,
+      providerError: {
+        code: error.code,
+        logId: error.logId,
+        message: error.message,
+        occurredAt: new Date().toISOString(),
+        status: error.status,
+      },
+      userMessage: getTikTokUserMessage(error.code, error.message),
+    };
+  }
+
+  return {
+    actionRequired: false,
+    errorCode: getPublishErrorCode(fallbackMessage),
+    providerError: {
+      code: getPublishErrorCode(fallbackMessage),
+      logId: null,
+      message: fallbackMessage,
+      occurredAt: new Date().toISOString(),
+      status: null,
+    },
+    userMessage: fallbackMessage,
+  };
+}
+
+function getTikTokUserMessage(code: string, fallbackMessage: string) {
+  if (["access_token_invalid", "account_mismatch", "invalid_grant", "invalid_refresh_token", "refresh_token_expired", "scope_not_authorized"].includes(code)) {
+    return "Reconnect TikTok to continue publishing.";
+  }
+
+  if (code === "privacy_level_option_mismatch") {
+    return "Choose a TikTok visibility option that is available for this account.";
+  }
+
+  if (code === "url_ownership_unverified") {
+    return "TikTok could not access this video source. Try preparing the post again.";
+  }
+
+  if (code === "reached_active_user_cap") {
+    return "TikTok has not approved this app for additional public accounts yet.";
+  }
+
+  return fallbackMessage;
+}
+
+function normalizeErrorCode(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "publish_failed";
+}
+
+function mergeJsonRecords(left: Json, right: Record<string, Json>): Json {
+  return {
+    ...asJsonRecord(left),
+    ...right,
+  };
+}
+
+function asJsonRecord(value: Json): Record<string, Json> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, Json] =>
+      entry[1] !== undefined,
+    ),
   );
 }
 

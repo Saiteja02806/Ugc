@@ -36,6 +36,9 @@ export async function handleSocialOAuthCallback(
     stateFingerprint: createSocialOAuthFingerprint(state),
   };
   const providerError = url.searchParams.get("error")?.trim();
+  const providerErrorDescription = url.searchParams
+    .get("error_description")
+    ?.trim();
 
   logSocialOAuthTrace(trace, "callback_received", {
     appBaseHostMatchesCallback: hostMatchesCallback(
@@ -51,6 +54,7 @@ export async function handleSocialOAuthCallback(
     hasProviderError: Boolean(providerError),
     hasState: Boolean(state),
     providerErrorCode: normalizeLogValue(providerError),
+    providerErrorDescription: normalizeLogValue(providerErrorDescription),
   });
 
   logSocialOAuthTrace(trace, "validate_callback_parameters", {
@@ -65,6 +69,7 @@ export async function handleSocialOAuthCallback(
 
     logSocialOAuthTrace(trace, failedStage, {
       providerErrorCode: normalizeLogValue(providerError),
+      providerErrorDescription: normalizeLogValue(providerErrorDescription),
     });
 
     if (state) {
@@ -383,6 +388,10 @@ function getFailureMessage(platform: SocialPlatform, errorCode: string) {
 
   if (errorCode === "youtube_channel_missing") {
     return "No YouTube channel was found for this Google account.";
+  }
+
+  if (errorCode === "tiktok_publish_permission_missing") {
+    return "Reconnect TikTok to grant publishing permission.";
   }
 
   return `${getPlatformLabel(platform)} could not be connected. Return to UGC Pilot and try again.`;

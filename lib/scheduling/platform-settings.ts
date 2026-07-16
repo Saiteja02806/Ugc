@@ -19,6 +19,7 @@ export type TikTokScheduleSettings = {
   allowStitch: boolean;
   brandOrganic: boolean;
   brandedContent: boolean;
+  containsSyntheticMedia: boolean;
   privacyLevel: TikTokPrivacyLevel;
 };
 
@@ -63,6 +64,10 @@ export function normalizeScheduleTargetSettings(
       allowStitch: getBoolean(settings.allowStitch, false),
       brandOrganic: getBoolean(settings.brandOrganic, false),
       brandedContent: getBoolean(settings.brandedContent, false),
+      containsSyntheticMedia: getBoolean(
+        settings.containsSyntheticMedia,
+        true,
+      ),
       privacyLevel,
     } satisfies TikTokScheduleSettings;
 

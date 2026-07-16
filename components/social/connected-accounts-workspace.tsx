@@ -70,11 +70,17 @@ export function ConnectedAccountsWorkspace() {
     popupError,
     startConnection,
   } = useSocialOAuthPopup({
-    onPopupClosed: async ({ platform }) => {
+    onPopupClosed: async ({ platform, previousConnectionUpdatedAt }) => {
       const refreshedConnections = await loadConnections();
+      const previousUpdatedAt = previousConnectionUpdatedAt
+        ? Date.parse(previousConnectionUpdatedAt)
+        : null;
       const isConnected = refreshedConnections.some(
         (connection) =>
-          connection.platform === platform && connection.status === "connected",
+          connection.platform === platform &&
+          connection.status === "connected" &&
+          (previousUpdatedAt === null ||
+            Date.parse(connection.updatedAt) > previousUpdatedAt),
       );
 
       if (isConnected) {
@@ -171,7 +177,20 @@ export function ConnectedAccountsWorkspace() {
   async function connectPlatform(platform: SocialPlatform) {
     setError(null);
     setMessage(null);
-    await startConnection({ platform, returnTo: "accounts" });
+    await startConnection({
+      forceConsent: connections.some(
+        (connection) => connection.platform === platform,
+      ),
+      platform,
+      previousConnectionUpdatedAt:
+        connections
+          .filter((connection) => connection.platform === platform)
+          .sort(
+            (left, right) =>
+              Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
+          )[0]?.updatedAt ?? null,
+      returnTo: "accounts",
+    });
   }
 
   async function disconnectConnection(connectionId: string) {
@@ -327,6 +346,9 @@ function ConnectionCard({
   disconnecting: boolean;
   onDisconnect: () => void;
 }) {
+  const connected = connection.status === "connected";
+  const StatusIcon = connected ? CheckCircle2 : AlertCircle;
+
   return (
     <div className="rounded-lg border border-border bg-surface-subtle p-4">
       <div className="flex items-start justify-between gap-3">
@@ -342,9 +364,16 @@ function ConnectionCard({
             </p>
           ) : null}
         </div>
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2 py-1 text-xs font-bold text-success">
-          <CheckCircle2 className="size-3.5" aria-hidden="true" />
-          Connected
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-bold",
+            connected
+              ? "bg-success/10 text-success"
+              : "bg-error/10 text-error",
+          )}
+        >
+          <StatusIcon className="size-3.5" aria-hidden="true" />
+          {getConnectionStatusLabel(connection.status)}
         </span>
       </div>
       <p className="mt-3 text-xs leading-5 text-muted">
@@ -426,6 +455,14 @@ function getPlatformLabel(value: string) {
     platforms.find((platform) => platform.value === value)?.label ??
     "Social"
   );
+}
+
+function getConnectionStatusLabel(status: Connection["status"]) {
+  if (status === "connected") return "Connected";
+  if (status === "permission_missing") return "Permission needed";
+  if (status === "expired") return "Expired";
+  if (status === "revoked") return "Disconnected";
+  return "Connection error";
 }
 
 function formatDate(value: string) {

@@ -36,7 +36,7 @@ export function getConnectionPublishingBlockMessage(
     connection.platform === "tiktok" &&
     !hasOneRequiredScope(connection.scopes, requiredTikTokPublishScopes)
   ) {
-    return "Reconnect TikTok to allow scheduled publishing.";
+    return "Reconnect TikTok to grant publishing permission.";
   }
 
   if (

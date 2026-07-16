@@ -785,6 +785,7 @@ export class SupabaseJobStore {
 
   async saveSocialPublishProviderOperation(params: {
     claimToken: string;
+    metadata?: Json;
     operationId: string;
     providerOperationId: string;
     providerOperationKind: SocialPublishProviderOperationKind;
@@ -794,6 +795,7 @@ export class SupabaseJobStore {
       .update({
         last_error_code: null,
         last_error_message: null,
+        ...(params.metadata !== undefined ? { metadata: params.metadata } : {}),
         provider_operation_id: params.providerOperationId.slice(0, 4_096),
         provider_operation_kind: params.providerOperationKind,
         status: "initialized",
@@ -850,6 +852,7 @@ export class SupabaseJobStore {
     claimToken: string;
     errorCode: string;
     errorMessage: string;
+    metadata?: Json;
     operationId: string;
   }) {
     const { data, error } = await this.client
@@ -860,6 +863,7 @@ export class SupabaseJobStore {
         claimed_at: null,
         last_error_code: params.errorCode,
         last_error_message: params.errorMessage.slice(0, 500),
+        ...(params.metadata !== undefined ? { metadata: params.metadata } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq("id", params.operationId)
@@ -917,6 +921,7 @@ export class SupabaseJobStore {
   async markSocialPublishTargetRetrying(params: {
     errorCode: string;
     errorMessage: string;
+    metadata?: Json;
     nextRetryAt: string;
     targetId: string;
     userId: string;
@@ -927,6 +932,7 @@ export class SupabaseJobStore {
       .update({
         last_error_code: params.errorCode,
         last_error_message: params.errorMessage.slice(0, 500),
+        ...(params.metadata !== undefined ? { metadata: params.metadata } : {}),
         next_retry_at: params.nextRetryAt,
         status: "publishing",
         updated_at: now,
@@ -1007,6 +1013,7 @@ export class SupabaseJobStore {
   async markSocialPublishTargetFailed(params: {
     errorCode: string;
     errorMessage: string;
+    metadata?: Json;
     targetId: string;
     userId: string;
   }) {
@@ -1016,6 +1023,7 @@ export class SupabaseJobStore {
       .update({
         last_error_code: params.errorCode,
         last_error_message: params.errorMessage.slice(0, 500),
+        ...(params.metadata !== undefined ? { metadata: params.metadata } : {}),
         next_retry_at: null,
         status: "failed",
         updated_at: now,
@@ -1042,6 +1050,114 @@ export class SupabaseJobStore {
     });
 
     return true;
+  }
+
+  async markSocialPublishTargetActionRequired(params: {
+    errorCode: string;
+    errorMessage: string;
+    metadata?: Json;
+    targetId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "mark_social_publish_target_action_required",
+      {
+        p_error_code: params.errorCode,
+        p_error_message: params.errorMessage,
+        p_metadata: params.metadata ?? {},
+        p_target_id: params.targetId,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not mark publish target action required: ${error.message}`,
+      );
+    }
+
+    return data;
+  }
+
+  async claimSocialConnectionTokenRefresh(params: {
+    claimToken: string;
+    connectionId: string;
+    staleAfterSeconds: number;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "claim_social_connection_token_refresh",
+      {
+        p_claim_token: params.claimToken,
+        p_connection_id: params.connectionId,
+        p_stale_after_seconds: params.staleAfterSeconds,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (error) {
+      throw new Error(`Could not claim social token refresh: ${error.message}`);
+    }
+
+    return data?.[0] ?? null;
+  }
+
+  async completeSocialConnectionTokenRefresh(params: {
+    accessTokenCiphertext: string;
+    claimToken: string;
+    connectionId: string;
+    expiresAt: string;
+    refreshExpiresAt: string;
+    refreshTokenCiphertext: string;
+    scopes: string[];
+    status: "connected" | "permission_missing";
+    tokenType: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "complete_social_connection_token_refresh",
+      {
+        p_access_token_ciphertext: params.accessTokenCiphertext,
+        p_claim_token: params.claimToken,
+        p_connection_id: params.connectionId,
+        p_expires_at: params.expiresAt,
+        p_refresh_expires_at: params.refreshExpiresAt,
+        p_refresh_token_ciphertext: params.refreshTokenCiphertext,
+        p_scopes: params.scopes,
+        p_status: params.status,
+        p_token_type: params.tokenType,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (error) {
+      throw new Error(`Could not save social token refresh: ${error.message}`);
+    }
+
+    return data?.[0] ?? null;
+  }
+
+  async releaseSocialConnectionTokenRefresh(params: {
+    claimToken: string;
+    connectionId: string;
+    errorCode: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "release_social_connection_token_refresh",
+      {
+        p_claim_token: params.claimToken,
+        p_connection_id: params.connectionId,
+        p_error_code: params.errorCode,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (error) {
+      throw new Error(`Could not release social token refresh: ${error.message}`);
+    }
+
+    return data;
   }
 
   async updateSocialConnectionAccessToken(params: {
@@ -1320,7 +1436,8 @@ export class SupabaseJobStore {
     }
 
     const statuses = (targets ?? []).map((target) => target.status);
-    const hasFailure = statuses.includes("failed");
+    const hasFailure =
+      statuses.includes("failed") || statuses.includes("action_required");
     const allPublished =
       statuses.length > 0 && statuses.every((status) => status === "published");
     const hasPublished = statuses.includes("published");

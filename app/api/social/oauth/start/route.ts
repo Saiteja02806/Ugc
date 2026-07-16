@@ -21,6 +21,7 @@ export const dynamic = "force-dynamic";
 
 type StartBody = {
   carouselId?: unknown;
+  forceConsent?: unknown;
   libraryItemId?: unknown;
   platform?: unknown;
   provider?: unknown;
@@ -124,6 +125,7 @@ export async function POST(request: Request) {
   try {
     const result = await createSocialAuthorization({
       carouselId,
+      forceConsent: body?.forceConsent === true,
       libraryItemId,
       platform,
       provider,

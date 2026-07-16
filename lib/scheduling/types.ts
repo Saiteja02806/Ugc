@@ -20,6 +20,7 @@ export const scheduledPostTargetStatuses = [
   "publishing",
   "published",
   "failed",
+  "action_required",
   "cancelled",
   "skipped",
 ] as const;

@@ -1,6 +1,9 @@
 import "server-only";
 
-import { getSocialConnectionCredentialForOwner } from "@/lib/social/oauth";
+import {
+  getSocialConnectionCredentialForOwner,
+  SocialOAuthError,
+} from "@/lib/social/oauth";
 import {
   isTikTokPrivacyLevel,
   type TikTokPublishCapabilities,
@@ -9,6 +12,8 @@ import {
 type TikTokApiEnvelope = {
   data?: {
     comment_disabled?: boolean;
+    creator_nickname?: string;
+    creator_username?: string;
     duet_disabled?: boolean;
     max_video_post_duration_sec?: number;
     privacy_level_options?: unknown[];
@@ -34,7 +39,20 @@ export async function getTikTokPublishCapabilitiesForOwner(params: {
   connectionId: string;
   userId: string;
 }): Promise<TikTokPublishCapabilities> {
-  const credential = await getSocialConnectionCredentialForOwner(params);
+  let credential;
+
+  try {
+    credential = await getSocialConnectionCredentialForOwner(params);
+  } catch (error) {
+    if (error instanceof SocialOAuthError) {
+      throw new TikTokPublishCapabilitiesError(
+        error.message,
+        error.status === 409 ? 409 : 502,
+      );
+    }
+
+    throw error;
+  }
 
   if (!credential) {
     throw new TikTokPublishCapabilitiesError(
@@ -55,7 +73,7 @@ export async function getTikTokPublishCapabilitiesForOwner(params: {
     !credential.connection.scopes.includes("video.publish")
   ) {
     throw new TikTokPublishCapabilitiesError(
-      "Reconnect TikTok with publishing permission before scheduling.",
+      "Reconnect TikTok to grant publishing permission.",
       409,
     );
   }
@@ -109,6 +127,8 @@ export async function getTikTokPublishCapabilitiesForOwner(params: {
   const maxDuration = payload.data.max_video_post_duration_sec;
 
   return {
+    creatorNickname: payload.data.creator_nickname?.trim() || null,
+    creatorUsername: payload.data.creator_username?.trim() || null,
     interactions: {
       commentsDisabled: payload.data.comment_disabled === true,
       duetsDisabled: payload.data.duet_disabled === true,

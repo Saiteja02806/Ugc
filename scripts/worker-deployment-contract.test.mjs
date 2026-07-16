@@ -46,6 +46,18 @@ test("the ECS social-publish profile targets the current worker and queue", () =
     workerProfiles["social-publish"].defaultVisibilityTimeoutSeconds,
     "300",
   );
+  assert.deepEqual(workerProfiles["social-publish"].secretKeys, [
+    "TIKTOK_CLIENT_KEY",
+    "TIKTOK_CLIENT_SECRET",
+  ]);
+  assert.equal(
+    workerProfiles["social-publish"].secretSources.GOOGLE_CLIENT_ID.required,
+    true,
+  );
+  assert.equal(
+    workerProfiles["social-publish"].secretSources.GOOGLE_CLIENT_SECRET.required,
+    true,
+  );
 });
 
 test("the task definition receives immutable worker identity and routing", () => {

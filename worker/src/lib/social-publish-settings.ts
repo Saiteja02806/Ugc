@@ -10,6 +10,7 @@ export type TikTokTargetPublishSettings = {
   allowStitch?: boolean;
   brandOrganic?: boolean;
   brandedContent?: boolean;
+  containsSyntheticMedia?: boolean;
   privacyLevel?:
     | "FOLLOWER_OF_CREATOR"
     | "MUTUAL_FOLLOW_FRIENDS"
@@ -57,6 +58,9 @@ export function getTikTokTargetPublishSettings(
     allowStitch: getOptionalBoolean(settings.allowStitch),
     brandOrganic: getOptionalBoolean(settings.brandOrganic),
     brandedContent: getOptionalBoolean(settings.brandedContent),
+    containsSyntheticMedia: getOptionalBoolean(
+      settings.containsSyntheticMedia,
+    ),
     privacyLevel:
       privacyLevel as TikTokTargetPublishSettings["privacyLevel"],
   };

@@ -13,6 +13,10 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getEffectiveSocialConnectionStatus } from "@/lib/social/connection-status";
 import { splitScopes } from "@/lib/social/split-scopes";
 import {
+  buildTikTokOAuthAuthorizationUrl,
+  hasTikTokPublishScope,
+} from "@/lib/social/tiktok-oauth-config";
+import {
   getProviderForPlatform,
   isProviderPlatformPair,
   type SocialConnection,
@@ -51,18 +55,64 @@ type SocialConnectionRow = {
   platform_account_name: string | null;
   platform_account_username: string | null;
   provider: SocialProvider;
+  refresh_expires_at: string | null;
   refresh_token_ciphertext: string | null;
   revoked_at: string | null;
   scopes: string[];
   status: SocialConnectionStatus;
   token_type: string | null;
+  token_refreshed_at: string | null;
+  token_refresh_claim_token: string | null;
+  token_refresh_claimed_at: string | null;
   updated_at: string;
   user_id: string;
 };
 
 type SocialOAuthDatabase = {
   public: {
-    Functions: Record<string, never>;
+    Functions: {
+      claim_social_connection_token_refresh: {
+        Args: {
+          p_claim_token: string;
+          p_connection_id: string;
+          p_stale_after_seconds: number;
+          p_user_id: string;
+        };
+        Returns: SocialConnectionRow[];
+      };
+      complete_social_connection_token_refresh: {
+        Args: {
+          p_access_token_ciphertext: string;
+          p_claim_token: string;
+          p_connection_id: string;
+          p_expires_at: string;
+          p_refresh_expires_at: string;
+          p_refresh_token_ciphertext: string;
+          p_scopes: string[];
+          p_status: "connected" | "permission_missing";
+          p_token_type: string;
+          p_user_id: string;
+        };
+        Returns: SocialConnectionRow[];
+      };
+      release_social_connection_token_refresh: {
+        Args: {
+          p_claim_token: string;
+          p_connection_id: string;
+          p_error_code: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
+      revoke_social_connection: {
+        Args: {
+          p_connection_id: string;
+          p_revoked_at: string;
+          p_user_id: string;
+        };
+        Returns: SocialConnectionRow[];
+      };
+    };
     Tables: {
       social_connections: {
         Insert: Partial<SocialConnectionRow> &
@@ -105,9 +155,35 @@ type OAuthTokenSet = {
   expiresInSeconds?: number | null;
   platformAccountId?: string | null;
   refreshToken?: string | null;
+  refreshExpiresInSeconds?: number | null;
   scopes: string[];
   tokenType?: string | null;
 };
+
+type TikTokTokenResponse = {
+  access_token?: string;
+  error?: string;
+  error_description?: string;
+  expires_in?: number;
+  log_id?: string;
+  open_id?: string;
+  refresh_expires_in?: number;
+  refresh_token?: string;
+  scope?: string;
+  token_type?: string;
+};
+
+class TikTokTokenRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public readonly logId: string | null,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "TikTokTokenRequestError";
+  }
+}
 
 type PlatformAccount = {
   id: string;
@@ -146,10 +222,13 @@ export type SocialOAuthTraceContext = {
 };
 
 const STATE_TTL_MINUTES = 10;
+const TIKTOK_TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
+const TIKTOK_TOKEN_REFRESH_STALE_SECONDS = 120;
 let supabaseClient: SupabaseClient<SocialOAuthDatabase> | null = null;
 
 export async function createSocialAuthorization(params: {
   carouselId?: string | null;
+  forceConsent?: boolean;
   libraryItemId?: string | null;
   platform: SocialPlatform;
   provider: SocialProvider;
@@ -211,7 +290,11 @@ export async function createSocialAuthorization(params: {
       authorizationUrl = buildInstagramAuthorizationUrl({ redirectUri, state });
       break;
     case "tiktok":
-      authorizationUrl = buildTikTokAuthorizationUrl({ redirectUri, state });
+      authorizationUrl = buildTikTokAuthorizationUrl({
+        forceConsent: params.forceConsent === true,
+        redirectUri,
+        state,
+      });
       break;
     case "youtube":
       authorizationUrl = buildYouTubeAuthorizationUrl({
@@ -305,6 +388,18 @@ export async function completeSocialOAuthCallback(params: {
     userId: session.user_id,
   });
 
+  if (
+    params.platform === "tiktok" &&
+    !hasTikTokPublishScope(connection.scopes)
+  ) {
+    throw new SocialOAuthError(
+      "Reconnect TikTok to grant publishing permission.",
+      409,
+      "tiktok_publish_permission_missing",
+      "verify_connected_account",
+    );
+  }
+
   return { connection, session };
 }
 
@@ -360,9 +455,16 @@ export async function getSocialConnectionCredentialForOwner(params: {
     return null;
   }
 
+  const connection =
+    data.platform === "tiktok" &&
+    hasTikTokPublishScope(data.scopes) &&
+    isTokenExpiring(data.expires_at, TIKTOK_TOKEN_REFRESH_SKEW_MS)
+      ? await refreshTikTokConnection({ connection: data, ...params })
+      : data;
+
   return {
-    accessToken: decryptSecret(data.access_token_ciphertext),
-    connection: mapSocialConnection(data),
+    accessToken: decryptSecret(connection.access_token_ciphertext),
+    connection: mapSocialConnection(connection),
   };
 }
 
@@ -370,25 +472,312 @@ export async function disconnectSocialConnection(params: {
   connectionId: string;
   userId: string;
 }) {
-  const now = new Date().toISOString();
-  const { data, error } = await getClient()
+  const existing = await getClient()
     .from("social_connections")
-    .update({
-      revoked_at: now,
-      status: "revoked",
-      updated_at: now,
-    })
+    .select("*")
     .eq("id", params.connectionId)
     .eq("user_id", params.userId)
     .is("revoked_at", null)
-    .select("*")
     .maybeSingle();
+
+  if (existing.error) {
+    throw new Error("Could not load social account before disconnecting.");
+  }
+
+  if (!existing.data) {
+    return null;
+  }
+
+  if (existing.data.platform === "tiktok") {
+    await revokeTikTokAccessToken(
+      decryptSecret(existing.data.access_token_ciphertext),
+    );
+  }
+
+  const now = new Date().toISOString();
+  const { data, error } = await getClient().rpc("revoke_social_connection", {
+    p_connection_id: params.connectionId,
+    p_revoked_at: now,
+    p_user_id: params.userId,
+  });
 
   if (error) {
     throw new Error("Could not disconnect social account.");
   }
 
-  return data ? mapSocialConnection(data) : null;
+  return data?.[0] ? mapSocialConnection(data[0]) : null;
+}
+
+async function refreshTikTokConnection(params: {
+  connection: SocialConnectionRow;
+  connectionId: string;
+  userId: string;
+}) {
+  if (!params.connection.refresh_token_ciphertext) {
+    throw new SocialOAuthError(
+      "Reconnect TikTok before loading publishing settings.",
+      409,
+      "tiktok_refresh_required",
+    );
+  }
+
+  if (isExpired(params.connection.refresh_expires_at)) {
+    throw new SocialOAuthError(
+      "Reconnect TikTok before loading publishing settings.",
+      409,
+      "tiktok_refresh_required",
+    );
+  }
+
+  const claimToken = randomUUID();
+  let claimedConnection: SocialConnectionRow | null = null;
+
+  for (let attempt = 0; attempt < 3 && !claimedConnection; attempt += 1) {
+    const claim = await getClient().rpc(
+      "claim_social_connection_token_refresh",
+      {
+        p_claim_token: claimToken,
+        p_connection_id: params.connectionId,
+        p_stale_after_seconds: TIKTOK_TOKEN_REFRESH_STALE_SECONDS,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (claim.error) {
+      throw new SocialOAuthError(
+        "Could not safely refresh TikTok right now.",
+        502,
+        "tiktok_refresh_claim_failed",
+      );
+    }
+
+    claimedConnection = claim.data?.[0] ?? null;
+
+    if (!claimedConnection && attempt < 2) {
+      await delay(300 * (attempt + 1));
+      const latest = await getClient()
+        .from("social_connections")
+        .select("*")
+        .eq("id", params.connectionId)
+        .eq("user_id", params.userId)
+        .maybeSingle();
+
+      if (latest.error) {
+        throw new SocialOAuthError(
+          "Could not reload the TikTok connection.",
+          502,
+          "tiktok_refresh_read_failed",
+        );
+      }
+
+      if (
+        latest.data &&
+        !isTokenExpiring(
+          latest.data.expires_at,
+          TIKTOK_TOKEN_REFRESH_SKEW_MS,
+        )
+      ) {
+        return latest.data;
+      }
+    }
+  }
+
+  if (!claimedConnection) {
+    throw new SocialOAuthError(
+      "TikTok is already refreshing. Try again in a moment.",
+      409,
+      "tiktok_refresh_in_progress",
+    );
+  }
+
+  try {
+    const refreshToken = decryptSecret(
+      claimedConnection.refresh_token_ciphertext ?? "",
+    );
+    const refreshed = await requestTikTokTokenRefresh(refreshToken);
+
+    if (
+      !refreshed.openId ||
+      refreshed.openId !== claimedConnection.platform_account_id
+    ) {
+      throw new TikTokTokenRequestError(
+        "TikTok refreshed a different account.",
+        "account_mismatch",
+        refreshed.logId,
+        409,
+      );
+    }
+
+    const status = hasTikTokPublishScope(refreshed.scopes)
+      ? ("connected" as const)
+      : ("permission_missing" as const);
+    const completed = await getClient().rpc(
+      "complete_social_connection_token_refresh",
+      {
+        p_access_token_ciphertext: encryptSecret(refreshed.accessToken),
+        p_claim_token: claimToken,
+        p_connection_id: params.connectionId,
+        p_expires_at: refreshed.expiresAt,
+        p_refresh_expires_at: refreshed.refreshExpiresAt,
+        p_refresh_token_ciphertext: encryptSecret(refreshed.refreshToken),
+        p_scopes: refreshed.scopes,
+        p_status: status,
+        p_token_type: refreshed.tokenType,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (completed.error || !completed.data?.[0]) {
+      throw new SocialOAuthError(
+        "Could not save the refreshed TikTok connection.",
+        502,
+        "tiktok_refresh_save_failed",
+      );
+    }
+
+    return completed.data[0];
+  } catch (error) {
+    const errorCode =
+      error instanceof TikTokTokenRequestError
+        ? error.code
+        : error instanceof SocialOAuthError
+          ? error.code
+          : "tiktok_refresh_failed";
+
+    try {
+      await getClient().rpc("release_social_connection_token_refresh", {
+        p_claim_token: claimToken,
+        p_connection_id: params.connectionId,
+        p_error_code: errorCode,
+        p_user_id: params.userId,
+      });
+    } catch {
+      // The stale refresh lease expires automatically if release cannot persist.
+    }
+
+    if (
+      error instanceof TikTokTokenRequestError &&
+      [
+        "access_token_invalid",
+        "account_mismatch",
+        "invalid_grant",
+        "invalid_refresh_token",
+        "refresh_token_expired",
+      ].includes(error.code)
+    ) {
+      throw new SocialOAuthError(
+        "Reconnect TikTok before loading publishing settings.",
+        409,
+        "tiktok_refresh_required",
+      );
+    }
+
+    if (error instanceof SocialOAuthError) {
+      throw error;
+    }
+
+    throw new SocialOAuthError(
+      "TikTok could not refresh this connection right now.",
+      502,
+      "tiktok_refresh_failed",
+    );
+  }
+}
+
+async function requestTikTokTokenRefresh(refreshToken: string) {
+  const body = new URLSearchParams({
+    client_key: getEnv("TIKTOK_CLIENT_KEY"),
+    client_secret: getEnv("TIKTOK_CLIENT_SECRET"),
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  });
+  const response = await fetch(
+    "https://open.tiktokapis.com/v2/oauth/token/",
+    {
+      body,
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      method: "POST",
+    },
+  );
+  const payload = (await response.json().catch(() => null)) as
+    | TikTokTokenResponse
+    | null;
+
+  if (!response.ok || !payload?.access_token || !payload.refresh_token) {
+    throw new TikTokTokenRequestError(
+      payload?.error_description || "TikTok token refresh failed.",
+      payload?.error || "tiktok_refresh_failed",
+      payload?.log_id ?? null,
+      response.status,
+    );
+  }
+
+  const expiresIn = getPositiveInteger(payload.expires_in);
+  const refreshExpiresIn = getPositiveInteger(payload.refresh_expires_in);
+  const scopes = splitScopes(payload.scope);
+
+  if (
+    !expiresIn ||
+    !refreshExpiresIn ||
+    !payload.open_id ||
+    scopes.length === 0
+  ) {
+    throw new TikTokTokenRequestError(
+      "TikTok returned an incomplete token refresh response.",
+      "incomplete_token_response",
+      payload.log_id ?? null,
+      response.status,
+    );
+  }
+
+  return {
+    accessToken: payload.access_token,
+    expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+    logId: payload.log_id ?? null,
+    openId: payload.open_id ?? null,
+    refreshExpiresAt: new Date(
+      Date.now() + refreshExpiresIn * 1000,
+    ).toISOString(),
+    refreshToken: payload.refresh_token,
+    scopes,
+    tokenType: payload.token_type ?? "Bearer",
+  };
+}
+
+async function revokeTikTokAccessToken(accessToken: string) {
+  const response = await fetch(
+    "https://open.tiktokapis.com/v2/oauth/revoke/",
+    {
+      body: new URLSearchParams({
+        client_key: getEnv("TIKTOK_CLIENT_KEY"),
+        client_secret: getEnv("TIKTOK_CLIENT_SECRET"),
+        token: accessToken,
+      }),
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      method: "POST",
+    },
+  );
+
+  if (response.ok) {
+    return;
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | TikTokTokenResponse
+    | null;
+
+  if (
+    payload?.error === "access_token_invalid" ||
+    payload?.error === "invalid_grant"
+  ) {
+    return;
+  }
+
+  throw new SocialOAuthError(
+    "TikTok could not revoke this connection. Try disconnecting again.",
+    502,
+    "tiktok_revoke_failed",
+  );
 }
 
 export function getMissingSocialOAuthEnvVars(platform?: SocialPlatform) {
@@ -603,6 +992,7 @@ async function exchangeTikTokCode(
     error_description?: string;
     expires_in?: number;
     refresh_token?: string;
+    refresh_expires_in?: number;
     scope?: string;
     token_type?: string;
   } | null;
@@ -627,7 +1017,8 @@ async function exchangeTikTokCode(
     accessToken: data.access_token,
     expiresInSeconds: data.expires_in,
     refreshToken: data.refresh_token ?? null,
-    scopes: scopes.length > 0 ? scopes : getTikTokScopes(),
+    refreshExpiresInSeconds: data.refresh_expires_in,
+    scopes,
     tokenType: data.token_type ?? "Bearer",
   };
 }
@@ -1001,7 +1392,7 @@ async function upsertSocialConnection(params: {
   });
   const existing = await getClient()
     .from("social_connections")
-    .select("id,refresh_token_ciphertext")
+    .select("id,refresh_expires_at,refresh_token_ciphertext")
     .eq("user_id", params.userId)
     .eq("provider", params.provider)
     .eq("platform_account_id", params.account.id)
@@ -1031,6 +1422,17 @@ async function upsertSocialConnection(params: {
   const refreshTokenCiphertext = params.tokenSet.refreshToken
     ? encryptSecret(params.tokenSet.refreshToken)
     : (existing.data?.refresh_token_ciphertext ?? null);
+  const refreshExpiresAt =
+    typeof params.tokenSet.refreshExpiresInSeconds === "number"
+      ? new Date(
+          Date.now() + params.tokenSet.refreshExpiresInSeconds * 1000,
+        ).toISOString()
+      : (existing.data?.refresh_expires_at ?? null);
+  const connectionStatus =
+    params.platform === "tiktok" &&
+    !hasTikTokPublishScope(params.tokenSet.scopes)
+      ? ("permission_missing" as const)
+      : ("connected" as const);
   const patch = {
     access_token_ciphertext: encryptSecret(params.tokenSet.accessToken),
     expires_at: expiresAt,
@@ -1040,11 +1442,13 @@ async function upsertSocialConnection(params: {
     platform_account_name: params.account.name ?? null,
     platform_account_username: params.account.username ?? null,
     provider: params.provider,
+    refresh_expires_at: refreshExpiresAt,
     refresh_token_ciphertext: refreshTokenCiphertext,
     revoked_at: null,
     scopes: params.tokenSet.scopes,
-    status: "connected" as const,
+    status: connectionStatus,
     token_type: params.tokenSet.tokenType ?? null,
+    token_refreshed_at: now,
     updated_at: now,
   };
 
@@ -1089,7 +1493,6 @@ async function upsertSocialConnection(params: {
     .eq("platform", params.platform)
     .eq("platform_account_id", params.account.id)
     .is("revoked_at", null)
-    .eq("status", "connected")
     .maybeSingle();
 
   logSocialOAuthTrace(params.trace, "verify_connected_account", {
@@ -1119,16 +1522,16 @@ async function upsertSocialConnection(params: {
 }
 
 function buildTikTokAuthorizationUrl(params: {
+  forceConsent: boolean;
   redirectUri: string;
   state: string;
 }) {
-  const url = new URL("https://www.tiktok.com/v2/auth/authorize/");
-  url.searchParams.set("client_key", getEnv("TIKTOK_CLIENT_KEY"));
-  url.searchParams.set("scope", getTikTokScopes().join(","));
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("redirect_uri", params.redirectUri);
-  url.searchParams.set("state", params.state);
-  return url;
+  return buildTikTokOAuthAuthorizationUrl({
+    clientKey: getEnv("TIKTOK_CLIENT_KEY"),
+    forceConsent: params.forceConsent,
+    redirectUri: params.redirectUri,
+    state: params.state,
+  });
 }
 
 function buildInstagramAuthorizationUrl(params: {
@@ -1254,6 +1657,21 @@ export function getSocialPlatformRedirectUri(platform: SocialPlatform) {
 }
 
 function mapSocialConnection(row: SocialConnectionRow): SocialConnection {
+  const effectiveStatus = getEffectiveSocialConnectionStatus({
+    expiresAt: row.expires_at,
+    hasRefreshToken: Boolean(row.refresh_token_ciphertext),
+    platform: row.platform,
+    refreshExpiresAt: row.refresh_expires_at,
+    revokedAt: row.revoked_at,
+    status: row.status,
+  });
+  const status =
+    row.platform === "tiktok" &&
+    effectiveStatus === "connected" &&
+    !hasTikTokPublishScope(row.scopes)
+      ? "permission_missing"
+      : effectiveStatus;
+
   return {
     connectedAt: row.connected_at,
     expiresAt: row.expires_at,
@@ -1263,14 +1681,10 @@ function mapSocialConnection(row: SocialConnectionRow): SocialConnection {
     platformAccountName: row.platform_account_name,
     platformAccountUsername: row.platform_account_username,
     provider: row.provider,
+    refreshExpiresAt: row.refresh_expires_at,
     scopes: row.scopes,
-    status: getEffectiveSocialConnectionStatus({
-      expiresAt: row.expires_at,
-      hasRefreshToken: Boolean(row.refresh_token_ciphertext),
-      platform: row.platform,
-      revokedAt: row.revoked_at,
-      status: row.status,
-    }),
+    status,
+    tokenRefreshedAt: row.token_refreshed_at,
     updatedAt: row.updated_at,
   };
 }
@@ -1297,12 +1711,6 @@ function getSupabaseUrl() {
     process.env.SUPABASE_URL?.trim() ||
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
     ""
-  );
-}
-
-function getTikTokScopes() {
-  return splitScopes(
-    process.env.TIKTOK_SCOPES || "user.info.basic,video.upload,video.publish",
   );
 }
 
@@ -1412,6 +1820,36 @@ function createPkceCodeChallenge(codeVerifier: string) {
 function normalizeOptionalValue(value?: string | null) {
   const normalized = value?.trim();
   return normalized || null;
+}
+
+function getPositiveInteger(value: unknown) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0
+    ? value
+    : null;
+}
+
+function isTokenExpiring(value: string | null, skewMs: number) {
+  if (!value) {
+    return false;
+  }
+
+  const expiresAt = Date.parse(value);
+
+  return Number.isFinite(expiresAt) && expiresAt - skewMs <= Date.now();
+}
+
+function isExpired(value: string | null) {
+  if (!value) {
+    return false;
+  }
+
+  const expiresAt = Date.parse(value);
+
+  return Number.isFinite(expiresAt) && expiresAt <= Date.now();
+}
+
+function delay(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function getEnv(key: string) {

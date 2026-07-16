@@ -5,7 +5,22 @@ import type { TikTokTargetPublishSettings } from "./social-publish-settings.js";
 
 const DEFAULT_MAX_STATUS_POLLS = 18;
 const DEFAULT_STATUS_POLL_INTERVAL_MS = 10_000;
-const defaultPrivacyPreference = ["SELF_ONLY"] as const;
+const DEFAULT_STATUS_POLL_MAX_INTERVAL_MS = 30_000;
+const DEFAULT_MAX_UPLOAD_BYTES = 512 * 1024 * 1024;
+const DEFAULT_UPLOAD_RETRIES = 3;
+const MAX_CHUNK_BYTES = 64 * 1024 * 1024;
+const MAX_FINAL_CHUNK_BYTES = 128 * 1024 * 1024;
+
+type TikTokMediaTransferMode = "FILE_UPLOAD" | "PULL_FROM_URL";
+
+export type TikTokPublishInitialization = {
+  creatorNickname: string | null;
+  creatorUsername: string | null;
+  logId: string | null;
+  mediaTransferMode: TikTokMediaTransferMode;
+  publishId: string;
+  uploadUrl: string | null;
+};
 
 export type TikTokPublishResult = {
   platformPostId: string;
@@ -24,6 +39,8 @@ type TikTokApiEnvelope<TData extends object> = {
 
 type TikTokCreatorInfo = {
   comment_disabled?: boolean;
+  creator_nickname?: string;
+  creator_username?: string;
   duet_disabled?: boolean;
   max_video_post_duration_sec?: number;
   privacy_level_options?: string[];
@@ -31,50 +48,133 @@ type TikTokCreatorInfo = {
 };
 
 type TikTokPublishStatus = {
+  downloaded_bytes?: number;
   fail_reason?: string;
   publicaly_available_post_id?: Array<number | string>;
+  request_log_id?: string | null;
   status?: string;
+  uploaded_bytes?: number;
 };
+
+type DownloadedTikTokVideo = {
+  bytes: Buffer;
+  contentType: string;
+};
+
+type TikTokUploadRange = {
+  end: number;
+  start: number;
+};
+
+export class TikTokPublishError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public readonly logId: string | null,
+    public readonly status: number | null,
+    public readonly actionRequired: boolean,
+  ) {
+    super(message);
+    this.name = "TikTokPublishError";
+  }
+}
 
 export async function publishTikTokVideo(params: {
   accessToken: string;
   caption: string;
-  onPublishInitialized?: (publishId: string) => Promise<void>;
+  onPublishInitialized?: (
+    initialization: TikTokPublishInitialization,
+  ) => Promise<void>;
   publishId?: string | null;
   settings?: TikTokTargetPublishSettings;
+  uploadUrl?: string | null;
+  videoDurationSeconds?: number | null;
+  videoMimeType?: string | null;
   videoUrl: string;
 }): Promise<TikTokPublishResult> {
   let publishId = params.publishId ?? null;
+  let uploadUrl = params.uploadUrl ?? null;
+  let video: DownloadedTikTokVideo | null = null;
+  let initializedNow = false;
+  const creatorInfo = await queryCreatorInfo(params.accessToken);
+  const privacyLevel = getPrivacyLevel(
+    creatorInfo.privacy_level_options,
+    params.settings,
+  );
+  validateVideoDuration(
+    params.videoDurationSeconds,
+    creatorInfo.max_video_post_duration_sec,
+  );
 
   if (!publishId) {
-    const creatorInfo = await queryCreatorInfo(params.accessToken);
-    const privacyLevel = getPrivacyLevel(
-      creatorInfo.privacy_level_options,
-      params.settings,
-    );
+    const mediaTransferMode = getMediaTransferMode();
 
-    publishId = await initializeDirectPost({
+    if (mediaTransferMode === "FILE_UPLOAD") {
+      video = await downloadTikTokVideo({
+        sourceMimeType: params.videoMimeType,
+        videoUrl: params.videoUrl,
+      });
+    } else {
+      assertVerifiedPullUrl(params.videoUrl);
+    }
+
+    const initialization = await initializeDirectPost({
       accessToken: params.accessToken,
       caption: params.caption,
       creatorInfo,
+      mediaTransferMode,
       privacyLevel,
       settings: params.settings,
+      videoSize: video?.bytes.byteLength ?? null,
       videoUrl: params.videoUrl,
     });
-    await params.onPublishInitialized?.(publishId);
+    publishId = initialization.publishId;
+    uploadUrl = initialization.uploadUrl;
+    await params.onPublishInitialized?.(initialization);
+    initializedNow = true;
+  }
+
+  if (uploadUrl) {
+    video ??= await downloadTikTokVideo({
+      sourceMimeType: params.videoMimeType,
+      videoUrl: params.videoUrl,
+    });
+    let uploadedBytes = 0;
+
+    if (!initializedNow) {
+      const currentStatus = await fetchTikTokPostStatus({
+        accessToken: params.accessToken,
+        publishId,
+      });
+      const completed = getCompletedTikTokResult(currentStatus, publishId);
+
+      if (completed) {
+        return completed;
+      }
+
+      assertTikTokStatusDidNotFail(currentStatus);
+      uploadedBytes = normalizeUploadedBytes(
+        currentStatus.uploaded_bytes,
+        video.bytes.byteLength,
+      );
+    }
+
+    if (uploadedBytes < video.bytes.byteLength) {
+      await uploadTikTokVideo({
+        bytes: video.bytes,
+        contentType: video.contentType,
+        startByte: uploadedBytes,
+        uploadUrl,
+      });
+    }
   }
 
   const finalStatus = await waitForTikTokPostStatus({
     accessToken: params.accessToken,
     publishId,
   });
-  const publicPostId = finalStatus.publicaly_available_post_id?.[0];
 
-  return {
-    platformPostId: publicPostId ? String(publicPostId) : publishId,
-    platformPostUrl: null,
-    publishId,
-  };
+  return buildTikTokPublishResult(finalStatus, publishId);
 }
 
 async function queryCreatorInfo(accessToken: string) {
@@ -85,7 +185,13 @@ async function queryCreatorInfo(accessToken: string) {
   );
 
   if (!payload.privacy_level_options?.length) {
-    throw new Error("TikTok creator info did not include privacy options.");
+    throw new TikTokPublishError(
+      "TikTok creator info did not include privacy options.",
+      "privacy_level_option_mismatch",
+      null,
+      null,
+      true,
+    );
   }
 
   return payload;
@@ -95,46 +201,194 @@ async function initializeDirectPost(params: {
   accessToken: string;
   caption: string;
   creatorInfo: TikTokCreatorInfo;
+  mediaTransferMode: TikTokMediaTransferMode;
   privacyLevel: string;
   settings?: TikTokTargetPublishSettings;
+  videoSize: number | null;
   videoUrl: string;
-}) {
-  const payload = await postTikTokJson<{ publish_id?: string }>(
-    "/v2/post/publish/video/init/",
-    params.accessToken,
-    {
-      post_info: {
-        brand_content_toggle: params.settings?.brandedContent === true,
-        brand_organic_toggle: params.settings?.brandOrganic === true,
-        disable_comment:
-          params.creatorInfo.comment_disabled === true ||
-          params.settings?.allowComment === false,
-        disable_duet:
-          params.creatorInfo.duet_disabled === true ||
-          params.settings?.allowDuet === false,
-        disable_stitch:
-          params.creatorInfo.stitch_disabled === true ||
-          params.settings?.allowStitch === false,
-        privacy_level: params.privacyLevel,
-        title: normalizeTikTokCaption(params.caption),
-      },
-      source_info: {
-        source: "PULL_FROM_URL",
-        video_url: params.videoUrl,
-      },
+}): Promise<TikTokPublishInitialization> {
+  const sourceInfo =
+    params.mediaTransferMode === "FILE_UPLOAD"
+      ? getFileUploadSourceInfo(params.videoSize)
+      : {
+          source: "PULL_FROM_URL",
+          video_url: params.videoUrl,
+        };
+  const response = await requestTikTokJson<{
+    publish_id?: string;
+    upload_url?: string;
+  }>("/v2/post/publish/video/init/", params.accessToken, {
+    post_info: {
+      brand_content_toggle: params.settings?.brandedContent === true,
+      brand_organic_toggle: params.settings?.brandOrganic === true,
+      disable_comment:
+        params.creatorInfo.comment_disabled === true ||
+        params.settings?.allowComment === false,
+      disable_duet:
+        params.creatorInfo.duet_disabled === true ||
+        params.settings?.allowDuet === false,
+      disable_stitch:
+        params.creatorInfo.stitch_disabled === true ||
+        params.settings?.allowStitch === false,
+      is_aigc: params.settings?.containsSyntheticMedia !== false,
+      privacy_level: params.privacyLevel,
+      title: normalizeTikTokCaption(params.caption),
     },
-  );
+    source_info: sourceInfo,
+  });
+  const payload = response.data;
 
   if (!payload.publish_id) {
-    throw new Error("TikTok did not return a publish_id.");
+    throw new TikTokPublishError(
+      "TikTok did not return a publish_id.",
+      "publish_id_missing",
+      null,
+      null,
+      false,
+    );
+  }
+
+  if (params.mediaTransferMode === "FILE_UPLOAD" && !payload.upload_url) {
+    throw new TikTokPublishError(
+      "TikTok did not return an upload URL.",
+      "upload_url_missing",
+      null,
+      null,
+      false,
+    );
   }
 
   logger.info("TikTok Direct Post initialized", {
+    mediaTransferMode: params.mediaTransferMode,
     privacyLevel: params.privacyLevel,
     publishId: payload.publish_id,
   });
 
-  return payload.publish_id;
+  return {
+    creatorNickname: params.creatorInfo.creator_nickname ?? null,
+    creatorUsername: params.creatorInfo.creator_username ?? null,
+    logId: response.logId,
+    mediaTransferMode: params.mediaTransferMode,
+    publishId: payload.publish_id,
+    uploadUrl: payload.upload_url ?? null,
+  };
+}
+
+async function downloadTikTokVideo(params: {
+  sourceMimeType?: string | null;
+  videoUrl: string;
+}): Promise<DownloadedTikTokVideo> {
+  const response = await fetch(params.videoUrl);
+
+  if (!response.ok) {
+    throw new Error(`TikTok media download failed: HTTP ${response.status}.`);
+  }
+
+  const maxBytes = getIntegerEnv(
+    "TIKTOK_MAX_UPLOAD_BYTES",
+    DEFAULT_MAX_UPLOAD_BYTES,
+    1,
+    4 * 1024 * 1024 * 1024,
+  );
+  const contentLength = getHeaderInteger(response.headers.get("content-length"));
+
+  if (contentLength !== null && contentLength > maxBytes) {
+    throw new Error(
+      `TikTok media download failed: video is larger than ${maxBytes} bytes.`,
+    );
+  }
+
+  const bytes = Buffer.from(await response.arrayBuffer());
+
+  if (bytes.byteLength === 0) {
+    throw new Error("TikTok media download failed: video is empty.");
+  }
+
+  if (bytes.byteLength > maxBytes) {
+    throw new Error(
+      `TikTok media download failed: video is larger than ${maxBytes} bytes.`,
+    );
+  }
+
+  return {
+    bytes,
+    contentType: getVideoContentType(
+      params.sourceMimeType,
+      response.headers.get("content-type"),
+    ),
+  };
+}
+
+async function uploadTikTokVideo(params: {
+  bytes: Buffer;
+  contentType: string;
+  startByte: number;
+  uploadUrl: string;
+}) {
+  const plan = getTikTokChunkPlan(params.bytes.byteLength);
+  const firstRangeIndex = getResumeRangeIndex(plan.ranges, params.startByte);
+
+  for (let index = firstRangeIndex; index < plan.ranges.length; index += 1) {
+    const range = plan.ranges[index];
+    const chunk = params.bytes.subarray(range.start, range.end + 1);
+
+    await uploadTikTokChunk({
+      chunk,
+      contentType: params.contentType,
+      range,
+      totalBytes: params.bytes.byteLength,
+      uploadUrl: params.uploadUrl,
+    });
+  }
+}
+
+async function uploadTikTokChunk(params: {
+  chunk: Buffer;
+  contentType: string;
+  range: TikTokUploadRange;
+  totalBytes: number;
+  uploadUrl: string;
+}) {
+  const maxAttempts = getIntegerEnv(
+    "TIKTOK_UPLOAD_MAX_ATTEMPTS",
+    DEFAULT_UPLOAD_RETRIES,
+    1,
+    8,
+  );
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(params.uploadUrl, {
+        body: toArrayBuffer(params.chunk),
+        headers: {
+          "Content-Length": String(params.chunk.byteLength),
+          "Content-Range": `bytes ${params.range.start}-${params.range.end}/${params.totalBytes}`,
+          "Content-Type": params.contentType,
+        },
+        method: "PUT",
+      });
+
+      if (response.ok) {
+        return;
+      }
+
+      if (!isRetryableHttpStatus(response.status) || attempt === maxAttempts) {
+        throw new TikTokPublishError(
+          `TikTok video upload failed: HTTP ${response.status}.`,
+          response.status === 403 ? "upload_url_expired" : "media_upload_failed",
+          null,
+          response.status,
+          response.status === 403,
+        );
+      }
+    } catch (error) {
+      if (error instanceof TikTokPublishError || attempt === maxAttempts) {
+        throw error;
+      }
+    }
+
+    await delay(Math.min(1_000 * 2 ** (attempt - 1), 8_000));
+  }
 }
 
 async function waitForTikTokPostStatus(params: {
@@ -147,11 +401,17 @@ async function waitForTikTokPostStatus(params: {
     1,
     90,
   );
-  const pollIntervalMs = getIntegerEnv(
+  const basePollIntervalMs = getIntegerEnv(
     "TIKTOK_POST_STATUS_POLL_INTERVAL_MS",
     DEFAULT_STATUS_POLL_INTERVAL_MS,
     2_000,
     60_000,
+  );
+  const maxPollIntervalMs = getIntegerEnv(
+    "TIKTOK_POST_STATUS_MAX_POLL_INTERVAL_MS",
+    DEFAULT_STATUS_POLL_MAX_INTERVAL_MS,
+    basePollIntervalMs,
+    120_000,
   );
 
   for (let attempt = 1; attempt <= maxPolls; attempt += 1) {
@@ -167,13 +427,13 @@ async function waitForTikTokPostStatus(params: {
       return status;
     }
 
-    if (status.status === "FAILED") {
-      throw new Error(
-        `TikTok publishing failed: ${status.fail_reason || "unknown failure"}.`,
-      );
-    }
+    assertTikTokStatusDidNotFail(status);
 
     if (attempt < maxPolls) {
+      const pollIntervalMs = Math.min(
+        basePollIntervalMs * 2 ** Math.floor((attempt - 1) / 3),
+        maxPollIntervalMs,
+      );
       await delay(pollIntervalMs);
     }
   }
@@ -185,13 +445,18 @@ async function fetchTikTokPostStatus(params: {
   accessToken: string;
   publishId: string;
 }) {
-  return postTikTokJson<TikTokPublishStatus>(
+  const response = await requestTikTokJson<TikTokPublishStatus>(
     "/v2/post/publish/status/fetch/",
     params.accessToken,
     {
       publish_id: params.publishId,
     },
   );
+
+  return {
+    ...response.data,
+    request_log_id: response.logId,
+  };
 }
 
 async function postTikTokJson<TData extends object>(
@@ -199,6 +464,14 @@ async function postTikTokJson<TData extends object>(
   accessToken: string,
   body: Record<string, unknown>,
 ): Promise<TData> {
+  return (await requestTikTokJson<TData>(path, accessToken, body)).data;
+}
+
+async function requestTikTokJson<TData extends object>(
+  path: string,
+  accessToken: string,
+  body: Record<string, unknown>,
+) {
   const response = await fetch(buildTikTokUrl(path), {
     body: JSON.stringify(body),
     headers: {
@@ -212,16 +485,141 @@ async function postTikTokJson<TData extends object>(
     | null;
 
   if (!response.ok || !payload || payload.error?.code !== "ok") {
-    throw new Error(
+    const code = payload?.error?.code || `http_${response.status}`;
+
+    throw new TikTokPublishError(
       `TikTok API request failed: ${getTikTokErrorMessage(payload, response.status)}`,
+      code,
+      payload?.error?.log_id ?? null,
+      response.status,
+      isTikTokActionRequiredError(code),
     );
   }
 
   if (!payload.data) {
-    throw new Error("TikTok API response did not include data.");
+    throw new TikTokPublishError(
+      "TikTok API response did not include data.",
+      "response_data_missing",
+      payload.error?.log_id ?? null,
+      response.status,
+      false,
+    );
   }
 
-  return payload.data;
+  return {
+    data: payload.data,
+    logId: payload.error?.log_id ?? null,
+  };
+}
+
+function getFileUploadSourceInfo(videoSize: number | null) {
+  if (!videoSize || videoSize <= 0) {
+    throw new Error("TikTok FILE_UPLOAD requires a non-empty video.");
+  }
+
+  const plan = getTikTokChunkPlan(videoSize);
+
+  return {
+    chunk_size: plan.chunkSize,
+    source: "FILE_UPLOAD",
+    total_chunk_count: plan.ranges.length,
+    video_size: videoSize,
+  };
+}
+
+export function getTikTokChunkPlan(totalBytes: number) {
+  if (!Number.isSafeInteger(totalBytes) || totalBytes <= 0) {
+    throw new Error("TikTok upload size must be a positive integer.");
+  }
+
+  const chunkSize = Math.min(totalBytes, MAX_CHUNK_BYTES);
+  const chunkCount = Math.max(1, Math.floor(totalBytes / chunkSize));
+  const ranges: TikTokUploadRange[] = [];
+
+  for (let index = 0; index < chunkCount; index += 1) {
+    const start = index * chunkSize;
+    const end = index === chunkCount - 1
+      ? totalBytes - 1
+      : start + chunkSize - 1;
+
+    if (end - start + 1 > MAX_FINAL_CHUNK_BYTES) {
+      throw new Error("TikTok final upload chunk exceeds 128 MB.");
+    }
+
+    ranges.push({ end, start });
+  }
+
+  return { chunkSize, ranges };
+}
+
+function getResumeRangeIndex(ranges: TikTokUploadRange[], startByte: number) {
+  if (!Number.isSafeInteger(startByte) || startByte < 0) {
+    throw new Error("TikTok returned an invalid uploaded byte count.");
+  }
+
+  const index = ranges.findIndex((range) => range.start === startByte);
+
+  if (index >= 0) {
+    return index;
+  }
+
+  const completedBytes = ranges.at(-1)?.end;
+
+  if (completedBytes !== undefined && startByte === completedBytes + 1) {
+    return ranges.length;
+  }
+
+  throw new Error("TikTok upload cannot resume from a partial chunk boundary.");
+}
+
+function normalizeUploadedBytes(value: number | undefined, totalBytes: number) {
+  if (value === undefined) {
+    return 0;
+  }
+
+  if (!Number.isSafeInteger(value) || value < 0 || value > totalBytes) {
+    throw new Error("TikTok returned an invalid uploaded byte count.");
+  }
+
+  return value;
+}
+
+function getCompletedTikTokResult(
+  status: TikTokPublishStatus,
+  publishId: string,
+) {
+  return status.status === "PUBLISH_COMPLETE"
+    ? buildTikTokPublishResult(status, publishId)
+    : null;
+}
+
+function buildTikTokPublishResult(
+  status: TikTokPublishStatus,
+  publishId: string,
+): TikTokPublishResult {
+  const publicPostId = status.publicaly_available_post_id?.[0];
+
+  return {
+    platformPostId: publicPostId ? String(publicPostId) : publishId,
+    platformPostUrl: null,
+    publishId,
+  };
+}
+
+function assertTikTokStatusDidNotFail(status: TikTokPublishStatus) {
+  if (status.status !== "FAILED") {
+    return;
+  }
+
+  const code = status.fail_reason || "tiktok_publish_failed";
+
+  throw new TikTokPublishError(
+    `TikTok publishing failed: ${status.fail_reason || "unknown failure"}.`,
+    code,
+    status.request_log_id ?? null,
+    null,
+    isTikTokActionRequiredError(code),
+  );
 }
 
 function buildTikTokUrl(path: string) {
@@ -239,35 +637,92 @@ function getPrivacyLevel(
 ) {
   const requestedPrivacy = settings?.privacyLevel;
 
-  if (requestedPrivacy) {
-    if (!privacyOptions?.includes(requestedPrivacy)) {
-      throw new Error(
-        "The selected TikTok visibility is no longer available.",
-      );
-    }
-
-    if (settings.brandedContent && requestedPrivacy === "SELF_ONLY") {
-      throw new Error(
-        "TikTok paid partnerships cannot use Only me visibility.",
-      );
-    }
-
-    return requestedPrivacy;
+  if (!requestedPrivacy || !privacyOptions?.includes(requestedPrivacy)) {
+    throw new TikTokPublishError(
+      "The selected TikTok visibility is no longer available.",
+      "privacy_level_option_mismatch",
+      null,
+      null,
+      true,
+    );
   }
 
-  const preferences = [
-    process.env.TIKTOK_DEFAULT_PRIVACY_LEVEL?.trim() ?? "SELF_ONLY",
-    ...defaultPrivacyPreference,
-  ];
-  const privacyLevel = preferences.find((entry) =>
-    privacyOptions?.includes(entry),
+  if (settings?.brandedContent && requestedPrivacy === "SELF_ONLY") {
+    throw new TikTokPublishError(
+      "TikTok paid partnerships cannot use Only me visibility.",
+      "invalid_branded_content_visibility",
+      null,
+      null,
+      true,
+    );
+  }
+
+  return requestedPrivacy;
+}
+
+function validateVideoDuration(
+  durationSeconds: number | null | undefined,
+  maxDurationSeconds: number | undefined,
+) {
+  if (
+    typeof durationSeconds === "number" &&
+    Number.isFinite(durationSeconds) &&
+    typeof maxDurationSeconds === "number" &&
+    Number.isFinite(maxDurationSeconds) &&
+    durationSeconds > maxDurationSeconds
+  ) {
+    throw new TikTokPublishError(
+      `TikTok allows videos up to ${maxDurationSeconds} seconds for this account.`,
+      "video_duration_exceeds_creator_limit",
+      null,
+      null,
+      true,
+    );
+  }
+}
+
+function getMediaTransferMode(): TikTokMediaTransferMode {
+  return process.env.TIKTOK_MEDIA_TRANSFER_MODE?.trim().toUpperCase() ===
+    "PULL_FROM_URL"
+    ? "PULL_FROM_URL"
+    : "FILE_UPLOAD";
+}
+
+function assertVerifiedPullUrl(videoUrl: string) {
+  const host = new URL(videoUrl).hostname.toLowerCase();
+  const verifiedHosts = new Set(
+    (process.env.TIKTOK_VERIFIED_MEDIA_HOSTS ?? "")
+      .split(",")
+      .map((entry) => entry.trim().toLowerCase())
+      .filter(Boolean),
   );
 
-  if (!privacyLevel) {
-    throw new Error("TikTok privacy options do not include SELF_ONLY.");
+  if (!verifiedHosts.has(host)) {
+    throw new TikTokPublishError(
+      `TikTok media host ${host} is not configured as verified.`,
+      "url_ownership_unverified",
+      null,
+      null,
+      true,
+    );
   }
+}
 
-  return privacyLevel;
+function isTikTokActionRequiredError(code: string) {
+  return [
+    "access_token_invalid",
+    "invalid_branded_content_visibility",
+    "privacy_level_option_mismatch",
+    "scope_not_authorized",
+    "spam_risk_too_many_posts",
+    "spam_risk_user_banned_from_posting",
+    "spam_risk_text",
+    "reached_active_user_cap",
+    "unaudited_client_can_only_post_to_private_accounts",
+    "upload_url_expired",
+    "url_ownership_unverified",
+    "video_duration_exceeds_creator_limit",
+  ].includes(code);
 }
 
 function normalizeTikTokCaption(value: string) {
@@ -290,6 +745,36 @@ function getTikTokErrorMessage(
     .join(" - ");
 }
 
+function getVideoContentType(
+  sourceMimeType: string | null | undefined,
+  responseMimeType: string | null,
+) {
+  const candidate = [sourceMimeType, responseMimeType]
+    .map((value) => value?.split(";")[0]?.trim().toLowerCase())
+    .find((value) => value?.startsWith("video/"));
+
+  return candidate || "video/mp4";
+}
+
+function getHeaderInteger(value: string | null) {
+  const parsedValue = value ? Number(value) : NaN;
+
+  return Number.isSafeInteger(parsedValue) && parsedValue >= 0
+    ? parsedValue
+    : null;
+}
+
+function isRetryableHttpStatus(status: number) {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+function toArrayBuffer(buffer: Buffer) {
+  return buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength,
+  ) as ArrayBuffer;
+}
+
 function getIntegerEnv(
   name: string,
   fallback: number,
@@ -299,7 +784,7 @@ function getIntegerEnv(
   const rawValue = process.env[name]?.trim();
   const parsedValue = rawValue ? Number(rawValue) : NaN;
 
-  return Number.isInteger(parsedValue)
+  return Number.isSafeInteger(parsedValue)
     ? Math.min(Math.max(parsedValue, min), max)
     : fallback;
 }

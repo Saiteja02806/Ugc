@@ -4,8 +4,9 @@ import {
   createSocialPublishSchedule,
   deleteSocialPublishSchedule,
 } from "@/lib/scheduling/aws-scheduler";
-import { getQueueNameForJobType } from "@/lib/aws/sqs";
+import { getQueueNameForJobType, sendJobMessage } from "@/lib/aws/sqs";
 import {
+  attachAwsMessageToBackgroundJob,
   createBackgroundJob,
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
@@ -31,6 +32,7 @@ import {
   markScheduleTargetSchedulerDeleted,
   markScheduleTargetSchedulerFallback,
   prepareScheduledPostForPublishing,
+  requestSocialPublishTargetRetry,
   updateEditableScheduledPost,
 } from "@/lib/scheduling/db";
 import {
@@ -60,6 +62,7 @@ import {
   getRenderFinalizationDecision,
 } from "@/lib/scheduling/render-finalization-policy";
 import { scheduleTargetRowsWithDependencies } from "@/lib/scheduling/target-scheduling";
+import { deliverSocialPublishRetry } from "@/lib/scheduling/publish-retry";
 import type {
   ScheduledPost,
   ScheduledPostStatus,
@@ -422,6 +425,95 @@ export async function scheduleRenderedPost(params: {
     created: true,
     schedule: await getRequiredSchedule({
       postId: existing.id,
+      userId: params.userId,
+    }),
+  };
+}
+
+export async function retryUserScheduleTargetPublishing(params: {
+  postId: string;
+  targetId: string;
+  userId: string;
+}) {
+  assertUuid(params.postId, "Schedule ID is invalid.");
+  assertUuid(params.targetId, "Platform target ID is invalid.");
+
+  const claim = await requestSocialPublishTargetRetry(params);
+
+  if (claim.outcome === "not_found") {
+    throw new SchedulingRequestError(
+      "This platform publish was not found.",
+      404,
+      "publish_target_not_found",
+    );
+  }
+
+  if (claim.outcome === "cancelled") {
+    throw new SchedulingRequestError(
+      "This scheduled post was cancelled and cannot be retried.",
+      409,
+      "schedule_cancelled",
+    );
+  }
+
+  if (claim.outcome === "action_required") {
+    throw new SchedulingRequestError(
+      "Reconnect this account before retrying publishing.",
+      409,
+      "social_connection_action_required",
+    );
+  }
+
+  if (claim.outcome === "connection_unavailable") {
+    throw new SchedulingRequestError(
+      "This account is no longer available. Reconnect it before retrying.",
+      409,
+      "social_connection_unavailable",
+    );
+  }
+
+  if (claim.outcome === "media_unavailable") {
+    throw new SchedulingRequestError(
+      "The prepared video is no longer available. Create a new scheduled post.",
+      409,
+      "combined_media_unavailable",
+    );
+  }
+
+  if (claim.outcome === "scheduling_retry_required") {
+    throw new SchedulingRequestError(
+      "Platform scheduling did not finish. Use Retry scheduling for this post.",
+      409,
+      "scheduler_retry_required",
+    );
+  }
+
+  if (claim.outcome === "not_retryable") {
+    throw new SchedulingRequestError(
+      "This platform publish is not currently eligible for retry.",
+      409,
+      "publish_target_not_retryable",
+    );
+  }
+
+  await deliverSocialPublishRetry(claim, {
+    attachMessage: attachAwsMessageToBackgroundJob,
+    reportError: (event, details) => {
+      console.error(`Social publish retry ${event}:`, details);
+    },
+    sendMessage: sendJobMessage,
+  });
+
+  return {
+    created: claim.outcome === "retry_created",
+    retryStatus:
+      claim.outcome === "already_published"
+        ? ("published" as const)
+        : claim.outcome === "already_queued"
+          ? ("in_progress" as const)
+          : ("started" as const),
+    schedule: await getRequiredSchedule({
+      postId: params.postId,
       userId: params.userId,
     }),
   };
@@ -1433,9 +1525,16 @@ function isExpired(expiresAt: string | null) {
 function canRefreshExpiredConnection(connection: Awaited<
   ReturnType<typeof getConnectedSocialConnection>
 >) {
+  const refreshExpiresAt = connection?.refresh_expires_at
+    ? Date.parse(connection.refresh_expires_at)
+    : Number.NaN;
+  const refreshTokenExpired =
+    Number.isFinite(refreshExpiresAt) && refreshExpiresAt <= Date.now();
+
   return (
-    connection?.platform === "youtube" &&
-    Boolean(connection.refresh_token_ciphertext)
+    (connection?.platform === "youtube" || connection?.platform === "tiktok") &&
+    Boolean(connection.refresh_token_ciphertext) &&
+    !refreshTokenExpired
   );
 }
 

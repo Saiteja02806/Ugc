@@ -5,13 +5,31 @@ import { getEffectiveSocialConnectionStatus } from "./connection-status.ts";
 
 const now = Date.parse("2026-07-16T12:00:00.000Z");
 
-test("marks expired TikTok access as expired even when a refresh token exists", () => {
+test("keeps expired TikTok access active while its refresh token is valid", () => {
   assert.equal(
     getEffectiveSocialConnectionStatus(
       {
         expiresAt: "2026-07-15T12:00:00.000Z",
         hasRefreshToken: true,
         platform: "tiktok",
+        refreshExpiresAt: "2027-07-15T12:00:00.000Z",
+        revokedAt: null,
+        status: "connected",
+      },
+      now,
+    ),
+    "connected",
+  );
+});
+
+test("marks TikTok expired when its refresh token is also expired", () => {
+  assert.equal(
+    getEffectiveSocialConnectionStatus(
+      {
+        expiresAt: "2026-07-15T12:00:00.000Z",
+        hasRefreshToken: true,
+        platform: "tiktok",
+        refreshExpiresAt: "2026-07-16T11:00:00.000Z",
         revokedAt: null,
         status: "connected",
       },

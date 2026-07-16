@@ -10,6 +10,7 @@ import type {
   SchedulePlatform,
   ScheduleSourceKind,
 } from "@/lib/scheduling/types";
+import type { SocialPublishRetryClaim } from "@/lib/scheduling/publish-retry";
 import type { SocialConnectionStatus, SocialProvider } from "@/lib/social/types";
 
 const SCHEDULED_POSTS_TABLE = "scheduled_posts";
@@ -81,6 +82,7 @@ type SocialConnectionRow = {
   id: string;
   platform: SchedulePlatform;
   provider: SocialProvider;
+  refresh_expires_at: string | null;
   refresh_token_ciphertext: string | null;
   revoked_at: string | null;
   scopes: string[];
@@ -162,6 +164,17 @@ type SchedulingDatabase = {
           p_user_id: string;
         };
         Returns: string;
+      };
+      retry_social_publish_target: {
+        Args: {
+          p_post_id: string;
+          p_target_id: string;
+          p_user_id: string;
+        };
+        Returns: Array<{
+          job_id: string | null;
+          outcome: SocialPublishRetryClaim["outcome"];
+        }>;
       };
     };
     Tables: {
@@ -669,6 +682,36 @@ export async function cancelScheduledPostRows(params: {
   return data as ScheduleCancelOutcome;
 }
 
+export async function requestSocialPublishTargetRetry(params: {
+  postId: string;
+  targetId: string;
+  userId: string;
+}): Promise<SocialPublishRetryClaim> {
+  const { data, error } = await getSchedulingSupabaseClient().rpc(
+    "retry_social_publish_target",
+    {
+      p_post_id: params.postId,
+      p_target_id: params.targetId,
+      p_user_id: params.userId,
+    },
+  );
+
+  if (error) {
+    throw new Error(`Could not retry social publishing: ${error.message}`);
+  }
+
+  const result = data?.[0];
+
+  if (!result || !isSocialPublishRetryOutcome(result.outcome)) {
+    throw new Error("Could not determine the social publishing retry result.");
+  }
+
+  return {
+    jobId: result.job_id,
+    outcome: result.outcome,
+  };
+}
+
 export async function listCancelledScheduleTargetsNeedingCleanup(params: {
   limit?: number;
   userId: string;
@@ -784,7 +827,7 @@ export async function getConnectedSocialConnection(params: {
   const { data, error } = await getSchedulingSupabaseClient()
     .from(SOCIAL_CONNECTIONS_TABLE)
     .select(
-      "id,user_id,platform,provider,status,scopes,expires_at,refresh_token_ciphertext,revoked_at",
+      "id,user_id,platform,provider,status,scopes,expires_at,refresh_expires_at,refresh_token_ciphertext,revoked_at",
     )
     .eq("id", params.connectionId)
     .eq("user_id", params.userId)
@@ -919,6 +962,23 @@ function getSupabaseServiceRoleKey() {
 
 function getNowIso() {
   return new Date().toISOString();
+}
+
+function isSocialPublishRetryOutcome(
+  value: string,
+): value is SocialPublishRetryClaim["outcome"] {
+  return [
+    "action_required",
+    "already_published",
+    "already_queued",
+    "cancelled",
+    "connection_unavailable",
+    "media_unavailable",
+    "not_found",
+    "not_retryable",
+    "retry_created",
+    "scheduling_retry_required",
+  ].includes(value);
 }
 
 function toRecord(value: Json): Record<string, unknown> {

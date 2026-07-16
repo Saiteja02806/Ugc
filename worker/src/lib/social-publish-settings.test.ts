@@ -12,12 +12,21 @@ test("reads saved account publishing settings", () => {
     getInstagramTargetPublishSettings({ shareToFeed: false }),
     { shareToFeed: false },
   );
-  assert.equal(
+  assert.deepEqual(
     getTikTokTargetPublishSettings({
       allowComment: true,
+      containsSyntheticMedia: false,
       privacyLevel: "PUBLIC_TO_EVERYONE",
-    }).privacyLevel,
-    "PUBLIC_TO_EVERYONE",
+    }),
+    {
+      allowComment: true,
+      allowDuet: undefined,
+      allowStitch: undefined,
+      brandOrganic: undefined,
+      brandedContent: undefined,
+      containsSyntheticMedia: false,
+      privacyLevel: "PUBLIC_TO_EVERYONE",
+    },
   );
   assert.deepEqual(
     getYouTubeTargetPublishSettings({

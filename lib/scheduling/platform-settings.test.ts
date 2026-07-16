@@ -40,6 +40,7 @@ test("normalizes TikTok interaction and disclosure settings", () => {
       allowStitch: false,
       brandOrganic: true,
       brandedContent: false,
+      containsSyntheticMedia: false,
       privacyLevel: "PUBLIC_TO_EVERYONE",
     }),
     {
@@ -48,6 +49,7 @@ test("normalizes TikTok interaction and disclosure settings", () => {
       allowStitch: false,
       brandOrganic: true,
       brandedContent: false,
+      containsSyntheticMedia: false,
       privacyLevel: "PUBLIC_TO_EVERYONE",
     },
   );

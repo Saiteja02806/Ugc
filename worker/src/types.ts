@@ -37,6 +37,7 @@ type ScheduledPostStatus =
   | "scheduling";
 
 type ScheduledPostTargetStatus =
+  | "action_required"
   | "cancelled"
   | "draft"
   | "failed"
@@ -390,9 +391,68 @@ export type CarouselSlideInsert = {
   text_position?: string | null;
 };
 
+export type SocialConnectionRow = {
+  access_token_ciphertext: string;
+  connected_at: string;
+  expires_at: string | null;
+  id: string;
+  last_error_code: string | null;
+  metadata: Json;
+  platform: SchedulePlatform;
+  platform_account_id: string;
+  platform_account_name: string | null;
+  platform_account_username: string | null;
+  provider: "google" | "meta" | "tiktok";
+  refresh_expires_at: string | null;
+  refresh_token_ciphertext: string | null;
+  revoked_at: string | null;
+  scopes: string[];
+  status: SocialConnectionStatus;
+  token_refreshed_at: string | null;
+  token_refresh_claim_token: string | null;
+  token_refresh_claimed_at: string | null;
+  token_type: string | null;
+  updated_at: string;
+  user_id: string;
+};
+
 export type BackgroundJobsDatabase = {
   public: {
     Functions: {
+      claim_social_connection_token_refresh: {
+        Args: {
+          p_claim_token: string;
+          p_connection_id: string;
+          p_stale_after_seconds: number;
+          p_user_id: string;
+        };
+        Returns: SocialConnectionRow[];
+      };
+      complete_social_connection_token_refresh: {
+        Args: {
+          p_access_token_ciphertext: string;
+          p_claim_token: string;
+          p_connection_id: string;
+          p_expires_at: string;
+          p_refresh_expires_at: string;
+          p_refresh_token_ciphertext: string;
+          p_scopes: string[];
+          p_status: "connected" | "permission_missing";
+          p_token_type: string;
+          p_user_id: string;
+        };
+        Returns: SocialConnectionRow[];
+      };
+      mark_social_publish_target_action_required: {
+        Args: {
+          p_error_code: string;
+          p_error_message: string;
+          p_metadata: Json;
+          p_target_id: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
       claim_background_job: {
         Args: {
           p_claim_token: string;
@@ -426,6 +486,15 @@ export type BackgroundJobsDatabase = {
           p_stale_after_seconds: number;
         };
         Returns: number;
+      };
+      release_social_connection_token_refresh: {
+        Args: {
+          p_claim_token: string;
+          p_connection_id: string;
+          p_error_code: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
       };
       increment_category_image_asset_usage: {
         Args: { asset_ids: string[] };
@@ -548,31 +617,18 @@ export type BackgroundJobsDatabase = {
       social_connections: {
         Insert: Record<string, never>;
         Relationships: [];
-        Row: {
-          access_token_ciphertext: string;
-          connected_at: string;
-          expires_at: string | null;
-          id: string;
-          last_error_code: string | null;
-          metadata: Json;
-          platform: SchedulePlatform;
-          platform_account_id: string;
-          platform_account_name: string | null;
-          platform_account_username: string | null;
-          provider: "google" | "meta" | "tiktok";
-          refresh_token_ciphertext: string | null;
-          revoked_at: string | null;
-          scopes: string[];
-          status: SocialConnectionStatus;
-          token_type: string | null;
-          updated_at: string;
-          user_id: string;
-        };
+        Row: SocialConnectionRow;
         Update: Partial<{
           access_token_ciphertext: string;
           expires_at: string | null;
           last_error_code: string | null;
+          refresh_expires_at: string | null;
+          refresh_token_ciphertext: string | null;
+          scopes: string[];
           status: SocialConnectionStatus;
+          token_refreshed_at: string | null;
+          token_refresh_claim_token: string | null;
+          token_refresh_claimed_at: string | null;
           token_type: string | null;
           updated_at: string;
         }>;

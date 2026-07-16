@@ -190,11 +190,17 @@ export function PlatformSelectionModal({
     popupError,
     startConnection,
   } = useSocialOAuthPopup({
-    onPopupClosed: async ({ platform }) => {
+    onPopupClosed: async ({ platform, previousConnectionUpdatedAt }) => {
       const refreshedConnections = await loadConnections();
+      const previousUpdatedAt = previousConnectionUpdatedAt
+        ? Date.parse(previousConnectionUpdatedAt)
+        : null;
       const isConnected = refreshedConnections.some(
         (connection) =>
-          connection.platform === platform && connection.status === "connected",
+          connection.platform === platform &&
+          connection.status === "connected" &&
+          (previousUpdatedAt === null ||
+            Date.parse(connection.updatedAt) > previousUpdatedAt),
       );
 
       if (isConnected) {
@@ -374,8 +380,11 @@ export function PlatformSelectionModal({
 
                         void startConnection({
                           carouselId: context.carouselId,
+                          forceConsent: Boolean(connection),
                           libraryItemId: context.libraryItemId,
                           platform: definition.platform,
+                          previousConnectionUpdatedAt:
+                            connection?.updatedAt ?? null,
                           returnTo: context.returnTo,
                         });
                       }}

@@ -45,6 +45,7 @@ export const workerProfiles = {
     jobTypes: ["publish_social_post"],
     queueName: "social-publish",
     queueUrlEnv: "UGC_SOCIAL_PUBLISH_QUEUE_URL",
+    secretKeys: ["TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET"],
     secretKeyAlternatives: [
       {
         keys: ["OAUTH_TOKEN_ENCRYPTION_KEY", "SOCIAL_TOKEN_ENCRYPTION_KEY"],
@@ -53,14 +54,14 @@ export const workerProfiles = {
     ],
     secretSources: {
       GOOGLE_CLIENT_ID: {
-        required: false,
+        required: true,
         secretArnEnv: "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_ID_SECRET_ARN",
         workerSecretFallbackEnv:
           "ECS_SOCIAL_PUBLISH_USE_WORKER_SECRET_GOOGLE_OAUTH",
         workerSecretKey: "GOOGLE_CLIENT_ID",
       },
       GOOGLE_CLIENT_SECRET: {
-        required: false,
+        required: true,
         secretArnEnv: "ECS_SOCIAL_PUBLISH_GOOGLE_CLIENT_SECRET_SECRET_ARN",
         workerSecretFallbackEnv:
           "ECS_SOCIAL_PUBLISH_USE_WORKER_SECRET_GOOGLE_OAUTH",

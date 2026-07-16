@@ -136,6 +136,15 @@ type SchedulePublishResponse =
   | { created: boolean; ok: true; schedule: ScheduledPost }
   | { message?: string; ok?: false };
 
+type SchedulePublishRetryResponse =
+  | {
+      created: boolean;
+      ok: true;
+      retryStatus: "in_progress" | "published" | "started";
+      schedule: ScheduledPost;
+    }
+  | { message?: string; ok?: false };
+
 type SocialConnectionsResponse =
   | { connections: SocialConnection[]; ok: true }
   | { message?: string; ok?: false };
@@ -227,6 +236,9 @@ export function SchedulingWorkspace() {
     string | null
   >(null);
   const [renderingScheduleId, setRenderingScheduleId] = useState<string | null>(null);
+  const [retryingPublishTargetId, setRetryingPublishTargetId] = useState<
+    string | null
+  >(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [minimumRenderLeadMinutes, setMinimumRenderLeadMinutes] = useState(
     DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
@@ -396,13 +408,13 @@ export function SchedulingWorkspace() {
     };
   }, [loadScheduleMedia, loadSchedules, loadSocialConnections]);
 
-  const hasActiveCombinationRender = useMemo(
-    () => serverSchedules.some(hasActiveCombinationRenderStatus),
+  const hasActiveServerWork = useMemo(
+    () => serverSchedules.some(hasActiveSchedulingWork),
     [serverSchedules],
   );
 
   useEffect(() => {
-    if (!hasActiveCombinationRender) {
+    if (!hasActiveServerWork) {
       return;
     }
 
@@ -411,7 +423,7 @@ export function SchedulingWorkspace() {
     }, 6000);
 
     return () => window.clearInterval(timer);
-  }, [hasActiveCombinationRender, loadSchedules]);
+  }, [hasActiveServerWork, loadSchedules]);
 
   const counts = useMemo(() => getTabCounts(drafts), [drafts]);
   const visibleDrafts = useMemo(
@@ -675,6 +687,62 @@ export function SchedulingWorkspace() {
     }
   }, []);
 
+  async function handleRetryPublishing(
+    draft: ScheduleDraft,
+    target: ScheduledPostTarget,
+  ) {
+    setRetryingPublishTargetId(target.id);
+    setActionNotice(null);
+
+    try {
+      const token = await getCurrentUserIdToken();
+
+      if (!token) {
+        throw new Error("Sign in before retrying publishing.");
+      }
+
+      const response = await fetch(
+        `/api/schedules/${draft.id}/targets/${target.id}/retry`,
+        {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+          method: "POST",
+        },
+      );
+      const data = (await response.json()) as SchedulePublishRetryResponse;
+
+      if (!response.ok || data.ok !== true) {
+        throw new Error(
+          getApiResponseMessage(data, "Could not retry publishing."),
+        );
+      }
+
+      setServerSchedules((currentSchedules) => [
+        data.schedule,
+        ...currentSchedules.filter(
+          (schedule) => schedule.id !== data.schedule.id,
+        ),
+      ]);
+      setActiveTab(data.retryStatus === "published" ? "published" : "upcoming");
+
+      const platformLabel = getSchedulePlatformLabel(target.platform);
+      setActionNotice(
+        data.retryStatus === "published"
+          ? `${platformLabel} was already published. Its status is now updated.`
+          : data.retryStatus === "in_progress"
+            ? `${platformLabel} publishing is already in progress.`
+            : `Publishing started again for ${platformLabel}.`,
+      );
+    } catch (error) {
+      setActionNotice(
+        getErrorMessage(error, "Could not retry publishing right now."),
+      );
+      await loadSchedules();
+    } finally {
+      setRetryingPublishTargetId(null);
+    }
+  }
+
   async function handleConfirmScheduleCancellation() {
     if (!schedulePendingCancellation) {
       return;
@@ -756,6 +824,7 @@ export function SchedulingWorkspace() {
             activeTab={activeTab}
             drafts={selectedDayDrafts}
             isSchedulingFinalDraftId={schedulingFinalDraftId}
+            retryingPublishTargetId={retryingPublishTargetId}
             renderingScheduleId={renderingScheduleId}
             selectedDate={selectedCalendarDate}
             onBackToCalendar={() => setDayPlannerOpen(false)}
@@ -765,6 +834,7 @@ export function SchedulingWorkspace() {
             onCancelDraft={setSchedulePendingCancellation}
             onEditDraft={(draft) => void handleEditSchedule(draft)}
             onRenderDraft={handleStartCombinationRender}
+            onRetryPublishing={handleRetryPublishing}
             onScheduleDraft={handleScheduleFinalPost}
           />
         ) : (
@@ -786,6 +856,7 @@ export function SchedulingWorkspace() {
               drafts={visibleDrafts}
               hasAnyDrafts={drafts.length > 0}
               renderingScheduleId={renderingScheduleId}
+              retryingPublishTargetId={retryingPublishTargetId}
               schedulingFinalDraftId={schedulingFinalDraftId}
               selectedDate={selectedCalendarDate}
               viewMode={viewMode}
@@ -795,6 +866,7 @@ export function SchedulingWorkspace() {
               onMonthChange={setVisibleCalendarMonth}
               onOpenDate={handleOpenDayPlanner}
               onRenderDraft={handleStartCombinationRender}
+              onRetryPublishing={handleRetryPublishing}
               onScheduleDraft={handleScheduleFinalPost}
               onSelectDate={handleSelectCalendarDate}
             />
@@ -970,9 +1042,11 @@ function ScheduleContent({
   onMonthChange,
   onOpenDate,
   onRenderDraft,
+  onRetryPublishing,
   onScheduleDraft,
   onSelectDate,
   renderingScheduleId,
+  retryingPublishTargetId,
   schedulingFinalDraftId,
   selectedDate,
   viewMode,
@@ -987,9 +1061,14 @@ function ScheduleContent({
   onMonthChange: (monthKey: string) => void;
   onOpenDate: (dateKey: string) => void;
   onRenderDraft: (draftId: string) => void;
+  onRetryPublishing: (
+    draft: ScheduleDraft,
+    target: ScheduledPostTarget,
+  ) => void;
   onScheduleDraft: (draft: ScheduleDraft) => void;
   onSelectDate: (dateKey: string) => void;
   renderingScheduleId: string | null;
+  retryingPublishTargetId: string | null;
   schedulingFinalDraftId: string | null;
   selectedDate: string;
   viewMode: ScheduleViewMode;
@@ -1043,7 +1122,9 @@ function ScheduleContent({
             onCancelDraft={onCancelDraft}
             onEditDraft={onEditDraft}
             onRenderDraft={onRenderDraft}
+            onRetryPublishing={onRetryPublishing}
             onScheduleDraft={onScheduleDraft}
+            retryingPublishTargetId={retryingPublishTargetId}
           />
         ))}
       </div>
@@ -1058,7 +1139,9 @@ function ScheduleDraftPreview({
   onCancelDraft,
   onEditDraft,
   onRenderDraft,
+  onRetryPublishing,
   onScheduleDraft,
+  retryingPublishTargetId,
 }: {
   draft: ScheduleDraft;
   isRendering: boolean;
@@ -1066,7 +1149,12 @@ function ScheduleDraftPreview({
   onCancelDraft: (draft: ScheduleDraft) => void;
   onEditDraft: (draft: ScheduleDraft) => void;
   onRenderDraft: (draftId: string) => void;
+  onRetryPublishing: (
+    draft: ScheduleDraft,
+    target: ScheduledPostTarget,
+  ) => void;
   onScheduleDraft: (draft: ScheduleDraft) => void;
+  retryingPublishTargetId: string | null;
 }) {
   const { combinedMedia, demoMedia, hookMedia } = getDraftMediaParts(draft);
 
@@ -1098,7 +1186,11 @@ function ScheduleDraftPreview({
           </span>
         </div>
 
-        <ScheduleTargetStatusList draft={draft} />
+        <ScheduleTargetStatusList
+          draft={draft}
+          onRetryPublishing={onRetryPublishing}
+          retryingPublishTargetId={retryingPublishTargetId}
+        />
 
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
           <Clock3 className="size-3.5" aria-hidden="true" />
@@ -1337,9 +1429,16 @@ function CancelScheduleDialog({
 function ScheduleTargetStatusList({
   compact = false,
   draft,
+  onRetryPublishing,
+  retryingPublishTargetId,
 }: {
   compact?: boolean;
   draft: ScheduleDraft;
+  onRetryPublishing?: (
+    draft: ScheduleDraft,
+    target: ScheduledPostTarget,
+  ) => void;
+  retryingPublishTargetId?: string | null;
 }) {
   const targets = draft.targets ?? [];
 
@@ -1383,56 +1482,82 @@ function ScheduleTargetStatusList({
         </p>
       </div>
       <div className="divide-y divide-border">
-        {targets.map((target) => (
-          <div
-            key={target.id}
-            className="grid gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
-          >
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <SocialPlatformIcon
-                  className="size-4 shrink-0"
-                  platform={target.platform}
-                />
-                <span className="text-xs font-bold text-foreground">
-                  {getSchedulePlatformLabel(target.platform)}
-                </span>
-                <span
-                  className={cn(
-                    "rounded-full px-2 py-0.5 text-[11px] font-bold",
-                    getTargetStatusBadgeClass(target.status),
-                  )}
-                >
-                  {getTargetStatusLabel(target.status)}
-                </span>
-              </div>
-              <p className="mt-1 text-[11px] font-semibold leading-4 text-muted">
-                {getTargetStatusHelpText(target, draft.timezone)}
-              </p>
-              {target.lastErrorMessage &&
-              !(target.status === "publishing" && target.nextRetryAt) ? (
-                <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-error">
-                  {target.lastErrorMessage}
+        {targets.map((target) => {
+          const isRetrying = retryingPublishTargetId === target.id;
+          const showPublishRetry = canRetryTargetPublishing(target);
+
+          return (
+            <div
+              key={target.id}
+              className="grid gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <SocialPlatformIcon
+                    className="size-4 shrink-0"
+                    platform={target.platform}
+                  />
+                  <span className="text-xs font-bold text-foreground">
+                    {getSchedulePlatformLabel(target.platform)}
+                  </span>
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[11px] font-bold",
+                      getTargetStatusBadgeClass(target.status),
+                    )}
+                  >
+                    {getTargetStatusLabel(target.status)}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] font-semibold leading-4 text-muted">
+                  {getTargetStatusHelpText(target, draft.timezone)}
                 </p>
+                {target.lastErrorMessage &&
+                !(target.status === "publishing" && target.nextRetryAt) ? (
+                  <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-error">
+                    {target.lastErrorMessage}
+                  </p>
+                ) : null}
+              </div>
+
+              {target.platformPostUrl ? (
+                <a
+                  href={target.platformPostUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-7 w-fit items-center justify-center rounded-full border border-border bg-white px-2.5 text-[11px] font-bold text-[#173454] transition hover:bg-[#fffaf6]"
+                >
+                  View post
+                </a>
+              ) : target.platformPostId ? (
+                <span className="rounded-full bg-card-muted px-2.5 py-1 text-[11px] font-bold text-muted">
+                  ID saved
+                </span>
+              ) : target.status === "action_required" &&
+                shouldReconnectSocialTarget(target.lastErrorCode) ? (
+                <a
+                  href="/connected-accounts"
+                  className="inline-flex h-7 w-fit items-center justify-center rounded-lg border border-border bg-white px-2.5 text-[11px] font-bold text-[#173454] transition hover:bg-[#fffaf6]"
+                >
+                  Reconnect
+                </a>
+              ) : showPublishRetry && onRetryPublishing ? (
+                <button
+                  type="button"
+                  disabled={isRetrying}
+                  onClick={() => onRetryPublishing(draft, target)}
+                  className="inline-flex h-7 w-fit items-center justify-center gap-1.5 rounded-lg bg-primary px-2.5 text-[11px] font-bold text-white transition hover:bg-primary-hover disabled:cursor-wait disabled:opacity-60"
+                >
+                  <RefreshCw
+                    className={cn("size-3.5", isRetrying && "animate-spin")}
+                    aria-hidden="true"
+                  />
+                  {isRetrying ? "Retrying..." : "Retry publishing"}
+                </button>
               ) : null}
             </div>
-
-            {target.platformPostUrl ? (
-              <a
-                href={target.platformPostUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-7 w-fit items-center justify-center rounded-full border border-border bg-white px-2.5 text-[11px] font-bold text-[#173454] transition hover:bg-[#fffaf6]"
-              >
-                View post
-              </a>
-            ) : target.platformPostId ? (
-              <span className="rounded-full bg-card-muted px-2.5 py-1 text-[11px] font-bold text-muted">
-                ID saved
-              </span>
-            ) : null}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -1721,8 +1846,10 @@ function DayScheduleWorkspace({
   onCreateDraftForDate,
   onEditDraft,
   onRenderDraft,
+  onRetryPublishing,
   onScheduleDraft,
   renderingScheduleId,
+  retryingPublishTargetId,
   selectedDate,
 }: {
   activeTab: ScheduleTab;
@@ -1733,8 +1860,13 @@ function DayScheduleWorkspace({
   onCreateDraftForDate: (dateKey: string) => void;
   onEditDraft: (draft: ScheduleDraft) => void;
   onRenderDraft: (draftId: string) => void;
+  onRetryPublishing: (
+    draft: ScheduleDraft,
+    target: ScheduledPostTarget,
+  ) => void;
   onScheduleDraft: (draft: ScheduleDraft) => void;
   renderingScheduleId: string | null;
+  retryingPublishTargetId: string | null;
   selectedDate: string;
 }) {
   useEffect(() => {
@@ -1847,7 +1979,9 @@ function DayScheduleWorkspace({
                   onCancelDraft={onCancelDraft}
                   onEditDraft={onEditDraft}
                   onRenderDraft={onRenderDraft}
+                  onRetryPublishing={onRetryPublishing}
                   onScheduleDraft={onScheduleDraft}
+                  retryingPublishTargetId={retryingPublishTargetId}
                 />
               ))
             ) : (
@@ -1878,7 +2012,9 @@ function SelectedDayDraftCard({
   onCancelDraft,
   onEditDraft,
   onRenderDraft,
+  onRetryPublishing,
   onScheduleDraft,
+  retryingPublishTargetId,
 }: {
   draft: ScheduleDraft;
   isRendering: boolean;
@@ -1886,7 +2022,12 @@ function SelectedDayDraftCard({
   onCancelDraft: (draft: ScheduleDraft) => void;
   onEditDraft: (draft: ScheduleDraft) => void;
   onRenderDraft: (draftId: string) => void;
+  onRetryPublishing: (
+    draft: ScheduleDraft,
+    target: ScheduledPostTarget,
+  ) => void;
   onScheduleDraft: (draft: ScheduleDraft) => void;
+  retryingPublishTargetId: string | null;
 }) {
   const { combinedMedia, demoMedia, hookMedia } = getDraftMediaParts(draft);
 
@@ -1927,7 +2068,12 @@ function SelectedDayDraftCard({
         </p>
       ) : null}
 
-      <ScheduleTargetStatusList compact draft={draft} />
+      <ScheduleTargetStatusList
+        compact
+        draft={draft}
+        onRetryPublishing={onRetryPublishing}
+        retryingPublishTargetId={retryingPublishTargetId}
+      />
 
       <div className="mt-3 flex flex-wrap gap-2">
         {combinedMedia?.mediaUrl ? (
@@ -2105,6 +2251,7 @@ function getDraftStatusBadgeClass(status: ScheduleDraftStatus) {
 
 function getTargetStatusLabel(status: ScheduledPostTarget["status"]) {
   const labels: Record<ScheduledPostTarget["status"], string> = {
+    action_required: "Action required",
     cancelled: "Cancelled",
     draft: "Draft",
     failed: "Failed",
@@ -2131,7 +2278,12 @@ function getTargetStatusBadgeClass(status: ScheduledPostTarget["status"]) {
     return "bg-[#edf3f8] text-[#173454]";
   }
 
-  if (status === "failed" || status === "cancelled" || status === "skipped") {
+  if (
+    status === "action_required" ||
+    status === "failed" ||
+    status === "cancelled" ||
+    status === "skipped"
+  ) {
     return "bg-error/10 text-error";
   }
 
@@ -2176,6 +2328,10 @@ function getTargetStatusHelpText(
       : "Publishing failed for this account.";
   }
 
+  if (target.status === "action_required") {
+    return getActionRequiredTargetMessage(target.lastErrorCode);
+  }
+
   if (target.status === "cancelled") {
     return "This platform target was cancelled.";
   }
@@ -2185,6 +2341,68 @@ function getTargetStatusHelpText(
   }
 
   return "Waiting for final scheduling.";
+}
+
+function canRetryTargetPublishing(target: ScheduledPostTarget) {
+  return Boolean(
+    target.status === "failed" &&
+      target.publishJobId &&
+      target.lastErrorCode !== "scheduler_create_failed",
+  );
+}
+
+function getActionRequiredTargetMessage(errorCode: string | null) {
+  if (shouldReconnectTikTokTarget(errorCode)) {
+    return "Reconnect TikTok to grant publishing permission.";
+  }
+
+  if (errorCode === "tiktok_privacy_level_option_mismatch") {
+    return "TikTok visibility changed. Cancel this schedule, then choose an available option in a new post.";
+  }
+
+  if (errorCode === "tiktok_url_ownership_unverified") {
+    return "TikTok could not access the video. Contact support before retrying.";
+  }
+
+  if (errorCode === "tiktok_unaudited_client_can_only_post_to_private_accounts") {
+    return "This TikTok app can currently publish only with Only me visibility.";
+  }
+
+  if (errorCode === "tiktok_reached_active_user_cap") {
+    return "TikTok has not approved this app for additional publishing accounts yet.";
+  }
+
+  if (errorCode === "tiktok_spam_risk_too_many_posts") {
+    return "TikTok's daily posting limit was reached. Try again later.";
+  }
+
+  if (errorCode === "tiktok_video_duration_exceeds_creator_limit") {
+    return "This video is longer than the selected TikTok account allows.";
+  }
+
+  if (errorCode === "social_connection_revoked") {
+    return "Reconnect this account before publishing this post.";
+  }
+
+  return "This platform needs your attention before publishing can continue.";
+}
+
+function shouldReconnectSocialTarget(errorCode: string | null) {
+  return (
+    errorCode === "social_connection_revoked" ||
+    shouldReconnectTikTokTarget(errorCode)
+  );
+}
+
+function shouldReconnectTikTokTarget(errorCode: string | null) {
+  return [
+    "tiktok_access_token_invalid",
+    "tiktok_account_mismatch",
+    "tiktok_invalid_grant",
+    "tiktok_invalid_refresh_token",
+    "tiktok_refresh_token_expired",
+    "tiktok_scope_not_authorized",
+  ].includes(errorCode ?? "");
 }
 
 function formatShortDateTime(value: string, timezone: string) {
@@ -3810,6 +4028,13 @@ function TikTokAccountSettings({
 
   return (
     <div className="mt-3 grid gap-3">
+      {capabilities.creatorUsername || capabilities.creatorNickname ? (
+        <p className="text-xs font-semibold text-muted">
+          Posting as {capabilities.creatorUsername
+            ? `@${capabilities.creatorUsername}`
+            : capabilities.creatorNickname}
+        </p>
+      ) : null}
       <label className="block">
         <span className="flex items-center justify-between gap-3 text-xs font-bold text-foreground">
           <span>Visibility</span>
@@ -3868,6 +4093,17 @@ function TikTokAccountSettings({
           Content disclosure
         </legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <SettingCheckbox
+            checked={getBooleanSetting(
+              settings,
+              "containsSyntheticMedia",
+              true,
+            )}
+            label="Contains AI-generated content"
+            onChange={(checked) =>
+              onChange("containsSyntheticMedia", checked)
+            }
+          />
           <SettingCheckbox
             checked={getBooleanSetting(settings, "brandOrganic", false)}
             label="Promotes your brand"
@@ -3951,6 +4187,7 @@ function getDefaultPublishingSettings(
       allowStitch: false,
       brandOrganic: false,
       brandedContent: false,
+      containsSyntheticMedia: true,
       privacyLevel: "",
     };
   }
@@ -4295,13 +4532,24 @@ function getDraftPlannedScheduledFor(draft: ScheduleDraft) {
   return `${draft.scheduledDate}T${draft.scheduledTime}`;
 }
 
-function hasActiveCombinationRenderStatus(schedule: ScheduledPost) {
+function hasActiveSchedulingWork(schedule: ScheduledPost) {
   const renderStatus = getString(schedule.metadata.combinedRenderStatus);
   const finalScheduleStatus = getString(schedule.metadata.finalScheduleStatus);
+  const hasDuePublishingTarget = schedule.targets.some((target) => {
+    if (target.status === "publishing" || target.status === "scheduling") {
+      return true;
+    }
+
+    return (
+      target.status === "scheduled" &&
+      Date.parse(target.scheduledFor) <= Date.now() + 5_000
+    );
+  });
 
   return (
     renderStatus === "queued" ||
     renderStatus === "rendering" ||
+    hasDuePublishingTarget ||
     (["draft", "scheduling"].includes(schedule.status) &&
       ["finalizing", "scheduling"].includes(finalScheduleStatus ?? ""))
   );

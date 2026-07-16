@@ -13,8 +13,10 @@ import {
 
 type StartConnectionParams = {
   carouselId?: string;
+  forceConsent?: boolean;
   libraryItemId?: string;
   platform: SocialPlatform;
+  previousConnectionUpdatedAt?: string | null;
   returnTo: SocialOAuthReturnTo;
 };
 
@@ -31,6 +33,7 @@ type StartConnectionResponse =
 
 type PopupClosedContext = {
   platform: SocialPlatform;
+  previousConnectionUpdatedAt: string | null;
   provider: ReturnType<typeof getProviderForPlatform>;
 };
 
@@ -147,6 +150,7 @@ export function useSocialOAuthPopup(params?: {
         const response = await fetch("/api/social/oauth/start", {
           body: JSON.stringify({
             carouselId: input.carouselId,
+            forceConsent: input.forceConsent === true,
             libraryItemId: input.libraryItemId,
             platform: input.platform,
             provider: getProviderForPlatform(input.platform),
@@ -185,6 +189,8 @@ export function useSocialOAuthPopup(params?: {
           void (async () => {
             const handled = await onPopupClosedRef.current?.({
               platform: input.platform,
+              previousConnectionUpdatedAt:
+                input.previousConnectionUpdatedAt ?? null,
               provider: getProviderForPlatform(input.platform),
             });
 
@@ -271,6 +277,9 @@ function getOAuthResultErrorMessage(result: SocialOAuthResultMessage) {
       break;
     case "youtube_channel_missing":
       message = "No YouTube channel was found for this Google account.";
+      break;
+    case "tiktok_publish_permission_missing":
+      message = "Reconnect TikTok to grant publishing permission.";
       break;
     default:
       message = `${getPlatformLabel(result.platform)} could not be connected. Try again.`;

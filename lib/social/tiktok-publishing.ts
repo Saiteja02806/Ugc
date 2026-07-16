@@ -8,6 +8,8 @@ export const tiktokPrivacyLevels = [
 export type TikTokPrivacyLevel = (typeof tiktokPrivacyLevels)[number];
 
 export type TikTokPublishCapabilities = {
+  creatorNickname: string | null;
+  creatorUsername: string | null;
   interactions: {
     commentsDisabled: boolean;
     duetsDisabled: boolean;

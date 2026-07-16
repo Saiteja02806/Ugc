@@ -7,6 +7,7 @@ type EffectiveConnectionStatusInput = {
   expiresAt: string | null;
   hasRefreshToken: boolean;
   platform: SocialPlatform;
+  refreshExpiresAt?: string | null;
   revokedAt: string | null;
   status: SocialConnectionStatus;
 };
@@ -23,8 +24,15 @@ export function getEffectiveSocialConnectionStatus(
   const isExpired = Number.isFinite(expiresAt) && expiresAt <= now;
 
   if (input.status === "connected" && isExpired) {
+    const refreshExpiresAt = input.refreshExpiresAt
+      ? Date.parse(input.refreshExpiresAt)
+      : Number.NaN;
+    const refreshTokenExpired =
+      Number.isFinite(refreshExpiresAt) && refreshExpiresAt <= now;
     const canRefresh =
-      input.platform === "youtube" && input.hasRefreshToken;
+      (input.platform === "youtube" || input.platform === "tiktok") &&
+      input.hasRefreshToken &&
+      !refreshTokenExpired;
 
     return canRefresh ? "connected" : "expired";
   }

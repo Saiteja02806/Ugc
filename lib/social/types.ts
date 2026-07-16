@@ -25,8 +25,10 @@ export type SocialConnection = {
   platformAccountName: string | null;
   platformAccountUsername: string | null;
   provider: SocialProvider;
+  refreshExpiresAt: string | null;
   scopes: string[];
   status: SocialConnectionStatus;
+  tokenRefreshedAt: string | null;
   updatedAt: string;
 };
 

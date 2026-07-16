@@ -9,6 +9,12 @@ const recoveryMigration = readProjectFile(
 const reconciliationFixMigration = readProjectFile(
   "supabase/migrations/20260716081546_fix_social_schedule_reconciliation.sql",
 );
+const tiktokHardeningMigration = readProjectFile(
+  "supabase/migrations/20260716135333_harden_tiktok_oauth_and_publishing.sql",
+);
+const publishRetryMigration = readProjectFile(
+  "supabase/migrations/20260716142500_add_social_publish_target_retry.sql",
+);
 const schedulingDb = readProjectFile("lib/scheduling/db.ts");
 const renderRoute = readProjectFile(
   "app/api/schedules/[scheduleId]/render/route.ts",
@@ -75,6 +81,151 @@ test("published target reconciliation does not reference an undefined post alias
 
   assert.match(publishedTargetUpdate, /last_error_code = null/);
   assert.doesNotMatch(publishedTargetUpdate, /\bpost\./);
+});
+
+test("TikTok refresh is leased and atomically rotates every token field", () => {
+  const claimFunction = getSection(
+    tiktokHardeningMigration,
+    "create or replace function public.claim_social_connection_token_refresh",
+    "create or replace function public.complete_social_connection_token_refresh",
+  );
+  const completeFunction = getSection(
+    tiktokHardeningMigration,
+    "create or replace function public.complete_social_connection_token_refresh",
+    "create or replace function public.release_social_connection_token_refresh",
+  );
+
+  assert.match(claimFunction, /token_refresh_claim_token = p_claim_token/);
+  assert.match(
+    claimFunction,
+    /token_refresh_claimed_at <[\s\S]*make_interval\(secs => v_stale_after_seconds\)/,
+  );
+  assert.match(completeFunction, /access_token_ciphertext = p_access_token_ciphertext/);
+  assert.match(completeFunction, /refresh_token_ciphertext = p_refresh_token_ciphertext/);
+  assert.match(completeFunction, /refresh_expires_at = p_refresh_expires_at/);
+  assert.match(completeFunction, /scopes = coalesce\(p_scopes/);
+  assert.match(completeFunction, /token_refresh_claim_token = null/);
+});
+
+test("TikTok disconnect blocks pending targets until the user acts", () => {
+  const revokeFunction = getSection(
+    tiktokHardeningMigration,
+    "create or replace function public.revoke_social_connection",
+    "revoke all on function public.claim_social_connection_token_refresh",
+  );
+
+  assert.match(tiktokHardeningMigration, /'action_required'/);
+  assert.match(revokeFunction, /status = 'revoked'/);
+  assert.match(
+    revokeFunction,
+    /update public\.scheduled_post_targets[\s\S]*status = 'action_required'/,
+  );
+  assert.match(revokeFunction, /last_error_code = 'social_connection_revoked'/);
+});
+
+test("action-required targets can still be cancelled cleanly", () => {
+  const cancelFunction = getSection(
+    tiktokHardeningMigration,
+    "create or replace function public.cancel_scheduled_post",
+    "revoke all on function public.cancel_scheduled_post",
+  );
+
+  assert.match(
+    cancelFunction,
+    /target\.status in \([\s\S]*'failed',[\s\S]*'action_required'/,
+  );
+  assert.match(cancelFunction, /status = 'cancelled'/);
+});
+
+test("action-required target and parent status update atomically", () => {
+  const actionFunction = getSection(
+    tiktokHardeningMigration,
+    "create or replace function public.mark_social_publish_target_action_required",
+    "create or replace function public.revoke_social_connection",
+  );
+
+  assert.match(actionFunction, /status = 'action_required'/);
+  assert.match(
+    actionFunction,
+    /update public\.scheduled_posts[\s\S]*'partially_failed'[\s\S]*'failed'/,
+  );
+  assert.match(actionFunction, /return true;/);
+});
+
+test("manual publish retry locks one post and target before changing state", () => {
+  const retryFunction = getSection(
+    publishRetryMigration,
+    "create or replace function public.retry_social_publish_target",
+    "revoke all on function public.retry_social_publish_target",
+  );
+  const postLock = retryFunction.indexOf("select post.status");
+  const targetLock = retryFunction.indexOf("select\n    target.status");
+
+  assert.ok(postLock >= 0);
+  assert.ok(targetLock > postLock);
+  assert.match(retryFunction, /select post\.status[\s\S]*for update;/);
+  assert.match(retryFunction, /select[\s\S]*target\.status[\s\S]*for update;/);
+  assert.match(
+    retryFunction,
+    /v_post_status = 'cancelled' or v_target_status = 'cancelled'[\s\S]*return;/,
+  );
+});
+
+test("repeated publish retry reuses active work and creates only one new job", () => {
+  const retryFunction = getSection(
+    publishRetryMigration,
+    "create or replace function public.retry_social_publish_target",
+    "revoke all on function public.retry_social_publish_target",
+  );
+
+  assert.match(
+    retryFunction,
+    /job\.status in \('queued', 'processing'\)[\s\S]*for update;/,
+  );
+  assert.match(
+    retryFunction,
+    /return query select 'already_queued'::text, v_active_job_id/,
+  );
+  assert.match(retryFunction, /if v_target_status <> 'failed'/);
+  assert.match(
+    retryFunction,
+    /insert into public\.background_jobs \([\s\S]*'publish_social_post'[\s\S]*'social-publish'/,
+  );
+  assert.match(
+    retryFunction,
+    /publish_job_id = v_active_job_id[\s\S]*status = 'scheduled'/,
+  );
+  assert.match(
+    retryFunction,
+    /return query select 'retry_created'::text, v_active_job_id/,
+  );
+});
+
+test("publish retry repairs provider success and fails closed for unsafe inputs", () => {
+  const retryFunction = getSection(
+    publishRetryMigration,
+    "create or replace function public.retry_social_publish_target",
+    "revoke all on function public.retry_social_publish_target",
+  );
+
+  assert.match(
+    retryFunction,
+    /operation\.status = 'published'[\s\S]*status = 'published'/,
+  );
+  assert.match(
+    retryFunction,
+    /return query select 'already_published'::text/,
+  );
+  assert.match(retryFunction, /v_target_status = 'action_required'/);
+  assert.match(retryFunction, /'scheduling_retry_required'/);
+  assert.match(
+    retryFunction,
+    /media\.status = 'ready'[\s\S]*media\.source_type = 'combined_render'/,
+  );
+  assert.match(
+    retryFunction,
+    /connection\.status = 'connected'[\s\S]*connection\.revoked_at is null/,
+  );
 });
 
 test("draft edits and render queueing both use optimistic status and version checks", () => {

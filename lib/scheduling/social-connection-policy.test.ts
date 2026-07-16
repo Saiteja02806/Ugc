@@ -21,7 +21,7 @@ test("blocks TikTok when direct publishing access is missing", () => {
       scopes: ["video.upload"],
       status: "connected",
     }),
-    "Reconnect TikTok to allow scheduled publishing.",
+    "Reconnect TikTok to grant publishing permission.",
   );
 });
 

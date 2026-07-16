@@ -28,9 +28,9 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
 });
 
-// The editor renderer uses this exact static face through FFmpeg. Loading the
-// matching browser asset keeps preview glyph metrics stable across hydration
-// and avoids the bare-family fallback that previously rendered as a serif.
+// The worker registers this exact static face before rasterizing overlays.
+// Loading the matching browser asset keeps preview glyph metrics stable across
+// hydration and avoids the bare-family fallback that previously rendered serif.
 const geistEditOverlay = localFont({
   src: "../node_modules/geist/dist/fonts/geist-sans/Geist-SemiBold.woff2",
   display: "swap",

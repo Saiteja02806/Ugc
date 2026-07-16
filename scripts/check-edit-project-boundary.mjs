@@ -97,8 +97,10 @@ assert(
     files.appLayout.includes('variable: "--font-edit-overlay"') &&
     files.workerDockerfile.includes("Geist-SemiBold.ttf") &&
     files.workerDockerfile.includes("fonts-noto-cjk") &&
-    files.renderEngine.includes("getEditOverlayFontDataUri") &&
-    files.renderEngine.includes("@font-face"),
+    files.renderEngine.includes("ensureEditOverlayFontRegistered") &&
+    files.renderEngine.includes("fontfile: fontPath") &&
+    files.renderEngine.includes("registration verification failed") &&
+    !files.renderEngine.includes("@font-face"),
   "Preview and export must use the same font family and weight.",
 );
 assert(
@@ -113,7 +115,10 @@ assert(
 );
 assert(
   files.editor.includes("jobId=${encodeURIComponent(jobId)}") &&
-    files.editor.includes("sourceVideoId=${encodeURIComponent(sourceVideoId)}"),
+    files.editor.includes("sourceVideoId=${encodeURIComponent(sourceVideoId)}") &&
+    files.editor.includes("RenderPollTransientError") &&
+    files.editor.includes("resumePollGeneration") &&
+    files.editor.includes("isTransientHttpStatus"),
   "New renders must poll the exact job while resumed renders use the persistent Edit project identity.",
 );
 assert(

@@ -8,6 +8,7 @@ import sharp from "sharp";
 import { uploadBufferToS3 } from "./s3.js";
 import { downloadVideoToBuffer } from "./download-video.js";
 import {
+  EDIT_OVERLAY_FONT_FAMILY,
   EDIT_OVERLAY_OUTPUT_DIMENSIONS,
   EDIT_OVERLAY_SHADOW_COLOR,
   EDIT_OVERLAY_SHADOW_OFFSET_PX,
@@ -34,8 +35,16 @@ type RenderTextOverlay = {
   text: string;
 };
 
-const EDIT_OVERLAY_EMBEDDED_FONT_FAMILY = "UgcEditOverlay";
-let editOverlayFontDataUriPromise: Promise<string> | null = null;
+const EDIT_OVERLAY_FONT_REGISTRATION_TEXT = "MW@gi 0123";
+const EDIT_OVERLAY_FONT_REGISTRATION_SIZE = 64;
+let editOverlayFontRegistrationPromise: Promise<EditOverlayFontRegistration> | null =
+  null;
+
+export type EditOverlayFontRegistration = {
+  directBounds: { height: number; width: number };
+  fontPath: string;
+  registeredBounds: { height: number; width: number };
+};
 
 export type RenderEditVideoPayload = {
   draft: {
@@ -564,11 +573,8 @@ function buildPreparedTextOverlay(params: {
 async function renderPreparedTextOverlayImage(
   preparedTextOverlay: PreparedTextOverlay,
 ) {
-  const fontDataUri = await getEditOverlayFontDataUri();
-  const svg = buildPreparedTextOverlaySvg(
-    preparedTextOverlay,
-    fontDataUri,
-  );
+  await ensureEditOverlayFontRegistered();
+  const svg = buildPreparedTextOverlaySvg(preparedTextOverlay);
 
   await sharp(Buffer.from(svg))
     .png({ compressionLevel: 9 })
@@ -577,7 +583,6 @@ async function renderPreparedTextOverlayImage(
 
 export function buildPreparedTextOverlaySvg(
   preparedTextOverlay: PreparedTextOverlay,
-  fontDataUri: string,
 ) {
   const { layout, position, style } = preparedTextOverlay;
   const {
@@ -591,7 +596,7 @@ export function buildPreparedTextOverlaySvg(
   const textTop = containerY + layout.padding;
   const centerX = canvasWidth / 2;
   const fontFamily = escapeXml(
-    `${EDIT_OVERLAY_EMBEDDED_FONT_FAMILY}, Noto Sans CJK SC, sans-serif`,
+    `${EDIT_OVERLAY_FONT_FAMILY}, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif`,
   );
   const background =
     layout.backgroundOpacity === null
@@ -630,21 +635,65 @@ export function buildPreparedTextOverlaySvg(
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}" viewBox="0 0 ${canvasWidth} ${canvasHeight}" text-rendering="geometricPrecision">`,
-    "<defs><style><![CDATA[",
-    `@font-face { font-family: '${EDIT_OVERLAY_EMBEDDED_FONT_FAMILY}'; src: url('${fontDataUri}') format('truetype'); font-style: normal; font-weight: ${layout.fontWeight}; }`,
-    "]]></style></defs>",
     background,
     ...textLines,
     "</svg>",
   ].join("");
 }
 
-export function getEditOverlayFontDataUri() {
-  editOverlayFontDataUriPromise ??= loadEditOverlayFontDataUri();
-  return editOverlayFontDataUriPromise;
+export function ensureEditOverlayFontRegistered() {
+  editOverlayFontRegistrationPromise ??= registerAndVerifyEditOverlayFont();
+  return editOverlayFontRegistrationPromise;
 }
 
-async function loadEditOverlayFontDataUri() {
+async function registerAndVerifyEditOverlayFont() {
+  const fontPath = await getEditOverlayFontPath();
+  const directText = await sharp({
+    text: {
+      dpi: 72,
+      font: `${EDIT_OVERLAY_FONT_FAMILY} SemiBold ${EDIT_OVERLAY_FONT_REGISTRATION_SIZE}`,
+      fontfile: fontPath,
+      rgba: true,
+      text: escapePangoMarkup(EDIT_OVERLAY_FONT_REGISTRATION_TEXT),
+      wrap: "none",
+    },
+  })
+    .trim({ background: { alpha: 0, b: 0, g: 0, r: 0 } })
+    .png()
+    .toBuffer();
+  const verificationSvg = [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="160">',
+    `<text x="20" y="100" font-family="${EDIT_OVERLAY_FONT_FAMILY}" font-size="${EDIT_OVERLAY_FONT_REGISTRATION_SIZE}" font-weight="600" fill="#ffffff">`,
+    escapeXml(EDIT_OVERLAY_FONT_REGISTRATION_TEXT),
+    "</text></svg>",
+  ].join("");
+  const registeredText = await sharp(Buffer.from(verificationSvg))
+    .trim({ background: { alpha: 0, b: 0, g: 0, r: 0 } })
+    .png()
+    .toBuffer();
+  const [directMetadata, registeredMetadata] = await Promise.all([
+    sharp(directText).metadata(),
+    sharp(registeredText).metadata(),
+  ]);
+  const directBounds = requireImageBounds(directMetadata, "fontfile probe");
+  const registeredBounds = requireImageBounds(
+    registeredMetadata,
+    "registered SVG probe",
+  );
+
+  if (
+    Math.abs(directBounds.width - registeredBounds.width) > 2 ||
+    Math.abs(directBounds.height - registeredBounds.height) > 2
+  ) {
+    throw new Error(
+      "Geist SemiBold registration verification failed; refusing to render with a fallback font.",
+    );
+  }
+
+  return { directBounds, fontPath, registeredBounds };
+}
+
+async function getEditOverlayFontPath() {
   const packagedFontPath = join(
     process.cwd(),
     "node_modules",
@@ -664,8 +713,8 @@ async function loadEditOverlayFontDataUri() {
 
   for (const fontPath of candidatePaths) {
     try {
-      const font = await readFile(fontPath);
-      return `data:font/ttf;base64,${font.toString("base64")}`;
+      await readFile(fontPath);
+      return fontPath;
     } catch {
       // Try the next packaged or container font path.
     }
@@ -674,6 +723,17 @@ async function loadEditOverlayFontDataUri() {
   throw new Error(
     "Geist SemiBold is unavailable; refusing to render with a fallback font.",
   );
+}
+
+function requireImageBounds(
+  metadata: { height?: number; width?: number },
+  label: string,
+) {
+  if (!metadata.height || !metadata.width) {
+    throw new Error(`Could not measure the ${label}.`);
+  }
+
+  return { height: metadata.height, width: metadata.width };
 }
 
 function getOverlayContainerY(
@@ -712,6 +772,13 @@ function escapeXml(value: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
+}
+
+function escapePangoMarkup(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function getTrimDuration(payload: RenderEditVideoPayload) {

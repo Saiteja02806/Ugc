@@ -73,7 +73,7 @@ test("blocks editing while a render is active", () => {
   });
 
   assert.equal(canEditSchedule(schedule), false);
-  assert.match(getScheduleEditBlockReason(schedule) ?? "", /render/i);
+  assert.match(getScheduleEditBlockReason(schedule) ?? "", /preparation/i);
 });
 
 test("blocks editing while final platform scheduling is active", () => {

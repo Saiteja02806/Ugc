@@ -28,6 +28,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
+import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
 import {
   getSchedulePlatformLabel,
   getScheduleStatusLabel,
@@ -76,18 +78,6 @@ const openingVideoSourceTabs = [
   { id: "videos", label: "Videos" },
   { id: "edited", label: "Edited" },
 ] as const;
-const requiredInstagramPublishScopes = new Set([
-  "instagram_business_content_publish",
-  "instagram_content_publish",
-]);
-const requiredTikTokPublishScopes = new Set(["video.publish"]);
-const requiredYouTubePublishScopes = new Set([
-  "https://www.googleapis.com/auth/youtube",
-  "https://www.googleapis.com/auth/youtube.force-ssl",
-  "https://www.googleapis.com/auth/youtube.upload",
-  "https://www.googleapis.com/auth/youtubepartner",
-]);
-
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
   | { error?: string; ok?: false };
@@ -353,7 +343,7 @@ export function SchedulingWorkspace() {
       }
 
       setSocialConnections(
-        data.connections.filter((connection) => connection.status === "connected"),
+        data.connections.filter((connection) => connection.status !== "revoked"),
       );
     } catch {
       setActionNotice("Could not load connected social accounts.");
@@ -373,6 +363,7 @@ export function SchedulingWorkspace() {
     function refreshSchedulingData() {
       void loadScheduleMedia();
       void loadSchedules();
+      void loadSocialConnections();
     }
 
     function handleVisibilityChange() {
@@ -388,7 +379,7 @@ export function SchedulingWorkspace() {
       window.removeEventListener("focus", refreshSchedulingData);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [loadScheduleMedia, loadSchedules]);
+  }, [loadScheduleMedia, loadSchedules, loadSocialConnections]);
 
   const hasActiveCombinationRender = useMemo(
     () => serverSchedules.some(hasActiveCombinationRenderStatus),
@@ -533,10 +524,10 @@ export function SchedulingWorkspace() {
       const shouldAutoScheduleFinal = selectedConnectionIds.length > 0;
       let nextNotice = shouldAutoScheduleFinal
         ? editing
-          ? "Changes saved. Rendering the updated final MP4 before scheduling."
-          : "Schedule saved. Rendering the final MP4 before automatic platform scheduling."
+          ? "Changes saved. Preparing the updated video before scheduling."
+          : "Schedule saved. Preparing the video before automatic scheduling."
         : editing
-          ? "Changes saved as a render draft."
+          ? "Changes saved as a video draft."
           : "Combination draft saved.";
 
       try {
@@ -561,14 +552,14 @@ export function SchedulingWorkspace() {
         } else {
           nextNotice = shouldAutoScheduleFinal
           ? editing
-            ? "Changes saved. Rendering the updated final MP4 before automatic scheduling."
-            : "Schedule saved. Rendering the final MP4 before automatic platform scheduling."
+            ? "Changes saved. Preparing the updated video before automatic scheduling."
+            : "Schedule saved. Preparing the video before automatic scheduling."
           : renderResult.status === "ready"
             ? "Combined video is already ready."
-            : "Combination draft saved and render queued.";
+            : "Combination draft saved and video preparation started.";
         }
       } catch (renderError) {
-        nextNotice = `${editing ? "Changes" : "Draft"} saved, but render did not start: ${getErrorMessage(
+        nextNotice = `${editing ? "Changes" : "Draft"} saved, but video preparation did not start: ${getErrorMessage(
           renderError,
         )}`;
       }
@@ -607,7 +598,7 @@ export function SchedulingWorkspace() {
     try {
       const token = await getCurrentUserIdToken();
       if (!token) {
-        throw new Error("Sign in before rendering this draft.");
+        throw new Error("Sign in before preparing this video.");
       }
 
       const renderResult = await queueCombinationRender({ scheduleId, token });
@@ -621,10 +612,12 @@ export function SchedulingWorkspace() {
       setActionNotice(
         renderResult.status === "ready"
           ? "Combined video is already ready."
-          : "Combined video render queued.",
+          : "Video preparation started.",
       );
     } catch (error) {
-      setActionNotice(getErrorMessage(error, "Could not start the render."));
+      setActionNotice(
+        getErrorMessage(error, "Could not start video preparation."),
+      );
     } finally {
       setRenderingScheduleId(null);
     }
@@ -836,12 +829,12 @@ function ConnectionNotice() {
               Scheduling is now server-backed.
             </h2>
             <span className="rounded-full bg-card-muted px-2.5 py-1 text-xs font-bold text-[#8a4b39]">
-              Render first
+              Video preparation
             </span>
           </div>
           <p className="mt-1 max-w-3xl text-sm font-medium leading-6 text-[#405977]">
-            Pair an opening video with a Library demo, render them into one
-            MP4, then use that final video for scheduling.
+            Pair an opening video with a Library demo. We prepare one combined
+            video and schedule it automatically.
           </p>
         </div>
       </div>
@@ -1175,10 +1168,10 @@ function ScheduleDraftActions({
               aria-hidden="true"
             />
             {isRendering
-              ? "Starting..."
+              ? "Preparing..."
               : draft.status === "render_failed"
-                ? "Retry render"
-                : "Render video"}
+                ? "Try preparation again"
+                : "Prepare video"}
           </button>
         ) : null}
 
@@ -1346,8 +1339,9 @@ function ScheduleTargetStatusList({
           draft.platforms.map((platform) => (
             <span
               key={platform}
-              className="rounded-full border border-border bg-white px-2.5 py-1"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-2.5 py-1"
             >
+              <SocialPlatformIcon className="size-3.5" platform={platform} />
               {getSchedulePlatformLabel(platform)}
             </span>
           ))
@@ -1380,6 +1374,10 @@ function ScheduleTargetStatusList({
           >
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
+                <SocialPlatformIcon
+                  className="size-4 shrink-0"
+                  platform={target.platform}
+                />
                 <span className="text-xs font-bold text-foreground">
                   {getSchedulePlatformLabel(target.platform)}
                 </span>
@@ -1788,8 +1786,8 @@ function DayScheduleWorkspace({
                   Day workflow
                 </p>
                 <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-                  Choose an opening video, choose a Library demo, render one
-                  combined MP4, then schedule the final post.
+                  Choose an opening video and a Library demo. We prepare one
+                  combined video, then schedule the final post.
                 </p>
               </div>
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#173454] text-white">
@@ -1801,8 +1799,8 @@ function DayScheduleWorkspace({
           <div className="rounded-2xl border border-border bg-white/82 p-4 shadow-sm">
             <p className="text-sm font-bold text-foreground">What appears here</p>
             <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-              Drafts, rendering jobs, ready combined videos, and scheduled posts
-              for this selected calendar date.
+              Drafts, videos being prepared, ready combined videos, and
+              scheduled posts for this selected calendar date.
             </p>
           </div>
         </div>
@@ -1814,7 +1812,7 @@ function DayScheduleWorkspace({
                 Schedule for this day
               </p>
               <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-                Render and publishing status will update here.
+                Video preparation and publishing status will update here.
               </p>
             </div>
             <span className="inline-flex w-fit items-center rounded-full bg-card-muted px-3 py-1 text-xs font-bold text-[#405977]">
@@ -2270,7 +2268,7 @@ function getScheduleTimeValidation(params: {
       return {
         error: `Choose a time at least ${params.minimumLeadMinutes} ${
           params.minimumLeadMinutes === 1 ? "minute" : "minutes"
-        } from now so the final video has time to render.`,
+        } from now so the final video has time to be prepared.`,
         scheduledFor,
       };
     }
@@ -2927,7 +2925,7 @@ function NewScheduleDrawer({
                   ? "Save changes"
                   : hasSelectedConnections
                     ? "Schedule post"
-                    : "Save render draft"
+                    : "Save video draft"
                 : publishingSettingsError
                   ? "Review publishing settings"
                 : selectedHookMedia && selectedDemoMedia
@@ -2938,8 +2936,8 @@ function NewScheduleDrawer({
             {editingSchedule
               ? "Saved changes replace this draft. Active platform jobs cannot be edited."
               : hasSelectedConnections
-              ? "This renders one combined MP4 first, then schedules it automatically when ready."
-              : "Choose an account to schedule automatically, or save a render draft without publishing."}
+              ? "We prepare one combined video first, then schedule it automatically when ready."
+              : "Choose an account to schedule automatically, or save a video draft without publishing."}
           </p>
         </div>
       </aside>
@@ -3483,53 +3481,111 @@ function ConnectedAccountSelector({
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {connections.map((connection) => {
             const selected = selectedConnectionIds.includes(connection.id);
-            const unavailableMessage = getConnectionPublishUnavailableMessage(connection);
+            const unavailableMessage =
+              getConnectionPublishingBlockMessage(connection);
             const unavailable = Boolean(unavailableMessage);
-
-            return (
-              <button
-                key={connection.id}
-                type="button"
-                onClick={() => onToggle(connection.id)}
-                disabled={unavailable}
-                className={cn(
-                  "rounded-2xl border bg-white px-3 py-3 text-left shadow-sm transition hover:bg-[#fffaf6]",
-                  selected
-                    ? "border-primary/60 ring-2 ring-primary/15"
-                    : "border-border",
-                  unavailable &&
-                    "cursor-not-allowed bg-card-muted/70 opacity-70 hover:bg-card-muted/70",
-                )}
-              >
-                <span className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-bold text-foreground">
-                    {getSchedulePlatformLabel(connection.platform)}
-                  </span>
-                  {selected ? (
-                    <CheckCircle2
-                      className="size-4 text-primary"
-                      aria-hidden="true"
+            const accountName =
+              connection.platformAccountUsername ||
+              connection.platformAccountName ||
+              connection.platformAccountId;
+            const tileContent = (
+              <>
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card-muted">
+                    <SocialPlatformIcon
+                      className="size-5"
+                      platform={connection.platform}
                     />
-                  ) : null}
-                </span>
-                <span className="mt-1 block truncate text-xs font-semibold leading-5 text-muted">
-                  {connection.platformAccountUsername ||
-                    connection.platformAccountName ||
-                    connection.platformAccountId}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-bold text-foreground">
+                        {getSchedulePlatformLabel(connection.platform)}
+                      </span>
+                      {selected ? (
+                        <CheckCircle2
+                          className="size-4 shrink-0 text-primary"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs font-semibold leading-5 text-muted">
+                      {accountName}
+                    </span>
+                  </span>
                 </span>
                 {unavailableMessage ? (
                   <span className="mt-2 block text-[11px] font-semibold leading-4 text-error">
                     {unavailableMessage}
                   </span>
                 ) : null}
+              </>
+            );
+
+            if (unavailable) {
+              return (
+                <div
+                  key={connection.id}
+                  className="rounded-lg border border-error/20 bg-[#fffaf6] px-3 py-3 shadow-sm"
+                >
+                  {tileContent}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <a
+                      href="/connected-accounts"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-card-muted"
+                    >
+                      <RefreshCw className="size-3.5" aria-hidden="true" />
+                      Reconnect account
+                    </a>
+                    {selected ? (
+                      <button
+                        type="button"
+                        onClick={() => onToggle(connection.id)}
+                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-error/25 bg-white px-3 text-xs font-bold text-error transition hover:bg-error/5"
+                      >
+                        <X className="size-3.5" aria-hidden="true" />
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <button
+                key={connection.id}
+                type="button"
+                onClick={() => onToggle(connection.id)}
+                className={cn(
+                  "rounded-lg border bg-white px-3 py-3 text-left shadow-sm transition hover:bg-[#fffaf6]",
+                  selected
+                    ? "border-primary/60 ring-2 ring-primary/15"
+                    : "border-border",
+                )}
+              >
+                {tileContent}
               </button>
             );
           })}
         </div>
       ) : (
-        <div className="mt-2 rounded-2xl border border-dashed border-border bg-[#fffaf6] px-4 py-4 text-sm font-semibold leading-6 text-muted">
-          Connect Instagram, TikTok, or YouTube later. You can save the
-          combination draft now.
+        <div className="mt-2 rounded-lg border border-dashed border-border bg-[#fffaf6] px-4 py-4 text-sm font-semibold leading-6 text-muted">
+          <p>
+            Connect Instagram, TikTok, or YouTube to schedule this post. You can
+            still save the video draft now.
+          </p>
+          <a
+            href="/connected-accounts"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-card-muted"
+          >
+            <Plus className="size-3.5" aria-hidden="true" />
+            Connect an account
+          </a>
         </div>
       )}
     </div>
@@ -3616,10 +3672,16 @@ function PlatformAccountSettings({
 
   return (
     <div className="py-4 first:pt-2 last:pb-0">
-      <div className="flex min-w-0 items-baseline justify-between gap-3">
-        <p className="text-sm font-bold text-foreground">
-          {getSchedulePlatformLabel(connection.platform)}
-        </p>
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <SocialPlatformIcon
+            className="size-4 shrink-0"
+            platform={connection.platform}
+          />
+          <p className="text-sm font-bold text-foreground">
+            {getSchedulePlatformLabel(connection.platform)}
+          </p>
+        </div>
         <p className="truncate text-xs font-semibold text-muted">{accountName}</p>
       </div>
 
@@ -3961,7 +4023,7 @@ function StatusPreview({
 }) {
   const message =
     hookMedia && demoMedia
-      ? "We render one combined MP4 first, then schedule it automatically."
+      ? "We prepare one combined video first, then schedule it automatically."
       : "Choose one opening video and one demo video before saving.";
 
   return (
@@ -3981,40 +4043,12 @@ function StatusPreview({
   );
 }
 
-function getConnectionPublishUnavailableMessage(connection: SocialConnection) {
-  if (connection.status !== "connected") {
-    return "Reconnect this account before scheduling.";
-  }
-
-  if (connection.platform === "instagram") {
-    return connection.scopes.some((scope) =>
-      requiredInstagramPublishScopes.has(scope),
-    )
-      ? null
-      : "Reconnect with Instagram publishing permission.";
-  }
-
-  if (connection.platform === "tiktok") {
-    return connection.scopes.some((scope) => requiredTikTokPublishScopes.has(scope))
-      ? null
-      : "Reconnect with TikTok video.publish permission.";
-  }
-
-  if (connection.platform === "youtube") {
-    return connection.scopes.some((scope) => requiredYouTubePublishScopes.has(scope))
-      ? null
-      : "Reconnect with YouTube upload permission.";
-  }
-
-  return null;
-}
-
 function getTabDescription(tab: ScheduleTab) {
   const descriptions: Record<ScheduleTab, string> = {
-    drafts: "Saved combinations that still need a date, render, or final schedule.",
+    drafts: "Saved combinations that still need a date, video preparation, or final schedule.",
     failed: "Posts that need attention before they can publish successfully.",
     published: "Completed posts with platform results and links.",
-    upcoming: "Planned posts moving from render to schedule to publish.",
+    upcoming: "Planned posts moving from preparation to scheduling to publishing.",
   };
 
   return descriptions[tab];
@@ -4143,24 +4177,24 @@ function getDraftRenderMessage(draft: ScheduleDraft) {
   }
 
   if (draft.status === "render_failed") {
-    return "The combined render failed. Retry the render before scheduling.";
+    return "We could not prepare the combined video. Try again before scheduling.";
   }
 
   if (draft.status === "rendering") {
     return hasPlannedFinalSchedule(draft)
-      ? "Opening video and demo are being combined. Final scheduling starts automatically after render."
+      ? "We are combining the opening video and demo. Scheduling starts automatically when the video is ready."
       : "Opening video and demo are being combined into one MP4.";
   }
 
   if (draft.status === "render_required") {
-    return "Render the opening video and demo into one MP4 before publishing.";
+    return "Prepare the opening video and demo as one video before publishing.";
   }
 
   if (draft.status === "media_required") {
-    return "Choose one opening video and one demo video before rendering.";
+    return "Choose one opening video and one demo video before preparing the post.";
   }
 
-  return "Save a video and demo pair before rendering.";
+  return "Save a video and demo pair before preparing the post.";
 }
 
 function canScheduleFinalDraft(draft: ScheduleDraft) {
@@ -4261,7 +4295,7 @@ async function queueCombinationRender({
 
   if (!response.ok || data.ok !== true) {
     throw new Error(
-      getApiResponseMessage(data, "Could not queue the combined render."),
+      getApiResponseMessage(data, "Could not start video preparation."),
     );
   }
 

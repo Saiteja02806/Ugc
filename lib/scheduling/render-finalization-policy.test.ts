@@ -46,7 +46,7 @@ test("rejects stale and incomplete render callbacks", () => {
     {
       action: "reject",
       code: "combined_render_not_ready",
-      message: "The combined render is not ready for final scheduling.",
+      message: "The combined video is not ready for final scheduling.",
     },
   );
 });

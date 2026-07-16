@@ -13,7 +13,7 @@ export function getScheduleEditBlockReason(schedule: ScheduledPost) {
   );
 
   if (renderStatus && activeRenderStatuses.has(renderStatus)) {
-    return "Wait for the current video render to finish before editing.";
+    return "Wait for the current video preparation to finish before editing.";
   }
 
   const finalScheduleStatus = getMetadataString(

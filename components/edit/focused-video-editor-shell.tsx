@@ -52,6 +52,7 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
   const [isDraftValid, setIsDraftValid] = useState(true);
   const [renderState, setRenderState] = useState<RenderState>("idle");
   const [renderMessage, setRenderMessage] = useState<string | null>(null);
+  const [resumePollGeneration, setResumePollGeneration] = useState(0);
   const activeRenderDraftKeyRef = useRef<string | null>(null);
   const localRenderPollActiveRef = useRef(false);
   const currentDraftKeyRef = useRef<string | null>(null);
@@ -222,6 +223,9 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
     const renderDraftKey =
       activeRenderDraftKeyRef.current ?? currentDraftKeyRef.current;
 
+    setRenderState("rendering");
+    setRenderMessage("Exporting continues in the background.");
+
     void requireToken()
       .then((idToken) =>
         pollEditedVideoRender(sourceVideoId, idToken, controller.signal),
@@ -261,6 +265,13 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
           return;
         }
 
+        if (error instanceof RenderPollTransientError) {
+          setRenderState("rendering");
+          setRenderMessage("Export is still running. Reconnecting to status...");
+          setResumePollGeneration((current) => current + 1);
+          return;
+        }
+
         setVideo((current) =>
           current ? { ...current, status: "failed" } : current,
         );
@@ -274,7 +285,7 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
       });
 
     return () => controller.abort();
-  }, [video]);
+  }, [resumePollGeneration, video]);
 
   async function handleRenderVideo() {
     if (!isDraftValid) {
@@ -328,6 +339,9 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
         throw new Error(data.ok ? "Could not start saving." : data.error);
       }
 
+      setVideo((current) =>
+        current ? { ...current, status: "rendering" } : current,
+      );
       setRenderState("rendering");
       setRenderMessage("Exporting video. This can take a minute.");
       const output = await pollEditedVideoRender(
@@ -362,10 +376,24 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
       );
     } catch (error) {
       console.error("Edited video render failed:", error);
+      localRenderPollActiveRef.current = false;
+
+      if (error instanceof RenderPollTransientError) {
+        setVideo((current) =>
+          current ? { ...current, status: "rendering" } : current,
+        );
+        setRenderState("rendering");
+        setRenderMessage("Export is still running. Reconnecting to status...");
+        setResumePollGeneration((current) => current + 1);
+        return;
+      }
+
       if (activeRenderDraftKeyRef.current === draftForRenderKey) {
         activeRenderDraftKeyRef.current = null;
       }
-      localRenderPollActiveRef.current = false;
+      setVideo((current) =>
+        current ? { ...current, status: "failed" } : current,
+      );
       setRenderState("failed");
       setRenderMessage(getErrorMessage(error, "Could not save this video."));
     }
@@ -634,25 +662,72 @@ async function pollEditedVideoRender(
   signal?: AbortSignal,
   jobId?: string,
 ) {
+  let lastTransientError: Error | null = null;
+
   for (let attempt = 0; attempt < 120; attempt += 1) {
     await sleep(attempt === 0 ? 900 : 2_500, signal);
     const query = jobId
       ? `jobId=${encodeURIComponent(jobId)}`
       : `sourceVideoId=${encodeURIComponent(sourceVideoId)}`;
-    const response = await fetch(
-      `/api/edit/render/status?${query}`,
-      {
+    try {
+      const response = await fetch(`/api/edit/render/status?${query}`, {
         cache: "no-store",
         headers: { Authorization: `Bearer ${idToken}` },
         signal,
-      },
-    );
-    const data = (await response.json()) as RenderStatusResponse;
-    if (!response.ok || !data.ok) throw new Error(data.ok ? "Save status unavailable." : data.error);
-    if (data.run.status === "COMPLETED" && data.run.output?.url) return data.run.output;
-    if (data.run.isTerminal) throw new Error(data.run.error ?? "Video save failed.");
+      });
+      const data = (await response.json()) as RenderStatusResponse;
+
+      if (!response.ok || !data.ok) {
+        const message = data.ok
+          ? "Export status is temporarily unavailable."
+          : data.error;
+
+        if (isTransientHttpStatus(response.status)) {
+          lastTransientError = new Error(message);
+          continue;
+        }
+
+        throw new RenderPollFatalError(message);
+      }
+
+      lastTransientError = null;
+
+      if (data.run.status === "COMPLETED" && data.run.output?.url) {
+        return data.run.output;
+      }
+
+      if (data.run.isTerminal) {
+        throw new RenderPollFatalError(
+          data.run.error ?? "Video export failed.",
+        );
+      }
+    } catch (error) {
+      if (
+        signal?.aborted ||
+        error instanceof RenderPollFatalError ||
+        (error instanceof DOMException && error.name === "AbortError")
+      ) {
+        throw error;
+      }
+
+      lastTransientError =
+        error instanceof Error
+          ? error
+          : new Error("Export status is temporarily unavailable.");
+    }
   }
-  throw new Error("Video save timed out.");
+
+  throw new RenderPollTransientError(
+    lastTransientError?.message ?? "Export status polling timed out.",
+  );
+}
+
+class RenderPollFatalError extends Error {}
+
+class RenderPollTransientError extends Error {}
+
+function isTransientHttpStatus(status: number) {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
 async function requireToken() {

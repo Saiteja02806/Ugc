@@ -34,7 +34,7 @@ export function getRenderFinalizationDecision(params: {
     return {
       action: "reject",
       code: "stale_combined_render",
-      message: "This render is no longer the current version for the schedule.",
+      message: "This video is no longer the current version for the schedule.",
     };
   }
 
@@ -45,7 +45,7 @@ export function getRenderFinalizationDecision(params: {
     return {
       action: "reject",
       code: "combined_render_not_ready",
-      message: "The combined render is not ready for final scheduling.",
+      message: "The combined video is not ready for final scheduling.",
     };
   }
 

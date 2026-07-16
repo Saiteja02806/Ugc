@@ -1357,7 +1357,7 @@ function getOverlayPreviewGraphic(
   const { containerHeight, containerWidth } = layout.bounds;
   const centerX = containerWidth / 2;
   const fontFamily =
-    "var(--font-edit-overlay), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif";
+    'var(--font-edit-overlay), var(--font-geist-sans), "Noto Sans CJK SC", "Noto Sans CJK JP", ui-sans-serif, system-ui, sans-serif';
 
   return (
     <svg

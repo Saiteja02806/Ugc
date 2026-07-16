@@ -10,6 +10,7 @@ import {
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { getEffectiveSocialConnectionStatus } from "@/lib/social/connection-status";
 import { splitScopes } from "@/lib/social/split-scopes";
 import {
   getProviderForPlatform,
@@ -1263,26 +1264,15 @@ function mapSocialConnection(row: SocialConnectionRow): SocialConnection {
     platformAccountUsername: row.platform_account_username,
     provider: row.provider,
     scopes: row.scopes,
-    status: getEffectiveConnectionStatus(row),
+    status: getEffectiveSocialConnectionStatus({
+      expiresAt: row.expires_at,
+      hasRefreshToken: Boolean(row.refresh_token_ciphertext),
+      platform: row.platform,
+      revokedAt: row.revoked_at,
+      status: row.status,
+    }),
     updatedAt: row.updated_at,
   };
-}
-
-function getEffectiveConnectionStatus(row: SocialConnectionRow) {
-  if (row.revoked_at || row.status === "revoked") {
-    return "revoked" as const;
-  }
-
-  if (
-    row.status === "connected" &&
-    row.expires_at &&
-    Date.parse(row.expires_at) <= Date.now() &&
-    !row.refresh_token_ciphertext
-  ) {
-    return "expired" as const;
-  }
-
-  return row.status;
 }
 
 function getClient() {

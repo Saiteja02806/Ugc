@@ -58,7 +58,7 @@ export async function POST(
   try {
     userId = (await requireFirebaseUser(request)).uid;
   } catch (error) {
-    return authErrorResponse(error, "Sign in before rendering this schedule.");
+    return authErrorResponse(error, "Sign in before preparing this video.");
   }
 
   const missingRuntimeEnv = Array.from(
@@ -74,9 +74,7 @@ export async function POST(
     return jsonResponse(
       {
         ok: false,
-        message: `Combination rendering is not configured. Add ${missingRuntimeEnv.join(
-          ", ",
-        )}.`,
+        message: "Video preparation is temporarily unavailable.",
       },
       501,
     );
@@ -120,7 +118,7 @@ export async function POST(
     return jsonResponse(
       {
         ok: false,
-        message: "Choose one opening video and one demo video before rendering.",
+        message: "Choose one opening video and one demo video before preparing the post.",
       },
       409,
     );
@@ -205,7 +203,7 @@ export async function POST(
     return jsonResponse(
       {
         ok: false,
-        message: "Rendered videos must be app-owned S3 or CloudFront assets.",
+        message: "Prepared videos must use supported app storage.",
       },
       400,
     );
@@ -283,7 +281,7 @@ export async function POST(
 
     if (!queuedSchedule) {
       await markBackgroundJobFailed({
-        errorMessage: "The schedule changed before rendering started.",
+        errorMessage: "The schedule changed before video preparation started.",
         jobId: backgroundJob.id,
       });
 
@@ -292,7 +290,7 @@ export async function POST(
           code: "schedule_version_conflict",
           ok: false,
           message:
-            "This schedule changed while rendering was starting. Review it and try again.",
+            "This schedule changed while video preparation was starting. Review it and try again.",
         },
         409,
       );
@@ -323,7 +321,7 @@ export async function POST(
           errorMessage:
             error instanceof Error
               ? error.message
-              : "Failed to queue combination render.",
+              : "Failed to start video preparation.",
           jobId: backgroundJob.id,
         });
       } catch (persistenceError) {
@@ -341,7 +339,7 @@ export async function POST(
           combinedRenderError:
             error instanceof Error
               ? error.message.slice(0, 500)
-              : "Failed to queue combination render.",
+              : "Failed to start video preparation.",
           combinedRenderId: renderId,
           combinedRenderStatus: "failed",
         },
@@ -358,7 +356,7 @@ export async function POST(
     return jsonResponse(
       {
         ok: false,
-        message: "Could not queue the combined video render.",
+        message: "Could not start preparing the combined video.",
       },
       500,
     );

@@ -167,7 +167,7 @@ export async function createUserSchedule(params: {
     source.sourceType !== "combined_render"
   ) {
     throw new SchedulingRequestError(
-      "Render the opening video and demo into one combined video before scheduling.",
+      "Prepare the opening video and demo as one combined video before scheduling.",
       409,
       "combined_render_required",
     );
@@ -314,7 +314,7 @@ export async function scheduleRenderedPost(params: {
 
   if (combinedRenderStatus !== "ready" || !combinedMediaAssetId) {
     throw new SchedulingRequestError(
-      "Render the opening video and demo before scheduling the final post.",
+      "Prepare the opening video and demo before scheduling the final post.",
       409,
       "combined_render_not_ready",
     );
@@ -718,7 +718,7 @@ async function assertCombinedRenderIsCurrent(params: {
     combinedDemoMediaId !== resolvedDemoAsset.asset.id
   ) {
     throw new SchedulingRequestError(
-      "Render the latest opening video and demo before scheduling the final post.",
+      "Prepare the latest opening video and demo before scheduling the final post.",
       409,
       "combined_render_stale",
     );
@@ -1248,7 +1248,7 @@ function assertMinimumScheduleLead(scheduledFor: string) {
     throw new SchedulingRequestError(
       `Choose a time at least ${minimumLeadMinutes} ${
         minimumLeadMinutes === 1 ? "minute" : "minutes"
-      } from now so the final video has time to render.`,
+      } from now so the final video has time to be prepared.`,
       409,
       "schedule_time_too_soon",
     );

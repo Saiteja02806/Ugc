@@ -71,6 +71,8 @@ export type ScheduleTab = (typeof scheduleTabs)[number];
 
 export type ScheduleViewMode = "calendar" | "list";
 
+export type ScheduleMediaIssue = "both" | "demo" | "opening";
+
 export type ScheduledPostTarget = {
   attemptCount: number;
   cancelledAt: string | null;
@@ -168,6 +170,7 @@ export type ScheduleDraft = {
   hookMedia?: ScheduleMediaSelection;
   id: string;
   mediaTitle?: string;
+  mediaIssue?: ScheduleMediaIssue;
   mediaUrl?: string;
   plannedConnectionIds?: string[];
   plannedScheduledFor?: string;
@@ -194,6 +197,7 @@ export type ScheduleDraftInput = {
   hookMedia?: ScheduleMediaSelection;
   id?: string;
   mediaTitle?: string;
+  mediaIssue?: ScheduleMediaIssue;
   mediaUrl?: string;
   plannedConnectionIds?: string[];
   plannedScheduledFor?: string;

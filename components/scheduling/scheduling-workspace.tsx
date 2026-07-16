@@ -29,6 +29,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { getScheduleMediaIssue } from "@/lib/scheduling/media-availability";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
 import {
   getSchedulePlatformLabel,
@@ -40,6 +41,7 @@ import {
   type ScheduleCreateTargetInput,
   type ScheduleDraft,
   type ScheduleDraftStatus,
+  type ScheduleMediaIssue,
   type ScheduleMediaOption,
   type SchedulePlatform,
   type ScheduleTab,
@@ -178,15 +180,27 @@ const defaultTimezone =
 
 export function SchedulingWorkspace() {
   const [serverSchedules, setServerSchedules] = useState<ScheduledPost[]>([]);
-  const drafts = useMemo(
-    () => serverSchedules.map(mapScheduledPostToScheduleDraft),
-    [serverSchedules],
-  );
   const [catalogInfluencerOptions, setCatalogInfluencerOptions] = useState<
     ScheduleCatalogInfluencerOption[]
   >([]);
   const [hookMediaOptions, setHookMediaOptions] = useState<ScheduleMediaOption[]>([]);
   const [demoMediaOptions, setDemoMediaOptions] = useState<ScheduleMediaOption[]>([]);
+  const [scheduleMediaLoaded, setScheduleMediaLoaded] = useState(false);
+  const drafts = useMemo(() => {
+    const activeOpeningIds = new Set(hookMediaOptions.map((option) => option.id));
+    const activeDemoIds = new Set(demoMediaOptions.map((option) => option.id));
+
+    return serverSchedules.map((schedule) => {
+      const mediaIssue = getScheduleMediaIssue({
+        activeDemoIds,
+        activeOpeningIds,
+        mediaLoaded: scheduleMediaLoaded,
+        schedule,
+      });
+
+      return mapScheduledPostToScheduleDraft(schedule, mediaIssue);
+    });
+  }, [demoMediaOptions, hookMediaOptions, scheduleMediaLoaded, serverSchedules]);
   const [socialConnections, setSocialConnections] = useState<SocialConnection[]>([]);
   const [activeTab, setActiveTab] = useState<ScheduleTab>(getInitialScheduleTab);
   const [viewMode, setViewMode] = useState<ScheduleViewMode>("calendar");
@@ -270,6 +284,7 @@ export function SchedulingWorkspace() {
           .filter(isDemoVideoMediaAsset)
           .map(mapMediaAssetToScheduleMediaOption),
       );
+      setScheduleMediaLoaded(true);
 
       try {
         const avatarResponse = await fetch("/api/avatars", {
@@ -618,6 +633,7 @@ export function SchedulingWorkspace() {
       setActionNotice(
         getErrorMessage(error, "Could not start video preparation."),
       );
+      await Promise.all([loadScheduleMedia(), loadSchedules()]);
     } finally {
       setRenderingScheduleId(null);
     }
@@ -4191,6 +4207,18 @@ function getDraftRenderMessage(draft: ScheduleDraft) {
   }
 
   if (draft.status === "media_required") {
+    if (draft.mediaIssue === "demo") {
+      return "The selected Library demo was removed. Edit this draft and choose another demo, or add one in Content first.";
+    }
+
+    if (draft.mediaIssue === "opening") {
+      return "The selected opening video was removed. Edit this draft and choose an available video.";
+    }
+
+    if (draft.mediaIssue === "both") {
+      return "The selected videos are no longer available. Edit this draft and choose new media.";
+    }
+
     return "Choose one opening video and one demo video before preparing the post.";
   }
 
@@ -4333,7 +4361,10 @@ async function requestFinalSchedule({
   return data;
 }
 
-function mapScheduledPostToScheduleDraft(schedule: ScheduledPost): ScheduleDraft {
+function mapScheduledPostToScheduleDraft(
+  schedule: ScheduledPost,
+  mediaIssue: ScheduleMediaIssue | null = null,
+): ScheduleDraft {
   const metadata = schedule.metadata;
   const plannedScheduledDate =
     typeof metadata.scheduledDate === "string" && metadata.scheduledDate
@@ -4379,6 +4410,7 @@ function mapScheduledPostToScheduleDraft(schedule: ScheduledPost): ScheduleDraft
       getString(metadata.finalScheduleErrorCode) ?? undefined,
     hookMedia,
     id: schedule.id,
+    mediaIssue: mediaIssue ?? undefined,
     mediaTitle: schedule.title,
     plannedConnectionIds: getMetadataCsv(metadata.plannedConnectionIds),
     plannedScheduledFor: plannedScheduledFor ?? undefined,
@@ -4392,7 +4424,7 @@ function mapScheduledPostToScheduleDraft(schedule: ScheduledPost): ScheduleDraft
         : schedule.sourceKind === "library_item"
           ? "generated_carousel"
           : "demo_video",
-    status: getDraftStatusFromScheduledPost(schedule),
+    status: getDraftStatusFromScheduledPost(schedule, mediaIssue),
     targets: schedule.targets,
     timezone: schedule.timezone,
     updatedAt: schedule.updatedAt,
@@ -4401,9 +4433,14 @@ function mapScheduledPostToScheduleDraft(schedule: ScheduledPost): ScheduleDraft
 
 function getDraftStatusFromScheduledPost(
   schedule: ScheduledPost,
+  mediaIssue: ScheduleMediaIssue | null = null,
 ): ScheduleDraftStatus {
   const renderStatus = getString(schedule.metadata.combinedRenderStatus);
   const finalScheduleStatus = getString(schedule.metadata.finalScheduleStatus);
+
+  if (mediaIssue) {
+    return "media_required";
+  }
 
   if (renderStatus === "queued" || renderStatus === "rendering") {
     return "rendering";

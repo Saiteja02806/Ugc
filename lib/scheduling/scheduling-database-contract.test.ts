@@ -106,6 +106,17 @@ test("draft edits and render queueing both use optimistic status and version che
   assert.match(renderRoute, /code: "schedule_version_conflict"/);
 });
 
+test("stale selected media is reported as an editable draft conflict", () => {
+  assert.match(
+    renderRoute,
+    /code: "selected_opening_video_unavailable"[\s\S]*Edit this draft[\s\S]*409/,
+  );
+  assert.match(
+    renderRoute,
+    /code: "selected_demo_video_unavailable"[\s\S]*Edit this draft[\s\S]*409/,
+  );
+});
+
 function getSection(source: string, start: string, end: string) {
   const startIndex = source.indexOf(start);
   const endIndex = source.indexOf(end, startIndex + start.length);

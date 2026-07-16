@@ -403,6 +403,10 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
   const currentDraftKey = draft ? serializeDraft(draft) : null;
   const hasSavedVideoWithNewerChanges =
     video?.status === "draft" && Boolean(video.renderedVideoUrl);
+  const shouldShowRenderStatus =
+    isRendering ||
+    renderState === "failed" ||
+    hasSavedVideoWithNewerChanges;
   const isCurrentVersionSaved =
     Boolean(video?.renderedVideoUrl) &&
     renderState === "rendered" &&
@@ -410,7 +414,7 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
     currentDraftKey === lastRenderedDraftKey;
 
   return (
-    <section className="flex min-h-[calc(100dvh-4rem)] flex-1 flex-col overflow-x-hidden bg-background text-foreground md:min-h-dvh lg:h-dvh lg:overflow-hidden">
+    <section className="flex min-h-[calc(100dvh-4rem)] min-w-0 w-full flex-1 flex-col overflow-x-hidden bg-background text-foreground md:min-h-dvh lg:h-dvh lg:overflow-hidden">
       <EditorTopBar
         canSaveVideo={
           Boolean(video?.videoUrl) &&
@@ -426,7 +430,7 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
         onRenderVideo={() => void handleRenderVideo()}
       />
 
-      <div className="flex min-h-0 w-full flex-1 flex-col p-3 sm:p-4 lg:p-5">
+      <div className="flex min-h-0 w-full flex-1 flex-col p-3 sm:p-4">
         {saveMessage ? (
           <p
             role="alert"
@@ -436,7 +440,7 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
           </p>
         ) : null}
 
-        {renderMessage || video?.renderedVideoUrl ? (
+        {shouldShowRenderStatus ? (
           <RenderStatusNotice
             hasSavedVideoWithNewerChanges={hasSavedVideoWithNewerChanges}
             renderedVideoUrl={video?.renderedVideoUrl ?? null}
@@ -455,8 +459,8 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
             isCurrentVersionSaved={isCurrentVersionSaved}
             renderedVideoUrl={video.renderedVideoUrl}
             video={video}
-          onDraftChange={setDraft}
-          onDraftValidityChange={setIsDraftValid}
+            onDraftChange={setDraft}
+            onDraftValidityChange={setIsDraftValid}
           />
         ) : (
           <VideoNotFound videoId={videoId} />
@@ -487,7 +491,7 @@ function EditorTopBar({
 
   return (
     <header className="flex w-full shrink-0 flex-col gap-3 border-b border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <Link
           href="/edit"
           aria-label="Back to video library"
@@ -509,7 +513,7 @@ function EditorTopBar({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
         <div
           role="status"
           aria-live="polite"
@@ -542,24 +546,24 @@ function EditorTopBar({
           </a>
         ) : null}
 
-        <button
-          type="button"
-          onClick={onRenderVideo}
-          disabled={!canSaveVideo}
-          className={buttonClassName({
-            variant: "primary",
-            className: "min-w-32 gap-2",
-          })}
-        >
-          {isRendering ? (
-            <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
-          ) : isCurrentVersionSaved ? (
-            <CheckCircle2 aria-hidden="true" />
-          ) : (
-            <Save aria-hidden="true" />
-          )}
-          {getSaveButtonLabel(renderState, isCurrentVersionSaved)}
-        </button>
+        {!isCurrentVersionSaved || isRendering ? (
+          <button
+            type="button"
+            onClick={onRenderVideo}
+            disabled={!canSaveVideo}
+            className={buttonClassName({
+              variant: "primary",
+              className: "min-w-32 gap-2",
+            })}
+          >
+            {isRendering ? (
+              <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            ) : (
+              <Save aria-hidden="true" />
+            )}
+            {getSaveButtonLabel(renderState, isCurrentVersionSaved)}
+          </button>
+        ) : null}
       </div>
     </header>
   );

@@ -132,20 +132,24 @@ export async function POST(
   if (!hookAsset || !isHookAsset(hookAsset)) {
     return jsonResponse(
       {
+        code: "selected_opening_video_unavailable",
         ok: false,
-        message: "The selected opening video is no longer available.",
+        message:
+          "The selected opening video is no longer available. Edit this draft and choose another video.",
       },
-      404,
+      409,
     );
   }
 
   if (!demoAsset || !isDemoAsset(demoAsset)) {
     return jsonResponse(
       {
+        code: "selected_demo_video_unavailable",
         ok: false,
-        message: "The selected Library demo is no longer available.",
+        message:
+          "The selected Library demo is no longer available. Edit this draft and choose another demo, or add one in Content first.",
       },
-      404,
+      409,
     );
   }
 

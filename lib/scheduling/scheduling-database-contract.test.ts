@@ -6,6 +6,9 @@ import { fileURLToPath } from "node:url";
 const recoveryMigration = readProjectFile(
   "supabase/migrations/20260715191340_harden_schedule_recovery.sql",
 );
+const reconciliationFixMigration = readProjectFile(
+  "supabase/migrations/20260716081546_fix_social_schedule_reconciliation.sql",
+);
 const schedulingDb = readProjectFile("lib/scheduling/db.ts");
 const renderRoute = readProjectFile(
   "app/api/schedules/[scheduleId]/render/route.ts",
@@ -55,6 +58,22 @@ test("cancellation takes the same locks and becomes too late after provider clai
     cancelFunction,
     /update public\.background_jobs as job[\s\S]*status = 'cancelled'[\s\S]*job\.status in \('queued', 'processing'\)/,
   );
+});
+
+test("published target reconciliation does not reference an undefined post alias", () => {
+  const reconcileFunction = getSection(
+    reconciliationFixMigration,
+    "create or replace function public.reconcile_social_schedule_state",
+    "revoke all on function public.reconcile_social_schedule_state",
+  );
+  const publishedTargetUpdate = getSection(
+    reconcileFunction,
+    "update public.scheduled_post_targets as target",
+    "get diagnostics v_published_targets = row_count",
+  );
+
+  assert.match(publishedTargetUpdate, /last_error_code = null/);
+  assert.doesNotMatch(publishedTargetUpdate, /\bpost\./);
 });
 
 test("draft edits and render queueing both use optimistic status and version checks", () => {

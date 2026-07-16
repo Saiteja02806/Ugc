@@ -13,11 +13,54 @@ export type InstagramPublishResult = {
 type InstagramApiResponse = {
   error?: {
     code?: number;
+    error_user_msg?: string;
+    error_user_title?: string;
     error_subcode?: number;
+    fbtrace_id?: string;
+    is_transient?: boolean;
     message?: string;
     type?: string;
   };
 };
+
+type InstagramPublishErrorOptions = {
+  actionRequired: boolean;
+  code: string;
+  message: string;
+  providerCode?: number | null;
+  providerSubcode?: number | null;
+  retryable: boolean;
+  retryAfterSeconds?: number | null;
+  status?: number | null;
+  traceId?: string | null;
+  userMessage: string;
+};
+
+export class InstagramPublishError extends Error {
+  public readonly actionRequired: boolean;
+  public readonly code: string;
+  public readonly providerCode: number | null;
+  public readonly providerSubcode: number | null;
+  public readonly retryable: boolean;
+  public readonly retryAfterSeconds: number | null;
+  public readonly status: number | null;
+  public readonly traceId: string | null;
+  public readonly userMessage: string;
+
+  constructor(options: InstagramPublishErrorOptions) {
+    super(options.message);
+    this.name = "InstagramPublishError";
+    this.actionRequired = options.actionRequired;
+    this.code = options.code;
+    this.providerCode = options.providerCode ?? null;
+    this.providerSubcode = options.providerSubcode ?? null;
+    this.retryable = options.retryable;
+    this.retryAfterSeconds = options.retryAfterSeconds ?? null;
+    this.status = options.status ?? null;
+    this.traceId = options.traceId ?? null;
+    this.userMessage = options.userMessage;
+  }
+}
 
 export async function publishInstagramReel(params: {
   accessToken: string;
@@ -75,7 +118,11 @@ async function createInstagramReelContainer(params: {
   );
 
   if (!payload.id) {
-    throw new Error("Instagram did not return a media container id.");
+    throw createInstagramPublishError({
+      code: "invalid_provider_response",
+      message: "Instagram did not return a media container id.",
+      userMessage: "Instagram could not prepare this video. Try again.",
+    });
   }
 
   logger.info("Instagram Reel container created", {
@@ -120,9 +167,12 @@ async function waitForInstagramContainer(params: {
     }
 
     if (status.statusCode === "ERROR" || status.statusCode === "EXPIRED") {
-      throw new Error(
-        `Instagram media container failed with status ${status.statusCode}.`,
-      );
+      throw createInstagramPublishError({
+        code: "media_processing_failed",
+        message: `Instagram media container failed with status ${status.statusCode}.`,
+        userMessage:
+          "Instagram could not process this video. Check that it meets Reel requirements, then try again.",
+      });
     }
 
     if (attempt < maxPolls) {
@@ -130,7 +180,13 @@ async function waitForInstagramContainer(params: {
     }
   }
 
-  throw new Error("Timed out waiting for Instagram media container.");
+  throw createInstagramPublishError({
+    code: "media_processing_timeout",
+    message: "Timed out waiting for Instagram media container.",
+    retryable: true,
+    userMessage:
+      "Instagram is still processing this video. We will retry automatically.",
+  });
 }
 
 async function getInstagramContainerStatus(params: {
@@ -165,7 +221,11 @@ async function publishInstagramContainer(params: {
   );
 
   if (!payload.id) {
-    throw new Error("Instagram did not return a published media id.");
+    throw createInstagramPublishError({
+      code: "invalid_provider_response",
+      message: "Instagram did not return a published media id.",
+      userMessage: "Instagram could not finish publishing this video. Try again.",
+    });
   }
 
   return payload.id;
@@ -209,10 +269,8 @@ async function postInstagramForm<TResponse extends object>(
     | TResponse
     | null;
 
-  if (!response.ok || !payload) {
-    throw new Error(
-      `Instagram API request failed: ${getInstagramErrorMessage(payload, response.status)}`,
-    );
+  if (!response.ok || !payload || getInstagramApiError(payload)) {
+    throw getInstagramPublishError(payload, response);
   }
 
   return payload;
@@ -233,10 +291,8 @@ async function getInstagramJson<TResponse extends object>(
     | TResponse
     | null;
 
-  if (!response.ok || !payload) {
-    throw new Error(
-      `Instagram API request failed: ${getInstagramErrorMessage(payload, response.status)}`,
-    );
+  if (!response.ok || !payload || getInstagramApiError(payload)) {
+    throw getInstagramPublishError(payload, response);
   }
 
   return payload;
@@ -252,22 +308,136 @@ function buildInstagramUrl(path: string) {
   return new URL(`${version ? `/${version}` : ""}${normalizedPath}`, baseUrl);
 }
 
-function getInstagramErrorMessage(
-  payload: InstagramApiResponse | null,
-  status: number,
+function getInstagramPublishError(
+  payload: object | null,
+  response: Response,
 ) {
-  const message = payload?.error?.message;
-  const type = payload?.error?.type;
-  const code = payload?.error?.code;
+  const providerError = getInstagramApiError(payload);
+  const providerCode = providerError?.code ?? null;
+  const providerSubcode = providerError?.error_subcode ?? null;
+  const providerMessage =
+    providerError?.message || "Instagram returned an invalid response.";
+  const normalizedMessage = providerMessage.toLowerCase();
+  const normalizedType = providerError?.type?.toLowerCase() ?? "";
+  const rateLimited =
+    response.status === 429 ||
+    [4, 17, 32, 613].includes(providerCode ?? -1);
+  const accessTokenInvalid =
+    response.status === 401 ||
+    providerCode === 190 ||
+    normalizedMessage.includes("access token") &&
+      (normalizedMessage.includes("invalid") ||
+        normalizedMessage.includes("expired")) ||
+    normalizedType === "oauthexception" && providerCode === 190;
+  const permissionMissing =
+    !accessTokenInvalid &&
+    (providerCode === 10 ||
+      providerCode === 200 ||
+      response.status === 403 ||
+      normalizedMessage.includes("permission"));
+  const transient =
+    providerError?.is_transient === true ||
+    [408, 409, 425].includes(response.status) ||
+    response.status >= 500;
 
-  return [
-    `HTTP ${status}`,
-    type ? `type ${type}` : null,
-    code ? `code ${code}` : null,
-    message || "Unknown Instagram error",
-  ]
-    .filter(Boolean)
-    .join(" - ");
+  let code = "api_request_failed";
+  let actionRequired = false;
+  let retryable = false;
+  let userMessage = "Instagram could not publish this video. Try again.";
+
+  if (accessTokenInvalid) {
+    code = "access_token_invalid";
+    actionRequired = true;
+    userMessage = "Reconnect Instagram to continue publishing.";
+  } else if (permissionMissing) {
+    code = "permission_missing";
+    actionRequired = true;
+    userMessage = "Reconnect Instagram to allow video publishing.";
+  } else if (rateLimited) {
+    code = "rate_limited";
+    retryable = true;
+    userMessage =
+      "Instagram is temporarily limiting publishing. We will retry automatically.";
+  } else if (transient) {
+    code = "provider_unavailable";
+    retryable = true;
+    userMessage =
+      "Instagram is temporarily unavailable. We will retry automatically.";
+  } else if (response.status === 400 || providerCode === 100) {
+    code = "invalid_media";
+    userMessage =
+      "Instagram could not accept this video. Check that it meets Reel requirements, then try again.";
+  }
+
+  return new InstagramPublishError({
+    actionRequired,
+    code,
+    message: [
+      `Instagram API request failed: HTTP ${response.status}`,
+      providerError?.type ? `type ${providerError.type}` : null,
+      providerCode !== null ? `code ${providerCode}` : null,
+      providerSubcode !== null ? `subcode ${providerSubcode}` : null,
+      providerMessage,
+    ]
+      .filter(Boolean)
+      .join(" - "),
+    providerCode,
+    providerSubcode,
+    retryable,
+    retryAfterSeconds: getRetryAfterSeconds(response.headers.get("retry-after")),
+    status: response.status,
+    traceId: providerError?.fbtrace_id ?? null,
+    userMessage,
+  });
+}
+
+function getInstagramApiError(payload: object | null) {
+  if (!payload || !("error" in payload)) {
+    return null;
+  }
+
+  const error = (payload as InstagramApiResponse).error;
+
+  return error && typeof error === "object" ? error : null;
+}
+
+function createInstagramPublishError(
+  options: Pick<
+    InstagramPublishErrorOptions,
+    "code" | "message" | "userMessage"
+  > &
+    Partial<InstagramPublishErrorOptions>,
+) {
+  return new InstagramPublishError({
+    actionRequired: options.actionRequired ?? false,
+    code: options.code,
+    message: options.message,
+    providerCode: options.providerCode,
+    providerSubcode: options.providerSubcode,
+    retryable: options.retryable ?? false,
+    retryAfterSeconds: options.retryAfterSeconds,
+    status: options.status,
+    traceId: options.traceId,
+    userMessage: options.userMessage,
+  });
+}
+
+function getRetryAfterSeconds(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const seconds = Number(value);
+
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.ceil(seconds);
+  }
+
+  const retryAt = Date.parse(value);
+
+  return Number.isFinite(retryAt)
+    ? Math.max(0, Math.ceil((retryAt - Date.now()) / 1_000))
+    : null;
 }
 
 function getIntegerEnv(

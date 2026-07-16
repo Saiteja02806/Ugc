@@ -1106,9 +1106,9 @@ export class SupabaseJobStore {
     accessTokenCiphertext: string;
     claimToken: string;
     connectionId: string;
-    expiresAt: string;
-    refreshExpiresAt: string;
-    refreshTokenCiphertext: string;
+    expiresAt: string | null;
+    refreshExpiresAt: string | null;
+    refreshTokenCiphertext: string | null;
     scopes: string[];
     status: "connected" | "permission_missing";
     tokenType: string;

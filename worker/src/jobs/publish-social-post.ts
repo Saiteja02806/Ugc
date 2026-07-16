@@ -2,8 +2,18 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 
 import { logger } from "../logger.js";
-import { refreshGoogleAccessToken } from "../lib/google-oauth.js";
-import { publishInstagramReel } from "../lib/instagram-publisher.js";
+import {
+  GoogleOAuthError,
+  refreshGoogleAccessToken,
+} from "../lib/google-oauth.js";
+import {
+  InstagramOAuthError,
+  refreshInstagramAccessToken,
+} from "../lib/instagram-oauth.js";
+import {
+  InstagramPublishError,
+  publishInstagramReel,
+} from "../lib/instagram-publisher.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import {
   decryptSocialToken,
@@ -18,7 +28,10 @@ import {
   refreshTikTokAccessToken,
   TikTokOAuthError,
 } from "../lib/tiktok-oauth.js";
-import { publishYouTubeVideo } from "../lib/youtube-publisher.js";
+import {
+  publishYouTubeVideo,
+  YouTubePublishError,
+} from "../lib/youtube-publisher.js";
 import {
   getInstagramTargetPublishSettings,
   getTikTokTargetPublishSettings,
@@ -49,6 +62,7 @@ const SOCIAL_PUBLISH_OPERATION_STALE_SECONDS = 900;
 const DEFAULT_SOCIAL_PUBLISH_MAX_ATTEMPTS = 4;
 const DEFAULT_SOCIAL_PUBLISH_RETRY_BASE_SECONDS = 30;
 const DEFAULT_SOCIAL_PUBLISH_RETRY_MAX_SECONDS = 900;
+const DEFAULT_INSTAGRAM_TOKEN_REFRESH_SKEW_SECONDS = 7 * 24 * 60 * 60;
 
 type SocialPublishers = {
   instagram: typeof publishInstagramReel;
@@ -229,28 +243,49 @@ export async function runPublishSocialPostJob(
     };
 
     if (publishContext.target.platform === "instagram") {
-      const result = await publishers.instagram({
-        accessToken,
-        caption: publishContext.post.caption,
-        containerId: getProviderOperationId(
-          operation,
-          "instagram_container",
-        ),
-        instagramAccountId: publishContext.connection.platform_account_id,
-        onContainerCreated: async (containerId) => {
-          operation = await saveProviderOperationOrThrow({
-            claimToken,
-            operation: requireClaimedOperation(operation),
-            providerOperationId: containerId,
-            providerOperationKind: "instagram_container",
-            store: context.store,
-          });
-        },
-        shareToFeed: getInstagramTargetPublishSettings(
-          publishContext.target.settings,
-        ).shareToFeed,
-        videoUrl: publishContext.media.url,
-      });
+      const publishToInstagram = (token: string) =>
+        publishers.instagram({
+          accessToken: token,
+          caption: publishContext.post.caption,
+          containerId: getProviderOperationId(
+            requireClaimedOperation(operation),
+            "instagram_container",
+          ),
+          instagramAccountId: publishContext.connection.platform_account_id,
+          onContainerCreated: async (containerId) => {
+            operation = await saveProviderOperationOrThrow({
+              claimToken,
+              operation: requireClaimedOperation(operation),
+              providerOperationId: containerId,
+              providerOperationKind: "instagram_container",
+              store: context.store,
+            });
+          },
+          shareToFeed: getInstagramTargetPublishSettings(
+            publishContext.target.settings,
+          ).shareToFeed,
+          videoUrl: publishContext.media.url,
+        });
+      let result: Awaited<ReturnType<typeof publishInstagramReel>>;
+
+      try {
+        result = await publishToInstagram(accessToken);
+      } catch (error) {
+        if (
+          !(error instanceof InstagramPublishError) ||
+          error.code !== "access_token_invalid"
+        ) {
+          throw error;
+        }
+
+        accessToken = await refreshInstagramConnectionToken({
+          context: publishContext,
+          store: context.store,
+          targetId: payload.targetId,
+          userId: job.user_id,
+        });
+        result = await publishToInstagram(accessToken);
+      }
 
       publishedResult = {
         output: {
@@ -430,9 +465,11 @@ export async function runPublishSocialPostJob(
     const retryDecision = getSocialPublishRetryDecision({
       attemptCount: job.attempt_count,
       errorMessage,
+      providerRetryAfterSeconds: failure.retryAfterSeconds,
+      retryable: failure.retryable,
     });
     const retryError = !failure.actionRequired && retryDecision.shouldRetry
-      ? new RetryableJobError(errorMessage, {
+      ? new RetryableJobError(failure.userMessage, {
           code: errorCode,
           retryAfterSeconds: retryDecision.retryAfterSeconds,
         })
@@ -489,7 +526,7 @@ export async function runPublishSocialPostJob(
       try {
         await context.store.markSocialPublishTargetRetrying({
           errorCode,
-          errorMessage,
+          errorMessage: failure.userMessage,
           metadata: failureMetadata,
           nextRetryAt: retryError.retryAt,
           targetId: payload.targetId,
@@ -512,7 +549,9 @@ export async function runPublishSocialPostJob(
     try {
       await context.store.markSocialPublishTargetFailed({
         errorCode,
-        errorMessage,
+        errorMessage: failure.retryable
+          ? getRetryExhaustedUserMessage(errorCode)
+          : failure.userMessage,
         metadata: failureMetadata,
         targetId: payload.targetId,
         userId: job.user_id,
@@ -681,6 +720,22 @@ async function getPublishAccessToken(params: {
 }) {
   const { connection, target } = params.context;
 
+  if (target.platform === "instagram") {
+    const refreshSkewMs =
+      getIntegerEnv(
+        "INSTAGRAM_TOKEN_REFRESH_SKEW_SECONDS",
+        DEFAULT_INSTAGRAM_TOKEN_REFRESH_SKEW_SECONDS,
+        3_600,
+        30 * 24 * 60 * 60,
+      ) * 1_000;
+
+    if (!isExpired(connection.expires_at, refreshSkewMs)) {
+      return decryptSocialToken(connection.access_token_ciphertext);
+    }
+
+    return refreshInstagramConnectionToken(params);
+  }
+
   if (!isExpired(connection.expires_at, ACCESS_TOKEN_REFRESH_SKEW_MS)) {
     return decryptSocialToken(connection.access_token_ciphertext);
   }
@@ -717,6 +772,167 @@ async function getPublishAccessToken(params: {
   }
 
   return refreshedToken.accessToken;
+}
+
+async function refreshInstagramConnectionToken(params: {
+  context: Awaited<ReturnType<SupabaseJobStore["getSocialPublishContext"]>>;
+  store: SupabaseJobStore;
+  targetId: string;
+  userId: string;
+}) {
+  const connection = params.context.connection;
+
+  if (isExpired(connection.expires_at)) {
+    throw new InstagramOAuthError(
+      "Instagram access expired before it could be renewed.",
+      "access_token_invalid",
+      401,
+      true,
+      false,
+      "Reconnect Instagram to continue publishing.",
+    );
+  }
+
+  const claimToken = randomUUID();
+  const claimedConnection =
+    await params.store.claimSocialConnectionTokenRefresh({
+      claimToken,
+      connectionId: connection.id,
+      staleAfterSeconds: SOCIAL_TOKEN_REFRESH_STALE_SECONDS,
+      userId: params.userId,
+    });
+
+  if (!claimedConnection) {
+    return waitForInstagramConnectionRefresh(params);
+  }
+
+  try {
+    if (isExpired(claimedConnection.expires_at)) {
+      throw new InstagramOAuthError(
+        "Instagram access expired before it could be renewed.",
+        "access_token_invalid",
+        401,
+        true,
+        false,
+        "Reconnect Instagram to continue publishing.",
+      );
+    }
+
+    const refreshedToken = await refreshInstagramAccessToken(
+      decryptSocialToken(claimedConnection.access_token_ciphertext),
+    );
+    const hasPublishScope = claimedConnection.scopes.some((scope) =>
+      requiredInstagramScopes.has(scope),
+    );
+    const completedConnection =
+      await params.store.completeSocialConnectionTokenRefresh({
+        accessTokenCiphertext: encryptSocialToken(refreshedToken.accessToken),
+        claimToken,
+        connectionId: claimedConnection.id,
+        expiresAt: refreshedToken.expiresAt,
+        refreshExpiresAt: claimedConnection.refresh_expires_at,
+        refreshTokenCiphertext: claimedConnection.refresh_token_ciphertext,
+        scopes: claimedConnection.scopes,
+        status: hasPublishScope ? "connected" : "permission_missing",
+        tokenType: refreshedToken.tokenType,
+        userId: params.userId,
+      });
+
+    if (!completedConnection) {
+      throw new Error("Instagram token refresh claim was lost before completion.");
+    }
+
+    if (!hasPublishScope) {
+      throw new InstagramOAuthError(
+        "Instagram connection is missing content publishing scope.",
+        "permission_missing",
+        403,
+        true,
+        false,
+        "Reconnect Instagram to allow video publishing.",
+      );
+    }
+
+    return refreshedToken.accessToken;
+  } catch (error) {
+    const refreshErrorCode =
+      error instanceof InstagramOAuthError
+        ? error.code
+        : "instagram_refresh_failed";
+
+    try {
+      await params.store.releaseSocialConnectionTokenRefresh({
+        claimToken,
+        connectionId: claimedConnection.id,
+        errorCode: refreshErrorCode,
+        userId: params.userId,
+      });
+    } catch (releaseError) {
+      logger.error("Could not release Instagram token refresh claim", {
+        connectionId: claimedConnection.id,
+        error:
+          releaseError instanceof Error
+            ? releaseError.message
+            : "Unknown persistence error",
+      });
+    }
+
+    throw error;
+  }
+}
+
+async function waitForInstagramConnectionRefresh(params: {
+  context: Awaited<ReturnType<SupabaseJobStore["getSocialPublishContext"]>>;
+  store: SupabaseJobStore;
+  targetId: string;
+  userId: string;
+}) {
+  const refreshSkewMs =
+    getIntegerEnv(
+      "INSTAGRAM_TOKEN_REFRESH_SKEW_SECONDS",
+      DEFAULT_INSTAGRAM_TOKEN_REFRESH_SKEW_SECONDS,
+      3_600,
+      30 * 24 * 60 * 60,
+    ) * 1_000;
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    await delay(250);
+    const latest = await params.store.getSocialPublishContext({
+      targetId: params.targetId,
+      userId: params.userId,
+    });
+
+    if (
+      latest.connection.status === "connected" &&
+      !latest.connection.token_refresh_claim_token &&
+      !isExpired(latest.connection.expires_at, refreshSkewMs)
+    ) {
+      return decryptSocialToken(latest.connection.access_token_ciphertext);
+    }
+
+    if (
+      latest.connection.status !== "connected" ||
+      isExpired(latest.connection.expires_at)
+    ) {
+      throw new InstagramOAuthError(
+        "Instagram authorization must be renewed by the account owner.",
+        latest.connection.last_error_code || "access_token_invalid",
+        401,
+        true,
+        false,
+        "Reconnect Instagram to continue publishing.",
+      );
+    }
+  }
+
+  throw new InstagramOAuthError(
+    "Instagram token renewal is already in progress.",
+    "refresh_in_progress",
+    409,
+    false,
+    true,
+    "Instagram authorization is being renewed. We will retry automatically.",
+  );
 }
 
 async function refreshTikTokConnectionToken(params: {
@@ -907,6 +1123,82 @@ function getTikTokUploadUrl(operation: SocialPublishOperationRow) {
 }
 
 function getSocialPublishFailure(error: unknown, fallbackMessage: string) {
+  if (error instanceof InstagramOAuthError) {
+    return {
+      actionRequired: error.actionRequired,
+      errorCode: `instagram_${normalizeErrorCode(error.code)}`,
+      providerError: {
+        code: error.code,
+        message: error.message,
+        occurredAt: new Date().toISOString(),
+        providerCode: error.providerCode,
+        providerSubcode: error.providerSubcode,
+        retryable: error.retryable,
+        status: error.status,
+        traceId: error.traceId,
+      },
+      retryable: error.retryable,
+      retryAfterSeconds: null,
+      userMessage: error.userMessage,
+    };
+  }
+
+  if (error instanceof InstagramPublishError) {
+    return {
+      actionRequired: error.actionRequired,
+      errorCode: `instagram_${normalizeErrorCode(error.code)}`,
+      providerError: {
+        code: error.code,
+        message: error.message,
+        occurredAt: new Date().toISOString(),
+        providerCode: error.providerCode,
+        providerSubcode: error.providerSubcode,
+        retryable: error.retryable,
+        status: error.status,
+        traceId: error.traceId,
+      },
+      retryable: error.retryable,
+      retryAfterSeconds: error.retryAfterSeconds,
+      userMessage: error.userMessage,
+    };
+  }
+
+  if (error instanceof YouTubePublishError) {
+    return {
+      actionRequired: error.actionRequired,
+      errorCode: `youtube_${normalizeErrorCode(error.code)}`,
+      providerError: {
+        code: error.code,
+        message: error.message,
+        occurredAt: new Date().toISOString(),
+        providerCode: error.providerCode,
+        reasons: error.reasons,
+        retryable: error.retryable,
+        status: error.status,
+      },
+      retryable: error.retryable,
+      retryAfterSeconds: error.retryAfterSeconds,
+      userMessage: error.userMessage,
+    };
+  }
+
+  if (error instanceof GoogleOAuthError) {
+    return {
+      actionRequired: error.actionRequired,
+      errorCode: `youtube_${normalizeErrorCode(error.code)}`,
+      providerError: {
+        code: error.code,
+        message: error.message,
+        occurredAt: new Date().toISOString(),
+        retryable: error.retryable,
+        status: error.status,
+      },
+      retryable: error.retryable,
+      retryAfterSeconds: null,
+      userMessage: error.userMessage,
+    };
+  }
+
   if (error instanceof TikTokPublishError) {
     return {
       actionRequired: error.actionRequired,
@@ -918,6 +1210,8 @@ function getSocialPublishFailure(error: unknown, fallbackMessage: string) {
         occurredAt: new Date().toISOString(),
         status: error.status,
       },
+      retryable: null,
+      retryAfterSeconds: null,
       userMessage: getTikTokUserMessage(error.code, error.message),
     };
   }
@@ -935,22 +1229,55 @@ function getSocialPublishFailure(error: unknown, fallbackMessage: string) {
         occurredAt: new Date().toISOString(),
         status: error.status,
       },
+      retryable: null,
+      retryAfterSeconds: null,
       userMessage: getTikTokUserMessage(error.code, error.message),
     };
   }
 
+  const errorCode = getPublishErrorCode(fallbackMessage);
+  const retryable = isTransientSocialPublishError(fallbackMessage);
+
   return {
-    actionRequired: false,
-    errorCode: getPublishErrorCode(fallbackMessage),
+    actionRequired: [
+      "provider_permission_missing",
+      "social_connection_unavailable",
+    ].includes(errorCode),
+    errorCode,
     providerError: {
-      code: getPublishErrorCode(fallbackMessage),
+      code: errorCode,
       logId: null,
       message: fallbackMessage,
       occurredAt: new Date().toISOString(),
+      retryable,
       status: null,
     },
-    userMessage: fallbackMessage,
+    retryable,
+    retryAfterSeconds: null,
+    userMessage: getGenericSocialPublishUserMessage(errorCode, retryable),
   };
+}
+
+function getGenericSocialPublishUserMessage(
+  errorCode: string,
+  retryable: boolean,
+) {
+  if (
+    errorCode === "provider_permission_missing" ||
+    errorCode === "social_connection_unavailable"
+  ) {
+    return "Reconnect this account to continue publishing.";
+  }
+
+  if (errorCode === "provider_publish_not_implemented") {
+    return "Publishing to this platform is not available yet.";
+  }
+
+  if (retryable) {
+    return "The platform is temporarily unavailable. We will retry automatically.";
+  }
+
+  return "The platform could not publish this post. Try again.";
 }
 
 function getTikTokUserMessage(code: string, fallbackMessage: string) {
@@ -970,7 +1297,37 @@ function getTikTokUserMessage(code: string, fallbackMessage: string) {
     return "TikTok has not approved this app for additional public accounts yet.";
   }
 
-  return fallbackMessage;
+  if (code === "spam_risk_too_many_posts") {
+    return "TikTok's daily posting limit was reached. Try again later.";
+  }
+
+  if (code === "video_duration_exceeds_creator_limit") {
+    return "This video is longer than the selected TikTok account allows.";
+  }
+
+  if (code === "unaudited_client_can_only_post_to_private_accounts") {
+    return "TikTok currently allows this app to publish only with Only me visibility.";
+  }
+
+  return fallbackMessage.toLowerCase().includes("timed out")
+    ? "TikTok is still processing this video. We will retry automatically."
+    : "TikTok could not publish this video. Try again.";
+}
+
+function getRetryExhaustedUserMessage(errorCode: string) {
+  if (errorCode.startsWith("instagram_")) {
+    return "Instagram is still unavailable. Retry publishing when ready.";
+  }
+
+  if (errorCode.startsWith("youtube_")) {
+    return "YouTube is still unavailable. Retry publishing when ready.";
+  }
+
+  if (errorCode.startsWith("tiktok_")) {
+    return "TikTok is still unavailable. Retry publishing when ready.";
+  }
+
+  return "The platform is still unavailable. Retry publishing when ready.";
 }
 
 function normalizeErrorCode(value: string) {
@@ -1051,6 +1408,8 @@ export function getSocialPublishRetryDecision(params: {
   errorMessage: string;
   maxAttempts?: number;
   maxDelaySeconds?: number;
+  providerRetryAfterSeconds?: number | null;
+  retryable?: boolean | null;
 }) {
   const attemptNumber = Math.max(1, params.attemptCount + 1);
   const maxAttempts = normalizeInteger(
@@ -1086,9 +1445,19 @@ export function getSocialPublishRetryDecision(params: {
     1,
     43_200,
   );
-  const retryAfterSeconds = Math.min(
+  const exponentialRetryAfterSeconds = Math.min(
     maxDelaySeconds,
     baseDelaySeconds * 2 ** Math.max(0, attemptNumber - 1),
+  );
+  const providerRetryAfterSeconds =
+    typeof params.providerRetryAfterSeconds === "number" &&
+    Number.isFinite(params.providerRetryAfterSeconds) &&
+    params.providerRetryAfterSeconds >= 0
+      ? Math.ceil(params.providerRetryAfterSeconds)
+      : 0;
+  const retryAfterSeconds = Math.min(
+    maxDelaySeconds,
+    Math.max(exponentialRetryAfterSeconds, providerRetryAfterSeconds),
   );
 
   return {
@@ -1097,7 +1466,8 @@ export function getSocialPublishRetryDecision(params: {
     retryAfterSeconds,
     shouldRetry:
       attemptNumber < maxAttempts &&
-      isTransientSocialPublishError(params.errorMessage),
+      (params.retryable ??
+        isTransientSocialPublishError(params.errorMessage)),
   };
 }
 

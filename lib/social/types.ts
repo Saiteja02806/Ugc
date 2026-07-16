@@ -28,6 +28,7 @@ export type SocialConnection = {
   refreshExpiresAt: string | null;
   scopes: string[];
   status: SocialConnectionStatus;
+  supportsBackgroundRefresh: boolean;
   tokenRefreshedAt: string | null;
   updatedAt: string;
 };

@@ -57,6 +57,7 @@ import {
   validateTimeZone,
 } from "@/lib/scheduling/schedule-time";
 import { getScheduleEditBlockReason } from "@/lib/scheduling/schedule-action-policy";
+import { getConnectionPublishingBlock } from "@/lib/scheduling/social-connection-policy";
 import {
   canRetrySchedulerCreateFailure,
   getRenderFinalizationDecision,
@@ -1142,6 +1143,23 @@ async function resolveScheduleTargets(params: {
     if (target.platform && target.platform !== connection.platform) {
       throw new SchedulingRequestError(
         "A selected platform does not match the connected account.",
+      );
+    }
+
+    const publishingBlock = getConnectionPublishingBlock({
+      platform: connection.platform,
+      scopes: connection.scopes,
+      status: connection.status,
+      supportsBackgroundRefresh: Boolean(
+        connection.refresh_token_ciphertext,
+      ),
+    });
+
+    if (publishingBlock) {
+      throw new SchedulingRequestError(
+        publishingBlock.message,
+        409,
+        publishingBlock.code,
       );
     }
 

@@ -433,9 +433,9 @@ export type BackgroundJobsDatabase = {
           p_access_token_ciphertext: string;
           p_claim_token: string;
           p_connection_id: string;
-          p_expires_at: string;
-          p_refresh_expires_at: string;
-          p_refresh_token_ciphertext: string;
+          p_expires_at: string | null;
+          p_refresh_expires_at: string | null;
+          p_refresh_token_ciphertext: string | null;
           p_scopes: string[];
           p_status: "connected" | "permission_missing";
           p_token_type: string;

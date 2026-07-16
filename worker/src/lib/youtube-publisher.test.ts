@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { publishYouTubeVideo } from "./youtube-publisher.js";
+import {
+  publishYouTubeVideo,
+  YouTubePublishError,
+} from "./youtube-publisher.js";
 
 const MEDIA_URL = "https://cdn.example.com/video.mp4";
 const UPLOAD_URL = "https://upload.example.com/session-existing";
@@ -176,6 +179,150 @@ test("sends the selected YouTube visibility and audience settings", async () => 
     selfDeclaredMadeForKids: true,
   });
 });
+
+test("classifies invalid YouTube credentials as a reconnect requirement", async () => {
+  await assertYouTubeSessionError(
+    {
+      error: {
+        code: 401,
+        errors: [{ reason: "invalidCredentials" }],
+        message: "Invalid Credentials",
+      },
+    },
+    401,
+    (error) => {
+      assert.equal(error.code, "access_token_invalid");
+      assert.equal(error.actionRequired, true);
+      assert.equal(error.retryable, false);
+      assert.equal(error.userMessage, "Reconnect YouTube to continue publishing.");
+    },
+  );
+});
+
+test("classifies missing YouTube permissions as reconnectable", async () => {
+  await assertYouTubeSessionError(
+    {
+      error: {
+        code: 403,
+        errors: [{ reason: "insufficientPermissions" }],
+        message: "Insufficient Permission",
+      },
+    },
+    403,
+    (error) => {
+      assert.equal(error.code, "permission_missing");
+      assert.equal(error.actionRequired, true);
+      assert.equal(error.userMessage, "Reconnect YouTube to allow video uploads.");
+    },
+  );
+});
+
+test("classifies YouTube rate limits as retryable and honors Retry-After", async () => {
+  await assertYouTubeSessionError(
+    {
+      error: {
+        code: 429,
+        errors: [{ reason: "userRateLimitExceeded" }],
+        message: "Rate limit exceeded",
+      },
+    },
+    429,
+    (error) => {
+      assert.equal(error.code, "rate_limited");
+      assert.equal(error.retryable, true);
+      assert.equal(error.retryAfterSeconds, 90);
+    },
+    { "Retry-After": "90" },
+  );
+});
+
+test("classifies transient YouTube backend failures for automatic retry", async () => {
+  await assertYouTubeSessionError(
+    {
+      error: {
+        code: 503,
+        errors: [{ reason: "backendError" }],
+        message: "Backend Error",
+      },
+    },
+    503,
+    (error) => {
+      assert.equal(error.code, "provider_unavailable");
+      assert.equal(error.retryable, true);
+      assert.equal(error.actionRequired, false);
+    },
+  );
+});
+
+test("does not automatically retry an exhausted YouTube daily quota", async () => {
+  await assertYouTubeSessionError(
+    {
+      error: {
+        code: 403,
+        errors: [{ reason: "quotaExceeded" }],
+        message: "The request cannot be completed because the quota was exceeded.",
+      },
+    },
+    403,
+    (error) => {
+      assert.equal(error.code, "quota_exceeded");
+      assert.equal(error.retryable, false);
+      assert.equal(error.actionRequired, false);
+      assert.match(error.userMessage, /quota/i);
+    },
+  );
+});
+
+test("keeps technical YouTube validation details out of the user message", async () => {
+  await assertYouTubeSessionError(
+    {
+      error: {
+        code: 400,
+        errors: [{ reason: "invalidValue" }],
+        message: "snippet.title contains an invalid control character at index 7",
+      },
+    },
+    400,
+    (error) => {
+      assert.equal(error.code, "invalid_video");
+      assert.doesNotMatch(error.userMessage, /control character/i);
+      assert.match(error.message, /control character/i);
+    },
+  );
+});
+
+async function assertYouTubeSessionError(
+  payload: Record<string, unknown>,
+  status: number,
+  verify: (error: YouTubePublishError) => void,
+  headers?: Record<string, string>,
+) {
+  await withMockFetch(async (input) => {
+    const url = String(input);
+
+    if (url === MEDIA_URL) {
+      return videoResponse();
+    }
+
+    assert.match(url, /\/upload\/youtube\/v3\/videos/);
+    return Response.json(payload, { headers, status });
+  }, async () => {
+    await assert.rejects(
+      publishYouTubeVideo({
+        accessToken: "access-token",
+        caption: "Caption",
+        mimeType: "video/mp4",
+        title: "Title",
+        videoUrl: MEDIA_URL,
+      }),
+      (error) => {
+        assert.ok(error instanceof YouTubePublishError);
+        verify(error);
+        return true;
+      },
+    );
+  });
+}
 
 function videoResponse() {
   return new Response(Uint8Array.from([1, 2, 3, 4]), {

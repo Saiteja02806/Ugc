@@ -10,6 +10,7 @@ import {
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { getConnectionPublishingBlock } from "@/lib/scheduling/social-connection-policy";
 import { getEffectiveSocialConnectionStatus } from "@/lib/social/connection-status";
 import { splitScopes } from "@/lib/social/split-scopes";
 import {
@@ -85,9 +86,9 @@ type SocialOAuthDatabase = {
           p_access_token_ciphertext: string;
           p_claim_token: string;
           p_connection_id: string;
-          p_expires_at: string;
-          p_refresh_expires_at: string;
-          p_refresh_token_ciphertext: string;
+          p_expires_at: string | null;
+          p_refresh_expires_at: string | null;
+          p_refresh_token_ciphertext: string | null;
           p_scopes: string[];
           p_status: "connected" | "permission_missing";
           p_token_type: string;
@@ -366,6 +367,22 @@ export async function completeSocialOAuthCallback(params: {
     redirectUri,
     trace: params.trace,
   });
+  const publishingBlock = getConnectionPublishingBlock({
+    platform: params.platform,
+    scopes: tokenSet.scopes,
+    status: "connected",
+    supportsBackgroundRefresh:
+      params.platform === "instagram" || Boolean(tokenSet.refreshToken),
+  });
+
+  if (publishingBlock) {
+    throw new SocialOAuthError(
+      publishingBlock.message,
+      409,
+      publishingBlock.code,
+      "exchange_authorization_code",
+    );
+  }
 
   const profileStage = getProfileRetrievalStage(params.platform);
   logSocialOAuthTrace(params.trace, profileStage, {
@@ -1092,7 +1109,7 @@ async function exchangeInstagramCode(
         ? String(shortData.user_id)
         : null,
     refreshToken: null,
-    scopes: scopes.length > 0 ? scopes : getInstagramScopes(),
+    scopes,
     tokenType: tokenData.token_type ?? "Bearer",
   };
 }
@@ -1187,7 +1204,7 @@ async function exchangeYouTubeCode(
     accessToken: data.access_token,
     expiresInSeconds: data.expires_in,
     refreshToken: data.refresh_token ?? null,
-    scopes: scopes.length > 0 ? scopes : getYouTubeScopes(),
+    scopes,
     tokenType: data.token_type ?? "Bearer",
   };
 }
@@ -1684,6 +1701,10 @@ function mapSocialConnection(row: SocialConnectionRow): SocialConnection {
     refreshExpiresAt: row.refresh_expires_at,
     scopes: row.scopes,
     status,
+    supportsBackgroundRefresh:
+      row.platform === "instagram" ||
+      (Boolean(row.refresh_token_ciphertext) &&
+        !isExpired(row.refresh_expires_at)),
     tokenRefreshedAt: row.token_refreshed_at,
     updatedAt: row.updated_at,
   };

@@ -25,8 +25,45 @@ type GoogleApiErrorPayload = {
       reason?: string;
     }>;
     message?: string;
+    status?: string;
   };
 };
+
+type YouTubePublishErrorOptions = {
+  actionRequired: boolean;
+  code: string;
+  message: string;
+  providerCode?: number | string | null;
+  reasons?: string[];
+  retryable: boolean;
+  retryAfterSeconds?: number | null;
+  status?: number | null;
+  userMessage: string;
+};
+
+export class YouTubePublishError extends Error {
+  public readonly actionRequired: boolean;
+  public readonly code: string;
+  public readonly providerCode: number | string | null;
+  public readonly reasons: string[];
+  public readonly retryable: boolean;
+  public readonly retryAfterSeconds: number | null;
+  public readonly status: number | null;
+  public readonly userMessage: string;
+
+  constructor(options: YouTubePublishErrorOptions) {
+    super(options.message);
+    this.name = "YouTubePublishError";
+    this.actionRequired = options.actionRequired;
+    this.code = options.code;
+    this.providerCode = options.providerCode ?? null;
+    this.reasons = options.reasons ?? [];
+    this.retryable = options.retryable;
+    this.retryAfterSeconds = options.retryAfterSeconds ?? null;
+    this.status = options.status ?? null;
+    this.userMessage = options.userMessage;
+  }
+}
 
 type YouTubeVideoResource = {
   id?: string;
@@ -179,9 +216,7 @@ async function createYouTubeUploadSession(params: {
   });
 
   if (!response.ok) {
-    throw new Error(
-      `YouTube API request failed: ${await getGoogleErrorMessage(response)}`,
-    );
+    throw await getYouTubePublishError(response);
   }
 
   const uploadUrl = response.headers.get("location");
@@ -226,9 +261,7 @@ async function uploadVideoToYouTube(params: {
   });
 
   if (!response.ok) {
-    throw new Error(
-      `YouTube API request failed: ${await getGoogleErrorMessage(response)}`,
-    );
+    throw await getYouTubePublishError(response);
   }
 
   const payload = (await response.json().catch(() => null)) as
@@ -273,9 +306,7 @@ async function getYouTubeUploadStatus(params: {
   }
 
   if (!response.ok) {
-    throw new Error(
-      `YouTube API request failed: ${await getGoogleErrorMessage(response)}`,
-    );
+    throw await getYouTubePublishError(response);
   }
 
   const payload = (await response.json().catch(() => null)) as
@@ -400,19 +431,130 @@ function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
-async function getGoogleErrorMessage(response: Response) {
+async function getYouTubePublishError(response: Response) {
   const text = await response.text().catch(() => "");
   const payload = parseJson(text);
-  const firstError = payload?.error?.errors?.[0];
+  const providerErrors = payload?.error?.errors ?? [];
+  const reasons = Array.from(
+    new Set(
+      providerErrors
+        .map((error) => error.reason?.trim())
+        .filter((reason): reason is string => Boolean(reason)),
+    ),
+  );
+  const normalizedReasons = new Set(
+    reasons.map((reason) => reason.toLowerCase()),
+  );
+  const providerMessage =
+    payload?.error?.message ||
+    providerErrors.find((error) => error.message)?.message ||
+    text ||
+    "YouTube returned an invalid response.";
+  const providerCode = payload?.error?.code ?? null;
+  const accessTokenInvalid =
+    response.status === 401 ||
+    hasAnyReason(normalizedReasons, [
+      "autherror",
+      "invalidcredentials",
+      "unauthorized",
+    ]);
+  const quotaExceeded = hasAnyReason(normalizedReasons, [
+    "dailylimitexceeded",
+    "dailylimitexceededunreg",
+    "quotaexceeded",
+  ]);
+  const uploadLimitExceeded = hasAnyReason(normalizedReasons, [
+    "uploadlimitexceeded",
+  ]);
+  const channelUnavailable = hasAnyReason(normalizedReasons, [
+    "channelclosed",
+    "channelsuspended",
+    "youtubesignuprequired",
+  ]);
+  const permissionMissing =
+    !quotaExceeded &&
+    !uploadLimitExceeded &&
+    hasAnyReason(normalizedReasons, [
+      "accountdelegationforbidden",
+      "forbidden",
+      "insufficientpermissions",
+    ]);
+  const rateLimited =
+    response.status === 429 ||
+    hasAnyReason(normalizedReasons, [
+      "ratelimitexceeded",
+      "uploadratelimitexceeded",
+      "userratelimitexceeded",
+    ]);
+  const transient =
+    [408, 409, 425].includes(response.status) ||
+    response.status >= 500 ||
+    hasAnyReason(normalizedReasons, ["backenderror", "internalerror"]);
 
-  return [
-    `HTTP ${response.status}`,
-    payload?.error?.code ? `code ${payload.error.code}` : null,
-    firstError?.reason ? `reason ${firstError.reason}` : null,
-    payload?.error?.message || firstError?.message || text || "Unknown Google error",
-  ]
-    .filter(Boolean)
-    .join(" - ");
+  let code = "api_request_failed";
+  let actionRequired = false;
+  let retryable = false;
+  let userMessage = "YouTube could not publish this video. Try again.";
+
+  if (accessTokenInvalid) {
+    code = "access_token_invalid";
+    actionRequired = true;
+    userMessage = "Reconnect YouTube to continue publishing.";
+  } else if (permissionMissing) {
+    code = "permission_missing";
+    actionRequired = true;
+    userMessage = "Reconnect YouTube to allow video uploads.";
+  } else if (channelUnavailable) {
+    code = "channel_unavailable";
+    actionRequired = true;
+    userMessage =
+      "This YouTube channel is not available for publishing. Check the channel, then reconnect it.";
+  } else if (quotaExceeded) {
+    code = "quota_exceeded";
+    userMessage =
+      "YouTube's publishing quota is currently exhausted. Try again later.";
+  } else if (uploadLimitExceeded) {
+    code = "upload_limit_exceeded";
+    userMessage =
+      "This YouTube channel has reached its upload limit. Try again later.";
+  } else if (rateLimited) {
+    code = "rate_limited";
+    retryable = true;
+    userMessage =
+      "YouTube is temporarily limiting uploads. We will retry automatically.";
+  } else if (transient) {
+    code = "provider_unavailable";
+    retryable = true;
+    userMessage =
+      "YouTube is temporarily unavailable. We will retry automatically.";
+  } else if (response.status === 400 || normalizedReasons.has("invalidvalue")) {
+    code = "invalid_video";
+    userMessage =
+      "YouTube could not accept this video or its details. Review the post and try again.";
+  }
+
+  return new YouTubePublishError({
+    actionRequired,
+    code,
+    message: [
+      `YouTube API request failed: HTTP ${response.status}`,
+      providerCode !== null ? `code ${providerCode}` : null,
+      reasons.length > 0 ? `reasons ${reasons.join(",")}` : null,
+      providerMessage,
+    ]
+      .filter(Boolean)
+      .join(" - "),
+    providerCode,
+    reasons,
+    retryable,
+    retryAfterSeconds: getRetryAfterSeconds(response.headers.get("retry-after")),
+    status: response.status,
+    userMessage,
+  });
+}
+
+function hasAnyReason(reasons: Set<string>, candidates: string[]) {
+  return candidates.some((candidate) => reasons.has(candidate));
 }
 
 function parseJson(text: string): GoogleApiErrorPayload | null {
@@ -421,6 +563,24 @@ function parseJson(text: string): GoogleApiErrorPayload | null {
   } catch {
     return null;
   }
+}
+
+function getRetryAfterSeconds(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const seconds = Number(value);
+
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.ceil(seconds);
+  }
+
+  const retryAt = Date.parse(value);
+
+  return Number.isFinite(retryAt)
+    ? Math.max(0, Math.ceil((retryAt - Date.now()) / 1_000))
+    : null;
 }
 
 function getHeaderInteger(value: string | null) {

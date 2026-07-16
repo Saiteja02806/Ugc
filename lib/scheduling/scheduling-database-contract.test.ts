@@ -15,6 +15,9 @@ const tiktokHardeningMigration = readProjectFile(
 const publishRetryMigration = readProjectFile(
   "supabase/migrations/20260716142500_add_social_publish_target_retry.sql",
 );
+const instagramRenewalMigration = readProjectFile(
+  "supabase/migrations/20260716151500_support_instagram_token_renewal.sql",
+);
 const schedulingDb = readProjectFile("lib/scheduling/db.ts");
 const renderRoute = readProjectFile(
   "app/api/schedules/[scheduleId]/render/route.ts",
@@ -105,6 +108,21 @@ test("TikTok refresh is leased and atomically rotates every token field", () => 
   assert.match(completeFunction, /refresh_expires_at = p_refresh_expires_at/);
   assert.match(completeFunction, /scopes = coalesce\(p_scopes/);
   assert.match(completeFunction, /token_refresh_claim_token = null/);
+});
+
+test("Instagram token renewal shares the refresh lease without a refresh token", () => {
+  const claimFunction = getSection(
+    instagramRenewalMigration,
+    "create or replace function public.claim_social_connection_token_refresh",
+    "revoke all on function public.claim_social_connection_token_refresh",
+  );
+
+  assert.match(
+    claimFunction,
+    /refresh_token_ciphertext is not null[\s\S]*platform = 'instagram'/,
+  );
+  assert.match(claimFunction, /token_refresh_claim_token = p_claim_token/);
+  assert.match(claimFunction, /returning connection\.\*/);
 });
 
 test("TikTok disconnect blocks pending targets until the user acts", () => {

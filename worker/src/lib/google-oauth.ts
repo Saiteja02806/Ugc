@@ -12,6 +12,20 @@ type GoogleTokenResponse = {
   token_type?: string;
 };
 
+export class GoogleOAuthError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public readonly status: number,
+    public readonly actionRequired: boolean,
+    public readonly retryable: boolean,
+    public readonly userMessage: string,
+  ) {
+    super(message);
+    this.name = "GoogleOAuthError";
+  }
+}
+
 export async function refreshGoogleAccessToken(
   refreshToken: string,
 ): Promise<GoogleAccessTokenRefresh> {
@@ -33,11 +47,27 @@ export async function refreshGoogleAccessToken(
     | null;
 
   if (!response.ok || !payload?.access_token) {
-    throw new Error(
+    const code = payload?.error?.trim() || "token_refresh_failed";
+    const actionRequired = code === "invalid_grant";
+    const retryable =
+      response.status === 429 ||
+      response.status >= 500 ||
+      ["server_error", "temporarily_unavailable"].includes(code);
+
+    throw new GoogleOAuthError(
       `Google OAuth token refresh failed: ${getGoogleTokenErrorMessage(
         payload,
         response.status,
       )}`,
+      code,
+      response.status,
+      actionRequired,
+      retryable,
+      actionRequired
+        ? "Reconnect YouTube to continue publishing."
+        : retryable
+          ? "YouTube authorization is temporarily unavailable. We will retry automatically."
+          : "YouTube authorization could not be refreshed. Contact support if this continues.",
     );
   }
 

@@ -1485,6 +1485,8 @@ function ScheduleTargetStatusList({
         {targets.map((target) => {
           const isRetrying = retryingPublishTargetId === target.id;
           const showPublishRetry = canRetryTargetPublishing(target);
+          const customerErrorMessage =
+            getCustomerFacingTargetErrorMessage(target);
 
           return (
             <div
@@ -1512,10 +1514,9 @@ function ScheduleTargetStatusList({
                 <p className="mt-1 text-[11px] font-semibold leading-4 text-muted">
                   {getTargetStatusHelpText(target, draft.timezone)}
                 </p>
-                {target.lastErrorMessage &&
-                !(target.status === "publishing" && target.nextRetryAt) ? (
+                {customerErrorMessage ? (
                   <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-error">
-                    {target.lastErrorMessage}
+                    {customerErrorMessage}
                   </p>
                 ) : null}
               </div>
@@ -2323,9 +2324,7 @@ function getTargetStatusHelpText(
   }
 
   if (target.status === "failed") {
-    return target.lastErrorCode
-      ? `Failed with ${target.lastErrorCode}.`
-      : "Publishing failed for this account.";
+    return "Publishing did not complete for this account.";
   }
 
   if (target.status === "action_required") {
@@ -2352,8 +2351,16 @@ function canRetryTargetPublishing(target: ScheduledPostTarget) {
 }
 
 function getActionRequiredTargetMessage(errorCode: string | null) {
+  if (shouldReconnectInstagramTarget(errorCode)) {
+    return "Reconnect Instagram to continue publishing.";
+  }
+
   if (shouldReconnectTikTokTarget(errorCode)) {
     return "Reconnect TikTok to grant publishing permission.";
+  }
+
+  if (shouldReconnectYouTubeTarget(errorCode)) {
+    return "Reconnect YouTube to continue publishing.";
   }
 
   if (errorCode === "tiktok_privacy_level_option_mismatch") {
@@ -2380,7 +2387,11 @@ function getActionRequiredTargetMessage(errorCode: string | null) {
     return "This video is longer than the selected TikTok account allows.";
   }
 
-  if (errorCode === "social_connection_revoked") {
+  if (
+    errorCode === "social_connection_revoked" ||
+    errorCode === "social_connection_unavailable" ||
+    errorCode === "provider_permission_missing"
+  ) {
     return "Reconnect this account before publishing this post.";
   }
 
@@ -2390,8 +2401,19 @@ function getActionRequiredTargetMessage(errorCode: string | null) {
 function shouldReconnectSocialTarget(errorCode: string | null) {
   return (
     errorCode === "social_connection_revoked" ||
-    shouldReconnectTikTokTarget(errorCode)
+    errorCode === "social_connection_unavailable" ||
+    errorCode === "provider_permission_missing" ||
+    shouldReconnectInstagramTarget(errorCode) ||
+    shouldReconnectTikTokTarget(errorCode) ||
+    shouldReconnectYouTubeTarget(errorCode)
   );
+}
+
+function shouldReconnectInstagramTarget(errorCode: string | null) {
+  return [
+    "instagram_access_token_invalid",
+    "instagram_permission_missing",
+  ].includes(errorCode ?? "");
 }
 
 function shouldReconnectTikTokTarget(errorCode: string | null) {
@@ -2403,6 +2425,65 @@ function shouldReconnectTikTokTarget(errorCode: string | null) {
     "tiktok_refresh_token_expired",
     "tiktok_scope_not_authorized",
   ].includes(errorCode ?? "");
+}
+
+function shouldReconnectYouTubeTarget(errorCode: string | null) {
+  return [
+    "youtube_access_token_invalid",
+    "youtube_channel_unavailable",
+    "youtube_invalid_grant",
+    "youtube_permission_missing",
+    "youtube_refresh_token_missing",
+  ].includes(errorCode ?? "");
+}
+
+function getCustomerFacingTargetErrorMessage(target: ScheduledPostTarget) {
+  if (
+    !target.lastErrorMessage ||
+    target.status === "action_required" ||
+    (target.status === "publishing" && target.nextRetryAt)
+  ) {
+    return null;
+  }
+
+  const errorCode = target.lastErrorCode ?? "";
+
+  if (
+    errorCode === "instagram_invalid_media" ||
+    errorCode === "instagram_media_processing_failed"
+  ) {
+    return "Instagram could not accept this video. Check that it meets Reel requirements, then try again.";
+  }
+
+  if (errorCode.startsWith("instagram_")) {
+    return "Instagram could not publish this video. Try again.";
+  }
+
+  if (errorCode === "youtube_quota_exceeded") {
+    return "YouTube's publishing quota is currently exhausted. Try again later.";
+  }
+
+  if (errorCode === "youtube_upload_limit_exceeded") {
+    return "This YouTube channel has reached its upload limit. Try again later.";
+  }
+
+  if (errorCode === "youtube_invalid_video") {
+    return "YouTube could not accept this video or its details. Review the post and try again.";
+  }
+
+  if (errorCode.startsWith("youtube_")) {
+    return "YouTube could not publish this video. Try again.";
+  }
+
+  if (errorCode === "scheduler_create_failed") {
+    return "We could not reserve this publish time. Try scheduling again.";
+  }
+
+  if (errorCode.startsWith("tiktok_")) {
+    return "TikTok could not publish this video. Try again.";
+  }
+
+  return "The platform could not publish this post. Try again.";
 }
 
 function formatShortDateTime(value: string, timezone: string) {

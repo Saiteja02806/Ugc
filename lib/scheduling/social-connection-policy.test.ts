@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getConnectionPublishingBlockMessage } from "./social-connection-policy.ts";
+import {
+  getConnectionPublishingBlock,
+  getConnectionPublishingBlockMessage,
+} from "./social-connection-policy.ts";
 
 test("explains expired TikTok access without exposing OAuth scope names", () => {
   const message = getConnectionPublishingBlockMessage({
@@ -39,6 +42,32 @@ test("accepts publishing-capable accounts", () => {
       platform: "youtube",
       scopes: ["https://www.googleapis.com/auth/youtube.upload"],
       status: "connected",
+    }),
+    null,
+  );
+});
+
+test("requires a YouTube refresh token for unattended publishing", () => {
+  assert.deepEqual(
+    getConnectionPublishingBlock({
+      platform: "youtube",
+      scopes: ["https://www.googleapis.com/auth/youtube.upload"],
+      status: "connected",
+      supportsBackgroundRefresh: false,
+    }),
+    {
+      code: "youtube_refresh_token_missing",
+      message:
+        "Reconnect YouTube so scheduled posts can publish after you leave.",
+    },
+  );
+
+  assert.equal(
+    getConnectionPublishingBlockMessage({
+      platform: "youtube",
+      scopes: ["https://www.googleapis.com/auth/youtube.upload"],
+      status: "connected",
+      supportsBackgroundRefresh: true,
     }),
     null,
   );

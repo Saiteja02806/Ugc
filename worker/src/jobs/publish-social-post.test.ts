@@ -6,8 +6,11 @@ import {
   runPublishSocialPostJob,
 } from "./publish-social-post.js";
 import { encryptSocialToken } from "../lib/social-token-crypto.js";
+import { InstagramOAuthError } from "../lib/instagram-oauth.js";
+import { InstagramPublishError } from "../lib/instagram-publisher.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import { TikTokPublishError } from "../lib/tiktok-publisher.js";
+import { YouTubePublishError } from "../lib/youtube-publisher.js";
 import { RetryableJobError } from "../retryable-job-error.js";
 import type {
   BackgroundJobRow,
@@ -329,6 +332,157 @@ test("marks TikTok permission failures as action required", async () => {
   });
 });
 
+test("marks expired Instagram authorization as action required with a safe message", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), {
+      allowFailure: true,
+      withInstagramRefresh: true,
+    });
+    const providerMessage = "The access token has expired: raw token diagnostic.";
+
+    await withMockFetch(async () =>
+      Response.json(
+        {
+          error: {
+            code: 190,
+            message: providerMessage,
+            type: "OAuthException",
+          },
+        },
+        { status: 400 },
+      ), async () => {
+      await assert.rejects(
+        runPublishSocialPostJob(createPublishJob(), {
+          publishers: {
+            async instagram() {
+              throw new InstagramPublishError({
+                actionRequired: true,
+                code: "access_token_invalid",
+                message:
+                  "Instagram API request failed: HTTP 400 - code 190.",
+                providerCode: 190,
+                retryable: false,
+                status: 400,
+                userMessage: "Reconnect Instagram to continue publishing.",
+              });
+            },
+          },
+          store: fixture.store,
+        }),
+        (error) =>
+          error instanceof InstagramOAuthError &&
+          error.code === "access_token_invalid",
+      );
+    });
+
+    assert.deepEqual(fixture.calls, [
+      "claim-operation",
+      "claim-token-refresh",
+      "release-token-refresh",
+      "release-operation",
+      "target-action-required",
+    ]);
+    assert.equal(fixture.targetErrorCode, "instagram_access_token_invalid");
+    assert.equal(
+      fixture.targetErrorMessage,
+      "Reconnect Instagram to continue publishing.",
+    );
+    assert.doesNotMatch(fixture.targetErrorMessage, /raw token diagnostic/i);
+    assert.equal(
+      getJsonRecord(fixture.targetMetadata.providerError).message,
+      `Instagram token refresh failed: HTTP 400 - type OAuthException - code 190 - ${providerMessage}`,
+    );
+  });
+});
+
+test("retries YouTube rate limits using the provider delay and a safe message", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(
+      createOperation({ platform: "youtube" }),
+      { allowFailure: true, platform: "youtube" },
+    );
+
+    await assert.rejects(
+      runPublishSocialPostJob(createPublishJob(), {
+        publishers: {
+          async youtube() {
+            throw new YouTubePublishError({
+              actionRequired: false,
+              code: "rate_limited",
+              message:
+                "YouTube API request failed: HTTP 429 - reason userRateLimitExceeded.",
+              providerCode: 429,
+              reasons: ["userRateLimitExceeded"],
+              retryable: true,
+              retryAfterSeconds: 120,
+              status: 429,
+              userMessage:
+                "YouTube is temporarily limiting uploads. We will retry automatically.",
+            });
+          },
+        },
+        store: fixture.store,
+      }),
+      (error) =>
+        error instanceof RetryableJobError &&
+        error.retryAfterSeconds === 120 &&
+        error.message ===
+          "YouTube is temporarily limiting uploads. We will retry automatically.",
+    );
+
+    assert.deepEqual(fixture.calls, [
+      "claim-operation",
+      "release-operation",
+      "target-retrying",
+    ]);
+    assert.equal(fixture.targetErrorCode, "youtube_rate_limited");
+    assert.equal(
+      fixture.targetErrorMessage,
+      "YouTube is temporarily limiting uploads. We will retry automatically.",
+    );
+  });
+});
+
+test("fails a permanent YouTube rejection without exposing provider details", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(
+      createOperation({ platform: "youtube" }),
+      { allowFailure: true, platform: "youtube" },
+    );
+
+    await assert.rejects(
+      runPublishSocialPostJob(createPublishJob(), {
+        publishers: {
+          async youtube() {
+            throw new YouTubePublishError({
+              actionRequired: false,
+              code: "invalid_video",
+              message:
+                "YouTube API request failed: snippet.title invalid at byte 7.",
+              providerCode: 400,
+              reasons: ["invalidValue"],
+              retryable: false,
+              status: 400,
+              userMessage:
+                "YouTube could not accept this video or its details. Review the post and try again.",
+            });
+          },
+        },
+        store: fixture.store,
+      }),
+      (error) => error instanceof YouTubePublishError,
+    );
+
+    assert.deepEqual(fixture.calls, [
+      "claim-operation",
+      "release-operation",
+      "target-failed",
+    ]);
+    assert.equal(fixture.targetErrorCode, "youtube_invalid_video");
+    assert.doesNotMatch(fixture.targetErrorMessage, /byte 7/i);
+  });
+});
+
 test("persists the TikTok upload session before provider completion", async () => {
   await withEncryptionKey(async () => {
     const fixture = createPublishStore(
@@ -435,6 +589,67 @@ test("refreshes an invalid TikTok token once and retries the same operation", as
   });
 });
 
+test("renews an invalid Instagram token once and retries the same container", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), {
+      withInstagramRefresh: true,
+    });
+    const seenTokens: string[] = [];
+
+    await withMockFetch(async (input) => {
+      const url = new URL(String(input));
+
+      assert.equal(url.pathname, "/refresh_access_token");
+      assert.equal(url.searchParams.get("access_token"), "access-token");
+
+      return Response.json({
+        access_token: "instagram-access-token-renewed",
+        expires_in: 5_184_000,
+        token_type: "bearer",
+      });
+    }, async () => {
+      await runPublishSocialPostJob(createPublishJob(), {
+        publishers: {
+          async instagram(params) {
+            seenTokens.push(params.accessToken);
+
+            if (seenTokens.length === 1) {
+              throw new InstagramPublishError({
+                actionRequired: true,
+                code: "access_token_invalid",
+                message: "Instagram API request failed: access token invalid.",
+                providerCode: 190,
+                retryable: false,
+                status: 400,
+                userMessage: "Reconnect Instagram to continue publishing.",
+              });
+            }
+
+            assert.equal(params.containerId, null);
+            return {
+              mediaId: "instagram-media-renewed",
+              permalink: null,
+            };
+          },
+        },
+        store: fixture.store,
+      });
+    });
+
+    assert.deepEqual(seenTokens, [
+      "access-token",
+      "instagram-access-token-renewed",
+    ]);
+    assert.deepEqual(fixture.calls, [
+      "claim-operation",
+      "claim-token-refresh",
+      "complete-token-refresh",
+      "operation-published",
+      "target-published",
+    ]);
+  });
+});
+
 test("stops retrying at the configured attempt limit", () => {
   assert.deepEqual(
     getSocialPublishRetryDecision({
@@ -470,8 +685,9 @@ function createPublishStore(
     cancelAfterClaimDenied?: boolean;
     denyClaim?: boolean;
     failTargetPublished?: boolean;
-    platform?: "instagram" | "tiktok";
+    platform?: "instagram" | "tiktok" | "youtube";
     targetStatus?: "cancelled" | "failed" | "scheduled";
+    withInstagramRefresh?: boolean;
     withTikTokRefresh?: boolean;
   } = {},
 ) {
@@ -481,8 +697,11 @@ function createPublishStore(
     options.targetStatus,
     options.platform,
     options.withTikTokRefresh,
+    options.withInstagramRefresh,
   );
   let targetMetadata: Record<string, Json> = {};
+  let targetErrorCode: string | null = null;
+  let targetErrorMessage = "";
   let contextReadCount = 0;
   const store = {
     async claimSocialPublishOperation() {
@@ -521,14 +740,23 @@ function createPublishStore(
       operation.status = "published";
       return { ...operation };
     },
-    async markSocialPublishTargetFailed() {
+    async markSocialPublishTargetFailed(params: {
+      errorCode: string;
+      errorMessage: string;
+      metadata?: Json;
+    }) {
       if (!options.allowFailure) {
         throw new Error("Target should not fail in this test.");
       }
 
       calls.push("target-failed");
+      targetErrorCode = params.errorCode;
+      targetErrorMessage = params.errorMessage;
+      targetMetadata = getJsonRecord(params.metadata);
     },
     async markSocialPublishTargetActionRequired(params: {
+      errorCode: string;
+      errorMessage: string;
       metadata?: Json;
     }) {
       if (!options.allowFailure) {
@@ -536,6 +764,8 @@ function createPublishStore(
       }
 
       calls.push("target-action-required");
+      targetErrorCode = params.errorCode;
+      targetErrorMessage = params.errorMessage;
       targetMetadata = getJsonRecord(params.metadata);
       return true;
     },
@@ -546,12 +776,19 @@ function createPublishStore(
         throw new Error("Could not update target projection: database unavailable.");
       }
     },
-    async markSocialPublishTargetRetrying() {
+    async markSocialPublishTargetRetrying(params: {
+      errorCode: string;
+      errorMessage: string;
+      metadata?: Json;
+    }) {
       if (!options.allowFailure) {
         throw new Error("Target should not retry in this test.");
       }
 
       calls.push("target-retrying");
+      targetErrorCode = params.errorCode;
+      targetErrorMessage = params.errorMessage;
+      targetMetadata = getJsonRecord(params.metadata);
       return true;
     },
     async releaseSocialPublishOperation() {
@@ -565,7 +802,7 @@ function createPublishStore(
       return true;
     },
     async claimSocialConnectionTokenRefresh() {
-      if (!options.withTikTokRefresh) {
+      if (!options.withTikTokRefresh && !options.withInstagramRefresh) {
         throw new Error("Token refresh should not be claimed in this test.");
       }
 
@@ -575,13 +812,13 @@ function createPublishStore(
     async completeSocialConnectionTokenRefresh(params: {
       accessTokenCiphertext: string;
       expiresAt: string;
-      refreshExpiresAt: string;
-      refreshTokenCiphertext: string;
+      refreshExpiresAt: string | null;
+      refreshTokenCiphertext: string | null;
       scopes: string[];
       status: "connected" | "permission_missing";
       tokenType: string;
     }) {
-      if (!options.withTikTokRefresh) {
+      if (!options.withTikTokRefresh && !options.withInstagramRefresh) {
         throw new Error("Token refresh should not complete in this test.");
       }
 
@@ -622,31 +859,47 @@ function createPublishStore(
     get targetMetadata() {
       return targetMetadata;
     },
+    get targetErrorCode() {
+      return targetErrorCode;
+    },
+    get targetErrorMessage() {
+      return targetErrorMessage;
+    },
   };
 }
 
 function createPublishContext(
   targetStatus: "cancelled" | "failed" | "scheduled" = "scheduled",
-  platform: "instagram" | "tiktok" = "instagram",
+  platform: "instagram" | "tiktok" | "youtube" = "instagram",
   withTikTokRefresh = false,
+  withInstagramRefresh = false,
 ) {
   const isTikTok = platform === "tiktok";
+  const isYouTube = platform === "youtube";
 
   return {
     connection: {
       access_token_ciphertext: encryptSocialToken("access-token"),
       connected_at: new Date().toISOString(),
-      expires_at: null,
+      expires_at: withInstagramRefresh
+        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        : null,
       id: "e3eb0ce7-4729-4454-88f4-8a07db92cb62",
       last_error_code: null,
       metadata: {},
       platform,
       platform_account_id: isTikTok
         ? "tiktok-account-1"
-        : "instagram-account-1",
+        : isYouTube
+          ? "youtube-channel-1"
+          : "instagram-account-1",
       platform_account_name: "Test Account",
       platform_account_username: "test-account",
-      provider: isTikTok ? ("tiktok" as const) : ("meta" as const),
+      provider: isTikTok
+        ? ("tiktok" as const)
+        : isYouTube
+          ? ("google" as const)
+          : ("meta" as const),
       refresh_expires_at: withTikTokRefresh
         ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
         : null,
@@ -656,7 +909,9 @@ function createPublishContext(
       revoked_at: null,
       scopes: isTikTok
         ? ["user.info.basic", "video.publish"]
-        : ["instagram_content_publish"],
+        : isYouTube
+          ? ["https://www.googleapis.com/auth/youtube.upload"]
+          : ["instagram_content_publish"],
       status: "connected" as const,
       token_type: "Bearer",
       token_refreshed_at: null,
@@ -685,7 +940,14 @@ function createPublishContext(
       platform_post_url: null,
       settings: isTikTok
         ? { containsSyntheticMedia: true, privacyLevel: "SELF_ONLY" }
-        : { shareToFeed: false },
+        : isYouTube
+          ? {
+              containsSyntheticMedia: true,
+              madeForKids: false,
+              notifySubscribers: false,
+              privacyStatus: "private",
+            }
+          : { shareToFeed: false },
       status: targetStatus,
     },
   };

@@ -44,10 +44,10 @@ export default async function DataDeletionPage({
           <LegalList>
             <li>Sign in to UGC Pilot.</li>
             <li>Open Settings.</li>
-            <li>Select Connected Accounts.</li>
+            <li>Select Manage connected accounts to open Accounts.</li>
             <li>Disconnect Instagram, TikTok, or YouTube.</li>
-            <li>Open Account Settings.</li>
-            <li>Select Delete Account and Data.</li>
+            <li>Return to Settings.</li>
+            <li>Select Request account deletion to email a full account and data deletion request.</li>
           </LegalList>
           <p>
             You can also request deletion by emailing{" "}

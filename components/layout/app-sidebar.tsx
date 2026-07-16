@@ -1,14 +1,12 @@
 "use client";
 
 import {
-  LoaderCircle,
-  LogOut,
   Menu,
+  Settings,
   X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import {
   useEffect,
@@ -35,7 +33,8 @@ export type AppSidebarActiveKey =
   | "avatars"
   | "edit"
   | "analytics"
-  | "scheduling";
+  | "scheduling"
+  | "settings";
 
 type SidebarItem = {
   href: string;
@@ -114,11 +113,8 @@ export function AppSidebar({
   activeKey?: AppSidebarActiveKey;
   defaultCollapsed?: boolean;
 }) {
-  const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [signOutError, setSignOutError] = useState<string | null>(null);
   const mobileNavigationId = useId();
   const mobileNavigationRef = useRef<HTMLElement>(null);
   const mobileCloseButtonRef = useRef<HTMLButtonElement>(null);
@@ -184,20 +180,6 @@ export function AppSidebar({
     };
   }, [isMobileNavigationOpen]);
 
-  async function handleSignOut() {
-    setIsSigningOut(true);
-    setSignOutError(null);
-
-    try {
-      await signOut();
-      router.replace("/sign-in");
-    } catch {
-      setSignOutError("Could not sign out. Please try again.");
-    } finally {
-      setIsSigningOut(false);
-    }
-  }
-
   function toggleSidebar() {
     setSidebarPreference(!collapsed);
   }
@@ -245,14 +227,11 @@ export function AppSidebar({
         <SidebarNavigation activeKey={activeKey} collapsed={collapsed} />
 
         <AccountSection
+          active={activeKey === "settings"}
           collapsed={collapsed}
           displayName={displayName}
-          email={user?.email ?? "Signed in"}
           initials={initials}
-          isSigningOut={isSigningOut}
           photoUrl={user?.photoURL ?? null}
-          signOutError={signOutError}
-          onSignOut={() => void handleSignOut()}
         />
       </aside>
 
@@ -295,13 +274,10 @@ export function AppSidebar({
             />
 
             <AccountSection
+              active={activeKey === "settings"}
               displayName={displayName}
-              email={user?.email ?? "Signed in"}
               initials={initials}
-              isSigningOut={isSigningOut}
               photoUrl={user?.photoURL ?? null}
-              signOutError={signOutError}
-              onSignOut={() => void handleSignOut()}
             />
           </aside>
         </div>
@@ -562,23 +538,17 @@ function CollapsedMagneticNavItem({
 }
 
 function AccountSection({
+  active,
   collapsed = false,
   displayName,
-  email,
   initials,
-  isSigningOut,
-  onSignOut,
   photoUrl,
-  signOutError,
 }: {
+  active: boolean;
   collapsed?: boolean;
   displayName: string;
-  email: string;
   initials: string;
-  isSigningOut: boolean;
-  onSignOut: () => void;
   photoUrl: string | null;
-  signOutError: string | null;
 }) {
   return (
     <div
@@ -587,73 +557,59 @@ function AccountSection({
         collapsed ? "p-2" : "p-3",
       )}
     >
-      <div
+      <Link
+        href="/settings"
+        aria-label="Open profile and settings"
+        title="Profile & settings"
         className={cn(
-          "flex items-center",
-          collapsed ? "flex-col gap-2" : "gap-3",
+          "group/settings relative flex items-center rounded-control transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
+          collapsed
+            ? "size-10 justify-center"
+            : "gap-3 px-2.5 py-2",
+          active
+            ? "bg-selected text-primary"
+            : "text-muted hover:bg-card-muted hover:text-foreground-strong",
         )}
       >
-        <div className="group/avatar relative shrink-0">
-          <UserAvatar
-            displayName={displayName}
-            initials={initials}
-            photoUrl={photoUrl}
-          />
-          {collapsed ? (
+        {collapsed ? (
+          <>
+            <UserAvatar
+              displayName={displayName}
+              initials={initials}
+              photoUrl={photoUrl}
+            />
             <span
               role="tooltip"
-              className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 group-hover/avatar:visible group-hover/avatar:opacity-100 group-focus-within/avatar:visible group-focus-within/avatar:opacity-100 motion-reduce:transition-none"
+              className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 delay-0 group-hover/settings:visible group-hover/settings:opacity-100 group-hover/settings:delay-[160ms] group-focus-visible/settings:visible group-focus-visible/settings:opacity-100 motion-reduce:transition-none"
             >
-              {displayName}
+              Profile & settings
             </span>
-          ) : null}
-        </div>
-        {!collapsed ? (
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-foreground-strong">
-              {displayName}
-            </p>
-            <p className="truncate text-xs text-muted-subtle">
-              {email}
-            </p>
-          </div>
-        ) : null}
-        <div className="group/signout relative shrink-0">
-          <button
-            type="button"
-            onClick={onSignOut}
-            disabled={isSigningOut}
-            aria-label="Sign out"
-            title="Sign out"
-            className={cn(
-              "inline-flex shrink-0 items-center justify-center rounded-control text-muted-subtle transition-colors hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
-              collapsed ? "size-9" : "size-10",
-            )}
-          >
-            {isSigningOut ? (
-              <LoaderCircle
-                className="size-4 animate-spin motion-reduce:animate-none"
-                aria-hidden="true"
-              />
-            ) : (
-              <LogOut className="size-4" aria-hidden="true" />
-            )}
-          </button>
-          {collapsed ? (
-            <span
-              role="tooltip"
-              className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 group-hover/signout:visible group-hover/signout:opacity-100 group-focus-within/signout:visible group-focus-within/signout:opacity-100 motion-reduce:transition-none"
-            >
-              Sign out
-            </span>
-          ) : null}
-        </div>
-      </div>
-      {signOutError && !collapsed ? (
-        <p role="alert" className="mt-2 text-xs font-medium text-error">
-          {signOutError}
-        </p>
-      ) : null}
+          </>
+        ) : (
+          <>
+            <UserAvatar
+              displayName={displayName}
+              initials={initials}
+              photoUrl={photoUrl}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground-strong">
+                {displayName}
+              </p>
+              <p className="truncate text-xs text-muted-subtle">
+                Profile & settings
+              </p>
+            </div>
+            <Settings
+              className={cn(
+                "size-4 shrink-0",
+                active ? "text-brand" : "text-muted-subtle",
+              )}
+              aria-hidden="true"
+            />
+          </>
+        )}
+      </Link>
     </div>
   );
 }

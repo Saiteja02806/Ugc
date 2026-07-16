@@ -93,7 +93,7 @@ export async function POST(
     return jsonResponse(
       {
         ok: false,
-        message: "Could not schedule this rendered post right now.",
+        message: "Could not schedule this post right now.",
       },
       500,
     );

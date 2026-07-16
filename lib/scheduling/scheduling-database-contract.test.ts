@@ -13,6 +13,7 @@ const schedulingDb = readProjectFile("lib/scheduling/db.ts");
 const renderRoute = readProjectFile(
   "app/api/schedules/[scheduleId]/render/route.ts",
 );
+const schedulingLayout = readProjectFile("app/scheduling/layout.tsx");
 
 test("publish claiming locks the post and target and refuses cancelled work", () => {
   const claimFunction = getSection(
@@ -115,6 +116,11 @@ test("stale selected media is reported as an editable draft conflict", () => {
     renderRoute,
     /code: "selected_demo_video_unavailable"[\s\S]*Edit this draft[\s\S]*409/,
   );
+});
+
+test("the scheduling workspace waits for Firebase auth restoration", () => {
+  assert.match(schedulingLayout, /import \{ AuthGuard \}/);
+  assert.match(schedulingLayout, /<AuthGuard>\{children\}<\/AuthGuard>/);
 });
 
 function getSection(source: string, start: string, end: string) {

@@ -31,7 +31,6 @@ import {
   type EditableVideoDraftInput,
   type TextOverlay,
   type TextOverlayPosition,
-  type TextOverlayStyle,
 } from "@/lib/edit/video-library";
 import {
   EDIT_OVERLAY_HORIZONTAL_INSET_PERCENT,

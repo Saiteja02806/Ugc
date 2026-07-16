@@ -238,7 +238,7 @@ test("publish retry repairs provider success and fails closed for unsafe inputs"
   assert.match(retryFunction, /'scheduling_retry_required'/);
   assert.match(
     retryFunction,
-    /media\.status = 'ready'[\s\S]*media\.source_type = 'combined_render'/,
+    /media\.status = 'ready'[\s\S]*media\.source_type in \([\s\S]*'combined_render'[\s\S]*'demo_upload'[\s\S]*'upload'[\s\S]*'generated_video'[\s\S]*'edit_export'/,
   );
   assert.match(
     retryFunction,

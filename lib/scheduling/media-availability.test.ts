@@ -28,7 +28,7 @@ test("detects missing opening and demo selections", () => {
       activeDemoIds,
       activeOpeningIds,
       mediaLoaded: true,
-      schedule: createSchedule({}),
+      schedule: createSchedule({ mediaMode: "combined_video" }),
     }),
     "both",
   );
@@ -46,6 +46,36 @@ test("accepts active opening and demo media", () => {
       }),
     }),
     null,
+  );
+});
+
+test("accepts a single scheduled video without an opening clip", () => {
+  assert.equal(
+    getScheduleMediaIssue({
+      activeDemoIds,
+      activeOpeningIds: new Set(),
+      mediaLoaded: true,
+      schedule: createSchedule({
+        mediaMode: "single_video",
+        scheduledVideoId: "demo-active",
+      }),
+    }),
+    null,
+  );
+});
+
+test("detects a deleted single scheduled video", () => {
+  assert.equal(
+    getScheduleMediaIssue({
+      activeDemoIds,
+      activeOpeningIds,
+      mediaLoaded: true,
+      schedule: createSchedule({
+        mediaMode: "single_video",
+        scheduledVideoId: "demo-deleted",
+      }),
+    }),
+    "demo",
   );
 });
 

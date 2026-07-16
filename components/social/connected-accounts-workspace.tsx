@@ -36,7 +36,8 @@ const platforms: Array<{
   value: SocialPlatform;
 }> = [
   {
-    description: "Connect TikTok for creator authorization and publishing access.",
+    description:
+      "Connect TikTok for creator authorization, publishing, and public video analytics access.",
     label: "TikTok",
     value: "tiktok",
   },
@@ -238,7 +239,7 @@ export function ConnectedAccountsWorkspace() {
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
               Connect user-approved TikTok, Instagram, and YouTube accounts
-              before scheduling or publishing posts.
+              before scheduling, publishing, or syncing account analytics.
             </p>
           </div>
           <button

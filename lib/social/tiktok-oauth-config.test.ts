@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildTikTokOAuthAuthorizationUrl,
+  hasTikTokAnalyticsScope,
   hasTikTokPublishScope,
   requiredTikTokOAuthScopes,
 } from "./tiktok-oauth-config.ts";
@@ -42,10 +43,18 @@ test("does not force TikTok consent for a first connection", () => {
   assert.equal(url.searchParams.has("disable_auto_auth"), false);
 });
 
-test("requires the exact TikTok Direct Post scope", () => {
+test("checks TikTok publish and analytics scopes", () => {
   assert.equal(hasTikTokPublishScope(["video.upload"]), false);
   assert.equal(
     hasTikTokPublishScope(["user.info.basic", "video.publish"]),
+    true,
+  );
+  assert.equal(
+    hasTikTokAnalyticsScope(["user.info.basic", "video.publish"]),
+    false,
+  );
+  assert.equal(
+    hasTikTokAnalyticsScope(["user.info.basic", "video.publish", "video.list"]),
     true,
   );
 });

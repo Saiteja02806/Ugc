@@ -53,11 +53,11 @@ export async function resolveOpeningRenderAsset(params: {
       userId: params.userId,
     });
   } catch (error) {
-    console.error("Could not verify saved opening video before scheduling:", error);
+    console.error("Could not verify saved opening clip before scheduling:", error);
 
     return {
       message:
-        "We could not verify the latest saved opening video. Try again before scheduling.",
+        "We could not verify the latest saved opening clip. Try again before scheduling.",
       ok: false,
       status: 503,
     };
@@ -81,7 +81,7 @@ export async function resolveOpeningRenderAsset(params: {
     return {
       ok: false,
       message:
-        "Save is still in progress for the selected opening video. Wait until it shows Saved before scheduling.",
+        "Save is still in progress for the selected opening clip. Wait until it shows Saved before scheduling.",
       status: 409,
     };
   }
@@ -90,7 +90,7 @@ export async function resolveOpeningRenderAsset(params: {
     return {
       ok: false,
       message:
-        "Save failed for the selected opening video. Save it again before scheduling.",
+        "Save failed for the selected opening clip. Save it again before scheduling.",
       status: 409,
     };
   }
@@ -100,7 +100,7 @@ export async function resolveOpeningRenderAsset(params: {
       return {
         ok: false,
         message:
-          "Save the selected opening video in Edit before scheduling so saved text and trim edits are included.",
+          "Save the selected opening clip in Edit before scheduling so saved text and trim edits are included.",
         status: 409,
       };
     }
@@ -119,11 +119,11 @@ export async function resolveOpeningRenderAsset(params: {
       userId: params.userId,
     });
   } catch (error) {
-    console.error("Could not verify opening video exports before scheduling:", error);
+    console.error("Could not verify opening clip exports before scheduling:", error);
 
     return {
       message:
-        "We could not verify the latest saved opening video. Try again before scheduling.",
+        "We could not verify the latest saved opening clip. Try again before scheduling.",
       ok: false,
       status: 503,
     };
@@ -147,7 +147,7 @@ export async function resolveOpeningRenderAsset(params: {
     return {
       ok: false,
       message:
-        "The latest saved opening video could not be resolved. Open it in Edit and save it again.",
+        "The latest saved opening clip could not be resolved. Open it in Edit and save it again.",
       status: 409,
     };
   }
@@ -156,7 +156,7 @@ export async function resolveOpeningRenderAsset(params: {
     return {
       ok: false,
       message:
-        "Save the selected opening video in Edit before scheduling so saved text and trim edits are included.",
+        "Save the selected opening clip in Edit before scheduling so saved text and trim edits are included.",
       status: 409,
     };
   }
@@ -173,7 +173,8 @@ export async function resolveDemoRenderAsset(params: {
 
   if (demoLookup.kind === "missing") {
     return {
-      message: "The selected demo is no longer available. Choose another demo.",
+      message:
+        "The selected scheduled video is no longer available. Choose another video.",
       ok: false,
       status: 404,
     };
@@ -182,7 +183,7 @@ export async function resolveDemoRenderAsset(params: {
   if (demoLookup.kind === "unavailable") {
     return {
       message:
-        "We could not verify the selected demo right now. Try again before scheduling.",
+        "We could not verify the selected scheduled video right now. Try again before scheduling.",
       ok: false,
       status: 503,
     };
@@ -205,7 +206,7 @@ export async function resolveDemoRenderAsset(params: {
     return {
       ok: false,
       message:
-        "Save is still in progress for the selected demo. Wait until it shows Saved before scheduling.",
+        "Save is still in progress for the selected scheduled video. Wait until it shows Saved before scheduling.",
       status: 409,
     };
   }
@@ -213,7 +214,8 @@ export async function resolveDemoRenderAsset(params: {
   if (demo.status === "failed") {
     return {
       ok: false,
-      message: "Save failed for the selected demo. Save it again before scheduling.",
+      message:
+        "Save failed for the selected scheduled video. Save it again before scheduling.",
       status: 409,
     };
   }
@@ -222,7 +224,7 @@ export async function resolveDemoRenderAsset(params: {
     return {
       ok: false,
       message:
-        "The selected demo is still being prepared. Wait until it is ready before scheduling.",
+        "The selected scheduled video is still being prepared. Wait until it is ready before scheduling.",
       status: 409,
     };
   }
@@ -232,7 +234,7 @@ export async function resolveDemoRenderAsset(params: {
       return {
         ok: false,
         message:
-          "Save the selected demo before scheduling so saved text and trim edits are included.",
+          "Save the selected scheduled video before scheduling so saved text and trim edits are included.",
         status: 409,
       };
     }
@@ -251,11 +253,14 @@ export async function resolveDemoRenderAsset(params: {
       userId: params.userId,
     });
   } catch (error) {
-    console.error("Could not verify demo video exports before scheduling:", error);
+    console.error(
+      "Could not verify scheduled video exports before scheduling:",
+      error,
+    );
 
     return {
       message:
-        "We could not verify the selected demo right now. Try again before scheduling.",
+        "We could not verify the selected scheduled video right now. Try again before scheduling.",
       ok: false,
       status: 503,
     };
@@ -275,14 +280,15 @@ export async function resolveDemoRenderAsset(params: {
     return {
       ok: false,
       message:
-        "The latest saved demo video could not be resolved. Open the demo and save it again.",
+        "The latest saved scheduled video could not be resolved. Open the video and save it again.",
       status: 409,
     };
   }
 
   return {
     ok: false,
-    message: "The selected demo is not ready to schedule. Choose it again.",
+    message:
+      "The selected scheduled video is not ready to schedule. Choose it again.",
     status: 409,
   };
 }

@@ -21,6 +21,12 @@ import type {
 const TARGET_ID = "7b4f9d56-5f01-42a6-a8f5-fb8704ec2c6e";
 const JOB_ID = "a31a42da-1b54-42af-82b1-266ed602f265";
 const CLAIM_TOKEN = "305331aa-fb6d-4b5e-aac1-3550ad649fe4";
+type PublishMediaSourceType =
+  | "combined_render"
+  | "demo_upload"
+  | "edit_export"
+  | "generated_video"
+  | "upload";
 
 test("persists provider initialization before completing a publish", async () => {
   await withEncryptionKey(async () => {
@@ -52,6 +58,34 @@ test("persists provider initialization before completing a publish", async () =>
     assert.equal(output.platformPostId, "instagram-media-1");
     assert.equal(fixture.operation.provider_operation_id, "instagram-container-1");
     assert.equal(fixture.operation.status, "published");
+  });
+});
+
+test("publishes a direct scheduled video asset", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), {
+      mediaSourceType: "demo_upload",
+    });
+
+    const output = await runPublishSocialPostJob(createPublishJob(), {
+      publishers: {
+        async instagram(params) {
+          assert.equal(params.videoUrl, "https://cdn.example.com/final.mp4");
+          return {
+            mediaId: "instagram-media-direct-video",
+            permalink: "https://www.instagram.com/reel/direct-video",
+          };
+        },
+      },
+      store: fixture.store,
+    });
+
+    assert.equal(output.platformPostId, "instagram-media-direct-video");
+    assert.deepEqual(fixture.calls, [
+      "claim-operation",
+      "operation-published",
+      "target-published",
+    ]);
   });
 });
 
@@ -685,6 +719,7 @@ function createPublishStore(
     cancelAfterClaimDenied?: boolean;
     denyClaim?: boolean;
     failTargetPublished?: boolean;
+    mediaSourceType?: PublishMediaSourceType;
     platform?: "instagram" | "tiktok" | "youtube";
     targetStatus?: "cancelled" | "failed" | "scheduled";
     withInstagramRefresh?: boolean;
@@ -698,6 +733,7 @@ function createPublishStore(
     options.platform,
     options.withTikTokRefresh,
     options.withInstagramRefresh,
+    options.mediaSourceType,
   );
   let targetMetadata: Record<string, Json> = {};
   let targetErrorCode: string | null = null;
@@ -873,6 +909,7 @@ function createPublishContext(
   platform: "instagram" | "tiktok" | "youtube" = "instagram",
   withTikTokRefresh = false,
   withInstagramRefresh = false,
+  mediaSourceType: PublishMediaSourceType = "combined_render",
 ) {
   const isTikTok = platform === "tiktok";
   const isYouTube = platform === "youtube";
@@ -924,7 +961,7 @@ function createPublishContext(
       collection: "video",
       duration_seconds: 12,
       mime_type: "video/mp4",
-      source_type: "combined_render",
+      source_type: mediaSourceType,
       status: "ready",
       url: "https://cdn.example.com/final.mp4",
     },

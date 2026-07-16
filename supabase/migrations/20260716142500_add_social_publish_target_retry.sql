@@ -242,7 +242,13 @@ begin
       and media.user_id = p_user_id
       and media.status = 'ready'
       and media.collection = 'video'
-      and media.source_type = 'combined_render'
+      and media.source_type in (
+        'combined_render',
+        'demo_upload',
+        'upload',
+        'generated_video',
+        'edit_export'
+      )
   ) then
     return query select 'media_unavailable'::text, null::uuid;
     return;

@@ -56,6 +56,13 @@ const requiredYouTubeScopes = new Set([
   "https://www.googleapis.com/auth/youtube.upload",
   "https://www.googleapis.com/auth/youtubepartner",
 ]);
+const publishableVideoSourceTypes = new Set([
+  "combined_render",
+  "demo_upload",
+  "upload",
+  "generated_video",
+  "edit_export",
+]);
 const ACCESS_TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
 const SOCIAL_TOKEN_REFRESH_STALE_SECONDS = 120;
 const SOCIAL_PUBLISH_OPERATION_STALE_SECONDS = 900;
@@ -668,9 +675,9 @@ function validatePublishContext(
 
   if (
     context.media.collection !== "video" ||
-    context.media.source_type !== "combined_render"
+    !publishableVideoSourceTypes.has(context.media.source_type)
   ) {
-    throw new Error("Only combined rendered videos can be published.");
+    throw new Error("Only scheduled videos can be published.");
   }
 
   if (!isHttpsUrl(context.media.url)) {
@@ -1510,7 +1517,7 @@ export function isTransientSocialPublishError(errorMessage: string) {
       "is not publishable",
       "must be",
       "not implemented",
-      "only combined rendered videos",
+      "only scheduled videos",
       "scope",
     ].some((fragment) => normalized.includes(fragment))
   ) {

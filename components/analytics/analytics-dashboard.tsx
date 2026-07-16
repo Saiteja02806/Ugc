@@ -9,9 +9,14 @@ import {
   ChevronDown,
   ChevronUp,
   Clock3,
+  ExternalLink,
+  Eye,
+  Heart,
   ListChecks,
+  MessageCircle,
   RefreshCw,
   ShieldCheck,
+  Share2,
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
@@ -45,6 +50,41 @@ type SchedulesResponse = {
   message?: string;
   ok?: boolean;
   schedules?: ScheduledPost[];
+};
+
+type TikTokAnalyticsResponse = {
+  accounts?: TikTokAnalyticsAccount[];
+  message?: string;
+  ok?: boolean;
+};
+
+type TikTokAnalyticsAccountStatus =
+  | "error"
+  | "permission_missing"
+  | "ready"
+  | "unavailable";
+
+type TikTokAnalyticsVideo = {
+  commentCount: number | null;
+  coverImageUrl: string | null;
+  createdAt: string | null;
+  description: string | null;
+  id: string;
+  likeCount: number | null;
+  shareCount: number | null;
+  shareUrl: string | null;
+  title: string | null;
+  viewCount: number | null;
+};
+
+type TikTokAnalyticsAccount = {
+  accountName: string | null;
+  accountUsername: string | null;
+  connectionId: string;
+  lastSyncedAt: string | null;
+  message: string | null;
+  status: TikTokAnalyticsAccountStatus;
+  videos: TikTokAnalyticsVideo[];
 };
 
 type ActivityBucket = {
@@ -86,6 +126,9 @@ const connectionStatusLabels: Record<SocialConnectionStatus, string> = {
 export function AnalyticsDashboard() {
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [schedules, setSchedules] = useState<ScheduledPost[]>([]);
+  const [tiktokAnalyticsAccounts, setTikTokAnalyticsAccounts] = useState<
+    TikTokAnalyticsAccount[]
+  >([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<AnalyticsLoadState>("loading");
 
@@ -100,6 +143,7 @@ export function AnalyticsDashboard() {
       if (!token) {
         setConnections([]);
         setSchedules([]);
+        setTikTokAnalyticsAccounts([]);
         setErrorMessage(null);
         setLoadState("ready");
         return;
@@ -109,18 +153,24 @@ export function AnalyticsDashboard() {
         Authorization: `Bearer ${token}`,
       };
 
-      const [connectionsResponse, schedulesResponse] = await Promise.all([
-        fetch("/api/social/connections", {
-          cache: "no-store",
-          headers,
-          signal,
-        }),
-        fetch("/api/schedules", {
-          cache: "no-store",
-          headers,
-          signal,
-        }),
-      ]);
+      const [connectionsResponse, schedulesResponse, tiktokAnalyticsResponse] =
+        await Promise.all([
+          fetch("/api/social/connections", {
+            cache: "no-store",
+            headers,
+            signal,
+          }),
+          fetch("/api/schedules", {
+            cache: "no-store",
+            headers,
+            signal,
+          }),
+          fetch("/api/analytics/tiktok/videos", {
+            cache: "no-store",
+            headers,
+            signal,
+          }),
+        ]);
 
       const connectionsData = (await connectionsResponse
         .json()
@@ -128,6 +178,9 @@ export function AnalyticsDashboard() {
       const schedulesData = (await schedulesResponse
         .json()
         .catch(() => null)) as SchedulesResponse | null;
+      const tiktokAnalyticsData = (await tiktokAnalyticsResponse
+        .json()
+        .catch(() => null)) as TikTokAnalyticsResponse | null;
 
       if (signal?.aborted) {
         return;
@@ -145,10 +198,21 @@ export function AnalyticsDashboard() {
         );
       }
 
+      if (!tiktokAnalyticsResponse.ok || !tiktokAnalyticsData?.ok) {
+        throw new Error(
+          tiktokAnalyticsData?.message || "We could not load TikTok analytics.",
+        );
+      }
+
       setConnections(
         Array.isArray(connectionsData.connections) ? connectionsData.connections : [],
       );
       setSchedules(Array.isArray(schedulesData.schedules) ? schedulesData.schedules : []);
+      setTikTokAnalyticsAccounts(
+        Array.isArray(tiktokAnalyticsData.accounts)
+          ? tiktokAnalyticsData.accounts
+          : [],
+      );
       setErrorMessage(null);
       setLoadState("ready");
     } catch (error) {
@@ -224,6 +288,7 @@ export function AnalyticsDashboard() {
               analytics={analytics}
               connections={connections}
               schedules={schedules}
+              tiktokAnalyticsAccounts={tiktokAnalyticsAccounts}
             />
           ) : null}
         </div>
@@ -237,11 +302,13 @@ function AnalyticsReadyState({
   analytics,
   connections,
   schedules,
+  tiktokAnalyticsAccounts,
 }: {
   activeConnectionCount: number;
   analytics: AnalyticsSummary;
   connections: SocialConnection[];
   schedules: ScheduledPost[];
+  tiktokAnalyticsAccounts: TikTokAnalyticsAccount[];
 }) {
   const hasSchedules = schedules.length > 0;
 
@@ -257,8 +324,8 @@ function AnalyticsReadyState({
               What is happening with your posts
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-              This uses UGC Pilot schedule and publish records. Views, likes, comments,
-              and follower metrics will appear only after provider performance sync is enabled.
+              This uses UGC Pilot schedule and publish records. TikTok public video
+              views, likes, comments, and shares appear below when analytics access is granted.
             </p>
           </div>
 
@@ -305,8 +372,7 @@ function AnalyticsReadyState({
                 Publishing trend
               </h2>
               <p className="mt-1.5 max-w-xl text-sm leading-6 text-muted">
-                Real scheduled and published post counts. Likes and views will appear
-                here after platform metric sync is enabled.
+                Real scheduled and published post counts from UGC Pilot records.
               </p>
             </div>
             <span className="inline-flex w-fit items-center rounded-full border border-border bg-card-muted px-3 py-1.5 text-xs font-semibold text-muted">
@@ -356,6 +422,8 @@ function AnalyticsReadyState({
           )}
         </section>
       </div>
+
+      <TikTokPublicVideoAnalyticsPanel accounts={tiktokAnalyticsAccounts} />
 
       <ConnectedAccountsDisclosure connections={connections} />
 
@@ -700,6 +768,236 @@ function OutcomePill({
         {value}
       </span>
       <span className="mt-0.5 block font-semibold">{label}</span>
+    </div>
+  );
+}
+
+function TikTokPublicVideoAnalyticsPanel({
+  accounts,
+}: {
+  accounts: TikTokAnalyticsAccount[];
+}) {
+  const videoCount = accounts.reduce(
+    (count, account) => count + account.videos.length,
+    0,
+  );
+
+  return (
+    <section className="rounded-card border border-border bg-card p-5 shadow-card sm:p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-card-muted">
+            <SocialPlatformIcon platform="tiktok" className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+              TikTok analytics
+            </p>
+            <h2 className="mt-2 text-lg font-semibold tracking-normal text-foreground-strong">
+              Public video performance
+            </h2>
+            <p className="mt-1.5 max-w-3xl text-sm leading-6 text-muted">
+              Views, likes, comments, and shares are loaded from TikTok public videos
+              for the connected account that granted video.list.
+            </p>
+          </div>
+        </div>
+
+        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card-muted px-3 py-1.5 text-xs font-semibold text-muted">
+          <BarChart3 className="size-4" aria-hidden="true" />
+          {videoCount > 0 ? `${videoCount} public videos` : "Real TikTok API"}
+        </span>
+      </div>
+
+      {accounts.length > 0 ? (
+        <div className="mt-5 space-y-4">
+          {accounts.map((account) => (
+            <TikTokAnalyticsAccountCard key={account.connectionId} account={account} />
+          ))}
+        </div>
+      ) : (
+        <EmptyAnalyticsState
+          compact
+          description="Connect TikTok before public video views, likes, comments, and shares can be synchronized."
+          title="No TikTok account connected"
+        />
+      )}
+    </section>
+  );
+}
+
+function TikTokAnalyticsAccountCard({
+  account,
+}: {
+  account: TikTokAnalyticsAccount;
+}) {
+  const isReady = account.status === "ready";
+  const statusClassName =
+    account.status === "ready"
+      ? "text-success"
+      : account.status === "permission_missing"
+        ? "text-primary"
+        : "text-muted";
+  const lastSyncedLabel = formatDateTime(account.lastSyncedAt);
+
+  return (
+    <div className="rounded-card border border-border bg-card-muted/35 p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-foreground-strong">
+            {getTikTokAnalyticsAccountName(account)}
+          </p>
+          <p className="mt-1 text-xs text-muted">Connected TikTok account</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {lastSyncedLabel ? (
+            <span className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-muted">
+              <Clock3 className="size-4" aria-hidden="true" />
+              Last refreshed {lastSyncedLabel}
+            </span>
+          ) : null}
+          <span className={`inline-flex w-fit items-center gap-1.5 text-xs font-semibold ${statusClassName}`}>
+            <span
+              className={`size-1.5 rounded-full ${
+                isReady ? "bg-success" : "bg-muted-subtle"
+              }`}
+              aria-hidden="true"
+            />
+            {getTikTokAnalyticsStatusLabel(account.status)}
+          </span>
+        </div>
+      </div>
+
+      {!isReady ? (
+        <div className="mt-4 rounded-control border border-border bg-card px-4 py-3">
+          <p className="text-sm leading-6 text-muted">
+            {account.message ||
+              "Analytics become available after the TikTok post is publicly accessible."}
+          </p>
+          {account.status === "permission_missing" ? (
+            <ManageAccountsLink className="mt-3" label="Reconnect TikTok" />
+          ) : null}
+        </div>
+      ) : account.videos.length > 0 ? (
+        <div className="mt-4 grid gap-3 xl:grid-cols-2">
+          {account.videos.map((video) => (
+            <TikTokAnalyticsVideoCard
+              key={video.id}
+              lastSyncedAt={account.lastSyncedAt}
+              video={video}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-control border border-border bg-card px-4 py-3">
+          <p className="text-sm leading-6 text-muted">
+            {account.message ||
+              "Analytics become available after the TikTok post is publicly accessible."}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TikTokAnalyticsVideoCard({
+  lastSyncedAt,
+  video,
+}: {
+  lastSyncedAt: string | null;
+  video: TikTokAnalyticsVideo;
+}) {
+  const title = video.title || video.description || "TikTok public video";
+  const publishedLabel = formatDateTime(video.createdAt);
+  const lastSyncedLabel = formatDateTime(lastSyncedAt);
+
+  return (
+    <article className="rounded-card border border-border bg-card p-3">
+      <div className="flex gap-3">
+        {video.coverImageUrl ? (
+          <span
+            aria-label="TikTok video thumbnail"
+            className="block aspect-[9/16] w-20 shrink-0 rounded-control bg-card-muted bg-cover bg-center"
+            role="img"
+            style={{ backgroundImage: `url(${JSON.stringify(video.coverImageUrl)})` }}
+          />
+        ) : (
+          <span className="flex aspect-[9/16] w-20 shrink-0 items-center justify-center rounded-control bg-card-muted text-muted-subtle">
+            <BarChart3 className="size-5" aria-hidden="true" />
+          </span>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground-strong">
+            {title}
+          </h3>
+          {video.description && video.description !== title ? (
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">
+              {video.description}
+            </p>
+          ) : null}
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
+            {publishedLabel ? <span>Published {publishedLabel}</span> : null}
+            {lastSyncedLabel ? <span>Refreshed {lastSyncedLabel}</span> : null}
+            {video.shareUrl ? (
+              <a
+                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                href={video.shareUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Open video
+                <ExternalLink className="size-3.5" aria-hidden="true" />
+              </a>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <TikTokMetricPill
+          icon={<Eye className="size-3.5" aria-hidden="true" />}
+          label="Views"
+          value={video.viewCount}
+        />
+        <TikTokMetricPill
+          icon={<Heart className="size-3.5" aria-hidden="true" />}
+          label="Likes"
+          value={video.likeCount}
+        />
+        <TikTokMetricPill
+          icon={<MessageCircle className="size-3.5" aria-hidden="true" />}
+          label="Comments"
+          value={video.commentCount}
+        />
+        <TikTokMetricPill
+          icon={<Share2 className="size-3.5" aria-hidden="true" />}
+          label="Shares"
+          value={video.shareCount}
+        />
+      </div>
+    </article>
+  );
+}
+
+function TikTokMetricPill({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number | null;
+}) {
+  return (
+    <div className="rounded-control border border-border bg-card-muted px-2.5 py-2">
+      <span className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
+        {icon}
+        {label}
+      </span>
+      <span className="mt-1 block font-mono text-sm font-semibold text-foreground-strong">
+        {formatMetricValue(value)}
+      </span>
     </div>
   );
 }
@@ -1206,6 +1504,32 @@ function getConnectionName(connection: SocialConnection) {
   return `${platformLabels[connection.platform]} account`;
 }
 
+function getTikTokAnalyticsAccountName(account: TikTokAnalyticsAccount) {
+  if (account.accountName?.trim()) {
+    return account.accountName.trim();
+  }
+
+  if (account.accountUsername?.trim()) {
+    return `@${account.accountUsername.trim().replace(/^@/, "")}`;
+  }
+
+  return "TikTok account";
+}
+
+function getTikTokAnalyticsStatusLabel(status: TikTokAnalyticsAccountStatus) {
+  switch (status) {
+    case "ready":
+      return "Analytics connected";
+    case "permission_missing":
+      return "Permission needed";
+    case "unavailable":
+      return "Unavailable";
+    case "error":
+    default:
+      return "Sync error";
+  }
+}
+
 function formatConnectionDate(value: string) {
   const date = new Date(value);
 
@@ -1218,4 +1542,35 @@ function formatConnectionDate(value: string) {
     month: "short",
     year: "numeric",
   }).format(date)}`;
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatMetricValue(value: number | null) {
+  if (value === null) {
+    return "Unavailable";
+  }
+
+  return new Intl.NumberFormat("en", {
+    maximumFractionDigits: 1,
+    notation: value >= 10_000 ? "compact" : "standard",
+  }).format(value);
 }

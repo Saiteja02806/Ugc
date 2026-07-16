@@ -38,6 +38,12 @@ export const dynamic = "force-dynamic";
 
 const COMBINATION_RENDER_JOB_TYPE = "render_schedule_combination";
 const videoRatios = new Set<MediaRatio>(["9:16", "1:1", "4:5", "16:9"]);
+const scheduledVideoSourceTypes = new Set([
+  "demo_upload",
+  "upload",
+  "generated_video",
+  "edit_export",
+]);
 type CombinationRenderRatio = "9:16" | "1:1" | "4:5" | "16:9";
 
 function jsonResponse(body: unknown, status = 200) {
@@ -112,13 +118,17 @@ export async function POST(
   }
 
   const hookMediaId = getString(metadata.hookMediaId);
-  const demoMediaId = getString(metadata.demoMediaId) ?? schedule.mediaAssetId;
+  const demoMediaId =
+    getString(metadata.scheduledVideoId) ??
+    getString(metadata.demoMediaId) ??
+    schedule.mediaAssetId;
 
   if (!hookMediaId || !demoMediaId) {
     return jsonResponse(
       {
         ok: false,
-        message: "Choose one opening video and one demo video before preparing the post.",
+        message:
+          "Choose an opening clip and scheduled video before preparing the post.",
       },
       409,
     );
@@ -135,19 +145,19 @@ export async function POST(
         code: "selected_opening_video_unavailable",
         ok: false,
         message:
-          "The selected opening video is no longer available. Edit this draft and choose another video.",
+          "The selected opening clip is no longer available. Edit this draft and choose another clip.",
       },
       409,
     );
   }
 
-  if (!demoAsset || !isDemoAsset(demoAsset)) {
+  if (!demoAsset || !isScheduledVideoAsset(demoAsset)) {
     return jsonResponse(
       {
         code: "selected_demo_video_unavailable",
         ok: false,
         message:
-          "The selected Library demo is no longer available. Edit this draft and choose another demo, or add one in Content first.",
+          "The selected scheduled video is no longer available. Edit this draft and choose another video.",
       },
       409,
     );
@@ -173,7 +183,7 @@ export async function POST(
       asset: hookAsset,
       userId,
     }),
-    resolveDemoRenderAsset({
+    resolveScheduledVideoRenderAsset({
       asset: demoAsset,
       projectId,
       userId,
@@ -397,12 +407,27 @@ function isHookAsset(asset: MediaAssetRow) {
   );
 }
 
-function isDemoAsset(asset: MediaAssetRow) {
+function isScheduledVideoAsset(asset: MediaAssetRow) {
   return (
     asset.status === "ready" &&
     asset.collection === "video" &&
-    asset.source_type === "demo_upload"
+    scheduledVideoSourceTypes.has(asset.source_type)
   );
+}
+
+async function resolveScheduledVideoRenderAsset(params: {
+  asset: MediaAssetRow;
+  projectId: string;
+  userId: string;
+}) {
+  if (params.asset.source_type === "demo_upload") {
+    return resolveDemoRenderAsset(params);
+  }
+
+  return resolveOpeningRenderAsset({
+    asset: params.asset,
+    userId: params.userId,
+  });
 }
 
 function getRecord(value: unknown) {

@@ -73,7 +73,12 @@ const hookVideoSourceTypes: MediaSourceType[] = [
   "generated_video",
   "edit_export",
 ];
-const demoVideoSourceTypes: MediaSourceType[] = ["demo_upload"];
+const scheduledVideoSourceTypes: MediaSourceType[] = [
+  "demo_upload",
+  "upload",
+  "generated_video",
+  "edit_export",
+];
 const openingVideoSourceTabs = [
   { id: "all", label: "All" },
   { id: "influencers", label: "Influencers" },
@@ -166,13 +171,14 @@ type TikTokCapabilitiesState =
 
 type ScheduleFormSubmission = {
   caption: string;
-  demoMedia: ScheduleMediaOption;
-  hookMedia: ScheduleMediaOption;
+  openingMedia: ScheduleMediaOption | null;
   scheduledDate: string;
   scheduledFor: string;
+  scheduledVideo: ScheduleMediaOption;
   scheduledTime: string;
   targets: ScheduleCreateTargetInput[];
   timezone: string;
+  useOpeningClip: boolean;
 };
 
 const tabLabels: Record<ScheduleTab, string> = {
@@ -293,7 +299,7 @@ export function SchedulingWorkspace() {
       );
       setDemoMediaOptions(
         videoAssets
-          .filter(isDemoVideoMediaAsset)
+          .filter(isScheduledVideoMediaAsset)
           .map(mapMediaAssetToScheduleMediaOption),
       );
       setScheduleMediaLoaded(true);
@@ -317,7 +323,7 @@ export function SchedulingWorkspace() {
       }
       return true;
     } catch {
-      setActionNotice("Could not load video and demo media for scheduling.");
+      setActionNotice("Could not load scheduling media.");
       return false;
     }
   }, []);
@@ -549,45 +555,69 @@ export function SchedulingWorkspace() {
 
       let nextSchedule = data.schedule;
       const shouldAutoScheduleFinal = selectedConnectionIds.length > 0;
+      const shouldRenderCombination = submission.useOpeningClip;
       let nextNotice = shouldAutoScheduleFinal
-        ? editing
-          ? "Changes saved. Preparing the updated video before scheduling."
-          : "Schedule saved. Preparing the video before automatic scheduling."
+        ? shouldRenderCombination
+          ? editing
+            ? "Changes saved. Preparing the updated video before scheduling."
+            : "Schedule saved. Preparing the video before automatic scheduling."
+          : editing
+            ? "Changes saved. Scheduling the selected video."
+            : "Schedule saved. Scheduling the selected video."
         : editing
           ? "Changes saved as a video draft."
-          : "Combination draft saved.";
+          : shouldRenderCombination
+            ? "Combination draft saved."
+            : "Video draft saved.";
 
       try {
-        const renderResult = await queueCombinationRender({
-          scheduleId: data.schedule.id,
-          token,
-        });
-        nextSchedule = renderResult.schedule;
-        if (shouldAutoScheduleFinal && renderResult.status === "ready") {
+        if (shouldRenderCombination) {
+          const renderResult = await queueCombinationRender({
+            scheduleId: data.schedule.id,
+            token,
+          });
+          nextSchedule = renderResult.schedule;
+          if (shouldAutoScheduleFinal && renderResult.status === "ready") {
+            const publishResult = await requestFinalSchedule({
+              connectionIds: selectedConnectionIds,
+              scheduleId: renderResult.schedule.id,
+              timezone: submission.timezone,
+              token,
+            });
+            nextSchedule = publishResult.schedule;
+            nextNotice = publishResult.created
+              ? editing
+                ? "Changes saved and the final post was scheduled."
+                : "Final combined video scheduled."
+              : "The final combined video was already scheduled.";
+          } else {
+            nextNotice = shouldAutoScheduleFinal
+              ? editing
+                ? "Changes saved. Preparing the updated video before automatic scheduling."
+                : "Schedule saved. Preparing the video before automatic scheduling."
+              : renderResult.status === "ready"
+                ? "Combined video is already ready."
+                : "Combination draft saved and video preparation started.";
+          }
+        } else if (shouldAutoScheduleFinal) {
           const publishResult = await requestFinalSchedule({
             connectionIds: selectedConnectionIds,
-            scheduleId: renderResult.schedule.id,
+            scheduleId: data.schedule.id,
             timezone: submission.timezone,
             token,
           });
           nextSchedule = publishResult.schedule;
           nextNotice = publishResult.created
             ? editing
-              ? "Changes saved and the final post was scheduled."
-              : "Final combined video scheduled."
-            : "The final combined video was already scheduled.";
-        } else {
-          nextNotice = shouldAutoScheduleFinal
-          ? editing
-            ? "Changes saved. Preparing the updated video before automatic scheduling."
-            : "Schedule saved. Preparing the video before automatic scheduling."
-          : renderResult.status === "ready"
-            ? "Combined video is already ready."
-            : "Combination draft saved and video preparation started.";
+              ? "Changes saved and the selected video was scheduled."
+              : "Selected video scheduled."
+            : "The selected video was already scheduled.";
         }
-      } catch (renderError) {
-        nextNotice = `${editing ? "Changes" : "Draft"} saved, but video preparation did not start: ${getErrorMessage(
-          renderError,
+      } catch (scheduleError) {
+        nextNotice = `${editing ? "Changes" : "Draft"} saved, but ${
+          shouldRenderCombination ? "video preparation" : "platform scheduling"
+        } did not start: ${getErrorMessage(
+          scheduleError,
         )}`;
       }
 
@@ -794,7 +824,7 @@ export function SchedulingWorkspace() {
             Scheduling
           </h1>
           <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-            Plan video plus demo combinations for upcoming posts.
+            Plan scheduled videos for upcoming posts.
           </p>
         </div>
 
@@ -921,8 +951,8 @@ function ConnectionNotice() {
             </span>
           </div>
           <p className="mt-1 max-w-3xl text-sm font-medium leading-6 text-[#405977]">
-            Pair an opening video with a Library demo. We prepare one combined
-            video and schedule it automatically.
+            Choose a scheduled video, optionally add an opening clip, then
+            schedule it automatically.
           </p>
         </div>
       </div>
@@ -1157,14 +1187,19 @@ function ScheduleDraftPreview({
   retryingPublishTargetId: string | null;
 }) {
   const { combinedMedia, demoMedia, hookMedia } = getDraftMediaParts(draft);
+  const combinedDraft = isCombinedVideoDraft(draft);
 
   return (
     <article className="grid gap-3 rounded-2xl border border-border bg-white p-3 shadow-sm">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-2">
-        <ScheduleDraftMediaThumb label="Opening" media={hookMedia} />
-        <span className="flex items-center text-xs font-bold text-muted">+</span>
-        <ScheduleDraftMediaThumb label="Demo" media={demoMedia} />
-      </div>
+      {combinedDraft ? (
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-2">
+          <ScheduleDraftMediaThumb label="Opening clip" media={hookMedia} />
+          <span className="flex items-center text-xs font-bold text-muted">+</span>
+          <ScheduleDraftMediaThumb label="Scheduled video" media={demoMedia} />
+        </div>
+      ) : (
+        <ScheduleDraftMediaThumb label="Scheduled video" media={demoMedia} />
+      )}
 
       <div className="min-w-0">
         <div className="flex items-start justify-between gap-3">
@@ -1619,7 +1654,7 @@ function ScheduleEmptyState({
         </p>
         <p className="mt-2 text-sm font-medium leading-6 text-muted">
           {isPrimaryEmpty
-            ? "Your scheduled video and demo posts will appear here after you choose connected accounts, date, and time."
+            ? "Your scheduled posts will appear here after you choose connected accounts, date, and time."
             : "This filter shows server-backed schedule records for the selected status."}
         </p>
         <button
@@ -1935,8 +1970,8 @@ function DayScheduleWorkspace({
                   Day workflow
                 </p>
                 <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-                  Choose an opening video and a Library demo. We prepare one
-                  combined video, then schedule the final post.
+                  Choose a scheduled video. You can optionally add an opening
+                  clip and prepare both as one final post.
                 </p>
               </div>
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#173454] text-white">
@@ -1995,7 +2030,7 @@ function DayScheduleWorkspace({
                   Nothing scheduled here.
                 </p>
                 <p className="mt-1 text-sm font-medium leading-6 text-muted">
-                  Add a video and demo combination for this day.
+                  Add a scheduled video for this day.
                 </p>
               </div>
             )}
@@ -2031,6 +2066,7 @@ function SelectedDayDraftCard({
   retryingPublishTargetId: string | null;
 }) {
   const { combinedMedia, demoMedia, hookMedia } = getDraftMediaParts(draft);
+  const combinedDraft = isCombinedVideoDraft(draft);
 
   return (
     <article className="rounded-xl border border-border bg-white px-3 py-3 shadow-sm">
@@ -2053,15 +2089,23 @@ function SelectedDayDraftCard({
         </span>
       </div>
 
-      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs font-bold">
-        <span className="truncate rounded-lg bg-card-muted px-2 py-1 text-muted">
-          Opening: {hookMedia?.title ?? "Missing"}
-        </span>
-        <span className="text-muted">+</span>
-        <span className="truncate rounded-lg bg-card-muted px-2 py-1 text-muted">
-          Demo: {demoMedia?.title ?? "Missing"}
-        </span>
-      </div>
+      {combinedDraft ? (
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs font-bold">
+          <span className="truncate rounded-lg bg-card-muted px-2 py-1 text-muted">
+            Opening clip: {hookMedia?.title ?? "Missing"}
+          </span>
+          <span className="text-muted">+</span>
+          <span className="truncate rounded-lg bg-card-muted px-2 py-1 text-muted">
+            Scheduled video: {demoMedia?.title ?? "Missing"}
+          </span>
+        </div>
+      ) : (
+        <div className="mt-3 text-xs font-bold">
+          <span className="block truncate rounded-lg bg-card-muted px-2 py-1 text-muted">
+            Scheduled video: {demoMedia?.title ?? "Missing"}
+          </span>
+        </div>
+      )}
 
       {draft.caption ? (
         <p className="mt-3 line-clamp-2 text-xs font-medium leading-5 text-[#405977]">
@@ -2640,15 +2684,16 @@ function NewScheduleDrawer({
   );
   const [preparedHookMediaOptions, setPreparedHookMediaOptions] =
     useState<ScheduleMediaOption[]>([]);
+  const [useOpeningClip, setUseOpeningClip] = useState(() =>
+    isCombinedVideoMetadata(editingSchedule?.metadata ?? {}),
+  );
   const [selectedHookMediaId, setSelectedHookMediaId] = useState<string>(
-    getString(editingSchedule?.metadata.hookMediaId) ??
-      hookMediaOptions[0]?.id ??
-      "",
+    getString(editingSchedule?.metadata.hookMediaId) ?? "",
   );
   const [selectedDemoMediaId, setSelectedDemoMediaId] = useState<string>(
-    getString(editingSchedule?.metadata.demoMediaId) ??
+    getString(editingSchedule?.metadata.scheduledVideoId) ??
+      getString(editingSchedule?.metadata.demoMediaId) ??
       editingSchedule?.mediaAssetId ??
-      demoMediaOptions[0]?.id ??
       "",
   );
   const [preparingCatalogInfluencerId, setPreparingCatalogInfluencerId] =
@@ -2691,14 +2736,15 @@ function NewScheduleDrawer({
     (option) => option.id === selectedHookMediaId,
   )
     ? selectedHookMediaId
-    : localHookMediaOptions[0]?.id ?? "";
+    : "";
   const activeDemoMediaId = demoMediaOptions.some(
     (option) => option.id === selectedDemoMediaId,
   )
     ? selectedDemoMediaId
-    : demoMediaOptions[0]?.id ?? "";
-  const selectedHookMedia =
-    localHookMediaOptions.find((option) => option.id === activeHookMediaId) ?? null;
+    : "";
+  const selectedHookMedia = useOpeningClip
+    ? localHookMediaOptions.find((option) => option.id === activeHookMediaId) ?? null
+    : null;
   const selectedDemoMedia =
     demoMediaOptions.find((option) => option.id === activeDemoMediaId) ?? null;
   const selectedConnections = useMemo(
@@ -2740,9 +2786,15 @@ function NewScheduleDrawer({
   const status = getDraftStatusPreview({
     demoMedia: selectedDemoMedia,
     hookMedia: selectedHookMedia,
+    useOpeningClip,
+  });
+  const mediaValidationError = getScheduleMediaValidationError({
+    scheduledVideo: selectedDemoMedia,
+    openingMedia: selectedHookMedia,
+    useOpeningClip,
   });
   const canSaveDraft = Boolean(
-    selectedHookMedia &&
+    !mediaValidationError &&
       selectedDemoMedia &&
       scheduledDate &&
       scheduledTime &&
@@ -2914,6 +2966,15 @@ function NewScheduleDrawer({
     setSelectedHookMediaId(mediaId);
   }
 
+  function handleToggleOpeningClip(enabled: boolean) {
+    setUseOpeningClip(enabled);
+    setHookPickerError(null);
+
+    if (!enabled) {
+      setSelectedHookMediaId("");
+    }
+  }
+
   async function handleRefreshMedia() {
     setHookPickerError(null);
     setRefreshingMedia(true);
@@ -2979,7 +3040,7 @@ function NewScheduleDrawer({
 
   function handleSaveDraft() {
     if (
-      !selectedHookMedia ||
+      mediaValidationError ||
       !selectedDemoMedia ||
       !scheduleTimeValidation.scheduledFor ||
       scheduleTimeValidation.error
@@ -2989,10 +3050,10 @@ function NewScheduleDrawer({
 
     onSave({
       caption,
-      demoMedia: selectedDemoMedia,
-      hookMedia: selectedHookMedia,
+      openingMedia: selectedHookMedia,
       scheduledDate,
       scheduledFor: scheduleTimeValidation.scheduledFor,
+      scheduledVideo: selectedDemoMedia,
       scheduledTime,
       targets: selectedConnections.map((connection) => ({
         connectionId: connection.id,
@@ -3002,6 +3063,7 @@ function NewScheduleDrawer({
           getDefaultPublishingSettings(connection.platform),
       })),
       timezone,
+      useOpeningClip,
     });
   }
 
@@ -3030,7 +3092,7 @@ function NewScheduleDrawer({
               {editingSchedule ? "Edit scheduled post" : "New scheduled post"}
             </h2>
             <p className="mt-1 text-sm font-medium leading-6 text-muted">
-              Media, account settings, and publish time in one workflow.
+              Choose a video, configure your social accounts, and select when it should be published.
             </p>
           </div>
           <button
@@ -3048,37 +3110,19 @@ function NewScheduleDrawer({
             <ScheduleFlowSection
               step="1"
               title="Media"
-              description="Opening video, product demo, and caption"
+              description="Scheduled video, caption, and optional opening clip"
             >
               <div className="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)]">
-                <div className="grid content-start gap-3">
-                <ScheduleOpeningMediaPicker
-                  catalogInfluencerOptions={catalogInfluencerOptions}
-                  errorMessage={hookPickerError}
-                  mediaOptions={localHookMediaOptions}
-                  preparingCatalogInfluencerId={preparingCatalogInfluencerId}
-                  refreshingMedia={refreshingMedia}
-                  selectedMediaId={activeHookMediaId}
-                  onRefreshMedia={handleRefreshMedia}
-                  onSelectCatalogInfluencer={handleSelectCatalogInfluencer}
-                  onSelectMedia={handleSelectHookMedia}
-                />
-                <ScheduleRoleMediaPicker
-                  description="Product demo from the Library demo section."
-                  emptyDescription="Upload a demo from Library before scheduling."
-                  emptyTitle="No demo videos found."
-                  icon={<FileVideo className="size-4" aria-hidden="true" />}
-                  mediaOptions={demoMediaOptions}
-                  selectedMediaId={activeDemoMediaId}
-                  title="Demo video"
-                  onSelectMedia={setSelectedDemoMediaId}
-                />
-                </div>
-
                 <div className="grid content-start gap-4">
-                  <CompositionPreview
-                    demoMedia={selectedDemoMedia}
-                    hookMedia={selectedHookMedia}
+                  <ScheduleRoleMediaPicker
+                    description="Choose the video that will be published."
+                    emptyDescription="Select a video from your library or edited exports."
+                    emptyTitle="No scheduled videos found."
+                    icon={<FileVideo className="size-4" aria-hidden="true" />}
+                    mediaOptions={demoMediaOptions}
+                    selectedMediaId={activeDemoMediaId}
+                    title="Scheduled video"
+                    onSelectMedia={setSelectedDemoMediaId}
                   />
                   <label className="block">
                     <span className="text-sm font-bold text-foreground">
@@ -3092,6 +3136,39 @@ function NewScheduleDrawer({
                       className="mt-2 min-h-32 w-full resize-none rounded-lg border border-border bg-white px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-[#8c9aab] focus:border-primary"
                     />
                   </label>
+                  <ScheduleOpeningClipControl
+                    enabled={useOpeningClip}
+                    onToggle={handleToggleOpeningClip}
+                  >
+                    <ScheduleOpeningMediaPicker
+                      catalogInfluencerOptions={catalogInfluencerOptions}
+                      errorMessage={hookPickerError}
+                      mediaOptions={localHookMediaOptions}
+                      preparingCatalogInfluencerId={preparingCatalogInfluencerId}
+                      refreshingMedia={refreshingMedia}
+                      selectedMediaId={activeHookMediaId}
+                      onRefreshMedia={handleRefreshMedia}
+                      onSelectCatalogInfluencer={handleSelectCatalogInfluencer}
+                      onSelectMedia={handleSelectHookMedia}
+                    />
+                  </ScheduleOpeningClipControl>
+                  {mediaValidationError ? (
+                    <div
+                      role="alert"
+                      className="flex items-start gap-2 rounded-lg bg-error/10 px-3 py-2 text-xs font-semibold leading-5 text-error"
+                    >
+                      <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                      <span>{mediaValidationError}</span>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="grid content-start gap-4">
+                  <CompositionPreview
+                    openingMedia={selectedHookMedia}
+                    scheduledMedia={selectedDemoMedia}
+                    useOpeningClip={useOpeningClip}
+                  />
                 </div>
               </div>
             </ScheduleFlowSection>
@@ -3203,9 +3280,10 @@ function NewScheduleDrawer({
                 </div>
 
                 <StatusPreview
-                  demoMedia={selectedDemoMedia}
-                  hookMedia={selectedHookMedia}
+                  openingMedia={selectedHookMedia}
+                  scheduledMedia={selectedDemoMedia}
                   status={status}
+                  useOpeningClip={useOpeningClip}
                 />
               </div>
             </ScheduleFlowSection>
@@ -3243,15 +3321,17 @@ function NewScheduleDrawer({
                     : "Save video draft"
                 : publishingSettingsError
                   ? "Review publishing settings"
-                : selectedHookMedia && selectedDemoMedia
+                : selectedDemoMedia
                   ? "Choose date and time"
-                  : "Choose video and demo"}
+                  : mediaValidationError ?? "Select a video to schedule"}
           </button>
           <p className="mt-3 text-center text-xs font-semibold leading-5 text-muted">
             {editingSchedule
               ? "Saved changes replace this draft. Active platform jobs cannot be edited."
               : hasSelectedConnections
-              ? "We prepare one combined video first, then schedule it automatically when ready."
+              ? useOpeningClip
+                ? "We prepare one combined video first, then schedule it automatically when ready."
+                : "This selected video will be scheduled directly without extra preparation."
               : "Choose an account to schedule automatically, or save a video draft without publishing."}
           </p>
         </div>
@@ -3290,6 +3370,44 @@ function ScheduleFlowSection({
 }
 
 type OpeningVideoSourceTab = (typeof openingVideoSourceTabs)[number]["id"];
+
+function ScheduleOpeningClipControl({
+  children,
+  enabled,
+  onToggle,
+}: {
+  children: ReactNode;
+  enabled: boolean;
+  onToggle: (enabled: boolean) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-border bg-white/78 p-3 shadow-sm">
+      <label className="flex cursor-pointer items-start justify-between gap-4">
+        <span className="flex min-w-0 items-start gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-primary">
+            <UserRound className="size-4" aria-hidden="true" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-bold text-foreground">
+              Add an opening clip
+            </span>
+            <span className="mt-0.5 block text-xs font-semibold leading-5 text-muted">
+              Place a short opening clip before the scheduled video.
+            </span>
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(event) => onToggle(event.target.checked)}
+          className="mt-1 size-4 shrink-0 accent-primary"
+        />
+      </label>
+
+      {enabled ? <div className="mt-3">{children}</div> : null}
+    </section>
+  );
+}
 
 function ScheduleOpeningMediaPicker({
   catalogInfluencerOptions,
@@ -3450,9 +3568,11 @@ function ScheduleOpeningMediaPicker({
             <UserRound className="size-4" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-foreground">Opening video</p>
+            <p className="text-sm font-bold text-foreground">
+              Optional opening clip
+            </p>
             <p className="mt-0.5 text-xs font-semibold leading-5 text-muted">
-              Choose from influencers, videos, or Edit exports.
+              Add a short opening clip before the scheduled video.
             </p>
           </div>
         </div>
@@ -3477,7 +3597,7 @@ function ScheduleOpeningMediaPicker({
       </div>
 
       <div
-        aria-label="Choose opening video source"
+        aria-label="Choose opening clip source"
         className="mt-3 flex flex-wrap gap-2"
       >
         {openingVideoSourceTabs.map((source) => {
@@ -3732,19 +3852,25 @@ function ScheduleRoleMediaPicker({
 }
 
 function CompositionPreview({
-  demoMedia,
-  hookMedia,
+  openingMedia,
+  scheduledMedia,
+  useOpeningClip,
 }: {
-  demoMedia: ScheduleMediaOption | null;
-  hookMedia: ScheduleMediaOption | null;
+  openingMedia: ScheduleMediaOption | null;
+  scheduledMedia: ScheduleMediaOption | null;
+  useOpeningClip: boolean;
 }) {
+  const hasOpeningClip = useOpeningClip && openingMedia;
+
   return (
     <div className="rounded-2xl border border-border bg-white/80 p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-bold text-foreground">Combined post</p>
+          <p className="text-sm font-bold text-foreground">Post preview</p>
           <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-            Opening video starts the post. Demo follows as product proof.
+            {hasOpeningClip
+              ? "The opening clip will play first, followed by the scheduled video."
+              : "This video will be published as the scheduled post."}
           </p>
         </div>
         <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#173454] text-white">
@@ -3752,11 +3878,17 @@ function CompositionPreview({
         </span>
       </div>
 
-      <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-        <CompositionSlot label="Opening" media={hookMedia} />
-        <span className="text-xs font-bold text-muted">+</span>
-        <CompositionSlot label="Demo" media={demoMedia} />
-      </div>
+      {hasOpeningClip ? (
+        <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+          <CompositionSlot label="Opening clip" media={openingMedia} />
+          <span className="text-xs font-bold text-muted">+</span>
+          <CompositionSlot label="Scheduled video" media={scheduledMedia} />
+        </div>
+      ) : (
+        <div className="mt-4">
+          <CompositionSlot label="Scheduled video" media={scheduledMedia} />
+        </div>
+      )}
     </div>
   );
 }
@@ -4347,18 +4479,21 @@ function getStringSetting(
 }
 
 function StatusPreview({
-  demoMedia,
-  hookMedia,
+  openingMedia,
+  scheduledMedia,
   status,
+  useOpeningClip,
 }: {
-  demoMedia: ScheduleMediaOption | null;
-  hookMedia: ScheduleMediaOption | null;
+  openingMedia: ScheduleMediaOption | null;
+  scheduledMedia: ScheduleMediaOption | null;
   status: ScheduleDraftStatus;
+  useOpeningClip: boolean;
 }) {
-  const message =
-    hookMedia && demoMedia
-      ? "We prepare one combined video first, then schedule it automatically."
-      : "Choose one opening video and one demo video before saving.";
+  const message = getStatusPreviewMessage({
+    openingMedia,
+    scheduledVideo: scheduledMedia,
+    useOpeningClip,
+  });
 
   return (
     <div className="rounded-2xl border border-border bg-white/80 p-4 shadow-sm">
@@ -4379,7 +4514,7 @@ function StatusPreview({
 
 function getTabDescription(tab: ScheduleTab) {
   const descriptions: Record<ScheduleTab, string> = {
-    drafts: "Saved combinations that still need a date, video preparation, or final schedule.",
+    drafts: "Saved posts that still need a date, video preparation, or final schedule.",
     failed: "Posts that need attention before they can publish successfully.",
     published: "Completed posts with platform results and links.",
     upcoming: "Planned posts moving from preparation to scheduling to publishing.",
@@ -4478,7 +4613,9 @@ function getDraftRenderMessage(draft: ScheduleDraft) {
   }
 
   if (draft.status === "scheduled") {
-    return "Final combined video is scheduled. Publishing will run at the planned time.";
+    return isSingleVideoDraft(draft)
+      ? "Scheduled video is queued for publishing at the planned time."
+      : "Final combined video is scheduled. Publishing will run at the planned time.";
   }
 
   if (draft.status === "scheduling") {
@@ -4516,31 +4653,35 @@ function getDraftRenderMessage(draft: ScheduleDraft) {
 
   if (draft.status === "rendering") {
     return hasPlannedFinalSchedule(draft)
-      ? "We are combining the opening video and demo. Scheduling starts automatically when the video is ready."
-      : "Opening video and demo are being combined into one MP4.";
+      ? "We are combining the opening clip and scheduled video. Scheduling starts automatically when the video is ready."
+      : "Opening clip and scheduled video are being combined into one MP4.";
   }
 
   if (draft.status === "render_required") {
-    return "Prepare the opening video and demo as one video before publishing.";
+    return "Prepare the opening clip and scheduled video as one video before publishing.";
   }
 
   if (draft.status === "media_required") {
     if (draft.mediaIssue === "demo") {
-      return "The selected Library demo was removed. Edit this draft and choose another demo, or add one in Content first.";
+      return "The selected scheduled video was removed. Edit this draft and choose another video.";
     }
 
     if (draft.mediaIssue === "opening") {
-      return "The selected opening video was removed. Edit this draft and choose an available video.";
+      return "The selected opening clip was removed. Edit this draft and choose an available clip.";
     }
 
     if (draft.mediaIssue === "both") {
       return "The selected videos are no longer available. Edit this draft and choose new media.";
     }
 
-    return "Choose one opening video and one demo video before preparing the post.";
+    return isSingleVideoDraft(draft)
+      ? "Select a video to schedule."
+      : "Choose an opening clip and scheduled video before preparing the post.";
   }
 
-  return "Save a video and demo pair before preparing the post.";
+  return isSingleVideoDraft(draft)
+    ? "Save a scheduled video before publishing."
+    : "Save an opening clip and scheduled video before preparing the post.";
 }
 
 function canScheduleFinalDraft(draft: ScheduleDraft) {
@@ -4548,7 +4689,7 @@ function canScheduleFinalDraft(draft: ScheduleDraft) {
     (draft.status === "ready" ||
       draft.status === "publishing_unavailable" ||
       canRetrySchedulerCreateFailure(draft)) &&
-      draft.combinedMedia?.mediaUrl &&
+      (isSingleVideoDraft(draft) ? draft.demoMedia : draft.combinedMedia?.mediaUrl) &&
       hasPlannedFinalSchedule(draft) &&
       !hasScheduleLeadTimeError(draft),
   );
@@ -4716,9 +4857,9 @@ function mapScheduledPostToScheduleDraft(
     title: metadata.hookMediaTitle,
   });
   const demoMedia = getMetadataMediaOption({
-    id: metadata.demoMediaId ?? schedule.mediaAssetId,
-    sourceType: "demo_video",
-    title: metadata.demoMediaTitle ?? schedule.title,
+    id: metadata.scheduledVideoId ?? metadata.demoMediaId ?? schedule.mediaAssetId,
+    sourceType: getScheduleMediaSourceType(metadata.scheduledVideoSourceType),
+    title: metadata.scheduledVideoTitle ?? metadata.demoMediaTitle ?? schedule.title,
   });
   const combinedMedia = getMetadataMediaOption({
     id: metadata.combinedMediaAssetId,
@@ -4740,6 +4881,7 @@ function mapScheduledPostToScheduleDraft(
     hookMedia,
     id: schedule.id,
     mediaIssue: mediaIssue ?? undefined,
+    mediaMode: isCombinedVideoMetadata(metadata) ? "combined_video" : "single_video",
     mediaTitle: schedule.title,
     plannedConnectionIds: getMetadataCsv(metadata.plannedConnectionIds),
     plannedScheduledFor: plannedScheduledFor ?? undefined,
@@ -4750,6 +4892,8 @@ function mapScheduledPostToScheduleDraft(
     sourceType:
       combinedMedia
         ? "combined_video"
+        : isSingleVideoMetadata(metadata)
+          ? getScheduleMediaSourceType(metadata.scheduledVideoSourceType)
         : schedule.sourceKind === "library_item"
           ? "generated_carousel"
           : "demo_video",
@@ -4894,6 +5038,58 @@ function getMetadataMediaOption({
   };
 }
 
+function isSingleVideoMetadata(metadata: Record<string, unknown>) {
+  return metadata.mediaMode === "single_video";
+}
+
+function isCombinedVideoMetadata(metadata: Record<string, unknown>) {
+  return (
+    metadata.mediaMode === "combined_video" ||
+    Boolean(getString(metadata.hookMediaId))
+  );
+}
+
+function isSingleVideoDraft(draft: ScheduleDraft) {
+  return (
+    draft.mediaMode === "single_video" ||
+    (draft.mediaMode !== "combined_video" &&
+      draft.sourceType !== "combined_video" &&
+      !draft.hookMedia)
+  );
+}
+
+function isCombinedVideoDraft(draft: ScheduleDraft) {
+  return draft.mediaMode === "combined_video" || Boolean(draft.hookMedia);
+}
+
+function getScheduleMediaSourceType(value: unknown): ScheduleMediaOption["sourceType"] {
+  if (
+    value === "demo_video" ||
+    value === "demo_upload" ||
+    value === "edit_video" ||
+    value === "edit_export" ||
+    value === "generated_video" ||
+    value === "upload" ||
+    value === "user_video"
+  ) {
+    if (value === "demo_upload") {
+      return "demo_video";
+    }
+
+    if (value === "edit_export") {
+      return "edit_video";
+    }
+
+    if (value === "upload") {
+      return "user_video";
+    }
+
+    return value;
+  }
+
+  return "demo_video";
+}
+
 function getDraftMediaParts(draft: ScheduleDraft): {
   combinedMedia: ScheduleMediaOption | null;
   demoMedia: ScheduleMediaOption | null;
@@ -4983,8 +5179,11 @@ function isOpeningVideoMediaAsset(asset: MediaAsset) {
   return hookVideoSourceTypes.includes(asset.sourceType);
 }
 
-function isDemoVideoMediaAsset(asset: MediaAsset) {
-  return demoVideoSourceTypes.includes(asset.sourceType);
+function isScheduledVideoMediaAsset(asset: MediaAsset) {
+  return (
+    asset.collection === "video" &&
+    scheduledVideoSourceTypes.includes(asset.sourceType)
+  );
 }
 
 function dedupeScheduleMediaOptions(options: ScheduleMediaOption[]) {
@@ -5005,7 +5204,7 @@ function dedupeScheduleMediaOptions(options: ScheduleMediaOption[]) {
 
 function getMediaSourceLabel(option: ScheduleMediaOption) {
   const sourceLabels: Record<ScheduleMediaOption["sourceType"], string> = {
-    demo_video: "Demo video",
+    demo_video: "Library video",
     combined_video: "Combined video",
     edit_video: "Edited video",
     generated_carousel: "Generated carousel",
@@ -5045,33 +5244,45 @@ function getOpeningVideoEmptyCopy(source: OpeningVideoSourceTab) {
   return {
     description:
       "Add an influencer, upload a video, or create an Edit export before scheduling.",
-    title: "No opening videos found.",
+      title: "No opening clips found.",
   };
 }
 
 function buildScheduleRequestBody(submission: ScheduleFormSubmission) {
+  const mediaMode = submission.useOpeningClip
+    ? ("combined_video" as const)
+    : ("single_video" as const);
+
   return {
     caption: submission.caption,
     metadata: {
-      demoMediaId: submission.demoMedia.id,
-      demoMediaTitle: submission.demoMedia.title,
-      hookMediaId: submission.hookMedia.id,
-      hookMediaTitle: submission.hookMedia.title,
+      demoMediaId: submission.scheduledVideo.id,
+      demoMediaTitle: submission.scheduledVideo.title,
+      hookMediaId: submission.openingMedia?.id ?? null,
+      hookMediaTitle: submission.openingMedia?.title ?? null,
+      mediaMode,
       plannedScheduledFor: submission.scheduledFor,
       scheduledDate: submission.scheduledDate,
       scheduledTime: submission.scheduledTime,
+      scheduledVideoId: submission.scheduledVideo.id,
+      scheduledVideoSourceType: submission.scheduledVideo.sourceType,
+      scheduledVideoTitle: submission.scheduledVideo.title,
+      useOpeningClip: submission.useOpeningClip,
     },
     plannedTargets: submission.targets,
     scheduledDate: submission.scheduledDate,
     scheduledFor: submission.scheduledFor,
     scheduledTime: submission.scheduledTime,
     source: {
-      id: submission.demoMedia.id,
+      id: submission.scheduledVideo.id,
       kind: "media_asset" as const,
     },
     targets: [],
     timezone: submission.timezone,
-    title: getCompositeMediaTitle(submission.hookMedia, submission.demoMedia),
+    title:
+      mediaMode === "combined_video" && submission.openingMedia
+        ? getCompositeMediaTitle(submission.openingMedia, submission.scheduledVideo)
+        : submission.scheduledVideo.title.slice(0, 140),
   };
 }
 
@@ -5202,15 +5413,49 @@ function getInitialScheduleTab(): ScheduleTab {
 function getDraftStatusPreview({
   demoMedia,
   hookMedia,
+  useOpeningClip,
 }: {
   demoMedia: ScheduleMediaOption | null;
   hookMedia: ScheduleMediaOption | null;
+  useOpeningClip: boolean;
 }): ScheduleDraftStatus {
-  if (!hookMedia || !demoMedia) {
+  if (!demoMedia || (useOpeningClip && !hookMedia)) {
     return "media_required";
   }
 
-  return "render_required";
+  return useOpeningClip ? "render_required" : "draft";
+}
+
+function getScheduleMediaValidationError(params: {
+  openingMedia: ScheduleMediaOption | null;
+  scheduledVideo: ScheduleMediaOption | null;
+  useOpeningClip: boolean;
+}) {
+  if (!params.scheduledVideo) {
+    return "Select a video to schedule.";
+  }
+
+  if (params.useOpeningClip && !params.openingMedia) {
+    return 'Select an opening clip or turn off "Add an opening clip."';
+  }
+
+  return null;
+}
+
+function getStatusPreviewMessage(params: {
+  openingMedia: ScheduleMediaOption | null;
+  scheduledVideo: ScheduleMediaOption | null;
+  useOpeningClip: boolean;
+}) {
+  const mediaError = getScheduleMediaValidationError(params);
+
+  if (mediaError) {
+    return mediaError;
+  }
+
+  return params.useOpeningClip
+    ? "We prepare one combined video first, then schedule it automatically."
+    : "This video will be published as the scheduled post.";
 }
 
 function formatAssetDuration(seconds: number | null) {

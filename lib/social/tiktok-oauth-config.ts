@@ -4,6 +4,7 @@ export const tiktokAuthorizationEndpoint =
 export const requiredTikTokOAuthScopes = [
   "user.info.basic",
   "video.publish",
+  "video.list",
 ] as const;
 
 export function buildTikTokOAuthAuthorizationUrl(params: {
@@ -29,4 +30,8 @@ export function buildTikTokOAuthAuthorizationUrl(params: {
 
 export function hasTikTokPublishScope(scopes: readonly string[]) {
   return scopes.includes("video.publish");
+}
+
+export function hasTikTokAnalyticsScope(scopes: readonly string[]) {
+  return scopes.includes("video.list");
 }

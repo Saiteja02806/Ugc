@@ -76,6 +76,14 @@ import { isSocialPlatform } from "@/lib/social/types";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const directScheduledVideoSourceTypes = new Set([
+  "demo_upload",
+  "upload",
+  "generated_video",
+  "edit_export",
+]);
+
+type ScheduleMediaMode = "single_video" | "combined_video";
 
 export type ScheduleRenderedPostInput = {
   connectionIds?: unknown;
@@ -164,16 +172,21 @@ export async function createUserSchedule(params: {
     snapshotProvided: normalized.plannedTargetsProvided,
   });
   const isDraft = targetConnections.length === 0;
+  const mediaMode = getScheduleMediaMode(metadata);
 
   if (
     !isDraft &&
     normalized.source.kind === "media_asset" &&
-    source.sourceType !== "combined_render"
+    !isPublishableMediaSource({
+      collection: source.collection,
+      mediaMode,
+      sourceType: source.sourceType,
+    })
   ) {
     throw new SchedulingRequestError(
-      "Prepare the opening video and demo as one combined video before scheduling.",
+      "Choose a scheduled video or prepare the opening clip and video before scheduling.",
       409,
-      "combined_render_required",
+      "publishable_media_required",
     );
   }
 
@@ -309,6 +322,119 @@ export async function scheduleRenderedPost(params: {
     );
   }
 
+  const normalized = normalizeRenderedScheduleInput(params.input, existing);
+  const targetConnections = await resolveScheduleTargets({
+    targets: normalized.targets,
+    userId: params.userId,
+  });
+
+  if (targetConnections.length === 0) {
+    throw new SchedulingRequestError(
+      "Choose at least one connected account before scheduling.",
+      409,
+      "schedule_targets_required",
+    );
+  }
+
+  if (getScheduleMediaMode(existing.metadata) === "single_video") {
+    const scheduledVideoAssetId = getSingleVideoScheduleAssetId(existing);
+
+    if (!scheduledVideoAssetId) {
+      throw new SchedulingRequestError(
+        "Choose a video before scheduling this post.",
+        409,
+        "scheduled_video_required",
+      );
+    }
+
+    assertUuid(scheduledVideoAssetId, "Scheduled video ID is invalid.");
+
+    const scheduledVideoAsset = await getMediaAssetForOwner({
+      assetId: scheduledVideoAssetId,
+      userId: params.userId,
+    });
+
+    if (!isDirectScheduledVideoAsset(scheduledVideoAsset)) {
+      throw new SchedulingRequestError(
+        "The selected scheduled video is not available for publishing.",
+        409,
+        "scheduled_video_unavailable",
+      );
+    }
+
+    const prepared = await prepareScheduledPostForPublishing({
+      expectedStatus: existing.status,
+      expectedUpdatedAt: existing.updatedAt,
+      mediaAssetId: scheduledVideoAsset.id,
+      metadata: {
+        finalScheduleError: null,
+        finalScheduleRenderId: null,
+        finalScheduleRequestedAt: new Date().toISOString(),
+        finalScheduleStatus: "scheduling",
+        mediaMode: "single_video",
+        plannedConnectionIds: normalized.connectionIds.join(","),
+        plannedScheduledFor: normalized.scheduledFor,
+        scheduledDate: normalized.scheduleTime.scheduledDate,
+        scheduledTime: normalized.scheduleTime.scheduledTime,
+        scheduledVideoId: scheduledVideoAsset.id,
+        scheduledVideoSourceType: scheduledVideoAsset.source_type,
+        scheduledVideoTitle:
+          getMetadataString(existing.metadata.scheduledVideoTitle) ??
+          scheduledVideoAsset.title,
+        useOpeningClip: false,
+      },
+      postId: existing.id,
+      scheduledFor: normalized.scheduledFor,
+      timezone: normalized.timezone,
+      userId: params.userId,
+    });
+
+    if (!prepared) {
+      throw new SchedulingRequestError(
+        "This schedule changed while platform scheduling was starting. Reload it and try again.",
+        409,
+        "schedule_version_conflict",
+      );
+    }
+
+    const targetRows = await insertScheduledPostTargets(
+      targetConnections.map((connection) => ({
+        metadata: {
+          mediaMode: "single_video",
+          scheduledVideoId: scheduledVideoAsset.id,
+        },
+        platform: connection.platform,
+        scheduled_for: normalized.scheduledFor,
+        scheduled_post_id: existing.id,
+        settings: connection.settings,
+        social_connection_id: connection.id,
+        status: "scheduling",
+        user_id: params.userId,
+      })),
+    );
+
+    const { failedCount, scheduledCount } = await scheduleTargetRows({
+      projectId: existing.projectId ?? scheduledVideoAsset.project_id,
+      targetRows,
+      userId: params.userId,
+    });
+
+    await markScheduledPostStatus({
+      lastErrorCode: failedCount > 0 ? "scheduler_create_failed" : null,
+      postId: existing.id,
+      status: getPostStatusFromSchedulerCounts({ failedCount, scheduledCount }),
+      userId: params.userId,
+    });
+
+    return {
+      created: true,
+      schedule: await getRequiredSchedule({
+        postId: existing.id,
+        userId: params.userId,
+      }),
+    };
+  }
+
   const combinedMediaAssetId = getMetadataString(
     existing.metadata.combinedMediaAssetId,
   );
@@ -318,7 +444,7 @@ export async function scheduleRenderedPost(params: {
 
   if (combinedRenderStatus !== "ready" || !combinedMediaAssetId) {
     throw new SchedulingRequestError(
-      "Prepare the opening video and demo before scheduling the final post.",
+      "Prepare the opening clip and scheduled video before scheduling the final post.",
       409,
       "combined_render_not_ready",
     );
@@ -350,20 +476,6 @@ export async function scheduleRenderedPost(params: {
     userId: params.userId,
   });
 
-  const normalized = normalizeRenderedScheduleInput(params.input, existing);
-  const targetConnections = await resolveScheduleTargets({
-    targets: normalized.targets,
-    userId: params.userId,
-  });
-
-  if (targetConnections.length === 0) {
-    throw new SchedulingRequestError(
-      "Choose at least one connected account before scheduling.",
-      409,
-      "schedule_targets_required",
-    );
-  }
-
   const prepared = await prepareScheduledPostForPublishing({
     expectedStatus: existing.status,
     expectedUpdatedAt: existing.updatedAt,
@@ -375,6 +487,7 @@ export async function scheduleRenderedPost(params: {
       ),
       finalScheduleRequestedAt: new Date().toISOString(),
       finalScheduleStatus: "scheduling",
+      mediaMode: "combined_video",
       plannedConnectionIds: normalized.connectionIds.join(","),
       plannedScheduledFor: normalized.scheduledFor,
       scheduledDate: normalized.scheduleTime.scheduledDate,
@@ -398,6 +511,7 @@ export async function scheduleRenderedPost(params: {
     targetConnections.map((connection) => ({
       metadata: {
         combinedMediaAssetId,
+        mediaMode: "combined_video",
       },
       platform: connection.platform,
       scheduled_for: normalized.scheduledFor,
@@ -585,21 +699,39 @@ export async function updateUserSchedule(params: {
     );
   }
 
+  const nextMediaMode = getScheduleMediaMode(normalized.metadata);
   const hookMediaId = getMetadataString(normalized.metadata.hookMediaId);
 
-  if (!hookMediaId) {
+  if (nextMediaMode === "combined_video" && !hookMediaId) {
     throw new SchedulingRequestError(
-      "Choose an opening video before saving this schedule.",
+      "Choose an opening clip before saving this schedule.",
     );
   }
 
-  assertUuid(hookMediaId, "Opening video ID is invalid.");
+  if (hookMediaId) {
+    assertUuid(hookMediaId, "Opening clip ID is invalid.");
+  }
 
   const source = await resolveScheduleSource({
     sourceId: normalized.source.id,
     sourceKind: normalized.source.kind,
     userId: params.userId,
   });
+
+  if (
+    nextMediaMode === "single_video" &&
+    !isDirectScheduledVideoSource({
+      collection: source.collection,
+      sourceType: source.sourceType,
+    })
+  ) {
+    throw new SchedulingRequestError(
+      "Choose a ready video before saving this schedule.",
+      409,
+      "scheduled_video_required",
+    );
+  }
+
   const plannedTargetConnections = await resolveScheduleTargets({
     targets: normalized.plannedTargets,
     userId: params.userId,
@@ -608,6 +740,7 @@ export async function updateUserSchedule(params: {
     ...normalizeMetadata(existing.metadata),
     ...normalized.metadata,
     demoMediaId: normalized.source.id,
+    scheduledVideoId: normalized.source.id,
   };
   const metadata = applyTrustedPlannedTargetMetadata({
     metadata: mergedMetadata,
@@ -616,8 +749,11 @@ export async function updateUserSchedule(params: {
   });
   const previousHookMediaId = getMetadataString(existing.metadata.hookMediaId);
   const previousDemoMediaId =
+    getMetadataString(existing.metadata.scheduledVideoId) ??
     getMetadataString(existing.metadata.demoMediaId) ?? existing.mediaAssetId;
+  const previousMediaMode = getScheduleMediaMode(existing.metadata);
   const mediaChanged =
+    previousMediaMode !== nextMediaMode ||
     previousHookMediaId !== hookMediaId ||
     previousDemoMediaId !== normalized.source.id;
   const nextMetadata: Record<string, unknown> = {
@@ -632,7 +768,16 @@ export async function updateUserSchedule(params: {
     finalScheduleStatus: null,
   };
 
-  if (mediaChanged) {
+  if (nextMediaMode === "single_video") {
+    Object.assign(nextMetadata, {
+      hookMediaId: null,
+      hookMediaTitle: null,
+      mediaMode: "single_video",
+      useOpeningClip: false,
+    });
+  }
+
+  if (mediaChanged || nextMediaMode === "single_video") {
     Object.assign(nextMetadata, {
       combinedMediaAssetId: null,
       combinedRenderError: null,
@@ -739,28 +884,29 @@ async function assertCombinedRenderIsCurrent(params: {
   userId: string;
 }) {
   const hookMediaId = getMetadataString(params.schedule.metadata.hookMediaId);
-  const demoMediaId =
+  const scheduledVideoId =
+    getMetadataString(params.schedule.metadata.scheduledVideoId) ??
     getMetadataString(params.schedule.metadata.demoMediaId) ??
     params.schedule.mediaAssetId;
 
-  if (!hookMediaId || !demoMediaId) {
+  if (!hookMediaId || !scheduledVideoId) {
     return;
   }
 
-  const [hookAsset, demoAsset] = await Promise.all([
+  const [hookAsset, scheduledVideoAsset] = await Promise.all([
     getMediaAssetForOwner({
       assetId: hookMediaId,
       userId: params.userId,
     }),
     getMediaAssetForOwner({
-      assetId: demoMediaId,
+      assetId: scheduledVideoId,
       userId: params.userId,
     }),
   ]);
 
-  if (!hookAsset || !demoAsset) {
+  if (!hookAsset || !scheduledVideoAsset) {
     throw new SchedulingRequestError(
-      "The selected opening video or demo is no longer available.",
+      "The selected opening clip or scheduled video is no longer available.",
       409,
       "schedule_source_unavailable",
     );
@@ -768,16 +914,16 @@ async function assertCombinedRenderIsCurrent(params: {
 
   const projectId =
     params.schedule.projectId ??
-    demoAsset.project_id ??
+    scheduledVideoAsset.project_id ??
     hookAsset.project_id ??
     "schedule";
-  const [resolvedHookAsset, resolvedDemoAsset] = await Promise.all([
+  const [resolvedHookAsset, resolvedScheduledVideoAsset] = await Promise.all([
     resolveOpeningRenderAsset({
       asset: hookAsset,
       userId: params.userId,
     }),
-    resolveDemoRenderAsset({
-      asset: demoAsset,
+    resolveScheduledVideoRenderAsset({
+      asset: scheduledVideoAsset,
       projectId,
       userId: params.userId,
     }),
@@ -791,9 +937,9 @@ async function assertCombinedRenderIsCurrent(params: {
     );
   }
 
-  if (!resolvedDemoAsset.ok) {
+  if (!resolvedScheduledVideoAsset.ok) {
     throw new SchedulingRequestError(
-      resolvedDemoAsset.message,
+      resolvedScheduledVideoAsset.message,
       409,
       "combined_render_stale",
     );
@@ -808,14 +954,29 @@ async function assertCombinedRenderIsCurrent(params: {
 
   if (
     combinedHookMediaId !== resolvedHookAsset.asset.id ||
-    combinedDemoMediaId !== resolvedDemoAsset.asset.id
+    combinedDemoMediaId !== resolvedScheduledVideoAsset.asset.id
   ) {
     throw new SchedulingRequestError(
-      "Prepare the latest opening video and demo before scheduling the final post.",
+      "Prepare the latest opening clip and scheduled video before scheduling the final post.",
       409,
       "combined_render_stale",
     );
   }
+}
+
+async function resolveScheduledVideoRenderAsset(params: {
+  asset: MediaAssetRow;
+  projectId: string;
+  userId: string;
+}) {
+  if (params.asset.source_type === "demo_upload") {
+    return resolveDemoRenderAsset(params);
+  }
+
+  return resolveOpeningRenderAsset({
+    asset: params.asset,
+    userId: params.userId,
+  });
 }
 
 function getRecord(value: unknown) {
@@ -930,6 +1091,65 @@ async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
     timezone,
     title: normalizeOptionalText(input.title, 160),
   };
+}
+
+function getScheduleMediaMode(
+  metadata: Record<string, unknown>,
+): ScheduleMediaMode {
+  const mediaMode = getMetadataString(metadata.mediaMode);
+
+  if (mediaMode === "combined_video" || mediaMode === "single_video") {
+    return mediaMode;
+  }
+
+  return getMetadataString(metadata.hookMediaId)
+    ? "combined_video"
+    : "single_video";
+}
+
+function isPublishableMediaSource(params: {
+  collection: string;
+  mediaMode: ScheduleMediaMode;
+  sourceType: string;
+}) {
+  if (params.mediaMode === "combined_video") {
+    return params.sourceType === "combined_render";
+  }
+
+  return isDirectScheduledVideoSource(params);
+}
+
+function isDirectScheduledVideoSource(params: {
+  collection: string;
+  sourceType: string;
+}) {
+  return (
+    params.collection === "video" &&
+    isDirectScheduledVideoSourceType(params.sourceType)
+  );
+}
+
+function isDirectScheduledVideoSourceType(sourceType: string) {
+  return directScheduledVideoSourceTypes.has(sourceType);
+}
+
+function isDirectScheduledVideoAsset(
+  asset: MediaAssetRow | null,
+): asset is MediaAssetRow {
+  return Boolean(
+    asset &&
+      asset.status === "ready" &&
+      asset.collection === "video" &&
+      isDirectScheduledVideoSourceType(asset.source_type),
+  );
+}
+
+function getSingleVideoScheduleAssetId(schedule: ScheduledPost) {
+  return (
+    getMetadataString(schedule.metadata.scheduledVideoId) ??
+    getMetadataString(schedule.metadata.demoMediaId) ??
+    schedule.mediaAssetId
+  );
 }
 
 function normalizeRenderedScheduleInput(
@@ -1081,6 +1301,7 @@ async function resolveScheduleSource(params: {
     }
 
     return {
+      collection: asset.collection,
       projectId: asset.project_id,
       sourceType: asset.source_type,
       title: asset.title,
@@ -1105,6 +1326,7 @@ async function resolveScheduleSource(params: {
   }
 
   return {
+    collection: "carousel",
     projectId: item.project_id,
     sourceType: item.source_type,
     title: item.title,

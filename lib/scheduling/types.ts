@@ -172,6 +172,7 @@ export type ScheduleDraft = {
   id: string;
   mediaTitle?: string;
   mediaIssue?: ScheduleMediaIssue;
+  mediaMode?: "single_video" | "combined_video";
   mediaUrl?: string;
   plannedConnectionIds?: string[];
   plannedScheduledFor?: string;
@@ -199,6 +200,7 @@ export type ScheduleDraftInput = {
   id?: string;
   mediaTitle?: string;
   mediaIssue?: ScheduleMediaIssue;
+  mediaMode?: "single_video" | "combined_video";
   mediaUrl?: string;
   plannedConnectionIds?: string[];
   plannedScheduledFor?: string;

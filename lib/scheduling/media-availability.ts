@@ -22,11 +22,19 @@ export function getScheduleMediaIssue(params: {
 
   const openingId = getString(params.schedule.metadata.hookMediaId);
   const demoId =
+    getString(params.schedule.metadata.scheduledVideoId) ??
     getString(params.schedule.metadata.demoMediaId) ??
     params.schedule.mediaAssetId;
+  const mediaMode = getString(params.schedule.metadata.mediaMode);
+  const singleVideoMode = mediaMode === "single_video";
+  const combinedVideoMode = mediaMode === "combined_video" || Boolean(openingId);
   const openingMissing =
     !openingId || !params.activeOpeningIds.has(openingId);
   const demoMissing = !demoId || !params.activeDemoIds.has(demoId);
+
+  if (singleVideoMode || !combinedVideoMode) {
+    return demoMissing ? "demo" : null;
+  }
 
   if (openingMissing && demoMissing) {
     return "both";

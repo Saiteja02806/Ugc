@@ -7,7 +7,8 @@ import { ConnectedAccountsWorkspace } from "@/components/social/connected-accoun
 
 export const metadata: Metadata = {
   title: "Connected Accounts",
-  description: "Connect TikTok, Instagram, and YouTube accounts for publishing.",
+  description:
+    "Connect TikTok, Instagram, and YouTube accounts for publishing and analytics.",
 };
 
 export default function ConnectedAccountsPage() {

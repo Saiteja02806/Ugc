@@ -784,6 +784,7 @@ function CarouselCandidateStack({
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
   onCarouselCompleted: () => void;
 }) {
+  const router = useRouter();
   const swipeTimerRef = useRef<number | null>(null);
   const actionNoticeTimerRef = useRef<number | null>(null);
   const dragStartXRef = useRef<number | null>(null);
@@ -1144,24 +1145,15 @@ function CarouselCandidateStack({
             throw new Error("Choose a Trending carousel before creating a schedule draft.");
           }
 
-          await createTrendingScheduleDraft({
+          const schedule = await createTrendingScheduleDraft({
             candidate: pendingScheduleCandidate,
             context: scheduleContext,
             platforms,
           });
-          await completeTrendingCarouselAction(
-            pendingScheduleCandidate,
-            "scheduled",
-          );
 
           setScheduleContext(null);
           setPendingScheduleCandidate(null);
-          showActionNotice({
-            actionHref: "/scheduling",
-            actionLabel: "View schedules",
-            message: `Schedule draft created for ${formatPlatformList(platforms)}.`,
-          });
-          advancePastActiveCarousel("right", onCarouselCompleted);
+          router.push(`/scheduling?draft=${encodeURIComponent(schedule.id)}`);
         }}
         onOpenChange={(open) => {
           if (!open) {
@@ -1950,21 +1942,6 @@ async function createTrendingScheduleDraft(params: {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
-}
-
-function formatPlatformList(platforms: SocialPlatform[]) {
-  return platforms
-    .map((platform) => {
-      switch (platform) {
-        case "instagram":
-          return "Instagram";
-        case "tiktok":
-          return "TikTok";
-        case "youtube":
-          return "YouTube";
-      }
-    })
-    .join(", ");
 }
 
 function getReadySlides(carousel: GeneratedCarousel): ReadyCarouselSlide[] {

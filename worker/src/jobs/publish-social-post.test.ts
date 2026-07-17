@@ -89,6 +89,34 @@ test("publishes a direct scheduled video asset", async () => {
   });
 });
 
+test("publishes saved carousel slides in their stored order", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), { carousel: true });
+
+    const output = await runPublishSocialPostJob(createPublishJob(), {
+      prepareInstagramCarouselImages: async ({ imageUrls }) =>
+        imageUrls.map((url) => url.replace(/\.webp$/, ".jpg")),
+      publishers: {
+        async instagramCarousel(params) {
+          assert.deepEqual(params.imageUrls, [
+            "https://cdn.example.com/slide-1.jpg",
+            "https://cdn.example.com/slide-2.jpg",
+          ]);
+          await params.onContainerCreated?.("instagram-carousel-1");
+          return {
+            mediaId: "instagram-carousel-media-1",
+            permalink: "https://www.instagram.com/p/carousel-1",
+          };
+        },
+      },
+      store: fixture.store,
+    });
+
+    assert.equal(output.platformPostId, "instagram-carousel-media-1");
+    assert.equal(fixture.operation.provider_operation_id, "instagram-carousel-1");
+  });
+});
+
 test("reuses a persisted provider operation instead of initializing again", async () => {
   await withEncryptionKey(async () => {
     const fixture = createPublishStore(
@@ -717,6 +745,7 @@ function createPublishStore(
   options: {
     allowFailure?: boolean;
     cancelAfterClaimDenied?: boolean;
+    carousel?: boolean;
     denyClaim?: boolean;
     failTargetPublished?: boolean;
     mediaSourceType?: PublishMediaSourceType;
@@ -734,6 +763,7 @@ function createPublishStore(
     options.withTikTokRefresh,
     options.withInstagramRefresh,
     options.mediaSourceType,
+    options.carousel,
   );
   let targetMetadata: Record<string, Json> = {};
   let targetErrorCode: string | null = null;
@@ -910,11 +940,40 @@ function createPublishContext(
   withTikTokRefresh = false,
   withInstagramRefresh = false,
   mediaSourceType: PublishMediaSourceType = "combined_render",
+  carousel = false,
 ) {
   const isTikTok = platform === "tiktok";
   const isYouTube = platform === "youtube";
 
   return {
+    carousel: carousel
+      ? {
+          item: {
+            deleted_at: null,
+            id: "4d41918d-2997-4f02-a301-5f14a76eb767",
+            media_type: "carousel" as const,
+            project_id: "project-1",
+            source_type: "generated_carousel" as const,
+            status: "ready" as const,
+            title: "Test carousel",
+            user_id: "user-test",
+          },
+          slides: [
+            {
+              id: "slide-1",
+              library_item_id: "4d41918d-2997-4f02-a301-5f14a76eb767",
+              rendered_url: "https://cdn.example.com/slide-1.webp",
+              slide_number: 1,
+            },
+            {
+              id: "slide-2",
+              library_item_id: "4d41918d-2997-4f02-a301-5f14a76eb767",
+              rendered_url: "https://cdn.example.com/slide-2.webp",
+              slide_number: 2,
+            },
+          ],
+        }
+      : null,
     connection: {
       access_token_ciphertext: encryptSocialToken("access-token"),
       connected_at: new Date().toISOString(),
@@ -957,7 +1016,7 @@ function createPublishContext(
       updated_at: new Date().toISOString(),
       user_id: "user-test",
     },
-    media: {
+    media: carousel ? null : {
       collection: "video",
       duration_seconds: 12,
       mime_type: "video/mp4",

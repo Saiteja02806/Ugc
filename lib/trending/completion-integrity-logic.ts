@@ -8,7 +8,6 @@ export const trendingAssignmentStates = [
 ] as const;
 
 export const acceptableCreatedScheduleStatuses = [
-  "draft",
   "scheduling",
   "scheduled",
   "publishing",

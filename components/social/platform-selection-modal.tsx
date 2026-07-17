@@ -6,7 +6,6 @@ import {
   ExternalLink,
   LoaderCircle,
   Music2,
-  Play,
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -85,12 +84,6 @@ const platforms: PlatformDefinition[] = [
     Icon: Music2,
     label: "TikTok",
     platform: "tiktok",
-  },
-  {
-    description: "Channel authorized through Google",
-    Icon: Play,
-    label: "YouTube",
-    platform: "youtube",
   },
 ];
 
@@ -318,8 +311,9 @@ export function PlatformSelectionModal({
             Select platforms
           </DialogTitle>
           <DialogDescription>
-            Connect your accounts, then choose where this saved carousel will be
-            prepared next.
+            Connect Instagram or TikTok, then choose where this saved carousel
+            should be scheduled. YouTube accepts video uploads, not carousel
+            posts.
           </DialogDescription>
         </DialogHeader>
 
@@ -400,7 +394,8 @@ export function PlatformSelectionModal({
                 Select connected platforms
               </FieldLegend>
               <FieldDescription>
-                Choose at least one connected account to continue.
+                Choose at least one connected Instagram or TikTok account to
+                continue.
               </FieldDescription>
               {loading ? (
                 <FieldGroup>

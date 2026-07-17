@@ -394,6 +394,13 @@ function buildTaskDefinitionRegistrationInput(
                     "SOCIAL_RECONCILIATION_INTERVAL_SECONDS",
                   ) || "15",
                 ),
+                TIKTOK_VERIFIED_MEDIA_HOSTS: getProfileEnv(
+                  profile,
+                  "TIKTOK_VERIFIED_MEDIA_HOSTS",
+                  process.env.TIKTOK_VERIFIED_MEDIA_HOSTS?.trim() ||
+                    existingEnvironment.get("TIKTOK_VERIFIED_MEDIA_HOSTS") ||
+                    getRequiredEnv("CLOUDFRONT_DOMAIN"),
+                ),
               }
             : {}),
           WORKER_JOB_TYPES: profile.jobTypes.join(","),

@@ -391,6 +391,24 @@ export type CarouselSlideInsert = {
   text_position?: string | null;
 };
 
+export type LibraryItemRow = {
+  deleted_at: string | null;
+  id: string;
+  media_type: "carousel";
+  project_id: string;
+  source_type: "generated_carousel";
+  status: "archived" | "ready";
+  title: string;
+  user_id: string;
+};
+
+export type LibraryCarouselSlideRow = {
+  id: string;
+  library_item_id: string;
+  rendered_url: string;
+  slide_number: number;
+};
+
 export type SocialConnectionRow = {
   access_token_ciphertext: string;
   connected_at: string;
@@ -547,6 +565,18 @@ export type BackgroundJobsDatabase = {
         };
         Update: Partial<MediaAssetInsert> & { deleted_at?: string | null };
       };
+      library_carousel_slides: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: LibraryCarouselSlideRow;
+        Update: Record<string, never>;
+      };
+      library_items: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: LibraryItemRow;
+        Update: Record<string, never>;
+      };
       scheduled_posts: {
         Insert: Record<string, never>;
         Relationships: [];
@@ -554,10 +584,12 @@ export type BackgroundJobsDatabase = {
           caption: string;
           id: string;
           last_error_code: string | null;
+          library_item_id: string | null;
           media_asset_id: string | null;
           metadata: Json;
           published_at: string | null;
           project_id: string | null;
+          source_kind: "library_item" | "media_asset";
           status: ScheduledPostStatus;
           title: string;
           updated_at: string;

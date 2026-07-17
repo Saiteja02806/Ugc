@@ -75,6 +75,14 @@ type LibraryContentResponse =
       ok: false;
     };
 
+type CreateScheduleDraftResponse =
+  | {
+      created: boolean;
+      ok: true;
+      schedule: { id: string; status: string };
+    }
+  | { message: string; ok: false };
+
 const tabs: Array<{ label: string; value: LibraryTab }> = [
   {
     label: "Demo footage",
@@ -203,6 +211,7 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
 }
 
 function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
+  const router = useRouter();
   const [serverItems, setServerItems] = useState<LibraryCarouselItem[]>([]);
   const [browserItems, setBrowserItems] = useState<LibraryCarouselItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -370,11 +379,18 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
     });
   }
 
-  function confirmPlatforms(platforms: SocialPlatform[]) {
-    setNotice(
-      `${formatPlatformList(platforms)} selected. Finish timing and captions in Scheduling before publishing.`,
-    );
+  async function confirmPlatforms(platforms: SocialPlatform[]) {
+    if (!scheduleContext) {
+      throw new Error("Choose a saved Library carousel first.");
+    }
+
+    const schedule = await createLibraryCarouselScheduleDraft({
+      context: scheduleContext,
+      platforms,
+    });
+
     setScheduleContext(null);
+    router.push(`/scheduling?draft=${encodeURIComponent(schedule.id)}`);
   }
 
   return (
@@ -580,6 +596,53 @@ function LibraryContentEmptyState({
       </div>
     </div>
   );
+}
+
+async function createLibraryCarouselScheduleDraft(params: {
+  context: SchedulePlatformContext;
+  platforms: SocialPlatform[];
+}) {
+  const token = await getCurrentUserIdToken();
+
+  if (!token) {
+    throw new Error("Sign in before creating a schedule draft.");
+  }
+
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const response = await fetch("/api/schedules", {
+    body: JSON.stringify({
+      metadata: {
+        carouselId: params.context.carouselId,
+        plannedPlatforms: params.platforms.join(","),
+        sourceSurface: "library",
+      },
+      source: {
+        id: params.context.libraryItemId,
+        kind: "library_item",
+      },
+      targets: [],
+      timezone,
+    }),
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+  const data = (await response.json().catch(() => null)) as
+    | CreateScheduleDraftResponse
+    | null;
+
+  if (!response.ok || data?.ok !== true || !data.schedule?.id) {
+    throw new Error(
+      data?.ok === false
+        ? data.message
+        : "Could not create this schedule draft.",
+    );
+  }
+
+  return data.schedule;
 }
 
 function LibraryCarouselCard({
@@ -910,19 +973,4 @@ function getSortableDate(value: string) {
   const time = new Date(value).getTime();
 
   return Number.isFinite(time) ? time : 0;
-}
-
-function formatPlatformList(platforms: SocialPlatform[]) {
-  return platforms
-    .map((platform) => {
-      switch (platform) {
-        case "instagram":
-          return "Instagram";
-        case "tiktok":
-          return "TikTok";
-        case "youtube":
-          return "YouTube";
-      }
-    })
-    .join(", ");
 }

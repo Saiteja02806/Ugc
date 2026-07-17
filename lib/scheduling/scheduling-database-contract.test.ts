@@ -18,6 +18,9 @@ const publishRetryMigration = readProjectFile(
 const instagramRenewalMigration = readProjectFile(
   "supabase/migrations/20260716151500_support_instagram_token_renewal.sql",
 );
+const carouselPublishRetryMigration = readProjectFile(
+  "supabase/migrations/20260717183000_support_carousel_publish_retry.sql",
+);
 const schedulingDb = readProjectFile("lib/scheduling/db.ts");
 const renderRoute = readProjectFile(
   "app/api/schedules/[scheduleId]/render/route.ts",
@@ -187,6 +190,20 @@ test("manual publish retry locks one post and target before changing state", () 
     retryFunction,
     /v_post_status = 'cancelled' or v_target_status = 'cancelled'[\s\S]*return;/,
   );
+});
+
+test("manual publish retry accepts ready carousel slides without weakening video checks", () => {
+  const retryFunction = getSection(
+    carouselPublishRetryMigration,
+    "create or replace function public.retry_social_publish_target",
+    "revoke all on function public.retry_social_publish_target",
+  );
+
+  assert.match(retryFunction, /v_source_kind = 'library_item'/);
+  assert.match(retryFunction, /v_platform not in \('instagram', 'tiktok'\)/);
+  assert.match(retryFunction, /from public\.library_carousel_slides as slide/);
+  assert.match(retryFunction, /slide\.rendered_url like 'https:\/\/%'/);
+  assert.match(retryFunction, /elsif not exists \([\s\S]*from public\.media_assets/);
 });
 
 test("repeated publish retry reuses active work and creates only one new job", () => {

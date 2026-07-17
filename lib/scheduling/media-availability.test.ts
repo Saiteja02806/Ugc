@@ -79,6 +79,21 @@ test("detects a deleted single scheduled video", () => {
   );
 });
 
+test("does not treat a saved carousel as missing video media", () => {
+  assert.equal(
+    getScheduleMediaIssue({
+      activeDemoIds: new Set(),
+      activeOpeningIds: new Set(),
+      mediaLoaded: true,
+      schedule: {
+        ...createSchedule({ mediaMode: "carousel" }),
+        sourceKind: "library_item",
+      },
+    }),
+    null,
+  );
+});
+
 test("does not report stale source media after preparation is queued or ready", () => {
   for (const combinedRenderStatus of ["queued", "rendering", "ready"]) {
     assert.equal(
@@ -110,11 +125,12 @@ test("waits for the active media catalog before deciding media is missing", () =
 
 function createSchedule(metadata: Record<string, unknown>): Pick<
   ScheduledPost,
-  "mediaAssetId" | "metadata" | "status"
+  "mediaAssetId" | "metadata" | "sourceKind" | "status"
 > {
   return {
     mediaAssetId: null,
     metadata,
+    sourceKind: "media_asset",
     status: "draft",
   };
 }

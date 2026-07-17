@@ -12,6 +12,7 @@ import {
 } from "../lib/instagram-oauth.js";
 import {
   InstagramPublishError,
+  publishInstagramCarousel,
   publishInstagramReel,
 } from "../lib/instagram-publisher.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
@@ -20,6 +21,7 @@ import {
   encryptSocialToken,
 } from "../lib/social-token-crypto.js";
 import {
+  publishTikTokPhotoCarousel,
   publishTikTokVideo,
   TikTokPublishError,
 } from "../lib/tiktok-publisher.js";
@@ -28,6 +30,7 @@ import {
   refreshTikTokAccessToken,
   TikTokOAuthError,
 } from "../lib/tiktok-oauth.js";
+import { prepareInstagramCarouselImages } from "../lib/social-carousel-media.js";
 import {
   publishYouTubeVideo,
   YouTubePublishError,
@@ -73,19 +76,24 @@ const DEFAULT_INSTAGRAM_TOKEN_REFRESH_SKEW_SECONDS = 7 * 24 * 60 * 60;
 
 type SocialPublishers = {
   instagram: typeof publishInstagramReel;
+  instagramCarousel: typeof publishInstagramCarousel;
   tiktok: typeof publishTikTokVideo;
+  tiktokCarousel: typeof publishTikTokPhotoCarousel;
   youtube: typeof publishYouTubeVideo;
 };
 
 const defaultSocialPublishers: SocialPublishers = {
   instagram: publishInstagramReel,
+  instagramCarousel: publishInstagramCarousel,
   tiktok: publishTikTokVideo,
+  tiktokCarousel: publishTikTokPhotoCarousel,
   youtube: publishYouTubeVideo,
 };
 
 export async function runPublishSocialPostJob(
   job: BackgroundJobRow,
   context: {
+    prepareInstagramCarouselImages?: typeof prepareInstagramCarouselImages;
     publishers?: Partial<SocialPublishers>;
     store: SupabaseJobStore;
   },
@@ -250,29 +258,56 @@ export async function runPublishSocialPostJob(
     };
 
     if (publishContext.target.platform === "instagram") {
+      const sourceCarouselImageUrls = publishContext.carousel?.slides.map(
+        (slide) => slide.rendered_url,
+      );
+      const instagramContainerId = getProviderOperationId(
+        requireClaimedOperation(operation),
+        "instagram_container",
+      );
+      const carouselImageUrls =
+        sourceCarouselImageUrls && !instagramContainerId
+          ? await (
+              context.prepareInstagramCarouselImages ??
+              prepareInstagramCarouselImages
+            )({
+              imageUrls: sourceCarouselImageUrls,
+              libraryItemId: publishContext.carousel!.item.id,
+            })
+          : sourceCarouselImageUrls;
+      const videoMedia = publishContext.media;
       const publishToInstagram = (token: string) =>
-        publishers.instagram({
-          accessToken: token,
-          caption: publishContext.post.caption,
-          containerId: getProviderOperationId(
-            requireClaimedOperation(operation),
-            "instagram_container",
-          ),
-          instagramAccountId: publishContext.connection.platform_account_id,
-          onContainerCreated: async (containerId) => {
-            operation = await saveProviderOperationOrThrow({
-              claimToken,
-              operation: requireClaimedOperation(operation),
-              providerOperationId: containerId,
-              providerOperationKind: "instagram_container",
-              store: context.store,
+        carouselImageUrls
+          ? publishers.instagramCarousel({
+              accessToken: token,
+              caption: publishContext.post.caption,
+              containerId: instagramContainerId,
+              imageUrls: carouselImageUrls,
+              instagramAccountId:
+                publishContext.connection.platform_account_id,
+              onContainerCreated: persistInstagramContainer,
+            })
+          : publishers.instagram({
+              accessToken: token,
+              caption: publishContext.post.caption,
+              containerId: instagramContainerId,
+              instagramAccountId:
+                publishContext.connection.platform_account_id,
+              onContainerCreated: persistInstagramContainer,
+              shareToFeed: getInstagramTargetPublishSettings(
+                publishContext.target.settings,
+              ).shareToFeed,
+              videoUrl: requireVideoMedia(videoMedia).url,
             });
-          },
-          shareToFeed: getInstagramTargetPublishSettings(
-            publishContext.target.settings,
-          ).shareToFeed,
-          videoUrl: publishContext.media.url,
+      const persistInstagramContainer = async (containerId: string) => {
+        operation = await saveProviderOperationOrThrow({
+          claimToken,
+          operation: requireClaimedOperation(operation),
+          providerOperationId: containerId,
+          providerOperationKind: "instagram_container",
+          store: context.store,
         });
+      };
       let result: Awaited<ReturnType<typeof publishInstagramReel>>;
 
       try {
@@ -306,41 +341,82 @@ export async function runPublishSocialPostJob(
         platformPostUrl: result.permalink,
       };
     } else if (publishContext.target.platform === "tiktok") {
+      const carouselImageUrls = publishContext.carousel?.slides.map(
+        (slide) => slide.rendered_url,
+      );
+      const videoMedia = publishContext.media;
       const publishToTikTok = (token: string) =>
-        publishers.tiktok({
-          accessToken: token,
-          caption: publishContext.post.caption,
-          onPublishInitialized: async (initialization) => {
-            operation = await saveProviderOperationOrThrow({
-              claimToken,
-              metadata: mergeJsonRecords(
-                requireClaimedOperation(operation).metadata,
-                {
-                  tiktokCreatorNickname: initialization.creatorNickname,
-                  tiktokCreatorUsername: initialization.creatorUsername,
-                  tiktokInitializationLogId: initialization.logId,
-                  tiktokMediaTransferMode: initialization.mediaTransferMode,
-                  tiktokUploadUrl: initialization.uploadUrl,
-                },
+        carouselImageUrls
+          ? publishers.tiktokCarousel({
+              accessToken: token,
+              caption: publishContext.post.caption,
+              imageUrls: carouselImageUrls,
+              onPublishInitialized: async (initialization) => {
+                await persistTikTokInitialization({
+                  initialization,
+                  mediaTransferMode: "PULL_FROM_URL",
+                  uploadUrl: null,
+                });
+              },
+              publishId: getProviderOperationId(
+                requireClaimedOperation(operation),
+                "tiktok_publish",
               ),
-              operation: requireClaimedOperation(operation),
-              providerOperationId: initialization.publishId,
-              providerOperationKind: "tiktok_publish",
-              store: context.store,
+              settings: getTikTokTargetPublishSettings(
+                publishContext.target.settings,
+              ),
+            })
+          : publishers.tiktok({
+              accessToken: token,
+              caption: publishContext.post.caption,
+              onPublishInitialized: async (initialization) => {
+                await persistTikTokInitialization({
+                  initialization,
+                  mediaTransferMode: initialization.mediaTransferMode,
+                  uploadUrl: initialization.uploadUrl,
+                });
+              },
+              publishId: getProviderOperationId(
+                requireClaimedOperation(operation),
+                "tiktok_publish",
+              ),
+              settings: getTikTokTargetPublishSettings(
+                publishContext.target.settings,
+              ),
+              uploadUrl: getTikTokUploadUrl(requireClaimedOperation(operation)),
+              videoDurationSeconds:
+                requireVideoMedia(videoMedia).duration_seconds,
+              videoMimeType: requireVideoMedia(videoMedia).mime_type,
+              videoUrl: requireVideoMedia(videoMedia).url,
             });
-          },
-          publishId: getProviderOperationId(
-            requireClaimedOperation(operation),
-            "tiktok_publish",
+      const persistTikTokInitialization = async (params: {
+        initialization: {
+          creatorNickname: string | null;
+          creatorUsername: string | null;
+          logId: string | null;
+          publishId: string;
+        };
+        mediaTransferMode: string;
+        uploadUrl: string | null;
+      }) => {
+        operation = await saveProviderOperationOrThrow({
+          claimToken,
+          metadata: mergeJsonRecords(
+            requireClaimedOperation(operation).metadata,
+            {
+              tiktokCreatorNickname: params.initialization.creatorNickname,
+              tiktokCreatorUsername: params.initialization.creatorUsername,
+              tiktokInitializationLogId: params.initialization.logId,
+              tiktokMediaTransferMode: params.mediaTransferMode,
+              tiktokUploadUrl: params.uploadUrl,
+            },
           ),
-          settings: getTikTokTargetPublishSettings(
-            publishContext.target.settings,
-          ),
-          uploadUrl: getTikTokUploadUrl(requireClaimedOperation(operation)),
-          videoDurationSeconds: publishContext.media.duration_seconds,
-          videoMimeType: publishContext.media.mime_type,
-          videoUrl: publishContext.media.url,
+          operation: requireClaimedOperation(operation),
+          providerOperationId: params.initialization.publishId,
+          providerOperationKind: "tiktok_publish",
+          store: context.store,
         });
+      };
       let result: Awaited<ReturnType<typeof publishTikTokVideo>>;
 
       try {
@@ -375,10 +451,11 @@ export async function runPublishSocialPostJob(
         platformPostUrl: result.platformPostUrl,
       };
     } else if (publishContext.target.platform === "youtube") {
+      const videoMedia = requireVideoMedia(publishContext.media);
       const result = await publishers.youtube({
         accessToken,
         caption: publishContext.post.caption,
-        mimeType: publishContext.media.mime_type,
+        mimeType: videoMedia.mime_type,
         onUploadSessionCreated: async (uploadUrl) => {
           operation = await saveProviderOperationOrThrow({
             claimToken,
@@ -396,7 +473,7 @@ export async function runPublishSocialPostJob(
         settings: getYouTubeTargetPublishSettings(
           publishContext.target.settings,
         ),
-        videoUrl: publishContext.media.url,
+        videoUrl: videoMedia.url,
       });
 
       publishedResult = {
@@ -669,19 +746,43 @@ function validatePublishContext(
     throw new Error(`Publish target is not publishable from ${context.target.status}.`);
   }
 
-  if (context.media.status !== "ready") {
-    throw new Error("Final media is not ready for publishing.");
-  }
+  if (context.carousel) {
+    if (context.target.platform === "youtube") {
+      throw new Error("YouTube does not support carousel publishing.");
+    }
 
-  if (
-    context.media.collection !== "video" ||
-    !publishableVideoSourceTypes.has(context.media.source_type)
-  ) {
-    throw new Error("Only scheduled videos can be published.");
-  }
+    if (
+      context.carousel.slides.length < 2 ||
+      context.carousel.slides.length >
+        (context.target.platform === "instagram" ? 10 : 35)
+    ) {
+      throw new Error("Scheduled carousel has an unsupported slide count.");
+    }
 
-  if (!isHttpsUrl(context.media.url)) {
-    throw new Error("Final media URL must be HTTPS.");
+    if (
+      context.carousel.slides.some(
+        (slide) => !isHttpsUrl(slide.rendered_url),
+      )
+    ) {
+      throw new Error("Every carousel slide URL must be HTTPS.");
+    }
+  } else {
+    const media = requireVideoMedia(context.media);
+
+    if (media.status !== "ready") {
+      throw new Error("Final media is not ready for publishing.");
+    }
+
+    if (
+      media.collection !== "video" ||
+      !publishableVideoSourceTypes.has(media.source_type)
+    ) {
+      throw new Error("Only scheduled videos can be published.");
+    }
+
+    if (!isHttpsUrl(media.url)) {
+      throw new Error("Final media URL must be HTTPS.");
+    }
   }
 
   if (context.connection.platform !== context.target.platform) {
@@ -886,6 +987,14 @@ async function refreshInstagramConnectionToken(params: {
 
     throw error;
   }
+}
+
+function requireVideoMedia<TMedia>(media: TMedia | null): TMedia {
+  if (!media) {
+    throw new Error("Scheduled post is missing final video media.");
+  }
+
+  return media;
 }
 
 async function waitForInstagramConnectionRefresh(params: {

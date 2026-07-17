@@ -28,6 +28,13 @@ export type TikTokPublishResult = {
   publishId: string;
 };
 
+export type TikTokPhotoPublishInitialization = {
+  creatorNickname: string | null;
+  creatorUsername: string | null;
+  logId: string | null;
+  publishId: string;
+};
+
 type TikTokApiEnvelope<TData extends object> = {
   data?: TData;
   error?: {
@@ -167,6 +174,90 @@ export async function publishTikTokVideo(params: {
         uploadUrl,
       });
     }
+  }
+
+  const finalStatus = await waitForTikTokPostStatus({
+    accessToken: params.accessToken,
+    publishId,
+  });
+
+  return buildTikTokPublishResult(finalStatus, publishId);
+}
+
+export async function publishTikTokPhotoCarousel(params: {
+  accessToken: string;
+  caption: string;
+  imageUrls: string[];
+  onPublishInitialized?: (
+    initialization: TikTokPhotoPublishInitialization,
+  ) => Promise<void>;
+  publishId?: string | null;
+  settings?: TikTokTargetPublishSettings;
+}): Promise<TikTokPublishResult> {
+  if (params.imageUrls.length < 2 || params.imageUrls.length > 35) {
+    throw new TikTokPublishError(
+      "TikTok photo posts require between 2 and 35 images.",
+      "invalid_photo_count",
+      null,
+      400,
+      false,
+    );
+  }
+
+  const creatorInfo = await queryCreatorInfo(params.accessToken);
+  const privacyLevel = getPrivacyLevel(
+    creatorInfo.privacy_level_options,
+    params.settings,
+  );
+  let publishId = params.publishId ?? null;
+
+  if (!publishId) {
+    for (const imageUrl of params.imageUrls) {
+      assertVerifiedPullUrl(imageUrl);
+    }
+
+    const response = await requestTikTokJson<{ publish_id?: string }>(
+      "/v2/post/publish/content/init/",
+      params.accessToken,
+      {
+        media_type: "PHOTO",
+        post_info: {
+          auto_add_music: true,
+          brand_content_toggle: params.settings?.brandedContent === true,
+          brand_organic_toggle: params.settings?.brandOrganic === true,
+          description: normalizeTikTokCaption(params.caption),
+          disable_comment:
+            creatorInfo.comment_disabled === true ||
+            params.settings?.allowComment === false,
+          privacy_level: privacyLevel,
+          title: normalizeTikTokCaption(params.caption).slice(0, 90),
+        },
+        post_mode: "DIRECT_POST",
+        source_info: {
+          photo_cover_index: 0,
+          photo_images: params.imageUrls,
+          source: "PULL_FROM_URL",
+        },
+      },
+    );
+
+    if (!response.data.publish_id) {
+      throw new TikTokPublishError(
+        "TikTok did not return a publish_id for the photo post.",
+        "publish_id_missing",
+        response.logId,
+        null,
+        false,
+      );
+    }
+
+    publishId = response.data.publish_id;
+    await params.onPublishInitialized?.({
+      creatorNickname: creatorInfo.creator_nickname ?? null,
+      creatorUsername: creatorInfo.creator_username ?? null,
+      logId: response.logId,
+      publishId,
+    });
   }
 
   const finalStatus = await waitForTikTokPostStatus({

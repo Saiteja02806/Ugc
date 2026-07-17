@@ -24,7 +24,7 @@ import {
   Video,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
@@ -38,6 +38,7 @@ import {
   scheduleTabs,
   type ScheduledPost,
   type ScheduledPostTarget,
+  type ScheduleCreateSourceInput,
   type ScheduleCreateTargetInput,
   type ScheduleDraft,
   type ScheduleDraftStatus,
@@ -174,7 +175,9 @@ type ScheduleFormSubmission = {
   openingMedia: ScheduleMediaOption | null;
   scheduledDate: string;
   scheduledFor: string;
-  scheduledVideo: ScheduleMediaOption;
+  scheduledSource: ScheduleCreateSourceInput;
+  scheduledSourceTitle: string;
+  scheduledVideo: ScheduleMediaOption | null;
   scheduledTime: string;
   targets: ScheduleCreateTargetInput[];
   timezone: string;
@@ -195,6 +198,8 @@ const defaultTimezone =
 
 export function SchedulingWorkspace() {
   const [serverSchedules, setServerSchedules] = useState<ScheduledPost[]>([]);
+  const [schedulesLoaded, setSchedulesLoaded] = useState(false);
+  const initialDraftQueryHandled = useRef(false);
   const [catalogInfluencerOptions, setCatalogInfluencerOptions] = useState<
     ScheduleCatalogInfluencerOption[]
   >([]);
@@ -355,6 +360,8 @@ export function SchedulingWorkspace() {
       }
     } catch {
       setActionNotice("Could not load server schedules.");
+    } finally {
+      setSchedulesLoaded(true);
     }
   }, []);
 
@@ -497,6 +504,67 @@ export function SchedulingWorkspace() {
     setDrawerOpen(true);
   }
 
+  useEffect(() => {
+    if (!schedulesLoaded || initialDraftQueryHandled.current) {
+      return;
+    }
+
+    const draftId = new URLSearchParams(window.location.search).get("draft");
+
+    if (!draftId) {
+      initialDraftQueryHandled.current = true;
+      return;
+    }
+
+    const draft = drafts.find((candidate) => candidate.id === draftId);
+    initialDraftQueryHandled.current = true;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (!draft) {
+        setActionNotice("This schedule draft could not be found.");
+        return;
+      }
+
+      const schedule = serverSchedules.find(
+        (candidate) => candidate.id === draft.id,
+      );
+      const editBlockReason = schedule
+        ? getScheduleEditBlockReason(schedule)
+        : "This schedule draft could not be found.";
+
+      if (!schedule || editBlockReason) {
+        setActionNotice(editBlockReason);
+        return;
+      }
+
+      setActiveTab("drafts");
+      setViewMode("list");
+      setActionNotice(null);
+      setDrawerError(null);
+      setEditingScheduleId(schedule.id);
+      setNewScheduleInitialDate(draft.scheduledDate ?? toDateKey(new Date()));
+
+      void Promise.all([loadScheduleMedia(), loadSocialConnections()]).then(
+        () => {
+          if (!cancelled) {
+            setDrawerOpen(true);
+          }
+        },
+      );
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    drafts,
+    loadScheduleMedia,
+    loadSocialConnections,
+    schedulesLoaded,
+    serverSchedules,
+  ]);
+
   async function handleSaveScheduleDraft(submission: ScheduleFormSubmission) {
     setSavingSchedule(true);
     setActionNotice(null);
@@ -555,20 +623,22 @@ export function SchedulingWorkspace() {
 
       let nextSchedule = data.schedule;
       const shouldAutoScheduleFinal = selectedConnectionIds.length > 0;
-      const shouldRenderCombination = submission.useOpeningClip;
+      const isCarouselSchedule = submission.scheduledSource.kind === "library_item";
+      const shouldRenderCombination = !isCarouselSchedule && submission.useOpeningClip;
+      const mediaLabel = isCarouselSchedule ? "carousel" : "video";
       let nextNotice = shouldAutoScheduleFinal
         ? shouldRenderCombination
           ? editing
             ? "Changes saved. Preparing the updated video before scheduling."
             : "Schedule saved. Preparing the video before automatic scheduling."
           : editing
-            ? "Changes saved. Scheduling the selected video."
-            : "Schedule saved. Scheduling the selected video."
+            ? `Changes saved. Scheduling the selected ${mediaLabel}.`
+            : `Schedule saved. Scheduling the selected ${mediaLabel}.`
         : editing
-          ? "Changes saved as a video draft."
+          ? `Changes saved as a ${mediaLabel} draft.`
           : shouldRenderCombination
             ? "Combination draft saved."
-            : "Video draft saved.";
+            : `${isCarouselSchedule ? "Carousel" : "Video"} draft saved.`;
 
       try {
         if (shouldRenderCombination) {
@@ -609,9 +679,20 @@ export function SchedulingWorkspace() {
           nextSchedule = publishResult.schedule;
           nextNotice = publishResult.created
             ? editing
-              ? "Changes saved and the selected video was scheduled."
-              : "Selected video scheduled."
-            : "The selected video was already scheduled.";
+              ? `Changes saved and the selected ${mediaLabel} was scheduled.`
+              : `Selected ${mediaLabel} scheduled.`
+            : `The selected ${mediaLabel} was already scheduled.`;
+
+          if (isCarouselSchedule) {
+            const completionWarning = await completeTrendingScheduleAssignment({
+              schedule: publishResult.schedule,
+              token,
+            });
+
+            if (completionWarning) {
+              nextNotice = `${nextNotice} ${completionWarning}`;
+            }
+          }
         }
       } catch (scheduleError) {
         nextNotice = `${editing ? "Changes" : "Draft"} saved, but ${
@@ -755,7 +836,10 @@ export function SchedulingWorkspace() {
       ]);
       setActiveTab(data.retryStatus === "published" ? "published" : "upcoming");
 
-      const platformLabel = getSchedulePlatformLabel(target.platform);
+      const platformLabel = getScheduleDraftPlatformLabel(
+        draft,
+        target.platform,
+      );
       setActionNotice(
         data.retryStatus === "published"
           ? `${platformLabel} was already published. Its status is now updated.`
@@ -1188,6 +1272,9 @@ function ScheduleDraftPreview({
 }) {
   const { combinedMedia, demoMedia, hookMedia } = getDraftMediaParts(draft);
   const combinedDraft = isCombinedVideoDraft(draft);
+  const primaryMediaLabel = isCarouselDraft(draft)
+    ? "Carousel"
+    : "Scheduled video";
 
   return (
     <article className="grid gap-3 rounded-2xl border border-border bg-white p-3 shadow-sm">
@@ -1198,7 +1285,7 @@ function ScheduleDraftPreview({
           <ScheduleDraftMediaThumb label="Scheduled video" media={demoMedia} />
         </div>
       ) : (
-        <ScheduleDraftMediaThumb label="Scheduled video" media={demoMedia} />
+        <ScheduleDraftMediaThumb label={primaryMediaLabel} media={demoMedia} />
       )}
 
       <div className="min-w-0">
@@ -1492,7 +1579,7 @@ function ScheduleTargetStatusList({
               className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-2.5 py-1"
             >
               <SocialPlatformIcon className="size-3.5" platform={platform} />
-              {getSchedulePlatformLabel(platform)}
+              {getScheduleDraftPlatformLabel(draft, platform)}
             </span>
           ))
         ) : (
@@ -1535,7 +1622,7 @@ function ScheduleTargetStatusList({
                     platform={target.platform}
                   />
                   <span className="text-xs font-bold text-foreground">
-                    {getSchedulePlatformLabel(target.platform)}
+                    {getScheduleDraftPlatformLabel(draft, target.platform)}
                   </span>
                   <span
                     className={cn(
@@ -1625,6 +1712,48 @@ function ScheduleDraftMediaThumb({
         <p className="truncate text-xs font-bold text-foreground">
           {media?.title ?? "Missing"}
         </p>
+      </div>
+    </div>
+  );
+}
+
+function ScheduledCarouselSourceCard({ schedule }: { schedule: ScheduledPost }) {
+  return (
+    <section className="rounded-2xl border border-border bg-white/78 p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-primary">
+          <Images className="size-5" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-foreground">Saved carousel</p>
+          <p className="mt-1 truncate text-sm font-semibold text-muted">
+            {schedule.title}
+          </p>
+          <p className="mt-2 text-xs font-semibold leading-5 text-muted">
+            This Library carousel stays attached to the schedule. Its rendered
+            slides will be published in order.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CarouselSchedulePreview({ schedule }: { schedule: ScheduledPost }) {
+  return (
+    <div className="rounded-2xl border border-border bg-white/80 p-4 shadow-sm">
+      <div className="flex aspect-video items-center justify-center rounded-xl bg-[#102033] text-white">
+        <div className="text-center">
+          <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-white/10">
+            <Images className="size-6" aria-hidden="true" />
+          </span>
+          <p className="mt-3 max-w-xs truncate text-sm font-bold">
+            {schedule.title}
+          </p>
+          <p className="mt-1 text-xs font-semibold text-white/70">
+            Carousel slides publish in saved order
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -2067,6 +2196,9 @@ function SelectedDayDraftCard({
 }) {
   const { combinedMedia, demoMedia, hookMedia } = getDraftMediaParts(draft);
   const combinedDraft = isCombinedVideoDraft(draft);
+  const primaryMediaLabel = isCarouselDraft(draft)
+    ? "Carousel"
+    : "Scheduled video";
 
   return (
     <article className="rounded-xl border border-border bg-white px-3 py-3 shadow-sm">
@@ -2102,7 +2234,7 @@ function SelectedDayDraftCard({
       ) : (
         <div className="mt-3 text-xs font-bold">
           <span className="block truncate rounded-lg bg-card-muted px-2 py-1 text-muted">
-            Scheduled video: {demoMedia?.title ?? "Missing"}
+            {primaryMediaLabel}: {demoMedia?.title ?? "Missing"}
           </span>
         </div>
       )}
@@ -2678,10 +2810,22 @@ function NewScheduleDrawer({
   const editingDraft = editingSchedule
     ? mapScheduledPostToScheduleDraft(editingSchedule)
     : null;
-  const initialPlannedTargets = getSavedPlannedTargets(editingSchedule);
-  const initialConnectionIds = initialPlannedTargets.map(
-    (target) => target.connectionId,
+  const isCarouselSchedule = Boolean(
+    editingSchedule?.sourceKind === "library_item" &&
+      editingSchedule.libraryItemId,
   );
+  const carouselLibraryItemId = isCarouselSchedule
+    ? editingSchedule?.libraryItemId ?? null
+    : null;
+  const initialPlannedTargets = getSavedPlannedTargets(editingSchedule);
+  const initialConnectionIds = getInitialScheduleConnectionIds({
+    connections: socialConnections,
+    isCarouselSchedule,
+    plannedPlatforms: editingSchedule
+      ? getDraftPlatformsFromSchedule(editingSchedule)
+      : [],
+    plannedTargets: initialPlannedTargets,
+  });
   const [preparedHookMediaOptions, setPreparedHookMediaOptions] =
     useState<ScheduleMediaOption[]>([]);
   const [useOpeningClip, setUseOpeningClip] = useState(() =>
@@ -2746,13 +2890,24 @@ function NewScheduleDrawer({
     ? localHookMediaOptions.find((option) => option.id === activeHookMediaId) ?? null
     : null;
   const selectedDemoMedia =
-    demoMediaOptions.find((option) => option.id === activeDemoMediaId) ?? null;
+    isCarouselSchedule
+      ? null
+      : demoMediaOptions.find((option) => option.id === activeDemoMediaId) ?? null;
+  const availableSocialConnections = useMemo(
+    () =>
+      isCarouselSchedule
+        ? socialConnections.filter((connection) =>
+            supportsCarouselPublishing(connection.platform),
+          )
+        : socialConnections,
+    [isCarouselSchedule, socialConnections],
+  );
   const selectedConnections = useMemo(
     () =>
-      socialConnections.filter((connection) =>
+      availableSocialConnections.filter((connection) =>
         selectedConnectionIds.includes(connection.id),
       ),
-    [selectedConnectionIds, socialConnections],
+    [availableSocialConnections, selectedConnectionIds],
   );
   const publishingSettingsError = getPublishingSettingsError({
     connections: selectedConnections,
@@ -2783,19 +2938,23 @@ function NewScheduleDrawer({
       return toDateKey(new Date(currentTime));
     }
   }, [currentTime, timezone]);
-  const status = getDraftStatusPreview({
-    demoMedia: selectedDemoMedia,
-    hookMedia: selectedHookMedia,
-    useOpeningClip,
-  });
+  const status = isCarouselSchedule
+    ? ("draft" as const)
+    : getDraftStatusPreview({
+        demoMedia: selectedDemoMedia,
+        hookMedia: selectedHookMedia,
+        useOpeningClip,
+      });
   const mediaValidationError = getScheduleMediaValidationError({
-    scheduledVideo: selectedDemoMedia,
+    scheduledVideo: isCarouselSchedule
+      ? getCarouselScheduleMediaOption(editingSchedule)
+      : selectedDemoMedia,
     openingMedia: selectedHookMedia,
-    useOpeningClip,
+    useOpeningClip: isCarouselSchedule ? false : useOpeningClip,
   });
   const canSaveDraft = Boolean(
     !mediaValidationError &&
-      selectedDemoMedia &&
+      (isCarouselSchedule ? carouselLibraryItemId : selectedDemoMedia) &&
       scheduledDate &&
       scheduledTime &&
       !scheduleTimeValidation.error &&
@@ -2825,7 +2984,7 @@ function NewScheduleDrawer({
   }, [onClose]);
 
   function toggleConnection(connectionId: string) {
-    const connection = socialConnections.find(
+    const connection = availableSocialConnections.find(
       (candidate) => candidate.id === connectionId,
     );
     const selecting = !selectedConnectionIds.includes(connectionId);
@@ -3041,7 +3200,7 @@ function NewScheduleDrawer({
   function handleSaveDraft() {
     if (
       mediaValidationError ||
-      !selectedDemoMedia ||
+      (isCarouselSchedule ? !carouselLibraryItemId : !selectedDemoMedia) ||
       !scheduleTimeValidation.scheduledFor ||
       scheduleTimeValidation.error
     ) {
@@ -3053,6 +3212,13 @@ function NewScheduleDrawer({
       openingMedia: selectedHookMedia,
       scheduledDate,
       scheduledFor: scheduleTimeValidation.scheduledFor,
+      scheduledSource: isCarouselSchedule
+        ? { id: carouselLibraryItemId!, kind: "library_item" }
+        : { id: selectedDemoMedia!.id, kind: "media_asset" },
+      scheduledSourceTitle:
+        isCarouselSchedule && editingSchedule
+          ? editingSchedule.title
+          : selectedDemoMedia!.title,
       scheduledVideo: selectedDemoMedia,
       scheduledTime,
       targets: selectedConnections.map((connection) => ({
@@ -3063,7 +3229,7 @@ function NewScheduleDrawer({
           getDefaultPublishingSettings(connection.platform),
       })),
       timezone,
-      useOpeningClip,
+      useOpeningClip: isCarouselSchedule ? false : useOpeningClip,
     });
   }
 
@@ -3092,7 +3258,9 @@ function NewScheduleDrawer({
               {editingSchedule ? "Edit scheduled post" : "New scheduled post"}
             </h2>
             <p className="mt-1 text-sm font-medium leading-6 text-muted">
-              Choose a video, configure your social accounts, and select when it should be published.
+              {isCarouselSchedule
+                ? "Confirm the carousel, choose an account, and select when it should be published."
+                : "Choose a video, configure your social accounts, and select when it should be published."}
             </p>
           </div>
           <button
@@ -3110,20 +3278,28 @@ function NewScheduleDrawer({
             <ScheduleFlowSection
               step="1"
               title="Media"
-              description="Scheduled video, caption, and optional opening clip"
+              description={
+                isCarouselSchedule
+                  ? "Saved carousel and caption"
+                  : "Scheduled video, caption, and optional opening clip"
+              }
             >
               <div className="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)]">
                 <div className="grid content-start gap-4">
-                  <ScheduleRoleMediaPicker
-                    description="Choose the video that will be published."
-                    emptyDescription="Select a video from your library or edited exports."
-                    emptyTitle="No scheduled videos found."
-                    icon={<FileVideo className="size-4" aria-hidden="true" />}
-                    mediaOptions={demoMediaOptions}
-                    selectedMediaId={activeDemoMediaId}
-                    title="Scheduled video"
-                    onSelectMedia={setSelectedDemoMediaId}
-                  />
+                  {isCarouselSchedule && editingSchedule ? (
+                    <ScheduledCarouselSourceCard schedule={editingSchedule} />
+                  ) : (
+                    <ScheduleRoleMediaPicker
+                      description="Choose the video that will be published."
+                      emptyDescription="Select a video from your library or edited exports."
+                      emptyTitle="No scheduled videos found."
+                      icon={<FileVideo className="size-4" aria-hidden="true" />}
+                      mediaOptions={demoMediaOptions}
+                      selectedMediaId={activeDemoMediaId}
+                      title="Scheduled video"
+                      onSelectMedia={setSelectedDemoMediaId}
+                    />
+                  )}
                   <label className="block">
                     <span className="text-sm font-bold text-foreground">
                       Caption
@@ -3136,22 +3312,24 @@ function NewScheduleDrawer({
                       className="mt-2 min-h-32 w-full resize-none rounded-lg border border-border bg-white px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-[#8c9aab] focus:border-primary"
                     />
                   </label>
-                  <ScheduleOpeningClipControl
-                    enabled={useOpeningClip}
-                    onToggle={handleToggleOpeningClip}
-                  >
-                    <ScheduleOpeningMediaPicker
-                      catalogInfluencerOptions={catalogInfluencerOptions}
-                      errorMessage={hookPickerError}
-                      mediaOptions={localHookMediaOptions}
-                      preparingCatalogInfluencerId={preparingCatalogInfluencerId}
-                      refreshingMedia={refreshingMedia}
-                      selectedMediaId={activeHookMediaId}
-                      onRefreshMedia={handleRefreshMedia}
-                      onSelectCatalogInfluencer={handleSelectCatalogInfluencer}
-                      onSelectMedia={handleSelectHookMedia}
-                    />
-                  </ScheduleOpeningClipControl>
+                  {!isCarouselSchedule ? (
+                    <ScheduleOpeningClipControl
+                      enabled={useOpeningClip}
+                      onToggle={handleToggleOpeningClip}
+                    >
+                      <ScheduleOpeningMediaPicker
+                        catalogInfluencerOptions={catalogInfluencerOptions}
+                        errorMessage={hookPickerError}
+                        mediaOptions={localHookMediaOptions}
+                        preparingCatalogInfluencerId={preparingCatalogInfluencerId}
+                        refreshingMedia={refreshingMedia}
+                        selectedMediaId={activeHookMediaId}
+                        onRefreshMedia={handleRefreshMedia}
+                        onSelectCatalogInfluencer={handleSelectCatalogInfluencer}
+                        onSelectMedia={handleSelectHookMedia}
+                      />
+                    </ScheduleOpeningClipControl>
+                  ) : null}
                   {mediaValidationError ? (
                     <div
                       role="alert"
@@ -3164,11 +3342,15 @@ function NewScheduleDrawer({
                 </div>
 
                 <div className="grid content-start gap-4">
-                  <CompositionPreview
-                    openingMedia={selectedHookMedia}
-                    scheduledMedia={selectedDemoMedia}
-                    useOpeningClip={useOpeningClip}
-                  />
+                  {isCarouselSchedule && editingSchedule ? (
+                    <CarouselSchedulePreview schedule={editingSchedule} />
+                  ) : (
+                    <CompositionPreview
+                      openingMedia={selectedHookMedia}
+                      scheduledMedia={selectedDemoMedia}
+                      useOpeningClip={useOpeningClip}
+                    />
+                  )}
                 </div>
               </div>
             </ScheduleFlowSection>
@@ -3179,7 +3361,7 @@ function NewScheduleDrawer({
               description="Destinations, visibility, and platform controls"
             >
               <ConnectedAccountSelector
-                connections={socialConnections}
+                connections={availableSocialConnections}
                 onToggle={toggleConnection}
                 selectedConnectionIds={selectedConnectionIds}
               />
@@ -3280,10 +3462,14 @@ function NewScheduleDrawer({
                 </div>
 
                 <StatusPreview
-                  openingMedia={selectedHookMedia}
-                  scheduledMedia={selectedDemoMedia}
+                  openingMedia={isCarouselSchedule ? null : selectedHookMedia}
+                  scheduledMedia={
+                    isCarouselSchedule
+                      ? getCarouselScheduleMediaOption(editingSchedule)
+                      : selectedDemoMedia
+                  }
                   status={status}
-                  useOpeningClip={useOpeningClip}
+                  useOpeningClip={isCarouselSchedule ? false : useOpeningClip}
                 />
               </div>
             </ScheduleFlowSection>
@@ -3308,8 +3494,8 @@ function NewScheduleDrawer({
           >
             <CheckCircle2 className="size-4" aria-hidden="true" />
             {saving
-              ? editingSchedule
-                ? "Saving changes..."
+                ? editingSchedule
+                  ? "Saving changes..."
                 : hasSelectedConnections
                   ? "Scheduling..."
                   : "Saving..."
@@ -3318,12 +3504,14 @@ function NewScheduleDrawer({
                   ? "Save changes"
                   : hasSelectedConnections
                     ? "Schedule post"
-                    : "Save video draft"
+                    : isCarouselSchedule
+                      ? "Save carousel draft"
+                      : "Save video draft"
                 : publishingSettingsError
                   ? "Review publishing settings"
-                : selectedDemoMedia
+                : isCarouselSchedule || selectedDemoMedia
                   ? "Choose date and time"
-                  : mediaValidationError ?? "Select a video to schedule"}
+                  : mediaValidationError ?? "Select media to schedule"}
           </button>
           <p className="mt-3 text-center text-xs font-semibold leading-5 text-muted">
             {editingSchedule
@@ -3331,8 +3519,12 @@ function NewScheduleDrawer({
               : hasSelectedConnections
               ? useOpeningClip
                 ? "We prepare one combined video first, then schedule it automatically when ready."
-                : "This selected video will be scheduled directly without extra preparation."
-              : "Choose an account to schedule automatically, or save a video draft without publishing."}
+                : isCarouselSchedule
+                  ? "The saved carousel will be scheduled to the selected account."
+                  : "This selected video will be scheduled directly without extra preparation."
+              : isCarouselSchedule
+                ? "Choose an account to schedule automatically, or keep this as a carousel draft."
+                : "Choose an account to schedule automatically, or save a video draft without publishing."}
           </p>
         </div>
       </aside>
@@ -4613,6 +4805,10 @@ function getDraftRenderMessage(draft: ScheduleDraft) {
   }
 
   if (draft.status === "scheduled") {
+    if (isCarouselDraft(draft)) {
+      return "Carousel is queued for publishing at the planned time.";
+    }
+
     return isSingleVideoDraft(draft)
       ? "Scheduled video is queued for publishing at the planned time."
       : "Final combined video is scheduled. Publishing will run at the planned time.";
@@ -4689,7 +4885,9 @@ function canScheduleFinalDraft(draft: ScheduleDraft) {
     (draft.status === "ready" ||
       draft.status === "publishing_unavailable" ||
       canRetrySchedulerCreateFailure(draft)) &&
-      (isSingleVideoDraft(draft) ? draft.demoMedia : draft.combinedMedia?.mediaUrl) &&
+      (isSingleVideoDraft(draft) || isCarouselDraft(draft)
+        ? draft.demoMedia
+        : draft.combinedMedia?.mediaUrl) &&
       hasPlannedFinalSchedule(draft) &&
       !hasScheduleLeadTimeError(draft),
   );
@@ -4867,6 +5065,14 @@ function mapScheduledPostToScheduleDraft(
     sourceType: "combined_video",
     title: `${schedule.title} final`,
   });
+  const carouselMedia =
+    schedule.sourceKind === "library_item" && schedule.libraryItemId
+      ? getMetadataMediaOption({
+          id: schedule.libraryItemId,
+          sourceType: "generated_carousel",
+          title: schedule.title,
+        })
+      : undefined;
 
   return {
     canCancel: canCancelSchedule(schedule),
@@ -4874,14 +5080,19 @@ function mapScheduledPostToScheduleDraft(
     caption: schedule.caption,
     combinedMedia,
     createdAt: schedule.createdAt,
-    demoMedia,
+    demoMedia: carouselMedia ?? demoMedia,
     finalScheduleError: getString(metadata.finalScheduleError) ?? undefined,
     finalScheduleErrorCode:
       getString(metadata.finalScheduleErrorCode) ?? undefined,
     hookMedia,
     id: schedule.id,
     mediaIssue: mediaIssue ?? undefined,
-    mediaMode: isCombinedVideoMetadata(metadata) ? "combined_video" : "single_video",
+    mediaMode:
+      schedule.sourceKind === "library_item"
+        ? "carousel"
+        : isCombinedVideoMetadata(metadata)
+          ? "combined_video"
+          : "single_video",
     mediaTitle: schedule.title,
     plannedConnectionIds: getMetadataCsv(metadata.plannedConnectionIds),
     plannedScheduledFor: plannedScheduledFor ?? undefined,
@@ -5053,9 +5264,36 @@ function isSingleVideoDraft(draft: ScheduleDraft) {
   return (
     draft.mediaMode === "single_video" ||
     (draft.mediaMode !== "combined_video" &&
+      draft.mediaMode !== "carousel" &&
       draft.sourceType !== "combined_video" &&
+      draft.sourceType !== "generated_carousel" &&
       !draft.hookMedia)
   );
+}
+
+function isCarouselDraft(draft: ScheduleDraft) {
+  return (
+    draft.mediaMode === "carousel" || draft.sourceType === "generated_carousel"
+  );
+}
+
+function getScheduleDraftPlatformLabel(
+  draft: ScheduleDraft,
+  platform: SchedulePlatform,
+) {
+  if (!isCarouselDraft(draft)) {
+    return getSchedulePlatformLabel(platform);
+  }
+
+  if (platform === "instagram") {
+    return "Instagram carousel";
+  }
+
+  if (platform === "tiktok") {
+    return "TikTok photos";
+  }
+
+  return "YouTube (unsupported)";
 }
 
 function isCombinedVideoDraft(draft: ScheduleDraft) {
@@ -5100,7 +5338,11 @@ function getDraftMediaParts(draft: ScheduleDraft): {
   let hookMedia = draft.hookMedia ?? null;
   const legacyMedia = getLegacyDraftMedia(draft);
 
-  if (legacyMedia?.sourceType === "demo_video" && !demoMedia) {
+  if (
+    (legacyMedia?.sourceType === "demo_video" ||
+      legacyMedia?.sourceType === "generated_carousel") &&
+    !demoMedia
+  ) {
     demoMedia = legacyMedia;
   } else if (legacyMedia && !hookMedia) {
     hookMedia = legacyMedia;
@@ -5249,6 +5491,30 @@ function getOpeningVideoEmptyCopy(source: OpeningVideoSourceTab) {
 }
 
 function buildScheduleRequestBody(submission: ScheduleFormSubmission) {
+  if (submission.scheduledSource.kind === "library_item") {
+    return {
+      caption: submission.caption,
+      metadata: {
+        mediaMode: "carousel",
+        plannedScheduledFor: submission.scheduledFor,
+        scheduledDate: submission.scheduledDate,
+        scheduledTime: submission.scheduledTime,
+      },
+      plannedTargets: submission.targets,
+      scheduledDate: submission.scheduledDate,
+      scheduledFor: submission.scheduledFor,
+      scheduledTime: submission.scheduledTime,
+      source: submission.scheduledSource,
+      targets: [],
+      timezone: submission.timezone,
+      title: submission.scheduledSourceTitle.slice(0, 140),
+    };
+  }
+
+  if (!submission.scheduledVideo) {
+    throw new Error("Select a video to schedule.");
+  }
+
   const mediaMode = submission.useOpeningClip
     ? ("combined_video" as const)
     : ("single_video" as const);
@@ -5273,16 +5539,98 @@ function buildScheduleRequestBody(submission: ScheduleFormSubmission) {
     scheduledDate: submission.scheduledDate,
     scheduledFor: submission.scheduledFor,
     scheduledTime: submission.scheduledTime,
-    source: {
-      id: submission.scheduledVideo.id,
-      kind: "media_asset" as const,
-    },
+    source: submission.scheduledSource,
     targets: [],
     timezone: submission.timezone,
     title:
       mediaMode === "combined_video" && submission.openingMedia
         ? getCompositeMediaTitle(submission.openingMedia, submission.scheduledVideo)
         : submission.scheduledVideo.title.slice(0, 140),
+  };
+}
+
+async function completeTrendingScheduleAssignment(params: {
+  schedule: ScheduledPost;
+  token: string;
+}) {
+  const assignmentId = getString(params.schedule.metadata.assignmentId);
+
+  if (!assignmentId) {
+    return null;
+  }
+
+  try {
+    const response = await fetch("/api/trending/feed/actions", {
+      body: JSON.stringify({ action: "scheduled", assignmentId }),
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${params.token}`,
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    });
+    const data = (await response.json().catch(() => null)) as
+      | { message?: string; ok?: boolean }
+      | null;
+
+    if (!response.ok || data?.ok !== true) {
+      throw new Error(data?.message ?? "Could not update the Trending feed.");
+    }
+
+    return null;
+  } catch {
+    return "The post is scheduled, but Trending may need a refresh.";
+  }
+}
+
+function getInitialScheduleConnectionIds(params: {
+  connections: SocialConnection[];
+  isCarouselSchedule: boolean;
+  plannedPlatforms: SchedulePlatform[];
+  plannedTargets: ScheduleCreateTargetInput[];
+}) {
+  const allowedConnections = params.isCarouselSchedule
+    ? params.connections.filter((connection) =>
+        supportsCarouselPublishing(connection.platform),
+      )
+    : params.connections;
+  const allowedConnectionIds = new Set(
+    allowedConnections.map((connection) => connection.id),
+  );
+  const savedConnectionIds = params.plannedTargets
+    .map((target) => target.connectionId)
+    .filter((connectionId) => allowedConnectionIds.has(connectionId));
+
+  if (savedConnectionIds.length > 0) {
+    return savedConnectionIds;
+  }
+
+  return params.plannedPlatforms.flatMap((platform) => {
+    const connection = allowedConnections.find(
+      (candidate) =>
+        candidate.platform === platform && candidate.status === "connected",
+    );
+
+    return connection ? [connection.id] : [];
+  });
+}
+
+function supportsCarouselPublishing(platform: SchedulePlatform) {
+  return platform === "instagram" || platform === "tiktok";
+}
+
+function getCarouselScheduleMediaOption(
+  schedule: ScheduledPost | null,
+): ScheduleMediaOption | null {
+  if (!schedule?.libraryItemId || schedule.sourceKind !== "library_item") {
+    return null;
+  }
+
+  return {
+    id: schedule.libraryItemId,
+    sourceType: "generated_carousel",
+    status: "ready",
+    title: schedule.title,
   };
 }
 

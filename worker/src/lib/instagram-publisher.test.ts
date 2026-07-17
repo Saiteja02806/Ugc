@@ -3,8 +3,67 @@ import test from "node:test";
 
 import {
   InstagramPublishError,
+  publishInstagramCarousel,
   publishInstagramReel,
 } from "./instagram-publisher.js";
+
+test("creates ordered Instagram carousel children before publishing the parent", async () => {
+  const createBodies: URLSearchParams[] = [];
+  const persistedContainers: string[] = [];
+  let childCounter = 0;
+
+  await withMockFetch(async (input, init) => {
+    const url = new URL(String(input));
+
+    if (url.pathname === "/account-1/media") {
+      const body = new URLSearchParams(String(init?.body));
+      createBodies.push(body);
+
+      if (body.get("is_carousel_item") === "true") {
+        childCounter += 1;
+        return Response.json({ id: `child-${childCounter}` });
+      }
+
+      return Response.json({ id: "carousel-parent-1" });
+    }
+
+    if (
+      url.pathname === "/child-1" ||
+      url.pathname === "/child-2" ||
+      url.pathname === "/carousel-parent-1"
+    ) {
+      return Response.json({ status_code: "FINISHED" });
+    }
+
+    if (url.pathname === "/account-1/media_publish") {
+      return Response.json({ id: "carousel-media-1" });
+    }
+
+    assert.equal(url.pathname, "/carousel-media-1");
+    return Response.json({ permalink: "https://www.instagram.com/p/carousel" });
+  }, async () => {
+    const result = await publishInstagramCarousel({
+      accessToken: "access-token",
+      caption: "Carousel caption",
+      imageUrls: [
+        "https://cdn.example.com/slide-1.webp",
+        "https://cdn.example.com/slide-2.webp",
+      ],
+      instagramAccountId: "account-1",
+      onContainerCreated: async (containerId) => {
+        persistedContainers.push(containerId);
+      },
+    });
+
+    assert.equal(result.mediaId, "carousel-media-1");
+  });
+
+  assert.equal(createBodies[0]?.get("image_url"), "https://cdn.example.com/slide-1.webp");
+  assert.equal(createBodies[1]?.get("image_url"), "https://cdn.example.com/slide-2.webp");
+  assert.equal(createBodies[2]?.get("media_type"), "CAROUSEL");
+  assert.equal(createBodies[2]?.get("children"), "child-1,child-2");
+  assert.deepEqual(persistedContainers, ["carousel-parent-1"]);
+});
 
 test("sends the selected Instagram feed placement", async () => {
   const createBodies: URLSearchParams[] = [];

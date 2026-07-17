@@ -391,6 +391,107 @@ function getInstagramPublishError(
   });
 }
 
+export async function publishInstagramCarousel(params: {
+  accessToken: string;
+  caption: string;
+  containerId?: string | null;
+  imageUrls: string[];
+  instagramAccountId: string;
+  onContainerCreated?: (containerId: string) => Promise<void>;
+}): Promise<InstagramPublishResult> {
+  if (params.imageUrls.length < 2 || params.imageUrls.length > 10) {
+    throw createInstagramPublishError({
+      code: "invalid_media",
+      message: "Instagram carousel publishing requires 2 to 10 images.",
+      userMessage: "Instagram carousels require between 2 and 10 slides.",
+    });
+  }
+
+  const containerId =
+    params.containerId ?? (await createInstagramCarouselContainer(params));
+
+  if (!params.containerId) {
+    await params.onContainerCreated?.(containerId);
+  }
+
+  await waitForInstagramContainer({
+    accessToken: params.accessToken,
+    containerId,
+  });
+
+  const mediaId = await publishInstagramContainer({
+    accessToken: params.accessToken,
+    containerId,
+    instagramAccountId: params.instagramAccountId,
+  });
+  const permalink = await getInstagramMediaPermalink({
+    accessToken: params.accessToken,
+    mediaId,
+  });
+
+  return { mediaId, permalink };
+}
+
+async function createInstagramCarouselContainer(params: {
+  accessToken: string;
+  caption: string;
+  imageUrls: string[];
+  instagramAccountId: string;
+}) {
+  const childIds: string[] = [];
+
+  for (const imageUrl of params.imageUrls) {
+    const child = await postInstagramForm<{ id?: string }>(
+      `/${params.instagramAccountId}/media`,
+      {
+        access_token: params.accessToken,
+        image_url: imageUrl,
+        is_carousel_item: "true",
+      },
+    );
+
+    if (!child.id) {
+      throw createInstagramPublishError({
+        code: "invalid_provider_response",
+        message: "Instagram did not return a carousel child container id.",
+        userMessage: "Instagram could not prepare one of the carousel slides.",
+      });
+    }
+
+    await waitForInstagramContainer({
+      accessToken: params.accessToken,
+      containerId: child.id,
+    });
+    childIds.push(child.id);
+  }
+
+  const parent = await postInstagramForm<{ id?: string }>(
+    `/${params.instagramAccountId}/media`,
+    {
+      access_token: params.accessToken,
+      caption: params.caption,
+      children: childIds.join(","),
+      media_type: "CAROUSEL",
+    },
+  );
+
+  if (!parent.id) {
+    throw createInstagramPublishError({
+      code: "invalid_provider_response",
+      message: "Instagram did not return a carousel container id.",
+      userMessage: "Instagram could not prepare this carousel. Try again.",
+    });
+  }
+
+  logger.info("Instagram carousel container created", {
+    childCount: childIds.length,
+    containerId: parent.id,
+    instagramAccountId: params.instagramAccountId,
+  });
+
+  return parent.id;
+}
+
 function getInstagramApiError(payload: object | null) {
   if (!payload || !("error" in payload)) {
     return null;

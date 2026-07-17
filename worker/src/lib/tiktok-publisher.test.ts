@@ -3,9 +3,83 @@ import test from "node:test";
 
 import {
   getTikTokChunkPlan,
+  publishTikTokPhotoCarousel,
   publishTikTokVideo,
   TikTokPublishError,
 } from "./tiktok-publisher.js";
+
+test("initializes a TikTok photo carousel with ordered pull URLs", async () => {
+  const initBodies: Array<Record<string, unknown>> = [];
+  const initialized: string[] = [];
+
+  await withTikTokEnv(
+    { mode: "PULL_FROM_URL", verifiedHosts: "cdn.example.com" },
+    async () => {
+      await withMockFetch(async (input, init) => {
+        const url = new URL(String(input));
+
+        if (url.pathname.endsWith("/creator_info/query/")) {
+          return tiktokResponse({
+            comment_disabled: false,
+            privacy_level_options: ["SELF_ONLY"],
+          });
+        }
+
+        if (url.pathname.endsWith("/content/init/")) {
+          initBodies.push(JSON.parse(String(init?.body)));
+          return tiktokResponse({ publish_id: "photo-publish-1" });
+        }
+
+        assert.equal(url.pathname.endsWith("/status/fetch/"), true);
+        return tiktokResponse({
+          publicaly_available_post_id: ["photo-post-1"],
+          status: "PUBLISH_COMPLETE",
+        });
+      }, async () => {
+        const result = await publishTikTokPhotoCarousel({
+          accessToken: "access-token",
+          caption: "Photo caption",
+          imageUrls: [
+            "https://cdn.example.com/slide-1.webp",
+            "https://cdn.example.com/slide-2.webp",
+          ],
+          onPublishInitialized: async (initialization) => {
+            initialized.push(initialization.publishId);
+          },
+          settings: {
+            allowComment: true,
+            brandOrganic: true,
+            brandedContent: false,
+            privacyLevel: "SELF_ONLY",
+          },
+        });
+
+        assert.equal(result.platformPostId, "photo-post-1");
+      });
+    },
+  );
+
+  assert.deepEqual(initBodies[0]?.source_info, {
+    photo_cover_index: 0,
+    photo_images: [
+      "https://cdn.example.com/slide-1.webp",
+      "https://cdn.example.com/slide-2.webp",
+    ],
+    source: "PULL_FROM_URL",
+  });
+  assert.equal(initBodies[0]?.media_type, "PHOTO");
+  assert.equal(initBodies[0]?.post_mode, "DIRECT_POST");
+  assert.deepEqual(initBodies[0]?.post_info, {
+    auto_add_music: true,
+    brand_content_toggle: false,
+    brand_organic_toggle: true,
+    description: "Photo caption",
+    disable_comment: false,
+    privacy_level: "SELF_ONLY",
+    title: "Photo caption",
+  });
+  assert.deepEqual(initialized, ["photo-publish-1"]);
+});
 
 test("sends the selected TikTok privacy, interaction, and disclosure settings", async () => {
   const initBodies: Array<Record<string, unknown>> = [];

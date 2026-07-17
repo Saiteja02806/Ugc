@@ -41,11 +41,23 @@ connected social accounts. Scheduler payloads contain only `{ version,
 targetId }`; captions, media URLs, OAuth tokens, cookies, and other secrets do
 not pass through EventBridge.
 
-The provider publishing adapter remains guarded. The social publish Lambda
-accepts scheduler target payloads without retrying forever, but it logs
-`REAL_PUBLISHING_NOT_ENABLED` until platform-specific publish handlers are
-implemented and verified. Do not describe a scheduled post as actually
-published until the worker adapter updates the target row to `published`.
+Saved carousels are scheduled as `library_item` sources; they must never be
+silently replaced with a video media asset. The Scheduling editor preserves the
+Library item, collects an exact connected account plus wall-clock date/time,
+and only then creates EventBridge targets. Undated drafts remain visible in the
+Drafts list and do not appear as timed calendar entries.
+
+The social publish worker loads the ordered `library_carousel_slides` rows at
+publish time. Instagram publishes a 2-10 image carousel through child media
+containers plus one persisted parent container. Before container creation, the
+worker converts the rendered WebP slides to deterministic CloudFront-backed
+JPEG publish copies; the Library carousel and frontend renders remain
+unchanged. TikTok publishes the verified WebP URLs as a 2-35 image photo post
+through the Content Posting API and persists its publish ID. YouTube is
+intentionally unavailable for carousel scheduling because its upload API is
+video-only. Existing Reel, TikTok video, and YouTube video paths remain
+separate. Do not describe a scheduled post as actually published until the
+worker updates its target row to `published`.
 
 ## Non-Negotiable Image Safety
 
@@ -572,7 +584,7 @@ Allowed completion actions are:
 
 - left swipe succeeds -> `completed_skipped`
 - right swipe + Library save succeeds -> `completed_saved`
-- right swipe + schedule draft creation succeeds -> `completed_scheduled`
+- right swipe + a timed platform schedule succeeds -> `completed_scheduled`
 
 Changing between slides, opening a card, closing the page, cancelling the
 right-swipe modal, or failing a save/schedule request must not complete an
@@ -581,11 +593,13 @@ assignment.
 The actions API enforces this completion evidence server-side. `saved`
 requires an owner-scoped, non-deleted `generated_carousel` Library item for the
 assignment's carousel. `scheduled` additionally requires an owner-scoped
-`scheduled_posts` row linked to that Library item in a usable created state.
+`scheduled_posts` row linked to that Library item in a usable non-draft state.
 Same-action retries are idempotent; conflicting completed actions return 409.
-Trending creates the schedule record as an idempotent draft before recording
-`completed_scheduled`. Platform selection alone is not completion and is not a
-claim that a timed post has already been published.
+Trending creates the schedule record as an idempotent draft and opens that
+exact draft in Scheduling. Platform selection or draft creation alone is not
+completion. The assignment is recorded as `completed_scheduled` only after the
+user chooses an account and time and provider scheduling succeeds; this is
+still not a claim that the provider has published the post yet.
 
 The first feed layer only reused completed carousel generations that already
 existed for the current business profile. The 2026-07-17 source slice adds the
@@ -638,9 +652,8 @@ UTC in the background sweep is forbidden because it can pre-create a feed for
 the wrong user-local date; after the first visit, the scheduled sweep keeps that
 profile replenished without requiring the tab to remain open.
 
-Semantic near-duplicate concept rejection, deliberate visual-preset rotation,
-and a carousel-specific editor that turns the server-backed schedule draft into
-a timed publish remain follow-up work.
+Semantic near-duplicate concept rejection and deliberate visual-preset rotation
+remain follow-up work.
 
 ## Readiness and Sourcing
 
@@ -869,8 +882,10 @@ only the caller's carousel generations for the caller's single business profile.
   slide rows. Duplicate saves return the existing Library item. After a
   successful save, Trending stays on the page, shows a View Library action, and
   advances to the next complete carousel. Schedule Post must use a
-  server-backed Library item and the server scheduling API. Browser-local
-  scheduling drafts are no longer the intended persistence path.
+  server-backed Library item and the server scheduling API, then route to
+  `/scheduling?draft=<id>` so the exact draft opens for account and time
+  selection. Browser-local scheduling drafts are no longer the intended
+  persistence path.
 - The Library content tab lists server-backed carousel Library items first. As
   a transition path for older sessions, it may also display legacy
   browser-local entries from `ugc-studio.carousel-library.v1` when the same

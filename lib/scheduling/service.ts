@@ -83,7 +83,7 @@ const directScheduledVideoSourceTypes = new Set([
   "edit_export",
 ]);
 
-type ScheduleMediaMode = "single_video" | "combined_video";
+type ScheduleMediaMode = "single_video" | "combined_video" | "carousel";
 
 export type ScheduleRenderedPostInput = {
   connectionIds?: unknown;
@@ -166,11 +166,15 @@ export async function createUserSchedule(params: {
       userId: params.userId,
     }),
   ]);
-  const metadata = applyTrustedPlannedTargetMetadata({
+  const trustedMetadata = applyTrustedPlannedTargetMetadata({
     metadata: normalized.metadata,
     plannedTargets: plannedTargetConnections,
     snapshotProvided: normalized.plannedTargetsProvided,
   });
+  const metadata =
+    normalized.source.kind === "library_item"
+      ? { ...trustedMetadata, mediaMode: "carousel" }
+      : trustedMetadata;
   const isDraft = targetConnections.length === 0;
   const mediaMode = getScheduleMediaMode(metadata);
 
@@ -189,6 +193,11 @@ export async function createUserSchedule(params: {
       "publishable_media_required",
     );
   }
+
+  assertCarouselTargetPlatformsSupported({
+    sourceKind: normalized.source.kind,
+    targets: targetConnections,
+  });
 
   const postStatus: ScheduledPostStatus = isDraft ? "draft" : "scheduling";
   const post = await insertScheduledPost({
@@ -334,6 +343,94 @@ export async function scheduleRenderedPost(params: {
       409,
       "schedule_targets_required",
     );
+  }
+
+  if (existing.sourceKind === "library_item") {
+    const libraryItemId = existing.libraryItemId;
+
+    if (!libraryItemId) {
+      throw new SchedulingRequestError(
+        "This carousel schedule is missing its Library item.",
+        409,
+        "library_item_unavailable",
+      );
+    }
+
+    await resolveScheduleSource({
+      sourceId: libraryItemId,
+      sourceKind: "library_item",
+      userId: params.userId,
+    });
+    assertCarouselTargetPlatformsSupported({
+      sourceKind: "library_item",
+      targets: targetConnections,
+    });
+
+    const prepared = await prepareScheduledPostForPublishing({
+      expectedStatus: existing.status,
+      expectedUpdatedAt: existing.updatedAt,
+      mediaAssetId: null,
+      metadata: {
+        finalScheduleError: null,
+        finalScheduleRenderId: null,
+        finalScheduleRequestedAt: new Date().toISOString(),
+        finalScheduleStatus: "scheduling",
+        mediaMode: "carousel",
+        plannedConnectionIds: normalized.connectionIds.join(","),
+        plannedScheduledFor: normalized.scheduledFor,
+        scheduledDate: normalized.scheduleTime.scheduledDate,
+        scheduledTime: normalized.scheduleTime.scheduledTime,
+      },
+      postId: existing.id,
+      scheduledFor: normalized.scheduledFor,
+      timezone: normalized.timezone,
+      userId: params.userId,
+    });
+
+    if (!prepared) {
+      throw new SchedulingRequestError(
+        "This schedule changed while platform scheduling was starting. Reload it and try again.",
+        409,
+        "schedule_version_conflict",
+      );
+    }
+
+    const targetRows = await insertScheduledPostTargets(
+      targetConnections.map((connection) => ({
+        metadata: {
+          libraryItemId,
+          mediaMode: "carousel",
+        },
+        platform: connection.platform,
+        scheduled_for: normalized.scheduledFor,
+        scheduled_post_id: existing.id,
+        settings: connection.settings,
+        social_connection_id: connection.id,
+        status: "scheduling",
+        user_id: params.userId,
+      })),
+    );
+
+    const { failedCount, scheduledCount } = await scheduleTargetRows({
+      projectId: existing.projectId,
+      targetRows,
+      userId: params.userId,
+    });
+
+    await markScheduledPostStatus({
+      lastErrorCode: failedCount > 0 ? "scheduler_create_failed" : null,
+      postId: existing.id,
+      status: getPostStatusFromSchedulerCounts({ failedCount, scheduledCount }),
+      userId: params.userId,
+    });
+
+    return {
+      created: true,
+      schedule: await getRequiredSchedule({
+        postId: existing.id,
+        userId: params.userId,
+      }),
+    };
   }
 
   if (getScheduleMediaMode(existing.metadata) === "single_video") {
@@ -691,12 +788,68 @@ export async function updateUserSchedule(params: {
     );
   }
 
-  if (normalized.source.kind !== "media_asset") {
-    throw new SchedulingRequestError(
-      "Only video schedule drafts can be edited here.",
-      409,
-      "schedule_source_not_editable",
-    );
+  if (normalized.source.kind === "library_item") {
+    if (
+      existing.sourceKind !== "library_item" ||
+      existing.libraryItemId !== normalized.source.id
+    ) {
+      throw new SchedulingRequestError(
+        "The saved carousel attached to this draft cannot be replaced.",
+        409,
+        "schedule_source_not_editable",
+      );
+    }
+
+    const source = await resolveScheduleSource({
+      sourceId: normalized.source.id,
+      sourceKind: "library_item",
+      userId: params.userId,
+    });
+    const plannedTargetConnections = await resolveScheduleTargets({
+      targets: normalized.plannedTargets,
+      userId: params.userId,
+    });
+    assertCarouselTargetPlatformsSupported({
+      sourceKind: "library_item",
+      targets: plannedTargetConnections,
+    });
+    const metadata = applyTrustedPlannedTargetMetadata({
+      metadata: {
+        ...normalizeMetadata(existing.metadata),
+        ...normalized.metadata,
+        mediaMode: "carousel",
+      },
+      plannedTargets: plannedTargetConnections,
+      snapshotProvided: normalized.plannedTargetsProvided,
+    });
+    const updated = await updateEditableScheduledPost({
+      expectedUpdatedAt,
+      postId: existing.id,
+      update: {
+        caption: normalized.caption,
+        last_error_code: null,
+        library_item_id: normalized.source.id,
+        media_asset_id: null,
+        metadata,
+        project_id: source.projectId,
+        scheduled_for: null,
+        source_kind: "library_item",
+        status: "draft",
+        timezone: normalized.timezone,
+        title: normalized.title || source.title,
+      },
+      userId: params.userId,
+    });
+
+    if (!updated) {
+      throw new SchedulingRequestError(
+        "This schedule changed while it was being saved. Reload it and try again.",
+        409,
+        "schedule_version_conflict",
+      );
+    }
+
+    return updated;
   }
 
   const nextMediaMode = getScheduleMediaMode(normalized.metadata);
@@ -1098,7 +1251,11 @@ function getScheduleMediaMode(
 ): ScheduleMediaMode {
   const mediaMode = getMetadataString(metadata.mediaMode);
 
-  if (mediaMode === "combined_video" || mediaMode === "single_video") {
+  if (
+    mediaMode === "combined_video" ||
+    mediaMode === "single_video" ||
+    mediaMode === "carousel"
+  ) {
     return mediaMode;
   }
 
@@ -1116,7 +1273,32 @@ function isPublishableMediaSource(params: {
     return params.sourceType === "combined_render";
   }
 
+  if (params.mediaMode === "carousel") {
+    return false;
+  }
+
   return isDirectScheduledVideoSource(params);
+}
+
+function assertCarouselTargetPlatformsSupported(params: {
+  sourceKind: "media_asset" | "library_item";
+  targets: Array<{ platform: SchedulePlatform }>;
+}) {
+  if (params.sourceKind !== "library_item") {
+    return;
+  }
+
+  const unsupported = params.targets.find(
+    (target) => target.platform !== "instagram" && target.platform !== "tiktok",
+  );
+
+  if (unsupported) {
+    throw new SchedulingRequestError(
+      "Carousel posts can currently be scheduled to Instagram or TikTok. YouTube requires a video.",
+      409,
+      "carousel_platform_unsupported",
+    );
+  }
 }
 
 function isDirectScheduledVideoSource(params: {

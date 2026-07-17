@@ -421,7 +421,7 @@ export async function markScheduledPostStatus(params: {
 export async function prepareScheduledPostForPublishing(params: {
   expectedStatus?: ScheduledPostStatus;
   expectedUpdatedAt?: string;
-  mediaAssetId: string;
+  mediaAssetId: string | null;
   metadata: Record<string, Json | undefined>;
   postId: string;
   scheduledFor: string;

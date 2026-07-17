@@ -6,7 +6,10 @@ export function getScheduleMediaIssue(params: {
   activeDemoIds: ReadonlySet<string>;
   activeOpeningIds: ReadonlySet<string>;
   mediaLoaded: boolean;
-  schedule: Pick<ScheduledPost, "mediaAssetId" | "metadata" | "status">;
+  schedule: Pick<
+    ScheduledPost,
+    "mediaAssetId" | "metadata" | "sourceKind" | "status"
+  >;
 }): ScheduleMediaIssue | null {
   if (!params.mediaLoaded || params.schedule.status !== "draft") {
     return null;
@@ -26,6 +29,14 @@ export function getScheduleMediaIssue(params: {
     getString(params.schedule.metadata.demoMediaId) ??
     params.schedule.mediaAssetId;
   const mediaMode = getString(params.schedule.metadata.mediaMode);
+
+  if (
+    params.schedule.sourceKind === "library_item" ||
+    mediaMode === "carousel"
+  ) {
+    return null;
+  }
+
   const singleVideoMode = mediaMode === "single_video";
   const combinedVideoMode = mediaMode === "combined_video" || Boolean(openingId);
   const openingMissing =

@@ -24,6 +24,8 @@ const CATEGORY_IMAGE_ASSETS_TABLE = "category_image_assets";
 const CATEGORY_IMAGE_ASSET_PAGE_SIZE = 1000;
 const DEMO_VIDEOS_TABLE = "demo_videos";
 const EDITABLE_VIDEOS_TABLE = "editable_videos";
+const LIBRARY_CAROUSEL_SLIDES_TABLE = "library_carousel_slides";
+const LIBRARY_ITEMS_TABLE = "library_items";
 const MEDIA_ASSETS_TABLE = "media_assets";
 const SCHEDULED_POSTS_TABLE = "scheduled_posts";
 const SCHEDULED_POST_TARGETS_TABLE = "scheduled_post_targets";
@@ -693,24 +695,67 @@ export class SupabaseJobStore {
       throw new Error("Scheduled post was not found.");
     }
 
-    if (!post.media_asset_id) {
-      throw new Error("Scheduled post is missing final media.");
-    }
+    let media: BackgroundJobsDatabase["public"]["Tables"]["media_assets"]["Row"] | null = null;
+    let carousel: {
+      item: BackgroundJobsDatabase["public"]["Tables"]["library_items"]["Row"];
+      slides: BackgroundJobsDatabase["public"]["Tables"]["library_carousel_slides"]["Row"][];
+    } | null = null;
 
-    const { data: media, error: mediaError } = await this.client
-      .from(MEDIA_ASSETS_TABLE)
-      .select("*")
-      .eq("id", post.media_asset_id)
-      .eq("user_id", params.userId)
-      .is("deleted_at", null)
-      .maybeSingle();
+    if (post.source_kind === "library_item" && post.library_item_id) {
+      const { data: item, error: itemError } = await this.client
+        .from(LIBRARY_ITEMS_TABLE)
+        .select("*")
+        .eq("id", post.library_item_id)
+        .eq("user_id", params.userId)
+        .eq("source_type", "generated_carousel")
+        .eq("media_type", "carousel")
+        .eq("status", "ready")
+        .is("deleted_at", null)
+        .maybeSingle();
 
-    if (mediaError) {
-      throw new Error(`Could not load final media: ${mediaError.message}`);
-    }
+      if (itemError) {
+        throw new Error(`Could not load scheduled carousel: ${itemError.message}`);
+      }
 
-    if (!media) {
-      throw new Error("Final media was not found.");
+      if (!item) {
+        throw new Error("Scheduled carousel was not found.");
+      }
+
+      const { data: slides, error: slidesError } = await this.client
+        .from(LIBRARY_CAROUSEL_SLIDES_TABLE)
+        .select("*")
+        .eq("library_item_id", item.id)
+        .order("slide_number", { ascending: true });
+
+      if (slidesError) {
+        throw new Error(
+          `Could not load scheduled carousel slides: ${slidesError.message}`,
+        );
+      }
+
+      carousel = { item, slides: slides ?? [] };
+    } else {
+      if (!post.media_asset_id) {
+        throw new Error("Scheduled post is missing final media.");
+      }
+
+      const { data: finalMedia, error: mediaError } = await this.client
+        .from(MEDIA_ASSETS_TABLE)
+        .select("*")
+        .eq("id", post.media_asset_id)
+        .eq("user_id", params.userId)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (mediaError) {
+        throw new Error(`Could not load final media: ${mediaError.message}`);
+      }
+
+      if (!finalMedia) {
+        throw new Error("Final media was not found.");
+      }
+
+      media = finalMedia;
     }
 
     const { data: connection, error: connectionError } = await this.client
@@ -731,6 +776,7 @@ export class SupabaseJobStore {
     }
 
     return {
+      carousel,
       connection,
       media,
       post,

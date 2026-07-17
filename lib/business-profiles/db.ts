@@ -27,6 +27,7 @@ type BusinessProfileRow = {
   project_id: string;
   source_context: string | null;
   source_url: string | null;
+  trending_timezone: string | null;
   updated_at: string;
   user_id: string;
 };
@@ -56,6 +57,7 @@ export type BusinessProfileRecord = {
   preparationStatus: BusinessProfileStatus;
   profileVersion: number;
   projectId: string;
+  trendingTimezone: string | null;
   userId: string;
 };
 
@@ -80,6 +82,51 @@ export async function getBusinessProfileForUser(userId: string) {
     .maybeSingle();
   if (error) throw new Error(`Could not load business profile: ${error.message}`);
   return data ? mapProfile(data) : null;
+}
+
+export async function listBusinessProfilesForDailyReplenishment(params: {
+  cursor?: string | null;
+  limit: number;
+}) {
+  const limit = Math.min(Math.max(Math.trunc(params.limit), 1), 200);
+  let query = getClient()
+    .from(BUSINESS_PROFILES_TABLE)
+    .select("*")
+    .not("analysis_id", "is", null)
+    .not("trending_timezone", "is", null)
+    .order("id", { ascending: true })
+    .limit(limit);
+
+  if (params.cursor) {
+    query = query.gt("id", params.cursor);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(
+      `Could not list business profiles for daily replenishment: ${error.message}`,
+    );
+  }
+
+  return (data ?? []).map(mapProfile);
+}
+
+export async function updateBusinessProfileTrendingTimezone(params: {
+  profileId: string;
+  timezone: string;
+}) {
+  const { error } = await getClient()
+    .from(BUSINESS_PROFILES_TABLE)
+    .update({
+      trending_timezone: params.timezone,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", params.profileId);
+
+  if (error) {
+    throw new Error(`Could not save Trending timezone: ${error.message}`);
+  }
 }
 
 export async function saveBusinessProfile(input: {
@@ -201,6 +248,7 @@ function mapProfile(row: BusinessProfileRow): BusinessProfileRecord {
     preparationStatus: row.preparation_status,
     profileVersion: row.profile_version,
     projectId: row.project_id,
+    trendingTimezone: row.trending_timezone,
     userId: row.user_id,
   };
 }

@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-07-16
+Last updated: 2026-07-17
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -485,9 +485,54 @@ The schema foundation is migration
 - `daily_carousel_feeds`
 - `daily_carousel_feed_items`
 
+Migration `20260717100000_add_daily_carousel_replenishment.sql` adds
+`daily_carousel_refill_batches`, the persisted profile timezone, daily-origin
+and availability metadata on `carousel_generations`, batch-local candidate
+uniqueness, idempotency keys for background jobs, and a delivery timestamp used
+to lease Carousel SQS redelivery attempts. It also adds the singleton daily
+replenishment sweep checkpoint and service-role-only claim/advance RPCs.
+
 Default entitlement rows are `pro` with 10 daily carousels and `ultra_pro` with
 20 daily carousels. The frontend must read `dailyCarouselLimit` from the feed
 response and must not hardcode plan limits.
+
+The daily limit is an inventory target, not a one-time lifetime batch. On each
+new user-local date, the feed must:
+
+1. carry unfinished, runtime-safe assignments from earlier dates;
+2. assign already-ready, unassigned eligible inventory;
+3. count viable unassigned processing inventory; and
+4. reserve and enqueue only the remaining shortfall to the persisted daily
+   limit.
+
+Examples for a daily limit of ten:
+
+- ten completed yesterday -> generate ten for the new day;
+- five completed and five unfinished -> carry five and generate five;
+- none completed -> carry all ten and generate zero.
+
+Completing an item does not refill its occupied position during the same local
+day. The shortfall is calculated only against a new day's feed. Daily refill
+reservations are idempotent per persisted feed and business-profile version,
+and failed reserved candidates may extend that refill batch only after the
+15-minute repair cooldown. Daily generation indexes are batch-local so worker
+selection cost does not increase indefinitely as a profile accumulates daily
+history.
+
+Visible feed-item insertion and daily refill reservation both validate the
+current `business_profiles.profile_version` inside service-role RPCs before
+committing user-visible rows or reserving new generation work. A stale request
+from an older business profile version must stop before enqueuing refill work
+for that obsolete version.
+
+Ready inventory is paged by a stable `created_at + id` cursor until the
+required viable count is found or history is exhausted; assigned or failed
+newer rows must never hide older valid unassigned inventory. Duplicate
+rejection fingerprints ordered user-visible headline, supporting text, and CTA
+copy only. Internal category and angle labels are not part of that identity.
+New fingerprints are version-prefixed, and the feed recomputes visible-copy
+fingerprints in memory for pre-release assignment rows so existing production
+history remains compatible with the corrected duplicate rule.
 
 An existing daily feed is read without rewriting its persisted feed row. Its
 plan and daily limit are a snapshot for that local day. If the feed has fewer
@@ -505,11 +550,14 @@ The response exposes `feed.state` with these values:
   generation work to poll for.
 - `exhausted`: no runtime-safe active carousel or processing inventory remains.
 
-The frontend polls only while `feed.state` is `preparing`. Empty exhausted and
-caught-up feeds must not be inferred as `preparing`. Before an unfinished
-assignment is carried into a new local day, its generation is revalidated as
-complete and strict runtime-safe; invalid carries are marked failed and their
-slots are offered to valid carries or newly ready unassigned carousels.
+The frontend polls every six seconds while `feed.state` is `preparing`. If a
+feed still has unfilled positions but no active processing job, it uses a
+one-minute repair poll so an open tab discovers scheduler recovery without a
+tight permanent loop. Empty exhausted and caught-up feeds must not be inferred
+as genuinely processing. Before an unfinished assignment is carried into a new
+local day, its generation is revalidated as complete and strict runtime-safe;
+invalid carries are marked failed and their slots are offered to valid carries
+or newly ready unassigned carousels.
 If concurrent population requests create an active current-day assignment
 before one feed-item insert loses a uniqueness race, the next top-up recovers
 that unpersisted assignment before claiming another fresh carousel.
@@ -539,15 +587,60 @@ Trending creates the schedule record as an idempotent draft before recording
 `completed_scheduled`. Platform selection alone is not completion and is not a
 claim that a timed post has already been published.
 
-This first feed layer reuses completed carousel generations that already exist
-for the current business profile. It carries unfinished assignments forward on
-the next local day and fills new feed slots only from ready, unassigned
-generated carousels. It does not yet add a scheduled daily generation worker,
-semantic near-duplicate concept rejection, visual-preset rotation, automatic
-generation beyond the existing carousel preparation flow, or a carousel-
-specific editor that turns the server-backed schedule draft into a timed
-publish. Those should remain follow-up work before enabling high-volume Pro or
-Ultra Pro daily limits in production.
+The first feed layer only reused completed carousel generations that already
+existed for the current business profile. The 2026-07-17 source slice adds the
+missing daily refill ledger, batch-local generation identity, lazy feed
+reconciliation, persisted user timezone, open-tab local-date refresh, and a
+quarter-hour Trigger.dev production sweep. One serialized scheduled task walks
+every strictly increasing UUID cursor page before it completes, so overlapping
+sweeps cannot restart from the first page and starve later profiles. The active
+cycle ID and last successful UUID cursor are persisted in Supabase. A Trigger
+retry, timeout, or later scheduled run claims that active cycle and resumes from
+its saved cursor; only after completion may a new scheduled cycle start. Cursor
+advances use a locked compare-and-set RPC, so a response is never allowed to
+silently overwrite a newer checkpoint. Completed cycle timestamps are
+monotonic: an older or equal delayed Trigger retry is an idempotent no-op and
+cannot replace a newer completed sweep. A failed profile is logged and counted
+without preventing later profiles in that sweep; route or network failures
+still use the task retry policy. Each page calls a HMAC-authenticated Next.js
+route with a 50-second Trigger fetch timeout below the route's 60-second maximum.
+It only reserves generation rows and sends the normal AWS SQS jobs; the AWS
+Carousel worker remains the only live LLM, matcher, Sharp render, S3, and
+completion path. Queued or stale-processing Carousel jobs are redelivered after
+the worker's 30-minute reclaim boundary using the same background-job ID. An
+atomic database delivery lease prevents six-second frontend polling or
+concurrent scheduler requests from flooding SQS, and the worker's atomic claim
+prevents duplicate delivery from causing duplicate LLM/render execution.
+
+A business-profile update does not remove Carousel assignments already placed
+in that day's feed. Existing positions remain the day's delivered snapshot;
+any still-empty positions use a refill reservation for the new profile version.
+Feed-item insertion locks and rechecks the selected business-profile version in
+the database transaction. If the profile changed after selection, no stale
+assignment may enter an empty position; only assignments created by that losing
+attempt are invalidated, and the caller retries against the latest profile.
+This source behavior must not be described as deployed until the migration,
+Vercel release, Trigger.dev schedule, and running ECS Carousel worker are all
+verified.
+
+Daily-refill production rollout order is database migration first, then verify
+the ECS Carousel service has desired and running count one, configure the same
+dedicated `UGC_INTERNAL_CAROUSEL_SECRET` in Vercel and Trigger.dev with
+`APP_BASE_URL=https://www.getugcpilot.com`, deploy Next.js, run a one-user
+production canary, and enable the Trigger.dev schedule last. Do not copy
+`.env.local` or expose the Supabase service-role key to Trigger.dev merely to use
+the signing fallback.
+
+The scheduler only includes profiles with a persisted Trending timezone. The
+first authenticated browser feed request records the user's IANA timezone and
+also performs lazy reconciliation immediately. Treating an unknown timezone as
+UTC in the background sweep is forbidden because it can pre-create a feed for
+the wrong user-local date; after the first visit, the scheduled sweep keeps that
+profile replenished without requiring the tab to remain open.
+
+Semantic near-duplicate concept rejection, deliberate visual-preset rotation,
+and a carousel-specific editor that turns the server-backed schedule draft into
+a timed publish remain follow-up work.
 
 ## Readiness and Sourcing
 
@@ -622,6 +715,10 @@ Website analysis provides business context. The Carousel planner uses an LLM
 (`gpt-4o-mini` by default in the current implementation) to create structured
 slide content and visual intent, with a deterministic fallback planner if the
 LLM path fails.
+Worker startup metadata records the planner mode/version and whether the OpenAI
+secret is configured. This proves runtime capability, not a successful model
+call; acceptance of a generated carousel must also verify its persisted
+planner source/model provenance.
 
 The planner supports varied text modes rather than forcing a headline and body
 on every slide. Rendering is performed with Sharp in the worker. Text must be

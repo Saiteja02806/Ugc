@@ -3,6 +3,8 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const BACKGROUND_JOBS_TABLE = "background_jobs";
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type Json =
   | boolean
@@ -36,8 +38,10 @@ type BackgroundJobInsert = {
   aws_message_id?: string | null;
   completed_at?: string | null;
   error_message?: string | null;
+  idempotency_key?: string | null;
   input_json?: Json;
   job_type: BackgroundJobType;
+  last_delivery_at?: string | null;
   last_heartbeat_at?: string | null;
   locked_at?: string | null;
   output_json?: Json | null;
@@ -66,6 +70,8 @@ type BackgroundJobRow = Required<
   created_at: string;
   error_message: string | null;
   id: string;
+  idempotency_key: string | null;
+  last_delivery_at: string | null;
   last_heartbeat_at: string | null;
   locked_at: string | null;
   output_json: Json | null;
@@ -98,8 +104,10 @@ export type BackgroundJobRecord = {
   createdAt: string;
   errorMessage: string | null;
   id: string;
+  idempotencyKey: string | null;
   input: Json;
   jobType: BackgroundJobType;
+  lastDeliveryAt: string | null;
   lastHeartbeatAt: string | null;
   lockedAt: string | null;
   output: Json | null;
@@ -113,6 +121,7 @@ export type BackgroundJobRecord = {
 };
 
 export type CreateBackgroundJobInput = {
+  idempotencyKey?: string | null;
   input?: Record<string, Json | undefined>;
   jobType: BackgroundJobType;
   projectId?: string | null;
@@ -177,11 +186,18 @@ export function isBackgroundJobStorageConfigured() {
 }
 
 export async function createBackgroundJob(input: CreateBackgroundJobInput) {
+  return (await createBackgroundJobWithCreationResult(input)).job;
+}
+
+export async function createBackgroundJobWithCreationResult(
+  input: CreateBackgroundJobInput,
+) {
   const now = new Date().toISOString();
   const { data, error } = await getSupabaseServerClient()
     .from(BACKGROUND_JOBS_TABLE)
     .insert({
       input_json: toJsonObject(input.input ?? {}),
+      idempotency_key: input.idempotencyKey ?? null,
       job_type: input.jobType,
       project_id: input.projectId ?? null,
       queue_name: input.queueName,
@@ -193,17 +209,68 @@ export async function createBackgroundJob(input: CreateBackgroundJobInput) {
     .single();
 
   if (error) {
+    if (error.code === "23505" && input.idempotencyKey) {
+      const existing = await getBackgroundJobByIdempotencyKey(
+        input.idempotencyKey,
+      );
+
+      if (existing) {
+        return { created: false as const, job: existing };
+      }
+    }
+
     throw new Error(`Could not create background job: ${error.message}`);
   }
 
-  return mapBackgroundJob(data);
+  return { created: true as const, job: mapBackgroundJob(data) };
 }
 
 export async function getBackgroundJobById(jobId: string) {
+  if (!UUID_PATTERN.test(jobId)) {
+    return null;
+  }
+
   const { data, error } = await getSupabaseServerClient()
     .from(BACKGROUND_JOBS_TABLE)
     .select("*")
     .eq("id", jobId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not read background job: ${error.message}`);
+  }
+
+  return data ? mapBackgroundJob(data) : null;
+}
+
+export async function getBackgroundJobsByIds(jobIds: string[]) {
+  const uniqueJobIds = Array.from(
+    new Set(jobIds.filter((jobId) => UUID_PATTERN.test(jobId))),
+  );
+
+  if (uniqueJobIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await getSupabaseServerClient()
+    .from(BACKGROUND_JOBS_TABLE)
+    .select("*")
+    .in("id", uniqueJobIds);
+
+  if (error) {
+    throw new Error(`Could not read background jobs: ${error.message}`);
+  }
+
+  return (data ?? []).map(mapBackgroundJob);
+}
+
+export async function getBackgroundJobByIdempotencyKey(
+  idempotencyKey: string,
+) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(BACKGROUND_JOBS_TABLE)
+    .select("*")
+    .eq("idempotency_key", idempotencyKey)
     .maybeSingle();
 
   if (error) {
@@ -226,6 +293,30 @@ export async function attachAwsMessageToBackgroundJob(params: {
   }
 
   return job;
+}
+
+export async function claimBackgroundJobDelivery(
+  job: BackgroundJobRecord,
+) {
+  const claimedAt = new Date().toISOString();
+  let query = getSupabaseServerClient()
+    .from(BACKGROUND_JOBS_TABLE)
+    .update({ last_delivery_at: claimedAt })
+    .eq("id", job.id)
+    .eq("status", job.status)
+    .eq("updated_at", job.updatedAt);
+
+  query = job.lastDeliveryAt
+    ? query.eq("last_delivery_at", job.lastDeliveryAt)
+    : query.is("last_delivery_at", null);
+
+  const { data, error } = await query.select("*").maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not claim background job delivery: ${error.message}`);
+  }
+
+  return data ? mapBackgroundJob(data) : null;
 }
 
 export async function markBackgroundJobProcessing(params: {
@@ -358,8 +449,10 @@ function mapBackgroundJob(row: BackgroundJobRow): BackgroundJobRecord {
     createdAt: row.created_at,
     errorMessage: row.error_message,
     id: row.id,
+    idempotencyKey: row.idempotency_key,
     input: row.input_json,
     jobType: row.job_type,
+    lastDeliveryAt: row.last_delivery_at,
     lastHeartbeatAt: row.last_heartbeat_at,
     lockedAt: row.locked_at,
     output: row.output_json,

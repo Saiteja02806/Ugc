@@ -114,6 +114,7 @@ type CategoryImageAssetRow = {
 };
 
 type CarouselGenerationRow = {
+  available_on_local_date: string | null;
   business_profile_id: string | null;
   business_profile_version: number | null;
   candidate_count: number;
@@ -133,6 +134,7 @@ type CarouselGenerationRow = {
   generation_source: "auto_generated" | "manual";
   goal: string | null;
   id: string;
+  origin_daily_feed_id: string | null;
   project_id: string;
   renderer_version: string | null;
   selected_angle: string | null;
@@ -145,6 +147,7 @@ type CarouselGenerationRow = {
 };
 
 type CarouselGenerationInsert = {
+  available_on_local_date?: string | null;
   business_profile_id?: string | null;
   business_profile_version?: number | null;
   candidate_count?: number;
@@ -162,6 +165,7 @@ type CarouselGenerationInsert = {
   generation_batch_id?: string;
   generation_source?: "auto_generated" | "manual";
   goal?: string | null;
+  origin_daily_feed_id?: string | null;
   project_id: string;
   renderer_version?: string | null;
   selected_angle?: string | null;
@@ -307,6 +311,7 @@ export type ReadyCategoryImageAsset = {
 };
 
 export type CarouselGenerationRecord = {
+  availableOnLocalDate: string | null;
   businessProfileId: string | null;
   businessProfileVersion: number | null;
   candidateCount: number;
@@ -319,6 +324,7 @@ export type CarouselGenerationRecord = {
   generationSource: "auto_generated" | "manual";
   goal: string | null;
   id: string;
+  originDailyFeedId: string | null;
   projectId: string;
   selectedAngle: string | null;
   slideCount: number;
@@ -400,6 +406,7 @@ function getSupabaseServerClient() {
 
 function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
   return {
+    availableOnLocalDate: row.available_on_local_date,
     businessProfileId: row.business_profile_id,
     businessProfileVersion: row.business_profile_version,
     candidateCount: row.candidate_count,
@@ -412,6 +419,7 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     generationSource: row.generation_source,
     goal: row.goal,
     id: row.id,
+    originDailyFeedId: row.origin_daily_feed_id,
     projectId: row.project_id,
     selectedAngle: row.selected_angle,
     slideCount: row.slide_count,
@@ -758,6 +766,7 @@ export async function listReadyCategoryImageAssets(params: {
 }
 
 export async function createCarouselGeneration(input: {
+  availableOnLocalDate?: string | null;
   businessProfileId?: string | null;
   businessProfileVersion?: number | null;
   candidateCount: number;
@@ -767,6 +776,7 @@ export async function createCarouselGeneration(input: {
   generationBatchId: string;
   generationSource?: "auto_generated" | "manual";
   goal?: string | null;
+  originDailyFeedId?: string | null;
   projectId: string;
   selectedAngle?: string | null;
   slideCount: number;
@@ -776,6 +786,7 @@ export async function createCarouselGeneration(input: {
   const { data, error } = await getSupabaseServerClient()
     .from(CAROUSEL_GENERATIONS_TABLE)
     .insert({
+      available_on_local_date: input.availableOnLocalDate ?? null,
       business_profile_id: input.businessProfileId ?? null,
       business_profile_version: input.businessProfileVersion ?? null,
       candidate_count: input.candidateCount,
@@ -785,6 +796,7 @@ export async function createCarouselGeneration(input: {
       generation_batch_id: input.generationBatchId,
       generation_source: input.generationSource ?? "manual",
       goal: input.goal ?? null,
+      origin_daily_feed_id: input.originDailyFeedId ?? null,
       project_id: input.projectId,
       selected_angle: input.selectedAngle ?? null,
       slide_count: input.slideCount,
@@ -1077,6 +1089,77 @@ export async function listCarouselGenerationStatusesForUser(params: {
   return getCarouselGenerationStatusesForRows((data ?? []).map(mapGeneration));
 }
 
+export type AutoCarouselGenerationStatusPageCursor = {
+  createdAt: string;
+  id: string;
+};
+
+export async function getAutoCarouselGenerationStatusPageForUser(params: {
+  availableOnOrBeforeLocalDate: string;
+  businessProfileId: string;
+  businessProfileVersion: number;
+  cursor?: AutoCarouselGenerationStatusPageCursor | null;
+  limit: number;
+  projectId: string;
+  statuses: readonly CarouselGenerationStatus[];
+  userId: string;
+}) {
+  const limit = Math.min(Math.max(Math.trunc(params.limit), 1), 200);
+  const statuses = Array.from(new Set(params.statuses));
+
+  if (statuses.length === 0) {
+    return {
+      nextCursor: null,
+      statuses: [],
+    };
+  }
+
+  let query = getSupabaseServerClient()
+    .from(CAROUSEL_GENERATIONS_TABLE)
+    .select("*")
+    .eq("user_id", params.userId)
+    .eq("project_id", params.projectId)
+    .eq("business_profile_id", params.businessProfileId)
+    .eq("business_profile_version", params.businessProfileVersion)
+    .eq("generation_source", "auto_generated")
+    .in("status", statuses)
+    .or(
+      `available_on_local_date.is.null,available_on_local_date.lte.${params.availableOnOrBeforeLocalDate}`,
+    );
+
+  if (params.cursor) {
+    query = query.or(
+      [
+        `created_at.lt.${params.cursor.createdAt}`,
+        `and(created_at.eq.${params.cursor.createdAt},id.lt.${params.cursor.id})`,
+      ].join(","),
+    );
+  }
+
+  const { data, error } = await query
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Could not page automatic carousel generations: ${error.message}`);
+  }
+
+  const generations = (data ?? []).map(mapGeneration);
+  const lastGeneration = generations.at(-1);
+
+  return {
+    nextCursor:
+      generations.length === limit && lastGeneration
+        ? {
+            createdAt: lastGeneration.createdAt,
+            id: lastGeneration.id,
+          }
+        : null,
+    statuses: await getCarouselGenerationStatusesForRows(generations),
+  };
+}
+
 export async function listAutoCarouselGenerationsForBusinessProfile(params: {
   businessProfileId: string;
   profileVersion: number;
@@ -1086,6 +1169,7 @@ export async function listAutoCarouselGenerationsForBusinessProfile(params: {
     .select("*")
     .eq("business_profile_id", params.businessProfileId)
     .eq("business_profile_version", params.profileVersion)
+    .eq("generation_source", "auto_generated")
     .order("candidate_index", { ascending: true });
 
   if (error) {

@@ -1380,31 +1380,31 @@ function buildValidatedFallbackSlides(
     ? [
         "Make meal logging fit real life",
         "Busy meals create logging gaps",
-        "Small guesses weaken daily totals",
+        "Small estimates blur daily totals",
         "Capture nutrition with less friction",
-        "Start with one real meal",
+        "Use today’s meal as your cue",
       ]
     : [
         "Make the next step easier",
         "Scattered updates slow decisions",
-        "Missing context creates more follow-ups",
+        "Missing context creates follow-ups",
         "Keep every decision connected",
-        "Start with one active project",
+        "Choose one next owner",
       ];
   const bodies = isFitness
     ? [
         "Busy meals make detailed logging easy to postpone until the day is already over.",
-        "Mixed dishes and changing portions turn simple calorie entries into uncertain guesses.",
-        "Those small guesses make daily totals harder to trust when patterns start to matter.",
-        "Faster meal capture keeps nutrition context together without demanding a rigid routine.",
-        "Log one real meal today and use the result to guide your next choice.",
+        "Mixed dishes and changing portions turn simple calorie entries into uncertain estimates.",
+        "Portion changes make the weekly picture less reliable.",
+        "A faster capture flow keeps meal context together without demanding a rigid routine.",
+        "Log dinner now and let the saved entry guide your next choice.",
       ]
     : [
         "Scattered updates make simple work harder to plan and easier to delay.",
         "Separate tools hide the next action when deadlines and approvals start moving.",
-        "Missing context creates extra follow-ups before anyone can move the work forward.",
-        "One clear workflow keeps each decision beside the work it affects.",
-        "Choose a current campaign and assign a clear owner to its next action.",
+        "Incomplete briefs force extra questions before anyone can move the project forward.",
+        "One clear workflow keeps decisions beside the tasks they affect.",
+        "Assign a current campaign to a single owner before the handoff stalls.",
       ];
 
   return slides.map((slide, index) => {

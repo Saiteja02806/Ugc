@@ -11,6 +11,9 @@ import {
 
 const dockerfile = readProjectFile("worker/Dockerfile");
 const deployScript = readProjectFile("scripts/deploy-worker-service.mjs");
+const carouselDeploymentChecker = readProjectFile(
+  "scripts/check-carousel-worker-deployment.mjs",
+);
 
 test("every deployable worker job type has a compiled handler", () => {
   for (const [profileName, profile] of Object.entries(workerProfiles)) {
@@ -58,6 +61,29 @@ test("the ECS social-publish profile targets the current worker and queue", () =
     workerProfiles["social-publish"].secretSources.GOOGLE_CLIENT_SECRET.required,
     true,
   );
+});
+
+test("the ECS carousel profile stays live with an LLM-capable lease", () => {
+  assert.deepEqual(workerProfiles.carousel.jobTypes, ["generate_carousel"]);
+  assert.equal(workerProfiles.carousel.queueName, "carousel");
+  assert.equal(workerProfiles.carousel.defaultDesiredCount, "1");
+  assert.equal(workerProfiles.carousel.defaultVisibilityTimeoutSeconds, "900");
+  assert.deepEqual(workerProfiles.carousel.secretKeys, ["OPENAI_API_KEY"]);
+});
+
+test("the carousel deployment checker verifies service capacity and its real log group", () => {
+  assert.match(
+    carouselDeploymentChecker,
+    /workerContainer\.logConfiguration\?\.options\?\.\["awslogs-group"\]/,
+  );
+  assert.match(carouselDeploymentChecker, /ecs\.desiredCountIsPositive/);
+  assert.match(carouselDeploymentChecker, /ecs\.runningCountMatchesDesired/);
+  assert.match(carouselDeploymentChecker, /ecs\.pendingCount/);
+  assert.match(carouselDeploymentChecker, /ecs\.primaryRolloutState/);
+  assert.match(carouselDeploymentChecker, /ecs\.visibilityTimeoutSeconds/);
+  assert.match(carouselDeploymentChecker, /ecs\.openAiSecretConfigured/);
+  assert.match(carouselDeploymentChecker, /log\.carouselContentPlannerMode/);
+  assert.match(carouselDeploymentChecker, /log\.carouselOpenAiConfigured/);
 });
 
 test("the task definition receives immutable worker identity and routing", () => {

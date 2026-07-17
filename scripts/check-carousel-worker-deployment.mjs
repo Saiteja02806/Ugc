@@ -20,6 +20,7 @@ const expected = {
   broadMatcherVersion: args["broad-version"] || "broad-runtime-matcher-v2",
   contentPlannerVersion:
     args["planner-version"] || "llm-carousel-planner-v16-solution-story-guard",
+  contentPlannerMode: args["planner-mode"] || "llm",
   fallbackDisabled: args["fallback-disabled"] || "true",
   rendererVersion:
     args["renderer-version"] ||
@@ -27,20 +28,51 @@ const expected = {
   safetyPolicyVersion:
     args["safety-version"] || "object-only-no-human-v1",
 };
-const logMinutes = getIntegerArg("minutes", 60, { min: 1, max: 240 });
+const logMinutes = getIntegerArg("minutes", 60, { min: 1, max: 10_080 });
 
 const service = getService();
 const taskDefinitionArn = service.taskDefinition;
 const taskDefinition = describeTaskDefinition(taskDefinitionArn);
 const workerContainer = findCarouselWorkerContainer(taskDefinition);
+const logGroupName =
+  workerContainer.logConfiguration?.options?.["awslogs-group"] ||
+  getRequiredEnv("CLOUDWATCH_LOG_GROUP");
 const environment = new Map(
   (workerContainer.environment ?? []).map((entry) => [entry.name, entry.value]),
 );
+const secretNames = new Set(
+  (workerContainer.secrets ?? []).map((entry) => entry.name),
+);
 const startupLog = getLatestStartupLog({
+  logGroupName,
   sinceMs: Date.now() - logMinutes * 60_000,
   workerVersion: environment.get("WORKER_VERSION") ?? null,
 });
 const checks = [
+  checkEqual("ecs.serviceStatus", service.status, "ACTIVE"),
+  checkEqual(
+    "ecs.desiredCountIsPositive",
+    (service.desiredCount ?? 0) > 0,
+    true,
+  ),
+  checkEqual(
+    "ecs.runningCountMatchesDesired",
+    service.runningCount,
+    service.desiredCount,
+  ),
+  checkEqual("ecs.pendingCount", service.pendingCount, 0),
+  checkEqual(
+    "ecs.primaryRolloutState",
+    service.deployments?.find((deployment) => deployment.status === "PRIMARY")
+      ?.rolloutState,
+    "COMPLETED",
+  ),
+  checkEqual(
+    "ecs.visibilityTimeoutSeconds",
+    environment.get("WORKER_VISIBILITY_TIMEOUT_SECONDS"),
+    "900",
+  ),
+  checkEqual("ecs.openAiSecretConfigured", secretNames.has("OPENAI_API_KEY"), true),
   checkEqual(
     "ecs.carouselBroadMatcherMode",
     environment.get("CAROUSEL_BROAD_MATCHER_MODE"),
@@ -67,9 +99,19 @@ const checks = [
     expected.safetyPolicyVersion,
   ),
   checkEqual(
+    "log.carouselContentPlannerMode",
+    startupLog?.metadata?.carouselContentPlannerMode,
+    expected.contentPlannerMode,
+  ),
+  checkEqual(
     "log.carouselContentPlannerVersion",
     startupLog?.metadata?.carouselContentPlannerVersion,
     expected.contentPlannerVersion,
+  ),
+  checkEqual(
+    "log.carouselOpenAiConfigured",
+    startupLog?.metadata?.carouselOpenAiConfigured,
+    true,
   ),
   checkEqual(
     "log.carouselRendererVersion",
@@ -89,12 +131,22 @@ console.log(
     {
       checks,
       clusterName,
+      logGroupName,
       latestStartupLog: startupLog
         ? {
             metadata: startupLog.metadata,
             timestamp: startupLog.timestamp,
           }
         : null,
+      service: {
+        desiredCount: service.desiredCount ?? null,
+        pendingCount: service.pendingCount ?? null,
+        runningCount: service.runningCount ?? null,
+        rolloutState:
+          service.deployments?.find((deployment) => deployment.status === "PRIMARY")
+            ?.rolloutState ?? null,
+        status: service.status ?? null,
+      },
       serviceName,
       taskDefinitionArn,
       workerImage: workerContainer.image,
@@ -180,12 +232,12 @@ function findCarouselWorkerContainer(taskDefinition) {
   return container;
 }
 
-function getLatestStartupLog({ sinceMs, workerVersion }) {
+function getLatestStartupLog({ logGroupName, sinceMs, workerVersion }) {
   const response = awsJson([
     "logs",
     "filter-log-events",
     "--log-group-name",
-    getRequiredEnv("CLOUDWATCH_LOG_GROUP"),
+    logGroupName,
     "--region",
     region,
     "--start-time",

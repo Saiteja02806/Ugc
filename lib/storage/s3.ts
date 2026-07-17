@@ -1,5 +1,6 @@
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -22,6 +23,10 @@ type CreatePresignedPutUrlParams = {
 
 type S3ObjectKeyParams = {
   key: string;
+};
+
+type GetS3ObjectParams = S3ObjectKeyParams & {
+  range?: string;
 };
 
 type StorageConfig = {
@@ -176,6 +181,19 @@ export async function headS3Object(params: S3ObjectKeyParams) {
     new HeadObjectCommand({
       Bucket: config.bucket,
       Key: cleanKey,
+    }),
+  );
+}
+
+export async function getS3Object(params: GetS3ObjectParams) {
+  const config = getStorageConfig();
+  const cleanKey = cleanS3Key(params.key);
+
+  return getS3Client(config).send(
+    new GetObjectCommand({
+      Bucket: config.bucket,
+      Key: cleanKey,
+      ...(params.range ? { Range: params.range } : {}),
     }),
   );
 }

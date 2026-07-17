@@ -24,7 +24,6 @@ import type {
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { AUTOMATIC_CAROUSEL_CANDIDATE_COUNT } from "@/lib/carousel/automatic-candidate-count";
 import { useAuth } from "@/contexts/auth-context";
 import {
   PlatformSelectionModal,
@@ -187,6 +186,7 @@ type CarouselActionNotice = {
 };
 
 const HISTORY_POLL_INTERVAL_MS = 6_000;
+const HISTORY_REPAIR_POLL_INTERVAL_MS = 60_000;
 const SWIPE_THRESHOLD_PX = 90;
 const SWIPE_EXIT_DURATION_MS = 220;
 const MAX_ROTATION_DEGREES = 5;
@@ -222,7 +222,8 @@ const LOADING_STACK_PLACEHOLDERS = [
 export function TrendingWorkspace() {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
-  const expandedProfileIds = useRef(new Set<string>());
+  const loadedFeedLocalDate = useRef<string | null>(null);
+  const loadedFeedUserId = useRef<string | null>(null);
   const [generatedCarousels, setGeneratedCarousels] = useState<
     GeneratedCarousel[]
   >([]);
@@ -240,9 +241,16 @@ export function TrendingWorkspace() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const hasAuthenticatedUser = Boolean(user);
+  const visibleGeneratedCarousels = useMemo(
+    () => (hasAuthenticatedUser ? generatedCarousels : []),
+    [generatedCarousels, hasAuthenticatedUser],
+  );
+  const visibleCarouselHistoryError = user ? carouselHistoryError : null;
+  const visibleDailyFeedState = user ? dailyFeedState : null;
   const filteredGeneratedCarousels = useMemo(() => {
     const matchingCarousels = normalizedSearchQuery
-      ? generatedCarousels.filter((carousel) =>
+      ? visibleGeneratedCarousels.filter((carousel) =>
           [
             carousel.selectedAngle,
             carousel.categorySlug,
@@ -253,14 +261,14 @@ export function TrendingWorkspace() {
             .toLowerCase()
             .includes(normalizedSearchQuery),
         )
-      : generatedCarousels;
+      : visibleGeneratedCarousels;
 
     return [...matchingCarousels].sort(
       (first, second) =>
         (first.feedPosition ?? first.candidateIndex) -
         (second.feedPosition ?? second.candidateIndex),
     );
-  }, [generatedCarousels, normalizedSearchQuery]);
+  }, [normalizedSearchQuery, visibleGeneratedCarousels]);
   const carouselFeedProfile: CarouselProfileFeed | null = user
     ? carouselProfile
     : { state: "missing" };
@@ -270,19 +278,19 @@ export function TrendingWorkspace() {
       (carouselHistoryState === "idle" || carouselHistoryState === "loading"));
   const carouselSearchEmpty =
     Boolean(normalizedSearchQuery) &&
-    generatedCarousels.length > 0 &&
+    visibleGeneratedCarousels.length > 0 &&
     filteredGeneratedCarousels.length === 0;
   const feedStatus = carouselFeedLoading
     ? { label: "Loading your personalized feed", tone: "bg-warning" }
-    : carouselHistoryError || carouselFeedProfile?.state === "failed"
+    : visibleCarouselHistoryError || carouselFeedProfile?.state === "failed"
       ? { label: "Carousel feed needs attention", tone: "bg-error" }
       : carouselFeedProfile?.state === "missing"
         ? { label: "Business profile needed", tone: "bg-warning" }
-        : dailyFeedState === "preparing"
+        : visibleDailyFeedState === "preparing"
           ? { label: "Preparing more carousel ideas", tone: "bg-warning" }
-          : dailyFeedState === "caught_up"
+          : visibleDailyFeedState === "caught_up"
             ? { label: "Caught up for today", tone: "bg-success" }
-            : dailyFeedState === "exhausted"
+            : visibleDailyFeedState === "exhausted"
               ? { label: "No ready ideas today", tone: "bg-warning" }
               : { label: "Personalized for your profile", tone: "bg-success" };
 
@@ -291,59 +299,17 @@ export function TrendingWorkspace() {
       return;
     }
 
+    const userId = user.uid;
     const controller = new AbortController();
     let pollTimer: number | null = null;
 
-    async function ensureAutomaticCandidates(
-      profile: CarouselProfileFeed,
-      carouselCount: number,
-      targetCount: number,
-      idToken: string,
-    ) {
-      if (
-        !profile.id ||
-        profile.state === "failed" ||
-        profile.state === "missing" ||
-        carouselCount >= targetCount ||
-        expandedProfileIds.current.has(profile.id)
-      ) {
-        return;
-      }
-
-      expandedProfileIds.current.add(profile.id);
-
-      try {
-        const response = await fetch(
-          "/api/business-profile/ensure-carousel-candidates",
-          {
-            headers: { Authorization: `Bearer ${idToken}` },
-            method: "POST",
-            signal: controller.signal,
-          },
-        );
-        const data = (await response.json().catch(() => null)) as {
-          message?: string;
-          ok?: boolean;
-        } | null;
-
-        if (!response.ok || !data?.ok) {
-          throw new Error(
-            data?.message ?? "Could not prepare additional carousel ideas.",
-          );
-        }
-
-        if (!controller.signal.aborted) {
-          setCarouselHistoryRefreshKey((current) => current + 1);
-        }
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          console.error("Could not expand the automatic carousel batch:", error);
-        }
-      }
-    }
-
     async function loadCarouselHistory() {
-      setCarouselHistoryState("loading");
+      const isInitialUserLoad = loadedFeedUserId.current !== userId;
+
+      if (isInitialUserLoad) {
+        setGeneratedCarousels([]);
+        setCarouselHistoryState("loading");
+      }
       setCarouselHistoryError(null);
 
       try {
@@ -379,22 +345,28 @@ export function TrendingWorkspace() {
           return;
         }
 
+        if (
+          data.feed?.localDate &&
+          data.feed.localDate !== getBrowserLocalDate()
+        ) {
+          setCarouselHistoryRefreshKey((current) => current + 1);
+          return;
+        }
+
         setGeneratedCarousels(data.carousels);
         setCarouselProfile(data.profile);
         setDailyFeedState(data.feed?.state ?? null);
+        loadedFeedLocalDate.current = data.feed?.localDate ?? null;
+        loadedFeedUserId.current = userId;
         setCarouselHistoryState("ready");
 
-        if (data.feed?.state === "preparing") {
-          void ensureAutomaticCandidates(
-            data.profile,
-            data.carousels.length,
-            data.entitlement?.dailyCarouselLimit ??
-              AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
-            idToken,
-          );
+        if ((data.feed?.pendingSlotCount ?? 0) > 0) {
           pollTimer = window.setTimeout(() => {
             setCarouselHistoryRefreshKey((current) => current + 1);
-          }, HISTORY_POLL_INTERVAL_MS);
+          },
+          data.feed?.state === "preparing"
+            ? HISTORY_POLL_INTERVAL_MS
+            : HISTORY_REPAIR_POLL_INTERVAL_MS);
         }
       } catch (error) {
         if (controller.signal.aborted) {
@@ -422,6 +394,61 @@ export function TrendingWorkspace() {
       }
     };
   }, [carouselHistoryRefreshKey, user]);
+
+  useEffect(() => {
+    if (!user) {
+      loadedFeedLocalDate.current = null;
+      loadedFeedUserId.current = null;
+      return;
+    }
+
+    let midnightTimer: number | null = null;
+
+    function refreshAfterLocalDateChange() {
+      if (
+        document.visibilityState !== "hidden" &&
+        loadedFeedLocalDate.current !== getBrowserLocalDate()
+      ) {
+        setCarouselHistoryRefreshKey((current) => current + 1);
+      }
+    }
+
+    function scheduleMidnightRefresh() {
+      const now = new Date();
+      const nextMidnight = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+        0,
+        0,
+        1,
+      );
+
+      midnightTimer = window.setTimeout(() => {
+        refreshAfterLocalDateChange();
+        scheduleMidnightRefresh();
+      }, Math.max(nextMidnight.getTime() - now.getTime(), 1_000));
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        refreshAfterLocalDateChange();
+      }
+    }
+
+    window.addEventListener("focus", refreshAfterLocalDateChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    scheduleMidnightRefresh();
+
+    return () => {
+      window.removeEventListener("focus", refreshAfterLocalDateChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+
+      if (midnightTimer) {
+        window.clearTimeout(midnightTimer);
+      }
+    };
+  }, [user]);
 
   function openBusinessProfile() {
     const previewSuffix =
@@ -482,7 +509,9 @@ export function TrendingWorkspace() {
             </p>
           </div>
 
-          <label className="flex h-10 w-full items-center gap-2.5 rounded-control border border-border-strong bg-card px-3 text-sm text-muted shadow-[0_1px_2px_rgb(23_23_27_/_0.03)] transition-[border-color,box-shadow] focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/15 sm:w-[300px]">
+          <label
+            className="flex h-10 w-full items-center gap-2.5 rounded-control border border-border-strong bg-card px-3 text-sm text-muted shadow-[0_1px_2px_rgb(23_23_27_/_0.03)] transition-[border-color,box-shadow] focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/15 sm:w-[300px]"
+          >
             <Search className="size-4 shrink-0 text-muted-subtle" aria-hidden="true" />
             <span className="sr-only">Search personalized carousels</span>
             <input
@@ -530,12 +559,15 @@ export function TrendingWorkspace() {
           <div className="flex min-h-[502px] items-start px-4 py-7 sm:px-6 sm:py-8">
             <GeneratedCarouselGallery
               carousels={filteredGeneratedCarousels}
-              error={carouselHistoryError}
-              feedState={dailyFeedState}
+              error={visibleCarouselHistoryError}
+              feedState={visibleDailyFeedState}
               loading={carouselFeedLoading}
               profile={carouselFeedProfile}
               searchEmpty={carouselSearchEmpty}
               onCompleteProfile={openBusinessProfile}
+              onCarouselCompleted={() =>
+                setCarouselHistoryRefreshKey((current) => current + 1)
+              }
               onRetryHistory={() =>
                 setCarouselHistoryRefreshKey((current) => current + 1)
               }
@@ -554,6 +586,7 @@ function GeneratedCarouselGallery({
   feedState,
   loading,
   onCompleteProfile,
+  onCarouselCompleted,
   onRetryHistory,
   onRetryPreparation,
   profile,
@@ -564,6 +597,7 @@ function GeneratedCarouselGallery({
   feedState: TrendingDailyFeedState | null;
   loading: boolean;
   onCompleteProfile: () => void;
+  onCarouselCompleted: () => void;
   onRetryHistory: () => void;
   onRetryPreparation: () => void;
   profile: CarouselProfileFeed | null;
@@ -653,6 +687,7 @@ function GeneratedCarouselGallery({
   return (
     <GeneratedCarouselFeed
       carousels={carousels}
+      onCarouselCompleted={onCarouselCompleted}
       onRetryPreparation={onRetryPreparation}
     />
   );
@@ -660,9 +695,11 @@ function GeneratedCarouselGallery({
 
 function GeneratedCarouselFeed({
   carousels,
+  onCarouselCompleted,
   onRetryPreparation,
 }: {
   carousels: GeneratedCarousel[];
+  onCarouselCompleted: () => void;
   onRetryPreparation: () => void;
 }) {
   const [activeSlideByCarouselId, setActiveSlideByCarouselId] = useState<
@@ -711,6 +748,7 @@ function GeneratedCarouselFeed({
           candidates={completeCarousels}
           onActiveCarouselChange={setActiveCarouselIndex}
           onActiveSlideChange={setActiveSlide}
+          onCarouselCompleted={onCarouselCompleted}
         />
       ) : null}
 
@@ -737,12 +775,14 @@ function CarouselCandidateStack({
   candidates,
   onActiveCarouselChange,
   onActiveSlideChange,
+  onCarouselCompleted,
 }: {
   activeCarouselIndex: number;
   activeSlideByCarouselId: Record<string, number>;
   candidates: CompleteCarousel[];
   onActiveCarouselChange: (carouselIndex: number) => void;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
+  onCarouselCompleted: () => void;
 }) {
   const swipeTimerRef = useRef<number | null>(null);
   const actionNoticeTimerRef = useRef<number | null>(null);
@@ -856,10 +896,16 @@ function CarouselCandidateStack({
     onActiveCarouselChange(nextIndex);
   }
 
-  function advancePastActiveCarousel(direction: "left" | "right") {
+  function advancePastActiveCarousel(
+    direction: "left" | "right",
+    onTransitionComplete?: () => void,
+  ) {
     const nextIndex = safeActiveCarouselIndex + 1;
 
-    if (nextIndex < 0 || nextIndex > lastCarouselIndex) {
+    if (
+      !onTransitionComplete &&
+      (nextIndex < 0 || nextIndex > lastCarouselIndex)
+    ) {
       resetDrag();
       return;
     }
@@ -874,8 +920,11 @@ function CarouselCandidateStack({
     swipeTimerRef.current = window.setTimeout(
       () => {
         swipeTimerRef.current = null;
-        onActiveCarouselChange(nextIndex);
+        if (!onTransitionComplete) {
+          onActiveCarouselChange(nextIndex);
+        }
         resetDrag();
+        onTransitionComplete?.();
       },
       reduceMotion ? 0 : SWIPE_EXIT_DURATION_MS,
     );
@@ -981,7 +1030,7 @@ function CarouselCandidateStack({
     try {
       await completeTrendingCarouselAction(activeCandidate, "skipped");
       showActionNotice({ message: "Skipped." });
-      advancePastActiveCarousel("left");
+      advancePastActiveCarousel("left", onCarouselCompleted);
     } catch (error) {
       showActionNotice({
         message: getErrorMessage(error, "Could not skip this carousel."),
@@ -1009,7 +1058,7 @@ function CarouselCandidateStack({
         actionLabel: "View Library",
         message: result.created ? "Saved to Library." : "Already in Library.",
       });
-      advancePastActiveCarousel("right");
+      advancePastActiveCarousel("right", onCarouselCompleted);
     } catch (error) {
       setActionState({
         message: getErrorMessage(error, "Could not save this carousel."),
@@ -1112,7 +1161,7 @@ function CarouselCandidateStack({
             actionLabel: "View schedules",
             message: `Schedule draft created for ${formatPlatformList(platforms)}.`,
           });
-          advancePastActiveCarousel("right");
+          advancePastActiveCarousel("right", onCarouselCompleted);
         }}
         onOpenChange={(open) => {
           if (!open) {
@@ -1967,4 +2016,19 @@ function titleCaseSlug(value: string | null | undefined) {
     .filter(Boolean)
     .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
     .join(" ");
+}
+
+function getBrowserLocalDate() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return year && month && day
+    ? `${year}-${month}-${day}`
+    : new Date().toISOString().slice(0, 10);
 }

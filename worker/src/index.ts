@@ -56,8 +56,11 @@ async function main() {
       CAROUSEL_IMAGE_SAFETY_POLICY_VERSION,
     carouselBroadMatcherMode: getCarouselBroadMatcherMode(),
     carouselBroadMatcherVersion: CAROUSEL_BROAD_RUNTIME_MATCHER_VERSION,
+    carouselContentPlannerMode:
+      process.env.CAROUSEL_CONTENT_PLANNER_MODE?.trim() || "llm",
     carouselContentPlannerVersion: CAROUSEL_CONTENT_PLANNER_VERSION,
     carouselFont: getCarouselFontRuntimeInfo(),
+    carouselOpenAiConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
     carouselRuntimeMatcherVersion: CAROUSEL_RUNTIME_MATCHER_VERSION,
     carouselRendererVersion: CAROUSEL_RENDERER_VERSION,
   });

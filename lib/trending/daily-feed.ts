@@ -1,17 +1,30 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
-
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import {
+  updateBusinessProfileTrendingTimezone,
+  type BusinessProfileRecord,
+} from "@/lib/business-profiles/db";
+import {
+  getAutoCarouselGenerationStatusPageForUser,
+  getCarouselGenerationsByBatchId,
   getCarouselGenerationStatusesByIds,
-  listAutoCarouselGenerationsForBusinessProfile,
-  listCarouselGenerationStatusesForUser,
+  type AutoCarouselGenerationStatusPageCursor,
   type CarouselGenerationRecord,
   type CarouselSlideRecord,
+  type Json,
 } from "@/lib/carousel/db";
+import {
+  enqueueProcessingCarouselCandidates,
+  prepareDailyBusinessProfileCarousels,
+} from "@/lib/carousel/prepare-business-profile";
+import { shouldDeliverCarouselJobMessage } from "@/lib/jobs/background-job-delivery-logic";
+import { getBackgroundJobsByIds } from "@/lib/jobs/background-jobs";
+import {
+  createVisibleCarouselConceptFingerprint,
+  isVisibleCarouselConceptFingerprint,
+} from "@/lib/trending/carousel-concept-fingerprint";
 import {
   getDailyFeedTopUpPlan,
   getOrCreatePersistedDailyFeed,
@@ -19,16 +32,22 @@ import {
   partitionRuntimeSafeAssignments,
   type TrendingDailyFeedState,
 } from "@/lib/trending/daily-feed-logic";
+import {
+  canExtendDailyCarouselRefill,
+  getDailyCarouselRefillPlan,
+  selectAssignableDailyCarouselCandidates,
+} from "@/lib/trending/daily-replenishment-logic";
 
 const SUBSCRIPTION_ENTITLEMENTS_TABLE = "subscription_entitlements";
 const USER_SUBSCRIPTION_PLANS_TABLE = "user_subscription_plans";
 const USER_CAROUSEL_ASSIGNMENTS_TABLE = "user_carousel_assignments";
 const DAILY_CAROUSEL_FEEDS_TABLE = "daily_carousel_feeds";
 const DAILY_CAROUSEL_FEED_ITEMS_TABLE = "daily_carousel_feed_items";
+const DAILY_CAROUSEL_REFILL_BATCHES_TABLE = "daily_carousel_refill_batches";
 
 const DEFAULT_PLAN_KEY = "pro";
 const FALLBACK_TIMEZONE = "UTC";
-const FRESH_CANDIDATE_SCAN_LIMIT = 50;
+const CAROUSEL_INVENTORY_PAGE_SIZE = 50;
 
 const ACTIVE_ASSIGNMENT_STATES = ["pending", "in_progress"] as const;
 
@@ -103,6 +122,19 @@ type DailyCarouselFeedItemRow = {
   source: FeedItemSource;
 };
 
+type DailyCarouselRefillBatchRow = {
+  business_profile_id: string;
+  business_profile_version: number;
+  created_at: string;
+  feed_id: string;
+  generation_batch_id: string;
+  id: string;
+  local_date: string;
+  requested_count: number;
+  updated_at: string;
+  user_id: string;
+};
+
 type UserCarouselAssignmentInsert = Partial<UserCarouselAssignmentRow> &
   Pick<
     UserCarouselAssignmentRow,
@@ -124,9 +156,48 @@ type DailyCarouselFeedItemInsert = Pick<
   "assignment_id" | "carried_from_date" | "feed_id" | "position" | "source"
 >;
 
+type DailyCarouselRefillBatchInsert = Pick<
+  DailyCarouselRefillBatchRow,
+  | "business_profile_id"
+  | "business_profile_version"
+  | "feed_id"
+  | "generation_batch_id"
+  | "local_date"
+  | "requested_count"
+  | "user_id"
+>;
+
 type TrendingFeedDatabase = {
   public: {
-    Functions: Record<string, never>;
+    Functions: {
+      assert_business_profile_version_current: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_user_id: string;
+        };
+        Returns: null;
+      };
+      insert_daily_carousel_feed_items_if_profile_current: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_items: Json;
+          p_user_id: string;
+        };
+        Returns: DailyCarouselFeedItemRow[];
+      };
+      reserve_daily_carousel_refill_batch_if_profile_current: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_feed_id: string;
+          p_requested_count: number;
+          p_user_id: string;
+        };
+        Returns: DailyCarouselRefillBatchRow;
+      };
+    };
     Tables: {
       daily_carousel_feed_items: {
         Insert: DailyCarouselFeedItemInsert;
@@ -139,6 +210,12 @@ type TrendingFeedDatabase = {
         Relationships: [];
         Row: DailyCarouselFeedRow;
         Update: Partial<DailyCarouselFeedRow>;
+      };
+      daily_carousel_refill_batches: {
+        Insert: DailyCarouselRefillBatchInsert;
+        Relationships: [];
+        Row: DailyCarouselRefillBatchRow;
+        Update: Partial<DailyCarouselRefillBatchRow>;
       };
       subscription_entitlements: {
         Insert: Partial<SubscriptionEntitlementRow> &
@@ -237,11 +314,21 @@ export function getMissingTrendingFeedEnvVars() {
 }
 
 export async function ensureTrendingDailyFeed(params: {
+  markItemsShown?: boolean;
   profile: BusinessProfileRecord;
+  throwOnRefillError?: boolean;
   timezone?: string | null;
   userId: string;
 }): Promise<TrendingDailyFeed> {
   const timezone = normalizeTimezone(params.timezone);
+
+  if (params.profile.trendingTimezone !== timezone) {
+    await updateBusinessProfileTrendingTimezone({
+      profileId: params.profile.id,
+      timezone,
+    });
+  }
+
   const localDate = getLocalDateForTimezone(timezone);
   const currentEntitlement = await getTrendingFeedEntitlement(params.userId);
   const feed = await getOrCreateDailyFeed({
@@ -271,10 +358,27 @@ export async function ensureTrendingDailyFeed(params: {
     feedItems = await listFeedItems(feed.id);
   }
 
+  if (feedItems.length < entitlement.dailyCarouselLimit) {
+    await reconcileDailyCarouselRefill({
+      feed,
+      feedItems,
+      localDate,
+      profile: params.profile,
+      userId: params.userId,
+    }).catch((error) => {
+      console.error("Could not reconcile daily Carousel inventory:", error);
+
+      if (params.throwOnRefillError) {
+        throw error;
+      }
+    });
+  }
+
   return buildDailyFeedResponse({
     entitlement,
     feed,
     feedItems,
+    markItemsShown: params.markItemsShown !== false,
     profile: params.profile,
     userId: params.userId,
   });
@@ -328,6 +432,20 @@ async function populateDailyFeed(params: {
   profile: BusinessProfileRecord;
   userId: string;
 }) {
+  const existingAssignmentIds = params.existingFeedItems.map(
+    (item) => item.assignment_id,
+  );
+
+  if (existingAssignmentIds.length > 0) {
+    // Repairs the only non-atomic boundary in feed population: a prior request
+    // may have committed feed items and failed before advancing assignment
+    // carry metadata.
+    await updateAssignmentsLastAssignedDate(
+      existingAssignmentIds,
+      params.localDate,
+    );
+  }
+
   const topUpPlan = getDailyFeedTopUpPlan({
     dailyLimit: params.feed.daily_limit,
     existingPositions: params.existingFeedItems.map((item) => item.position),
@@ -339,9 +457,7 @@ async function populateDailyFeed(params: {
 
   const [currentDayOrphans, carryCandidates] = await Promise.all([
     listUnpersistedCurrentDayAssignments({
-      existingAssignmentIds: params.existingFeedItems.map(
-        (item) => item.assignment_id,
-      ),
+      existingAssignmentIds,
       localDate: params.localDate,
       profile: params.profile,
       userId: params.userId,
@@ -352,7 +468,13 @@ async function populateDailyFeed(params: {
       userId: params.userId,
     }),
   ]);
-  const candidateAssignments = [...currentDayOrphans, ...carryCandidates];
+  const existingAssignmentIdSet = new Set(existingAssignmentIds);
+  const candidateAssignments = [
+    ...currentDayOrphans,
+    ...carryCandidates.filter(
+      (assignment) => !existingAssignmentIdSet.has(assignment.id),
+    ),
+  ];
   const carryStatuses = await getCarouselGenerationStatusesByIds(
     candidateAssignments.map((assignment) => assignment.carouselId),
   );
@@ -402,7 +524,7 @@ async function populateDailyFeed(params: {
       carriedFromDate: assignment.lastAssignedLocalDate,
       source: "carried" as const,
     })),
-    ...fresh.map((assignment) => ({
+    ...fresh.map(({ assignment }) => ({
       assignment,
       carriedFromDate: null,
       source: "new" as const,
@@ -431,11 +553,28 @@ async function populateDailyFeed(params: {
       };
     },
   );
-  const { error } = await getClient()
-    .from(DAILY_CAROUSEL_FEED_ITEMS_TABLE)
-    .insert(feedItemRows);
+  const { error } = await getClient().rpc(
+    "insert_daily_carousel_feed_items_if_profile_current",
+    {
+      p_business_profile_id: params.profile.id,
+      p_business_profile_version: params.profile.profileVersion,
+      p_items: feedItemRows as Json,
+      p_user_id: params.userId,
+    },
+  );
 
   if (error) {
+    if (isBusinessProfileVersionChangedError(error)) {
+      await markAssignmentsFailed(
+        fresh
+          .filter(({ created }) => created)
+          .map(({ assignment }) => assignment.id),
+      );
+      throw new Error(
+        "The business profile changed while preparing this Trending feed. Refresh to use the latest profile.",
+      );
+    }
+
     if (!isUniqueViolation(error)) {
       throw new Error(`Could not create Trending feed items: ${error.message}`);
     }
@@ -449,10 +588,300 @@ async function populateDailyFeed(params: {
   );
 }
 
+async function reconcileDailyCarouselRefill(params: {
+  feed: DailyCarouselFeedRow;
+  feedItems: DailyCarouselFeedItemRow[];
+  localDate: string;
+  profile: BusinessProfileRecord;
+  userId: string;
+}) {
+  let refillBatch = await findDailyCarouselRefillBatch({
+    feedId: params.feed.id,
+    profile: params.profile,
+  });
+  let existingBatchCandidates = refillBatch
+    ? await getCarouselGenerationsByBatchId(refillBatch.generation_batch_id)
+    : [];
+  const viableInventory = await getViableUnassignedCarouselInventory({
+    localDate: params.localDate,
+    minimumTotalCount: Math.max(
+      params.feed.daily_limit - params.feedItems.length,
+      0,
+    ),
+    profile: params.profile,
+    userId: params.userId,
+  });
+
+  if (viableInventory.generationsNeedingDelivery.length > 0) {
+    await assertBusinessProfileVersionCurrent({
+      profile: params.profile,
+      userId: params.userId,
+    });
+    await enqueueProcessingCarouselCandidates(
+      viableInventory.generationsNeedingDelivery,
+      params.profile,
+      { throwOnFailure: true },
+    );
+  }
+
+  const plan = getDailyCarouselRefillPlan({
+    dailyLimit: params.feed.daily_limit,
+    existingBatchCandidateCount: existingBatchCandidates.length,
+    existingRequestedCount: refillBatch?.requested_count ?? 0,
+    feedItemCount: params.feedItems.length,
+    viableUnassignedGenerationCount: viableInventory.totalCount,
+  });
+
+  if (plan.requestedBatchCandidateCount === 0) {
+    return;
+  }
+
+  const mayExtendForRepair = canExtendDailyCarouselRefill({
+    currentRequestedCount: refillBatch?.requested_count ?? 0,
+    hasExistingBatch: Boolean(refillBatch),
+    lastUpdatedAt: refillBatch?.updated_at ?? null,
+    requestedCount: plan.requestedBatchCandidateCount,
+  });
+  const requestedCount = mayExtendForRepair
+    ? plan.requestedBatchCandidateCount
+    : refillBatch?.requested_count ?? 0;
+
+  if (requestedCount === 0) {
+    return;
+  }
+
+  refillBatch = await reserveDailyCarouselRefillBatch({
+    feed: params.feed,
+    profile: params.profile,
+    requestedCount,
+    userId: params.userId,
+  });
+  existingBatchCandidates = await getCarouselGenerationsByBatchId(
+    refillBatch.generation_batch_id,
+  );
+
+  if (
+    existingBatchCandidates.length >= refillBatch.requested_count &&
+    existingBatchCandidates.every(
+      (generation) =>
+        generation.status !== "processing" || Boolean(generation.triggerRunId),
+    )
+  ) {
+    return;
+  }
+
+  await prepareDailyBusinessProfileCarousels({
+    generationBatchId: refillBatch.generation_batch_id,
+    localDate: params.localDate,
+    originDailyFeedId: params.feed.id,
+    profile: params.profile,
+    targetCandidateCount: refillBatch.requested_count,
+  });
+}
+
+async function getViableUnassignedCarouselInventory(params: {
+  localDate: string;
+  minimumTotalCount: number;
+  profile: BusinessProfileRecord;
+  requireProcessingCandidate?: boolean;
+  userId: string;
+}) {
+  const existingAssignments = await listAllAssignmentsForUser(params.userId);
+  const assignedCarouselIds = new Set(
+    existingAssignments.map((assignment) => assignment.carouselId),
+  );
+  const reservedConceptFingerprints =
+    await getExistingVisibleConceptFingerprints(existingAssignments);
+  const generationsNeedingDelivery: CarouselGenerationRecord[] = [];
+  let completedCount = 0;
+  let cursor: AutoCarouselGenerationStatusPageCursor | null = null;
+  let processingCount = 0;
+
+  do {
+    const page = await getAutoCarouselGenerationStatusPageForUser({
+      availableOnOrBeforeLocalDate: params.localDate,
+      businessProfileId: params.profile.id,
+      businessProfileVersion: params.profile.profileVersion,
+      cursor,
+      limit: CAROUSEL_INVENTORY_PAGE_SIZE,
+      projectId: params.profile.projectId,
+      statuses:
+        params.requireProcessingCandidate && params.minimumTotalCount <= 0
+          ? ["processing"]
+          : ["completed", "processing"],
+      userId: params.userId,
+    });
+    const jobs = await getBackgroundJobsByIds(
+      page.statuses
+        .map((status) => status.generation.triggerRunId)
+        .filter((jobId): jobId is string => Boolean(jobId)),
+    );
+    const jobById = new Map(jobs.map((job) => [job.id, job]));
+    const completedStatuses = selectAssignableCompletedCarouselStatuses({
+      assignedCarouselIds,
+      existingConceptFingerprints: reservedConceptFingerprints,
+      localDate: params.localDate,
+      statuses: page.statuses,
+    });
+
+    completedCount += completedStatuses.length;
+    for (const status of completedStatuses) {
+      reservedConceptFingerprints.add(
+        createVisibleCarouselConceptFingerprint(status.slides),
+      );
+    }
+
+    const processingStatuses = page.statuses.filter((status) => {
+      if (
+        status.generation.status !== "processing" ||
+        !status.generation.triggerRunId ||
+        assignedCarouselIds.has(status.generation.id)
+      ) {
+        return false;
+      }
+
+      const job = jobById.get(status.generation.triggerRunId);
+
+      return !job || job.status === "queued" || job.status === "processing";
+    });
+
+    processingCount += processingStatuses.length;
+    generationsNeedingDelivery.push(
+      ...processingStatuses
+        .filter((status) => {
+          const job = status.generation.triggerRunId
+            ? jobById.get(status.generation.triggerRunId)
+            : null;
+
+          return !job || shouldDeliverCarouselJobMessage({ job });
+        })
+        .map((status) => status.generation),
+    );
+
+    cursor = page.nextCursor;
+  } while (
+    cursor &&
+    (completedCount + processingCount <
+      Math.max(Math.trunc(params.minimumTotalCount), 0) ||
+      (params.requireProcessingCandidate && processingCount === 0))
+  );
+
+  return {
+    completedCount,
+    generationsNeedingDelivery,
+    processingCount,
+    totalCount: completedCount + processingCount,
+  };
+}
+
+async function findDailyCarouselRefillBatch(params: {
+  feedId: string;
+  profile: BusinessProfileRecord;
+}) {
+  const { data, error } = await getClient()
+    .from(DAILY_CAROUSEL_REFILL_BATCHES_TABLE)
+    .select("*")
+    .eq("feed_id", params.feedId)
+    .eq("business_profile_id", params.profile.id)
+    .eq("business_profile_version", params.profile.profileVersion)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load daily Carousel refill: ${error.message}`);
+  }
+
+  return data ?? null;
+}
+
+async function reserveDailyCarouselRefillBatch(params: {
+  feed: DailyCarouselFeedRow;
+  profile: BusinessProfileRecord;
+  requestedCount: number;
+  userId: string;
+}): Promise<DailyCarouselRefillBatchRow> {
+  const { data, error } = await getClient().rpc(
+    "reserve_daily_carousel_refill_batch_if_profile_current",
+    {
+      p_business_profile_id: params.profile.id,
+      p_business_profile_version: params.profile.profileVersion,
+      p_feed_id: params.feed.id,
+      p_requested_count: params.requestedCount,
+      p_user_id: params.userId,
+    },
+  );
+
+  if (error) {
+    if (isBusinessProfileVersionChangedError(error)) {
+      throw new Error(
+        "The business profile changed while reserving daily Carousel refill inventory. Refresh to use the latest profile.",
+      );
+    }
+
+    throw new Error(`Could not reserve daily Carousel refill: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("Could not reserve daily Carousel refill.");
+  }
+
+  assertDailyCarouselRefillOwnership({
+    feed: params.feed,
+    profile: params.profile,
+    refillBatch: data,
+    userId: params.userId,
+  });
+
+  return data;
+}
+
+async function assertBusinessProfileVersionCurrent(params: {
+  profile: BusinessProfileRecord;
+  userId: string;
+}) {
+  const { error } = await getClient().rpc(
+    "assert_business_profile_version_current",
+    {
+      p_business_profile_id: params.profile.id,
+      p_business_profile_version: params.profile.profileVersion,
+      p_user_id: params.userId,
+    },
+  );
+
+  if (!error) {
+    return;
+  }
+
+  if (isBusinessProfileVersionChangedError(error)) {
+    throw new Error(
+      "The business profile changed while preparing daily Carousel inventory. Refresh to use the latest profile.",
+    );
+  }
+
+  throw new Error(`Could not validate business profile version: ${error.message}`);
+}
+
+function assertDailyCarouselRefillOwnership(params: {
+  feed: DailyCarouselFeedRow;
+  profile: BusinessProfileRecord;
+  refillBatch: DailyCarouselRefillBatchRow;
+  userId: string;
+}) {
+  if (
+    params.refillBatch.feed_id !== params.feed.id ||
+    params.refillBatch.local_date !== params.feed.local_date ||
+    params.refillBatch.user_id !== params.userId ||
+    params.refillBatch.business_profile_id !== params.profile.id ||
+    params.refillBatch.business_profile_version !== params.profile.profileVersion
+  ) {
+    throw new Error("Daily Carousel refill ownership does not match its feed.");
+  }
+}
+
 async function buildDailyFeedResponse(params: {
   entitlement: TrendingFeedEntitlement;
   feed: DailyCarouselFeedRow;
   feedItems: DailyCarouselFeedItemRow[];
+  markItemsShown: boolean;
   profile: BusinessProfileRecord;
   userId: string;
 }): Promise<TrendingDailyFeed> {
@@ -494,9 +923,11 @@ async function buildDailyFeedResponse(params: {
     return Boolean(status && isCompleteReadyCarousel(status));
   });
 
-  await markAssignmentsShown(
-    runtimeReadyItems.map((item) => item.assignment.id),
-  );
+  if (params.markItemsShown) {
+    await markAssignmentsShown(
+      runtimeReadyItems.map((item) => item.assignment.id),
+    );
+  }
 
   const carousels = runtimeReadyItems
     .map(({ assignment, feedItem }) => {
@@ -523,7 +954,15 @@ async function buildDailyFeedResponse(params: {
   ).length;
   const hasProcessingCandidates =
     pendingSlotCount > 0
-      ? await hasProcessingCarouselCandidates(params.profile)
+      ? (
+          await getViableUnassignedCarouselInventory({
+            localDate: params.feed.local_date,
+            minimumTotalCount: 0,
+            profile: params.profile,
+            requireProcessingCandidate: true,
+            userId: params.userId,
+          })
+        ).processingCount > 0
       : false;
 
   return {
@@ -770,6 +1209,119 @@ async function listUnpersistedCurrentDayAssignments(params: {
     .map(mapAssignment);
 }
 
+type AutoCarouselGenerationStatus = Awaited<
+  ReturnType<typeof getAutoCarouselGenerationStatusPageForUser>
+>["statuses"][number];
+
+function selectAssignableCompletedCarouselStatuses(params: {
+  assignedCarouselIds: ReadonlySet<string>;
+  existingConceptFingerprints: ReadonlySet<string>;
+  localDate: string;
+  statuses: readonly AutoCarouselGenerationStatus[];
+}) {
+  const statusByCarouselId = new Map(
+    params.statuses.map((status) => [status.generation.id, status]),
+  );
+  const selected = selectAssignableDailyCarouselCandidates({
+    assignedCarouselIds: [...params.assignedCarouselIds],
+    candidates: params.statuses.map((status) => ({
+      availableOnLocalDate: status.generation.availableOnLocalDate,
+      carouselId: status.generation.id,
+      conceptFingerprint: isCompleteReadyCarousel(status)
+        ? createVisibleCarouselConceptFingerprint(status.slides)
+        : null,
+      generationSource: status.generation.generationSource,
+      runtimeReady: isCompleteReadyCarousel(status),
+    })),
+    existingConceptFingerprints: [...params.existingConceptFingerprints],
+    localDate: params.localDate,
+  });
+
+  return selected
+    .map((candidate) => statusByCarouselId.get(candidate.carouselId))
+    .filter(
+      (status): status is AutoCarouselGenerationStatus => Boolean(status),
+    );
+}
+
+async function listAssignableCompletedCarouselStatuses(params: {
+  count: number;
+  existingAssignments: readonly UserCarouselAssignment[];
+  localDate: string;
+  profile: BusinessProfileRecord;
+  userId: string;
+}) {
+  const assignedCarouselIds = new Set(
+    params.existingAssignments.map((assignment) => assignment.carouselId),
+  );
+  const reservedConceptFingerprints =
+    await getExistingVisibleConceptFingerprints(params.existingAssignments);
+  const selected: AutoCarouselGenerationStatus[] = [];
+  let cursor: AutoCarouselGenerationStatusPageCursor | null = null;
+
+  do {
+    const page = await getAutoCarouselGenerationStatusPageForUser({
+      availableOnOrBeforeLocalDate: params.localDate,
+      businessProfileId: params.profile.id,
+      businessProfileVersion: params.profile.profileVersion,
+      cursor,
+      limit: CAROUSEL_INVENTORY_PAGE_SIZE,
+      projectId: params.profile.projectId,
+      statuses: ["completed"],
+      userId: params.userId,
+    });
+    const remainingCount = Math.max(params.count - selected.length, 0);
+    const pageSelection = selectAssignableCompletedCarouselStatuses({
+      assignedCarouselIds,
+      existingConceptFingerprints: reservedConceptFingerprints,
+      localDate: params.localDate,
+      statuses: page.statuses,
+    }).slice(0, remainingCount);
+
+    selected.push(...pageSelection);
+    for (const status of pageSelection) {
+      reservedConceptFingerprints.add(
+        createVisibleCarouselConceptFingerprint(status.slides),
+      );
+    }
+
+    cursor = page.nextCursor;
+  } while (cursor && selected.length < params.count);
+
+  return selected;
+}
+
+async function getExistingVisibleConceptFingerprints(
+  assignments: readonly UserCarouselAssignment[],
+) {
+  const fingerprints = new Set(
+    assignments
+      .map((assignment) => assignment.conceptFingerprint)
+      .filter((value): value is string => Boolean(value)),
+  );
+  const legacyAssignments = assignments.filter(
+    (assignment) =>
+      !isVisibleCarouselConceptFingerprint(assignment.conceptFingerprint),
+  );
+
+  for (let offset = 0; offset < legacyAssignments.length; offset += 50) {
+    const assignmentPage = legacyAssignments.slice(offset, offset + 50);
+    const statusPage = await getCarouselGenerationStatusesByIds(
+      assignmentPage.map((assignment) => assignment.carouselId),
+    );
+
+    for (const status of statusPage) {
+      if (status.slides.length > 0) {
+        fingerprints.add(
+          createVisibleCarouselConceptFingerprint(status.slides),
+        );
+      }
+    }
+  }
+
+  return fingerprints;
+}
+
 async function createFreshAssignments(params: {
   count: number;
   localDate: string;
@@ -781,55 +1333,31 @@ async function createFreshAssignments(params: {
   }
 
   const existingAssignments = await listAllAssignmentsForUser(params.userId);
-  const existingCarouselIds = new Set(
-    existingAssignments.map((assignment) => assignment.carouselId),
-  );
-  const existingConceptFingerprints = new Set(
-    existingAssignments
-      .map((assignment) => assignment.conceptFingerprint)
-      .filter((value): value is string => Boolean(value)),
-  );
-  const statuses = await listCarouselGenerationStatusesForUser({
-    businessProfileId: params.profile.id,
-    businessProfileVersion: params.profile.profileVersion,
-    limit: FRESH_CANDIDATE_SCAN_LIMIT,
-    projectId: params.profile.projectId,
+  const freshStatuses = await listAssignableCompletedCarouselStatuses({
+    count: params.count,
+    existingAssignments,
+    localDate: params.localDate,
+    profile: params.profile,
     userId: params.userId,
   });
-  const freshStatuses = statuses.filter((status) => {
-    if (existingCarouselIds.has(status.generation.id)) {
-      return false;
-    }
+  const assignments: Array<{
+    assignment: UserCarouselAssignment;
+    created: boolean;
+  }> = [];
 
-    if (!isCompleteReadyCarousel(status)) {
-      return false;
-    }
-
-    const fingerprint = createConceptFingerprint(
-      status.generation,
-      status.slides,
-    );
-
-    if (existingConceptFingerprints.has(fingerprint)) {
-      return false;
-    }
-
-    existingConceptFingerprints.add(fingerprint);
-    return true;
-  });
-  const selected = freshStatuses.slice(0, params.count);
-  const assignments: UserCarouselAssignment[] = [];
-
-  for (const status of selected) {
-    const assignment = await insertFreshAssignment({
+  for (const status of freshStatuses) {
+    const result = await insertFreshAssignment({
       generation: status.generation,
       localDate: params.localDate,
       slides: status.slides,
       userId: params.userId,
     });
 
-    if (assignment && isActiveAssignmentState(assignment.state)) {
-      assignments.push(assignment);
+    if (
+      result?.assignment &&
+      isActiveAssignmentState(result.assignment.state)
+    ) {
+      assignments.push(result);
     }
   }
 
@@ -849,10 +1377,7 @@ async function insertFreshAssignment(params: {
       business_profile_id: params.generation.businessProfileId,
       business_profile_version: params.generation.businessProfileVersion,
       carousel_id: params.generation.id,
-      concept_fingerprint: createConceptFingerprint(
-        params.generation,
-        params.slides,
-      ),
+      concept_fingerprint: createVisibleCarouselConceptFingerprint(params.slides),
       first_assigned_at: now,
       first_assigned_local_date: params.localDate,
       last_assigned_local_date: params.localDate,
@@ -871,13 +1396,21 @@ async function insertFreshAssignment(params: {
         userId: params.userId,
       });
 
-      return existing;
+      return existing
+        ? {
+            assignment: existing,
+            created: false,
+          }
+        : null;
     }
 
     throw new Error(`Could not assign Trending carousel: ${error.message}`);
   }
 
-  return mapAssignment(data);
+  return {
+    assignment: mapAssignment(data),
+    created: true,
+  };
 }
 
 async function listAllAssignmentsForUser(userId: string) {
@@ -1088,28 +1621,6 @@ function getReadySlides(slides: CarouselSlideRecord[]) {
     .sort((first, second) => first.slideNumber - second.slideNumber);
 }
 
-function createConceptFingerprint(
-  generation: CarouselGenerationRecord,
-  slides: CarouselSlideRecord[],
-) {
-  const normalized = [
-    generation.categorySlug,
-    generation.selectedAngle,
-    ...slides.map((slide) => slide.headline),
-    ...slides.map((slide) => slide.subtext),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return createHash("sha256")
-    .update(normalized || generation.id)
-    .digest("hex");
-}
-
 function getCompletedState(action: CompletionAction): AssignmentState {
   switch (action) {
     case "saved":
@@ -1131,15 +1642,6 @@ function isCompletedAssignmentState(state: AssignmentState) {
     state === "completed_scheduled" ||
     state === "completed_skipped"
   );
-}
-
-async function hasProcessingCarouselCandidates(profile: BusinessProfileRecord) {
-  const generations = await listAutoCarouselGenerationsForBusinessProfile({
-    businessProfileId: profile.id,
-    profileVersion: profile.profileVersion,
-  });
-
-  return generations.some((generation) => generation.status === "processing");
 }
 
 function mapEntitlement(
@@ -1243,6 +1745,10 @@ function getClient() {
 
 function isUniqueViolation(error: { code?: string }) {
   return error.code === "23505";
+}
+
+function isBusinessProfileVersionChangedError(error: { message?: string }) {
+  return error.message?.includes("business_profile_version_changed") ?? false;
 }
 
 function getNowIso() {

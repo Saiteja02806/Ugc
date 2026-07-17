@@ -14,6 +14,7 @@ import {
 } from "@/lib/media/media-storage";
 import type { MediaRatio, MediaSourceType } from "@/lib/media/types";
 import {
+  buildCatalogInfluencerId,
   buildUserInfluencerId,
   getCatalogInfluencerKey,
   groupCatalogInfluencers,
@@ -23,6 +24,7 @@ import type {
   HookDemoSummary,
   HookInfluencerSummary,
   HookInfluencerVideoSummary,
+  HookVideoBrowseEntry,
   HookVideoSourceKind,
 } from "@/lib/trending/hook-video-types";
 
@@ -100,6 +102,119 @@ export async function listHookInfluencers(
   );
 
   return [...catalogInfluencers, ...userInfluencers];
+}
+
+export async function getHookInfluencerForUser(params: {
+  influencerId: string;
+  sourceKind: HookVideoSourceKind;
+  userId: string;
+}) {
+  const influencers = await listHookInfluencers(params.userId);
+  const influencer = influencers.find(
+    (item) =>
+      item.id === params.influencerId &&
+      item.sourceKind === params.sourceKind,
+  );
+
+  if (!influencer) {
+    throw new HookVideoSourceError("This influencer was not found.", 404);
+  }
+
+  return influencer;
+}
+
+export async function listHookVideoBrowseInventory(
+  userId: string,
+): Promise<HookVideoBrowseEntry[]> {
+  const [catalogResult, userResult] = await Promise.allSettled([
+    listReadyAvatarAssetsWithPreferences({ userId }),
+    listMediaAssets({
+      collection: "influencer",
+      sourceTypes: ["influencer_upload"],
+      userId,
+    }),
+  ]);
+
+  if (catalogResult.status === "rejected" && userResult.status === "rejected") {
+    throw new Error("No influencer video source could be loaded.");
+  }
+
+  if (catalogResult.status === "rejected") {
+    console.warn(
+      "Could not load catalog videos for Surprise me:",
+      catalogResult.reason,
+    );
+  }
+
+  if (userResult.status === "rejected") {
+    console.warn(
+      "Could not load user videos for Surprise me:",
+      userResult.reason,
+    );
+  }
+
+  const catalogRows =
+    catalogResult.status === "fulfilled" ? catalogResult.value : [];
+  const catalogInfluencers = groupCatalogInfluencers(
+    catalogRows.map(({ asset }) => asset),
+  );
+  const catalogInfluencersById = new Map(
+    catalogInfluencers.map((influencer) => [influencer.id, influencer]),
+  );
+  const catalogEntries = catalogRows.flatMap(
+    ({ asset, preference }): HookVideoBrowseEntry[] => {
+      const influencerId = buildCatalogInfluencerId(
+        getCatalogInfluencerKey(asset),
+      );
+      const influencer = catalogInfluencersById.get(influencerId);
+
+      if (!influencer) return [];
+
+      const hasSavedTrim =
+        preference?.is_trimmed === true &&
+        typeof preference.trim_start === "number" &&
+        typeof preference.trim_end === "number";
+
+      return [
+        {
+          influencer,
+          video: {
+            durationSeconds: asset.duration_seconds,
+            id: asset.id,
+            influencerId,
+            ratio: asset.ratio,
+            sourceKind: "catalog",
+            thumbnailUrl: asset.thumbnail_url,
+            title: asset.name,
+            trimEnd: hasSavedTrim
+              ? preference?.trim_end ?? asset.duration_seconds
+              : asset.duration_seconds,
+            trimStart: hasSavedTrim ? preference?.trim_start ?? 0 : 0,
+          },
+        },
+      ];
+    },
+  );
+
+  const userEntries = (
+    userResult.status === "fulfilled" ? userResult.value : []
+  ).map((asset): HookVideoBrowseEntry => {
+    const influencerId = buildUserInfluencerId(asset.id);
+    const influencer: HookInfluencerSummary = {
+      id: influencerId,
+      name: asset.title,
+      sourceKind: "user",
+      thumbnailUrl: asset.thumbnail_url,
+      videoCount: 1,
+    };
+
+    return {
+      influencer,
+      video: mapUserInfluencerVideo(asset, influencerId),
+    };
+  });
+
+  return [...catalogEntries, ...userEntries];
 }
 
 export async function listHookInfluencerVideos(params: {

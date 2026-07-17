@@ -19,8 +19,12 @@ type Json =
 type HookVideoSuggestionRow = {
   business_profile_id: string;
   created_at: string;
+  demo_asset_id: string;
   generation_id: string;
   id: string;
+  influencer_id: string;
+  influencer_source: HookVideoSourceKind;
+  influencer_video_id: string;
   text: string;
   user_id: string;
 };
@@ -75,7 +79,14 @@ type HookVideoDatabase = {
         Insert: Partial<HookVideoSuggestionRow> &
           Pick<
             HookVideoSuggestionRow,
-            "business_profile_id" | "generation_id" | "text" | "user_id"
+            | "business_profile_id"
+            | "demo_asset_id"
+            | "generation_id"
+            | "influencer_id"
+            | "influencer_source"
+            | "influencer_video_id"
+            | "text"
+            | "user_id"
           >;
         Relationships: [];
         Row: HookVideoSuggestionRow;
@@ -128,14 +139,22 @@ export function getMissingHookVideoDbEnvVars() {
 
 export async function createHookVideoSuggestions(params: {
   businessProfileId: string;
+  demoAssetId: string;
+  influencerId: string;
+  influencerVideoId: string;
+  sourceKind: HookVideoSourceKind;
   texts: string[];
   userId: string;
 }): Promise<HookSuggestion[]> {
   const generationId = crypto.randomUUID();
   const rows = params.texts.map((text) => ({
     business_profile_id: params.businessProfileId,
+    demo_asset_id: params.demoAssetId,
     generation_id: generationId,
     id: crypto.randomUUID(),
+    influencer_id: params.influencerId,
+    influencer_source: params.sourceKind,
+    influencer_video_id: params.influencerVideoId,
     text: text.trim().slice(0, 220),
     user_id: params.userId,
   }));
@@ -196,10 +215,11 @@ export async function saveHookVideoDraft(params: {
     influencer_source: params.sourceKind,
     influencer_video_id: params.influencerVideoId,
     influencer_video_title: params.influencerVideoTitle.trim().slice(0, 180),
-    ...(params.librarySaved ? { library_saved_at: now } : {}),
+    ...(params.librarySaved
+      ? { library_saved_at: now, status: "saved" as const }
+      : {}),
     preview_thumbnail_url: params.previewThumbnailUrl,
     selected_hook_id: params.selectedHookId,
-    status: params.librarySaved ? ("saved" as const) : ("draft" as const),
     trim_end: params.trimEnd,
     trim_start: params.trimStart,
     updated_at: now,
@@ -218,9 +238,11 @@ export async function saveHookVideoDraft(params: {
       throw new Error(`Could not update Hook video draft: ${error.message}`);
     }
 
-    if (data) {
-      return mapDraft(data);
+    if (!data) {
+      throw new Error("This Hook video draft was not found.");
     }
+
+    return mapDraft(data);
   }
 
   const { data, error } = await getClient()
@@ -228,6 +250,7 @@ export async function saveHookVideoDraft(params: {
     .insert({
       ...values,
       id: crypto.randomUUID(),
+      status: params.librarySaved ? "saved" : "draft",
       user_id: params.userId,
     })
     .select("*")
@@ -249,6 +272,7 @@ export async function attachScheduleDraftToHookVideo(params: {
     .from("hook_video_drafts")
     .update({
       scheduled_post_id: params.scheduledPostId,
+      status: "scheduled",
       updated_at: new Date().toISOString(),
     })
     .eq("id", params.draftId)

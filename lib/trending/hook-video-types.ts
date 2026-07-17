@@ -24,6 +24,11 @@ export type HookInfluencerVideoSummary = {
   trimStart: number;
 };
 
+export type HookVideoBrowseEntry = {
+  influencer: HookInfluencerSummary;
+  video: HookInfluencerVideoSummary;
+};
+
 export type HookDemoSummary = {
   durationSeconds: number | null;
   id: string;

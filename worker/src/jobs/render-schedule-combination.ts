@@ -69,6 +69,7 @@ export async function runRenderScheduleCombinationJob(
 
     await context.store.markScheduleCombinationRenderCompleted({
       autoFinalize: payload.autoFinalize,
+      compositionFingerprint: payload.compositionFingerprint,
       demoVideoId: payload.demoVideoId,
       hookVideoId: payload.hookVideoId,
       key: result.key,
@@ -181,11 +182,29 @@ function parseRenderScheduleCombinationPayload(
   value: Json,
 ): RenderScheduleCombinationPayload {
   const input = getJsonRecord(value, "input_json");
+  const hookTrimStart = getOptionalNonNegativeNumber(
+    input.hookTrimStart,
+    "hookTrimStart",
+    0,
+  );
+  const hookTrimEnd = getOptionalNullablePositiveNumber(
+    input.hookTrimEnd,
+    "hookTrimEnd",
+  );
+
+  if (hookTrimEnd !== null && hookTrimEnd <= hookTrimStart) {
+    throw new Error("hookTrimEnd must be after hookTrimStart.");
+  }
 
   return {
     autoFinalize: getOptionalBoolean(input.autoFinalize, "autoFinalize", false),
+    compositionFingerprint:
+      getOptionalString(input.compositionFingerprint, 128) || "legacy",
     demoVideoId: getRequiredString(input.demoVideoId, "demoVideoId"),
     demoVideoUrl: getHttpUrl(input.demoVideoUrl, "demoVideoUrl"),
+    hookText: getOptionalString(input.hookText, 220),
+    hookTrimEnd,
+    hookTrimStart,
     hookVideoId: getRequiredString(input.hookVideoId, "hookVideoId"),
     hookVideoUrl: getHttpUrl(input.hookVideoUrl, "hookVideoUrl"),
     projectId: getRequiredString(input.projectId, "projectId"),
@@ -239,6 +258,37 @@ function getRequiredString(value: Json | undefined, fieldName: string) {
 
 function getOptionalString(value: Json | undefined, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function getOptionalNonNegativeNumber(
+  value: Json | undefined,
+  fieldName: string,
+  fallback: number,
+) {
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return value;
+  }
+
+  throw new Error(`${fieldName} must be a non-negative number.`);
+}
+
+function getOptionalNullablePositiveNumber(
+  value: Json | undefined,
+  fieldName: string,
+) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+
+  throw new Error(`${fieldName} must be a positive number or null.`);
 }
 
 function getHttpUrl(value: Json | undefined, fieldName: string) {

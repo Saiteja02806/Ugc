@@ -8,6 +8,7 @@ import {
   type VerifiedFirebaseUser,
 } from "@/lib/firebase/server-auth";
 import { HookVideoSourceError } from "@/lib/trending/hook-video-sources";
+import { HookVideoSelectionError } from "@/lib/trending/hook-video-service";
 
 export type AuthenticatedHookVideoRequest =
   | { ok: true; user: VerifiedFirebaseUser }
@@ -61,6 +62,10 @@ export function hookVideoErrorResponse(
   fallback: string,
 ) {
   if (error instanceof HookVideoSourceError) {
+    return hookVideoJson({ error: error.message, ok: false }, error.status);
+  }
+
+  if (error instanceof HookVideoSelectionError) {
     return hookVideoJson({ error: error.message, ok: false }, error.status);
   }
 

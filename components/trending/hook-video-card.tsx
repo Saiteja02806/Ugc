@@ -23,22 +23,23 @@ export function HookVideoCard({
 }) {
   return (
     <div
-      className="relative mx-auto aspect-[9/16] w-[154px] shrink-0 overflow-hidden rounded-[18px] border border-border-strong bg-foreground-strong shadow-[0_12px_34px_rgb(23_23_27_/_0.16)] sm:w-40 lg:w-[176px]"
+      className="relative mx-auto aspect-[9/16] w-[clamp(168px,48vw,184px)] shrink-0 overflow-hidden rounded-control border border-border-strong bg-foreground-strong shadow-[0_12px_32px_rgb(23_23_27_/_0.16)]"
       style={{
         transform: `translateX(${Math.max(-88, Math.min(88, dragOffset))}px) rotate(${Math.max(-4, Math.min(4, dragOffset / 22))}deg)`,
         transition: dragOffset === 0 ? "transform 180ms ease-out" : "none",
       }}
     >
       {video.thumbnailUrl ? (
-        // Catalog thumbnails are delivery assets; source video URLs are not returned here.
+        // Catalog thumbnails are delivery assets; source video URLs stay protected.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={video.thumbnailUrl}
           alt=""
+          draggable={false}
           className="absolute inset-0 size-full object-cover"
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#172130] text-white/65">
+        <div className="absolute inset-0 flex items-center justify-center bg-[#20242a] text-white/65">
           <Video className="size-7" aria-hidden="true" />
         </div>
       )}
@@ -48,10 +49,14 @@ export function HookVideoCard({
           key={previewUrl}
           src={previewUrl}
           poster={video.thumbnailUrl ?? undefined}
-          className="absolute inset-0 size-full bg-black object-cover"
-          controls
+          aria-label={video.title}
+          autoPlay
+          loop
+          muted
           playsInline
           preload="metadata"
+          draggable={false}
+          className="absolute inset-0 size-full bg-black object-cover"
           onError={onPreviewError}
         />
       ) : null}
@@ -59,19 +64,16 @@ export function HookVideoCard({
       {previewLoading ? (
         <div className="absolute inset-0 flex items-center justify-center bg-black/48 text-white">
           <span className="flex size-11 items-center justify-center rounded-full bg-black/55">
-            <Loader2
-              className="size-5 animate-spin motion-reduce:animate-none"
-              aria-hidden="true"
-            />
+            <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
           </span>
         </div>
       ) : null}
 
       {previewError ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#111827]/88 px-4 text-center text-white">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#20242a]/92 px-4 text-center text-white">
           <AlertCircle className="size-5" aria-hidden="true" />
           <p className="mt-2 text-xs font-semibold leading-5">
-            Could not load preview.
+            Preview unavailable
           </p>
           <button
             type="button"

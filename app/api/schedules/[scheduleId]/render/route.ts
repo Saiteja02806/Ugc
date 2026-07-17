@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
 import {
@@ -223,6 +225,35 @@ export async function POST(
     );
   }
 
+  const hookText = getString(metadata.hookText)?.slice(0, 220) ?? "";
+  const hookTrimStart = getNonNegativeNumber(metadata.hookTrimStart) ?? 0;
+  const hookTrimEnd = getPositiveNumber(metadata.hookTrimEnd);
+
+  if (hookTrimEnd !== null && hookTrimEnd <= hookTrimStart) {
+    return jsonResponse(
+      {
+        ok: false,
+        message: "Review the opening clip trim before preparing this video.",
+      },
+      409,
+    );
+  }
+
+  const ratio = getRenderRatio(
+    resolvedDemoAsset.asset,
+    resolvedHookAsset.asset,
+  );
+  const compositionFingerprint = createCompositionFingerprint({
+    demoUpdatedAt: resolvedDemoAsset.asset.updated_at,
+    demoVideoId: resolvedDemoAsset.asset.id,
+    hookText,
+    hookTrimEnd,
+    hookTrimStart,
+    hookUpdatedAt: resolvedHookAsset.asset.updated_at,
+    hookVideoId: resolvedHookAsset.asset.id,
+    ratio,
+  });
+
   const combinedMediaAssetId = getString(metadata.combinedMediaAssetId);
 
   if (existingStatus === "ready" && combinedMediaAssetId) {
@@ -236,7 +267,10 @@ export async function POST(
       getStringFromValue(getObjectValue(combinedAsset.metadata, "hookVideoId")) ===
         resolvedHookAsset.asset.id &&
       getStringFromValue(getObjectValue(combinedAsset.metadata, "demoVideoId")) ===
-        resolvedDemoAsset.asset.id
+        resolvedDemoAsset.asset.id &&
+      getStringFromValue(
+        getObjectValue(combinedAsset.metadata, "compositionFingerprint"),
+      ) === compositionFingerprint
     ) {
       return jsonResponse({
         jobId: getString(metadata.combinedRenderJobId),
@@ -251,12 +285,16 @@ export async function POST(
   const title = `${schedule.title || "Scheduled post"} combined`.slice(0, 140);
   const input = {
     autoFinalize: hasPlannedFinalSchedule(metadata),
+    compositionFingerprint,
     demoVideoId: resolvedDemoAsset.asset.id,
     demoVideoUrl: resolvedDemoAsset.asset.url,
+    hookText,
+    hookTrimEnd,
+    hookTrimStart,
     hookVideoId: resolvedHookAsset.asset.id,
     hookVideoUrl: resolvedHookAsset.asset.url,
     projectId,
-    ratio: getRenderRatio(resolvedDemoAsset.asset, resolvedHookAsset.asset),
+    ratio,
     renderId,
     scheduleId: schedule.id,
     title,
@@ -279,6 +317,7 @@ export async function POST(
       expectedUpdatedAt: schedule.updatedAt,
       metadata: {
         combinedRenderError: null,
+        combinedRequestedFingerprint: compositionFingerprint,
         combinedRenderId: renderId,
         combinedRenderJobId: backgroundJob.id,
         combinedRenderQueuedAt: new Date().toISOString(),
@@ -461,6 +500,35 @@ function getRenderRatio(
 
 function getString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function getNonNegativeNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? value
+    : null;
+}
+
+function getPositiveNumber(value: unknown) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : null;
+}
+
+function createCompositionFingerprint(value: {
+  demoUpdatedAt: string;
+  demoVideoId: string;
+  hookText: string;
+  hookTrimEnd: number | null;
+  hookTrimStart: number;
+  hookUpdatedAt: string;
+  hookVideoId: string;
+  ratio: CombinationRenderRatio;
+}) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
 function hasPlannedFinalSchedule(metadata: Record<string, unknown>) {

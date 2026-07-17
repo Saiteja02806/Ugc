@@ -1,21 +1,14 @@
 "use client";
 
-import {
-  AlertCircle,
-  ArrowUpRight,
-  Loader2,
-  RefreshCw,
-  UserRound,
-  Video,
-} from "lucide-react";
-import Link from "next/link";
+import { AlertCircle, Loader2, RefreshCw, UserRound, Video } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { HookVideoComposer } from "@/components/trending/hook-video-composer";
 import { HookVideoDeck } from "@/components/trending/hook-video-deck";
 import {
-  InfluencerVideoPickerModal,
+  InfluencerVideoPickerDrawer,
   type HookVideoPickerSelection,
-} from "@/components/trending/influencer-video-picker-modal";
+} from "@/components/trending/influencer-video-picker-drawer";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
@@ -23,13 +16,28 @@ import {
   beginHookVideoComposition,
   type HookVideoFlowState,
 } from "@/lib/trending/hook-video-flow";
+import {
+  createNonRepeatingHookVideoCycle,
+  getHookVideoBrowseEntryKey,
+} from "@/lib/trending/hook-video-source-logic";
 import type {
   HookInfluencerSummary,
   HookInfluencerVideoSummary,
+  HookVideoBrowseEntry,
 } from "@/lib/trending/hook-video-types";
+
+type HookBrowseMode = "influencer" | "surprise";
 
 type InfluencerListResponse =
   | { influencers: HookInfluencerSummary[]; ok: true }
+  | { error?: string; ok?: false };
+
+type VideoListResponse =
+  | { ok: true; videos: HookInfluencerVideoSummary[] }
+  | { error?: string; ok?: false };
+
+type SurpriseResponse =
+  | { entries: HookVideoBrowseEntry[]; ok: true }
   | { error?: string; ok?: false };
 
 type PreviewSessionResponse =
@@ -41,14 +49,18 @@ export function HookVideoWorkspace({ active }: { active: boolean }) {
   const [flowState, setFlowState] = useState<HookVideoFlowState>(
     INITIAL_HOOK_VIDEO_FLOW_STATE,
   );
+  const [browseMode, setBrowseMode] = useState<HookBrowseMode>("influencer");
   const [influencers, setInfluencers] = useState<HookInfluencerSummary[]>([]);
   const [selectedInfluencer, setSelectedInfluencer] =
     useState<HookInfluencerSummary | null>(null);
   const [videos, setVideos] = useState<HookInfluencerVideoSummary[]>([]);
   const [selectedVideo, setSelectedVideo] =
     useState<HookInfluencerVideoSummary | null>(null);
+  const [surpriseQueue, setSurpriseQueue] = useState<HookVideoBrowseEntry[]>([]);
+  const [surpriseIndex, setSurpriseIndex] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [surpriseLoading, setSurpriseLoading] = useState(false);
   const [loadAttempted, setLoadAttempted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
@@ -56,14 +68,87 @@ export function HookVideoWorkspace({ active }: { active: boolean }) {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const previewRequestId = useRef(0);
+  const surpriseRequestInFlight = useRef(false);
+
+  const loadProtectedPreview = useCallback(
+    async (video: HookInfluencerVideoSummary) => {
+      const requestId = previewRequestId.current + 1;
+      previewRequestId.current = requestId;
+      setPreviewUrl(null);
+      setPreviewError(null);
+      setPreviewLoading(true);
+
+      try {
+        const token = await getCurrentUserIdToken();
+
+        if (!token) {
+          throw new Error("Sign in before previewing influencer videos.");
+        }
+
+        const response = await fetch(
+          `/api/trending/hook-videos/videos/${encodeURIComponent(video.id)}/preview-session`,
+          {
+            body: JSON.stringify({
+              influencerId: video.influencerId,
+              sourceKind: video.sourceKind,
+            }),
+            cache: "no-store",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            method: "POST",
+          },
+        );
+        const data = (await response.json().catch(() => null)) as
+          | PreviewSessionResponse
+          | null;
+
+        if (!response.ok || !data || data.ok !== true) {
+          throw new Error(getApiError(data, "Could not load protected preview."));
+        }
+
+        if (previewRequestId.current === requestId) {
+          setPreviewUrl(`${data.previewUrl}?session=${Date.now()}`);
+        }
+      } catch (error) {
+        if (previewRequestId.current === requestId) {
+          setPreviewError(
+            getErrorMessage(error, "Could not load protected preview."),
+          );
+        }
+      } finally {
+        if (previewRequestId.current === requestId) {
+          setPreviewLoading(false);
+        }
+      }
+    },
+    [],
+  );
+
+  const showBrowseEntry = useCallback(
+    (params: {
+      entry: HookVideoBrowseEntry;
+      mode: HookBrowseMode;
+      videos: HookInfluencerVideoSummary[];
+    }) => {
+      setBrowseMode(params.mode);
+      setSelectedInfluencer(params.entry.influencer);
+      setSelectedVideo(params.entry.video);
+      setVideos(params.videos);
+      setFlowState(INITIAL_HOOK_VIDEO_FLOW_STATE);
+      setNoticeMessage(null);
+      void loadProtectedPreview(params.entry.video);
+    },
+    [loadProtectedPreview],
+  );
 
   const loadInfluencers = useCallback(async () => {
-    if (authLoading) {
-      return;
-    }
+    if (authLoading) return;
 
     setIsLoading(true);
     setErrorMessage(null);
+    setNoticeMessage(null);
 
     try {
       if (!user) {
@@ -76,133 +161,187 @@ export function HookVideoWorkspace({ active }: { active: boolean }) {
         throw new Error("Sign in before creating hook videos.");
       }
 
-      const response = await fetch(
-        "/api/trending/hook-videos/influencers",
-        {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      const data = (await response.json()) as InfluencerListResponse;
+      const response = await fetch("/api/trending/hook-videos/influencers", {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await response.json().catch(() => null)) as
+        | InfluencerListResponse
+        | null;
 
-      if (!response.ok || data.ok !== true) {
+      if (!response.ok || !data || data.ok !== true) {
         throw new Error(getApiError(data, "Could not load influencers."));
       }
 
       setInfluencers(data.influencers);
-      setSelectedInfluencer((current) =>
-        current && data.influencers.some((item) => item.id === current.id)
-          ? current
-          : null,
-      );
+
+      for (const influencer of data.influencers) {
+        try {
+          const influencerVideos = await fetchHookInfluencerVideos(
+            influencer.id,
+            token,
+          );
+          const firstVideo = influencerVideos[0];
+
+          if (firstVideo) {
+            showBrowseEntry({
+              entry: { influencer, video: firstVideo },
+              mode: "influencer",
+              videos: influencerVideos,
+            });
+            return;
+          }
+        } catch (error) {
+          console.warn(
+            `Could not load the default Hook video for ${influencer.id}:`,
+            error,
+          );
+        }
+      }
+
+      setSelectedInfluencer(null);
+      setSelectedVideo(null);
+      setVideos([]);
+      setNoticeMessage("No influencer videos are ready yet.");
     } catch (error) {
       setInfluencers([]);
+      setSelectedInfluencer(null);
+      setSelectedVideo(null);
+      setVideos([]);
       setErrorMessage(getErrorMessage(error, "Could not load influencers."));
     } finally {
       setIsLoading(false);
       setLoadAttempted(true);
     }
-  }, [authLoading, user]);
+  }, [authLoading, showBrowseEntry, user]);
 
   useEffect(() => {
-    if (!active || authLoading || loadAttempted) {
-      return;
-    }
+    if (!active || authLoading || loadAttempted) return;
 
     const timer = window.setTimeout(() => void loadInfluencers(), 0);
-
     return () => window.clearTimeout(timer);
   }, [active, authLoading, loadAttempted, loadInfluencers]);
 
-  async function loadProtectedPreview(video: HookInfluencerVideoSummary) {
-    const requestId = previewRequestId.current + 1;
-    previewRequestId.current = requestId;
-    setPreviewUrl(null);
-    setPreviewError(null);
-    setPreviewLoading(true);
+  const markSurpriseSeen = useCallback(
+    (entry: HookVideoBrowseEntry, seenKeys?: Set<string>) => {
+      if (!user) return;
+
+      const nextSeen = seenKeys ?? readSeenEntryKeys(user.uid);
+      nextSeen.add(getHookVideoBrowseEntryKey(entry));
+      writeSeenEntryKeys(user.uid, nextSeen);
+    },
+    [user],
+  );
+
+  const startSurprise = useCallback(async () => {
+    if (surpriseRequestInFlight.current) return;
+    if (!user) throw new Error("Sign in before choosing Surprise me.");
+
+    surpriseRequestInFlight.current = true;
+    setSurpriseLoading(true);
 
     try {
       const token = await getCurrentUserIdToken();
 
       if (!token) {
-        throw new Error("Sign in before previewing influencer videos.");
+        throw new Error("Sign in before choosing Surprise me.");
       }
 
-      const response = await fetch(
-        `/api/trending/hook-videos/videos/${encodeURIComponent(video.id)}/preview-session`,
-        {
-          body: JSON.stringify({
-            influencerId: video.influencerId,
-            sourceKind: video.sourceKind,
-          }),
-          cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          method: "POST",
-        },
-      );
-      const data = (await response.json()) as PreviewSessionResponse;
+      const response = await fetch("/api/trending/hook-videos/surprise", {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await response.json().catch(() => null)) as
+        | SurpriseResponse
+        | null;
 
-      if (!response.ok || data.ok !== true) {
-        throw new Error(
-          getApiError(data, "Could not load protected preview."),
-        );
+      if (!response.ok || !data || data.ok !== true) {
+        throw new Error(getApiError(data, "Could not load Surprise me."));
       }
 
-      if (previewRequestId.current === requestId) {
-        setPreviewUrl(`${data.previewUrl}?session=${Date.now()}`);
+      const seenKeys = readSeenEntryKeys(user.uid);
+      const cycle = createNonRepeatingHookVideoCycle(data.entries, seenKeys);
+      const firstEntry = cycle.entries[0];
+
+      if (!firstEntry) {
+        throw new Error("No influencer videos are ready for Surprise me.");
       }
-    } catch (error) {
-      if (previewRequestId.current === requestId) {
-        setPreviewError(
-          getErrorMessage(error, "Could not load protected preview."),
-        );
-      }
+
+      if (cycle.resetCycle) seenKeys.clear();
+
+      setSurpriseQueue(cycle.entries);
+      setSurpriseIndex(0);
+      showBrowseEntry({
+        entry: firstEntry,
+        mode: "surprise",
+        videos: cycle.entries.map((entry) => entry.video),
+      });
+      markSurpriseSeen(firstEntry, seenKeys);
     } finally {
-      if (previewRequestId.current === requestId) {
-        setPreviewLoading(false);
-      }
+      surpriseRequestInFlight.current = false;
+      setSurpriseLoading(false);
     }
-  }
+  }, [markSurpriseSeen, showBrowseEntry, user]);
+
+  const closePicker = useCallback(() => setPickerOpen(false), []);
 
   function handleVideoSelection(selection: HookVideoPickerSelection) {
-    setSelectedInfluencer(selection.influencer);
-    setSelectedVideo(selection.video);
-    setVideos(selection.videos);
-    setFlowState(INITIAL_HOOK_VIDEO_FLOW_STATE);
-    setNoticeMessage(null);
-    void loadProtectedPreview(selection.video);
+    setSurpriseQueue([]);
+    setSurpriseIndex(0);
+    showBrowseEntry({
+      entry: {
+        influencer: selection.influencer,
+        video: selection.video,
+      },
+      mode: "influencer",
+      videos: selection.videos,
+    });
   }
 
   function handleSkip() {
-    if (!selectedVideo || videos.length === 0) {
+    if (!selectedVideo) return;
+
+    if (browseMode === "surprise") {
+      const nextIndex = surpriseIndex + 1;
+      const nextEntry = surpriseQueue[nextIndex];
+
+      if (nextEntry) {
+        setSurpriseIndex(nextIndex);
+        showBrowseEntry({
+          entry: nextEntry,
+          mode: "surprise",
+          videos: surpriseQueue.map((entry) => entry.video),
+        });
+        markSurpriseSeen(nextEntry);
+        return;
+      }
+
+      void startSurprise().catch((error) => {
+        setNoticeMessage(getErrorMessage(error, "Could not load another video."));
+      });
       return;
     }
 
-    if (videos.length === 1) {
-      setNoticeMessage("Choose another influencer to see a different video.");
+    const currentIndex = videos.findIndex((video) => video.id === selectedVideo.id);
+    const nextVideo = videos[currentIndex + 1];
+
+    if (!nextVideo) {
+      setNoticeMessage("Choose another influencer or use Surprise me.");
       setPickerOpen(true);
       return;
     }
 
-    const currentIndex = videos.findIndex(
-      (video) => video.id === selectedVideo.id,
-    );
-    const nextVideo = videos[(currentIndex + 1) % videos.length];
-
-    setSelectedVideo(nextVideo);
-    setFlowState(INITIAL_HOOK_VIDEO_FLOW_STATE);
-    setNoticeMessage(null);
-    void loadProtectedPreview(nextVideo);
+    showBrowseEntry({
+      entry: { influencer: selectedInfluencer!, video: nextVideo },
+      mode: "influencer",
+      videos,
+    });
   }
 
   function handleCompose() {
-    if (!selectedVideo) {
-      return;
-    }
+    if (!selectedVideo) return;
 
+    setPickerOpen(false);
     setFlowState(
       beginHookVideoComposition({
         influencerId: selectedVideo.influencerId,
@@ -214,13 +353,19 @@ export function HookVideoWorkspace({ active }: { active: boolean }) {
     );
   }
 
-  const selectedPosition = selectedVideo
-    ? Math.max(0, videos.findIndex((video) => video.id === selectedVideo.id)) + 1
-    : 0;
+  const selectedPosition =
+    browseMode === "surprise"
+      ? surpriseIndex + 1
+      : selectedVideo
+        ? Math.max(0, videos.findIndex((video) => video.id === selectedVideo.id)) + 1
+        : 0;
+  const selectedTotal =
+    browseMode === "surprise" ? surpriseQueue.length : videos.length;
 
   return (
     <section
-      className="mt-6 overflow-hidden rounded-panel border border-border bg-card shadow-card"
+      className="relative mt-6 overflow-hidden rounded-panel border border-border bg-card shadow-card"
+      data-hook-browse-mode={browseMode}
       data-hook-video-stage={flowState.stage}
     >
       <div className="flex min-h-14 items-center justify-between border-b border-border px-4 py-2.5 sm:px-5">
@@ -228,7 +373,9 @@ export function HookVideoWorkspace({ active }: { active: boolean }) {
           <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
           Hook videos
         </p>
-        <p className="text-xs font-medium text-muted">Browse</p>
+        <p className="text-xs font-medium text-muted">
+          {flowState.stage === "browse" ? "Browse" : "Compose"}
+        </p>
       </div>
 
       {isLoading ? <HookWorkspaceLoading /> : null}
@@ -236,43 +383,42 @@ export function HookVideoWorkspace({ active }: { active: boolean }) {
       {!isLoading && errorMessage ? (
         <HookWorkspaceError
           message={errorMessage}
-          onRetry={() => {
-            setLoadAttempted(false);
-            void loadInfluencers();
-          }}
+          onRetry={() => void loadInfluencers()}
         />
       ) : null}
 
       {!isLoading && !errorMessage && loadAttempted && influencers.length === 0 ? (
         <HookWorkspaceEmpty
-          description="Add influencers to your Influencers library before creating hook videos."
+          description="No influencer videos are ready yet."
           title="No influencers available"
           showChoose={false}
           onChoose={() => setPickerOpen(true)}
         />
       ) : null}
 
-      {!isLoading &&
-      !errorMessage &&
-      influencers.length > 0 &&
-      !selectedVideo ? (
+      {!isLoading && !errorMessage && influencers.length > 0 && !selectedVideo ? (
         <HookWorkspaceEmpty
-          description="Choose an influencer first, then select one of their videos."
-          title="No influencer video selected"
+          description="Choose an available influencer video."
+          title="No video available"
           showChoose
           onChoose={() => setPickerOpen(true)}
         />
       ) : null}
 
-      {!isLoading && selectedInfluencer && selectedVideo ? (
+      {!isLoading &&
+      flowState.stage === "browse" &&
+      selectedInfluencer &&
+      selectedVideo ? (
         <>
           <HookVideoDeck
+            browseMode={browseMode}
             influencer={selectedInfluencer}
             position={selectedPosition}
             previewError={previewError}
             previewLoading={previewLoading}
             previewUrl={previewUrl}
-            total={videos.length}
+            surpriseLoading={surpriseLoading}
+            total={selectedTotal}
             video={selectedVideo}
             onChangeVideo={() => setPickerOpen(true)}
             onCompose={handleCompose}
@@ -285,21 +431,32 @@ export function HookVideoWorkspace({ active }: { active: boolean }) {
             onSkip={handleSkip}
           />
           {noticeMessage ? (
-            <div className="border-t border-border bg-card-muted/55 px-5 py-2.5 text-center text-xs font-semibold text-muted sm:text-left">
+            <div className="border-t border-border bg-card-muted/55 px-5 py-2.5 text-center text-xs font-semibold text-muted">
               {noticeMessage}
             </div>
           ) : null}
         </>
       ) : null}
 
+      {flowState.stage !== "browse" && selectedInfluencer && selectedVideo ? (
+        <HookVideoComposer
+          flowState={flowState}
+          influencer={selectedInfluencer}
+          openingPreviewUrl={previewUrl}
+          video={selectedVideo}
+          onClose={() => setFlowState(INITIAL_HOOK_VIDEO_FLOW_STATE)}
+          onStateChange={setFlowState}
+        />
+      ) : null}
+
       {pickerOpen ? (
-        <InfluencerVideoPickerModal
+        <InfluencerVideoPickerDrawer
           currentInfluencerId={selectedInfluencer?.id ?? null}
-          currentVideoId={selectedVideo?.id ?? null}
+          currentVideoId={browseMode === "influencer" ? selectedVideo?.id ?? null : null}
           influencers={influencers}
-          open
-          onOpenChange={setPickerOpen}
+          onClose={closePicker}
           onSelect={handleVideoSelection}
+          onSurprise={startSurprise}
         />
       ) : null}
     </section>
@@ -308,11 +465,11 @@ export function HookVideoWorkspace({ active }: { active: boolean }) {
 
 function HookWorkspaceLoading() {
   return (
-    <div className="flex min-h-[340px] items-center justify-center px-5 py-8">
+    <div className="flex min-h-[430px] items-center justify-center px-5 py-8">
       <div className="text-center">
         <Loader2 className="mx-auto size-5 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
         <p className="mt-3 text-sm font-semibold text-muted">
-          Loading influencers
+          Loading influencer videos
         </p>
       </div>
     </div>
@@ -327,7 +484,7 @@ function HookWorkspaceError({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex min-h-[340px] items-center justify-center px-5 py-8">
+    <div className="flex min-h-[430px] items-center justify-center px-5 py-8">
       <div className="max-w-sm text-center">
         <span className="mx-auto flex size-10 items-center justify-center rounded-full bg-error/10 text-error">
           <AlertCircle className="size-4.5" aria-hidden="true" />
@@ -361,47 +518,81 @@ function HookWorkspaceEmpty({
   onChoose: () => void;
 }) {
   return (
-    <div className="flex min-h-[340px] items-center justify-center px-5 py-8 sm:px-8">
-      <div className="grid w-full max-w-[600px] items-center gap-7 sm:grid-cols-[160px_minmax(0,1fr)] sm:gap-10">
-        <div aria-hidden="true" className="mx-auto flex aspect-[9/16] w-[148px] items-center justify-center rounded-[18px] border border-dashed border-border-strong bg-card-muted sm:w-40">
-          <span className="flex size-12 items-center justify-center rounded-full border border-border bg-card text-muted shadow-[0_1px_2px_rgb(23_23_27_/_0.06)]">
-            <Video className="size-5" />
-          </span>
-        </div>
-
-        <div className="min-w-0 text-center sm:text-left">
-          <span className="mx-auto flex size-10 items-center justify-center rounded-full bg-brand-soft text-primary sm:mx-0">
-            <UserRound className="size-4.5" aria-hidden="true" />
-          </span>
-          <h2 className="mt-4 text-lg font-semibold text-foreground-strong">
-            {title}
-          </h2>
-          <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
-            {description}
-          </p>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-            {showChoose ? (
-              <button
-                type="button"
-                onClick={onChoose}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-              >
-                <Video className="size-4" aria-hidden="true" />
-                Choose video
-              </button>
-            ) : null}
-            <Link
-              href="/avatars"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-            >
-              Open Influencers
-              <ArrowUpRight className="size-4" aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
+    <div className="flex min-h-[430px] items-center justify-center px-5 py-8 sm:px-8">
+      <div className="w-full max-w-sm text-center">
+        <span className="mx-auto flex size-11 items-center justify-center rounded-full bg-brand-soft text-primary">
+          {showChoose ? (
+            <UserRound className="size-5" aria-hidden="true" />
+          ) : (
+            <Video className="size-5" aria-hidden="true" />
+          )}
+        </span>
+        <h2 className="mt-4 text-lg font-semibold text-foreground-strong">
+          {title}
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
+        {showChoose ? (
+          <button
+            type="button"
+            onClick={onChoose}
+            className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          >
+            <Video className="size-4" aria-hidden="true" />
+            Choose
+          </button>
+        ) : null}
       </div>
     </div>
   );
+}
+
+async function fetchHookInfluencerVideos(influencerId: string, token: string) {
+  const response = await fetch(
+    `/api/trending/hook-videos/influencers/${encodeURIComponent(influencerId)}/videos`,
+    {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  const data = (await response.json().catch(() => null)) as
+    | VideoListResponse
+    | null;
+
+  if (!response.ok || !data || data.ok !== true) {
+    throw new Error(getApiError(data, "Could not load influencer videos."));
+  }
+
+  return data.videos;
+}
+
+function getSurpriseStorageKey(userId: string) {
+  return `ugc-pilot:hook-video-surprise-seen:${userId}`;
+}
+
+function readSeenEntryKeys(userId: string) {
+  try {
+    const value = window.sessionStorage.getItem(getSurpriseStorageKey(userId));
+    const parsed = value ? (JSON.parse(value) as unknown) : [];
+
+    return new Set(
+      Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === "string")
+        : [],
+    );
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function writeSeenEntryKeys(userId: string, seenKeys: Set<string>) {
+  try {
+    window.sessionStorage.setItem(
+      getSurpriseStorageKey(userId),
+      JSON.stringify([...seenKeys]),
+    );
+  } catch {
+    // The in-memory queue still prevents repeats when storage is unavailable.
+  }
 }
 
 function getApiError(value: unknown, fallback: string) {

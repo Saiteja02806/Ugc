@@ -1,4 +1,7 @@
-import type { HookInfluencerSummary } from "@/lib/trending/hook-video-types";
+import type {
+  HookInfluencerSummary,
+  HookVideoBrowseEntry,
+} from "@/lib/trending/hook-video-types";
 
 const CATALOG_PREFIX = "catalog:";
 const USER_PREFIX = "user:";
@@ -83,6 +86,50 @@ export function parseHookInfluencerId(value: string) {
   }
 
   return null;
+}
+
+export function shuffleHookVideoEntries<T>(
+  entries: readonly T[],
+  random: () => number = Math.random,
+) {
+  const shuffled = [...entries];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomValue = random();
+    const boundedValue = Number.isFinite(randomValue)
+      ? Math.min(Math.max(randomValue, 0), 0.9999999999999999)
+      : 0;
+    const swapIndex = Math.floor(boundedValue * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [
+      shuffled[swapIndex],
+      shuffled[index],
+    ];
+  }
+
+  return shuffled;
+}
+
+export function getHookVideoBrowseEntryKey(entry: HookVideoBrowseEntry) {
+  return `${entry.video.sourceKind}:${entry.video.id}`;
+}
+
+export function createNonRepeatingHookVideoCycle(
+  entries: readonly HookVideoBrowseEntry[],
+  seenEntryKeys: ReadonlySet<string>,
+  random: () => number = Math.random,
+) {
+  const unseenEntries = entries.filter(
+    (entry) => !seenEntryKeys.has(getHookVideoBrowseEntryKey(entry)),
+  );
+  const resetCycle = entries.length > 0 && unseenEntries.length === 0;
+
+  return {
+    entries: shuffleHookVideoEntries(
+      resetCycle ? entries : unseenEntries,
+      random,
+    ),
+    resetCycle,
+  };
 }
 
 function normalizeKey(value: string) {

@@ -53,6 +53,14 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
+
+  if (url.searchParams.get("configOnly") === "1") {
+    return jsonResponse({
+      minimumRenderLeadMinutes: getMinimumRenderLeadMinutes(),
+      ok: true,
+    });
+  }
+
   const status = getScheduleStatus(url.searchParams.get("status"));
 
   if (url.searchParams.get("status") && !status) {

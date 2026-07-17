@@ -131,6 +131,14 @@ export async function listUserSchedules(params: {
   return listScheduledPostsForUser(params);
 }
 
+export async function getUserSchedule(params: {
+  postId: string;
+  userId: string;
+}) {
+  assertUuid(params.postId, "Schedule ID is invalid.");
+  return getScheduledPostForUser(params);
+}
+
 export async function createUserSchedule(params: {
   input: ScheduleCreateInput;
   userId: string;

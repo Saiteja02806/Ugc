@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { UploadedPostsTab } from "@/components/demos/demos-workspace";
+import { HookVideoLibraryTab } from "@/components/library/hook-video-library-tab";
 import {
   PlatformSelectionModal,
   type SchedulePlatformContext,
@@ -36,6 +37,7 @@ import {
   removeCarouselLibraryItem as removeBrowserCarouselLibraryItem,
   type CarouselLibraryItem as BrowserCarouselLibraryItem,
 } from "@/lib/carousel/local-library";
+import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   createAndPublishCarouselSchedule,
   createCarouselScheduleIdempotencyKey,
@@ -43,7 +45,7 @@ import {
 } from "@/lib/scheduling/carousel-scheduling-client";
 import { cn } from "@/lib/utils";
 
-type LibraryTab = "content" | "posts";
+export type LibraryTab = "content" | "posts";
 
 type LibraryCarouselSlide = {
   headline: string | null;
@@ -80,7 +82,7 @@ type LibraryContentResponse =
 
 const tabs: Array<{ label: string; value: LibraryTab }> = [
   {
-    label: "Demo footage",
+    label: "My Videos",
     value: "posts",
   },
   {
@@ -197,7 +199,10 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
           {activeTab === "content" ? (
             <LibraryContentTab onShowPosts={() => selectTab("posts")} />
           ) : (
-            <UploadedPostsTab embeddedInLibrary />
+            <div className="flex flex-col gap-4">
+              <HookVideoLibraryTab />
+              <UploadedPostsTab embeddedInLibrary />
+            </div>
           )}
         </div>
       </div>

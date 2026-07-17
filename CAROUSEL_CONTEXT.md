@@ -59,7 +59,7 @@ endpoint. Only a successful durable platform schedule closes the modal and
 shows success. If final scheduling fails after draft persistence, the modal
 stays on the origin page and may offer `/scheduling?draft=<id>` solely as a
 recovery path. Direct visits to that deep link must still open the exact draft
-editor.
+editor, and the same recovery path remains reusable for Hook videos.
 
 Carousel captions are optional. A blank caption must remain blank through
 scheduling and publishing; do not synthesize provider text from the Carousel
@@ -851,10 +851,13 @@ Core tables:
 
 ## Trending Carousel Outputs
 
-As of 2026-07-10, Trending is a carousel-only, owner-scoped frontend feed for
-real generated carousel outputs. It reads
-`GET /api/carousel/history`, which requires a Firebase bearer token and returns
-only the caller's carousel generations for the caller's single business profile.
+As of 2026-07-17, the Carousels mode in Trending remains an owner-scoped
+frontend feed for real generated carousel outputs. Its product feed reads
+`GET /api/trending/feed`, which requires a Firebase bearer token and returns
+only the caller's assigned carousel generations for the caller's business
+profile. Hook Video source work must not add a visible Trending mode selector,
+rename, replace, or change the behavior of this Carousel mode unless a new
+product decision explicitly exposes it.
 
 - The feed receives the real ordered slide records for every returned candidate,
   including `renderedUrl`, slide number, type, text metadata, and status.
@@ -931,6 +934,60 @@ only the caller's carousel generations for the caller's single business profile.
 - Existing legacy rows owned by the former test user are intentionally not
   re-assigned by this frontend slice. Migrate them explicitly only after the
   intended owner is confirmed.
+
+## Hook Video Source Status
+
+As of 2026-07-17, Hook Video source and scheduling/library building blocks may
+exist in the repository, but Trending must remain a carousel-only surface. Do
+not render a `Hook videos` tab, mode selector, or Hook Video workspace inside
+Trending until a new product decision explicitly enables it.
+
+The Hook videos product flow, when enabled from an approved surface, is:
+
+1. Browse real catalog or owner-uploaded influencer videos. Influencer and video
+   list APIs return display metadata only; they never expose source storage keys
+   or source video URLs.
+2. A left swipe or the left-arrow action skips to the next influencer video. A
+   right swipe or the circular plus action opens composition. These interactions
+   do not complete or mutate a Carousel feed assignment.
+3. The browse screen has no Reject, Accept, Save to Library, or Schedule
+   controls. Save and Schedule appear only after a product demo and persisted AI
+   hook have been selected and the composition reaches Review.
+4. Product demos come from the caller's ready `media_assets` video collection or
+   a new owner upload. The product must not fabricate demo, influencer, or hook
+   records when real inventory is empty.
+5. `POST /api/trending/hook-videos/suggestions` authenticates the Firebase user,
+   verifies ownership of the selected sources, requires the user's persisted
+   business profile, calls OpenAI server-side with structured output, and stores
+   the returned suggestions. Static or random suggestion text is forbidden.
+6. Review previews the opening and demo separately, overlays the selected hook,
+   and allows trim changes only for the opening clip. Save persists an
+   owner-scoped Hook video draft for the Library. Schedule persists or reuses the
+   same reviewed selection, creates a real `scheduled_posts` draft, and opens the
+   Scheduling workspace with that exact draft ID.
+
+Protected influencer playback uses a five-minute, HTTP-only, same-origin preview
+session. The preview route revalidates the signed video, influencer, source, and
+user claims before streaming the S3 object and does not return the underlying
+source URL to the browser. Production should set a dedicated
+`HOOK_VIDEO_PREVIEW_SECRET`.
+
+Migration `20260717143000_create_hook_video_drafts.sql` adds the service-role-only
+`hook_video_suggestions` and `hook_video_drafts` tables. Migration
+`20260717150000_index_hook_video_foreign_keys.sql` adds the supporting foreign-key
+indexes. Both tables use RLS with no browser-role policies; Hook APIs perform
+Firebase ownership checks and use server credentials.
+
+The combination renderer receives the verified opening and demo assets, opening
+trim values, selected hook text, and a composition fingerprint. It trims only the
+opening segment, burns hook text only into that opening, normalizes both segments,
+and concatenates opening then demo. The fingerprint includes both asset versions,
+trim values, hook text, and ratio so a changed composition cannot reuse a stale
+combined render.
+
+This Hook videos behavior is implemented and locally validated in the current
+source. Do not describe the app or video-render worker behavior as deployed until
+the corresponding Next.js and worker releases are pushed and verified.
 
 ## Business Profile Automation
 

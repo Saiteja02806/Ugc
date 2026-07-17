@@ -4,6 +4,12 @@ create table if not exists public.hook_video_suggestions (
   business_profile_id uuid not null
     references public.business_profiles(id) on delete cascade,
   generation_id uuid not null,
+  influencer_id text not null,
+  influencer_video_id text not null,
+  influencer_source text not null
+    check (influencer_source in ('catalog', 'user')),
+  demo_asset_id uuid not null
+    references public.media_assets(id) on delete cascade,
   text text not null
     check (char_length(trim(text)) between 1 and 220),
   created_at timestamptz not null default now()
@@ -14,6 +20,13 @@ create index if not exists hook_video_suggestions_user_created_idx
 
 create index if not exists hook_video_suggestions_generation_idx
   on public.hook_video_suggestions (generation_id);
+
+create index if not exists hook_video_suggestions_selection_idx
+  on public.hook_video_suggestions (
+    user_id,
+    influencer_video_id,
+    demo_asset_id
+  );
 
 create table if not exists public.hook_video_drafts (
   id uuid primary key default gen_random_uuid(),

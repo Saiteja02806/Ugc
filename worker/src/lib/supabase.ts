@@ -541,6 +541,7 @@ export class SupabaseJobStore {
 
   async markScheduleCombinationRenderCompleted(params: {
     autoFinalize: boolean;
+    compositionFingerprint: string;
     demoVideoId: string;
     hookVideoId: string;
     key: string;
@@ -563,6 +564,7 @@ export class SupabaseJobStore {
       height: null,
       id: params.mediaAssetId,
       metadata: {
+        compositionFingerprint: params.compositionFingerprint,
         demoVideoId: params.demoVideoId,
         hookVideoId: params.hookVideoId,
         renderId: params.renderId,
@@ -587,6 +589,7 @@ export class SupabaseJobStore {
     await this.patchScheduledPost({
       mediaAssetId: params.mediaAssetId,
       metadataPatch: {
+        combinedCompositionFingerprint: params.compositionFingerprint,
         combinedDemoMediaId: params.demoVideoId,
         combinedHookMediaId: params.hookVideoId,
         combinedMediaAssetId: params.mediaAssetId,

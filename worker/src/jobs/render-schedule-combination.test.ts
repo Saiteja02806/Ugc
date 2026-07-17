@@ -32,6 +32,10 @@ test("renders and asks the server to finalize a planned schedule", async () => {
       },
       async renderScheduleCombinationToS3(payload) {
         fixture.events.push("render");
+        assert.equal(payload.hookText, "The old way takes twice the effort.");
+        assert.equal(payload.hookTrimStart, 0.5);
+        assert.equal(payload.hookTrimEnd, 4.5);
+        assert.equal(payload.compositionFingerprint, "fingerprint-1");
         return createRenderOutput(payload);
       },
     },
@@ -200,8 +204,12 @@ function createJob(autoFinalize: boolean): BackgroundJobRow {
     id: JOB_ID,
     input_json: {
       autoFinalize,
+      compositionFingerprint: "fingerprint-1",
       demoVideoId: "00000000-0000-4000-8000-000000000206",
       demoVideoUrl: "https://cdn.example.com/demo.mp4",
+      hookText: "The old way takes twice the effort.",
+      hookTrimEnd: 4.5,
+      hookTrimStart: 0.5,
       hookVideoId: "00000000-0000-4000-8000-000000000207",
       hookVideoUrl: "https://cdn.example.com/hook.mp4",
       projectId: "00000000-0000-4000-8000-000000000208",

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { LibraryWorkspace } from "@/components/library/library-workspace";
+import type { LibraryTab } from "@/components/library/library-workspace";
 
 export const metadata: Metadata = {
   title: "Content Library",
@@ -16,7 +17,7 @@ type LibraryPageProps = {
 
 export default async function LibraryPage({ searchParams }: LibraryPageProps) {
   const { tab } = await searchParams;
-  const initialTab = tab === "content" ? "content" : "posts";
+  const initialTab: LibraryTab = tab === "content" ? "content" : "posts";
 
   return (
     <AppShell activeKey="library">

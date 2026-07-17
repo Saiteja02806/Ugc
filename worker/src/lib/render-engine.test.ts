@@ -1,14 +1,76 @@
 import assert from "node:assert/strict";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 
 import sharp from "sharp";
 
 import { buildEditOverlayTextLayout } from "./edit-overlay-render-spec.js";
 import {
+  buildScheduleCombinationSegmentArgs,
   buildPreparedTextOverlaySvg,
   ensureEditOverlayFontRegistered,
 } from "./render-engine.js";
+
+test("applies Hook trim and text only to the opening segment", () => {
+  const preparedTextOverlay = {
+    imagePath: "hook-overlay.png",
+    layout: buildEditOverlayTextLayout(
+      "The old way takes twice the effort.",
+      "minimal",
+      "9:16",
+    ),
+    position: "bottom" as const,
+    style: "minimal" as const,
+  };
+  const payload = {
+    autoFinalize: false,
+    compositionFingerprint: "fingerprint-1",
+    demoVideoId: "demo-1",
+    demoVideoUrl: "https://cdn.example.com/demo.mp4",
+    hookText: "The old way takes twice the effort.",
+    hookTrimEnd: 4.5,
+    hookTrimStart: 1.25,
+    hookVideoId: "hook-1",
+    hookVideoUrl: "https://cdn.example.com/hook.mp4",
+    projectId: "project-1",
+    ratio: "9:16" as const,
+    renderId: "render-1",
+    scheduleId: "schedule-1",
+    title: "Combined schedule",
+    userId: "user-1",
+  };
+  const hookArgs = buildScheduleCombinationSegmentArgs({
+    hasAudio: false,
+    inputPath: "hook.mp4",
+    outputPath: "hook-normalized.mp4",
+    payload,
+    preparedTextOverlay,
+    segmentLabel: "hook",
+  });
+  const demoArgs = buildScheduleCombinationSegmentArgs({
+    hasAudio: true,
+    inputPath: "demo.mp4",
+    outputPath: "demo-normalized.mp4",
+    payload,
+    preparedTextOverlay: null,
+    segmentLabel: "demo",
+  });
+
+  assert.deepEqual(hookArgs.slice(0, 5), [
+    "-y",
+    "-ss",
+    "1.250",
+    "-i",
+    "hook.mp4",
+  ]);
+  assert.ok(hookArgs.includes("hook-overlay.png"));
+  assert.ok(hookArgs.includes("-filter_complex"));
+  assert.ok(hookArgs.includes("3.250"));
+  assert.ok(hookArgs.includes("2:a:0"));
+  assert.equal(demoArgs.includes("-ss"), false);
+  assert.equal(demoArgs.includes("-t"), false);
+  assert.equal(demoArgs.includes("-filter_complex"), false);
+});
 
 test("rasterizes the shared overlay plan without distorting the font", async () => {
   const registration = await ensureEditOverlayFontRegistered();
@@ -46,11 +108,8 @@ test("rasterizes the shared overlay plan without distorting the font", async () 
       dpi: 72,
       font: "Geist Mono SemiBold 64",
       fontfile: join(
-        process.cwd(),
-        "node_modules",
-        "geist",
-        "dist",
-        "fonts",
+        dirname(registration.fontPath),
+        "..",
         "geist-mono",
         "GeistMono-SemiBold.ttf",
       ),

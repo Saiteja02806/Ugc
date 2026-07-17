@@ -21,6 +21,12 @@ const instagramRenewalMigration = readProjectFile(
 const carouselPublishRetryMigration = readProjectFile(
   "supabase/migrations/20260717183000_support_carousel_publish_retry.sql",
 );
+const hookVideoScheduleMigration = readProjectFile(
+  "supabase/migrations/20260717190000_link_hook_video_schedules.sql",
+);
+const hookVideoScheduleRoute = readProjectFile(
+  "app/api/trending/hook-videos/drafts/schedule/route.ts",
+);
 const schedulingDb = readProjectFile("lib/scheduling/db.ts");
 const schedulingWorkspace = readProjectFile(
   "components/scheduling/scheduling-workspace.tsx",
@@ -423,6 +429,25 @@ test("inline carousel submission persists a recoverable draft before publishing"
   assert.doesNotMatch(
     carouselScheduleClient,
     /caption:\s*submission\.caption\s*\|\|/,
+  );
+});
+
+test("each saved Hook video links to at most one valid schedule", () => {
+  assert.match(
+    hookVideoScheduleMigration,
+    /foreign key \(scheduled_post_id\)[\s\S]*references public\.scheduled_posts\(id\)[\s\S]*on delete set null/,
+  );
+  assert.match(
+    hookVideoScheduleMigration,
+    /create unique index if not exists hook_video_drafts_unique_schedule_idx[\s\S]*where scheduled_post_id is not null/,
+  );
+  assert.match(
+    hookVideoScheduleMigration,
+    /create unique index if not exists scheduled_posts_active_hook_video_draft_idx[\s\S]*metadata \? 'hookVideoDraftId'[\s\S]*status <> 'cancelled'/,
+  );
+  assert.match(
+    hookVideoScheduleRoute,
+    /existingDraft\?\.scheduledPostId[\s\S]*existingSchedule\.idempotencyKey === requestedIdempotencyKey[\s\S]*hook_video_already_scheduled/,
   );
 });
 

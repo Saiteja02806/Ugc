@@ -70,8 +70,12 @@ export type RenderEditedVideoOutput = {
 
 export type RenderScheduleCombinationPayload = {
   autoFinalize: boolean;
+  compositionFingerprint: string;
   demoVideoId: string;
   demoVideoUrl: string;
+  hookText: string;
+  hookTrimEnd: number | null;
+  hookTrimStart: number;
   hookVideoId: string;
   hookVideoUrl: string;
   projectId: string;
@@ -187,6 +191,16 @@ export async function renderScheduleCombinationToS3(
   const demoSegmentPath = join(workDir, "demo-normalized.mp4");
   const concatListPath = join(workDir, "concat-list.txt");
   const outputPath = join(workDir, "combined.mp4");
+  const hookOverlay = buildPreparedTextOverlay({
+    imagePath: join(workDir, "hook-overlay.png"),
+    overlay: {
+      id: "hook-text",
+      position: "bottom",
+      style: "minimal",
+      text: payload.hookText,
+    },
+    ratio: payload.ratio,
+  });
 
   try {
     const [hookBuffer, demoBuffer] = await Promise.all([
@@ -197,6 +211,7 @@ export async function renderScheduleCombinationToS3(
     await Promise.all([
       writeFile(hookInputPath, hookBuffer),
       writeFile(demoInputPath, demoBuffer),
+      ...(hookOverlay ? [renderPreparedTextOverlayImage(hookOverlay)] : []),
     ]);
 
     logger.info("Schedule combination sources downloaded", {
@@ -212,12 +227,14 @@ export async function renderScheduleCombinationToS3(
       inputPath: hookInputPath,
       outputPath: hookSegmentPath,
       payload,
+      preparedTextOverlay: hookOverlay,
       segmentLabel: "hook",
     });
     await normalizeCombinationSegment({
       inputPath: demoInputPath,
       outputPath: demoSegmentPath,
       payload,
+      preparedTextOverlay: null,
       segmentLabel: "demo",
     });
 
@@ -365,15 +382,72 @@ async function normalizeCombinationSegment({
   inputPath,
   outputPath,
   payload,
+  preparedTextOverlay,
   segmentLabel,
 }: {
   inputPath: string;
   outputPath: string;
   payload: RenderScheduleCombinationPayload;
-  segmentLabel: string;
+  preparedTextOverlay: PreparedTextOverlay | null;
+  segmentLabel: "demo" | "hook";
 }) {
   const hasAudio = await inputHasAudio(inputPath);
-  const args = ["-y", "-i", inputPath];
+  const args = buildScheduleCombinationSegmentArgs({
+    hasAudio,
+    inputPath,
+    outputPath,
+    payload,
+    preparedTextOverlay,
+    segmentLabel,
+  });
+
+  await runFfmpegCommand({
+    args,
+    label: `schedule ${segmentLabel} segment normalize`,
+    renderId: payload.renderId,
+  });
+}
+
+export function buildScheduleCombinationSegmentArgs({
+  hasAudio,
+  inputPath,
+  outputPath,
+  payload,
+  preparedTextOverlay,
+  segmentLabel,
+}: {
+  hasAudio: boolean;
+  inputPath: string;
+  outputPath: string;
+  payload: RenderScheduleCombinationPayload;
+  preparedTextOverlay: PreparedTextOverlay | null;
+  segmentLabel: "demo" | "hook";
+}) {
+  const args = ["-y"];
+  const isHook = segmentLabel === "hook";
+  const trimDuration =
+    isHook && payload.hookTrimEnd !== null
+      ? payload.hookTrimEnd - payload.hookTrimStart
+      : null;
+
+  if (isHook && payload.hookTrimStart > 0) {
+    args.push("-ss", formatSeconds(payload.hookTrimStart));
+  }
+
+  args.push("-i", inputPath);
+
+  if (preparedTextOverlay) {
+    args.push(
+      "-loop",
+      "1",
+      "-framerate",
+      "30",
+      "-i",
+      preparedTextOverlay.imagePath,
+    );
+  }
+
+  const silentAudioInputIndex = preparedTextOverlay ? 2 : 1;
 
   if (!hasAudio) {
     args.push(
@@ -384,13 +458,24 @@ async function normalizeCombinationSegment({
     );
   }
 
+  if (trimDuration !== null) {
+    args.push("-t", formatSeconds(trimDuration));
+  }
+
+  if (preparedTextOverlay) {
+    args.push(
+      "-filter_complex",
+      buildEditedVideoFilterComplex(payload, [preparedTextOverlay]),
+      "-map",
+      "[rendered]",
+    );
+  } else {
+    args.push("-vf", buildVideoFilters(payload), "-map", "0:v:0");
+  }
+
   args.push(
-    "-vf",
-    buildVideoFilters(payload),
     "-map",
-    "0:v:0",
-    "-map",
-    hasAudio ? "0:a:0" : "1:a:0",
+    hasAudio ? "0:a:0" : `${silentAudioInputIndex}:a:0`,
     "-c:v",
     "libx264",
     "-preset",
@@ -413,11 +498,7 @@ async function normalizeCombinationSegment({
     outputPath,
   );
 
-  await runFfmpegCommand({
-    args,
-    label: `schedule ${segmentLabel} segment normalize`,
-    renderId: payload.renderId,
-  });
+  return args;
 }
 
 async function inputHasAudio(inputPath: string) {
@@ -694,20 +775,22 @@ async function registerAndVerifyEditOverlayFont() {
 }
 
 async function getEditOverlayFontPath() {
-  const packagedFontPath = join(
-    process.cwd(),
+  const packagedFontParts = [
     "node_modules",
     "geist",
     "dist",
     "fonts",
     "geist-sans",
     "Geist-SemiBold.ttf",
-  );
+  ];
+  const packagedFontPath = join(process.cwd(), ...packagedFontParts);
+  const workspaceFontPath = join(process.cwd(), "..", ...packagedFontParts);
   const candidatePaths =
     process.platform === "win32"
-      ? [packagedFontPath]
+      ? [packagedFontPath, workspaceFontPath]
       : [
           packagedFontPath,
+          workspaceFontPath,
           "/usr/local/share/fonts/geist/Geist-SemiBold.ttf",
         ];
 

@@ -59,3 +59,85 @@ export function beginHookVideoComposition(params: {
     stage: "select_demo",
   };
 }
+
+export function selectHookVideoDemo(
+  state: HookVideoFlowState,
+  demoAssetId: string,
+): HookVideoFlowState {
+  if (!state.draft.influencerVideoId || !state.draft.influencerId) {
+    return state;
+  }
+
+  return {
+    draft: {
+      ...state.draft,
+      demoAssetId,
+      hookText: null,
+      selectedHookId: null,
+    },
+    stage: "select_hook",
+  };
+}
+
+export function selectHookVideoSuggestion(
+  state: HookVideoFlowState,
+  suggestion: { id: string; text: string },
+): HookVideoFlowState {
+  if (!state.draft.demoAssetId) {
+    return state;
+  }
+
+  return {
+    draft: {
+      ...state.draft,
+      hookText: suggestion.text,
+      selectedHookId: suggestion.id,
+    },
+    stage: "review",
+  };
+}
+
+export function updateHookVideoTrim(
+  state: HookVideoFlowState,
+  trim: { trimEnd: number | null; trimStart: number },
+): HookVideoFlowState {
+  return {
+    ...state,
+    draft: {
+      ...state.draft,
+      trimEnd: trim.trimEnd,
+      trimStart: trim.trimStart,
+    },
+  };
+}
+
+export function returnToHookVideoDemoSelection(
+  state: HookVideoFlowState,
+): HookVideoFlowState {
+  return {
+    draft: {
+      ...state.draft,
+      demoAssetId: null,
+      hookText: null,
+      selectedHookId: null,
+    },
+    stage: "select_demo",
+  };
+}
+
+export function returnToHookSuggestionSelection(
+  state: HookVideoFlowState,
+): HookVideoFlowState {
+  if (!state.draft.demoAssetId) {
+    return returnToHookVideoDemoSelection(state);
+  }
+
+  return {
+    draft: {
+      ...state.draft,
+      hookText: null,
+      selectedHookId: null,
+    },
+    stage: "select_hook",
+  };
+}

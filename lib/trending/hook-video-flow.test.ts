@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   INITIAL_HOOK_VIDEO_FLOW_STATE,
   beginHookVideoComposition,
+  selectHookVideoDemo,
+  selectHookVideoSuggestion,
 } from "./hook-video-flow.ts";
 
 test("the Hook video flow starts in browse without fabricated selections", () => {
@@ -39,4 +41,21 @@ test("selecting a real video opens the demo-selection stage", () => {
   assert.equal(flow.draft.hookText, null);
   assert.equal(flow.draft.trimStart, 0.5);
   assert.equal(flow.draft.trimEnd, 4.5);
+});
+
+test("demo and persisted suggestion selection advance to review", () => {
+  const composition = beginHookVideoComposition({
+    influencerId: "catalog:maya",
+    influencerVideoId: "avatar-1",
+    sourceKind: "catalog",
+  });
+  const withDemo = selectHookVideoDemo(composition, "demo-1");
+  const review = selectHookVideoSuggestion(withDemo, {
+    id: "suggestion-1",
+    text: "What if your morning routine took half the effort?",
+  });
+
+  assert.equal(withDemo.stage, "select_hook");
+  assert.equal(review.stage, "review");
+  assert.equal(review.draft.selectedHookId, "suggestion-1");
 });

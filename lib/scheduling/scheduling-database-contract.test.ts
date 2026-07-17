@@ -403,6 +403,12 @@ test("the inline carousel modal implements exact-account content and time steps"
   assert.match(carouselScheduleModal, /title: "Select platforms"/);
   assert.match(carouselScheduleModal, /title: "Content details"/);
   assert.match(carouselScheduleModal, /title: "Schedule"/);
+  assert.match(carouselScheduleModal, /label: "YouTube"[\s\S]*platform: "youtube"/);
+  assert.match(carouselScheduleModal, /const platformConnections = useMemo/);
+  assert.match(
+    carouselScheduleModal,
+    /connection\.platform === "youtube"[\s\S]*YouTube accepts video uploads, not carousel posts\./,
+  );
   assert.match(carouselScheduleModal, /Select connected accounts/);
   assert.match(carouselScheduleModal, /connectionId: connection\.id/);
   assert.match(carouselScheduleModal, /Caption[\s\S]*?\(optional\)/);

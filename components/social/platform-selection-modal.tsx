@@ -10,9 +10,7 @@ import {
   Clock3,
   ExternalLink,
   LoaderCircle,
-  Music2,
   Zap,
-  type LucideIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -105,9 +103,8 @@ type OAuthTraceInput = {
 
 type PlatformDefinition = {
   description: string;
-  Icon: LucideIcon;
   label: string;
-  platform: "instagram" | "tiktok";
+  platform: SocialPlatform;
 };
 
 type ModalStep = "accounts" | "details" | "schedule";
@@ -121,15 +118,18 @@ type TikTokCapabilitiesState =
 const platforms: PlatformDefinition[] = [
   {
     description: "Professional account connected through Meta",
-    Icon: Camera,
     label: "Instagram",
     platform: "instagram",
   },
   {
     description: "Creator account authorized with TikTok",
-    Icon: Music2,
     label: "TikTok",
     platform: "tiktok",
+  },
+  {
+    description: "YouTube accepts video uploads, not carousel posts.",
+    label: "YouTube",
+    platform: "youtube",
   },
 ];
 
@@ -142,7 +142,7 @@ const stepDetails: Record<
 > = {
   accounts: {
     description:
-      "Choose the exact Instagram or TikTok account for this carousel.",
+      "Choose the exact Instagram or TikTok account for this carousel. YouTube is visible but unavailable for carousel posts.",
     number: 2,
     title: "Select platforms",
   },
@@ -370,6 +370,13 @@ export function PlatformSelectionModal({
       ),
     [connections],
   );
+  const platformConnections = useMemo(
+    () =>
+      connections.filter((connection) =>
+        platforms.some((definition) => definition.platform === connection.platform),
+      ),
+    [connections],
+  );
   const selectedConnections = useMemo(
     () =>
       carouselConnections.filter((connection) =>
@@ -411,7 +418,7 @@ export function PlatformSelectionModal({
   const canContinueAccounts =
     selectedConnections.length > 0 &&
     selectedConnections.every(
-      (connection) => !getConnectionPublishingBlockMessage(connection),
+      (connection) => !getCarouselAccountUnavailableMessage(connection),
     );
 
   function resetModal() {
@@ -449,7 +456,7 @@ export function PlatformSelectionModal({
     connection: SocialConnection,
     forceSelected?: boolean,
   ) {
-    if (getConnectionPublishingBlockMessage(connection)) {
+    if (getCarouselAccountUnavailableMessage(connection)) {
       return;
     }
 
@@ -724,6 +731,7 @@ export function PlatformSelectionModal({
               connectingPlatform={connectingPlatform}
               context={context}
               loading={loading}
+              platformConnections={platformConnections}
               selectedConnectionIds={selectedConnectionIds}
               onConnect={(definition, connection) => {
                 if (!context) {
@@ -828,6 +836,7 @@ function AccountsStep({
   loading,
   onConnect,
   onToggle,
+  platformConnections,
   selectedConnectionIds,
 }: {
   carouselConnections: SocialConnection[];
@@ -839,8 +848,17 @@ function AccountsStep({
     connection?: SocialConnection,
   ) => void;
   onToggle: (connection: SocialConnection) => void;
+  platformConnections: SocialConnection[];
   selectedConnectionIds: string[];
 }) {
+  const unavailableCarouselConnections = platformConnections.filter(
+    (connection) => connection.platform === "youtube",
+  );
+  const accountRows = [
+    ...carouselConnections,
+    ...unavailableCarouselConnections,
+  ];
+
   return (
     <div className="grid gap-6">
       <section aria-labelledby="platform-connections-heading">
@@ -852,10 +870,10 @@ function AccountsStep({
         </h3>
         <div className="overflow-hidden rounded-lg border border-border">
           {platforms.map((definition, index) => {
-            const platformConnections = carouselConnections.filter(
+            const connectionsForPlatform = platformConnections.filter(
               (connection) => connection.platform === definition.platform,
             );
-            const connection = getPreferredConnection(platformConnections);
+            const connection = getPreferredConnection(connectionsForPlatform);
             const status = connectingPlatform === definition.platform
               ? "connecting"
               : (connection?.status ?? "not_connected");
@@ -888,12 +906,12 @@ function AccountsStep({
             <Skeleton className="h-16 w-full" />
             <Skeleton className="h-16 w-full" />
           </FieldGroup>
-        ) : carouselConnections.length > 0 ? (
+        ) : accountRows.length > 0 ? (
           <FieldGroup data-slot="checkbox-group" className="gap-2">
-            {carouselConnections.map((connection) => {
+            {accountRows.map((connection) => {
               const checkboxId = `schedule-connection-${connection.id}`;
               const unavailableMessage =
-                getConnectionPublishingBlockMessage(connection);
+                getCarouselAccountUnavailableMessage(connection);
               const accountName = getConnectionAccountName(connection);
 
               return (
@@ -923,7 +941,13 @@ function AccountsStep({
                       </span>
                     </FieldLabel>
                     {unavailableMessage ? (
-                      <FieldDescription className="text-error">
+                      <FieldDescription
+                        className={
+                          connection.platform === "youtube"
+                            ? "text-muted-foreground"
+                            : "text-error"
+                        }
+                      >
                         {unavailableMessage}
                       </FieldDescription>
                     ) : null}
@@ -1414,7 +1438,7 @@ function PlatformConnectionRow({
   onConnect: () => void;
   status: SocialConnectionStatus | "connecting" | "not_connected";
 }) {
-  const { Icon, label } = definition;
+  const { label, platform } = definition;
   const statusDisplay = getStatusDisplay(status);
   const accountName = connection ? getConnectionAccountName(connection) : null;
 
@@ -1426,7 +1450,7 @@ function PlatformConnectionRow({
       )}
     >
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
-        <Icon aria-hidden="true" />
+        <SocialPlatformIcon platform={platform} className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -1475,6 +1499,14 @@ function getDefaultPublishingSettings(
     containsSyntheticMedia: true,
     privacyLevel: "",
   };
+}
+
+function getCarouselAccountUnavailableMessage(connection: SocialConnection) {
+  if (connection.platform === "youtube") {
+    return "YouTube accepts video uploads, not carousel posts.";
+  }
+
+  return getConnectionPublishingBlockMessage(connection);
 }
 
 function getPublishingSettingsError(params: {

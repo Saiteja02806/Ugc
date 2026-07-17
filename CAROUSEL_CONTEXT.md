@@ -75,9 +75,11 @@ JPEG publish copies; the Library carousel and frontend renders remain
 unchanged. TikTok publishes the verified WebP URLs as a 2-35 image photo post
 through the Content Posting API and persists its publish ID. YouTube is
 intentionally unavailable for carousel scheduling because its upload API is
-video-only. Existing Reel, TikTok video, and YouTube video paths remain
-separate. Do not describe a scheduled post as actually published until the
-worker updates its target row to `published`.
+video-only. The carousel account picker should still show YouTube connection
+status as unavailable/disabled so users understand the account exists but cannot
+be selected for image carousels. Existing Reel, TikTok video, and YouTube video
+paths remain separate. Do not describe a scheduled post as actually published
+until the worker updates its target row to `published`.
 
 ## Non-Negotiable Image Safety
 

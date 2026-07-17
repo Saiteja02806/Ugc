@@ -36,8 +36,11 @@ import {
   removeCarouselLibraryItem as removeBrowserCarouselLibraryItem,
   type CarouselLibraryItem as BrowserCarouselLibraryItem,
 } from "@/lib/carousel/local-library";
-import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import type { SocialPlatform } from "@/lib/social/types";
+import {
+  createAndPublishCarouselSchedule,
+  createCarouselScheduleIdempotencyKey,
+  type CarouselScheduleSubmission,
+} from "@/lib/scheduling/carousel-scheduling-client";
 import { cn } from "@/lib/utils";
 
 type LibraryTab = "content" | "posts";
@@ -74,14 +77,6 @@ type LibraryContentResponse =
       message: string;
       ok: false;
     };
-
-type CreateScheduleDraftResponse =
-  | {
-      created: boolean;
-      ok: true;
-      schedule: { id: string; status: string };
-    }
-  | { message: string; ok: false };
 
 const tabs: Array<{ label: string; value: LibraryTab }> = [
   {
@@ -211,7 +206,6 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
 }
 
 function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
-  const router = useRouter();
   const [serverItems, setServerItems] = useState<LibraryCarouselItem[]>([]);
   const [browserItems, setBrowserItems] = useState<LibraryCarouselItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -374,23 +368,26 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
     setNotice(null);
     setScheduleContext({
       carouselId: item.sourceId,
+      coverUrl: item.coverUrl ?? item.slides[0]?.renderedUrl ?? null,
+      idempotencyKey: createCarouselScheduleIdempotencyKey("library", item.id),
       libraryItemId: item.id,
       returnTo: "library",
+      title: item.title,
     });
   }
 
-  async function confirmPlatforms(platforms: SocialPlatform[]) {
+  async function confirmPlatforms(submission: CarouselScheduleSubmission) {
     if (!scheduleContext) {
       throw new Error("Choose a saved Library carousel first.");
     }
 
-    const schedule = await createLibraryCarouselScheduleDraft({
+    await scheduleLibraryCarousel({
       context: scheduleContext,
-      platforms,
+      submission,
     });
 
     setScheduleContext(null);
-    router.push(`/scheduling?draft=${encodeURIComponent(schedule.id)}`);
+    setNotice("Carousel scheduled. View it on the Scheduled page.");
   }
 
   return (
@@ -598,51 +595,18 @@ function LibraryContentEmptyState({
   );
 }
 
-async function createLibraryCarouselScheduleDraft(params: {
+async function scheduleLibraryCarousel(params: {
   context: SchedulePlatformContext;
-  platforms: SocialPlatform[];
+  submission: CarouselScheduleSubmission;
 }) {
-  const token = await getCurrentUserIdToken();
-
-  if (!token) {
-    throw new Error("Sign in before creating a schedule draft.");
-  }
-
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  const response = await fetch("/api/schedules", {
-    body: JSON.stringify({
-      metadata: {
-        carouselId: params.context.carouselId,
-        plannedPlatforms: params.platforms.join(","),
-        sourceSurface: "library",
-      },
-      source: {
-        id: params.context.libraryItemId,
-        kind: "library_item",
-      },
-      targets: [],
-      timezone,
-    }),
-    cache: "no-store",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    method: "POST",
+  return createAndPublishCarouselSchedule({
+    carouselId: params.context.carouselId,
+    idempotencyKey: params.context.idempotencyKey,
+    libraryItemId: params.context.libraryItemId,
+    sourceSurface: "library",
+    submission: params.submission,
+    title: params.context.title,
   });
-  const data = (await response.json().catch(() => null)) as
-    | CreateScheduleDraftResponse
-    | null;
-
-  if (!response.ok || data?.ok !== true || !data.schedule?.id) {
-    throw new Error(
-      data?.ok === false
-        ? data.message
-        : "Could not create this schedule draft.",
-    );
-  }
-
-  return data.schedule;
 }
 
 function LibraryCarouselCard({

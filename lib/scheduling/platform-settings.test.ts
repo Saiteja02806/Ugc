@@ -2,9 +2,68 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getDefaultScheduleTargetSettings,
+  getScheduleTargetSettingsError,
   normalizeScheduleTargetSettings,
   SchedulePlatformSettingsError,
 } from "./platform-settings.ts";
+
+test("provides shared defaults for every scheduling surface", () => {
+  assert.deepEqual(getDefaultScheduleTargetSettings("instagram"), {
+    shareToFeed: true,
+  });
+  assert.deepEqual(getDefaultScheduleTargetSettings("tiktok"), {
+    allowComment: false,
+    allowDuet: false,
+    allowStitch: false,
+    brandOrganic: false,
+    brandedContent: false,
+    containsSyntheticMedia: true,
+    privacyLevel: "",
+  });
+  assert.deepEqual(getDefaultScheduleTargetSettings("youtube"), {
+    containsSyntheticMedia: true,
+    madeForKids: false,
+    notifySubscribers: false,
+    privacyStatus: "private",
+  });
+});
+
+test("validates TikTok capability selection for every scheduling surface", () => {
+  const connection = { id: "tiktok-1", platform: "tiktok" as const };
+
+  assert.equal(
+    getScheduleTargetSettingsError({
+      connections: [connection],
+      settings: {},
+      tiktokCapabilities: { "tiktok-1": { status: "loading" } },
+    }),
+    "Wait for TikTok publishing settings to finish loading.",
+  );
+  assert.equal(
+    getScheduleTargetSettingsError({
+      connections: [connection],
+      settings: { "tiktok-1": { privacyLevel: "PUBLIC_TO_EVERYONE" } },
+      tiktokCapabilities: {
+        "tiktok-1": {
+          capabilities: {
+            creatorNickname: "Creator",
+            creatorUsername: "creator",
+            interactions: {
+              commentsDisabled: false,
+              duetsDisabled: false,
+              stitchesDisabled: false,
+            },
+            maxVideoDurationSeconds: 600,
+            privacyLevels: ["PUBLIC_TO_EVERYONE"],
+          },
+          status: "ready",
+        },
+      },
+    }),
+    null,
+  );
+});
 
 test("normalizes Instagram publishing settings", () => {
   assert.deepEqual(normalizeScheduleTargetSettings("instagram", {}), {

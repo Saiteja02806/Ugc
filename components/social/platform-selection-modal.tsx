@@ -2,14 +2,21 @@
 
 import {
   AlertCircle,
+  ArrowLeft,
+  CalendarClock,
   Camera,
+  Check,
+  ChevronRight,
+  Clock3,
   ExternalLink,
   LoaderCircle,
   Music2,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +42,23 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
+  CarouselScheduleRecoveryError,
+  type CarouselScheduleSubmission,
+} from "@/lib/scheduling/carousel-scheduling-client";
+import {
+  DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+  getZonedDateTimeParts,
+  resolveZonedDateTime,
+  validateScheduleLeadTime,
+} from "@/lib/scheduling/schedule-time";
+import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
+import {
+  getTikTokPrivacyLabel,
+  isTikTokPrivacyLevel,
+  type TikTokPrivacyLevel,
+  type TikTokPublishCapabilities,
+} from "@/lib/social/tiktok-publishing";
+import {
   type SocialConnection,
   type SocialConnectionStatus,
   type SocialOAuthResultMessage,
@@ -43,14 +67,20 @@ import {
 import { cn } from "@/lib/utils";
 
 export type SchedulePlatformContext = {
+  assignmentId?: string;
   carouselId: string;
+  coverUrl?: string | null;
+  idempotencyKey: string;
   libraryItemId: string;
   returnTo: "library" | "trending";
+  title: string;
 };
 
 type PlatformSelectionModalProps = {
   context: SchedulePlatformContext | null;
-  onConfirmed: (platforms: SocialPlatform[]) => Promise<void> | void;
+  onConfirmed: (
+    submission: CarouselScheduleSubmission,
+  ) => Promise<void> | void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 };
@@ -58,6 +88,14 @@ type PlatformSelectionModalProps = {
 type ConnectionsResponse =
   | { connections: SocialConnection[]; ok: true }
   | { message: string; ok: false };
+
+type ScheduleConfigResponse =
+  | { minimumRenderLeadMinutes?: number; ok: true }
+  | { message?: string; ok: false };
+
+type TikTokPublishSettingsResponse =
+  | { capabilities: TikTokPublishCapabilities; ok: true }
+  | { message?: string; ok: false };
 
 type OAuthTraceInput = {
   callbackHost?: string;
@@ -69,8 +107,16 @@ type PlatformDefinition = {
   description: string;
   Icon: LucideIcon;
   label: string;
-  platform: SocialPlatform;
+  platform: "instagram" | "tiktok";
 };
+
+type ModalStep = "accounts" | "details" | "schedule";
+type ScheduleMode = "choose" | "later";
+type ConnectionPublishingSettings = Record<string, boolean | string>;
+type TikTokCapabilitiesState =
+  | { status: "loading" }
+  | { capabilities: TikTokPublishCapabilities; status: "ready" }
+  | { message: string; status: "error" };
 
 const platforms: PlatformDefinition[] = [
   {
@@ -87,19 +133,66 @@ const platforms: PlatformDefinition[] = [
   },
 ];
 
+const defaultTimezone =
+  Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
+const stepDetails: Record<
+  ModalStep,
+  { description: string; number: 2 | 3 | 4; title: string }
+> = {
+  accounts: {
+    description:
+      "Choose the exact Instagram or TikTok account for this carousel.",
+    number: 2,
+    title: "Select platforms",
+  },
+  details: {
+    description:
+      "Review the destinations and add a caption only if you want one.",
+    number: 3,
+    title: "Content details",
+  },
+  schedule: {
+    description: "Choose when this carousel should be published.",
+    number: 4,
+    title: "Schedule",
+  },
+};
+
 export function PlatformSelectionModal({
   context,
   onConfirmed,
   onOpenChange,
   open,
 }: PlatformSelectionModalProps) {
+  const [step, setStep] = useState<ModalStep>("accounts");
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("choose");
   const [connections, setConnections] = useState<SocialConnection[]>([]);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<SocialPlatform[]>(
+  const [selectedConnectionIds, setSelectedConnectionIds] = useState<string[]>(
     [],
   );
+  const [publishingSettings, setPublishingSettings] = useState<
+    Record<string, ConnectionPublishingSettings>
+  >({});
+  const [tiktokCapabilities, setTikTokCapabilities] = useState<
+    Record<string, TikTokCapabilitiesState>
+  >({});
+  const [caption, setCaption] = useState("");
+  const [timezone, setTimezone] = useState(defaultTimezone);
+  const initialLaterSlot = getFutureSlot(
+    Date.now() + 60 * 60_000,
+    defaultTimezone,
+  );
+  const [scheduledDate, setScheduledDate] = useState(initialLaterSlot.date);
+  const [scheduledTime, setScheduledTime] = useState(initialLaterSlot.time);
+  const [minimumLeadMinutes, setMinimumLeadMinutes] = useState(
+    DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+  );
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [recoveryDraftId, setRecoveryDraftId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [renderTrace, setRenderTrace] = useState<OAuthTraceInput | null>(null);
 
@@ -133,49 +226,70 @@ export function PlatformSelectionModal({
       setConnections(data.connections);
       return data.connections;
     } catch (error) {
-      setLoadError(
-        error instanceof Error
-          ? error.message
-          : "Could not load connected accounts.",
-      );
+      setLoadError(getErrorMessage(error, "Could not load connected accounts."));
       return [];
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const handleOAuthResult = useCallback(
-    async (result: SocialOAuthResultMessage) => {
-      if (result.status !== "success") {
+  const loadMinimumLeadMinutes = useCallback(async () => {
+    try {
+      const token = await getCurrentUserIdToken();
+
+      if (!token) {
         return;
       }
 
-      const refreshedConnections = await loadConnections({
-        callbackHost: result.callbackHost,
-        correlationId: result.correlationId,
-        platform: result.platform,
+      const response = await fetch("/api/schedules?status=draft", {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
       });
-      const isConnected = refreshedConnections.some(
-        (connection) =>
-          connection.platform === result.platform &&
-          connection.status === "connected",
-      );
-      setRenderTrace({
-        callbackHost: result.callbackHost,
-        correlationId: result.correlationId,
-        platform: result.platform,
-      });
+      const data = (await response.json().catch(() => null)) as
+        | ScheduleConfigResponse
+        | null;
+      const leadMinutes = data?.ok === true
+        ? data.minimumRenderLeadMinutes
+        : null;
 
-      if (isConnected) {
-        setSelectedPlatforms((current) =>
-          current.includes(result.platform)
-            ? current
-            : [...current, result.platform],
-        );
+      if (
+        response.ok &&
+        Number.isInteger(leadMinutes) &&
+        Number(leadMinutes) >= 1
+      ) {
+        setMinimumLeadMinutes(Number(leadMinutes));
       }
-    },
-    [loadConnections],
-  );
+    } catch {
+      // The shared server default remains the safe fallback.
+    }
+  }, []);
+
+  async function handleOAuthResult(result: SocialOAuthResultMessage) {
+    if (result.status !== "success") {
+      return;
+    }
+
+    const refreshedConnections = await loadConnections({
+      callbackHost: result.callbackHost,
+      correlationId: result.correlationId,
+      platform: result.platform,
+    });
+    const connection = getPreferredConnection(
+      refreshedConnections.filter(
+        (candidate) => candidate.platform === result.platform,
+      ),
+    );
+
+    setRenderTrace({
+      callbackHost: result.callbackHost,
+      correlationId: result.correlationId,
+      platform: result.platform,
+    });
+
+    if (connection?.status === "connected") {
+      selectConnection(connection, true);
+    }
+  }
   const {
     clearPopupError,
     closePopup,
@@ -188,18 +302,18 @@ export function PlatformSelectionModal({
       const previousUpdatedAt = previousConnectionUpdatedAt
         ? Date.parse(previousConnectionUpdatedAt)
         : null;
-      const isConnected = refreshedConnections.some(
-        (connection) =>
-          connection.platform === platform &&
-          connection.status === "connected" &&
-          (previousUpdatedAt === null ||
-            Date.parse(connection.updatedAt) > previousUpdatedAt),
+      const connection = getPreferredConnection(
+        refreshedConnections.filter(
+          (candidate) =>
+            candidate.platform === platform &&
+            candidate.status === "connected" &&
+            (previousUpdatedAt === null ||
+              Date.parse(candidate.updatedAt) > previousUpdatedAt),
+        ),
       );
 
-      if (isConnected) {
-        setSelectedPlatforms((current) =>
-          current.includes(platform) ? current : [...current, platform],
-        );
+      if (connection) {
+        selectConnection(connection, true);
         return true;
       }
 
@@ -214,11 +328,21 @@ export function PlatformSelectionModal({
     }
 
     const timer = window.setTimeout(() => {
-      void loadConnections();
+      void Promise.all([loadConnections(), loadMinimumLeadMinutes()]);
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [loadConnections, open]);
+  }, [loadConnections, loadMinimumLeadMinutes, open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
+
+    return () => window.clearInterval(timer);
+  }, [open]);
 
   useEffect(() => {
     if (!renderTrace?.correlationId || !renderTrace.platform) {
@@ -237,18 +361,77 @@ export function PlatformSelectionModal({
     });
   }, [connections, renderTrace]);
 
-  const connectedPlatforms = useMemo(
+  const carouselConnections = useMemo(
     () =>
-      platforms.filter(({ platform }) =>
-        connections.some(
-          (connection) =>
-            connection.platform === platform &&
-            connection.status === "connected",
-        ),
+      connections.filter(
+        (connection) =>
+          connection.platform === "instagram" ||
+          connection.platform === "tiktok",
       ),
     [connections],
   );
-  const canContinue = selectedPlatforms.length > 0 && !submitting;
+  const selectedConnections = useMemo(
+    () =>
+      carouselConnections.filter((connection) =>
+        selectedConnectionIds.includes(connection.id),
+      ),
+    [carouselConnections, selectedConnectionIds],
+  );
+  const publishingSettingsError = getPublishingSettingsError({
+    connections: selectedConnections,
+    settings: publishingSettings,
+    tiktokCapabilities,
+  });
+  const laterValidation = useMemo(
+    () =>
+      validateLaterSchedule({
+        date: scheduledDate,
+        minimumLeadMinutes,
+        now: currentTime,
+        time: scheduledTime,
+        timezone,
+      }),
+    [
+      currentTime,
+      minimumLeadMinutes,
+      scheduledDate,
+      scheduledTime,
+      timezone,
+    ],
+  );
+  const earliestSlot = useMemo(
+    () => getEarliestScheduleSlot(currentTime, minimumLeadMinutes, timezone),
+    [currentTime, minimumLeadMinutes, timezone],
+  );
+  const minimumScheduledDate = useMemo(
+    () => getFutureSlot(currentTime, timezone).date,
+    [currentTime, timezone],
+  );
+  const currentStep = stepDetails[step];
+  const canContinueAccounts =
+    selectedConnections.length > 0 &&
+    selectedConnections.every(
+      (connection) => !getConnectionPublishingBlockMessage(connection),
+    );
+
+  function resetModal() {
+    const nextSlot = getFutureSlot(Date.now() + 60 * 60_000, defaultTimezone);
+
+    closePopup();
+    clearPopupError();
+    setStep("accounts");
+    setScheduleMode("choose");
+    setSelectedConnectionIds([]);
+    setPublishingSettings({});
+    setTikTokCapabilities({});
+    setCaption("");
+    setTimezone(defaultTimezone);
+    setScheduledDate(nextSlot.date);
+    setScheduledTime(nextSlot.time);
+    setConfirmError(null);
+    setRecoveryDraftId(null);
+    setSubmitting(false);
+  }
 
   function setOpen(nextOpen: boolean) {
     if (!nextOpen && submitting) {
@@ -256,209 +439,963 @@ export function PlatformSelectionModal({
     }
 
     if (!nextOpen) {
-      closePopup();
-      clearPopupError();
-      setConfirmError(null);
-      setSubmitting(false);
-      setSelectedPlatforms([]);
+      resetModal();
     }
 
     onOpenChange(nextOpen);
   }
 
-  function togglePlatform(platform: SocialPlatform, checked: boolean) {
-    setSelectedPlatforms((current) =>
-      checked
-        ? current.includes(platform)
+  function selectConnection(
+    connection: SocialConnection,
+    forceSelected?: boolean,
+  ) {
+    if (getConnectionPublishingBlockMessage(connection)) {
+      return;
+    }
+
+    const selecting =
+      forceSelected ?? !selectedConnectionIds.includes(connection.id);
+
+    setSelectedConnectionIds((current) =>
+      selecting
+        ? current.includes(connection.id)
           ? current
-          : [...current, platform]
-        : current.filter((value) => value !== platform),
+          : [...current, connection.id]
+        : current.filter((id) => id !== connection.id),
     );
+
+    if (!selecting) {
+      return;
+    }
+
+    setPublishingSettings((current) =>
+      current[connection.id]
+        ? current
+        : {
+            ...current,
+            [connection.id]: getDefaultPublishingSettings(connection.platform),
+          },
+    );
+
+    if (
+      connection.platform === "tiktok" &&
+      !tiktokCapabilities[connection.id]
+    ) {
+      void loadTikTokCapabilities(connection.id);
+    }
   }
 
-  async function confirmSelection() {
-    if (!canContinue) {
+  function updatePublishingSetting(
+    connectionId: string,
+    key: string,
+    value: boolean | string,
+  ) {
+    setPublishingSettings((current) => ({
+      ...current,
+      [connectionId]: {
+        ...(current[connectionId] ?? {}),
+        [key]: value,
+      },
+    }));
+  }
+
+  const loadTikTokCapabilities = useCallback(async (connectionId: string) => {
+    setTikTokCapabilities((current) => ({
+      ...current,
+      [connectionId]: { status: "loading" },
+    }));
+
+    try {
+      const token = await getCurrentUserIdToken();
+
+      if (!token) {
+        throw new Error("Sign in before loading TikTok settings.");
+      }
+
+      const response = await fetch(
+        `/api/social/connections/${connectionId}/publish-settings`,
+        {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = (await response.json().catch(() => null)) as
+        | TikTokPublishSettingsResponse
+        | null;
+
+      if (!response.ok || data?.ok !== true) {
+        throw new Error(
+          data?.ok === false && data.message
+            ? data.message
+            : "Could not load TikTok publishing settings.",
+        );
+      }
+
+      setTikTokCapabilities((current) => ({
+        ...current,
+        [connectionId]: {
+          capabilities: data.capabilities,
+          status: "ready",
+        },
+      }));
+      setPublishingSettings((current) => {
+        const settings =
+          current[connectionId] ?? getDefaultPublishingSettings("tiktok");
+        const privacyLevel = settings.privacyLevel;
+
+        return {
+          ...current,
+          [connectionId]: {
+            ...settings,
+            allowComment: data.capabilities.interactions.commentsDisabled
+              ? false
+              : settings.allowComment === true,
+            privacyLevel:
+              isTikTokPrivacyLevel(privacyLevel) &&
+              data.capabilities.privacyLevels.includes(privacyLevel)
+                ? privacyLevel
+                : "",
+          },
+        };
+      });
+    } catch (error) {
+      setTikTokCapabilities((current) => ({
+        ...current,
+        [connectionId]: {
+          message: getErrorMessage(
+            error,
+            "Could not load TikTok publishing settings.",
+          ),
+          status: "error",
+        },
+      }));
+    }
+  }, []);
+
+  function goBack() {
+    setConfirmError(null);
+    setRecoveryDraftId(null);
+
+    if (step === "details") {
+      setStep("accounts");
+      return;
+    }
+
+    if (step === "schedule" && scheduleMode === "later") {
+      setScheduleMode("choose");
+      return;
+    }
+
+    setStep("details");
+  }
+
+  function goNext() {
+    setConfirmError(null);
+    setRecoveryDraftId(null);
+
+    if (step === "accounts" && canContinueAccounts) {
+      setStep("details");
+      return;
+    }
+
+    if (step === "details" && !publishingSettingsError) {
+      setStep("schedule");
+      setScheduleMode("choose");
+    }
+  }
+
+  async function submitSchedule(mode: "asap" | "later") {
+    if (!context || !canContinueAccounts || publishingSettingsError) {
+      return;
+    }
+
+    const scheduleTime = mode === "asap" ? earliestSlot : laterValidation;
+
+    if (!scheduleTime.scheduledFor || scheduleTime.error) {
+      setConfirmError(
+        scheduleTime.error ?? "Choose a valid date and time to schedule.",
+      );
       return;
     }
 
     setConfirmError(null);
+    setRecoveryDraftId(null);
     setSubmitting(true);
 
     try {
-      await onConfirmed([...selectedPlatforms]);
-      setSelectedPlatforms([]);
-      clearPopupError();
+      await onConfirmed({
+        caption,
+        scheduledDate: scheduleTime.date,
+        scheduledFor: scheduleTime.scheduledFor,
+        scheduledTime: scheduleTime.time,
+        targets: selectedConnections.map((connection) => ({
+          connectionId: connection.id,
+          platform: connection.platform,
+          settings:
+            publishingSettings[connection.id] ??
+            getDefaultPublishingSettings(connection.platform),
+        })),
+        timezone,
+      });
+      resetModal();
       onOpenChange(false);
     } catch (error) {
       setConfirmError(
-        error instanceof Error && error.message
-          ? error.message
-          : "Could not save this platform selection.",
+        getErrorMessage(error, "Could not schedule this carousel."),
+      );
+      setRecoveryDraftId(
+        error instanceof CarouselScheduleRecoveryError ? error.draftId : null,
       );
     } finally {
       setSubmitting(false);
     }
   }
 
+  function applyQuickSlot(hoursFromNow: number) {
+    const next = getFutureSlot(currentTime + hoursFromNow * 60 * 60_000, timezone);
+    setScheduledDate(next.date);
+    setScheduledTime(next.time);
+  }
+
+  function applyTomorrowSlot(time: string) {
+    setScheduledDate(addDaysToDateKey(minimumScheduledDate, 1));
+    setScheduledTime(time);
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
-        className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl"
+        className="max-h-[calc(100vh-2rem)] overflow-hidden p-0 sm:max-w-3xl"
         showCloseButton={!submitting}
       >
-        <DialogHeader className="pr-8">
-          <DialogTitle className="text-lg font-semibold">
-            Select platforms
-          </DialogTitle>
-          <DialogDescription>
-            Connect Instagram or TikTok, then choose where this saved carousel
-            should be scheduled. YouTube accepts video uploads, not carousel
-            posts.
-          </DialogDescription>
-        </DialogHeader>
+        <div className="border-b border-border bg-white">
+          <DialogHeader className="px-5 pb-4 pt-5 pr-14 sm:px-6 sm:pr-14">
+            <DialogTitle className="text-xl font-semibold">
+              {currentStep.title}
+            </DialogTitle>
+            <p className="text-sm font-medium text-muted-foreground">
+              Step {currentStep.number} of 4
+            </p>
+            <DialogDescription>{currentStep.description}</DialogDescription>
+          </DialogHeader>
+          <div className="h-1 bg-muted">
+            <div
+              className="h-full bg-primary transition-[width] duration-200 motion-reduce:transition-none"
+              style={{ width: `${currentStep.number * 25}%` }}
+            />
+          </div>
+        </div>
 
-        {submitting ? (
-          <Alert className="border-success/20 bg-success/5 text-success">
-            <LoaderCircle className="animate-spin" />
-            <AlertTitle>Saving selection</AlertTitle>
-            <AlertDescription className="text-success">
-              Please wait while this carousel is prepared for its next step.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <>
-            {confirmError || loadError || popupError ? (
-              <Alert variant="destructive">
-                <AlertCircle />
-                <AlertTitle>
-                  {confirmError
-                    ? "Could not create the schedule draft"
-                    : "Connection needs attention"}
-                </AlertTitle>
-                <AlertDescription>
-                  {confirmError ?? popupError ?? loadError}
-                </AlertDescription>
-              </Alert>
-            ) : null}
+        <div className="min-h-0 overflow-y-auto px-5 py-5 sm:px-6">
+          {confirmError || loadError || popupError ? (
+            <Alert variant="destructive" className="mb-5">
+              <AlertCircle />
+              <AlertTitle>
+                {recoveryDraftId
+                  ? "Scheduling needs attention"
+                  : "Could not continue"}
+              </AlertTitle>
+              <AlertDescription>
+                <span>{confirmError ?? popupError ?? loadError}</span>
+                {recoveryDraftId ? (
+                  <a
+                    href={`/scheduling?draft=${encodeURIComponent(recoveryDraftId)}`}
+                    className="ml-1 underline underline-offset-2"
+                  >
+                    Open the saved draft
+                  </a>
+                ) : null}
+              </AlertDescription>
+            </Alert>
+          ) : null}
 
-            <section aria-labelledby="platform-connections-heading">
-              <h3
-                id="platform-connections-heading"
-                className="mb-2 text-sm font-semibold text-foreground"
-              >
-                Platform connections
-              </h3>
-              <div className="overflow-hidden rounded-lg border border-border">
-                {platforms.map((definition, index) => {
-                  const platformConnections = connections.filter(
-                    (connection) =>
-                      connection.platform === definition.platform,
-                  );
-                  const connection = getPreferredConnection(platformConnections);
-                  const status = connectingPlatform === definition.platform
-                    ? "connecting"
-                    : (connection?.status ?? "not_connected");
+          {submitting ? (
+            <Alert className="border-success/20 bg-success/5 text-success">
+              <LoaderCircle className="animate-spin" />
+              <AlertTitle>Scheduling carousel</AlertTitle>
+              <AlertDescription className="text-success">
+                Saving the exact account settings and creating the calendar
+                schedule.
+              </AlertDescription>
+            </Alert>
+          ) : step === "accounts" ? (
+            <AccountsStep
+              carouselConnections={carouselConnections}
+              connectingPlatform={connectingPlatform}
+              context={context}
+              loading={loading}
+              selectedConnectionIds={selectedConnectionIds}
+              onConnect={(definition, connection) => {
+                if (!context) {
+                  setLoadError("Choose a saved Library carousel first.");
+                  return;
+                }
 
-                  return (
-                    <PlatformConnectionRow
-                      key={definition.platform}
-                      connection={connection}
-                      definition={definition}
-                      first={index === 0}
-                      loading={loading}
-                      onConnect={() => {
-                        if (!context) {
-                          setLoadError("Choose a saved Library carousel first.");
-                          return;
-                        }
-
-                        void startConnection({
-                          carouselId: context.carouselId,
-                          forceConsent: Boolean(connection),
-                          libraryItemId: context.libraryItemId,
-                          platform: definition.platform,
-                          previousConnectionUpdatedAt:
-                            connection?.updatedAt ?? null,
-                          returnTo: context.returnTo,
-                        });
-                      }}
-                      status={status}
-                    />
-                  );
-                })}
-              </div>
-            </section>
-
-            <FieldSet>
-              <FieldLegend className="text-sm font-semibold">
-                Select connected platforms
-              </FieldLegend>
-              <FieldDescription>
-                Choose at least one connected Instagram or TikTok account to
-                continue.
-              </FieldDescription>
-              {loading ? (
-                <FieldGroup>
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                </FieldGroup>
-              ) : connectedPlatforms.length > 0 ? (
-                <FieldGroup data-slot="checkbox-group" className="gap-2">
-                  {connectedPlatforms.map(({ Icon, label, platform }) => {
-                    const checkboxId = `schedule-platform-${platform}`;
-
-                    return (
-                      <Field
-                        key={platform}
-                        orientation="horizontal"
-                        className="rounded-lg border border-border p-3"
-                      >
-                        <Checkbox
-                          id={checkboxId}
-                          checked={selectedPlatforms.includes(platform)}
-                          onCheckedChange={(checked) =>
-                            togglePlatform(platform, checked)
-                          }
-                        />
-                        <FieldContent>
-                          <FieldLabel htmlFor={checkboxId}>
-                            <Icon className="size-4" aria-hidden="true" />
-                            {label}
-                          </FieldLabel>
-                        </FieldContent>
-                      </Field>
-                    );
-                  })}
-                </FieldGroup>
-              ) : (
-                <p className="rounded-lg border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
-                  Connect a platform above to make it available here.
-                </p>
+                void startConnection({
+                  carouselId: context.carouselId,
+                  forceConsent: Boolean(connection),
+                  libraryItemId: context.libraryItemId,
+                  platform: definition.platform,
+                  previousConnectionUpdatedAt: connection?.updatedAt ?? null,
+                  returnTo: context.returnTo,
+                });
+              }}
+              onToggle={selectConnection}
+            />
+          ) : step === "details" ? (
+            <DetailsStep
+              caption={caption}
+              context={context}
+              publishingSettings={publishingSettings}
+              publishingSettingsError={publishingSettingsError}
+              selectedConnections={selectedConnections}
+              tiktokCapabilities={tiktokCapabilities}
+              onCaptionChange={setCaption}
+              onChangeSetting={updatePublishingSetting}
+              onRetryTikTok={loadTikTokCapabilities}
+            />
+          ) : scheduleMode === "choose" ? (
+            <ScheduleChoiceStep
+              earliestLabel={formatScheduleInstant(
+                earliestSlot.scheduledFor,
+                timezone,
               )}
-            </FieldSet>
-          </>
-        )}
+              minimumLeadMinutes={minimumLeadMinutes}
+              onPostAsap={() => void submitSchedule("asap")}
+              onScheduleLater={() => setScheduleMode("later")}
+            />
+          ) : (
+            <LaterScheduleStep
+              date={scheduledDate}
+              error={laterValidation.error}
+              minimumDate={minimumScheduledDate}
+              time={scheduledTime}
+              timezone={timezone}
+              onDateChange={setScheduledDate}
+              onQuickHours={applyQuickSlot}
+              onQuickTomorrow={applyTomorrowSlot}
+              onTimeChange={setScheduledTime}
+              onTimezoneChange={setTimezone}
+            />
+          )}
+        </div>
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => setOpen(false)}
-            disabled={submitting}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => void confirmSelection()}
-            disabled={!canContinue}
-          >
-            {submitting ? (
-              <LoaderCircle data-icon="inline-start" className="animate-spin" />
+        {!submitting ? (
+          <DialogFooter className="border-t border-border bg-white px-5 py-4 sm:px-6">
+            {step === "accounts" ? (
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+            ) : (
+              <Button variant="ghost" onClick={goBack}>
+                <ArrowLeft data-icon="inline-start" />
+                Back
+              </Button>
+            )}
+
+            {step === "accounts" || step === "details" ? (
+              <Button
+                onClick={goNext}
+                disabled={
+                  step === "accounts"
+                    ? !canContinueAccounts
+                    : Boolean(publishingSettingsError)
+                }
+              >
+                Next
+                <ChevronRight data-icon="inline-end" />
+              </Button>
+            ) : scheduleMode === "later" ? (
+              <Button
+                onClick={() => void submitSchedule("later")}
+                disabled={Boolean(laterValidation.error)}
+              >
+                <Check data-icon="inline-start" />
+                Schedule post
+              </Button>
             ) : null}
-            Next
-          </Button>
-        </DialogFooter>
+          </DialogFooter>
+        ) : null}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function AccountsStep({
+  carouselConnections,
+  connectingPlatform,
+  context,
+  loading,
+  onConnect,
+  onToggle,
+  selectedConnectionIds,
+}: {
+  carouselConnections: SocialConnection[];
+  connectingPlatform: SocialPlatform | null;
+  context: SchedulePlatformContext | null;
+  loading: boolean;
+  onConnect: (
+    definition: PlatformDefinition,
+    connection?: SocialConnection,
+  ) => void;
+  onToggle: (connection: SocialConnection) => void;
+  selectedConnectionIds: string[];
+}) {
+  return (
+    <div className="grid gap-6">
+      <section aria-labelledby="platform-connections-heading">
+        <h3
+          id="platform-connections-heading"
+          className="mb-2 text-sm font-semibold text-foreground"
+        >
+          Platform connections
+        </h3>
+        <div className="overflow-hidden rounded-lg border border-border">
+          {platforms.map((definition, index) => {
+            const platformConnections = carouselConnections.filter(
+              (connection) => connection.platform === definition.platform,
+            );
+            const connection = getPreferredConnection(platformConnections);
+            const status = connectingPlatform === definition.platform
+              ? "connecting"
+              : (connection?.status ?? "not_connected");
+
+            return (
+              <PlatformConnectionRow
+                key={definition.platform}
+                connection={connection}
+                definition={definition}
+                first={index === 0}
+                loading={loading}
+                onConnect={() => onConnect(definition, connection)}
+                status={status}
+              />
+            );
+          })}
+        </div>
+      </section>
+
+      <FieldSet>
+        <FieldLegend className="text-sm font-semibold">
+          Select connected accounts
+        </FieldLegend>
+        <FieldDescription>
+          Choose the exact account. YouTube is unavailable because it accepts
+          video uploads, not carousel posts.
+        </FieldDescription>
+        {loading ? (
+          <FieldGroup>
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </FieldGroup>
+        ) : carouselConnections.length > 0 ? (
+          <FieldGroup data-slot="checkbox-group" className="gap-2">
+            {carouselConnections.map((connection) => {
+              const checkboxId = `schedule-connection-${connection.id}`;
+              const unavailableMessage =
+                getConnectionPublishingBlockMessage(connection);
+              const accountName = getConnectionAccountName(connection);
+
+              return (
+                <Field
+                  key={connection.id}
+                  orientation="horizontal"
+                  className={cn(
+                    "rounded-lg border border-border p-3",
+                    unavailableMessage && "bg-muted/40 opacity-75",
+                  )}
+                >
+                  <Checkbox
+                    id={checkboxId}
+                    checked={selectedConnectionIds.includes(connection.id)}
+                    disabled={Boolean(unavailableMessage)}
+                    onCheckedChange={() => onToggle(connection)}
+                  />
+                  <FieldContent>
+                    <FieldLabel htmlFor={checkboxId}>
+                      <SocialPlatformIcon
+                        platform={connection.platform}
+                        className="size-4"
+                      />
+                      {getPlatformLabel(connection.platform)}
+                      <span className="font-normal text-muted-foreground">
+                        {accountName}
+                      </span>
+                    </FieldLabel>
+                    {unavailableMessage ? (
+                      <FieldDescription className="text-error">
+                        {unavailableMessage}
+                      </FieldDescription>
+                    ) : null}
+                  </FieldContent>
+                </Field>
+              );
+            })}
+          </FieldGroup>
+        ) : (
+          <p className="rounded-lg border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+            Connect Instagram or TikTok above to continue.
+          </p>
+        )}
+      </FieldSet>
+      {context ? <p className="sr-only">Scheduling {context.title}</p> : null}
+    </div>
+  );
+}
+
+function DetailsStep({
+  caption,
+  context,
+  onCaptionChange,
+  onChangeSetting,
+  onRetryTikTok,
+  publishingSettings,
+  publishingSettingsError,
+  selectedConnections,
+  tiktokCapabilities,
+}: {
+  caption: string;
+  context: SchedulePlatformContext | null;
+  onCaptionChange: (value: string) => void;
+  onChangeSetting: (
+    connectionId: string,
+    key: string,
+    value: boolean | string,
+  ) => void;
+  onRetryTikTok: (connectionId: string) => void;
+  publishingSettings: Record<string, ConnectionPublishingSettings>;
+  publishingSettingsError: string | null;
+  selectedConnections: SocialConnection[];
+  tiktokCapabilities: Record<string, TikTokCapabilitiesState>;
+}) {
+  return (
+    <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="overflow-hidden rounded-lg border border-border bg-muted/30">
+        {context?.coverUrl ? (
+          // Carousel slides are already rendered production media.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={context.coverUrl}
+            alt=""
+            className="aspect-[4/5] w-full object-contain"
+          />
+        ) : (
+          <div className="flex aspect-[4/5] items-center justify-center text-muted-foreground">
+            <Camera className="size-8" aria-hidden="true" />
+          </div>
+        )}
+        <div className="border-t border-border bg-white px-3 py-3">
+          <p className="text-xs font-semibold text-muted-foreground">
+            Carousel
+          </p>
+          <p className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">
+            {context?.title ?? "Saved carousel"}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid content-start gap-5">
+        <label className="block">
+          <span className="text-sm font-semibold text-foreground">
+            Caption <span className="font-normal text-muted-foreground">(optional)</span>
+          </span>
+          <textarea
+            rows={4}
+            maxLength={5000}
+            value={caption}
+            onChange={(event) => onCaptionChange(event.target.value)}
+            placeholder="Leave blank to publish without a caption."
+            className="mt-2 min-h-28 w-full resize-y rounded-lg border border-border bg-white px-3 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary"
+          />
+          <span className="mt-1 block text-right text-xs text-muted-foreground">
+            {caption.length}/5000
+          </span>
+        </label>
+
+        <section aria-labelledby="carousel-publishing-settings">
+          <h3
+            id="carousel-publishing-settings"
+            className="text-sm font-semibold text-foreground"
+          >
+            Publishing settings
+          </h3>
+          <div className="mt-2 divide-y divide-border rounded-lg border border-border bg-white px-3">
+            {selectedConnections.map((connection) => (
+              <CarouselAccountSettings
+                key={connection.id}
+                connection={connection}
+                settings={
+                  publishingSettings[connection.id] ??
+                  getDefaultPublishingSettings(connection.platform)
+                }
+                tiktokCapabilities={tiktokCapabilities[connection.id]}
+                onChange={(key, value) =>
+                  onChangeSetting(connection.id, key, value)
+                }
+                onRetry={() => onRetryTikTok(connection.id)}
+              />
+            ))}
+          </div>
+          {publishingSettingsError ? (
+            <p className="mt-2 text-xs font-semibold text-error" role="alert">
+              {publishingSettingsError}
+            </p>
+          ) : null}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function CarouselAccountSettings({
+  connection,
+  onChange,
+  onRetry,
+  settings,
+  tiktokCapabilities,
+}: {
+  connection: SocialConnection;
+  onChange: (key: string, value: boolean | string) => void;
+  onRetry: () => void;
+  settings: ConnectionPublishingSettings;
+  tiktokCapabilities?: TikTokCapabilitiesState;
+}) {
+  return (
+    <div className="py-4 first:pt-3 last:pb-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+          <SocialPlatformIcon
+            platform={connection.platform}
+            className="size-4 shrink-0"
+          />
+          {getPlatformLabel(connection.platform)}
+        </span>
+        <span className="truncate text-xs text-muted-foreground">
+          {getConnectionAccountName(connection)}
+        </span>
+      </div>
+
+      {connection.platform === "instagram" ? (
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">
+          This will publish as an Instagram feed carousel.
+        </p>
+      ) : (
+        <TikTokCarouselSettings
+          capabilitiesState={tiktokCapabilities}
+          settings={settings}
+          onChange={onChange}
+          onRetry={onRetry}
+        />
+      )}
+    </div>
+  );
+}
+
+function TikTokCarouselSettings({
+  capabilitiesState,
+  onChange,
+  onRetry,
+  settings,
+}: {
+  capabilitiesState?: TikTokCapabilitiesState;
+  onChange: (key: string, value: boolean | string) => void;
+  onRetry: () => void;
+  settings: ConnectionPublishingSettings;
+}) {
+  if (!capabilitiesState || capabilitiesState.status === "loading") {
+    return (
+      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+        <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+        Loading TikTok account settings...
+      </div>
+    );
+  }
+
+  if (capabilitiesState.status === "error") {
+    return (
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-md bg-error/10 px-3 py-2">
+        <p className="text-xs font-semibold text-error">
+          {capabilitiesState.message}
+        </p>
+        <Button type="button" size="sm" variant="ghost" onClick={onRetry}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  const capabilities = capabilitiesState.capabilities;
+  const privacyLevel = getStringSetting(settings, "privacyLevel", "");
+  const brandedContent = getBooleanSetting(settings, "brandedContent", false);
+
+  return (
+    <div className="mt-3 grid gap-3">
+      <label className="block">
+        <span className="text-xs font-semibold text-foreground">Visibility</span>
+        <select
+          value={privacyLevel}
+          onChange={(event) => onChange("privacyLevel", event.target.value)}
+          className="mt-1.5 h-10 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary"
+        >
+          <option value="">Select visibility</option>
+          {capabilities.privacyLevels.map((level) => (
+            <option
+              key={level}
+              value={level}
+              disabled={brandedContent && level === "SELF_ONLY"}
+            >
+              {getTikTokPrivacyLabel(level)}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        <SettingCheckbox
+          checked={getBooleanSetting(settings, "allowComment", false)}
+          disabled={capabilities.interactions.commentsDisabled}
+          label="Allow comments"
+          onChange={(checked) => onChange("allowComment", checked)}
+        />
+        <SettingCheckbox
+          checked={getBooleanSetting(settings, "brandOrganic", false)}
+          label="Promotes your brand"
+          onChange={(checked) => onChange("brandOrganic", checked)}
+        />
+        <SettingCheckbox
+          checked={brandedContent}
+          label="Paid partnership"
+          onChange={(checked) => {
+            onChange("brandedContent", checked);
+
+            if (checked && privacyLevel === "SELF_ONLY") {
+              onChange("privacyLevel", "");
+            }
+          }}
+        />
+      </div>
+
+      <p className="text-[11px] leading-5 text-muted-foreground">
+        TikTok photo posts use automatic music. By scheduling, you agree to
+        TikTok&apos;s Music Usage Confirmation.
+      </p>
+    </div>
+  );
+}
+
+function ScheduleChoiceStep({
+  earliestLabel,
+  minimumLeadMinutes,
+  onPostAsap,
+  onScheduleLater,
+}: {
+  earliestLabel: string;
+  minimumLeadMinutes: number;
+  onPostAsap: () => void;
+  onScheduleLater: () => void;
+}) {
+  return (
+    <div>
+      <p className="text-center text-sm text-muted-foreground">
+        How would you like to post this carousel?
+      </p>
+      <div className="mt-5 grid gap-3">
+        <ScheduleChoice
+          description={`Earliest available: ${earliestLabel}. Uses the configured ${minimumLeadMinutes}-minute lead time.`}
+          icon={<Zap className="size-5" aria-hidden="true" />}
+          label="Post ASAP"
+          onClick={onPostAsap}
+        />
+        <ScheduleChoice
+          description="Pick a specific date, time, and timezone"
+          icon={<CalendarClock className="size-5" aria-hidden="true" />}
+          label="Schedule for later"
+          onClick={onScheduleLater}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ScheduleChoice({
+  description,
+  icon,
+  label,
+  onClick,
+}: {
+  description: string;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex min-h-24 items-center gap-4 rounded-lg border border-border bg-white px-4 py-4 text-left transition hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-5"
+    >
+      <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-semibold text-foreground">
+          {label}
+        </span>
+        <span className="mt-1 block text-sm leading-5 text-muted-foreground">
+          {description}
+        </span>
+      </span>
+      <ChevronRight className="size-5 shrink-0 text-primary" aria-hidden="true" />
+    </button>
+  );
+}
+
+function LaterScheduleStep({
+  date,
+  error,
+  minimumDate,
+  onDateChange,
+  onQuickHours,
+  onQuickTomorrow,
+  onTimeChange,
+  onTimezoneChange,
+  time,
+  timezone,
+}: {
+  date: string;
+  error: string | null;
+  minimumDate: string;
+  onDateChange: (value: string) => void;
+  onQuickHours: (hours: number) => void;
+  onQuickTomorrow: (time: string) => void;
+  onTimeChange: (value: string) => void;
+  onTimezoneChange: (value: string) => void;
+  time: string;
+  timezone: string;
+}) {
+  return (
+    <div className="grid gap-5">
+      <section aria-labelledby="quick-schedule-heading">
+        <h3
+          id="quick-schedule-heading"
+          className="flex items-center gap-2 text-sm font-semibold text-foreground"
+        >
+          <Zap className="size-4 text-primary" aria-hidden="true" />
+          Quick select
+        </h3>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <QuickSlot label="In 1 hour" onClick={() => onQuickHours(1)} />
+          <QuickSlot label="In 3 hours" onClick={() => onQuickHours(3)} />
+          <QuickSlot
+            label="Tomorrow 9 AM"
+            onClick={() => onQuickTomorrow("09:00")}
+          />
+          <QuickSlot
+            label="Tomorrow 12 PM"
+            onClick={() => onQuickTomorrow("12:00")}
+          />
+          <QuickSlot
+            label="Tomorrow 6 PM"
+            onClick={() => onQuickTomorrow("18:00")}
+          />
+        </div>
+      </section>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block">
+          <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <CalendarClock className="size-4 text-primary" aria-hidden="true" />
+            Date
+          </span>
+          <input
+            type="date"
+            min={minimumDate}
+            value={date}
+            onChange={(event) => onDateChange(event.target.value)}
+            className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary"
+          />
+        </label>
+        <label className="block">
+          <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <Clock3 className="size-4 text-primary" aria-hidden="true" />
+            Time
+          </span>
+          <input
+            type="time"
+            value={time}
+            onChange={(event) => onTimeChange(event.target.value)}
+            className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary"
+          />
+        </label>
+      </div>
+
+      <label className="block">
+        <span className="text-sm font-semibold text-foreground">Timezone</span>
+        <select
+          value={timezone}
+          onChange={(event) => onTimezoneChange(event.target.value)}
+          className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary"
+        >
+          {getTimezoneOptions(timezone).map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {error ? (
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-md bg-error/10 px-3 py-2 text-xs font-semibold text-error"
+        >
+          <Clock3 className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function QuickSlot({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {label}
+    </button>
+  );
+}
+
+function SettingCheckbox({
+  checked,
+  disabled = false,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "flex min-h-10 items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-medium text-foreground",
+        disabled && "cursor-not-allowed bg-muted opacity-65",
+      )}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        className="size-4 shrink-0 accent-primary"
+      />
+      {label}
+    </label>
   );
 }
 
@@ -475,17 +1412,11 @@ function PlatformConnectionRow({
   first: boolean;
   loading: boolean;
   onConnect: () => void;
-  status:
-    | SocialConnectionStatus
-    | "connecting"
-    | "not_connected";
+  status: SocialConnectionStatus | "connecting" | "not_connected";
 }) {
   const { Icon, label } = definition;
   const statusDisplay = getStatusDisplay(status);
-  const accountName =
-    connection?.platformAccountName ??
-    connection?.platformAccountUsername ??
-    null;
+  const accountName = connection ? getConnectionAccountName(connection) : null;
 
   return (
     <div
@@ -526,6 +1457,179 @@ function PlatformConnectionRow({
       </Button>
     </div>
   );
+}
+
+function getDefaultPublishingSettings(
+  platform: SocialPlatform,
+): ConnectionPublishingSettings {
+  if (platform === "instagram") {
+    return { shareToFeed: true };
+  }
+
+  return {
+    allowComment: false,
+    allowDuet: false,
+    allowStitch: false,
+    brandOrganic: false,
+    brandedContent: false,
+    containsSyntheticMedia: true,
+    privacyLevel: "",
+  };
+}
+
+function getPublishingSettingsError(params: {
+  connections: SocialConnection[];
+  settings: Record<string, ConnectionPublishingSettings>;
+  tiktokCapabilities: Record<string, TikTokCapabilitiesState>;
+}) {
+  for (const connection of params.connections) {
+    if (connection.platform !== "tiktok") {
+      continue;
+    }
+
+    const capabilityState = params.tiktokCapabilities[connection.id];
+
+    if (!capabilityState || capabilityState.status === "loading") {
+      return "Wait for TikTok publishing settings to finish loading.";
+    }
+
+    if (capabilityState.status === "error") {
+      return capabilityState.message;
+    }
+
+    const settings =
+      params.settings[connection.id] ?? getDefaultPublishingSettings("tiktok");
+    const privacyLevel = getStringSetting(settings, "privacyLevel", "");
+
+    if (!isTikTokPrivacyLevel(privacyLevel)) {
+      return "Choose who can view the TikTok post.";
+    }
+
+    const selectedPrivacyLevel: TikTokPrivacyLevel = privacyLevel;
+
+    if (!capabilityState.capabilities.privacyLevels.includes(selectedPrivacyLevel)) {
+      return "Choose a TikTok visibility available for this account.";
+    }
+
+    if (
+      getBooleanSetting(settings, "brandedContent", false) &&
+      selectedPrivacyLevel === "SELF_ONLY"
+    ) {
+      return "TikTok paid partnerships cannot use Only me visibility.";
+    }
+  }
+
+  return null;
+}
+
+function getEarliestScheduleSlot(
+  now: number,
+  minimumLeadMinutes: number,
+  timezone: string,
+) {
+  const scheduledTimestamp =
+    Math.ceil(
+      (now + (minimumLeadMinutes + 2) * 60_000) / 60_000,
+    ) * 60_000;
+  const parts = getFutureSlot(scheduledTimestamp, timezone);
+
+  return {
+    ...parts,
+    error: null,
+    scheduledFor: new Date(scheduledTimestamp).toISOString(),
+  };
+}
+
+function validateLaterSchedule(params: {
+  date: string;
+  minimumLeadMinutes: number;
+  now: number;
+  time: string;
+  timezone: string;
+}) {
+  try {
+    const scheduledFor = resolveZonedDateTime({
+      date: params.date,
+      time: params.time,
+      timeZone: params.timezone,
+    });
+    const leadTime = validateScheduleLeadTime({
+      minimumLeadMinutes: params.minimumLeadMinutes,
+      now: params.now,
+      scheduledFor,
+    });
+
+    if (!leadTime.valid) {
+      return {
+        date: params.date,
+        error: `Choose a time at least ${params.minimumLeadMinutes} minutes from now.`,
+        scheduledFor: null,
+        time: params.time,
+      };
+    }
+
+    return {
+      date: params.date,
+      error: null,
+      scheduledFor,
+      time: params.time,
+    };
+  } catch (error) {
+    return {
+      date: params.date,
+      error: getErrorMessage(error, "Choose a valid date and time."),
+      scheduledFor: null,
+      time: params.time,
+    };
+  }
+}
+
+function getFutureSlot(timestamp: number, timezone: string) {
+  try {
+    return getZonedDateTimeParts(timestamp, timezone);
+  } catch {
+    return getZonedDateTimeParts(timestamp, "UTC");
+  }
+}
+
+function formatScheduleInstant(value: string | null, timezone: string) {
+  if (!value) {
+    return "the next available slot";
+  }
+
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: timezone,
+    }).format(new Date(value));
+  } catch {
+    return new Date(value).toLocaleString();
+  }
+}
+
+function addDaysToDateKey(dateKey: string, days: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days));
+
+  return date.toISOString().slice(0, 10);
+}
+
+function getTimezoneOptions(currentTimezone: string) {
+  const common = [
+    currentTimezone,
+    "UTC",
+    "Asia/Calcutta",
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "Europe/London",
+    "Europe/Paris",
+    "Australia/Sydney",
+  ];
+
+  return Array.from(new Set(common.filter(Boolean)));
 }
 
 function getPreferredConnection(connections: SocialConnection[]) {
@@ -573,4 +1677,43 @@ function getStatusDisplay(
     case "not_connected":
       return { label: "Not connected", variant: "outline" };
   }
+}
+
+function getConnectionAccountName(connection: SocialConnection) {
+  const value =
+    connection.platformAccountUsername ||
+    connection.platformAccountName ||
+    connection.platformAccountId;
+
+  return connection.platformAccountUsername && !value.startsWith("@")
+    ? `@${value}`
+    : value;
+}
+
+function getPlatformLabel(platform: SocialPlatform) {
+  return platform === "instagram" ? "Instagram" : "TikTok";
+}
+
+function getBooleanSetting(
+  settings: ConnectionPublishingSettings,
+  key: string,
+  fallback: boolean,
+) {
+  return typeof settings[key] === "boolean"
+    ? (settings[key] as boolean)
+    : fallback;
+}
+
+function getStringSetting(
+  settings: ConnectionPublishingSettings,
+  key: string,
+  fallback: string,
+) {
+  return typeof settings[key] === "string"
+    ? (settings[key] as string)
+    : fallback;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
 }

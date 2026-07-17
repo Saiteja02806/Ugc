@@ -30,10 +30,12 @@ Scheduling entry points operate only on complete carousels saved in the server
 Library with a real `library_items.id`. Browser-only fallback items cannot open
 the scheduling flow.
 
-Both Trending and Library use the same platform-selection modal. Trending first
-saves the complete carousel to the server Library, then opens the modal with the
-server `libraryItemId`, source `carouselId`, and return location. Library opens
-the same modal directly for server-backed items.
+Both Trending and Library use the same inline Carousel scheduling modal.
+Trending first saves the complete carousel to the server Library, then keeps
+the user on Trending while the modal collects the exact connected account,
+optional caption, provider settings, and publish time. Library opens the same
+modal directly for server-backed items. Normal Carousel scheduling must not
+navigate to the Scheduling page.
 
 The scheduling backend now stores server-backed `scheduled_posts` and
 `scheduled_post_targets` rows and can create EventBridge Scheduler entries for
@@ -46,6 +48,24 @@ silently replaced with a video media asset. The Scheduling editor preserves the
 Library item, collects an exact connected account plus wall-clock date/time,
 and only then creates EventBridge targets. Undated drafts remain visible in the
 Drafts list and do not appear as timed calendar entries.
+
+The modal flow is Step 1 action choice, Step 2 exact account selection, Step 3
+optional caption and provider settings, and Step 4 ASAP or later scheduling.
+`Next` changes only the modal step. It must not create a visible Drafts-page
+outcome or navigate away. Cancel before final submission creates no schedule.
+On final submission, the app creates or reuses an internal server draft with
+the exact planned targets and wall-clock time, then calls the schedule publish
+endpoint. Only a successful durable platform schedule closes the modal and
+shows success. If final scheduling fails after draft persistence, the modal
+stays on the origin page and may offer `/scheduling?draft=<id>` solely as a
+recovery path. Direct visits to that deep link must still open the exact draft
+editor.
+
+Carousel captions are optional. A blank caption must remain blank through
+scheduling and publishing; do not synthesize provider text from the Carousel
+title and do not require an LLM caption call. The editor may offer an editable
+optional caption because Instagram and TikTok support one, but caption presence
+must never block account/date/time scheduling.
 
 The social publish worker loads the ordered `library_carousel_slides` rows at
 publish time. Instagram publishes a 2-10 image carousel through child media
@@ -595,11 +615,12 @@ requires an owner-scoped, non-deleted `generated_carousel` Library item for the
 assignment's carousel. `scheduled` additionally requires an owner-scoped
 `scheduled_posts` row linked to that Library item in a usable non-draft state.
 Same-action retries are idempotent; conflicting completed actions return 409.
-Trending creates the schedule record as an idempotent draft and opens that
-exact draft in Scheduling. Platform selection or draft creation alone is not
-completion. The assignment is recorded as `completed_scheduled` only after the
-user chooses an account and time and provider scheduling succeeds; this is
-still not a claim that the provider has published the post yet.
+Trending creates or reuses the schedule record as an idempotent internal draft
+only when the user submits the inline scheduling modal. Account selection or
+draft creation alone is not completion. The assignment is recorded as
+`completed_scheduled` only after the user chooses an exact account and time and
+provider scheduling succeeds; this is still not a claim that the provider has
+published the post yet.
 
 The first feed layer only reused completed carousel generations that already
 existed for the current business profile. The 2026-07-17 source slice adds the
@@ -882,10 +903,10 @@ only the caller's carousel generations for the caller's single business profile.
   slide rows. Duplicate saves return the existing Library item. After a
   successful save, Trending stays on the page, shows a View Library action, and
   advances to the next complete carousel. Schedule Post must use a
-  server-backed Library item and the server scheduling API, then route to
-  `/scheduling?draft=<id>` so the exact draft opens for account and time
-  selection. Browser-local scheduling drafts are no longer the intended
-  persistence path.
+  server-backed Library item and the server scheduling API, then complete the
+  account, optional-caption, provider-setting, and time flow inside the modal
+  on Trending. Only the final successful scheduling call advances the deck.
+  Browser-local scheduling drafts are no longer the intended persistence path.
 - The Library content tab lists server-backed carousel Library items first. As
   a transition path for older sessions, it may also display legacy
   browser-local entries from `ugc-studio.carousel-library.v1` when the same

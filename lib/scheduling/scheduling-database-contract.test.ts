@@ -22,6 +22,21 @@ const carouselPublishRetryMigration = readProjectFile(
   "supabase/migrations/20260717183000_support_carousel_publish_retry.sql",
 );
 const schedulingDb = readProjectFile("lib/scheduling/db.ts");
+const schedulingWorkspace = readProjectFile(
+  "components/scheduling/scheduling-workspace.tsx",
+);
+const carouselScheduleModal = readProjectFile(
+  "components/social/platform-selection-modal.tsx",
+);
+const carouselScheduleClient = readProjectFile(
+  "lib/scheduling/carousel-scheduling-client.ts",
+);
+const trendingWorkspace = readProjectFile(
+  "components/trending/trending-workspace.tsx",
+);
+const libraryWorkspace = readProjectFile(
+  "components/library/library-workspace.tsx",
+);
 const renderRoute = readProjectFile(
   "app/api/schedules/[scheduleId]/render/route.ts",
 );
@@ -307,6 +322,108 @@ test("stale selected media is reported as an editable draft conflict", () => {
 test("the scheduling workspace waits for Firebase auth restoration", () => {
   assert.match(schedulingLayout, /import \{ AuthGuard \}/);
   assert.match(schedulingLayout, /<AuthGuard>\{children\}<\/AuthGuard>/);
+});
+
+test("a deep-linked carousel draft opens the scheduling editor without switching to Drafts", () => {
+  const draftHandoff = getSection(
+    schedulingWorkspace,
+    'const draftId = new URLSearchParams(window.location.search).get("draft");',
+    "async function handleSaveScheduleDraft",
+  );
+
+  assert.match(
+    draftHandoff,
+    /fetch\([\s\S]*?`\/api\/schedules\/\$\{encodeURIComponent\(requestedDraftId\)\}`/,
+  );
+  assert.match(draftHandoff, /setEditingScheduleId\(schedule\.id\)/);
+  assert.match(draftHandoff, /setRequireScheduleTarget\(true\)/);
+  assert.match(draftHandoff, /setDrawerOpen\(true\)/);
+  assert.match(
+    draftHandoff,
+    /schedule\.sourceKind === "library_item"[\s\S]*?loadSocialConnections\(\)[\s\S]*?Promise\.all\(\[loadScheduleMedia\(\), loadSocialConnections\(\)\]\)/,
+  );
+  assert.doesNotMatch(draftHandoff, /setActiveTab\("drafts"\)/);
+  assert.doesNotMatch(draftHandoff, /setViewMode\("list"\)/);
+  assert.doesNotMatch(draftHandoff, /setTimeout/);
+  assert.ok(
+    draftHandoff.indexOf("setDrawerOpen(true)") <
+      draftHandoff.lastIndexOf('initialDraftQueryState.current = "handled"'),
+  );
+});
+
+test("carousel captions remain optional and are never replaced with the carousel title", () => {
+  const mediaValidation = getSection(
+    schedulingWorkspace,
+    "function getScheduleMediaValidationError",
+    "function getStatusPreviewMessage",
+  );
+  const requestBody = getSection(
+    schedulingWorkspace,
+    "function buildScheduleRequestBody",
+    "async function completeTrendingScheduleAssignment",
+  );
+
+  assert.doesNotMatch(mediaValidation, /caption/i);
+  assert.match(requestBody, /caption: submission\.caption/);
+  assert.doesNotMatch(requestBody, /submission\.caption\s*\|\|/);
+  assert.match(schedulingWorkspace, /Caption[\s\S]*?\(optional\)/);
+  assert.match(schedulingWorkspace, /Caption optional\./);
+  assert.match(
+    schedulingWorkspace,
+    /Choose an account, date, and time to schedule this carousel\./,
+  );
+});
+
+test("carousel scheduling stays inline on Trending and Library", () => {
+  assert.doesNotMatch(
+    trendingWorkspace,
+    /router\.push\(`\/scheduling\?draft=/,
+  );
+  assert.doesNotMatch(
+    libraryWorkspace,
+    /router\.push\(`\/scheduling\?draft=/,
+  );
+  assert.match(trendingWorkspace, /await scheduleTrendingCarousel\(/);
+  assert.match(
+    trendingWorkspace,
+    /await scheduleTrendingCarousel\([\s\S]*?await completeTrendingCarouselAction\([\s\S]*?"scheduled"/,
+  );
+  assert.match(libraryWorkspace, /await scheduleLibraryCarousel\(/);
+  assert.match(libraryWorkspace, /Carousel scheduled\. View it on the Scheduled page\./);
+});
+
+test("the inline carousel modal implements exact-account content and time steps", () => {
+  assert.match(carouselScheduleModal, /Step \{currentStep\.number\} of 4/);
+  assert.match(carouselScheduleModal, /title: "Select platforms"/);
+  assert.match(carouselScheduleModal, /title: "Content details"/);
+  assert.match(carouselScheduleModal, /title: "Schedule"/);
+  assert.match(carouselScheduleModal, /Select connected accounts/);
+  assert.match(carouselScheduleModal, /connectionId: connection\.id/);
+  assert.match(carouselScheduleModal, /Caption[\s\S]*?\(optional\)/);
+  assert.match(carouselScheduleModal, /label="Post ASAP"/);
+  assert.match(carouselScheduleModal, /label="Schedule for later"/);
+  assert.match(carouselScheduleModal, /type="date"/);
+  assert.match(carouselScheduleModal, /type="time"/);
+  assert.match(carouselScheduleModal, /YouTube is unavailable/);
+  assert.match(carouselScheduleModal, /Choose who can view the TikTok post\./);
+  assert.doesNotMatch(carouselScheduleModal, /Also show the Reel/);
+});
+
+test("inline carousel submission persists a recoverable draft before publishing", () => {
+  assert.match(carouselScheduleClient, /fetch\("\/api\/schedules"/);
+  assert.match(carouselScheduleClient, /plannedTargets: submission\.targets/);
+  assert.match(carouselScheduleClient, /targets: \[\]/);
+  assert.match(
+    carouselScheduleClient,
+    /fetch\(`\/api\/schedules\/\$\{draft\.id\}\/publish`/,
+  );
+  assert.match(carouselScheduleClient, /connectionIds/);
+  assert.match(carouselScheduleClient, /CarouselScheduleRecoveryError/);
+  assert.match(carouselScheduleClient, /caption: submission\.caption/);
+  assert.doesNotMatch(
+    carouselScheduleClient,
+    /caption:\s*submission\.caption\s*\|\|/,
+  );
 });
 
 function getSection(source: string, start: string, end: string) {

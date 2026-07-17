@@ -31,7 +31,10 @@ import {
 } from "@/components/social/platform-selection-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import type { SocialPlatform } from "@/lib/social/types";
+import {
+  createAndPublishCarouselSchedule,
+  type CarouselScheduleSubmission,
+} from "@/lib/scheduling/carousel-scheduling-client";
 import { cn } from "@/lib/utils";
 
 type CarouselHistoryState = "error" | "idle" | "loading" | "ready";
@@ -144,20 +147,6 @@ type CompleteTrendingActionResponse =
         state: string;
       };
       ok: true;
-    }
-  | {
-      message: string;
-      ok: false;
-    };
-
-type CreateScheduleDraftResponse =
-  | {
-      created: boolean;
-      ok: true;
-      schedule: {
-        id: string;
-        status: string;
-      };
     }
   | {
       message: string;
@@ -784,7 +773,6 @@ function CarouselCandidateStack({
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
   onCarouselCompleted: () => void;
 }) {
-  const router = useRouter();
   const swipeTimerRef = useRef<number | null>(null);
   const actionNoticeTimerRef = useRef<number | null>(null);
   const dragStartXRef = useRef<number | null>(null);
@@ -1081,9 +1069,13 @@ function CarouselCandidateStack({
       setActionCandidate(null);
       setActionState({ status: "idle" });
       setScheduleContext({
+        assignmentId: actionCandidate.carousel.assignmentId,
         carouselId: actionCandidate.carousel.carouselId,
+        coverUrl: actionCandidate.slides[0]?.renderedUrl ?? null,
+        idempotencyKey: `trending-carousel-schedule:${actionCandidate.carousel.assignmentId}`,
         libraryItemId: result.item.id,
         returnTo: "trending",
+        title: getCarouselTitle(actionCandidate.carousel),
       });
     } catch (error) {
       setActionState({
@@ -1140,20 +1132,38 @@ function CarouselCandidateStack({
       <PlatformSelectionModal
         context={scheduleContext}
         open={Boolean(scheduleContext)}
-        onConfirmed={async (platforms) => {
+        onConfirmed={async (submission) => {
           if (!scheduleContext || !pendingScheduleCandidate) {
-            throw new Error("Choose a Trending carousel before creating a schedule draft.");
+            throw new Error("Choose a Trending carousel before scheduling.");
           }
 
-          const schedule = await createTrendingScheduleDraft({
+          await scheduleTrendingCarousel({
             candidate: pendingScheduleCandidate,
             context: scheduleContext,
-            platforms,
+            submission,
           });
+
+          let completionWarning = false;
+
+          try {
+            await completeTrendingCarouselAction(
+              pendingScheduleCandidate,
+              "scheduled",
+            );
+          } catch {
+            completionWarning = true;
+          }
 
           setScheduleContext(null);
           setPendingScheduleCandidate(null);
-          router.push(`/scheduling?draft=${encodeURIComponent(schedule.id)}`);
+          showActionNotice({
+            actionHref: "/scheduling",
+            actionLabel: "View schedule",
+            message: completionWarning
+              ? "Carousel scheduled. Trending may need a refresh."
+              : "Carousel scheduled.",
+          });
+          advancePastActiveCarousel("right", onCarouselCompleted);
         }}
         onOpenChange={(open) => {
           if (!open) {
@@ -1884,60 +1894,26 @@ async function completeTrendingCarouselAction(
   }
 }
 
-async function createTrendingScheduleDraft(params: {
+async function scheduleTrendingCarousel(params: {
   candidate: CompleteCarousel;
   context: SchedulePlatformContext;
-  platforms: SocialPlatform[];
+  submission: CarouselScheduleSubmission;
 }) {
   const assignmentId = params.candidate.carousel.assignmentId;
 
   if (!assignmentId) {
-    throw new Error("Refresh Trending before creating a schedule draft.");
+    throw new Error("Refresh Trending before scheduling this carousel.");
   }
 
-  const token = await getCurrentUserIdToken();
-
-  if (!token) {
-    throw new Error("Sign in before creating a schedule draft.");
-  }
-
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  const response = await fetch("/api/schedules", {
-    body: JSON.stringify({
-      idempotencyKey: `trending-schedule-draft:${assignmentId}`,
-      metadata: {
-        assignmentId,
-        carouselId: params.context.carouselId,
-        plannedPlatforms: params.platforms.join(","),
-        sourceSurface: "trending",
-      },
-      source: {
-        id: params.context.libraryItemId,
-        kind: "library_item",
-      },
-      targets: [],
-      timezone,
-      title: getCarouselTitle(params.candidate.carousel),
-    }),
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    method: "POST",
+  return createAndPublishCarouselSchedule({
+    assignmentId,
+    carouselId: params.context.carouselId,
+    idempotencyKey: params.context.idempotencyKey,
+    libraryItemId: params.context.libraryItemId,
+    sourceSurface: "trending",
+    submission: params.submission,
+    title: getCarouselTitle(params.candidate.carousel),
   });
-  const data = (await response.json().catch(() => null)) as
-    | CreateScheduleDraftResponse
-    | null;
-
-  if (!response.ok || data?.ok !== true || !data.schedule?.id) {
-    throw new Error(
-      data?.ok === false
-        ? data.message
-        : "Could not create this schedule draft.",
-    );
-  }
-
-  return data.schedule;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {

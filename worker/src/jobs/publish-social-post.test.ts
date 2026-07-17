@@ -117,6 +117,45 @@ test("publishes saved carousel slides in their stored order", async () => {
   });
 });
 
+test("publishes saved carousel slides to TikTok without requiring video media", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(
+      createOperation({ platform: "tiktok" }),
+      {
+        carousel: true,
+        platform: "tiktok",
+      },
+    );
+
+    const output = await runPublishSocialPostJob(createPublishJob(), {
+      publishers: {
+        async tiktokCarousel(params) {
+          assert.deepEqual(params.imageUrls, [
+            "https://cdn.example.com/slide-1.webp",
+            "https://cdn.example.com/slide-2.webp",
+          ]);
+          await params.onPublishInitialized?.({
+            creatorNickname: "Test creator",
+            creatorUsername: "test_creator",
+            logId: "tiktok-log-1",
+            publishId: "tiktok-photo-publish-1",
+          });
+          return {
+            platformPostId: "tiktok-photo-post-1",
+            platformPostUrl: null,
+            publishId: "tiktok-photo-publish-1",
+          };
+        },
+      },
+      store: fixture.store,
+    });
+
+    assert.equal(output.platformPostId, "tiktok-photo-post-1");
+    assert.equal(fixture.operation.provider_operation_id, "tiktok-photo-publish-1");
+    assert.equal(fixture.operation.provider_operation_kind, "tiktok_publish");
+  });
+});
+
 test("reuses a persisted provider operation instead of initializing again", async () => {
   await withEncryptionKey(async () => {
     const fixture = createPublishStore(

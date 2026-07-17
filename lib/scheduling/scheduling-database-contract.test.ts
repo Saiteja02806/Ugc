@@ -357,6 +357,13 @@ test("a deep-linked carousel draft opens the scheduling editor without switching
   );
 });
 
+test("new video schedules auto-select the only available scheduled video", () => {
+  assert.match(
+    schedulingWorkspace,
+    /editingSchedule \|\|[\s\S]*selectedDemoMediaId \|\|[\s\S]*demoMediaOptions\.length !== 1[\s\S]*setSelectedDemoMediaId\(demoMediaOptions\[0\]!\.id\)/,
+  );
+});
+
 test("carousel captions remain optional and are never replaced with the carousel title", () => {
   const mediaValidation = getSection(
     schedulingWorkspace,

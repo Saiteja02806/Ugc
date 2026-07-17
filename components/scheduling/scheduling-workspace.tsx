@@ -2941,6 +2941,20 @@ function NewScheduleDrawer({
     isCarouselSchedule
       ? null
       : demoMediaOptions.find((option) => option.id === activeDemoMediaId) ?? null;
+
+  useEffect(() => {
+    if (
+      isCarouselSchedule ||
+      editingSchedule ||
+      selectedDemoMediaId ||
+      demoMediaOptions.length !== 1
+    ) {
+      return;
+    }
+
+    setSelectedDemoMediaId(demoMediaOptions[0]!.id);
+  }, [demoMediaOptions, editingSchedule, isCarouselSchedule, selectedDemoMediaId]);
+
   const availableSocialConnections = useMemo(
     () =>
       isCarouselSchedule

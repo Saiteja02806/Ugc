@@ -970,7 +970,7 @@ function DetailsStep({
 }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-      <div className="overflow-hidden rounded-lg border border-border bg-muted/30">
+      <div className="self-start overflow-hidden rounded-lg border border-border bg-white">
         {context?.coverUrl ? (
           // Carousel slides are already rendered production media.
           // eslint-disable-next-line @next/next/no-img-element
@@ -980,7 +980,7 @@ function DetailsStep({
             className="aspect-[4/5] w-full object-contain"
           />
         ) : (
-          <div className="flex aspect-[4/5] items-center justify-center text-muted-foreground">
+          <div className="flex aspect-[4/5] items-center justify-center bg-muted/30 text-muted-foreground">
             <Camera className="size-8" aria-hidden="true" />
           </div>
         )}

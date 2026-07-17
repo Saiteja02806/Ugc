@@ -406,6 +406,10 @@ test("the inline carousel modal implements exact-account content and time steps"
   assert.match(carouselScheduleModal, /Select connected accounts/);
   assert.match(carouselScheduleModal, /connectionId: connection\.id/);
   assert.match(carouselScheduleModal, /Caption[\s\S]*?\(optional\)/);
+  assert.match(
+    carouselScheduleModal,
+    /self-start overflow-hidden rounded-lg border border-border bg-white/,
+  );
   assert.match(carouselScheduleModal, /label="Post ASAP"/);
   assert.match(carouselScheduleModal, /label="Schedule for later"/);
   assert.match(carouselScheduleModal, /type="date"/);

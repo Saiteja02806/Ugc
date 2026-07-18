@@ -85,10 +85,10 @@ export async function POST(request: Request) {
     return json({ ok: false, message: "Unauthorized." }, 401);
   }
 
-  let input: ScheduledSocialPublishDispatchInput;
+  let parsedInput: unknown;
 
   try {
-    input = JSON.parse(rawBody) as ScheduledSocialPublishDispatchInput;
+    parsedInput = JSON.parse(rawBody) as unknown;
   } catch {
     reportInvalidDispatchRequest("body_json_parse_failed", {
       rawBodyBytes: Buffer.byteLength(rawBody, "utf8"),
@@ -97,9 +97,11 @@ export async function POST(request: Request) {
     return json({ ok: false, message: "Request body must be valid JSON." }, 400);
   }
 
-  if (!isValidInput(input)) {
+  const input = normalizeDispatchInput(parsedInput);
+
+  if (!input) {
     reportInvalidDispatchRequest("input_invalid", {
-      input: getInputDiagnostics(input),
+      input: getInputDiagnostics(parsedInput),
     });
     return json(
       { ok: false, message: "Schedule dispatch details are invalid." },
@@ -167,29 +169,50 @@ function getInputDiagnostics(value: unknown) {
   const input = value as Record<string, unknown>;
 
   return {
+    jobIdLength: getStringLength(input.jobId),
     jobIdMatchesUuid:
-      typeof input.jobId === "string" && UUID_PATTERN.test(input.jobId),
+      typeof input.jobId === "string" &&
+      UUID_PATTERN.test(input.jobId.trim()),
+    jobIdPreview: getStringPreview(input.jobId),
     jobIdType: typeof input.jobId,
     keys: Object.keys(input).sort(),
+    targetIdLength: getStringLength(input.targetId),
     targetIdMatchesUuid:
-      typeof input.targetId === "string" && UUID_PATTERN.test(input.targetId),
+      typeof input.targetId === "string" &&
+      UUID_PATTERN.test(input.targetId.trim()),
+    targetIdPreview: getStringPreview(input.targetId),
     targetIdType: typeof input.targetId,
   };
 }
 
-function isValidInput(
+function normalizeDispatchInput(
   value: unknown,
-): value is ScheduledSocialPublishDispatchInput {
+): ScheduledSocialPublishDispatchInput | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return false;
+    return null;
   }
 
   const input = value as Record<string, unknown>;
+  const jobId = normalizeUuid(input.jobId);
+  const targetId = normalizeUuid(input.targetId);
 
-  return (
-    typeof input.jobId === "string" &&
-    UUID_PATTERN.test(input.jobId) &&
-    typeof input.targetId === "string" &&
-    UUID_PATTERN.test(input.targetId)
-  );
+  return jobId && targetId ? { jobId, targetId } : null;
+}
+
+function normalizeUuid(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmedValue = value.trim();
+
+  return UUID_PATTERN.test(trimmedValue) ? trimmedValue : null;
+}
+
+function getStringLength(value: unknown) {
+  return typeof value === "string" ? value.length : null;
+}
+
+function getStringPreview(value: unknown) {
+  return typeof value === "string" ? getSafeBodyPreview(value) : null;
 }

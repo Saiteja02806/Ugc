@@ -59,12 +59,19 @@ export async function POST(request: Request) {
   const contentLength = Number(request.headers.get("content-length") ?? "0");
 
   if (Number.isFinite(contentLength) && contentLength > MAX_BODY_LENGTH) {
+    reportInvalidDispatchRequest("body_too_large", {
+      contentLength,
+    });
     return json({ ok: false, message: "Request body is too large." }, 413);
   }
 
   const rawBody = await request.text();
 
   if (!rawBody || Buffer.byteLength(rawBody, "utf8") > MAX_BODY_LENGTH) {
+    reportInvalidDispatchRequest("body_invalid", {
+      contentLengthHeader: request.headers.get("content-length"),
+      rawBodyBytes: Buffer.byteLength(rawBody, "utf8"),
+    });
     return json({ ok: false, message: "Request body is invalid." }, 400);
   }
 
@@ -83,10 +90,17 @@ export async function POST(request: Request) {
   try {
     input = JSON.parse(rawBody) as ScheduledSocialPublishDispatchInput;
   } catch {
+    reportInvalidDispatchRequest("body_json_parse_failed", {
+      rawBodyBytes: Buffer.byteLength(rawBody, "utf8"),
+      rawBodyPreview: getSafeBodyPreview(rawBody),
+    });
     return json({ ok: false, message: "Request body must be valid JSON." }, 400);
   }
 
   if (!isValidInput(input)) {
+    reportInvalidDispatchRequest("input_invalid", {
+      input: getInputDiagnostics(input),
+    });
     return json(
       { ok: false, message: "Schedule dispatch details are invalid." },
       400,
@@ -125,6 +139,42 @@ export async function POST(request: Request) {
       500,
     );
   }
+}
+
+function reportInvalidDispatchRequest(
+  reason: string,
+  details: Record<string, unknown>,
+) {
+  console.warn("Invalid social schedule dispatch request", {
+    ...details,
+    reason,
+  });
+}
+
+function getSafeBodyPreview(value: string) {
+  return value
+    .slice(0, 160)
+    .replace(/[^\x20-\x7E]/g, "?");
+}
+
+function getInputDiagnostics(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {
+      kind: Array.isArray(value) ? "array" : typeof value,
+    };
+  }
+
+  const input = value as Record<string, unknown>;
+
+  return {
+    jobIdMatchesUuid:
+      typeof input.jobId === "string" && UUID_PATTERN.test(input.jobId),
+    jobIdType: typeof input.jobId,
+    keys: Object.keys(input).sort(),
+    targetIdMatchesUuid:
+      typeof input.targetId === "string" && UUID_PATTERN.test(input.targetId),
+    targetIdType: typeof input.targetId,
+  };
 }
 
 function isValidInput(

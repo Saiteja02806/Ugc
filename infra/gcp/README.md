@@ -349,6 +349,27 @@ Before enabling this for normal scheduling, apply and test the GCP
 social-publish worker with an intentional canary account/post. Otherwise Cloud
 Tasks can correctly enqueue jobs that no GCP social worker is ready to consume.
 
+To test only the Cloud Tasks dispatcher handoff without a real social account or
+real publish, use the guarded canary:
+
+```powershell
+npm run social-dispatch:gcp:dry-run
+```
+
+When the dry-run plan looks correct, intentionally execute it:
+
+```powershell
+npm run social-dispatch:gcp:canary
+```
+
+The canary creates one fake `publish_social_post` background job, creates one
+Cloud Task against the deployed `/api/internal/schedules/dispatch` route,
+verifies that the route attached a Pub/Sub message id, then cancels the dummy
+job. It does not create scheduled post rows, does not use a connected social
+account, and does not publish. If it reports that the dummy job was consumed by
+a worker, stop and inspect the GCP social worker before enabling normal social
+scheduling.
+
 ## Carousel Scheduler Slice
 
 Trigger.dev has been removed. The replacement is a Cloud Scheduler job that

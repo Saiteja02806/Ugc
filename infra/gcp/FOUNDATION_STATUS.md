@@ -121,6 +121,11 @@ Pub/Sub DLQ topics:
   `/api/internal/schedules/dispatch` at the scheduled time, verifies the
   `ugc-scheduler-sa` OIDC token, and then enqueues the existing
   `publish_social_post` background job through the configured queue provider.
+- A guarded social dispatch canary now exists as
+  `npm run social-dispatch:gcp:dry-run` and
+  `npm run social-dispatch:gcp:canary`. It tests only the Cloud Tasks to
+  deployed dispatcher to Pub/Sub handoff using a fake target, then cancels the
+  dummy background job.
 
 ## Not Yet Cut Over
 

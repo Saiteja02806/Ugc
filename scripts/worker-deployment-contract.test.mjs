@@ -61,6 +61,9 @@ const gcpSocialPublishWorkerVariables = readProjectFile(
 const gcpSocialPublishWorkerTfvars = readProjectFile(
   "infra/gcp/social-publish-worker/terraform.tfvars.example",
 );
+const gcpSocialDispatchCanaryScript = readProjectFile(
+  "scripts/test-social-dispatch-cloud-tasks-gcp.mjs",
+);
 const carouselReplenishmentRunner = readProjectFile(
   "worker/src/lib/carousel-replenishment.ts",
 );
@@ -252,6 +255,19 @@ test("the GCP social-publish worker service is queue-only for first canary", () 
     gcpSocialPublishWorkerTfvars,
     /social_reconciliation_enabled\s*=\s*false/,
   );
+});
+
+test("the GCP social dispatch canary only tests Cloud Tasks handoff", () => {
+  assert.match(gcpSocialDispatchCanaryScript, /--execute/);
+  assert.match(gcpSocialDispatchCanaryScript, /--yes/);
+  assert.match(gcpSocialDispatchCanaryScript, /randomUUID/);
+  assert.match(gcpSocialDispatchCanaryScript, /buildGcpCloudTasksCreateTaskRequest/);
+  assert.match(gcpSocialDispatchCanaryScript, /publish_social_post/);
+  assert.match(gcpSocialDispatchCanaryScript, /gcp-cloud-tasks-social-dispatch/);
+  assert.match(gcpSocialDispatchCanaryScript, /cancelQueuedCanaryJob/);
+  assert.doesNotMatch(gcpSocialDispatchCanaryScript, /from\("scheduled_posts"\)/);
+  assert.doesNotMatch(gcpSocialDispatchCanaryScript, /from\("scheduled_post_targets"\)/);
+  assert.doesNotMatch(gcpSocialDispatchCanaryScript, /from\("social_connections"\)/);
 });
 
 test("the GCP Carousel scheduler replaces cron with a paused Cloud Run Job trigger", () => {

@@ -104,6 +104,8 @@
     "social-publish:test": "node --test lambda/social-publish-worker/index.test.mjs",
     "diagnose:tiktok": "node scripts/diagnose-tiktok.mjs",
     "social-publish:queue-test": "node scripts/test-social-publish-queue.mjs",
+    "social-dispatch:gcp:dry-run": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-social-dispatch-cloud-tasks-gcp.mjs --dry-run",
+    "social-dispatch:gcp:canary": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-social-dispatch-cloud-tasks-gcp.mjs --execute --yes",
     "worker:start": "node worker/dist/index.js",
     "avatars:thumbnails:backfill": "node scripts/backfill-avatar-thumbnails.mjs",
     "avatars:thumbnails:backfill:dry-run": "node scripts/backfill-avatar-thumbnails.mjs --dry-run --check-existing"

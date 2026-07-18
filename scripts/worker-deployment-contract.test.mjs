@@ -64,6 +64,9 @@ const gcpSocialPublishWorkerTfvars = readProjectFile(
 const gcpSocialDispatchCanaryScript = readProjectFile(
   "scripts/test-social-dispatch-cloud-tasks-gcp.mjs",
 );
+const gcpSocialDispatchRoute = readProjectFile(
+  "app/api/internal/schedules/dispatch/route.ts",
+);
 const carouselReplenishmentRunner = readProjectFile(
   "worker/src/lib/carousel-replenishment.ts",
 );
@@ -268,6 +271,13 @@ test("the GCP social dispatch canary only tests Cloud Tasks handoff", () => {
   assert.doesNotMatch(gcpSocialDispatchCanaryScript, /from\("scheduled_posts"\)/);
   assert.doesNotMatch(gcpSocialDispatchCanaryScript, /from\("scheduled_post_targets"\)/);
   assert.doesNotMatch(gcpSocialDispatchCanaryScript, /from\("social_connections"\)/);
+});
+
+test("the GCP social dispatch route accepts canonical UUID identifiers", () => {
+  assert.match(
+    gcpSocialDispatchRoute,
+    /\[0-9a-f\]\{8\}-\[0-9a-f\]\{4\}-\[0-9a-f\]\{4\}-\[0-9a-f\]\{4\}-\[0-9a-f\]\{12\}/,
+  );
 });
 
 test("the GCP Carousel scheduler replaces cron with a paused Cloud Run Job trigger", () => {

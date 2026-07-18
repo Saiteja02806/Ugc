@@ -1,100 +1,48 @@
 import "server-only";
 
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { PubSub } from "@google-cloud/pubsub";
 
+import { getGoogleServiceAccountCredentials } from "@/lib/gcp/credentials";
 import type { BackgroundJobType } from "@/lib/jobs/background-jobs";
-
-type QueueConfig = {
-  envName: string;
-  queueName: string;
-};
-
-const jobQueueConfig = {
-  extract_video_metadata: {
-    envName: "UGC_MEDIA_PROCESSING_QUEUE_URL",
-    queueName: "media-processing",
-  },
-  generate_avatar: {
-    envName: "UGC_AI_GENERATION_QUEUE_URL",
-    queueName: "ai-generation",
-  },
-  generate_carousel: {
-    envName: "UGC_CAROUSEL_QUEUE_URL",
-    queueName: "carousel",
-  },
-  generate_hook_video: {
-    envName: "UGC_AI_GENERATION_QUEUE_URL",
-    queueName: "ai-generation",
-  },
-  generate_image: {
-    envName: "UGC_AI_GENERATION_QUEUE_URL",
-    queueName: "ai-generation",
-  },
-  generate_thumbnail: {
-    envName: "UGC_MEDIA_PROCESSING_QUEUE_URL",
-    queueName: "media-processing",
-  },
-  publish_social_post: {
-    envName: "UGC_SOCIAL_PUBLISH_QUEUE_URL",
-    queueName: "social-publish",
-  },
-  render_demo_video: {
-    envName: "UGC_VIDEO_RENDER_QUEUE_URL",
-    queueName: "video-render",
-  },
-  render_edit_video: {
-    envName: "UGC_VIDEO_RENDER_QUEUE_URL",
-    queueName: "video-render",
-  },
-  render_schedule_combination: {
-    envName: "UGC_VIDEO_RENDER_QUEUE_URL",
-    queueName: "video-render",
-  },
-  test_worker_job: {
-    envName: "UGC_MEDIA_PROCESSING_QUEUE_URL",
-    queueName: "media-processing",
-  },
-} satisfies Record<BackgroundJobType, QueueConfig>;
+import {
+  buildJobMessageBody,
+  getAwsQueueUrlEnvNameForJobType,
+  getGcpProjectId,
+  getGcpPubSubTopicNameForJobType,
+  getMissingQueueEnvVars,
+  getQueueNameForJobType as getConfiguredQueueNameForJobType,
+  getQueueProviderName as resolveQueueProviderName,
+} from "@/lib/queues/config";
 
 let sqsClient: SQSClient | null = null;
+let pubSubClient: PubSub | null = null;
 
 export function getQueueNameForJobType(jobType: BackgroundJobType) {
-  return jobQueueConfig[jobType].queueName;
+  return getConfiguredQueueNameForJobType(jobType);
+}
+
+export function getQueueProviderName() {
+  return resolveQueueProviderName();
 }
 
 export function getQueueUrlForJobType(jobType: BackgroundJobType) {
-  const config = jobQueueConfig[jobType];
-  const queueUrl = process.env[config.envName]?.trim();
+  const envName = getAwsQueueUrlEnvNameForJobType(jobType);
+  const queueUrl = process.env[envName]?.trim();
 
   if (!queueUrl) {
-    throw new Error(`Missing ${config.envName}`);
+    throw new Error(`Missing ${envName}`);
   }
 
   return queueUrl;
 }
 
+export function getPubSubTopicForJobType(jobType: BackgroundJobType) {
+  return getGcpPubSubTopicNameForJobType(jobType);
+}
+
 export function getMissingSqsEnvVars(jobTypes?: BackgroundJobType[]) {
-  const missing = new Set<string>();
-
-  if (!process.env.AWS_REGION?.trim()) {
-    missing.add("AWS_REGION");
-  }
-
-  if (!hasAppSqsCredentials()) {
-    missing.add(
-      "AWS_APP_ENQUEUE_ACCESS_KEY_ID/AWS_APP_ENQUEUE_SECRET_ACCESS_KEY or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY",
-    );
-  }
-
-  for (const jobType of jobTypes ?? Object.keys(jobQueueConfig)) {
-    const config = jobQueueConfig[jobType as BackgroundJobType];
-
-    if (!process.env[config.envName]?.trim()) {
-      missing.add(config.envName);
-    }
-  }
-
-  return Array.from(missing);
+  return getMissingQueueEnvVars(jobTypes);
 }
 
 export async function sendJobMessage({
@@ -104,10 +52,30 @@ export async function sendJobMessage({
   jobId: string;
   jobType: BackgroundJobType;
 }) {
+  if (resolveQueueProviderName() === "gcp") {
+    return sendPubSubJobMessage({
+      jobId,
+      jobType,
+    });
+  }
+
+  return sendSqsJobMessage({
+    jobId,
+    jobType,
+  });
+}
+
+async function sendSqsJobMessage({
+  jobId,
+  jobType,
+}: {
+  jobId: string;
+  jobType: BackgroundJobType;
+}) {
   const queueUrl = getQueueUrlForJobType(jobType);
   const result = await getSqsClient().send(
     new SendMessageCommand({
-      MessageBody: JSON.stringify({
+      MessageBody: buildJobMessageBody({
         jobId,
         jobType,
       }),
@@ -121,8 +89,46 @@ export async function sendJobMessage({
 
   return {
     messageId: result.MessageId,
+    provider: "aws" as const,
     queueName: getQueueNameForJobType(jobType),
     queueUrl,
+  };
+}
+
+async function sendPubSubJobMessage({
+  jobId,
+  jobType,
+}: {
+  jobId: string;
+  jobType: BackgroundJobType;
+}) {
+  const topicName = getPubSubTopicForJobType(jobType);
+  const messageId = await getPubSubClient()
+    .topic(topicName)
+    .publishMessage({
+      attributes: {
+        jobType,
+        queueName: getQueueNameForJobType(jobType),
+        schema: "ugc-background-job-v1",
+      },
+      data: Buffer.from(
+        buildJobMessageBody({
+          jobId,
+          jobType,
+        }),
+        "utf8",
+      ),
+    });
+
+  if (!messageId) {
+    throw new Error("Pub/Sub did not return a message id.");
+  }
+
+  return {
+    messageId,
+    provider: "gcp" as const,
+    queueName: getQueueNameForJobType(jobType),
+    topicName,
   };
 }
 
@@ -141,6 +147,25 @@ function getSqsClient() {
   }
 
   return sqsClient;
+}
+
+function getPubSubClient() {
+  const projectId = getGcpProjectId();
+
+  if (!projectId) {
+    throw new Error("Missing GCP_PROJECT_ID or GOOGLE_CLOUD_PROJECT");
+  }
+
+  if (!pubSubClient) {
+    const credentials = getGoogleServiceAccountCredentials();
+
+    pubSubClient = new PubSub({
+      ...(credentials ? { credentials } : {}),
+      projectId,
+    });
+  }
+
+  return pubSubClient;
 }
 
 function getAppSqsCredentials() {
@@ -163,17 +188,4 @@ function getAppSqsCredentials() {
     accessKeyId: enqueueAccessKeyId,
     secretAccessKey: enqueueSecretAccessKey,
   };
-}
-
-function hasAppSqsCredentials() {
-  const hasDedicatedCredentials = Boolean(
-    process.env.AWS_APP_ENQUEUE_ACCESS_KEY_ID?.trim() &&
-      process.env.AWS_APP_ENQUEUE_SECRET_ACCESS_KEY?.trim(),
-  );
-  const hasDefaultAwsCredentials = Boolean(
-    process.env.AWS_ACCESS_KEY_ID?.trim() &&
-      process.env.AWS_SECRET_ACCESS_KEY?.trim(),
-  );
-
-  return hasDedicatedCredentials || hasDefaultAwsCredentials;
 }

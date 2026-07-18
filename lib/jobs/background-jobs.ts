@@ -289,7 +289,7 @@ export async function attachAwsMessageToBackgroundJob(params: {
   });
 
   if (!job) {
-    throw new Error("Could not attach AWS message id to missing job.");
+    throw new Error("Could not attach queue message id to missing job.");
   }
 
   return job;

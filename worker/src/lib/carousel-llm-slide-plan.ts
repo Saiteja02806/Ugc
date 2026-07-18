@@ -1616,17 +1616,6 @@ function getSlideType(value: unknown, label: string) {
   return value as PlannedCarouselSlide["slideType"];
 }
 
-function truncateText(value: string, maxLength: number) {
-  if (value.length <= maxLength) {
-    return value;
-  }
-
-  const shortened = value.slice(0, maxLength - 1).trimEnd();
-  const lastSpace = shortened.lastIndexOf(" ");
-
-  return `${shortened.slice(0, lastSpace > 24 ? lastSpace : shortened.length).trimEnd()}.`;
-}
-
 function clampSlideCount(value: number) {
   return Math.min(Math.max(Math.trunc(value), 1), 10);
 }

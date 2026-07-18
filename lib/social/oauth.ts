@@ -12,11 +12,17 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { getConnectionPublishingBlock } from "@/lib/scheduling/social-connection-policy";
 import { getEffectiveSocialConnectionStatus } from "@/lib/social/connection-status";
+import { buildInstagramOAuthAuthorizationUrl } from "@/lib/social/instagram-oauth-config";
 import { splitScopes } from "@/lib/social/split-scopes";
 import {
   buildTikTokOAuthAuthorizationUrl,
   hasTikTokPublishScope,
 } from "@/lib/social/tiktok-oauth-config";
+import {
+  buildSafeYouTubeOAuthDiagnostic,
+  buildYouTubeOAuthAuthorizationUrl,
+  type YouTubeOAuthDiagnostic,
+} from "@/lib/social/youtube-oauth-config";
 import {
   getProviderForPlatform,
   isProviderPlatformPair,
@@ -300,14 +306,24 @@ export async function createSocialAuthorization(params: {
     case "youtube":
       authorizationUrl = buildYouTubeAuthorizationUrl({
         codeVerifier: codeVerifier ?? "",
+        forceConsent: params.forceConsent === true,
         redirectUri,
         state,
       });
       break;
   }
 
+  const diagnostic =
+    params.platform === "youtube" && isDevelopmentRuntime()
+      ? await getYouTubeOAuthDiagnosticForUser({
+          redirectUri,
+          userId: params.userId,
+        })
+      : null;
+
   return {
     authorizationUrl: authorizationUrl.toString(),
+    ...(diagnostic ? { diagnostic } : {}),
     sessionId: data.id,
   };
 }
@@ -450,6 +466,29 @@ export async function listSocialConnections(
   }
 
   return (data ?? []).map(mapSocialConnection);
+}
+
+async function getYouTubeOAuthDiagnosticForUser(params: {
+  redirectUri: string;
+  userId: string;
+}): Promise<YouTubeOAuthDiagnostic> {
+  const { data } = await getClient()
+    .from("social_connections")
+    .select("refresh_token_ciphertext,scopes")
+    .eq("user_id", params.userId)
+    .eq("provider", "google")
+    .eq("platform", "youtube")
+    .is("revoked_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return buildSafeYouTubeOAuthDiagnostic({
+    clientId: getEnv("GOOGLE_CLIENT_ID"),
+    grantedScopes: Array.isArray(data?.scopes) ? data.scopes : [],
+    redirectUri: params.redirectUri,
+    refreshTokenExists: Boolean(data?.refresh_token_ciphertext),
+  });
 }
 
 export async function getSocialConnectionCredentialForOwner(params: {
@@ -1555,35 +1594,26 @@ function buildInstagramAuthorizationUrl(params: {
   redirectUri: string;
   state: string;
 }) {
-  const url = new URL("https://www.instagram.com/oauth/authorize");
-  url.searchParams.set("client_id", getEnv("INSTAGRAM_APP_ID"));
-  url.searchParams.set("redirect_uri", params.redirectUri);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", getInstagramScopes().join(","));
-  url.searchParams.set("state", params.state);
-  return url;
+  return buildInstagramOAuthAuthorizationUrl({
+    clientId: getEnv("INSTAGRAM_APP_ID"),
+    redirectUri: params.redirectUri,
+    state: params.state,
+  });
 }
 
 function buildYouTubeAuthorizationUrl(params: {
   codeVerifier: string;
+  forceConsent: boolean;
   redirectUri: string;
   state: string;
 }) {
-  const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  url.searchParams.set("client_id", getEnv("GOOGLE_CLIENT_ID"));
-  url.searchParams.set("redirect_uri", params.redirectUri);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", getYouTubeScopes().join(" "));
-  url.searchParams.set("state", params.state);
-  url.searchParams.set("access_type", "offline");
-  url.searchParams.set("include_granted_scopes", "true");
-  url.searchParams.set("prompt", "consent");
-  url.searchParams.set(
-    "code_challenge",
-    createPkceCodeChallenge(params.codeVerifier),
-  );
-  url.searchParams.set("code_challenge_method", "S256");
-  return url;
+  return buildYouTubeOAuthAuthorizationUrl({
+    clientId: getEnv("GOOGLE_CLIENT_ID"),
+    codeVerifierChallenge: createPkceCodeChallenge(params.codeVerifier),
+    forceConsent: params.forceConsent,
+    redirectUri: params.redirectUri,
+    state: params.state,
+  });
 }
 
 function getPlatformRedirectUri(platform: SocialPlatform) {
@@ -1735,18 +1765,8 @@ function getSupabaseUrl() {
   );
 }
 
-function getInstagramScopes() {
-  return splitScopes(
-    process.env.INSTAGRAM_SCOPES ||
-      "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights",
-  );
-}
-
-function getYouTubeScopes() {
-  return splitScopes(
-    process.env.YOUTUBE_SCOPES ||
-      "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
-  );
+function isDevelopmentRuntime() {
+  return process.env.NODE_ENV !== "production";
 }
 
 function encryptSecret(secret: string) {

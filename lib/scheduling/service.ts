@@ -3,7 +3,7 @@ import "server-only";
 import {
   createSocialPublishSchedule,
   deleteSocialPublishSchedule,
-} from "@/lib/scheduling/aws-scheduler";
+} from "@/lib/scheduling/social-scheduler";
 import { getQueueNameForJobType, sendJobMessage } from "@/lib/aws/sqs";
 import {
   attachAwsMessageToBackgroundJob,
@@ -2001,7 +2001,7 @@ async function scheduleTargetRows(params: {
     now: () => new Date().toISOString(),
     reportError: (event, details) => {
       const messages = {
-        compensation_failed: "Could not compensate orphaned AWS schedule:",
+        compensation_failed: "Could not compensate orphaned provider schedule:",
         fallback_persistence_failed:
           "Could not persist durable scheduler fallback:",
         publish_job_failure_persistence_failed:
@@ -2012,7 +2012,7 @@ async function scheduleTargetRows(params: {
     },
     reportWarning: (_event, details) => {
       console.warn(
-        "AWS schedule handoff failed; durable worker fallback is active",
+        "Provider schedule handoff failed; durable worker fallback is active",
         details,
       );
     },
@@ -2054,7 +2054,7 @@ async function cleanupCancelledSchedulerTargets(params: {
       } catch (error) {
         const errorMessage = getSafeErrorMessage(error);
 
-        console.error("Could not clean up cancelled AWS schedule:", {
+        console.error("Could not clean up cancelled provider schedule:", {
           error: errorMessage,
           scheduleName,
           targetId: target.id,
@@ -2064,7 +2064,7 @@ async function cleanupCancelledSchedulerTargets(params: {
           targetId: target.id,
           userId: params.userId,
         }).catch((persistenceError) => {
-          console.error("Could not record AWS schedule cleanup failure:", {
+          console.error("Could not record provider schedule cleanup failure:", {
             persistenceError,
             targetId: target.id,
           });
@@ -2101,5 +2101,5 @@ function getSafeErrorMessage(error: unknown) {
     return error.message.slice(0, 500);
   }
 
-  return "Could not create AWS schedule.";
+  return "Could not create provider schedule.";
 }

@@ -28,7 +28,7 @@ test("creates and durably records the provider schedule", async () => {
   ]);
 });
 
-test("uses the durable worker fallback when AWS schedule creation fails", async () => {
+test("uses the durable worker fallback when provider schedule creation fails", async () => {
   const fixture = createDependencies({
     async createProviderSchedule() {
       fixture.events.push("create-provider-schedule");
@@ -47,7 +47,7 @@ test("uses the durable worker fallback when AWS schedule creation fails", async 
   assert.equal(fixture.fallback?.scheduleName, null);
 });
 
-test("deletes an orphaned AWS schedule when database persistence loses the race", async () => {
+test("deletes an orphaned provider schedule when database persistence loses the race", async () => {
   const fixture = createDependencies({
     async markProviderSchedule() {
       fixture.events.push("mark-provider-schedule");

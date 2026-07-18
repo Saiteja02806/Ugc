@@ -9,10 +9,6 @@ const migration = readFileSync(
   ),
   "utf8",
 );
-const triggerTask = readFileSync(
-  new URL("../../trigger/replenish-daily-carousels.ts", import.meta.url),
-  "utf8",
-);
 const businessProfileDatabase = readFileSync(
   new URL("../business-profiles/db.ts", import.meta.url),
   "utf8",
@@ -109,18 +105,13 @@ test("migration enforces refill and generation idempotency contracts", () => {
   );
 });
 
-test("quarter-hour sweep persists and resumes every cursor in one serialized task", () => {
-  assert.match(triggerTask, /pattern:\s*"\*\/15 \* \* \* \*"/);
-  assert.match(triggerTask, /queue:\s*\{\s*concurrencyLimit:\s*1\s*\}/);
-  assert.match(triggerTask, /while\s*\(true\)/);
-  assert.match(triggerTask, /parseReplenishmentPageResponse/);
-  assert.match(triggerTask, /cycleId:\s*requestedCycleId/);
-  assert.match(triggerTask, /AbortSignal\.timeout\(PAGE_REQUEST_TIMEOUT_MS\)/);
-  assert.match(triggerTask, /logger\.error\("Daily Carousel replenishment failed for profile"/);
-  assert.doesNotMatch(triggerTask, /replenish-daily-carousels-page/);
-  assert.doesNotMatch(triggerTask, /\.trigger\(/);
-  assert.doesNotMatch(triggerTask, /failedResults\.length\s*>\s*0[\s\S]*throw new Error/);
-  assert.doesNotMatch(triggerTask, /MAX_PAGES_PER_RUN/);
+test("signed replenishment route persists and resumes every cursor", () => {
+  assert.match(replenishmentRoute, /verifyCarouselReplenishmentSignature/);
+  assert.match(replenishmentRoute, /validateCarouselReplenishmentContentLength/);
+  assert.match(replenishmentRoute, /requestedCycleId:\s*cycleId/);
+  assert.match(replenishmentRoute, /replenishTrendingCarouselFeedCyclePage/);
+  assert.doesNotMatch(replenishmentRoute, /payload\.cursor/);
+  assert.doesNotMatch(replenishmentRoute, /\.trigger\(/);
   assert.match(
     businessProfileDatabase,
     /not\("trending_timezone",\s*"is",\s*null\)/,
@@ -138,8 +129,6 @@ test("quarter-hour sweep persists and resumes every cursor in one serialized tas
     replenishmentSweepState,
     /advance_daily_carousel_replenishment_cycle/,
   );
-  assert.match(replenishmentRoute, /requestedCycleId:\s*cycleId/);
-  assert.doesNotMatch(replenishmentRoute, /payload\.cursor/);
 });
 
 test("migration serializes sweep checkpoint claims and compare-and-set advances", () => {

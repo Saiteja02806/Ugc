@@ -353,14 +353,23 @@ export function HookVideoWorkspace({ active }: { active: boolean }) {
     );
   }
 
+  const selectedVideoIndex = selectedVideo
+    ? videos.findIndex((video) => video.id === selectedVideo.id)
+    : -1;
   const selectedPosition =
     browseMode === "surprise"
       ? surpriseIndex + 1
-      : selectedVideo
-        ? Math.max(0, videos.findIndex((video) => video.id === selectedVideo.id)) + 1
+      : selectedVideoIndex >= 0
+        ? selectedVideoIndex + 1
         : 0;
   const selectedTotal =
     browseMode === "surprise" ? surpriseQueue.length : videos.length;
+  const nextVideo =
+    browseMode === "surprise"
+      ? surpriseQueue[surpriseIndex + 1]?.video ?? null
+      : selectedVideoIndex >= 0
+        ? videos[selectedVideoIndex + 1] ?? null
+        : null;
 
   return (
     <section
@@ -413,6 +422,7 @@ export function HookVideoWorkspace({ active }: { active: boolean }) {
           <HookVideoDeck
             browseMode={browseMode}
             influencer={selectedInfluencer}
+            nextVideo={nextVideo}
             position={selectedPosition}
             previewError={previewError}
             previewLoading={previewLoading}

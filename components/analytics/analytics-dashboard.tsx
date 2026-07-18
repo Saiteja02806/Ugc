@@ -984,7 +984,7 @@ function AccountInsightList({ rows }: { rows: AccountInsightRow[] }) {
   if (rows.length === 0) {
     return (
       <EmptyAnalyticsState
-        description="Connect Instagram, TikTok, or YouTube to see account-level analytics here."
+        description="Connect TikTok with analytics access to see account-level performance metrics here. Instagram and YouTube currently contribute publishing activity only."
         title="No account data yet"
       />
     );
@@ -1236,7 +1236,7 @@ function ConnectedAccountsDisclosure({
               <StateHeading
                 icon={<BarChart3 className="size-5" aria-hidden="true" />}
                 title="No accounts connected yet"
-                description="Connect Instagram, TikTok, or YouTube to create platform-level analytics from real publishing activity."
+                description="Connect TikTok with analytics access to load platform-level performance metrics. Instagram and YouTube currently contribute publishing activity only."
               />
             </div>
           )}

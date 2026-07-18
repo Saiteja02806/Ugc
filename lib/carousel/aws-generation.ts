@@ -21,18 +21,14 @@ import {
 const CAROUSEL_JOB_TYPE = "generate_carousel";
 
 export function getMissingCarouselAwsEnvVars() {
+  return getMissingCarouselGenerationEnvVars();
+}
+
+export function getMissingCarouselGenerationEnvVars() {
   const missing = new Set([
     ...getMissingBackgroundJobStorageEnvVars(),
     ...getMissingSqsEnvVars([CAROUSEL_JOB_TYPE]),
   ]);
-
-  if (!process.env.AWS_S3_BUCKET?.trim()) {
-    missing.add("AWS_S3_BUCKET");
-  }
-
-  if (!process.env.CLOUDFRONT_DOMAIN?.trim()) {
-    missing.add("CLOUDFRONT_DOMAIN");
-  }
 
   return Array.from(missing);
 }
@@ -105,7 +101,7 @@ export async function enqueueCarouselGenerationJob(params: {
       jobId: job.id,
       onAttachmentError: (persistenceError) => {
         console.error(
-          "Carousel job was sent but its AWS message id could not be persisted:",
+          "Carousel job was sent but its queue message id could not be persisted:",
           persistenceError,
         );
       },

@@ -26,6 +26,10 @@ import {
   isVisibleCarouselConceptFingerprint,
 } from "@/lib/trending/carousel-concept-fingerprint";
 import {
+  getReadySlidesForCurrentStorage,
+  isCompleteReadyCarouselForCurrentStorage,
+} from "@/lib/trending/carousel-storage-readiness";
+import {
   getDailyFeedTopUpPlan,
   getOrCreatePersistedDailyFeed,
   getTrendingDailyFeedState,
@@ -480,7 +484,7 @@ async function populateDailyFeed(params: {
   );
   const runtimeSafeCarouselIds = new Set(
     carryStatuses
-      .filter(isCompleteReadyCarousel)
+      .filter(isCompleteReadyCarouselForCurrentStorage)
       .map((status) => status.generation.id),
   );
   const { invalid: invalidCarries, valid: validCarries } =
@@ -920,7 +924,7 @@ async function buildDailyFeedResponse(params: {
   const runtimeReadyItems = activeItems.filter(({ assignment }) => {
     const status = statusByCarouselId.get(assignment.carouselId);
 
-    return Boolean(status && isCompleteReadyCarousel(status));
+    return Boolean(status && isCompleteReadyCarouselForCurrentStorage(status));
   });
 
   if (params.markItemsShown) {
@@ -1227,11 +1231,11 @@ function selectAssignableCompletedCarouselStatuses(params: {
     candidates: params.statuses.map((status) => ({
       availableOnLocalDate: status.generation.availableOnLocalDate,
       carouselId: status.generation.id,
-      conceptFingerprint: isCompleteReadyCarousel(status)
+      conceptFingerprint: isCompleteReadyCarouselForCurrentStorage(status)
         ? createVisibleCarouselConceptFingerprint(status.slides)
         : null,
       generationSource: status.generation.generationSource,
-      runtimeReady: isCompleteReadyCarousel(status),
+      runtimeReady: isCompleteReadyCarouselForCurrentStorage(status),
     })),
     existingConceptFingerprints: [...params.existingConceptFingerprints],
     localDate: params.localDate,
@@ -1576,7 +1580,7 @@ function toTrendingFeedCarousel(params: {
   generation: CarouselGenerationRecord;
   slides: CarouselSlideRecord[];
 }): TrendingFeedCarousel {
-  const readySlides = getReadySlides(params.slides);
+  const readySlides = getReadySlidesForCurrentStorage(params.slides);
 
   return {
     assignmentId: params.assignment.id,
@@ -1603,22 +1607,6 @@ function toTrendingFeedCarousel(params: {
     thumbnailUrl: readySlides[0]?.renderedUrl ?? null,
     updatedAt: params.generation.updatedAt,
   };
-}
-
-function isCompleteReadyCarousel(status: {
-  generation: CarouselGenerationRecord;
-  slides: CarouselSlideRecord[];
-}) {
-  return (
-    status.generation.status === "completed" &&
-    getReadySlides(status.slides).length === status.generation.slideCount
-  );
-}
-
-function getReadySlides(slides: CarouselSlideRecord[]) {
-  return slides
-    .filter((slide) => slide.status === "ready" && Boolean(slide.renderedUrl))
-    .sort((first, second) => first.slideNumber - second.slideNumber);
 }
 
 function getCompletedState(action: CompletionAction): AssignmentState {

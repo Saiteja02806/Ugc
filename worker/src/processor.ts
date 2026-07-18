@@ -1,17 +1,16 @@
 import { randomUUID } from "node:crypto";
 
-import type { Message, SQSClient } from "@aws-sdk/client-sqs";
-
 import type { WorkerConfig } from "./config.js";
 import { getErrorMessage, logger } from "./logger.js";
 import { hasWorkerJobHandler, runWorkerJob } from "./jobs/index.js";
 import {
-  changeWorkerMessageVisibility,
-  deleteWorkerMessage,
-  extendWorkerMessageVisibility,
   isAllowedWorkerJobType,
-  parseWorkerMessage,
-} from "./lib/sqs.js";
+  parseWorkerDeliveryMessage,
+} from "./lib/queue-message.js";
+import type {
+  WorkerDeliveryMessage,
+  WorkerQueueTransport,
+} from "./lib/queue-types.js";
 import type { SupabaseJobStore } from "./lib/supabase.js";
 import { RetryableJobError } from "./retryable-job-error.js";
 import type { BackgroundJobRow } from "./types.js";
@@ -22,26 +21,26 @@ type ProcessMessageParams = {
     heartbeatIntervalMs?: number;
     runJob?: typeof runWorkerJob;
   };
-  message: Message;
-  sqsClient: SQSClient;
+  message: WorkerDeliveryMessage;
+  queue: WorkerQueueTransport;
   store: SupabaseJobStore;
 };
 
 const terminalJobStatuses = new Set(["cancelled", "completed", "failed"]);
 
 export async function processWorkerMessage(params: ProcessMessageParams) {
-  const { config, dependencies, message, sqsClient, store } = params;
-  const messageId = message.MessageId ?? "unknown-message";
+  const { config, dependencies, message, queue, store } = params;
+  const messageId = message.id;
   let parsedMessage;
 
   try {
-    parsedMessage = parseWorkerMessage(message);
+    parsedMessage = parseWorkerDeliveryMessage(message);
   } catch (error) {
-    logger.warn("Dropping malformed SQS message", {
+    logger.warn("Dropping malformed worker queue message", {
       error: getErrorMessage(error),
       messageId,
     });
-    await deleteWorkerMessage({ client: sqsClient, config, message });
+    await queue.deleteMessage(message);
     return;
   }
 
@@ -54,33 +53,33 @@ export async function processWorkerMessage(params: ProcessMessageParams) {
   const job = await store.getJobById(parsedMessage.jobId);
 
   if (!job) {
-    logger.warn("Dropping SQS message for missing background job", {
+    logger.warn("Dropping queue message for missing background job", {
       jobId: parsedMessage.jobId,
       jobType: parsedMessage.jobType,
       messageId,
     });
-    await deleteWorkerMessage({ client: sqsClient, config, message });
+    await queue.deleteMessage(message);
     return;
   }
 
   if (terminalJobStatuses.has(job.status)) {
-    logger.info("Dropping duplicate SQS message for terminal job", {
+    logger.info("Dropping duplicate queue message for terminal job", {
       jobId: job.id,
       jobStatus: job.status,
       jobType: job.job_type,
       messageId,
     });
-    await deleteWorkerMessage({ client: sqsClient, config, message });
+    await queue.deleteMessage(message);
     return;
   }
 
   if (job.job_type !== parsedMessage.jobType) {
     await failKnownJobAndDeleteMessage({
       config,
-      errorMessage: `SQS jobType ${parsedMessage.jobType} does not match stored job type ${job.job_type}.`,
+      errorMessage: `Queue jobType ${parsedMessage.jobType} does not match stored job type ${job.job_type}.`,
       job,
       message,
-      sqsClient,
+      queue,
       store,
     });
     return;
@@ -110,7 +109,7 @@ export async function processWorkerMessage(params: ProcessMessageParams) {
     dependencies,
     job,
     message,
-    sqsClient,
+    queue,
     store,
   });
 }
@@ -151,12 +150,12 @@ async function processClaimableJob(params: {
   config: WorkerConfig;
   dependencies?: ProcessMessageParams["dependencies"];
   job: BackgroundJobRow;
-  message?: Message;
-  sqsClient?: SQSClient;
+  message?: WorkerDeliveryMessage;
+  queue?: WorkerQueueTransport;
   store: SupabaseJobStore;
 }) {
-  const { config, dependencies, job, message, sqsClient, store } = params;
-  const messageId = message?.MessageId ?? "database-recovery";
+  const { config, dependencies, job, message, queue, store } = params;
+  const messageId = message?.id ?? "database-recovery";
 
   const claimToken = randomUUID();
   const processingJob = await store.claimJob({
@@ -170,13 +169,13 @@ async function processClaimableJob(params: {
     const latestJob = await store.getJobById(job.id);
 
     if (!latestJob || terminalJobStatuses.has(latestJob.status)) {
-      logger.info("Dropping duplicate SQS message after claim was denied", {
+      logger.info("Dropping duplicate queue message after claim was denied", {
         jobId: job.id,
         jobStatus: latestJob?.status ?? "missing",
         jobType: job.job_type,
         messageId,
       });
-      await deleteDeliveryMessage({ config, message, sqsClient });
+      await deleteDeliveryMessage({ config, message, queue });
       return false;
     }
 
@@ -184,13 +183,8 @@ async function processClaimableJob(params: {
       latestJob.next_attempt_at,
     );
 
-    if (retryDelaySeconds && message && sqsClient) {
-      await changeWorkerMessageVisibility({
-        client: sqsClient,
-        config,
-        message,
-        visibilityTimeoutSeconds: retryDelaySeconds,
-      });
+    if (retryDelaySeconds && message && queue) {
+      await queue.changeMessageVisibility(message, retryDelaySeconds);
       logger.info("Background job is waiting for its retry time", {
         jobId: job.id,
         jobType: job.job_type,
@@ -217,7 +211,7 @@ async function processClaimableJob(params: {
       heartbeatIntervalMs: dependencies?.heartbeatIntervalMs,
       job: processingJob,
       message,
-      sqsClient,
+      queue,
       store,
     });
 
@@ -244,7 +238,7 @@ async function processClaimableJob(params: {
       const latestJob = await store.getJobById(processingJob.id);
 
       if (latestJob && terminalJobStatuses.has(latestJob.status)) {
-        await deleteDeliveryMessage({ config, message, sqsClient });
+        await deleteDeliveryMessage({ config, message, queue });
         logger.info("Worker completion was superseded by a terminal job state", {
           jobId: processingJob.id,
           jobStatus: latestJob.status,
@@ -257,7 +251,7 @@ async function processClaimableJob(params: {
       throw new Error("Background job claim was lost before completion.");
     }
 
-    await deleteDeliveryMessage({ config, message, sqsClient });
+    await deleteDeliveryMessage({ config, message, queue });
 
     logger.info("Worker job completed", {
       jobId: processingJob.id,
@@ -276,9 +270,9 @@ async function processClaimableJob(params: {
         error,
         job: processingJob,
         message,
-        sqsClient,
+        queue,
         store,
-      });
+    });
       return false;
     }
 
@@ -288,7 +282,7 @@ async function processClaimableJob(params: {
       errorMessage: getErrorMessage(error),
       job: processingJob,
       message,
-      sqsClient,
+      queue,
       store,
     });
     return false;
@@ -300,11 +294,11 @@ async function retryKnownJob(params: {
   config: WorkerConfig;
   error: RetryableJobError;
   job: BackgroundJobRow;
-  message?: Message;
-  sqsClient?: SQSClient;
+  message?: WorkerDeliveryMessage;
+  queue?: WorkerQueueTransport;
   store: SupabaseJobStore;
 }) {
-  const messageId = params.message?.MessageId ?? "database-recovery";
+  const messageId = params.message?.id ?? "database-recovery";
   const retryingJob = await params.store.markRetrying({
     claimToken: params.claimToken,
     errorMessage: params.error.message,
@@ -328,13 +322,11 @@ async function retryKnownJob(params: {
     return;
   }
 
-  if (params.message && params.sqsClient) {
-    await changeWorkerMessageVisibility({
-      client: params.sqsClient,
-      config: params.config,
-      message: params.message,
-      visibilityTimeoutSeconds: params.error.retryAfterSeconds,
-    });
+  if (params.message && params.queue) {
+    await params.queue.changeMessageVisibility(
+      params.message,
+      params.error.retryAfterSeconds,
+    );
   }
 
   logger.warn("Worker job scheduled for retry", {
@@ -353,11 +345,11 @@ async function failKnownJobAndDeleteMessage(params: {
   config: WorkerConfig;
   errorMessage: string;
   job: BackgroundJobRow;
-  message?: Message;
-  sqsClient?: SQSClient;
+  message?: WorkerDeliveryMessage;
+  queue?: WorkerQueueTransport;
   store: SupabaseJobStore;
 }) {
-  const messageId = params.message?.MessageId ?? "database-recovery";
+  const messageId = params.message?.id ?? "database-recovery";
 
   try {
     const failedJob = await params.store.markFailed({
@@ -403,18 +395,14 @@ async function failKnownJobAndDeleteMessage(params: {
 
 async function deleteDeliveryMessage(params: {
   config: WorkerConfig;
-  message?: Message;
-  sqsClient?: SQSClient;
+  message?: WorkerDeliveryMessage;
+  queue?: WorkerQueueTransport;
 }) {
-  if (!params.message || !params.sqsClient) {
+  if (!params.message || !params.queue) {
     return;
   }
 
-  await deleteWorkerMessage({
-    client: params.sqsClient,
-    config: params.config,
-    message: params.message,
-  });
+  await params.queue.deleteMessage(params.message);
 }
 
 type WorkerMessageHeartbeat = {
@@ -427,8 +415,8 @@ function startWorkerMessageHeartbeat(params: {
   config: WorkerConfig;
   heartbeatIntervalMs?: number;
   job: BackgroundJobRow;
-  message?: Message;
-  sqsClient?: SQSClient;
+  message?: WorkerDeliveryMessage;
+  queue?: WorkerQueueTransport;
   store: SupabaseJobStore;
 }): WorkerMessageHeartbeat {
   const intervalMs =
@@ -454,12 +442,11 @@ function startWorkerMessageHeartbeat(params: {
 
   const runTick = async () => {
     const visibilityPromise =
-      params.message && params.sqsClient
-        ? extendWorkerMessageVisibility({
-            client: params.sqsClient,
-            config: params.config,
-            message: params.message,
-          })
+      params.message && params.queue
+        ? params.queue.changeMessageVisibility(
+            params.message,
+            params.config.visibilityTimeoutSeconds,
+          )
         : Promise.resolve();
     const [visibilityResult, databaseResult] = await Promise.allSettled([
       visibilityPromise,
@@ -471,14 +458,14 @@ function startWorkerMessageHeartbeat(params: {
 
     if (
       params.message &&
-      params.sqsClient &&
+      params.queue &&
       visibilityResult.status === "rejected"
     ) {
-      logger.warn("Could not extend SQS message visibility", {
+      logger.warn("Could not extend queue message visibility", {
         error: getErrorMessage(visibilityResult.reason),
         jobId: params.job.id,
         jobType: params.job.job_type,
-        messageId: params.message.MessageId ?? "unknown-message",
+        messageId: params.message.id,
       });
     }
 
@@ -487,14 +474,14 @@ function startWorkerMessageHeartbeat(params: {
         error: getErrorMessage(databaseResult.reason),
         jobId: params.job.id,
         jobType: params.job.job_type,
-        messageId: params.message?.MessageId ?? "database-recovery",
+        messageId: params.message?.id ?? "database-recovery",
       });
     } else if (!databaseResult.value) {
       claimLost = true;
       logger.warn("Background job heartbeat detected a lost claim", {
         jobId: params.job.id,
         jobType: params.job.job_type,
-        messageId: params.message?.MessageId ?? "database-recovery",
+        messageId: params.message?.id ?? "database-recovery",
       });
     }
   };

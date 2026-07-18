@@ -1,0 +1,26 @@
+project_id  = "ugcsaas"
+region      = "us-central1"
+environment = "prod"
+name_prefix = "ugc"
+
+# Keep false until:
+# - a worker image has been pushed to Artifact Registry;
+# - Secret Manager has supabase-url and supabase-service-role-key versions;
+# - a test_worker_job has been queued to the matching Pub/Sub topic.
+enable_canary_job = false
+
+# Example after running npm run worker:gcp:image:push:
+# worker_image_uri = "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718090000"
+worker_image_uri = ""
+
+worker_service_account_email = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
+canary_job_name              = "ugc-worker-canary-test"
+pubsub_subscription_name     = "ugc-media-processing-sub"
+queue_name                   = "media-processing"
+worker_job_types             = "test_worker_job"
+
+worker_poll_wait_seconds          = 10
+worker_visibility_timeout_seconds = 300
+task_timeout_seconds              = 900
+cpu                               = "1"
+memory                            = "1Gi"

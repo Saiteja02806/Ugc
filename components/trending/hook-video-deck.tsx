@@ -2,6 +2,7 @@
 
 import { ArrowLeft, Loader2, Plus, RefreshCw, Sparkles, Video } from "lucide-react";
 import {
+  useEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -14,10 +15,12 @@ import type {
 } from "@/lib/trending/hook-video-types";
 
 const SWIPE_THRESHOLD = 64;
+const SWIPE_EXIT_DURATION_MS = 180;
 
 export function HookVideoDeck({
   browseMode,
   influencer,
+  nextVideo,
   position,
   previewError,
   previewLoading,
@@ -33,6 +36,7 @@ export function HookVideoDeck({
 }: {
   browseMode: "influencer" | "surprise";
   influencer: HookInfluencerSummary;
+  nextVideo: HookInfluencerVideoSummary | null;
   position: number;
   previewError: string | null;
   previewLoading: boolean;
@@ -51,10 +55,21 @@ export function HookVideoDeck({
     x: number;
     y: number;
   } | null>(null);
+  const swipeExitTimer = useRef<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
+  const [exitingDirection, setExitingDirection] = useState<
+    "left" | "right" | null
+  >(null);
+
+  useEffect(() => {
+    return () => {
+      if (swipeExitTimer.current) window.clearTimeout(swipeExitTimer.current);
+    };
+  }, []);
 
   function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if ((event.target as HTMLElement).closest("button")) return;
+    if (exitingDirection) return;
 
     pointerStart.current = {
       pointerId: event.pointerId,
@@ -65,6 +80,7 @@ export function HookVideoDeck({
   }
 
   function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (exitingDirection) return;
     if (pointerStart.current?.pointerId !== event.pointerId) return;
     setDragOffset(event.clientX - pointerStart.current.x);
   }
@@ -89,12 +105,22 @@ export function HookVideoDeck({
       return;
     }
 
-    if (deltaX < 0) onSkip();
-    else onCompose();
+    animateSwipeExit(deltaX < 0 ? "left" : "right");
+  }
+
+  function animateSwipeExit(direction: "left" | "right") {
+    if (exitingDirection) return;
+
+    setExitingDirection(direction);
+    swipeExitTimer.current = window.setTimeout(() => {
+      setExitingDirection(null);
+      if (direction === "left") onSkip();
+      else onCompose();
+    }, SWIPE_EXIT_DURATION_MS);
   }
 
   return (
-    <div className="flex min-h-[400px] flex-col items-center justify-center px-4 py-4 sm:px-6">
+    <div className="flex min-h-[400px] flex-col items-center justify-center overflow-visible px-4 py-4 sm:px-6">
       <div className="flex w-full max-w-sm items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-foreground-strong">
@@ -116,22 +142,53 @@ export function HookVideoDeck({
       </div>
 
       <div
-        className="mt-3 touch-pan-y select-none"
+        className="relative mt-3 w-full max-w-sm touch-pan-y select-none overflow-visible"
         aria-label={`${video.title}. Swipe left to skip or right to add a product demo.`}
         onPointerCancel={finishSwipe}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={finishSwipe}
       >
-        <HookVideoCard
-          dragOffset={dragOffset}
-          previewError={previewError}
-          previewLoading={previewLoading}
-          previewUrl={previewUrl}
-          video={video}
-          onPreviewError={onPreviewError}
-          onRetryPreview={onRetryPreview}
-        />
+        <div
+          className="relative mx-auto -translate-x-2 overflow-visible"
+          style={{ width: "min(90%, 236px)" }}
+        >
+          {nextVideo ? (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 z-0 opacity-85 transition-[opacity,transform] duration-200 ease-out"
+              style={{
+                transform: "translateX(8px) rotate(2deg) scale(0.955)",
+                transformOrigin: "50% 50%",
+              }}
+            >
+              <HookVideoCard
+                dragOffset={0}
+                className="shadow-[0_10px_26px_rgb(23_23_27_/_0.14)]"
+                previewError={null}
+                previewLoading={false}
+                previewUrl={null}
+                video={nextVideo}
+                onPreviewError={() => undefined}
+                onRetryPreview={() => undefined}
+              />
+              <div className="absolute inset-0 rounded-control bg-black/20" />
+            </div>
+          ) : null}
+
+          <div className="relative z-10">
+            <HookVideoCard
+              dragOffset={dragOffset}
+              exitingDirection={exitingDirection}
+              previewError={previewError}
+              previewLoading={previewLoading}
+              previewUrl={previewUrl}
+              video={video}
+              onPreviewError={onPreviewError}
+              onRetryPreview={onRetryPreview}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="mt-2.5 w-full max-w-sm text-center">

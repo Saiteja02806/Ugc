@@ -66,7 +66,7 @@ export async function deliverSocialPublishRetry(
   }
 
   return {
-    delivery: "sqs" as const,
+    delivery: "queue" as const,
     messageId: message.messageId,
   };
 }

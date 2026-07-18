@@ -6,15 +6,14 @@ import {
   SchedulerClient,
 } from "@aws-sdk/client-scheduler";
 
+import type {
+  CreateSocialPublishScheduleInput,
+  SocialPublishSchedule,
+} from "@/lib/scheduling/social-scheduler-types";
+
 const SCHEDULE_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
 let schedulerClient: SchedulerClient | null = null;
-
-export type CreateSocialPublishScheduleInput = {
-  jobId: string;
-  scheduledFor: string;
-  targetId: string;
-};
 
 export function getMissingSocialSchedulerEnvVars() {
   const missing: string[] = [];
@@ -46,7 +45,7 @@ export function getMissingSocialSchedulerEnvVars() {
 
 export async function createSocialPublishSchedule(
   input: CreateSocialPublishScheduleInput,
-) {
+): Promise<SocialPublishSchedule> {
   const name = getSocialPublishScheduleName(input.targetId);
   const scheduledAt = new Date(input.scheduledFor);
 

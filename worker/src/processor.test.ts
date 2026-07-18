@@ -2,13 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 
-import type { SQSClient } from "@aws-sdk/client-sqs";
-
 import type { WorkerConfig } from "./config.js";
 import {
   processRecoveredWorkerJob,
   processWorkerMessage,
 } from "./processor.js";
+import type { WorkerQueueTransport } from "./lib/queue-types.js";
 import type { SupabaseJobStore } from "./lib/supabase.js";
 import { RetryableJobError } from "./retryable-job-error.js";
 import type { BackgroundJobRow } from "./types.js";
@@ -16,7 +15,7 @@ import type { BackgroundJobRow } from "./types.js";
 test("only one delivery can claim and execute a background job", async () => {
   const job = createJob();
   const commands: string[] = [];
-  const sqsClient = createSqsClient(commands);
+  const queue = createQueue(commands);
   let handlerCalls = 0;
   let releaseHandler!: () => void;
   let notifyHandlerStarted!: () => void;
@@ -39,7 +38,7 @@ test("only one delivery can claim and execute a background job", async () => {
       },
     },
     message: createMessage(),
-    sqsClient,
+    queue,
     store,
   };
 
@@ -63,7 +62,7 @@ test("only one delivery can claim and execute a background job", async () => {
   );
 });
 
-test("extends SQS visibility and the database lease while a job runs", async () => {
+test("extends queue visibility and the database lease while a job runs", async () => {
   const job = createJob();
   const commands: string[] = [];
   const store = createJobStore(job);
@@ -85,7 +84,7 @@ test("extends SQS visibility and the database lease while a job runs", async () 
       },
     },
     message: createMessage(),
-    sqsClient: createSqsClient(commands),
+    queue: createQueue(commands),
     store,
   });
 
@@ -100,7 +99,7 @@ test("extends SQS visibility and the database lease while a job runs", async () 
   );
 });
 
-test("persists retry state and keeps the SQS delivery", async () => {
+test("persists retry state and keeps the queue delivery", async () => {
   const job = createJob();
   const commands: string[] = [];
 
@@ -117,7 +116,7 @@ test("persists retry state and keeps the SQS delivery", async () => {
       },
     },
     message: createMessage(),
-    sqsClient: createSqsClient(commands),
+    queue: createQueue(commands),
     store: createJobStore(job),
   });
 
@@ -149,7 +148,7 @@ test("defers an early duplicate delivery until the stored retry time", async () 
       },
     },
     message: createMessage(),
-    sqsClient: createSqsClient(commands),
+    queue: createQueue(commands),
     store: createJobStore(job),
   });
 
@@ -165,7 +164,7 @@ test("defers an early duplicate delivery until the stored retry time", async () 
   );
 });
 
-test("recovers and completes a due database job without an SQS delivery", async () => {
+test("recovers and completes a due database job without a queue delivery", async () => {
   const job = createJob();
   let handlerCalls = 0;
 
@@ -295,11 +294,15 @@ function createConfig(): WorkerConfig {
   return {
     allowedJobTypes: ["test_worker_job"],
     awsRegion: "us-east-2",
+    gcpProjectId: null,
     pollMaxMessages: 1,
     pollWaitTimeSeconds: 0,
+    pubsubSubscriptionName: null,
     queueName: "test",
+    queueProvider: "aws",
     queueUrl: "https://sqs.us-east-2.amazonaws.com/123456789012/test",
     socialReconciliationBatchSize: 10,
+    socialReconciliationEnabled: true,
     socialReconciliationIntervalSeconds: 15,
     supabaseServiceRoleKey: "test",
     supabaseUrl: "https://example.supabase.co",
@@ -313,20 +316,27 @@ function createConfig(): WorkerConfig {
 
 function createMessage() {
   return {
-    Body: JSON.stringify({
+    body: JSON.stringify({
       jobId: "d8187032-2774-4aa6-9a8a-f3c46f8e0c7a",
       jobType: "test_worker_job",
     }),
-    MessageId: "message-test",
-    ReceiptHandle: "receipt-test",
+    id: "message-test",
+    providerName: "aws" as const,
+    receiptHandle: "receipt-test",
   };
 }
 
-function createSqsClient(commands: string[]) {
+function createQueue(commands: string[]): WorkerQueueTransport {
   return {
-    async send(command: object) {
-      commands.push(command.constructor.name);
-      return {};
+    async changeMessageVisibility() {
+      commands.push("ChangeMessageVisibilityCommand");
     },
-  } as unknown as SQSClient;
+    async deleteMessage() {
+      commands.push("DeleteMessageCommand");
+    },
+    providerName: "aws",
+    async receiveMessages() {
+      return [];
+    },
+  };
 }

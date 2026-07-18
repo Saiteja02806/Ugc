@@ -1,6 +1,8 @@
+import { createServer, type Server } from "node:http";
+
 import { loadWorkerConfig } from "./config.js";
 import { getErrorMessage, logger } from "./logger.js";
-import { createWorkerSqsClient, receiveWorkerMessages } from "./lib/sqs.js";
+import { createWorkerQueueTransport } from "./lib/queue.js";
 import { createSupabaseJobStore } from "./lib/supabase.js";
 import {
   CAROUSEL_IMAGE_SAFETY_POLICY_VERSION,
@@ -32,7 +34,8 @@ void main().catch((error) => {
 
 async function main() {
   const config = loadWorkerConfig();
-  const sqsClient = createWorkerSqsClient(config);
+  const healthServer = await startWorkerHealthServer();
+  const queue = createWorkerQueueTransport(config);
   const store = createSupabaseJobStore({
     supabaseServiceRoleKey: config.supabaseServiceRoleKey,
     supabaseUrl: config.supabaseUrl,
@@ -43,9 +46,12 @@ async function main() {
     hasWorkerQueueUrl: Boolean(config.queueUrl),
     pollMaxMessages: config.pollMaxMessages,
     pollWaitTimeSeconds: config.pollWaitTimeSeconds,
+    pubsubSubscriptionName: config.pubsubSubscriptionName,
     queueName: config.queueName,
+    queueProvider: queue.providerName,
     runOnce: config.workerRunOnce,
     socialReconciliationBatchSize: config.socialReconciliationBatchSize,
+    socialReconciliationEnabled: config.socialReconciliationEnabled,
     socialReconciliationIntervalSeconds:
       config.socialReconciliationIntervalSeconds,
     visibilityTimeoutSeconds: config.visibilityTimeoutSeconds,
@@ -67,68 +73,70 @@ async function main() {
 
   let nextSocialReconciliationAt = 0;
 
-  while (!shouldStop) {
-    try {
-      if (
-        config.allowedJobTypes.includes("publish_social_post") &&
-        Date.now() >= nextSocialReconciliationAt
-      ) {
-        nextSocialReconciliationAt =
-          Date.now() + config.socialReconciliationIntervalSeconds * 1_000;
-        await reconcileDueSocialPublishJobs({ config, store }).catch((error) => {
-          logger.error("Social schedule reconciliation failed", {
-            error: getErrorMessage(error),
+  try {
+    while (!shouldStop) {
+      try {
+        if (
+          config.socialReconciliationEnabled &&
+          config.allowedJobTypes.includes("publish_social_post") &&
+          Date.now() >= nextSocialReconciliationAt
+        ) {
+          nextSocialReconciliationAt =
+            Date.now() + config.socialReconciliationIntervalSeconds * 1_000;
+          await reconcileDueSocialPublishJobs({ config, store }).catch((error) => {
+            logger.error("Social schedule reconciliation failed", {
+              error: getErrorMessage(error),
+            });
           });
-        });
-      }
+        }
 
-      const messages = await receiveWorkerMessages({
-        client: sqsClient,
-        config,
-      });
+        const messages = await queue.receiveMessages();
 
-      if (messages.length === 0) {
-        logger.debug("No worker messages received");
+        if (messages.length === 0) {
+          logger.debug("No worker messages received");
+
+          if (config.workerRunOnce) {
+            break;
+          }
+
+          continue;
+        }
+
+        for (const message of messages) {
+          if (shouldStop) {
+            break;
+          }
+
+          await processWorkerMessage({
+            config,
+            message,
+            queue,
+            store,
+          });
+        }
 
         if (config.workerRunOnce) {
           break;
         }
+      } catch (error) {
+        logger.error("Worker polling iteration failed", {
+          error: getErrorMessage(error),
+        });
 
-        continue;
-      }
-
-      for (const message of messages) {
-        if (shouldStop) {
-          break;
+        if (config.workerRunOnce) {
+          throw error;
         }
 
-        await processWorkerMessage({
-          config,
-          message,
-          sqsClient,
-          store,
-        });
+        await sleep(5_000);
       }
-
-      if (config.workerRunOnce) {
-        break;
-      }
-    } catch (error) {
-      logger.error("Worker polling iteration failed", {
-        error: getErrorMessage(error),
-      });
-
-      if (config.workerRunOnce) {
-        throw error;
-      }
-
-      await sleep(5_000);
     }
-  }
 
-  logger.info("UGC worker stopped", {
-    workerId: config.workerId,
-  });
+    logger.info("UGC worker stopped", {
+      workerId: config.workerId,
+    });
+  } finally {
+    await stopWorkerHealthServer(healthServer);
+  }
 }
 
 async function reconcileDueSocialPublishJobs(params: {
@@ -178,5 +186,69 @@ function requestShutdown(signal: string) {
 function sleep(ms: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
+  });
+}
+
+async function startWorkerHealthServer() {
+  const rawPort =
+    process.env.WORKER_HTTP_PORT?.trim() || process.env.PORT?.trim();
+
+  if (!rawPort) {
+    return null;
+  }
+
+  const port = Number(rawPort);
+
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    throw new Error(`Invalid worker health port: ${rawPort}`);
+  }
+
+  const server = createServer((request, response) => {
+    if (request.url === "/" || request.url === "/healthz") {
+      response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+      response.end("ok\n");
+      return;
+    }
+
+    response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+    response.end("not found\n");
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    const onError = (error: Error) => {
+      server.off("listening", onListening);
+      reject(error);
+    };
+    const onListening = () => {
+      server.off("error", onError);
+      resolve();
+    };
+
+    server.once("error", onError);
+    server.once("listening", onListening);
+    server.listen(port, "0.0.0.0");
+  });
+
+  logger.info("Worker health server started", {
+    port,
+  });
+
+  return server;
+}
+
+async function stopWorkerHealthServer(server: Server | null) {
+  if (!server) {
+    return;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
   });
 }

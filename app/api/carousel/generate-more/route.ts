@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   enqueueCarouselGenerationJob,
-  getMissingCarouselAwsEnvVars,
+  getMissingCarouselGenerationEnvVars,
 } from "@/lib/carousel/aws-generation";
 import { getCarouselCandidateAngles } from "@/lib/carousel/candidate-angles";
 import { resolveCarouselCategoryProfile } from "@/lib/carousel/category-profile-resolver";
@@ -67,7 +67,7 @@ function getMissingRuntimeEnv() {
   return Array.from(
     new Set([
       ...getMissingCarouselDbEnvVars(),
-      ...getMissingCarouselAwsEnvVars(),
+      ...getMissingCarouselGenerationEnvVars(),
     ]),
   );
 }

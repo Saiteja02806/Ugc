@@ -3,27 +3,16 @@ import {
   DeleteMessageCommand,
   ReceiveMessageCommand,
   SQSClient,
-  type Message,
 } from "@aws-sdk/client-sqs";
 
 import type { WorkerConfig } from "../config.js";
-import type { BackgroundJobType, WorkerQueueMessage } from "../types.js";
-
-const validWorkerJobTypes = new Set<BackgroundJobType>([
-  "extract_video_metadata",
-  "generate_avatar",
-  "generate_carousel",
-  "generate_hook_video",
-  "generate_image",
-  "generate_thumbnail",
-  "publish_social_post",
-  "render_demo_video",
-  "render_edit_video",
-  "render_schedule_combination",
-  "test_worker_job",
-]);
+import type { WorkerDeliveryMessage } from "./queue-types.js";
 
 export function createWorkerSqsClient(config: WorkerConfig) {
+  if (!config.awsRegion) {
+    throw new Error("Missing AWS_REGION for SQS worker queue provider.");
+  }
+
   return new SQSClient({
     region: config.awsRegion,
   });
@@ -33,31 +22,37 @@ export async function receiveWorkerMessages(params: {
   client: SQSClient;
   config: WorkerConfig;
 }) {
+  const queueUrl = getWorkerSqsQueueUrl(params.config);
   const result = await params.client.send(
     new ReceiveMessageCommand({
       MaxNumberOfMessages: params.config.pollMaxMessages,
-      QueueUrl: params.config.queueUrl,
+      QueueUrl: queueUrl,
       VisibilityTimeout: params.config.visibilityTimeoutSeconds,
       WaitTimeSeconds: params.config.pollWaitTimeSeconds,
     }),
   );
 
-  return result.Messages ?? [];
+  return (result.Messages ?? []).map((message) => ({
+    body: message.Body ?? null,
+    id: message.MessageId ?? "unknown-message",
+    providerName: "aws" as const,
+    receiptHandle: message.ReceiptHandle ?? null,
+  }));
 }
 
 export async function deleteWorkerMessage(params: {
   client: SQSClient;
   config: WorkerConfig;
-  message: Message;
+  message: WorkerDeliveryMessage;
 }) {
-  if (!params.message.ReceiptHandle) {
+  if (!params.message.receiptHandle) {
     throw new Error("Cannot delete SQS message without ReceiptHandle.");
   }
 
   await params.client.send(
     new DeleteMessageCommand({
-      QueueUrl: params.config.queueUrl,
-      ReceiptHandle: params.message.ReceiptHandle,
+      QueueUrl: getWorkerSqsQueueUrl(params.config),
+      ReceiptHandle: params.message.receiptHandle,
     }),
   );
 }
@@ -65,7 +60,7 @@ export async function deleteWorkerMessage(params: {
 export async function extendWorkerMessageVisibility(params: {
   client: SQSClient;
   config: WorkerConfig;
-  message: Message;
+  message: WorkerDeliveryMessage;
 }) {
   return changeWorkerMessageVisibility({
     ...params,
@@ -76,17 +71,17 @@ export async function extendWorkerMessageVisibility(params: {
 export async function changeWorkerMessageVisibility(params: {
   client: SQSClient;
   config: WorkerConfig;
-  message: Message;
+  message: WorkerDeliveryMessage;
   visibilityTimeoutSeconds: number;
 }) {
-  if (!params.message.ReceiptHandle) {
+  if (!params.message.receiptHandle) {
     throw new Error("Cannot extend SQS visibility without ReceiptHandle.");
   }
 
   await params.client.send(
     new ChangeMessageVisibilityCommand({
-      QueueUrl: params.config.queueUrl,
-      ReceiptHandle: params.message.ReceiptHandle,
+      QueueUrl: getWorkerSqsQueueUrl(params.config),
+      ReceiptHandle: params.message.receiptHandle,
       VisibilityTimeout: Math.max(
         0,
         Math.min(43_200, Math.ceil(params.visibilityTimeoutSeconds)),
@@ -95,34 +90,10 @@ export async function changeWorkerMessageVisibility(params: {
   );
 }
 
-export function parseWorkerMessage(message: Message): WorkerQueueMessage {
-  if (!message.Body) {
-    throw new Error("SQS message body is empty.");
+function getWorkerSqsQueueUrl(config: WorkerConfig) {
+  if (!config.queueUrl) {
+    throw new Error("Missing WORKER_QUEUE_URL for SQS worker queue provider.");
   }
 
-  const parsedBody = JSON.parse(message.Body) as Partial<WorkerQueueMessage>;
-
-  if (!parsedBody.jobId || typeof parsedBody.jobId !== "string") {
-    throw new Error("SQS message body is missing jobId.");
-  }
-
-  if (!parsedBody.jobType || typeof parsedBody.jobType !== "string") {
-    throw new Error("SQS message body is missing jobType.");
-  }
-
-  if (!validWorkerJobTypes.has(parsedBody.jobType as BackgroundJobType)) {
-    throw new Error(`Invalid worker job type: ${parsedBody.jobType}`);
-  }
-
-  return {
-    jobId: parsedBody.jobId,
-    jobType: parsedBody.jobType as BackgroundJobType,
-  };
-}
-
-export function isAllowedWorkerJobType(
-  config: WorkerConfig,
-  jobType: BackgroundJobType,
-) {
-  return config.allowedJobTypes.includes(jobType);
+  return config.queueUrl;
 }

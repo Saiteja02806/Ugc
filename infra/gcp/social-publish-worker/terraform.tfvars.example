@@ -1,0 +1,56 @@
+project_id  = "ugcsaas"
+region      = "us-central1"
+environment = "prod"
+
+# Keep false until:
+# - a worker image has been pushed after the Cloud Run health listener change;
+# - Secret Manager has enabled versions for the listed social publish secrets;
+# - you are ready to test social publishing intentionally.
+enable_social_publish_worker = false
+
+# Example after running npm run worker:gcp:image:push -- --cloud-build:
+# worker_image_uri = "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718143000"
+worker_image_uri = ""
+
+worker_service_account_email = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
+service_name                 = "ugc-social-publish-worker"
+pubsub_subscription_name     = "ugc-social-publish-sub"
+queue_name                   = "social-publish"
+worker_job_types             = "publish_social_post"
+
+worker_poll_max_messages          = 1
+worker_poll_wait_seconds          = 20
+worker_visibility_timeout_seconds = 300
+min_instance_count                = 1
+max_instance_count                = 1
+request_timeout_seconds           = 300
+cpu                               = "1"
+memory                            = "1Gi"
+container_port                    = 8080
+
+storage_provider            = "gcp"
+gcp_storage_bucket          = "ugcsaas-media"
+gcp_storage_public_base_url = "https://storage.googleapis.com/ugcsaas-media"
+
+token_encryption_secret_id        = "oauth-token-encryption-key"
+google_client_id_secret_id        = "google-client-id"
+google_client_secret_secret_id    = "google-client-secret"
+tiktok_client_key_secret_id       = "tiktok-client-key"
+tiktok_client_secret_secret_id    = "tiktok-client-secret"
+social_publish_max_attempts       = 4
+social_publish_retry_base_seconds = 30
+social_publish_retry_max_seconds  = 900
+
+# Keep false for the first GCP canary so the worker cannot recover and publish
+# old due jobs from the database without an explicit Pub/Sub message.
+social_reconciliation_enabled          = false
+social_reconciliation_batch_size       = 10
+social_reconciliation_interval_seconds = 15
+
+# FILE_UPLOAD avoids a verified media domain requirement for TikTok videos.
+# TikTok photo carousel publishing still requires verified pull URL hosts.
+tiktok_media_transfer_mode  = "FILE_UPLOAD"
+tiktok_verified_media_hosts = ""
+
+worker_version    = "worker-gcp"
+worker_git_commit = "unknown"

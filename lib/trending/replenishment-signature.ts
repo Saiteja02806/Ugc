@@ -53,14 +53,6 @@ export function getCarouselReplenishmentSecret() {
     : "";
 }
 
-export function getCarouselReplenishmentTriggerSecret() {
-  const dedicatedSecret = process.env.UGC_INTERNAL_CAROUSEL_SECRET?.trim() ?? "";
-
-  return isValidCarouselReplenishmentSecret(dedicatedSecret)
-    ? dedicatedSecret
-    : "";
-}
-
 export function isValidCarouselReplenishmentSecret(value: string) {
   return Buffer.byteLength(value, "utf8") >=
     CAROUSEL_REPLENISHMENT_SECRET_MIN_BYTES;

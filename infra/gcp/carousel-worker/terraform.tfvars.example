@@ -1,0 +1,39 @@
+project_id  = "ugcsaas"
+region      = "us-central1"
+environment = "prod"
+
+# Keep false until:
+# - a worker image has been pushed after the Cloud Run health listener change;
+# - Secret Manager has enabled versions for supabase-url,
+#   supabase-service-role-key, and openai-api-key;
+# - GCS media public read has been enabled for the testing cutover.
+enable_carousel_worker = false
+
+# Example after running npm run worker:gcp:image:push -- --cloud-build:
+# worker_image_uri = "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718143000"
+worker_image_uri = ""
+
+worker_service_account_email = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
+service_name                 = "ugc-carousel-worker"
+pubsub_subscription_name     = "ugc-carousel-sub"
+queue_name                   = "carousel"
+worker_job_types             = "generate_carousel"
+
+worker_poll_max_messages          = 1
+worker_poll_wait_seconds          = 20
+worker_visibility_timeout_seconds = 900
+min_instance_count                = 1
+max_instance_count                = 1
+request_timeout_seconds           = 300
+cpu                               = "1"
+memory                            = "2Gi"
+container_port                    = 8080
+
+storage_provider            = "gcp"
+gcp_storage_bucket          = "ugcsaas-media"
+gcp_storage_public_base_url = "https://storage.googleapis.com/ugcsaas-media"
+
+carousel_broad_matcher_mode         = "dry-run"
+carousel_disable_category_fallback  = true
+worker_version                      = "worker-gcp"
+worker_git_commit                   = "unknown"

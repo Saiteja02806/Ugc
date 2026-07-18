@@ -1,32 +1,52 @@
 "use client";
 
 import { AlertCircle, Loader2, Play, Video } from "lucide-react";
+import type { CSSProperties } from "react";
 
 import type { HookInfluencerVideoSummary } from "@/lib/trending/hook-video-types";
+import { cn } from "@/lib/utils";
 
 export function HookVideoCard({
+  className,
   dragOffset,
+  exitingDirection = null,
   previewError,
   previewLoading,
   previewUrl,
+  style,
   video,
   onPreviewError,
   onRetryPreview,
 }: {
+  className?: string;
   dragOffset: number;
+  exitingDirection?: "left" | "right" | null;
   previewError: string | null;
   previewLoading: boolean;
   previewUrl: string | null;
+  style?: CSSProperties;
   video: HookInfluencerVideoSummary;
   onPreviewError: () => void;
   onRetryPreview: () => void;
 }) {
+  const exitOffset =
+    exitingDirection === "left" ? -280 : exitingDirection === "right" ? 280 : 0;
+  const visibleOffset = exitingDirection ? exitOffset : dragOffset;
+
   return (
     <div
-      className="relative mx-auto aspect-[9/16] w-[clamp(168px,48vw,184px)] shrink-0 overflow-hidden rounded-control border border-border-strong bg-foreground-strong shadow-[0_12px_32px_rgb(23_23_27_/_0.16)]"
+      className={cn(
+        "relative aspect-[9/16] w-full shrink-0 overflow-hidden rounded-control border border-border-strong bg-foreground-strong shadow-[0_12px_32px_rgb(23_23_27_/_0.16)]",
+        className,
+      )}
       style={{
-        transform: `translateX(${Math.max(-88, Math.min(88, dragOffset))}px) rotate(${Math.max(-4, Math.min(4, dragOffset / 22))}deg)`,
-        transition: dragOffset === 0 ? "transform 180ms ease-out" : "none",
+        ...style,
+        transform: `translateX(${Math.max(-280, Math.min(280, visibleOffset))}px) rotate(${Math.max(-8, Math.min(8, visibleOffset / 22))}deg)`,
+        transition: exitingDirection
+          ? "transform 180ms ease-in"
+          : dragOffset === 0
+            ? "transform 180ms ease-out"
+            : "none",
       }}
     >
       {video.thumbnailUrl ? (

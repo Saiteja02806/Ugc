@@ -7,7 +7,7 @@ export async function runTestWorkerJob(job: BackgroundJobRow) {
   return {
     receivedMessage: message,
     processedAt: new Date().toISOString(),
-    worker: "ecs-fargate",
+    worker: process.env.WORKER_RUNTIME_NAME?.trim() || "ecs-fargate",
   } satisfies Record<string, Json>;
 }
 

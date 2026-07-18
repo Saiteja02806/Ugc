@@ -1,4 +1,4 @@
-// This matches the worker's production reclaim lease: two 15-minute SQS
+// This matches the worker's production reclaim lease: two 15-minute delivery
 // visibility windows. A replacement delivery before this boundary cannot take
 // over the database claim and only creates duplicate queue traffic.
 export const CAROUSEL_JOB_REDELIVERY_INTERVAL_MS = 30 * 60 * 1_000;

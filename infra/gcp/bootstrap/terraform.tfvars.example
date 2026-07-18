@@ -1,0 +1,4 @@
+project_id        = "ugcsaas"
+project_number    = "58051192797"
+region            = "us-central1"
+state_bucket_name = "ugcsaas-terraform-state"

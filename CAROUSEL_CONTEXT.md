@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-07-17
+Last updated: 2026-07-18
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -80,6 +80,33 @@ status as unavailable/disabled so users understand the account exists but cannot
 be selected for image carousels. Existing Reel, TikTok video, and YouTube video
 paths remain separate. Do not describe a scheduled post as actually published
 until the worker updates its target row to `published`.
+
+During the AWS to GCP migration, Carousel generation keeps the same durable
+background job contract. The queue message body remains `{ jobId, jobType }`,
+and Supabase `background_jobs` remains the source of truth for claims, retries,
+heartbeats, and completion. AWS SQS is still the default queue provider. GCP
+Pub/Sub is available only as an explicit dark path behind `QUEUE_PROVIDER=gcp`
+for the app and `WORKER_QUEUE_PROVIDER=gcp` for the worker. Do not treat
+Carousel queue cutover as complete until the deployed worker profile has been
+verified against the chosen GCP subscription.
+
+For the Vercel app runtime, GCP queue publishing cannot rely on
+`GOOGLE_APPLICATION_CREDENTIALS` unless it points to a real file. The app
+supports `GOOGLE_CLOUD_CREDENTIALS_JSON` or the split
+`GOOGLE_CLOUD_CLIENT_EMAIL` / `GOOGLE_CLOUD_PRIVATE_KEY` env pair for the
+`ugc-app-sa` service account. Carousel API runtime validation checks Supabase
+and the configured app queue provider; worker-side storage is validated through
+the deployed worker profile and GCP smoke test.
+
+After setting `STORAGE_PROVIDER=gcp`, Trending feed readiness is storage-aware:
+completed Carousel rows are display-ready only when every ready slide URL is
+trusted by the currently configured storage provider. This prevents old
+AWS/CloudFront rendered rows from filling the dashboard after the GCP cutover.
+Do not rewrite old rendered URLs in place. Reset affected feed items and let the
+app generate fresh GCP Carousel inventory instead. Use
+`npm run carousel:gcp-cutover-feed:reset -- --user-id <firebase-uid>` for the
+dry run, then repeat with `--execute --yes` only after the storage-aware feed
+code is deployed.
 
 ## Non-Negotiable Image Safety
 
@@ -628,26 +655,22 @@ The first feed layer only reused completed carousel generations that already
 existed for the current business profile. The 2026-07-17 source slice adds the
 missing daily refill ledger, batch-local generation identity, lazy feed
 reconciliation, persisted user timezone, open-tab local-date refresh, and a
-quarter-hour Trigger.dev production sweep. One serialized scheduled task walks
-every strictly increasing UUID cursor page before it completes, so overlapping
-sweeps cannot restart from the first page and starve later profiles. The active
-cycle ID and last successful UUID cursor are persisted in Supabase. A Trigger
-retry, timeout, or later scheduled run claims that active cycle and resumes from
-its saved cursor; only after completion may a new scheduled cycle start. Cursor
-advances use a locked compare-and-set RPC, so a response is never allowed to
-silently overwrite a newer checkpoint. Completed cycle timestamps are
-monotonic: an older or equal delayed Trigger retry is an idempotent no-op and
-cannot replace a newer completed sweep. A failed profile is logged and counted
-without preventing later profiles in that sweep; route or network failures
-still use the task retry policy. Each page calls a HMAC-authenticated Next.js
-route with a 50-second Trigger fetch timeout below the route's 60-second maximum.
-It only reserves generation rows and sends the normal AWS SQS jobs; the AWS
-Carousel worker remains the only live LLM, matcher, Sharp render, S3, and
+signed internal replenishment route. The active cycle ID and last successful
+UUID cursor are persisted in Supabase. A retry, timeout, or later scheduled run
+claims that active cycle and resumes from its saved cursor; only after
+completion may a new scheduled cycle start. Cursor advances use a locked
+compare-and-set RPC, so a response is never allowed to silently overwrite a
+newer checkpoint. Completed cycle timestamps are monotonic: an older or equal
+delayed retry is an idempotent no-op and cannot replace a newer completed
+sweep. A failed profile is logged and counted without preventing later profiles
+in that sweep. Each page calls a HMAC-authenticated Next.js route. It only
+reserves generation rows and sends the normal background worker jobs; the
+Carousel worker remains the only live LLM, matcher, Sharp render, storage, and
 completion path. Queued or stale-processing Carousel jobs are redelivered after
 the worker's 30-minute reclaim boundary using the same background-job ID. An
 atomic database delivery lease prevents six-second frontend polling or
-concurrent scheduler requests from flooding SQS, and the worker's atomic claim
-prevents duplicate delivery from causing duplicate LLM/render execution.
+concurrent scheduler requests from flooding the queue, and the worker's atomic
+claim prevents duplicate delivery from causing duplicate LLM/render execution.
 
 A business-profile update does not remove Carousel assignments already placed
 in that day's feed. Existing positions remain the day's delivered snapshot;
@@ -657,16 +680,69 @@ the database transaction. If the profile changed after selection, no stale
 assignment may enter an empty position; only assignments created by that losing
 attempt are invalidated, and the caller retries against the latest profile.
 This source behavior must not be described as deployed until the migration,
-Vercel release, Trigger.dev schedule, and running ECS Carousel worker are all
+Vercel release, replacement scheduler, and running Carousel worker are all
 verified.
 
 Daily-refill production rollout order is database migration first, then verify
-the ECS Carousel service has desired and running count one, configure the same
-dedicated `UGC_INTERNAL_CAROUSEL_SECRET` in Vercel and Trigger.dev with
+the Carousel worker has desired and running count one, configure the dedicated
+`UGC_INTERNAL_CAROUSEL_SECRET` wherever the scheduler replacement runs with
 `APP_BASE_URL=https://www.getugcpilot.com`, deploy Next.js, run a one-user
-production canary, and enable the Trigger.dev schedule last. Do not copy
-`.env.local` or expose the Supabase service-role key to Trigger.dev merely to use
-the signing fallback.
+production canary, and enable the replacement schedule last. The GCP scheduler
+replacement lives in `infra/gcp/carousel-scheduler`: Cloud Scheduler starts a
+Cloud Run Job that runs `dist/scheduler/replenish-daily-carousels.js`, signs the
+internal replenishment route, and pages until the sweep cycle completes. Keep
+that scheduler paused until the Cloud Run Job has been manually executed and
+verified. Do not copy `.env.local` or expose the Supabase service-role key
+merely to use the signing fallback.
+
+As of 2026-07-18, the first GCP worker image for this path is in Artifact
+Registry:
+`us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718111431`.
+Terraform has applied Cloud Run Job `ugc-carousel-replenishment` and Cloud
+Scheduler job `ugc-carousel-replenishment-quarter-hour`, and the scheduler is
+paused. The automatic GCP replacement schedule is not live until that scheduler
+is explicitly unpaused.
+
+Later on 2026-07-18, the first two manual Cloud Run executions failed with
+HTTP 401 because the deployed Vercel production route had an old invalid
+`UGC_INTERNAL_CAROUSEL_SECRET` value. The Vercel production environment value
+was updated to match GCP Secret Manager and the current production deployment
+was redeployed. Manual execution `ugc-carousel-replenishment-ckb6c` then
+completed successfully with one page, 3 processed profiles, and 0 failures.
+The Cloud Scheduler job remained paused after the canary.
+
+The generic GCP Pub/Sub worker canary is also validated. Terraform applied
+Cloud Run Job `ugc-worker-canary-test` from `infra/gcp/worker-canary`, running
+`test_worker_job` against `ugc-media-processing-sub` with
+`WORKER_QUEUE_PROVIDER=gcp`. Early executions with `WORKER_POLL_WAIT_SECONDS=0`
+exited before Pub/Sub returned messages, so the canary now uses a 10-second
+pull wait. Final execution `ugc-worker-canary-test-bbd2b` completed Supabase
+background job `24391910-4824-42a3-b432-2ff31f6bf775` with output worker
+`gcp-cloud-run-job`.
+
+The dedicated GCP Carousel worker profile is now deployed and verified.
+Because a real queue consumer must keep running, the profile uses Cloud Run
+Service `ugc-carousel-worker` from `infra/gcp/carousel-worker`, not a one-off
+Cloud Run Job. The worker image
+`us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718142523`
+includes a `/healthz` listener for Cloud Run startup checks while the same
+process keeps polling Pub/Sub. The service runs with one internal always-on
+instance, `WORKER_QUEUE_PROVIDER=gcp`, `WORKER_JOB_TYPES=generate_carousel`,
+`WORKER_PUBSUB_SUBSCRIPTION=ugc-carousel-sub`,
+`CAROUSEL_BROAD_MATCHER_MODE=dry-run`,
+`CAROUSEL_DISABLE_CATEGORY_FALLBACK=true`, and `STORAGE_PROVIDER=gcp`.
+Generated Carousel slides now use
+`https://storage.googleapis.com/ugcsaas-media`, and `gs://ugcsaas-media` has
+public object read enabled for the testing-phase GCP media cutover.
+
+The real GCP Carousel generation smoke test on 2026-07-18 completed Carousel
+`433cf650-3a79-4f00-a6d4-b1107f38b785` from Supabase background job
+`ad451643-fdee-4e1f-93ce-ef925762584d` and Pub/Sub message
+`19919982775905874`. Cloud Run logs showed message receipt, content planning,
+image matching, text-containment validation, and job completion. The smoke
+script verified 5 rendered slides and downloaded the GCS public URLs. This
+validates the GCP Carousel worker path, but normal app-created Carousel jobs
+still use AWS until the app environment is flipped to `QUEUE_PROVIDER=gcp`.
 
 The scheduler only includes profiles with a persisted Trending timezone. The
 first authenticated browser feed request records the user's IANA timezone and

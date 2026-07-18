@@ -1,4 +1,4 @@
-# AWS Worker Deployment
+# Worker Deployment
 
 The shared deployer is additive. The legacy carousel and video-render deploy
 scripts remain available until the shared path passes the migration checks
@@ -71,8 +71,8 @@ AI image generation validated on 2026-07-01:
 - API job `68058620-87e2-4da4-95f4-b3a98c8a1ac9` completed through
   `background_jobs`, SQS, ECS, OpenAI, S3, and CloudFront.
 - The generated CloudFront PNG returned HTTP 200.
-- The obsolete `generate-image-test` Trigger.dev task was removed after the
-  AWS canary passed. Other Trigger.dev tasks remain unchanged.
+- The obsolete `generate-image-test` async task was removed after the AWS canary
+  passed.
 
 Avatar image generation validated on 2026-07-01:
 
@@ -84,7 +84,7 @@ Avatar image generation validated on 2026-07-01:
   `background_jobs`, SQS, ECS, OpenAI, S3, and CloudFront.
 - The generated avatar CloudFront PNG returned HTTP 200.
 - The obsolete avatar Trigger task and its unused app-side image helpers were
-  removed. Hook-video and talking-avatar Trigger tasks remain unchanged.
+  removed.
 
 Hook-video AWS migration prepared on 2026-07-02:
 
@@ -99,8 +99,8 @@ Hook-video AWS migration prepared on 2026-07-02:
 - The AI worker task definition injects `GEMINI_API_KEY` and
   `RUNWAYML_API_SECRET`; no video canary has been run yet by design.
 - `WORKER_VISIBILITY_TIMEOUT_SECONDS` is set to 1800 for the AI worker.
-- The Trigger.dev hook-video task remains in the repo as rollback code until a
-  real AWS hook-video canary is approved and passes.
+- The legacy hook-video rollback task has since been removed. Use the durable
+  `background_jobs` plus worker path for hook-video validation.
 
 Still required before legacy deletion:
 
@@ -108,3 +108,88 @@ Still required before legacy deletion:
 - Operationally verify rollback to the recorded previous task revisions, or
   retain those revisions through the observation window as the documented
   rollback path.
+
+## GCP video-render worker slice
+
+The GCP replacement for the AWS `video-render` ECS profile is implemented as a
+disabled-by-default Cloud Run Service in `infra/gcp/video-render-worker`.
+
+It maps:
+
+- AWS SQS queue: `UGC_VIDEO_RENDER_QUEUE_URL`
+- GCP Pub/Sub topic: `ugc-video-render`
+- GCP Pub/Sub subscription: `ugc-video-render-sub`
+- Worker queue name: `video-render`
+- Worker job types: `render_edit_video,render_schedule_combination`
+
+Safe apply order:
+
+```powershell
+npm run worker:gcp:image:push -- --cloud-build
+cd infra\gcp\video-render-worker
+copy terraform.tfvars.example terraform.tfvars
+```
+
+Set `worker_image_uri` to the pushed Artifact Registry image. Keep
+`enable_video_render_worker = false` for the first plan, then change it to
+`true` after Secret Manager has enabled versions for `supabase-url`,
+`supabase-service-role-key`, and `ugc-internal-scheduling-secret`.
+
+```powershell
+terraform init
+terraform plan
+terraform apply
+cd ..\..\..
+npm run worker:test:video-render:gcp
+```
+
+The smoke test creates one `render_edit_video` job, publishes it to Pub/Sub,
+waits for Cloud Run to process it, verifies `background_jobs`,
+`video_render_jobs`, and `editable_videos`, then downloads the GCS-backed MP4.
+
+## GCP social-publish worker slice
+
+The GCP replacement for the AWS `social-publish` ECS profile is implemented as
+disabled-by-default Cloud Run Service infrastructure in
+`infra/gcp/social-publish-worker`.
+
+It maps:
+
+- AWS SQS queue: `UGC_SOCIAL_PUBLISH_QUEUE_URL`
+- GCP Pub/Sub topic: `ugc-social-publish`
+- GCP Pub/Sub subscription: `ugc-social-publish-sub`
+- Worker queue name: `social-publish`
+- Worker job type: `publish_social_post`
+
+Safe apply order:
+
+```powershell
+npm run worker:gcp:image:push -- --cloud-build
+cd infra\gcp\social-publish-worker
+copy terraform.tfvars.example terraform.tfvars
+```
+
+Set `worker_image_uri` to the pushed Artifact Registry image. Keep
+`enable_social_publish_worker = false` for the first plan.
+
+For the first enabled canary, keep:
+
+```hcl
+social_reconciliation_enabled = false
+```
+
+This prevents the GCP worker from recovering old due social publish jobs from
+the database. It will only process explicit Pub/Sub deliveries.
+
+Required Secret Manager versions before enabling:
+
+- `supabase-url`
+- `supabase-service-role-key`
+- `oauth-token-encryption-key`
+- `tiktok-client-key`
+- `tiktok-client-secret`
+- `google-client-id`
+- `google-client-secret`
+
+Do not run a real publish canary until the target account/post is intentionally
+selected and approved.

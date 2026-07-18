@@ -24,7 +24,7 @@ test("a newly created retry sends and records exactly one queue message", async 
   assert.deepEqual(attachedMessages, [
     { awsMessageId: "message-1", jobId: "job-1" },
   ]);
-  assert.deepEqual(result, { delivery: "sqs", messageId: "message-1" });
+  assert.deepEqual(result, { delivery: "queue", messageId: "message-1" });
 });
 
 test("an idempotent repeated request does not send a second queue message", async () => {
@@ -54,7 +54,7 @@ test("a queue outage leaves the durable retry for worker reconciliation", async 
       attachMessage: async () => undefined,
       reportError: (event) => events.push(event),
       sendMessage: async () => {
-        throw new Error("SQS unavailable");
+        throw new Error("Queue unavailable");
       },
     },
   );
@@ -78,5 +78,5 @@ test("message metadata failure does not discard a successfully sent retry", asyn
   );
 
   assert.deepEqual(events, ["message_attach_failed"]);
-  assert.deepEqual(result, { delivery: "sqs", messageId: "message-1" });
+  assert.deepEqual(result, { delivery: "queue", messageId: "message-1" });
 });

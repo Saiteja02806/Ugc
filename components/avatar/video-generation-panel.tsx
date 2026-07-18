@@ -4,7 +4,6 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
-  MessageSquareText,
   Scissors,
   Video,
 } from "lucide-react";
@@ -32,46 +31,12 @@ type HookVideoGenerateResponse =
       error: string;
     };
 
-type TalkingVideoGenerateResponse =
-  | {
-      ok: true;
-      message: string;
-      runId: string;
-      videoId: string;
-    }
-  | {
-      ok: false;
-      error: string;
-    };
-
 type HookVideoJobStatusResponse =
   | {
       ok: true;
       job: {
         id: string;
         status: "cancelled" | "completed" | "failed" | "processing" | "queued";
-        isTerminal: boolean;
-        output: {
-          ok: boolean;
-          videoId: string | null;
-          provider: string | null;
-          key: string | null;
-          url: string | null;
-        } | null;
-        error: string | null;
-      };
-    }
-  | {
-      ok: false;
-      error: string;
-    };
-
-type VideoRunStatusResponse =
-  | {
-      ok: true;
-      run: {
-        id: string;
-        status: string;
         isTerminal: boolean;
         output: {
           ok: boolean;
@@ -105,12 +70,6 @@ type HookInput = {
   cameraStyle: HookVideoCameraStyle;
 };
 
-type TalkingInput = {
-  script: string;
-  avatarId: string;
-  voiceId: string;
-};
-
 const initialHookInput: HookInput = {
   hookIdea: "I did not expect this app to save me this much time.",
   productName: "UGC product",
@@ -118,13 +77,6 @@ const initialHookInput: HookInput = {
   provider: "veo",
   emotion: "surprised",
   cameraStyle: "iphone_selfie",
-};
-
-const initialTalkingInput: TalkingInput = {
-  script:
-    "I tried this tool this morning, and it made the whole workflow feel much faster.",
-  avatarId: "",
-  voiceId: "",
 };
 
 const emotionOptions: Array<{ label: string; value: HookVideoEmotion }> = [
@@ -149,18 +101,6 @@ const providerOptions: Array<{ label: string; value: HookVideoProvider }> = [
   { label: "Veo 3.1 Lite", value: "veo" },
   { label: "Runway low cost", value: "runway" },
 ];
-
-function getTriggerVideoStatusMessage(status: string, label: string) {
-  if (status === "QUEUED" || status === "WAITING_FOR_DEPLOY") {
-    return `${label} queued.`;
-  }
-
-  if (status === "EXECUTING" || status === "REATTEMPTING") {
-    return `${label} generating.`;
-  }
-
-  return `${label} status: ${status}`;
-}
 
 function getAwsVideoStatusMessage(status: string, label: string) {
   if (status === "queued") {
@@ -276,27 +216,11 @@ export function VideoGenerationPanel({
   const [hookStatus, setHookStatus] = useState<VideoUiStatus>("idle");
   const [hookVideoUrl, setHookVideoUrl] = useState<string | null>(null);
 
-  const [talkingInput, setTalkingInput] =
-    useState<TalkingInput>(initialTalkingInput);
-  const [talkingMessage, setTalkingMessage] = useState(
-    "Ready for talking avatar video.",
-  );
-  const [talkingRunId, setTalkingRunId] = useState<string | null>(null);
-  const [talkingStatus, setTalkingStatus] = useState<VideoUiStatus>("idle");
-  const [talkingVideoUrl, setTalkingVideoUrl] = useState<string | null>(null);
-
   function updateHookInput<TField extends keyof HookInput>(
     field: TField,
     value: HookInput[TField],
   ) {
     setHookInput((currentInput) => ({
-      ...currentInput,
-      [field]: value,
-    }));
-  }
-
-  function updateTalkingInput(field: keyof TalkingInput, value: string) {
-    setTalkingInput((currentInput) => ({
       ...currentInput,
       [field]: value,
     }));
@@ -378,86 +302,6 @@ export function VideoGenerationPanel({
     };
   }, [hookJobId]);
 
-  useEffect(() => {
-    if (!talkingRunId) {
-      return;
-    }
-
-    const runId = talkingRunId;
-    let isActive = true;
-
-    async function pollTalkingStatus() {
-      try {
-        const token = await getCurrentUserIdToken();
-        if (!token) throw new Error("Sign in to check video status.");
-        const response = await fetch(
-          `/api/debug/talking-avatar-video-run-status?runId=${encodeURIComponent(
-            runId,
-          )}`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        const data = (await response.json()) as VideoRunStatusResponse;
-
-        if (!isActive) {
-          return;
-        }
-
-        if (!response.ok || !data.ok) {
-          setTalkingStatus("error");
-          setTalkingMessage(
-            data.ok
-              ? "Could not check talking avatar video status."
-              : data.error || "Could not check talking avatar video status.",
-          );
-          setTalkingRunId(null);
-          return;
-        }
-
-        if (data.run.status === "COMPLETED" && data.run.output?.url) {
-          setTalkingVideoUrl(data.run.output.url);
-          setTalkingStatus("success");
-          setTalkingMessage("Talking avatar video ready via HeyGen.");
-          setTalkingRunId(null);
-          return;
-        }
-
-        if (data.run.isTerminal) {
-          setTalkingStatus("error");
-          setTalkingMessage(
-            data.run.error ?? "Talking avatar video generation failed.",
-          );
-          setTalkingRunId(null);
-          return;
-        }
-
-        setTalkingStatus(
-          data.run.status === "EXECUTING" ? "running" : "queued",
-        );
-        setTalkingMessage(
-          getTriggerVideoStatusMessage(data.run.status, "Talking avatar video"),
-        );
-      } catch {
-        if (!isActive) {
-          return;
-        }
-
-        setTalkingStatus("error");
-        setTalkingMessage("Could not reach the talking avatar status route.");
-        setTalkingRunId(null);
-      }
-    }
-
-    void pollTalkingStatus();
-    const interval = window.setInterval(() => {
-      void pollTalkingStatus();
-    }, 3000);
-
-    return () => {
-      isActive = false;
-      window.clearInterval(interval);
-    };
-  }, [talkingRunId]);
-
   async function handleGenerateHookVideo() {
     setHookStatus("submitting");
     setHookMessage("Starting UGC hook video...");
@@ -500,51 +344,6 @@ export function VideoGenerationPanel({
     }
   }
 
-  async function handleGenerateTalkingVideo() {
-    setTalkingStatus("submitting");
-    setTalkingMessage("Starting talking avatar video...");
-    setTalkingRunId(null);
-    setTalkingVideoUrl(null);
-
-    try {
-      const token = await getCurrentUserIdToken();
-      if (!token) throw new Error("Sign in before generating videos.");
-      const response = await fetch(
-        "/api/debug/test-generate-talking-avatar-video",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...talkingInput,
-            avatarImageUrl,
-            projectId,
-          }),
-        },
-      );
-      const data = (await response.json()) as TalkingVideoGenerateResponse;
-
-      if (!response.ok || !data.ok) {
-        setTalkingStatus("error");
-        setTalkingMessage(
-          data.ok
-            ? "Could not start talking avatar video."
-            : data.error || "Could not start talking avatar video.",
-        );
-        return;
-      }
-
-      setTalkingStatus("queued");
-      setTalkingMessage("Talking avatar video queued.");
-      setTalkingRunId(data.runId);
-    } catch {
-      setTalkingStatus("error");
-      setTalkingMessage("Could not reach the talking avatar video route.");
-    }
-  }
-
   async function openHookVideoInEdit() {
     if (!hookVideoUrl) {
       return;
@@ -552,15 +351,8 @@ export function VideoGenerationPanel({
     await openServerVideoInEdit(hookVideoUrl, router);
   }
 
-  async function openTalkingVideoInEdit() {
-    if (!talkingVideoUrl) {
-      return;
-    }
-    await openServerVideoInEdit(talkingVideoUrl, router);
-  }
-
   return (
-    <section className="grid gap-5 lg:grid-cols-2">
+    <section className="grid gap-5">
       <div className="rounded-lg border border-border bg-card p-5 shadow-soft sm:p-6">
         <div className="flex items-center gap-3">
           <div className="flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -710,94 +502,6 @@ export function VideoGenerationPanel({
           onOpenInEdit={hookVideoUrl ? openHookVideoInEdit : undefined}
           status={hookStatus}
           url={hookVideoUrl}
-        />
-      </div>
-
-      <div className="rounded-lg border border-border bg-card p-5 shadow-soft sm:p-6">
-        <div className="flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <MessageSquareText className="size-5" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-primary">Video</p>
-            <h2 className="text-xl font-bold text-foreground">
-              Create talking avatar video
-            </h2>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4">
-          <label className="flex flex-col gap-2">
-            <span className="text-sm font-semibold text-foreground">
-              Script
-            </span>
-            <textarea
-              value={talkingInput.script}
-              onChange={(event) =>
-                updateTalkingInput("script", event.target.value)
-              }
-              className="min-h-32 resize-y rounded-lg border border-border bg-white px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
-            />
-          </label>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-2">
-              <span className="text-sm font-semibold text-foreground">
-                HeyGen avatar ID
-              </span>
-              <input
-                value={talkingInput.avatarId}
-                onChange={(event) =>
-                  updateTalkingInput("avatarId", event.target.value)
-                }
-                className="h-11 rounded-lg border border-border bg-white px-4 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
-                placeholder="Optional debug ID"
-              />
-            </label>
-
-            <label className="flex flex-col gap-2">
-              <span className="text-sm font-semibold text-foreground">
-                HeyGen voice ID
-              </span>
-              <input
-                value={talkingInput.voiceId}
-                onChange={(event) =>
-                  updateTalkingInput("voiceId", event.target.value)
-                }
-                className="h-11 rounded-lg border border-border bg-white px-4 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
-                placeholder="Optional debug ID"
-              />
-            </label>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleGenerateTalkingVideo}
-          disabled={isWorking(talkingStatus)}
-          className={buttonClassName({
-            className: "mt-6 w-full disabled:cursor-not-allowed disabled:opacity-70",
-          })}
-        >
-          {isWorking(talkingStatus) ? (
-            <>
-              <Loader2 className="mr-2 size-4 animate-spin" />
-              Generating
-            </>
-          ) : (
-            <>
-              <MessageSquareText className="mr-2 size-4" />
-              Generate talking avatar video
-            </>
-          )}
-        </button>
-
-        <StatusMessage message={talkingMessage} status={talkingStatus} />
-        <VideoPreview
-          label="Talking avatar video preview"
-          onOpenInEdit={talkingVideoUrl ? openTalkingVideoInEdit : undefined}
-          status={talkingStatus}
-          url={talkingVideoUrl}
         />
       </div>
     </section>

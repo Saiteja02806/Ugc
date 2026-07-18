@@ -1,0 +1,19 @@
+project_id     = "ugcsaas"
+project_number = "58051192797"
+region         = "us-central1"
+environment    = "prod"
+name_prefix    = "ugc"
+
+# Bucket names are globally unique. Change this if Terraform reports it is taken.
+media_bucket_name     = "ugcsaas-media"
+media_bucket_location = "US"
+
+# Keep false until the CDN domain and migration cutover are ready.
+media_bucket_public_read = false
+
+# Add your CDN hostname later, for example:
+# cdn_domain_names = ["cdn.getugcpilot.com"]
+cdn_domain_names = []
+
+enable_monitoring_alerts       = false
+monitoring_notification_channels = []

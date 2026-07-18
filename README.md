@@ -4,13 +4,10 @@ UGC is a Next.js app for generating reusable AI creator avatars for short-form U
 
 ## Current Slice
 
-The current working screen is a simple image generation tester:
-
-- `/image-test`
-- `POST /api/image-test/generate`
-- `GET /api/image-test/status?runId=...`
-
-The frontend only calls internal API routes. The generate route starts a Trigger.dev task, the task calls OpenAI image generation, uploads the PNG to S3, and returns the CloudFront URL through the status route.
+The app uses Next.js API routes to create durable `background_jobs` rows and
+enqueue worker messages. AWS SQS/ECS and S3/CloudFront remain the production
+defaults while GCP Pub/Sub, Cloud Run worker canary tooling, and GCS storage are
+available as dark-launch paths.
 
 The original foundation includes:
 
@@ -51,13 +48,12 @@ https://kltxwijhluawgveykfbt.supabase.co
 
 Set `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local` before calling Supabase from the browser. Do not store Supabase management tokens in app files.
 
-## Image Generation Test
+## Worker-Backed Generation
 
-Set these server-side values in `.env.local`, then restart Next.js and Trigger.dev:
+Set these server-side values in `.env.local`, then restart Next.js:
 
 ```txt
 OPENAI_API_KEY=sk-...
-TRIGGER_SECRET_KEY=tr_...
 AWS_REGION=...
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
@@ -69,15 +65,11 @@ Run both local processes:
 
 ```bash
 npm run dev
-npm run trigger:dev
 ```
 
-The test route accepts:
+Worker-backed debug routes enqueue durable jobs and poll `background_jobs`:
 
-```json
-{
-  "prompt": "image prompt"
-}
-```
-
-The browser polls the Trigger.dev run status until a CloudFront image URL is available.
+- `POST /api/debug/test-generate-avatar`
+- `GET /api/debug/avatar-run-status?jobId=...`
+- `POST /api/debug/test-generate-hook-video`
+- `GET /api/debug/hook-video-run-status?jobId=...`

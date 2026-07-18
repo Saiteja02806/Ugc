@@ -142,7 +142,7 @@ export async function POST(request: Request) {
     return jsonResponse(
       {
         ok: false,
-        error: `AWS worker enqueue is not configured. Add ${missingRuntimeEnv.join(
+        error: `Worker enqueue is not configured. Add ${missingRuntimeEnv.join(
           ", ",
         )}.`,
       },
@@ -181,22 +181,24 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error("Failed to enqueue AWS worker job:", error);
+    console.error("Failed to enqueue worker job:", error);
 
     try {
       await markBackgroundJobFailed({
         errorMessage:
-          error instanceof Error ? error.message : "Failed to send SQS message.",
+          error instanceof Error
+            ? error.message
+            : "Failed to send queue message.",
         jobId: job.id,
       });
     } catch (persistenceError) {
-      console.error("Failed to persist AWS worker enqueue failure:", persistenceError);
+      console.error("Failed to persist worker enqueue failure:", persistenceError);
     }
 
     return jsonResponse(
       {
         ok: false,
-        error: "Could not send the worker job to SQS.",
+        error: "Could not send the worker job to the queue.",
         jobId: job.id,
       },
       502,

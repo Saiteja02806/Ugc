@@ -239,7 +239,7 @@ export function ConnectedAccountsWorkspace() {
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
               Connect user-approved TikTok, Instagram, and YouTube accounts
-              before scheduling, publishing, or syncing account analytics.
+              before scheduling, publishing, or syncing supported account analytics.
             </p>
           </div>
           <button

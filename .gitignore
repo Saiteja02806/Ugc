@@ -30,12 +30,17 @@
 /.agents/
 /.codex/
 /.chrome-carousel-upgrade-check/
+/.playwright-mcp/
 /.tmp/
+/hatch-pet-runs/
 /tmp/
 /tmp-logs/
 /local-run-logs/
+/.tools/
 /carousel-*.png
 /carousel-*.webp
+/ugc-home-*.png
+/ugcpilot_logo__1.png
 
 # debug
 npm-debug.log*
@@ -46,6 +51,17 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+
+# terraform local state and private variables
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+*.tfplan
+crash.log
+crash.*.log
 
 # vercel
 .vercel

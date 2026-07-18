@@ -29,6 +29,11 @@ import {
   PlatformSelectionModal,
   type SchedulePlatformContext,
 } from "@/components/social/platform-selection-modal";
+import { HookVideoWorkspace } from "@/components/trending/hook-video-workspace";
+import {
+  TrendingModeSelector,
+  type TrendingMode,
+} from "@/components/trending/trending-mode-selector";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
@@ -213,6 +218,7 @@ export function TrendingWorkspace() {
   const { loading: authLoading, user } = useAuth();
   const loadedFeedLocalDate = useRef<string | null>(null);
   const loadedFeedUserId = useRef<string | null>(null);
+  const [trendingMode, setTrendingMode] = useState<TrendingMode>("carousels");
   const [generatedCarousels, setGeneratedCarousels] = useState<
     GeneratedCarousel[]
   >([]);
@@ -498,72 +504,84 @@ export function TrendingWorkspace() {
             </p>
           </div>
 
-          <label
-            className="flex h-10 w-full items-center gap-2.5 rounded-control border border-border-strong bg-card px-3 text-sm text-muted shadow-[0_1px_2px_rgb(23_23_27_/_0.03)] transition-[border-color,box-shadow] focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/15 sm:w-[300px]"
-          >
-            <Search className="size-4 shrink-0 text-muted-subtle" aria-hidden="true" />
-            <span className="sr-only">Search personalized carousels</span>
-            <input
-              type="search"
-              name="carouselSearch"
-              autoComplete="off"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search carousel ideas"
-              className="min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-subtle"
-            />
-          </label>
+          {trendingMode === "carousels" ? (
+            <label
+              className="flex h-10 w-full items-center gap-2.5 rounded-control border border-border-strong bg-card px-3 text-sm text-muted shadow-[0_1px_2px_rgb(23_23_27_/_0.03)] transition-[border-color,box-shadow] focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/15 sm:w-[300px]"
+            >
+              <Search className="size-4 shrink-0 text-muted-subtle" aria-hidden="true" />
+              <span className="sr-only">Search personalized carousels</span>
+              <input
+                type="search"
+                name="carouselSearch"
+                autoComplete="off"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search carousel ideas"
+                className="min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-subtle"
+              />
+            </label>
+          ) : null}
         </header>
 
-        <section className="mt-6 min-h-[560px] overflow-hidden rounded-panel border border-border bg-card shadow-card">
-          <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2.5 sm:px-5">
-            <p className="flex items-center gap-2 text-xs font-semibold text-muted">
-              <span
-                aria-hidden="true"
-                className={cn("size-2 rounded-full", feedStatus.tone)}
-              />
-              {feedStatus.label}
-            </p>
-            <button
-              type="button"
-              onClick={() =>
-                setCarouselHistoryRefreshKey((current) => current + 1)
-              }
-              disabled={carouselFeedLoading}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <RefreshCw
-                className={cn(
-                  "size-3.5",
-                  carouselFeedLoading &&
-                    "animate-spin motion-reduce:animate-none",
-                )}
-                aria-hidden="true"
-              />
-              <span className="sm:hidden">Refresh</span>
-              <span className="hidden sm:inline">Refresh ideas</span>
-            </button>
-          </div>
+        <TrendingModeSelector
+          className="mt-6"
+          value={trendingMode}
+          onChange={setTrendingMode}
+        />
 
-          <div className="flex min-h-[502px] items-start px-4 py-7 sm:px-6 sm:py-8">
-            <GeneratedCarouselGallery
-              carousels={filteredGeneratedCarousels}
-              error={visibleCarouselHistoryError}
-              feedState={visibleDailyFeedState}
-              loading={carouselFeedLoading}
-              profile={carouselFeedProfile}
-              searchEmpty={carouselSearchEmpty}
-              onCompleteProfile={openBusinessProfile}
-              onCarouselCompleted={() =>
-                setCarouselHistoryRefreshKey((current) => current + 1)
-              }
-              onRetryHistory={() =>
-                setCarouselHistoryRefreshKey((current) => current + 1)
-              }
-              onRetryPreparation={() => void retryCarouselPreparation()}
-            />
-          </div>
-        </section>
+        {trendingMode === "carousels" ? (
+          <section className="mt-6 min-h-[560px] overflow-hidden rounded-panel border border-border bg-card shadow-card">
+            <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2.5 sm:px-5">
+              <p className="flex items-center gap-2 text-xs font-semibold text-muted">
+                <span
+                  aria-hidden="true"
+                  className={cn("size-2 rounded-full", feedStatus.tone)}
+                />
+                {feedStatus.label}
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  setCarouselHistoryRefreshKey((current) => current + 1)
+                }
+                disabled={carouselFeedLoading}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={cn(
+                    "size-3.5",
+                    carouselFeedLoading &&
+                      "animate-spin motion-reduce:animate-none",
+                  )}
+                  aria-hidden="true"
+                />
+                <span className="sm:hidden">Refresh</span>
+                <span className="hidden sm:inline">Refresh ideas</span>
+              </button>
+            </div>
+
+            <div className="flex min-h-[502px] items-start px-4 py-7 sm:px-6 sm:py-8">
+              <GeneratedCarouselGallery
+                carousels={filteredGeneratedCarousels}
+                error={visibleCarouselHistoryError}
+                feedState={visibleDailyFeedState}
+                loading={carouselFeedLoading}
+                profile={carouselFeedProfile}
+                searchEmpty={carouselSearchEmpty}
+                onCompleteProfile={openBusinessProfile}
+                onCarouselCompleted={() =>
+                  setCarouselHistoryRefreshKey((current) => current + 1)
+                }
+                onRetryHistory={() =>
+                  setCarouselHistoryRefreshKey((current) => current + 1)
+                }
+                onRetryPreparation={() => void retryCarouselPreparation()}
+              />
+            </div>
+          </section>
+        ) : (
+          <HookVideoWorkspace active={trendingMode === "hook_videos"} />
+        )}
       </div>
     </section>
   );

@@ -22,7 +22,7 @@ function job(
   };
 }
 
-test("delivers a newly persisted queued job without an SQS message", () => {
+test("delivers a newly persisted queued job without a queue message", () => {
   assert.equal(
     shouldDeliverCarouselJobMessage({
       job: job({ awsMessageId: null }),

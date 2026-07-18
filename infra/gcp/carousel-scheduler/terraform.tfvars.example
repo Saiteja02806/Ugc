@@ -1,0 +1,38 @@
+project_id     = "ugcsaas"
+project_number = "58051192797"
+region         = "us-central1"
+environment    = "prod"
+name_prefix    = "ugc"
+
+# Keep false until:
+# - a worker image containing dist/scheduler/replenish-daily-carousels.js has
+#   been pushed to Artifact Registry;
+# - Secret Manager has enabled versions for app_base_url and
+#   ugc-internal-carousel-secret;
+# - the internal route has been deployed to production with the same
+#   UGC_INTERNAL_CAROUSEL_SECRET value.
+enable_replenishment_scheduler = false
+
+# Example after running npm run worker:gcp:image:push:
+# worker_image_uri = "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718120000"
+worker_image_uri = ""
+
+scheduler_service_account_email = "ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com"
+job_name                        = "ugc-carousel-replenishment"
+scheduler_job_name              = "ugc-carousel-replenishment-quarter-hour"
+
+schedule         = "*/15 * * * *"
+time_zone        = "Etc/UTC"
+scheduler_paused = true
+
+app_base_url_secret_id = "app_base_url"
+carousel_secret_id     = "ugc-internal-carousel-secret"
+
+page_size          = 5
+request_timeout_ms = 50000
+
+task_timeout_seconds                = 900
+task_max_retries                    = 2
+scheduler_attempt_deadline_seconds  = 180
+cpu                                 = "1"
+memory                              = "512Mi"

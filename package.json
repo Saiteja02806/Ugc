@@ -106,6 +106,8 @@
     "social-publish:queue-test": "node scripts/test-social-publish-queue.mjs",
     "social-dispatch:gcp:dry-run": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-social-dispatch-cloud-tasks-gcp.mjs --dry-run",
     "social-dispatch:gcp:canary": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-social-dispatch-cloud-tasks-gcp.mjs --execute --yes",
+    "social-publish:gcp:worker-dry-run": "node scripts/test-social-publish-worker-gcp.mjs --dry-run",
+    "social-publish:gcp:worker-canary": "node scripts/test-social-publish-worker-gcp.mjs --execute --yes",
     "worker:start": "node worker/dist/index.js",
     "avatars:thumbnails:backfill": "node scripts/backfill-avatar-thumbnails.mjs",
     "avatars:thumbnails:backfill:dry-run": "node scripts/backfill-avatar-thumbnails.mjs --dry-run --check-existing"

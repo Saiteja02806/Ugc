@@ -176,6 +176,20 @@ worker canary pull wait was changed from `0` to `10` seconds. Verified
 background job `24391910-4824-42a3-b432-2ff31f6bf775` completed with output
 worker `gcp-cloud-run-job`.
 
+The same Terraform stack also contains a separate disabled-by-default
+fake-target social-publish worker canary:
+
+```hcl
+enable_social_publish_canary_job = false
+```
+
+When enabled, it creates Cloud Run Job `ugc-social-publish-worker-canary`.
+That job is still one-off, uses `WORKER_RUN_ONCE=true`, reads only
+`ugc-social-publish-sub`, allows only `publish_social_post`, pulls up to 10
+messages so stale terminal canary messages do not block the current test, and
+keeps `SOCIAL_RECONCILIATION_ENABLED=false`. This validates Pub/Sub consumption
+without starting the always-on social-publish worker.
+
 ## Carousel Worker Slice
 
 The production-shaped GCP Carousel worker is a Cloud Run Service, not a
@@ -304,6 +318,32 @@ Do not run a real social publish canary until the target account, platform, and
 post visibility are intentionally chosen. TikTok photo carousel publishing also
 requires a verified pull URL host; `storage.googleapis.com` is not a final
 production media domain.
+
+Before a real account/post canary, run the fake-target worker canary:
+
+```powershell
+npm run social-publish:gcp:worker-dry-run
+npm run social-publish:gcp:worker-canary
+```
+
+This creates one fake `publish_social_post` background job, publishes it to
+`ugc-social-publish`, executes `ugc-social-publish-worker-canary`, and expects
+the job to fail with `Publish target was not found.` That failure is the
+success condition because it proves the worker consumed the Pub/Sub message and
+stopped before any social provider call. Before publishing the new canary
+message, the script drains only terminal canary messages from
+`ugc-social-publish-sub` and aborts if it sees non-terminal work.
+
+Current checkpoint: worker image
+`us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718203317`
+with digest
+`sha256:df802f3e3218fd7f48b88016372f6dc4e15ad2b3bc1658ca72844d817d418c38`
+has been pushed, Terraform has applied Cloud Run Job
+`ugc-social-publish-worker-canary`, and fake-target execution
+`ugc-social-publish-worker-canary-x6qm5` passed. The verified background job was
+`a76048d0-2c66-4ddf-b829-96b75c8285bc`, Pub/Sub message
+`20639648512021525`, and final status was expected failure:
+`Publish target was not found.`
 
 ## Social Schedule Dispatcher Slice
 

@@ -93,3 +93,45 @@ variable "memory" {
   type        = string
   default     = "1Gi"
 }
+
+variable "enable_social_publish_canary_job" {
+  description = "Set true only for the fake-target social-publish worker queue canary."
+  type        = bool
+  default     = false
+}
+
+variable "social_publish_canary_job_name" {
+  description = "Cloud Run Job name for the one-off social-publish worker canary."
+  type        = string
+  default     = "ugc-social-publish-worker-canary"
+}
+
+variable "social_publish_worker_image_uri" {
+  description = "Optional Artifact Registry image URI for the social-publish canary. Defaults to worker_image_uri when blank."
+  type        = string
+  default     = ""
+}
+
+variable "social_publish_pubsub_subscription_name" {
+  description = "Pub/Sub subscription the social-publish canary worker pulls from."
+  type        = string
+  default     = "ugc-social-publish-sub"
+}
+
+variable "social_publish_queue_name" {
+  description = "Logical queue name for social publish background jobs."
+  type        = string
+  default     = "social-publish"
+}
+
+variable "social_publish_worker_job_types" {
+  description = "Comma-separated job types allowed for the social-publish canary worker."
+  type        = string
+  default     = "publish_social_post"
+}
+
+variable "social_publish_worker_poll_max_messages" {
+  description = "Maximum Pub/Sub messages the one-off social-publish canary may pull in one run. Higher than 1 lets it drain stale terminal canary messages first."
+  type        = number
+  default     = 10
+}

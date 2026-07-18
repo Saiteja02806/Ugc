@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   getSocialPublishRetryDecision,
+  isTransientSocialPublishError,
   runPublishSocialPostJob,
 } from "./publish-social-post.js";
 import { encryptSocialToken } from "../lib/social-token-crypto.js";
@@ -775,6 +776,21 @@ test("stops retrying at the configured attempt limit", () => {
       maxAttempts: 3,
       maxDelaySeconds: 60,
     }).shouldRetry,
+    false,
+  );
+});
+
+test("treats missing social publish records as permanent failures", () => {
+  assert.equal(
+    isTransientSocialPublishError("Publish target was not found."),
+    false,
+  );
+  assert.equal(
+    isTransientSocialPublishError("Scheduled post was not found."),
+    false,
+  );
+  assert.equal(
+    isTransientSocialPublishError("Final media was not found."),
     false,
   );
 });

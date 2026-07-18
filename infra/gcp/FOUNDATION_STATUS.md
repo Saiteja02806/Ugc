@@ -114,6 +114,23 @@ Pub/Sub DLQ topics:
   Terraform in `infra/gcp/social-publish-worker`. It keeps
   `social_reconciliation_enabled = false` by default so an initial canary cannot
   recover and publish older due jobs without an explicit Pub/Sub delivery.
+- A separate fake-target social-publish worker canary has been added to
+  `infra/gcp/worker-canary` as Cloud Run Job
+  `ugc-social-publish-worker-canary`, disabled by default. The matching script
+  is `npm run social-publish:gcp:worker-canary`; it expects the worker to fail a
+  fake target with `Publish target was not found.` so no provider publish call
+  can happen.
+- A fresh GCP worker image with the permanent missing-target retry fix was built
+  with Cloud Build and pushed to Artifact Registry:
+  `us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718203317`
+  with digest
+  `sha256:df802f3e3218fd7f48b88016372f6dc4e15ad2b3bc1658ca72844d817d418c38`.
+- The fake-target social-publish worker canary passed after draining 2 terminal
+  canary Pub/Sub messages. Cloud Run execution
+  `ugc-social-publish-worker-canary-x6qm5` consumed background job
+  `a76048d0-2c66-4ddf-b829-96b75c8285bc`, Pub/Sub message
+  `20639648512021525`, and failed it with `Publish target was not found.` before
+  any provider publish call.
 - The social schedule dispatcher slice has been implemented locally behind
   `SOCIAL_SCHEDULER_PROVIDER=gcp`. AWS EventBridge Scheduler remains the default.
   The GCP path creates Cloud Tasks entries in
@@ -135,11 +152,12 @@ Pub/Sub DLQ topics:
   `WORKER_QUEUE_PROVIDER=gcp`.
 - Normal app-created jobs still default to AWS/SQS until Vercel/app env is
   changed to `QUEUE_PROVIDER=gcp`.
-- AI generation, media processing, video render, and social publish worker
+- AI generation, media processing, video render, and the always-on social publish worker
   profiles still remain on the AWS/SQS path. The video-render GCP stack exists
   in code but must still be applied and smoke-tested before traffic is moved.
-  The social-publish GCP stack exists in code but must still be applied and
-  tested with an intentionally selected account/post before traffic is moved.
+  The social-publish GCP stack exists in code but must still be applied as the
+  always-on worker and then tested with an intentionally selected account/post
+  before traffic is moved.
 - Scheduled social publish handoff still defaults to AWS EventBridge Scheduler
   until production is changed to `SOCIAL_SCHEDULER_PROVIDER=gcp`.
 - The GCP Carousel Scheduler job remains paused; production automatic

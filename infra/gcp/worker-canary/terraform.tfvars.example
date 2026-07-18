@@ -24,3 +24,16 @@ worker_visibility_timeout_seconds = 300
 task_timeout_seconds              = 900
 cpu                               = "1"
 memory                            = "1Gi"
+
+# Optional fake-target canary for the social-publish worker queue path.
+# This is a one-off Cloud Run Job, not the always-on social-publish worker.
+# Keep disabled until a worker image is pushed and the Pub/Sub/Supabase
+# foundation is ready.
+enable_social_publish_canary_job = false
+
+social_publish_canary_job_name        = "ugc-social-publish-worker-canary"
+social_publish_worker_image_uri       = ""
+social_publish_pubsub_subscription_name = "ugc-social-publish-sub"
+social_publish_queue_name             = "social-publish"
+social_publish_worker_job_types       = "publish_social_post"
+social_publish_worker_poll_max_messages = 10

@@ -1625,6 +1625,7 @@ export function isTransientSocialPublishError(errorMessage: string) {
       "is not available",
       "is not publishable",
       "must be",
+      "not found",
       "not implemented",
       "only scheduled videos",
       "scope",

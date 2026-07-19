@@ -107,19 +107,24 @@ is live and verified, not merely planned or coded.
   `https://storage.googleapis.com/ugcsaas-media` until HTTPS passes.
 - [x] Read-only AWS media backfill audit script exists:
   `npm run storage:gcp-backfill:audit`.
-- [x] The audit ran against local `.env.local` Supabase project
-  `kltxwijhluawgveykfbt` and found 0 scanned media rows and 0 AWS-hosted media
-  references.
+- [x] The audit can scan the production Supabase project
+  `kltxwijhluawgveykfbt`. Production currently has 5,174 scanned rows and
+  8,981 AWS-hosted media references.
 - [x] Signed production Supabase media backfill audit route and runner are
   implemented locally: `POST /api/internal/gcp-media-backfill/audit` and
   `npm run production:gcp-media-backfill:audit`.
-- [ ] Deploy the production media backfill audit route and run
-  `npm run production:gcp-media-backfill:audit`. This must confirm Vercel
-  production uses Supabase project `kltxwijhluawgveykfbt` and has 0 AWS-hosted
-  media references before declaring existing S3 media backfill unnecessary.
-- [ ] Existing S3 media has not been copied to GCS. If the production env audit
-  also finds no AWS-hosted media URLs, this copy step can be closed as not
-  needed.
+- [x] Deployed production media backfill audit ran against
+  `https://getugcpilot.com` and confirmed Vercel production uses Supabase
+  project `kltxwijhluawgveykfbt` with `STORAGE_PROVIDER=gcp`.
+- [x] Guarded AWS-to-GCS media backfill tool exists:
+  `npm run storage:gcp-backfill:dry-run` and
+  `npm run storage:gcp-backfill:execute`.
+- [x] Small `category_image_assets` backfill canary passed. It copied 5
+  CloudFront objects to `ugcsaas-media`, updated 3 Supabase rows, and reduced
+  production AWS media references from 8,981 to 8,976.
+- [ ] Existing S3/CloudFront media has not yet been fully copied to GCS. Start
+  with larger reviewed batches until
+  `npm run production:gcp-media-backfill:audit` reports 0 AWS-hosted media URLs.
 - [ ] Final CDN env cutover is not complete. Current testing URLs use
   `https://storage.googleapis.com/ugcsaas-media`.
 - [ ] AWS S3/CloudFront resources have not been removed.
@@ -141,13 +146,10 @@ is live and verified, not merely planned or coded.
 
 ## Current Next Slice
 
-- [ ] Deploy and run production Supabase media backfill confirmation:
-  push the local migration commits so Vercel deploys
-  `/api/internal/gcp-media-backfill/audit`, then run
-  `npm run production:gcp-media-backfill:audit`. If AWS-hosted media URLs
-  appear, implement a guarded S3-to-GCS copy/update migration. If the result is
-  still zero, close existing media backfill as not needed for the testing-phase
-  app.
+- [ ] Continue AWS-to-GCS media backfill in larger batches. Recommended next
+  step:
+  `npm run storage:gcp-backfill:dry-run -- --table category_image_assets --max-objects 250`,
+  then execute that same reviewed slice and rerun production audit.
 - [ ] After the CDN certificate becomes `ACTIVE`, update production Vercel and
   Cloud Run worker `GCP_STORAGE_PUBLIC_BASE_URL` values to
   `https://media.getugcpilot.com` and rerun the production GCP storage audit.

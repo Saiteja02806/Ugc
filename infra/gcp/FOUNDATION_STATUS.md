@@ -252,16 +252,22 @@ Pub/Sub DLQ topics:
   `npm run storage:gcp-backfill:audit`. It scans known media-bearing Supabase
   tables for AWS S3/CloudFront URLs and counts legacy `*_s3_key` values
   separately because current GCS-backed code still writes to old column names.
-- The audit ran against local `.env.local` Supabase project
-  `kltxwijhluawgveykfbt` and found 0 scanned rows across 12 media-bearing
-  tables and 0 AWS-hosted media references. This is conclusive only if
-  production Vercel uses the same Supabase project.
-- A signed production media backfill audit route and runner are implemented
-  locally: `POST /api/internal/gcp-media-backfill/audit` and
-  `npm run production:gcp-media-backfill:audit`. The runner expects production
-  Vercel to report Supabase project `kltxwijhluawgveykfbt`, `STORAGE_PROVIDER=gcp`,
-  no skipped media tables, and 0 AWS-hosted media references. This still needs
-  deployment before it can be executed against `https://getugcpilot.com`.
+- The deployed production media backfill audit route ran against
+  `https://getugcpilot.com`. It confirmed production Vercel reports Supabase
+  project `kltxwijhluawgveykfbt`, `STORAGE_PROVIDER=gcp`, no skipped media
+  tables, 5,174 scanned rows, 232 existing GCP media references, and 8,981
+  AWS-hosted media references that still require copy/rewrite.
+- A guarded AWS-to-GCS media backfill tool now exists:
+  `npm run storage:gcp-backfill:dry-run` and
+  `npm run storage:gcp-backfill:execute`. It is dry-run by default, requires
+  `--execute --yes` for writes, supports `--table` and `--max-objects` canary
+  slices, copies old public AWS media URLs into `ugcsaas-media`, and rewrites
+  only database URL references whose GCS copy succeeded.
+- Small `category_image_assets` backfill canary passed. It copied 5
+  CloudFront objects to `ugcsaas-media`, updated 3 Supabase rows, and reran the
+  deployed production audit successfully. Production AWS media references
+  decreased from 8,981 to 8,976; GCP media references increased from 232 to
+  237.
 - AI generation has a live GCP worker and passed the no-spend Pub/Sub worker
   canary. Media processing is retained only as a GCP infrastructure canary
   queue for `test_worker_job`, not as a production worker profile. Video render
@@ -276,8 +282,10 @@ Pub/Sub DLQ topics:
   `arn:aws:scheduler:us-east-2:831963379461:schedule/*/*`.
 - The GCP Carousel Scheduler job remains paused; production automatic
   replenishment has not been enabled.
-- Existing S3 media has not been copied to GCS. If the production Supabase audit
-  also finds no AWS-hosted media URLs, this can be closed as unnecessary.
+- Existing S3/CloudFront media has not been fully copied to GCS. Start with a
+  larger reviewed `category_image_assets` batch, then rerun
+  `npm run production:gcp-media-backfill:audit` after each batch until the AWS
+  reference count reaches 0.
 - CDN DNS is configured, but HTTPS certificate activation is still pending. Do
   not switch `GCP_STORAGE_PUBLIC_BASE_URL` to `https://media.getugcpilot.com`
   until `npm run media-cdn:gcp:check` passes.

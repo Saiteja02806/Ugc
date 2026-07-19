@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 type Env = Record<string, string | undefined>;
 type Row = Record<string, unknown>;
 
-type TableSpec = {
+export type AwsMediaBackfillTableSpec = {
   identityColumns: string[];
   mediaColumns: string[];
   name: string;
@@ -98,7 +98,7 @@ export type AwsMediaBackfillAuditOptions = {
 const DEFAULT_PAGE_SIZE = 500;
 const DEFAULT_SAMPLE_LIMIT = 25;
 
-const tableSpecs: TableSpec[] = [
+export const AWS_MEDIA_BACKFILL_TABLE_SPECS: AwsMediaBackfillTableSpec[] = [
   {
     identityColumns: ["id", "user_id", "project_id", "source_type", "status"],
     mediaColumns: ["storage_key", "url", "thumbnail_url", "metadata"],
@@ -246,10 +246,10 @@ export async function auditAwsMediaForGcpBackfill(
     rowsWithLegacyNamedKeyValues: 0,
     scannedRows: 0,
     skippedTables: 0,
-    tables: tableSpecs.length,
+    tables: AWS_MEDIA_BACKFILL_TABLE_SPECS.length,
   };
 
-  for (const spec of tableSpecs) {
+  for (const spec of AWS_MEDIA_BACKFILL_TABLE_SPECS) {
     const tableReport = await scanTable({
       awsMatchers,
       gcpMatchers,
@@ -341,7 +341,7 @@ async function scanTable(params: {
   gcpMatchers: StorageMatcher;
   pageSize: number;
   sampleLimit: number;
-  spec: TableSpec;
+  spec: AwsMediaBackfillTableSpec;
   supabase: SupabaseReadClient;
 }) {
   const selectedColumns = [...params.spec.identityColumns, ...params.spec.mediaColumns];
@@ -397,7 +397,7 @@ function scanRow(params: {
   gcpMatchers: StorageMatcher;
   row: Row;
   sampleLimit: number;
-  spec: TableSpec;
+  spec: AwsMediaBackfillTableSpec;
   tableReport: AwsMediaBackfillTableReport;
 }) {
   const rowAwsMatches: ValueMatch[] = [];
@@ -675,7 +675,7 @@ function addSamples(params: {
   matches: ValueMatch[];
   row: Row;
   sampleLimit: number;
-  spec: TableSpec;
+  spec: AwsMediaBackfillTableSpec;
   tableReport: AwsMediaBackfillTableReport;
 }) {
   for (const match of params.matches) {

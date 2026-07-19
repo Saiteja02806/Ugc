@@ -109,6 +109,9 @@ const awsMediaBackfillAuditScript = readProjectFile(
 const awsMediaBackfillAuditLibrary = readProjectFile(
   "lib/internal/aws-media-backfill-audit.ts",
 );
+const awsMediaBackfillMigrationScript = readProjectFile(
+  "scripts/backfill-aws-media-to-gcp.mjs",
+);
 const productionGcpMediaBackfillAuditScript = readProjectFile(
   "scripts/test-production-gcp-media-backfill-audit.mjs",
 );
@@ -531,6 +534,24 @@ test("the production GCP media backfill audit uses signed auth and the shared sc
   assert.doesNotMatch(productionGcpMediaBackfillAuditScript, /OPENAI_API_KEY/);
   assert.doesNotMatch(productionGcpMediaBackfillAuditScript, /GEMINI_API_KEY/);
   assert.doesNotMatch(productionGcpMediaBackfillAuditScript, /RUNWAYML_API_SECRET/);
+});
+
+test("the AWS media backfill migration is guarded and copies to GCP storage", () => {
+  assert.match(awsMediaBackfillMigrationScript, /AWS_MEDIA_BACKFILL_TABLE_SPECS/);
+  assert.match(awsMediaBackfillMigrationScript, /uploadBufferToS3/);
+  assert.match(awsMediaBackfillMigrationScript, /headS3Object/);
+  assert.match(awsMediaBackfillMigrationScript, /STORAGE_PROVIDER = "gcp"/);
+  assert.match(awsMediaBackfillMigrationScript, /--execute/);
+  assert.match(awsMediaBackfillMigrationScript, /--yes/);
+  assert.match(awsMediaBackfillMigrationScript, /--max-objects/);
+  assert.match(awsMediaBackfillMigrationScript, /\.update\(/);
+  assert.match(awsMediaBackfillMigrationScript, /\.eq\(rowPlan\.primaryKeyColumn/);
+  assert.doesNotMatch(awsMediaBackfillMigrationScript, /\.insert\(/);
+  assert.doesNotMatch(awsMediaBackfillMigrationScript, /\.delete\(/);
+  assert.doesNotMatch(awsMediaBackfillMigrationScript, /\.upsert\(/);
+  assert.doesNotMatch(awsMediaBackfillMigrationScript, /OPENAI_API_KEY/);
+  assert.doesNotMatch(awsMediaBackfillMigrationScript, /GEMINI_API_KEY/);
+  assert.doesNotMatch(awsMediaBackfillMigrationScript, /RUNWAYML_API_SECRET/);
 });
 
 test("the GCP social-publish service canary waits for the always-on worker", () => {

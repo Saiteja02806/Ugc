@@ -38,6 +38,7 @@ const auditPlan = {
   expectedStorageProvider: "gcp",
   expectedAwsMediaReferences: options.allowAwsMediaReferences ? "any" : 0,
   sampleLimit,
+  showTables: options.showTables,
   writesNothing: true,
 };
 
@@ -57,6 +58,12 @@ validateExecuteEnv();
 const auditResponse = await requestProductionAudit();
 
 assertProductionAuditResponse(auditResponse);
+
+if (options.json) {
+  console.log(JSON.stringify(auditResponse, null, 2));
+  process.exit(0);
+}
+
 printResult(auditResponse);
 
 function parseArguments(args) {
@@ -65,9 +72,11 @@ function parseArguments(args) {
     allowSkippedTables: false,
     baseUrl: null,
     expectedSupabaseProjectRef: null,
+    json: false,
     mode: "dry-run",
     pageSize: null,
     sampleLimit: null,
+    showTables: false,
     yes: false,
   };
 
@@ -96,6 +105,16 @@ function parseArguments(args) {
 
     if (argument === "--allow-skipped-tables") {
       parsed.allowSkippedTables = true;
+      continue;
+    }
+
+    if (argument === "--json") {
+      parsed.json = true;
+      continue;
+    }
+
+    if (argument === "--show-tables") {
+      parsed.showTables = true;
       continue;
     }
 
@@ -226,6 +245,53 @@ function printResult(response) {
   console.log(`AWS media references: ${totals.awsMediaReferences}`);
   console.log(`GCP media references: ${totals.gcpMediaReferences}`);
   console.log(`Legacy *_s3_key values: ${totals.legacyNamedKeyValues}`);
+
+  if (options.showTables) {
+    printTableBreakdown(audit.tableReports ?? []);
+  }
+}
+
+function printTableBreakdown(tableReports) {
+  for (const tableReport of tableReports) {
+    if (tableReport.skipped) {
+      console.log(`SKIP ${tableReport.name}: ${tableReport.error}`);
+      continue;
+    }
+
+    console.log(
+      [
+        `TABLE ${tableReport.name}`,
+        `rows=${tableReport.scannedRows}`,
+        `awsRefs=${tableReport.awsMediaReferences}`,
+        `gcpRefs=${tableReport.gcpMediaReferences}`,
+        `legacyKeys=${tableReport.legacyNamedKeyValues}`,
+      ].join(" "),
+    );
+
+    for (const [column, summary] of Object.entries(tableReport.byColumn ?? {}).sort()) {
+      console.log(
+        [
+          "  COLUMN",
+          column,
+          `awsRefs=${summary.awsMediaReferences}`,
+          `gcpRefs=${summary.gcpMediaReferences}`,
+          `legacyKeys=${summary.legacyNamedKeyValues}`,
+        ].join(" "),
+      );
+    }
+
+    for (const sample of tableReport.samples ?? []) {
+      console.log(
+        [
+          "  AWS_SAMPLE",
+          `column=${sample.columnPath}`,
+          `host=${sample.host ?? "unknown"}`,
+          `row=${JSON.stringify(sample.row)}`,
+          `value=${sample.value}`,
+        ].join(" "),
+      );
+    }
+  }
 }
 
 function getRequiredAuditSecret() {

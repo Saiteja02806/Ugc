@@ -96,8 +96,16 @@ is live and verified, not merely planned or coded.
   `https://getugcpilot.com`, uploaded a 68-byte PNG to `ugcsaas-media`, read it
   through `storage.googleapis.com`, and cleaned up the temporary object/media
   row.
+- [x] GCP media CDN HTTPS resources exist for `media.getugcpilot.com` on the
+  reserved global IP `8.233.40.78`: managed certificate
+  `ugc-prod-media-cdn-cert`, HTTPS proxy `ugc-prod-media-cdn-https-proxy`, and
+  forwarding rule `ugc-prod-media-cdn-https`.
 - [ ] Existing S3 media has not been copied to GCS.
-- [ ] Final CDN domain/DNS is not configured. Current testing URLs use
+- [ ] Vercel DNS has not been cut over yet. `media.getugcpilot.com` still
+  resolves to Vercel IPs instead of `8.233.40.78`, so the GCP managed
+  certificate is still provisioning and app/worker env must stay on
+  `https://storage.googleapis.com/ugcsaas-media`.
+- [ ] Final CDN env cutover is not complete. Current testing URLs use
   `https://storage.googleapis.com/ugcsaas-media`.
 - [ ] AWS S3/CloudFront resources have not been removed.
 
@@ -118,9 +126,8 @@ is live and verified, not merely planned or coded.
 
 ## Current Next Slice
 
-- [ ] GCP media CDN/public domain cutover:
-  configure the final public media URL in front of `ugcsaas-media`, update app
-  and worker `GCP_STORAGE_PUBLIC_BASE_URL` values away from
-  `https://storage.googleapis.com/ugcsaas-media`, then rerun the production GCP
-  storage audit and at least one no-spend worker canary against the final media
-  host.
+- [ ] Vercel DNS and media env cutover:
+  set the Vercel DNS `A` record for `media.getugcpilot.com` to `8.233.40.78`,
+  wait until the GCP certificate is `ACTIVE`, then update production Vercel and
+  Cloud Run worker `GCP_STORAGE_PUBLIC_BASE_URL` values to
+  `https://media.getugcpilot.com` and rerun the production GCP storage audit.

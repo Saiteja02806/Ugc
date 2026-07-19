@@ -103,3 +103,12 @@ variable "secret_ids" {
     "google-client-secret"
   ]
 }
+
+variable "retained_legacy_secret_ids" {
+  description = "Legacy Secret Manager containers retained to avoid accidental deletion while runtime usage is removed."
+  type        = set(string)
+  default = [
+    "trigger-access-token",
+    "trigger-secret-key"
+  ]
+}

@@ -8,12 +8,19 @@ name_prefix    = "ugc"
 media_bucket_name     = "ugcsaas-media"
 media_bucket_location = "US"
 
-# Keep false until the CDN domain and migration cutover are ready.
+# Keep true while testing-phase media URLs are publicly readable.
 media_bucket_public_read = false
 
-# Add your CDN hostname later, for example:
-# cdn_domain_names = ["cdn.getugcpilot.com"]
-cdn_domain_names = []
+# GCP HTTPS resources can be created before DNS is pointed at the CDN IP.
+# The managed certificate becomes ACTIVE only after DNS resolves to the CDN IP.
+cdn_domain_names = ["media.getugcpilot.com"]
 
-enable_monitoring_alerts       = false
+# These containers remain managed only to prevent accidental deletion from
+# Terraform state. Trigger.dev runtime usage has been removed.
+retained_legacy_secret_ids = [
+  "trigger-access-token",
+  "trigger-secret-key"
+]
+
+enable_monitoring_alerts         = false
 monitoring_notification_channels = []

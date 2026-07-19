@@ -1,5 +1,5 @@
 resource "google_secret_manager_secret" "app" {
-  for_each = var.secret_ids
+  for_each = setunion(var.secret_ids, var.retained_legacy_secret_ids)
 
   project   = var.project_id
   secret_id = each.key

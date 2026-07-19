@@ -103,6 +103,65 @@ Current checkpoint: `gs://ugcsaas-media` allows public object reads for
 testing-phase generated media, and GCP Carousel output uses
 `https://storage.googleapis.com/ugcsaas-media`.
 
+## Media CDN Domain Slice
+
+The GCP side of the final public media domain is prepared for:
+
+```text
+https://media.getugcpilot.com
+```
+
+Terraform has created HTTPS Cloud CDN resources on the existing media CDN IP:
+
+- global IP: `8.233.40.78`
+- managed certificate: `ugc-prod-media-cdn-cert`
+- HTTPS proxy: `ugc-prod-media-cdn-https-proxy`
+- HTTPS forwarding rule: `ugc-prod-media-cdn-https`
+
+DNS is managed by Vercel for this domain. Before changing app or worker env,
+add or replace this Vercel DNS record:
+
+```text
+Type: A
+Name: media
+Value: 8.233.40.78
+```
+
+If Vercel shows explicit `media` A records pointing at Vercel IPs, replace
+them. The current DNS still resolves `media.getugcpilot.com` to Vercel IPs, so
+the GCP managed certificate remains `PROVISIONING`.
+
+After DNS is changed, wait for this command to show the certificate as
+`ACTIVE`:
+
+```powershell
+$env:CLOUDSDK_CONFIG='C:\Users\chund\OneDrive\Desktop\UGC\.tools\gcloud-config'
+.\.tools\google-cloud-sdk\bin\gcloud.cmd compute ssl-certificates describe ugc-prod-media-cdn-cert --global --project ugcsaas --format="value(managed.status)"
+```
+
+Then run:
+
+```powershell
+npm run media-cdn:gcp:check
+```
+
+Only after both checks pass, update production app and worker env values:
+
+```text
+GCP_STORAGE_PUBLIC_BASE_URL=https://media.getugcpilot.com
+```
+
+Apply the worker Terraform stacks after updating their local `terraform.tfvars`
+values, redeploy Vercel so the app env takes effect, then rerun:
+
+```powershell
+npm run production:gcp-storage:audit
+```
+
+Do not cut over `GCP_STORAGE_PUBLIC_BASE_URL` before DNS and the managed
+certificate are active, because new media rows would store URLs that users
+cannot read.
+
 ## Application Queue Slice
 
 The app now supports a dark-launched GCP queue path behind the existing

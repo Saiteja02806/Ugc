@@ -14,6 +14,7 @@ Last verified: 2026-07-19
 
 - Media bucket: `ugcsaas-media`
 - Media CDN IP: `8.233.40.78`
+- Media CDN hostname target: `media.getugcpilot.com`
 - Artifact Registry repository: `us-central1-docker.pkg.dev/ugcsaas/ugc-worker`
 - Cloud Tasks queue: `ugc-social-publish-scheduler`
 
@@ -52,6 +53,11 @@ Pub/Sub DLQ topics:
 
 - `terraform plan -detailed-exitcode` returned no changes after apply.
 - `gs://ugcsaas-media` exists in `US` multi-region.
+- The GCP media CDN has HTTP and HTTPS forwarding rules on global IP
+  `8.233.40.78`.
+- Managed SSL certificate `ugc-prod-media-cdn-cert` exists for
+  `media.getugcpilot.com`; status is `PROVISIONING` until Vercel DNS points
+  `media.getugcpilot.com` to `8.233.40.78`.
 - Public access prevention is `inherited`.
 - Uniform bucket-level access is enabled.
 - `allUsers` has `roles/storage.objectViewer` on `gs://ugcsaas-media` for
@@ -256,3 +262,6 @@ Pub/Sub DLQ topics:
   replenishment has not been enabled.
 - Existing S3 media has not been copied to GCS.
 - CDN DNS/domain is not configured yet.
+- `media.getugcpilot.com` is managed through Vercel DNS and currently resolves
+  to Vercel IPs `216.198.79.65` and `216.198.79.1`, not the GCP media CDN IP
+  `8.233.40.78`.

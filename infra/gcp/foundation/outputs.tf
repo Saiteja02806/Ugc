@@ -55,6 +55,6 @@ output "cloud_tasks_social_publish_queue" {
 }
 
 output "secret_ids" {
-  value       = sort(tolist(var.secret_ids))
-  description = "Secret Manager secret containers created without values."
+  value       = sort(tolist(setunion(var.secret_ids, var.retained_legacy_secret_ids)))
+  description = "Secret Manager secret containers managed by the foundation without values."
 }

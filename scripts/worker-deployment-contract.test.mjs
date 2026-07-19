@@ -94,6 +94,9 @@ const productionGcpStorageAuditScript = readProjectFile(
 const productionGcpStorageAuditRoute = readProjectFile(
   "app/api/internal/gcp-storage/audit/route.ts",
 );
+const gcpMediaCdnCutoverCheckScript = readProjectFile(
+  "scripts/check-gcp-media-cdn-cutover.mjs",
+);
 const gcpSocialPublishCutoverCheckScript = readProjectFile(
   "scripts/check-social-publish-gcp-cutover.mjs",
 );
@@ -369,6 +372,16 @@ test("the production GCP storage audit exercises the signed upload path and clea
   assert.doesNotMatch(productionGcpStorageAuditScript, /OPENAI_API_KEY/);
   assert.doesNotMatch(productionGcpStorageAuditScript, /GEMINI_API_KEY/);
   assert.doesNotMatch(productionGcpStorageAuditScript, /RUNWAYML_API_SECRET/);
+});
+
+test("the GCP media CDN cutover checker validates DNS and HTTPS before env cutover", () => {
+  assert.match(gcpMediaCdnCutoverCheckScript, /media\.getugcpilot\.com/);
+  assert.match(gcpMediaCdnCutoverCheckScript, /8\.233\.40\.78/);
+  assert.match(gcpMediaCdnCutoverCheckScript, /dns\.lookup/);
+  assert.match(gcpMediaCdnCutoverCheckScript, /https:\/\/\$\{host\}/);
+  assert.match(gcpMediaCdnCutoverCheckScript, /DNS is not cut over/);
+  assert.match(gcpMediaCdnCutoverCheckScript, /GCP media CDN DNS and HTTPS check passed/);
+  assert.doesNotMatch(gcpMediaCdnCutoverCheckScript, /GOOGLE_CLOUD_CREDENTIALS_JSON/);
 });
 
 test("the GCP social-publish worker service is queue-only for first canary", () => {

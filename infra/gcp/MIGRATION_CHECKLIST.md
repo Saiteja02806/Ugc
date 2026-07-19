@@ -96,16 +96,24 @@ is live and verified, not merely planned or coded.
   `https://storage.googleapis.com/ugcsaas-media`.
 - [ ] AWS S3/CloudFront resources have not been removed.
 
-## Current Next Slice
+## Completed Recent Slice
 
-- [ ] Production app cutover audit:
+- [x] Production app cutover audit:
   verify Vercel is using `QUEUE_PROVIDER=gcp`, `STORAGE_PROVIDER=gcp`, and
   `SOCIAL_SCHEDULER_PROVIDER=gcp`; then confirm normal app-created jobs land on
   the GCP topics and are consumed by the live Cloud Run workers.
 - [x] Production cutover audit route and runner have been implemented locally:
   `POST /api/internal/gcp-cutover/audit` and
   `npm run production:gcp-cutover:audit`.
-- [ ] Deploy the audit route to Vercel, then run
-  `npm run production:gcp-cutover:audit`. The route refuses to enqueue any
-  canary unless the deployed app resolves queue, storage, and social scheduler
-  providers to `gcp`.
+- [x] Deployed production audit passed after Vercel propagation. The route
+  confirmed all three providers resolved to `gcp`, enqueued invalid
+  `generate_image` job `343104d6-8131-42cf-8f1a-8bfc1dc5dfd6` through the
+  deployed app, attached Pub/Sub message `20104874044688178`, and the live GCP
+  AI worker failed it safely with `generate_image requires input.prompt.`
+
+## Current Next Slice
+
+- [ ] Production GCP storage upload audit:
+  verify a normal production app upload/signing path uses `ugcsaas-media`
+  instead of AWS S3, then verify the stored object is readable through the
+  configured GCP public base URL.

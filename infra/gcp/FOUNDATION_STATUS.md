@@ -227,6 +227,13 @@ Pub/Sub DLQ topics:
   `SOCIAL_SCHEDULER_PROVIDER=gcp`, then queues one invalid `generate_image`
   canary through the deployed app so the live GCP AI worker can consume and
   fail it before any paid AI provider call.
+- The production GCP cutover audit passed after Vercel propagation. The route
+  confirmed `QUEUE_PROVIDER=gcp`, `STORAGE_PROVIDER=gcp`, and
+  `SOCIAL_SCHEDULER_PROVIDER=gcp`, then the deployed app enqueued
+  `generate_image` background job `343104d6-8131-42cf-8f1a-8bfc1dc5dfd6` to
+  Pub/Sub message `20104874044688178`. The live Cloud Run AI worker consumed
+  the job and failed it safely with
+  `generate_image requires input.prompt.`
 - AI generation has a live GCP worker and passed the no-spend Pub/Sub worker
   canary. Media processing is retained only as a GCP infrastructure canary
   queue for `test_worker_job`, not as a production worker profile. Video render

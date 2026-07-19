@@ -91,6 +91,11 @@ is live and verified, not merely planned or coded.
 
 - [x] New generated media can be stored in GCS under `ugcsaas-media`.
 - [x] GCP Carousel and video-render smoke tests produced GCS-backed media URLs.
+- [x] Production app upload/signing path uses GCP Storage. The deployed app
+  passed `npm run production:gcp-storage:audit` against
+  `https://getugcpilot.com`, uploaded a 68-byte PNG to `ugcsaas-media`, read it
+  through `storage.googleapis.com`, and cleaned up the temporary object/media
+  row.
 - [ ] Existing S3 media has not been copied to GCS.
 - [ ] Final CDN domain/DNS is not configured. Current testing URLs use
   `https://storage.googleapis.com/ugcsaas-media`.
@@ -113,8 +118,9 @@ is live and verified, not merely planned or coded.
 
 ## Current Next Slice
 
-- [ ] Production GCP storage upload audit:
-  verify a normal production app upload/signing path uses `ugcsaas-media`
-  instead of AWS S3, then verify the stored object is readable through the
-  configured GCP public base URL. Local route/runner implementation is in
-  progress; keep this unchecked until the deployed production audit passes.
+- [ ] GCP media CDN/public domain cutover:
+  configure the final public media URL in front of `ugcsaas-media`, update app
+  and worker `GCP_STORAGE_PUBLIC_BASE_URL` values away from
+  `https://storage.googleapis.com/ugcsaas-media`, then rerun the production GCP
+  storage audit and at least one no-spend worker canary against the final media
+  host.

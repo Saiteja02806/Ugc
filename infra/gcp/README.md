@@ -612,6 +612,11 @@ The success criteria are:
 - uploaded byte count matches the tiny audit image;
 - cleanup reports both the GCS object and Supabase media row were removed.
 
+Current checkpoint: the production audit passed against
+`https://getugcpilot.com`. The deployed app uploaded a 68-byte PNG to
+`ugcsaas-media`, read it through public host `storage.googleapis.com`, and
+cleaned up the temporary GCS object plus Supabase media row.
+
 After production is creating new schedules in GCP, audit old AWS EventBridge
 social schedules:
 

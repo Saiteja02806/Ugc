@@ -110,9 +110,13 @@ is live and verified, not merely planned or coded.
 - [x] The audit ran against local `.env.local` Supabase project
   `kltxwijhluawgveykfbt` and found 0 scanned media rows and 0 AWS-hosted media
   references.
-- [ ] Confirm Vercel production is using the same Supabase project, or rerun
-  the audit with a pulled production env file before declaring existing S3
-  media backfill unnecessary.
+- [x] Signed production Supabase media backfill audit route and runner are
+  implemented locally: `POST /api/internal/gcp-media-backfill/audit` and
+  `npm run production:gcp-media-backfill:audit`.
+- [ ] Deploy the production media backfill audit route and run
+  `npm run production:gcp-media-backfill:audit`. This must confirm Vercel
+  production uses Supabase project `kltxwijhluawgveykfbt` and has 0 AWS-hosted
+  media references before declaring existing S3 media backfill unnecessary.
 - [ ] Existing S3 media has not been copied to GCS. If the production env audit
   also finds no AWS-hosted media URLs, this copy step can be closed as not
   needed.
@@ -137,12 +141,13 @@ is live and verified, not merely planned or coded.
 
 ## Current Next Slice
 
-- [ ] Production Supabase media backfill confirmation:
-  confirm the deployed Vercel app uses Supabase project `kltxwijhluawgveykfbt`
-  or run `npm run storage:gcp-backfill:audit -- --env-file <production-env>`
-  against the true production env. If AWS-hosted media URLs appear, implement a
-  guarded S3-to-GCS copy/update migration. If the result is still zero, close
-  existing media backfill as not needed for the testing-phase app.
+- [ ] Deploy and run production Supabase media backfill confirmation:
+  push the local migration commits so Vercel deploys
+  `/api/internal/gcp-media-backfill/audit`, then run
+  `npm run production:gcp-media-backfill:audit`. If AWS-hosted media URLs
+  appear, implement a guarded S3-to-GCS copy/update migration. If the result is
+  still zero, close existing media backfill as not needed for the testing-phase
+  app.
 - [ ] After the CDN certificate becomes `ACTIVE`, update production Vercel and
   Cloud Run worker `GCP_STORAGE_PUBLIC_BASE_URL` values to
   `https://media.getugcpilot.com` and rerun the production GCP storage audit.

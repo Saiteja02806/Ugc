@@ -256,6 +256,12 @@ Pub/Sub DLQ topics:
   `kltxwijhluawgveykfbt` and found 0 scanned rows across 12 media-bearing
   tables and 0 AWS-hosted media references. This is conclusive only if
   production Vercel uses the same Supabase project.
+- A signed production media backfill audit route and runner are implemented
+  locally: `POST /api/internal/gcp-media-backfill/audit` and
+  `npm run production:gcp-media-backfill:audit`. The runner expects production
+  Vercel to report Supabase project `kltxwijhluawgveykfbt`, `STORAGE_PROVIDER=gcp`,
+  no skipped media tables, and 0 AWS-hosted media references. This still needs
+  deployment before it can be executed against `https://getugcpilot.com`.
 - AI generation has a live GCP worker and passed the no-spend Pub/Sub worker
   canary. Media processing is retained only as a GCP infrastructure canary
   queue for `test_worker_job`, not as a production worker profile. Video render

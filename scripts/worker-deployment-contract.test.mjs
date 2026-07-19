@@ -106,6 +106,15 @@ const awsSocialSchedulerMigrationScript = readProjectFile(
 const awsMediaBackfillAuditScript = readProjectFile(
   "scripts/audit-aws-media-for-gcp-backfill.mjs",
 );
+const awsMediaBackfillAuditLibrary = readProjectFile(
+  "lib/internal/aws-media-backfill-audit.ts",
+);
+const productionGcpMediaBackfillAuditScript = readProjectFile(
+  "scripts/test-production-gcp-media-backfill-audit.mjs",
+);
+const productionGcpMediaBackfillAuditRoute = readProjectFile(
+  "app/api/internal/gcp-media-backfill/audit/route.ts",
+);
 const gcpSocialDispatchRoute = readProjectFile(
   "app/api/internal/schedules/dispatch/route.ts",
 );
@@ -474,26 +483,54 @@ test("the AWS social scheduler migration creates GCP tasks before deleting Event
 });
 
 test("the AWS media backfill audit is read-only and covers known media tables", () => {
-  assert.match(awsMediaBackfillAuditScript, /media_assets/);
-  assert.match(awsMediaBackfillAuditScript, /category_image_assets/);
-  assert.match(awsMediaBackfillAuditScript, /carousel_slides/);
-  assert.match(awsMediaBackfillAuditScript, /library_carousel_slides/);
-  assert.match(awsMediaBackfillAuditScript, /demo_videos/);
-  assert.match(awsMediaBackfillAuditScript, /editable_videos/);
-  assert.match(awsMediaBackfillAuditScript, /video_render_jobs/);
-  assert.match(awsMediaBackfillAuditScript, /avatar_assets/);
-  assert.match(awsMediaBackfillAuditScript, /overlay_media_assets/);
-  assert.match(awsMediaBackfillAuditScript, /background_jobs/);
-  assert.match(awsMediaBackfillAuditScript, /hook_video_drafts/);
-  assert.match(awsMediaBackfillAuditScript, /\.select\(/);
-  assert.match(awsMediaBackfillAuditScript, /\.range\(/);
-  assert.doesNotMatch(awsMediaBackfillAuditScript, /\.insert\(/);
-  assert.doesNotMatch(awsMediaBackfillAuditScript, /\.update\(/);
-  assert.doesNotMatch(awsMediaBackfillAuditScript, /\.delete\(/);
-  assert.doesNotMatch(awsMediaBackfillAuditScript, /\.upsert\(/);
-  assert.doesNotMatch(awsMediaBackfillAuditScript, /OPENAI_API_KEY/);
-  assert.doesNotMatch(awsMediaBackfillAuditScript, /GEMINI_API_KEY/);
-  assert.doesNotMatch(awsMediaBackfillAuditScript, /RUNWAYML_API_SECRET/);
+  assert.match(awsMediaBackfillAuditLibrary, /media_assets/);
+  assert.match(awsMediaBackfillAuditLibrary, /category_image_assets/);
+  assert.match(awsMediaBackfillAuditLibrary, /carousel_slides/);
+  assert.match(awsMediaBackfillAuditLibrary, /library_carousel_slides/);
+  assert.match(awsMediaBackfillAuditLibrary, /demo_videos/);
+  assert.match(awsMediaBackfillAuditLibrary, /editable_videos/);
+  assert.match(awsMediaBackfillAuditLibrary, /video_render_jobs/);
+  assert.match(awsMediaBackfillAuditLibrary, /avatar_assets/);
+  assert.match(awsMediaBackfillAuditLibrary, /overlay_media_assets/);
+  assert.match(awsMediaBackfillAuditLibrary, /background_jobs/);
+  assert.match(awsMediaBackfillAuditLibrary, /hook_video_drafts/);
+  assert.match(awsMediaBackfillAuditLibrary, /\.select\(/);
+  assert.match(awsMediaBackfillAuditLibrary, /\.range\(/);
+  assert.match(awsMediaBackfillAuditScript, /auditAwsMediaForGcpBackfill/);
+  assert.doesNotMatch(awsMediaBackfillAuditLibrary, /\.insert\(/);
+  assert.doesNotMatch(awsMediaBackfillAuditLibrary, /\.update\(/);
+  assert.doesNotMatch(awsMediaBackfillAuditLibrary, /\.delete\(/);
+  assert.doesNotMatch(awsMediaBackfillAuditLibrary, /\.upsert\(/);
+  assert.doesNotMatch(awsMediaBackfillAuditLibrary, /OPENAI_API_KEY/);
+  assert.doesNotMatch(awsMediaBackfillAuditLibrary, /GEMINI_API_KEY/);
+  assert.doesNotMatch(awsMediaBackfillAuditLibrary, /RUNWAYML_API_SECRET/);
+});
+
+test("the production GCP media backfill audit uses signed auth and the shared scanner", () => {
+  assert.match(
+    productionGcpMediaBackfillAuditRoute,
+    /verifyGcpCutoverAuditRequest/,
+  );
+  assert.match(
+    productionGcpMediaBackfillAuditRoute,
+    /auditAwsMediaForGcpBackfill/,
+  );
+  assert.match(productionGcpMediaBackfillAuditRoute, /getStorageProviderName/);
+  assert.match(
+    productionGcpMediaBackfillAuditScript,
+    /api\/internal\/gcp-media-backfill\/audit/,
+  );
+  assert.match(
+    productionGcpMediaBackfillAuditScript,
+    /Expected production Supabase project/,
+  );
+  assert.match(
+    productionGcpMediaBackfillAuditScript,
+    /Production still has \$\{totals\.awsMediaReferences\} AWS media reference/,
+  );
+  assert.doesNotMatch(productionGcpMediaBackfillAuditScript, /OPENAI_API_KEY/);
+  assert.doesNotMatch(productionGcpMediaBackfillAuditScript, /GEMINI_API_KEY/);
+  assert.doesNotMatch(productionGcpMediaBackfillAuditScript, /RUNWAYML_API_SECRET/);
 });
 
 test("the GCP social-publish service canary waits for the always-on worker", () => {

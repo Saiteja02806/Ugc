@@ -234,6 +234,12 @@ Pub/Sub DLQ topics:
   Pub/Sub message `20104874044688178`. The live Cloud Run AI worker consumed
   the job and failed it safely with
   `generate_image requires input.prompt.`
+- Production GCP storage upload audit is the current implementation slice. The
+  local route/runner should verify the deployed app can sign a GCS upload,
+  create the normal Supabase media row, read the object through the configured
+  public GCP URL, and clean up the temporary object and row. It is not complete
+  until the route is deployed and `npm run production:gcp-storage:audit`
+  passes against `https://getugcpilot.com`.
 - AI generation has a live GCP worker and passed the no-spend Pub/Sub worker
   canary. Media processing is retained only as a GCP infrastructure canary
   queue for `test_worker_job`, not as a production worker profile. Video render

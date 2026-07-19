@@ -116,4 +116,5 @@ is live and verified, not merely planned or coded.
 - [ ] Production GCP storage upload audit:
   verify a normal production app upload/signing path uses `ugcsaas-media`
   instead of AWS S3, then verify the stored object is readable through the
-  configured GCP public base URL.
+  configured GCP public base URL. Local route/runner implementation is in
+  progress; keep this unchecked until the deployed production audit passes.

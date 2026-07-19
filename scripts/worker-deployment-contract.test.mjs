@@ -88,6 +88,12 @@ const productionGcpCutoverAuditScript = readProjectFile(
 const productionGcpCutoverAuditRoute = readProjectFile(
   "app/api/internal/gcp-cutover/audit/route.ts",
 );
+const productionGcpStorageAuditScript = readProjectFile(
+  "scripts/test-production-gcp-storage-audit.mjs",
+);
+const productionGcpStorageAuditRoute = readProjectFile(
+  "app/api/internal/gcp-storage/audit/route.ts",
+);
 const gcpSocialPublishCutoverCheckScript = readProjectFile(
   "scripts/check-social-publish-gcp-cutover.mjs",
 );
@@ -339,6 +345,30 @@ test("the production GCP cutover audit uses the deployed app before polling the 
   assert.doesNotMatch(productionGcpCutoverAuditScript, /OPENAI_API_KEY/);
   assert.doesNotMatch(productionGcpCutoverAuditScript, /GEMINI_API_KEY/);
   assert.doesNotMatch(productionGcpCutoverAuditScript, /RUNWAYML_API_SECRET/);
+});
+
+test("the production GCP storage audit exercises the signed upload path and cleans up", () => {
+  assert.match(productionGcpStorageAuditRoute, /getStorageProviderName/);
+  assert.match(productionGcpStorageAuditRoute, /storageProvider !== "gcp"/);
+  assert.match(productionGcpStorageAuditRoute, /createMediaUploadTarget/);
+  assert.match(productionGcpStorageAuditRoute, /createPresignedPutUrl/);
+  assert.match(productionGcpStorageAuditRoute, /createUploadingMediaAsset/);
+  assert.match(productionGcpStorageAuditRoute, /headS3Object/);
+  assert.match(productionGcpStorageAuditRoute, /markMediaAssetReady/);
+  assert.match(productionGcpStorageAuditRoute, /deleteS3Object/);
+  assert.match(productionGcpStorageAuditRoute, /softDeleteMediaAsset/);
+  assert.match(productionGcpStorageAuditRoute, /image\/png/);
+  assert.match(productionGcpStorageAuditScript, /api\/internal\/gcp-storage\/audit/);
+  assert.match(productionGcpStorageAuditScript, /https:\/\/getugcpilot\.com/);
+  assert.match(
+    productionGcpStorageAuditScript,
+    /GCP_CUTOVER_AUDIT_SIGNATURE_HEADER/,
+  );
+  assert.match(productionGcpStorageAuditScript, /objectDeleted/);
+  assert.match(productionGcpStorageAuditScript, /mediaAssetSoftDeleted/);
+  assert.doesNotMatch(productionGcpStorageAuditScript, /OPENAI_API_KEY/);
+  assert.doesNotMatch(productionGcpStorageAuditScript, /GEMINI_API_KEY/);
+  assert.doesNotMatch(productionGcpStorageAuditScript, /RUNWAYML_API_SECRET/);
 });
 
 test("the GCP social-publish worker service is queue-only for first canary", () => {

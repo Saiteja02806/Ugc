@@ -101,6 +101,8 @@
     "ai-generation:gcp:service-canary": "node scripts/test-ai-generation-worker-service-gcp.mjs --execute --yes",
     "production:gcp-cutover:audit:dry-run": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-production-gcp-cutover-audit.mjs --dry-run",
     "production:gcp-cutover:audit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-production-gcp-cutover-audit.mjs --execute --yes",
+    "production:gcp-storage:audit:dry-run": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-production-gcp-storage-audit.mjs --dry-run",
+    "production:gcp-storage:audit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-production-gcp-storage-audit.mjs --execute --yes",
     "demo:test:e2e": "node scripts/test-demo-upload-draft-e2e.mjs",
     "demo:cors:apply": "node scripts/apply-demo-upload-cors.mjs",
     "demo:cors:check": "node scripts/check-demo-upload-cors.mjs",

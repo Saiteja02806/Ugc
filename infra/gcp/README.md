@@ -581,6 +581,37 @@ The runner signs the request using `UGC_INTERNAL_CUTOVER_AUDIT_SECRET` when set;
 otherwise it derives a domain-separated signing key from
 `SUPABASE_SERVICE_ROLE_KEY`, matching the deployed route fallback.
 
+## Production GCP storage upload audit
+
+The next storage-specific check is implemented as another protected internal
+route:
+
+```text
+POST /api/internal/gcp-storage/audit
+```
+
+It uses the same signed-upload functions as normal user media uploads. The
+route refuses to run unless the deployed app resolves `STORAGE_PROVIDER=gcp`.
+When it runs, it creates one temporary `media_assets` row, signs a GCP Storage
+PUT URL for a tiny PNG, uploads it to `ugcsaas-media`, verifies object metadata,
+checks the configured public URL is readable, deletes the GCS object, and
+soft-deletes the audit media row.
+
+Run it only after this route is deployed to Vercel:
+
+```powershell
+npm run production:gcp-storage:audit:dry-run
+npm run production:gcp-storage:audit
+```
+
+The success criteria are:
+
+- runtime storage provider is `gcp`;
+- runtime bucket is `ugcsaas-media`;
+- object metadata and public read both report `image/png`;
+- uploaded byte count matches the tiny audit image;
+- cleanup reports both the GCS object and Supabase media row were removed.
+
 After production is creating new schedules in GCP, audit old AWS EventBridge
 social schedules:
 

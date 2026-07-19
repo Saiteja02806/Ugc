@@ -112,7 +112,7 @@ Still required before legacy deletion:
 ## GCP video-render worker slice
 
 The GCP replacement for the AWS `video-render` ECS profile is implemented as a
-disabled-by-default Cloud Run Service in `infra/gcp/video-render-worker`.
+Cloud Run Service in `infra/gcp/video-render-worker`.
 
 It maps:
 
@@ -122,18 +122,17 @@ It maps:
 - Worker queue name: `video-render`
 - Worker job types: `render_edit_video,render_schedule_combination`
 
-Safe apply order:
+Safe update order:
 
 ```powershell
 npm run worker:gcp:image:push -- --cloud-build
 cd infra\gcp\video-render-worker
-copy terraform.tfvars.example terraform.tfvars
 ```
 
 Set `worker_image_uri` to the pushed Artifact Registry image. Keep
-`enable_video_render_worker = false` for the first plan, then change it to
-`true` after Secret Manager has enabled versions for `supabase-url`,
-`supabase-service-role-key`, and `ugc-internal-scheduling-secret`.
+`enable_video_render_worker = true` only after Secret Manager has enabled
+versions for `supabase-url`, `supabase-service-role-key`, and
+`ugc-internal-scheduling-secret`.
 
 ```powershell
 terraform init
@@ -146,6 +145,14 @@ npm run worker:test:video-render:gcp
 The smoke test creates one `render_edit_video` job, publishes it to Pub/Sub,
 waits for Cloud Run to process it, verifies `background_jobs`,
 `video_render_jobs`, and `editable_videos`, then downloads the GCS-backed MP4.
+
+Verified GCP smoke test:
+
+- Cloud Run Service: `ugc-video-render-worker`
+- revision: `ugc-video-render-worker-00001-4s6`
+- background job: `5c55d0ff-83ad-4674-a851-704f67b1421e`
+- Pub/Sub message: `20499814925163732`
+- render: `8e9fda30-2192-4234-810b-eee289617f22`
 
 ## GCP social-publish worker slice
 

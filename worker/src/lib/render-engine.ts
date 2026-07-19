@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import sharp from "sharp";
 
-import { uploadBufferToS3 } from "./s3.js";
+import { getStorageProviderName, uploadBufferToS3 } from "./s3.js";
 import { downloadVideoToBuffer } from "./download-video.js";
 import {
   EDIT_OVERLAY_FONT_FAMILY,
@@ -152,11 +152,12 @@ export async function renderEditedVideoToS3(
     });
     const uploadedAt = Date.now();
 
-    logger.info("Edited video render uploaded to S3", {
+    logger.info("Edited video render uploaded to object storage", {
       key: result.key,
       renderId: payload.renderId,
       renderedSize: renderedBuffer.length,
       sourceVideoId: payload.sourceVideoId,
+      storageProvider: getStorageProviderName(),
       timingsMs: {
         downloadAndPrepare: sourceReadyAt - renderStartedAt,
         encode: encodedAt - sourceReadyAt,
@@ -276,11 +277,12 @@ export async function renderScheduleCombinationToS3(
       cacheControl: "public, max-age=31536000, immutable",
     });
 
-    logger.info("Schedule combination render uploaded to S3", {
+    logger.info("Schedule combination render uploaded to object storage", {
       key: result.key,
       renderId: payload.renderId,
       renderedSize: renderedBuffer.length,
       scheduleId: payload.scheduleId,
+      storageProvider: getStorageProviderName(),
       url: result.url,
     });
 

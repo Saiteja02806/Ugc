@@ -223,7 +223,7 @@ and scheduled social publish path has completed this queue cutover.
 
 ## Video Render Worker Slice
 
-The next production-shaped GCP worker target is video rendering. This maps the
+Video rendering has been moved to a production-shaped GCP worker. This maps the
 old AWS `video-render` worker profile to a Cloud Run Service that consumes the
 existing Pub/Sub subscription `ugc-video-render-sub`.
 
@@ -240,24 +240,32 @@ The Terraform stack lives in `infra/gcp/video-render-worker` and configures:
 - public media base URL: `https://storage.googleapis.com/ugcsaas-media`
 - schedule finalization callback URL: `https://getugcpilot.com`
 
-The stack is disabled by default:
+The deployed stack uses worker image:
+
+```text
+us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718203317
+```
+
+To re-plan or update the stack:
 
 ```powershell
 cd infra\gcp\video-render-worker
-copy terraform.tfvars.example terraform.tfvars
 terraform init
 terraform plan
 ```
 
-Enable it only after:
+Required prerequisites:
 
-- the same worker image used for Carousel has been pushed to Artifact Registry;
+- the worker image has been pushed to Artifact Registry;
 - Secret Manager has enabled versions for `supabase-url`,
   `supabase-service-role-key`, and `ugc-internal-scheduling-secret`;
-- the production app has the matching `UGC_INTERNAL_SCHEDULING_SECRET`;
+- `ugc-internal-scheduling-secret` matches the production finalization secret.
+  In the current testing setup, it is derived from `SUPABASE_SERVICE_ROLE_KEY`,
+  so the production app can use its existing fallback when
+  `UGC_INTERNAL_SCHEDULING_SECRET` is not set in Vercel;
 - GCS public reads are verified for rendered MP4s.
 
-After applying with `enable_video_render_worker = true`, run:
+After applying changes, run:
 
 ```powershell
 npm run worker:test:video-render:gcp
@@ -266,6 +274,16 @@ npm run worker:test:video-render:gcp
 The smoke test creates one `render_edit_video` background job, publishes it to
 `ugc-video-render`, waits for the Cloud Run worker to complete it, verifies the
 database rows, and downloads the GCS-backed MP4.
+
+Verified GCP smoke test:
+
+- Cloud Run Service: `ugc-video-render-worker`
+- revision: `ugc-video-render-worker-00001-4s6`
+- background job: `5c55d0ff-83ad-4674-a851-704f67b1421e`
+- Pub/Sub message: `20499814925163732`
+- render: `8e9fda30-2192-4234-810b-eee289617f22`
+- output:
+  `https://storage.googleapis.com/ugcsaas-media/videos/rendered/gcp-video-render-canary/gcp-video-render-canary/8e9fda30-2192-4234-810b-eee289617f22.mp4`
 
 ## Social Publish Worker Slice
 

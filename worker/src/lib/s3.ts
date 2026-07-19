@@ -133,7 +133,7 @@ function getGcsStorageConfig(): GcsStorageConfig {
   };
 }
 
-function getStorageProviderName(): StorageProviderName {
+export function getStorageProviderName(): StorageProviderName {
   const configuredProvider = (
     process.env.STORAGE_PROVIDER ??
     process.env.UGC_STORAGE_PROVIDER ??

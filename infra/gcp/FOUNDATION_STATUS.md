@@ -107,9 +107,22 @@ Pub/Sub DLQ topics:
   `ad451643-fdee-4e1f-93ce-ef925762584d`, Pub/Sub message
   `19919982775905874`. The worker completed 5 rendered slides and the smoke
   script downloaded the GCS public slide URLs successfully.
-- The next slice has been implemented locally as Terraform and smoke-test code:
-  `infra/gcp/video-render-worker` plus `npm run worker:test:video-render:gcp`.
-  It is disabled by default and has not been applied yet.
+- The video-render worker stack has been applied from
+  `infra/gcp/video-render-worker`. It created Cloud Run Service
+  `ugc-video-render-worker`, revision `ugc-video-render-worker-00001-4s6`,
+  with `WORKER_QUEUE_PROVIDER=gcp`,
+  `WORKER_JOB_TYPES=render_edit_video,render_schedule_combination`,
+  `WORKER_PUBSUB_SUBSCRIPTION=ugc-video-render-sub`, and
+  `STORAGE_PROVIDER=gcp`.
+- `ugc-internal-scheduling-secret` now has enabled Secret Manager version `1`.
+  The value is derived from `SUPABASE_SERVICE_ROLE_KEY`, matching the production
+  app's existing finalization-secret fallback when
+  `UGC_INTERNAL_SCHEDULING_SECRET` is not set in Vercel.
+- Real GCP video-render smoke test passed:
+  render `8e9fda30-2192-4234-810b-eee289617f22`, background job
+  `5c55d0ff-83ad-4674-a851-704f67b1421e`, Pub/Sub message
+  `20499814925163732`. The worker completed the render and the smoke script
+  downloaded the GCS public MP4 URL successfully.
 - The social-publish GCP worker slice was first implemented as disabled
   Terraform in `infra/gcp/social-publish-worker`. It keeps
   `social_reconciliation_enabled = false` for the first live phase so the
@@ -186,9 +199,8 @@ Pub/Sub DLQ topics:
 - Production Vercel/app environment must be confirmed before treating every
   app-created job as fully cut over to GCP queues. The GCP worker
   infrastructure is ready for the migrated profiles.
-- AI generation, media processing, and video render profiles still remain on
-  the AWS/SQS path. The video-render GCP stack exists in code but must still be
-  applied and smoke-tested before traffic is moved.
+- AI generation and media processing profiles still remain on the AWS/SQS path.
+  Video render has a live GCP worker and passed the direct Pub/Sub smoke test.
 - The always-on GCP social-publish worker is live and has passed a fake-target
   Pub/Sub canary. A real social-provider publish canary still has not been run;
   choose the account, platform, and visibility intentionally before testing

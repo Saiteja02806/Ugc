@@ -56,8 +56,10 @@ Pub/Sub DLQ topics:
 - The GCP media CDN has HTTP and HTTPS forwarding rules on global IP
   `8.233.40.78`.
 - Managed SSL certificate `ugc-prod-media-cdn-cert` exists for
-  `media.getugcpilot.com`; status is `PROVISIONING` until Vercel DNS points
-  `media.getugcpilot.com` to `8.233.40.78`.
+  `media.getugcpilot.com`; status is still `PROVISIONING`.
+- Vercel DNS now resolves `media.getugcpilot.com` to the GCP media CDN IP
+  `8.233.40.78`. HTTP reaches the GCP load balancer, but HTTPS can fail before
+  TLS completes until the managed certificate becomes `ACTIVE`.
 - Public access prevention is `inherited`.
 - Uniform bucket-level access is enabled.
 - `allUsers` has `roles/storage.objectViewer` on `gs://ugcsaas-media` for
@@ -246,6 +248,14 @@ Pub/Sub DLQ topics:
   `media/production-gcp-storage-audit-cdd0eb7b-df90-476c-aa3e-e1a8bb50f068/image/f4a557ce-4d9e-49dd-8273-f63ad4605d50.png`,
   read it through public host `storage.googleapis.com`, and cleaned up the
   temporary GCS object plus Supabase media row.
+- A read-only AWS media backfill audit script now exists:
+  `npm run storage:gcp-backfill:audit`. It scans known media-bearing Supabase
+  tables for AWS S3/CloudFront URLs and counts legacy `*_s3_key` values
+  separately because current GCS-backed code still writes to old column names.
+- The audit ran against local `.env.local` Supabase project
+  `kltxwijhluawgveykfbt` and found 0 scanned rows across 12 media-bearing
+  tables and 0 AWS-hosted media references. This is conclusive only if
+  production Vercel uses the same Supabase project.
 - AI generation has a live GCP worker and passed the no-spend Pub/Sub worker
   canary. Media processing is retained only as a GCP infrastructure canary
   queue for `test_worker_job`, not as a production worker profile. Video render
@@ -260,8 +270,8 @@ Pub/Sub DLQ topics:
   `arn:aws:scheduler:us-east-2:831963379461:schedule/*/*`.
 - The GCP Carousel Scheduler job remains paused; production automatic
   replenishment has not been enabled.
-- Existing S3 media has not been copied to GCS.
-- CDN DNS/domain is not configured yet.
-- `media.getugcpilot.com` is managed through Vercel DNS and currently resolves
-  to Vercel IPs `216.198.79.65` and `216.198.79.1`, not the GCP media CDN IP
-  `8.233.40.78`.
+- Existing S3 media has not been copied to GCS. If the production Supabase audit
+  also finds no AWS-hosted media URLs, this can be closed as unnecessary.
+- CDN DNS is configured, but HTTPS certificate activation is still pending. Do
+  not switch `GCP_STORAGE_PUBLIC_BASE_URL` to `https://media.getugcpilot.com`
+  until `npm run media-cdn:gcp:check` passes.

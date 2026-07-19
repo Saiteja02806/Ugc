@@ -100,11 +100,22 @@ is live and verified, not merely planned or coded.
   reserved global IP `8.233.40.78`: managed certificate
   `ugc-prod-media-cdn-cert`, HTTPS proxy `ugc-prod-media-cdn-https-proxy`, and
   forwarding rule `ugc-prod-media-cdn-https`.
-- [ ] Existing S3 media has not been copied to GCS.
-- [ ] Vercel DNS has not been cut over yet. `media.getugcpilot.com` still
-  resolves to Vercel IPs instead of `8.233.40.78`, so the GCP managed
-  certificate is still provisioning and app/worker env must stay on
-  `https://storage.googleapis.com/ugcsaas-media`.
+- [x] Vercel DNS for `media.getugcpilot.com` has been cut over to the GCP
+  media CDN IP `8.233.40.78`.
+- [ ] The GCP managed certificate for `media.getugcpilot.com` is still
+  provisioning, so app/worker env must stay on
+  `https://storage.googleapis.com/ugcsaas-media` until HTTPS passes.
+- [x] Read-only AWS media backfill audit script exists:
+  `npm run storage:gcp-backfill:audit`.
+- [x] The audit ran against local `.env.local` Supabase project
+  `kltxwijhluawgveykfbt` and found 0 scanned media rows and 0 AWS-hosted media
+  references.
+- [ ] Confirm Vercel production is using the same Supabase project, or rerun
+  the audit with a pulled production env file before declaring existing S3
+  media backfill unnecessary.
+- [ ] Existing S3 media has not been copied to GCS. If the production env audit
+  also finds no AWS-hosted media URLs, this copy step can be closed as not
+  needed.
 - [ ] Final CDN env cutover is not complete. Current testing URLs use
   `https://storage.googleapis.com/ugcsaas-media`.
 - [ ] AWS S3/CloudFront resources have not been removed.
@@ -126,8 +137,12 @@ is live and verified, not merely planned or coded.
 
 ## Current Next Slice
 
-- [ ] Vercel DNS and media env cutover:
-  set the Vercel DNS `A` record for `media.getugcpilot.com` to `8.233.40.78`,
-  wait until the GCP certificate is `ACTIVE`, then update production Vercel and
+- [ ] Production Supabase media backfill confirmation:
+  confirm the deployed Vercel app uses Supabase project `kltxwijhluawgveykfbt`
+  or run `npm run storage:gcp-backfill:audit -- --env-file <production-env>`
+  against the true production env. If AWS-hosted media URLs appear, implement a
+  guarded S3-to-GCS copy/update migration. If the result is still zero, close
+  existing media backfill as not needed for the testing-phase app.
+- [ ] After the CDN certificate becomes `ACTIVE`, update production Vercel and
   Cloud Run worker `GCP_STORAGE_PUBLIC_BASE_URL` values to
   `https://media.getugcpilot.com` and rerun the production GCP storage audit.

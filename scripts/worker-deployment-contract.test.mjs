@@ -67,6 +67,12 @@ const gcpSocialDispatchCanaryScript = readProjectFile(
 const gcpSocialPublishWorkerCanaryScript = readProjectFile(
   "scripts/test-social-publish-worker-gcp.mjs",
 );
+const gcpSocialPublishWorkerServiceCanaryScript = readProjectFile(
+  "scripts/test-social-publish-worker-service-gcp.mjs",
+);
+const gcpSocialPublishCutoverCheckScript = readProjectFile(
+  "scripts/check-social-publish-gcp-cutover.mjs",
+);
 const gcpSocialDispatchRoute = readProjectFile(
   "app/api/internal/schedules/dispatch/route.ts",
 );
@@ -296,6 +302,34 @@ test("the GCP social-publish worker canary consumes a fake target only", () => {
   assert.doesNotMatch(gcpSocialPublishWorkerCanaryScript, /from\("scheduled_posts"\)/);
   assert.doesNotMatch(gcpSocialPublishWorkerCanaryScript, /from\("scheduled_post_targets"\)/);
   assert.doesNotMatch(gcpSocialPublishWorkerCanaryScript, /from\("social_connections"\)/);
+});
+
+test("the GCP social-publish cutover guard refuses open real work", () => {
+  assert.match(gcpSocialPublishCutoverCheckScript, /ugc-social-publish-sub/);
+  assert.match(gcpSocialPublishCutoverCheckScript, /publish_social_post/);
+  assert.match(gcpSocialPublishCutoverCheckScript, /SubscriberClient/);
+  assert.match(gcpSocialPublishCutoverCheckScript, /modifyAckDeadline/);
+  assert.match(gcpSocialPublishCutoverCheckScript, /drainTerminalCanary/);
+  assert.match(gcpSocialPublishCutoverCheckScript, /queued", "processing"/);
+  assert.match(gcpSocialPublishCutoverCheckScript, /Cutover guard failed/);
+  assert.doesNotMatch(gcpSocialPublishCutoverCheckScript, /from\("scheduled_posts"\)/);
+  assert.doesNotMatch(gcpSocialPublishCutoverCheckScript, /from\("scheduled_post_targets"\)/);
+  assert.doesNotMatch(gcpSocialPublishCutoverCheckScript, /from\("social_connections"\)/);
+});
+
+test("the GCP social-publish service canary waits for the always-on worker", () => {
+  assert.match(gcpSocialPublishWorkerServiceCanaryScript, /ugc-social-publish-worker/);
+  assert.match(gcpSocialPublishWorkerServiceCanaryScript, /publishMessage/);
+  assert.match(gcpSocialPublishWorkerServiceCanaryScript, /publish_social_post/);
+  assert.match(
+    gcpSocialPublishWorkerServiceCanaryScript,
+    /gcp-social-publish-worker-service-fake-target/,
+  );
+  assert.match(gcpSocialPublishWorkerServiceCanaryScript, /Publish target was not found/);
+  assert.doesNotMatch(gcpSocialPublishWorkerServiceCanaryScript, /jobs",\s*"execute"/);
+  assert.doesNotMatch(gcpSocialPublishWorkerServiceCanaryScript, /from\("scheduled_posts"\)/);
+  assert.doesNotMatch(gcpSocialPublishWorkerServiceCanaryScript, /from\("scheduled_post_targets"\)/);
+  assert.doesNotMatch(gcpSocialPublishWorkerServiceCanaryScript, /from\("social_connections"\)/);
 });
 
 test("the GCP social dispatch route accepts canonical UUID identifiers", () => {

@@ -270,7 +270,7 @@ database rows, and downloads the GCS-backed MP4.
 ## Social Publish Worker Slice
 
 The GCP replacement for the AWS `social-publish` worker profile is implemented
-as disabled-by-default infrastructure in `infra/gcp/social-publish-worker`.
+in `infra/gcp/social-publish-worker`.
 
 The Terraform stack configures:
 
@@ -284,7 +284,7 @@ The Terraform stack configures:
 - token encryption secret: `oauth-token-encryption-key`
 - provider secrets: TikTok client key/secret and Google client ID/secret
 
-The stack is disabled by default:
+The stack was disabled by default during preparation:
 
 ```powershell
 cd infra\gcp\social-publish-worker
@@ -344,6 +344,42 @@ has been pushed, Terraform has applied Cloud Run Job
 `a76048d0-2c66-4ddf-b829-96b75c8285bc`, Pub/Sub message
 `20639648512021525`, and final status was expected failure:
 `Publish target was not found.`
+
+The always-on Cloud Run Service is now applied:
+
+- service: `ugc-social-publish-worker`
+- revision: `ugc-social-publish-worker-00001-pvs`
+- service URL:
+  `https://ugc-social-publish-worker-ano542ohmq-uc.a.run.app`
+- subscription: `ugc-social-publish-sub`
+- queue/job profile: `social-publish` / `publish_social_post`
+- worker image digest:
+  `sha256:df802f3e3218fd7f48b88016372f6dc4e15ad2b3bc1658ca72844d817d418c38`
+- `SOCIAL_RECONCILIATION_ENABLED=false`
+
+Startup logs confirm the service runs with `queueProvider: gcp`,
+`pubsubSubscriptionName: ugc-social-publish-sub`, and allowed job type
+`publish_social_post`.
+
+The always-on service fake-target canary passed. Background job
+`3c63f479-6351-4a17-be82-636bc0424cb1` was published to Pub/Sub message
+`20487418590912439`, consumed by `ugc-social-publish-worker`, and failed with
+`Publish target was not found.` This proves the Cloud Run Service consumes the
+GCP social publish queue without calling a social provider.
+
+Use this guard before real social publish tests:
+
+```powershell
+npm run social-publish:gcp:cutover-check
+```
+
+Use this service canary to retest the always-on worker without spending on media
+generation or publishing to a provider:
+
+```powershell
+npm run social-publish:gcp:service-dry-run
+npm run social-publish:gcp:service-canary
+```
 
 ## Social Schedule Dispatcher Slice
 

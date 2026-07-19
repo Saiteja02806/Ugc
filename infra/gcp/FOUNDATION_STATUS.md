@@ -1,6 +1,6 @@
 # GCP Foundation Status
 
-Last verified: 2026-07-18
+Last verified: 2026-07-19
 
 ## Project
 
@@ -110,10 +110,11 @@ Pub/Sub DLQ topics:
 - The next slice has been implemented locally as Terraform and smoke-test code:
   `infra/gcp/video-render-worker` plus `npm run worker:test:video-render:gcp`.
   It is disabled by default and has not been applied yet.
-- The social-publish GCP worker slice has been implemented locally as disabled
+- The social-publish GCP worker slice was first implemented as disabled
   Terraform in `infra/gcp/social-publish-worker`. It keeps
-  `social_reconciliation_enabled = false` by default so an initial canary cannot
-  recover and publish older due jobs without an explicit Pub/Sub delivery.
+  `social_reconciliation_enabled = false` for the first live phase so the
+  worker cannot recover and publish older due jobs without an explicit Pub/Sub
+  delivery.
 - A separate fake-target social-publish worker canary has been added to
   `infra/gcp/worker-canary` as Cloud Run Job
   `ugc-social-publish-worker-canary`, disabled by default. The matching script
@@ -143,21 +144,42 @@ Pub/Sub DLQ topics:
   `npm run social-dispatch:gcp:canary`. It tests only the Cloud Tasks to
   deployed dispatcher to Pub/Sub handoff using a fake target, then cancels the
   dummy background job.
+- The always-on social-publish worker stack has been applied from
+  `infra/gcp/social-publish-worker`. It created Cloud Run Service
+  `ugc-social-publish-worker`, revision
+  `ugc-social-publish-worker-00001-pvs`, with `WORKER_QUEUE_PROVIDER=gcp`,
+  `WORKER_JOB_TYPES=publish_social_post`,
+  `WORKER_PUBSUB_SUBSCRIPTION=ugc-social-publish-sub`,
+  `STORAGE_PROVIDER=gcp`, and `SOCIAL_RECONCILIATION_ENABLED=false`.
+- Required social-publish Secret Manager versions were verified as enabled:
+  `supabase-url`, `supabase-service-role-key`,
+  `oauth-token-encryption-key`, `tiktok-client-key`,
+  `tiktok-client-secret`, `google-client-id`, and
+  `google-client-secret`.
+- The GCP social-publish cutover guard passed before and after enabling the
+  worker: 0 open `publish_social_post` jobs, 0 Pub/Sub messages inspected, and
+  0 unsafe messages.
+- The always-on social-publish worker fake-target canary passed. Background job
+  `3c63f479-6351-4a17-be82-636bc0424cb1` was published to Pub/Sub message
+  `20487418590912439`, consumed by Cloud Run Service
+  `ugc-social-publish-worker`, and failed with the expected safe error
+  `Publish target was not found.`
+- `terraform plan -detailed-exitcode` for
+  `infra/gcp/social-publish-worker` returned no changes after apply.
 
 ## Not Yet Cut Over
 
-- Production still defaults to AWS/SQS background queues.
 - No AWS resources were removed.
-- No production env was changed to `QUEUE_PROVIDER=gcp` or
-  `WORKER_QUEUE_PROVIDER=gcp`.
-- Normal app-created jobs still default to AWS/SQS until Vercel/app env is
-  changed to `QUEUE_PROVIDER=gcp`.
-- AI generation, media processing, video render, and the always-on social publish worker
-  profiles still remain on the AWS/SQS path. The video-render GCP stack exists
-  in code but must still be applied and smoke-tested before traffic is moved.
-  The social-publish GCP stack exists in code but must still be applied as the
-  always-on worker and then tested with an intentionally selected account/post
-  before traffic is moved.
+- Production Vercel/app environment must be confirmed before treating every
+  app-created job as fully cut over to GCP queues. The GCP worker
+  infrastructure is ready for the migrated profiles.
+- AI generation, media processing, and video render profiles still remain on
+  the AWS/SQS path. The video-render GCP stack exists in code but must still be
+  applied and smoke-tested before traffic is moved.
+- The always-on GCP social-publish worker is live and has passed a fake-target
+  Pub/Sub canary. A real social-provider publish canary still has not been run;
+  choose the account, platform, and visibility intentionally before testing
+  real publishing.
 - Scheduled social publish handoff still defaults to AWS EventBridge Scheduler
   until production is changed to `SOCIAL_SCHEDULER_PROVIDER=gcp`.
 - The GCP Carousel Scheduler job remains paused; production automatic

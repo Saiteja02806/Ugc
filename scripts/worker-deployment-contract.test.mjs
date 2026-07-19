@@ -52,6 +52,18 @@ const gcpVideoRenderWorkerTfvars = readProjectFile(
 const gcpVideoRenderSmokeScript = readProjectFile(
   "scripts/test-video-render-gcp.mjs",
 );
+const gcpAiGenerationWorkerMain = readProjectFile(
+  "infra/gcp/ai-generation-worker/main.tf",
+);
+const gcpAiGenerationWorkerVariables = readProjectFile(
+  "infra/gcp/ai-generation-worker/variables.tf",
+);
+const gcpAiGenerationWorkerTfvars = readProjectFile(
+  "infra/gcp/ai-generation-worker/terraform.tfvars.example",
+);
+const gcpAiGenerationWorkerServiceCanaryScript = readProjectFile(
+  "scripts/test-ai-generation-worker-service-gcp.mjs",
+);
 const gcpSocialPublishWorkerMain = readProjectFile(
   "infra/gcp/social-publish-worker/main.tf",
 );
@@ -254,6 +266,53 @@ test("the GCP video-render smoke test uses Pub/Sub and expects GCS output", () =
   assert.match(gcpVideoRenderSmokeScript, /editable_videos/);
   assert.match(gcpVideoRenderSmokeScript, /GCP_STORAGE_PUBLIC_BASE_URL/);
   assert.match(gcpVideoRenderSmokeScript, /startsWith\(expectedStorageBaseUrl\)/);
+});
+
+test("the GCP AI-generation worker service consumes only AI generation jobs", () => {
+  assert.match(gcpAiGenerationWorkerMain, /google_cloud_run_v2_service/);
+  assert.match(gcpAiGenerationWorkerMain, /INGRESS_TRAFFIC_INTERNAL_ONLY/);
+  assert.match(gcpAiGenerationWorkerMain, /cpu_idle\s*=\s*false/);
+  assert.match(gcpAiGenerationWorkerMain, /WORKER_QUEUE_PROVIDER/);
+  assert.match(gcpAiGenerationWorkerMain, /WORKER_PUBSUB_SUBSCRIPTION/);
+  assert.match(gcpAiGenerationWorkerMain, /WORKER_JOB_TYPES/);
+  assert.match(gcpAiGenerationWorkerMain, /STORAGE_PROVIDER/);
+  assert.match(gcpAiGenerationWorkerMain, /GCP_STORAGE_PUBLIC_BASE_URL/);
+  assert.match(gcpAiGenerationWorkerMain, /OPENAI_API_KEY/);
+  assert.match(gcpAiGenerationWorkerMain, /OPENAI_IMAGE_MODEL/);
+  assert.match(gcpAiGenerationWorkerMain, /GEMINI_API_KEY/);
+  assert.match(gcpAiGenerationWorkerMain, /RUNWAYML_API_SECRET/);
+  assert.match(
+    gcpAiGenerationWorkerVariables,
+    /generate_avatar,generate_image,generate_hook_video/,
+  );
+  assert.match(gcpAiGenerationWorkerVariables, /ugc-ai-generation-sub/);
+  assert.match(gcpAiGenerationWorkerVariables, /ugcsaas-media/);
+  assert.match(gcpAiGenerationWorkerTfvars, /enable_ai_generation_worker = false/);
+  assert.match(
+    gcpAiGenerationWorkerTfvars,
+    /worker_job_types\s*=\s*"generate_avatar,generate_image,generate_hook_video"/,
+  );
+});
+
+test("the GCP AI-generation service canary avoids paid provider calls", () => {
+  assert.match(gcpAiGenerationWorkerServiceCanaryScript, /ugc-ai-generation-worker/);
+  assert.match(gcpAiGenerationWorkerServiceCanaryScript, /publishMessage/);
+  assert.match(gcpAiGenerationWorkerServiceCanaryScript, /generate_image/);
+  assert.match(gcpAiGenerationWorkerServiceCanaryScript, /ugc-ai-generation/);
+  assert.match(gcpAiGenerationWorkerServiceCanaryScript, /ai-generation/);
+  assert.match(
+    gcpAiGenerationWorkerServiceCanaryScript,
+    /gcp-ai-generation-worker-service-invalid-input/,
+  );
+  assert.match(
+    gcpAiGenerationWorkerServiceCanaryScript,
+    /generate_image requires input\.prompt/,
+  );
+  assert.match(gcpAiGenerationWorkerServiceCanaryScript, /assertNoOpenRealAiGenerationJobs/);
+  assert.doesNotMatch(gcpAiGenerationWorkerServiceCanaryScript, /jobs",\s*"execute"/);
+  assert.doesNotMatch(gcpAiGenerationWorkerServiceCanaryScript, /OPENAI_API_KEY/);
+  assert.doesNotMatch(gcpAiGenerationWorkerServiceCanaryScript, /GEMINI_API_KEY/);
+  assert.doesNotMatch(gcpAiGenerationWorkerServiceCanaryScript, /RUNWAYML_API_SECRET/);
 });
 
 test("the GCP social-publish worker service is queue-only for first canary", () => {

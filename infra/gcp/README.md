@@ -15,6 +15,9 @@ does not change application traffic by itself.
 - `video-render-worker/`: creates an always-on Cloud Run Service that consumes
   `render_edit_video` and `render_schedule_combination` jobs from
   `ugc-video-render-sub`.
+- `ai-generation-worker/`: creates an always-on Cloud Run Service that consumes
+  `generate_avatar`, `generate_image`, and `generate_hook_video` jobs from
+  `ugc-ai-generation-sub`.
 - `social-publish-worker/`: creates an always-on Cloud Run Service that
   consumes `publish_social_post` jobs from `ugc-social-publish-sub`.
 - `carousel-scheduler/`: creates an optional Cloud Run Job plus Cloud Scheduler
@@ -284,6 +287,71 @@ Verified GCP smoke test:
 - render: `8e9fda30-2192-4234-810b-eee289617f22`
 - output:
   `https://storage.googleapis.com/ugcsaas-media/videos/rendered/gcp-video-render-canary/gcp-video-render-canary/8e9fda30-2192-4234-810b-eee289617f22.mp4`
+
+## AI Generation Worker Slice
+
+The GCP replacement for the AWS `ai-generation` worker profile is implemented
+as a Cloud Run Service in `infra/gcp/ai-generation-worker`.
+
+It maps:
+
+- AWS SQS queue: `UGC_AI_GENERATION_QUEUE_URL`
+- GCP Pub/Sub topic: `ugc-ai-generation`
+- GCP Pub/Sub subscription: `ugc-ai-generation-sub`
+- Worker queue name: `ai-generation`
+- Worker job types: `generate_avatar,generate_image,generate_hook_video`
+- output storage: `STORAGE_PROVIDER=gcp`
+- public media base URL: `https://storage.googleapis.com/ugcsaas-media`
+
+Safe apply order:
+
+```powershell
+npm run worker:gcp:image:push -- --cloud-build
+cd infra\gcp\ai-generation-worker
+copy terraform.tfvars.example terraform.tfvars
+```
+
+Set `worker_image_uri` to the pushed Artifact Registry image. Keep
+`enable_ai_generation_worker = false` for the first plan, then enable it only
+after Secret Manager has enabled versions for:
+
+- `supabase-url`
+- `supabase-service-role-key`
+- `openai-api-key`
+- `gemini-api-key`
+- `runwayml-api-secret`
+
+The service canary intentionally does not spend AI provider credits:
+
+```powershell
+npm run ai-generation:gcp:service-dry-run
+npm run ai-generation:gcp:service-canary
+```
+
+The canary creates one invalid `generate_image` background job without
+`input.prompt`, publishes it to `ugc-ai-generation`, waits for the always-on
+Cloud Run worker to consume it, and expects the job to fail with
+`generate_image requires input.prompt.` That proves Pub/Sub and Cloud Run
+consumption before OpenAI, Gemini, or Runway can be called.
+
+Current checkpoint:
+
+- Cloud Run Service: `ugc-ai-generation-worker`
+- revision: `ugc-ai-generation-worker-00001-97p`
+- service URL:
+  `https://ugc-ai-generation-worker-ano542ohmq-uc.a.run.app`
+- worker image:
+  `us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260719053832`
+- subscription: `ugc-ai-generation-sub`
+- queue/job profile: `ai-generation` /
+  `generate_avatar,generate_image,generate_hook_video`
+- output storage: `STORAGE_PROVIDER=gcp`
+
+The no-spend service canary passed. Background job
+`081aa700-90e9-4886-a543-f46bb2530b8f` was published to Pub/Sub message
+`20561160922574488`, consumed by `ugc-ai-generation-worker`, and failed with
+the expected safe error `generate_image requires input.prompt.` Terraform
+`plan -detailed-exitcode` returned no changes after apply.
 
 ## Social Publish Worker Slice
 

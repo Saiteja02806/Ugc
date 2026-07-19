@@ -192,6 +192,23 @@ Pub/Sub DLQ topics:
 - Dry-run audit found 16 old AWS-backed Supabase social target rows, all in
   non-active states: 7 `published`, 5 `action_required`, and 4 `failed`.
   It found no active future AWS-backed target to migrate to Cloud Tasks.
+- The AI-generation GCP worker stack has been applied from
+  `infra/gcp/ai-generation-worker`. It created Cloud Run Service
+  `ugc-ai-generation-worker`, revision `ugc-ai-generation-worker-00001-97p`,
+  with `WORKER_QUEUE_PROVIDER=gcp`,
+  `WORKER_PUBSUB_SUBSCRIPTION=ugc-ai-generation-sub`, queue
+  `ai-generation`, and job types
+  `generate_avatar,generate_image,generate_hook_video`.
+- A no-spend AI-generation service canary has been added as
+  `npm run ai-generation:gcp:service-dry-run` and
+  `npm run ai-generation:gcp:service-canary`. It passed against the live Cloud
+  Run Service. Background job `081aa700-90e9-4886-a543-f46bb2530b8f` was
+  published to Pub/Sub message `20561160922574488`, consumed by
+  `ugc-ai-generation-worker`, and failed with
+  `generate_image requires input.prompt.` before OpenAI, Gemini, or Runway can
+  be called.
+- `terraform plan -detailed-exitcode` for
+  `infra/gcp/ai-generation-worker` returned no changes after apply.
 
 ## Not Yet Cut Over
 
@@ -199,8 +216,9 @@ Pub/Sub DLQ topics:
 - Production Vercel/app environment must be confirmed before treating every
   app-created job as fully cut over to GCP queues. The GCP worker
   infrastructure is ready for the migrated profiles.
-- AI generation and media processing profiles still remain on the AWS/SQS path.
-  Video render has a live GCP worker and passed the direct Pub/Sub smoke test.
+- AI generation has a live GCP worker and passed the no-spend Pub/Sub worker
+  canary. Media processing still remains on the AWS/SQS path. Video render has
+  a live GCP worker and passed the direct Pub/Sub smoke test.
 - The always-on GCP social-publish worker is live and has passed a fake-target
   Pub/Sub canary. A real social-provider publish canary still has not been run;
   choose the account, platform, and visibility intentionally before testing

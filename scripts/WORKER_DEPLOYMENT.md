@@ -154,6 +154,59 @@ Verified GCP smoke test:
 - Pub/Sub message: `20499814925163732`
 - render: `8e9fda30-2192-4234-810b-eee289617f22`
 
+## GCP AI-generation worker slice
+
+The GCP replacement for the AWS `ai-generation` ECS profile is implemented as
+Cloud Run Service infrastructure in `infra/gcp/ai-generation-worker`.
+
+It maps:
+
+- AWS SQS queue: `UGC_AI_GENERATION_QUEUE_URL`
+- GCP Pub/Sub topic: `ugc-ai-generation`
+- GCP Pub/Sub subscription: `ugc-ai-generation-sub`
+- Worker queue name: `ai-generation`
+- Worker job types: `generate_avatar,generate_image,generate_hook_video`
+
+Safe apply order:
+
+```powershell
+npm run worker:gcp:image:push -- --cloud-build
+cd infra\gcp\ai-generation-worker
+copy terraform.tfvars.example terraform.tfvars
+```
+
+Set `worker_image_uri` to the pushed Artifact Registry image. Keep
+`enable_ai_generation_worker = false` for the first plan.
+
+Required Secret Manager versions before enabling:
+
+- `supabase-url`
+- `supabase-service-role-key`
+- `openai-api-key`
+- `gemini-api-key`
+- `runwayml-api-secret`
+
+Before any real image/avatar/hook-video generation test, run the no-spend
+service canary:
+
+```powershell
+npm run ai-generation:gcp:service-dry-run
+npm run ai-generation:gcp:service-canary
+```
+
+The canary creates one invalid `generate_image` background job and expects the
+GCP worker to fail it with `generate_image requires input.prompt.` This proves
+the Cloud Run Service consumed the `ugc-ai-generation` Pub/Sub message before
+OpenAI, Gemini, or Runway can be called.
+
+Verified GCP no-spend canary:
+
+- Cloud Run Service: `ugc-ai-generation-worker`
+- revision: `ugc-ai-generation-worker-00001-97p`
+- background job: `081aa700-90e9-4886-a543-f46bb2530b8f`
+- Pub/Sub message: `20561160922574488`
+- expected failure: `generate_image requires input.prompt.`
+
 ## GCP social-publish worker slice
 
 The GCP replacement for the AWS `social-publish` ECS profile is implemented as

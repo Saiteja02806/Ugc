@@ -97,6 +97,8 @@
     "worker:test:carousel:e2e": "node scripts/test-carousel-generation-aws.mjs",
     "worker:test:carousel:gcp": "node scripts/test-carousel-generation-gcp.mjs",
     "worker:test:video-render:gcp": "node scripts/test-video-render-gcp.mjs",
+    "ai-generation:gcp:service-dry-run": "node scripts/test-ai-generation-worker-service-gcp.mjs --dry-run",
+    "ai-generation:gcp:service-canary": "node scripts/test-ai-generation-worker-service-gcp.mjs --execute --yes",
     "demo:test:e2e": "node scripts/test-demo-upload-draft-e2e.mjs",
     "demo:cors:apply": "node scripts/apply-demo-upload-cors.mjs",
     "demo:cors:check": "node scripts/check-demo-upload-cors.mjs",

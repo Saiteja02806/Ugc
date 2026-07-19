@@ -4,6 +4,9 @@ This folder starts the AWS to GCP migration safely for project `ugcsaas`
 (`58051192797`). It creates infrastructure only. It does not copy secrets and it
 does not change application traffic by itself.
 
+Use `MIGRATION_CHECKLIST.md` for the current done/not-done migration checklist.
+Items there are checked only after they are live and verified.
+
 ## Layout
 
 - `bootstrap/`: creates the GCS bucket used for Terraform remote state.

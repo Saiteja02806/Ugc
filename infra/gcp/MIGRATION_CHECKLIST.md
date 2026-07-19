@@ -9,8 +9,9 @@ is live and verified, not merely planned or coded.
 
 - [x] Local commit `9793993` created for the GCP video-render worker slice.
 - [x] Local commit `264955d` created for the GCP AI-generation worker slice.
+- [x] Local commit `caa9263` created for the media-processing retirement slice.
 - [ ] Push local commits to remote Git. The local branch is ahead of
-  `origin/main` by 2 commits, but direct `git push origin main` was blocked by
+  `origin/main` by local migration commits, but direct `git push origin main` was blocked by
   the current environment policy.
 
 ## GCP Foundation
@@ -101,3 +102,10 @@ is live and verified, not merely planned or coded.
   verify Vercel is using `QUEUE_PROVIDER=gcp`, `STORAGE_PROVIDER=gcp`, and
   `SOCIAL_SCHEDULER_PROVIDER=gcp`; then confirm normal app-created jobs land on
   the GCP topics and are consumed by the live Cloud Run workers.
+- [x] Production cutover audit route and runner have been implemented locally:
+  `POST /api/internal/gcp-cutover/audit` and
+  `npm run production:gcp-cutover:audit`.
+- [ ] Deploy the audit route to Vercel, then run
+  `npm run production:gcp-cutover:audit`. The route refuses to enqueue any
+  canary unless the deployed app resolves queue, storage, and social scheduler
+  providers to `gcp`.

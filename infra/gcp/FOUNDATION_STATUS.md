@@ -219,8 +219,14 @@ Pub/Sub DLQ topics:
 
 - No AWS resources were removed.
 - Production Vercel/app environment must be confirmed before treating every
-  app-created job as fully cut over to GCP queues. The GCP worker
-  infrastructure is ready for the migrated profiles.
+  app-created job as fully cut over to GCP queues. The protected production
+  audit route and runner have been implemented locally:
+  `POST /api/internal/gcp-cutover/audit` and
+  `npm run production:gcp-cutover:audit`. After deployment, the route verifies
+  `QUEUE_PROVIDER=gcp`, `STORAGE_PROVIDER=gcp`, and
+  `SOCIAL_SCHEDULER_PROVIDER=gcp`, then queues one invalid `generate_image`
+  canary through the deployed app so the live GCP AI worker can consume and
+  fail it before any paid AI provider call.
 - AI generation has a live GCP worker and passed the no-spend Pub/Sub worker
   canary. Media processing is retained only as a GCP infrastructure canary
   queue for `test_worker_job`, not as a production worker profile. Video render

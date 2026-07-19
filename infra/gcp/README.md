@@ -548,6 +548,39 @@ called the deployed dispatch route, attached Pub/Sub message
 `bef7648b-7539-4506-adff-5ae6231ab63b`, and the GCP social worker failed it
 safely with `Publish target was not found.`
 
+## Production app cutover audit
+
+The final app-side cutover check is implemented as a protected internal route:
+
+```text
+POST /api/internal/gcp-cutover/audit
+```
+
+It verifies that the deployed app resolves these providers to GCP before it
+queues anything:
+
+- `QUEUE_PROVIDER=gcp`
+- `STORAGE_PROVIDER=gcp`
+- `SOCIAL_SCHEDULER_PROVIDER=gcp`
+
+If any provider is still AWS, the route returns `409` and does not enqueue a
+job. When all three providers are GCP, it creates one invalid `generate_image`
+background job through the normal app queue sender. The live
+`ugc-ai-generation-worker` Cloud Run service should consume it and fail with
+`generate_image requires input.prompt.` This is intentional and avoids OpenAI,
+Gemini, or Runway spend.
+
+Run the audit after the route is deployed to Vercel:
+
+```powershell
+npm run production:gcp-cutover:audit:dry-run
+npm run production:gcp-cutover:audit
+```
+
+The runner signs the request using `UGC_INTERNAL_CUTOVER_AUDIT_SECRET` when set;
+otherwise it derives a domain-separated signing key from
+`SUPABASE_SERVICE_ROLE_KEY`, matching the deployed route fallback.
+
 After production is creating new schedules in GCP, audit old AWS EventBridge
 social schedules:
 

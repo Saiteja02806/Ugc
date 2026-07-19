@@ -82,6 +82,12 @@ const gcpSocialPublishWorkerCanaryScript = readProjectFile(
 const gcpSocialPublishWorkerServiceCanaryScript = readProjectFile(
   "scripts/test-social-publish-worker-service-gcp.mjs",
 );
+const productionGcpCutoverAuditScript = readProjectFile(
+  "scripts/test-production-gcp-cutover-audit.mjs",
+);
+const productionGcpCutoverAuditRoute = readProjectFile(
+  "app/api/internal/gcp-cutover/audit/route.ts",
+);
 const gcpSocialPublishCutoverCheckScript = readProjectFile(
   "scripts/check-social-publish-gcp-cutover.mjs",
 );
@@ -313,6 +319,26 @@ test("the GCP AI-generation service canary avoids paid provider calls", () => {
   assert.doesNotMatch(gcpAiGenerationWorkerServiceCanaryScript, /OPENAI_API_KEY/);
   assert.doesNotMatch(gcpAiGenerationWorkerServiceCanaryScript, /GEMINI_API_KEY/);
   assert.doesNotMatch(gcpAiGenerationWorkerServiceCanaryScript, /RUNWAYML_API_SECRET/);
+});
+
+test("the production GCP cutover audit uses the deployed app before polling the worker", () => {
+  assert.match(productionGcpCutoverAuditRoute, /getQueueProviderName/);
+  assert.match(productionGcpCutoverAuditRoute, /getStorageProviderName/);
+  assert.match(productionGcpCutoverAuditRoute, /getSocialSchedulerProviderName/);
+  assert.match(productionGcpCutoverAuditRoute, /sendJobMessage/);
+  assert.match(productionGcpCutoverAuditRoute, /generate_image/);
+  assert.match(productionGcpCutoverAuditRoute, /message\.provider !== "gcp"/);
+  assert.match(
+    productionGcpCutoverAuditRoute,
+    /production-gcp-cutover-invalid-ai-generation/,
+  );
+  assert.match(productionGcpCutoverAuditScript, /https:\/\/getugcpilot\.com/);
+  assert.match(productionGcpCutoverAuditScript, /generate_image requires input\.prompt/);
+  assert.match(productionGcpCutoverAuditScript, /assertNoOpenRealAiGenerationJobs/);
+  assert.match(productionGcpCutoverAuditScript, /worker_id/);
+  assert.doesNotMatch(productionGcpCutoverAuditScript, /OPENAI_API_KEY/);
+  assert.doesNotMatch(productionGcpCutoverAuditScript, /GEMINI_API_KEY/);
+  assert.doesNotMatch(productionGcpCutoverAuditScript, /RUNWAYML_API_SECRET/);
 });
 
 test("the GCP social-publish worker service is queue-only for first canary", () => {

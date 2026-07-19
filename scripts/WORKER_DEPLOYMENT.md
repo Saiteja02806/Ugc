@@ -207,6 +207,20 @@ Verified GCP no-spend canary:
 - Pub/Sub message: `20561160922574488`
 - expected failure: `generate_image requires input.prompt.`
 
+After Vercel is configured with `QUEUE_PROVIDER=gcp`,
+`STORAGE_PROVIDER=gcp`, and `SOCIAL_SCHEDULER_PROVIDER=gcp`, run the production
+app cutover audit:
+
+```powershell
+npm run production:gcp-cutover:audit:dry-run
+npm run production:gcp-cutover:audit
+```
+
+This calls the deployed `POST /api/internal/gcp-cutover/audit` route, confirms
+the production app resolves all three providers to GCP, queues one invalid
+`generate_image` job through the deployed app, and waits for the live Cloud Run
+AI worker to fail it before paid AI APIs can be called.
+
 ## GCP social-publish worker slice
 
 The GCP replacement for the AWS `social-publish` ECS profile is implemented as

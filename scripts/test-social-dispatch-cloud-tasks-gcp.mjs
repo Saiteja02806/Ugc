@@ -61,6 +61,12 @@ const pollTimeoutMs = normalizeInteger(
   15_000,
   10 * 60_000,
 );
+const workerGraceMs = normalizeInteger(
+  options.workerGraceMs,
+  30_000,
+  0,
+  5 * 60_000,
+);
 const targetId = options.targetId || randomUUID();
 const taskName = options.taskName || getGcpSocialPublishScheduleName(targetId);
 const canaryUserId =
@@ -85,6 +91,7 @@ const canaryPlan = {
   targetId,
   taskName,
   userId: canaryUserId,
+  workerGraceMs,
 };
 
 if (!shouldExecute) {
@@ -138,7 +145,7 @@ try {
   console.log(`Created Cloud Task ${task.name ?? request.taskPath}`);
   console.log(`Scheduled dispatch at ${scheduledFor}`);
 
-  const dispatchedJob = await waitForQueueDispatch(backgroundJob.id);
+  const dispatchedJob = await waitForDispatchOutcome(backgroundJob.id);
 
   if (!dispatchedJob.aws_message_id) {
     throw new Error(
@@ -146,9 +153,20 @@ try {
     );
   }
 
+  if (isExpectedSafeWorkerFailure(dispatchedJob)) {
+    console.log(`Attached Pub/Sub message ${dispatchedJob.aws_message_id}`);
+    console.log(
+      `Always-on social worker consumed dummy job ${backgroundJob.id} safely`,
+    );
+    console.log(`Final status: ${dispatchedJob.status}`);
+    console.log(`Error: ${dispatchedJob.error_message}`);
+    console.log("GCP Cloud Tasks social dispatch canary passed");
+    process.exit(0);
+  }
+
   if (dispatchedJob.status !== "queued") {
     throw new Error(
-      `The canary job was already consumed by a worker and ended as ${dispatchedJob.status}. Stop and inspect before enabling social publish scheduling.`,
+      `The canary job ended as ${dispatchedJob.status}; expected queued or safe fake-target failure.`,
     );
   }
 
@@ -199,6 +217,7 @@ function parseArguments(args) {
     targetId: null,
     taskName: null,
     userId: null,
+    workerGraceMs: null,
     yes: false,
   };
 
@@ -262,6 +281,13 @@ function parseArguments(args) {
       continue;
     }
 
+    if (argument === "--worker-grace-ms") {
+      parsed.workerGraceMs = Number(
+        getRequiredArgumentValue(args, (index += 1), argument),
+      );
+      continue;
+    }
+
     if (argument === "--project-id") {
       parsed.projectId = getRequiredArgumentValue(args, (index += 1), argument);
       continue;
@@ -312,7 +338,7 @@ function printDryRunPlan(plan) {
 
   console.log("GCP Cloud Tasks social dispatch canary dry run");
   console.log(
-    "This would create one fake publish_social_post job, one Cloud Task, verify the deployed dispatch route attaches a Pub/Sub message id, then cancel the dummy job.",
+    "This would create one fake publish_social_post job, one Cloud Task, verify the deployed dispatch route attaches a Pub/Sub message id, then either cancel the dummy job or accept the live worker's safe fake-target failure.",
   );
   console.log(JSON.stringify(plan, null, 2));
 
@@ -470,8 +496,9 @@ async function getCloudTasksAuthorizationHeader(url) {
   return authorization;
 }
 
-async function waitForQueueDispatch(jobId) {
+async function waitForDispatchOutcome(jobId) {
   const deadline = Date.now() + pollTimeoutMs;
+  let firstMessageAttachedAt = 0;
 
   while (Date.now() < deadline) {
     const job = await getCanaryJob(jobId);
@@ -480,8 +507,16 @@ async function waitForQueueDispatch(jobId) {
       `poll dispatch job=${job.id} status=${job.status} message=${job.aws_message_id ? "attached" : "pending"}`,
     );
 
-    if (job.aws_message_id || job.status !== "queued") {
+    if (isTerminalJobStatus(job.status)) {
       return job;
+    }
+
+    if (job.aws_message_id) {
+      firstMessageAttachedAt ||= Date.now();
+
+      if (Date.now() - firstMessageAttachedAt >= workerGraceMs) {
+        return job;
+      }
     }
 
     await sleep(3_000);
@@ -493,7 +528,7 @@ async function waitForQueueDispatch(jobId) {
 async function getCanaryJob(jobId) {
   const { data, error } = await supabase
     .from("background_jobs")
-    .select("id,status,aws_message_id,error_message")
+    .select("id,status,aws_message_id,error_message,worker_id")
     .eq("id", jobId)
     .single();
 
@@ -502,6 +537,18 @@ async function getCanaryJob(jobId) {
   }
 
   return data;
+}
+
+function isExpectedSafeWorkerFailure(job) {
+  return (
+    job.status === "failed" &&
+    typeof job.error_message === "string" &&
+    job.error_message.includes("Publish target was not found.")
+  );
+}
+
+function isTerminalJobStatus(status) {
+  return status === "cancelled" || status === "completed" || status === "failed";
 }
 
 async function cancelQueuedCanaryJob(jobId) {

@@ -384,8 +384,7 @@ npm run social-publish:gcp:service-canary
 ## Social Schedule Dispatcher Slice
 
 The app now has a GCP replacement path for AWS EventBridge Scheduler, behind
-`SOCIAL_SCHEDULER_PROVIDER=gcp`. AWS remains the default until that variable is
-changed.
+`SOCIAL_SCHEDULER_PROVIDER=gcp`.
 
 When `SOCIAL_SCHEDULER_PROVIDER=gcp`, the app creates one Cloud Tasks HTTP task
 per scheduled social target in the existing Terraform queue:
@@ -441,10 +440,19 @@ npm run social-dispatch:gcp:canary
 The canary creates one fake `publish_social_post` background job, creates one
 Cloud Task against the deployed `/api/internal/schedules/dispatch` route,
 verifies that the route attached a Pub/Sub message id, then cancels the dummy
-job. It does not create scheduled post rows, does not use a connected social
-account, and does not publish. If it reports that the dummy job was consumed by
-a worker, stop and inspect the GCP social worker before enabling normal social
-scheduling.
+job if no worker consumes it. With the always-on GCP social-publish worker
+enabled, the safe success path is that the worker consumes the fake target and
+fails with `Publish target was not found.` It does not create scheduled post
+rows, does not use a connected social account, and does not publish.
+
+Current checkpoint: Vercel production `SOCIAL_SCHEDULER_PROVIDER` has been set
+to `gcp`. The Cloud Tasks queue `ugc-social-publish-scheduler` is running, and
+the production fake-target canary passed. Cloud Task
+`projects/ugcsaas/locations/us-central1/queues/ugc-social-publish-scheduler/tasks/ugc-social-gcp-1527883f-9958-436f-89d2-e14e735808a5`
+called the deployed dispatch route, attached Pub/Sub message
+`20102510015581694` to background job
+`bef7648b-7539-4506-adff-5ae6231ab63b`, and the GCP social worker failed it
+safely with `Publish target was not found.`
 
 ## Carousel Scheduler Slice
 

@@ -275,13 +275,16 @@ test("the GCP social-publish worker service is queue-only for first canary", () 
   );
 });
 
-test("the GCP social dispatch canary only tests Cloud Tasks handoff", () => {
+test("the GCP social dispatch canary tests Cloud Tasks without real providers", () => {
   assert.match(gcpSocialDispatchCanaryScript, /--execute/);
   assert.match(gcpSocialDispatchCanaryScript, /--yes/);
   assert.match(gcpSocialDispatchCanaryScript, /randomUUID/);
   assert.match(gcpSocialDispatchCanaryScript, /buildGcpCloudTasksCreateTaskRequest/);
   assert.match(gcpSocialDispatchCanaryScript, /publish_social_post/);
   assert.match(gcpSocialDispatchCanaryScript, /gcp-cloud-tasks-social-dispatch/);
+  assert.match(gcpSocialDispatchCanaryScript, /waitForDispatchOutcome/);
+  assert.match(gcpSocialDispatchCanaryScript, /isExpectedSafeWorkerFailure/);
+  assert.match(gcpSocialDispatchCanaryScript, /Publish target was not found/);
   assert.match(gcpSocialDispatchCanaryScript, /cancelQueuedCanaryJob/);
   assert.doesNotMatch(gcpSocialDispatchCanaryScript, /from\("scheduled_posts"\)/);
   assert.doesNotMatch(gcpSocialDispatchCanaryScript, /from\("scheduled_post_targets"\)/);

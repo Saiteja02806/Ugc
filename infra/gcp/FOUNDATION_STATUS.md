@@ -166,6 +166,14 @@ Pub/Sub DLQ topics:
   `Publish target was not found.`
 - `terraform plan -detailed-exitcode` for
   `infra/gcp/social-publish-worker` returned no changes after apply.
+- Vercel production `SOCIAL_SCHEDULER_PROVIDER` has been set to `gcp`.
+- The GCP Cloud Tasks social dispatcher canary passed against production.
+  Cloud Task
+  `projects/ugcsaas/locations/us-central1/queues/ugc-social-publish-scheduler/tasks/ugc-social-gcp-1527883f-9958-436f-89d2-e14e735808a5`
+  called `/api/internal/schedules/dispatch`, attached Pub/Sub message
+  `20102510015581694` to background job
+  `bef7648b-7539-4506-adff-5ae6231ab63b`, and the always-on GCP social worker
+  failed the fake target safely with `Publish target was not found.`
 
 ## Not Yet Cut Over
 
@@ -180,8 +188,8 @@ Pub/Sub DLQ topics:
   Pub/Sub canary. A real social-provider publish canary still has not been run;
   choose the account, platform, and visibility intentionally before testing
   real publishing.
-- Scheduled social publish handoff still defaults to AWS EventBridge Scheduler
-  until production is changed to `SOCIAL_SCHEDULER_PROVIDER=gcp`.
+- Scheduled social publish handoff is configured for GCP Cloud Tasks in Vercel
+  production. Existing AWS EventBridge schedules are not removed yet.
 - The GCP Carousel Scheduler job remains paused; production automatic
   replenishment has not been enabled.
 - Existing S3 media has not been copied to GCS.

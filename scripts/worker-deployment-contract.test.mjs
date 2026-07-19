@@ -73,6 +73,9 @@ const gcpSocialPublishWorkerServiceCanaryScript = readProjectFile(
 const gcpSocialPublishCutoverCheckScript = readProjectFile(
   "scripts/check-social-publish-gcp-cutover.mjs",
 );
+const awsSocialSchedulerMigrationScript = readProjectFile(
+  "scripts/migrate-aws-social-schedules-to-gcp.mjs",
+);
 const gcpSocialDispatchRoute = readProjectFile(
   "app/api/internal/schedules/dispatch/route.ts",
 );
@@ -318,6 +321,25 @@ test("the GCP social-publish cutover guard refuses open real work", () => {
   assert.doesNotMatch(gcpSocialPublishCutoverCheckScript, /from\("scheduled_posts"\)/);
   assert.doesNotMatch(gcpSocialPublishCutoverCheckScript, /from\("scheduled_post_targets"\)/);
   assert.doesNotMatch(gcpSocialPublishCutoverCheckScript, /from\("social_connections"\)/);
+});
+
+test("the AWS social scheduler migration creates GCP tasks before deleting EventBridge schedules", () => {
+  assert.match(awsSocialSchedulerMigrationScript, /ListSchedulesCommand/);
+  assert.match(awsSocialSchedulerMigrationScript, /DeleteScheduleCommand/);
+  assert.match(
+    awsSocialSchedulerMigrationScript,
+    /buildGcpCloudTasksCreateTaskRequest/,
+  );
+  assert.match(awsSocialSchedulerMigrationScript, /from\("scheduled_post_targets"\)/);
+  assert.match(awsSocialSchedulerMigrationScript, /scheduler_deleted_at/);
+  assert.match(awsSocialSchedulerMigrationScript, /publish_job_id/);
+  assert.match(awsSocialSchedulerMigrationScript, /--execute/);
+  assert.match(awsSocialSchedulerMigrationScript, /--yes/);
+  assert.match(awsSocialSchedulerMigrationScript, /deleteOrphans/);
+  assert.match(awsSocialSchedulerMigrationScript, /minimumFutureSeconds/);
+  assert.match(awsSocialSchedulerMigrationScript, /createCloudTaskForTarget/);
+  assert.match(awsSocialSchedulerMigrationScript, /deleteAwsSchedule/);
+  assert.match(awsSocialSchedulerMigrationScript, /updateTargetToGcpSchedule/);
 });
 
 test("the GCP social-publish service canary waits for the always-on worker", () => {

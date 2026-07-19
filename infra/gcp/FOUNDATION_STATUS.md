@@ -174,6 +174,11 @@ Pub/Sub DLQ topics:
   `20102510015581694` to background job
   `bef7648b-7539-4506-adff-5ae6231ab63b`, and the always-on GCP social worker
   failed the fake target safely with `Publish target was not found.`
+- Added the guarded AWS social scheduler migration script:
+  `npm run social-scheduler:aws-migration:dry-run`.
+- Dry-run audit found 16 old AWS-backed Supabase social target rows, all in
+  non-active states: 7 `published`, 5 `action_required`, and 4 `failed`.
+  It found no active future AWS-backed target to migrate to Cloud Tasks.
 
 ## Not Yet Cut Over
 
@@ -189,7 +194,9 @@ Pub/Sub DLQ topics:
   choose the account, platform, and visibility intentionally before testing
   real publishing.
 - Scheduled social publish handoff is configured for GCP Cloud Tasks in Vercel
-  production. Existing AWS EventBridge schedules are not removed yet.
+  production. Existing AWS EventBridge schedules are not removed yet because
+  the current AWS app enqueue user lacks `scheduler:ListSchedules` on
+  `arn:aws:scheduler:us-east-2:831963379461:schedule/*/*`.
 - The GCP Carousel Scheduler job remains paused; production automatic
   replenishment has not been enabled.
 - Existing S3 media has not been copied to GCS.

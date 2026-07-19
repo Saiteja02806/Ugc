@@ -454,6 +454,47 @@ called the deployed dispatch route, attached Pub/Sub message
 `bef7648b-7539-4506-adff-5ae6231ab63b`, and the GCP social worker failed it
 safely with `Publish target was not found.`
 
+After production is creating new schedules in GCP, audit old AWS EventBridge
+social schedules:
+
+```powershell
+npm run social-scheduler:aws-migration:dry-run
+```
+
+The AWS credential used for this command must be able to inspect and remove the
+old scheduler group:
+
+```text
+scheduler:ListSchedules
+scheduler:DeleteSchedule
+```
+
+The migration command compares Supabase `scheduled_post_targets` rows with the
+AWS EventBridge schedule group. Active AWS-backed targets are only eligible when
+they have a `publish_job_id` and are outside the safety window, so the script
+does not accidentally create an immediately firing Cloud Task. In execute mode,
+eligible active targets are migrated in this order:
+
+1. Create the replacement GCP Cloud Task.
+2. Delete the AWS EventBridge schedule.
+3. Update Supabase to store the GCP task name/path.
+
+Terminal targets are cleaned by deleting their AWS schedule and marking
+`scheduler_deleted_at`. Orphan AWS schedules are reported but not deleted unless
+the command is explicitly run with `--delete-orphans`.
+
+When the dry-run plan is clean and intentional:
+
+```powershell
+npm run social-scheduler:aws-migration:execute
+```
+
+Use the strict audit to verify the AWS scheduler surface is empty:
+
+```powershell
+npm run social-scheduler:aws-audit
+```
+
 ## Carousel Scheduler Slice
 
 Trigger.dev has been removed. The replacement is a Cloud Scheduler job that

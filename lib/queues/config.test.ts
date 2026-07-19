@@ -97,3 +97,35 @@ test("maps carousel jobs to the GCP topic created by Terraform", () => {
     "custom-carousel-topic",
   );
 });
+
+test("maps all active production job types to migrated GCP queues", () => {
+  assert.deepEqual(
+    [
+      ["generate_avatar", getQueueNameForJobType("generate_avatar")],
+      ["generate_image", getQueueNameForJobType("generate_image")],
+      ["generate_hook_video", getQueueNameForJobType("generate_hook_video")],
+      ["generate_carousel", getQueueNameForJobType("generate_carousel")],
+      ["render_edit_video", getQueueNameForJobType("render_edit_video")],
+      [
+        "render_schedule_combination",
+        getQueueNameForJobType("render_schedule_combination"),
+      ],
+      ["publish_social_post", getQueueNameForJobType("publish_social_post")],
+    ],
+    [
+      ["generate_avatar", "ai-generation"],
+      ["generate_image", "ai-generation"],
+      ["generate_hook_video", "ai-generation"],
+      ["generate_carousel", "carousel"],
+      ["render_edit_video", "video-render"],
+      ["render_schedule_combination", "video-render"],
+      ["publish_social_post", "social-publish"],
+    ],
+  );
+
+  assert.equal(getQueueNameForJobType("test_worker_job"), "media-processing");
+  assert.equal(
+    getGcpPubSubTopicNameForJobType("test_worker_job", {}),
+    "ugc-media-processing",
+  );
+});

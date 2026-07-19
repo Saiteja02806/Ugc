@@ -209,6 +209,11 @@ Pub/Sub DLQ topics:
   be called.
 - `terraform plan -detailed-exitcode` for
   `infra/gcp/ai-generation-worker` returned no changes after apply.
+- The media-processing migration slice was closed as a retirement/guard rather
+  than a new production worker. `ugc-media-processing` and
+  `ugc-media-processing-sub` remain for the generic `test_worker_job` GCP
+  infrastructure canary, while handlerless legacy job types were removed from
+  active app and worker routing.
 
 ## Not Yet Cut Over
 
@@ -217,8 +222,9 @@ Pub/Sub DLQ topics:
   app-created job as fully cut over to GCP queues. The GCP worker
   infrastructure is ready for the migrated profiles.
 - AI generation has a live GCP worker and passed the no-spend Pub/Sub worker
-  canary. Media processing still remains on the AWS/SQS path. Video render has
-  a live GCP worker and passed the direct Pub/Sub smoke test.
+  canary. Media processing is retained only as a GCP infrastructure canary
+  queue for `test_worker_job`, not as a production worker profile. Video render
+  has a live GCP worker and passed the direct Pub/Sub smoke test.
 - The always-on GCP social-publish worker is live and has passed a fake-target
   Pub/Sub canary. A real social-provider publish canary still has not been run;
   choose the account, platform, and visibility intentionally before testing

@@ -11,12 +11,6 @@ type QueueConfig = {
 };
 
 const jobQueueConfig = {
-  extract_video_metadata: {
-    awsQueueUrlEnvName: "UGC_MEDIA_PROCESSING_QUEUE_URL",
-    gcpTopicEnvName: "UGC_MEDIA_PROCESSING_PUBSUB_TOPIC",
-    gcpTopicName: "ugc-media-processing",
-    queueName: "media-processing",
-  },
   generate_avatar: {
     awsQueueUrlEnvName: "UGC_AI_GENERATION_QUEUE_URL",
     gcpTopicEnvName: "UGC_AI_GENERATION_PUBSUB_TOPIC",
@@ -41,23 +35,11 @@ const jobQueueConfig = {
     gcpTopicName: "ugc-ai-generation",
     queueName: "ai-generation",
   },
-  generate_thumbnail: {
-    awsQueueUrlEnvName: "UGC_MEDIA_PROCESSING_QUEUE_URL",
-    gcpTopicEnvName: "UGC_MEDIA_PROCESSING_PUBSUB_TOPIC",
-    gcpTopicName: "ugc-media-processing",
-    queueName: "media-processing",
-  },
   publish_social_post: {
     awsQueueUrlEnvName: "UGC_SOCIAL_PUBLISH_QUEUE_URL",
     gcpTopicEnvName: "UGC_SOCIAL_PUBLISH_PUBSUB_TOPIC",
     gcpTopicName: "ugc-social-publish",
     queueName: "social-publish",
-  },
-  render_demo_video: {
-    awsQueueUrlEnvName: "UGC_VIDEO_RENDER_QUEUE_URL",
-    gcpTopicEnvName: "UGC_VIDEO_RENDER_PUBSUB_TOPIC",
-    gcpTopicName: "ugc-video-render",
-    queueName: "video-render",
   },
   render_edit_video: {
     awsQueueUrlEnvName: "UGC_VIDEO_RENDER_QUEUE_URL",

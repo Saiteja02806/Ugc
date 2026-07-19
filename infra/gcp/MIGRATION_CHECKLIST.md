@@ -27,13 +27,13 @@ is live and verified, not merely planned or coded.
 
 ## Queue Migration
 
-- [x] GCP Pub/Sub topics exist for all logical queues:
+- [x] GCP Pub/Sub topics exist for all active and canary logical queues:
   `ugc-ai-generation`, `ugc-carousel`, `ugc-video-render`,
   `ugc-media-processing`, and `ugc-social-publish`.
-- [x] GCP Pub/Sub subscriptions exist for all logical queues:
+- [x] GCP Pub/Sub subscriptions exist for all active and canary logical queues:
   `ugc-ai-generation-sub`, `ugc-carousel-sub`, `ugc-video-render-sub`,
   `ugc-media-processing-sub`, and `ugc-social-publish-sub`.
-- [x] Pub/Sub DLQs exist for all logical queues.
+- [x] Pub/Sub DLQs exist for all active and canary logical queues.
 - [x] Application code can publish through GCP Pub/Sub when
   `QUEUE_PROVIDER=gcp` is set.
 - [x] Worker code can consume Pub/Sub when `WORKER_QUEUE_PROVIDER=gcp` is set.
@@ -43,10 +43,10 @@ is live and verified, not merely planned or coded.
 - [x] `video-render` queue is live on GCP and passed a real MP4 render smoke
   test.
 - [x] `social-publish` queue is live on GCP and passed a fake-target canary.
-- [ ] `media-processing` is not fully migrated. The GCP topic/subscription and
-  generic `test_worker_job` canary exist, but no production Cloud Run worker
-  profile is live for `extract_video_metadata`, `generate_thumbnail`, or
-  `render_demo_video`.
+- [x] `media-processing` is retired as a production worker queue. The GCP
+  topic/subscription remains for the generic `test_worker_job` infrastructure
+  canary only. Handlerless legacy job names were removed from active app and
+  worker routing.
 - [ ] AWS SQS queues have not been removed.
 
 ## Worker Migration
@@ -63,8 +63,8 @@ is live and verified, not merely planned or coded.
 - [x] Social-publish worker migrated to Cloud Run Service:
   `ugc-social-publish-worker`, subscription `ugc-social-publish-sub`, job type
   `publish_social_post`, with reconciliation disabled for the first live phase.
-- [ ] Media-processing production worker still needs a migration decision and
-  implementation.
+- [x] Media-processing production worker decision complete: no separate Cloud
+  Run service is required for current production behavior.
 - [ ] Real paid AI generation canary has not been run by choice, to avoid
   spending provider credits.
 - [ ] Real social-provider publish canary has not been run. Pick the account,
@@ -97,8 +97,7 @@ is live and verified, not merely planned or coded.
 
 ## Current Next Slice
 
-- [ ] Media-processing migration slice:
-  verify whether `extract_video_metadata`, `generate_thumbnail`, and
-  `render_demo_video` are still required; then either migrate those handlers to
-  a GCP Cloud Run worker profile or remove/redirect obsolete queue usage.
-
+- [ ] Production app cutover audit:
+  verify Vercel is using `QUEUE_PROVIDER=gcp`, `STORAGE_PROVIDER=gcp`, and
+  `SOCIAL_SCHEDULER_PROVIDER=gcp`; then confirm normal app-created jobs land on
+  the GCP topics and are consumed by the live Cloud Run workers.

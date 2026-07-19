@@ -95,14 +95,11 @@ export function loadWorkerConfig(): WorkerConfig {
 }
 
 const validWorkerJobTypes = new Set<BackgroundJobType>([
-  "extract_video_metadata",
   "generate_avatar",
   "generate_carousel",
   "generate_hook_video",
   "generate_image",
-  "generate_thumbnail",
   "publish_social_post",
-  "render_demo_video",
   "render_edit_video",
   "render_schedule_combination",
   "test_worker_job",

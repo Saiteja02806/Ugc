@@ -131,6 +131,11 @@ The GCP defaults match the Terraform topic and subscription names:
   `ugc-video-render-sub`, `ugc-media-processing-sub`,
   `ugc-social-publish-sub`
 
+`ugc-media-processing` is retained for the generic `test_worker_job`
+infrastructure canary. Current production work is handled by the dedicated
+AI-generation, Carousel, Video Render, and Social Publish workers, so there is
+no separate production media-processing Cloud Run Service.
+
 Safe dark test order:
 
 1. Keep production `QUEUE_PROVIDER=aws`.

@@ -7,7 +7,7 @@ type LegacyButtonVariant = "primary" | "secondary" | "ghost";
 
 const legacyVariantClasses: Record<LegacyButtonVariant, string> = {
   primary:
-    "bg-primary text-white hover:bg-primary-hover focus-visible:ring-focus",
+    "bg-primary text-primary-foreground hover:bg-primary-hover focus-visible:ring-focus",
   secondary:
     "border border-border-strong bg-card text-foreground hover:bg-card-muted focus-visible:ring-focus",
   ghost:

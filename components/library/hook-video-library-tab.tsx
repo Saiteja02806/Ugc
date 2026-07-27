@@ -94,14 +94,14 @@ export function HookVideoLibraryTab() {
         | null;
 
       if (!response.ok || !data || data.ok !== true) {
-        throw new Error(getApiError(data, "Could not load saved Hook videos."));
+        throw new Error(getApiError(data, "Could not load saved Reel hooks."));
       }
 
       setItems(data.drafts);
     } catch (error) {
       setItems([]);
       setErrorMessage(
-        getErrorMessage(error, "Could not load saved Hook videos."),
+        getErrorMessage(error, "Could not load saved Reel hooks."),
       );
     } finally {
       setLoading(false);
@@ -164,7 +164,7 @@ export function HookVideoLibraryTab() {
     const item = pendingScheduleItem;
 
     if (!item) {
-      throw new Error("Choose a Hook video before scheduling.");
+      throw new Error("Choose a Reel hook before scheduling.");
     }
 
     setSchedulingId(item.id);
@@ -219,7 +219,7 @@ export function HookVideoLibraryTab() {
 
       if (!renderResponse.ok || !renderData || renderData.ok !== true) {
         throw new Error(
-          getApiMessage(renderData, "Could not start preparing this video."),
+        getApiMessage(renderData, "Could not start preparing this Reel."),
         );
       }
 
@@ -235,12 +235,12 @@ export function HookVideoLibraryTab() {
         ),
       );
       setPendingScheduleItem(null);
-      setNoticeMessage("Schedule saved. Video preparation is queued.");
+      setNoticeMessage("Schedule saved. Reel preparation is queued.");
     } catch (error) {
       const message = getErrorMessage(error, "Could not prepare this schedule.");
       setErrorMessage(
         scheduleCreated
-          ? `The schedule was saved, but video preparation did not start. Open Scheduling to retry it. ${message}`
+          ? `The schedule was saved, but Reel preparation did not start. Open Scheduling to retry it. ${message}`
           : message,
       );
       throw error;
@@ -264,10 +264,10 @@ export function HookVideoLibraryTab() {
               id="hook-video-library-heading"
               className="text-base font-semibold text-foreground-strong"
             >
-              Hook videos
+              Reel hooks
             </h2>
             <p className="mt-0.5 text-sm leading-5 text-muted">
-              Saved opening, hook, and product-demo combinations.
+              Saved hooks paired with your real opening and product footage.
             </p>
           </div>
         </div>
@@ -282,8 +282,8 @@ export function HookVideoLibraryTab() {
             type="button"
             onClick={() => void loadItems()}
             disabled={loading}
-            aria-label="Refresh Hook videos"
-            title="Refresh Hook videos"
+            aria-label="Refresh Reel hooks"
+            title="Refresh Reel hooks"
             className="inline-flex size-10 items-center justify-center rounded-control border border-border bg-card text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60"
           >
             <RefreshCw
@@ -331,16 +331,17 @@ export function HookVideoLibraryTab() {
                 <Sparkles className="size-4.5" aria-hidden="true" />
               </span>
               <h3 className="mt-4 text-lg font-semibold text-foreground-strong">
-                No saved Hook videos
+                No saved Reel hooks
               </h3>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Save a reviewed Hook video from Trending and it will appear here.
+                Save a reviewed Reel hook from Instagram Ideas and it will
+                appear here.
               </p>
               <Link
                 href="/dashboard"
-                className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
-                Open Trending
+                Open Instagram Ideas
               </Link>
             </div>
           </div>
@@ -390,7 +391,7 @@ export function HookVideoLibraryTab() {
                     <button
                       type="button"
                       onClick={() => void openPreview(item)}
-                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control bg-foreground-strong px-3 text-xs font-semibold text-white hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
                       <Eye className="size-3.5" aria-hidden="true" />
                       Preview
@@ -479,7 +480,7 @@ function HookVideoPreviewDialog({
       <DialogContent className="flex max-h-[calc(100vh-2rem)] max-w-[760px] flex-col overflow-hidden p-0 sm:max-w-[calc(100%-2rem)]">
         <DialogHeader className="border-b border-border px-5 py-4 pr-14">
           <DialogTitle className="truncate text-lg font-semibold text-foreground-strong">
-            {item?.influencerName ?? "Hook video"}
+            {item?.influencerName ?? "Reel hook"}
           </DialogTitle>
           <DialogDescription className="truncate text-sm text-muted">
             {item?.demoTitle ?? "Product demo"}
@@ -527,7 +528,7 @@ function HookVideoPreviewDialog({
             <div className="mt-5 space-y-3 border-t border-border pt-5">
               <PreviewDetail
                 icon={UserRound}
-                label="Opening"
+                label="Source clip"
                 value={item?.influencerVideoTitle ?? ""}
               />
               <PreviewDetail

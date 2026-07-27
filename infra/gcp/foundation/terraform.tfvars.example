@@ -11,8 +11,12 @@ media_bucket_location = "US"
 # Keep true while testing-phase media URLs are publicly readable.
 media_bucket_public_read = false
 
-# GCP HTTPS resources can be created before DNS is pointed at the CDN IP.
-# The managed certificate becomes ACTIVE only after DNS resolves to the CDN IP.
+# Keep false while testing with direct GCS URLs to avoid load-balancer costs.
+# Set true when the custom media domain and CDN are needed.
+enable_media_cdn = false
+
+# Used only when enable_media_cdn is true. The managed certificate becomes
+# ACTIVE only after DNS resolves to the CDN IP.
 cdn_domain_names = ["media.getugcpilot.com"]
 
 # These containers remain managed only to prevent accidental deletion from

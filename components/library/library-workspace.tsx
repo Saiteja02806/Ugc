@@ -82,23 +82,23 @@ type LibraryContentResponse =
 
 const tabs: Array<{ label: string; value: LibraryTab }> = [
   {
-    label: "My Videos",
+    label: "Reels & footage",
     value: "posts",
   },
   {
-    label: "Saved carousels",
+    label: "Carousels",
     value: "content",
   },
 ];
 
 const primaryActionClassName =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60";
 const secondaryActionClassName =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60";
 const compactSecondaryActionClassName =
-  "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60";
 const iconActionClassName =
-  "inline-flex size-11 items-center justify-center rounded-control border border-border bg-card text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:size-10";
+  "inline-flex size-11 items-center justify-center rounded-control border border-border bg-card text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 sm:size-10";
 const metricChipClassName =
   "inline-flex min-h-10 items-center rounded-control bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-border";
 
@@ -151,8 +151,9 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
               Content Library
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-              Store reusable assets for posts. Upload demo footage here, save
-              carousel ideas from Trending, then prepare posts in Scheduling.
+              Keep approved Instagram creative in one place. Review Reel hooks
+              and footage, save carousel ideas from Instagram Ideas, then
+              schedule posts.
             </p>
           </div>
 
@@ -175,7 +176,7 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
                 className={cn(
                   "inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-control px-3 text-sm font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none sm:min-w-[148px]",
                   activeTab === tab.value
-                    ? "bg-foreground-strong text-white shadow-[0_1px_2px_rgb(23_23_27_/_0.08)]"
+                    ? "bg-selected text-foreground-strong shadow-sm ring-1 ring-primary/20"
                     : "text-muted hover:bg-card-muted hover:text-foreground-strong",
                 )}
               >
@@ -364,7 +365,7 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
   function scheduleItem(item: LibraryCarouselItem) {
     if (item.storageSource !== "server") {
       setErrorMessage(
-        "This carousel is saved only in this browser. Save it to your online Library before preparing a post.",
+        "This carousel is saved only in this browser. Save it to your online Library before scheduling.",
       );
       return;
     }
@@ -413,8 +414,8 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
               Saved carousels
             </h2>
             <p className="mt-0.5 max-w-xl text-sm leading-5 text-muted">
-              Complete carousel sets saved from Trending and ready to prepare
-              as posts.
+              Complete carousel sets saved from Instagram Ideas and ready to
+              schedule as Instagram posts.
             </p>
           </div>
         </div>
@@ -457,7 +458,7 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
         {errorMessage ? (
           <div
             role="status"
-            className="rounded-md border border-warning/25 bg-warning/5 px-4 py-3 text-sm font-semibold text-warning"
+            className="rounded-control border border-warning/25 bg-warning/5 px-4 py-3 text-sm font-semibold text-warning"
           >
             {errorMessage}
           </div>
@@ -466,7 +467,7 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
         {notice ? (
           <div
             role="status"
-            className="rounded-md border border-success/20 bg-success/5 px-4 py-3 text-sm font-semibold text-success"
+            className="rounded-control border border-success/20 bg-success/5 px-4 py-3 text-sm font-semibold text-success"
           >
             {notice}
           </div>
@@ -546,11 +547,11 @@ function LibraryContentEmptyState({
           <Images className="size-5" aria-hidden="true" />
         </div>
         <h3 className="mt-4 text-xl font-semibold text-foreground-strong">
-          Build your saved carousel collection
+          Build your carousel library
         </h3>
         <p className="mt-2 max-w-md text-sm leading-6 text-muted">
-          Save carousel ideas from Trending. Each complete slide set will stay
-          here so you can preview it and prepare a post later.
+          Save carousel ideas from Instagram Ideas. Each complete slide set
+          stays here for review and scheduling.
         </p>
 
         <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -558,7 +559,7 @@ function LibraryContentEmptyState({
             href="/dashboard"
             className={primaryActionClassName}
           >
-            Find carousel ideas
+            Explore carousel ideas
             <ArrowRight className="size-4" aria-hidden="true" />
           </Link>
           <button
@@ -580,7 +581,7 @@ function LibraryContentEmptyState({
             <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-card text-xs font-bold text-primary ring-1 ring-inset ring-border">
               1
             </span>
-            Find a complete carousel in Trending.
+            Find a complete carousel in Instagram Ideas.
           </li>
           <li className="flex gap-3">
             <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-card text-xs font-bold text-primary ring-1 ring-inset ring-border">
@@ -592,7 +593,7 @@ function LibraryContentEmptyState({
             <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-card text-xs font-bold text-primary ring-1 ring-inset ring-border">
               3
             </span>
-            Preview it here, then prepare a post.
+            Preview it here, then schedule it.
           </li>
         </ol>
       </div>
@@ -638,7 +639,7 @@ function LibraryCarouselCard({
         type="button"
         aria-label={`Preview ${item.title}`}
         onClick={onView}
-        className="relative block aspect-[4/5] max-h-[440px] w-full overflow-hidden bg-foreground-strong text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+        className="relative block aspect-[4/5] max-h-[440px] w-full overflow-hidden bg-foreground-strong text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card"
       >
         {coverUrl ? (
           // Saved carousel slides are already rendered media assets.
@@ -654,7 +655,7 @@ function LibraryCarouselCard({
           </div>
         )}
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-          <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-foreground-strong shadow-sm">
+          <span className="rounded-full bg-brand-soft px-2.5 py-1 text-[11px] font-bold text-primary ring-1 ring-inset ring-primary/20">
             Carousel
           </span>
           <span className="rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-bold text-white">
@@ -662,7 +663,7 @@ function LibraryCarouselCard({
           </span>
         </div>
         {item.storageSource === "browser" ? (
-          <span className="absolute bottom-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-muted shadow-sm">
+          <span className="absolute bottom-3 left-3 rounded-full bg-card-muted px-2.5 py-1 text-[11px] font-bold text-muted ring-1 ring-inset ring-border">
             Local only
           </span>
         ) : null}
@@ -682,7 +683,7 @@ function LibraryCarouselCard({
           <button
             type="button"
             onClick={onView}
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-control bg-foreground-strong px-3 text-xs font-semibold text-white transition-colors hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:min-h-10"
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-10"
           >
             <Eye className="size-3.5" aria-hidden="true" />
             Preview
@@ -698,13 +699,13 @@ function LibraryCarouselCard({
             )}
           >
             <CalendarCheck className="size-3.5" aria-hidden="true" />
-            Prepare post
+            Schedule
           </button>
         </div>
 
         {scheduleBlocked ? (
           <p id={scheduleHelpId} className="text-xs font-medium leading-5 text-muted">
-            Online Library save required before preparing a post.
+            Online Library save required before scheduling.
           </p>
         ) : null}
 
@@ -760,7 +761,7 @@ function LibraryCarouselViewer({
             {item.slides.map((slide) => (
               <figure
                 key={slide.id}
-                className="overflow-hidden rounded-lg border border-border bg-surface-subtle"
+                className="overflow-hidden rounded-card border border-border bg-surface-subtle"
               >
                 <div className="aspect-[4/5] bg-foreground-strong">
                   {/* Saved carousel slides are immutable rendered assets. */}
@@ -771,7 +772,7 @@ function LibraryCarouselViewer({
                     className="size-full object-contain"
                   />
                 </div>
-                <figcaption className="border-t border-border bg-white px-3 py-2 text-xs font-semibold text-muted">
+                <figcaption className="border-t border-border bg-card-muted px-3 py-2 text-xs font-semibold text-muted">
                   Slide {slide.slideNumber}
                 </figcaption>
               </figure>
@@ -812,7 +813,7 @@ function RemoveCarouselDialog({
         <DialogFooter className="sm:justify-between">
           <DialogClose
             disabled={removing}
-            className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center rounded-control border border-border bg-card-muted px-4 text-sm font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
           >
             Keep it
           </DialogClose>
@@ -820,7 +821,7 @@ function RemoveCarouselDialog({
             type="button"
             onClick={onConfirm}
             disabled={removing}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-error px-4 text-sm font-semibold text-white transition-colors hover:bg-error/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-error px-4 text-sm font-semibold text-white transition-colors hover:bg-error/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
           >
             {removing ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -844,15 +845,15 @@ function LibraryContentSkeleton() {
       {Array.from({ length: 4 }, (_, index) => (
         <div
           key={index}
-          className="overflow-hidden rounded-lg border border-border bg-white"
+          className="overflow-hidden rounded-card border border-border bg-card"
         >
-          <div className="aspect-[4/5] animate-pulse bg-[#e9eaec] motion-reduce:animate-none" />
+          <div className="aspect-[4/5] animate-pulse bg-card-muted motion-reduce:animate-none" />
           <div className="space-y-3 p-4">
-            <div className="h-4 w-3/4 animate-pulse rounded bg-[#e9eaec] motion-reduce:animate-none" />
-            <div className="h-3 w-1/2 animate-pulse rounded bg-[#eff0f1] motion-reduce:animate-none" />
+            <div className="h-4 w-3/4 animate-pulse rounded bg-card-muted motion-reduce:animate-none" />
+            <div className="h-3 w-1/2 animate-pulse rounded bg-surface-subtle motion-reduce:animate-none" />
             <div className="flex gap-2 border-t border-border pt-3">
-              <div className="h-9 flex-1 animate-pulse rounded-md bg-[#e9eaec] motion-reduce:animate-none" />
-              <div className="h-9 flex-1 animate-pulse rounded-md bg-[#eff0f1] motion-reduce:animate-none" />
+              <div className="h-9 flex-1 animate-pulse rounded-control bg-card-muted motion-reduce:animate-none" />
+              <div className="h-9 flex-1 animate-pulse rounded-control bg-surface-subtle motion-reduce:animate-none" />
             </div>
           </div>
         </div>

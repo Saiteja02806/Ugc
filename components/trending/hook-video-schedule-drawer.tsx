@@ -161,10 +161,19 @@ export function HookVideoScheduleDrawer({
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose, submitting]);
 
-  const selectedConnections = connections.filter((connection) =>
+  // Keep every provider in state so legacy schedules and provider-specific
+  // validation remain intact. New Reel scheduling only exposes Instagram.
+  const visibleConnections = useMemo(
+    () =>
+      connections.filter(
+        (connection) => connection.platform === "instagram",
+      ),
+    [connections],
+  );
+  const selectedConnections = visibleConnections.filter((connection) =>
     selectedConnectionIds.includes(connection.id),
   );
-  const connectedCount = connections.filter(
+  const connectedCount = visibleConnections.filter(
     (connection) => connection.status === "connected",
   ).length;
 
@@ -355,7 +364,7 @@ export function HookVideoScheduleDrawer({
                     {loading ? "Loading" : `${connectedCount} connected`}
                     {!loading ? (
                       <Link
-                        href="/connected-accounts"
+                        href="/settings#instagram-publishing"
                         className="font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                       >
                         Manage
@@ -372,7 +381,7 @@ export function HookVideoScheduleDrawer({
                   </div>
                 ) : (
                   <div className="mt-3 space-y-2">
-                    {connections.map((connection) => (
+                    {visibleConnections.map((connection) => (
                       <ConnectionRow
                         key={connection.id}
                         connection={connection}
@@ -388,13 +397,13 @@ export function HookVideoScheduleDrawer({
                         onToggle={() => toggleConnection(connection)}
                       />
                     ))}
-                    {connections.length === 0 ? (
+                    {visibleConnections.length === 0 ? (
                       <div className="border border-dashed border-border-strong px-3 py-5 text-center">
                         <p className="text-xs font-medium text-muted">
-                          No connected accounts.
+                          No Instagram account connected.
                         </p>
                         <Link
-                          href="/connected-accounts"
+                          href="/settings#instagram-publishing"
                           className="mt-2 inline-flex text-xs font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                           Connect an account
@@ -459,7 +468,7 @@ export function HookVideoScheduleDrawer({
             type="button"
             onClick={stage === "details" ? continueToReview : () => void confirmSchedule()}
             disabled={loading || submitting}
-            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? (
               <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
@@ -476,6 +485,8 @@ export function HookVideoScheduleDrawer({
   );
 }
 
+// Provider-specific controls remain here for legacy/internal schedule targets.
+// The current picker only passes Instagram connections into this component.
 function ConnectionRow({
   connection,
   selected,
@@ -598,7 +609,7 @@ function ScheduleReview({
         <p className="text-xs font-semibold text-muted">Composition</p>
         <dl className="mt-2 space-y-2 text-xs">
           <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
-            <dt className="font-medium text-muted">Influencer</dt>
+            <dt className="font-medium text-muted">Opening source</dt>
             <dd className="truncate font-semibold text-foreground-strong">
               {summary.influencerName}
             </dd>

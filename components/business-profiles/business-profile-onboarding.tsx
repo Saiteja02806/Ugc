@@ -5,11 +5,11 @@ import {
   ArrowLeft,
   Check,
   CheckCircle2,
-  ClipboardCheck,
   Copy,
   Globe2,
   Loader2,
   PenLine,
+  RefreshCw,
   Smartphone,
   Sparkles,
 } from "lucide-react";
@@ -18,6 +18,25 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type FormEvent } from "react";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
+import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Field as FormField,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
@@ -78,6 +97,11 @@ const initialManualDraft: ManualProfileDraft = {
   valueProps: "",
 };
 
+const countFormatter = new Intl.NumberFormat("en");
+
+const profileControlClassName =
+  "h-12 w-full rounded-lg border border-border bg-card-muted px-3 text-sm leading-6 text-foreground outline-none transition-[background-color,border-color,box-shadow] placeholder:text-muted-subtle hover:border-border-strong focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/20 disabled:cursor-not-allowed disabled:bg-card disabled:opacity-70";
+
 export function BusinessProfileOnboarding() {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
@@ -88,6 +112,8 @@ export function BusinessProfileOnboarding() {
   const [existingProfile, setExistingProfile] = useState<ProfileSummary | null>(null);
   const [status, setStatus] = useState<RequestStatus>("loading");
   const [error, setError] = useState<string | null>(null);
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
+  const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
   const [copied, setCopied] = useState(false);
   const websiteInputId = useId();
   const websiteHintId = useId();
@@ -132,10 +158,12 @@ export function BusinessProfileOnboarding() {
         setExistingProfile(data.profile ?? null);
       } catch (loadError) {
         if (!controller.signal.aborted) {
+          setProfileLoadFailed(true);
           setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Could not load your business profile.",
+            getFriendlyProfileError(
+              loadError,
+              "Could not load your business profile. Check your connection and try again.",
+            ),
           );
         }
       } finally {
@@ -148,7 +176,7 @@ export function BusinessProfileOnboarding() {
     void loadProfile();
 
     return () => controller.abort();
-  }, [authLoading, user]);
+  }, [authLoading, profileLoadAttempt, user]);
 
   useEffect(() => {
     if (!hasUnsavedChanges) {
@@ -167,6 +195,7 @@ export function BusinessProfileOnboarding() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setProfileLoadFailed(false);
     setStatus("saving");
 
     try {
@@ -201,9 +230,10 @@ export function BusinessProfileOnboarding() {
       router.replace("/dashboard");
     } catch (submitError) {
       setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Could not create your business profile.",
+        getFriendlyProfileError(
+          submitError,
+          "Could not create your business profile. Review the details and try again.",
+        ),
       );
       setStatus("idle");
     }
@@ -211,13 +241,14 @@ export function BusinessProfileOnboarding() {
 
   async function retryPreparation() {
     setError(null);
+    setProfileLoadFailed(false);
     setStatus("retrying");
 
     try {
       const token = await getCurrentUserIdToken();
 
       if (!token) {
-        throw new Error("Sign in again before retrying carousel preparation.");
+        throw new Error("Sign in again before retrying Instagram idea preparation.");
       }
 
       const response = await fetch("/api/business-profile/retry", {
@@ -230,15 +261,16 @@ export function BusinessProfileOnboarding() {
       } | null;
 
       if (!response.ok || !data?.ok) {
-        throw new Error(data?.message ?? "Could not retry carousel preparation.");
+        throw new Error(data?.message ?? "Could not retry Instagram idea preparation.");
       }
 
       router.replace("/dashboard");
     } catch (retryError) {
       setError(
-        retryError instanceof Error
-          ? retryError.message
-          : "Could not retry carousel preparation.",
+        getFriendlyProfileError(
+          retryError,
+          "Could not retry Instagram idea preparation. Check your connection and try again.",
+        ),
       );
       setStatus("idle");
     }
@@ -250,6 +282,7 @@ export function BusinessProfileOnboarding() {
       setCopied(true);
       setError(null);
     } catch {
+      setProfileLoadFailed(false);
       setError("Could not copy the prompt. Select the prompt text and copy it manually.");
     }
   }
@@ -258,23 +291,20 @@ export function BusinessProfileOnboarding() {
     setIntakeType(value);
     setCopied(false);
     setError(null);
+    setProfileLoadFailed(false);
+  }
+
+  function retryProfileLoad() {
+    setError(null);
+    setProfileLoadFailed(false);
+    setStatus("loading");
+    setProfileLoadAttempt((attempt) => attempt + 1);
   }
 
   if (authLoading || (Boolean(user) && status === "loading")) {
     return (
       <OnboardingFrame pipelineState="input">
-        <div
-          aria-busy="true"
-          className="flex min-h-[420px] items-center justify-center"
-        >
-          <div className="flex items-center gap-3 text-sm font-medium text-muted">
-            <Loader2
-              className="size-5 animate-spin text-brand motion-reduce:animate-none"
-              aria-hidden="true"
-            />
-            Checking your business profile…
-          </div>
-        </div>
+        <ProfileLoadingState />
       </OnboardingFrame>
     );
   }
@@ -301,24 +331,32 @@ export function BusinessProfileOnboarding() {
       pipelineState="input"
       confirmNavigation={hasUnsavedChanges}
     >
-      <form onSubmit={submit} className="mx-auto w-full max-w-[760px]">
-        <header>
-          <div className="flex items-center gap-3 text-xs font-semibold text-muted-subtle">
-            <span className="font-mono tabular-nums text-primary">01</span>
-            <span className="h-px w-8 bg-border-strong" aria-hidden="true" />
-            <span>Business context</span>
-          </div>
-          <h2 className="mt-5 max-w-2xl text-balance text-[32px] font-semibold leading-[1.12] text-foreground-strong sm:text-4xl">
-            How should we learn about your product?
-          </h2>
-          <p className="mt-4 max-w-2xl text-[15px] leading-6 text-muted">
-            Start with the source that already explains your product best. We will turn it into one focused creative brief.
-          </p>
-        </header>
+      <form
+        onSubmit={submit}
+        className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card"
+      >
+        <div
+          className="h-1 bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]"
+          aria-hidden="true"
+        />
 
-        <fieldset className="mt-8">
-          <legend className="sr-only">Business context source</legend>
-          <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-surface-subtle p-1.5">
+        <div className="px-5 py-6 sm:px-7 sm:py-7">
+          <header>
+            <Badge variant="secondary">Source details</Badge>
+            <h2 className="mt-4 max-w-2xl text-balance text-2xl font-bold tracking-[-0.025em] text-foreground-strong sm:text-[30px]">
+              Choose the source you trust most
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted sm:text-[15px]">
+              Start with the place that already explains your product clearly.
+              UGC Pilot turns it into one reusable creative brief.
+            </p>
+          </header>
+
+          <FieldSet className="mt-7">
+            <FieldLegend className="sr-only">
+              Business context source
+            </FieldLegend>
+            <div className="grid gap-3 sm:grid-cols-3">
             {intakeOptions.map((option) => {
               const Icon = option.icon;
               const selected = intakeType === option.value;
@@ -327,10 +365,10 @@ export function BusinessProfileOnboarding() {
                 <label
                   key={option.value}
                   className={cn(
-                    "relative flex min-h-14 touch-manipulation cursor-pointer flex-col items-center justify-center gap-1 rounded-md px-2 py-2.5 text-center transition-[background-color,color,box-shadow] duration-200 focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-surface-subtle sm:min-h-12 sm:flex-row sm:gap-2 sm:px-3",
+                    "relative flex min-h-32 touch-manipulation cursor-pointer flex-col rounded-xl border p-4 text-left transition-[background-color,border-color,box-shadow,transform] duration-200 focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-card motion-reduce:transition-none motion-reduce:hover:translate-y-0",
                     selected
-                      ? "bg-foreground-strong text-white"
-                      : "text-muted hover:bg-white hover:text-foreground",
+                      ? "border-primary/50 bg-selected shadow-[0_10px_26px_rgb(225_101_64_/_0.08)]"
+                      : "border-border bg-card-muted/55 hover:-translate-y-0.5 hover:border-border-strong hover:bg-card-muted",
                     isSaving && "cursor-not-allowed opacity-60",
                   )}
                 >
@@ -343,87 +381,123 @@ export function BusinessProfileOnboarding() {
                     onChange={() => selectIntakeType(option.value)}
                     className="sr-only"
                   />
-                  <Icon
-                    className={cn("size-4 shrink-0", selected && "text-brand")}
-                    strokeWidth={1.9}
-                    aria-hidden="true"
-                  />
-                  <span className="whitespace-nowrap text-xs font-semibold sm:text-sm">
+                  <span className="flex items-start justify-between gap-3">
+                    <span
+                      className={cn(
+                        "flex size-9 shrink-0 items-center justify-center rounded-lg border",
+                        selected
+                          ? "border-primary/25 bg-primary/10 text-primary"
+                          : "border-border bg-background text-muted",
+                      )}
+                    >
+                      <Icon className="size-4" aria-hidden="true" />
+                    </span>
+                    <span
+                      className={cn(
+                        "flex size-5 items-center justify-center rounded-full border",
+                        selected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-transparent",
+                      )}
+                      aria-hidden="true"
+                    >
+                      <Check className="size-3" />
+                    </span>
+                  </span>
+                  <span className="mt-4 text-sm font-bold text-foreground-strong">
                     {option.label}
+                  </span>
+                  <span className="mt-1 text-xs leading-5 text-muted">
+                    {option.description}
                   </span>
                 </label>
               );
             })}
-          </div>
-          <div className="mt-4 flex items-start gap-3">
-            <span className="mt-2 size-1.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
-            <p className="text-sm leading-6 text-muted">
-              {intakeOptions.find((option) => option.value === intakeType)?.description}
-            </p>
-          </div>
-        </fieldset>
+            </div>
+          </FieldSet>
+        </div>
 
+        <Separator />
+
+        <div className="px-5 py-7 sm:px-7 sm:py-8">
         {intakeType === "website" ? (
-          <section className="mt-10 border-t border-border pt-8" aria-labelledby="website-source-title">
-            <h3 id="website-source-title" className="text-lg font-semibold text-foreground-strong">
-              Connect your website
+          <section aria-labelledby="website-source-title">
+            <h3
+              id="website-source-title"
+              className="text-lg font-bold text-foreground-strong"
+            >
+              Website details
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              We will read public product pages and organize only the context needed for creative ideas.
+              We only read public product pages and organize the facts needed
+              for Instagram creative.
             </p>
-            <label htmlFor={websiteInputId} className="mt-7 block text-sm font-semibold text-foreground">
-              Website URL
-            </label>
-            <input
-              id={websiteInputId}
-              type="url"
-              name="websiteUrl"
-              inputMode="url"
-              autoComplete="url"
-              required
-              disabled={isSaving}
-              value={websiteUrl}
-              onChange={(event) => setWebsiteUrl(event.target.value)}
-              placeholder="https://yourbusiness.com"
-              aria-describedby={websiteHintId}
-              className="mt-2 h-14 w-full rounded-lg border border-border-strong bg-white px-4 text-base text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-subtle focus:border-focus focus:ring-2 focus:ring-focus/15 disabled:cursor-not-allowed disabled:bg-card-muted"
-            />
-            <p id={websiteHintId} className="mt-2 text-xs leading-5 text-muted-subtle">
-              Use the main public URL. Sign-in pages and private content are not required.
-            </p>
+            <FormField className="mt-6">
+              <FieldLabel htmlFor={websiteInputId}>Website URL</FieldLabel>
+              <input
+                id={websiteInputId}
+                type="url"
+                name="websiteUrl"
+                inputMode="url"
+                autoComplete="url"
+                spellCheck={false}
+                required
+                disabled={isSaving}
+                value={websiteUrl}
+                onChange={(event) => setWebsiteUrl(event.target.value)}
+                placeholder="https://yourbusiness.com…"
+                aria-describedby={websiteHintId}
+                className={profileControlClassName}
+              />
+              <FieldDescription id={websiteHintId}>
+                Use the main public URL. Sign-in pages and private content are
+                not required.
+              </FieldDescription>
+            </FormField>
           </section>
         ) : null}
 
         {intakeType === "mobile_app_ai_prompt" ? (
-          <section className="mt-10 border-t border-border pt-8" aria-labelledby="mobile-source-title">
-            <h3 id="mobile-source-title" className="text-lg font-semibold text-foreground-strong">
-              Bring context from your app codebase
+          <section aria-labelledby="mobile-source-title">
+            <h3
+              id="mobile-source-title"
+              className="text-lg font-bold text-foreground-strong"
+            >
+              Bring context from your app
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              Run the prompt in the AI IDE that already understands your app, then paste its answer below.
+              Run this prompt in the AI IDE that already understands the
+              codebase, then paste its factual report below.
             </p>
 
-            <ol className="mt-6 space-y-7">
+            <ol className="mt-7 flex flex-col gap-8">
               <li>
                 <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <StepNumber value="1" />
-                    <h4 className="text-sm font-semibold text-foreground">Copy the analysis prompt</h4>
+                    <h4 className="text-sm font-bold text-foreground">
+                      Copy the analysis prompt
+                    </h4>
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="lg"
                     onClick={() => void copyPrompt()}
-                    className="inline-flex h-11 touch-manipulation items-center gap-2 rounded-md border border-border-strong bg-white px-3 text-xs font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                   >
                     {copied ? (
-                      <Check className="size-4 text-success" aria-hidden="true" />
+                      <Check
+                        data-icon="inline-start"
+                        className="text-success"
+                        aria-hidden="true"
+                      />
                     ) : (
-                      <Copy className="size-4" aria-hidden="true" />
+                      <Copy data-icon="inline-start" aria-hidden="true" />
                     )}
                     <span aria-live="polite">{copied ? "Copied" : "Copy prompt"}</span>
-                  </button>
+                  </Button>
                 </div>
-                <pre className="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-foreground-strong p-4 font-mono text-xs leading-5 text-white/80 sm:p-5">
+                <pre className="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-background p-4 font-mono text-xs leading-5 text-muted sm:p-5">
                   {aiIdePrompt}
                 </pre>
               </li>
@@ -431,50 +505,61 @@ export function BusinessProfileOnboarding() {
               <li>
                 <div className="flex items-center gap-3">
                   <StepNumber value="2" />
-                  <h4 className="text-sm font-semibold text-foreground">Paste the AI IDE result</h4>
+                  <h4 className="text-sm font-bold text-foreground">
+                    Paste the AI IDE result
+                  </h4>
                 </div>
-                <label htmlFor={aiContextInputId} className="sr-only">
-                  AI IDE business context
-                </label>
-                <textarea
-                  id={aiContextInputId}
-                  name="aiIdeContext"
-                  autoComplete="off"
-                  required
-                  minLength={20}
-                  maxLength={24_000}
-                  disabled={isSaving}
-                  value={aiIdeContext}
-                  onChange={(event) => setAiIdeContext(event.target.value)}
-                  rows={11}
-                  placeholder="Paste the complete business-context report here…"
-                  aria-describedby={aiContextHintId}
-                  className="mt-4 min-h-56 w-full resize-y rounded-lg border border-border-strong bg-white p-4 text-sm leading-6 text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-subtle focus:border-focus focus:ring-2 focus:ring-focus/15 disabled:cursor-not-allowed disabled:bg-card-muted"
-                />
-                <div
-                  id={aiContextHintId}
-                  className="mt-2 flex items-center justify-between gap-4 text-xs leading-5 text-muted-subtle"
-                >
-                  <span>Do not paste source code, secrets or credentials.</span>
-                  <span className="shrink-0 font-mono tabular-nums">
-                    {aiIdeContext.length.toLocaleString()}/24,000
-                  </span>
-                </div>
+                <FormField className="mt-4">
+                  <FieldLabel htmlFor={aiContextInputId} className="sr-only">
+                    AI IDE business context
+                  </FieldLabel>
+                  <textarea
+                    id={aiContextInputId}
+                    name="aiIdeContext"
+                    autoComplete="off"
+                    required
+                    minLength={20}
+                    maxLength={24_000}
+                    disabled={isSaving}
+                    value={aiIdeContext}
+                    onChange={(event) => setAiIdeContext(event.target.value)}
+                    rows={11}
+                    placeholder="Paste the complete business-context report here…"
+                    aria-describedby={aiContextHintId}
+                    className={cn(
+                      profileControlClassName,
+                      "min-h-56 resize-y py-3",
+                    )}
+                  />
+                  <div
+                    id={aiContextHintId}
+                    className="flex items-center justify-between gap-4 text-xs leading-5 text-muted-subtle"
+                  >
+                    <span>Do not paste source code, secrets, or credentials.</span>
+                    <span className="shrink-0 font-mono tabular-nums">
+                      {formatCount(aiIdeContext.length)}/24,000
+                    </span>
+                  </div>
+                </FormField>
               </li>
             </ol>
           </section>
         ) : null}
 
         {intakeType === "manual" ? (
-          <section className="mt-10 border-t border-border pt-8" aria-labelledby="manual-source-title">
-            <h3 id="manual-source-title" className="text-lg font-semibold text-foreground-strong">
-              Describe the business directly
+          <section aria-labelledby="manual-source-title">
+            <h3
+              id="manual-source-title"
+              className="text-lg font-bold text-foreground-strong"
+            >
+              Enter the business facts
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              Give concise, factual details. These become the source of truth for personalized ideas.
+              Keep each answer concise and factual. These details become the
+              source of truth for personalized Instagram ideas.
             </p>
-            <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <Field
+            <FieldGroup className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <ProfileField
                 label="Business name"
                 name="businessName"
                 autoComplete="organization"
@@ -482,20 +567,20 @@ export function BusinessProfileOnboarding() {
                 required
                 maxLength={120}
                 disabled={isSaving}
-                placeholder="Acme Health"
+                placeholder="Enter your business name…"
                 onChange={(value) => setManual({ ...manual, businessName: value })}
               />
-              <Field
+              <ProfileField
                 label="Category"
                 name="category"
                 value={manual.category}
                 required
                 maxLength={120}
                 disabled={isSaving}
-                placeholder="Fitness and wellness"
+                placeholder="Enter your category or industry…"
                 onChange={(value) => setManual({ ...manual, category: value })}
               />
-              <Field
+              <ProfileField
                 label="Target audience"
                 name="targetAudience"
                 value={manual.targetAudience}
@@ -503,22 +588,22 @@ export function BusinessProfileOnboarding() {
                 minLength={3}
                 maxLength={600}
                 disabled={isSaving}
-                placeholder="Busy professionals who want consistent workouts"
+                placeholder="Describe the people your business serves…"
                 className="sm:col-span-2"
                 onChange={(value) => setManual({ ...manual, targetAudience: value })}
               />
-              <Field
+              <ProfileField
                 label="Main problem"
                 name="mainProblem"
                 value={manual.mainProblem}
                 required
                 maxLength={360}
                 disabled={isSaving}
-                placeholder="They struggle to plan workouts around an unpredictable schedule"
+                placeholder="Describe the main problem they need solved…"
                 className="sm:col-span-2"
                 onChange={(value) => setManual({ ...manual, mainProblem: value })}
               />
-              <Field
+              <ProfileField
                 label="Product summary"
                 name="productSummary"
                 value={manual.productSummary}
@@ -526,12 +611,12 @@ export function BusinessProfileOnboarding() {
                 minLength={20}
                 maxLength={1_000}
                 disabled={isSaving}
-                placeholder="Explain what the product does in two or three sentences"
+                placeholder="Explain what the product does in two or three sentences…"
                 multiline
                 className="sm:col-span-2"
                 onChange={(value) => setManual({ ...manual, productSummary: value })}
               />
-              <Field
+              <ProfileField
                 label="Key benefits"
                 name="valueProps"
                 value={manual.valueProps}
@@ -539,50 +624,65 @@ export function BusinessProfileOnboarding() {
                 minLength={3}
                 maxLength={1_000}
                 disabled={isSaving}
-                placeholder="List one benefit per line"
+                placeholder="List one benefit per line…"
                 hint="One benefit per line produces cleaner creative angles."
                 multiline
                 className="sm:col-span-2"
                 onChange={(value) => setManual({ ...manual, valueProps: value })}
               />
-              <Field
+              <ProfileField
                 label="Brand tone"
                 name="brandTone"
                 value={manual.brandTone}
                 maxLength={160}
                 disabled={isSaving}
-                placeholder="Direct, optimistic and practical"
+                placeholder="Describe the voice you want to use…"
                 hint="Optional"
                 className="sm:col-span-2"
                 onChange={(value) => setManual({ ...manual, brandTone: value })}
               />
-            </div>
+            </FieldGroup>
           </section>
         ) : null}
 
-        {error ? <ErrorNotice message={error} /> : null}
+          {error ? (
+            <ErrorNotice
+              message={error}
+              onRetry={profileLoadFailed ? retryProfileLoad : undefined}
+            />
+          ) : null}
+        </div>
 
-        <footer className="mt-10 flex flex-col gap-5 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="max-w-md text-xs leading-5 text-muted-subtle">
-            One business profile is saved to this account. Carousel preparation starts automatically.
-          </p>
-          <button
+        <Separator />
+
+        <footer className="flex flex-col gap-5 bg-card-muted/35 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+          <div className="max-w-lg">
+            <p className="text-sm font-medium text-foreground">
+              One profile grounds every personalized idea.
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-subtle">
+              Nothing is published until you review and approve it.
+            </p>
+          </div>
+          <Button
             type="submit"
             disabled={isSaving}
-            className="inline-flex h-12 w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-md bg-brand px-5 text-sm font-semibold text-foreground-strong transition-[filter,transform] hover:brightness-95 active:translate-y-px active:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            size="lg"
+            className="h-11 w-full px-4 sm:w-auto"
           >
             {isSaving ? (
               <Loader2
-                className="size-4 animate-spin motion-reduce:animate-none"
+                data-icon="inline-start"
+                className="animate-spin motion-reduce:animate-none"
                 aria-hidden="true"
               />
             ) : (
-              <Sparkles className="size-4" aria-hidden="true" />
+              <Sparkles data-icon="inline-start" aria-hidden="true" />
             )}
             <span aria-live="polite">
-              {isSaving ? getSavingLabel(intakeType) : "Save and prepare ideas"}
+              {isSaving ? getSavingLabel(intakeType) : "Save profile & prepare ideas"}
             </span>
-          </button>
+          </Button>
         </footer>
       </form>
     </OnboardingFrame>
@@ -608,58 +708,73 @@ function OnboardingFrame({
   }
 
   return (
-    <main className="min-h-screen bg-foreground-strong text-foreground">
+    <main className="instagram-theme min-h-dvh bg-background text-foreground">
       <a
         href="#business-profile-content"
-        className="sr-only z-[110] rounded-md bg-white px-3 py-2 text-sm font-semibold text-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+        className="sr-only z-50 rounded-lg bg-card px-3 py-2 text-sm font-semibold text-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus-visible:ring-2 focus-visible:ring-focus"
       >
         Skip to business profile
       </a>
 
-      <div className="grid min-h-screen w-full lg:grid-cols-[minmax(320px,390px)_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
-        <aside className="flex flex-col bg-foreground-strong px-5 py-5 text-white sm:px-8 sm:py-7 lg:min-h-screen lg:px-10 lg:py-8">
-          <div className="flex items-center justify-between gap-4">
-            <Link
-              href="/dashboard"
-              onClick={handleNavigation}
-              className="flex min-h-11 touch-manipulation items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-foreground-strong"
-            >
-              <span className="flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white shadow-sm">
-                <ProductLogoMark className="h-6 w-9" sizes="40px" />
-              </span>
-              <span className="text-base font-semibold text-white">UGC Pilot</span>
-            </Link>
-            <Link
-              href="/dashboard"
-              onClick={handleNavigation}
-              aria-label="Back to Trending"
-              className="inline-flex size-11 touch-manipulation items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-foreground-strong lg:hidden"
-            >
-              <ArrowLeft className="size-4" aria-hidden="true" />
-            </Link>
-          </div>
-
-          <ContextPipeline state={pipelineState} />
-        </aside>
-
-        <section className="min-w-0 bg-white lg:min-h-screen">
-          <header className="hidden h-16 items-center justify-end border-b border-border px-8 lg:flex xl:px-12">
+      <header className="border-b border-border bg-background/95 backdrop-blur">
+        <div className="mx-auto flex h-16 w-full max-w-[1080px] items-center justify-between gap-4 px-4 sm:px-6">
           <Link
             href="/dashboard"
             onClick={handleNavigation}
-            className="inline-flex h-11 touch-manipulation items-center gap-2 rounded-md px-3 text-sm font-medium text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className="flex min-h-11 touch-manipulation items-center gap-2.5 rounded-lg focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Back to Trending
+            <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary p-1.5 shadow-sm">
+              <ProductLogoMark
+                className="size-full"
+                imageClassName="brightness-0 invert"
+                sizes="36px"
+              />
+            </span>
+            <span className="text-base font-bold text-foreground-strong">
+              UGC Pilot
+            </span>
           </Link>
-          </header>
-          <div
-            id="business-profile-content"
-            className="min-w-0 scroll-mt-4 px-5 py-9 sm:px-10 sm:py-12 lg:px-12 lg:py-14 xl:px-16"
+          <Link
+            href="/dashboard"
+            onClick={handleNavigation}
+            className={cn(
+              buttonVariants({ size: "lg", variant: "ghost" }),
+              "h-10 px-3 text-muted",
+            )}
           >
-            {children}
+            <ArrowLeft data-icon="inline-start" aria-hidden="true" />
+            <span className="hidden sm:inline">Back to Instagram ideas</span>
+            <span className="sm:hidden">Back</span>
+          </Link>
+        </div>
+      </header>
+
+      <div className="mx-auto w-full max-w-[960px] px-4 py-8 sm:px-6 sm:py-11 lg:py-14">
+        <header className="max-w-3xl">
+          <div className="flex items-center gap-2">
+            <SocialPlatformIcon className="size-5" platform="instagram" />
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
+              Instagram business profile
+            </p>
           </div>
-        </section>
+          <h1 className="mt-4 text-balance text-[34px] font-bold leading-[1.08] tracking-[-0.04em] text-foreground-strong sm:text-[44px]">
+            Give every Instagram idea the right business context.
+          </h1>
+          <p className="mt-4 max-w-2xl text-pretty text-sm leading-6 text-muted sm:text-base sm:leading-7">
+            Add one trusted source for your product, audience, and positioning.
+            UGC Pilot uses it to ground Reel hooks, text-led videos, and
+            carousel posts.
+          </p>
+        </header>
+
+        <ContextPipeline state={pipelineState} />
+
+        <div
+          id="business-profile-content"
+          className="mt-8 min-w-0 scroll-mt-24 sm:mt-10"
+        >
+          {children}
+        </div>
       </div>
     </main>
   );
@@ -668,30 +783,22 @@ function OnboardingFrame({
 function ContextPipeline({ state }: { state: PipelineState }) {
   const steps = [
     {
-      description: "Choose the strongest source for your product facts.",
+      description: "Website, app brief, or manual facts",
       label: "Source",
     },
     {
-      description: "We structure the useful facts into a creative brief.",
-      label: "Brief",
+      description: "Product, audience, and positioning",
+      label: "Creative brief",
     },
     {
-      description: "Personalized carousel ideas start preparing automatically.",
-      label: "Ideas",
+      description: "Reels, text-led videos, and carousels",
+      label: "Instagram ideas",
     },
   ];
 
   return (
-    <div className="flex flex-1 flex-col pt-8 lg:pt-16">
-      <p className="text-sm font-medium text-white/60">Business setup</p>
-      <h1 className="mt-3 max-w-xs text-balance text-[28px] font-semibold leading-[1.14] text-white sm:text-[32px]">
-        Turn product context into ready-to-use ideas.
-      </h1>
-      <p className="mt-4 max-w-sm text-sm leading-6 text-white/60">
-        Set the source once. Every personalized carousel starts from the same reliable brief.
-      </p>
-
-      <ol className="mt-8 grid grid-cols-3 gap-2 lg:mt-12 lg:grid-cols-1 lg:gap-0">
+    <nav className="mt-8 border-y border-border" aria-label="Business profile progress">
+      <ol className="grid grid-cols-3">
         {steps.map((step, index) => {
           const stepNumber = index + 1;
           const complete = state !== "input" && stepNumber < 3;
@@ -704,19 +811,17 @@ function ContextPipeline({ state }: { state: PipelineState }) {
             <li
               key={step.label}
               aria-current={active ? "step" : undefined}
-              className="relative flex min-w-0 flex-col items-center text-center lg:min-h-[104px] lg:flex-row lg:items-start lg:gap-4 lg:text-left"
+              className="relative flex min-w-0 flex-col gap-2 px-2 py-4 text-center sm:flex-row sm:items-center sm:gap-3 sm:px-5 sm:text-left [&+li]:border-l [&+li]:border-border"
             >
-              {index < steps.length - 1 ? (
-                <span className="absolute left-[calc(50%+22px)] right-[calc(-50%+22px)] top-[18px] h-px bg-white/15 lg:bottom-0 lg:left-[18px] lg:right-auto lg:top-9 lg:h-auto lg:w-px" />
-              ) : null}
               <span
                 className={cn(
-                  "relative z-10 flex size-9 shrink-0 items-center justify-center rounded-md border text-xs font-semibold",
-                  complete && "border-white bg-white text-foreground-strong",
-                  active && "border-brand bg-brand text-foreground-strong",
-                  failed && "border-error bg-error text-white",
+                  "mx-auto flex size-8 shrink-0 items-center justify-center rounded-lg border text-xs font-bold sm:mx-0",
+                  complete && "border-success/25 bg-success/10 text-success",
+                  active &&
+                    "border-transparent bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))] text-white",
+                  failed && "border-error/30 bg-error/10 text-error",
                   !complete && !active && !failed &&
-                    "border-white/20 bg-white/[0.04] text-white/50",
+                    "border-border bg-card-muted text-muted",
                 )}
               >
                 {complete ? (
@@ -727,16 +832,16 @@ function ContextPipeline({ state }: { state: PipelineState }) {
                   stepNumber
                 )}
               </span>
-              <div className="mt-2 min-w-0 lg:mt-0">
+              <div className="min-w-0">
                 <p
                   className={cn(
-                    "text-xs font-semibold lg:text-sm",
-                    active || complete || failed ? "text-white" : "text-white/50",
+                    "truncate text-xs font-bold sm:text-sm",
+                    active || complete || failed ? "text-foreground-strong" : "text-muted",
                   )}
                 >
                   {step.label}
                 </p>
-                <p className="mt-1.5 hidden max-w-[240px] text-xs leading-5 text-white/50 lg:block">
+                <p className="mt-0.5 hidden text-xs leading-5 text-muted md:block">
                   {step.description}
                 </p>
               </div>
@@ -744,16 +849,7 @@ function ContextPipeline({ state }: { state: PipelineState }) {
           );
         })}
       </ol>
-
-      <div className="mt-auto hidden border-t border-white/10 pt-7 lg:block">
-        <div className="flex items-start gap-3">
-          <ClipboardCheck className="mt-0.5 size-[18px] shrink-0 text-brand" aria-hidden="true" />
-          <p className="max-w-[250px] text-xs leading-5 text-white/60">
-            One account, one business profile, one source of truth for every idea.
-          </p>
-        </div>
-      </div>
-    </div>
+    </nav>
   );
 }
 
@@ -771,96 +867,115 @@ function ExistingProfileState({
   const failed = profile.preparationStatus === "failed";
 
   return (
-    <div className="mx-auto w-full max-w-[720px]">
-      <div className="flex items-center gap-3 text-xs font-semibold text-muted-subtle">
-        <span className="font-mono tabular-nums text-primary">03</span>
-        <span className="h-px w-8 bg-border-strong" aria-hidden="true" />
-        <span>Profile status</span>
-      </div>
-      <div className="mt-6 flex items-start gap-4">
-        <span
-          className={cn(
-            "flex size-11 shrink-0 items-center justify-center rounded-lg",
-            failed ? "bg-error/10 text-error" : "bg-success/10 text-success",
-          )}
-        >
+    <section className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
+      <div
+        className="h-1 bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]"
+        aria-hidden="true"
+      />
+      <div className="px-5 py-7 sm:px-8 sm:py-8">
+        <Badge variant={failed ? "destructive" : "outline"}>
           {failed ? (
-            <AlertCircle className="size-5" aria-hidden="true" />
+            <AlertCircle data-icon="inline-start" aria-hidden="true" />
           ) : (
-            <CheckCircle2 className="size-5" aria-hidden="true" />
+            <CheckCircle2 data-icon="inline-start" aria-hidden="true" />
           )}
-        </span>
-        <div>
-          <h2 className="max-w-xl text-balance text-[30px] font-semibold leading-[1.15] text-foreground-strong sm:text-4xl">
-            {failed ? "Carousel preparation needs attention" : "Your creative brief is active"}
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            {failed
-              ? "Your business profile was saved, but carousel preparation did not start successfully."
-              : "Your profile is saved. Open Trending to follow personalized carousel preparation and review ready ideas."}
-          </p>
-        </div>
-      </div>
+          {failed ? "Needs attention" : "Profile active"}
+        </Badge>
 
-      <dl className="mt-8 grid grid-cols-1 border-y border-border sm:grid-cols-2">
-        <div className="py-4 sm:border-r sm:border-border sm:pr-6">
-          <dt className="text-xs font-medium text-muted-subtle">Context source</dt>
-          <dd className="mt-1 text-sm font-semibold text-foreground">
-            {getIntakeLabel(profile.intakeType)}
-          </dd>
-        </div>
-        <div className="border-t border-border py-4 sm:border-t-0 sm:pl-6">
-          <dt className="text-xs font-medium text-muted-subtle">Profile version</dt>
-          <dd className="mt-1 font-mono text-sm font-medium tabular-nums text-foreground">
-            {profile.profileVersion}
-          </dd>
-        </div>
-      </dl>
-
-      {failed && profile.preparationError ? (
-        <ErrorNotice message={profile.preparationError} />
-      ) : null}
-      {error ? <ErrorNotice message={error} /> : null}
-
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-        {failed ? (
-          <button
-            type="button"
-            onClick={onRetry}
-            disabled={isRetrying}
-            className="inline-flex h-12 touch-manipulation items-center justify-center gap-2 rounded-md bg-brand px-5 text-sm font-semibold text-foreground-strong transition-[filter,transform] hover:brightness-95 active:translate-y-px active:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isRetrying ? (
-              <Loader2
-                className="size-4 animate-spin motion-reduce:animate-none"
-                aria-hidden="true"
-              />
-            ) : (
-              <Sparkles className="size-4" aria-hidden="true" />
+        <div className="mt-5 flex items-start gap-4">
+          <span
+            className={cn(
+              "flex size-11 shrink-0 items-center justify-center rounded-xl",
+              failed ? "bg-error/10 text-error" : "bg-success/10 text-success",
             )}
-            <span aria-live="polite">
-              {isRetrying ? "Retrying preparation…" : "Retry preparation"}
-            </span>
-          </button>
+          >
+            {failed ? (
+              <AlertCircle className="size-5" aria-hidden="true" />
+            ) : (
+              <CheckCircle2 className="size-5" aria-hidden="true" />
+            )}
+          </span>
+          <div className="min-w-0">
+            <h2 className="max-w-xl text-balance text-2xl font-bold tracking-[-0.025em] text-foreground-strong sm:text-[30px]">
+              {failed
+                ? "Instagram idea preparation needs attention"
+                : "Your Instagram creative brief is active"}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              {failed
+                ? "Your business profile is saved, but the first personalized ideas did not start preparing."
+                : "Your saved profile now grounds Reel hooks, text-led videos, and carousel posts across the workspace."}
+            </p>
+          </div>
+        </div>
+
+        <dl className="mt-7 grid overflow-hidden rounded-xl border border-border bg-card-muted/45 sm:grid-cols-2">
+          <div className="px-4 py-4 sm:border-r sm:border-border">
+            <dt className="text-xs font-medium text-muted-subtle">
+              Context source
+            </dt>
+            <dd className="mt-1 text-sm font-bold text-foreground">
+              {getIntakeLabel(profile.intakeType)}
+            </dd>
+          </div>
+          <div className="border-t border-border px-4 py-4 sm:border-t-0">
+            <dt className="text-xs font-medium text-muted-subtle">
+              Profile version
+            </dt>
+            <dd className="mt-1 font-mono text-sm font-bold tabular-nums text-foreground">
+              {formatCount(profile.profileVersion)}
+            </dd>
+          </div>
+        </dl>
+
+        {failed && profile.preparationError ? (
+          <ErrorNotice message={profile.preparationError} />
         ) : null}
-        <Link
-          href="/dashboard"
-          className={cn(
-            "inline-flex h-12 touch-manipulation items-center justify-center gap-2 rounded-md px-5 text-sm font-semibold transition-[filter,background-color,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
-            failed
-              ? "border border-border-strong bg-white text-foreground hover:bg-card-muted"
-              : "bg-brand text-foreground-strong hover:brightness-95",
-          )}
-        >
-          <Sparkles className="size-4" aria-hidden="true" />
-          Open Trending
-        </Link>
+        {error ? <ErrorNotice message={error} /> : null}
+
+        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+          {failed ? (
+            <Button
+              type="button"
+              onClick={onRetry}
+              disabled={isRetrying}
+              size="lg"
+              className="h-11"
+            >
+              {isRetrying ? (
+                <Loader2
+                  data-icon="inline-start"
+                  className="animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              ) : (
+                <RefreshCw data-icon="inline-start" aria-hidden="true" />
+              )}
+              <span aria-live="polite">
+                {isRetrying ? "Retrying preparation…" : "Retry preparation"}
+              </span>
+            </Button>
+          ) : null}
+          <Link
+            href="/dashboard"
+            className={cn(
+              buttonVariants({
+                size: "lg",
+                variant: failed ? "outline" : "default",
+              }),
+              "h-11",
+            )}
+          >
+            <Sparkles data-icon="inline-start" aria-hidden="true" />
+            Open Instagram ideas
+          </Link>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
-function Field({
+function ProfileField({
   autoComplete = "off",
   className,
   disabled = false,
@@ -891,16 +1006,17 @@ function Field({
 }) {
   const inputId = useId();
   const hintId = useId();
-  const controlClassName =
-    "mt-2 w-full rounded-md border border-border-strong bg-white px-3 text-sm leading-6 text-foreground outline-none transition-colors placeholder:text-muted-subtle focus:border-focus focus:ring-2 focus:ring-focus/15 disabled:cursor-not-allowed disabled:bg-card-muted";
+  const describedBy = hint || maxLength ? hintId : undefined;
 
   return (
-    <div className={className}>
+    <FormField className={className}>
       <div className="flex items-center justify-between gap-3">
-        <label htmlFor={inputId} className="text-sm font-medium text-foreground">
+        <FieldLabel htmlFor={inputId} className="font-medium">
           {label}
-        </label>
-        {hint ? <span className="text-xs text-muted-subtle">{hint}</span> : null}
+        </FieldLabel>
+        {hint === "Optional" ? (
+          <span className="text-xs text-muted-subtle">Optional</span>
+        ) : null}
       </div>
       {multiline ? (
         <textarea
@@ -914,9 +1030,12 @@ function Field({
           disabled={disabled}
           placeholder={placeholder}
           rows={4}
-          aria-describedby={maxLength ? hintId : undefined}
+          aria-describedby={describedBy}
           onChange={(event) => onChange(event.target.value)}
-          className={cn(controlClassName, "min-h-28 resize-y py-2.5")}
+          className={cn(
+            profileControlClassName,
+            "min-h-28 resize-y py-2.5",
+          )}
         />
       ) : (
         <input
@@ -929,38 +1048,110 @@ function Field({
           maxLength={maxLength}
           disabled={disabled}
           placeholder={placeholder}
-          aria-describedby={maxLength ? hintId : undefined}
+          aria-describedby={describedBy}
           onChange={(event) => onChange(event.target.value)}
-          className={cn(controlClassName, "h-11")}
+          className={profileControlClassName}
         />
       )}
-      {maxLength ? (
-        <div id={hintId} className="mt-1 flex justify-end font-mono text-[11px] tabular-nums text-muted-subtle">
-          {value.length.toLocaleString()}/{maxLength.toLocaleString()}
+      {hint || maxLength ? (
+        <div
+          id={hintId}
+          className="flex items-start justify-between gap-3 text-xs leading-5 text-muted-subtle"
+        >
+          <span>{hint !== "Optional" ? hint : null}</span>
+          {maxLength ? (
+            <span className="shrink-0 font-mono tabular-nums">
+              {formatCount(value.length)}/{formatCount(maxLength)}
+            </span>
+          ) : null}
         </div>
       ) : null}
-    </div>
+    </FormField>
   );
 }
 
 function StepNumber({ value }: { value: string }) {
   return (
-    <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-brand text-xs font-semibold text-foreground-strong">
+    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-selected text-xs font-bold text-primary">
       {value}
     </span>
   );
 }
 
-function ErrorNotice({ message }: { message: string }) {
+function ErrorNotice({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void;
+}) {
   return (
-    <div
-      role="alert"
-      className="mt-6 flex items-start gap-3 rounded-md border border-error/20 bg-error/5 px-3 py-3 text-sm leading-6 text-error"
-    >
-      <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-      <span className="min-w-0 break-words">{message}</span>
-    </div>
+    <Alert variant="destructive" className="mt-6" aria-live="polite">
+      <AlertCircle aria-hidden="true" />
+      <AlertTitle>Business profile needs attention</AlertTitle>
+      <AlertDescription className="break-words">{message}</AlertDescription>
+      {onRetry ? (
+        <AlertAction>
+          <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+            <RefreshCw data-icon="inline-start" aria-hidden="true" />
+            Retry
+          </Button>
+        </AlertAction>
+      ) : null}
+    </Alert>
   );
+}
+
+function ProfileLoadingState() {
+  return (
+    <section
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+      className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card"
+    >
+      <span className="sr-only">Checking your business profile…</span>
+      <div
+        className="h-1 bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]"
+        aria-hidden="true"
+      />
+      <div className="flex flex-col gap-6 px-5 py-7 sm:px-7">
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-5 w-28" />
+          <Skeleton className="h-8 w-80 max-w-full" />
+          <Skeleton className="h-4 w-[520px] max-w-full" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+        </div>
+        <Separator />
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-12 w-full rounded-lg" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function formatCount(value: number) {
+  return countFormatter.format(value);
+}
+
+function getFriendlyProfileError(error: unknown, fallback: string) {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  const message = error.message.trim();
+
+  if (!message || /(?:typeerror|fetch failed)/i.test(message)) {
+    return fallback;
+  }
+
+  return message;
 }
 
 function getSavingLabel(intakeType: IntakeType) {

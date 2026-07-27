@@ -96,19 +96,17 @@ is live and verified, not merely planned or coded.
   `https://getugcpilot.com`, uploaded a 68-byte PNG to `ugcsaas-media`, read it
   through `storage.googleapis.com`, and cleaned up the temporary object/media
   row.
-- [x] GCP media CDN HTTPS resources exist for `media.getugcpilot.com` on the
-  reserved global IP `8.233.40.78`: managed certificate
-  `ugc-prod-media-cdn-cert`, HTTPS proxy `ugc-prod-media-cdn-https-proxy`, and
-  forwarding rule `ugc-prod-media-cdn-https`.
-- [x] Vercel DNS for `media.getugcpilot.com` has been cut over to the GCP
-  media CDN IP `8.233.40.78`.
-- [ ] The GCP managed certificate for `media.getugcpilot.com` is still
-  provisioning, so app/worker env must stay on
-  `https://storage.googleapis.com/ugcsaas-media` until HTTPS passes.
+- [x] The GCP media CDN and HTTPS path were created and validated, then disabled
+  on 2026-07-27 for testing-phase cost control.
+- [x] Terraform `enable_media_cdn = false` removed exactly the eight optional
+  Compute delivery resources while leaving `ugcsaas-media` and its IAM bindings
+  unchanged.
+- [ ] Remove the stale DNS record for `media.getugcpilot.com`; it still resolves
+  to released former load-balancer IP `8.233.40.78`.
 - [x] Read-only AWS media backfill audit script exists:
   `npm run storage:gcp-backfill:audit`.
 - [x] The audit can scan the production Supabase project
-  `kltxwijhluawgveykfbt`. Production currently has 5,174 scanned rows and
+  `kltxwijhluawgveykfbt`. Its initial baseline had 5,174 scanned rows and
   8,981 AWS-hosted media references.
 - [x] Signed production Supabase media backfill audit route and runner are
   implemented locally: `POST /api/internal/gcp-media-backfill/audit` and
@@ -122,10 +120,18 @@ is live and verified, not merely planned or coded.
 - [x] Small `category_image_assets` backfill canary passed. It copied 5
   CloudFront objects to `ugcsaas-media`, updated 3 Supabase rows, and reduced
   production AWS media references from 8,981 to 8,976.
-- [ ] Existing S3/CloudFront media has not yet been fully copied to GCS. Start
-  with larger reviewed batches until
-  `npm run production:gcp-media-backfill:audit` reports 0 AWS-hosted media URLs.
-- [ ] Final CDN env cutover is not complete. Current testing URLs use
+- [x] Canonical Carousel image migration is complete. Production
+  `category_image_assets`, `carousel_slides`, `library_items`, and
+  `library_carousel_slides` have zero AWS URLs. All 6,998 unique referenced
+  keys exist in GCS and are non-zero.
+- [x] All 4,730 AWS `category-library/` image keys exist in GCS. The 50
+  AWS-only `carousels/rendered/` objects are unreferenced by canonical Carousel
+  or Library rows and are intentionally excluded.
+- [x] Global avatar/overlay replacement work, historical `background_jobs`,
+  test/E2E rows, and unreferenced renders are explicitly outside the Carousel
+  migration completion boundary.
+- [x] Final CDN env cutover is intentionally deferred during testing. Current
+  app and worker URLs use
   `https://storage.googleapis.com/ugcsaas-media`.
 - [ ] AWS S3/CloudFront resources have not been removed.
 
@@ -146,10 +152,12 @@ is live and verified, not merely planned or coded.
 
 ## Current Next Slice
 
-- [ ] Continue AWS-to-GCS media backfill in larger batches. Recommended next
-  step:
-  `npm run storage:gcp-backfill:dry-run -- --table category_image_assets --max-objects 250`,
-  then execute that same reviewed slice and rerun production audit.
-- [ ] After the CDN certificate becomes `ACTIVE`, update production Vercel and
-  Cloud Run worker `GCP_STORAGE_PUBLIC_BASE_URL` values to
-  `https://media.getugcpilot.com` and rerun the production GCP storage audit.
+- [x] Stop indiscriminate AWS-to-GCS backfill: the important canonical Carousel
+  image scope is complete. Do not migrate historical jobs, test data, avatars
+  scheduled for replacement, or unreferenced renders solely to make a global
+  AWS reference counter reach zero.
+- [ ] Remove the stale `media.getugcpilot.com` DNS record. If a custom media
+  domain is needed later, first set `enable_media_cdn = true`, apply Terraform,
+  point DNS to the newly allocated output IP, wait for the managed certificate
+  to become active, verify HTTPS, and only then update app/worker public media
+  base URLs.

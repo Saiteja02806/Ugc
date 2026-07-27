@@ -63,6 +63,12 @@ type GeneratedAsset = {
 const aspectRatios: AspectRatio[] = ["4:5", "1:1", "9:16", "16:9"];
 const imageCountOptions: ImageCount[] = [1, 2, 4];
 const IMAGE_GENERATION_LOCKED = true;
+const instagramImageFormatLabels: Record<AspectRatio, string> = {
+  "4:5": "Feed",
+  "1:1": "Square",
+  "9:16": "Story",
+  "16:9": "Landscape",
+};
 
 function createMessageId() {
   return crypto.randomUUID();
@@ -104,6 +110,36 @@ async function pollImageJob(jobId: string, token: string) {
 }
 
 export function UgcChatWorkspace() {
+  return (
+    <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-[#1F1F1F] px-4 py-4 text-[#F5F3F0] sm:px-6 lg:h-screen lg:px-10 lg:py-6">
+      <header className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-normal text-[#F5F3F0] sm:text-3xl">
+            AI Studio
+          </h1>
+          <p className="mt-1 text-sm font-medium leading-6 text-[#B9B5AF]">
+            Generate images and videos from one focused workspace.
+          </p>
+        </div>
+
+        <div className="inline-flex h-8 w-fit items-center gap-2 rounded-[var(--radius-control)] border border-[#383838] bg-[#242424] px-3 text-xs font-semibold text-[#B9B5AF]">
+          <Lock className="size-3.5" aria-hidden="true" />
+          Preview mode
+        </div>
+      </header>
+
+      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col pt-5">
+        <ImageGenerationStudioPanel />
+      </div>
+    </section>
+  );
+}
+
+export function ImageGenerationStudioPanel({
+  active = true,
+}: {
+  active?: boolean;
+}) {
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("4:5");
   const [imageCount, setImageCount] = useState<ImageCount>(4);
@@ -184,16 +220,13 @@ export function UgcChatWorkspace() {
   function handleEnhancePrompt() {
     const trimmedPrompt = prompt.trim();
     const enhancement =
-      "Production-ready details: clean premium composition, product-focused framing, natural lighting, polished SaaS ad style, no clutter, no extra text unless requested.";
+      "Production notes: preserve the subject and intent, improve composition, lighting, clarity, and Instagram-ready framing without adding unrequested text or objects.";
 
-    if (!trimmedPrompt) {
-      setPrompt(
-        "A polished SaaS product image asset with a clean premium composition, product-focused framing, natural lighting, and social ad quality.",
-      );
+    if (IMAGE_GENERATION_LOCKED || !trimmedPrompt) {
       return;
     }
 
-    if (trimmedPrompt.includes("Production-ready details:")) {
+    if (trimmedPrompt.includes("Production notes:")) {
       return;
     }
 
@@ -201,24 +234,13 @@ export function UgcChatWorkspace() {
   }
 
   return (
-    <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
-      <header className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
-            Image generation
-          </h1>
-          <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-            Describe the image you want to create.
-          </p>
-        </div>
-
-        <div className="inline-flex h-8 w-fit items-center gap-2 rounded-full border border-border/80 bg-white/70 px-3 text-xs font-semibold text-[#405977] shadow-sm">
-          <span className="size-2 rounded-full bg-success" />
-          Ready
-        </div>
-      </header>
-
-      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-4 pt-5">
+    <div
+      id="ai-studio-images-panel"
+      role="tabpanel"
+      aria-labelledby="ai-studio-images-tab"
+      hidden={!active}
+      className={cn("min-h-0 flex-1 flex-col gap-4", active ? "flex" : "hidden")}
+    >
         <ResultsArea
           generatedAssets={generatedAssets}
           generationFailed={generationFailed}
@@ -238,9 +260,9 @@ export function UgcChatWorkspace() {
           onPromptChange={setPrompt}
           onSubmit={handleSubmit}
           onTextareaKeyDown={handleTextareaKeyDown}
+          active={active}
         />
-      </div>
-    </section>
+    </div>
   );
 }
 
@@ -258,24 +280,30 @@ function ResultsArea({
   selectedAssetId: string | null;
 }) {
   return (
-    <div className="relative flex min-h-[300px] flex-1 flex-col overflow-hidden rounded-[28px] border border-border/70 bg-white/35 p-4 sm:p-5">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-bold text-foreground">Generated images</h2>
-        {generatedAssets.length > 0 ? (
-          <span className="text-xs font-semibold text-muted">
-            {generatedAssets.length} total
-          </span>
-        ) : null}
-      </div>
+    <div
+      className={cn(
+        "relative flex flex-1 flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-card-muted/35 px-4 sm:px-6",
+        generatedAssets.length > 0
+          ? "min-h-[360px] py-8 sm:min-h-[430px]"
+          : "min-h-[220px] py-6 sm:min-h-[250px]",
+      )}
+    >
+      <h2 className="sr-only">Generated images</h2>
+
+      {generatedAssets.length > 0 ? (
+        <span className="absolute right-4 top-4 text-xs font-semibold text-[#B9B5AF] sm:right-6">
+          {generatedAssets.length} total
+        </span>
+      ) : null}
 
       {generationFailed ? (
         <div
           role="alert"
-          className="mt-3 w-fit rounded-full border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold text-error"
+          className="absolute left-4 top-4 w-fit rounded-full border border-[#E15A5A]/35 bg-[#2A2020] px-3 py-2 text-xs font-semibold text-[#E15A5A] shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-6"
         >
           <div className="flex items-center gap-2">
-            <AlertCircle className="size-3.5" />
-            Generation failed. Please try again.
+            <AlertCircle className="size-3.5" aria-hidden="true" />
+            Generation failed. Review the prompt and try again.
           </div>
         </div>
       ) : null}
@@ -283,17 +311,17 @@ function ResultsArea({
       {isGenerating ? (
         <div
           role="status"
-          className="mt-3 w-fit rounded-full border border-border bg-white/85 px-3 py-2 text-xs font-semibold text-foreground shadow-sm"
+          className="absolute left-4 top-4 w-fit rounded-full border border-[#383838] bg-[#242424] px-3 py-2 text-xs font-semibold text-[#F5F3F0] shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-6"
         >
           <div className="flex items-center gap-2">
-            <Loader2 className="size-3.5 animate-spin text-primary" />
-            Generating image asset...
+            <Loader2 className="size-3.5 animate-spin text-[#E16540] motion-reduce:animate-none" aria-hidden="true" />
+            Generating image asset…
           </div>
         </div>
       ) : null}
 
       {generatedAssets.length > 0 ? (
-        <div className="mt-4 grid flex-1 auto-rows-min grid-cols-1 gap-4 overflow-y-auto pb-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid flex-1 auto-rows-min grid-cols-1 gap-4 overflow-y-auto pb-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {generatedAssets.map((asset) => (
             <GeneratedAssetCard
               key={asset.id}
@@ -304,14 +332,16 @@ function ResultsArea({
           ))}
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center px-4 py-10 text-center">
-          <div>
-            <ImageIcon className="mx-auto size-7 text-[#9aa7b8]" />
-            <p className="mt-3 text-sm font-semibold text-[#405977]">
-              Generated images will appear here.
-            </p>
-            <p className="mt-1 text-sm font-medium text-muted">
-              Start by describing the asset you want to create.
+        <div className="flex flex-1 items-center justify-center px-4 py-6 text-center">
+          <div className="max-w-sm">
+            <span className="mx-auto flex size-10 items-center justify-center rounded-[var(--radius-control)] border border-primary/20 bg-brand-soft text-primary">
+              <ImageIcon className="size-4.5" aria-hidden="true" />
+            </span>
+            <h3 className="mt-3 text-sm font-semibold text-foreground">
+              Image workspace
+            </h3>
+            <p className="mt-1 text-sm leading-5 text-muted">
+              Generated Instagram images will appear here when generation is enabled.
             </p>
           </div>
         </div>
@@ -321,6 +351,7 @@ function ResultsArea({
 }
 
 function ImageGenerationComposer({
+  active,
   aspectRatio,
   imageCount,
   isGenerating,
@@ -332,6 +363,7 @@ function ImageGenerationComposer({
   onTextareaKeyDown,
   prompt,
 }: {
+  active: boolean;
   aspectRatio: AspectRatio;
   imageCount: ImageCount;
   isGenerating: boolean;
@@ -352,15 +384,19 @@ function ImageGenerationComposer({
       return;
     }
 
-    textarea.style.height = "44px";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 132)}px`;
-  }, [prompt]);
+    if (!active) {
+      return;
+    }
+
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 44), 132)}px`;
+  }, [active, prompt]);
 
   return (
     <form
       noValidate
       onSubmit={onSubmit}
-      className="rounded-[24px] border border-border/80 bg-white/95 p-3 shadow-[0_16px_50px_rgb(16_32_51_/_0.10)] backdrop-blur sm:p-4"
+      className="mx-auto w-full max-w-[1120px] rounded-[var(--radius-card)] border border-border bg-card p-3 shadow-card transition-[border-color,box-shadow] focus-within:border-primary/45 focus-within:ring-2 focus-within:ring-primary/10 sm:p-4"
     >
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2">
         <ReferenceImageAttachment disabled={isGenerating} />
@@ -368,18 +404,22 @@ function ImageGenerationComposer({
         <textarea
           ref={textareaRef}
           rows={1}
+          aria-label="Image prompt"
+          autoComplete="off"
+          name="imagePrompt"
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
           onKeyDown={onTextareaKeyDown}
-          className="col-start-2 row-start-1 max-h-32 min-h-11 min-w-0 resize-none bg-transparent px-1 py-2.5 text-sm font-medium leading-6 text-foreground outline-none placeholder:text-[#8c9aab]"
-          placeholder="Describe the image asset you want to create..."
+          className="col-start-2 row-start-1 max-h-32 min-h-11 min-w-0 resize-none overflow-y-hidden bg-transparent px-1 py-2.5 text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle"
+          placeholder="Describe your image…"
         />
 
         <button
           type="submit"
           disabled={IMAGE_GENERATION_LOCKED || !prompt.trim() || isGenerating}
+          aria-label={IMAGE_GENERATION_LOCKED ? "Image generation locked" : "Generate image"}
           title={IMAGE_GENERATION_LOCKED ? "Image generation is locked" : undefined}
-          className="col-start-3 row-start-1 inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[118px]"
+          className="col-start-3 row-start-1 inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[118px]"
         >
           {IMAGE_GENERATION_LOCKED ? (
             <>
@@ -388,26 +428,36 @@ function ImageGenerationComposer({
             </>
           ) : isGenerating ? (
             <>
-              <span className="hidden sm:inline">Generating</span>
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              <span className="hidden sm:inline">Generating…</span>
+              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
             </>
           ) : (
             <>
-              Generate
+              Generate image
               <Sparkles className="size-4" aria-hidden="true" />
             </>
           )}
         </button>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
         <AspectRatioSelector value={aspectRatio} onChange={onAspectRatioChange} />
         <ImageCountSelector value={imageCount} onChange={onImageCountChange} />
         <button
           type="button"
           onClick={onEnhancePrompt}
-          disabled={isGenerating}
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition hover:bg-[#fff8f4] disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={IMAGE_GENERATION_LOCKED || !prompt.trim() || isGenerating}
+          aria-label={
+            IMAGE_GENERATION_LOCKED
+              ? "Image prompt enhancement locked"
+              : "Enhance image prompt"
+          }
+          title={
+            IMAGE_GENERATION_LOCKED
+              ? "Prompt enhancement is locked"
+              : undefined
+          }
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
           Enhance
@@ -502,8 +552,9 @@ function AspectRatioSelector({
         id={controlId}
         role="radiogroup"
         aria-label="Aspect ratio"
+        aria-hidden={!open}
         className={cn(
-          "absolute bottom-[calc(100%+6px)] left-0 z-30 flex w-[96px] flex-col gap-1 overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out",
+          "absolute bottom-[calc(100%+6px)] left-0 z-30 flex w-[140px] flex-col gap-1 overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out motion-reduce:transition-none",
           open
             ? "max-h-44 translate-y-0 opacity-100"
             : "pointer-events-none max-h-0 translate-y-2 opacity-0",
@@ -525,14 +576,15 @@ function AspectRatioSelector({
               onClick={() => selectRatio(ratio)}
               onKeyDown={(event) => handleOptionKeyDown(event, index)}
               className={cn(
-                "inline-flex h-8 w-fit min-w-[68px] items-center gap-2 rounded-xl border px-2.5 text-sm font-semibold shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                "inline-flex h-8 w-full items-center gap-2 rounded-[var(--radius-control)] border px-2.5 text-sm font-medium shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
                 selected
-                  ? "border-primary/60 bg-primary/10 text-primary"
-                  : "border-border bg-white text-[#173454] hover:bg-[#faf7f2]",
+                  ? "border-primary/40 bg-brand-soft text-primary"
+                  : "border-border bg-card text-foreground hover:border-border-strong hover:bg-card-muted",
               )}
             >
               <RatioGlyph active={selected} ratio={ratio} />
-              {ratio}
+              <span>{ratio}</span>
+              <span className="text-xs text-muted">{instagramImageFormatLabels[ratio]}</span>
             </button>
           );
         })}
@@ -543,15 +595,16 @@ function AspectRatioSelector({
         type="button"
         aria-expanded={open}
         aria-controls={controlId}
+        aria-haspopup="menu"
         onClick={() => setOpen((currentOpen) => !currentOpen)}
         onKeyDown={handleTriggerKeyDown}
-        className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition hover:bg-[#fff8f4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         <RatioGlyph ratio={value} />
-        <span>{value}</span>
+        <span>{value} {instagramImageFormatLabels[value]}</span>
         <ChevronDown
           className={cn(
-            "size-4 text-[#405977] transition-transform duration-200",
+            "size-4 text-muted-subtle transition-transform duration-200 motion-reduce:transition-none",
             open && "rotate-180",
           )}
           aria-hidden="true"
@@ -581,7 +634,7 @@ function RatioGlyph({
       className={cn(
         "inline-block shrink-0 rounded-[4px] border-2",
         shapeClassName[ratio],
-        active ? "border-primary" : "border-[#173454]",
+        active ? "border-primary" : "border-muted",
       )}
     />
   );
@@ -672,8 +725,9 @@ function ImageCountSelector({
         id={controlId}
         role="listbox"
         aria-label="Number of images"
+        aria-hidden={!open}
         className={cn(
-          "absolute bottom-[calc(100%+6px)] left-0 z-30 flex w-[120px] flex-col gap-1 overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out",
+          "absolute bottom-[calc(100%+6px)] left-0 z-30 flex w-[120px] flex-col gap-1 overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out motion-reduce:transition-none",
           open
             ? "max-h-32 translate-y-0 opacity-100"
             : "pointer-events-none max-h-0 translate-y-2 opacity-0",
@@ -695,10 +749,10 @@ function ImageCountSelector({
               onClick={() => selectCount(count)}
               onKeyDown={(event) => handleOptionKeyDown(event, index)}
               className={cn(
-                "inline-flex h-8 w-fit min-w-[92px] items-center gap-2 rounded-xl border px-2.5 text-sm font-semibold shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                "inline-flex h-8 w-full items-center gap-2 rounded-[var(--radius-control)] border px-2.5 text-sm font-medium shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
                 selected
-                  ? "border-primary/60 bg-primary/10 text-primary"
-                  : "border-border bg-white text-[#173454] hover:bg-[#faf7f2]",
+                  ? "border-primary/40 bg-brand-soft text-primary"
+                  : "border-border bg-card text-foreground hover:border-border-strong hover:bg-card-muted",
               )}
             >
               <ImageIcon className="size-3.5" aria-hidden="true" />
@@ -713,9 +767,10 @@ function ImageCountSelector({
         type="button"
         aria-expanded={open}
         aria-controls={controlId}
+        aria-haspopup="listbox"
         onClick={() => setOpen((currentOpen) => !currentOpen)}
         onKeyDown={handleTriggerKeyDown}
-        className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition hover:bg-[#fff8f4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         <ImageIcon className="size-3.5" aria-hidden="true" />
         <span>
@@ -723,7 +778,7 @@ function ImageCountSelector({
         </span>
         <ChevronDown
           className={cn(
-            "size-4 text-[#405977] transition-transform duration-200",
+            "size-4 text-muted-subtle transition-transform duration-200 motion-reduce:transition-none",
             open && "rotate-180",
           )}
           aria-hidden="true"
@@ -745,18 +800,21 @@ function GeneratedAssetCard({
   return (
     <article
       className={cn(
-        "min-w-0 rounded-2xl border bg-white p-2 shadow-sm transition",
-        selected ? "border-success/40" : "border-border",
+        "min-w-0 rounded-[var(--radius-card)] border bg-card p-2 shadow-card transition-colors",
+        selected ? "border-success/45" : "border-border",
       )}
     >
       <div
-        className="overflow-hidden rounded-xl bg-card-muted"
+        className="overflow-hidden rounded-[var(--radius-control)] bg-card-muted"
         style={{ aspectRatio: asset.aspectRatio.replace(":", " / ") }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={asset.url}
           alt="Generated UGC image asset"
+          width={1200}
+          height={getGeneratedImageHeight(asset.aspectRatio)}
+          loading="lazy"
           className="size-full object-cover"
         />
       </div>
@@ -764,10 +822,15 @@ function GeneratedAssetCard({
         <button
           type="button"
           onClick={onSelect}
-          className="inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold text-[#173454]"
+          aria-pressed={selected}
+          className="inline-flex min-w-0 items-center gap-1.5 rounded-md text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           <CheckCircle2
-            className={cn("size-3.5", selected ? "text-success" : "text-muted")}
+            className={cn(
+              "size-3.5",
+              selected ? "text-success" : "text-muted-subtle",
+            )}
+            aria-hidden="true"
           />
           <span className="truncate">{asset.prompt}</span>
         </button>
@@ -775,12 +838,24 @@ function GeneratedAssetCard({
           href={asset.url}
           target="_blank"
           rel="noreferrer"
+          download={`ugc-image-${asset.id}`}
           aria-label="Download generated image"
-          className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-card-muted hover:text-foreground"
+          className="inline-flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-muted-subtle transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <Download className="size-3.5" />
+          <Download className="size-3.5" aria-hidden="true" />
         </a>
       </div>
     </article>
   );
+}
+
+function getGeneratedImageHeight(aspectRatio: AspectRatio) {
+  const heights: Record<AspectRatio, number> = {
+    "4:5": 1500,
+    "1:1": 1200,
+    "9:16": 2133,
+    "16:9": 675,
+  };
+
+  return heights[aspectRatio];
 }

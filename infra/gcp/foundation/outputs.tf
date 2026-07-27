@@ -23,9 +23,14 @@ output "media_bucket_name" {
   description = "Cloud Storage media bucket."
 }
 
+output "media_cdn_enabled" {
+  value       = var.enable_media_cdn
+  description = "Whether the optional media CDN load balancer is enabled."
+}
+
 output "media_cdn_ip_address" {
-  value       = google_compute_global_address.media_cdn.address
-  description = "Global IP address for the media CDN load balancer."
+  value       = try(google_compute_global_address.media_cdn[0].address, null)
+  description = "Global IP address for the optional media CDN load balancer, or null when disabled."
 }
 
 output "pubsub_topics" {

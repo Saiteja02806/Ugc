@@ -43,7 +43,7 @@ export function GoogleSignInButton() {
         type="button"
         onClick={handleGoogleSignIn}
         disabled={isLoading}
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-2xl border border-border bg-white px-5 text-sm font-bold text-foreground shadow-sm transition hover:bg-[#fbf8f4] disabled:cursor-not-allowed disabled:opacity-70"
+        className="flex h-12 w-full items-center justify-center gap-3 rounded-2xl border border-border bg-background/70 px-5 text-sm font-bold text-foreground shadow-sm outline-none transition hover:bg-card-muted focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-70"
       >
         <span
           aria-hidden="true"
@@ -51,11 +51,14 @@ export function GoogleSignInButton() {
         >
           G
         </span>
-        {isLoading ? "Signing in..." : "Continue with Google"}
+        {isLoading ? "Signing in…" : "Continue with Google"}
       </button>
 
       {errorMessage ? (
-        <p className="mt-3 text-center text-sm font-semibold text-error">
+        <p
+          role="alert"
+          className="mt-3 text-center text-sm font-semibold text-error"
+        >
           {errorMessage}
         </p>
       ) : null}

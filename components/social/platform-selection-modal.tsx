@@ -133,6 +133,13 @@ const platforms: PlatformDefinition[] = [
   },
 ];
 
+// TikTok and YouTube definitions stay available for legacy OAuth callbacks and
+// existing schedule records. New Carousel scheduling is intentionally
+// Instagram-only, so only Instagram is rendered as a selectable destination.
+const visiblePlatforms = platforms.filter(
+  (definition) => definition.platform === "instagram",
+);
+
 const defaultTimezone =
   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
@@ -141,10 +148,9 @@ const stepDetails: Record<
   { description: string; number: 2 | 3 | 4; title: string }
 > = {
   accounts: {
-    description:
-      "Choose the exact Instagram or TikTok account for this carousel. YouTube is visible but unavailable for carousel posts.",
+    description: "Choose the Instagram account that will publish this carousel.",
     number: 2,
-    title: "Select platforms",
+    title: "Select Instagram account",
   },
   details: {
     description:
@@ -364,9 +370,7 @@ export function PlatformSelectionModal({
   const carouselConnections = useMemo(
     () =>
       connections.filter(
-        (connection) =>
-          connection.platform === "instagram" ||
-          connection.platform === "tiktok",
+        (connection) => connection.platform === "instagram",
       ),
     [connections],
   );
@@ -675,7 +679,7 @@ export function PlatformSelectionModal({
         className="max-h-[calc(100vh-2rem)] overflow-hidden p-0 sm:max-w-3xl"
         showCloseButton={!submitting}
       >
-        <div className="border-b border-border bg-white">
+        <div className="border-b border-border bg-card">
           <DialogHeader className="px-5 pb-4 pt-5 pr-14 sm:px-6 sm:pr-14">
             <DialogTitle className="text-xl font-semibold">
               {currentStep.title}
@@ -789,7 +793,7 @@ export function PlatformSelectionModal({
         </div>
 
         {!submitting ? (
-          <DialogFooter className="border-t border-border bg-white px-5 py-4 sm:px-6">
+          <DialogFooter className="border-t border-border bg-card px-5 py-4 sm:px-6">
             {step === "accounts" ? (
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Cancel
@@ -851,13 +855,7 @@ function AccountsStep({
   platformConnections: SocialConnection[];
   selectedConnectionIds: string[];
 }) {
-  const unavailableCarouselConnections = platformConnections.filter(
-    (connection) => connection.platform === "youtube",
-  );
-  const accountRows = [
-    ...carouselConnections,
-    ...unavailableCarouselConnections,
-  ];
+  const accountRows = carouselConnections;
 
   return (
     <div className="grid gap-6">
@@ -866,10 +864,10 @@ function AccountsStep({
           id="platform-connections-heading"
           className="mb-2 text-sm font-semibold text-foreground"
         >
-          Platform connections
+          Instagram connection
         </h3>
         <div className="overflow-hidden rounded-lg border border-border">
-          {platforms.map((definition, index) => {
+          {visiblePlatforms.map((definition, index) => {
             const connectionsForPlatform = platformConnections.filter(
               (connection) => connection.platform === definition.platform,
             );
@@ -895,11 +893,10 @@ function AccountsStep({
 
       <FieldSet>
         <FieldLegend className="text-sm font-semibold">
-          Select connected accounts
+          Select connected account
         </FieldLegend>
         <FieldDescription>
-          Choose the exact account. YouTube is unavailable because it accepts
-          video uploads, not carousel posts.
+          Choose the Instagram account that will publish this carousel.
         </FieldDescription>
         {loading ? (
           <FieldGroup>
@@ -958,7 +955,7 @@ function AccountsStep({
           </FieldGroup>
         ) : (
           <p className="rounded-lg border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
-            Connect Instagram or TikTok above to continue.
+            Connect Instagram above to continue.
           </p>
         )}
       </FieldSet>
@@ -994,7 +991,7 @@ function DetailsStep({
 }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-      <div className="self-start overflow-hidden rounded-lg border border-border bg-white">
+      <div className="self-start overflow-hidden rounded-card border border-border bg-card">
         {context?.coverUrl ? (
           // Carousel slides are already rendered production media.
           // eslint-disable-next-line @next/next/no-img-element
@@ -1008,7 +1005,7 @@ function DetailsStep({
             <Camera className="size-8" aria-hidden="true" />
           </div>
         )}
-        <div className="border-t border-border bg-white px-3 py-3">
+        <div className="border-t border-border bg-card px-3 py-3">
           <p className="text-xs font-semibold text-muted-foreground">
             Carousel
           </p>
@@ -1029,7 +1026,7 @@ function DetailsStep({
             value={caption}
             onChange={(event) => onCaptionChange(event.target.value)}
             placeholder="Leave blank to publish without a caption."
-            className="mt-2 min-h-28 w-full resize-y rounded-lg border border-border bg-white px-3 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary"
+            className="mt-2 min-h-28 w-full resize-y rounded-control border border-border bg-card-muted px-3 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
           />
           <span className="mt-1 block text-right text-xs text-muted-foreground">
             {caption.length}/5000
@@ -1043,7 +1040,7 @@ function DetailsStep({
           >
             Publishing settings
           </h3>
-          <div className="mt-2 divide-y divide-border rounded-lg border border-border bg-white px-3">
+          <div className="mt-2 divide-y divide-border rounded-card border border-border bg-card px-3">
             {selectedConnections.map((connection) => (
               <CarouselAccountSettings
                 key={connection.id}
@@ -1159,7 +1156,7 @@ function TikTokCarouselSettings({
         <select
           value={privacyLevel}
           onChange={(event) => onChange("privacyLevel", event.target.value)}
-          className="mt-1.5 h-10 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary"
+          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card-muted px-3 text-sm text-foreground outline-none hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
         >
           <option value="">Select visibility</option>
           {capabilities.privacyLevels.map((level) => (
@@ -1256,7 +1253,7 @@ function ScheduleChoice({
     <button
       type="button"
       onClick={onClick}
-      className="group flex min-h-24 items-center gap-4 rounded-lg border border-border bg-white px-4 py-4 text-left transition hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-5"
+      className="group flex min-h-24 items-center gap-4 rounded-card border border-border bg-card px-4 py-4 text-left transition hover:border-primary/50 hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-5"
     >
       <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
         {icon}
@@ -1336,7 +1333,7 @@ function LaterScheduleStep({
             min={minimumDate}
             value={date}
             onChange={(event) => onDateChange(event.target.value)}
-            className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary"
+            className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-3 text-sm text-foreground outline-none hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
           />
         </label>
         <label className="block">
@@ -1348,7 +1345,7 @@ function LaterScheduleStep({
             type="time"
             value={time}
             onChange={(event) => onTimeChange(event.target.value)}
-            className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary"
+            className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-3 text-sm text-foreground outline-none hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
           />
         </label>
       </div>
@@ -1358,7 +1355,7 @@ function LaterScheduleStep({
         <select
           value={timezone}
           onChange={(event) => onTimezoneChange(event.target.value)}
-          className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary"
+          className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-3 text-sm text-foreground outline-none hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
         >
           {getTimezoneOptions(timezone).map((option) => (
             <option key={option} value={option}>
@@ -1386,7 +1383,7 @@ function QuickSlot({ label, onClick }: { label: string; onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="rounded-control border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {label}
     </button>

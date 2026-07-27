@@ -49,12 +49,13 @@ Library item, collects an exact connected account plus wall-clock date/time,
 and only then creates EventBridge targets. Undated drafts remain visible in the
 Drafts list and do not appear as timed calendar entries.
 
-The visible Scheduling workspace is Instagram-first for new posts and Carousel
-recovery edits. Its account picker offers Instagram connections only. Existing
-TikTok and YouTube provider logic remains preserved as dormant multi-platform
-support, and legacy non-Instagram planned targets must not be silently removed
-when an older draft is edited. This does not change the inline Carousel
-scheduling boundary described above.
+The visible Scheduling workspace and inline Carousel scheduling modal are
+Instagram-only for new posts and Carousel recovery edits. Their account pickers
+offer Instagram connections only. Existing TikTok and YouTube provider
+definitions, validation, and publishing logic remain preserved as dormant
+multi-platform support, and legacy non-Instagram planned targets must not be
+silently removed when an older draft is edited. This does not change the inline
+Carousel scheduling boundary described above.
 
 The modal flow is Step 1 action choice, Step 2 exact account selection, Step 3
 optional caption and provider settings, and Step 4 ASAP or later scheduling.
@@ -70,23 +71,24 @@ editor, and the same recovery path remains reusable for Hook videos.
 
 Carousel captions are optional. A blank caption must remain blank through
 scheduling and publishing; do not synthesize provider text from the Carousel
-title and do not require an LLM caption call. The editor may offer an editable
-optional caption because Instagram and TikTok support one, but caption presence
-must never block account/date/time scheduling.
+title and do not require an LLM caption call. The visible Instagram editor may
+offer an editable optional caption, but caption presence must never block
+account/date/time scheduling. Dormant legacy TikTok targets keep their existing
+caption support.
 
 The social publish worker loads the ordered `library_carousel_slides` rows at
 publish time. Instagram publishes a 2-10 image carousel through child media
 containers plus one persisted parent container. Before container creation, the
 worker converts the rendered WebP slides to deterministic CloudFront-backed
 JPEG publish copies; the Library carousel and frontend renders remain
-unchanged. TikTok publishes the verified WebP URLs as a 2-35 image photo post
-through the Content Posting API and persists its publish ID. YouTube is
-intentionally unavailable for carousel scheduling because its upload API is
-video-only. The carousel account picker should still show YouTube connection
-status as unavailable/disabled so users understand the account exists but cannot
-be selected for image carousels. Existing Reel, TikTok video, and YouTube video
-paths remain separate. Do not describe a scheduled post as actually published
-until the worker updates its target row to `published`.
+unchanged. Dormant legacy TikTok targets publish the verified WebP URLs as a
+2-35 image photo post through the Content Posting API and persist the publish
+ID. YouTube remains unavailable for carousel scheduling because its upload API
+is video-only. New inline Carousel scheduling does not render TikTok or YouTube
+connections; their provider definitions and legacy target handling remain in
+code so old schedules are not damaged. Existing Reel, TikTok video, and YouTube
+video paths remain separate. Do not describe a scheduled post as actually
+published until the worker updates its target row to `published`.
 
 During the AWS to GCP migration, Carousel generation keeps the same durable
 background job contract. The queue message body remains `{ jobId, jobType }`,

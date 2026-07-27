@@ -32,7 +32,7 @@ export default function StatusPage() {
         <LegalSection title="What to include in a support request">
           <LegalList>
             <li>The email address used for the UGC Pilot account.</li>
-            <li>The connected platform involved, such as Instagram, TikTok, or YouTube.</li>
+            <li>The connected Instagram account involved.</li>
             <li>The time the issue occurred and the post or draft affected.</li>
             <li>Any visible error message from UGC Pilot or the connected platform.</li>
           </LegalList>

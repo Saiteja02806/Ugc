@@ -267,7 +267,7 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
 
         if (error instanceof RenderPollTransientError) {
           setRenderState("rendering");
-          setRenderMessage("Export is still running. Reconnecting to status...");
+          setRenderMessage("Export is still running. Reconnecting to status…");
           setResumePollGeneration((current) => current + 1);
           return;
         }
@@ -307,7 +307,7 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
     localRenderPollActiveRef.current = true;
     activeRenderDraftKeyRef.current = draftForRenderKey;
     setRenderState("starting");
-    setRenderMessage("Preparing export...");
+    setRenderMessage("Preparing export…");
 
     try {
       await persistDraft(video, draftForRender);
@@ -383,7 +383,7 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
           current ? { ...current, status: "rendering" } : current,
         );
         setRenderState("rendering");
-        setRenderMessage("Export is still running. Reconnecting to status...");
+        setRenderMessage("Export is still running. Reconnecting to status…");
         setResumePollGeneration((current) => current + 1);
         return;
       }
@@ -608,11 +608,11 @@ function RenderStatusNotice({
 
 function VideoNotFound({ videoId }: { videoId: string }) {
   return (
-    <section aria-label="Video not found" className="flex min-h-[420px] flex-1 items-center justify-center rounded-[28px] border border-border/70 bg-white/35 px-5 py-10 text-center">
+    <section aria-label="Video not found" className="flex min-h-[420px] flex-1 items-center justify-center rounded-[28px] border border-border bg-card/60 px-5 py-10 text-center">
       <div>
         <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-error/20 bg-error/5 text-error shadow-sm"><AlertCircle className="size-6" aria-hidden="true" /></div>
         <h2 className="mt-5 text-lg font-bold text-foreground">This video is not in your account.</h2>
-        <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-muted">No server media asset exists for ID {videoId}. Add a video from the Influencers workspace, then open it here.</p>
+        <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-muted">No server media asset exists for ID {videoId}. Add a video in Creative Assets, then open it here.</p>
         <Link href="/edit" className={buttonClassName({ variant: "primary", className: "mt-5" })}>Back to library</Link>
       </div>
     </section>
@@ -634,7 +634,7 @@ function getSaveButtonLabel(
   isCurrentVersionSaved: boolean,
 ) {
   if (renderState === "starting" || renderState === "rendering") {
-    return "Exporting...";
+    return "Exporting…";
   }
 
   if (isCurrentVersionSaved) {

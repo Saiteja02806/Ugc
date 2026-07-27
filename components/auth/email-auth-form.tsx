@@ -94,6 +94,7 @@ export function EmailAuthForm() {
         <button
           type="button"
           onClick={() => switchMode("sign-in")}
+          aria-pressed={!isCreateMode}
           className={modeButtonClassName(!isCreateMode)}
         >
           Sign in
@@ -101,6 +102,7 @@ export function EmailAuthForm() {
         <button
           type="button"
           onClick={() => switchMode("create-account")}
+          aria-pressed={isCreateMode}
           className={modeButtonClassName(isCreateMode)}
         >
           Create account
@@ -118,10 +120,13 @@ export function EmailAuthForm() {
               aria-hidden="true"
             />
             <input
+              name="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               type="email"
+              inputMode="email"
               autoComplete="email"
+              spellCheck={false}
               required
               className={inputClassName}
               placeholder="you@example.com"
@@ -139,6 +144,7 @@ export function EmailAuthForm() {
               aria-hidden="true"
             />
             <input
+              name="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               type="password"
@@ -160,7 +166,7 @@ export function EmailAuthForm() {
               className="inline-flex items-center gap-2 text-sm font-bold text-primary transition hover:text-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               <KeyRound className="size-4" aria-hidden="true" />
-              {isResettingPassword ? "Sending..." : "Reset password"}
+              {isResettingPassword ? "Sending…" : "Reset password"}
             </button>
           </div>
         ) : null}
@@ -179,8 +185,8 @@ export function EmailAuthForm() {
           )}
           {isSubmitting
             ? isCreateMode
-              ? "Creating account..."
-              : "Signing in..."
+              ? "Creating account…"
+              : "Signing in…"
             : isCreateMode
               ? "Continue with Email"
               : "Sign in with Email"}
@@ -188,13 +194,20 @@ export function EmailAuthForm() {
       </form>
 
       {statusMessage ? (
-        <p className="mt-4 text-center text-sm font-semibold text-success">
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-4 text-center text-sm font-semibold text-success"
+        >
           {statusMessage}
         </p>
       ) : null}
 
       {errorMessage ? (
-        <p className="mt-4 text-center text-sm font-semibold text-error">
+        <p
+          role="alert"
+          className="mt-4 text-center text-sm font-semibold text-error"
+        >
           {errorMessage}
         </p>
       ) : null}
@@ -203,13 +216,13 @@ export function EmailAuthForm() {
 }
 
 const inputClassName =
-  "h-12 w-full rounded-md border border-border bg-white py-2 pl-10 pr-3 text-sm font-semibold text-foreground outline-none transition placeholder:text-muted-subtle focus:border-focus focus:ring-2 focus:ring-focus/20";
+  "h-12 w-full rounded-lg border border-border bg-background/70 py-2 pl-10 pr-3 text-sm font-semibold text-foreground outline-none transition placeholder:text-muted-subtle focus:border-focus focus:ring-2 focus:ring-focus/20";
 
 function modeButtonClassName(isActive: boolean) {
   return cn(
-    "h-9 rounded-md text-sm font-bold transition",
+    "h-9 rounded-lg text-sm font-bold outline-none transition focus-visible:ring-2 focus-visible:ring-focus",
     isActive
-      ? "bg-white text-foreground shadow-sm ring-1 ring-black/5"
+      ? "bg-card text-foreground shadow-sm ring-1 ring-border"
       : "text-muted hover:text-foreground",
   );
 }

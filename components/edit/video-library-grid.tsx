@@ -34,10 +34,10 @@ function LoadingVideoLibrary() {
   return (
     <section
       aria-label="Loading editable videos"
-      className="flex min-h-[420px] flex-1 items-center justify-center rounded-[28px] border border-border/70 bg-white/35 px-5 py-10 text-center"
+      className="flex min-h-[420px] flex-1 items-center justify-center rounded-[28px] border border-border bg-card/60 px-5 py-10 text-center"
     >
       <div>
-        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-border bg-white text-primary shadow-sm">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-border bg-card text-primary shadow-sm">
           <Loader2 className="size-6 animate-spin" aria-hidden="true" />
         </div>
         <h2 className="mt-5 text-lg font-bold text-foreground">
@@ -52,10 +52,10 @@ function EmptyVideoLibrary() {
   return (
     <section
       aria-label="No editable videos"
-      className="flex min-h-[420px] flex-1 items-center justify-center rounded-[28px] border border-border/70 bg-white/35 px-5 py-10 text-center"
+      className="flex min-h-[420px] flex-1 items-center justify-center rounded-[28px] border border-border bg-card/60 px-5 py-10 text-center"
     >
       <div>
-        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-border bg-white text-primary shadow-sm">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-border bg-card text-primary shadow-sm">
           <FolderOpen className="size-6" aria-hidden="true" />
         </div>
         <h2 className="mt-5 text-lg font-bold text-foreground">

@@ -5,7 +5,8 @@ import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "Analytics",
-  description: "View real publishing activity from scheduled posts and connected accounts.",
+  description:
+    "Review real Instagram publishing activity and account readiness.",
 };
 
 export default function AnalyticsPage() {

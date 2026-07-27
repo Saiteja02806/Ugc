@@ -44,8 +44,8 @@ export default async function DataDeletionPage({
           <LegalList>
             <li>Sign in to UGC Pilot.</li>
             <li>Open Settings.</li>
-            <li>Select Manage connected accounts to open Accounts.</li>
-            <li>Disconnect Instagram, TikTok, or YouTube.</li>
+            <li>Open the Instagram publishing section.</li>
+            <li>Disconnect Instagram.</li>
             <li>Return to Settings.</li>
             <li>Select Request account deletion to email a full account and data deletion request.</li>
           </LegalList>
@@ -108,7 +108,7 @@ export default async function DataDeletionPage({
         <LegalSection title="Meta data deletion callback">
           <p>
             Meta and Instagram data deletion requests can be sent to{" "}
-            <span className="font-bold text-[#18181b]">
+            <span className="font-bold text-foreground-strong">
               https://getugcpilot.com/api/meta/data-deletion
             </span>
             . This endpoint is used for platform-initiated deletion requests.

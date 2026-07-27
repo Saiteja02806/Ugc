@@ -43,8 +43,7 @@ export default function ContactPage() {
 
         <LegalSection title="Platform review">
           <p>
-            For TikTok, Meta, Instagram, YouTube, or app-review questions, use
-            these contacts:
+            For Meta, Instagram, or app-review questions, use these contacts:
           </p>
           <LegalList>
             <li>

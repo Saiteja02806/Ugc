@@ -287,7 +287,7 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
     }
 
     setSaveState("saving");
-    setSaveMessage("Saving draft...");
+    setSaveMessage("Saving draft…");
 
     try {
       await persistDemoDraft(demo, draft);
@@ -306,7 +306,7 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
 
     const draftForRender = normalizeDraftForSave(draft ?? getSavedDraftInput(demo));
     setRenderState("starting");
-    setRenderMessage("Preparing demo MP4 export...");
+    setRenderMessage("Preparing demo MP4 export…");
 
     try {
       const saved = await persistDemoDraft(demo, draftForRender);
@@ -478,7 +478,7 @@ function DemoEditorTopBar({
               onChange={(event) => onTitleChange(event.target.value)}
               disabled={!demo}
               maxLength={140}
-              className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-0 py-1 text-xl font-semibold text-foreground-strong outline-none transition-[border-color,background-color,padding] placeholder:text-muted focus:border-border focus:bg-white focus:px-3 sm:text-2xl"
+              className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-0 py-1 text-xl font-semibold text-foreground-strong outline-none transition-[border-color,background-color,padding] placeholder:text-muted focus:border-border focus:bg-background focus:px-3 focus-visible:ring-2 focus-visible:ring-focus sm:text-2xl"
               placeholder="Untitled demo"
             />
             <Pencil className="size-4 shrink-0 text-muted-subtle transition group-focus-within:text-primary" aria-hidden="true" />
@@ -509,7 +509,7 @@ function DemoEditorTopBar({
         <button
           type="button"
           onClick={onRefresh}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           <RefreshCw className="size-4" aria-hidden="true" />
           Refresh
@@ -518,7 +518,7 @@ function DemoEditorTopBar({
           type="button"
           onClick={onRenderDemo}
           disabled={!canRender}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {renderState === "starting" || renderState === "rendering" ? (
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -627,7 +627,7 @@ function DemoEditorActionFooter({
           type="button"
           onClick={onDiscard}
           disabled={!canDiscard}
-          className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Discard changes
         </button>
@@ -645,7 +645,7 @@ function DemoEditorActionFooter({
             <Save className="size-4" aria-hidden="true" />
           )}
           {saveState === "saving"
-            ? "Saving..."
+            ? "Saving…"
             : saveState === "saved"
               ? "Saved"
               : "Save draft"}
@@ -683,7 +683,7 @@ function UnsavedChangesDialog({
           <button
             type="button"
             onClick={onStay}
-            className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             Stay here
           </button>
@@ -702,7 +702,7 @@ function UnsavedChangesDialog({
 
 function EditorLoadingState() {
   return (
-    <section className="grid min-h-[560px] flex-1 overflow-hidden rounded-lg border border-border bg-white lg:grid-cols-[344px_minmax(0,1fr)]">
+    <section className="grid min-h-[560px] flex-1 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-[344px_minmax(0,1fr)]">
       <div className="border-b border-border bg-[#f5f5f6] p-6 lg:border-b-0 lg:border-r">
         <div className="mx-auto aspect-[9/16] w-full max-w-[280px] animate-pulse rounded-md bg-[#dedfe2] motion-reduce:animate-none" />
       </div>
@@ -733,7 +733,7 @@ function EditorErrorState({
   onRetry: () => void;
 }) {
   return (
-    <section className="flex min-h-[520px] flex-1 items-center justify-center rounded-lg border border-border bg-white px-5 py-10 text-center">
+    <section className="flex min-h-[520px] flex-1 items-center justify-center rounded-lg border border-border bg-card px-5 py-10 text-center">
       <div>
         <div className="mx-auto flex size-12 items-center justify-center rounded-md bg-error/10 text-error">
           <AlertCircle className="size-6" aria-hidden="true" />
@@ -748,7 +748,7 @@ function EditorErrorState({
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted"
+            className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted"
           >
             Retry
           </button>

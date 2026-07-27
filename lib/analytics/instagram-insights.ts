@@ -1,3 +1,5 @@
+import type { SocialConnection } from "@/lib/social/types";
+
 export const instagramAccountInsightMetrics = [
   "views",
   "total_interactions",
@@ -33,6 +35,38 @@ export type InstagramInsightsAccount = {
   status: InstagramInsightsAccountStatus;
   totals: InstagramInsightTotals;
 };
+
+type InstagramConnectionIdentity = Pick<
+  SocialConnection,
+  "id" | "platform" | "platformAccountId"
+>;
+
+/**
+ * Keeps the first (normally newest) active row for each Instagram account.
+ * Historical duplicate connection rows must not duplicate UI, Meta requests,
+ * or aggregated metrics.
+ */
+export function getUniqueInstagramConnections<
+  Connection extends InstagramConnectionIdentity,
+>(connections: readonly Connection[]) {
+  const seenAccountIds = new Set<string>();
+
+  return connections.filter((connection) => {
+    if (connection.platform !== "instagram") {
+      return false;
+    }
+
+    const accountKey =
+      connection.platformAccountId.trim() || connection.id;
+
+    if (seenAccountIds.has(accountKey)) {
+      return false;
+    }
+
+    seenAccountIds.add(accountKey);
+    return true;
+  });
+}
 
 export function aggregateInstagramInsightDaily(
   accounts: InstagramInsightsAccount[],

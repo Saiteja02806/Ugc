@@ -23,7 +23,7 @@ import {
   X,
   Video,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -86,7 +86,7 @@ const scheduledVideoSourceTypes: MediaSourceType[] = [
 ];
 const openingVideoSourceTabs = [
   { id: "all", label: "All" },
-  { id: "influencers", label: "Influencers" },
+  { id: "influencers", label: "Presenters" },
   { id: "videos", label: "Videos" },
   { id: "edited", label: "Edited" },
 ] as const;
@@ -229,7 +229,9 @@ export function SchedulingWorkspace() {
   }, [demoMediaOptions, hookMediaOptions, scheduleMediaLoaded, serverSchedules]);
   const [socialConnections, setSocialConnections] = useState<SocialConnection[]>([]);
   const [activeTab, setActiveTab] = useState<ScheduleTab>(getInitialScheduleTab);
-  const [viewMode, setViewMode] = useState<ScheduleViewMode>("calendar");
+  const [viewMode, setViewMode] = useState<ScheduleViewMode>(
+    getInitialScheduleViewMode,
+  );
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(() =>
     toDateKey(new Date()),
   );
@@ -261,6 +263,15 @@ export function SchedulingWorkspace() {
   const [minimumRenderLeadMinutes, setMinimumRenderLeadMinutes] = useState(
     DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
   );
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+
+    url.searchParams.set("tab", activeTab);
+    url.searchParams.set("view", viewMode);
+    window.history.replaceState(window.history.state, "", url);
+  }, [activeTab, viewMode]);
+
   const editingSchedule = useMemo(
     () =>
       editingScheduleId
@@ -275,6 +286,8 @@ export function SchedulingWorkspace() {
       const token = await getCurrentUserIdToken();
       if (!token) return false;
 
+      // `collection=influencer` is a legacy storage/API contract. The
+      // Instagram-first scheduling UI presents these real assets as presenters.
       const [influencerResponse, videoResponse] = await Promise.all([
         fetch("/api/media?collection=influencer", {
           cache: "no-store",
@@ -393,7 +406,7 @@ export function SchedulingWorkspace() {
         data.connections.filter((connection) => connection.status !== "revoked"),
       );
     } catch {
-      setActionNotice("Could not load connected social accounts.");
+      setActionNotice("Could not load connected Instagram accounts.");
     }
   }, []);
 
@@ -485,8 +498,7 @@ export function SchedulingWorkspace() {
     if (!options.keepDayOpen) {
       setDayPlannerOpen(false);
     }
-    await loadScheduleMedia();
-    await loadSocialConnections();
+    await Promise.all([loadScheduleMedia(), loadSocialConnections()]);
     setDrawerOpen(true);
   }
 
@@ -943,14 +955,19 @@ export function SchedulingWorkspace() {
   }
 
   return (
-    <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
-      <header className="mx-auto flex w-full max-w-6xl shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <section className="min-h-screen flex-1 bg-background px-4 py-5 text-foreground sm:px-6 lg:px-10 lg:py-8">
+      <header className="mx-auto flex w-full max-w-[1280px] flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
-            Scheduling
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">
+            <SocialPlatformIcon className="size-4" platform="instagram" />
+            Instagram publishing
+          </div>
+          <h1 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-foreground sm:text-4xl">
+            Content calendar
           </h1>
-          <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-            Plan scheduled videos for upcoming posts.
+          <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-muted sm:text-base">
+            Plan, review, and publish your Instagram content from one focused
+            workspace.
           </p>
         </div>
 
@@ -961,16 +978,20 @@ export function SchedulingWorkspace() {
               keepDayOpen: dayPlannerOpen,
             })
           }
-          className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover"
+          className="inline-flex h-11 w-fit items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           <Plus className="size-4" aria-hidden="true" />
-          New scheduled post
+          Schedule Instagram post
         </button>
       </header>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-5 pt-5">
+      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-4 pt-7">
         {actionNotice ? (
-          <div className="w-fit shrink-0 rounded-full border border-border bg-white/85 px-3 py-2 text-xs font-semibold text-[#405977] shadow-sm">
+          <div
+            role="status"
+            aria-live="polite"
+            className="w-fit rounded-control border border-border bg-card px-3 py-2 text-xs font-semibold text-muted shadow-card"
+          >
             {actionNotice}
           </div>
         ) : null}
@@ -995,9 +1016,7 @@ export function SchedulingWorkspace() {
           />
         ) : (
           <>
-            <ConnectionNotice />
-
-            <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <ScheduleTabs
                 activeTab={activeTab}
                 counts={counts}
@@ -1017,6 +1036,9 @@ export function SchedulingWorkspace() {
               selectedDate={selectedCalendarDate}
               viewMode={viewMode}
               onCreateDraft={() => void handleNewSchedulePost()}
+              onCreateDraftForDate={(dateKey) =>
+                void handleNewSchedulePost(dateKey)
+              }
               onCancelDraft={setSchedulePendingCancellation}
               onEditDraft={(draft) => void handleEditSchedule(draft)}
               onMonthChange={setVisibleCalendarMonth}
@@ -1061,32 +1083,6 @@ export function SchedulingWorkspace() {
   );
 }
 
-function ConnectionNotice() {
-  return (
-    <div className="shrink-0 overflow-hidden rounded-[24px] border border-border/80 bg-white/74 p-4 shadow-[0_18px_50px_rgb(16_32_51_/_0.08)] backdrop-blur sm:p-5">
-      <div className="flex items-start gap-4">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#173454] text-white shadow-sm">
-          <Info className="size-5" aria-hidden="true" />
-        </div>
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-bold tracking-normal text-foreground">
-              Scheduling is now server-backed.
-            </h2>
-            <span className="rounded-full bg-card-muted px-2.5 py-1 text-xs font-bold text-[#8a4b39]">
-              Video preparation
-            </span>
-          </div>
-          <p className="mt-1 max-w-3xl text-sm font-medium leading-6 text-[#405977]">
-            Choose a scheduled video, optionally add an opening clip, then
-            schedule it automatically.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ScheduleTabs({
   activeTab,
   counts,
@@ -1100,7 +1096,7 @@ function ScheduleTabs({
     <div
       role="tablist"
       aria-label="Schedule filters"
-      className="flex w-full gap-1 overflow-x-auto rounded-2xl border border-border bg-white/75 p-1 shadow-sm sm:w-fit"
+      className="flex w-full gap-1 overflow-x-auto rounded-[var(--radius-panel)] border border-border bg-card p-1 sm:w-fit"
     >
       {scheduleTabs.map((tab) => {
         const active = tab === activeTab;
@@ -1108,22 +1104,24 @@ function ScheduleTabs({
         return (
           <button
             key={tab}
+            id={`schedule-tab-${tab}`}
             type="button"
             role="tab"
+            aria-controls="schedule-content-panel"
             aria-selected={active}
             onClick={() => onChange(tab)}
             className={cn(
-              "inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition",
+              "inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-control px-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
               active
-                ? "bg-[#173454] text-white shadow-sm"
-                : "text-[#405977] hover:bg-[#fff8f4] hover:text-foreground",
+                ? "bg-selected text-foreground-strong shadow-sm ring-1 ring-primary/20"
+                : "text-muted hover:bg-card-muted hover:text-foreground",
             )}
           >
             {tabLabels[tab]}
             <span
               className={cn(
                 "rounded-full px-2 py-0.5 text-[11px]",
-                active ? "bg-white/16 text-white" : "bg-card-muted text-muted",
+                active ? "bg-primary/15 text-primary" : "bg-card-muted text-muted",
               )}
             >
               {counts[tab]}
@@ -1143,7 +1141,7 @@ function ViewToggle({
   value: ScheduleViewMode;
 }) {
   return (
-    <div className="inline-flex w-fit items-center rounded-2xl border border-border bg-white/75 p-1 shadow-sm">
+    <div className="inline-flex w-fit items-center rounded-[var(--radius-panel)] border border-border bg-card p-1">
       <ViewButton
         active={value === "list"}
         icon={<List className="size-4" aria-hidden="true" />}
@@ -1174,12 +1172,13 @@ function ViewButton({
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition",
+        "inline-flex h-9 items-center justify-center gap-2 rounded-control px-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
         active
-          ? "bg-card-muted text-primary"
-          : "text-[#405977] hover:bg-[#fff8f4] hover:text-foreground",
+          ? "bg-selected text-primary ring-1 ring-primary/20"
+          : "text-muted hover:bg-card-muted hover:text-foreground",
       )}
     >
       {icon}
@@ -1195,6 +1194,7 @@ function ScheduleContent({
   hasAnyDrafts,
   onCancelDraft,
   onCreateDraft,
+  onCreateDraftForDate,
   onEditDraft,
   onMonthChange,
   onOpenDate,
@@ -1214,6 +1214,7 @@ function ScheduleContent({
   hasAnyDrafts: boolean;
   onCancelDraft: (draft: ScheduleDraft) => void;
   onCreateDraft: () => void;
+  onCreateDraftForDate: (dateKey: string) => void;
   onEditDraft: (draft: ScheduleDraft) => void;
   onMonthChange: (monthKey: string) => void;
   onOpenDate: (dateKey: string) => void;
@@ -1230,61 +1231,73 @@ function ScheduleContent({
   selectedDate: string;
   viewMode: ScheduleViewMode;
 }) {
+  let content: ReactNode;
+
   if (viewMode === "calendar") {
-    return (
+    content = (
       <CalendarPlanner
         calendarMonth={calendarMonth}
         drafts={drafts}
         selectedDate={selectedDate}
+        onCreateDraftForDate={onCreateDraftForDate}
         onMonthChange={onMonthChange}
         onOpenDate={onOpenDate}
         onSelectDate={onSelectDate}
       />
     );
-  }
-
-  if (drafts.length === 0) {
-    return (
+  } else if (drafts.length === 0) {
+    content = (
       <ScheduleEmptyState
         activeTab={activeTab}
         hasAnyDrafts={hasAnyDrafts}
         onCreateDraft={onCreateDraft}
       />
     );
+  } else {
+    content = (
+      <div className="flex w-full flex-col rounded-[var(--radius-panel)] border border-border bg-card p-4 shadow-card sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-foreground">
+              {tabLabels[activeTab]}
+            </h2>
+            <p className="mt-1 text-xs font-semibold text-muted">
+              {getTabDescription(activeTab)}
+            </p>
+          </div>
+          <span className="rounded-full bg-card-muted px-2.5 py-1 text-xs font-bold text-muted ring-1 ring-inset ring-border">
+            {drafts.length} {getTabItemName(activeTab, drafts.length)}
+          </span>
+        </div>
+
+        <div className="grid auto-rows-min grid-cols-1 gap-3 pb-1">
+          {drafts.map((draft) => (
+            <ScheduleDraftPreview
+              key={draft.id}
+              draft={draft}
+              isRendering={renderingScheduleId === draft.id}
+              isSchedulingFinal={schedulingFinalDraftId === draft.id}
+              onCancelDraft={onCancelDraft}
+              onEditDraft={onEditDraft}
+              onRenderDraft={onRenderDraft}
+              onRetryPublishing={onRetryPublishing}
+              onScheduleDraft={onScheduleDraft}
+              retryingPublishTargetId={retryingPublishTargetId}
+            />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-border/70 bg-white/35 p-4 sm:p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-bold text-foreground">
-            {tabLabels[activeTab]}
-          </h2>
-          <p className="mt-1 text-xs font-semibold text-muted">
-            {getTabDescription(activeTab)}
-          </p>
-        </div>
-        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-muted shadow-sm">
-          {drafts.length} {getTabItemName(activeTab, drafts.length)}
-        </span>
-      </div>
-
-      <div className="grid auto-rows-min grid-cols-1 gap-3 overflow-y-auto pb-1 xl:grid-cols-2">
-        {drafts.map((draft) => (
-          <ScheduleDraftPreview
-            key={draft.id}
-            draft={draft}
-            isRendering={renderingScheduleId === draft.id}
-            isSchedulingFinal={schedulingFinalDraftId === draft.id}
-            onCancelDraft={onCancelDraft}
-            onEditDraft={onEditDraft}
-            onRenderDraft={onRenderDraft}
-            onRetryPublishing={onRetryPublishing}
-            onScheduleDraft={onScheduleDraft}
-            retryingPublishTargetId={retryingPublishTargetId}
-          />
-        ))}
-      </div>
+    <div
+      id="schedule-content-panel"
+      role="tabpanel"
+      aria-labelledby={`schedule-tab-${activeTab}`}
+      className="flex min-h-0 w-full flex-1"
+    >
+      {content}
     </div>
   );
 }
@@ -1320,7 +1333,7 @@ function ScheduleDraftPreview({
     : "Scheduled video";
 
   return (
-    <article className="grid gap-3 rounded-2xl border border-border bg-white p-3 shadow-sm">
+    <article className="grid gap-3 rounded-[var(--radius-card)] border border-border bg-card p-3 transition-colors hover:border-border-strong">
       {combinedDraft ? (
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-2">
           <ScheduleDraftMediaThumb label="Opening clip" media={hookMedia} />
@@ -1337,7 +1350,7 @@ function ScheduleDraftPreview({
             <h3 className="truncate text-sm font-bold text-foreground">
               {draft.mediaTitle || "Combination draft"}
             </h3>
-            <p className="mt-1 line-clamp-2 text-sm font-medium leading-5 text-[#405977]">
+            <p className="mt-1 line-clamp-2 text-sm font-medium leading-5 text-muted">
               {draft.caption ||
                 (isCarouselDraft(draft)
                   ? "Caption optional."
@@ -1374,7 +1387,7 @@ function ScheduleDraftPreview({
               href={combinedMedia.mediaUrl}
               target="_blank"
               rel="noreferrer"
-              className="mt-2 inline-flex h-8 items-center justify-center rounded-full border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-[#fffaf6]"
+              className="mt-2 inline-flex h-8 items-center justify-center rounded-control border border-border bg-card px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card-muted"
             >
               Open combined MP4
             </a>
@@ -1437,14 +1450,14 @@ function ScheduleDraftActions({
             type="button"
             onClick={() => onRenderDraft(draft.id)}
             disabled={isRendering}
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RotateCcw
               className={cn("size-3.5", isRendering && "animate-spin")}
               aria-hidden="true"
             />
             {isRendering
-              ? "Preparing..."
+              ? "Preparing…"
               : draft.status === "render_failed"
                 ? "Try preparation again"
                 : "Prepare video"}
@@ -1456,13 +1469,13 @@ function ScheduleDraftActions({
             type="button"
             onClick={() => onScheduleDraft(draft)}
             disabled={!canScheduleFinal || isSchedulingFinal}
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RotateCcw
               className={cn("size-3.5", isSchedulingFinal && "animate-spin")}
               aria-hidden="true"
             />
-            {isSchedulingFinal ? "Retrying..." : "Retry scheduling"}
+            {isSchedulingFinal ? "Retrying…" : "Retry scheduling"}
           </button>
         ) : null}
 
@@ -1470,7 +1483,7 @@ function ScheduleDraftActions({
           <button
             type="button"
             onClick={() => onEditDraft(draft)}
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-[#fff8f4]"
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-control border border-border bg-card-muted px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card"
           >
             <Pencil className="size-3.5" aria-hidden="true" />
             Edit
@@ -1481,7 +1494,7 @@ function ScheduleDraftActions({
           <button
             type="button"
             onClick={() => onCancelDraft(draft)}
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-error/30 bg-white px-3 text-xs font-bold text-error transition hover:bg-error/5"
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-control border border-error/30 bg-card-muted px-3 text-xs font-bold text-error transition hover:bg-error/10"
           >
             <Ban className="size-3.5" aria-hidden="true" />
             Cancel
@@ -1525,7 +1538,7 @@ function CancelScheduleDialog({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-[#071a33]/32 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.currentTarget === event.target && !cancelling) {
           onClose();
@@ -1537,7 +1550,7 @@ function CancelScheduleDialog({
         aria-modal="true"
         aria-labelledby="cancel-schedule-title"
         aria-describedby="cancel-schedule-description"
-        className="w-full max-w-md rounded-xl border border-border bg-white p-5 shadow-[0_24px_80px_rgb(16_32_51_/_0.24)]"
+        className="w-full max-w-md rounded-[var(--radius-panel)] border border-border bg-card p-5 shadow-floating"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -1560,7 +1573,7 @@ function CancelScheduleDialog({
             aria-label="Close cancellation dialog"
             disabled={cancelling}
             onClick={onClose}
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-[#173454] transition hover:bg-[#fff8f4] disabled:opacity-50"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-border text-muted transition hover:bg-card-muted hover:text-foreground disabled:opacity-50"
           >
             <X className="size-4" aria-hidden="true" />
           </button>
@@ -1571,7 +1584,7 @@ function CancelScheduleDialog({
             type="button"
             disabled={cancelling}
             onClick={onClose}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-bold text-[#173454] transition hover:bg-[#fff8f4] disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground transition hover:border-border-strong hover:bg-card disabled:opacity-50"
           >
             Keep schedule
           </button>
@@ -1579,14 +1592,14 @@ function CancelScheduleDialog({
             type="button"
             disabled={cancelling}
             onClick={onConfirm}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-error px-4 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-error px-4 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
           >
             {cancelling ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             ) : (
               <Ban className="size-4" aria-hidden="true" />
             )}
-            {cancelling ? "Cancelling..." : "Cancel schedule"}
+            {cancelling ? "Cancelling…" : "Cancel schedule"}
           </button>
         </div>
       </section>
@@ -1622,14 +1635,14 @@ function ScheduleTargetStatusList({
           draft.platforms.map((platform) => (
             <span
               key={platform}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-2.5 py-1"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-2.5 py-1"
             >
               <SocialPlatformIcon className="size-3.5" platform={platform} />
               {getScheduleDraftPlatformLabel(draft, platform)}
             </span>
           ))
         ) : (
-          <span className="rounded-full border border-border bg-white px-2.5 py-1">
+          <span className="rounded-full border border-border bg-card-muted px-2.5 py-1">
             No account selected
           </span>
         )}
@@ -1640,7 +1653,7 @@ function ScheduleTargetStatusList({
   return (
     <div
       className={cn(
-        "mt-3 overflow-hidden rounded-xl border border-border bg-white",
+        "mt-3 overflow-hidden rounded-[var(--radius-card)] border border-border bg-card",
         compact && "mt-2",
       )}
     >
@@ -1694,7 +1707,7 @@ function ScheduleTargetStatusList({
                   href={target.platformPostUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-7 w-fit items-center justify-center rounded-full border border-border bg-white px-2.5 text-[11px] font-bold text-[#173454] transition hover:bg-[#fffaf6]"
+                  className="inline-flex h-7 w-fit items-center justify-center rounded-full border border-border bg-card-muted px-2.5 text-[11px] font-bold text-foreground transition hover:border-border-strong hover:bg-card"
                 >
                   View post
                 </a>
@@ -1705,8 +1718,8 @@ function ScheduleTargetStatusList({
               ) : target.status === "action_required" &&
                 shouldReconnectSocialTarget(target.lastErrorCode) ? (
                 <a
-                  href="/connected-accounts"
-                  className="inline-flex h-7 w-fit items-center justify-center rounded-lg border border-border bg-white px-2.5 text-[11px] font-bold text-[#173454] transition hover:bg-[#fffaf6]"
+                  href="/settings#instagram-publishing"
+                  className="inline-flex h-7 w-fit items-center justify-center rounded-control border border-border bg-card-muted px-2.5 text-[11px] font-bold text-foreground transition hover:border-border-strong hover:bg-card"
                 >
                   Reconnect
                 </a>
@@ -1715,13 +1728,13 @@ function ScheduleTargetStatusList({
                   type="button"
                   disabled={isRetrying}
                   onClick={() => onRetryPublishing(draft, target)}
-                  className="inline-flex h-7 w-fit items-center justify-center gap-1.5 rounded-lg bg-primary px-2.5 text-[11px] font-bold text-white transition hover:bg-primary-hover disabled:cursor-wait disabled:opacity-60"
+                  className="inline-flex h-7 w-fit items-center justify-center gap-1.5 rounded-control bg-primary px-2.5 text-[11px] font-bold text-primary-foreground transition hover:bg-primary-hover disabled:cursor-wait disabled:opacity-60"
                 >
                   <RefreshCw
                     className={cn("size-3.5", isRetrying && "animate-spin")}
                     aria-hidden="true"
                   />
-                  {isRetrying ? "Retrying..." : "Retry publishing"}
+                  {isRetrying ? "Retrying…" : "Retry publishing"}
                 </button>
               ) : null}
             </div>
@@ -1743,13 +1756,20 @@ function ScheduleDraftMediaThumb({
 
   return (
     <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-card-muted">
-      <div className="relative aspect-video overflow-hidden bg-[#102033] text-white">
+      <div className="relative aspect-video overflow-hidden bg-card-muted text-muted">
         {media?.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={media.thumbnailUrl} alt="" className="size-full object-cover" />
+          <img
+            src={media.thumbnailUrl}
+            alt=""
+            width={320}
+            height={180}
+            loading="lazy"
+            className="size-full object-cover"
+          />
         ) : (
           <div className="flex size-full items-center justify-center">
-            <FallbackIcon className="size-5 text-white/70" aria-hidden="true" />
+            <FallbackIcon className="size-5 text-muted" aria-hidden="true" />
           </div>
         )}
       </div>
@@ -1765,7 +1785,7 @@ function ScheduleDraftMediaThumb({
 
 function ScheduledCarouselSourceCard({ schedule }: { schedule: ScheduledPost }) {
   return (
-    <section className="rounded-2xl border border-border bg-white/78 p-4 shadow-sm">
+    <section className="rounded-[var(--radius-card)] border border-border bg-card p-4">
       <div className="flex items-start gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-primary">
           <Images className="size-5" aria-hidden="true" />
@@ -1787,16 +1807,16 @@ function ScheduledCarouselSourceCard({ schedule }: { schedule: ScheduledPost }) 
 
 function CarouselSchedulePreview({ schedule }: { schedule: ScheduledPost }) {
   return (
-    <div className="rounded-2xl border border-border bg-white/80 p-4 shadow-sm">
-      <div className="flex aspect-video items-center justify-center rounded-xl bg-[#102033] text-white">
+    <div className="rounded-[var(--radius-card)] border border-border bg-card p-4">
+      <div className="flex aspect-video items-center justify-center rounded-control bg-card-muted text-foreground">
         <div className="text-center">
-          <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-white/10">
+          <span className="mx-auto flex size-12 items-center justify-center rounded-control bg-card text-primary">
             <Images className="size-6" aria-hidden="true" />
           </span>
           <p className="mt-3 max-w-xs truncate text-sm font-bold">
             {schedule.title}
           </p>
-          <p className="mt-1 text-xs font-semibold text-white/70">
+          <p className="mt-1 text-xs font-semibold text-muted">
             Carousel slides publish in saved order
           </p>
         </div>
@@ -1817,9 +1837,9 @@ function ScheduleEmptyState({
   const isPrimaryEmpty = activeTab === "upcoming" && !hasAnyDrafts;
 
   return (
-    <div className="flex min-h-[360px] flex-1 items-center justify-center rounded-[28px] border border-border/70 bg-white/35 px-6 py-12 text-center">
+    <div className="flex min-h-[360px] flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card px-6 py-12 text-center">
       <div className="max-w-md">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#173454] text-white shadow-sm">
+        <div className="mx-auto flex size-14 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
           <CalendarDays className="size-6" aria-hidden="true" />
         </div>
         <p className="mt-4 text-base font-bold text-foreground">
@@ -1835,7 +1855,7 @@ function ScheduleEmptyState({
         <button
           type="button"
           onClick={onCreateDraft}
-          className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover"
+          className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover"
         >
           <Plus className="size-4" aria-hidden="true" />
           Create schedule draft
@@ -1848,6 +1868,7 @@ function ScheduleEmptyState({
 function CalendarPlanner({
   calendarMonth,
   drafts,
+  onCreateDraftForDate,
   onMonthChange,
   onOpenDate,
   onSelectDate,
@@ -1855,6 +1876,7 @@ function CalendarPlanner({
 }: {
   calendarMonth: string;
   drafts: ScheduleDraft[];
+  onCreateDraftForDate: (dateKey: string) => void;
   onMonthChange: (monthKey: string) => void;
   onOpenDate: (dateKey: string) => void;
   onSelectDate: (dateKey: string) => void;
@@ -1866,6 +1888,7 @@ function CalendarPlanner({
   );
   const draftsByDate = useMemo(() => groupDraftsByDate(drafts), [drafts]);
   const plannedCount = drafts.filter((draft) => draft.scheduledDate).length;
+  const selectedDayDrafts = draftsByDate.get(selectedDate) ?? [];
 
   function moveMonth(monthOffset: number) {
     const nextMonth = shiftMonth(calendarMonth, monthOffset);
@@ -1880,74 +1903,80 @@ function CalendarPlanner({
     onMonthChange(toMonthKey(new Date()));
   }
 
+  function selectDate(dateKey: string) {
+    const selectedMonth = dateKey.slice(0, 7);
+
+    onSelectDate(dateKey);
+    if (selectedMonth !== calendarMonth) {
+      onMonthChange(selectedMonth);
+    }
+  }
+
   return (
-    <div className="flex min-h-[520px] flex-1 flex-col overflow-hidden rounded-[24px] border border-border/70 bg-white/40 p-4 sm:p-5">
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex min-h-[520px] w-full flex-1 flex-col rounded-[var(--radius-panel)] border border-border bg-card p-4 shadow-card sm:p-5">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-sm font-bold text-foreground">
               {getMonthLabel(calendarMonth)}
             </h2>
-            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-muted shadow-sm">
+            <span className="rounded-full bg-card-muted px-2.5 py-1 text-xs font-bold text-muted ring-1 ring-inset ring-border">
               {plannedCount} planned
             </span>
           </div>
           <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-            Click a date to open that day&apos;s schedule.
+            Select a date to review its Instagram publishing plan.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center rounded-xl border border-border bg-white p-1 shadow-sm">
-            <button
-              type="button"
-              onClick={() => moveMonth(-1)}
-              aria-label="Previous month"
-              className="inline-flex size-8 items-center justify-center rounded-lg text-[#405977] transition hover:bg-card-muted hover:text-foreground"
-            >
-              <ChevronLeft className="size-4" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={jumpToToday}
-              className="inline-flex h-8 items-center justify-center rounded-lg px-3 text-xs font-bold text-[#405977] transition hover:bg-card-muted hover:text-foreground"
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={() => moveMonth(1)}
-              aria-label="Next month"
-              className="inline-flex size-8 items-center justify-center rounded-lg text-[#405977] transition hover:bg-card-muted hover:text-foreground"
-            >
-              <ChevronRight className="size-4" aria-hidden="true" />
-            </button>
-          </div>
+        <div className="inline-flex w-fit items-center rounded-control border border-border bg-card-muted p-1">
           <button
             type="button"
-            onClick={() => onOpenDate(selectedDate)}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.18)] transition hover:bg-primary-hover"
+            onClick={() => moveMonth(-1)}
+            aria-label="Previous month"
+            className="inline-flex size-8 items-center justify-center rounded-control text-muted transition hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
-            <CalendarPlus className="size-4" aria-hidden="true" />
-            Open selected day
+            <ChevronLeft className="size-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={jumpToToday}
+            className="inline-flex h-8 items-center justify-center rounded-control px-3 text-xs font-bold text-muted transition hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            onClick={() => moveMonth(1)}
+            aria-label="Next month"
+            className="inline-flex size-8 items-center justify-center rounded-control text-muted transition hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <ChevronRight className="size-4" aria-hidden="true" />
           </button>
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-border bg-white shadow-sm">
-        <div className="min-w-[620px]">
-          <div className="grid grid-cols-7 border-b border-border bg-card-muted">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="hidden overflow-hidden rounded-[var(--radius-card)] border border-border bg-card sm:block">
+          <div
+            className="grid grid-cols-7 border-b border-border bg-card-muted"
+            aria-hidden="true"
+          >
             {calendarWeekdayLabels.map((weekday) => (
               <div
                 key={weekday}
-                className="px-3 py-2 text-xs font-bold uppercase tracking-normal text-muted"
+                className="px-2 py-2 text-xs font-bold uppercase tracking-normal text-muted"
               >
                 {weekday}
               </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-7">
+          <div
+            data-calendar-grid
+            className="grid grid-cols-7"
+            aria-label={`${getMonthLabel(calendarMonth)} calendar`}
+          >
             {monthDays.map((day) => {
               const dayDrafts = draftsByDate.get(day.dateKey) ?? [];
 
@@ -1957,12 +1986,43 @@ function CalendarPlanner({
                   day={day}
                   drafts={dayDrafts}
                   selected={day.dateKey === selectedDate}
-                  onOpenDate={onOpenDate}
+                  onSelectDate={selectDate}
                 />
               );
             })}
           </div>
         </div>
+
+        <div className="rounded-[var(--radius-card)] border border-border bg-card sm:hidden">
+          <div className="grid grid-cols-7 border-b border-border bg-card-muted px-1">
+            {calendarWeekdayLabels.map((weekday) => (
+              <div
+                key={weekday}
+                className="py-2 text-center text-[10px] font-bold uppercase tracking-wide text-muted"
+              >
+                {weekday.slice(0, 1)}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1 p-1.5">
+            {monthDays.map((day) => (
+              <CompactCalendarDay
+                key={day.dateKey}
+                day={day}
+                draftCount={(draftsByDate.get(day.dateKey) ?? []).length}
+                selected={day.dateKey === selectedDate}
+                onSelectDate={selectDate}
+              />
+            ))}
+          </div>
+        </div>
+
+        <SelectedCalendarDayPanel
+          drafts={selectedDayDrafts}
+          selectedDate={selectedDate}
+          onCreateDraftForDate={onCreateDraftForDate}
+          onOpenDate={onOpenDate}
+        />
       </div>
     </div>
   );
@@ -1971,25 +2031,48 @@ function CalendarPlanner({
 function CalendarDayCell({
   day,
   drafts,
-  onOpenDate,
+  onSelectDate,
   selected,
 }: {
   day: CalendarDay;
   drafts: ScheduleDraft[];
-  onOpenDate: (dateKey: string) => void;
+  onSelectDate: (dateKey: string) => void;
   selected: boolean;
 }) {
-  const visibleDrafts = drafts.slice(0, 3);
+  const visibleDrafts = drafts.slice(0, 2);
   const hiddenDraftCount = Math.max(0, drafts.length - visibleDrafts.length);
+
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
+    const dayOffset = getCalendarKeyboardDayOffset(event.key);
+
+    if (dayOffset === null) {
+      return;
+    }
+
+    event.preventDefault();
+    const calendarGrid = event.currentTarget.closest("[data-calendar-grid]");
+    const nextDateKey = shiftDateKey(day.dateKey, dayOffset);
+
+    onSelectDate(nextDateKey);
+    window.requestAnimationFrame(() => {
+      calendarGrid
+        ?.querySelector<HTMLButtonElement>(`[data-date-key="${nextDateKey}"]`)
+        ?.focus();
+    });
+  }
 
   return (
     <button
       type="button"
-      onClick={() => onOpenDate(day.dateKey)}
+      data-date-key={day.dateKey}
+      tabIndex={selected ? 0 : -1}
+      aria-pressed={selected}
+      onClick={() => onSelectDate(day.dateKey)}
+      onKeyDown={handleKeyDown}
       aria-label={`${getReadableDateLabel(day.dateKey)}${drafts.length ? `, ${drafts.length} scheduled` : ""}`}
       className={cn(
-        "min-h-[126px] border-b border-r border-border bg-white p-2 text-left transition hover:bg-[#fffaf6] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-focus",
-        !day.isCurrentMonth && "bg-[#fbfaf8] text-muted",
+        "min-h-[92px] border-b border-r border-border bg-card p-2 text-left transition hover:bg-card-muted focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-focus xl:min-h-[104px]",
+        !day.isCurrentMonth && "bg-card-muted/45 text-muted",
         selected && "relative z-10 bg-selected ring-2 ring-primary/35",
       )}
     >
@@ -1998,9 +2081,9 @@ function CalendarDayCell({
           className={cn(
             "inline-flex size-7 items-center justify-center rounded-lg text-sm font-bold",
             day.isToday
-              ? "bg-[#173454] text-white"
+              ? "bg-brand-soft text-primary"
               : selected
-                ? "bg-primary text-white"
+                ? "bg-primary text-primary-foreground"
                 : "text-foreground",
           )}
         >
@@ -2027,9 +2110,120 @@ function CalendarDayCell({
   );
 }
 
+function CompactCalendarDay({
+  day,
+  draftCount,
+  onSelectDate,
+  selected,
+}: {
+  day: CalendarDay;
+  draftCount: number;
+  onSelectDate: (dateKey: string) => void;
+  selected: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`${getReadableDateLabel(day.dateKey)}${draftCount ? `, ${draftCount} scheduled` : ""}`}
+      aria-pressed={selected}
+      onClick={() => onSelectDate(day.dateKey)}
+      className={cn(
+        "relative flex min-h-11 items-center justify-center rounded-control text-xs font-bold text-foreground transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+        !day.isCurrentMonth && "text-muted-subtle",
+        day.isToday && !selected && "bg-brand-soft text-primary",
+        selected && "bg-primary text-primary-foreground shadow-sm",
+      )}
+    >
+      {day.dayNumber}
+      {draftCount > 0 ? (
+        <span
+          className={cn(
+            "absolute bottom-1 size-1 rounded-full",
+            selected ? "bg-primary-foreground" : "bg-primary",
+          )}
+        />
+      ) : null}
+    </button>
+  );
+}
+
+function SelectedCalendarDayPanel({
+  drafts,
+  onCreateDraftForDate,
+  onOpenDate,
+  selectedDate,
+}: {
+  drafts: ScheduleDraft[];
+  onCreateDraftForDate: (dateKey: string) => void;
+  onOpenDate: (dateKey: string) => void;
+  selectedDate: string;
+}) {
+  return (
+    <aside className="rounded-[var(--radius-card)] border border-border bg-card-muted p-4 lg:sticky lg:top-6 lg:self-start">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
+            Selected day
+          </p>
+          <h3 className="mt-1 text-base font-bold tracking-[-0.02em] text-foreground">
+            {getReadableDateLabel(selectedDate)}
+          </h3>
+        </div>
+        <span className="rounded-full bg-card px-2.5 py-1 text-[11px] font-bold text-muted ring-1 ring-inset ring-border">
+          {drafts.length} {drafts.length === 1 ? "post" : "posts"}
+        </span>
+      </div>
+
+      {drafts.length > 0 ? (
+        <div className="mt-4 space-y-2">
+          {drafts.slice(0, 4).map((draft) => (
+            <CalendarDraftPill key={draft.id} draft={draft} />
+          ))}
+          {drafts.length > 4 ? (
+            <p className="px-1 text-xs font-semibold text-muted">
+              +{drafts.length - 4} more scheduled
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-control border border-dashed border-border bg-card px-3 py-5 text-center">
+          <CalendarDays className="mx-auto size-5 text-muted" aria-hidden="true" />
+          <p className="mt-2 text-sm font-bold text-foreground">
+            No Instagram posts yet
+          </p>
+          <p className="mt-1 text-xs font-medium leading-5 text-muted">
+            Add a post to start planning this day.
+          </p>
+        </div>
+      )}
+
+      <div className="mt-4 grid gap-2">
+        <button
+          type="button"
+          onClick={() => onCreateDraftForDate(selectedDate)}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <Plus className="size-4" aria-hidden="true" />
+          Schedule post
+        </button>
+        {drafts.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => onOpenDate(selectedDate)}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            View day details
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
+    </aside>
+  );
+}
+
 function CalendarDraftPill({ draft }: { draft: ScheduleDraft }) {
   return (
-    <div className="rounded-lg border border-border bg-white px-2 py-1.5 shadow-sm">
+    <div className="rounded-control border border-border bg-card-muted px-2 py-1.5">
       <div className="flex items-center gap-1.5">
         <span
           className={cn(
@@ -2097,13 +2291,13 @@ function DayScheduleWorkspace({
   return (
     <section
       aria-labelledby="day-schedule-title"
-      className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-border/80 bg-[#fbf8f4] shadow-[0_18px_50px_rgb(16_32_51_/_0.08)]"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card"
     >
-      <div className="border-b border-border/80 bg-white/76 px-4 py-4 backdrop-blur sm:px-6">
+      <div className="border-b border-border bg-card-muted px-4 py-4 sm:px-6">
         <button
           type="button"
           onClick={onBackToCalendar}
-          className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-white px-3 text-xs font-bold text-[#173454] shadow-sm transition hover:bg-[#fff8f4]"
+          className="inline-flex h-9 items-center gap-2 rounded-control border border-border bg-card px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card-muted"
         >
           <ChevronLeft className="size-4" aria-hidden="true" />
           Back to calendar
@@ -2128,7 +2322,7 @@ function DayScheduleWorkspace({
           <button
             type="button"
             onClick={() => onCreateDraftForDate(selectedDate)}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.18)] transition hover:bg-primary-hover sm:w-fit"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover sm:w-fit"
           >
             <Plus className="size-4" aria-hidden="true" />
             Schedule for this day
@@ -2138,7 +2332,7 @@ function DayScheduleWorkspace({
 
       <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto p-4 sm:p-6 lg:grid-cols-[minmax(260px,0.75fr)_minmax(0,1.25fr)]">
         <div className="grid content-start gap-4">
-          <div className="rounded-2xl border border-border bg-white/82 p-4 shadow-sm">
+          <div className="rounded-[var(--radius-card)] border border-border bg-card p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-bold text-foreground">
@@ -2149,13 +2343,13 @@ function DayScheduleWorkspace({
                   clip and prepare both as one final post.
                 </p>
               </div>
-              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#173454] text-white">
+              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
                 <CalendarDays className="size-4" aria-hidden="true" />
               </span>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-white/82 p-4 shadow-sm">
+          <div className="rounded-[var(--radius-card)] border border-border bg-card p-4">
             <p className="text-sm font-bold text-foreground">What appears here</p>
             <p className="mt-1 text-xs font-semibold leading-5 text-muted">
               Drafts, videos being prepared, ready combined videos, and
@@ -2164,7 +2358,7 @@ function DayScheduleWorkspace({
           </div>
         </div>
 
-        <div className="min-w-0 rounded-2xl border border-border bg-white/78 p-4 shadow-sm sm:p-5">
+        <div className="min-w-0 rounded-[var(--radius-card)] border border-border bg-card p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-bold text-foreground">
@@ -2174,7 +2368,7 @@ function DayScheduleWorkspace({
                 Video preparation and publishing status will update here.
               </p>
             </div>
-            <span className="inline-flex w-fit items-center rounded-full bg-card-muted px-3 py-1 text-xs font-bold text-[#405977]">
+            <span className="inline-flex w-fit items-center rounded-full bg-card-muted px-3 py-1 text-xs font-bold text-muted ring-1 ring-inset ring-border">
               {drafts.length} {drafts.length === 1 ? "item" : "items"}
             </span>
           </div>
@@ -2196,9 +2390,9 @@ function DayScheduleWorkspace({
                 />
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-[#fffaf6] px-4 py-10 text-center">
+              <div className="rounded-[var(--radius-card)] border border-dashed border-border bg-card-muted px-4 py-10 text-center">
                 <CalendarPlus
-                  className="mx-auto size-8 text-[#9aa7b8]"
+                  className="mx-auto size-8 text-muted"
                   aria-hidden="true"
                 />
                 <p className="mt-3 text-sm font-bold text-foreground">
@@ -2247,7 +2441,7 @@ function SelectedDayDraftCard({
     : "Scheduled video";
 
   return (
-    <article className="rounded-xl border border-border bg-white px-3 py-3 shadow-sm">
+    <article className="rounded-[var(--radius-card)] border border-border bg-card px-3 py-3 transition-colors hover:border-border-strong">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-bold text-foreground">
@@ -2286,7 +2480,7 @@ function SelectedDayDraftCard({
       )}
 
       {draft.caption ? (
-        <p className="mt-3 line-clamp-2 text-xs font-medium leading-5 text-[#405977]">
+        <p className="mt-3 line-clamp-2 text-xs font-medium leading-5 text-muted">
           {draft.caption}
         </p>
       ) : null}
@@ -2304,7 +2498,7 @@ function SelectedDayDraftCard({
             href={combinedMedia.mediaUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-8 items-center justify-center rounded-full border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-[#fffaf6]"
+            className="inline-flex h-8 items-center justify-center rounded-control border border-border bg-card-muted px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card"
           >
             Open MP4
           </a>
@@ -2386,6 +2580,25 @@ function shiftMonth(monthKey: string, monthOffset: number) {
   return toMonthKey(month);
 }
 
+function shiftDateKey(dateKey: string, dayOffset: number) {
+  const date = parseDateKey(dateKey);
+
+  date.setDate(date.getDate() + dayOffset);
+
+  return toDateKey(date);
+}
+
+function getCalendarKeyboardDayOffset(key: string) {
+  const offsets: Record<string, number> = {
+    ArrowDown: 7,
+    ArrowLeft: -1,
+    ArrowRight: 1,
+    ArrowUp: -7,
+  };
+
+  return offsets[key] ?? null;
+}
+
 function getMonthLabel(monthKey: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "long",
@@ -2430,7 +2643,7 @@ function getDraftStatusDotClass(status: ScheduleDraftStatus) {
   }
 
   if (status === "scheduled" || status === "scheduled_preview") {
-    return "bg-[#173454]";
+    return "bg-primary";
   }
 
   if (
@@ -2456,7 +2669,7 @@ function getDraftStatusBadgeClass(status: ScheduleDraftStatus) {
   }
 
   if (status === "scheduled" || status === "scheduled_preview") {
-    return "bg-[#edf3f8] text-[#173454]";
+    return "bg-brand-soft text-primary";
   }
 
   if (
@@ -2498,7 +2711,7 @@ function getTargetStatusBadgeClass(status: ScheduledPostTarget["status"]) {
   }
 
   if (status === "scheduled") {
-    return "bg-[#edf3f8] text-[#173454]";
+    return "bg-brand-soft text-primary";
   }
 
   if (
@@ -2866,14 +3079,33 @@ function NewScheduleDrawer({
     ? editingSchedule?.libraryItemId ?? null
     : null;
   const initialPlannedTargets = getSavedPlannedTargets(editingSchedule);
+  const instagramConnections = useMemo(
+    () =>
+      socialConnections.filter(
+        (connection) => connection.platform === "instagram",
+      ),
+    [socialConnections],
+  );
   const initialConnectionIds = getInitialScheduleConnectionIds({
-    connections: socialConnections,
+    connections: instagramConnections,
     isCarouselSchedule,
     plannedPlatforms: editingSchedule
       ? getDraftPlatformsFromSchedule(editingSchedule)
       : [],
     plannedTargets: initialPlannedTargets,
   });
+  /*
+   * TikTok and YouTube target support is intentionally preserved for future
+   * multi-platform use. The current product surface is Instagram-only, so
+   * legacy non-Instagram targets stay dormant and are not shown in this form.
+   */
+  const dormantLegacyTargets = initialPlannedTargets.filter(
+    (target) =>
+      target.platform !== "instagram" &&
+      !instagramConnections.some(
+        (connection) => connection.id === target.connectionId,
+      ),
+  );
   const [preparedHookMediaOptions, setPreparedHookMediaOptions] =
     useState<ScheduleMediaOption[]>([]);
   const [useOpeningClip, setUseOpeningClip] = useState(() =>
@@ -2957,11 +3189,12 @@ function NewScheduleDrawer({
 
   const availableSocialConnections = useMemo(
     () =>
-      isCarouselSchedule
-        ? socialConnections.filter((connection) =>
-            supportsCarouselPublishing(connection.platform),
-          )
-        : socialConnections,
+      socialConnections.filter(
+        (connection) =>
+          connection.platform === "instagram" &&
+          (!isCarouselSchedule ||
+            supportsCarouselPublishing(connection.platform)),
+      ),
     [isCarouselSchedule, socialConnections],
   );
   const selectedConnections = useMemo(
@@ -3226,7 +3459,7 @@ function NewScheduleDrawer({
       const token = await getCurrentUserIdToken();
 
       if (!token) {
-        throw new Error("Sign in before choosing an influencer.");
+        throw new Error("Sign in before choosing a presenter.");
       }
 
       const response = await fetch("/api/media/from-avatar", {
@@ -3241,7 +3474,7 @@ function NewScheduleDrawer({
 
       if (!response.ok || data.ok !== true) {
         throw new Error(
-          getApiResponseMessage(data, "Could not prepare this influencer."),
+          getApiResponseMessage(data, "Could not prepare this presenter."),
         );
       }
 
@@ -3253,7 +3486,7 @@ function NewScheduleDrawer({
       setSelectedHookMediaId(mediaOption.id);
     } catch (error) {
       setHookPickerError(
-        getErrorMessage(error, "Could not prepare this influencer."),
+        getErrorMessage(error, "Could not prepare this presenter."),
       );
     } finally {
       setPreparingCatalogInfluencerId(null);
@@ -3284,13 +3517,18 @@ function NewScheduleDrawer({
           : selectedDemoMedia!.title,
       scheduledVideo: selectedDemoMedia,
       scheduledTime,
-      targets: selectedConnections.map((connection) => ({
-        connectionId: connection.id,
-        platform: connection.platform,
-        settings:
-          publishingSettings[connection.id] ??
-          getDefaultPublishingSettings(connection.platform),
-      })),
+      targets: [
+        // Preserve dormant legacy targets while this Instagram-first editor
+        // hides TikTok/YouTube controls; editing must not silently delete them.
+        ...dormantLegacyTargets,
+        ...selectedConnections.map((connection) => ({
+          connectionId: connection.id,
+          platform: connection.platform,
+          settings:
+            publishingSettings[connection.id] ??
+            getDefaultPublishingSettings(connection.platform),
+        })),
+      ],
       timezone,
       useOpeningClip: isCarouselSchedule ? false : useOpeningClip,
     });
@@ -3299,7 +3537,7 @@ function NewScheduleDrawer({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 z-50 flex bg-[#071a33]/28 p-0 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.currentTarget === event.target) {
           onClose();
@@ -3310,38 +3548,43 @@ function NewScheduleDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby="schedule-drawer-title"
-        className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-none border border-border bg-[#fbf8f4] shadow-[0_26px_90px_rgb(16_32_51_/_0.22)] sm:rounded-xl"
+        className="flex h-full w-full max-w-3xl flex-col overflow-hidden border-l border-border bg-card shadow-floating sm:rounded-l-[var(--radius-panel)]"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border/80 bg-white/72 px-5 py-4 backdrop-blur sm:px-6">
-          <div>
-            <h2
-              id="schedule-drawer-title"
-              className="text-lg font-bold tracking-normal text-foreground"
-            >
-              {isCarouselSchedule
-                ? "Schedule carousel"
-                : editingSchedule
-                  ? "Edit scheduled post"
-                  : "New scheduled post"}
-            </h2>
-            <p className="mt-1 text-sm font-medium leading-6 text-muted">
-              {isCarouselSchedule
-                ? "Confirm the carousel, choose an account, and select when it should be published."
-                : "Choose a video, configure your social accounts, and select when it should be published."}
-            </p>
+        <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-5 py-5 sm:px-6">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
+              <SocialPlatformIcon className="size-4" platform="instagram" />
+            </span>
+            <div className="min-w-0">
+              <h2
+                id="schedule-drawer-title"
+                className="text-lg font-bold tracking-normal text-foreground"
+              >
+                {isCarouselSchedule
+                  ? "Schedule Instagram carousel"
+                  : editingSchedule
+                    ? "Edit Instagram schedule"
+                    : "Schedule Instagram post"}
+              </h2>
+              <p className="mt-1 text-sm font-medium leading-6 text-muted">
+                {isCarouselSchedule
+                  ? "Confirm the carousel, choose your Instagram account, and set the publish time."
+                  : "Choose real media, your Instagram account, and when the post should publish."}
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close schedule drawer"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-white text-[#173454] shadow-sm transition hover:bg-[#fff8f4]"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-border bg-card text-muted transition hover:border-border-strong hover:bg-card-muted hover:text-foreground"
           >
             <X className="size-4" aria-hidden="true" />
           </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">
-          <div className="mx-auto max-w-5xl divide-y divide-border">
+          <div className="divide-y divide-border">
             <ScheduleFlowSection
               step="1"
               title="Media"
@@ -3377,15 +3620,17 @@ function NewScheduleDrawer({
                       ) : null}
                     </span>
                     <textarea
+                      name="scheduleCaption"
+                      autoComplete="off"
                       rows={5}
                       value={caption}
                       onChange={(event) => setCaption(event.target.value)}
                       placeholder={
                         isCarouselSchedule
-                          ? "Add a caption if you want one..."
-                          : "Write caption..."
+                          ? "Add a caption if you want one…"
+                          : "Write your Instagram caption…"
                       }
-                      className="mt-2 min-h-32 w-full resize-none rounded-lg border border-border bg-white px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-[#8c9aab] focus:border-primary"
+                      className="mt-2 min-h-32 w-full resize-none rounded-control border border-border bg-card-muted px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-muted-subtle hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
                     />
                   </label>
                   {!isCarouselSchedule ? (
@@ -3433,8 +3678,8 @@ function NewScheduleDrawer({
 
             <ScheduleFlowSection
               step="2"
-              title="Accounts & settings"
-              description="Destinations, visibility, and platform controls"
+              title="Instagram account"
+              description="Choose where this post will publish"
             >
               <ConnectedAccountSelector
                 connections={availableSocialConnections}
@@ -3467,6 +3712,8 @@ function NewScheduleDrawer({
                         Date
                       </span>
                       <input
+                        name="scheduledDate"
+                        autoComplete="off"
                         type="date"
                         aria-describedby={
                           scheduleTimeValidation.error
@@ -3477,7 +3724,7 @@ function NewScheduleDrawer({
                         min={minimumScheduledDate}
                         value={scheduledDate}
                         onChange={(event) => setScheduledDate(event.target.value)}
-                        className="mt-2 h-11 w-full rounded-lg border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+                        className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
                       />
                     </label>
                     <label className="block">
@@ -3485,6 +3732,8 @@ function NewScheduleDrawer({
                         Time
                       </span>
                       <input
+                        name="scheduledTime"
+                        autoComplete="off"
                         type="time"
                         aria-describedby={
                           scheduleTimeValidation.error
@@ -3494,25 +3743,27 @@ function NewScheduleDrawer({
                         aria-invalid={Boolean(scheduleTimeValidation.error)}
                         value={scheduledTime}
                         onChange={(event) => setScheduledTime(event.target.value)}
-                        className="mt-2 h-11 w-full rounded-lg border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+                        className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
                       />
                     </label>
                   </div>
 
-                <label className="block">
+                  <label className="block">
                     <span className="text-sm font-bold text-foreground">
                       Timezone
                     </span>
                     <select
-                    aria-describedby={
-                      scheduleTimeValidation.error
-                        ? "schedule-time-feedback"
-                        : undefined
-                    }
-                    aria-invalid={Boolean(scheduleTimeValidation.error)}
+                      name="scheduleTimezone"
+                      autoComplete="off"
+                      aria-describedby={
+                        scheduleTimeValidation.error
+                          ? "schedule-time-feedback"
+                          : undefined
+                      }
+                      aria-invalid={Boolean(scheduleTimeValidation.error)}
                       value={timezone}
                       onChange={(event) => setTimezone(event.target.value)}
-                      className="mt-2 h-11 w-full rounded-lg border border-border bg-white px-4 text-sm font-bold text-foreground outline-none transition focus:border-primary"
+                      className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
                     >
                       {getTimezoneOptions(timezone).map((option) => (
                         <option key={option} value={option}>
@@ -3520,7 +3771,7 @@ function NewScheduleDrawer({
                         </option>
                       ))}
                     </select>
-                </label>
+                  </label>
 
                   {scheduleTimeValidation.error ? (
                     <div
@@ -3552,7 +3803,7 @@ function NewScheduleDrawer({
           </div>
         </div>
 
-        <div className="border-t border-border/80 bg-white/72 px-5 py-4 backdrop-blur sm:px-6">
+        <div className="border-t border-border bg-card px-5 py-4 shadow-[0_-12px_30px_rgb(16_32_51_/_0.06)] sm:px-6">
           {errorMessage ? (
             <div
               role="alert"
@@ -3566,15 +3817,15 @@ function NewScheduleDrawer({
             type="button"
             onClick={handleSaveDraft}
             disabled={!canSaveDraft}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CheckCircle2 className="size-4" aria-hidden="true" />
             {saving
               ? hasSelectedConnections
-                ? "Scheduling..."
+                ? "Scheduling…"
                 : editingSchedule
-                  ? "Saving changes..."
-                  : "Saving..."
+                  ? "Saving changes…"
+                  : "Saving…"
               : canSaveDraft
                 ? hasSelectedConnections
                   ? "Schedule post"
@@ -3626,7 +3877,7 @@ function ScheduleFlowSection({
   return (
     <section className="grid gap-4 py-6 md:grid-cols-[180px_minmax(0,1fr)] md:gap-6">
       <div className="flex items-start gap-3 md:block">
-        <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#173454] text-xs font-bold text-white">
+        <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-control bg-brand-soft text-xs font-bold text-primary ring-1 ring-inset ring-primary/10">
           {step}
         </span>
         <div className="min-w-0 md:mt-3">
@@ -3653,7 +3904,7 @@ function ScheduleOpeningClipControl({
   onToggle: (enabled: boolean) => void;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-white/78 p-3 shadow-sm">
+    <section className="rounded-[var(--radius-card)] border border-border bg-card p-3">
       <label className="flex cursor-pointer items-start justify-between gap-4">
         <span className="flex min-w-0 items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-primary">
@@ -3764,13 +4015,13 @@ function ScheduleOpeningMediaPicker({
         <>
           <OpeningVideoSourceSection
             count={catalogInfluencerOptions.length}
-            title="Influencer catalog"
+            title="Presenter catalog"
           >
             {renderCatalogInfluencers()}
           </OpeningVideoSourceSection>
           <OpeningVideoSourceSection
             count={influencerMediaOptions.length}
-            title="My influencer videos"
+            title="My presenter clips"
           >
             {renderMediaOptions(influencerMediaOptions)}
           </OpeningVideoSourceSection>
@@ -3807,13 +4058,13 @@ function ScheduleOpeningMediaPicker({
       <>
         <OpeningVideoSourceSection
           count={catalogInfluencerOptions.length}
-          title="Influencer catalog"
+          title="Presenter catalog"
         >
           {renderCatalogInfluencers()}
         </OpeningVideoSourceSection>
         <OpeningVideoSourceSection
           count={influencerMediaOptions.length}
-          title="My influencer videos"
+          title="My presenter clips"
         >
           {renderMediaOptions(influencerMediaOptions)}
         </OpeningVideoSourceSection>
@@ -3833,7 +4084,7 @@ function ScheduleOpeningMediaPicker({
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-white/78 p-3 shadow-sm">
+    <div className="rounded-[var(--radius-card)] border border-border bg-card p-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-primary">
@@ -3858,7 +4109,7 @@ function ScheduleOpeningMediaPicker({
             disabled={refreshingMedia}
             aria-label="Refresh scheduling media"
             title="Refresh scheduling media"
-            className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-white text-[#405977] shadow-sm transition hover:bg-[#fff8f4] disabled:cursor-wait disabled:opacity-60"
+            className="inline-flex size-8 items-center justify-center rounded-control border border-border bg-card-muted text-muted transition hover:border-border-strong hover:bg-card hover:text-foreground disabled:cursor-wait disabled:opacity-60"
           >
             <RefreshCw
               className={cn("size-4", refreshingMedia ? "animate-spin" : null)}
@@ -3885,14 +4136,14 @@ function ScheduleOpeningMediaPicker({
                 "inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                 selected
                   ? "border-primary/60 bg-primary/10 text-primary"
-                  : "border-border bg-white text-[#405977] hover:bg-[#fff8f4]",
+                  : "border-border bg-card-muted text-muted hover:bg-card hover:text-foreground",
               )}
             >
               {source.label}
               <span
                 className={cn(
                   "rounded-full px-1.5 py-0.5 text-[10px]",
-                  selected ? "bg-white/80" : "bg-card-muted",
+                  selected ? "bg-primary/15 text-primary" : "bg-card text-muted",
                 )}
               >
                 {sourceCounts[source.id]}
@@ -3962,20 +4213,23 @@ function ScheduleCatalogInfluencerButton({
       disabled={disabled}
       onClick={onSelect}
       className={cn(
-        "grid grid-cols-[58px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border bg-white p-2 text-left transition hover:bg-[#fffaf6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-wait disabled:opacity-70",
+        "grid grid-cols-[58px_minmax(0,1fr)_auto] items-center gap-3 rounded-control border bg-card-muted p-2 text-left transition hover:border-border-strong hover:bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-wait disabled:opacity-70",
         selected ? "border-primary/60 ring-2 ring-primary/15" : "border-border",
       )}
     >
-      <div className="flex aspect-[9/12] items-center justify-center overflow-hidden rounded-lg bg-[#102033] text-white">
+      <div className="flex aspect-[9/12] items-center justify-center overflow-hidden rounded-control bg-card text-muted">
         {option.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={option.thumbnailUrl}
             alt=""
+            width={116}
+            height={154}
+            loading="lazy"
             className="size-full object-cover"
           />
         ) : (
-          <UserRound className="size-5 text-white/70" aria-hidden="true" />
+          <UserRound className="size-5 text-muted" aria-hidden="true" />
         )}
       </div>
       <div className="min-w-0">
@@ -3983,7 +4237,7 @@ function ScheduleCatalogInfluencerButton({
           {option.title}
         </p>
         <p className="mt-1 text-xs font-semibold text-muted">
-          Influencer catalog - {option.durationLabel}
+          Presenter catalog · {option.durationLabel}
         </p>
       </div>
       {preparing ? (
@@ -4013,20 +4267,23 @@ function ScheduleMediaOptionButton({
       aria-pressed={selected}
       onClick={onSelect}
       className={cn(
-        "grid grid-cols-[58px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border bg-white p-2 text-left transition hover:bg-[#fffaf6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        "grid grid-cols-[58px_minmax(0,1fr)_auto] items-center gap-3 rounded-control border bg-card-muted p-2 text-left transition hover:border-border-strong hover:bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
         selected ? "border-primary/60 ring-2 ring-primary/15" : "border-border",
       )}
     >
-      <div className="flex aspect-[9/12] items-center justify-center overflow-hidden rounded-lg bg-[#102033] text-white">
+      <div className="flex aspect-[9/12] items-center justify-center overflow-hidden rounded-control bg-card text-muted">
         {option.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={option.thumbnailUrl}
             alt=""
+            width={116}
+            height={154}
+            loading="lazy"
             className="size-full object-cover"
           />
         ) : (
-          <FileVideo className="size-5 text-white/70" aria-hidden="true" />
+          <FileVideo className="size-5 text-muted" aria-hidden="true" />
         )}
       </div>
       <div className="min-w-0">
@@ -4049,8 +4306,8 @@ function OpeningVideoEmptyState({ source }: { source: OpeningVideoSourceTab }) {
   const copy = getOpeningVideoEmptyCopy(source);
 
   return (
-    <div className="rounded-xl border border-dashed border-border bg-[#fffaf6] px-4 py-5 text-center">
-      <Video className="mx-auto size-7 text-[#9aa7b8]" aria-hidden="true" />
+    <div className="rounded-[var(--radius-card)] border border-dashed border-border bg-card-muted px-4 py-5 text-center">
+      <Video className="mx-auto size-7 text-muted" aria-hidden="true" />
       <p className="mt-3 text-sm font-bold text-foreground">{copy.title}</p>
       <p className="mt-1 text-sm font-medium leading-6 text-muted">
         {copy.description}
@@ -4079,7 +4336,7 @@ function ScheduleRoleMediaPicker({
   title: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-white/78 p-3 shadow-sm">
+    <div className="rounded-[var(--radius-card)] border border-border bg-card p-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-primary">
@@ -4109,8 +4366,8 @@ function ScheduleRoleMediaPicker({
           ))}
         </div>
       ) : (
-        <div className="mt-3 rounded-xl border border-dashed border-border bg-[#fffaf6] px-4 py-5 text-center">
-          <Video className="mx-auto size-7 text-[#9aa7b8]" aria-hidden="true" />
+        <div className="mt-3 rounded-[var(--radius-card)] border border-dashed border-border bg-card-muted px-4 py-5 text-center">
+          <Video className="mx-auto size-7 text-muted" aria-hidden="true" />
           <p className="mt-3 text-sm font-bold text-foreground">
             {emptyTitle}
           </p>
@@ -4135,7 +4392,7 @@ function CompositionPreview({
   const hasOpeningClip = useOpeningClip && openingMedia;
 
   return (
-    <div className="rounded-2xl border border-border bg-white/80 p-4 shadow-sm">
+    <div className="rounded-[var(--radius-card)] border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-foreground">Post preview</p>
@@ -4145,7 +4402,7 @@ function CompositionPreview({
               : "This video will be published as the scheduled post."}
           </p>
         </div>
-        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#173454] text-white">
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
           <Layers2 className="size-4" aria-hidden="true" />
         </span>
       </div>
@@ -4194,7 +4451,7 @@ function ConnectedAccountSelector({
   return (
     <div>
       <span className="text-sm font-bold text-foreground">
-        Planned accounts
+        Instagram account
       </span>
       {connections.length > 0 ? (
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -4245,15 +4502,15 @@ function ConnectedAccountSelector({
               return (
                 <div
                   key={connection.id}
-                  className="rounded-lg border border-error/20 bg-[#fffaf6] px-3 py-3 shadow-sm"
+                  className="rounded-control border border-error/25 bg-error/10 px-3 py-3"
                 >
                   {tileContent}
                   <div className="mt-3 flex flex-wrap gap-2">
                     <a
-                      href="/connected-accounts"
+                      href="/settings#instagram-publishing"
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-card-muted"
+                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-control border border-border bg-card-muted px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card"
                     >
                       <RefreshCw className="size-3.5" aria-hidden="true" />
                       Reconnect account
@@ -4262,7 +4519,7 @@ function ConnectedAccountSelector({
                       <button
                         type="button"
                         onClick={() => onToggle(connection.id)}
-                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-error/25 bg-white px-3 text-xs font-bold text-error transition hover:bg-error/5"
+                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-control border border-error/25 bg-card-muted px-3 text-xs font-bold text-error transition hover:bg-error/10"
                       >
                         <X className="size-3.5" aria-hidden="true" />
                         Remove
@@ -4277,9 +4534,10 @@ function ConnectedAccountSelector({
               <button
                 key={connection.id}
                 type="button"
+                aria-pressed={selected}
                 onClick={() => onToggle(connection.id)}
                 className={cn(
-                  "rounded-lg border bg-white px-3 py-3 text-left shadow-sm transition hover:bg-[#fffaf6]",
+                  "rounded-control border bg-card-muted px-3 py-3 text-left transition hover:border-border-strong hover:bg-card",
                   selected
                     ? "border-primary/60 ring-2 ring-primary/15"
                     : "border-border",
@@ -4291,19 +4549,19 @@ function ConnectedAccountSelector({
           })}
         </div>
       ) : (
-        <div className="mt-2 rounded-lg border border-dashed border-border bg-[#fffaf6] px-4 py-4 text-sm font-semibold leading-6 text-muted">
+        <div className="mt-2 rounded-control border border-dashed border-border bg-card-muted px-4 py-4 text-sm font-semibold leading-6 text-muted">
           <p>
-            Connect Instagram, TikTok, or YouTube to schedule this post. You can
-            still save the video draft now.
+            Connect Instagram to schedule this post. You can still save the
+            video draft now.
           </p>
           <a
-            href="/connected-accounts"
+            href="/settings#instagram-publishing"
             target="_blank"
             rel="noreferrer"
-            className="mt-3 inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-card-muted"
+            className="mt-3 inline-flex h-8 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card-muted"
           >
             <Plus className="size-3.5" aria-hidden="true" />
-            Connect an account
+            Connect Instagram
           </a>
         </div>
       )}
@@ -4415,14 +4673,17 @@ function PlatformAccountSettings({
         </div>
       ) : null}
 
+      {/* Dormant future multi-platform support: this YouTube branch is kept
+          intact but receives no connections in the Instagram-only editor. */}
       {connection.platform === "youtube" ? (
         <div className="mt-3 grid gap-3">
           <label className="block">
             <span className="text-xs font-bold text-foreground">Visibility</span>
             <select
+              name={`youtubePrivacyStatus-${connection.id}`}
               value={getStringSetting(settings, "privacyStatus", "private")}
               onChange={(event) => onChange("privacyStatus", event.target.value)}
-              className="mt-1.5 h-10 w-full rounded-[10px] border border-border bg-white px-3 text-sm font-semibold text-foreground outline-none transition focus:border-primary"
+              className="mt-1.5 h-10 w-full rounded-control border border-border bg-card-muted px-3 text-sm font-semibold text-foreground outline-none transition hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
             >
               <option value="private">Private</option>
               <option value="unlisted">Unlisted</option>
@@ -4456,6 +4717,8 @@ function PlatformAccountSettings({
         </div>
       ) : null}
 
+      {/* Dormant future multi-platform support: TikTok settings remain
+          implemented so re-enabling the platform does not require a rewrite. */}
       {connection.platform === "tiktok" ? (
         <TikTokAccountSettings
           capabilitiesState={tiktokCapabilities}
@@ -4483,7 +4746,7 @@ function TikTokAccountSettings({
     return (
       <div className="mt-3 flex h-10 items-center gap-2 text-xs font-semibold text-muted">
         <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-        Loading available TikTok settings...
+        Loading available TikTok settings…
       </div>
     );
   }
@@ -4532,7 +4795,7 @@ function TikTokAccountSettings({
         <select
           value={privacyLevel}
           onChange={(event) => onChange("privacyLevel", event.target.value)}
-          className="mt-1.5 h-10 w-full rounded-[10px] border border-border bg-white px-3 text-sm font-semibold text-foreground outline-none transition focus:border-primary"
+          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card-muted px-3 text-sm font-semibold text-foreground outline-none transition hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
         >
           <option value="">Select visibility</option>
           {capabilities.privacyLevels.map((level) => (
@@ -4631,7 +4894,7 @@ function SettingCheckbox({
   return (
     <label
       className={cn(
-        "flex min-h-10 items-start gap-2.5 rounded-[10px] border border-border bg-white px-3 py-2",
+        "flex min-h-10 items-start gap-2.5 rounded-control border border-border bg-card-muted px-3 py-2",
         disabled && "cursor-not-allowed bg-card-muted opacity-65",
       )}
     >
@@ -4710,7 +4973,7 @@ function StatusPreview({
   });
 
   return (
-    <div className="rounded-2xl border border-border bg-white/80 p-4 shadow-sm">
+    <div className="rounded-[var(--radius-card)] border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-foreground">Status preview</p>
@@ -5494,7 +5757,7 @@ function getMediaSourceLabel(option: ScheduleMediaOption) {
     edit_video: "Edited video",
     generated_carousel: "Generated carousel",
     generated_video: "Generated video",
-    influencer_video: "Influencer",
+    influencer_video: "Presenter",
     user_video: "Uploaded video",
   };
 
@@ -5505,8 +5768,8 @@ function getOpeningVideoEmptyCopy(source: OpeningVideoSourceTab) {
   if (source === "influencers") {
     return {
       description:
-        "Choose an influencer from Creative Assets or upload your own influencer clip.",
-      title: "No influencer videos found.",
+        "Choose a presenter from Creative Assets or upload your own presenter clip.",
+      title: "No presenter clips found.",
     };
   }
 
@@ -5528,7 +5791,7 @@ function getOpeningVideoEmptyCopy(source: OpeningVideoSourceTab) {
 
   return {
     description:
-      "Add an influencer, upload a video, or create an Edit export before scheduling.",
+      "Add a presenter, upload a video, or create an Edit export before scheduling.",
       title: "No opening clips found.",
   };
 }
@@ -5617,12 +5880,12 @@ async function completeTrendingScheduleAssignment(params: {
       | null;
 
     if (!response.ok || data?.ok !== true) {
-      throw new Error(data?.message ?? "Could not update the Trending feed.");
+      throw new Error(data?.message ?? "Could not update Instagram Ideas.");
     }
 
     return null;
   } catch {
-    return "The post is scheduled, but Trending may need a refresh.";
+    return "The post is scheduled, but Instagram Ideas may need a refresh.";
   }
 }
 
@@ -5799,6 +6062,16 @@ function getInitialScheduleTab(): ScheduleTab {
   return scheduleTabs.includes(tab as ScheduleTab)
     ? (tab as ScheduleTab)
     : "upcoming";
+}
+
+function getInitialScheduleViewMode(): ScheduleViewMode {
+  if (typeof window === "undefined") {
+    return "calendar";
+  }
+
+  const view = new URLSearchParams(window.location.search).get("view");
+
+  return view === "list" || view === "calendar" ? view : "calendar";
 }
 
 function getDraftStatusPreview({

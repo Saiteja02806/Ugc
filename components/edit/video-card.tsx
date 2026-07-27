@@ -19,7 +19,7 @@ export function VideoCard({ video }: { video: EditableVideo }) {
   return (
     <Link
       href={getEditableVideoHref(video)}
-      className="group min-w-0 rounded-card border border-border bg-white p-2 transition-[border-color,background-color] hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+      className="group min-w-0 rounded-card border border-border bg-card p-2 transition-[border-color,background-color] hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
     >
       <div
         className="flex items-center justify-center overflow-hidden rounded-control bg-[#102033] text-white"
@@ -30,6 +30,8 @@ export function VideoCard({ video }: { video: EditableVideo }) {
           <img
             src={video.thumbnailUrl}
             alt=""
+            width={720}
+            height={1280}
             className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.015] motion-reduce:transition-none"
           />
         ) : (

@@ -230,6 +230,7 @@ export type SocialOAuthTraceContext = {
 
 const STATE_TTL_MINUTES = 10;
 const TIKTOK_TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
+const INSTAGRAM_PROFILE_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const TIKTOK_TOKEN_REFRESH_STALE_SECONDS = 120;
 let supabaseClient: SupabaseClient<SocialOAuthDatabase> | null = null;
 
@@ -465,7 +466,13 @@ export async function listSocialConnections(
     throw new Error("Could not load social connections.");
   }
 
-  return (data ?? []).map(mapSocialConnection);
+  const connections = await Promise.all(
+    (data ?? []).map((connection) =>
+      hydrateInstagramConnectionProfile(connection, trace),
+    ),
+  );
+
+  return connections.map(mapSocialConnection);
 }
 
 async function getYouTubeOAuthDiagnosticForUser(params: {
@@ -1323,7 +1330,10 @@ async function fetchInstagramAccount(
   trace?: SocialOAuthTraceContext,
 ) {
   const profileUrl = new URL("https://graph.instagram.com/me");
-  profileUrl.searchParams.set("fields", "id,username");
+  profileUrl.searchParams.set(
+    "fields",
+    "id,username,name,account_type,profile_picture_url",
+  );
   profileUrl.searchParams.set("access_token", accessToken);
 
   logSocialOAuthTrace(trace, "fetch_instagram_profile", {
@@ -1354,7 +1364,10 @@ async function fetchInstagramAccount(
     if (fallbackAccountId) {
       return {
         id: fallbackAccountId,
-        metadata: { profileLookupFailed: true },
+        metadata: {
+          profileLookupFailed: true,
+          profilePictureSyncedAt: new Date().toISOString(),
+        },
         name: "Instagram account",
         username: null,
       };
@@ -1373,6 +1386,7 @@ async function fetchInstagramAccount(
     metadata: {
       accountType: payload.account_type ?? null,
       profilePictureUrl: payload.profile_picture_url ?? null,
+      profilePictureSyncedAt: new Date().toISOString(),
     },
     name: payload.name ?? payload.username ?? "Instagram account",
     username: payload.username ?? null,
@@ -1727,6 +1741,7 @@ function mapSocialConnection(row: SocialConnectionRow): SocialConnection {
     platformAccountId: row.platform_account_id,
     platformAccountName: row.platform_account_name,
     platformAccountUsername: row.platform_account_username,
+    profilePictureUrl: getInstagramProfilePictureUrl(row.metadata),
     provider: row.provider,
     refreshExpiresAt: row.refresh_expires_at,
     scopes: row.scopes,
@@ -1738,6 +1753,96 @@ function mapSocialConnection(row: SocialConnectionRow): SocialConnection {
     tokenRefreshedAt: row.token_refreshed_at,
     updatedAt: row.updated_at,
   };
+}
+
+async function hydrateInstagramConnectionProfile(
+  row: SocialConnectionRow,
+  trace?: SocialOAuthTraceContext,
+): Promise<SocialConnectionRow> {
+  if (
+    row.platform !== "instagram" ||
+    isInstagramProfileFresh(row.metadata)
+  ) {
+    return row;
+  }
+
+  try {
+    const account = await fetchInstagramAccount(
+      decryptSecret(row.access_token_ciphertext),
+      row.platform_account_id,
+      trace,
+    );
+    const metadata = {
+      ...row.metadata,
+      ...account.metadata,
+    };
+    const patch = {
+      metadata,
+      platform_account_name:
+        account.username && account.name
+          ? account.name
+          : row.platform_account_name,
+      platform_account_username:
+        account.username ?? row.platform_account_username,
+    };
+    const { error } = await getClient()
+      .from("social_connections")
+      .update(patch)
+      .eq("id", row.id)
+      .eq("user_id", row.user_id);
+
+    if (error) {
+      logSocialOAuthTrace(trace, "connected_accounts_api_response", {
+        databaseErrorCode: error.code,
+        instagramProfileSaved: false,
+      });
+    }
+
+    return {
+      ...row,
+      ...patch,
+    };
+  } catch {
+    logSocialOAuthTrace(trace, "connected_accounts_api_response", {
+      instagramProfileHydrated: false,
+    });
+    return row;
+  }
+}
+
+function isInstagramProfileFresh(metadata: Json) {
+  const syncedAt = getMetadataString(metadata, "profilePictureSyncedAt");
+
+  if (!syncedAt) {
+    return false;
+  }
+
+  const syncedAtMs = Date.parse(syncedAt);
+
+  return (
+    Number.isFinite(syncedAtMs) &&
+    Date.now() - syncedAtMs < INSTAGRAM_PROFILE_REFRESH_INTERVAL_MS
+  );
+}
+
+function getInstagramProfilePictureUrl(metadata: Json) {
+  const value = getMetadataString(metadata, "profilePictureUrl");
+
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function getMetadataString(metadata: Json, key: string) {
+  const value = metadata[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function getClient() {

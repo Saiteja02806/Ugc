@@ -14,6 +14,7 @@ import {
   useState,
 } from "react";
 
+import { InstagramAccountAvatar } from "@/components/social/instagram-account-avatar";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup";
 import {
@@ -416,12 +417,10 @@ export function InstagramAccountManager() {
 
           {pendingDisconnect ? (
             <div className="flex items-center gap-3 rounded-[var(--radius-control)] border border-border bg-card-muted p-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand-soft ring-1 ring-inset ring-primary/10">
-                <SocialPlatformIcon
-                  className="size-5"
-                  platform="instagram"
-                />
-              </span>
+              <InstagramAccountAvatar
+                className="size-10"
+                connection={pendingDisconnect}
+              />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-foreground-strong">
                   {getInstagramAccountName(pendingDisconnect)}
@@ -491,9 +490,10 @@ function InstagramConnectionRow({
   return (
     <article className="flex flex-col gap-4 rounded-[var(--radius-control)] border border-border bg-card-muted/45 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand-soft ring-1 ring-inset ring-primary/10">
-          <SocialPlatformIcon className="size-5" platform="instagram" />
-        </span>
+        <InstagramAccountAvatar
+          className="size-11"
+          connection={connection}
+        />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="truncate text-sm font-bold text-foreground-strong">

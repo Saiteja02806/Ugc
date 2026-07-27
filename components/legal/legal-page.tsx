@@ -30,7 +30,7 @@ export function LegalPageShell({
   description,
   eyebrow,
   title,
-  updated = "Effective July 13, 2026",
+  updated = "Effective July 27, 2026",
 }: LegalPageProps) {
   return (
     <main className="instagram-theme min-h-screen bg-background text-foreground">
@@ -47,9 +47,6 @@ export function LegalPageShell({
               sizes="36px"
             />
             <span>UGCPilot</span>
-            <span className="hidden border-l border-border pl-3 text-xs font-medium text-muted sm:inline">
-              for Instagram
-            </span>
           </Link>
           <nav
             className="-mx-2 flex w-full min-w-0 max-w-full gap-1 overflow-x-auto px-2 pb-1 text-sm font-semibold text-muted [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:w-auto md:px-0 md:pb-0"
@@ -123,7 +120,7 @@ export function LegalPageShell({
           </div>
           <p>
             UGC Pilot is an independent service and is not affiliated with,
-            endorsed by, or sponsored by Meta, TikTok, or Google.
+            endorsed by, or sponsored by Meta or Instagram.
           </p>
         </div>
       </footer>

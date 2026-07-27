@@ -21,8 +21,9 @@ export default function ContactPage() {
       <div className="space-y-8">
         <LegalSection title="Support">
           <p>
-            For product support, account questions, upload issues, publishing
-            issues, or general help, contact{" "}
+            For product support, automatic carousel generation, video uploads,
+            Instagram connection, scheduling, publishing, or account questions,
+            contact{" "}
             <a className="font-bold text-[#c2410c]" href="mailto:support@getugcpilot.com">
               support@getugcpilot.com
             </a>
@@ -43,7 +44,8 @@ export default function ContactPage() {
 
         <LegalSection title="Platform review">
           <p>
-            For Meta, Instagram, or app-review questions, use these contacts:
+            For Meta App Review, Instagram API access, or data-handling
+            questions, use these contacts:
           </p>
           <LegalList>
             <li>

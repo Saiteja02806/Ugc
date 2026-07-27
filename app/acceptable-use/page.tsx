@@ -22,15 +22,15 @@ export default function AcceptableUsePage() {
       <div className="flex flex-col gap-8">
         <LegalSection title="User control and platform rules">
           <p>
-            UGC Pilot is designed for user-controlled content preparation and
-            publishing. Users must review every post, destination account,
-            caption, schedule, rights confirmation, and disclosure before
-            publishing or scheduling content.
+            UGC Pilot is designed for user-controlled Instagram content
+            creation and scheduling. Users must review every carousel slide,
+            image, video, caption, destination Instagram account, schedule,
+            rights confirmation, and disclosure before publishing or scheduling
+            content.
           </p>
           <p>
             Users are responsible for following the terms, advertising rules,
-            disclosure rules, and community guidelines of Instagram, TikTok,
-            YouTube, and any other platform where content is published.
+            disclosure rules, and community guidelines of Instagram.
           </p>
         </LegalSection>
 
@@ -53,10 +53,11 @@ export default function AcceptableUsePage() {
 
         <LegalSection title="AI-assisted content and disclosures">
           <p>
-            UGC Pilot may help users create AI-assisted video, image, caption,
-            and carousel assets. Users are responsible for reviewing generated
-            outputs and disclosing AI-generated, sponsored, commercial, or
-            branded content where required by law or platform policy.
+            UGC Pilot may automatically prepare AI-assisted carousel slides,
+            videos, images, captions, and other Instagram creative assets. Users
+            are responsible for reviewing generated outputs and disclosing
+            AI-generated, sponsored, commercial, or branded content where
+            required by law or Instagram policy.
           </p>
           <LegalList>
             <li>Do not create deceptive testimonials or fake endorsements.</li>
@@ -71,10 +72,13 @@ export default function AcceptableUsePage() {
         <LegalSection title="Prohibited activity">
           <LegalList>
             <li>Spam, scams, phishing, malware, or unauthorized automation.</li>
-            <li>Fake engagement, platform manipulation, or deceptive traffic.</li>
+            <li>
+              Fake engagement, bulk posting abuse, Instagram manipulation, or
+              deceptive traffic.
+            </li>
             <li>Harassment, hate, exploitation, adult abuse, or illegal content.</li>
             <li>
-              Content that violates connected platform rules or applicable law.
+              Content that violates Instagram&apos;s rules or applicable law.
             </li>
             <li>
               Attempts to bypass account authorization, rate limits, security
@@ -87,7 +91,7 @@ export default function AcceptableUsePage() {
           <p>
             We may limit, suspend, or remove access to publishing features when
             content or account activity appears to violate this policy, our
-            Terms of Service, a connected platform&apos;s rules, or applicable law.
+            Terms of Service, Instagram&apos;s rules, or applicable law.
           </p>
           <p>
             To report abuse or a rights concern, contact{" "}

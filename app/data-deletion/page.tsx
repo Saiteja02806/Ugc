@@ -51,7 +51,7 @@ export default async function DataDeletionPage({
           </LegalList>
           <p>
             You can also request deletion by emailing{" "}
-            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
+            <a className="font-bold text-[#c2410c]" href="mailto:privacy@getugcpilot.com">
               privacy@getugcpilot.com
             </a>
             .
@@ -63,7 +63,7 @@ export default async function DataDeletionPage({
             <li>Connected platform identifiers and social account IDs.</li>
             <li>Access tokens and refresh tokens where technically possible.</li>
             <li>Uploaded media, product demos, app recordings, and screen recordings.</li>
-            <li>Generated videos, generated slideshows, drafts, captions, and thumbnails.</li>
+            <li>Generated videos, generated carousels, drafts, captions, and thumbnails.</li>
             <li>Scheduled posts and publishing logs where deletion is legally and technically possible.</li>
             <li>Stored analytics associated with the account.</li>
             <li>Stored AI disclosure, commercial disclosure, and rights confirmation settings.</li>
@@ -81,7 +81,7 @@ export default async function DataDeletionPage({
             For YouTube, you can also revoke UGC Pilot access from Google
             security settings at{" "}
             <a
-              className="font-bold text-primary"
+              className="font-bold text-[#c2410c]"
               href="https://security.google.com/settings/security/permissions"
               rel="noreferrer"
               target="_blank"

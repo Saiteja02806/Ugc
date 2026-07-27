@@ -24,16 +24,16 @@ export default function PrivacyPolicyPage() {
           <p>
             UGC Pilot is a social video creation and scheduling platform
             operated through getugcpilot.com. Users can create marketing
-            slideshows and videos, upload product media, prepare social posts,
+            carousels and videos, upload product media, prepare social posts,
             and connect supported publishing platforms.
           </p>
           <p>
             Privacy questions can be sent to{" "}
-            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
+            <a className="font-bold text-[#c2410c]" href="mailto:privacy@getugcpilot.com">
               privacy@getugcpilot.com
             </a>
             . General support questions can be sent to{" "}
-            <a className="font-bold text-primary" href="mailto:support@getugcpilot.com">
+            <a className="font-bold text-[#c2410c]" href="mailto:support@getugcpilot.com">
               support@getugcpilot.com
             </a>
             .
@@ -114,7 +114,7 @@ export default function PrivacyPolicyPage() {
             UGC Pilot uses YouTube API Services when a user connects YouTube.
             Google privacy practices are described in the{" "}
             <a
-              className="font-bold text-primary"
+              className="font-bold text-[#c2410c]"
               href="https://policies.google.com/privacy"
               rel="noreferrer"
               target="_blank"
@@ -143,7 +143,7 @@ export default function PrivacyPolicyPage() {
             For YouTube, users can also manage third-party access from Google
             security settings at{" "}
             <a
-              className="font-bold text-primary"
+              className="font-bold text-[#c2410c]"
               href="https://security.google.com/settings/security/permissions"
               rel="noreferrer"
               target="_blank"
@@ -214,11 +214,11 @@ export default function PrivacyPolicyPage() {
           <p>
             Users can request deletion by using product settings where available
             or by emailing{" "}
-            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
+            <a className="font-bold text-[#c2410c]" href="mailto:privacy@getugcpilot.com">
               privacy@getugcpilot.com
             </a>
             . Data deletion instructions are available at{" "}
-            <a className="font-bold text-primary" href="https://getugcpilot.com/data-deletion">
+            <a className="font-bold text-[#c2410c]" href="https://getugcpilot.com/data-deletion">
               https://getugcpilot.com/data-deletion
             </a>
             .
@@ -260,7 +260,7 @@ export default function PrivacyPolicyPage() {
           <p>
             Users may request access, correction, deletion, export, or
             restriction of their personal data by contacting{" "}
-            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
+            <a className="font-bold text-[#c2410c]" href="mailto:privacy@getugcpilot.com">
               privacy@getugcpilot.com
             </a>
             .

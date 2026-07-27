@@ -5,7 +5,7 @@ import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "Creative Assets",
-  description: "Manage reusable videos and images for Instagram content.",
+  description: "Manage influencers, videos, and images for UGC generation.",
 };
 
 export default async function AvatarsPage({
@@ -14,7 +14,7 @@ export default async function AvatarsPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { tab } = await searchParams;
-  const initialTab = tab === "images" ? "images" : "videos";
+  const initialTab = tab === "videos" || tab === "images" ? tab : "influencers";
 
   return (
     <AppShell activeKey="avatars">

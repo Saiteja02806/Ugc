@@ -26,8 +26,10 @@ import { cn } from "@/lib/utils";
 
 export type AppSidebarActiveKey =
   | "trending"
-  | "ai-studio"
+  | "img-gen"
+  | "video-gen"
   | "library"
+  | "connected-accounts"
   | "avatars"
   | "edit"
   | "analytics"
@@ -44,21 +46,27 @@ type SidebarItem = {
 const primaryNavigationItems: SidebarItem[] = [
   {
     key: "trending",
-    label: "Instagram ideas",
+    label: "Trending",
     href: "/dashboard",
     icon: "trending",
   },
   {
-    key: "ai-studio",
-    label: "AI Studio",
-    href: "/ai-studio?mode=images",
+    key: "img-gen",
+    label: "Image Gen",
+    href: "/image-gen",
     icon: "image-gen",
+  },
+  {
+    key: "video-gen",
+    label: "Video Gen",
+    href: "/video-gen",
+    icon: "video-gen",
   },
   {
     key: "avatars",
     label: "Creative Assets",
     href: "/avatars",
-    icon: "creative-assets",
+    icon: "influencers",
   },
   {
     key: "edit",
@@ -75,6 +83,12 @@ const primaryNavigationItems: SidebarItem[] = [
 ];
 
 const libraryNavigationItems: SidebarItem[] = [
+  {
+    key: "connected-accounts",
+    label: "Accounts",
+    href: "/connected-accounts",
+    icon: "avatars",
+  },
   {
     key: "library",
     label: "Content",
@@ -172,7 +186,7 @@ export function AppSidebar({
 
   return (
     <>
-      <header className="sticky top-0 z-[var(--z-sticky)] flex h-16 w-full items-center justify-between border-b border-border bg-sidebar/95 px-4 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-[var(--z-sticky)] flex h-16 w-full items-center justify-between border-b border-border bg-card/95 px-4 backdrop-blur md:hidden">
         <Brand />
         <button
           type="button"
@@ -181,7 +195,7 @@ export function AppSidebar({
           aria-expanded={isMobileNavigationOpen}
           aria-label="Open navigation"
           title="Open navigation"
-          className="inline-flex size-10 items-center justify-center rounded-[8px] text-muted-subtle transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+          className="inline-flex size-10 items-center justify-center rounded-control text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           <Menu className="size-5" aria-hidden="true" />
         </button>
@@ -190,7 +204,7 @@ export function AppSidebar({
       <aside
         id="ugc-desktop-sidebar"
         className={cn(
-          "sticky top-0 z-[var(--z-sidebar)] hidden h-dvh shrink-0 flex-col border-r border-border bg-sidebar transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
+          "sticky top-0 z-[var(--z-sidebar)] hidden h-dvh shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
           collapsed ? "w-[68px]" : "w-[224px]",
         )}
       >
@@ -228,7 +242,7 @@ export function AppSidebar({
             tabIndex={-1}
             aria-label="Close navigation"
             onClick={() => setIsMobileNavigationOpen(false)}
-            className="absolute inset-0 cursor-default bg-black/55"
+            className="absolute inset-0 cursor-default bg-black/35"
           />
           <aside
             ref={mobileNavigationRef}
@@ -236,7 +250,7 @@ export function AppSidebar({
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${mobileNavigationId}-title`}
-            className="absolute inset-y-0 left-0 flex w-[min(320px,88vw)] flex-col border-r border-border bg-sidebar shadow-[0_24px_70px_rgb(0_0_0_/_0.45)]"
+            className="absolute inset-y-0 left-0 flex w-[min(320px,88vw)] flex-col border-r border-border bg-card shadow-floating"
           >
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4">
               <div id={`${mobileNavigationId}-title`}>
@@ -248,7 +262,7 @@ export function AppSidebar({
                 onClick={() => setIsMobileNavigationOpen(false)}
                 aria-label="Close navigation"
                 title="Close navigation"
-                className="inline-flex size-10 items-center justify-center rounded-[8px] text-muted-subtle transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+                className="inline-flex size-10 items-center justify-center rounded-control text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
               >
                 <X className="size-5" aria-hidden="true" />
               </button>
@@ -276,16 +290,16 @@ function Brand() {
   return (
     <Link
       href="/dashboard"
-      className="flex min-w-0 items-center gap-2 rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+      className="flex min-w-0 items-center gap-2 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
     >
-      <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[6px] bg-primary">
+      <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-small bg-brand">
         <ProductLogoMark
           className="size-6"
           imageClassName="brightness-0 invert"
           sizes="24px"
         />
       </span>
-      <span className="truncate text-[15px] font-semibold text-foreground">
+      <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground-strong">
         UGCPilot
       </span>
     </Link>
@@ -305,17 +319,17 @@ function CollapsedBrandToggle({
       aria-expanded={false}
       aria-label="Expand sidebar"
       title="Expand sidebar"
-      className="group/logo-toggle inline-flex size-10 items-center justify-center rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+      className="group/logo-toggle inline-flex size-10 items-center justify-center rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
     >
-      <span className="relative size-8 overflow-hidden rounded-[6px]">
-        <span className="absolute inset-0 flex items-center justify-center bg-primary opacity-100 transition-opacity duration-150 group-hover/logo-toggle:opacity-0 group-focus-visible/logo-toggle:opacity-0 motion-reduce:transition-none">
+      <span className="relative size-8 overflow-hidden rounded-small">
+        <span className="absolute inset-0 flex items-center justify-center bg-brand opacity-100 transition-opacity duration-150 group-hover/logo-toggle:opacity-0 group-focus-visible/logo-toggle:opacity-0 motion-reduce:transition-none">
           <ProductLogoMark
             className="size-6"
             imageClassName="brightness-0 invert"
             sizes="24px"
           />
         </span>
-        <span className="absolute inset-0 flex items-center justify-center bg-card-muted text-foreground opacity-0 transition-opacity duration-150 group-hover/logo-toggle:opacity-100 group-focus-visible/logo-toggle:opacity-100 motion-reduce:transition-none">
+        <span className="absolute inset-0 flex items-center justify-center bg-deep-contrast text-white opacity-0 transition-opacity duration-150 group-hover/logo-toggle:opacity-100 group-focus-visible/logo-toggle:opacity-100 motion-reduce:transition-none">
           <SidebarIcon name="expand" className="size-[18px]" />
         </span>
       </span>
@@ -332,7 +346,7 @@ function SidebarCollapseToggle({ onToggle }: { onToggle: () => void }) {
       aria-expanded
       aria-label="Collapse sidebar"
       title="Collapse sidebar"
-      className="inline-flex size-8 shrink-0 items-center justify-center rounded-[6px] border border-transparent text-muted-subtle transition-[background-color,color,border-color] duration-[160ms] hover:border-border hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar motion-reduce:transition-none"
+      className="inline-flex size-8 shrink-0 items-center justify-center rounded-small border border-transparent text-muted-subtle transition-[background-color,color,border-color] duration-[160ms] hover:border-border hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 motion-reduce:transition-none"
     >
       <SidebarIcon name="collapse" className="size-[18px]" />
     </button>
@@ -420,23 +434,23 @@ function SidebarLink({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "group relative flex h-10 w-full items-center gap-3 rounded-[8px] px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar motion-reduce:transition-none",
+        "group relative flex h-10 w-full items-center gap-3 rounded-control px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none",
         active
-          ? "bg-selected text-foreground"
-          : "text-muted hover:bg-card-muted hover:text-foreground",
+          ? "bg-selected text-primary"
+          : "text-muted hover:bg-card-muted hover:text-foreground-strong",
       )}
     >
       {active ? (
         <span
           aria-hidden="true"
-          className="absolute bottom-2 left-0 top-2 w-0.5 rounded-full bg-primary"
+          className="absolute bottom-2 left-0 top-2 w-0.5 rounded-full bg-brand"
         />
       ) : null}
       <SidebarIcon
         name={item.icon}
         className={cn(
           "size-[19px] transition-colors",
-          active ? "text-primary" : "text-muted-subtle group-hover:text-foreground",
+          active ? "text-brand" : "text-muted-subtle group-hover:text-foreground-strong",
         )}
       />
       <span className="truncate">{item.label}</span>
@@ -493,21 +507,21 @@ function CollapsedMagneticNavItem({
       aria-current={active ? "page" : undefined}
       aria-describedby={tooltipId}
       aria-label={item.label}
-      className="group/rail-item relative flex size-10 items-center justify-center rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+      className="group/rail-item relative flex size-10 items-center justify-center rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
     >
       {active ? (
         <span
           aria-hidden="true"
-          className="absolute -left-[14px] top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary"
+          className="absolute -left-[14px] top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-brand"
         />
       ) : null}
       <span
         ref={surfaceRef}
         className={cn(
-          "flex size-10 items-center justify-center rounded-[8px] transition-[transform,background-color,color,box-shadow] duration-[160ms] ease-out will-change-transform motion-reduce:transform-none motion-reduce:transition-none",
+          "flex size-10 items-center justify-center rounded-control transition-[transform,background-color,color,box-shadow] duration-[160ms] ease-out will-change-transform motion-reduce:transform-none motion-reduce:transition-none",
           active
-            ? "bg-selected text-primary"
-            : "text-muted-subtle group-hover/rail-item:bg-card-muted group-hover/rail-item:text-foreground group-hover/rail-item:shadow-[0_8px_20px_rgb(0_0_0_/_0.24)] group-focus-visible/rail-item:bg-card-muted group-focus-visible/rail-item:text-foreground group-focus-visible/rail-item:shadow-[0_8px_20px_rgb(0_0_0_/_0.24)]",
+            ? "bg-selected text-brand"
+            : "text-muted-subtle group-hover/rail-item:bg-deep-contrast group-hover/rail-item:text-white group-hover/rail-item:shadow-[0_8px_20px_rgb(23_52_84_/_0.24)] group-focus-visible/rail-item:bg-deep-contrast group-focus-visible/rail-item:text-white group-focus-visible/rail-item:shadow-[0_8px_20px_rgb(23_52_84_/_0.24)]",
         )}
       >
         <SidebarIcon name={item.icon} className="size-5" />
@@ -515,7 +529,7 @@ function CollapsedMagneticNavItem({
       <span
         id={tooltipId}
         role="tooltip"
-        className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-[6px] border border-border bg-card-muted px-2.5 py-1.5 text-xs font-semibold text-foreground opacity-0 shadow-[0_14px_30px_rgb(0_0_0_/_0.35)] transition-opacity duration-150 delay-0 group-hover/rail-item:visible group-hover/rail-item:opacity-100 group-hover/rail-item:delay-[160ms] group-focus-visible/rail-item:visible group-focus-visible/rail-item:opacity-100 motion-reduce:transition-none"
+        className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 delay-0 group-hover/rail-item:visible group-hover/rail-item:opacity-100 group-hover/rail-item:delay-[160ms] group-focus-visible/rail-item:visible group-focus-visible/rail-item:opacity-100 motion-reduce:transition-none"
       >
         {item.label}
       </span>
@@ -548,13 +562,13 @@ function AccountSection({
         aria-label="Open profile and settings"
         title="Profile & settings"
         className={cn(
-          "group/settings relative flex items-center rounded-[8px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+          "group/settings relative flex items-center rounded-control transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
           collapsed
             ? "size-10 justify-center"
             : "gap-3 px-2.5 py-2",
           active
-            ? "bg-selected text-foreground"
-            : "text-muted hover:bg-card-muted hover:text-foreground",
+            ? "bg-selected text-primary"
+            : "text-muted hover:bg-card-muted hover:text-foreground-strong",
         )}
       >
         {collapsed ? (
@@ -566,7 +580,7 @@ function AccountSection({
             />
             <span
               role="tooltip"
-              className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-[6px] border border-border bg-card-muted px-2.5 py-1.5 text-xs font-semibold text-foreground opacity-0 shadow-[0_14px_30px_rgb(0_0_0_/_0.35)] transition-opacity duration-150 delay-0 group-hover/settings:visible group-hover/settings:opacity-100 group-hover/settings:delay-[160ms] group-focus-visible/settings:visible group-focus-visible/settings:opacity-100 motion-reduce:transition-none"
+              className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 delay-0 group-hover/settings:visible group-hover/settings:opacity-100 group-hover/settings:delay-[160ms] group-focus-visible/settings:visible group-focus-visible/settings:opacity-100 motion-reduce:transition-none"
             >
               Profile & settings
             </span>
@@ -579,7 +593,7 @@ function AccountSection({
               photoUrl={photoUrl}
             />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-foreground">
+              <p className="truncate text-sm font-semibold text-foreground-strong">
                 {displayName}
               </p>
               <p className="truncate text-xs text-muted-subtle">
@@ -589,7 +603,7 @@ function AccountSection({
             <Settings
               className={cn(
                 "size-4 shrink-0",
-                active ? "text-primary" : "text-muted-subtle",
+                active ? "text-brand" : "text-muted-subtle",
               )}
               aria-hidden="true"
             />
@@ -610,7 +624,7 @@ function UserAvatar({
   photoUrl: string | null;
 }) {
   return (
-    <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-card-muted text-xs font-semibold text-foreground">
+    <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-deep-contrast text-xs font-semibold text-white">
       {photoUrl ? (
         <Image
           src={photoUrl}

@@ -338,7 +338,7 @@ export function HookVideoLibraryTab() {
               </p>
               <Link
                 href="/dashboard"
-                className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
                 Open Trending
               </Link>
@@ -390,7 +390,7 @@ export function HookVideoLibraryTab() {
                     <button
                       type="button"
                       onClick={() => void openPreview(item)}
-                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control bg-foreground-strong px-3 text-xs font-semibold text-white hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
                       <Eye className="size-3.5" aria-hidden="true" />
                       Preview

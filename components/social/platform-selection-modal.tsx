@@ -127,7 +127,7 @@ const platforms: PlatformDefinition[] = [
     platform: "tiktok",
   },
   {
-    description: "YouTube accepts video uploads, not slideshow posts.",
+    description: "YouTube accepts video uploads, not carousel posts.",
     label: "YouTube",
     platform: "youtube",
   },
@@ -142,7 +142,7 @@ const stepDetails: Record<
 > = {
   accounts: {
     description:
-      "Choose the exact Instagram or TikTok account for this slideshow. YouTube is visible but unavailable for slideshow posts.",
+      "Choose the exact Instagram or TikTok account for this carousel. YouTube is visible but unavailable for carousel posts.",
     number: 2,
     title: "Select platforms",
   },
@@ -153,7 +153,7 @@ const stepDetails: Record<
     title: "Content details",
   },
   schedule: {
-    description: "Choose when this slideshow should be published.",
+    description: "Choose when this carousel should be published.",
     number: 4,
     title: "Schedule",
   },
@@ -648,7 +648,7 @@ export function PlatformSelectionModal({
       onOpenChange(false);
     } catch (error) {
       setConfirmError(
-        getErrorMessage(error, "Could not schedule this slideshow."),
+        getErrorMessage(error, "Could not schedule this carousel."),
       );
       setRecoveryDraftId(
         error instanceof CarouselScheduleRecoveryError ? error.draftId : null,
@@ -675,7 +675,7 @@ export function PlatformSelectionModal({
         className="max-h-[calc(100vh-2rem)] overflow-hidden p-0 sm:max-w-3xl"
         showCloseButton={!submitting}
       >
-        <div className="border-b border-border bg-card">
+        <div className="border-b border-border bg-white">
           <DialogHeader className="px-5 pb-4 pt-5 pr-14 sm:px-6 sm:pr-14">
             <DialogTitle className="text-xl font-semibold">
               {currentStep.title}
@@ -719,7 +719,7 @@ export function PlatformSelectionModal({
           {submitting ? (
             <Alert className="border-success/20 bg-success/5 text-success">
               <LoaderCircle className="animate-spin" />
-              <AlertTitle>Scheduling slideshow</AlertTitle>
+              <AlertTitle>Scheduling carousel</AlertTitle>
               <AlertDescription className="text-success">
                 Saving the exact account settings and creating the calendar
                 schedule.
@@ -735,7 +735,7 @@ export function PlatformSelectionModal({
               selectedConnectionIds={selectedConnectionIds}
               onConnect={(definition, connection) => {
                 if (!context) {
-                  setLoadError("Choose a saved Library slideshow first.");
+                  setLoadError("Choose a saved Library carousel first.");
                   return;
                 }
 
@@ -789,7 +789,7 @@ export function PlatformSelectionModal({
         </div>
 
         {!submitting ? (
-          <DialogFooter className="border-t border-border bg-card px-5 py-4 sm:px-6">
+          <DialogFooter className="border-t border-border bg-white px-5 py-4 sm:px-6">
             {step === "accounts" ? (
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Cancel
@@ -899,7 +899,7 @@ function AccountsStep({
         </FieldLegend>
         <FieldDescription>
           Choose the exact account. YouTube is unavailable because it accepts
-          video uploads, not slideshow posts.
+          video uploads, not carousel posts.
         </FieldDescription>
         {loading ? (
           <FieldGroup>
@@ -994,7 +994,7 @@ function DetailsStep({
 }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-      <div className="self-start overflow-hidden rounded-card border border-border bg-card">
+      <div className="self-start overflow-hidden rounded-lg border border-border bg-white">
         {context?.coverUrl ? (
           // Carousel slides are already rendered production media.
           // eslint-disable-next-line @next/next/no-img-element
@@ -1008,12 +1008,12 @@ function DetailsStep({
             <Camera className="size-8" aria-hidden="true" />
           </div>
         )}
-        <div className="border-t border-border bg-card px-3 py-3">
+        <div className="border-t border-border bg-white px-3 py-3">
           <p className="text-xs font-semibold text-muted-foreground">
-            Slideshow
+            Carousel
           </p>
           <p className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">
-            {context?.title ?? "Saved slideshow"}
+            {context?.title ?? "Saved carousel"}
           </p>
         </div>
       </div>
@@ -1029,7 +1029,7 @@ function DetailsStep({
             value={caption}
             onChange={(event) => onCaptionChange(event.target.value)}
             placeholder="Leave blank to publish without a caption."
-            className="mt-2 min-h-28 w-full resize-y rounded-control border border-border bg-card-muted px-3 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
+            className="mt-2 min-h-28 w-full resize-y rounded-lg border border-border bg-white px-3 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary"
           />
           <span className="mt-1 block text-right text-xs text-muted-foreground">
             {caption.length}/5000
@@ -1043,7 +1043,7 @@ function DetailsStep({
           >
             Publishing settings
           </h3>
-          <div className="mt-2 divide-y divide-border rounded-card border border-border bg-card px-3">
+          <div className="mt-2 divide-y divide-border rounded-lg border border-border bg-white px-3">
             {selectedConnections.map((connection) => (
               <CarouselAccountSettings
                 key={connection.id}
@@ -1101,7 +1101,7 @@ function CarouselAccountSettings({
 
       {connection.platform === "instagram" ? (
         <p className="mt-2 text-xs leading-5 text-muted-foreground">
-          This will publish as an Instagram feed slideshow.
+          This will publish as an Instagram feed carousel.
         </p>
       ) : (
         <TikTokCarouselSettings
@@ -1159,7 +1159,7 @@ function TikTokCarouselSettings({
         <select
           value={privacyLevel}
           onChange={(event) => onChange("privacyLevel", event.target.value)}
-          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card-muted px-3 text-sm text-foreground outline-none hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
+          className="mt-1.5 h-10 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary"
         >
           <option value="">Select visibility</option>
           {capabilities.privacyLevels.map((level) => (
@@ -1221,7 +1221,7 @@ function ScheduleChoiceStep({
   return (
     <div>
       <p className="text-center text-sm text-muted-foreground">
-        How would you like to post this slideshow?
+        How would you like to post this carousel?
       </p>
       <div className="mt-5 grid gap-3">
         <ScheduleChoice
@@ -1256,7 +1256,7 @@ function ScheduleChoice({
     <button
       type="button"
       onClick={onClick}
-      className="group flex min-h-24 items-center gap-4 rounded-card border border-border bg-card px-4 py-4 text-left transition hover:border-primary/50 hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-5"
+      className="group flex min-h-24 items-center gap-4 rounded-lg border border-border bg-white px-4 py-4 text-left transition hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-5"
     >
       <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
         {icon}
@@ -1336,7 +1336,7 @@ function LaterScheduleStep({
             min={minimumDate}
             value={date}
             onChange={(event) => onDateChange(event.target.value)}
-            className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-3 text-sm text-foreground outline-none hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
+            className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary"
           />
         </label>
         <label className="block">
@@ -1348,7 +1348,7 @@ function LaterScheduleStep({
             type="time"
             value={time}
             onChange={(event) => onTimeChange(event.target.value)}
-            className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-3 text-sm text-foreground outline-none hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
+            className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary"
           />
         </label>
       </div>
@@ -1358,7 +1358,7 @@ function LaterScheduleStep({
         <select
           value={timezone}
           onChange={(event) => onTimezoneChange(event.target.value)}
-          className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-3 text-sm text-foreground outline-none hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
+          className="mt-2 h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary"
         >
           {getTimezoneOptions(timezone).map((option) => (
             <option key={option} value={option}>
@@ -1386,7 +1386,7 @@ function QuickSlot({ label, onClick }: { label: string; onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="rounded-control border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {label}
     </button>
@@ -1503,7 +1503,7 @@ function getDefaultPublishingSettings(
 
 function getCarouselAccountUnavailableMessage(connection: SocialConnection) {
   if (connection.platform === "youtube") {
-    return "YouTube accepts video uploads, not slideshow posts.";
+    return "YouTube accepts video uploads, not carousel posts.";
   }
 
   return getConnectionPublishingBlockMessage(connection);

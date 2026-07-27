@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+
+import { AppShell } from "@/components/layout/app-shell";
+import { VideoGenerationWorkspace } from "@/components/video/video-generation-workspace";
 
 export const metadata: Metadata = {
-  title: "AI Studio",
-  description: "Configure Instagram images and short-form videos in one focused workspace.",
+  title: "Video Gen",
+  description: "Generate influencer-led UGC hook videos.",
 };
 
 export default function VideoGenPage() {
-  redirect("/ai-studio?mode=videos");
+  return (
+    <AppShell activeKey="video-gen">
+      <VideoGenerationWorkspace />
+    </AppShell>
+  );
 }

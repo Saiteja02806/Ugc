@@ -4,8 +4,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { SchedulingWorkspace } from "@/components/scheduling/scheduling-workspace";
 
 export const metadata: Metadata = {
-  title: "Instagram Content Calendar",
-  description: "Plan, review, and publish upcoming Instagram content.",
+  title: "Scheduling",
+  description: "Plan and organize upcoming social posts.",
 };
 
 export default function SchedulingPage() {

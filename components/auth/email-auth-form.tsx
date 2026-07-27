@@ -4,6 +4,7 @@ import { ArrowRight, KeyRound, LoaderCircle, Lock, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { buttonClassName } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import {
   getFirebaseAuthErrorMessage,
@@ -88,8 +89,8 @@ export function EmailAuthForm() {
   }
 
   return (
-    <div className="mt-6">
-      <div className="mb-5 grid grid-cols-2 rounded-[var(--radius-control)] border border-border bg-card-muted p-1">
+    <div className="mt-6 border-t border-border pt-6">
+      <div className="mb-5 grid grid-cols-2 rounded-md bg-card-muted p-1">
         <button
           type="button"
           onClick={() => switchMode("sign-in")}
@@ -156,7 +157,7 @@ export function EmailAuthForm() {
               type="button"
               onClick={handlePasswordReset}
               disabled={isResettingPassword || isSubmitting}
-              className="inline-flex items-center gap-2 rounded-control px-2 py-1 text-sm font-bold text-muted transition hover:bg-card-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 text-sm font-bold text-primary transition hover:text-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               <KeyRound className="size-4" aria-hidden="true" />
               {isResettingPassword ? "Sending..." : "Reset password"}
@@ -167,7 +168,9 @@ export function EmailAuthForm() {
         <button
           type="submit"
           disabled={isSubmitting || isResettingPassword}
-          className={submitButtonClassName}
+          className={buttonClassName({
+            className: "h-12 w-full gap-2 rounded-2xl",
+          })}
         >
           {isSubmitting ? (
             <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
@@ -185,13 +188,13 @@ export function EmailAuthForm() {
       </form>
 
       {statusMessage ? (
-        <p className="mt-4 rounded-control border border-success/30 bg-success/10 px-3 py-2 text-sm font-semibold text-success">
+        <p className="mt-4 text-center text-sm font-semibold text-success">
           {statusMessage}
         </p>
       ) : null}
 
       {errorMessage ? (
-        <p className="mt-4 rounded-control border border-error/35 bg-error/10 px-3 py-2 text-sm font-semibold text-error">
+        <p className="mt-4 text-center text-sm font-semibold text-error">
           {errorMessage}
         </p>
       ) : null}
@@ -200,16 +203,13 @@ export function EmailAuthForm() {
 }
 
 const inputClassName =
-  "h-12 w-full rounded-control border border-border bg-card-muted py-2 pl-10 pr-3 text-sm font-semibold text-foreground outline-none transition placeholder:text-muted-subtle hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20";
-
-const submitButtonClassName =
-  "inline-flex h-12 w-full items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-bold text-primary-foreground shadow-[0_12px_28px_rgb(225_101_64_/_0.18)] transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 disabled:cursor-not-allowed disabled:opacity-50";
+  "h-12 w-full rounded-md border border-border bg-white py-2 pl-10 pr-3 text-sm font-semibold text-foreground outline-none transition placeholder:text-muted-subtle focus:border-focus focus:ring-2 focus:ring-focus/20";
 
 function modeButtonClassName(isActive: boolean) {
   return cn(
-    "h-9 rounded-[8px] text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+    "h-9 rounded-md text-sm font-bold transition",
     isActive
-      ? "bg-selected text-foreground-strong shadow-sm ring-1 ring-primary/20"
-      : "text-muted hover:bg-card hover:text-foreground",
+      ? "bg-white text-foreground shadow-sm ring-1 ring-black/5"
+      : "text-muted hover:text-foreground",
   );
 }

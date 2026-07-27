@@ -159,8 +159,6 @@ export function ReferenceImageAttachment({
       <input
         ref={inputRef}
         type="file"
-        name="referenceImage"
-        aria-label="Reference image"
         accept={REFERENCE_IMAGE_ACCEPT}
         onChange={onInputChange}
         className="hidden"
@@ -169,7 +167,7 @@ export function ReferenceImageAttachment({
         type="button"
         variant="outline"
         size="icon-lg"
-        className="col-start-1 row-start-1 border-border bg-background text-muted hover:bg-surface-subtle hover:text-foreground focus-visible:ring-focus/50"
+        className="col-start-1 row-start-1"
         aria-label={label}
         title={label}
         disabled={disabled || isReading}
@@ -200,7 +198,7 @@ export function ReferenceImageAttachment({
           {isReading && !selection ? (
             <div
               role="status"
-              className="flex items-center gap-2 rounded-lg bg-card px-3 py-2 text-sm font-medium text-muted"
+              className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm font-medium text-muted-foreground"
             >
               <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
               Checking reference image…
@@ -208,7 +206,7 @@ export function ReferenceImageAttachment({
           ) : null}
 
           {selection ? (
-            <div className="flex min-w-0 items-center gap-3 rounded-lg bg-card px-2.5 py-2 ring-1 ring-border">
+            <div className="flex min-w-0 items-center gap-3 rounded-lg bg-muted px-2.5 py-2 ring-1 ring-border">
               <div className="relative size-12 shrink-0 overflow-hidden rounded-md bg-background">
                 <Image
                   src={selection.previewUrl}
@@ -222,7 +220,7 @@ export function ReferenceImageAttachment({
 
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-foreground">Reference image</p>
-                <p className="truncate text-xs text-muted">
+                <p className="truncate text-xs text-muted-foreground">
                   {selection.file.name} · {selection.width}×{selection.height} ·{" "}
                   {formatReferenceImageBytes(selection.file.size)}
                 </p>
@@ -233,7 +231,6 @@ export function ReferenceImageAttachment({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="border-border bg-background text-foreground hover:bg-surface-subtle hover:text-foreground"
                   disabled={disabled || isReading}
                   aria-label="Replace reference image"
                   title="Replace reference image"
@@ -246,7 +243,6 @@ export function ReferenceImageAttachment({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  className="text-muted-subtle hover:bg-surface-subtle hover:text-foreground"
                   disabled={disabled || isReading}
                   aria-label={`Remove ${selection.file.name}`}
                   title="Remove reference image"

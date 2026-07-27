@@ -34,10 +34,6 @@ import type {
   SocialPlatform,
 } from "@/lib/social/types";
 
-export {
-  InstagramAnalyticsWorkspace as AnalyticsDashboard,
-} from "@/components/analytics/instagram-analytics-workspace";
-
 type AnalyticsLoadState = "error" | "loading" | "ready";
 
 type ConnectionsResponse = {
@@ -174,13 +170,7 @@ const connectionStatusLabels: Record<SocialConnectionStatus, string> = {
   revoked: "Access revoked",
 };
 
-/**
- * Dormant multi-platform analytics workspace retained for the later data
- * migration. The user-facing Analytics route now renders the Instagram-only
- * workspace. TikTok fetching and aggregation remain intact here instead of
- * being deleted.
- */
-export function DormantMultiPlatformAnalyticsDashboard() {
+export function AnalyticsDashboard() {
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [schedules, setSchedules] = useState<ScheduledPost[]>([]);
   const [tiktokAnalyticsAccounts, setTikTokAnalyticsAccounts] = useState<
@@ -1362,7 +1352,7 @@ function ManageAccountsLink({
 }) {
   return (
     <Link
-      href="/settings#instagram-publishing"
+      href="/connected-accounts"
       className={buttonClassName({
         className: `w-fit gap-2 ${className}`,
         variant: "secondary",

@@ -218,7 +218,7 @@ export function HookVideoDeck({
         <button
           type="button"
           onClick={onCompose}
-          className="inline-flex size-13 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_20px_rgb(225_101_64_/_0.2)] transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          className="inline-flex size-13 items-center justify-center rounded-full bg-primary text-white shadow-[0_8px_20px_rgb(255_72_34_/_0.2)] transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           aria-label="Add a product demo"
           title="Add product demo"
         >

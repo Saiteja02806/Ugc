@@ -373,10 +373,20 @@ export function HookVideoWorkspace({ active }: { active: boolean }) {
 
   return (
     <section
-      className="relative mt-6"
+      className="relative mt-6 overflow-hidden rounded-panel border border-border bg-card shadow-card"
       data-hook-browse-mode={browseMode}
       data-hook-video-stage={flowState.stage}
     >
+      <div className="flex min-h-14 items-center justify-between border-b border-border px-4 py-2.5 sm:px-5">
+        <p className="flex items-center gap-2 text-xs font-semibold text-muted">
+          <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
+          Hook videos
+        </p>
+        <p className="text-xs font-medium text-muted">
+          {flowState.stage === "browse" ? "Browse" : "Compose"}
+        </p>
+      </div>
+
       {isLoading ? <HookWorkspaceLoading /> : null}
 
       {!isLoading && errorMessage ? (
@@ -431,9 +441,9 @@ export function HookVideoWorkspace({ active }: { active: boolean }) {
             onSkip={handleSkip}
           />
           {noticeMessage ? (
-            <p className="mt-3 text-center text-xs font-semibold text-muted">
+            <div className="border-t border-border bg-card-muted/55 px-5 py-2.5 text-center text-xs font-semibold text-muted">
               {noticeMessage}
-            </p>
+            </div>
           ) : null}
         </>
       ) : null}
@@ -535,7 +545,7 @@ function HookWorkspaceEmpty({
           <button
             type="button"
             onClick={onChoose}
-            className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             <Video className="size-4" aria-hidden="true" />
             Choose

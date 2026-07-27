@@ -119,44 +119,8 @@ type GeneratedVideo = {
 const videoRatios: VideoRatio[] = ["9:16", "1:1", "4:5", "16:9"];
 const videoCountOptions: VideoCount[] = [1, 2, 4];
 const VIDEO_GENERATION_LOCKED = true;
-const instagramVideoFormatLabels: Record<VideoRatio, string> = {
-  "9:16": "Reel",
-  "1:1": "Square",
-  "4:5": "Feed",
-  "16:9": "Landscape",
-};
 
 export function VideoGenerationWorkspace() {
-  return (
-    <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
-      <header className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
-            AI Studio
-          </h1>
-          <p className="mt-1 text-sm font-medium leading-6 text-muted">
-            Generate images and videos from one focused workspace.
-          </p>
-        </div>
-
-        <div className="inline-flex h-8 w-fit items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-xs font-semibold text-muted">
-          <Lock className="size-3.5" aria-hidden="true" />
-          Preview mode
-        </div>
-      </header>
-
-      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col pt-5">
-        <VideoGenerationStudioPanel />
-      </div>
-    </section>
-  );
-}
-
-export function VideoGenerationStudioPanel({
-  active = true,
-}: {
-  active?: boolean;
-}) {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
   const [prompt, setPrompt] = useState("");
@@ -216,7 +180,7 @@ export function VideoGenerationStudioPanel({
         setPersonalAvatarAssets([]);
         setSelectedAvatarId(null);
         setAvatarLoading(false);
-        setAvatarErrorMessage("Sign in before choosing a presenter.");
+        setAvatarErrorMessage("Sign in before choosing influencers.");
         return;
       }
 
@@ -226,7 +190,7 @@ export function VideoGenerationStudioPanel({
         const token = await getCurrentUserIdToken();
 
         if (!token) {
-          throw new Error("Sign in before choosing a presenter.");
+          throw new Error("Sign in before choosing influencers.");
         }
 
         const [libraryResult, personalResult] = await Promise.allSettled([
@@ -248,7 +212,7 @@ export function VideoGenerationStudioPanel({
               result.status === "rejected",
           )
           .map((result) =>
-            getErrorMessage(result.reason, "Could not load presenters."),
+            getErrorMessage(result.reason, "Could not load influencers."),
           );
 
         setAvatarLibrary(nextAvatarLibrary);
@@ -272,7 +236,7 @@ export function VideoGenerationStudioPanel({
           setPersonalAvatarAssets([]);
           setSelectedAvatarId(null);
           setAvatarErrorMessage(
-            getErrorMessage(error, "Could not load presenters."),
+            getErrorMessage(error, "Could not load influencers."),
           );
         }
       } finally {
@@ -299,8 +263,8 @@ export function VideoGenerationStudioPanel({
     if (!selectedAvatar) {
       setActionNotice(
         avatarLoading
-          ? "Presenter library is still loading."
-          : "Choose a presenter before generating.",
+          ? "Influencer library is still loading."
+          : "Choose an influencer before generating.",
       );
       return;
     }
@@ -360,13 +324,24 @@ export function VideoGenerationStudioPanel({
   }
 
   return (
-    <div
-      id="ai-studio-videos-panel"
-      role="tabpanel"
-      aria-labelledby="ai-studio-videos-tab"
-      hidden={!active}
-      className={cn("min-h-0 flex-1 flex-col gap-4", active ? "flex" : "hidden")}
-    >
+    <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
+      <header className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
+            Video generation
+          </h1>
+          <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
+            Create influencer-led hooks and short-form ad videos.
+          </p>
+        </div>
+
+        <div className="inline-flex h-8 w-fit items-center gap-2 rounded-full border border-border/80 bg-white/70 px-3 text-xs font-semibold text-[#405977] shadow-sm">
+          <span className="size-2 rounded-full bg-success" />
+          Ready
+        </div>
+      </header>
+
+      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-4 pt-5">
         <VideoResultsArea
           actionNotice={actionNotice}
           generatedVideos={generatedVideos}
@@ -378,7 +353,6 @@ export function VideoGenerationStudioPanel({
         />
 
         <VideoPromptBar
-          active={active}
           avatarErrorMessage={avatarErrorMessage}
           avatarLoading={avatarLoading}
           avatar={selectedAvatar}
@@ -397,7 +371,8 @@ export function VideoGenerationStudioPanel({
           onTextareaKeyDown={handleTextareaKeyDown}
           onVideoCountChange={setVideoCount}
         />
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -418,7 +393,7 @@ async function fetchAvatarLibrary(token: string) {
   const data = (await response.json()) as AvatarListResponse;
 
   if (!response.ok || data.ok !== true) {
-    throw new Error(getApiErrorMessage(data, "Could not load the presenter library."));
+    throw new Error(getApiErrorMessage(data, "Could not load influencer library."));
   }
 
   return data.avatars;
@@ -434,7 +409,7 @@ async function fetchPersonalInfluencers(token: string) {
     | { error?: string; ok?: false };
 
   if (!response.ok || data.ok !== true) {
-    throw new Error(getApiErrorMessage(data, "Could not load your source videos."));
+    throw new Error(getApiErrorMessage(data, "Could not load your influencers."));
   }
 
   return data.assets;
@@ -490,30 +465,24 @@ function VideoResultsArea({
   selectedVideoId: string | null;
 }) {
   return (
-    <div
-      className={cn(
-        "relative flex flex-1 flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-card-muted/35 px-4 sm:px-6",
-        generatedVideos.length > 0
-          ? "min-h-[360px] py-8 sm:min-h-[430px]"
-          : "min-h-[220px] py-6 sm:min-h-[250px]",
-      )}
-    >
-      <h2 className="sr-only">Generated videos</h2>
-
-      {generatedVideos.length > 0 ? (
-        <span className="absolute right-4 top-4 text-xs font-semibold text-muted sm:right-6">
-          {generatedVideos.length} total
-        </span>
-      ) : null}
+    <div className="relative flex min-h-[300px] flex-1 flex-col overflow-hidden rounded-[28px] border border-border/70 bg-white/35 p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-bold text-foreground">Generated videos</h2>
+        {generatedVideos.length > 0 ? (
+          <span className="text-xs font-semibold text-muted">
+            {generatedVideos.length} total
+          </span>
+        ) : null}
+      </div>
 
       {generationState === "failed" ? (
         <div
           role="alert"
-          className="absolute left-4 top-4 w-fit rounded-full border border-error/35 bg-error/10 px-3 py-2 text-xs font-semibold text-error shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-6"
+          className="mt-3 w-fit rounded-full border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold text-error"
         >
           <div className="flex items-center gap-2">
             <AlertCircle className="size-3.5" aria-hidden="true" />
-            Video generation failed. Review the prompt and try again.
+            Video generation failed. Please try again.
           </div>
         </div>
       ) : null}
@@ -521,27 +490,23 @@ function VideoResultsArea({
       {generationState === "generating" ? (
         <div
           role="status"
-          className="absolute left-4 top-4 w-fit rounded-full border border-border bg-card-muted px-3 py-2 text-xs font-semibold text-foreground shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-6"
+          className="mt-3 w-fit rounded-full border border-border bg-white/85 px-3 py-2 text-xs font-semibold text-foreground shadow-sm"
         >
           <div className="flex items-center gap-2">
-            <Loader2 className="size-3.5 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
-            Creating your video…
+            <Loader2 className="size-3.5 animate-spin text-primary" />
+            Creating your video...
           </div>
         </div>
       ) : null}
 
       {actionNotice ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="absolute left-4 top-4 w-fit rounded-[var(--radius-control)] border border-border bg-card px-3 py-2 text-xs font-medium text-muted shadow-card sm:left-6"
-        >
+        <div className="mt-3 w-fit rounded-full border border-border bg-white/85 px-3 py-2 text-xs font-semibold text-[#405977] shadow-sm">
           {actionNotice}
         </div>
       ) : null}
 
       {generatedVideos.length > 0 ? (
-        <div className="grid flex-1 auto-rows-min grid-cols-1 gap-4 overflow-y-auto pb-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="mt-4 grid flex-1 auto-rows-min grid-cols-1 gap-4 overflow-y-auto pb-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {generatedVideos.map((video) => (
             <VideoResultCard
               key={video.id}
@@ -554,16 +519,14 @@ function VideoResultsArea({
           ))}
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center px-4 py-6 text-center">
-          <div className="max-w-sm">
-            <span className="mx-auto flex size-10 items-center justify-center rounded-[var(--radius-control)] border border-primary/20 bg-brand-soft text-primary">
-              <Video className="size-4.5" aria-hidden="true" />
-            </span>
-            <h3 className="mt-3 text-sm font-semibold text-foreground">
-              Reel workspace
-            </h3>
-            <p className="mt-1 text-sm leading-5 text-muted">
-              Generated Instagram videos will appear here when generation is enabled.
+        <div className="flex flex-1 items-center justify-center px-4 py-10 text-center">
+          <div>
+            <Video className="mx-auto size-7 text-[#9aa7b8]" />
+            <p className="mt-3 text-sm font-semibold text-[#405977]">
+              Generated videos will appear here.
+            </p>
+            <p className="mt-1 text-sm font-medium text-muted">
+              Start by describing the video you want to create.
             </p>
           </div>
         </div>
@@ -573,7 +536,6 @@ function VideoResultsArea({
 }
 
 function VideoPromptBar({
-  active,
   avatar,
   avatarErrorMessage,
   avatarLoading,
@@ -592,7 +554,6 @@ function VideoPromptBar({
   selectedAvatarId,
   videoCount,
 }: {
-  active: boolean;
   avatar: AvatarOption | null;
   avatarErrorMessage: string | null;
   avatarLoading: boolean;
@@ -620,19 +581,15 @@ function VideoPromptBar({
       return;
     }
 
-    if (!active) {
-      return;
-    }
-
-    textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 44), 132)}px`;
-  }, [active, prompt]);
+    textarea.style.height = "44px";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 132)}px`;
+  }, [prompt]);
 
   return (
     <form
       noValidate
       onSubmit={onSubmit}
-      className="mx-auto w-full max-w-[1120px] rounded-[var(--radius-card)] border border-border bg-card p-3 shadow-card transition-[border-color,box-shadow] focus-within:border-primary/45 focus-within:ring-2 focus-within:ring-primary/10 sm:p-4"
+      className="rounded-[24px] border border-border/80 bg-white/95 p-3 shadow-[0_16px_50px_rgb(16_32_51_/_0.10)] backdrop-blur sm:p-4"
     >
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2">
         <ReferenceImageAttachment disabled={isGenerating} />
@@ -640,22 +597,18 @@ function VideoPromptBar({
         <textarea
           ref={textareaRef}
           rows={1}
-          aria-label="Video prompt"
-          autoComplete="off"
-          name="videoPrompt"
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
           onKeyDown={onTextareaKeyDown}
-          className="col-start-2 row-start-1 max-h-32 min-h-11 min-w-0 resize-none overflow-y-hidden bg-transparent px-1 py-2.5 text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle"
-          placeholder="Describe your Reel…"
+          className="col-start-2 row-start-1 max-h-32 min-h-11 min-w-0 resize-none bg-transparent px-1 py-2.5 text-sm font-medium leading-6 text-foreground outline-none placeholder:text-[#8c9aab]"
+          placeholder="Describe the video you want to create..."
         />
 
         <button
           type="submit"
           disabled={VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating || !avatar}
-          aria-label={VIDEO_GENERATION_LOCKED ? "Video generation locked" : "Generate video"}
           title={VIDEO_GENERATION_LOCKED ? "Video generation is locked" : undefined}
-          className="col-start-3 row-start-1 inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[118px]"
+          className="col-start-3 row-start-1 inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(255_107_74_/_0.22)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[118px]"
         >
           {VIDEO_GENERATION_LOCKED ? (
             <>
@@ -664,19 +617,19 @@ function VideoPromptBar({
             </>
           ) : isGenerating ? (
             <>
-              <span className="hidden sm:inline">Generating…</span>
-              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              <span className="hidden sm:inline">Generating</span>
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             </>
           ) : (
             <>
-              Generate video
+              Generate
               <Sparkles className="size-4" aria-hidden="true" />
             </>
           )}
         </button>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
         <RatioSelector value={ratio} onChange={onRatioChange} />
         <VideoCountSelector value={videoCount} onChange={onVideoCountChange} />
         <AvatarPicker
@@ -692,7 +645,7 @@ function VideoPromptBar({
           type="button"
           onClick={onEnhancePrompt}
           disabled={isGenerating}
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition hover:bg-[#fff8f4] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
           Enhance
@@ -760,9 +713,8 @@ function RatioSelector({
         id={controlId}
         role="radiogroup"
         aria-label="Video ratio"
-        aria-hidden={!open}
         className={cn(
-          "absolute bottom-[calc(100%+6px)] left-0 z-30 flex w-[140px] flex-col gap-1 overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out motion-reduce:transition-none",
+          "absolute bottom-[calc(100%+6px)] left-0 z-30 flex w-[96px] flex-col gap-1 overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out",
           open
             ? "max-h-44 translate-y-0 opacity-100"
             : "pointer-events-none max-h-0 translate-y-2 opacity-0",
@@ -784,15 +736,14 @@ function RatioSelector({
               onClick={() => selectRatio(ratio)}
               onKeyDown={(event) => handleOptionKeyDown(event, index)}
               className={cn(
-                "inline-flex h-8 w-full items-center gap-2 rounded-[var(--radius-control)] border px-2.5 text-sm font-medium shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                "inline-flex h-8 w-fit min-w-[68px] items-center gap-2 rounded-xl border px-2.5 text-sm font-semibold shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                 selected
-                  ? "border-primary/40 bg-brand-soft text-primary"
-                  : "border-border bg-card text-foreground hover:border-border-strong hover:bg-card-muted",
+                  ? "border-primary/60 bg-primary/10 text-primary"
+                  : "border-border bg-white text-[#173454] hover:bg-[#faf7f2]",
               )}
             >
               <RatioGlyph active={selected} ratio={ratio} />
-              <span>{ratio}</span>
-              <span className="text-xs text-muted">{instagramVideoFormatLabels[ratio]}</span>
+              {ratio}
             </button>
           );
         })}
@@ -803,16 +754,15 @@ function RatioSelector({
         type="button"
         aria-expanded={open}
         aria-controls={controlId}
-        aria-haspopup="menu"
         onClick={() => setOpen((currentOpen) => !currentOpen)}
         onKeyDown={handleTriggerKeyDown}
-        className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition hover:bg-[#fff8f4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <RatioGlyph ratio={value} />
-        <span>{value} {instagramVideoFormatLabels[value]}</span>
+        <span>{value}</span>
         <ChevronDown
           className={cn(
-            "size-4 text-muted-subtle transition-transform duration-200 motion-reduce:transition-none",
+            "size-4 text-[#405977] transition-transform duration-200",
             open && "rotate-180",
           )}
           aria-hidden="true"
@@ -881,9 +831,8 @@ function VideoCountSelector({
         id={controlId}
         role="listbox"
         aria-label="Number of videos"
-        aria-hidden={!open}
         className={cn(
-          "absolute bottom-[calc(100%+6px)] left-0 z-30 flex w-[120px] flex-col gap-1 overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out motion-reduce:transition-none",
+          "absolute bottom-[calc(100%+6px)] left-0 z-30 flex w-[118px] flex-col gap-1 overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out",
           open
             ? "max-h-32 translate-y-0 opacity-100"
             : "pointer-events-none max-h-0 translate-y-2 opacity-0",
@@ -905,10 +854,10 @@ function VideoCountSelector({
               onClick={() => selectCount(count)}
               onKeyDown={(event) => handleOptionKeyDown(event, index)}
               className={cn(
-                "inline-flex h-8 w-full items-center gap-2 rounded-[var(--radius-control)] border px-2.5 text-sm font-medium shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                "inline-flex h-8 w-fit min-w-[92px] items-center gap-2 rounded-xl border px-2.5 text-sm font-semibold shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                 selected
-                  ? "border-primary/40 bg-brand-soft text-primary"
-                  : "border-border bg-card text-foreground hover:border-border-strong hover:bg-card-muted",
+                  ? "border-primary/60 bg-primary/10 text-primary"
+                  : "border-border bg-white text-[#173454] hover:bg-[#faf7f2]",
               )}
             >
               <Film className="size-3.5" aria-hidden="true" />
@@ -923,10 +872,9 @@ function VideoCountSelector({
         type="button"
         aria-expanded={open}
         aria-controls={controlId}
-        aria-haspopup="listbox"
         onClick={() => setOpen((currentOpen) => !currentOpen)}
         onKeyDown={handleTriggerKeyDown}
-        className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition hover:bg-[#fff8f4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <Film className="size-3.5" aria-hidden="true" />
         <span>
@@ -934,7 +882,7 @@ function VideoCountSelector({
         </span>
         <ChevronDown
           className={cn(
-            "size-4 text-muted-subtle transition-transform duration-200 motion-reduce:transition-none",
+            "size-4 text-[#405977] transition-transform duration-200",
             open && "rotate-180",
           )}
           aria-hidden="true"
@@ -964,10 +912,10 @@ function AvatarPicker({
   const [open, setOpen] = useState(false);
   const hasOptions = personalAvatars.length > 0 || globalAvatars.length > 0;
   const triggerLabel = avatarLoading
-    ? "Loading presenters"
+    ? "Loading influencers"
     : selectedAvatar
-      ? `Choose presenter, currently ${selectedAvatar.label}`
-      : "Choose presenter";
+      ? `Choose influencer, currently ${selectedAvatar.label}`
+      : "Choose influencer";
 
   function selectAvatar(avatarId: string) {
     onChange(avatarId);
@@ -984,7 +932,7 @@ function AvatarPicker({
             size="lg"
             className="max-w-[190px]"
             aria-label={triggerLabel}
-            title={selectedAvatar?.label ?? "Choose presenter"}
+            title={selectedAvatar?.label ?? "Choose influencer"}
           />
         }
       >
@@ -1003,7 +951,7 @@ function AvatarPicker({
           <UserRound aria-hidden="true" />
         )}
         <span className="truncate">
-          {avatarLoading ? "Loading…" : "Presenter"}
+          {avatarLoading ? "Loading" : "Influencer"}
         </span>
         <ChevronDown
           data-icon="inline-end"
@@ -1022,7 +970,7 @@ function AvatarPicker({
         className="w-[min(92vw,440px)] gap-0 p-0"
       >
         <PopoverHeader className="border-b border-border p-3">
-          <PopoverTitle>Choose a presenter</PopoverTitle>
+          <PopoverTitle>Choose an influencer</PopoverTitle>
           <PopoverDescription>
             Select by face so the on-camera style is easy to compare.
           </PopoverDescription>
@@ -1035,8 +983,8 @@ function AvatarPicker({
             <AlertCircle aria-hidden="true" />
             <AlertTitle>
               {hasOptions
-                ? "Some presenters unavailable"
-                : "Presenters unavailable"}
+                ? "Some influencers unavailable"
+                : "Influencers unavailable"}
             </AlertTitle>
             <AlertDescription>{avatarErrorMessage}</AlertDescription>
           </Alert>
@@ -1046,15 +994,15 @@ function AvatarPicker({
           <ScrollArea className="h-[min(62vh,430px)]">
             <div className="flex flex-col gap-5 p-3">
               <AvatarGroup
-                emptyMessage="No uploaded source videos yet."
-                label="Your source videos"
+                emptyMessage="No uploaded influencers yet."
+                label="Your influencers"
                 options={personalAvatars}
                 selectedAvatarId={selectedAvatarId}
                 onSelect={selectAvatar}
               />
               <AvatarGroup
-                emptyMessage="No library presenters are available yet."
-                label="Presenter library"
+                emptyMessage="No library influencers are available yet."
+                label="Influencer library"
                 options={globalAvatars}
                 selectedAvatarId={selectedAvatarId}
                 onSelect={selectAvatar}
@@ -1064,8 +1012,8 @@ function AvatarPicker({
         ) : null}
 
         {!avatarLoading && !avatarErrorMessage && !hasOptions ? (
-          <div className="p-4 text-sm font-medium text-muted">
-            No presenters are available yet.
+          <div className="p-4 text-sm font-medium text-muted-foreground">
+            No influencers are available yet.
           </div>
         ) : null}
       </PopoverContent>
@@ -1094,7 +1042,7 @@ function AvatarGroup({
         <h3 id={groupId} className="text-sm font-semibold text-foreground">
           {label}
         </h3>
-        <span className="text-xs font-medium text-muted-subtle tabular-nums">
+        <span className="text-xs font-medium text-muted-foreground">
           {options.length}
         </span>
       </div>
@@ -1115,11 +1063,11 @@ function AvatarGroup({
                 className={cn(
                   "group min-w-0 rounded-lg p-1.5 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none",
                   selected
-                    ? "bg-brand-soft ring-2 ring-primary"
-                    : "hover:bg-card-muted",
+                    ? "bg-primary/10 ring-2 ring-primary"
+                    : "hover:bg-muted",
                 )}
               >
-                <span className="relative block aspect-[3/4] overflow-hidden rounded-md bg-background">
+                <span className="relative block aspect-[3/4] overflow-hidden rounded-md bg-muted">
                   <Avatar className="size-full rounded-[inherit] after:rounded-[inherit]">
                     {avatar.thumbnailUrl ? (
                       <AvatarImage
@@ -1140,7 +1088,7 @@ function AvatarGroup({
                     </span>
                   ) : null}
                 </span>
-                <span className="mt-1.5 block truncate px-0.5 text-xs font-medium text-foreground">
+                <span className="mt-1.5 block truncate px-0.5 text-xs font-semibold text-foreground">
                   {displayName}
                 </span>
               </button>
@@ -1148,7 +1096,7 @@ function AvatarGroup({
           })}
         </div>
       ) : (
-        <p className="rounded-[var(--radius-control)] bg-card-muted px-3 py-2 text-xs font-medium leading-5 text-muted">
+        <p className="rounded-lg bg-muted px-3 py-2 text-xs font-medium leading-5 text-muted-foreground">
           {emptyMessage}
         </p>
       )}
@@ -1158,7 +1106,7 @@ function AvatarGroup({
 
 function AvatarPickerSkeleton() {
   return (
-    <div className="p-3" role="status" aria-label="Loading presenter library">
+    <div className="p-3" role="status" aria-label="Loading influencer library">
       <Skeleton className="mb-3 h-4 w-32" />
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {Array.from({ length: 8 }, (_, index) => (
@@ -1188,15 +1136,14 @@ function VideoResultCard({
   return (
     <article
       className={cn(
-        "min-w-0 rounded-[var(--radius-card)] border bg-card p-2 shadow-card transition-colors",
-        selected ? "border-success/45" : "border-border",
+        "min-w-0 rounded-2xl border bg-white p-2 shadow-sm transition",
+        selected ? "border-success/40" : "border-border",
       )}
     >
       <button
         type="button"
         onClick={onSelect}
-        aria-pressed={selected}
-        className="block w-full overflow-hidden rounded-[var(--radius-control)] bg-card-muted text-left text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="block w-full overflow-hidden rounded-xl bg-[#102033] text-left text-white"
         style={{ aspectRatio: video.ratio.replace(":", " / ") }}
       >
         {video.url ? (
@@ -1210,8 +1157,8 @@ function VideoResultCard({
         ) : (
           <div className="flex size-full items-center justify-center">
             <div className="text-center">
-              <Video className="mx-auto size-7 text-muted" aria-hidden="true" />
-              <p className="mt-2 text-xs font-medium text-muted">
+              <Video className="mx-auto size-7 text-white/70" />
+              <p className="mt-2 text-xs font-semibold text-white/70">
                 Video preview
               </p>
             </div>
@@ -1219,17 +1166,17 @@ function VideoResultCard({
         )}
       </button>
 
-      <div className="mt-3 flex flex-col gap-3 px-1 pb-1">
+      <div className="mt-3 space-y-3 px-1 pb-1">
         <div>
           <div className="flex items-center justify-between gap-2">
-            <h3 className="truncate text-sm font-semibold text-foreground">
+            <h3 className="truncate text-sm font-bold text-foreground">
               {video.title}
             </h3>
             <span
               className={cn(
-                "shrink-0 rounded-full px-2 py-1 text-[11px] font-medium",
+                "shrink-0 rounded-full px-2 py-1 text-[11px] font-bold",
                 video.status === "Ready"
-                  ? "bg-success/10 text-success"
+                  ? "bg-success/10 text-[#087443]"
                   : video.status === "Failed"
                     ? "bg-error/10 text-error"
                     : "bg-card-muted text-muted",
@@ -1238,7 +1185,7 @@ function VideoResultCard({
               {video.status}
             </span>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-medium text-muted">
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
             {video.duration ? (
               <span className="inline-flex items-center gap-1">
                 <Clock3 className="size-3" aria-hidden="true" />
@@ -1254,14 +1201,14 @@ function VideoResultCard({
           <button
             type="button"
             onClick={onEdit}
-            className="inline-flex h-8 flex-1 items-center justify-center rounded-[var(--radius-control)] bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className="inline-flex h-8 flex-1 items-center justify-center rounded-full bg-[#173454] px-3 text-xs font-bold text-white transition hover:bg-foreground"
           >
             Edit
           </button>
           <button
             type="button"
             onClick={onUseAsHook}
-            className="inline-flex h-8 flex-1 items-center justify-center rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className="inline-flex h-8 flex-1 items-center justify-center rounded-full border border-border bg-white px-3 text-xs font-bold text-[#173454] transition hover:bg-[#fff8f4]"
           >
             Use hook
           </button>
@@ -1291,7 +1238,7 @@ function RatioGlyph({
       className={cn(
         "inline-block shrink-0 rounded-[4px] border-2",
         shapeClassName[ratio],
-        active ? "border-primary" : "border-muted",
+        active ? "border-primary" : "border-[#173454]",
       )}
     />
   );

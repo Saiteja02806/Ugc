@@ -9,6 +9,7 @@ import {
   Loader2,
   RefreshCw,
   Save,
+  Search,
   Sparkles,
   X,
 } from "lucide-react";
@@ -28,33 +29,17 @@ import {
   PlatformSelectionModal,
   type SchedulePlatformContext,
 } from "@/components/social/platform-selection-modal";
-import { HookVideoCard } from "@/components/trending/hook-video-card";
-import { HookVideoComposer } from "@/components/trending/hook-video-composer";
+import { HookVideoWorkspace } from "@/components/trending/hook-video-workspace";
+import {
+  TrendingModeSelector,
+  type TrendingMode,
+} from "@/components/trending/trending-mode-selector";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   createAndPublishCarouselSchedule,
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
-import {
-  createCarouselTrendingFeedProvider,
-  isPreviewReadyCarousel,
-  type TrendingCarouselCreative,
-  type TrendingCarouselFeedItem,
-  type TrendingCarouselSlide,
-  type TrendingCarouselSourceRecord,
-  type TrendingFeedItem,
-  type TrendingFeedProviderAvailability,
-  type TrendingHookVideoFeedItem,
-} from "@/lib/trending/feed-items";
-import {
-  beginHookVideoComposition,
-  type HookVideoFlowState,
-} from "@/lib/trending/hook-video-flow";
-import type {
-  HookInfluencerSummary,
-  HookInfluencerVideoSummary,
-} from "@/lib/trending/hook-video-types";
 import { cn } from "@/lib/utils";
 
 type CarouselHistoryState = "error" | "idle" | "loading" | "ready";
@@ -64,45 +49,59 @@ type TrendingDailyFeedState =
   | "preparing"
   | "ready";
 
-type GeneratedCarouselSlide = TrendingCarouselSlide;
+type GeneratedCarouselSlide = {
+  headline: string;
+  renderedUrl: string | null;
+  slideNumber: number;
+  slideType: string | null;
+  status: "failed" | "processing" | "ready";
+  subtext: string | null;
+};
 
 type ReadyCarouselSlide = GeneratedCarouselSlide & { renderedUrl: string };
 
-type GeneratedCarousel = TrendingCarouselCreative;
+type GeneratedCarousel = {
+  assignmentId?: string;
+  candidateIndex: number;
+  carouselId: string;
+  categorySlug: string | null;
+  feedItemId?: string;
+  feedPosition?: number;
+  feedSource?: "carried" | "new";
+  generationBatchId: string;
+  projectId: string;
+  readySlideCount: number;
+  selectedAngle: string | null;
+  slideCount: number;
+  slides: GeneratedCarouselSlide[];
+  status: "completed" | "failed" | "processing";
+  thumbnailUrl: string | null;
+  updatedAt: string;
+};
 
 type CompleteCarousel = {
   carousel: GeneratedCarousel;
-  format: "carousel";
-  item: TrendingCarouselFeedItem;
   slides: ReadyCarouselSlide[];
 };
 
-type CompleteHookVideo = {
-  format: "hook_video";
-  item: TrendingHookVideoFeedItem;
-};
-
-type TrendingCandidate = CompleteCarousel | CompleteHookVideo;
-
 type DeckDepth = 0 | 1 | 2;
 
-type TrendingDeckSlot = {
-  candidate: TrendingCandidate;
-  itemIndex: number;
+type CarouselDeckSlot = {
+  candidate: CompleteCarousel;
+  carouselIndex: number;
   depth: DeckDepth;
 };
 
 type CarouselProfileFeed = {
   error?: string | null;
   id?: string;
-  profileVersion?: number;
   state: "failed" | "missing" | "preparing" | "ready";
 };
 
 type CarouselHistoryResponse =
   | {
       ok: true;
-      carousels: TrendingCarouselSourceRecord[];
+      carousels: GeneratedCarousel[];
       entitlement: {
         dailyCarouselLimit: number;
         planKey: string;
@@ -115,8 +114,6 @@ type CarouselHistoryResponse =
         state: TrendingDailyFeedState;
         timezone: string;
       } | null;
-      formatAvailability?: TrendingFeedProviderAvailability[];
-      items?: TrendingFeedItem[];
       profile: CarouselProfileFeed;
     }
   | {
@@ -221,13 +218,9 @@ export function TrendingWorkspace() {
   const { loading: authLoading, user } = useAuth();
   const loadedFeedLocalDate = useRef<string | null>(null);
   const loadedFeedUserId = useRef<string | null>(null);
-  const hookPreparationAttemptKey = useRef<string | null>(null);
-  const [trendingItems, setTrendingItems] = useState<TrendingFeedItem[]>([]);
-  const [formatAvailability, setFormatAvailability] = useState<
-    TrendingFeedProviderAvailability[]
-  >([]);
-  const [carouselSources, setCarouselSources] = useState<
-    TrendingCarouselSourceRecord[]
+  const [trendingMode, setTrendingMode] = useState<TrendingMode>("carousels");
+  const [generatedCarousels, setGeneratedCarousels] = useState<
+    GeneratedCarousel[]
   >([]);
   const [carouselHistoryError, setCarouselHistoryError] = useState<string | null>(
     null,
@@ -240,26 +233,37 @@ export function TrendingWorkspace() {
   const [dailyFeedState, setDailyFeedState] =
     useState<TrendingDailyFeedState | null>(null);
   const [carouselHistoryRefreshKey, setCarouselHistoryRefreshKey] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const hasAuthenticatedUser = Boolean(user);
-  const visibleTrendingItems = useMemo(
-    () => (hasAuthenticatedUser ? trendingItems : []),
-    [hasAuthenticatedUser, trendingItems],
-  );
-  const visibleCarouselSources = useMemo(
-    () => (hasAuthenticatedUser ? carouselSources : []),
-    [carouselSources, hasAuthenticatedUser],
+  const visibleGeneratedCarousels = useMemo(
+    () => (hasAuthenticatedUser ? generatedCarousels : []),
+    [generatedCarousels, hasAuthenticatedUser],
   );
   const visibleCarouselHistoryError = user ? carouselHistoryError : null;
   const visibleDailyFeedState = user ? dailyFeedState : null;
-  const orderedTrendingItems = useMemo(
-    () =>
-      [...visibleTrendingItems].sort(
-        (first, second) =>
-          first.position - second.position || first.id.localeCompare(second.id),
-      ),
-    [visibleTrendingItems],
-  );
+  const filteredGeneratedCarousels = useMemo(() => {
+    const matchingCarousels = normalizedSearchQuery
+      ? visibleGeneratedCarousels.filter((carousel) =>
+          [
+            carousel.selectedAngle,
+            carousel.categorySlug,
+            ...carousel.slides.map((slide) => slide.headline),
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(normalizedSearchQuery),
+        )
+      : visibleGeneratedCarousels;
+
+    return [...matchingCarousels].sort(
+      (first, second) =>
+        (first.feedPosition ?? first.candidateIndex) -
+        (second.feedPosition ?? second.candidateIndex),
+    );
+  }, [normalizedSearchQuery, visibleGeneratedCarousels]);
   const carouselFeedProfile: CarouselProfileFeed | null = user
     ? carouselProfile
     : { state: "missing" };
@@ -267,6 +271,23 @@ export function TrendingWorkspace() {
     authLoading ||
     (Boolean(user) &&
       (carouselHistoryState === "idle" || carouselHistoryState === "loading"));
+  const carouselSearchEmpty =
+    Boolean(normalizedSearchQuery) &&
+    visibleGeneratedCarousels.length > 0 &&
+    filteredGeneratedCarousels.length === 0;
+  const feedStatus = carouselFeedLoading
+    ? { label: "Loading your personalized feed", tone: "bg-warning" }
+    : visibleCarouselHistoryError || carouselFeedProfile?.state === "failed"
+      ? { label: "Carousel feed needs attention", tone: "bg-error" }
+      : carouselFeedProfile?.state === "missing"
+        ? { label: "Business profile needed", tone: "bg-warning" }
+        : visibleDailyFeedState === "preparing"
+          ? { label: "Preparing more carousel ideas", tone: "bg-warning" }
+          : visibleDailyFeedState === "caught_up"
+            ? { label: "Caught up for today", tone: "bg-success" }
+            : visibleDailyFeedState === "exhausted"
+              ? { label: "No ready ideas today", tone: "bg-warning" }
+              : { label: "Personalized for your profile", tone: "bg-success" };
 
   useEffect(() => {
     if (!user) {
@@ -281,9 +302,7 @@ export function TrendingWorkspace() {
       const isInitialUserLoad = loadedFeedUserId.current !== userId;
 
       if (isInitialUserLoad) {
-        setTrendingItems([]);
-        setFormatAvailability([]);
-        setCarouselSources([]);
+        setGeneratedCarousels([]);
         setCarouselHistoryState("loading");
       }
       setCarouselHistoryError(null);
@@ -292,7 +311,7 @@ export function TrendingWorkspace() {
         const idToken = await getCurrentUserIdToken();
 
         if (!idToken) {
-          throw new Error("Sign in before viewing generated slideshows.");
+          throw new Error("Sign in before viewing generated carousels.");
         }
 
         const timezone =
@@ -313,7 +332,7 @@ export function TrendingWorkspace() {
           throw new Error(
             data && !data.ok
               ? data.message
-              : "Generated slideshows are unavailable.",
+              : "Generated carousels are unavailable.",
           );
         }
 
@@ -329,12 +348,7 @@ export function TrendingWorkspace() {
           return;
         }
 
-        setTrendingItems(
-          data.items ??
-            createCarouselTrendingFeedProvider(data.carousels).items,
-        );
-        setCarouselSources(data.carousels);
-        setFormatAvailability(data.formatAvailability ?? []);
+        setGeneratedCarousels(data.carousels);
         setCarouselProfile(data.profile);
         setDailyFeedState(data.feed?.state ?? null);
         loadedFeedLocalDate.current = data.feed?.localDate ?? null;
@@ -354,17 +368,13 @@ export function TrendingWorkspace() {
           return;
         }
 
-        setTrendingItems([]);
-        setFormatAvailability([]);
-        setCarouselSources([]);
+        setGeneratedCarousels([]);
         setCarouselProfile(null);
         setDailyFeedState(null);
         setCarouselHistoryError(
-          toSlideshowDisplayCopy(
-            error instanceof Error
-              ? error.message
-              : "Generated slideshows are unavailable.",
-          ),
+          error instanceof Error
+            ? error.message
+            : "Generated carousels are unavailable.",
         );
         setCarouselHistoryState("error");
       }
@@ -381,81 +391,9 @@ export function TrendingWorkspace() {
   }, [carouselHistoryRefreshKey, user]);
 
   useEffect(() => {
-    const hookAvailability = formatAvailability.find(
-      (format) => format.format === "hook_video",
-    );
-    const profileId = carouselProfile?.id;
-    const profileVersion = carouselProfile?.profileVersion;
-
-    if (
-      !user ||
-      carouselHistoryState !== "ready" ||
-      !profileId ||
-      !profileVersion ||
-      hookAvailability?.state !== "unavailable"
-    ) {
-      return;
-    }
-
-    const attemptKey = `${user.uid}:${profileId}:${profileVersion}`;
-
-    if (hookPreparationAttemptKey.current === attemptKey) {
-      return;
-    }
-
-    hookPreparationAttemptKey.current = attemptKey;
-    const controller = new AbortController();
-
-    async function prepareHookIdeas() {
-      try {
-        const idToken = await getCurrentUserIdToken();
-
-        if (!idToken) {
-          return;
-        }
-
-        const response = await fetch(
-          "/api/trending/hook-videos/feed/prepare",
-          {
-            headers: { Authorization: `Bearer ${idToken}` },
-            method: "POST",
-            signal: controller.signal,
-          },
-        );
-        const data = (await response.json().catch(() => null)) as {
-          error?: string;
-          ok?: boolean;
-        } | null;
-
-        if (!response.ok || data?.ok !== true) {
-          throw new Error(data?.error ?? "Could not prepare Hook ideas.");
-        }
-
-        if (!controller.signal.aborted) {
-          setCarouselHistoryRefreshKey((current) => current + 1);
-        }
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          console.error("Could not prepare unified Trending Hook ideas:", error);
-        }
-      }
-    }
-
-    void prepareHookIdeas();
-
-    return () => controller.abort();
-  }, [
-    carouselHistoryState,
-    carouselProfile,
-    formatAvailability,
-    user,
-  ]);
-
-  useEffect(() => {
     if (!user) {
       loadedFeedLocalDate.current = null;
       loadedFeedUserId.current = null;
-      hookPreparationAttemptKey.current = null;
       return;
     }
 
@@ -524,7 +462,7 @@ export function TrendingWorkspace() {
       const idToken = await getCurrentUserIdToken();
 
       if (!idToken) {
-        throw new Error("Sign in before retrying slideshow preparation.");
+        throw new Error("Sign in before retrying carousel preparation.");
       }
 
       const response = await fetch("/api/business-profile/retry", {
@@ -538,18 +476,16 @@ export function TrendingWorkspace() {
 
       if (!response.ok || !data?.ok) {
         throw new Error(
-          data?.message ?? "Could not retry slideshow preparation.",
+          data?.message ?? "Could not retry carousel preparation.",
         );
       }
 
       setCarouselHistoryRefreshKey((current) => current + 1);
     } catch (error) {
       setCarouselHistoryError(
-        toSlideshowDisplayCopy(
-          error instanceof Error
-            ? error.message
-            : "Could not retry slideshow preparation.",
-        ),
+        error instanceof Error
+          ? error.message
+          : "Could not retry carousel preparation.",
       );
       setCarouselHistoryState("error");
     }
@@ -558,65 +494,121 @@ export function TrendingWorkspace() {
   return (
     <section className="min-h-dvh flex-1 bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8 lg:py-8 xl:px-10">
       <div className="mx-auto flex min-h-full max-w-[1360px] flex-col">
-        <header>
-          <div className="min-w-0">
-            <h1 className="text-balance text-[32px] font-semibold leading-10 text-foreground">
-              Instagram ideas
+        <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-balance text-[30px] font-semibold leading-tight tracking-[-0.035em] text-foreground-strong">
+              Trending carousels
             </h1>
-            <p className="mt-1.5 max-w-2xl text-[15px] leading-[22px] text-muted">
-              Build Reel hooks and carousel posts from your real business profile.
+            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted">
+              Browse five-slide creative ideas prepared from your business profile.
             </p>
           </div>
 
+          {trendingMode === "carousels" ? (
+            <label
+              className="flex h-10 w-full items-center gap-2.5 rounded-control border border-border-strong bg-card px-3 text-sm text-muted shadow-[0_1px_2px_rgb(23_23_27_/_0.03)] transition-[border-color,box-shadow] focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/15 sm:w-[300px]"
+            >
+              <Search className="size-4 shrink-0 text-muted-subtle" aria-hidden="true" />
+              <span className="sr-only">Search personalized carousels</span>
+              <input
+                type="search"
+                name="carouselSearch"
+                autoComplete="off"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search carousel ideas"
+                className="min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-subtle"
+              />
+            </label>
+          ) : null}
         </header>
 
-        <section className="mt-8 min-h-[560px]">
-          <div className="flex min-h-[502px] items-start py-6 sm:py-7">
-            <TrendingFeedGallery
-              carouselSources={visibleCarouselSources}
-              items={orderedTrendingItems}
-              error={visibleCarouselHistoryError}
-              feedState={visibleDailyFeedState}
-              loading={carouselFeedLoading}
-              profile={carouselFeedProfile}
-              onCompleteProfile={openBusinessProfile}
-              onCarouselCompleted={() =>
-                setCarouselHistoryRefreshKey((current) => current + 1)
-              }
-              onRetryHistory={() =>
-                setCarouselHistoryRefreshKey((current) => current + 1)
-              }
-              onRetryPreparation={() => void retryCarouselPreparation()}
-            />
-          </div>
-        </section>
+        <TrendingModeSelector
+          className="mt-6"
+          value={trendingMode}
+          onChange={setTrendingMode}
+        />
+
+        {trendingMode === "carousels" ? (
+          <section className="mt-6 min-h-[560px] overflow-hidden rounded-panel border border-border bg-card shadow-card">
+            <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2.5 sm:px-5">
+              <p className="flex items-center gap-2 text-xs font-semibold text-muted">
+                <span
+                  aria-hidden="true"
+                  className={cn("size-2 rounded-full", feedStatus.tone)}
+                />
+                {feedStatus.label}
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  setCarouselHistoryRefreshKey((current) => current + 1)
+                }
+                disabled={carouselFeedLoading}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={cn(
+                    "size-3.5",
+                    carouselFeedLoading &&
+                      "animate-spin motion-reduce:animate-none",
+                  )}
+                  aria-hidden="true"
+                />
+                <span className="sm:hidden">Refresh</span>
+                <span className="hidden sm:inline">Refresh ideas</span>
+              </button>
+            </div>
+
+            <div className="flex min-h-[502px] items-start px-4 py-7 sm:px-6 sm:py-8">
+              <GeneratedCarouselGallery
+                carousels={filteredGeneratedCarousels}
+                error={visibleCarouselHistoryError}
+                feedState={visibleDailyFeedState}
+                loading={carouselFeedLoading}
+                profile={carouselFeedProfile}
+                searchEmpty={carouselSearchEmpty}
+                onCompleteProfile={openBusinessProfile}
+                onCarouselCompleted={() =>
+                  setCarouselHistoryRefreshKey((current) => current + 1)
+                }
+                onRetryHistory={() =>
+                  setCarouselHistoryRefreshKey((current) => current + 1)
+                }
+                onRetryPreparation={() => void retryCarouselPreparation()}
+              />
+            </div>
+          </section>
+        ) : (
+          <HookVideoWorkspace active={trendingMode === "hook_videos"} />
+        )}
       </div>
     </section>
   );
 }
 
-function TrendingFeedGallery({
-  carouselSources,
+function GeneratedCarouselGallery({
+  carousels,
   error,
   feedState,
-  items,
   loading,
   onCompleteProfile,
   onCarouselCompleted,
   onRetryHistory,
   onRetryPreparation,
   profile,
+  searchEmpty,
 }: {
-  carouselSources: TrendingCarouselSourceRecord[];
+  carousels: GeneratedCarousel[];
   error: string | null;
   feedState: TrendingDailyFeedState | null;
-  items: TrendingFeedItem[];
   loading: boolean;
   onCompleteProfile: () => void;
   onCarouselCompleted: () => void;
   onRetryHistory: () => void;
   onRetryPreparation: () => void;
   profile: CarouselProfileFeed | null;
+  searchEmpty: boolean;
 }) {
   if (loading) {
     return <GeneratedCarouselFeedSkeleton />;
@@ -630,35 +622,51 @@ function TrendingFeedGallery({
         icon="failed"
         message={error}
         onAction={onRetryHistory}
-        title="Could not load ideas"
+        title="Could not load carousels"
       />
     );
   }
 
   if (profile?.state === "missing") {
-    return <SlideshowProfilePrompt onAction={onCompleteProfile} />;
-  }
-
-  if (profile?.state === "failed" && items.length === 0) {
     return (
       <CarouselFeedState
-        actionLabel="Retry preparation"
-        icon="failed"
-        message={toSlideshowDisplayCopy(
-          profile.error ?? "Slideshow preparation did not finish.",
-        )}
-        onAction={onRetryPreparation}
-        title="Slideshow preparation failed"
+        actionLabel="Complete business profile"
+        icon="missing"
+        message="Complete your business profile to prepare personalized carousel ideas."
+        onAction={onCompleteProfile}
+        title="Business profile needed"
       />
     );
   }
 
-  if (items.length === 0 && carouselSources.length === 0) {
+  if (profile?.state === "failed") {
+    return (
+      <CarouselFeedState
+        actionLabel="Retry preparation"
+        icon="failed"
+        message={profile.error ?? "Carousel preparation did not finish."}
+        onAction={onRetryPreparation}
+        title="Carousel preparation failed"
+      />
+    );
+  }
+
+  if (searchEmpty) {
+    return (
+      <CarouselFeedState
+        icon="missing"
+        message="Try a different carousel angle, category, or headline."
+        title="No matching carousels"
+      />
+    );
+  }
+
+  if (carousels.length === 0) {
     if (feedState === "caught_up") {
       return (
         <CarouselFeedState
           icon="missing"
-          message="You have finished every idea that was available in today's feed."
+          message="You have finished every carousel that was available in today's feed."
           title="You're caught up for today"
         />
       );
@@ -668,8 +676,8 @@ function TrendingFeedGallery({
       return (
         <CarouselFeedState
           icon="missing"
-          message="No ready ideas remain for today. New ideas will appear after more content is prepared."
-          title="No ready ideas"
+          message="No ready carousel ideas remain for today. New ideas will appear after more carousels are prepared."
+          title="No ready carousel ideas"
         />
       );
     }
@@ -677,82 +685,53 @@ function TrendingFeedGallery({
     return (
       <CarouselFeedState
         icon="preparing"
-        message="Your personalized content ideas are being prepared."
-        title="Preparing ideas"
+        message="Your personalized carousel ideas are being prepared."
+        title="Preparing carousel ideas"
       />
     );
   }
 
   return (
-    <TrendingFeed
-      carouselSources={carouselSources}
-      items={items}
+    <GeneratedCarouselFeed
+      carousels={carousels}
       onCarouselCompleted={onCarouselCompleted}
       onRetryPreparation={onRetryPreparation}
     />
   );
 }
 
-function SlideshowProfilePrompt({ onAction }: { onAction: () => void }) {
-  return (
-    <div className="mx-auto flex w-full max-w-md flex-col items-center px-6 py-14 text-center">
-      <h2 className="text-lg font-semibold text-foreground">
-        Complete your profile
-      </h2>
-      <p className="mt-2 text-sm leading-6 text-muted">
-        Add your business details to prepare personalized Carousel and Hook
-        ideas.
-      </p>
-      <button
-        type="button"
-        onClick={onAction}
-        className="mt-5 inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-[8px] bg-primary px-4 text-sm font-semibold text-primary-foreground transition-[background-color,transform] hover:bg-primary-hover active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      >
-        <Sparkles className="size-4" aria-hidden="true" />
-        Complete profile
-      </button>
-    </div>
-  );
-}
-
-function TrendingFeed({
-  carouselSources,
-  items,
+function GeneratedCarouselFeed({
+  carousels,
   onCarouselCompleted,
   onRetryPreparation,
 }: {
-  carouselSources: TrendingCarouselSourceRecord[];
-  items: TrendingFeedItem[];
+  carousels: GeneratedCarousel[];
   onCarouselCompleted: () => void;
   onRetryPreparation: () => void;
 }) {
   const [activeSlideByCarouselId, setActiveSlideByCarouselId] = useState<
     Record<string, number>
   >({});
-  const [activeItemIndex, setActiveItemIndex] = useState(0);
-  const [hookComposition, setHookComposition] =
-    useState<TrendingHookVideoFeedItem | null>(null);
+  const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
 
-  const candidates = items.flatMap<TrendingCandidate>((item) => {
-    if (item.format === "hook_video") {
-      return [{ format: "hook_video", item }];
-    }
+  const completeCarousels = carousels
+    .map<CompleteCarousel | null>((carousel) => {
+      const slides = getReadySlides(carousel);
+      const hasCompleteCreative =
+        carousel.status === "completed" &&
+        slides.length === carousel.slideCount;
 
-    if (item.format !== "carousel") {
-      return [];
-    }
-
-    const carousel = item.creative;
+      return hasCompleteCreative ? { carousel, slides } : null;
+    })
+    .filter((candidate): candidate is CompleteCarousel => Boolean(candidate));
+  const lifecycleCarousels = carousels.filter((carousel) => {
     const slides = getReadySlides(carousel);
 
-    return carousel.status === "completed" &&
+    return !(
+      carousel.status === "completed" &&
       slides.length === carousel.slideCount
-      ? [{ carousel, format: "carousel", item, slides }]
-      : [];
+    );
   });
-  const lifecycleCarousels = carouselSources.filter(
-    (carousel) => !isPreviewReadyCarousel(carousel),
-  );
   const processingCarousels = lifecycleCarousels.filter(
     (carousel) => carousel.status !== "failed",
   );
@@ -767,36 +746,23 @@ function TrendingFeed({
     }));
   }
 
-  if (hookComposition) {
-    return (
-      <TrendingHookComposer
-        item={hookComposition}
-        onClose={() => {
-          setHookComposition(null);
-          onCarouselCompleted();
-        }}
-      />
-    );
-  }
-
   return (
     <div className="flex w-full flex-col gap-10">
-      {candidates.length > 0 ? (
-        <TrendingDeck
-          activeItemIndex={activeItemIndex}
+      {completeCarousels.length > 0 ? (
+        <CarouselCandidateStack
+          activeCarouselIndex={activeCarouselIndex}
           activeSlideByCarouselId={activeSlideByCarouselId}
-          candidates={candidates}
-          onActiveItemChange={setActiveItemIndex}
+          candidates={completeCarousels}
+          onActiveCarouselChange={setActiveCarouselIndex}
           onActiveSlideChange={setActiveSlide}
           onCarouselCompleted={onCarouselCompleted}
-          onHookCompose={setHookComposition}
         />
       ) : null}
 
       {processingCarousels.length > 0 ? (
         <CarouselPreparationState
           carousels={processingCarousels}
-          compact={candidates.length > 0}
+          compact={completeCarousels.length > 0}
         />
       ) : null}
 
@@ -810,121 +776,20 @@ function TrendingFeed({
   );
 }
 
-function TrendingHookComposer({
-  item,
-  onClose,
-}: {
-  item: TrendingHookVideoFeedItem;
-  onClose: () => void;
-}) {
-  const creative = item.creative;
-  const [flowState, setFlowState] = useState<HookVideoFlowState>(() =>
-    beginHookVideoComposition({
-      hookText: creative.text.value,
-      influencerId: creative.influencerId,
-      influencerVideoId: creative.videoId,
-      selectedHookId: item.creativeId,
-      sourceKind: creative.sourceKind,
-      trimEnd: creative.trimEnd,
-      trimStart: creative.trimStart,
-    }),
-  );
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const influencer: HookInfluencerSummary = {
-    id: creative.influencerId,
-    name: creative.influencerName,
-    sourceKind: creative.sourceKind,
-    thumbnailUrl: creative.thumbnailUrl,
-    videoCount: 1,
-  };
-  const video: HookInfluencerVideoSummary = {
-    durationSeconds: creative.sourceDurationSeconds,
-    id: creative.videoId,
-    influencerId: creative.influencerId,
-    ratio: creative.aspectRatio,
-    sourceKind: creative.sourceKind,
-    thumbnailUrl: creative.thumbnailUrl,
-    title: creative.title,
-    trimEnd: creative.trimEnd,
-    trimStart: creative.trimStart,
-  };
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadPreview() {
-      try {
-        const token = await getCurrentUserIdToken();
-
-        if (!token) {
-          return;
-        }
-
-        const response = await fetch(creative.previewSessionEndpoint, {
-          body: JSON.stringify({
-            influencerId: creative.influencerId,
-            sourceKind: creative.sourceKind,
-          }),
-          cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          method: "POST",
-          signal: controller.signal,
-        });
-        const data = (await response.json().catch(() => null)) as
-          | { ok: true; previewUrl: string }
-          | { ok?: false }
-          | null;
-
-        if (
-          response.ok &&
-          data?.ok === true &&
-          !controller.signal.aborted
-        ) {
-          setPreviewUrl(`${data.previewUrl}?session=${Date.now()}`);
-        }
-      } catch {
-        if (!controller.signal.aborted) {
-          setPreviewUrl(null);
-        }
-      }
-    }
-
-    void loadPreview();
-
-    return () => controller.abort();
-  }, [creative]);
-
-  return (
-    <HookVideoComposer
-      flowState={flowState}
-      influencer={influencer}
-      openingPreviewUrl={previewUrl}
-      video={video}
-      onClose={onClose}
-      onStateChange={setFlowState}
-    />
-  );
-}
-
-function TrendingDeck({
-  activeItemIndex,
+function CarouselCandidateStack({
+  activeCarouselIndex,
   activeSlideByCarouselId,
   candidates,
-  onActiveItemChange,
+  onActiveCarouselChange,
   onActiveSlideChange,
   onCarouselCompleted,
-  onHookCompose,
 }: {
-  activeItemIndex: number;
+  activeCarouselIndex: number;
   activeSlideByCarouselId: Record<string, number>;
-  candidates: TrendingCandidate[];
-  onActiveItemChange: (itemIndex: number) => void;
+  candidates: CompleteCarousel[];
+  onActiveCarouselChange: (carouselIndex: number) => void;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
   onCarouselCompleted: () => void;
-  onHookCompose: (item: TrendingHookVideoFeedItem) => void;
 }) {
   const swipeTimerRef = useRef<number | null>(null);
   const actionNoticeTimerRef = useRef<number | null>(null);
@@ -944,42 +809,37 @@ function TrendingDeck({
     useState<CompleteCarousel | null>(null);
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [pendingSkipItemId, setPendingSkipItemId] = useState<string | null>(
-    null,
-  );
+  const [pendingSkipCarouselId, setPendingSkipCarouselId] = useState<
+    string | null
+  >(null);
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(
     null,
   );
-  const lastItemIndex = candidates.length - 1;
-  const safeActiveItemIndex = Math.min(
-    Math.max(activeItemIndex, 0),
-    lastItemIndex,
+  const lastCarouselIndex = candidates.length - 1;
+  const safeActiveCarouselIndex = Math.min(
+    Math.max(activeCarouselIndex, 0),
+    lastCarouselIndex,
   );
-  const activeCandidate = candidates[safeActiveItemIndex];
-  const title = getTrendingCandidateTitle(activeCandidate);
-  const deckSlots = getTrendingDeckSlots(
+  const activeCandidate = candidates[safeActiveCarouselIndex];
+  const title = getCarouselTitle(activeCandidate.carousel);
+  const deckSlots = getCarouselDeckSlots(
     candidates,
-    safeActiveItemIndex,
+    safeActiveCarouselIndex,
   );
-  const canGoPrevious = safeActiveItemIndex > 0;
-  const canGoNext = safeActiveItemIndex < lastItemIndex;
+  const canGoPrevious = safeActiveCarouselIndex > 0;
+  const canGoNext = safeActiveCarouselIndex < lastCarouselIndex;
 
   useEffect(() => {
-    const nextCandidate = candidates[safeActiveItemIndex + 1];
-    const nextSlideIndex =
-      nextCandidate?.format === "carousel"
+    const nextCandidate = candidates[safeActiveCarouselIndex + 1];
+    const nextSlideIndex = nextCandidate
       ? Math.min(
           activeSlideByCarouselId[nextCandidate.carousel.carouselId] ?? 0,
           Math.max(nextCandidate.slides.length - 1, 0),
         )
       : 0;
     const urls = [
-      ...(activeCandidate.format === "carousel"
-        ? activeCandidate.slides.map((slide) => slide.renderedUrl)
-        : []),
-      nextCandidate?.format === "carousel"
-        ? nextCandidate.slides[nextSlideIndex]?.renderedUrl
-        : null,
+      ...activeCandidate.slides.map((slide) => slide.renderedUrl),
+      nextCandidate?.slides[nextSlideIndex]?.renderedUrl,
     ].filter((url): url is string => Boolean(url));
 
     urls.forEach((url) => {
@@ -992,7 +852,7 @@ function TrendingDeck({
     activeCandidate,
     activeSlideByCarouselId,
     candidates,
-    safeActiveItemIndex,
+    safeActiveCarouselIndex,
   ]);
 
   useEffect(
@@ -1028,30 +888,30 @@ function TrendingDeck({
     setExitDirection(null);
   }
 
-  function goToItem(nextIndex: number) {
+  function goToCarousel(nextIndex: number) {
     if (
       exitDirection ||
-      pendingSkipItemId ||
+      pendingSkipCarouselId ||
       nextIndex < 0 ||
-      nextIndex > lastItemIndex ||
-      nextIndex === safeActiveItemIndex
+      nextIndex > lastCarouselIndex ||
+      nextIndex === safeActiveCarouselIndex
     ) {
       return;
     }
 
     resetDrag();
-    onActiveItemChange(nextIndex);
+    onActiveCarouselChange(nextIndex);
   }
 
-  function advancePastActiveItem(
+  function advancePastActiveCarousel(
     direction: "left" | "right",
     onTransitionComplete?: () => void,
   ) {
-    const nextIndex = safeActiveItemIndex + 1;
+    const nextIndex = safeActiveCarouselIndex + 1;
 
     if (
       !onTransitionComplete &&
-      (nextIndex < 0 || nextIndex > lastItemIndex)
+      (nextIndex < 0 || nextIndex > lastCarouselIndex)
     ) {
       resetDrag();
       return;
@@ -1068,7 +928,7 @@ function TrendingDeck({
       () => {
         swipeTimerRef.current = null;
         if (!onTransitionComplete) {
-          onActiveItemChange(nextIndex);
+          onActiveCarouselChange(nextIndex);
         }
         resetDrag();
         onTransitionComplete?.();
@@ -1077,21 +937,15 @@ function TrendingDeck({
     );
   }
 
-  function completeCandidateSwipe(direction: "left" | "right") {
+  function completeCarouselSwipe(direction: "left" | "right") {
     if (direction === "right") {
       resetDrag();
-
-      if (activeCandidate.format === "hook_video") {
-        void handleSelectHook();
-        return;
-      }
-
       setActionState({ status: "idle" });
       setActionCandidate(activeCandidate);
       return;
     }
 
-    void handleSkipActiveCandidate();
+    void handleSkipCarousel();
   }
 
   function handlePointerDown(event: ReactPointerEvent<HTMLElement>) {
@@ -1099,7 +953,7 @@ function TrendingDeck({
 
     if (
       exitDirection ||
-      pendingSkipItemId ||
+      pendingSkipCarouselId ||
       (event.pointerType === "mouse" && event.button !== 0) ||
       target.closest("[data-deck-control]")
     ) {
@@ -1133,12 +987,12 @@ function TrendingDeck({
     }
 
     if (dragXRef.current <= -SWIPE_THRESHOLD_PX) {
-      completeCandidateSwipe("left");
+      completeCarouselSwipe("left");
       return;
     }
 
     if (dragXRef.current >= SWIPE_THRESHOLD_PX) {
-      completeCandidateSwipe("right");
+      completeCarouselSwipe("right");
       return;
     }
 
@@ -1160,41 +1014,36 @@ function TrendingDeck({
 
     if (event.key === "ArrowLeft" && canGoPrevious) {
       event.preventDefault();
-      goToItem(safeActiveItemIndex - 1);
+      goToCarousel(safeActiveCarouselIndex - 1);
     } else if (event.key === "ArrowRight" && canGoNext) {
       event.preventDefault();
-      goToItem(safeActiveItemIndex + 1);
+      goToCarousel(safeActiveCarouselIndex + 1);
     }
   }
 
-  async function handleSkipActiveCandidate() {
-    if (!activeCandidate || pendingSkipItemId) {
+  async function handleSkipCarousel() {
+    if (!activeCandidate || pendingSkipCarouselId) {
       return;
     }
 
-    if (!activeCandidate.item.assignmentId) {
-      advancePastActiveItem("left");
+    if (!activeCandidate.carousel.assignmentId) {
+      advancePastActiveCarousel("left");
       return;
     }
 
     resetDrag();
-    setPendingSkipItemId(activeCandidate.item.id);
+    setPendingSkipCarouselId(activeCandidate.carousel.carouselId);
 
     try {
-      if (activeCandidate.format === "carousel") {
-        await completeTrendingCarouselAction(activeCandidate, "skipped");
-      } else {
-        await completeTrendingHookAction(activeCandidate.item, "skipped");
-      }
-
+      await completeTrendingCarouselAction(activeCandidate, "skipped");
       showActionNotice({ message: "Skipped." });
-      advancePastActiveItem("left", onCarouselCompleted);
+      advancePastActiveCarousel("left", onCarouselCompleted);
     } catch (error) {
       showActionNotice({
-        message: getErrorMessage(error, "Could not skip this idea."),
+        message: getErrorMessage(error, "Could not skip this carousel."),
       });
     } finally {
-      setPendingSkipItemId(null);
+      setPendingSkipCarouselId(null);
     }
   }
 
@@ -1216,10 +1065,10 @@ function TrendingDeck({
         actionLabel: "View Library",
         message: result.created ? "Saved to Library." : "Already in Library.",
       });
-      advancePastActiveItem("right", onCarouselCompleted);
+      advancePastActiveCarousel("right", onCarouselCompleted);
     } catch (error) {
       setActionState({
-        message: getErrorMessage(error, "Could not save this slideshow."),
+        message: getErrorMessage(error, "Could not save this carousel."),
         status: "error",
       });
     }
@@ -1238,65 +1087,43 @@ function TrendingDeck({
       setActionCandidate(null);
       setActionState({ status: "idle" });
       setScheduleContext({
-        assignmentId: actionCandidate.item.assignmentId,
+        assignmentId: actionCandidate.carousel.assignmentId,
         carouselId: actionCandidate.carousel.carouselId,
         coverUrl: actionCandidate.slides[0]?.renderedUrl ?? null,
-        idempotencyKey: `trending-carousel-schedule:${actionCandidate.item.assignmentId}`,
+        idempotencyKey: `trending-carousel-schedule:${actionCandidate.carousel.assignmentId}`,
         libraryItemId: result.item.id,
         returnTo: "trending",
         title: getCarouselTitle(actionCandidate.carousel),
       });
     } catch (error) {
       setActionState({
-        message: getErrorMessage(error, "Could not prepare this slideshow for scheduling."),
+        message: getErrorMessage(error, "Could not prepare this carousel for scheduling."),
         status: "error",
       });
     }
   }
 
-  async function handleSelectHook() {
-    if (
-      activeCandidate.format !== "hook_video" ||
-      pendingSkipItemId
-    ) {
-      return;
-    }
-
-    setPendingSkipItemId(activeCandidate.item.id);
-
-    try {
-      await completeTrendingHookAction(activeCandidate.item, "selected");
-      onHookCompose(activeCandidate.item);
-    } catch (error) {
-      showActionNotice({
-        message: getErrorMessage(error, "Could not select this Hook idea."),
-      });
-    } finally {
-      setPendingSkipItemId(null);
-    }
-  }
-
   return (
-    <section aria-label="Personalized Trending ideas" className="w-full">
+    <section aria-label="Personalized carousel ideas" className="w-full">
       <div
         role="group"
-        aria-roledescription="Trending idea deck"
+        aria-roledescription="carousel idea deck"
         tabIndex={0}
-        aria-label={`Trending idea deck. Showing idea ${safeActiveItemIndex + 1} of ${candidates.length}. Use left and right arrow keys to change ideas.`}
+        aria-label={`Carousel idea deck. Showing idea ${safeActiveCarouselIndex + 1} of ${candidates.length}. Use left and right arrow keys to change ideas.`}
         onKeyDown={handleDeckKeyDown}
-        className="relative isolate mx-auto mt-3 h-[410px] w-full max-w-xl overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-7"
+        className="relative isolate mx-auto mt-3 h-[410px] w-full max-w-xl overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:mt-7"
       >
         {[...deckSlots].reverse().map((slot) => (
-          <TrendingDeckCard
-            key={slot.candidate.item.id}
+          <CarouselDeckCard
+            key={slot.candidate.carousel.carouselId}
             activeSlideByCarouselId={activeSlideByCarouselId}
             candidate={slot.candidate}
+            carouselCount={candidates.length}
+            carouselIndex={slot.carouselIndex}
             depth={slot.depth}
             dragX={slot.depth === 0 ? dragX : 0}
             exitDirection={slot.depth === 0 ? exitDirection : null}
             isDragging={slot.depth === 0 && isDragging}
-            itemCount={candidates.length}
-            itemIndex={slot.itemIndex}
             onActiveSlideChange={onActiveSlideChange}
             onPointerCancel={cancelPointerInteraction}
             onPointerDown={handlePointerDown}
@@ -1306,7 +1133,7 @@ function TrendingDeck({
         ))}
       </div>
       <span className="sr-only" aria-live="polite">
-        Showing {title}, idea {safeActiveItemIndex + 1} of {candidates.length}
+        Showing {title}, idea {safeActiveCarouselIndex + 1} of {candidates.length}
       </span>
       {actionCandidate ? (
         <CarouselActionDialog
@@ -1325,7 +1152,7 @@ function TrendingDeck({
         open={Boolean(scheduleContext)}
         onConfirmed={async (submission) => {
           if (!scheduleContext || !pendingScheduleCandidate) {
-            throw new Error("Choose a Trending slideshow before scheduling.");
+            throw new Error("Choose a Trending carousel before scheduling.");
           }
 
           await scheduleTrendingCarousel({
@@ -1351,10 +1178,10 @@ function TrendingDeck({
             actionHref: "/scheduling",
             actionLabel: "View schedule",
             message: completionWarning
-              ? "Slideshow scheduled. Trending may need a refresh."
-              : "Slideshow scheduled.",
+              ? "Carousel scheduled. Trending may need a refresh."
+              : "Carousel scheduled.",
           });
-          advancePastActiveItem("right", onCarouselCompleted);
+          advancePastActiveCarousel("right", onCarouselCompleted);
         }}
         onOpenChange={(open) => {
           if (!open) {
@@ -1426,28 +1253,28 @@ function CarouselActionDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="carousel-action-dialog-title"
-        className="flex h-[min(700px,calc(100vh-2.5rem))] w-full max-w-[960px] flex-col overflow-hidden rounded-[20px] border border-border bg-card text-foreground shadow-[0_28px_90px_rgb(0_0_0_/_0.48)]"
+        className="flex h-[min(700px,calc(100vh-2.5rem))] w-full max-w-[960px] flex-col overflow-hidden rounded-[24px] border border-border bg-white shadow-[0_28px_90px_rgb(9_9_11_/_0.28)]"
       >
-        <div className="border-b border-border bg-card">
+        <div className="border-b border-border bg-white">
           <div className="flex items-start justify-between gap-4 px-5 py-5 sm:px-6">
             <div className="min-w-0">
               <h2
                 id="carousel-action-dialog-title"
-                className="text-xl font-semibold text-foreground"
+                className="text-xl font-semibold text-foreground-strong"
               >
                 What would you like to do?
               </h2>
               <p className="mt-1 text-sm font-medium text-muted">Step 1 of 4</p>
             </div>
             <div className="flex shrink-0 items-center gap-3">
-              <span className="hidden rounded-full bg-card-muted px-2.5 py-1 text-xs font-semibold lowercase text-muted-subtle sm:inline-flex">
+              <span className="hidden rounded-full bg-card-muted px-2.5 py-1 text-xs font-semibold lowercase text-muted sm:inline-flex">
                 esc
               </span>
               <button
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="inline-flex size-9 items-center justify-center rounded-full text-muted-subtle transition hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                className="inline-flex size-9 items-center justify-center rounded-full text-muted transition hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
               >
                 <X className="size-5" aria-hidden="true" />
               </button>
@@ -1462,7 +1289,7 @@ function CarouselActionDialog({
           <div className="space-y-3">
             <CarouselActionOption
               ref={firstActionRef}
-              description="Save this slideshow for later"
+              description="Save this carousel for later"
               disabled={isBusy}
               icon={
                 isSaving ? (
@@ -1492,28 +1319,28 @@ function CarouselActionDialog({
           {actionState.status === "error" ? (
             <div
               role="alert"
-              className="mt-4 rounded-md border border-error/35 bg-error/10 px-4 py-3 text-sm font-semibold text-error"
+              className="mt-4 rounded-md border border-error/20 bg-error/5 px-4 py-3 text-sm font-semibold text-error"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <span>{actionState.message}</span>
                 <button
                   type="button"
                   onClick={onSaveToLibrary}
-                  className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-error px-3 text-xs font-semibold text-primary-foreground transition hover:bg-error/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30"
+                  className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-error px-3 text-xs font-semibold text-white transition hover:bg-error/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30"
                 >
                   Retry
                 </button>
               </div>
             </div>
           ) : null}
-          <p className="sr-only">Selected slideshow: {title}</p>
+          <p className="sr-only">Selected carousel: {title}</p>
         </div>
 
-        <div className="border-t border-border bg-card px-5 py-5 sm:px-6">
+        <div className="border-t border-border bg-white px-5 py-5 sm:px-6">
           <button
             type="button"
             onClick={onClose}
-            className="text-sm font-semibold text-muted transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+            className="text-sm font-semibold text-muted transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             Cancel
           </button>
@@ -1553,20 +1380,20 @@ const CarouselActionOption = forwardRef<
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "group grid min-h-24 w-full grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 rounded-[12px] border bg-card-muted px-5 py-4 text-left transition-[background-color,border-color] hover:border-primary/50 hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-65",
-        selected ? "border-primary/50 ring-2 ring-focus/15" : "border-border",
+        "group grid min-h-24 w-full grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 rounded-[20px] border bg-white px-5 py-4 text-left transition hover:border-primary/60 hover:bg-[#fffaf6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-65",
+        selected ? "border-primary ring-2 ring-primary/15" : "border-border",
       )}
     >
       <span
         className={cn(
           "flex size-12 items-center justify-center rounded-full",
-          selected ? "bg-selected text-primary" : "bg-card-muted text-success",
+          selected ? "bg-brand-soft text-primary" : "bg-[#e9fff2] text-[#12b76a]",
         )}
       >
         {icon}
       </span>
       <span className="min-w-0">
-        <span className="block text-base font-semibold text-foreground">
+        <span className="block text-base font-semibold text-foreground-strong">
           {label}
         </span>
         <span className="mt-1 block text-sm font-medium leading-5 text-muted">
@@ -1588,233 +1415,17 @@ function CarouselActionToast({ notice }: { notice: CarouselActionNotice }) {
   return (
     <div
       role="status"
-      className="fixed bottom-5 left-1/2 z-[var(--z-modal)] flex -translate-x-1/2 items-center gap-3 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-[0_18px_45px_rgb(0_0_0_/_0.38)]"
+      className="fixed bottom-5 left-1/2 z-[var(--z-modal)] flex -translate-x-1/2 items-center gap-3 rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground-strong shadow-floating"
     >
       <span>{notice.message}</span>
       {notice.actionHref && notice.actionLabel ? (
         <Link
           href={notice.actionHref}
-          className="rounded-full bg-selected px-3 py-1 text-xs font-bold text-primary transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-primary transition-colors hover:bg-primary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           {notice.actionLabel}
         </Link>
       ) : null}
-    </div>
-  );
-}
-
-type TrendingDeckCardProps = {
-  activeSlideByCarouselId: Record<string, number>;
-  candidate: TrendingCandidate;
-  depth: DeckDepth;
-  dragX: number;
-  exitDirection: "left" | "right" | null;
-  isDragging: boolean;
-  itemCount: number;
-  itemIndex: number;
-  onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
-  onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void;
-  onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
-  onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
-  onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
-};
-
-function TrendingDeckCard({
-  candidate,
-  itemCount,
-  itemIndex,
-  ...props
-}: TrendingDeckCardProps) {
-  switch (candidate.format) {
-    case "carousel":
-      return (
-        <CarouselDeckCard
-          {...props}
-          candidate={candidate}
-          carouselCount={itemCount}
-          carouselIndex={itemIndex}
-        />
-      );
-    case "hook_video":
-      return (
-        <TrendingHookDeckCard
-          candidate={candidate}
-          depth={props.depth}
-          dragX={props.dragX}
-          exitDirection={props.exitDirection}
-          isDragging={props.isDragging}
-          itemCount={itemCount}
-          itemIndex={itemIndex}
-          onPointerCancel={props.onPointerCancel}
-          onPointerDown={props.onPointerDown}
-          onPointerMove={props.onPointerMove}
-          onPointerUp={props.onPointerUp}
-        />
-      );
-  }
-}
-
-function TrendingHookDeckCard({
-  candidate,
-  depth,
-  dragX,
-  exitDirection,
-  isDragging,
-  itemCount,
-  itemIndex,
-  onPointerCancel,
-  onPointerDown,
-  onPointerMove,
-  onPointerUp,
-}: {
-  candidate: CompleteHookVideo;
-  depth: DeckDepth;
-  dragX: number;
-  exitDirection: "left" | "right" | null;
-  isDragging: boolean;
-  itemCount: number;
-  itemIndex: number;
-  onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void;
-  onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
-  onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
-  onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
-}) {
-  const isActive = depth === 0;
-  const [previewRetryKey, setPreviewRetryKey] = useState(0);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const creative = candidate.item.creative;
-  const deckStyle = DECK_CARD_STYLES[depth];
-  const clampedRotation = Math.max(
-    -MAX_ROTATION_DEGREES,
-    Math.min(MAX_ROTATION_DEGREES, dragX / 28),
-  );
-  const translateX = exitDirection
-    ? exitDirection === "left"
-      ? "-115vw"
-      : "115vw"
-    : `${dragX}px`;
-  const cardStyle: CSSProperties = {
-    opacity: deckStyle.opacity,
-    touchAction: isActive ? "pan-y" : undefined,
-    transform: `translateX(${isActive ? translateX : "0px"}) translateY(${deckStyle.translateY}px) rotate(${isActive ? clampedRotation : 0}deg) scale(${deckStyle.scale})`,
-    transition: isDragging ? "none" : undefined,
-  };
-
-  useEffect(() => {
-    if (!isActive) {
-      return;
-    }
-
-    const controller = new AbortController();
-
-    async function loadPreview() {
-      setPreviewLoading(true);
-      setPreviewError(null);
-
-      try {
-        const token = await getCurrentUserIdToken();
-
-        if (!token) {
-          throw new Error("Sign in before previewing Hook ideas.");
-        }
-
-        const response = await fetch(creative.previewSessionEndpoint, {
-          body: JSON.stringify({
-            influencerId: creative.influencerId,
-            sourceKind: creative.sourceKind,
-          }),
-          cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          method: "POST",
-          signal: controller.signal,
-        });
-        const data = (await response.json().catch(() => null)) as
-          | { ok: true; previewUrl: string }
-          | { error?: string; ok?: false }
-          | null;
-
-        if (!response.ok || data?.ok !== true) {
-          throw new Error(
-            data?.ok === false && data.error
-              ? data.error
-              : "Could not load this Hook preview.",
-          );
-        }
-
-        if (!controller.signal.aborted) {
-          setPreviewUrl(`${data.previewUrl}?session=${Date.now()}`);
-        }
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          setPreviewUrl(null);
-          setPreviewError(
-            getErrorMessage(error, "Could not load this Hook preview."),
-          );
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setPreviewLoading(false);
-        }
-      }
-    }
-
-    void loadPreview();
-
-    return () => controller.abort();
-  }, [creative, isActive, previewRetryKey]);
-
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-1"
-      style={{ zIndex: deckStyle.zIndex }}
-    >
-      <article
-        aria-label={`${creative.text.value}, Hook idea ${itemIndex + 1} of ${itemCount}`}
-        aria-hidden={isActive ? undefined : "true"}
-        className={cn(
-          "w-[min(72vw,230px)] origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
-          isActive
-            ? "pointer-events-auto cursor-grab active:cursor-grabbing"
-            : "pointer-events-none",
-        )}
-        onPointerCancel={isActive ? onPointerCancel : undefined}
-        onPointerDown={isActive ? onPointerDown : undefined}
-        onPointerMove={isActive ? onPointerMove : undefined}
-        onPointerUp={isActive ? onPointerUp : undefined}
-        style={cardStyle}
-      >
-        <HookVideoCard
-          dragOffset={0}
-          hookText={creative.text.value}
-          previewError={isActive ? previewError : null}
-          previewLoading={isActive && previewLoading}
-          previewUrl={isActive ? previewUrl : null}
-          trimEnd={creative.trimEnd}
-          trimStart={creative.trimStart}
-          video={{
-            durationSeconds: creative.sourceDurationSeconds,
-            id: creative.videoId,
-            influencerId: creative.influencerId,
-            ratio: creative.aspectRatio,
-            sourceKind: creative.sourceKind,
-            thumbnailUrl: creative.thumbnailUrl,
-            title: creative.title,
-            trimEnd: creative.trimEnd,
-            trimStart: creative.trimStart,
-          }}
-          onPreviewError={() => {
-            setPreviewUrl(null);
-            setPreviewLoading(false);
-            setPreviewError("Could not load this Hook preview.");
-          }}
-          onRetryPreview={() => setPreviewRetryKey((current) => current + 1)}
-        />
-      </article>
     </div>
   );
 }
@@ -1910,7 +1521,7 @@ function CarouselDeckCard({
       >
         <div
           className={cn(
-            "relative aspect-[4/5] overflow-hidden rounded-lg bg-card",
+            "relative aspect-[4/5] overflow-hidden rounded-lg bg-foreground-strong",
             isActive
               ? "shadow-[0_10px_18px_rgb(9_9_11_/_0.2)]"
               : "shadow-[0_6px_12px_rgb(9_9_11_/_0.14)]",
@@ -1970,8 +1581,8 @@ function CarouselDeckCard({
                   className={cn(
                     "h-1.5 rounded-full transition-[width,background-color] motion-reduce:transition-none",
                     activeSlideIndex === index
-                      ? "w-4 bg-primary"
-                      : "w-1.5 bg-[#B9B5AF]/55 hover:bg-[#B9B5AF]",
+                      ? "w-4 bg-white"
+                      : "w-1.5 bg-white/45 hover:bg-white/80",
                   )}
                 />
               ))}
@@ -1983,15 +1594,15 @@ function CarouselDeckCard({
   );
 }
 
-function getTrendingDeckSlots(
-  candidates: TrendingCandidate[],
-  activeItemIndex: number,
-): TrendingDeckSlot[] {
+function getCarouselDeckSlots(
+  candidates: CompleteCarousel[],
+  activeCarouselIndex: number,
+): CarouselDeckSlot[] {
   return ([0, 1, 2] as DeckDepth[]).flatMap((depth) => {
-    const itemIndex = activeItemIndex + depth;
-    const candidate = candidates[itemIndex];
+    const carouselIndex = activeCarouselIndex + depth;
+    const candidate = candidates[carouselIndex];
 
-    return candidate ? [{ candidate, itemIndex, depth }] : [];
+    return candidate ? [{ candidate, carouselIndex, depth }] : [];
   });
 }
 
@@ -2034,7 +1645,7 @@ function CarouselPreparationState({
           !compact && "mt-5 px-4",
         )}
       >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-[8px] bg-selected text-primary">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
           <Loader2
             className="size-5 animate-spin motion-reduce:animate-none"
             aria-hidden="true"
@@ -2043,20 +1654,20 @@ function CarouselPreparationState({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <div>
-              <p className="text-sm font-semibold text-foreground">
+              <p className="text-sm font-semibold text-foreground-strong">
                 {status}
               </p>
               <p className="mt-1 text-xs leading-5 text-muted">
-                {carousels.length} personalized slideshow {ideaLabel} in progress
+                {carousels.length} personalized carousel {ideaLabel} in progress
               </p>
             </div>
             <span className="text-xs font-medium tabular-nums text-muted">
               {readySlideCount}/{slideCount} slides ready
             </span>
           </div>
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#383838]">
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-border">
             <div
-              className="h-full rounded-full bg-primary transition-[width] duration-500 motion-reduce:transition-none"
+              className="h-full rounded-full bg-brand transition-[width] duration-500 motion-reduce:transition-none"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -2079,19 +1690,19 @@ function CarouselLoadingStackVisual() {
           style={{ zIndex: placeholder.zIndex }}
         >
           <div
-            className="relative aspect-[4/5] w-[min(76vw,252px)] origin-center overflow-hidden rounded-[12px] border border-border bg-card shadow-[0_18px_45px_rgb(0_0_0_/_0.26)]"
+            className="relative aspect-[4/5] w-[min(76vw,252px)] origin-center overflow-hidden rounded-card border border-border bg-card shadow-[0_10px_30px_rgb(23_23_27_/_0.10)]"
             style={{
               opacity: placeholder.opacity,
               transform: `translateY(${placeholder.translateY}px) scale(${placeholder.scale})`,
             }}
           >
             <div className="size-full p-5">
-              <Skeleton className="h-2.5 w-16 rounded-full bg-[#383838]" />
-              <Skeleton className="mt-5 h-[150px] w-full rounded-[8px] bg-surface-subtle" />
+              <Skeleton className="h-2.5 w-16 rounded-full bg-border" />
+              <Skeleton className="mt-5 h-[150px] w-full rounded-control bg-card-muted" />
               <div className="mt-5 flex flex-col gap-2.5">
-                <Skeleton className="h-3 w-4/5 rounded-full bg-[#383838]" />
-                <Skeleton className="h-3 w-full rounded-full bg-[#383838]" />
-                <Skeleton className="h-3 w-3/5 rounded-full bg-[#383838]" />
+                <Skeleton className="h-3 w-4/5 rounded-full bg-border" />
+                <Skeleton className="h-3 w-full rounded-full bg-border" />
+                <Skeleton className="h-3 w-3/5 rounded-full bg-border" />
               </div>
               {index === LOADING_STACK_PLACEHOLDERS.length - 1 ? (
                 <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-1.5">
@@ -2100,7 +1711,7 @@ function CarouselLoadingStackVisual() {
                       key={dot}
                       className={cn(
                         "size-1.5 rounded-full",
-                        dot === 0 ? "bg-primary" : "bg-border-strong",
+                        dot === 0 ? "bg-brand" : "bg-border-strong",
                       )}
                     />
                   ))}
@@ -2124,24 +1735,24 @@ function CarouselFailureState({
   const ideaLabel = count === 1 ? "idea needs" : "ideas need";
 
   return (
-    <section className="flex flex-col gap-4 border-y border-error/25 py-5 sm:flex-row sm:items-center sm:justify-between">
+    <section className="flex flex-col gap-4 border-y border-error/20 py-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-error/10 text-error">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-error/10 text-error">
           <CircleAlert className="size-4" aria-hidden="true" />
         </span>
         <div>
-          <p className="text-sm font-semibold text-foreground">
-            {count} slideshow {ideaLabel} attention
+          <p className="text-sm font-semibold text-foreground-strong">
+            {count} carousel {ideaLabel} attention
           </p>
           <p className="mt-1 text-xs leading-5 text-muted">
-            The worker did not finish these slideshow renders.
+            The worker did not finish these carousel renders.
           </p>
         </div>
       </div>
       <button
         type="button"
         onClick={onRetry}
-        className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-[8px] border border-border bg-card-muted px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-control border border-border-strong bg-card px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
       >
         <RefreshCw className="size-3.5" aria-hidden="true" />
         Retry generation
@@ -2176,10 +1787,10 @@ function CarouselFeedState({
       ) : (
         <span
           className={cn(
-            "flex size-11 items-center justify-center rounded-[8px]",
+            "flex size-11 items-center justify-center rounded-control",
             icon === "failed"
               ? "bg-error/10 text-error"
-              : "bg-selected text-primary",
+              : "bg-brand-soft text-primary",
           )}
         >
           <Icon className="size-5" aria-hidden="true" />
@@ -2188,7 +1799,7 @@ function CarouselFeedState({
       <div>
         <h2
           className={cn(
-            "text-xl font-semibold text-foreground",
+            "text-xl font-semibold tracking-[-0.02em] text-foreground-strong",
             icon === "preparing" ? "mt-1" : "mt-5",
           )}
         >
@@ -2200,7 +1811,7 @@ function CarouselFeedState({
         <button
           type="button"
           onClick={onAction}
-          className="mt-5 inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-[8px] bg-primary px-4 text-sm font-semibold text-primary-foreground transition-[background-color,transform] hover:bg-primary-hover active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="mt-5 inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-control bg-primary px-4 text-sm font-semibold text-white transition-[background-color,transform] hover:bg-primary-hover active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           <ActionIcon className="size-4" aria-hidden="true" />
           {actionLabel}
@@ -2214,15 +1825,15 @@ function GeneratedCarouselFeedSkeleton() {
   return (
     <div
       role="status"
-      aria-label="Loading personalized Trending ideas"
+      aria-label="Loading generated carousels"
       className="w-full"
     >
       <CarouselLoadingStackVisual />
       <div className="mx-auto mt-4 flex max-w-sm items-center gap-3 px-4">
-        <Skeleton className="size-10 shrink-0 rounded-[8px] bg-selected" />
+        <Skeleton className="size-10 shrink-0 rounded-control bg-brand-soft" />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <Skeleton className="h-3 w-44 max-w-full rounded-full bg-border-strong" />
-          <Skeleton className="h-2.5 w-64 max-w-full rounded-full bg-[#383838]" />
+          <Skeleton className="h-3 w-44 max-w-full rounded-full bg-border-strong/70" />
+          <Skeleton className="h-2.5 w-64 max-w-full rounded-full bg-border" />
         </div>
       </div>
     </div>
@@ -2254,7 +1865,7 @@ async function saveCarouselToLibrary(candidate: CompleteCarousel) {
     throw new Error(
       data?.ok === false
         ? data.message
-        : "Could not save this slideshow to Library.",
+        : "Could not save this carousel to Library.",
     );
   }
 
@@ -2265,7 +1876,7 @@ async function completeTrendingCarouselAction(
   candidate: CompleteCarousel,
   action: TrendingCompletionAction,
 ) {
-  const assignmentId = candidate.item.assignmentId;
+  const assignmentId = candidate.carousel.assignmentId;
 
   if (!assignmentId) {
     return;
@@ -2274,7 +1885,7 @@ async function completeTrendingCarouselAction(
   const token = await getCurrentUserIdToken();
 
   if (!token) {
-    throw new Error("Sign in before updating this Trending slideshow.");
+    throw new Error("Sign in before updating this Trending carousel.");
   }
 
   const response = await fetch("/api/trending/feed/actions", {
@@ -2296,42 +1907,7 @@ async function completeTrendingCarouselAction(
     throw new Error(
       data?.ok === false
         ? data.message
-        : "Could not update this Trending slideshow.",
-    );
-  }
-}
-
-async function completeTrendingHookAction(
-  item: TrendingHookVideoFeedItem,
-  action: "selected" | "skipped",
-) {
-  const token = await getCurrentUserIdToken();
-
-  if (!token) {
-    throw new Error("Sign in before updating this Trending Hook idea.");
-  }
-
-  const response = await fetch("/api/trending/hook-videos/feed/actions", {
-    body: JSON.stringify({
-      action,
-      assignmentId: item.assignmentId,
-    }),
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    method: "POST",
-  });
-  const data = (await response.json().catch(() => null)) as
-    | { error?: string; ok: false }
-    | { ok: true }
-    | null;
-
-  if (!response.ok || data?.ok !== true) {
-    throw new Error(
-      data?.ok === false && data.error
-        ? data.error
-        : "Could not update this Trending Hook idea.",
+        : "Could not update this Trending carousel.",
     );
   }
 }
@@ -2341,10 +1917,10 @@ async function scheduleTrendingCarousel(params: {
   context: SchedulePlatformContext;
   submission: CarouselScheduleSubmission;
 }) {
-  const assignmentId = params.candidate.item.assignmentId;
+  const assignmentId = params.candidate.carousel.assignmentId;
 
   if (!assignmentId) {
-    throw new Error("Refresh Trending before scheduling this slideshow.");
+    throw new Error("Refresh Trending before scheduling this carousel.");
   }
 
   return createAndPublishCarouselSchedule({
@@ -2359,25 +1935,7 @@ async function scheduleTrendingCarousel(params: {
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
-  return toSlideshowDisplayCopy(
-    error instanceof Error && error.message ? error.message : fallback,
-  );
-}
-
-function toSlideshowDisplayCopy(message: string) {
-  return message
-    .replace(/\bTrending carousels\b/g, "Trending slideshows")
-    .replace(/\bTrending carousel\b/g, "Trending slideshow")
-    .replace(/\bgenerated carousels\b/g, "generated slideshows")
-    .replace(/\bGenerated carousels\b/g, "Generated slideshows")
-    .replace(/\bcarousel ideas\b/g, "slideshow ideas")
-    .replace(/\bCarousel ideas\b/g, "Slideshow ideas")
-    .replace(/\bcarousel preparation\b/g, "slideshow preparation")
-    .replace(/\bCarousel preparation\b/g, "Slideshow preparation")
-    .replace(/\bcarousels\b/g, "slideshows")
-    .replace(/\bCarousels\b/g, "Slideshows")
-    .replace(/\bcarousel\b/g, "slideshow")
-    .replace(/\bCarousel\b/g, "Slideshow");
+  return error instanceof Error && error.message ? error.message : fallback;
 }
 
 function getReadySlides(carousel: GeneratedCarousel): ReadyCarouselSlide[] {
@@ -2393,14 +1951,8 @@ function getCarouselTitle(carousel: GeneratedCarousel) {
   return (
     carousel.selectedAngle?.trim() ||
     titleCaseSlug(carousel.categorySlug) ||
-    `Slideshow idea ${carousel.candidateIndex + 1}`
+    `Carousel idea ${carousel.candidateIndex + 1}`
   );
-}
-
-function getTrendingCandidateTitle(candidate: TrendingCandidate) {
-  return candidate.format === "carousel"
-    ? getCarouselTitle(candidate.carousel)
-    : candidate.item.creative.text.value;
 }
 
 function getPreparationTitle(carousels: GeneratedCarousel[]) {
@@ -2419,10 +1971,10 @@ function getPreparationTitle(carousels: GeneratedCarousel[]) {
   }
 
   if (carousels.some((carousel) => carousel.selectedAngle)) {
-    return "Writing slideshow content";
+    return "Writing carousel content";
   }
 
-  return "Preparing slideshow ideas";
+  return "Preparing carousel ideas";
 }
 
 function titleCaseSlug(value: string | null | undefined) {

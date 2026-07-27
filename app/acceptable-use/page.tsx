@@ -54,7 +54,7 @@ export default function AcceptableUsePage() {
         <LegalSection title="AI-assisted content and disclosures">
           <p>
             UGC Pilot may help users create AI-assisted video, image, caption,
-            and slideshow assets. Users are responsible for reviewing generated
+            and carousel assets. Users are responsible for reviewing generated
             outputs and disclosing AI-generated, sponsored, commercial, or
             branded content where required by law or platform policy.
           </p>
@@ -91,7 +91,7 @@ export default function AcceptableUsePage() {
           </p>
           <p>
             To report abuse or a rights concern, contact{" "}
-            <a className="font-bold text-primary" href="mailto:support@getugcpilot.com">
+            <a className="font-bold text-[#c2410c]" href="mailto:support@getugcpilot.com">
               support@getugcpilot.com
             </a>
             .

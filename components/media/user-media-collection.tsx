@@ -33,7 +33,6 @@ import type {
   MediaRatio,
   MediaSourceType,
 } from "@/lib/media/types";
-import { cn } from "@/lib/utils";
 
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
@@ -44,7 +43,6 @@ export function UserMediaCollection({
   description,
   emptyDescription,
   emptyTitle,
-  variant = "default",
   sourceTypes,
   title,
 }: {
@@ -54,7 +52,6 @@ export function UserMediaCollection({
   emptyTitle: string;
   sourceTypes?: MediaSourceType[];
   title: string;
-  variant?: "default" | "dark";
 }) {
   const { loading: authLoading, user } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -66,7 +63,6 @@ export function UserMediaCollection({
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const isDarkVariant = variant === "dark";
 
   const loadAssets = useCallback(async () => {
     if (authLoading) {
@@ -250,41 +246,28 @@ export function UserMediaCollection({
   }
 
   return (
-    <section>
-      <div className="flex flex-col gap-4 rounded-[var(--radius-card)] border border-border bg-card px-3.5 py-3.5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:px-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <span
-            className={cn(
-              "inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-primary",
-              isDarkVariant
-                ? "border border-primary/20 bg-brand-soft shadow-sm"
-                : "bg-primary/10",
-            )}
-          >
+    <section className="rounded-[var(--radius-panel)] border border-border bg-white p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <CollectionIcon collection={collection} />
           </span>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-              <span className="text-xs text-muted">
-                {isLoading ? "Loading…" : `${assets.length} ${assets.length === 1 ? "asset" : "assets"}`}
-              </span>
-            </div>
-            <p className="mt-0.5 max-w-2xl text-sm leading-5 text-muted">{description}</p>
+          <div>
+            <h2 className="text-base font-bold text-foreground">{title}</h2>
+            <p className="mt-0.5 max-w-2xl text-sm font-medium leading-5 text-muted">{description}</p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 sm:justify-end">
+        <div className="flex items-center gap-2">
+          <span className="rounded-md border border-border bg-card-muted px-2.5 py-1.5 text-xs font-bold text-muted">
+            {isLoading ? "Loading" : `${assets.length} ${assets.length === 1 ? "asset" : "assets"}`}
+          </span>
           <button
             type="button"
             onClick={() => void loadAssets()}
             disabled={isLoading || isUploading}
-            className={cn(
-              "inline-flex size-9 items-center justify-center rounded-[var(--radius-control)] border border-border text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
-              "bg-card-muted hover:border-border-strong hover:bg-card",
-            )}
+            className="inline-flex size-9 items-center justify-center rounded-md border border-border bg-white text-muted transition hover:bg-card-muted hover:text-foreground disabled:opacity-50"
             aria-label={`Refresh ${title}`}
-            title={`Refresh ${title}`}
           >
             <RefreshCw className={isLoading ? "size-4 animate-spin motion-reduce:animate-none" : "size-4"} aria-hidden="true" />
           </button>
@@ -300,51 +283,41 @@ export function UserMediaCollection({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={isUploading}
-            className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-primary px-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3.5 text-sm font-bold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isUploading ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Plus className="size-4" aria-hidden="true" />}
-            {isUploading ? "Uploading…" : getUploadLabel(collection)}
+            {isUploading ? "Uploading" : getUploadLabel(collection)}
           </button>
         </div>
       </div>
 
       {errorMessage ? (
-        <div
-          role="alert"
-          className={cn(
-            "mt-3 flex items-start gap-2 rounded-[var(--radius-control)] border px-3 py-2.5 text-sm font-medium text-error",
-            isDarkVariant ? "border-error/35 bg-error/10" : "border-error/20 bg-error/5",
-          )}
-        >
+        <div role="alert" className="mt-4 flex items-start gap-2 rounded-lg border border-error/20 bg-error/5 px-3 py-2.5 text-sm font-semibold text-error">
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           {errorMessage}
         </div>
       ) : null}
 
       {successMessage ? (
-        <div
-          role="status"
-          className="mt-3 flex items-start gap-2 rounded-[var(--radius-control)] border border-success/30 bg-success/10 px-3 py-2.5 text-sm font-medium text-success"
-        >
+        <div role="status" className="mt-4 flex items-start gap-2 rounded-lg border border-success/20 bg-success/5 px-3 py-2.5 text-sm font-semibold text-[#087443]">
           <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           {successMessage}
         </div>
       ) : null}
 
-      <div className="mt-4">
+      <div className="mt-5">
         {isLoading ? (
-          <div className="flex min-h-44 items-center justify-center rounded-[var(--radius-card)] border border-border bg-card text-sm font-medium text-muted">
-            <Loader2 className="mr-2 size-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
-            Loading media…
+          <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-border bg-card-muted text-sm font-semibold text-muted">
+            <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            Loading media...
           </div>
         ) : assets.length > 0 ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {assets.map((asset) => (
               <MediaAssetCard
                 key={asset.id}
                 asset={asset}
                 deleting={deletingAssetId === asset.id}
-                variant={variant}
                 onRemove={() => {
                   setDeleteErrorMessage(null);
                   setPendingDeleteAsset(asset);
@@ -353,19 +326,12 @@ export function UserMediaCollection({
             ))}
           </div>
         ) : (
-          <div className="flex min-h-48 flex-col items-center justify-center rounded-[var(--radius-card)] border border-dashed border-border bg-card-muted/55 px-5 py-8 text-center">
-            <span
-              className={cn(
-                "inline-flex size-10 items-center justify-center rounded-[var(--radius-control)] border",
-                isDarkVariant
-                  ? "border-border-strong bg-card text-primary"
-                  : "border-border bg-card text-muted",
-              )}
-            >
+          <div className="flex min-h-52 flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card-muted px-5 text-center">
+            <span className="inline-flex size-10 items-center justify-center rounded-lg border border-border bg-white text-muted">
               <Upload className="size-4.5" aria-hidden="true" />
             </span>
-            <h3 className="mt-3 text-sm font-semibold text-foreground">{emptyTitle}</h3>
-            <p className="mt-1 max-w-md text-sm leading-5 text-muted">{emptyDescription}</p>
+            <h3 className="mt-3 text-sm font-bold text-foreground">{emptyTitle}</h3>
+            <p className="mt-1 max-w-md text-sm font-medium leading-5 text-muted">{emptyDescription}</p>
           </div>
         )}
       </div>
@@ -388,18 +354,13 @@ export function UserMediaCollection({
           </DialogHeader>
 
           {pendingDeleteAsset ? (
-            <div className="flex items-center gap-3 rounded-[var(--radius-control)] border border-border bg-card-muted p-3">
-              <span
-                className={cn(
-                  "inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] ring-1 ring-border",
-                  isDarkVariant ? "bg-card text-primary" : "bg-card text-muted",
-                )}
-              >
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-card-muted p-3">
+              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-muted ring-1 ring-border">
                 <CollectionIcon collection={pendingDeleteAsset.collection} />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">{pendingDeleteAsset.title}</p>
-                <p className="mt-0.5 text-xs text-muted">
+                <p className="truncate text-sm font-bold text-foreground">{pendingDeleteAsset.title}</p>
+                <p className="mt-0.5 text-xs font-semibold text-muted">
                   {getSourceLabel(pendingDeleteAsset)} · {formatAssetDate(pendingDeleteAsset.createdAt)}
                 </p>
               </div>
@@ -407,13 +368,7 @@ export function UserMediaCollection({
           ) : null}
 
           {deleteErrorMessage ? (
-            <div
-              role="alert"
-              className={cn(
-                "flex items-start gap-2 rounded-[var(--radius-control)] border px-3 py-2.5 text-sm font-medium text-error",
-                isDarkVariant ? "border-error/35 bg-error/10" : "border-error/20 bg-error/5",
-              )}
-            >
+            <div role="alert" className="flex items-start gap-2 rounded-lg border border-error/20 bg-error/5 px-3 py-2.5 text-sm font-semibold text-error">
               <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               {deleteErrorMessage}
             </div>
@@ -438,7 +393,7 @@ export function UserMediaCollection({
               disabled={Boolean(deletingAssetId)}
             >
               {deletingAssetId ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
-              {deletingAssetId ? "Removing…" : "Remove asset"}
+              {deletingAssetId ? "Removing" : "Remove asset"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -451,19 +406,16 @@ function MediaAssetCard({
   asset,
   deleting,
   onRemove,
-  variant = "default",
 }: {
   asset: MediaAsset;
   deleting: boolean;
   onRemove: () => void;
-  variant?: "default" | "dark";
 }) {
   const isImage = asset.collection === "image";
-  const isDarkVariant = variant === "dark";
 
   return (
-    <article className="group overflow-hidden rounded-[var(--radius-card)] border border-border bg-card shadow-card transition-colors hover:border-border-strong">
-      <div className={cn("relative aspect-video overflow-hidden border-b border-border", isDarkVariant ? "bg-[#181818]" : "bg-[#111827]")}>
+    <article className="overflow-hidden rounded-lg border border-border bg-white">
+      <div className="relative aspect-video overflow-hidden bg-[#111827]">
         {isImage ? (
           <Image src={asset.thumbnailUrl || asset.url} alt={asset.title} fill unoptimized className="object-cover" sizes="(max-width: 640px) 100vw, 25vw" />
         ) : (
@@ -471,37 +423,27 @@ function MediaAssetCard({
         )}
       </div>
       <div className="p-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-semibold text-foreground">{asset.title}</h3>
-            <p className="mt-1 truncate text-xs text-muted">
-              {getSourceLabel(asset)} · {formatAssetDate(asset.createdAt)}
-            </p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-bold text-foreground">{asset.title}</h3>
+            <p className="mt-1 text-xs font-semibold text-muted">{getSourceLabel(asset)}</p>
+            <p className="mt-0.5 text-[11px] font-medium text-muted">{formatAssetDate(asset.createdAt)}</p>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1.5 pt-0.5 text-[11px] font-medium text-success">
-            <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
-            Ready
-          </span>
+          <span className="rounded-md bg-success/10 px-2 py-1 text-[11px] font-bold text-[#087443]">Ready</span>
         </div>
         <div className="mt-3 flex items-center gap-2">
           {!isImage ? (
-            <Link
-              href={`/edit/${encodeURIComponent(asset.id)}`}
-              className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            >
+            <Link href={`/edit/${encodeURIComponent(asset.id)}`} className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-md border border-border bg-card-muted px-3 text-xs font-bold text-foreground transition hover:bg-[#e9edf1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
               Open in Edit
             </Link>
           ) : (
-            <span className="min-w-0 flex-1 text-xs text-muted">Available across your image tools</span>
+            <span className="min-w-0 flex-1 text-xs font-semibold text-muted">Available in your image library</span>
           )}
           <button
             type="button"
             onClick={onRemove}
             disabled={deleting}
-            className={cn(
-              "inline-flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-border text-muted transition-colors hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
-              "bg-card hover:border-error/40 hover:bg-error/10",
-            )}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-white text-muted transition hover:border-error/30 hover:bg-error/5 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
             aria-label={`Remove ${asset.title}`}
           >
             {deleting ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Trash2 className="size-3.5" aria-hidden="true" />}

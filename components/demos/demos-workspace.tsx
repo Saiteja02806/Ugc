@@ -33,9 +33,9 @@ const CONTENT_TYPE_BY_EXTENSION: Record<string, DemoContentType> = {
   webm: "video/webm",
 };
 const demoPrimaryActionClassName =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const demoIconActionClassName =
-  "inline-flex size-11 items-center justify-center rounded-control border border-border bg-card text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 sm:size-10";
+  "inline-flex size-11 items-center justify-center rounded-control border border-border bg-card text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:size-10";
 const demoMetricChipClassName =
   "inline-flex min-h-10 items-center rounded-control bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-border";
 
@@ -406,7 +406,7 @@ export function UploadedPostsTab({
               disabled={isLoading}
               aria-label="Refresh demos"
               title="Refresh demos"
-              className="inline-flex size-10 items-center justify-center rounded-control border border-border bg-card text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex size-10 items-center justify-center rounded-md border border-border bg-white text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshCw
                 className={cn("size-4", isLoading && "animate-spin")}
@@ -417,7 +417,7 @@ export function UploadedPostsTab({
               type="button"
               onClick={openFilePicker}
               disabled={hasActiveUpload}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Upload className="size-4" aria-hidden="true" />
               Upload demo
@@ -656,12 +656,12 @@ function EmbeddedDemoWorkspace({
             {Array.from({ length: 4 }, (_, index) => (
               <div
                 key={index}
-                className="overflow-hidden rounded-card border border-border bg-card"
+                className="overflow-hidden rounded-lg border border-border bg-white"
               >
-                <div className="aspect-[4/5] animate-pulse bg-card-muted motion-reduce:animate-none" />
+                <div className="aspect-[4/5] animate-pulse bg-[#e9eaec] motion-reduce:animate-none" />
                 <div className="space-y-3 p-4">
-                  <div className="h-4 w-3/4 animate-pulse rounded bg-card-muted motion-reduce:animate-none" />
-                  <div className="h-3 w-1/2 animate-pulse rounded bg-surface-subtle motion-reduce:animate-none" />
+                  <div className="h-4 w-3/4 animate-pulse rounded bg-[#e9eaec] motion-reduce:animate-none" />
+                  <div className="h-3 w-1/2 animate-pulse rounded bg-[#eff0f1] motion-reduce:animate-none" />
                 </div>
               </div>
             ))}
@@ -684,7 +684,7 @@ function EmbeddedDemoWorkspace({
             className={cn(
               "grid min-h-[330px] items-center gap-8 rounded-panel border border-dashed px-5 py-8 transition-colors sm:grid-cols-[minmax(0,1fr)_250px] sm:px-8",
               isDragActive
-                ? "border-primary bg-brand-soft/30"
+                ? "border-primary bg-white"
                 : "border-border-strong bg-card",
             )}
           >
@@ -725,7 +725,7 @@ function EmbeddedDemoWorkspace({
         ) : null}
 
         {demos.length > 0 && isDragActive ? (
-          <div className="pointer-events-none absolute inset-4 z-10 flex items-center justify-center rounded-card border-2 border-dashed border-primary bg-card/95 text-sm font-semibold text-primary shadow-floating sm:inset-5">
+          <div className="pointer-events-none absolute inset-4 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-white/95 text-sm font-semibold text-primary shadow-sm sm:inset-5">
             Drop your video to upload
           </div>
         ) : null}
@@ -790,7 +790,7 @@ export function DemoUploadPanel({
         void onFiles(event.dataTransfer.files);
       }}
       className={cn(
-        "relative rounded-panel border bg-card p-4 transition-colors sm:p-5",
+        "relative rounded-lg border bg-white p-4 transition-colors sm:p-5",
         isDragActive ? "border-primary bg-brand-soft/35" : "border-border",
       )}
     >
@@ -801,7 +801,7 @@ export function DemoUploadPanel({
         )}
       >
         <div className="flex min-w-0 items-start gap-3.5">
-          <div className="hidden size-11 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary sm:flex">
+          <div className="hidden size-11 shrink-0 items-center justify-center rounded-md bg-foreground-strong text-white sm:flex">
             <FileVideo className="size-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
@@ -824,7 +824,7 @@ export function DemoUploadPanel({
           </div>
         </div>
 
-        <div className="rounded-control border border-dashed border-border-strong bg-surface-subtle p-2">
+        <div className="rounded-md border border-dashed border-border-strong bg-surface-subtle p-2">
           {activeUpload ? (
             <UploadProgress
               uploadState={uploadState}
@@ -835,9 +835,9 @@ export function DemoUploadPanel({
             <button
               type="button"
               onClick={onBrowse}
-              className="flex min-h-20 w-full items-center justify-center gap-3 rounded-control px-4 py-3 text-left transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="flex min-h-20 w-full items-center justify-center gap-3 rounded-md px-4 py-3 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-brand-soft text-primary">
                 <Upload className="size-4" aria-hidden="true" />
               </span>
               <span>
@@ -915,7 +915,7 @@ function UploadProgress({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(progressValue)}
-        className="mt-4 h-2 overflow-hidden rounded-full bg-card-muted"
+        className="mt-4 h-2 overflow-hidden rounded-full bg-[#edf0f3]"
       >
         <div
           className={cn(
@@ -931,7 +931,7 @@ function UploadProgress({
             <button
               type="button"
               onClick={onRetry}
-              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-primary-hover"
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-primary px-3 text-xs font-bold text-white transition hover:bg-primary-hover"
             >
               <RotateCcw className="size-3.5" aria-hidden="true" />
               Retry
@@ -941,7 +941,7 @@ function UploadProgress({
             <button
               type="button"
               onClick={onCancel}
-              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-border bg-card-muted px-3 text-xs font-bold text-muted transition hover:border-border-strong hover:bg-card hover:text-foreground"
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-border bg-white px-3 text-xs font-bold text-[#405977] transition hover:bg-[#fff8f4]"
             >
               <X className="size-3.5" aria-hidden="true" />
               Cancel
@@ -999,11 +999,11 @@ export function DemoLibrary({
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Loading demos">
           {Array.from({ length: 4 }, (_, index) => (
-            <div key={index} className="overflow-hidden rounded-card border border-border bg-card">
-              <div className="aspect-[4/5] animate-pulse bg-card-muted motion-reduce:animate-none" />
+            <div key={index} className="overflow-hidden rounded-lg border border-border bg-white">
+              <div className="aspect-[4/5] animate-pulse bg-[#e9eaec] motion-reduce:animate-none" />
               <div className="space-y-3 p-4">
-                <div className="h-4 w-3/4 animate-pulse rounded bg-card-muted motion-reduce:animate-none" />
-                <div className="h-3 w-1/2 animate-pulse rounded bg-surface-subtle motion-reduce:animate-none" />
+                <div className="h-4 w-3/4 animate-pulse rounded bg-[#e9eaec] motion-reduce:animate-none" />
+                <div className="h-3 w-1/2 animate-pulse rounded bg-[#eff0f1] motion-reduce:animate-none" />
               </div>
             </div>
           ))}
@@ -1022,9 +1022,9 @@ export function DemoLibrary({
           ))}
         </div>
       ) : (
-        <div className="flex min-h-[260px] items-center justify-center rounded-panel border border-border bg-surface-subtle px-6 text-center">
+        <div className="flex min-h-[260px] items-center justify-center rounded-lg border border-border bg-surface-subtle px-6 text-center">
           <div className="max-w-md">
-            <div className="mx-auto flex size-11 items-center justify-center rounded-control bg-card-muted text-muted ring-1 ring-border">
+            <div className="mx-auto flex size-11 items-center justify-center rounded-md bg-white text-muted ring-1 ring-border">
               <Video className="size-5" aria-hidden="true" />
             </div>
             <p className="mt-4 text-sm font-semibold text-foreground-strong">
@@ -1116,7 +1116,7 @@ export function DemoCard({
           </div>
           <Link
             href={`/demos/${encodeURIComponent(demo.id)}`}
-            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-control bg-foreground-strong px-3 text-xs font-semibold text-white transition-colors hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             <Pencil className="size-3.5" aria-hidden="true" />
             Edit
@@ -1195,7 +1195,7 @@ function DemoMediaPreview({
               setPreviewState("loading");
               setPreviewKey((current) => current + 1);
             }}
-            className="rounded-control border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-card-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className="rounded-md bg-white/10 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             Retry preview
           </button>
@@ -1250,11 +1250,11 @@ function StatusBadge({ status }: { status: DemoStatus }) {
   const styles: Record<DemoStatus, string> = {
     draft: "bg-primary/95 text-white",
     failed: "bg-error/95 text-white",
-    processing: "bg-card-muted/95 text-foreground",
+    processing: "bg-white/90 text-[#173454]",
     ready: "bg-success/95 text-white",
-    rendered: "bg-brand-soft text-primary",
-    rendering: "bg-card-muted/95 text-foreground",
-    uploading: "bg-card-muted/95 text-foreground",
+    rendered: "bg-[#173454]/95 text-white",
+    rendering: "bg-white/90 text-[#173454]",
+    uploading: "bg-white/90 text-[#173454]",
   };
 
   return (

@@ -43,19 +43,19 @@ export function GoogleSignInButton() {
         type="button"
         onClick={handleGoogleSignIn}
         disabled={isLoading}
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-control border border-border bg-card-muted px-5 text-sm font-bold text-foreground shadow-sm transition hover:border-border-strong hover:bg-[#2d2d2d] hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-70"
+        className="flex h-12 w-full items-center justify-center gap-3 rounded-2xl border border-border bg-white px-5 text-sm font-bold text-foreground shadow-sm transition hover:bg-[#fbf8f4] disabled:cursor-not-allowed disabled:opacity-70"
       >
         <span
           aria-hidden="true"
-          className="flex size-5 items-center justify-center text-sm font-bold text-[#4285f4]"
+          className="flex size-5 items-center justify-center rounded-full bg-white text-sm font-bold text-[#4285f4]"
         >
           G
         </span>
-        {isLoading ? "Signing in..." : "Sign in with Google"}
+        {isLoading ? "Signing in..." : "Continue with Google"}
       </button>
 
       {errorMessage ? (
-        <p className="mt-3 rounded-control border border-error/35 bg-error/10 px-3 py-2 text-sm font-semibold text-error">
+        <p className="mt-3 text-center text-sm font-semibold text-error">
           {errorMessage}
         </p>
       ) : null}

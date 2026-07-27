@@ -377,7 +377,7 @@ export function FocusedVideoEditor({
                     className={cn(
                       "h-8 rounded-[6px] px-3 text-xs font-semibold transition-colors",
                       activePreviewMode === "draft"
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-foreground-strong text-white"
                         : "text-muted hover:bg-card-muted hover:text-foreground",
                     )}
                   >
@@ -396,7 +396,7 @@ export function FocusedVideoEditor({
                     className={cn(
                       "h-8 rounded-[6px] px-3 text-xs font-semibold transition-colors",
                       activePreviewMode === "rendered"
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-foreground-strong text-white"
                         : "text-muted hover:bg-card-muted hover:text-foreground",
                     )}
                   >
@@ -421,7 +421,7 @@ export function FocusedVideoEditor({
               className="flex min-h-0 flex-1 items-center justify-center"
             >
               <div
-                className="relative max-h-full max-w-full overflow-hidden rounded-[6px] bg-black text-white ring-1 ring-border shadow-[0_12px_32px_rgb(0_0_0_/_0.35)] [container-type:size]"
+                className="relative max-h-full max-w-full overflow-hidden rounded-[6px] bg-black text-white ring-1 ring-black/10 shadow-[0_8px_18px_rgb(15_23_42_/_0.12)] [container-type:size]"
                 style={{
                   aspectRatio: previewAspectRatio,
                   height: "min(100%, 520px)",
@@ -522,7 +522,7 @@ export function FocusedVideoEditor({
                   onClick={togglePreviewPlayback}
                   disabled={!canPreviewTrim}
                   aria-label={isPreviewPlaying ? "Pause preview" : "Play preview"}
-                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-card-muted text-foreground transition hover:border-border-strong hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   {isPreviewPlaying ? (
                     <Pause className="size-4" aria-hidden="true" />
@@ -792,7 +792,7 @@ function TrimControls({
                 event.currentTarget.blur();
               }
             }}
-            className="mt-1 h-8 w-full rounded-control border border-border bg-card-muted px-2.5 text-sm font-semibold tabular-nums text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="mt-1 h-8 w-full rounded-control border border-border bg-card px-2.5 text-sm font-semibold tabular-nums text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
           />
         </label>
         <label className="block w-20">
@@ -821,7 +821,7 @@ function TrimControls({
                 event.currentTarget.blur();
               }
             }}
-            className="mt-1 h-8 w-full rounded-control border border-border bg-card-muted px-2.5 text-sm font-semibold tabular-nums text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="mt-1 h-8 w-full rounded-control border border-border bg-card px-2.5 text-sm font-semibold tabular-nums text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
           />
         </label>
         <button
@@ -830,7 +830,7 @@ function TrimControls({
           disabled={!canEditTrim}
           aria-label="Reset trim"
           title="Reset trim"
-          className="inline-flex size-8 items-center justify-center rounded-control border border-border bg-card-muted text-foreground transition-colors hover:border-border-strong hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex size-8 items-center justify-center rounded-control border border-border bg-card text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <RotateCcw className="size-3.5" aria-hidden="true" />
           <span className="sr-only">Reset trim</span>
@@ -840,39 +840,41 @@ function TrimControls({
       <div className="mt-2">
         <div
           ref={trackRef}
-          className="relative h-10 touch-none select-none"
+          className="relative mx-2 h-9 touch-none select-none"
           onPointerDown={handleTrackPointerDown}
         >
-          <div className="pointer-events-none absolute inset-x-0 top-3 h-4 overflow-hidden rounded-control border border-border bg-card-muted">
+          <div className="pointer-events-none absolute inset-x-0 top-2 h-5 overflow-hidden rounded-control border border-border bg-card-muted">
             {thumbnailUrl ? (
               <span
-                className="absolute inset-0 bg-cover bg-center opacity-18 grayscale"
+                className="absolute inset-0 bg-cover bg-center opacity-15 grayscale"
                 style={{
                   backgroundImage: `url(${JSON.stringify(thumbnailUrl)})`,
                 }}
               />
             ) : null}
-            <span className="absolute inset-0 bg-card-muted/55" />
+            <span className="absolute inset-0 bg-card-muted/45" />
           </div>
           <div
-            className="pointer-events-none absolute bottom-3 top-3 rounded-l-control bg-background/85"
+            className="pointer-events-none absolute bottom-2 top-2 rounded-l-control bg-background/85"
             style={{ left: 0, width: `${selectedLeft}%` }}
           />
           <div
-            className="pointer-events-none absolute bottom-3 top-3 rounded-r-control bg-background/85"
+            className="pointer-events-none absolute bottom-2 top-2 rounded-r-control bg-background/85"
             style={{ left: `${selectedRight}%`, right: 0 }}
           />
           <div
-            className="pointer-events-none absolute bottom-3 top-3 rounded-[5px] border-y-2 border-brand bg-primary/15"
+            className="pointer-events-none absolute bottom-2 top-2 rounded-[5px] border-y-2 border-brand"
             style={{
               left: `${selectedLeft}%`,
               width: `${Math.max(0, selectedRight - selectedLeft)}%`,
             }}
           />
           <div
-            className="pointer-events-none absolute bottom-3 top-3 z-10 w-px -translate-x-1/2 bg-primary/80 shadow-[0_0_0_1px_rgb(31_31_31_/_0.85)]"
+            className="pointer-events-none absolute bottom-1 top-1 z-10 w-px -translate-x-1/2 bg-foreground shadow-[0_0_0_1px_rgb(255_255_255_/_0.65)]"
             style={{ left: `${currentPercent}%` }}
-          />
+          >
+            <span className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rotate-45 bg-foreground" />
+          </div>
 
           <button
             type="button"
@@ -887,13 +889,13 @@ function TrimControls({
             onPointerMove={(event) => handleHandlePointerMove("start", event)}
             onPointerUp={handleHandlePointerUp}
             disabled={!canEditTrim}
-            className="absolute bottom-2 top-2 z-20 flex w-7 -translate-x-1/2 items-center justify-center rounded-control bg-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className="absolute bottom-1 top-1 z-20 flex w-9 -translate-x-1/2 items-center justify-center rounded-control bg-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
             style={{ left: `${selectedLeft}%` }}
           >
             <span
               className={cn(
-                "block h-full w-1.5 rounded-full border border-primary bg-primary shadow-[0_0_0_3px_rgb(225_101_64_/_0.14)] transition",
-                activeHandle === "start" && "bg-primary-hover shadow-[0_0_0_4px_rgb(225_101_64_/_0.24)]",
+                "block h-full w-2 rounded-l-[5px] border-2 border-brand bg-white shadow-sm transition",
+                activeHandle === "start" && "bg-brand-soft ring-2 ring-brand/20",
               )}
               aria-hidden="true"
             />
@@ -913,13 +915,13 @@ function TrimControls({
             onPointerMove={(event) => handleHandlePointerMove("end", event)}
             onPointerUp={handleHandlePointerUp}
             disabled={!canEditTrim}
-            className="absolute bottom-2 top-2 z-20 flex w-7 -translate-x-1/2 items-center justify-center rounded-control bg-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className="absolute bottom-1 top-1 z-20 flex w-9 -translate-x-1/2 items-center justify-center rounded-control bg-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
             style={{ left: `${selectedRight}%` }}
           >
             <span
               className={cn(
-                "block h-full w-1.5 rounded-full border border-primary bg-primary shadow-[0_0_0_3px_rgb(225_101_64_/_0.14)] transition",
-                activeHandle === "end" && "bg-primary-hover shadow-[0_0_0_4px_rgb(225_101_64_/_0.24)]",
+                "block h-full w-2 rounded-r-[5px] border-2 border-brand bg-white shadow-sm transition",
+                activeHandle === "end" && "bg-brand-soft ring-2 ring-brand/20",
               )}
               aria-hidden="true"
             />
@@ -994,7 +996,7 @@ function TextOverlayControls({
               onClick={onAddOverlay}
               disabled={!canAddOverlay}
               title={canAddOverlay ? "Add text layer" : "All three text positions are in use"}
-              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control border border-border bg-card-muted px-3 text-xs font-semibold text-muted transition hover:border-border-strong hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-semibold text-deep-contrast transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="size-3.5" aria-hidden="true" />
               Add text
@@ -1017,7 +1019,7 @@ function TextOverlayControls({
                     aria-hidden="true"
                     className={cn(
                       "inline-flex size-8 shrink-0 items-center justify-center rounded-control text-xs font-bold uppercase",
-                      selected ? "bg-brand text-primary-foreground" : "bg-card-muted text-muted",
+                      selected ? "bg-brand text-white" : "bg-card-muted text-muted",
                     )}
                   >
                     {overlay.position.slice(0, 1)}
@@ -1081,7 +1083,7 @@ function TextOverlayControls({
               }
               maxLength={TEXT_OVERLAY_MAX_LENGTH}
               rows={4}
-              className="mt-2 min-h-24 w-full resize-y rounded-control border border-border bg-card-muted px-3 py-2.5 text-sm font-semibold leading-5 text-foreground outline-none transition placeholder:text-muted-subtle focus:border-primary focus:ring-2 focus:ring-primary/15"
+              className="mt-2 min-h-24 w-full resize-y rounded-control border border-border bg-card px-3 py-2.5 text-sm font-semibold leading-5 text-foreground outline-none transition placeholder:text-muted-subtle focus:border-primary focus:ring-2 focus:ring-primary/15"
             />
             <div className="mt-1.5 flex justify-end text-xs font-medium text-muted">
               <span className="tabular-nums">{characterCount}/{TEXT_OVERLAY_MAX_LENGTH}</span>
@@ -1089,7 +1091,7 @@ function TextOverlayControls({
             {selectedOverlayIsTruncated ? (
               <p
                 role="alert"
-                className="mt-2 inline-flex items-start gap-2 rounded-control border border-error/35 bg-error/10 px-3 py-2 text-xs font-semibold leading-5 text-error"
+                className="mt-2 inline-flex items-start gap-2 rounded-control border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold leading-5 text-error"
               >
                 <AlertCircle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                 Too many line breaks for this output. Shorten the layer before exporting.

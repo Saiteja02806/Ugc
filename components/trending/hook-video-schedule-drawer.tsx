@@ -355,7 +355,7 @@ export function HookVideoScheduleDrawer({
                     {loading ? "Loading" : `${connectedCount} connected`}
                     {!loading ? (
                       <Link
-                        href="/settings#instagram-publishing"
+                        href="/connected-accounts"
                         className="font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                       >
                         Manage
@@ -394,7 +394,7 @@ export function HookVideoScheduleDrawer({
                           No connected accounts.
                         </p>
                         <Link
-                          href="/settings#instagram-publishing"
+                          href="/connected-accounts"
                           className="mt-2 inline-flex text-xs font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                           Connect an account
@@ -459,7 +459,7 @@ export function HookVideoScheduleDrawer({
             type="button"
             onClick={stage === "details" ? continueToReview : () => void confirmSchedule()}
             disabled={loading || submitting}
-            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? (
               <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />

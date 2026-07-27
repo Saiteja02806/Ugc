@@ -24,7 +24,7 @@ export default function TermsPage() {
           <p>
             UGC Pilot is a user-controlled social video creation and scheduling
             platform. Users can upload or select media, create AI-assisted
-            videos and slideshows, write captions, review rights and
+            videos and carousels, write captions, review rights and
             disclosures, and approve content for publishing to supported social
             platforms.
           </p>
@@ -59,7 +59,7 @@ export default function TermsPage() {
           <p>
             By using YouTube-related features, users also agree to the{" "}
             <a
-              className="font-bold text-primary"
+              className="font-bold text-[#c2410c]"
               href="https://www.youtube.com/t/terms"
               rel="noreferrer"
               target="_blank"
@@ -202,7 +202,7 @@ export default function TermsPage() {
         <LegalSection title="Contact">
           <p>
             Questions about these terms can be sent to{" "}
-            <a className="font-bold text-primary" href="mailto:support@getugcpilot.com">
+            <a className="font-bold text-[#c2410c]" href="mailto:support@getugcpilot.com">
               support@getugcpilot.com
             </a>
             .

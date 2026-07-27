@@ -934,6 +934,21 @@ Core tables:
 - `library_items`
 - `library_carousel_slides`
 
+## 2026-07-27 Frontend Presentation Rollback
+
+- At the user's direction, the production-facing pages, components, and UI
+  assets were restored to the last known old production presentation at Git
+  commit `b874cc9`.
+- This is a frontend-only rollback. The newer API routes, server libraries,
+  tests, database migrations, worker logic, and GCP infrastructure remain in
+  place.
+- The old production light palette remains authoritative:
+  `--background: #fcfbfa`, `--foreground: #17171b`, and
+  `--primary: #c94716`.
+- Later Trending, Analytics, AI Studio, Settings, and navigation presentation
+  changes must not be treated as live after this rollback unless they are
+  deliberately reintroduced and verified in production.
+
 ## Trending Carousel Outputs
 
 As of 2026-07-25, the approved product target is one owner-scoped Trending

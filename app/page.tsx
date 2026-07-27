@@ -1,101 +1,121 @@
 import type { Metadata } from "next";
 import {
   ArrowRight,
+  BadgeCheck,
   CalendarClock,
+  Camera,
   Check,
-  ChevronRight,
-  Clapperboard,
-  Images,
-  LayoutGrid,
+  CheckCircle2,
+  CirclePlay,
+  FileVideo,
+  Layers3,
+  Library,
   Menu,
-  ScanText,
+  MessageSquareText,
+  Music2,
   ShieldCheck,
-  Sparkles,
-  WandSparkles,
+  Upload,
+  Wand2,
 } from "lucide-react";
 import Link from "next/link";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
-import { SocialPlatformIcon } from "@/components/social/platform-icon";
 
 const authHref = "/sign-in";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "UGCPilot — Instagram Marketing Workspace",
+    absolute: "UGCPilot — Schedule Videos and Carousels",
   },
   description:
-    "Create Instagram Reel hooks, text-led videos, carousel posts, and approved publishing workflows in one workspace.",
+    "Plan, schedule, and publish videos and photo carousels to TikTok, Instagram, and YouTube from one dashboard.",
 };
 
 const navItems = [
-  { label: "Instagram formats", href: "#formats" },
-  { label: "How it works", href: "#workflow" },
+  { label: "Product", href: "#workflow" },
+  { label: "Social Scheduling", href: "#review" },
   { label: "Pricing", href: "/pricing" },
-];
-
-const formatCards = [
-  {
-    title: "Reel hooks",
-    description:
-      "Browse approved hook footage and develop openings around your own business profile.",
-    icon: Sparkles,
-  },
-  {
-    title: "Wall-of-text Reels",
-    description:
-      "Turn your own script and media into text-led videos built for fast Instagram viewing.",
-    icon: ScanText,
-  },
-  {
-    title: "Carousel posts",
-    description:
-      "Build swipeable visual stories, review every slide, and keep the full post together.",
-    icon: Images,
-  },
-  {
-    title: "Instagram scheduling",
-    description:
-      "Connect an Instagram professional account and approve each post before it is scheduled.",
-    icon: CalendarClock,
-  },
 ];
 
 const workflowSteps = [
   {
-    title: "Set your Instagram context",
-    description:
-      "Add your website and business details so creative work starts from your actual offer.",
+    title: "Choose media",
+    description: "Add videos, images, carousels, or reusable campaign assets.",
+    icon: Upload,
   },
   {
-    title: "Choose a format",
-    description:
-      "Work on a Reel hook, a text-led video, or an Instagram carousel from the same workspace.",
+    title: "Prepare post details",
+    description: "Set captions, titles, descriptions, channels, and timing.",
+    icon: Wand2,
   },
   {
-    title: "Review the creative",
-    description:
-      "Check the media, text, caption, and account before anything moves to publishing.",
+    title: "Review platform settings",
+    description: "Confirm account, privacy, audience, rights, and disclosures.",
+    icon: ShieldCheck,
   },
   {
-    title: "Approve the schedule",
-    description:
-      "Choose the Instagram account and timing, then confirm the final publishing action.",
+    title: "Schedule from your account",
+    description: "Publish immediately or schedule only after user approval.",
+    icon: CalendarClock,
   },
 ];
 
-const controlPoints = [
-  "Your own business profile grounds the creative",
-  "Your approved media fills every content slot",
-  "Your team reviews captions and publishing details",
-  "Your Instagram account stays under your control",
+const contentFormats = [
+  {
+    title: "Schedule videos",
+    description: "Plan TikTok videos, Instagram Reels, and YouTube uploads.",
+    icon: FileVideo,
+  },
+  {
+    title: "Publish photo carousels",
+    description: "Prepare slide-by-slide image posts for supported platforms.",
+    icon: MessageSquareText,
+  },
+  {
+    title: "Platform-specific post settings",
+    description: "Review captions, privacy, audience, and disclosure choices.",
+    icon: Layers3,
+  },
+  {
+    title: "Publishing history",
+    description: "Track scheduled, processing, successful, and failed posts.",
+    icon: Library,
+  },
+];
+
+const approvalChecks = [
+  "Preview the rendered creative before it posts",
+  "Edit captions, hashtags, destination, and timing",
+  "Confirm ownership, licensing, AI use, and disclosures",
+  "Approve each publishing action explicitly",
+];
+
+const platformCards = [
+  {
+    title: "Instagram",
+    description: "Schedule images, Reels, videos, and supported carousels.",
+    icon: Camera,
+    color: "#c2416f",
+  },
+  {
+    title: "TikTok",
+    description: "Schedule videos and photo carousel posts after review.",
+    icon: Music2,
+    color: "#0f766e",
+  },
+  {
+    title: "YouTube",
+    description: "Upload, schedule, and monitor approved video posts.",
+    icon: CirclePlay,
+    color: "#c24132",
+  },
 ];
 
 const productFooterLinks = [
-  { label: "Instagram formats", href: "#formats" },
-  { label: "Workflow", href: "#workflow" },
+  { label: "Scheduling Workflow", href: "#workflow" },
+  { label: "Publishing Review", href: "#review" },
+  { label: "Platforms", href: "#platforms" },
   { label: "Pricing", href: "/pricing" },
-  { label: "Sign in", href: authHref },
 ];
 
 const supportFooterLinks = [
@@ -114,182 +134,185 @@ const legalFooterLinks = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen overflow-x-hidden bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/90 px-4 backdrop-blur-xl sm:px-6">
-        <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between gap-5">
+    <main className="min-h-screen overflow-x-hidden bg-[#fbfaf8] text-[#1a1a1f]">
+      <header className="sticky top-0 z-40 w-full border-b border-[#ebe7df] bg-[#fbfaf8]/92 px-4 backdrop-blur-md sm:px-6">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-5">
           <Link
             href="/"
-            className="flex min-w-0 items-center gap-3 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="flex min-w-0 items-center gap-3 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
             aria-label="UGCPilot home"
           >
-            <ProductLogoMark
-              className="size-9 rounded-control bg-primary p-2"
-              imageClassName="brightness-0 invert"
-              sizes="36px"
-            />
-            <span className="truncate text-[17px] font-semibold text-foreground-strong">
+            <ProductLogoMark className="h-8 w-12" sizes="52px" />
+            <span className="truncate text-base font-semibold text-[#171717] sm:text-lg">
               UGCPilot
-            </span>
-            <span className="hidden h-5 border-l border-border pl-3 text-xs font-medium text-muted sm:inline">
-              for Instagram
             </span>
           </Link>
 
           <nav
-            className="hidden items-center gap-7 text-sm font-medium text-muted md:flex"
+            className="hidden items-center gap-7 text-sm font-medium text-[#66655e] md:flex"
             aria-label="Primary navigation"
           >
             {navItems.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
-                className="rounded-control transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="rounded-full transition-colors duration-200 hover:text-[#171717] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
               >
                 {item.label}
               </Link>
             ))}
             <Link
               href={authHref}
-              className="inline-flex h-10 items-center rounded-control border border-border bg-card px-4 text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="inline-flex h-10 items-center rounded-full border border-[#d9d3ca] bg-white px-4 text-[#1f1f1b] transition-colors duration-200 hover:border-[#c7beb1] hover:bg-[#f7f3ed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
             >
               Sign in
-            </Link>
-            <Link
-              href={authHref}
-              className="inline-flex h-10 items-center rounded-control bg-primary px-4 font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              Start creating
             </Link>
           </nav>
 
           <details className="group relative md:hidden">
             <summary
               aria-label="Open menu"
-              className="flex size-10 list-none items-center justify-center rounded-control border border-border bg-card text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden"
+              className="flex size-10 list-none items-center justify-center rounded-full border border-[#d9d3ca] bg-white text-[#252521] transition-colors duration-200 hover:border-[#c7beb1] hover:bg-[#f7f3ed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb] [&::-webkit-details-marker]:hidden"
             >
               <Menu className="size-4" aria-hidden="true" />
             </summary>
-            <div className="absolute right-0 top-12 w-60 rounded-card border border-border bg-card p-2 shadow-floating">
-              {[
-                ...navItems,
-                { label: "Sign in", href: authHref },
-                { label: "Start creating", href: authHref },
-              ].map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="block rounded-control px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                >
-                  {item.label}
-                </Link>
-              ))}
+            <div className="absolute right-0 top-12 w-56 rounded-[12px] border border-[#ebe7df] bg-white p-2">
+              {[...navItems, { label: "Sign in", href: authHref }].map(
+                (item) => (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className="block rounded-[10px] px-3 py-2.5 text-sm font-medium text-[#5f5e57] transition-colors duration-200 hover:bg-[#f7f3ed] hover:text-[#171717] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]"
+                  >
+                    {item.label}
+                  </Link>
+                ),
+              )}
             </div>
           </details>
         </div>
       </header>
 
-      <section className="relative px-4 pb-16 pt-12 sm:px-6 sm:pb-20 sm:pt-16 lg:px-8 lg:pb-24 lg:pt-20">
-        <div
-          className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[820px] -translate-x-1/2 opacity-25 blur-3xl"
-          style={{
-            background:
-              "radial-gradient(circle at 35% 35%, var(--instagram-rose), transparent 42%), radial-gradient(circle at 68% 48%, var(--instagram-violet), transparent 46%)",
-          }}
-          aria-hidden="true"
-        />
-
-        <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-12 lg:gap-16">
-          <div className="hero-rise max-w-[1000px] text-center">
-            <SocialPlatformIcon
-              platform="instagram"
-              className="mx-auto size-11 sm:size-12"
-            />
-
-            <h1 className="mx-auto mt-7 max-w-[1000px] text-[clamp(2.5rem,6.5vw,5.5rem)] font-semibold leading-[0.94] tracking-[-0.055em] text-foreground-strong">
-              Create Instagram content{" "}
-              <span className="mt-3 block bg-[linear-gradient(100deg,var(--instagram-orange),var(--instagram-rose)_48%,var(--instagram-violet))] bg-clip-text text-transparent">
-                worth stopping for.
-              </span>
-            </h1>
-
-            <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-muted sm:text-lg sm:leading-8">
-              Build Reel hooks, text-led videos, and carousel posts from your
-              real business context, then review and schedule everything in one
-              focused workspace.
+      <section className="px-4 pb-20 pt-12 sm:px-6 sm:pb-24 lg:px-8 lg:pt-20">
+        <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.94fr_1.06fr] lg:items-center">
+          <div className="hero-rise max-w-2xl">
+            <p className="inline-flex items-center gap-2 text-sm font-medium text-[#94512c]">
+              <span className="size-2 rounded-full bg-[#d85a24]" />
+              Social scheduling and publishing
             </p>
-
-            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <h1 className="mt-5 max-w-3xl text-[clamp(2.65rem,6vw,4.9rem)] font-semibold leading-[1.01] tracking-normal text-[#141414]">
+              Schedule videos and carousels across your social channels
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-8 text-[#55544d] sm:text-xl">
+              Connect TikTok, Instagram, and YouTube, choose when each post
+              should go live, and track every publishing result from one
+              dashboard.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href={authHref}
-                className="group inline-flex h-12 items-center justify-center rounded-control bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="group inline-flex h-12 items-center justify-center rounded-full bg-[#d94f1f] px-6 text-base font-semibold text-white transition-colors duration-200 hover:bg-[#c34419] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
               >
-                Start creating for Instagram
+                Start scheduling
                 <ArrowRight
-                  className="ml-2 size-4 transition-transform group-hover:translate-x-0.5"
+                  className="ml-2 size-4 transition-transform duration-200 group-hover:translate-x-0.5"
                   aria-hidden="true"
                 />
               </Link>
               <Link
-                href="#formats"
-                className="inline-flex h-12 items-center justify-center rounded-control border border-border bg-card/70 px-6 text-base font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                href="#workflow"
+                className="inline-flex h-12 items-center justify-center rounded-full border border-[#d9d3ca] bg-white px-6 text-base font-semibold text-[#242420] transition-colors duration-200 hover:border-[#c7beb1] hover:bg-[#f7f3ed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
               >
-                Explore the workspace
+                Connect social accounts
               </Link>
             </div>
-
-            <p className="mt-5 flex items-center justify-center gap-2 text-sm leading-6 text-muted">
-              <ShieldCheck className="size-4 shrink-0 text-primary" aria-hidden="true" />
-              Nothing is published until you review and approve it.
+            <p className="mt-6 max-w-lg text-sm leading-6 text-[#66655e]">
+              Every post stays in review until your team approves the account,
+              timing, content, and publishing action.
             </p>
           </div>
 
-          <div className="hero-rise hero-rise-delay-1 w-full">
-            <InstagramWorkspacePreview />
+          <div className="hero-rise hero-rise-delay-1">
+            <WorkflowPreview />
           </div>
         </div>
       </section>
 
       <section
-        id="formats"
-        className="border-y border-border bg-card-muted px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
+        id="workflow"
+        className="border-y border-[#ebe7df] bg-white px-4 py-16 sm:px-6 lg:px-8"
       >
-        <div className="mx-auto max-w-[1200px]">
+        <div className="mx-auto max-w-6xl">
           <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
             <div>
-              <p className="text-sm font-semibold text-primary">
-                Instagram formats
-              </p>
-              <h2 className="mt-3 max-w-xl text-3xl font-semibold leading-tight tracking-[-0.035em] text-foreground-strong sm:text-5xl">
-                A workspace shaped around how Instagram content is made.
+              <p className="text-sm font-medium text-[#94512c]">Workflow</p>
+              <h2 className="mt-3 max-w-xl text-3xl font-semibold leading-tight text-[#171717] sm:text-4xl">
+                One path from selected media to scheduled post.
               </h2>
             </div>
-            <p className="max-w-2xl text-base leading-7 text-muted lg:justify-self-end">
-              Each area has one clear job: find the opening, build the creative,
-              review the post, and move it to an approved Instagram schedule.
+            <p className="max-w-2xl text-base leading-7 text-[#5d5c55] lg:justify-self-end">
+              Keep media selection, review, timing, and publishing decisions
+              together so teams can move quickly without losing control.
             </p>
           </div>
 
-          <div className="mt-12 grid gap-5 lg:grid-cols-2">
-            <ApprovedHookShelf />
-            <TextReelBuilder />
+          <ol className="mt-10 grid overflow-hidden rounded-[14px] border border-[#ebe7df] md:grid-cols-4">
+            {workflowSteps.map((step, index) => {
+              const Icon = step.icon;
+
+              return (
+                <li
+                  key={step.title}
+                  className="border-b border-[#ebe7df] p-5 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-9 items-center justify-center rounded-full bg-[#f5eee8] text-sm font-semibold text-[#a34720]">
+                      {index + 1}
+                    </span>
+                    <Icon className="size-4 text-[#a34720]" aria-hidden="true" />
+                  </div>
+                  <h3 className="mt-5 text-lg font-semibold leading-tight text-[#1d1d1b]">
+                    {step.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-[#65645d]">
+                    {step.description}
+                  </p>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      </section>
+
+      <section className="px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+        <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+          <div>
+            <p className="text-sm font-medium text-[#94512c]">
+              Publishing formats
+            </p>
+            <h2 className="mt-3 max-w-xl text-3xl font-semibold leading-tight text-[#171717] sm:text-4xl">
+              Schedule the formats your social channels need.
+            </h2>
+            <p className="mt-5 max-w-xl text-base leading-7 text-[#5d5c55]">
+              Use one workspace for videos, photo carousels, platform settings,
+              and the publishing history teams need for review.
+            </p>
           </div>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {formatCards.map((format) => {
+          <div className="grid gap-4 sm:grid-cols-2">
+            {contentFormats.map((format) => {
               const Icon = format.icon;
 
               return (
                 <article
                   key={format.title}
-                  className="rounded-card border border-border bg-card p-5 shadow-card"
+                  className="rounded-[14px] border border-[#ebe7df] bg-white p-5"
                 >
-                  <span className="flex size-10 items-center justify-center rounded-control bg-selected text-primary">
-                    <Icon className="size-5" aria-hidden="true" />
-                  </span>
-                  <h3 className="mt-5 text-lg font-semibold text-foreground-strong">
+                  <Icon className="size-5 text-[#a34720]" aria-hidden="true" />
+                  <h3 className="mt-4 text-lg font-semibold text-[#1d1d1b]">
                     {format.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted">
+                  <p className="mt-2 text-sm leading-6 text-[#65645d]">
                     {format.description}
                   </p>
                 </article>
@@ -300,423 +323,426 @@ export default function Home() {
       </section>
 
       <section
-        id="workflow"
-        className="px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
+        id="review"
+        className="border-y border-[#ebe7df] bg-[#f6f3ee] px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
       >
-        <div className="mx-auto max-w-[1200px]">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold text-primary">
-              One Instagram workflow
-            </p>
-            <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.035em] text-foreground-strong sm:text-5xl">
-              Keep the creative and the publishing decision together.
-            </h2>
-          </div>
+        <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+          <ApprovalConsole />
 
-          <ol className="mt-12 grid overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card md:grid-cols-2 lg:grid-cols-4">
-            {workflowSteps.map((step, index) => (
-              <li
-                key={step.title}
-                className="relative border-b border-border p-6 last:border-b-0 lg:border-b-0 lg:border-r lg:last:border-r-0"
-              >
-                <span className="font-mono text-xs font-semibold text-primary">
-                  0{index + 1}
-                </span>
-                <h3 className="mt-8 text-xl font-semibold leading-tight text-foreground-strong">
-                  {step.title}
-                </h3>
-                <p className="mt-3 text-sm leading-6 text-muted">
-                  {step.description}
-                </p>
-              </li>
-            ))}
-          </ol>
+          <div>
+            <p className="text-sm font-medium text-[#94512c]">Review</p>
+            <h2 className="mt-3 max-w-xl text-3xl font-semibold leading-tight text-[#171717] sm:text-4xl">
+              Approval stays visible until the post is scheduled.
+            </h2>
+            <p className="mt-5 max-w-xl text-base leading-7 text-[#5d5c55]">
+              Your team sees the selected media, tunes the details, confirms
+              platform requirements, and approves the final publishing action.
+            </p>
+            <div className="mt-7 grid gap-3">
+              {approvalChecks.map((check) => (
+                <div key={check} className="flex gap-3">
+                  <CheckCircle2
+                    className="mt-0.5 size-5 shrink-0 text-[#a34720]"
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm leading-6 text-[#3f3e39]">{check}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="border-y border-border bg-card px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <div className="mx-auto grid max-w-[1200px] gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <div>
-            <span className="flex size-12 items-center justify-center rounded-card bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))] text-white">
-              <ShieldCheck className="size-6" aria-hidden="true" />
-            </span>
-            <h2 className="mt-6 max-w-xl text-3xl font-semibold leading-tight tracking-[-0.035em] text-foreground-strong sm:text-5xl">
-              Your Instagram account. Your approval.
-            </h2>
-            <p className="mt-5 max-w-xl text-base leading-7 text-muted">
-              UGCPilot organizes the work around your own profile, media, and
-              connected Instagram account. Publishing stays a deliberate final
-              step.
+      <section
+        id="platforms"
+        className="px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+            <div>
+              <p className="text-sm font-medium text-[#94512c]">
+                Connected channels
+              </p>
+              <h2 className="mt-3 max-w-xl text-3xl font-semibold leading-tight text-[#171717] sm:text-4xl">
+                Publish through accounts your team controls.
+              </h2>
+            </div>
+            <p className="max-w-2xl text-base leading-7 text-[#5d5c55] lg:justify-self-end">
+              UGCPilot keeps platform connection, review, and scheduling in a
+              user-controlled flow for supported social accounts.
             </p>
           </div>
 
-          <div className="rounded-[var(--radius-panel)] border border-border bg-card-muted p-3">
-            <div className="rounded-card border border-border bg-card p-5 sm:p-6">
-              <div className="flex items-center justify-between gap-4 border-b border-border pb-5">
-                <div className="flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-control bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]">
-                    <SocialPlatformIcon
-                      platform="instagram"
-                      className="size-5 !text-white"
-                    />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground-strong">
-                      Instagram publishing review
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted">
-                      Required before scheduling
-                    </p>
-                  </div>
-                </div>
-                <span className="rounded-full border border-primary/25 bg-selected px-3 py-1 text-xs font-semibold text-primary">
-                  Approval step
-                </span>
-              </div>
+          <div className="mt-9 grid gap-4 md:grid-cols-3">
+            {platformCards.map((platform) => {
+              const Icon = platform.icon;
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                {controlPoints.map((point) => (
-                  <div
-                    key={point}
-                    className="flex gap-3 rounded-control border border-border bg-card-muted p-4"
-                  >
-                    <Check
-                      className="mt-0.5 size-4 shrink-0 text-primary"
+              return (
+                <article
+                  key={platform.title}
+                  className="rounded-[14px] border border-[#ebe7df] bg-white p-5"
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon
+                      className="size-5"
+                      style={{ color: platform.color }}
                       aria-hidden="true"
                     />
-                    <p className="text-sm leading-6 text-foreground">{point}</p>
+                    <h3 className="text-lg font-semibold text-[#1d1d1b]">
+                      {platform.title}
+                    </h3>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <p className="mt-3 text-sm leading-6 text-[#65645d]">
+                    {platform.description}
+                  </p>
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      <section className="px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <div className="mx-auto overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
-          <div className="grid max-w-[1200px] lg:grid-cols-[1fr_0.72fr]">
-            <div className="p-7 sm:p-10 lg:p-14">
-              <div className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-control bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]">
-                  <SocialPlatformIcon
-                    platform="instagram"
-                    className="size-5 !text-white"
-                  />
-                </span>
-                <p className="text-sm font-semibold text-primary">
-                  Instagram-first by design
-                </p>
-              </div>
-              <h2 className="mt-7 max-w-2xl text-3xl font-semibold leading-tight tracking-[-0.035em] text-foreground-strong sm:text-5xl">
-                Build the next post in a workspace that speaks Instagram.
-              </h2>
-              <p className="mt-5 max-w-xl text-base leading-7 text-muted">
-                Start with your real business details and approved media. Move
-                from the creative idea to a reviewed schedule without changing
-                tools.
-              </p>
-              <Link
-                href={authHref}
-                className="group mt-8 inline-flex h-12 items-center justify-center rounded-control bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                Start creating
-                <ArrowRight
-                  className="ml-2 size-4 transition-transform group-hover:translate-x-0.5"
-                  aria-hidden="true"
-                />
-              </Link>
-            </div>
-
-            <div className="relative min-h-[320px] overflow-hidden border-t border-border bg-card-muted lg:border-l lg:border-t-0">
-              <div
-                className="absolute inset-0 opacity-70"
-                style={{
-                  background:
-                    "radial-gradient(circle at 22% 20%, color-mix(in srgb, var(--instagram-orange) 55%, transparent), transparent 32%), radial-gradient(circle at 70% 44%, color-mix(in srgb, var(--instagram-rose) 60%, transparent), transparent 38%), radial-gradient(circle at 56% 95%, color-mix(in srgb, var(--instagram-violet) 58%, transparent), transparent 38%)",
-                }}
-                aria-hidden="true"
-              />
-              <div className="absolute inset-6 flex items-center justify-center rounded-[var(--radius-panel)] border border-white/15 bg-background/60 p-6 backdrop-blur-xl sm:inset-10">
-                <div className="text-center">
-                  <SocialPlatformIcon
-                    platform="instagram"
-                    className="mx-auto size-16 !text-white"
-                  />
-                  <p className="mt-5 text-lg font-semibold text-white">
-                    Reels · Carousels · Scheduling
-                  </p>
-                  <p className="mt-2 text-sm text-white/70">
-                    One focused Instagram workflow
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <footer className="border-t border-border bg-card px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-[1200px] gap-10 md:grid-cols-[1.25fr_0.75fr_0.75fr_0.75fr]">
+      <section className="px-4 pb-20 sm:px-6 lg:px-8 lg:pb-24">
+        <div className="mx-auto grid max-w-6xl gap-8 rounded-[16px] bg-[#1c1c1f] p-6 text-white sm:p-8 lg:grid-cols-[1fr_0.78fr] lg:items-center lg:p-10">
           <div>
-            <div className="flex items-center gap-3">
-              <ProductLogoMark
-                className="size-9 rounded-control bg-primary p-2"
-                imageClassName="brightness-0 invert"
-                sizes="36px"
-              />
-              <div>
-                <p className="font-semibold text-foreground-strong">UGCPilot</p>
-                <p className="mt-0.5 text-xs text-muted">
-                  Instagram marketing workspace
-                </p>
-              </div>
+            <div className="flex size-11 items-center justify-center rounded-full bg-white/10 text-[#f4c7ae]">
+              <BadgeCheck className="size-5" aria-hidden="true" />
             </div>
-            <p className="mt-5 max-w-sm text-sm leading-6 text-muted">
-              Create, review, and schedule Instagram content from your own
-              business context and approved media.
+            <h2 className="mt-5 max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl">
+              Simple enough for a weekly publishing rhythm.
+            </h2>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-[#deded8]">
+              Schedule posts from assets you already have, keep review in one
+              place, and publish only when the content is approved.
             </p>
           </div>
 
-          <FooterColumn title="Product" links={productFooterLinks} />
-          <FooterColumn title="Support" links={supportFooterLinks} />
-          <FooterColumn title="Legal" links={legalFooterLinks} />
+          <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
+            <Link
+              href={authHref}
+              className="group inline-flex h-12 items-center justify-center rounded-full bg-white px-6 text-base font-semibold text-[#1c1c1f] transition-colors duration-200 hover:bg-[#f5eee8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f4c7ae]"
+            >
+              Start scheduling
+              <ArrowRight
+                className="ml-2 size-4 transition-transform duration-200 group-hover:translate-x-0.5"
+                aria-hidden="true"
+              />
+            </Link>
+            <Link
+              href="/pricing"
+              className="inline-flex h-12 items-center justify-center rounded-full border border-white/20 px-6 text-base font-semibold text-white transition-colors duration-200 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f4c7ae]"
+            >
+              View pricing
+            </Link>
+          </div>
         </div>
+      </section>
 
-        <div className="mx-auto mt-10 flex max-w-[1200px] flex-col gap-3 border-t border-border pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} UGCPilot. All rights reserved.</p>
-          <p>Instagram is a trademark of Meta Platforms, Inc.</p>
+      <footer className="border-t border-[#ebe7df] bg-white px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-9 md:grid-cols-2 lg:grid-cols-[1.4fr_0.85fr_0.85fr_1fr]">
+            <div>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 rounded-full font-semibold text-[#171717] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
+              >
+                <ProductLogoMark className="h-6 w-9" sizes="36px" />
+                UGCPilot
+              </Link>
+              <p className="mt-4 max-w-sm text-sm leading-6 text-[#66655e]">
+                Social scheduling and publishing for videos, photo carousels,
+                and connected TikTok, Instagram, and YouTube accounts.
+              </p>
+            </div>
+
+            <FooterColumn title="Product" links={productFooterLinks} />
+            <FooterColumn title="Support" links={supportFooterLinks} />
+            <FooterColumn title="Legal" links={legalFooterLinks} />
+          </div>
+
+          <div className="mt-10 flex flex-col gap-4 border-t border-[#ebe7df] pt-6 text-sm text-[#686760] md:flex-row md:items-end md:justify-between">
+            <div className="flex flex-col gap-2">
+              <p>&copy; 2026 UGCPilot. All rights reserved.</p>
+              <p>
+                UGCPilot is independent and is not affiliated with, endorsed
+                by, or sponsored by Meta, TikTok, or Google.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-x-5 gap-y-2 font-medium text-[#30302c]">
+              <a
+                href="mailto:support@getugcpilot.com"
+                className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
+              >
+                support@getugcpilot.com
+              </a>
+              <a
+                href="mailto:privacy@getugcpilot.com"
+                className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
+              >
+                privacy@getugcpilot.com
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
     </main>
   );
 }
 
-function InstagramWorkspacePreview() {
+function WorkflowPreview() {
   return (
-    <div className="relative mx-auto max-w-[920px]">
-      <div className="absolute -inset-8 rounded-full bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))] opacity-15 blur-3xl" />
-      <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-[#17161a] p-2 shadow-[0_32px_100px_rgb(0_0_0_/_0.46)]">
-        <div className="rounded-[18px] border border-white/8 bg-[#1e1d21]">
-          <div className="flex items-center justify-between gap-4 border-b border-white/8 px-4 py-3.5 sm:px-5">
-            <div className="flex items-center gap-3">
-              <span className="flex size-9 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]">
-                <SocialPlatformIcon
-                  platform="instagram"
-                  className="size-5 !text-white"
-                />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-white">
-                  Instagram content workspace
-                </p>
-                <p className="mt-0.5 text-[11px] text-white/45">
-                  Approved media only
-                </p>
-              </div>
+    <div className="rounded-[18px] border border-[#e6e0d8] bg-white p-3">
+      <div className="rounded-[14px] bg-[#f7f4ef] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e7e1d9] pb-4">
+          <div>
+            <p className="text-sm font-semibold text-[#2f2f2b]">
+              Spring launch schedule
+            </p>
+            <p className="mt-1 text-xs text-[#706f68]">
+              Video, photo carousel, and caption set
+            </p>
+          </div>
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-[#91502d]">
+            Ready to schedule
+          </span>
+        </div>
+
+        <div className="grid gap-3 pt-4 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-[12px] bg-white p-4">
+            <p className="text-xs font-medium text-[#8c4c2a]">
+              Selected media
+            </p>
+            <h3 className="mt-1 text-lg font-semibold leading-tight text-[#1d1d1b]">
+              Campaign posts
+            </h3>
+
+            <div className="mt-4 grid gap-2">
+              {[
+                ["Product walkthrough.mov", "Video", "Ready"],
+                ["Launch carousel images", "4 images", "Synced"],
+                ["Caption notes", "Post details", "Checked"],
+              ].map(([title, meta, status]) => (
+                <div
+                  key={title}
+                  className="flex items-center justify-between gap-3 rounded-[10px] bg-[#f7f4ef] px-3 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-[#2d2d29]">
+                      {title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#77756d]">{meta}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-[#eef7ef] px-2.5 py-1 text-xs font-medium text-[#287342]">
+                    {status}
+                  </span>
+                </div>
+              ))}
             </div>
-            <span className="hidden rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/60 sm:inline">
-              Draft
-            </span>
+
+            <div className="mt-4 rounded-[10px] border border-[#eee8df] p-3">
+              <p className="text-xs font-medium text-[#77756d]">
+                Schedule focus
+              </p>
+              <p className="mt-1 text-sm leading-6 text-[#363631]">
+                Schedule the launch video and photo carousel after review,
+                account selection, and approval.
+              </p>
+            </div>
           </div>
 
-          <div className="grid gap-3 p-3 sm:grid-cols-[0.72fr_1.28fr] sm:p-4">
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-1">
-              <PreviewMode
-                active
-                icon={Clapperboard}
-                label="Reel hooks"
-              />
-              <PreviewMode icon={ScanText} label="Wall of text" />
-              <PreviewMode icon={LayoutGrid} label="Carousels" />
+          <div className="grid gap-3">
+            <div className="rounded-[12px] bg-white p-4">
+              <p className="text-xs font-medium text-[#8c4c2a]">
+                Prepared posts
+              </p>
+              <div className="mt-3 grid gap-2">
+                {["Product video", "Photo carousel", "Caption set"].map(
+                  (item, index) => (
+                    <div
+                      key={item}
+                      className="flex items-center justify-between gap-3 rounded-[10px] bg-[#f7f4ef] px-3 py-2.5"
+                    >
+                      <span className="text-sm font-medium text-[#2d2d29]">
+                        {item}
+                      </span>
+                      <span className="text-xs text-[#77756d]">
+                        {index === 0
+                          ? "Ready"
+                          : index === 1
+                            ? "5 slides"
+                            : "3 variants"}
+                      </span>
+                    </div>
+                  ),
+                )}
+              </div>
             </div>
 
-            <div className="rounded-[16px] border border-white/8 bg-[#151417] p-3 sm:p-4">
+            <div className="rounded-[12px] bg-[#1f1f22] p-4 text-white">
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold text-white">
-                    Reel hook library
-                  </p>
-                  <p className="mt-1 text-[11px] text-white/45">
-                    Filled from your approved video source
-                  </p>
-                </div>
-                <WandSparkles className="size-4 text-[#ff6f91]" aria-hidden="true" />
+                <p className="text-xs font-medium text-[#f4c7ae]">
+                  Review path
+                </p>
+                <span className="text-xs text-[#cbc9c2]">Ready next</span>
               </div>
-
-              <div className="mt-4 grid grid-cols-3 gap-2.5">
-                {[0, 1, 2].map((slot) => (
-                  <div
-                    key={slot}
-                    className="relative aspect-[9/14] overflow-hidden rounded-[12px] border border-dashed border-white/15 bg-[linear-gradient(155deg,#27252b,#1b1a1e)]"
-                  >
-                    <div className="absolute inset-x-2 top-2 flex items-center justify-between">
-                      <span className="h-1.5 w-8 rounded-full bg-white/10" />
-                      <span className="size-4 rounded-full border border-white/10" />
-                    </div>
-                    <div className="absolute inset-x-2 bottom-2 grid gap-1.5">
-                      <span className="h-1.5 w-full rounded-full bg-white/12" />
-                      <span className="h-1.5 w-3/4 rounded-full bg-white/8" />
-                    </div>
+              <div className="mt-3 grid gap-2">
+                {[
+                  ["Select media", true],
+                  ["Check rights", true],
+                  ["Approve schedule", false],
+                ].map(([item, complete]) => (
+                  <div key={String(item)} className="flex items-center gap-2 text-sm">
+                    <span
+                      className={
+                        complete
+                          ? "flex size-5 items-center justify-center rounded-full bg-[#eff7ef] text-[#287342]"
+                          : "flex size-5 items-center justify-center rounded-full border border-white/20 text-xs text-[#f4c7ae]"
+                      }
+                    >
+                      {complete ? (
+                        <Check className="size-3.5" aria-hidden="true" />
+                      ) : (
+                        "3"
+                      )}
+                      </span>
+                    {item}
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-              <div className="mt-3 flex items-center justify-between gap-3 rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2.5">
-                <p className="text-[11px] leading-5 text-white/45">
-                  Real videos load after sign-in.
+function ApprovalConsole() {
+  return (
+    <div className="overflow-hidden rounded-[16px] border border-[#e3ddd4] bg-white">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#ebe7df] px-5 py-4">
+        <div>
+          <p className="text-xs font-medium text-[#8c4c2a]">
+            Publishing review
+          </p>
+          <h3 className="mt-1 text-2xl font-semibold leading-tight text-[#171717]">
+            Launch draft
+          </h3>
+        </div>
+        <span className="rounded-full bg-[#f5eee8] px-3 py-1.5 text-xs font-medium text-[#8c4c2a]">
+          Needs approval
+        </span>
+      </div>
+
+      <div className="grid md:grid-cols-[0.72fr_1fr]">
+        <div className="border-b border-[#ebe7df] bg-[#f7f4ef] p-5 md:border-b-0 md:border-r">
+          <div className="rounded-[14px] bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-[#8c4c2a]">
+                  Post preview
                 </p>
-                <ChevronRight
-                  className="size-4 shrink-0 text-white/35"
-                  aria-hidden="true"
-                />
+                <h4 className="mt-1 text-lg font-semibold leading-tight text-[#1d1d1b]">
+                  Onboarding demo reel
+                </h4>
+              </div>
+              <span className="rounded-full bg-[#f5eee8] px-2.5 py-1 text-xs font-medium text-[#8c4c2a]">
+                Reels
+              </span>
+            </div>
+
+            <div className="mt-4 rounded-[12px] border border-[#eee8df] bg-[#fbfaf8] p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[#292925]">
+                    Product walkthrough.mov
+                  </p>
+                  <p className="mt-1 text-xs text-[#77756d]">
+                    00:18 edited clip, caption attached
+                  </p>
+                </div>
+                <FileVideo className="size-5 shrink-0 text-[#a34720]" aria-hidden="true" />
+              </div>
+              <div className="mt-4 grid gap-2">
+                <div className="h-2 rounded-full bg-[#2f2f2b]/70" />
+                <div className="h-2 w-4/5 rounded-full bg-[#2f2f2b]/24" />
+                <div className="h-2 w-2/3 rounded-full bg-[#2f2f2b]/16" />
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function PreviewMode({
-  active = false,
-  icon: Icon,
-  label,
-}: {
-  active?: boolean;
-  icon: typeof Clapperboard;
-  label: string;
-}) {
-  return (
-    <div
-      className={
-        active
-          ? "rounded-[12px] border border-[#ff6f91]/25 bg-[#ff6f91]/10 p-3 text-white"
-          : "rounded-[12px] border border-white/8 bg-white/[0.025] p-3 text-white/50"
-      }
-    >
-      <Icon
-        className={active ? "size-4 text-[#ff6f91]" : "size-4"}
-        aria-hidden="true"
-      />
-      <p className="mt-3 text-[11px] font-semibold leading-tight sm:text-xs">
-        {label}
-      </p>
-    </div>
-  );
-}
-
-function ApprovedHookShelf() {
-  return (
-    <article className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
-      <div className="flex items-start justify-between gap-4 border-b border-border p-6">
-        <div>
-          <p className="text-sm font-semibold text-primary">
-            Trending hook layout
-          </p>
-          <h3 className="mt-2 text-2xl font-semibold text-foreground-strong">
-            A visual shelf for approved hook footage.
-          </h3>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
-            The public page defines the layout. Real videos remain inside the
-            signed-in, user-scoped library.
-          </p>
-        </div>
-        <Clapperboard className="size-5 shrink-0 text-primary" aria-hidden="true" />
-      </div>
-
-      <div className="grid grid-cols-3 gap-3 bg-card-muted p-4 sm:p-6">
-        {[0, 1, 2].map((slot) => (
-          <div
-            key={slot}
-            className="relative aspect-[9/14] overflow-hidden rounded-card border border-dashed border-border-strong bg-card"
-          >
-            <div className="absolute inset-x-3 top-3 flex items-center justify-between">
-              <span className="h-2 w-10 rounded-full bg-card-muted" />
-              <span className="size-5 rounded-full border border-border bg-card-muted" />
-            </div>
-            <div className="absolute inset-x-3 bottom-3 grid gap-2">
-              <span className="h-2 rounded-full bg-card-muted" />
-              <span className="h-2 w-3/4 rounded-full bg-card-muted" />
+            <div className="mt-4 grid gap-2 text-sm">
+              {["Caption reviewed", "Disclosure added", "Schedule pending"].map(
+                (item) => (
+                  <div
+                    key={item}
+                    className="flex items-center justify-between gap-3 rounded-[10px] bg-[#f7f4ef] px-3 py-2.5"
+                  >
+                    <span className="text-[#3f3e39]">{item}</span>
+                    <CheckCircle2 className="size-4 text-[#a34720]" aria-hidden="true" />
+                  </div>
+                ),
+              )}
             </div>
           </div>
-        ))}
-      </div>
-    </article>
-  );
-}
-
-function TextReelBuilder() {
-  return (
-    <article className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
-      <div className="flex items-start justify-between gap-4 border-b border-border p-6">
-        <div>
-          <p className="text-sm font-semibold text-primary">
-            Wall-of-text Reel layout
-          </p>
-          <h3 className="mt-2 text-2xl font-semibold text-foreground-strong">
-            Keep the script readable while the video moves.
-          </h3>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
-            Use your own copy and media, then review the text treatment inside a
-            vertical Instagram frame.
-          </p>
         </div>
-        <ScanText className="size-5 shrink-0 text-primary" aria-hidden="true" />
-      </div>
 
-      <div className="grid gap-4 bg-card-muted p-4 sm:grid-cols-[0.85fr_1.15fr] sm:p-6">
-        <div className="grid gap-3">
-          {["Your script", "Your media", "Review"].map((label, index) => (
-            <div
-              key={label}
-              className="flex items-center gap-3 rounded-control border border-border bg-card p-3.5"
+        <div className="p-5">
+          <div className="grid gap-3">
+            <ReviewRow label="Destination" value="Instagram Reels" />
+            <ReviewRow label="Caption" value="3 edits applied" />
+            <ReviewRow label="Rights" value="Confirmed by user" />
+            <ReviewRow label="Disclosure" value="AI-assisted content noted" />
+            <ReviewRow label="Publish time" value="Tomorrow, 10:30 AM" />
+          </div>
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href={authHref}
+              className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-[#d94f1f] px-5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#c34419] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
             >
-              <span className="flex size-7 items-center justify-center rounded-control bg-selected font-mono text-[11px] font-semibold text-primary">
-                {index + 1}
-              </span>
-              <span className="text-sm font-medium text-foreground">{label}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="relative mx-auto aspect-[9/14] w-full max-w-[220px] overflow-hidden rounded-card border border-border-strong bg-[linear-gradient(155deg,#2b2930,#1a191d)]">
-          <div className="absolute inset-x-4 top-4 flex items-center justify-between">
-            <span className="h-2 w-12 rounded-full bg-white/10" />
-            <SocialPlatformIcon
-              platform="instagram"
-              className="size-5 text-white/40"
-            />
+              Approve schedule
+            </Link>
+            <Link
+              href={authHref}
+              className="inline-flex h-11 flex-1 items-center justify-center rounded-full border border-[#d9d3ca] px-5 text-sm font-semibold text-[#242420] transition-colors duration-200 hover:border-[#c7beb1] hover:bg-[#f7f3ed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
+            >
+              Edit draft
+            </Link>
           </div>
-          <div className="absolute inset-x-4 top-[32%] grid gap-2">
-            <span className="h-3 rounded-full bg-white/25" />
-            <span className="h-3 rounded-full bg-white/20" />
-            <span className="h-3 w-4/5 rounded-full bg-white/15" />
-            <span className="mt-1 h-3 w-3/5 rounded-full bg-[#ff6f91]/55" />
-          </div>
-          <div className="absolute inset-x-4 bottom-4 h-9 rounded-[9px] border border-white/10 bg-white/5" />
         </div>
       </div>
-    </article>
+    </div>
+  );
+}
+
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-[10px] bg-[#f7f4ef] px-4 py-3">
+      <span className="text-sm text-[#686760]">{label}</span>
+      <span className="text-right text-sm font-semibold text-[#1f1f1b]">
+        {value}
+      </span>
+    </div>
   );
 }
 
 type FooterColumnProps = {
-  links: Array<{ href: string; label: string }>;
+  links: {
+    href: string;
+    label: string;
+  }[];
   title: string;
 };
 
 function FooterColumn({ links, title }: FooterColumnProps) {
   return (
     <div>
-      <h2 className="text-sm font-semibold text-foreground-strong">{title}</h2>
-      <nav className="mt-4 flex flex-col gap-3 text-sm text-muted">
+      <h2 className="text-sm font-semibold text-[#171717]">{title}</h2>
+      <nav className="mt-4 flex flex-col gap-3 text-sm text-[#66655e]">
         {links.map((link) => (
           <Link
             key={`${title}-${link.label}`}
             href={link.href}
-            className="rounded-control transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className="rounded-full transition-colors duration-200 hover:text-[#171717] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563eb]"
           >
             {link.label}
           </Link>

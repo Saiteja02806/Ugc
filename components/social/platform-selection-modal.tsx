@@ -28,15 +28,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
@@ -148,7 +139,8 @@ const stepDetails: Record<
   { description: string; number: 2 | 3 | 4; title: string }
 > = {
   accounts: {
-    description: "Choose the Instagram account that will publish this carousel.",
+    description:
+      "Choose the Instagram account that will publish this carousel.",
     number: 2,
     title: "Select Instagram account",
   },
@@ -164,6 +156,13 @@ const stepDetails: Record<
     title: "Schedule",
   },
 };
+
+const publishingJourney = [
+  { label: "Carousel", number: 1 },
+  { label: "Account", number: 2 },
+  { label: "Details", number: 3 },
+  { label: "Publish", number: 4 },
+] as const;
 
 export function PlatformSelectionModal({
   context,
@@ -371,13 +370,6 @@ export function PlatformSelectionModal({
     () =>
       connections.filter(
         (connection) => connection.platform === "instagram",
-      ),
-    [connections],
-  );
-  const platformConnections = useMemo(
-    () =>
-      connections.filter((connection) =>
-        platforms.some((definition) => definition.platform === connection.platform),
       ),
     [connections],
   );
@@ -676,28 +668,94 @@ export function PlatformSelectionModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
-        className="max-h-[calc(100vh-2rem)] overflow-hidden p-0 sm:max-w-3xl"
+        className="instagram-theme max-h-[calc(100dvh-1rem)] max-w-[calc(100%-1rem)] gap-0 overflow-hidden rounded-[22px] border border-border bg-card p-0 text-foreground shadow-floating ring-0 sm:max-h-[calc(100dvh-2rem)] sm:max-w-[960px]"
         showCloseButton={!submitting}
       >
-        <div className="border-b border-border bg-card">
-          <DialogHeader className="px-5 pb-4 pt-5 pr-14 sm:px-6 sm:pr-14">
-            <DialogTitle className="text-xl font-semibold">
-              {currentStep.title}
-            </DialogTitle>
-            <p className="text-sm font-medium text-muted-foreground">
-              Step {currentStep.number} of 4
-            </p>
-            <DialogDescription>{currentStep.description}</DialogDescription>
+        <div className="relative overflow-hidden border-b border-border bg-card">
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_18%_0%,color-mix(in_srgb,var(--instagram-rose)_14%,transparent),transparent_56%),radial-gradient(circle_at_82%_0%,color-mix(in_srgb,var(--instagram-violet)_10%,transparent),transparent_50%)]"
+            aria-hidden="true"
+          />
+          <div
+            className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet),transparent)]"
+            aria-hidden="true"
+          />
+          <DialogHeader className="relative gap-3 px-5 pb-4 pr-14 pt-5 sm:px-7 sm:pb-5 sm:pr-16 sm:pt-6">
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] text-white shadow-[0_10px_24px_rgb(214_41_118_/_0.18)]">
+                <SocialPlatformIcon platform="instagram" className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                  Instagram carousel
+                </p>
+                <DialogTitle className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
+                  {currentStep.title}
+                </DialogTitle>
+                <DialogDescription className="mt-1 leading-5">
+                  {currentStep.description}
+                </DialogDescription>
+                <span className="sr-only">
+                  Step {currentStep.number} of 4
+                </span>
+              </div>
+            </div>
+
+            <ol
+              className="grid grid-cols-4 gap-2"
+              aria-label={`Step ${currentStep.number} of 4`}
+            >
+              {publishingJourney.map((journeyStep) => {
+                const complete = journeyStep.number < currentStep.number;
+                const active = journeyStep.number === currentStep.number;
+
+                return (
+                  <li
+                    key={journeyStep.number}
+                    className="flex min-w-0 items-center gap-2"
+                    aria-current={active ? "step" : undefined}
+                  >
+                    <span
+                      className={cn(
+                        "flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold",
+                        complete &&
+                          "border-primary bg-primary text-primary-foreground",
+                        active && "border-primary bg-primary/10 text-primary",
+                        !complete &&
+                          !active &&
+                          "border-border bg-card-muted text-muted-foreground",
+                      )}
+                    >
+                      {complete ? (
+                        <Check className="size-3" aria-hidden="true" />
+                      ) : (
+                        journeyStep.number
+                      )}
+                    </span>
+                    <span
+                      className={cn(
+                        "truncate text-[11px] font-medium sm:text-xs",
+                        active || complete
+                          ? "text-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {journeyStep.label}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
           </DialogHeader>
-          <div className="h-1 bg-muted">
+          <div className="h-0.5 bg-card-muted">
             <div
-              className="h-full bg-primary transition-[width] duration-200 motion-reduce:transition-none"
+              className="h-full bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))] transition-[width] duration-200 motion-reduce:transition-none"
               style={{ width: `${currentStep.number * 25}%` }}
             />
           </div>
         </div>
 
-        <div className="min-h-0 overflow-y-auto px-5 py-5 sm:px-6">
+        <div className="min-h-0 overflow-y-auto bg-background/35 px-5 py-5 sm:min-h-[360px] sm:px-7 sm:py-6">
           {confirmError || loadError || popupError ? (
             <Alert variant="destructive" className="mb-5">
               <AlertCircle />
@@ -735,7 +793,6 @@ export function PlatformSelectionModal({
               connectingPlatform={connectingPlatform}
               context={context}
               loading={loading}
-              platformConnections={platformConnections}
               selectedConnectionIds={selectedConnectionIds}
               onConnect={(definition, connection) => {
                 if (!context) {
@@ -793,13 +850,23 @@ export function PlatformSelectionModal({
         </div>
 
         {!submitting ? (
-          <DialogFooter className="border-t border-border bg-card px-5 py-4 sm:px-6">
+          <DialogFooter className="mx-0 mb-0 rounded-none rounded-b-[22px] border-t border-border bg-card px-5 py-4 sm:px-7">
             {step === "accounts" ? (
-              <Button variant="outline" onClick={() => setOpen(false)}>
+              <Button
+                size="lg"
+                variant="outline"
+                className="px-4"
+                onClick={() => setOpen(false)}
+              >
                 Cancel
               </Button>
             ) : (
-              <Button variant="ghost" onClick={goBack}>
+              <Button
+                size="lg"
+                variant="ghost"
+                className="px-4"
+                onClick={goBack}
+              >
                 <ArrowLeft data-icon="inline-start" />
                 Back
               </Button>
@@ -807,6 +874,8 @@ export function PlatformSelectionModal({
 
             {step === "accounts" || step === "details" ? (
               <Button
+                size="lg"
+                className="px-4"
                 onClick={goNext}
                 disabled={
                   step === "accounts"
@@ -819,6 +888,8 @@ export function PlatformSelectionModal({
               </Button>
             ) : scheduleMode === "later" ? (
               <Button
+                size="lg"
+                className="px-4"
                 onClick={() => void submitSchedule("later")}
                 disabled={Boolean(laterValidation.error)}
               >
@@ -840,7 +911,6 @@ function AccountsStep({
   loading,
   onConnect,
   onToggle,
-  platformConnections,
   selectedConnectionIds,
 }: {
   carouselConnections: SocialConnection[];
@@ -852,113 +922,191 @@ function AccountsStep({
     connection?: SocialConnection,
   ) => void;
   onToggle: (connection: SocialConnection) => void;
-  platformConnections: SocialConnection[];
   selectedConnectionIds: string[];
 }) {
-  const accountRows = carouselConnections;
-
   return (
-    <div className="grid gap-6">
-      <section aria-labelledby="platform-connections-heading">
-        <h3
-          id="platform-connections-heading"
-          className="mb-2 text-sm font-semibold text-foreground"
-        >
-          Instagram connection
+    <div className="mx-auto grid w-full max-w-3xl gap-5">
+      <div>
+        <h3 className="text-base font-semibold text-foreground">
+          Publishing account
         </h3>
-        <div className="overflow-hidden rounded-lg border border-border">
-          {visiblePlatforms.map((definition, index) => {
-            const connectionsForPlatform = platformConnections.filter(
-              (connection) => connection.platform === definition.platform,
-            );
-            const connection = getPreferredConnection(connectionsForPlatform);
-            const status = connectingPlatform === definition.platform
-              ? "connecting"
-              : (connection?.status ?? "not_connected");
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">
+          Select the connected Instagram account that should publish this
+          carousel.
+        </p>
+      </div>
 
-            return (
-              <PlatformConnectionRow
-                key={definition.platform}
-                connection={connection}
-                definition={definition}
-                first={index === 0}
-                loading={loading}
-                onConnect={() => onConnect(definition, connection)}
-                status={status}
-              />
-            );
-          })}
-        </div>
-      </section>
-
-      <FieldSet>
-        <FieldLegend className="text-sm font-semibold">
-          Select connected account
-        </FieldLegend>
-        <FieldDescription>
-          Choose the Instagram account that will publish this carousel.
-        </FieldDescription>
+      <fieldset>
+        <legend className="sr-only">Connected Instagram accounts</legend>
         {loading ? (
-          <FieldGroup>
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-          </FieldGroup>
-        ) : accountRows.length > 0 ? (
-          <FieldGroup data-slot="checkbox-group" className="gap-2">
-            {accountRows.map((connection) => {
+          <div className="grid gap-3">
+            <Skeleton className="h-[88px] w-full rounded-card" />
+            <Skeleton className="h-[88px] w-full rounded-card" />
+          </div>
+        ) : carouselConnections.length > 0 ? (
+          <div className="grid gap-3">
+            {carouselConnections.map((connection) => {
               const checkboxId = `schedule-connection-${connection.id}`;
               const unavailableMessage =
                 getCarouselAccountUnavailableMessage(connection);
               const accountName = getConnectionAccountName(connection);
+              const selected = selectedConnectionIds.includes(connection.id);
+              const status =
+                connectingPlatform === connection.platform
+                  ? "connecting"
+                  : connection.status;
+              const statusDisplay = getStatusDisplay(status);
+              const definition = visiblePlatforms.find(
+                (candidate) => candidate.platform === connection.platform,
+              );
 
               return (
-                <Field
+                <div
                   key={connection.id}
-                  orientation="horizontal"
                   className={cn(
-                    "rounded-lg border border-border p-3",
-                    unavailableMessage && "bg-muted/40 opacity-75",
+                    "flex items-center gap-3 rounded-card border bg-card p-3.5 transition sm:p-4",
+                    selected
+                      ? "border-primary/60 bg-primary/5 shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_18%,transparent)]"
+                      : "border-border hover:border-border-strong",
+                    unavailableMessage && "bg-card-muted/70",
                   )}
                 >
                   <Checkbox
                     id={checkboxId}
-                    checked={selectedConnectionIds.includes(connection.id)}
+                    checked={selected}
                     disabled={Boolean(unavailableMessage)}
                     onCheckedChange={() => onToggle(connection)}
+                    aria-describedby={
+                      unavailableMessage
+                        ? `${checkboxId}-availability`
+                        : undefined
+                    }
                   />
-                  <FieldContent>
-                    <FieldLabel htmlFor={checkboxId}>
+                  <label
+                    htmlFor={checkboxId}
+                    className={cn(
+                      "flex min-w-0 flex-1 cursor-pointer items-center gap-3",
+                      unavailableMessage && "cursor-not-allowed",
+                    )}
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] text-white">
                       <SocialPlatformIcon
                         platform={connection.platform}
-                        className="size-4"
+                        className="size-5"
                       />
-                      {getPlatformLabel(connection.platform)}
-                      <span className="font-normal text-muted-foreground">
-                        {accountName}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-foreground">
+                          {accountName}
+                        </span>
+                        <Badge variant={statusDisplay.variant}>
+                          {statusDisplay.label}
+                        </Badge>
                       </span>
-                    </FieldLabel>
-                    {unavailableMessage ? (
-                      <FieldDescription
-                        className={
-                          connection.platform === "youtube"
-                            ? "text-muted-foreground"
-                            : "text-error"
-                        }
-                      >
-                        {unavailableMessage}
-                      </FieldDescription>
-                    ) : null}
-                  </FieldContent>
-                </Field>
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        Instagram professional account
+                      </span>
+                    </span>
+                  </label>
+                  {definition ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="shrink-0 text-muted-foreground hover:text-foreground"
+                      onClick={() => onConnect(definition, connection)}
+                      disabled={loading || status === "connecting"}
+                    >
+                      {status === "connecting" ? (
+                        <LoaderCircle
+                          data-icon="inline-start"
+                          className="animate-spin"
+                        />
+                      ) : (
+                        <ExternalLink data-icon="inline-start" />
+                      )}
+                      <span className="hidden sm:inline">Reconnect</span>
+                      <span className="sr-only sm:hidden">
+                        Reconnect {accountName}
+                      </span>
+                    </Button>
+                  ) : null}
+                  {unavailableMessage ? (
+                    <p id={`${checkboxId}-availability`} className="sr-only">
+                      {unavailableMessage}
+                    </p>
+                  ) : null}
+                </div>
               );
             })}
-          </FieldGroup>
+          </div>
         ) : (
-          <p className="rounded-lg border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
-            Connect Instagram above to continue.
-          </p>
+          <div className="rounded-card border border-dashed border-border bg-card px-5 py-8 text-center">
+            <span className="mx-auto flex size-12 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] text-white shadow-[0_10px_24px_rgb(214_41_118_/_0.16)]">
+              <SocialPlatformIcon platform="instagram" className="size-6" />
+            </span>
+            <p className="mt-4 text-sm font-semibold text-foreground">
+              Connect Instagram to continue
+            </p>
+            <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">
+              UGCPilot needs a connected Instagram professional account before
+              it can schedule this carousel.
+            </p>
+            <div className="mt-4 flex justify-center">
+              {visiblePlatforms.map((definition) => (
+                <Button
+                  key={definition.platform}
+                  type="button"
+                  size="lg"
+                  onClick={() => onConnect(definition)}
+                  disabled={
+                    loading || connectingPlatform === definition.platform
+                  }
+                >
+                  {connectingPlatform === definition.platform ? (
+                    <LoaderCircle
+                      data-icon="inline-start"
+                      className="animate-spin"
+                    />
+                  ) : (
+                    <ExternalLink data-icon="inline-start" />
+                  )}
+                  {connectingPlatform === definition.platform
+                    ? "Connecting..."
+                    : "Connect Instagram"}
+                </Button>
+              ))}
+            </div>
+          </div>
         )}
-      </FieldSet>
+      </fieldset>
+
+      {carouselConnections.some((connection) =>
+        Boolean(getCarouselAccountUnavailableMessage(connection)),
+      ) ? (
+        <div className="grid gap-2">
+          {carouselConnections.map((connection) => {
+            const unavailableMessage =
+              getCarouselAccountUnavailableMessage(connection);
+
+            return unavailableMessage ? (
+              <p
+                key={connection.id}
+                className="flex items-start gap-2 rounded-control border border-error/20 bg-error/10 px-3 py-2.5 text-xs leading-5 text-error"
+              >
+                <AlertCircle
+                  className="mt-0.5 size-3.5 shrink-0"
+                  aria-hidden="true"
+                />
+                <span>
+                  {getConnectionAccountName(connection)}: {unavailableMessage}
+                </span>
+              </p>
+            ) : null;
+          })}
+        </div>
+      ) : null}
       {context ? <p className="sr-only">Scheduling {context.title}</p> : null}
     </div>
   );
@@ -990,24 +1138,25 @@ function DetailsStep({
   tiktokCapabilities: Record<string, TikTokCapabilitiesState>;
 }) {
   return (
-    <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-      <div className="self-start overflow-hidden rounded-card border border-border bg-card">
+    <div className="grid gap-5 md:grid-cols-[240px_minmax(0,1fr)] lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="self-start overflow-hidden rounded-card border border-border bg-card shadow-card">
         {context?.coverUrl ? (
           // Carousel slides are already rendered production media.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={context.coverUrl}
             alt=""
-            className="aspect-[4/5] w-full object-contain"
+            className="aspect-[4/5] w-full bg-card-muted object-cover"
           />
         ) : (
           <div className="flex aspect-[4/5] items-center justify-center bg-muted/30 text-muted-foreground">
             <Camera className="size-8" aria-hidden="true" />
           </div>
         )}
-        <div className="border-t border-border bg-card px-3 py-3">
-          <p className="text-xs font-semibold text-muted-foreground">
-            Carousel
+        <div className="border-t border-border bg-card px-4 py-3.5">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">
+            <SocialPlatformIcon platform="instagram" className="size-3.5" />
+            Carousel preview
           </p>
           <p className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">
             {context?.title ?? "Saved carousel"}
@@ -1016,31 +1165,45 @@ function DetailsStep({
       </div>
 
       <div className="grid content-start gap-5">
-        <label className="block">
+        <label className="block rounded-card border border-border bg-card p-4 sm:p-5">
           <span className="text-sm font-semibold text-foreground">
-            Caption <span className="font-normal text-muted-foreground">(optional)</span>
+            Instagram caption{" "}
+            <span className="font-normal text-muted-foreground">
+              (optional)
+            </span>
+          </span>
+          <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+            Add context for the post, or leave this empty to publish only the
+            carousel.
           </span>
           <textarea
+            name="caption"
             rows={4}
             maxLength={5000}
             value={caption}
             onChange={(event) => onCaptionChange(event.target.value)}
             placeholder="Leave blank to publish without a caption."
-            className="mt-2 min-h-28 w-full resize-y rounded-control border border-border bg-card-muted px-3 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
+            className="mt-3 min-h-28 w-full resize-y rounded-control border border-border bg-card-muted px-3.5 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
           />
           <span className="mt-1 block text-right text-xs text-muted-foreground">
             {caption.length}/5000
           </span>
         </label>
 
-        <section aria-labelledby="carousel-publishing-settings">
+        <section
+          aria-labelledby="carousel-publishing-settings"
+          className="rounded-card border border-border bg-card p-4 sm:p-5"
+        >
           <h3
             id="carousel-publishing-settings"
             className="text-sm font-semibold text-foreground"
           >
             Publishing settings
           </h3>
-          <div className="mt-2 divide-y divide-border rounded-card border border-border bg-card px-3">
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Confirm the destination before choosing when to publish.
+          </p>
+          <div className="mt-3 divide-y divide-border rounded-control border border-border bg-card-muted px-3.5">
             {selectedConnections.map((connection) => (
               <CarouselAccountSettings
                 key={connection.id}
@@ -1216,11 +1379,16 @@ function ScheduleChoiceStep({
   onScheduleLater: () => void;
 }) {
   return (
-    <div>
-      <p className="text-center text-sm text-muted-foreground">
-        How would you like to post this carousel?
-      </p>
-      <div className="mt-5 grid gap-3">
+    <div className="mx-auto w-full max-w-3xl">
+      <div>
+        <h3 className="text-base font-semibold text-foreground">
+          Choose a publishing time
+        </h3>
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">
+          Publish at the earliest safe time, or choose an exact date and time.
+        </p>
+      </div>
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
         <ScheduleChoice
           description={`Earliest available: ${earliestLabel}. Uses the configured ${minimumLeadMinutes}-minute lead time.`}
           icon={<Zap className="size-5" aria-hidden="true" />}
@@ -1253,9 +1421,9 @@ function ScheduleChoice({
     <button
       type="button"
       onClick={onClick}
-      className="group flex min-h-24 items-center gap-4 rounded-card border border-border bg-card px-4 py-4 text-left transition hover:border-primary/50 hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-5"
+      className="group flex min-h-36 items-start gap-4 rounded-card border border-border bg-card px-4 py-5 text-left transition hover:-translate-y-0.5 hover:border-primary/50 hover:bg-card-muted hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:hover:translate-y-0 sm:px-5"
     >
-      <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-primary/12 text-primary ring-1 ring-primary/20">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
@@ -1266,7 +1434,10 @@ function ScheduleChoice({
           {description}
         </span>
       </span>
-      <ChevronRight className="size-5 shrink-0 text-primary" aria-hidden="true" />
+      <ChevronRight
+        className="mt-2 size-5 shrink-0 text-primary transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+        aria-hidden="true"
+      />
     </button>
   );
 }
@@ -1417,66 +1588,6 @@ function SettingCheckbox({
       />
       {label}
     </label>
-  );
-}
-
-function PlatformConnectionRow({
-  connection,
-  definition,
-  first,
-  loading,
-  onConnect,
-  status,
-}: {
-  connection?: SocialConnection;
-  definition: PlatformDefinition;
-  first: boolean;
-  loading: boolean;
-  onConnect: () => void;
-  status: SocialConnectionStatus | "connecting" | "not_connected";
-}) {
-  const { label, platform } = definition;
-  const statusDisplay = getStatusDisplay(status);
-  const accountName = connection ? getConnectionAccountName(connection) : null;
-
-  return (
-    <div
-      className={cn(
-        "flex min-h-20 items-center gap-3 px-3 py-3 sm:px-4",
-        !first && "border-t border-border",
-      )}
-    >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
-        <SocialPlatformIcon platform={platform} className="size-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="font-medium text-foreground">{label}</p>
-          <Badge variant={statusDisplay.variant}>{statusDisplay.label}</Badge>
-        </div>
-        {loading ? (
-          <Skeleton className="mt-2 h-3 w-40" />
-        ) : (
-          <p className="mt-1 truncate text-xs text-muted-foreground">
-            {accountName ?? definition.description}
-          </p>
-        )}
-      </div>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={onConnect}
-        disabled={loading || status === "connecting"}
-      >
-        {status === "connecting" ? (
-          <LoaderCircle data-icon="inline-start" className="animate-spin" />
-        ) : (
-          <ExternalLink data-icon="inline-start" />
-        )}
-        {status === "connected" ? "Reconnect" : "Connect"}
-      </Button>
-    </div>
   );
 }
 

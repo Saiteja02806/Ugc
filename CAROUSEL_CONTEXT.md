@@ -51,7 +51,10 @@ Drafts list and do not appear as timed calendar entries.
 
 The visible Scheduling workspace and inline Carousel scheduling modal are
 Instagram-only for new posts and Carousel recovery edits. Their account pickers
-offer Instagram connections only. Existing TikTok and YouTube provider
+offer Instagram connections only. The portaled inline modal applies the
+Instagram theme directly, and each account presents selection, connection
+status, and reconnect in one publishing-account row instead of duplicated
+connection and selection sections. Existing TikTok and YouTube provider
 definitions, validation, and publishing logic remain preserved as dormant
 multi-platform support, and legacy non-Instagram planned targets must not be
 silently removed when an older draft is edited. This does not change the inline

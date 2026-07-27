@@ -421,12 +421,20 @@ test("the inline carousel modal implements exact-account content and time steps"
   assert.match(carouselScheduleModal, /\{visiblePlatforms\.map\(/);
   assert.match(carouselScheduleModal, /label: "TikTok"[\s\S]*platform: "tiktok"/);
   assert.match(carouselScheduleModal, /label: "YouTube"[\s\S]*platform: "youtube"/);
-  assert.match(carouselScheduleModal, /const platformConnections = useMemo/);
+  assert.match(
+    carouselScheduleModal,
+    /className="instagram-theme [^"]*bg-card/,
+  );
   assert.match(
     carouselScheduleModal,
     /connection\.platform === "youtube"[\s\S]*YouTube accepts video uploads, not carousel posts\./,
   );
-  assert.match(carouselScheduleModal, /Select connected account/);
+  assert.match(carouselScheduleModal, /Publishing account/);
+  assert.match(carouselScheduleModal, /\{carouselConnections\.map\(/);
+  assert.match(carouselScheduleModal, />Reconnect<\/span>/);
+  assert.doesNotMatch(carouselScheduleModal, /Instagram connection/);
+  assert.doesNotMatch(carouselScheduleModal, /Select connected account/);
+  assert.doesNotMatch(carouselScheduleModal, /const platformConnections = useMemo/);
   assert.match(carouselScheduleModal, /connectionId: connection\.id/);
   assert.match(carouselScheduleModal, /Caption[\s\S]*?\(optional\)/);
   assert.match(

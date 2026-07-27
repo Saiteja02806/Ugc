@@ -169,7 +169,7 @@ export function ReferenceImageAttachment({
         type="button"
         variant="outline"
         size="icon-lg"
-        className="col-start-1 row-start-1 border-[#383838] bg-[#1F1F1F] text-[#B9B5AF] hover:bg-[#303030] hover:text-[#F5F3F0] focus-visible:ring-[#E16540]/50"
+        className="col-start-1 row-start-1 border-border bg-background text-muted hover:bg-surface-subtle hover:text-foreground focus-visible:ring-focus/50"
         aria-label={label}
         title={label}
         disabled={disabled || isReading}
@@ -200,7 +200,7 @@ export function ReferenceImageAttachment({
           {isReading && !selection ? (
             <div
               role="status"
-              className="flex items-center gap-2 rounded-lg bg-[#292929] px-3 py-2 text-sm font-medium text-[#B9B5AF]"
+              className="flex items-center gap-2 rounded-lg bg-card px-3 py-2 text-sm font-medium text-muted"
             >
               <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
               Checking reference image…
@@ -208,8 +208,8 @@ export function ReferenceImageAttachment({
           ) : null}
 
           {selection ? (
-            <div className="flex min-w-0 items-center gap-3 rounded-lg bg-[#292929] px-2.5 py-2 ring-1 ring-[#383838]">
-              <div className="relative size-12 shrink-0 overflow-hidden rounded-md bg-[#1F1F1F]">
+            <div className="flex min-w-0 items-center gap-3 rounded-lg bg-card px-2.5 py-2 ring-1 ring-border">
+              <div className="relative size-12 shrink-0 overflow-hidden rounded-md bg-background">
                 <Image
                   src={selection.previewUrl}
                   alt=""
@@ -221,8 +221,8 @@ export function ReferenceImageAttachment({
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-[#F5F3F0]">Reference image</p>
-                <p className="truncate text-xs text-[#B9B5AF]">
+                <p className="text-sm font-medium text-foreground">Reference image</p>
+                <p className="truncate text-xs text-muted">
                   {selection.file.name} · {selection.width}×{selection.height} ·{" "}
                   {formatReferenceImageBytes(selection.file.size)}
                 </p>
@@ -233,7 +233,7 @@ export function ReferenceImageAttachment({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="border-[#383838] bg-[#1F1F1F] text-[#F5F3F0] hover:bg-[#303030] hover:text-[#F5F3F0]"
+                  className="border-border bg-background text-foreground hover:bg-surface-subtle hover:text-foreground"
                   disabled={disabled || isReading}
                   aria-label="Replace reference image"
                   title="Replace reference image"
@@ -246,7 +246,7 @@ export function ReferenceImageAttachment({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  className="text-[#8D8984] hover:bg-[#303030] hover:text-[#F5F3F0]"
+                  className="text-muted-subtle hover:bg-surface-subtle hover:text-foreground"
                   disabled={disabled || isReading}
                   aria-label={`Remove ${selection.file.name}`}
                   title="Remove reference image"

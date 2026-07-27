@@ -556,14 +556,14 @@ export function TrendingWorkspace() {
   }
 
   return (
-    <section className="min-h-dvh flex-1 bg-[#1F1F1F] px-4 py-6 text-[#F5F3F0] sm:px-6 lg:px-8 lg:py-8 xl:px-10">
+    <section className="min-h-dvh flex-1 bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8 lg:py-8 xl:px-10">
       <div className="mx-auto flex min-h-full max-w-[1360px] flex-col">
         <header>
           <div className="min-w-0">
-            <h1 className="text-balance text-[32px] font-semibold leading-10 text-[#F5F3F0]">
+            <h1 className="text-balance text-[32px] font-semibold leading-10 text-foreground">
               Instagram ideas
             </h1>
-            <p className="mt-1.5 max-w-2xl text-[15px] leading-[22px] text-[#B9B5AF]">
+            <p className="mt-1.5 max-w-2xl text-[15px] leading-[22px] text-muted">
               Build Reel hooks and carousel posts from your real business profile.
             </p>
           </div>
@@ -696,17 +696,17 @@ function TrendingFeedGallery({
 function SlideshowProfilePrompt({ onAction }: { onAction: () => void }) {
   return (
     <div className="mx-auto flex w-full max-w-md flex-col items-center px-6 py-14 text-center">
-      <h2 className="text-lg font-semibold text-[#F5F3F0]">
+      <h2 className="text-lg font-semibold text-foreground">
         Complete your profile
       </h2>
-      <p className="mt-2 text-sm leading-6 text-[#B9B5AF]">
+      <p className="mt-2 text-sm leading-6 text-muted">
         Add your business details to prepare personalized Carousel and Hook
         ideas.
       </p>
       <button
         type="button"
         onClick={onAction}
-        className="mt-5 inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-[8px] bg-[#E16540] px-4 text-sm font-semibold text-[#1F1F1F] transition-[background-color,transform] hover:bg-[#EA7654] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E16540] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1F1F1F]"
+        className="mt-5 inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-[8px] bg-primary px-4 text-sm font-semibold text-primary-foreground transition-[background-color,transform] hover:bg-primary-hover active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <Sparkles className="size-4" aria-hidden="true" />
         Complete profile
@@ -1284,7 +1284,7 @@ function TrendingDeck({
         tabIndex={0}
         aria-label={`Trending idea deck. Showing idea ${safeActiveItemIndex + 1} of ${candidates.length}. Use left and right arrow keys to change ideas.`}
         onKeyDown={handleDeckKeyDown}
-        className="relative isolate mx-auto mt-3 h-[410px] w-full max-w-xl overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E16540] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1F1F1F] sm:mt-7"
+        className="relative isolate mx-auto mt-3 h-[410px] w-full max-w-xl overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-7"
       >
         {[...deckSlots].reverse().map((slot) => (
           <TrendingDeckCard
@@ -1426,35 +1426,35 @@ function CarouselActionDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="carousel-action-dialog-title"
-        className="flex h-[min(700px,calc(100vh-2.5rem))] w-full max-w-[960px] flex-col overflow-hidden rounded-[20px] border border-[#383838] bg-[#292929] text-[#F5F3F0] shadow-[0_28px_90px_rgb(0_0_0_/_0.48)]"
+        className="flex h-[min(700px,calc(100vh-2.5rem))] w-full max-w-[960px] flex-col overflow-hidden rounded-[20px] border border-border bg-card text-foreground shadow-[0_28px_90px_rgb(0_0_0_/_0.48)]"
       >
-        <div className="border-b border-[#383838] bg-[#292929]">
+        <div className="border-b border-border bg-card">
           <div className="flex items-start justify-between gap-4 px-5 py-5 sm:px-6">
             <div className="min-w-0">
               <h2
                 id="carousel-action-dialog-title"
-                className="text-xl font-semibold text-[#F5F3F0]"
+                className="text-xl font-semibold text-foreground"
               >
                 What would you like to do?
               </h2>
-              <p className="mt-1 text-sm font-medium text-[#B9B5AF]">Step 1 of 4</p>
+              <p className="mt-1 text-sm font-medium text-muted">Step 1 of 4</p>
             </div>
             <div className="flex shrink-0 items-center gap-3">
-              <span className="hidden rounded-full bg-[#242424] px-2.5 py-1 text-xs font-semibold lowercase text-[#8D8984] sm:inline-flex">
+              <span className="hidden rounded-full bg-card-muted px-2.5 py-1 text-xs font-semibold lowercase text-muted-subtle sm:inline-flex">
                 esc
               </span>
               <button
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="inline-flex size-9 items-center justify-center rounded-full text-[#8D8984] transition hover:bg-[#242424] hover:text-[#F5F3F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E16540] focus-visible:ring-offset-2 focus-visible:ring-offset-[#292929]"
+                className="inline-flex size-9 items-center justify-center rounded-full text-muted-subtle transition hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card"
               >
                 <X className="size-5" aria-hidden="true" />
               </button>
             </div>
           </div>
-          <div className="h-1 bg-[#242424]">
-            <div className="h-full w-1/4 bg-[#E16540]" />
+          <div className="h-1 bg-card-muted">
+            <div className="h-full w-1/4 bg-primary" />
           </div>
         </div>
 
@@ -1492,14 +1492,14 @@ function CarouselActionDialog({
           {actionState.status === "error" ? (
             <div
               role="alert"
-              className="mt-4 rounded-md border border-[#E15A5A]/35 bg-[#E15A5A]/10 px-4 py-3 text-sm font-semibold text-[#E15A5A]"
+              className="mt-4 rounded-md border border-error/35 bg-error/10 px-4 py-3 text-sm font-semibold text-error"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <span>{actionState.message}</span>
                 <button
                   type="button"
                   onClick={onSaveToLibrary}
-                  className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-[#E15A5A] px-3 text-xs font-semibold text-[#1F1F1F] transition hover:bg-[#E15A5A]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E15A5A]/30"
+                  className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-error px-3 text-xs font-semibold text-primary-foreground transition hover:bg-error/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30"
                 >
                   Retry
                 </button>
@@ -1509,11 +1509,11 @@ function CarouselActionDialog({
           <p className="sr-only">Selected slideshow: {title}</p>
         </div>
 
-        <div className="border-t border-[#383838] bg-[#292929] px-5 py-5 sm:px-6">
+        <div className="border-t border-border bg-card px-5 py-5 sm:px-6">
           <button
             type="button"
             onClick={onClose}
-            className="text-sm font-semibold text-[#B9B5AF] transition hover:text-[#F5F3F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E16540] focus-visible:ring-offset-2 focus-visible:ring-offset-[#292929]"
+            className="text-sm font-semibold text-muted transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           >
             Cancel
           </button>
@@ -1553,30 +1553,30 @@ const CarouselActionOption = forwardRef<
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "group grid min-h-24 w-full grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 rounded-[12px] border bg-[#242424] px-5 py-4 text-left transition-[background-color,border-color] hover:border-[#744231] hover:bg-[#303030] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E16540] focus-visible:ring-offset-2 focus-visible:ring-offset-[#292929] disabled:cursor-not-allowed disabled:opacity-65",
-        selected ? "border-[#744231] ring-2 ring-[#E16540]/15" : "border-[#383838]",
+        "group grid min-h-24 w-full grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 rounded-[12px] border bg-card-muted px-5 py-4 text-left transition-[background-color,border-color] hover:border-primary/50 hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-65",
+        selected ? "border-primary/50 ring-2 ring-focus/15" : "border-border",
       )}
     >
       <span
         className={cn(
           "flex size-12 items-center justify-center rounded-full",
-          selected ? "bg-[#3A2721] text-[#E16540]" : "bg-[#242424] text-[#46B879]",
+          selected ? "bg-selected text-primary" : "bg-card-muted text-success",
         )}
       >
         {icon}
       </span>
       <span className="min-w-0">
-        <span className="block text-base font-semibold text-[#F5F3F0]">
+        <span className="block text-base font-semibold text-foreground">
           {label}
         </span>
-        <span className="mt-1 block text-sm font-medium leading-5 text-[#B9B5AF]">
+        <span className="mt-1 block text-sm font-medium leading-5 text-muted">
           {description}
         </span>
       </span>
       <Check
         className={cn(
-          "size-4 text-[#8D8984] opacity-0 transition group-hover:opacity-100",
-          selected && "opacity-100 text-[#E16540]",
+          "size-4 text-muted-subtle opacity-0 transition group-hover:opacity-100",
+          selected && "opacity-100 text-primary",
         )}
         aria-hidden="true"
       />
@@ -1588,13 +1588,13 @@ function CarouselActionToast({ notice }: { notice: CarouselActionNotice }) {
   return (
     <div
       role="status"
-      className="fixed bottom-5 left-1/2 z-[var(--z-modal)] flex -translate-x-1/2 items-center gap-3 rounded-full border border-[#383838] bg-[#292929] px-4 py-2 text-sm font-semibold text-[#F5F3F0] shadow-[0_18px_45px_rgb(0_0_0_/_0.38)]"
+      className="fixed bottom-5 left-1/2 z-[var(--z-modal)] flex -translate-x-1/2 items-center gap-3 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-[0_18px_45px_rgb(0_0_0_/_0.38)]"
     >
       <span>{notice.message}</span>
       {notice.actionHref && notice.actionLabel ? (
         <Link
           href={notice.actionHref}
-          className="rounded-full bg-[#3A2721] px-3 py-1 text-xs font-bold text-[#E16540] transition-colors hover:bg-[#E16540] hover:text-[#1F1F1F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E16540]"
+          className="rounded-full bg-selected px-3 py-1 text-xs font-bold text-primary transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           {notice.actionLabel}
         </Link>
@@ -1910,7 +1910,7 @@ function CarouselDeckCard({
       >
         <div
           className={cn(
-            "relative aspect-[4/5] overflow-hidden rounded-lg bg-[#292929]",
+            "relative aspect-[4/5] overflow-hidden rounded-lg bg-card",
             isActive
               ? "shadow-[0_10px_18px_rgb(9_9_11_/_0.2)]"
               : "shadow-[0_6px_12px_rgb(9_9_11_/_0.14)]",
@@ -1970,7 +1970,7 @@ function CarouselDeckCard({
                   className={cn(
                     "h-1.5 rounded-full transition-[width,background-color] motion-reduce:transition-none",
                     activeSlideIndex === index
-                      ? "w-4 bg-[#E16540]"
+                      ? "w-4 bg-primary"
                       : "w-1.5 bg-[#B9B5AF]/55 hover:bg-[#B9B5AF]",
                   )}
                 />
@@ -2023,7 +2023,7 @@ function CarouselPreparationState({
       aria-live="polite"
       className={cn(
         "w-full",
-        compact && "border-y border-[#383838] py-5",
+        compact && "border-y border-border py-5",
       )}
     >
       {!compact ? <CarouselLoadingStackVisual /> : null}
@@ -2034,7 +2034,7 @@ function CarouselPreparationState({
           !compact && "mt-5 px-4",
         )}
       >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-[8px] bg-[#3A2721] text-[#E16540]">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-[8px] bg-selected text-primary">
           <Loader2
             className="size-5 animate-spin motion-reduce:animate-none"
             aria-hidden="true"
@@ -2043,20 +2043,20 @@ function CarouselPreparationState({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <div>
-              <p className="text-sm font-semibold text-[#F5F3F0]">
+              <p className="text-sm font-semibold text-foreground">
                 {status}
               </p>
-              <p className="mt-1 text-xs leading-5 text-[#B9B5AF]">
+              <p className="mt-1 text-xs leading-5 text-muted">
                 {carousels.length} personalized slideshow {ideaLabel} in progress
               </p>
             </div>
-            <span className="text-xs font-medium tabular-nums text-[#B9B5AF]">
+            <span className="text-xs font-medium tabular-nums text-muted">
               {readySlideCount}/{slideCount} slides ready
             </span>
           </div>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#383838]">
             <div
-              className="h-full rounded-full bg-[#E16540] transition-[width] duration-500 motion-reduce:transition-none"
+              className="h-full rounded-full bg-primary transition-[width] duration-500 motion-reduce:transition-none"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -2079,7 +2079,7 @@ function CarouselLoadingStackVisual() {
           style={{ zIndex: placeholder.zIndex }}
         >
           <div
-            className="relative aspect-[4/5] w-[min(76vw,252px)] origin-center overflow-hidden rounded-[12px] border border-[#383838] bg-[#292929] shadow-[0_18px_45px_rgb(0_0_0_/_0.26)]"
+            className="relative aspect-[4/5] w-[min(76vw,252px)] origin-center overflow-hidden rounded-[12px] border border-border bg-card shadow-[0_18px_45px_rgb(0_0_0_/_0.26)]"
             style={{
               opacity: placeholder.opacity,
               transform: `translateY(${placeholder.translateY}px) scale(${placeholder.scale})`,
@@ -2087,7 +2087,7 @@ function CarouselLoadingStackVisual() {
           >
             <div className="size-full p-5">
               <Skeleton className="h-2.5 w-16 rounded-full bg-[#383838]" />
-              <Skeleton className="mt-5 h-[150px] w-full rounded-[8px] bg-[#303030]" />
+              <Skeleton className="mt-5 h-[150px] w-full rounded-[8px] bg-surface-subtle" />
               <div className="mt-5 flex flex-col gap-2.5">
                 <Skeleton className="h-3 w-4/5 rounded-full bg-[#383838]" />
                 <Skeleton className="h-3 w-full rounded-full bg-[#383838]" />
@@ -2100,7 +2100,7 @@ function CarouselLoadingStackVisual() {
                       key={dot}
                       className={cn(
                         "size-1.5 rounded-full",
-                        dot === 0 ? "bg-[#E16540]" : "bg-[#494949]",
+                        dot === 0 ? "bg-primary" : "bg-border-strong",
                       )}
                     />
                   ))}
@@ -2124,16 +2124,16 @@ function CarouselFailureState({
   const ideaLabel = count === 1 ? "idea needs" : "ideas need";
 
   return (
-    <section className="flex flex-col gap-4 border-y border-[#E15A5A]/25 py-5 sm:flex-row sm:items-center sm:justify-between">
+    <section className="flex flex-col gap-4 border-y border-error/25 py-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-[#E15A5A]/10 text-[#E15A5A]">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-error/10 text-error">
           <CircleAlert className="size-4" aria-hidden="true" />
         </span>
         <div>
-          <p className="text-sm font-semibold text-[#F5F3F0]">
+          <p className="text-sm font-semibold text-foreground">
             {count} slideshow {ideaLabel} attention
           </p>
-          <p className="mt-1 text-xs leading-5 text-[#B9B5AF]">
+          <p className="mt-1 text-xs leading-5 text-muted">
             The worker did not finish these slideshow renders.
           </p>
         </div>
@@ -2141,7 +2141,7 @@ function CarouselFailureState({
       <button
         type="button"
         onClick={onRetry}
-        className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-[8px] border border-[#383838] bg-[#242424] px-3 text-xs font-semibold text-[#F5F3F0] transition-colors hover:bg-[#303030] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E16540] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1F1F1F]"
+        className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-[8px] border border-border bg-card-muted px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <RefreshCw className="size-3.5" aria-hidden="true" />
         Retry generation
@@ -2178,8 +2178,8 @@ function CarouselFeedState({
           className={cn(
             "flex size-11 items-center justify-center rounded-[8px]",
             icon === "failed"
-              ? "bg-[#E15A5A]/10 text-[#E15A5A]"
-              : "bg-[#3A2721] text-[#E16540]",
+              ? "bg-error/10 text-error"
+              : "bg-selected text-primary",
           )}
         >
           <Icon className="size-5" aria-hidden="true" />
@@ -2188,19 +2188,19 @@ function CarouselFeedState({
       <div>
         <h2
           className={cn(
-            "text-xl font-semibold text-[#F5F3F0]",
+            "text-xl font-semibold text-foreground",
             icon === "preparing" ? "mt-1" : "mt-5",
           )}
         >
           {title}
         </h2>
-        <p className="mt-2 max-w-md text-sm leading-6 text-[#B9B5AF]">{message}</p>
+        <p className="mt-2 max-w-md text-sm leading-6 text-muted">{message}</p>
       </div>
       {actionLabel && onAction ? (
         <button
           type="button"
           onClick={onAction}
-          className="mt-5 inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-[8px] bg-[#E16540] px-4 text-sm font-semibold text-[#1F1F1F] transition-[background-color,transform] hover:bg-[#EA7654] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E16540] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1F1F1F]"
+          className="mt-5 inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-[8px] bg-primary px-4 text-sm font-semibold text-primary-foreground transition-[background-color,transform] hover:bg-primary-hover active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <ActionIcon className="size-4" aria-hidden="true" />
           {actionLabel}
@@ -2219,9 +2219,9 @@ function GeneratedCarouselFeedSkeleton() {
     >
       <CarouselLoadingStackVisual />
       <div className="mx-auto mt-4 flex max-w-sm items-center gap-3 px-4">
-        <Skeleton className="size-10 shrink-0 rounded-[8px] bg-[#3A2721]" />
+        <Skeleton className="size-10 shrink-0 rounded-[8px] bg-selected" />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <Skeleton className="h-3 w-44 max-w-full rounded-full bg-[#494949]" />
+          <Skeleton className="h-3 w-44 max-w-full rounded-full bg-border-strong" />
           <Skeleton className="h-2.5 w-64 max-w-full rounded-full bg-[#383838]" />
         </div>
       </div>

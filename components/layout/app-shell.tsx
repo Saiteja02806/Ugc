@@ -15,7 +15,7 @@ export function AppShell({
   defaultSidebarCollapsed?: boolean;
 }) {
   return (
-    <main className="flex min-h-dvh flex-col overflow-x-clip bg-[#1F1F1F] text-[#F5F3F0] md:flex-row">
+    <main className="flex min-h-dvh flex-col overflow-x-clip bg-background text-foreground md:flex-row">
       <AppSidebar
         activeKey={activeKey}
         defaultCollapsed={defaultSidebarCollapsed}

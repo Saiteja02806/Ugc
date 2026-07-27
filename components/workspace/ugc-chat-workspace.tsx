@@ -111,18 +111,18 @@ async function pollImageJob(jobId: string, token: string) {
 
 export function UgcChatWorkspace() {
   return (
-    <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-[#1F1F1F] px-4 py-4 text-[#F5F3F0] sm:px-6 lg:h-screen lg:px-10 lg:py-6">
+    <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">
       <header className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-normal text-[#F5F3F0] sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
             AI Studio
           </h1>
-          <p className="mt-1 text-sm font-medium leading-6 text-[#B9B5AF]">
+          <p className="mt-1 text-sm font-medium leading-6 text-muted">
             Generate images and videos from one focused workspace.
           </p>
         </div>
 
-        <div className="inline-flex h-8 w-fit items-center gap-2 rounded-[var(--radius-control)] border border-[#383838] bg-[#242424] px-3 text-xs font-semibold text-[#B9B5AF]">
+        <div className="inline-flex h-8 w-fit items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-xs font-semibold text-muted">
           <Lock className="size-3.5" aria-hidden="true" />
           Preview mode
         </div>
@@ -294,7 +294,7 @@ function ResultsArea({
       <h2 className="sr-only">Generated images</h2>
 
       {generatedAssets.length > 0 ? (
-        <span className="absolute right-4 top-4 text-xs font-semibold text-[#B9B5AF] sm:right-6">
+        <span className="absolute right-4 top-4 text-xs font-semibold text-muted sm:right-6">
           {generatedAssets.length} total
         </span>
       ) : null}
@@ -302,7 +302,7 @@ function ResultsArea({
       {generationFailed ? (
         <div
           role="alert"
-          className="absolute left-4 top-4 w-fit rounded-full border border-[#E15A5A]/35 bg-[#2A2020] px-3 py-2 text-xs font-semibold text-[#E15A5A] shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-6"
+          className="absolute left-4 top-4 w-fit rounded-full border border-error/35 bg-error/10 px-3 py-2 text-xs font-semibold text-error shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-6"
         >
           <div className="flex items-center gap-2">
             <AlertCircle className="size-3.5" aria-hidden="true" />
@@ -314,10 +314,10 @@ function ResultsArea({
       {isGenerating ? (
         <div
           role="status"
-          className="absolute left-4 top-4 w-fit rounded-full border border-[#383838] bg-[#242424] px-3 py-2 text-xs font-semibold text-[#F5F3F0] shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-6"
+          className="absolute left-4 top-4 w-fit rounded-full border border-border bg-card-muted px-3 py-2 text-xs font-semibold text-foreground shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-6"
         >
           <div className="flex items-center gap-2">
-            <Loader2 className="size-3.5 animate-spin text-[#E16540] motion-reduce:animate-none" aria-hidden="true" />
+            <Loader2 className="size-3.5 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
             Generating image asset…
           </div>
         </div>

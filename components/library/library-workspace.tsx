@@ -152,7 +152,7 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
               Keep approved Instagram creative in one place. Review Reel hooks
-              and footage, save carousel ideas from Instagram Ideas, then
+              and footage, save carousel ideas from Trending, then
               schedule posts.
             </p>
           </div>
@@ -414,7 +414,7 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
               Saved carousels
             </h2>
             <p className="mt-0.5 max-w-xl text-sm leading-5 text-muted">
-              Complete carousel sets saved from Instagram Ideas and ready to
+              Complete carousel sets saved from Trending and ready to
               schedule as Instagram posts.
             </p>
           </div>
@@ -550,7 +550,7 @@ function LibraryContentEmptyState({
           Build your carousel library
         </h3>
         <p className="mt-2 max-w-md text-sm leading-6 text-muted">
-          Save carousel ideas from Instagram Ideas. Each complete slide set
+          Save carousel ideas from Trending. Each complete slide set
           stays here for review and scheduling.
         </p>
 
@@ -581,7 +581,7 @@ function LibraryContentEmptyState({
             <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-card text-xs font-bold text-primary ring-1 ring-inset ring-border">
               1
             </span>
-            Find a complete carousel in Instagram Ideas.
+            Find a complete carousel in Trending.
           </li>
           <li className="flex gap-3">
             <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-card text-xs font-bold text-primary ring-1 ring-inset ring-border">

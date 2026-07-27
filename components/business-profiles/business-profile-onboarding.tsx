@@ -248,7 +248,7 @@ export function BusinessProfileOnboarding() {
       const token = await getCurrentUserIdToken();
 
       if (!token) {
-        throw new Error("Sign in again before retrying Instagram idea preparation.");
+        throw new Error("Sign in again before retrying Trending preparation.");
       }
 
       const response = await fetch("/api/business-profile/retry", {
@@ -261,7 +261,7 @@ export function BusinessProfileOnboarding() {
       } | null;
 
       if (!response.ok || !data?.ok) {
-        throw new Error(data?.message ?? "Could not retry Instagram idea preparation.");
+        throw new Error(data?.message ?? "Could not retry Trending preparation.");
       }
 
       router.replace("/dashboard");
@@ -269,7 +269,7 @@ export function BusinessProfileOnboarding() {
       setError(
         getFriendlyProfileError(
           retryError,
-          "Could not retry Instagram idea preparation. Check your connection and try again.",
+          "Could not retry Trending preparation. Check your connection and try again.",
         ),
       );
       setStatus("idle");
@@ -556,7 +556,7 @@ export function BusinessProfileOnboarding() {
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
               Keep each answer concise and factual. These details become the
-              source of truth for personalized Instagram ideas.
+              source of truth for personalized recommendations in Trending.
             </p>
             <FieldGroup className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
               <ProfileField
@@ -743,7 +743,7 @@ function OnboardingFrame({
             )}
           >
             <ArrowLeft data-icon="inline-start" aria-hidden="true" />
-            <span className="hidden sm:inline">Back to Instagram ideas</span>
+            <span className="hidden sm:inline">Back to Trending</span>
             <span className="sm:hidden">Back</span>
           </Link>
         </div>
@@ -758,7 +758,7 @@ function OnboardingFrame({
             </p>
           </div>
           <h1 className="mt-4 text-balance text-[34px] font-bold leading-[1.08] tracking-[-0.04em] text-foreground-strong sm:text-[44px]">
-            Give every Instagram idea the right business context.
+            Give every Trending recommendation the right business context.
           </h1>
           <p className="mt-4 max-w-2xl text-pretty text-sm leading-6 text-muted sm:text-base sm:leading-7">
             Add one trusted source for your product, audience, and positioning.
@@ -792,7 +792,7 @@ function ContextPipeline({ state }: { state: PipelineState }) {
     },
     {
       description: "Reels, text-led videos, and carousels",
-      label: "Instagram ideas",
+      label: "Trending",
     },
   ];
 
@@ -898,7 +898,7 @@ function ExistingProfileState({
           <div className="min-w-0">
             <h2 className="max-w-xl text-balance text-2xl font-bold tracking-[-0.025em] text-foreground-strong sm:text-[30px]">
               {failed
-                ? "Instagram idea preparation needs attention"
+                ? "Trending preparation needs attention"
                 : "Your Instagram creative brief is active"}
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
@@ -967,7 +967,7 @@ function ExistingProfileState({
             )}
           >
             <Sparkles data-icon="inline-start" aria-hidden="true" />
-            Open Instagram ideas
+            Open Trending
           </Link>
         </div>
       </div>

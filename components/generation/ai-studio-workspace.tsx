@@ -3,6 +3,7 @@
 import { ImageIcon, Lock, Video } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { VideoGenerationStudioPanel } from "@/components/video/video-generation-workspace";
 import { ImageGenerationStudioPanel } from "@/components/workspace/ugc-chat-workspace";
 import { Badge } from "@/components/ui/badge";
@@ -11,11 +12,20 @@ import { cn } from "@/lib/utils";
 export type AIStudioMode = "images" | "videos";
 
 const studioModes: Array<{
+  description: string;
   label: string;
   value: AIStudioMode;
 }> = [
-  { label: "Images", value: "images" },
-  { label: "Videos", value: "videos" },
+  {
+    description: "Feed, carousel, and Story visuals",
+    label: "Images",
+    value: "images",
+  },
+  {
+    description: "Reels and short-form video",
+    label: "Videos",
+    value: "videos",
+  },
 ];
 
 export function AIStudioWorkspace({
@@ -35,25 +45,41 @@ export function AIStudioWorkspace({
   }
 
   return (
-    <section className="flex min-h-dvh flex-1 flex-col bg-background px-4 py-5 text-foreground sm:px-6 lg:h-dvh lg:px-8 lg:py-7">
-      <div className="mx-auto flex min-h-0 w-full max-w-[1240px] flex-1 flex-col">
-        <header className="flex flex-col gap-5 border-b border-border pb-5">
+    <section className="relative flex min-h-dvh flex-1 flex-col overflow-x-hidden bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8 lg:py-6">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_70%_0%,color-mix(in_srgb,var(--instagram-rose)_10%,transparent),transparent_52%),radial-gradient(circle_at_28%_0%,color-mix(in_srgb,var(--instagram-orange)_8%,transparent),transparent_48%)]"
+      />
+
+      <div className="relative mx-auto flex min-h-0 w-full max-w-[1320px] flex-1 flex-col">
+        <header className="flex flex-col gap-5 pb-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                Instagram creation
-              </p>
-              <h1 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-[2rem]">
-                Create for Instagram
-              </h1>
-              <p className="mt-2 text-sm leading-6 text-pretty text-muted">
-                Configure image and short-form video ideas now. Generation stays locked during development.
-              </p>
+            <div className="flex max-w-3xl items-start gap-3.5">
+              <span className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-[13px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] text-white shadow-[0_12px_30px_rgb(214_41_118_/_0.18)]">
+                <SocialPlatformIcon
+                  className="size-5 !text-white"
+                  platform="instagram"
+                />
+              </span>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
+                  Instagram production desk
+                </p>
+                <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.03em] text-balance text-foreground sm:text-[2rem]">
+                  AI Studio
+                </h1>
+                <p className="mt-1.5 max-w-2xl text-sm leading-6 text-pretty text-muted">
+                  Shape the brief, format, and output for your next Instagram visual from one focused workspace.
+                </p>
+              </div>
             </div>
 
-            <Badge variant="secondary">
+            <Badge
+              variant="secondary"
+              className="w-fit border border-border bg-card/80 text-muted shadow-sm"
+            >
               <Lock data-icon="inline-start" aria-hidden="true" />
-              Preview mode
+              Preview workspace
             </Badge>
           </div>
 
@@ -78,7 +104,7 @@ function AIStudioModeToggle({
 }) {
   return (
     <div
-      className="inline-flex h-10 w-full max-w-full items-center rounded-[var(--radius-control)] border border-border bg-card-muted p-1 sm:w-fit"
+      className="grid w-full max-w-[640px] grid-cols-2 gap-1 rounded-[var(--radius-card)] border border-border bg-card-muted/80 p-1"
       role="tablist"
       aria-label="AI Studio mode"
     >
@@ -98,14 +124,28 @@ function AIStudioModeToggle({
             aria-selected={selected}
             onClick={() => onChange(mode.value)}
             className={cn(
-              "inline-flex h-8 flex-1 shrink-0 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-[background-color,color,box-shadow] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:flex-none",
+              "group flex min-h-12 min-w-0 items-center gap-3 rounded-[10px] px-3 py-2 text-left transition-[background-color,color,box-shadow] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:px-4",
               selected
                 ? "bg-card text-foreground shadow-sm ring-1 ring-border"
-                : "bg-transparent text-muted hover:bg-card/60 hover:text-foreground",
+                : "bg-transparent text-muted hover:bg-card/55 hover:text-foreground",
             )}
           >
-            <Icon className="size-4" aria-hidden="true" />
-            {mode.label}
+            <span
+              className={cn(
+                "flex size-8 shrink-0 items-center justify-center rounded-[9px] border transition-colors",
+                selected
+                  ? "border-primary/25 bg-brand-soft text-primary"
+                  : "border-border bg-background/30 text-muted-subtle group-hover:text-foreground",
+              )}
+            >
+              <Icon className="size-4" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">{mode.label}</span>
+              <span className="hidden truncate text-[11px] leading-4 text-muted sm:block">
+                {mode.description}
+              </span>
+            </span>
           </button>
         );
       })}

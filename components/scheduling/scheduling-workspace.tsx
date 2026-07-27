@@ -90,6 +90,28 @@ const openingVideoSourceTabs = [
   { id: "videos", label: "Videos" },
   { id: "edited", label: "Edited" },
 ] as const;
+const scheduleSetupSteps = [
+  {
+    description: "Choose what to publish",
+    label: "Media",
+    mobileLabel: "Media",
+    step: "1",
+  },
+  {
+    description: "Select the destination",
+    label: "Instagram account",
+    mobileLabel: "Account",
+    step: "2",
+  },
+  {
+    description: "Set the publish time",
+    label: "Date & time",
+    mobileLabel: "Date & time",
+    step: "3",
+  },
+] as const;
+const scheduleDialogFocusableSelector =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
   | { error?: string; ok?: false };
@@ -3067,6 +3089,7 @@ function NewScheduleDrawer({
   socialConnections: SocialConnection[];
 }) {
   useLockBodyScroll();
+  const dialogRef = useRef<HTMLElement>(null);
 
   const editingDraft = editingSchedule
     ? mapScheduledPostToScheduleDraft(editingSchedule)
@@ -3266,16 +3289,62 @@ function NewScheduleDrawer({
   }, []);
 
   useEffect(() => {
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const focusFrame = window.requestAnimationFrame(() => {
+      dialogRef.current?.focus();
+    });
+
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialogRef.current) {
+        return;
+      }
+
+      const focusableElements = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          scheduleDialogFocusableSelector,
+        ),
+      ).filter(
+        (element) =>
+          element.getAttribute("aria-hidden") !== "true" &&
+          element.getClientRects().length > 0,
+      );
+
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        dialogRef.current.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0]!;
+      const lastElement = focusableElements[focusableElements.length - 1]!;
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (
+        !event.shiftKey &&
+        (document.activeElement === lastElement ||
+          !dialogRef.current.contains(document.activeElement))
+      ) {
+        event.preventDefault();
+        firstElement.focus();
       }
     }
 
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("keydown", handleKeyDown);
+      previouslyFocused?.focus();
     };
   }, [onClose]);
 
@@ -3537,7 +3606,7 @@ function NewScheduleDrawer({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-0 backdrop-blur-sm sm:p-4"
       onMouseDown={(event) => {
         if (event.currentTarget === event.target) {
           onClose();
@@ -3545,12 +3614,15 @@ function NewScheduleDrawer({
       }}
     >
       <aside
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="schedule-drawer-title"
-        className="flex h-full w-full max-w-3xl flex-col overflow-hidden border-l border-border bg-card shadow-floating sm:rounded-l-[var(--radius-panel)]"
+        aria-describedby="schedule-drawer-description"
+        tabIndex={-1}
+        className="flex h-full w-full flex-col overflow-hidden border border-border bg-card shadow-floating focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:h-[calc(100vh-2rem)] sm:max-h-[920px] sm:max-w-[1400px] sm:rounded-[var(--radius-panel)]"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-5 py-5 sm:px-6">
+        <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-5 lg:px-8">
           <div className="flex min-w-0 items-start gap-3">
             <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
               <SocialPlatformIcon className="size-4" platform="instagram" />
@@ -3566,7 +3638,10 @@ function NewScheduleDrawer({
                     ? "Edit Instagram schedule"
                     : "Schedule Instagram post"}
               </h2>
-              <p className="mt-1 text-sm font-medium leading-6 text-muted">
+              <p
+                id="schedule-drawer-description"
+                className="mt-1 max-w-2xl text-sm font-medium leading-6 text-muted"
+              >
                 {isCarouselSchedule
                   ? "Confirm the carousel, choose your Instagram account, and set the publish time."
                   : "Choose real media, your Instagram account, and when the post should publish."}
@@ -3576,15 +3651,42 @@ function NewScheduleDrawer({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close schedule drawer"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-border bg-card text-muted transition hover:border-border-strong hover:bg-card-muted hover:text-foreground"
+            aria-label="Close scheduling workspace"
+            className="inline-flex size-9 shrink-0 touch-manipulation items-center justify-center rounded-control border border-border bg-card text-muted transition hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             <X className="size-4" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">
-          <div className="divide-y divide-border">
+        <ol
+          aria-label="Scheduling checklist"
+          className="grid grid-cols-3 border-b border-border bg-card-muted/40 px-4 sm:px-6 lg:px-8"
+        >
+          {scheduleSetupSteps.map((item) => (
+            <li
+              key={item.step}
+              className="flex min-w-0 items-center gap-2.5 border-r border-border px-2 py-3 first:pl-0 last:border-r-0 last:pr-0 sm:gap-3 sm:px-4"
+            >
+              <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[11px] font-bold text-primary ring-1 ring-inset ring-primary/15">
+                {item.step}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-xs font-bold text-foreground sm:hidden">
+                  {item.mobileLabel}
+                </span>
+                <span className="hidden truncate text-sm font-bold text-foreground sm:block">
+                  {item.label}
+                </span>
+                <span className="mt-0.5 hidden truncate text-[11px] font-semibold text-muted md:block">
+                  {item.description}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ol>
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-[1280px] divide-y divide-border">
             <ScheduleFlowSection
               step="1"
               title="Media"
@@ -3594,7 +3696,7 @@ function NewScheduleDrawer({
                   : "Scheduled video, caption, and optional opening clip"
               }
             >
-              <div className="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)]">
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)] xl:gap-6">
                 <div className="grid content-start gap-4">
                   {isCarouselSchedule && editingSchedule ? (
                     <ScheduledCarouselSourceCard schedule={editingSchedule} />
@@ -3803,7 +3905,7 @@ function NewScheduleDrawer({
           </div>
         </div>
 
-        <div className="border-t border-border bg-card px-5 py-4 shadow-[0_-12px_30px_rgb(16_32_51_/_0.06)] sm:px-6">
+        <div className="border-t border-border bg-card px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_30px_rgb(16_32_51_/_0.06)] sm:px-6 sm:py-4 lg:px-8">
           {errorMessage ? (
             <div
               role="alert"
@@ -3813,50 +3915,52 @@ function NewScheduleDrawer({
               <span>{errorMessage}</span>
             </div>
           ) : null}
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            disabled={!canSaveDraft}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <CheckCircle2 className="size-4" aria-hidden="true" />
-            {saving
-              ? hasSelectedConnections
-                ? "Scheduling…"
-                : editingSchedule
-                  ? "Saving changes…"
-                  : "Saving…"
-              : canSaveDraft
-                ? hasSelectedConnections
-                  ? "Schedule post"
-                  : editingSchedule
-                    ? "Save changes"
-                    : isCarouselSchedule
-                      ? "Save carousel draft"
-                      : "Save video draft"
-                : publishingSettingsError
-                  ? "Review publishing settings"
-                : requireScheduleTarget && !hasSelectedConnections
-                  ? "Choose an account"
-                : isCarouselSchedule || selectedDemoMedia
-                  ? "Choose date and time"
-                  : mediaValidationError ?? "Select media to schedule"}
-          </button>
-          <p className="mt-3 text-center text-xs font-semibold leading-5 text-muted">
-            {hasSelectedConnections
-              ? useOpeningClip
-                ? "We prepare one combined video first, then schedule it automatically when ready."
-                : isCarouselSchedule
-                  ? "The saved carousel will be scheduled to the selected account."
-                  : "This selected video will be scheduled directly without extra preparation."
-              : requireScheduleTarget
-                ? "Choose a connected account before scheduling this post."
-                : editingSchedule
-                  ? "Saved changes replace this draft. Active platform jobs cannot be edited."
+          <div className="mx-auto flex max-w-[1280px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-3xl text-xs font-semibold leading-5 text-muted">
+              {hasSelectedConnections
+                ? useOpeningClip
+                  ? "We prepare one combined video first, then schedule it automatically when ready."
                   : isCarouselSchedule
-                    ? "Choose an account to schedule automatically, or keep this as a carousel draft."
-                    : "Choose an account to schedule automatically, or save a video draft without publishing."}
-          </p>
+                    ? "The saved carousel will be scheduled to the selected account."
+                    : "This selected video will be scheduled directly without extra preparation."
+                : requireScheduleTarget
+                  ? "Choose a connected account before scheduling this post."
+                  : editingSchedule
+                    ? "Saved changes replace this draft. Active platform jobs cannot be edited."
+                    : isCarouselSchedule
+                      ? "Choose an account to schedule automatically, or keep this as a carousel draft."
+                      : "Choose an account to schedule automatically, or save a video draft without publishing."}
+            </p>
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={!canSaveDraft}
+              className="inline-flex h-11 w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-56"
+            >
+              <CheckCircle2 className="size-4" aria-hidden="true" />
+              {saving
+                ? hasSelectedConnections
+                  ? "Scheduling…"
+                  : editingSchedule
+                    ? "Saving changes…"
+                    : "Saving…"
+                : canSaveDraft
+                  ? hasSelectedConnections
+                    ? "Schedule post"
+                    : editingSchedule
+                      ? "Save changes"
+                      : isCarouselSchedule
+                        ? "Save carousel draft"
+                        : "Save video draft"
+                  : publishingSettingsError
+                    ? "Review publishing settings"
+                    : requireScheduleTarget && !hasSelectedConnections
+                      ? "Choose an account"
+                      : isCarouselSchedule || selectedDemoMedia
+                        ? "Choose date and time"
+                        : mediaValidationError ?? "Select media to schedule"}
+            </button>
+          </div>
         </div>
       </aside>
     </div>
@@ -3875,12 +3979,12 @@ function ScheduleFlowSection({
   title: string;
 }) {
   return (
-    <section className="grid gap-4 py-6 md:grid-cols-[180px_minmax(0,1fr)] md:gap-6">
-      <div className="flex items-start gap-3 md:block">
+    <section className="grid gap-5 py-6 lg:grid-cols-[190px_minmax(0,1fr)] lg:gap-8 lg:py-7">
+      <div className="flex items-start gap-3 lg:sticky lg:top-6 lg:block lg:self-start">
         <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-control bg-brand-soft text-xs font-bold text-primary ring-1 ring-inset ring-primary/10">
           {step}
         </span>
-        <div className="min-w-0 md:mt-3">
+        <div className="min-w-0 lg:mt-3">
           <h3 className="text-sm font-bold text-foreground">{title}</h3>
           <p className="mt-1 text-xs font-semibold leading-5 text-muted">
             {description}

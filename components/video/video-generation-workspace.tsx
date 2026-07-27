@@ -366,38 +366,43 @@ export function VideoGenerationStudioPanel({
       role="tabpanel"
       aria-labelledby="ai-studio-videos-tab"
       hidden={!active}
-      className={cn("min-h-0 flex-1 flex-col gap-4", active ? "flex" : "hidden")}
+      className={cn(
+        "min-h-0 flex-1 gap-4 lg:grid lg:grid-cols-[minmax(360px,0.78fr)_minmax(0,1.22fr)]",
+        active ? "flex flex-col" : "hidden",
+      )}
     >
-        <VideoResultsArea
-          actionNotice={actionNotice}
-          generatedVideos={generatedVideos}
-          generationState={generationState}
-          selectedVideoId={selectedVideoId}
-          onEditVideo={handleEditVideo}
-          onSelectVideo={setSelectedVideoId}
-          onUseAsHook={handleUseAsHook}
-        />
+      <VideoPromptBar
+        active={active}
+        avatarErrorMessage={avatarErrorMessage}
+        avatarLoading={avatarLoading}
+        avatar={selectedAvatar}
+        globalAvatars={globalAvatars}
+        isGenerating={isGenerating}
+        personalAvatars={personalAvatars}
+        prompt={prompt}
+        ratio={ratio}
+        selectedAvatarId={selectedAvatarId}
+        videoCount={videoCount}
+        onAvatarChange={setSelectedAvatarId}
+        onEnhancePrompt={handleEnhancePrompt}
+        onPromptChange={setPrompt}
+        onRatioChange={setRatio}
+        onSubmit={handleSubmit}
+        onTextareaKeyDown={handleTextareaKeyDown}
+        onVideoCountChange={setVideoCount}
+      />
 
-        <VideoPromptBar
-          active={active}
-          avatarErrorMessage={avatarErrorMessage}
-          avatarLoading={avatarLoading}
-          avatar={selectedAvatar}
-          globalAvatars={globalAvatars}
-          isGenerating={isGenerating}
-          personalAvatars={personalAvatars}
-          prompt={prompt}
-          ratio={ratio}
-          selectedAvatarId={selectedAvatarId}
-          videoCount={videoCount}
-          onAvatarChange={setSelectedAvatarId}
-          onEnhancePrompt={handleEnhancePrompt}
-          onPromptChange={setPrompt}
-          onRatioChange={setRatio}
-          onSubmit={handleSubmit}
-          onTextareaKeyDown={handleTextareaKeyDown}
-          onVideoCountChange={setVideoCount}
-        />
+      <VideoResultsArea
+        actionNotice={actionNotice}
+        generatedVideos={generatedVideos}
+        generationState={generationState}
+        ratio={ratio}
+        selectedVideoId={selectedVideoId}
+        videoCount={videoCount}
+        onEditVideo={handleEditVideo}
+        onSelectVideo={setSelectedVideoId}
+        onUseAsHook={handleUseAsHook}
+      />
     </div>
   );
 }
@@ -480,7 +485,9 @@ function VideoResultsArea({
   onEditVideo,
   onSelectVideo,
   onUseAsHook,
+  ratio,
   selectedVideoId,
+  videoCount,
 }: {
   actionNotice: string | null;
   generatedVideos: GeneratedVideo[];
@@ -488,29 +495,33 @@ function VideoResultsArea({
   onEditVideo: (video: GeneratedVideo) => void;
   onSelectVideo: (videoId: string) => void;
   onUseAsHook: (video: GeneratedVideo) => void;
+  ratio: VideoRatio;
   selectedVideoId: string | null;
+  videoCount: VideoCount;
 }) {
   return (
-    <div
-      className={cn(
-        "relative flex flex-1 flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-card-muted/35 px-4 sm:px-6",
-        generatedVideos.length > 0
-          ? "min-h-[360px] py-8 sm:min-h-[430px]"
-          : "min-h-[220px] py-6 sm:min-h-[250px]",
-      )}
-    >
-      <h2 className="sr-only">Generated videos</h2>
-
-      {generatedVideos.length > 0 ? (
-        <span className="absolute right-4 top-4 text-xs font-semibold text-[#B9B5AF] sm:right-6">
-          {generatedVideos.length} total
+    <section className="relative flex min-h-[440px] min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-panel)] border border-border bg-[#191919] shadow-[0_20px_55px_rgb(0_0_0_/_0.22)] lg:min-h-0">
+      <header className="relative z-10 flex items-center justify-between gap-3 border-b border-border/80 bg-card-muted/45 px-4 py-3 sm:px-5">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">
+            Reel preview
+          </h2>
+          <p className="mt-0.5 text-xs text-muted">
+            {ratio} {instagramVideoFormatLabels[ratio]} · {videoCount}{" "}
+            {videoCount === 1 ? "video" : "videos"}
+          </p>
+        </div>
+        <span className="rounded-full border border-border bg-background/35 px-2.5 py-1 text-[11px] font-semibold text-muted">
+          {generatedVideos.length > 0
+            ? `${generatedVideos.length} generated`
+            : "No output yet"}
         </span>
-      ) : null}
+      </header>
 
       {generationState === "failed" ? (
         <div
           role="alert"
-          className="absolute left-4 top-4 w-fit rounded-full border border-[#E15A5A]/35 bg-[#2A2020] px-3 py-2 text-xs font-semibold text-[#E15A5A] shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-6"
+          className="absolute left-4 top-20 z-20 w-fit rounded-full border border-error/35 bg-[#2A2020] px-3 py-2 text-xs font-semibold text-error shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
         >
           <div className="flex items-center gap-2">
             <AlertCircle className="size-3.5" aria-hidden="true" />
@@ -522,7 +533,7 @@ function VideoResultsArea({
       {generationState === "generating" ? (
         <div
           role="status"
-          className="absolute left-4 top-4 w-fit rounded-full border border-[#383838] bg-[#242424] px-3 py-2 text-xs font-semibold text-[#F5F3F0] shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-6"
+          className="absolute left-4 top-20 z-20 w-fit rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
         >
           <div className="flex items-center gap-2">
             <Loader2 className="size-3.5 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
@@ -535,14 +546,14 @@ function VideoResultsArea({
         <div
           role="status"
           aria-live="polite"
-          className="absolute left-4 top-4 w-fit rounded-[var(--radius-control)] border border-border bg-card px-3 py-2 text-xs font-medium text-muted shadow-card sm:left-6"
+          className="absolute left-4 top-20 z-20 w-fit rounded-[var(--radius-control)] border border-border bg-card px-3 py-2 text-xs font-medium text-muted shadow-card sm:left-5"
         >
           {actionNotice}
         </div>
       ) : null}
 
       {generatedVideos.length > 0 ? (
-        <div className="grid flex-1 auto-rows-min grid-cols-1 gap-4 overflow-y-auto pb-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid flex-1 auto-rows-min grid-cols-1 gap-4 overflow-y-auto p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3">
           {generatedVideos.map((video) => (
             <VideoResultCard
               key={video.id}
@@ -555,21 +566,43 @@ function VideoResultsArea({
           ))}
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center px-4 py-6 text-center">
-          <div className="max-w-sm">
-            <span className="mx-auto flex size-10 items-center justify-center rounded-[var(--radius-control)] border border-primary/20 bg-brand-soft text-primary">
-              <Video className="size-4.5" aria-hidden="true" />
-            </span>
-            <h3 className="mt-3 text-sm font-semibold text-foreground">
-              Reel workspace
-            </h3>
-            <p className="mt-1 text-sm leading-5 text-muted">
-              Generated Instagram videos will appear here when generation is enabled.
-            </p>
+        <div className="relative flex flex-1 items-center justify-center overflow-hidden px-5 py-8 text-center">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,color-mix(in_srgb,var(--instagram-violet)_13%,transparent),transparent_30%),radial-gradient(circle_at_58%_62%,color-mix(in_srgb,var(--instagram-rose)_11%,transparent),transparent_36%)]"
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 opacity-[0.13] [background-image:linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] [background-size:32px_32px]"
+          />
+
+          <div
+            className="relative flex h-[300px] max-h-[75%] min-h-[250px] w-auto max-w-[78%] flex-col overflow-hidden rounded-[22px] border border-dashed border-border-strong bg-card-muted/55 shadow-[0_26px_70px_rgb(0_0_0_/_0.3)] sm:h-[350px]"
+            style={{ aspectRatio: ratio.replace(":", " / ") }}
+          >
+            <div className="h-1 w-full bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]" />
+            <div className="flex flex-1 items-center justify-center p-5">
+              <div className="max-w-[230px]">
+                <span className="mx-auto flex size-11 items-center justify-center rounded-[12px] border border-primary/25 bg-brand-soft text-primary shadow-sm">
+                  <Video className="size-5" aria-hidden="true" />
+                </span>
+                <h3 className="mt-4 text-sm font-semibold text-foreground">
+                  Your Reel preview
+                </h3>
+                <p className="mt-1.5 text-xs leading-5 text-muted">
+                  Configure the brief and presenter now. Generated Instagram
+                  videos will appear here when creation is enabled.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between border-t border-border/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-subtle">
+              <span>{instagramVideoFormatLabels[ratio]}</span>
+              <span>{ratio}</span>
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -612,6 +645,7 @@ function VideoPromptBar({
   selectedAvatarId: string | null;
   videoCount: VideoCount;
 }) {
+  const promptId = useId();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
@@ -626,19 +660,45 @@ function VideoPromptBar({
     }
 
     textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 44), 132)}px`;
+    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 112), 190)}px`;
   }, [active, prompt]);
 
   return (
     <form
       noValidate
       onSubmit={onSubmit}
-      className="mx-auto w-full max-w-[1120px] rounded-[var(--radius-card)] border border-border bg-card p-3 shadow-card transition-[border-color,box-shadow] focus-within:border-primary/45 focus-within:ring-2 focus-within:ring-primary/10 sm:p-4"
+      className="flex min-h-[440px] w-full flex-col rounded-[var(--radius-panel)] border border-border bg-card p-4 shadow-card sm:p-5 lg:min-h-0"
     >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2">
-        <ReferenceImageAttachment disabled={isGenerating} />
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+            Creative brief
+          </p>
+          <h2 className="mt-1 text-base font-semibold text-foreground">
+            Plan an Instagram Reel
+          </h2>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            Define the concept, framing, and on-camera presenter.
+          </p>
+        </div>
+        <span className="rounded-full border border-border bg-card-muted px-2.5 py-1 text-[11px] font-semibold text-muted">
+          Videos
+        </span>
+      </header>
+
+      <div className="mt-4 rounded-[var(--radius-card)] border border-border bg-card-muted/65 p-3 transition-[border-color,box-shadow] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
+        <div className="flex items-center justify-between gap-3">
+          <label
+            htmlFor={promptId}
+            className="text-xs font-semibold text-foreground"
+          >
+            Describe the Reel
+          </label>
+          <ReferenceImageAttachment disabled={isGenerating} />
+        </div>
 
         <textarea
+          id={promptId}
           ref={textareaRef}
           rows={1}
           aria-label="Video prompt"
@@ -647,39 +707,27 @@ function VideoPromptBar({
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
           onKeyDown={onTextareaKeyDown}
-          className="col-start-2 row-start-1 max-h-32 min-h-11 min-w-0 resize-none overflow-y-hidden bg-transparent px-1 py-2.5 text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle"
-          placeholder="Describe your Reel…"
+          className="mt-2 max-h-[190px] min-h-[112px] w-full resize-none overflow-y-hidden bg-transparent text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle"
+          placeholder="Describe the hook, scene, movement, delivery, and closing action…"
         />
-
-        <button
-          type="submit"
-          disabled={VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating || !avatar}
-          aria-label={VIDEO_GENERATION_LOCKED ? "Video generation locked" : "Generate video"}
-          title={VIDEO_GENERATION_LOCKED ? "Video generation is locked" : undefined}
-          className="col-start-3 row-start-1 inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[118px]"
-        >
-          {VIDEO_GENERATION_LOCKED ? (
-            <>
-              <span className="hidden sm:inline">Locked</span>
-              <Lock className="size-4" aria-hidden="true" />
-            </>
-          ) : isGenerating ? (
-            <>
-              <span className="hidden sm:inline">Generating…</span>
-              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-            </>
-          ) : (
-            <>
-              Generate video
-              <Sparkles className="size-4" aria-hidden="true" />
-            </>
-          )}
-        </button>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-        <RatioSelector value={ratio} onChange={onRatioChange} />
-        <VideoCountSelector value={videoCount} onChange={onVideoCountChange} />
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div>
+          <p className="mb-2 text-xs font-semibold text-muted">Format</p>
+          <RatioSelector value={ratio} onChange={onRatioChange} />
+        </div>
+        <div>
+          <p className="mb-2 text-xs font-semibold text-muted">Outputs</p>
+          <VideoCountSelector
+            value={videoCount}
+            onChange={onVideoCountChange}
+          />
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <p className="mb-2 text-xs font-semibold text-muted">Presenter</p>
         <AvatarPicker
           avatarErrorMessage={avatarErrorMessage}
           avatarLoading={avatarLoading}
@@ -689,24 +737,63 @@ function VideoPromptBar({
           selectedAvatar={avatar}
           onChange={onAvatarChange}
         />
+      </div>
+
+      <button
+        type="button"
+        onClick={onEnhancePrompt}
+        disabled={VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating}
+        aria-label={
+          VIDEO_GENERATION_LOCKED
+            ? "Video prompt enhancement locked"
+            : "Enhance video prompt"
+        }
+        title={
+          VIDEO_GENERATION_LOCKED ? "Prompt enhancement is locked" : undefined
+        }
+        className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-45"
+      >
+        <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+        Enhance prompt
+      </button>
+
+      <div className="mt-auto pt-4">
+        <div className="mb-3 flex items-start gap-2.5 rounded-[var(--radius-control)] border border-border bg-background/30 px-3 py-2.5 text-xs leading-5 text-muted">
+          <Lock className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
+          <p>
+            Your brief is not submitted or generated while this workspace is in
+            preview.
+          </p>
+        </div>
         <button
-          type="button"
-          onClick={onEnhancePrompt}
-          disabled={VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating}
+          type="submit"
+          disabled={VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating || !avatar}
           aria-label={
             VIDEO_GENERATION_LOCKED
-              ? "Video prompt enhancement locked"
-              : "Enhance video prompt"
+              ? "Video generation locked"
+              : "Generate video"
           }
           title={
-            VIDEO_GENERATION_LOCKED
-              ? "Prompt enhancement is locked"
-              : undefined
+            VIDEO_GENERATION_LOCKED ? "Video generation is locked" : undefined
           }
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-primary/35 bg-brand-soft px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/55 hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-80"
         >
-          <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-          Enhance
+          {VIDEO_GENERATION_LOCKED ? (
+            <>
+              <Lock className="size-4" aria-hidden="true" />
+              Generation unavailable in preview
+            </>
+          ) : isGenerating ? (
+            <>
+              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              Generating…
+            </>
+          ) : (
+            <>
+              Generate video
+              <Sparkles className="size-4" aria-hidden="true" />
+            </>
+          )}
         </button>
       </div>
     </form>
@@ -817,7 +904,7 @@ function RatioSelector({
         aria-haspopup="menu"
         onClick={() => setOpen((currentOpen) => !currentOpen)}
         onKeyDown={handleTriggerKeyDown}
-        className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         <RatioGlyph ratio={value} />
         <span>{value} {instagramVideoFormatLabels[value]}</span>
@@ -937,7 +1024,7 @@ function VideoCountSelector({
         aria-haspopup="listbox"
         onClick={() => setOpen((currentOpen) => !currentOpen)}
         onKeyDown={handleTriggerKeyDown}
-        className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         <Film className="size-3.5" aria-hidden="true" />
         <span>
@@ -993,7 +1080,7 @@ function AvatarPicker({
             type="button"
             variant="outline"
             size="lg"
-            className="max-w-[190px]"
+            className="w-full max-w-none justify-between"
             aria-label={triggerLabel}
             title={selectedAvatar?.label ?? "Choose presenter"}
           />

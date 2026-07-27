@@ -334,14 +334,14 @@ export function HookVideoLibraryTab() {
                 No saved Reel hooks
               </h3>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Save a reviewed Reel hook from Instagram Ideas and it will
+                Save a reviewed Reel hook from Trending and it will
                 appear here.
               </p>
               <Link
                 href="/dashboard"
                 className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
-                Open Instagram Ideas
+                Open Trending
               </Link>
             </div>
           </div>

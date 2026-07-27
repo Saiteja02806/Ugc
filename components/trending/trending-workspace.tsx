@@ -561,7 +561,7 @@ export function TrendingWorkspace() {
         <header>
           <div className="min-w-0">
             <h1 className="text-balance text-[32px] font-semibold leading-10 text-[#F5F3F0]">
-              Instagram ideas
+              Trending
             </h1>
             <p className="mt-1.5 max-w-2xl text-[15px] leading-[22px] text-[#B9B5AF]">
               Build Reel hooks and carousel posts from your real business profile.
@@ -1277,12 +1277,12 @@ function TrendingDeck({
   }
 
   return (
-    <section aria-label="Personalized Instagram ideas" className="w-full">
+    <section aria-label="Trending content ideas" className="w-full">
       <div
         role="group"
-        aria-roledescription="Instagram idea deck"
+        aria-roledescription="Trending content deck"
         tabIndex={0}
-        aria-label={`Instagram idea deck. Showing idea ${safeActiveItemIndex + 1} of ${candidates.length}. Use left and right arrow keys to change ideas.`}
+        aria-label={`Trending content deck. Showing idea ${safeActiveItemIndex + 1} of ${candidates.length}. Use left and right arrow keys to change ideas.`}
         onKeyDown={handleDeckKeyDown}
         className="relative isolate mx-auto mt-3 h-[410px] w-full max-w-xl overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E16540] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1F1F1F] sm:mt-7"
       >
@@ -1351,7 +1351,7 @@ function TrendingDeck({
             actionHref: "/scheduling",
             actionLabel: "View schedule",
             message: completionWarning
-              ? "Carousel scheduled. Instagram Ideas may need a refresh."
+              ? "Carousel scheduled. Trending may need a refresh."
               : "Carousel scheduled.",
           });
           advancePastActiveItem("right", onCarouselCompleted);
@@ -2214,7 +2214,7 @@ function GeneratedCarouselFeedSkeleton() {
   return (
     <div
       role="status"
-      aria-label="Loading personalized Instagram ideas"
+      aria-label="Loading trending content ideas"
       className="w-full"
     >
       <CarouselLoadingStackVisual />
@@ -2344,7 +2344,7 @@ async function scheduleTrendingCarousel(params: {
   const assignmentId = params.candidate.item.assignmentId;
 
   if (!assignmentId) {
-    throw new Error("Refresh Instagram Ideas before scheduling this carousel.");
+    throw new Error("Refresh Trending before scheduling this carousel.");
   }
 
   return createAndPublishCarouselSchedule({

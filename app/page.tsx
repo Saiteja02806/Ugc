@@ -16,7 +16,6 @@ import {
 import Link from "next/link";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
-import { SocialPlatformIcon } from "@/components/social/platform-icon";
 
 const authHref = "/sign-in";
 
@@ -130,9 +129,6 @@ export default function Home() {
             <span className="truncate text-[17px] font-semibold text-foreground-strong">
               UGCPilot
             </span>
-            <span className="hidden h-5 border-l border-border pl-3 text-xs font-medium text-muted sm:inline">
-              for Instagram
-            </span>
           </Link>
 
           <nav
@@ -200,12 +196,7 @@ export default function Home() {
 
         <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-12 lg:gap-16">
           <div className="hero-rise max-w-[1000px] text-center">
-            <SocialPlatformIcon
-              platform="instagram"
-              className="mx-auto size-11 sm:size-12"
-            />
-
-            <h1 className="mx-auto mt-7 max-w-[1000px] text-[clamp(2.5rem,6.5vw,5.5rem)] font-semibold leading-[0.94] tracking-[-0.055em] text-foreground-strong">
+            <h1 className="mx-auto max-w-[1000px] text-[clamp(2.5rem,6.5vw,5.5rem)] font-semibold leading-[0.94] tracking-[-0.055em] text-foreground-strong">
               Create Instagram content{" "}
               <span className="mt-3 block bg-[linear-gradient(100deg,var(--instagram-orange),var(--instagram-rose)_48%,var(--instagram-violet))] bg-clip-text text-transparent">
                 worth stopping for.
@@ -355,9 +346,9 @@ export default function Home() {
               <div className="flex items-center justify-between gap-4 border-b border-border pb-5">
                 <div className="flex items-center gap-3">
                   <span className="flex size-10 items-center justify-center rounded-control bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]">
-                    <SocialPlatformIcon
-                      platform="instagram"
-                      className="size-5 !text-white"
+                    <CalendarClock
+                      className="size-5 text-white"
+                      aria-hidden="true"
                     />
                   </span>
                   <div>
@@ -399,9 +390,9 @@ export default function Home() {
             <div className="p-7 sm:p-10 lg:p-14">
               <div className="flex items-center gap-3">
                 <span className="flex size-10 items-center justify-center rounded-control bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]">
-                  <SocialPlatformIcon
-                    platform="instagram"
-                    className="size-5 !text-white"
+                  <LayoutGrid
+                    className="size-5 text-white"
+                    aria-hidden="true"
                   />
                 </span>
                 <p className="text-sm font-semibold text-primary">
@@ -439,9 +430,10 @@ export default function Home() {
               />
               <div className="absolute inset-6 flex items-center justify-center rounded-[var(--radius-panel)] border border-white/15 bg-background/60 p-6 backdrop-blur-xl sm:inset-10">
                 <div className="text-center">
-                  <SocialPlatformIcon
-                    platform="instagram"
-                    className="mx-auto size-16 !text-white"
+                  <ProductLogoMark
+                    className="mx-auto size-16 rounded-[18px] bg-white/10 p-4 ring-1 ring-inset ring-white/15"
+                    imageClassName="brightness-0 invert"
+                    sizes="64px"
                   />
                   <p className="mt-5 text-lg font-semibold text-white">
                     Reels · Carousels · Scheduling
@@ -501,9 +493,9 @@ function InstagramWorkspacePreview() {
           <div className="flex items-center justify-between gap-4 border-b border-white/8 px-4 py-3.5 sm:px-5">
             <div className="flex items-center gap-3">
               <span className="flex size-9 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]">
-                <SocialPlatformIcon
-                  platform="instagram"
-                  className="size-5 !text-white"
+                <LayoutGrid
+                  className="size-5 text-white"
+                  aria-hidden="true"
                 />
               </span>
               <div>
@@ -684,9 +676,9 @@ function TextReelBuilder() {
         <div className="relative mx-auto aspect-[9/14] w-full max-w-[220px] overflow-hidden rounded-card border border-border-strong bg-[linear-gradient(155deg,#2b2930,#1a191d)]">
           <div className="absolute inset-x-4 top-4 flex items-center justify-between">
             <span className="h-2 w-12 rounded-full bg-white/10" />
-            <SocialPlatformIcon
-              platform="instagram"
+            <ScanText
               className="size-5 text-white/40"
+              aria-hidden="true"
             />
           </div>
           <div className="absolute inset-x-4 top-[32%] grid gap-2">

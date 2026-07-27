@@ -44,7 +44,7 @@ type SidebarItem = {
 const primaryNavigationItems: SidebarItem[] = [
   {
     key: "trending",
-    label: "Instagram ideas",
+    label: "Trending",
     href: "/dashboard",
     icon: "trending",
   },

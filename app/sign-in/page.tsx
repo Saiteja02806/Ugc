@@ -55,7 +55,7 @@ export default function SignInPage() {
               Sign in to your Instagram workspace
             </h1>
             <p className="mt-3 text-pretty text-sm leading-6 text-muted">
-              Access your business profile, Instagram ideas, creative assets,
+              Access your business profile, Trending, creative assets,
               and scheduled posts.
             </p>
           </div>

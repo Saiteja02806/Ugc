@@ -5984,12 +5984,12 @@ async function completeTrendingScheduleAssignment(params: {
       | null;
 
     if (!response.ok || data?.ok !== true) {
-      throw new Error(data?.message ?? "Could not update Instagram Ideas.");
+      throw new Error(data?.message ?? "Could not update Trending.");
     }
 
     return null;
   } catch {
-    return "The post is scheduled, but Instagram Ideas may need a refresh.";
+    return "The post is scheduled, but Trending may need a refresh.";
   }
 }
 

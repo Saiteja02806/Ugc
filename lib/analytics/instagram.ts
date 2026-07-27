@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  getUniqueInstagramConnections,
   instagramAccountInsightMetrics,
   normalizeInstagramAccountInsights,
   type InstagramInsightsAccount,
@@ -19,9 +20,7 @@ export async function listInstagramAccountInsightsForOwner(params: {
   userId: string;
 }): Promise<InstagramInsightsAccount[]> {
   const connections = await listSocialConnections(params.userId);
-  const instagramConnections = connections.filter(
-    (connection) => connection.platform === "instagram",
-  );
+  const instagramConnections = getUniqueInstagramConnections(connections);
 
   return Promise.all(
     instagramConnections.map(

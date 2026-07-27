@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-
-import { AppShell } from "@/components/layout/app-shell";
-import { UgcChatWorkspace } from "@/components/workspace/ugc-chat-workspace";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Image Gen",
-  description: "Generate UGC image assets.",
+  title: "AI Studio",
+  description: "Configure Instagram images and short-form videos in one focused workspace.",
 };
 
 export default function ImageGenPage() {
-  return (
-    <AppShell activeKey="img-gen">
-      <UgcChatWorkspace />
-    </AppShell>
-  );
+  redirect("/ai-studio?mode=images");
 }

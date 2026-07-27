@@ -52,7 +52,7 @@ export default function VerifyEmailPage() {
       const refreshedUser = await refreshUser();
 
       if (refreshedUser?.emailVerified) {
-        setStatusMessage("Email verified. Opening your workspace...");
+        setStatusMessage("Email verified. Opening your workspace…");
         router.replace("/dashboard");
         return;
       }
@@ -101,7 +101,7 @@ export default function VerifyEmailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background px-5 text-foreground sm:px-8">
+    <main className="instagram-theme min-h-screen bg-background px-5 text-foreground sm:px-8">
       <header className="mx-auto flex h-20 max-w-6xl items-center justify-between">
         <Link href="/" className="flex items-center gap-3 font-bold">
           <ProductLogoMark className="h-8 w-12" sizes="52px" />
@@ -114,12 +114,12 @@ export default function VerifyEmailPage() {
           disabled={isSigningOut || loading}
           className="text-sm font-bold text-muted transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSigningOut ? "Signing out..." : "Use another account"}
+          {isSigningOut ? "Signing out…" : "Use another account"}
         </button>
       </header>
 
       <section className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-6xl items-center justify-center pb-12">
-        <div className="w-full max-w-md rounded-[2rem] bg-white/85 p-8 shadow-[0_24px_80px_rgb(15_23_42_/_0.08)] ring-1 ring-black/5 backdrop-blur">
+        <div className="w-full max-w-md rounded-3xl border border-border bg-card/95 p-7 shadow-[0_24px_80px_rgb(0_0_0_/_0.34)] backdrop-blur sm:p-8">
           <div className="mb-8 text-center">
             <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-brand-soft text-primary">
               <MailCheck className="size-7" aria-hidden="true" />
@@ -156,7 +156,7 @@ export default function VerifyEmailPage() {
               ) : (
                 <CheckCircle2 className="size-4" aria-hidden="true" />
               )}
-              {isRefreshing ? "Checking..." : "I verified my email"}
+              {isRefreshing ? "Checking…" : "I verified my email"}
             </button>
 
             <button
@@ -176,18 +176,25 @@ export default function VerifyEmailPage() {
               ) : (
                 <Send className="size-4" aria-hidden="true" />
               )}
-              {isResending ? "Sending..." : "Resend verification email"}
+              {isResending ? "Sending…" : "Resend verification email"}
             </button>
           </div>
 
           {statusMessage ? (
-            <p className="mt-5 text-center text-sm font-semibold text-success">
+            <p
+              role="status"
+              aria-live="polite"
+              className="mt-5 text-center text-sm font-semibold text-success"
+            >
               {statusMessage}
             </p>
           ) : null}
 
           {errorMessage ? (
-            <p className="mt-5 text-center text-sm font-semibold text-error">
+            <p
+              role="alert"
+              className="mt-5 text-center text-sm font-semibold text-error"
+            >
               {errorMessage}
             </p>
           ) : null}

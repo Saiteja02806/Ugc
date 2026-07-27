@@ -26,10 +26,8 @@ import { cn } from "@/lib/utils";
 
 export type AppSidebarActiveKey =
   | "trending"
-  | "img-gen"
-  | "video-gen"
+  | "ai-studio"
   | "library"
-  | "connected-accounts"
   | "avatars"
   | "edit"
   | "analytics"
@@ -46,27 +44,21 @@ type SidebarItem = {
 const primaryNavigationItems: SidebarItem[] = [
   {
     key: "trending",
-    label: "Trending",
+    label: "Instagram ideas",
     href: "/dashboard",
     icon: "trending",
   },
   {
-    key: "img-gen",
-    label: "Image Gen",
-    href: "/image-gen",
+    key: "ai-studio",
+    label: "AI Studio",
+    href: "/ai-studio?mode=images",
     icon: "image-gen",
-  },
-  {
-    key: "video-gen",
-    label: "Video Gen",
-    href: "/video-gen",
-    icon: "video-gen",
   },
   {
     key: "avatars",
     label: "Creative Assets",
     href: "/avatars",
-    icon: "influencers",
+    icon: "creative-assets",
   },
   {
     key: "edit",
@@ -83,12 +75,6 @@ const primaryNavigationItems: SidebarItem[] = [
 ];
 
 const libraryNavigationItems: SidebarItem[] = [
-  {
-    key: "connected-accounts",
-    label: "Accounts",
-    href: "/connected-accounts",
-    icon: "avatars",
-  },
   {
     key: "library",
     label: "Content",

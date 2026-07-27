@@ -4,13 +4,11 @@ import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
-  Clock3,
+  FileImage,
+  Film,
   Loader2,
   Pencil,
-  Play,
-  RefreshCw,
   Scissors,
-  Sparkles,
   UserRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -94,23 +92,21 @@ type TrimDraft = {
 
 export function AvatarsWorkspace({
   editorAvatarId = null,
-  initialTab = "influencers",
+  initialTab = "videos",
 }: {
   editorAvatarId?: string | null;
   initialTab?: MediaWorkspaceTab;
 }) {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
+  const isEditorMode = editorAvatarId !== null;
   const [avatars, setAvatars] = useState<AvatarLibraryItem[]>([]);
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
   const [trimDraft, setTrimDraft] = useState<TrimDraft>({
     end: "",
     start: "0",
   });
-  const [thumbnailFailures, setThumbnailFailures] = useState<
-    Record<string, true>
-  >({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(isEditorMode);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [savingTrim, setSavingTrim] = useState(false);
@@ -118,24 +114,15 @@ export function AvatarsWorkspace({
   const [openingInEdit, setOpeningInEdit] = useState(false);
   const [activeTab, setActiveTab] = useState<MediaWorkspaceTab>(initialTab);
   const selectedAvatarIdRef = useRef<string | null>(null);
-  const isEditorMode = editorAvatarId !== null;
 
   function handleTabChange(tab: MediaWorkspaceTab) {
     setActiveTab(tab);
-    window.history.replaceState(null, "", tab === "influencers" ? "/avatars" : `/avatars?tab=${tab}`);
+    window.history.replaceState(null, "", tab === "videos" ? "/avatars" : `/avatars?tab=${tab}`);
   }
 
   const selectedAvatar = useMemo(() => {
     return avatars.find((avatar) => avatar.asset.id === selectedAvatarId) ?? null;
   }, [avatars, selectedAvatarId]);
-  const missingThumbnailCount = useMemo(() => {
-    return avatars.filter((avatar) => !avatar.asset.thumbnailUrl).length;
-  }, [avatars]);
-  const thumbnailFailureCount = useMemo(() => {
-    return Object.keys(thumbnailFailures).filter((avatarId) =>
-      avatars.some((avatar) => avatar.asset.id === avatarId),
-    ).length;
-  }, [avatars, thumbnailFailures]);
   const hasUnsavedTrimChanges = useMemo(() => {
     return selectedAvatar
       ? !isSameTrimDraft(trimDraft, getAvatarTrimDraft(selectedAvatar))
@@ -160,14 +147,14 @@ export function AvatarsWorkspace({
         setAvatars([]);
         commitSelectedAvatarId(null);
         setTrimDraft(getAvatarTrimDraft(null));
-        setErrorMessage("Sign in before managing influencers.");
+        setErrorMessage("Sign in before managing this source video.");
         return;
       }
 
       const token = await getCurrentUserIdToken();
 
       if (!token) {
-          throw new Error("Sign in before managing influencers.");
+          throw new Error("Sign in before managing this source video.");
       }
 
       const response = await fetch("/api/avatars", {
@@ -179,12 +166,10 @@ export function AvatarsWorkspace({
       const data = (await response.json()) as AvatarListResponse;
 
       if (!response.ok || data.ok !== true) {
-        throw new Error(getApiErrorMessage(data, "Could not load influencers."));
+        throw new Error(getApiErrorMessage(data, "Could not load this source video."));
       }
 
       setAvatars(data.avatars);
-      setThumbnailFailures({});
-      logAvatarLibraryDiagnostics(data.avatars);
 
       const currentSelectedAvatarId = selectedAvatarIdRef.current;
       const nextSelectedAvatarId =
@@ -207,19 +192,23 @@ export function AvatarsWorkspace({
         ),
       );
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not load influencers."));
+      setErrorMessage(getErrorMessage(error, "Could not load this source video."));
     } finally {
       setIsLoading(false);
     }
   }, [authLoading, commitSelectedAvatarId, editorAvatarId, user]);
 
   useEffect(() => {
+    if (!isEditorMode) {
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       void loadAvatars();
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [loadAvatars]);
+  }, [isEditorMode, loadAvatars]);
 
   async function handleSaveTrim() {
     if (!selectedAvatar || savingTrim) {
@@ -255,9 +244,9 @@ export function AvatarsWorkspace({
       });
 
       updateAvatar(data);
-      setNoticeMessage("Influencer trim saved.");
+      setNoticeMessage("Source video trim saved.");
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not save influencer trim."));
+      setErrorMessage(getErrorMessage(error, "Could not save the source video trim."));
     } finally {
       setSavingTrim(false);
     }
@@ -281,9 +270,9 @@ export function AvatarsWorkspace({
       });
 
       updateAvatar(data);
-      setNoticeMessage("Influencer trim reset.");
+      setNoticeMessage("Source video trim reset.");
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not reset influencer trim."));
+      setErrorMessage(getErrorMessage(error, "Could not reset the source video trim."));
     } finally {
       setSavingTrim(false);
     }
@@ -312,13 +301,13 @@ export function AvatarsWorkspace({
       const data = (await response.json()) as AvatarActionResponse;
 
       if (!response.ok || data.ok !== true) {
-        throw new Error(getApiErrorMessage(data, "Could not use influencer."));
+        throw new Error(getApiErrorMessage(data, "Could not select this source video."));
       }
 
       updateAvatar(data);
-      setNoticeMessage("Influencer selected for generation.");
+      setNoticeMessage("Source video selected for generation.");
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not use influencer."));
+      setErrorMessage(getErrorMessage(error, "Could not select this source video."));
     } finally {
       setUsingAvatar(false);
     }
@@ -348,12 +337,12 @@ export function AvatarsWorkspace({
         | { error?: string; ok?: false };
 
       if (!response.ok || data.ok !== true) {
-        throw new Error(getApiErrorMessage(data, "Could not open this influencer in Edit."));
+        throw new Error(getApiErrorMessage(data, "Could not open this source video in Edit."));
       }
 
       router.push(`/edit/${encodeURIComponent(data.asset.id)}`);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not open this influencer in Edit."));
+      setErrorMessage(getErrorMessage(error, "Could not open this source video in Edit."));
     } finally {
       setOpeningInEdit(false);
     }
@@ -377,10 +366,6 @@ export function AvatarsWorkspace({
     }
   }
 
-  function handleSelectAvatar(avatarId: string) {
-    router.push(`/avatars/${encodeURIComponent(avatarId)}`);
-  }
-
   function handleRequestBackToLibrary() {
     if (
       hasUnsavedTrimChanges &&
@@ -396,82 +381,13 @@ export function AvatarsWorkspace({
     router.push("/avatars");
   }
 
-  const handleThumbnailError = useCallback(
-    (avatarId: string, thumbnailUrl: string) => {
-      setThumbnailFailures((currentFailures) => {
-        if (currentFailures[avatarId]) {
-          return currentFailures;
-        }
-
-        return {
-          ...currentFailures,
-          [avatarId]: true,
-        };
-      });
-
-      console.warn("[avatar-thumbnail] failed", {
-        avatarId,
-        hostname: getSafeUrlHostname(thumbnailUrl),
-      });
-    },
-    [],
-  );
-
-  const libraryStatus = getLibraryStatus({
-    avatarCount: avatars.length,
-    isLoading,
-    missingThumbnailCount,
-    thumbnailFailureCount,
-  });
-
-  const previewHealthLabel = getPreviewHealthLabel({
-    avatarCount: avatars.length,
-    isLoading,
-    missingThumbnailCount,
-    thumbnailFailureCount,
-  });
-
-  const shouldShowPageStatus =
-    !isEditorMode && Boolean(errorMessage || noticeMessage);
-
-  const thumbnailIssueCount = missingThumbnailCount + thumbnailFailureCount;
-
-  const selectedAvatarThumbnailFailed =
-    selectedAvatarId !== null && thumbnailFailures[selectedAvatarId] === true;
-
   const selectedAvatarHasThumbnailIssue =
     selectedAvatar !== null &&
-    (!selectedAvatar.asset.thumbnailUrl || selectedAvatarThumbnailFailed);
+    !selectedAvatar.asset.thumbnailUrl;
 
   const selectedAvatarIssueLabel = selectedAvatarHasThumbnailIssue
-    ? !selectedAvatar?.asset.thumbnailUrl
-      ? "Thumbnail missing"
-      : "Thumbnail failed"
+    ? "Thumbnail missing"
     : null;
-
-  const pageStatus = shouldShowPageStatus ? (
-    <div className="mx-auto mt-4 w-full max-w-[1560px]">
-      <StatusMessages errorMessage={errorMessage} noticeMessage={noticeMessage} />
-    </div>
-  ) : null;
-
-  const refreshDisabled = isLoading;
-
-  const refreshIconClassName = cn(
-    "size-4",
-    isLoading && "animate-spin motion-reduce:animate-none",
-  );
-
-  const libraryBadgeClassName = getLibraryStatusBadgeClassName(libraryStatus.kind);
-
-  const libraryDotClassName = getLibraryStatusDotClassName(libraryStatus.kind);
-
-  const libraryButtonTitle =
-    thumbnailIssueCount > 0
-      ? `${thumbnailIssueCount} influencer preview issue${
-          thumbnailIssueCount === 1 ? "" : "s"
-        } detected`
-      : "Influencer library media status";
 
   if (isEditorMode) {
     const editorAvatarWasNotFound =
@@ -510,108 +426,77 @@ export function AvatarsWorkspace({
   }
 
   return (
-    <section className="flex min-h-screen flex-1 flex-col bg-background px-4 py-4 text-foreground sm:px-6 lg:px-8 lg:py-6">
-      <header className="mx-auto flex w-full max-w-[1560px] flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
-            Creative Assets
-          </h1>
-          <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-            Manage influencers, videos, and images for your UGC content.
-          </p>
-        </div>
-
-        {activeTab === "influencers" ? <div className="flex flex-wrap items-center gap-2">
-          <div
-            className={libraryBadgeClassName}
-            title={libraryButtonTitle}
-          >
-            <span className={libraryDotClassName} />
-            {libraryStatus.label}
+    <section className="flex min-h-screen flex-1 flex-col bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8 lg:py-7">
+      <div className="mx-auto flex w-full max-w-[1240px] flex-1 flex-col">
+        <header className="flex flex-col gap-5 border-b border-border pb-5 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+              Instagram workspace
+            </p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-foreground sm:text-[2rem]">
+              Creative Assets
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Keep the real videos and images you use to build Instagram content in one focused library.
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void loadAvatars()}
-            disabled={refreshDisabled}
-            aria-label="Refresh influencers"
-            title="Refresh influencers"
-            className="inline-flex size-9 items-center justify-center rounded-md border border-border bg-white text-[#173454] transition-colors hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-60"
+
+          <nav
+            aria-label="Creative asset collections"
+            className="inline-flex w-full rounded-[var(--radius-control)] border border-border bg-card-muted p-1 md:w-auto"
           >
-            <RefreshCw
-              className={refreshIconClassName}
-              aria-hidden="true"
-            />
-          </button>
-        </div> : null}
-      </header>
+            {mediaWorkspaceTabs.map((tab) => {
+              const Icon = tab.icon;
 
-      {activeTab === "influencers" ? pageStatus : null}
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTabChange(tab.id)}
+                  aria-current={activeTab === tab.id ? "page" : undefined}
+                  className={cn(
+                    "inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus md:flex-none",
+                    activeTab === tab.id
+                      ? "bg-card text-foreground shadow-sm ring-1 ring-border"
+                      : "text-muted hover:bg-card/60 hover:text-foreground",
+                  )}
+                >
+                  <Icon className="size-4" aria-hidden="true" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+        </header>
 
-      <nav
-        aria-label="Creative asset collections"
-        className="mx-auto mt-5 flex w-full max-w-[1560px] border-b border-border"
-      >
-        {mediaWorkspaceTabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => handleTabChange(tab.id)}
-            aria-current={activeTab === tab.id ? "page" : undefined}
-            className={cn(
-              "relative h-10 px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
-              activeTab === tab.id ? "text-foreground" : "text-muted hover:text-foreground",
-            )}
-          >
-            {tab.label}
-            {activeTab === tab.id ? <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary" /> : null}
-          </button>
-        ))}
-      </nav>
-
-      <div className="mx-auto w-full max-w-[1560px] flex-1 pt-5">
-        {activeTab === "influencers" ? (
-          <div className="flex flex-col gap-4">
-            <AvatarLibrary
-              avatars={avatars}
-              isLoading={isLoading}
-              previewHealthLabel={previewHealthLabel}
-              selectedAvatarId={selectedAvatarId}
-              thumbnailFailures={thumbnailFailures}
-              onThumbnailError={handleThumbnailError}
-              onSelectAvatar={handleSelectAvatar}
-            />
+        <div className="flex-1 pt-5">
+          {activeTab === "videos" ? (
             <UserMediaCollection
-              collection="influencer"
-              title="My uploaded influencers"
-              description="Upload your own on-camera talent or spokesperson footage. These stay private to your account."
-              emptyTitle="Upload your first influencer"
-              emptyDescription="Add a clear MP4, MOV, or WebM clip. Your uploaded talent will stay separate from the UGC Pilot catalog."
+              collection="video"
+              sourceTypes={hookVideoSourceTypes}
+              title="Video library"
+              description="Uploaded footage and generated videos ready for your Instagram workflow."
+              emptyTitle="No videos yet"
+              emptyDescription="Upload a video or create one in the workspace. Your real assets will appear here."
+              variant="dark"
             />
-          </div>
-        ) : activeTab === "videos" ? (
-          <UserMediaCollection
-            collection="video"
-            sourceTypes={hookVideoSourceTypes}
-            title="Videos"
-            description="Original generated videos and uploaded footage for your UGC workflow. Edited versions stay in Edit."
-            emptyTitle="No videos yet"
-            emptyDescription="Generate or upload an original video here to build your reusable source library."
-          />
-        ) : (
-          <UserMediaCollection
-            collection="image"
-            title="Images"
-            description="Generated and uploaded images for your UGC content."
-            emptyTitle="No images yet"
-            emptyDescription="Generate an image or upload one here to build your reusable image library."
-          />
-        )}
+          ) : (
+            <UserMediaCollection
+              collection="image"
+              title="Image library"
+              description="Uploaded and generated images ready for posts, carousels, and covers."
+              emptyTitle="No images yet"
+              emptyDescription="Upload an image or create one in the workspace. Your real assets will appear here."
+              variant="dark"
+            />
+          )}
+        </div>
       </div>
     </section>
   );
 }
 
-type MediaWorkspaceTab = "influencers" | "videos" | "images";
+type MediaWorkspaceTab = "videos" | "images";
 
 const hookVideoSourceTypes: MediaSourceType[] = [
   "upload",
@@ -619,215 +504,14 @@ const hookVideoSourceTypes: MediaSourceType[] = [
   "generated_video",
 ];
 
-const mediaWorkspaceTabs: { id: MediaWorkspaceTab; label: string }[] = [
-  { id: "influencers", label: "Influencers" },
-  { id: "videos", label: "Videos" },
-  { id: "images", label: "Images" },
+const mediaWorkspaceTabs: {
+  icon: typeof Film;
+  id: MediaWorkspaceTab;
+  label: string;
+}[] = [
+  { icon: Film, id: "videos", label: "Videos" },
+  { icon: FileImage, id: "images", label: "Images" },
 ];
-
-function AvatarLibrary({
-  avatars,
-  isLoading,
-  onSelectAvatar,
-  onThumbnailError,
-  previewHealthLabel,
-  selectedAvatarId,
-  thumbnailFailures,
-}: {
-  avatars: AvatarLibraryItem[];
-  isLoading: boolean;
-  onSelectAvatar: (avatarId: string) => void;
-  onThumbnailError: (avatarId: string, thumbnailUrl: string) => void;
-  previewHealthLabel: string;
-  selectedAvatarId: string | null;
-  thumbnailFailures: Record<string, true>;
-}) {
-  return (
-    <div className="flex min-h-[360px] flex-col rounded-[var(--radius-panel)] border border-border bg-white p-4 sm:p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-bold text-foreground">Influencer catalog</h2>
-          <p className="mt-1 text-xs font-semibold text-muted">
-            {previewHealthLabel}
-          </p>
-        </div>
-        <span className="rounded-md border border-border bg-card-muted px-2.5 py-1 text-xs font-bold text-muted">
-          {isLoading
-            ? "Loading"
-            : `${avatars.length} ${
-                avatars.length === 1 ? "influencer" : "influencers"
-              }`}
-        </span>
-      </div>
-
-      {isLoading ? (
-        <div className="flex flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card-muted">
-          <div className="flex items-center gap-3 text-sm font-semibold text-muted">
-            <Loader2 className="size-5 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
-            Loading influencers...
-          </div>
-        </div>
-      ) : avatars.length > 0 ? (
-        <div className="grid auto-rows-min grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,220px))] xl:justify-center">
-          {avatars.map((avatar) => (
-            <AvatarCard
-              key={avatar.asset.id}
-              avatar={avatar}
-              selected={avatar.asset.id === selectedAvatarId}
-              thumbnailFailed={thumbnailFailures[avatar.asset.id] === true}
-              onThumbnailError={onThumbnailError}
-              onSelect={() => onSelectAvatar(avatar.asset.id)}
-            />
-          ))}
-        </div>
-      ) : (
-        <AvatarEmptyState />
-      )}
-    </div>
-  );
-}
-
-function AvatarEmptyState() {
-  return (
-    <div className="flex flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card-muted px-6 py-12 text-center">
-      <div className="max-w-sm">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-md bg-[#173454] text-white">
-          <UserRound className="size-6" aria-hidden="true" />
-        </div>
-        <p className="mt-4 text-base font-bold text-foreground">
-          No influencer videos yet.
-        </p>
-        <p className="mt-2 text-sm font-medium leading-6 text-muted">
-          Once global influencer videos are added to the influencer library, they will
-          appear here for preview, trimming, and selection.
-        </p>
-        <div className="mt-5 inline-flex items-center gap-2 rounded-md border border-border bg-white px-3 py-2 text-xs font-bold text-[#405977]">
-          <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-          Ready for real influencer assets
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AvatarCard({
-  avatar,
-  onSelect,
-  onThumbnailError,
-  selected,
-  thumbnailFailed,
-}: {
-  avatar: AvatarLibraryItem;
-  onSelect: () => void;
-  onThumbnailError: (avatarId: string, thumbnailUrl: string) => void;
-  selected: boolean;
-  thumbnailFailed: boolean;
-}) {
-  const [loadedThumbnailUrl, setLoadedThumbnailUrl] = useState<string | null>(
-    null,
-  );
-  const thumbnailUrl = avatar.asset.thumbnailUrl;
-  const shouldRenderThumbnail = Boolean(thumbnailUrl) && !thumbnailFailed;
-  const thumbnailLoaded =
-    thumbnailUrl !== null && loadedThumbnailUrl === thumbnailUrl;
-
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-label={`Preview and trim ${avatar.asset.name}`}
-      className={cn(
-        "group min-w-0 rounded-[var(--radius-panel)] border bg-white p-2 text-left transition hover:border-border-strong hover:bg-card-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-        selected ? "border-primary/60 ring-2 ring-primary/15" : "border-border",
-      )}
-    >
-      <div className="relative overflow-hidden rounded-md bg-[#102033] text-white">
-        <div
-          className="relative flex items-center justify-center"
-          style={{ aspectRatio: getPreviewAspectRatio(avatar.asset.ratio) }}
-        >
-          {shouldRenderThumbnail && thumbnailUrl ? (
-            <>
-              {!thumbnailLoaded ? <AvatarThumbnailSkeleton /> : null}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={thumbnailUrl}
-                alt=""
-                className={cn(
-                  "size-full object-cover transition-opacity duration-200 motion-reduce:transition-none",
-                  thumbnailLoaded ? "opacity-100" : "opacity-0",
-                )}
-                decoding="async"
-                loading="lazy"
-                onLoad={() => setLoadedThumbnailUrl(thumbnailUrl)}
-                onError={() => onThumbnailError(avatar.asset.id, thumbnailUrl)}
-              />
-            </>
-          ) : (
-            <AvatarPreviewFallback
-              label={thumbnailUrl ? "Preview unavailable" : "Thumbnail missing"}
-            />
-          )}
-        </div>
-        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-linear-to-t from-black/60 to-transparent p-3">
-          <span className="inline-flex size-8 items-center justify-center rounded-full bg-white/16">
-            <Play className="ml-0.5 size-3.5 fill-white text-white" aria-hidden="true" />
-          </span>
-          {avatar.avatarSelection.isTrimmed ? (
-            <span className="rounded-md bg-primary px-2 py-1 text-[11px] font-bold text-white">
-              Trimmed
-            </span>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="mt-3 space-y-2 px-1 pb-1">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-foreground">
-            {avatar.asset.name}
-          </h3>
-          {selected ? (
-            <CheckCircle2
-              className="mt-0.5 size-4 shrink-0 text-primary"
-              aria-hidden="true"
-            />
-          ) : null}
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
-          <span className="inline-flex items-center gap-1">
-            <Clock3 className="size-3" aria-hidden="true" />
-            {formatDuration(avatar.asset.durationSeconds)}
-          </span>
-          <span>
-            {avatar.asset.ratio === "other"
-              ? getDimensionsLabel(avatar.asset)
-              : avatar.asset.ratio}
-          </span>
-        </div>
-        <span className="inline-flex h-8 w-full items-center justify-center rounded-md bg-card-muted px-3 text-xs font-bold text-[#173454] transition-colors group-hover:bg-white">
-          Preview and trim
-        </span>
-      </div>
-    </button>
-  );
-}
-
-function AvatarThumbnailSkeleton() {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center bg-[#14263b]">
-      <div className="size-9 animate-pulse rounded-full bg-white/15 motion-reduce:animate-none" />
-    </div>
-  );
-}
-
-function AvatarPreviewFallback({ label }: { label: string }) {
-  return (
-    <div className="flex size-full flex-col items-center justify-center gap-2 px-3 text-center">
-      <UserRound className="size-8 text-white/60" aria-hidden="true" />
-      <span className="text-xs font-semibold text-white/72">{label}</span>
-    </div>
-  );
-}
 
 function AvatarEditorShell({
   errorMessage,
@@ -846,16 +530,16 @@ function AvatarEditorShell({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          className="inline-flex h-9 w-fit items-center gap-2 rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
-          Back to Influencers
+          Back to Creative Assets
         </button>
       </header>
 
-      <div className="mt-5 flex min-h-[420px] flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-white px-6 py-12 text-center">
+      <div className="mt-5 flex min-h-[420px] flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card px-6 py-12 text-center shadow-card">
         <div className="max-w-sm">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-md bg-card-muted text-[#173454]">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-control bg-selected text-primary">
             {isLoading ? (
               <Loader2
                 className="size-5 animate-spin text-primary motion-reduce:animate-none"
@@ -867,16 +551,16 @@ function AvatarEditorShell({
           </div>
           <p className="mt-4 text-base font-bold text-foreground">
             {isLoading
-              ? "Loading influencer"
+              ? "Loading source video"
               : notFound
-                ? "Influencer not found"
-                : "Influencer unavailable"}
+                ? "Source video not found"
+                : "Source video unavailable"}
           </p>
           <p className="mt-2 text-sm font-medium leading-6 text-muted">
             {errorMessage ??
               (notFound
-                ? "This influencer is no longer available in the library."
-                : "Open the library and choose another influencer.")}
+                ? "This source video is no longer available."
+                : "Return to Creative Assets and choose another video.")}
           </p>
         </div>
       </div>
@@ -949,10 +633,10 @@ function AvatarFullPageEditor({
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex h-9 w-fit shrink-0 items-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-[#173454] transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className="inline-flex h-9 w-fit shrink-0 items-center gap-2 rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
-            Back to Influencers
+            Back to Creative Assets
           </button>
           <div className="min-w-0">
             <h1
@@ -961,8 +645,8 @@ function AvatarFullPageEditor({
             >
               {avatar.asset.name}
             </h1>
-            <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
-              Preview, trim, and choose this influencer.
+            <p className="mt-1 text-sm font-medium leading-6 text-muted">
+              Preview and trim this source video before using it in your content.
             </p>
           </div>
         </div>
@@ -975,7 +659,7 @@ function AvatarFullPageEditor({
 
       <div
         aria-labelledby={editorTitleId}
-        className="mt-5 grid flex-1 gap-5 rounded-[var(--radius-panel)] border border-border bg-white p-4 sm:p-5 lg:min-h-[calc(100vh-190px)] lg:grid-cols-[minmax(320px,0.44fr)_minmax(420px,0.56fr)] lg:gap-6 lg:overflow-hidden"
+        className="mt-5 grid flex-1 gap-5 rounded-[var(--radius-panel)] border border-border bg-card p-4 shadow-card sm:p-5 lg:min-h-[calc(100vh-190px)] lg:grid-cols-[minmax(320px,0.44fr)_minmax(420px,0.56fr)] lg:gap-6 lg:overflow-hidden"
       >
         <div className="flex min-h-[360px] items-center justify-center rounded-[var(--radius-panel)] bg-[#102033] p-3 text-white sm:min-h-[460px] lg:min-h-0">
           <div
@@ -1025,7 +709,7 @@ function AvatarFullPageEditor({
                     className="size-4 animate-spin motion-reduce:animate-none"
                     aria-hidden="true"
                   />
-                  Loading preview
+                  Loading preview…
                 </span>
               </div>
             ) : null}
@@ -1036,7 +720,7 @@ function AvatarFullPageEditor({
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-base font-bold tracking-normal text-foreground">
-                Influencer information
+                Source video information
               </h2>
               <p className="mt-1 text-sm font-semibold text-foreground">
                 {avatar.asset.name}
@@ -1053,15 +737,15 @@ function AvatarFullPageEditor({
             />
           </div>
           <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-muted">
-            <span className="rounded-md border border-border bg-white px-2.5 py-1">
+            <span className="rounded-control border border-border bg-card-muted px-2.5 py-1">
               {formatDuration(avatar.asset.durationSeconds)}
             </span>
-            <span className="rounded-md border border-border bg-white px-2.5 py-1">
+            <span className="rounded-control border border-border bg-card-muted px-2.5 py-1">
               {avatar.asset.ratio === "other"
                 ? getDimensionsLabel(avatar.asset)
                 : avatar.asset.ratio}
             </span>
-            <span className="rounded-md border border-border bg-white px-2.5 py-1 capitalize">
+            <span className="rounded-control border border-border bg-card-muted px-2.5 py-1 capitalize">
               {avatar.asset.avatarType}
             </span>
             {thumbnailIssueLabel ? (
@@ -1085,7 +769,7 @@ function AvatarFullPageEditor({
               type="button"
               onClick={onOpenInEdit}
               disabled={openingInEdit}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-white px-5 text-sm font-semibold text-[#173454] transition-colors hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-control border border-border bg-card-muted px-5 text-sm font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card hover:text-foreground-strong disabled:cursor-not-allowed disabled:opacity-60"
             >
               {openingInEdit ? (
                 <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
@@ -1098,7 +782,7 @@ function AvatarFullPageEditor({
               type="button"
               onClick={onUseAvatar}
               disabled={usingAvatar}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {usingAvatar ? (
                 <>
@@ -1108,7 +792,7 @@ function AvatarFullPageEditor({
               ) : (
                 <>
                   <UserRound className="size-4" aria-hidden="true" />
-                  Use influencer
+                  Use source video
                 </>
               )}
             </button>
@@ -1158,7 +842,7 @@ function TrimControls({
             {avatar.avatarSelection.isTrimmed ? "Saved custom trim" : "Full clip"}
           </p>
         </div>
-        <span className="rounded-md border border-border bg-white px-2.5 py-1 text-xs font-bold text-[#405977]">
+        <span className="rounded-control border border-border bg-card px-2.5 py-1 text-xs font-bold text-muted">
           {hasValidDraft
             ? `${formatSeconds(trimEnd - trimStart)} selected`
             : "Set trim"}
@@ -1183,7 +867,7 @@ function TrimControls({
                 start: event.target.value,
               })
             }
-            className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm font-bold text-foreground outline-none transition focus:border-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className="mt-1 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-bold text-foreground outline-none transition placeholder:text-muted-subtle hover:border-border-strong focus:border-focus focus-visible:ring-2 focus-visible:ring-focus/25"
           />
         </label>
         <label className="block">
@@ -1203,7 +887,7 @@ function TrimControls({
                 end: event.target.value,
               })
             }
-            className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm font-bold text-foreground outline-none transition focus:border-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className="mt-1 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-bold text-foreground outline-none transition placeholder:text-muted-subtle hover:border-border-strong focus:border-focus focus-visible:ring-2 focus-visible:ring-focus/25"
           />
         </label>
       </div>
@@ -1219,7 +903,7 @@ function TrimControls({
           type="button"
           onClick={onResetTrim}
           disabled={savingTrim || !avatar.avatarSelection.isTrimmed}
-          className="inline-flex h-9 flex-1 items-center justify-center rounded-md border border-border bg-white px-3 text-xs font-bold text-[#173454] transition-colors hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-9 flex-1 items-center justify-center rounded-control border border-border bg-card px-3 text-xs font-bold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-50"
         >
           Reset
         </button>
@@ -1227,7 +911,7 @@ function TrimControls({
           type="button"
           onClick={onSaveTrim}
           disabled={savingTrim || !hasValidDraft}
-          className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-md bg-[#173454] px-3 text-xs font-bold text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-control bg-primary px-3 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {savingTrim ? (
             <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
@@ -1256,7 +940,7 @@ function TrimRangePreview({
 
   return (
     <div className="mt-4">
-      <div className="h-2 overflow-hidden rounded-full bg-[#e9edf1]">
+      <div className="h-2 overflow-hidden rounded-full bg-card">
         <div
           className="h-full rounded-full bg-primary"
           style={{
@@ -1285,7 +969,7 @@ function StatusMessages({
   }
 
   return (
-    <div className="mt-4 space-y-2">
+    <div className="mt-4 flex flex-col gap-2">
       {errorMessage ? (
         <div
           role="alert"
@@ -1298,7 +982,7 @@ function StatusMessages({
         </div>
       ) : null}
       {noticeMessage ? (
-        <div className="rounded-[var(--radius-panel)] border border-success/20 bg-success/5 px-3 py-2 text-sm font-semibold text-[#087443]">
+        <div className="rounded-[var(--radius-panel)] border border-success/20 bg-success/10 px-3 py-2 text-sm font-semibold text-success">
           <div className="flex items-start gap-2">
             <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <span>{noticeMessage}</span>
@@ -1307,115 +991,6 @@ function StatusMessages({
       ) : null}
     </div>
   );
-}
-
-function getLibraryStatus({
-  avatarCount,
-  isLoading,
-  missingThumbnailCount,
-  thumbnailFailureCount,
-}: {
-  avatarCount: number;
-  isLoading: boolean;
-  missingThumbnailCount: number;
-  thumbnailFailureCount: number;
-}) {
-  if (isLoading) {
-    return {
-      kind: "loading",
-      label: "Loading influencers",
-    } as const;
-  }
-
-  if (avatarCount === 0) {
-    return {
-      kind: "empty",
-      label: "No influencers",
-    } as const;
-  }
-
-  const issueCount = missingThumbnailCount + thumbnailFailureCount;
-
-  if (issueCount > 0) {
-    return {
-      kind: "warning",
-      label: `${issueCount} preview ${issueCount === 1 ? "issue" : "issues"}`,
-    } as const;
-  }
-
-  return {
-    kind: "ready",
-    label: "Library ready",
-  } as const;
-}
-
-function getPreviewHealthLabel({
-  avatarCount,
-  isLoading,
-  missingThumbnailCount,
-  thumbnailFailureCount,
-}: {
-  avatarCount: number;
-  isLoading: boolean;
-  missingThumbnailCount: number;
-  thumbnailFailureCount: number;
-}) {
-  if (isLoading) {
-    return "Checking influencer thumbnails.";
-  }
-
-  if (avatarCount === 0) {
-    return "Global influencer videos available to this workspace.";
-  }
-
-  const availableThumbnailCount = Math.max(0, avatarCount - missingThumbnailCount);
-
-  if (missingThumbnailCount > 0 || thumbnailFailureCount > 0) {
-    return `${availableThumbnailCount}/${avatarCount} influencers have thumbnail URLs. Repair missing or failed previews without loading source videos in the library.`;
-  }
-
-  return `${avatarCount} influencers loaded with thumbnail previews.`;
-}
-
-function getLibraryStatusBadgeClassName(kind: ReturnType<typeof getLibraryStatus>["kind"]) {
-  return cn(
-    "inline-flex h-8 w-fit items-center gap-2 rounded-md border px-3 text-xs font-semibold",
-    kind === "ready" &&
-      "border-success/20 bg-success/10 text-[#087443]",
-    kind === "warning" &&
-      "border-warning/25 bg-warning/10 text-warning",
-    kind === "loading" &&
-      "border-info/25 bg-info/10 text-info",
-    kind === "empty" && "border-border bg-white text-muted",
-  );
-}
-
-function getLibraryStatusDotClassName(kind: ReturnType<typeof getLibraryStatus>["kind"]) {
-  return cn(
-    "size-2 rounded-full",
-    kind === "ready" && "bg-success",
-    kind === "warning" && "bg-warning",
-    kind === "loading" && "bg-info",
-    kind === "empty" && "bg-muted-subtle",
-  );
-}
-
-function logAvatarLibraryDiagnostics(avatars: AvatarLibraryItem[]) {
-  const withoutThumbnail = avatars.filter((avatar) => !avatar.asset.thumbnailUrl);
-
-  console.info("[avatars] library diagnostics", {
-    total: avatars.length,
-    withThumbnail: avatars.length - withoutThumbnail.length,
-    withoutThumbnail: withoutThumbnail.length,
-  });
-}
-
-function getSafeUrlHostname(url: string) {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return "invalid-url";
-  }
 }
 
 function releaseVideoElement(video: HTMLVideoElement | null) {
@@ -1458,7 +1033,7 @@ async function patchAvatarPreference({
   const data = (await response.json()) as AvatarActionResponse;
 
   if (!response.ok || data.ok !== true) {
-    throw new Error(getApiErrorMessage(data, "Could not save influencer preference."));
+    throw new Error(getApiErrorMessage(data, "Could not save the source video preference."));
   }
 
   return data;
@@ -1468,7 +1043,7 @@ async function getAuthToken() {
   const token = await getCurrentUserIdToken();
 
   if (!token) {
-    throw new Error("Sign in before managing influencers.");
+    throw new Error("Sign in before managing this source video.");
   }
 
   return token;
@@ -1531,10 +1106,6 @@ function formatSeconds(seconds: number) {
 
 function formatTrimInput(seconds: number) {
   return Number.isInteger(seconds) ? String(seconds) : seconds.toFixed(1);
-}
-
-function getPreviewAspectRatio(ratio: AvatarRatio) {
-  return ratio === "other" ? "9 / 16" : ratio.replace(":", " / ");
 }
 
 function getNumericPreviewAspectRatio(ratio: AvatarRatio) {

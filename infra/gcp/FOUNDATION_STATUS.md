@@ -1,6 +1,6 @@
 # GCP Foundation Status
 
-Last verified: 2026-07-19
+Last verified: 2026-07-27
 
 ## Project
 
@@ -13,8 +13,9 @@ Last verified: 2026-07-19
 ## Applied Foundation Outputs
 
 - Media bucket: `ugcsaas-media`
-- Media CDN IP: `8.233.40.78`
-- Media CDN hostname target: `media.getugcpilot.com`
+- Media CDN/load balancer: disabled for testing-phase cost control
+- Former media CDN IP: `8.233.40.78` (released)
+- Media CDN hostname: inactive; stale DNS cleanup remains
 - Artifact Registry repository: `us-central1-docker.pkg.dev/ugcsaas/ugc-worker`
 - Cloud Tasks queue: `ugc-social-publish-scheduler`
 
@@ -53,13 +54,17 @@ Pub/Sub DLQ topics:
 
 - `terraform plan -detailed-exitcode` returned no changes after apply.
 - `gs://ugcsaas-media` exists in `US` multi-region.
-- The GCP media CDN has HTTP and HTTPS forwarding rules on global IP
-  `8.233.40.78`.
-- Managed SSL certificate `ugc-prod-media-cdn-cert` exists for
-  `media.getugcpilot.com`; status is still `PROVISIONING`.
-- Vercel DNS now resolves `media.getugcpilot.com` to the GCP media CDN IP
-  `8.233.40.78`. HTTP reaches the GCP load balancer, but HTTPS can fail before
-  TLS completes until the managed certificate becomes `ACTIVE`.
+- The optional GCP media CDN/global external load balancer is disabled through
+  Terraform variable `enable_media_cdn = false`. On 2026-07-27 the applied plan
+  removed exactly eight Compute resources: two forwarding rules, two target
+  proxies, the URL map, CDN backend bucket, managed certificate, and reserved
+  global IP.
+- The media bucket and all storage IAM bindings were `no-op` in that plan.
+- `media.getugcpilot.com` still resolves to the released former IP
+  `8.233.40.78`; remove that stale DNS record before reusing the hostname.
+- A direct post-removal byte-range read from
+  `https://storage.googleapis.com/ugcsaas-media` returned HTTP 206 with
+  `image/webp`.
 - Public access prevention is `inherited`.
 - Uniform bucket-level access is enabled.
 - `allUsers` has `roles/storage.objectViewer` on `gs://ugcsaas-media` for
@@ -252,11 +257,11 @@ Pub/Sub DLQ topics:
   `npm run storage:gcp-backfill:audit`. It scans known media-bearing Supabase
   tables for AWS S3/CloudFront URLs and counts legacy `*_s3_key` values
   separately because current GCS-backed code still writes to old column names.
-- The deployed production media backfill audit route ran against
+- The initial deployed production media backfill audit route ran against
   `https://getugcpilot.com`. It confirmed production Vercel reports Supabase
   project `kltxwijhluawgveykfbt`, `STORAGE_PROVIDER=gcp`, no skipped media
-  tables, 5,174 scanned rows, 232 existing GCP media references, and 8,981
-  AWS-hosted media references that still require copy/rewrite.
+  tables, 5,174 scanned rows, 232 existing GCP media references, and initially
+  found 8,981 AWS-hosted media references.
 - A guarded AWS-to-GCS media backfill tool now exists:
   `npm run storage:gcp-backfill:dry-run` and
   `npm run storage:gcp-backfill:execute`. It is dry-run by default, requires
@@ -282,10 +287,18 @@ Pub/Sub DLQ topics:
   `arn:aws:scheduler:us-east-2:831963379461:schedule/*/*`.
 - The GCP Carousel Scheduler job remains paused; production automatic
   replenishment has not been enabled.
-- Existing S3/CloudFront media has not been fully copied to GCS. Start with a
-  larger reviewed `category_image_assets` batch, then rerun
-  `npm run production:gcp-media-backfill:audit` after each batch until the AWS
-  reference count reaches 0.
-- CDN DNS is configured, but HTTPS certificate activation is still pending. Do
-  not switch `GCP_STORAGE_PUBLIC_BASE_URL` to `https://media.getugcpilot.com`
-  until `npm run media-cdn:gcp:check` passes.
+- The canonical Carousel image migration is complete. A 2026-07-27 production
+  audit verified 6,998 unique referenced Carousel/Library object keys in GCS,
+  with zero AWS URLs, zero missing objects, and zero zero-byte objects.
+- All 4,730 AWS `category-library/` image objects exist under the same GCS keys.
+  Fifty AWS-only objects under `carousels/rendered/` are not referenced by any
+  canonical Carousel or Library row and are intentionally not being copied.
+- Do not use a global all-media AWS reference count as the Carousel completion
+  gate. Historical job payloads, test/E2E rows, avatar media scheduled for
+  replacement, and unreferenced render objects are outside this migration
+  boundary.
+- The optional CDN is intentionally disabled during testing. Keep
+  `GCP_STORAGE_PUBLIC_BASE_URL` on
+  `https://storage.googleapis.com/ugcsaas-media`; do not use
+  `https://media.getugcpilot.com` unless the CDN is deliberately re-enabled,
+  DNS is updated to its new IP, and HTTPS verification passes.

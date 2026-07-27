@@ -467,6 +467,7 @@ export function HookVideoComposer({
         {flowState.stage === "select_demo" ? (
           <div className="grid items-start gap-6 sm:grid-cols-[160px_minmax(0,1fr)] sm:gap-6 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
             <ComposerOpeningPreview
+              hookText={selectedHook}
               influencer={influencer}
               openingPreviewUrl={openingPreviewUrl}
               video={video}
@@ -517,7 +518,7 @@ export function HookVideoComposer({
           </p>
         ) : null}
         {actionNotice ? (
-          <p role="status" className="mt-4 border-l-2 border-success px-3 py-1 text-sm font-semibold text-[#087443]">
+          <p role="status" className="mt-4 border-l-2 border-success px-3 py-1 text-sm font-semibold text-success">
             {actionNotice}
           </p>
         ) : null}
@@ -597,10 +598,12 @@ export function HookVideoComposer({
 }
 
 function ComposerOpeningPreview({
+  hookText,
   influencer,
   openingPreviewUrl,
   video,
 }: {
+  hookText: string | null;
   influencer: HookInfluencerSummary;
   openingPreviewUrl: string | null;
   video: HookInfluencerVideoSummary;
@@ -627,6 +630,13 @@ function ComposerOpeningPreview({
             <Video className="size-6" aria-hidden="true" />
           </div>
         )}
+        {hookText ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-gradient-to-b from-black/10 via-transparent to-black/35 px-3 py-5">
+            <p className="max-w-[18ch] rounded-[8px] bg-black/60 px-2.5 py-2 text-center text-sm font-extrabold leading-[1.1] text-white shadow-lg">
+              {hookText}
+            </p>
+          </div>
+        ) : null}
       </div>
       <p className="mt-3 truncate text-center text-sm font-semibold text-foreground-strong sm:text-left">
         {influencer.name}
@@ -665,7 +675,7 @@ function HookTextStage({
         <button
           type="button"
           onClick={onOpenSuggestions}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           aria-label="Open AI hook suggestions"
           title="AI hook suggestions"
         >
@@ -940,7 +950,7 @@ function DemoSelection({
             onClick={() => onChoose(demo)}
             className="group min-w-0 overflow-hidden rounded-panel border border-border bg-card text-left transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
-            <span className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-foreground-strong text-white/65">
+            <span className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-card-muted text-muted">
               {demo.thumbnailUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -1214,7 +1224,7 @@ function ComposerSteps({ stage }: { stage: HookVideoFlowState["stage"] }) {
             className={cn(
               "flex size-5 items-center justify-center rounded-full border text-[10px] font-bold",
               index < currentIndex
-                ? "border-primary bg-primary text-white"
+                ? "border-primary bg-primary text-primary-foreground"
                 : index === currentIndex
                   ? "border-primary text-primary"
                   : "border-border text-muted",
@@ -1332,7 +1342,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 const primaryButtonClass =
-  "inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50";
 
 const secondaryButtonClass =
   "inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50";

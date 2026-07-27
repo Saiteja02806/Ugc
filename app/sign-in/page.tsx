@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-import { EmailAuthForm } from "@/components/auth/email-auth-form";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
@@ -20,40 +19,50 @@ export default function SignInPage() {
   }, [user, loading, router]);
 
   return (
-    <main className="min-h-screen bg-background px-5 text-foreground sm:px-8">
+    <main className="instagram-theme min-h-screen bg-background px-5 text-foreground sm:px-8">
       <header className="mx-auto flex h-20 max-w-6xl items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 font-bold">
-          <ProductLogoMark className="h-8 w-12" sizes="52px" />
+        <Link
+          href="/"
+          className="flex items-center gap-3 rounded-lg font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <ProductLogoMark
+            className="size-9 rounded-control bg-primary p-2"
+            imageClassName="brightness-0 invert"
+            sizes="36px"
+          />
           <span>UGC Pilot</span>
         </Link>
 
         <Link
           href="/"
-          className="text-sm font-bold text-muted transition hover:text-foreground"
+          className="rounded-lg text-sm font-bold text-muted transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           Back to home
         </Link>
       </header>
 
       <section className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-6xl items-center justify-center pb-12">
-        <div className="w-full max-w-md rounded-[2rem] bg-white/85 p-8 shadow-[0_24px_80px_rgb(15_23_42_/_0.08)] ring-1 ring-black/5 backdrop-blur">
+        <div className="relative w-full max-w-[420px] overflow-hidden rounded-3xl border border-border bg-card/95 p-7 shadow-[0_24px_80px_rgb(0_0_0_/_0.34)] backdrop-blur sm:p-8">
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet),transparent)]"
+          />
           <div className="mb-8 text-center">
             <p className="mb-3 text-sm font-bold text-primary">
-              Welcome to UGC Pilot
+              Instagram content workspace
             </p>
-            <h1 className="text-3xl font-bold tracking-normal text-foreground">
-              Sign in to create social videos
+            <h1 className="text-balance text-3xl font-bold tracking-normal text-foreground">
+              Sign in to your Instagram workspace
             </h1>
-            <p className="mt-3 text-sm leading-6 text-muted">
-              Use Google or email to access your workspace, saved brand
-              context, and generated videos.
+            <p className="mt-3 text-pretty text-sm leading-6 text-muted">
+              Access your business profile, Instagram ideas, creative assets,
+              and scheduled posts.
             </p>
           </div>
 
           <GoogleSignInButton />
-          <EmailAuthForm />
 
-          <p className="mt-6 text-center text-xs leading-5 text-[#98a2b3]">
+          <p className="mt-6 text-center text-xs leading-5 text-muted-subtle">
             By continuing, you agree to the{" "}
             <Link className="font-bold text-primary" href="/terms">
               Terms

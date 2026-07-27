@@ -6,7 +6,7 @@ import { pricingPlans } from "@/lib/pricing/plans";
 
 export function PricingPage() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="instagram-theme min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/95 px-5 py-4 backdrop-blur sm:px-8 lg:px-10">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-5">
           <Link
@@ -35,13 +35,18 @@ export function PricingPage() {
             </Link>
             <Link
               href="/sign-in"
-              className="rounded-control bg-foreground-strong px-3 py-2 text-white transition hover:bg-deep-contrast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+              className="rounded-control bg-primary px-3 py-2 text-primary-foreground transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               Sign in
             </Link>
           </nav>
         </div>
       </header>
+
+      <div
+        aria-hidden="true"
+        className="h-px bg-[linear-gradient(90deg,transparent_8%,var(--instagram-orange)_32%,var(--instagram-rose)_58%,var(--instagram-violet)_78%,transparent_94%)] opacity-80"
+      />
 
       <div className="px-5 pb-16 pt-14 sm:px-8 sm:pb-20 sm:pt-18 lg:px-10">
         <section className="mx-auto max-w-4xl text-center" aria-labelledby="pricing-title">
@@ -50,13 +55,13 @@ export function PricingPage() {
           </p>
           <h1
             id="pricing-title"
-            className="mx-auto mt-5 max-w-3xl text-4xl font-black leading-[1.02] tracking-normal text-foreground-strong sm:text-5xl lg:text-6xl"
+            className="mx-auto mt-5 max-w-3xl text-balance text-4xl font-black leading-[1.02] tracking-normal text-foreground-strong sm:text-5xl lg:text-6xl"
           >
-            Choose the right plan for your content workflow
+            Choose the right plan for your Instagram workflow
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base font-medium leading-7 text-muted sm:text-lg sm:leading-8">
-            Generate UGC-style images and videos with monthly credits designed
-            for different levels of usage.
+          <p className="mx-auto mt-5 max-w-2xl text-pretty text-base font-medium leading-7 text-muted sm:text-lg sm:leading-8">
+            Create supporting images and videos for your Instagram content with
+            monthly credits designed for different levels of usage.
           </p>
           <p className="mt-4 text-sm font-semibold leading-6 text-muted-subtle">
             All plans are billed monthly. Applicable taxes may be added at

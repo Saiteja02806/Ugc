@@ -3,9 +3,40 @@ import test from "node:test";
 
 import {
   aggregateInstagramInsightDaily,
+  getUniqueInstagramConnections,
   normalizeInstagramAccountInsights,
   type InstagramInsightsAccount,
 } from "./instagram-insights.ts";
+
+test("keeps only the newest row for each Instagram account", () => {
+  const connections = getUniqueInstagramConnections([
+    {
+      id: "instagram-new",
+      platform: "instagram",
+      platformAccountId: "account-1",
+    },
+    {
+      id: "youtube-row",
+      platform: "youtube",
+      platformAccountId: "channel-1",
+    },
+    {
+      id: "instagram-old",
+      platform: "instagram",
+      platformAccountId: "account-1",
+    },
+    {
+      id: "instagram-second-account",
+      platform: "instagram",
+      platformAccountId: "account-2",
+    },
+  ]);
+
+  assert.deepEqual(
+    connections.map((connection) => connection.id),
+    ["instagram-new", "instagram-second-account"],
+  );
+});
 
 test("normalizes real daily Instagram insight values and totals", () => {
   const result = normalizeInstagramAccountInsights({

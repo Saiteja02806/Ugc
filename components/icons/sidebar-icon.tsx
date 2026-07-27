@@ -7,6 +7,7 @@ export type SidebarIconName =
   | "image-gen"
   | "video-gen"
   | "demos"
+  | "creative-assets"
   | "library"
   | "influencers"
   | "avatars"
@@ -22,6 +23,7 @@ const sidebarIconPaths: Record<SidebarIconName, string> = {
   "image-gen": "/icons/sidebar/image-gen.svg",
   "video-gen": "/icons/sidebar/video-gen.svg",
   demos: "/icons/sidebar/demos.svg",
+  "creative-assets": "/icons/sidebar/creative-assets.svg",
   library: "/icons/sidebar/library.svg",
   influencers: "/icons/sidebar/influencers.svg",
   avatars: "/icons/sidebar/avatars.svg",

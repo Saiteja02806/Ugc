@@ -407,28 +407,38 @@ test("carousel scheduling stays inline on Trending and Library", () => {
 
 test("the inline carousel modal implements exact-account content and time steps", () => {
   assert.match(carouselScheduleModal, /Step \{currentStep\.number\} of 4/);
-  assert.match(carouselScheduleModal, /title: "Select platforms"/);
+  assert.match(carouselScheduleModal, /title: "Select Instagram account"/);
   assert.match(carouselScheduleModal, /title: "Content details"/);
   assert.match(carouselScheduleModal, /title: "Schedule"/);
+  assert.match(
+    carouselScheduleModal,
+    /const visiblePlatforms = platforms\.filter\([\s\S]*definition\.platform === "instagram"/,
+  );
+  assert.match(
+    carouselScheduleModal,
+    /connections\.filter\([\s\S]*connection\.platform === "instagram"/,
+  );
+  assert.match(carouselScheduleModal, /\{visiblePlatforms\.map\(/);
+  assert.match(carouselScheduleModal, /label: "TikTok"[\s\S]*platform: "tiktok"/);
   assert.match(carouselScheduleModal, /label: "YouTube"[\s\S]*platform: "youtube"/);
   assert.match(carouselScheduleModal, /const platformConnections = useMemo/);
   assert.match(
     carouselScheduleModal,
     /connection\.platform === "youtube"[\s\S]*YouTube accepts video uploads, not carousel posts\./,
   );
-  assert.match(carouselScheduleModal, /Select connected accounts/);
+  assert.match(carouselScheduleModal, /Select connected account/);
   assert.match(carouselScheduleModal, /connectionId: connection\.id/);
   assert.match(carouselScheduleModal, /Caption[\s\S]*?\(optional\)/);
   assert.match(
     carouselScheduleModal,
-    /self-start overflow-hidden rounded-lg border border-border bg-white/,
+    /self-start overflow-hidden rounded-card border border-border bg-card/,
   );
   assert.match(carouselScheduleModal, /label="Post ASAP"/);
   assert.match(carouselScheduleModal, /label="Schedule for later"/);
   assert.match(carouselScheduleModal, /type="date"/);
   assert.match(carouselScheduleModal, /type="time"/);
-  assert.match(carouselScheduleModal, /YouTube is unavailable/);
   assert.match(carouselScheduleModal, /Choose who can view the TikTok post\./);
+  assert.doesNotMatch(carouselScheduleModal, /Connect Instagram or TikTok above/);
   assert.doesNotMatch(carouselScheduleModal, /Also show the Reel/);
 });
 

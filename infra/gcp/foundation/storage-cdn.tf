@@ -48,6 +48,8 @@ resource "google_service_account_iam_member" "app_can_sign_urls" {
 }
 
 resource "google_compute_global_address" "media_cdn" {
+  count = var.enable_media_cdn ? 1 : 0
+
   project     = var.project_id
   name        = "${local.resource_prefix}-media-cdn-ip"
   description = "Global IP for UGC media Cloud CDN."
@@ -56,6 +58,8 @@ resource "google_compute_global_address" "media_cdn" {
 }
 
 resource "google_compute_backend_bucket" "media" {
+  count = var.enable_media_cdn ? 1 : 0
+
   project     = var.project_id
   name        = "${local.resource_prefix}-media-backend"
   bucket_name = google_storage_bucket.media.name
@@ -73,29 +77,35 @@ resource "google_compute_backend_bucket" "media" {
 }
 
 resource "google_compute_url_map" "media_cdn" {
+  count = var.enable_media_cdn ? 1 : 0
+
   project         = var.project_id
   name            = "${local.resource_prefix}-media-cdn-url-map"
-  default_service = google_compute_backend_bucket.media.id
+  default_service = google_compute_backend_bucket.media[0].id
 }
 
 resource "google_compute_target_http_proxy" "media_cdn" {
+  count = var.enable_media_cdn ? 1 : 0
+
   project = var.project_id
   name    = "${local.resource_prefix}-media-cdn-http-proxy"
-  url_map = google_compute_url_map.media_cdn.id
+  url_map = google_compute_url_map.media_cdn[0].id
 }
 
 resource "google_compute_global_forwarding_rule" "media_cdn_http" {
+  count = var.enable_media_cdn ? 1 : 0
+
   project               = var.project_id
   name                  = "${local.resource_prefix}-media-cdn-http"
-  ip_address            = google_compute_global_address.media_cdn.address
+  ip_address            = google_compute_global_address.media_cdn[0].address
   ip_protocol           = "TCP"
   load_balancing_scheme = "EXTERNAL_MANAGED"
   port_range            = "80"
-  target                = google_compute_target_http_proxy.media_cdn.id
+  target                = google_compute_target_http_proxy.media_cdn[0].id
 }
 
 resource "google_compute_managed_ssl_certificate" "media_cdn" {
-  count = length(var.cdn_domain_names) > 0 ? 1 : 0
+  count = var.enable_media_cdn && length(var.cdn_domain_names) > 0 ? 1 : 0
 
   project = var.project_id
   name    = "${local.resource_prefix}-media-cdn-cert"
@@ -106,20 +116,20 @@ resource "google_compute_managed_ssl_certificate" "media_cdn" {
 }
 
 resource "google_compute_target_https_proxy" "media_cdn" {
-  count = length(var.cdn_domain_names) > 0 ? 1 : 0
+  count = var.enable_media_cdn && length(var.cdn_domain_names) > 0 ? 1 : 0
 
   project          = var.project_id
   name             = "${local.resource_prefix}-media-cdn-https-proxy"
-  url_map          = google_compute_url_map.media_cdn.id
+  url_map          = google_compute_url_map.media_cdn[0].id
   ssl_certificates = [google_compute_managed_ssl_certificate.media_cdn[0].id]
 }
 
 resource "google_compute_global_forwarding_rule" "media_cdn_https" {
-  count = length(var.cdn_domain_names) > 0 ? 1 : 0
+  count = var.enable_media_cdn && length(var.cdn_domain_names) > 0 ? 1 : 0
 
   project               = var.project_id
   name                  = "${local.resource_prefix}-media-cdn-https"
-  ip_address            = google_compute_global_address.media_cdn.address
+  ip_address            = google_compute_global_address.media_cdn[0].address
   ip_protocol           = "TCP"
   load_balancing_scheme = "EXTERNAL_MANAGED"
   port_range            = "443"

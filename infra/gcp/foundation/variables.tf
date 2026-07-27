@@ -41,7 +41,13 @@ variable "media_bucket_location" {
 }
 
 variable "media_bucket_public_read" {
-  description = "Set true only when ready to publicly serve media through Cloud CDN."
+  description = "Set true only when ready to publicly serve media directly or through the optional Cloud CDN."
+  type        = bool
+  default     = false
+}
+
+variable "enable_media_cdn" {
+  description = "Create the optional media CDN and global external load balancer. Keep false while testing with direct GCS URLs."
   type        = bool
   default     = false
 }
@@ -59,7 +65,7 @@ variable "media_cors_origins" {
 }
 
 variable "cdn_domain_names" {
-  description = "Optional custom domains for HTTPS Cloud CDN. Leave empty until DNS is ready."
+  description = "Optional custom domains used when the media CDN is enabled. Leave empty until DNS is ready."
   type        = list(string)
   default     = []
 }

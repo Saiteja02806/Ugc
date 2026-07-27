@@ -10,6 +10,7 @@ import {
   type InstagramMediaInsightMetric,
 } from "@/lib/analytics/instagram-content-insights";
 import type { InstagramInsightsRangeDays } from "@/lib/analytics/instagram";
+import { getUniqueInstagramConnections } from "@/lib/analytics/instagram-insights";
 import { hasInstagramAnalyticsScope } from "@/lib/social/instagram-oauth-config";
 import {
   getSocialConnectionCredentialForOwner,
@@ -40,9 +41,7 @@ export async function listInstagramContentInsightsForOwner(params: {
   userId: string;
 }): Promise<InstagramContentAccount[]> {
   const connections = await listSocialConnections(params.userId);
-  const instagramConnections = connections.filter(
-    (connection) => connection.platform === "instagram",
-  );
+  const instagramConnections = getUniqueInstagramConnections(connections);
   const accounts: InstagramContentAccount[] = [];
 
   for (const connection of instagramConnections) {

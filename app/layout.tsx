@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     template: "%s | UGC Pilot",
   },
   description:
-    "Create, edit, schedule, and publish AI-assisted social videos and carousels for SaaS products and mobile apps.",
+    "Create Instagram Reel hooks, text-led videos, carousel posts, and approved publishing workflows in one focused workspace.",
 };
 
 export default function RootLayout({

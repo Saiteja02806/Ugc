@@ -4,11 +4,18 @@ export const instagramAuthorizationEndpoint =
 export const INSTAGRAM_BUSINESS_BASIC_SCOPE = "instagram_business_basic";
 export const INSTAGRAM_BUSINESS_CONTENT_PUBLISH_SCOPE =
   "instagram_business_content_publish";
+export const INSTAGRAM_BUSINESS_MANAGE_INSIGHTS_SCOPE =
+  "instagram_business_manage_insights";
 
 export const INSTAGRAM_OAUTH_SCOPES = [
   INSTAGRAM_BUSINESS_BASIC_SCOPE,
   INSTAGRAM_BUSINESS_CONTENT_PUBLISH_SCOPE,
+  INSTAGRAM_BUSINESS_MANAGE_INSIGHTS_SCOPE,
 ] as const;
+
+export function hasInstagramAnalyticsScope(scopes: readonly string[]) {
+  return scopes.includes(INSTAGRAM_BUSINESS_MANAGE_INSIGHTS_SCOPE);
+}
 
 export function buildInstagramOAuthAuthorizationUrl(params: {
   clientId: string;

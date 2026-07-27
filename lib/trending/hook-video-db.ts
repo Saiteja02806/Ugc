@@ -18,14 +18,38 @@ type Json =
 
 type HookVideoSuggestionRow = {
   business_profile_id: string;
+  business_profile_version: number | null;
+  candidate_index: number | null;
   created_at: string;
-  demo_asset_id: string;
+  demo_asset_id: string | null;
+  duration_seconds: number | null;
   generation_id: string;
   id: string;
   influencer_id: string;
+  influencer_name: string | null;
   influencer_source: HookVideoSourceKind;
   influencer_video_id: string;
+  influencer_video_title: string | null;
+  source_duration_seconds: number | null;
+  suggestion_context: "composition" | "trending";
   text: string;
+  thumbnail_url: string | null;
+  trim_end: number | null;
+  trim_start: number | null;
+  user_id: string;
+};
+
+type UserHookVideoAssignmentRow = {
+  business_profile_id: string;
+  business_profile_version: number;
+  completed_at: string | null;
+  created_at: string;
+  hook_suggestion_id: string;
+  id: string;
+  last_opened_at: string | null;
+  position: number;
+  state: "active" | "completed_skipped" | "selected";
+  updated_at: string;
   user_id: string;
 };
 
@@ -80,7 +104,6 @@ type HookVideoDatabase = {
           Pick<
             HookVideoSuggestionRow,
             | "business_profile_id"
-            | "demo_asset_id"
             | "generation_id"
             | "influencer_id"
             | "influencer_source"
@@ -91,6 +114,20 @@ type HookVideoDatabase = {
         Relationships: [];
         Row: HookVideoSuggestionRow;
         Update: Partial<HookVideoSuggestionRow>;
+      };
+      user_hook_video_assignments: {
+        Insert: Partial<UserHookVideoAssignmentRow> &
+          Pick<
+            UserHookVideoAssignmentRow,
+            | "business_profile_id"
+            | "business_profile_version"
+            | "hook_suggestion_id"
+            | "position"
+            | "user_id"
+          >;
+        Relationships: [];
+        Row: UserHookVideoAssignmentRow;
+        Update: Partial<UserHookVideoAssignmentRow>;
       };
     };
     Views: Record<string, never>;
@@ -116,6 +153,25 @@ export type HookVideoDraftRecord = {
   trimEnd: number | null;
   trimStart: number;
   updatedAt: string;
+};
+
+export type TrendingHookIdeaRecord = {
+  assignmentId: string;
+  candidateIndex: number;
+  createdAt: string;
+  durationSeconds: number;
+  hookText: string;
+  id: string;
+  influencerId: string;
+  influencerName: string;
+  influencerVideoId: string;
+  influencerVideoTitle: string;
+  position: number;
+  sourceKind: HookVideoSourceKind;
+  sourceDurationSeconds: number;
+  thumbnailUrl: string | null;
+  trimEnd: number | null;
+  trimStart: number;
 };
 
 let client: SupabaseClient<HookVideoDatabase> | null = null;
@@ -168,6 +224,246 @@ export async function createHookVideoSuggestions(params: {
   }
 
   return data.map((row) => ({ id: row.id, text: row.text }));
+}
+
+export async function createTrendingHookVideoSuggestions(params: {
+  businessProfileId: string;
+  businessProfileVersion: number;
+  candidates: Array<{
+    candidateIndex: number;
+    durationSeconds: number;
+    hookText: string;
+    influencerId: string;
+    influencerName: string;
+    influencerVideoId: string;
+    influencerVideoTitle: string;
+    sourceKind: HookVideoSourceKind;
+    sourceDurationSeconds: number;
+    thumbnailUrl: string | null;
+    trimEnd: number | null;
+    trimStart: number;
+  }>;
+  userId: string;
+}) {
+  const generationId = crypto.randomUUID();
+  const rows = params.candidates.map((candidate) => ({
+    business_profile_id: params.businessProfileId,
+    business_profile_version: params.businessProfileVersion,
+    candidate_index: candidate.candidateIndex,
+    demo_asset_id: null,
+    duration_seconds: candidate.durationSeconds,
+    generation_id: generationId,
+    id: crypto.randomUUID(),
+    influencer_id: candidate.influencerId,
+    influencer_name: candidate.influencerName.trim().slice(0, 140),
+    influencer_source: candidate.sourceKind,
+    influencer_video_id: candidate.influencerVideoId,
+    influencer_video_title: candidate.influencerVideoTitle
+      .trim()
+      .slice(0, 180),
+    source_duration_seconds: candidate.sourceDurationSeconds,
+    suggestion_context: "trending" as const,
+    text: candidate.hookText.trim().slice(0, 180),
+    thumbnail_url: candidate.thumbnailUrl,
+    trim_end: candidate.trimEnd,
+    trim_start: candidate.trimStart,
+    user_id: params.userId,
+  }));
+  const { error } = await getClient()
+    .from("hook_video_suggestions")
+    .upsert(rows, {
+      ignoreDuplicates: true,
+      onConflict:
+        "business_profile_id,business_profile_version,suggestion_context,candidate_index",
+    });
+
+  if (error) {
+    throw new Error(`Could not save Trending Hook ideas: ${error.message}`);
+  }
+
+  return listTrendingHookVideoSuggestions({
+    businessProfileId: params.businessProfileId,
+    businessProfileVersion: params.businessProfileVersion,
+    userId: params.userId,
+  });
+}
+
+export async function listTrendingHookVideoSuggestions(params: {
+  businessProfileId: string;
+  businessProfileVersion: number;
+  userId: string;
+}) {
+  const { data, error } = await getClient()
+    .from("hook_video_suggestions")
+    .select("*")
+    .eq("user_id", params.userId)
+    .eq("business_profile_id", params.businessProfileId)
+    .eq("business_profile_version", params.businessProfileVersion)
+    .eq("suggestion_context", "trending")
+    .order("candidate_index", { ascending: true });
+
+  if (error) {
+    throw new Error(`Could not load Trending Hook ideas: ${error.message}`);
+  }
+
+  return data;
+}
+
+export async function ensureTrendingHookVideoAssignments(params: {
+  businessProfileId: string;
+  businessProfileVersion: number;
+  suggestions: HookVideoSuggestionRow[];
+  userId: string;
+}) {
+  const rows = params.suggestions.flatMap((suggestion) =>
+    suggestion.candidate_index === null
+      ? []
+      : [
+          {
+            business_profile_id: params.businessProfileId,
+            business_profile_version: params.businessProfileVersion,
+            hook_suggestion_id: suggestion.id,
+            id: crypto.randomUUID(),
+            position: suggestion.candidate_index,
+            state: "active" as const,
+            user_id: params.userId,
+          },
+        ],
+  );
+
+  if (rows.length > 0) {
+    const { error } = await getClient()
+      .from("user_hook_video_assignments")
+      .upsert(rows, {
+        ignoreDuplicates: true,
+        onConflict: "user_id,hook_suggestion_id",
+      });
+
+    if (error) {
+      throw new Error(`Could not assign Trending Hook ideas: ${error.message}`);
+    }
+  }
+
+  return listActiveTrendingHookIdeas(params);
+}
+
+export async function listActiveTrendingHookIdeas(params: {
+  businessProfileId: string;
+  businessProfileVersion: number;
+  userId: string;
+}): Promise<TrendingHookIdeaRecord[]> {
+  const { data: assignments, error: assignmentError } = await getClient()
+    .from("user_hook_video_assignments")
+    .select("*")
+    .eq("user_id", params.userId)
+    .eq("business_profile_id", params.businessProfileId)
+    .eq("business_profile_version", params.businessProfileVersion)
+    .eq("state", "active")
+    .order("position", { ascending: true });
+
+  if (assignmentError) {
+    throw new Error(
+      `Could not load Trending Hook assignments: ${assignmentError.message}`,
+    );
+  }
+
+  if (assignments.length === 0) {
+    return [];
+  }
+
+  const suggestionIds = assignments.map(
+    (assignment) => assignment.hook_suggestion_id,
+  );
+  const { data: suggestions, error: suggestionError } = await getClient()
+    .from("hook_video_suggestions")
+    .select("*")
+    .in("id", suggestionIds)
+    .eq("user_id", params.userId)
+    .eq("suggestion_context", "trending");
+
+  if (suggestionError) {
+    throw new Error(
+      `Could not load assigned Trending Hook ideas: ${suggestionError.message}`,
+    );
+  }
+
+  const suggestionById = new Map(
+    suggestions.map((suggestion) => [suggestion.id, suggestion]),
+  );
+
+  return assignments.flatMap((assignment) => {
+    const suggestion = suggestionById.get(assignment.hook_suggestion_id);
+
+    if (
+      !suggestion ||
+      suggestion.business_profile_id !== params.businessProfileId ||
+      suggestion.business_profile_version !==
+        params.businessProfileVersion ||
+      !isCompleteTrendingHookSuggestion(suggestion)
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        assignmentId: assignment.id,
+        candidateIndex: suggestion.candidate_index,
+        createdAt: suggestion.created_at,
+        durationSeconds: suggestion.duration_seconds,
+        hookText: suggestion.text,
+        id: suggestion.id,
+        influencerId: suggestion.influencer_id,
+        influencerName: suggestion.influencer_name,
+        influencerVideoId: suggestion.influencer_video_id,
+        influencerVideoTitle: suggestion.influencer_video_title,
+        position: assignment.position,
+        sourceKind: suggestion.influencer_source,
+        sourceDurationSeconds: suggestion.source_duration_seconds,
+        thumbnailUrl: suggestion.thumbnail_url,
+        trimEnd: suggestion.trim_end,
+        trimStart: suggestion.trim_start,
+      },
+    ];
+  });
+}
+
+export async function updateTrendingHookVideoAssignment(params: {
+  action: "selected" | "skipped";
+  assignmentId: string;
+  userId: string;
+}) {
+  const now = new Date().toISOString();
+  const values =
+    params.action === "skipped"
+      ? {
+          completed_at: now,
+          state: "completed_skipped" as const,
+          updated_at: now,
+        }
+      : {
+          completed_at: now,
+          last_opened_at: now,
+          state: "selected" as const,
+          updated_at: now,
+        };
+  const { data, error } = await getClient()
+    .from("user_hook_video_assignments")
+    .update(values)
+    .eq("id", params.assignmentId)
+    .eq("user_id", params.userId)
+    .eq("state", "active")
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not update Trending Hook idea: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("This Trending Hook idea is no longer active.");
+  }
+
+  return data;
 }
 
 export async function getHookVideoSuggestionForUser(params: {
@@ -360,4 +656,27 @@ function mapDraft(row: HookVideoDraftRow): HookVideoDraftRecord {
     trimStart: row.trim_start,
     updatedAt: row.updated_at,
   };
+}
+
+function isCompleteTrendingHookSuggestion(
+  row: HookVideoSuggestionRow,
+): row is HookVideoSuggestionRow & {
+  candidate_index: number;
+  duration_seconds: number;
+  influencer_name: string;
+  influencer_video_title: string;
+  source_duration_seconds: number;
+  trim_start: number;
+} {
+  return (
+    row.suggestion_context === "trending" &&
+    row.candidate_index !== null &&
+    row.duration_seconds !== null &&
+    row.duration_seconds > 0 &&
+    row.influencer_name !== null &&
+    row.influencer_video_title !== null &&
+    row.source_duration_seconds !== null &&
+    row.source_duration_seconds > 0 &&
+    row.trim_start !== null
+  );
 }

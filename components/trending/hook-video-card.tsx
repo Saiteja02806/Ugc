@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, Loader2, Play, Video } from "lucide-react";
-import type { CSSProperties } from "react";
+import { useRef, type CSSProperties } from "react";
 
 import type { HookInfluencerVideoSummary } from "@/lib/trending/hook-video-types";
 import { cn } from "@/lib/utils";
@@ -10,10 +10,13 @@ export function HookVideoCard({
   className,
   dragOffset,
   exitingDirection = null,
+  hookText = null,
   previewError,
   previewLoading,
   previewUrl,
   style,
+  trimEnd = null,
+  trimStart = 0,
   video,
   onPreviewError,
   onRetryPreview,
@@ -21,14 +24,18 @@ export function HookVideoCard({
   className?: string;
   dragOffset: number;
   exitingDirection?: "left" | "right" | null;
+  hookText?: string | null;
   previewError: string | null;
   previewLoading: boolean;
   previewUrl: string | null;
   style?: CSSProperties;
+  trimEnd?: number | null;
+  trimStart?: number;
   video: HookInfluencerVideoSummary;
   onPreviewError: () => void;
   onRetryPreview: () => void;
 }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const exitOffset =
     exitingDirection === "left" ? -280 : exitingDirection === "right" ? 280 : 0;
   const visibleOffset = exitingDirection ? exitOffset : dragOffset;
@@ -59,26 +66,48 @@ export function HookVideoCard({
           className="absolute inset-0 size-full object-cover"
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#20242a] text-white/65">
+        <div className="absolute inset-0 flex items-center justify-center bg-card-muted text-muted">
           <Video className="size-7" aria-hidden="true" />
         </div>
       )}
 
       {previewUrl ? (
         <video
+          ref={videoRef}
           key={previewUrl}
           src={previewUrl}
           poster={video.thumbnailUrl ?? undefined}
           aria-label={video.title}
           autoPlay
-          loop
+          loop={trimStart <= 0 && trimEnd === null}
           muted
           playsInline
           preload="metadata"
           draggable={false}
           className="absolute inset-0 size-full bg-black object-cover"
+          onEnded={() => restartPreview(videoRef.current, trimStart)}
           onError={onPreviewError}
+          onLoadedMetadata={() => restartPreview(videoRef.current, trimStart)}
+          onTimeUpdate={() => {
+            const element = videoRef.current;
+
+            if (
+              element &&
+              trimEnd !== null &&
+              element.currentTime >= trimEnd
+            ) {
+              restartPreview(element, trimStart);
+            }
+          }}
         />
+      ) : null}
+
+      {hookText?.trim() ? (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-b from-black/10 via-black/5 to-black/35 px-5 py-8">
+          <p className="max-w-[18ch] rounded-[10px] bg-black/58 px-3.5 py-3 text-center text-[clamp(1rem,4.6vw,1.35rem)] font-extrabold leading-[1.08] tracking-[-0.025em] text-white shadow-[0_2px_12px_rgb(0_0_0_/_0.7)] backdrop-blur-[2px]">
+            {hookText}
+          </p>
+        </div>
       ) : null}
 
       {previewLoading ? (
@@ -90,7 +119,7 @@ export function HookVideoCard({
       ) : null}
 
       {previewError ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#20242a]/92 px-4 text-center text-white">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-card-muted/95 px-4 text-center text-foreground">
           <AlertCircle className="size-5" aria-hidden="true" />
           <p className="mt-2 text-xs font-semibold leading-5">
             Preview unavailable
@@ -101,7 +130,7 @@ export function HookVideoCard({
               event.stopPropagation();
               onRetryPreview();
             }}
-            className="mt-3 inline-flex size-9 items-center justify-center rounded-full bg-white text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="mt-3 inline-flex size-9 items-center justify-center rounded-control border border-border bg-card text-foreground transition-colors hover:border-border-strong hover:bg-card-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             aria-label="Try protected preview again"
             title="Try preview again"
           >
@@ -111,4 +140,13 @@ export function HookVideoCard({
       ) : null}
     </div>
   );
+}
+
+function restartPreview(element: HTMLVideoElement | null, trimStart: number) {
+  if (!element) {
+    return;
+  }
+
+  element.currentTime = Math.max(trimStart, 0);
+  void element.play().catch(() => undefined);
 }

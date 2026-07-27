@@ -35,9 +35,9 @@ export function PricingPage() {
             </Link>
             <Link
               href="/sign-in"
-              className="rounded-control bg-foreground-strong px-3 py-2 text-white transition hover:bg-deep-contrast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+              className="rounded-control border border-border bg-card-muted px-3 py-2 text-foreground transition hover:border-border-strong hover:bg-card hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
-              Sign in
+              Sign in with Google
             </Link>
           </nav>
         </div>

@@ -1,24 +1,19 @@
 "use client";
 
-import { Sparkles, Video, type LucideIcon } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 
 export type TrendingMode = "carousels" | "hook_videos";
 
 const modes: Array<{
-  Icon: LucideIcon;
   label: string;
   value: TrendingMode;
 }> = [
   {
-    Icon: Sparkles,
-    label: "Carousels",
+    label: "Carousel posts",
     value: "carousels",
   },
   {
-    Icon: Video,
-    label: "Hook videos",
+    label: "Reel hooks",
     value: "hook_videos",
   },
 ];
@@ -35,13 +30,13 @@ export function TrendingModeSelector({
   return (
     <div
       className={cn(
-        "inline-flex w-fit max-w-full rounded-full border border-border bg-card-muted p-1",
+        "inline-flex h-11 w-full max-w-full items-center rounded-[12px] border border-[#383838] bg-[#242424] p-1 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.03)] sm:w-fit",
         className,
       )}
       role="tablist"
       aria-label="Trending creative mode"
     >
-      {modes.map(({ Icon, label, value: modeValue }) => {
+      {modes.map(({ label, value: modeValue }, index) => {
         const selected = value === modeValue;
 
         return (
@@ -52,13 +47,18 @@ export function TrendingModeSelector({
             aria-selected={selected}
             onClick={() => onChange(modeValue)}
             className={cn(
-              "inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-full px-3.5 text-sm font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
+              "relative inline-flex h-9 flex-1 shrink-0 items-center justify-center rounded-[8px] px-4 text-sm font-semibold transition-[background-color,color,box-shadow] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E16540] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1F1F1F] sm:flex-none",
               selected
-                ? "bg-card text-foreground-strong shadow-[0_1px_2px_rgb(23_23_27_/_0.08)]"
-                : "text-muted hover:bg-card/70 hover:text-foreground-strong",
+                ? "bg-[#F5F3F0] text-[#1F1F1F] shadow-[0_8px_22px_rgb(0_0_0_/_0.24)]"
+                : "bg-transparent text-[#B9B5AF] hover:bg-[#303030] hover:text-[#E16540]",
             )}
           >
-            <Icon className="size-4" aria-hidden="true" />
+            {index > 0 && !selected ? (
+              <span
+                aria-hidden="true"
+                className="absolute left-0 top-1/2 h-4 -translate-y-1/2 border-l border-[#383838]"
+              />
+            ) : null}
             {label}
           </button>
         );

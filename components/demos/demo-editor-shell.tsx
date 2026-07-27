@@ -478,7 +478,7 @@ function DemoEditorTopBar({
               onChange={(event) => onTitleChange(event.target.value)}
               disabled={!demo}
               maxLength={140}
-              className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-0 py-1 text-xl font-semibold text-foreground-strong outline-none transition-[border-color,background-color,padding] placeholder:text-muted focus:border-border focus:bg-white focus:px-3 sm:text-2xl"
+              className="min-w-0 flex-1 rounded-control border border-transparent bg-transparent px-0 py-1 text-xl font-semibold text-foreground-strong outline-none transition-[border-color,background-color,padding] placeholder:text-muted focus:border-border focus:bg-card-muted focus:px-3 sm:text-2xl"
               placeholder="Untitled demo"
             />
             <Pencil className="size-4 shrink-0 text-muted-subtle transition group-focus-within:text-primary" aria-hidden="true" />
@@ -509,7 +509,7 @@ function DemoEditorTopBar({
         <button
           type="button"
           onClick={onRefresh}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           <RefreshCw className="size-4" aria-hidden="true" />
           Refresh
@@ -518,7 +518,7 @@ function DemoEditorTopBar({
           type="button"
           onClick={onRenderDemo}
           disabled={!canRender}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {renderState === "starting" || renderState === "rendering" ? (
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -531,7 +531,7 @@ function DemoEditorTopBar({
           type="button"
           onClick={onSaveDraft}
           disabled={!canSave}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saveState === "saving" ? (
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -579,7 +579,7 @@ function DemoRenderStatusNotice({
             href={renderedVideoUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-9 w-fit items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-white transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className="inline-flex h-9 w-fit items-center justify-center rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             Open MP4
           </a>
@@ -627,7 +627,7 @@ function DemoEditorActionFooter({
           type="button"
           onClick={onDiscard}
           disabled={!canDiscard}
-          className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-10 items-center justify-center rounded-control border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Discard changes
         </button>
@@ -635,7 +635,7 @@ function DemoEditorActionFooter({
           type="button"
           onClick={onSaveDraft}
           disabled={!canSave}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saveState === "saving" ? (
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -683,14 +683,14 @@ function UnsavedChangesDialog({
           <button
             type="button"
             onClick={onStay}
-            className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-[#173454] transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className="inline-flex h-10 items-center justify-center rounded-control border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             Stay here
           </button>
           <button
             type="button"
             onClick={onLeave}
-            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            className="inline-flex h-10 items-center justify-center rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             Leave without saving
           </button>
@@ -702,19 +702,19 @@ function UnsavedChangesDialog({
 
 function EditorLoadingState() {
   return (
-    <section className="grid min-h-[560px] flex-1 overflow-hidden rounded-lg border border-border bg-white lg:grid-cols-[344px_minmax(0,1fr)]">
-      <div className="border-b border-border bg-[#f5f5f6] p-6 lg:border-b-0 lg:border-r">
-        <div className="mx-auto aspect-[9/16] w-full max-w-[280px] animate-pulse rounded-md bg-[#dedfe2] motion-reduce:animate-none" />
+    <section className="grid min-h-[560px] flex-1 overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card lg:grid-cols-[344px_minmax(0,1fr)]">
+      <div className="border-b border-border bg-card-muted p-6 lg:border-b-0 lg:border-r">
+        <div className="mx-auto aspect-[9/16] w-full max-w-[280px] animate-pulse rounded-control bg-card motion-reduce:animate-none" />
       </div>
       <div className="space-y-8 p-6">
         <div className="space-y-3">
-          <div className="h-4 w-24 animate-pulse rounded bg-[#dedfe2] motion-reduce:animate-none" />
-          <div className="h-16 animate-pulse rounded-md bg-[#eff0f1] motion-reduce:animate-none" />
-          <div className="h-10 animate-pulse rounded-md bg-[#eff0f1] motion-reduce:animate-none" />
+          <div className="h-4 w-24 animate-pulse rounded bg-card-muted motion-reduce:animate-none" />
+          <div className="h-16 animate-pulse rounded-control bg-card-muted motion-reduce:animate-none" />
+          <div className="h-10 animate-pulse rounded-control bg-card-muted motion-reduce:animate-none" />
         </div>
         <div className="space-y-3 border-t border-border pt-6">
-          <div className="h-4 w-32 animate-pulse rounded bg-[#dedfe2] motion-reduce:animate-none" />
-          <div className="h-20 animate-pulse rounded-md bg-[#eff0f1] motion-reduce:animate-none" />
+          <div className="h-4 w-32 animate-pulse rounded bg-card-muted motion-reduce:animate-none" />
+          <div className="h-20 animate-pulse rounded-control bg-card-muted motion-reduce:animate-none" />
         </div>
         <div className="flex items-center gap-2 text-sm font-medium text-muted">
           <Loader2 className="size-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
@@ -733,7 +733,7 @@ function EditorErrorState({
   onRetry: () => void;
 }) {
   return (
-    <section className="flex min-h-[520px] flex-1 items-center justify-center rounded-lg border border-border bg-white px-5 py-10 text-center">
+    <section className="flex min-h-[520px] flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card px-5 py-10 text-center shadow-card">
       <div>
         <div className="mx-auto flex size-12 items-center justify-center rounded-md bg-error/10 text-error">
           <AlertCircle className="size-6" aria-hidden="true" />
@@ -748,13 +748,13 @@ function EditorErrorState({
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted"
+            className="inline-flex h-10 items-center justify-center rounded-control border border-border bg-card-muted px-4 text-sm font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card"
           >
             Retry
           </button>
           <Link
             href="/demos"
-            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+            className="inline-flex h-10 items-center justify-center rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
           >
             Back to demos
           </Link>

@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-07-18
+Last updated: 2026-07-27
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -48,6 +48,13 @@ silently replaced with a video media asset. The Scheduling editor preserves the
 Library item, collects an exact connected account plus wall-clock date/time,
 and only then creates EventBridge targets. Undated drafts remain visible in the
 Drafts list and do not appear as timed calendar entries.
+
+The visible Scheduling workspace is Instagram-first for new posts and Carousel
+recovery edits. Its account picker offers Instagram connections only. Existing
+TikTok and YouTube provider logic remains preserved as dormant multi-platform
+support, and legacy non-Instagram planned targets must not be silently removed
+when an older draft is edited. This does not change the inline Carousel
+scheduling boundary described above.
 
 The modal flow is Step 1 action choice, Step 2 exact account selection, Step 3
 optional caption and provider settings, and Step 4 ASAP or later scheduling.
@@ -929,13 +936,75 @@ Core tables:
 
 ## Trending Carousel Outputs
 
-As of 2026-07-17, the Carousels mode in Trending remains an owner-scoped
-frontend feed for real generated carousel outputs. Its product feed reads
-`GET /api/trending/feed`, which requires a Firebase bearer token and returns
-only the caller's assigned carousel generations for the caller's business
-profile. Hook Video source work must not add a visible Trending mode selector,
-rename, replace, or change the behavior of this Carousel mode unless a new
-product decision explicitly exposes it.
+As of 2026-07-25, the approved product target is one owner-scoped Trending
+feed containing preview-ready completed Carousels, Hook videos, and
+Wall-of-text videos in one Tinder-style deck. Users must not choose a format
+before browsing. The side-by-side "Remixed from" reference preview is a future
+feature and is not part of the current implementation.
+
+The first implementation slice adds a format-independent `TrendingFeedItem`
+contract and provider orchestration in `lib/trending/feed-items.ts`.
+`GET /api/trending/feed` now returns unified `items` and provider availability
+alongside the legacy `carousels` field for compatibility. Only completed
+Carousel assignments whose full slide set has usable rendered URLs are adapted
+into `format = carousel`, `readiness = preview_ready` items. Processing and
+failed assignments remain in the legacy lifecycle data used by the existing
+preparation and error states; they do not enter the unified deck. The Carousel
+matcher, renderer, storage, save, scheduling, and completion paths remain
+unchanged.
+
+Hook feed items use a separate Hook text payload and become preview-ready when
+the protected short source video, business-profile-generated Hook text, source
+duration, and trim values are all available. A product demo is intentionally not
+part of the Trending Hook card. A right swipe carries that exact Hook text and
+source video into product-demo selection. The unified deck now mixes ready
+Carousel and Hook items and the former Carousel/Hook mode selector is removed.
+Wall-of-text remains unavailable in the unified feed while its backend
+preparation slice is isolated from the display/swipe slice.
+
+Text data must not be flattened into one generic `text` field across formats:
+
+- Carousel content remains slide-specific: ordered headline, subtext, slide
+  type, and CTA semantics.
+- Hook content is one short business-profile-generated overlay with
+  duration-aware readability limits and Hook-specific placement/style metadata.
+- Wall-of-text content will be a longer ordered block/paragraph structure with
+  its own reading-time and layout rules.
+
+The shared feed owns only common assignment, position, readiness, and format
+metadata. Each format keeps separate generation, validation, persistence, and
+rendering rules.
+
+The first Wall-of-text backend slice is implemented behind
+`POST /api/trending/wall-text/feed/prepare`. It does not add Wall cards to the
+unified feed. It:
+
+- selects only active, analyzed, 9:16 video rows from the shared
+  `overlay_media_assets` catalog;
+- rejects source videos shorter than six seconds, high-motion videos, and
+  assets explicitly marked as having low text capacity;
+- prefers low-usage videos and avoids the caller's recently prepared
+  backgrounds when fresh inventory exists, while allowing safe reuse rather
+  than failing when the catalog is small;
+- generates a separate duration-aware three-block Wall payload (headline,
+  body, closing) from the caller's current business profile;
+- computes deterministic text-safe layout metadata from the source asset rather
+  than asking the text model to invent placement;
+- stores generated, owner-scoped `wall_text_creatives` and
+  `user_wall_text_assignments` without duplicating the shared source video; and
+- validates current business-profile ownership/version and source readiness in
+  the database before a candidate can be persisted.
+
+Migration `20260726100000_create_trending_wall_text_creatives.sql` adds those
+generated creative and assignment layers. Assignment insertion increments the
+shared source asset's global usage counter atomically. Browser clients have no
+direct table privileges; the authenticated server route owns preparation.
+
+The source catalog remains storage-provider neutral at runtime. Wall
+preparation reads the source key/URL metadata produced by the configured media
+upload path and contains no fixed GCS bucket, GCP hostname, S3 bucket, or
+CloudFront hostname. Upload tooling and final MP4 rendering are separate future
+slices.
 
 - The feed receives the real ordered slide records for every returned candidate,
   including `renderedUrl`, slide number, type, text metadata, and status.
@@ -1015,30 +1084,43 @@ product decision explicitly exposes it.
 
 ## Hook Video Source Status
 
-As of 2026-07-17, Hook Video source and scheduling/library building blocks may
-exist in the repository, but Trending must remain a carousel-only surface. Do
-not render a `Hook videos` tab, mode selector, or Hook Video workspace inside
-Trending until a new product decision explicitly enables it.
+As of 2026-07-25, Hook Video source and scheduling/library building blocks exist
+in the repository. A raw catalog or owner-uploaded influencer clip remains a
+source asset. A unified Trending Hook item is the protected short video plus
+Hook-specific text generated from the caller's current business profile,
+variable source/trim duration, and a stable owner-scoped assignment. It does not
+contain a product demo.
+
+Migration `20260725120000_add_trending_hook_ideas.sql` adds a `trending`
+suggestion context to the Hook-specific suggestion table and a separate
+`user_hook_video_assignments` exposure layer. Existing `composition`
+suggestions remain demo-specific. The two text-generation contexts are not
+interchangeable.
 
 The Hook videos product flow, when enabled from an approved surface, is:
 
 1. Browse real catalog or owner-uploaded influencer videos. Influencer and video
    list APIs return display metadata only; they never expose source storage keys
    or source video URLs.
-2. A left swipe or the left-arrow action skips to the next influencer video. A
-   right swipe or the circular plus action opens composition. These interactions
-   do not complete or mutate a Carousel feed assignment.
-3. The browse screen has no Reject, Accept, Save to Library, or Schedule
-   controls. Save and Schedule appear only after a product demo and persisted AI
-   hook have been selected and the composition reaches Review.
-4. Product demos come from the caller's ready `media_assets` video collection or
-   a new owner upload. The product must not fabricate demo, influencer, or hook
-   records when real inventory is empty.
-5. `POST /api/trending/hook-videos/suggestions` authenticates the Firebase user,
+2. Trending Hook text is generated before browsing from the saved business
+   profile only. It is constrained by the selected source video's real trimmed
+   duration; there is no hard-coded five-second assumption.
+3. A left swipe records a Hook-specific skip and moves to the next mixed feed
+   item. A right swipe records that the Hook was selected and starts composition
+   with the same source video and Hook text already selected. These interactions
+   do not mutate a Carousel assignment.
+4. Product demos come only after a right swipe, from the caller's ready
+   `media_assets` video collection or a new owner upload. Selecting a demo moves
+   a prefilled Trending Hook directly to Review. Save and Schedule remain final
+   composition actions.
+5. The product must not fabricate demo, influencer, or Hook records when real
+   inventory is empty.
+6. The legacy `POST /api/trending/hook-videos/suggestions` composition path
+   authenticates the Firebase user,
    verifies ownership of the selected sources, requires the user's persisted
    business profile, calls OpenAI server-side with structured output, and stores
    the returned suggestions. Static or random suggestion text is forbidden.
-6. Review previews the opening and demo separately, overlays the selected hook,
+7. Review previews the opening and demo separately, overlays the selected hook,
    and allows trim changes only for the opening clip. Save persists an
    owner-scoped Hook video draft for the Library. Schedule persists or reuses the
    same reviewed selection, creates a real `scheduled_posts` draft, and opens the
@@ -1500,6 +1582,52 @@ Latest Marketing SaaS validation (2026-07-07):
   different presets until they are deliberately designed.
 
 Do not describe planned behavior as deployed behavior.
+
+## 2026-07-27 GCP Media Delivery Cost Control
+
+- The optional GCP media CDN/global external load balancer is disabled in the
+  applied foundation state while the product is in testing. Terraform variable
+  `enable_media_cdn = false` removed the two forwarding rules, HTTP and HTTPS
+  target proxies, URL map, CDN backend bucket, managed certificate, and reserved
+  global IP. This does not disable or remove any Cloud Run worker.
+- `gs://ugcsaas-media` remains the storage source of truth and is still guarded
+  by `prevent_destroy = true` and `force_destroy = false`. Testing-phase media
+  remains publicly readable through
+  `https://storage.googleapis.com/ugcsaas-media`; a post-removal byte-range read
+  of a rendered Carousel returned HTTP 206 with `image/webp`.
+- The production app and all four GCP workers already use the direct GCS public
+  base URL, so removing the optional delivery layer does not change generated
+  media keys or worker execution.
+- `media.getugcpilot.com` still resolves to the released former load-balancer IP
+  `8.233.40.78`. Treat that hostname as inactive and remove its stale DNS record.
+  Do not use it in app or worker configuration.
+- Re-enabling the custom media domain requires a separate reviewed change: set
+  `enable_media_cdn = true`, apply Terraform, point DNS to the newly allocated
+  output IP, wait for the managed certificate to become active, verify HTTPS,
+  and only then consider changing the public media base URL.
+
+## 2026-07-27 Carousel Image Migration Completion
+
+- The production Carousel image migration acceptance boundary is the canonical
+  Carousel source and output tables: `category_image_assets`,
+  `carousel_slides`, `library_items`, and `library_carousel_slides`. Avatar and
+  overlay catalogs, historical `background_jobs` payloads, test/E2E records,
+  and unreferenced render objects are not part of Carousel migration
+  completeness.
+- A production database and GCS inventory audit verified 4,649 canonical rows,
+  7,124 GCP URL references, and 6,998 unique referenced object keys. There are
+  zero AWS URLs, zero missing GCS objects, and zero zero-byte objects in this
+  scope. Public byte-range reads returned HTTP 206 with `image/webp` for a
+  representative object from each canonical table.
+- The AWS `category-library/` prefix contains 4,730 image objects and every one
+  has the same key in `gs://ugcsaas-media`. The AWS `carousels/rendered/`
+  prefix contains 2,093 image objects; 2,043 have the same key in GCP and the
+  remaining 50 are not referenced by any canonical Carousel or Library row.
+  Those 50 orphaned old renders are intentionally not being copied.
+- No important canonical Carousel image exists only in AWS. A global
+  all-media audit may still report AWS URLs from out-of-scope historical jobs,
+  test data, or media systems scheduled for replacement; that is not evidence
+  of a Carousel migration gap.
 
 ## Next Implementation Slice
 

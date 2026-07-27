@@ -66,7 +66,7 @@ export default function CookiePolicyPage() {
           </p>
           <p>
             Questions about cookies or privacy can be sent to{" "}
-            <a className="font-bold text-[#c2410c]" href="mailto:privacy@getugcpilot.com">
+            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
               privacy@getugcpilot.com
             </a>
             .

@@ -103,8 +103,15 @@ export default function VerifyEmailPage() {
   return (
     <main className="min-h-screen bg-background px-5 text-foreground sm:px-8">
       <header className="mx-auto flex h-20 max-w-6xl items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 font-bold">
-          <ProductLogoMark className="h-8 w-12" sizes="52px" />
+        <Link
+          href="/"
+          className="flex items-center gap-3 rounded-control font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <ProductLogoMark
+            className="h-8 w-8 rounded-control bg-primary p-1.5"
+            imageClassName="brightness-0 invert"
+            sizes="32px"
+          />
           <span>UGC Pilot</span>
         </Link>
 
@@ -119,9 +126,9 @@ export default function VerifyEmailPage() {
       </header>
 
       <section className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-6xl items-center justify-center pb-12">
-        <div className="w-full max-w-md rounded-[2rem] bg-white/85 p-8 shadow-[0_24px_80px_rgb(15_23_42_/_0.08)] ring-1 ring-black/5 backdrop-blur">
+        <div className="w-full max-w-md rounded-[var(--radius-panel)] border border-border bg-card p-6 text-foreground shadow-floating sm:p-8">
           <div className="mb-8 text-center">
-            <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-brand-soft text-primary">
+            <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-control bg-selected text-primary">
               <MailCheck className="size-7" aria-hidden="true" />
             </div>
             <p className="mb-3 text-sm font-bold text-primary">
@@ -145,7 +152,7 @@ export default function VerifyEmailPage() {
               onClick={handleRefreshVerification}
               disabled={loading || isRefreshing || isResending}
               className={buttonClassName({
-                className: "h-12 w-full gap-2 rounded-2xl",
+                className: "h-12 w-full gap-2 rounded-control",
               })}
             >
               {isRefreshing ? (
@@ -164,7 +171,7 @@ export default function VerifyEmailPage() {
               onClick={handleResendVerification}
               disabled={loading || isRefreshing || isResending}
               className={buttonClassName({
-                className: "h-12 w-full gap-2 rounded-2xl",
+                className: "h-12 w-full gap-2 rounded-control",
                 variant: "secondary",
               })}
             >

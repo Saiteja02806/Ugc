@@ -45,7 +45,8 @@ export async function persistHookVideoSelection(params: {
   }
 
   if (
-    suggestion.demo_asset_id !== input.demoAssetId ||
+    (suggestion.demo_asset_id !== null &&
+      suggestion.demo_asset_id !== input.demoAssetId) ||
     suggestion.influencer_id !== input.influencerId ||
     suggestion.influencer_video_id !== input.influencerVideoId ||
     suggestion.influencer_source !== input.sourceKind

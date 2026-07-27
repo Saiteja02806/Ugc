@@ -202,7 +202,7 @@ export function InfluencerVideoPickerDrawer({
               disabled={loadingSurprise}
               className="flex min-h-24 min-w-0 flex-col items-start justify-between border border-primary/35 bg-brand-soft p-3 text-left transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-wait disabled:opacity-60"
             >
-              <span className="flex size-8 items-center justify-center rounded-full bg-primary text-white">
+              <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 {loadingSurprise ? (
                   <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
                 ) : (
@@ -255,7 +255,7 @@ export function InfluencerVideoPickerDrawer({
                     </span>
                   </span>
                   {selected ? (
-                    <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-primary text-white">
+                    <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
                       <Check className="size-3.5" aria-hidden="true" />
                     </span>
                   ) : null}
@@ -301,7 +301,7 @@ export function InfluencerVideoPickerDrawer({
                         aria-label={video.title}
                         aria-pressed={selected}
                         className={cn(
-                          "relative aspect-[9/14] min-w-0 overflow-hidden border bg-foreground-strong text-white/65 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                          "relative aspect-[9/14] min-w-0 overflow-hidden border bg-card-muted text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
                           selected
                             ? "border-primary ring-1 ring-primary"
                             : "border-border-strong hover:border-primary/65",
@@ -318,11 +318,11 @@ export function InfluencerVideoPickerDrawer({
                           <Video className="absolute left-1/2 top-1/2 size-5 -translate-x-1/2 -translate-y-1/2" aria-hidden="true" />
                         )}
                         {selected ? (
-                          <span className="absolute right-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-primary text-white">
+                          <span className="absolute right-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
                             <Check className="size-3.5" aria-hidden="true" />
                           </span>
                         ) : null}
-                        <span className="absolute inset-x-0 bottom-0 truncate bg-foreground-strong/76 px-2 py-1.5 text-left text-[10px] font-semibold text-white">
+                        <span className="absolute inset-x-0 bottom-0 truncate bg-card/85 px-2 py-1.5 text-left text-[10px] font-semibold text-foreground">
                           {video.title}
                         </span>
                       </button>
@@ -339,7 +339,7 @@ export function InfluencerVideoPickerDrawer({
             type="button"
             onClick={confirmSelection}
             disabled={!selectedVideo}
-            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-45"
           >
             <Video className="size-4" aria-hidden="true" />
             Use video

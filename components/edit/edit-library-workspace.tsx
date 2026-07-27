@@ -99,12 +99,12 @@ export function EditLibraryWorkspace() {
           <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
             Edit
           </h1>
-          <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
+          <p className="mt-1 text-sm font-medium leading-6 text-muted">
             Trim, add text, and save videos from Creative Assets.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <button
             type="button"
             onClick={() => void loadVideos()}
@@ -123,7 +123,7 @@ export function EditLibraryWorkspace() {
           <Link
             href="/avatars?tab=videos"
             className={buttonClassName({
-              variant: "secondary",
+              variant: "primary",
               className: "h-9 w-fit px-3 text-xs",
             })}
           >
@@ -136,7 +136,7 @@ export function EditLibraryWorkspace() {
         {errorMessage ? (
           <div
             role="alert"
-            className="mb-4 flex items-start gap-2 rounded-lg border border-error/20 bg-error/5 px-3 py-2.5 text-sm font-semibold text-error"
+            className="mb-4 flex items-start gap-2 rounded-control border border-error/35 bg-error/10 px-3 py-2.5 text-sm font-semibold text-error"
           >
             <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             {errorMessage}

@@ -80,8 +80,8 @@ export function PricingCard({ onSelectPlan, plan }: PricingCardProps) {
             className: cn(
               "h-12 w-full gap-2 rounded-control text-sm",
               plan.highlighted
-                ? "bg-primary text-white hover:bg-primary-hover"
-                : "border-border-strong bg-foreground-strong text-white hover:bg-deep-contrast",
+                ? "bg-primary text-primary-foreground hover:bg-primary-hover"
+                : "border-border-strong bg-card-muted text-foreground hover:bg-card",
               "disabled:cursor-default disabled:opacity-100",
             ),
           })}
@@ -132,7 +132,7 @@ export function PricingCreditRow({
       <span className="min-w-0 text-sm font-bold leading-5 text-foreground-strong">
         {label}
       </span>
-      <span className="rounded-small border border-border bg-card px-2.5 py-1 text-sm font-black tabular-nums text-deep-contrast">
+      <span className="rounded-small border border-border bg-card px-2.5 py-1 text-sm font-black tabular-nums text-foreground-strong">
         {value}
       </span>
     </div>

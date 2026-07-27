@@ -6,7 +6,7 @@ import type { LibraryTab } from "@/components/library/library-workspace";
 
 export const metadata: Metadata = {
   title: "Content Library",
-  description: "Manage reusable demo footage and saved carousel assets.",
+  description: "Manage reusable demo footage and saved slideshow assets.",
 };
 
 type LibraryPageProps = {

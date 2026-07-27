@@ -434,7 +434,7 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
         {saveMessage ? (
           <p
             role="alert"
-            className="mb-4 w-fit rounded-control border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold text-error"
+            className="mb-4 w-fit rounded-control border border-error/35 bg-error/10 px-3 py-2 text-xs font-semibold text-error"
           >
             {saveMessage}
           </p>
@@ -450,7 +450,7 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
         ) : null}
 
         {isLoading ? (
-          <div className="flex min-h-[420px] flex-1 items-center justify-center rounded-card border border-border bg-card">
+          <div className="flex min-h-[420px] flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card">
             <Loader2 className="size-6 animate-spin text-primary" aria-label="Loading video" />
           </div>
         ) : video ? (
@@ -592,10 +592,10 @@ function RenderStatusNotice({
       className={cn(
         "mb-3 flex min-h-10 items-center rounded-control px-3 text-xs font-semibold",
         isFailed
-          ? "border border-error/20 bg-error/5 text-error"
+          ? "border border-error/35 bg-error/10 text-error"
           : hasSavedVideoWithNewerChanges
             ? "border border-warning/25 bg-warning/10 text-foreground"
-            : "bg-selected text-muted",
+            : "border border-border bg-card-muted text-muted",
       )}
     >
       <span>{message}</span>
@@ -608,9 +608,9 @@ function RenderStatusNotice({
 
 function VideoNotFound({ videoId }: { videoId: string }) {
   return (
-    <section aria-label="Video not found" className="flex min-h-[420px] flex-1 items-center justify-center rounded-[28px] border border-border/70 bg-white/35 px-5 py-10 text-center">
+    <section aria-label="Video not found" className="flex min-h-[420px] flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card px-5 py-10 text-center">
       <div>
-        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-error/20 bg-error/5 text-error shadow-sm"><AlertCircle className="size-6" aria-hidden="true" /></div>
+        <div className="mx-auto flex size-12 items-center justify-center rounded-control border border-error/35 bg-error/10 text-error"><AlertCircle className="size-6" aria-hidden="true" /></div>
         <h2 className="mt-5 text-lg font-bold text-foreground">This video is not in your account.</h2>
         <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-muted">No server media asset exists for ID {videoId}. Add a video from the Influencers workspace, then open it here.</p>
         <Link href="/edit" className={buttonClassName({ variant: "primary", className: "mt-5" })}>Back to library</Link>

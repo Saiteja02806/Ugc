@@ -5,18 +5,21 @@ import {
   buildInstagramOAuthAuthorizationUrl,
   INSTAGRAM_BUSINESS_BASIC_SCOPE,
   INSTAGRAM_BUSINESS_CONTENT_PUBLISH_SCOPE,
+  INSTAGRAM_BUSINESS_MANAGE_INSIGHTS_SCOPE,
   INSTAGRAM_OAUTH_SCOPES,
+  hasInstagramAnalyticsScope,
 } from "./instagram-oauth-config.ts";
 
 test("uses least-privilege Instagram OAuth scopes for implemented features", () => {
   assert.deepEqual(INSTAGRAM_OAUTH_SCOPES, [
     INSTAGRAM_BUSINESS_BASIC_SCOPE,
     INSTAGRAM_BUSINESS_CONTENT_PUBLISH_SCOPE,
+    INSTAGRAM_BUSINESS_MANAGE_INSIGHTS_SCOPE,
   ]);
   assert.equal(new Set(INSTAGRAM_OAUTH_SCOPES).size, INSTAGRAM_OAUTH_SCOPES.length);
   assert.equal(
     INSTAGRAM_OAUTH_SCOPES.includes("instagram_business_manage_insights"),
-    false,
+    true,
   );
 });
 
@@ -38,6 +41,23 @@ test("builds the Instagram authorization URL with only product scopes", () => {
   assert.equal(url.searchParams.get("state"), "oauth-state");
   assert.equal(
     url.searchParams.get("scope")?.includes("instagram_business_manage_insights"),
+    true,
+  );
+});
+
+test("checks Instagram analytics permission independently", () => {
+  assert.equal(
+    hasInstagramAnalyticsScope([
+      INSTAGRAM_BUSINESS_BASIC_SCOPE,
+      INSTAGRAM_BUSINESS_MANAGE_INSIGHTS_SCOPE,
+    ]),
+    true,
+  );
+  assert.equal(
+    hasInstagramAnalyticsScope([
+      INSTAGRAM_BUSINESS_BASIC_SCOPE,
+      INSTAGRAM_BUSINESS_CONTENT_PUBLISH_SCOPE,
+    ]),
     false,
   );
 });

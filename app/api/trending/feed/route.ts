@@ -12,6 +12,12 @@ import {
   ensureTrendingDailyFeed,
   getMissingTrendingFeedEnvVars,
 } from "@/lib/trending/daily-feed";
+import {
+  buildUnifiedTrendingFeed,
+  createCurrentTrendingFeedProviders,
+  getTrendingFeedProviderAvailability,
+} from "@/lib/trending/feed-items";
+import { getTrendingHookFeedProvider } from "@/lib/trending/trending-hook-feed";
 
 export const runtime = "nodejs";
 
@@ -76,20 +82,27 @@ export async function GET(request: Request) {
     const profile = await getBusinessProfileForUser(userId);
 
     if (!profile) {
+      const providers = createCurrentTrendingFeedProviders([]);
+
       return jsonResponse({
         carousels: [],
         entitlement: null,
         feed: null,
+        formatAvailability: getTrendingFeedProviderAvailability(providers),
+        items: buildUnifiedTrendingFeed(providers),
         ok: true,
         profile: { state: "missing" },
       });
     }
 
-    const dailyFeed = await ensureTrendingDailyFeed({
-      profile,
-      timezone: new URL(request.url).searchParams.get("timezone"),
-      userId,
-    });
+    const [dailyFeed, hookProvider] = await Promise.all([
+      ensureTrendingDailyFeed({
+        profile,
+        timezone: new URL(request.url).searchParams.get("timezone"),
+        userId,
+      }),
+      getTrendingHookFeedProvider(profile),
+    ]);
     const profileState =
       dailyFeed.carousels.length > 0
         ? "ready"
@@ -98,15 +111,22 @@ export async function GET(request: Request) {
           : dailyFeed.feed.state === "preparing"
             ? "preparing"
             : "ready";
+    const providers = createCurrentTrendingFeedProviders(
+      dailyFeed.carousels,
+      hookProvider,
+    );
 
     return jsonResponse({
       carousels: dailyFeed.carousels,
       entitlement: dailyFeed.entitlement,
       feed: dailyFeed.feed,
+      formatAvailability: getTrendingFeedProviderAvailability(providers),
+      items: buildUnifiedTrendingFeed(providers),
       ok: true,
       profile: {
         error: profile.preparationError,
         id: profile.id,
+        profileVersion: profile.profileVersion,
         state: profileState,
       },
     });

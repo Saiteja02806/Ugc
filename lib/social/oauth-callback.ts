@@ -192,7 +192,10 @@ function renderCallbackPage(params: {
   };
   const safePayload = safeInlineJson(payload);
   const safeTargetOrigins = safeInlineJson(targetOrigins);
-  const returnUrl = new URL("/connected-accounts", appBaseUrl).toString();
+  const returnUrl = new URL(
+    "/settings#instagram-publishing",
+    appBaseUrl,
+  ).toString();
   const title = params.status === "success" ? "Account connected" : "Connection failed";
   const statusClass = params.status === "success" ? "success" : "error";
   const fallbackMessage =
@@ -229,7 +232,7 @@ function renderCallbackPage(params: {
       <p>${escapeHtml(params.message)}</p>
       <p id="manual-close-message" hidden>${escapeHtml(fallbackMessage)}</p>
       ${params.status === "error" ? `<dl><dt>Failed stage</dt><dd>${escapeHtml(failedStage)}</dd><dt>Correlation ID</dt><dd>${escapeHtml(params.correlationId)}</dd></dl>` : ""}
-      <a href="${escapeHtml(returnUrl)}">Return to connected accounts</a>
+      <a href="${escapeHtml(returnUrl)}">Return to Instagram settings</a>
     </main>
     <script>
       (() => {

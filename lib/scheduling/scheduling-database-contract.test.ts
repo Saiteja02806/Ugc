@@ -383,7 +383,7 @@ test("carousel captions remain optional and are never replaced with the carousel
   assert.match(schedulingWorkspace, /Caption optional\./);
   assert.match(
     schedulingWorkspace,
-    /Choose an account, date, and time to schedule this carousel\./,
+    /Choose an account, date, and time to schedule this slideshow\./,
   );
 });
 
@@ -402,7 +402,7 @@ test("carousel scheduling stays inline on Trending and Library", () => {
     /await scheduleTrendingCarousel\([\s\S]*?await completeTrendingCarouselAction\([\s\S]*?"scheduled"/,
   );
   assert.match(libraryWorkspace, /await scheduleLibraryCarousel\(/);
-  assert.match(libraryWorkspace, /Carousel scheduled\. View it on the Scheduled page\./);
+  assert.match(libraryWorkspace, /Slideshow scheduled\. View it on the Scheduled page\./);
 });
 
 test("the inline carousel modal implements exact-account content and time steps", () => {
@@ -414,14 +414,14 @@ test("the inline carousel modal implements exact-account content and time steps"
   assert.match(carouselScheduleModal, /const platformConnections = useMemo/);
   assert.match(
     carouselScheduleModal,
-    /connection\.platform === "youtube"[\s\S]*YouTube accepts video uploads, not carousel posts\./,
+    /connection\.platform === "youtube"[\s\S]*YouTube accepts video uploads, not slideshow posts\./,
   );
   assert.match(carouselScheduleModal, /Select connected accounts/);
   assert.match(carouselScheduleModal, /connectionId: connection\.id/);
   assert.match(carouselScheduleModal, /Caption[\s\S]*?\(optional\)/);
   assert.match(
     carouselScheduleModal,
-    /self-start overflow-hidden rounded-lg border border-border bg-white/,
+    /self-start overflow-hidden rounded-card border border-border bg-card/,
   );
   assert.match(carouselScheduleModal, /label="Post ASAP"/);
   assert.match(carouselScheduleModal, /label="Schedule for later"/);

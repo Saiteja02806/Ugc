@@ -19,10 +19,10 @@ export function VideoCard({ video }: { video: EditableVideo }) {
   return (
     <Link
       href={getEditableVideoHref(video)}
-      className="group min-w-0 rounded-card border border-border bg-white p-2 transition-[border-color,background-color] hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+      className="group min-w-0 rounded-card border border-border bg-card p-2 transition-[border-color,background-color,transform] hover:-translate-y-0.5 hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
     >
       <div
-        className="flex items-center justify-center overflow-hidden rounded-control bg-[#102033] text-white"
+        className="flex items-center justify-center overflow-hidden rounded-control border border-border bg-[#181818] text-muted"
         style={{ aspectRatio: video.ratio.replace(":", " / ") }}
       >
         {video.thumbnailUrl ? (
@@ -34,7 +34,7 @@ export function VideoCard({ video }: { video: EditableVideo }) {
           />
         ) : (
           <PlaySquare
-            className="size-8 text-white/75 transition-transform duration-200 group-hover:scale-105 motion-reduce:transition-none"
+            className="size-8 text-muted transition-transform duration-200 group-hover:scale-105 group-hover:text-primary motion-reduce:transition-none"
             aria-hidden="true"
           />
         )}
@@ -53,10 +53,10 @@ export function VideoCard({ video }: { video: EditableVideo }) {
                   : video.status === "rendering"
                     ? "bg-primary/10 text-primary"
                     : video.status === "ready"
-                      ? "bg-success/10 text-[#087443]"
+                      ? "border border-success/25 bg-success/10 text-success"
                       : video.status === "rendered"
                         ? "bg-primary/10 text-primary"
-                        : "bg-card-muted text-muted",
+                        : "border border-border bg-card-muted text-muted",
               )}
             >
               {statusLabel}

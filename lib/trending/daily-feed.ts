@@ -41,6 +41,10 @@ import {
   getDailyCarouselRefillPlan,
   selectAssignableDailyCarouselCandidates,
 } from "@/lib/trending/daily-replenishment-logic";
+import type {
+  TrendingCarouselSourceRecord,
+  TrendingFeedItemSource,
+} from "@/lib/trending/feed-items";
 
 const SUBSCRIPTION_ENTITLEMENTS_TABLE = "subscription_entitlements";
 const USER_SUBSCRIPTION_PLANS_TABLE = "user_subscription_plans";
@@ -64,8 +68,6 @@ type AssignmentState =
   | "pending";
 type CompletionAction = "saved" | "scheduled" | "skipped";
 export type TrendingFeedCompletionAction = CompletionAction;
-type FeedItemSource = "carried" | "new";
-
 type SubscriptionEntitlementRow = {
   created_at: string;
   daily_carousel_limit: number;
@@ -123,7 +125,7 @@ type DailyCarouselFeedItemRow = {
   feed_id: string;
   id: string;
   position: number;
-  source: FeedItemSource;
+  source: TrendingFeedItemSource;
 };
 
 type DailyCarouselRefillBatchRow = {
@@ -260,31 +262,7 @@ export type TrendingFeedProfile = {
   state: "failed" | "missing" | "preparing" | "ready";
 };
 
-export type TrendingFeedCarousel = {
-  assignmentId: string;
-  candidateIndex: number;
-  carouselId: string;
-  categorySlug: string | null;
-  feedItemId: string;
-  feedPosition: number;
-  feedSource: FeedItemSource;
-  generationBatchId: string;
-  projectId: string;
-  readySlideCount: number;
-  selectedAngle: string | null;
-  slideCount: number;
-  slides: Array<{
-    headline: string;
-    renderedUrl: string | null;
-    slideNumber: number;
-    slideType: string | null;
-    status: "failed" | "processing" | "ready";
-    subtext: string | null;
-  }>;
-  status: "completed" | "failed" | "processing";
-  thumbnailUrl: string | null;
-  updatedAt: string;
-};
+export type TrendingFeedCarousel = TrendingCarouselSourceRecord;
 
 export type TrendingDailyFeed = {
   carousels: TrendingFeedCarousel[];

@@ -54,11 +54,18 @@ const platforms: Array<{
 ];
 
 const platformStyles: Record<SocialPlatform, string> = {
-  instagram: "border-[#f6c4d7] bg-[#fff5fa] text-[#9d174d]",
-  tiktok: "border-[#c7d2fe] bg-[#f5f7ff] text-[#3730a3]",
-  youtube: "border-[#fecaca] bg-[#fff5f5] text-[#b91c1c]",
+  instagram: "border-primary/25 bg-selected text-primary",
+  tiktok: "border-primary/25 bg-selected text-primary",
+  youtube: "border-primary/25 bg-selected text-primary",
 };
 
+/**
+ * Dormant multi-platform workspace retained for a future release.
+ *
+ * The user-facing account manager now lives in Settings and only exposes
+ * Instagram. Keeping this implementation preserves the existing TikTok and
+ * YouTube provider work without leaving a duplicate route in the product.
+ */
 export function ConnectedAccountsWorkspace() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -246,7 +253,7 @@ export function ConnectedAccountsWorkspace() {
             type="button"
             onClick={() => void loadConnections()}
             disabled={loading}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border-strong bg-white px-4 text-sm font-bold text-foreground transition hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-control border border-border bg-card px-4 text-sm font-bold text-foreground transition hover:border-border-strong hover:bg-card-muted hover:text-foreground-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? (
               <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
@@ -273,7 +280,7 @@ export function ConnectedAccountsWorkspace() {
           {groupedConnections.map((platform) => (
             <article
               key={platform.value}
-              className="rounded-[12px] border border-border bg-white p-5 shadow-[0_12px_28px_rgb(24_24_27_/_0.05)]"
+              className="rounded-card border border-border bg-card p-5 shadow-card"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -318,7 +325,7 @@ export function ConnectedAccountsWorkspace() {
                 type="button"
                 onClick={() => void connectPlatform(platform.value)}
                 disabled={Boolean(connectingPlatform)}
-                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-foreground-strong px-4 text-sm font-bold text-white transition hover:bg-[#2a2a30] disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {connectingPlatform === platform.value ? (
                   <LoaderCircle
@@ -384,7 +391,7 @@ function ConnectionCard({
         type="button"
         onClick={onDisconnect}
         disabled={disconnecting}
-        className="mt-4 inline-flex h-9 items-center gap-2 rounded-md border border-border-strong bg-white px-3 text-xs font-bold text-error transition hover:bg-error/5 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-4 inline-flex h-9 items-center gap-2 rounded-control border border-error/35 bg-error/10 px-3 text-xs font-bold text-error transition hover:bg-error/15 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {disconnecting ? (
           <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />

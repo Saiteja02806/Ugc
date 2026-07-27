@@ -9,7 +9,7 @@ import {
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms of Service for UGC Pilot, including content ownership, publishing rules, AI disclosures, and platform compliance.",
+    "Terms of Service for UGC Pilot's Instagram content creation, carousel generation, video upload, scheduling, and publishing features.",
 };
 
 export default function TermsPage() {
@@ -17,16 +17,16 @@ export default function TermsPage() {
     <LegalPageShell
       eyebrow="Terms of Service"
       title="Rules for using UGC Pilot"
-      description="These terms explain how users may use UGC Pilot to create, edit, schedule, and publish social marketing content."
+      description="These terms explain how users may use UGC Pilot to create Instagram content, upload media, generate carousel posts, and schedule approved content."
     >
       <div className="space-y-8">
         <LegalSection title="Service overview">
           <p>
-            UGC Pilot is a user-controlled social video creation and scheduling
-            platform. Users can upload or select media, create AI-assisted
-            videos and carousels, write captions, review rights and
-            disclosures, and approve content for publishing to supported social
-            platforms.
+            UGC Pilot is a user-controlled Instagram content creation and
+            scheduling tool. Users can provide business context, automatically
+            prepare multi-slide carousel posts, upload or select images and
+            videos, create and edit captions, review rights and disclosures,
+            and approve content for scheduling or publishing to Instagram.
           </p>
         </LegalSection>
 
@@ -44,29 +44,17 @@ export default function TermsPage() {
           </p>
         </LegalSection>
 
-        <LegalSection title="Connected social accounts">
+        <LegalSection title="Connected Instagram accounts">
           <p>
-            Users may connect their own TikTok, Instagram, YouTube, or other
-            supported social accounts. UGC Pilot will use those connections only
-            to provide the requested account, scheduling, publishing, and status
-            features.
+            Users may connect an Instagram professional account they own or are
+            authorized to manage. UGC Pilot uses the connection only to provide
+            the requested account selection, scheduling, publishing, status, and
+            insights features.
           </p>
           <p>
-            Users can disconnect social accounts where the product provides
-            that control, and they remain responsible for following the rules of
-            each connected platform.
-          </p>
-          <p>
-            By using YouTube-related features, users also agree to the{" "}
-            <a
-              className="font-bold text-[#c2410c]"
-              href="https://www.youtube.com/t/terms"
-              rel="noreferrer"
-              target="_blank"
-            >
-              YouTube Terms of Service
-            </a>
-            .
+            Users can disconnect Instagram through UGC Pilot Settings and
+            remain responsible for following Instagram&apos;s terms, community
+            guidelines, advertising rules, and other applicable policies.
           </p>
         </LegalSection>
 
@@ -99,9 +87,7 @@ export default function TermsPage() {
         <LegalSection title="AI and disclosure rules">
           <p>
             Users must disclose AI-generated or AI-assisted content where
-            required by law, advertising rules, or the policies of TikTok,
-            Instagram, YouTube, or any other platform where the content is
-            published.
+            required by law, advertising rules, or Instagram policy.
           </p>
           <p>
             Users may not use UGC Pilot to impersonate people, clone a person
@@ -125,7 +111,7 @@ export default function TermsPage() {
             <li>Spam, scams, fake engagement, malware, or unauthorized automation.</li>
             <li>Illegal content, adult exploitation, harassment, hate, or unsafe content.</li>
             <li>Unauthorized faces, voices, music, logos, copyrighted assets, or private information.</li>
-            <li>Publishing content that violates a connected platform policy.</li>
+            <li>Publishing content that violates an Instagram policy.</li>
             <li>Attempting to reverse engineer, overload, or abuse UGC Pilot systems.</li>
           </LegalList>
         </LegalSection>
@@ -133,8 +119,9 @@ export default function TermsPage() {
         <LegalSection title="Publishing control">
           <p>
             UGC Pilot is designed for user-approved publishing. Users are
-            expected to review captions, videos, disclosures, rights
-            confirmations, platform settings, and schedules before publishing.
+            expected to review carousel slides, images, videos, captions,
+            disclosures, rights confirmations, the destination Instagram
+            account, and the schedule before publishing.
           </p>
           <p>
             We may block, pause, or remove publishing access if content or
@@ -149,7 +136,7 @@ export default function TermsPage() {
             publishing features if we believe the account is being used for
             prohibited content, unauthorized account access, spam, platform
             manipulation, security abuse, non-payment, or activity that may
-            violate applicable law or connected platform rules.
+            violate applicable law or Instagram&apos;s rules.
           </p>
         </LegalSection>
 
@@ -169,14 +156,29 @@ export default function TermsPage() {
         <LegalSection title="Service availability">
           <p>
             UGC Pilot may change, pause, or discontinue features. Publishing
-            features depend on third-party platform APIs, approvals, scopes,
-            rate limits, and platform availability.
+            and insights features depend on Instagram APIs, Meta approvals,
+            granted permissions, rate limits, account eligibility, and platform
+            availability.
           </p>
           <p>
             Scheduled posts may fail, be delayed, or require user action because
-            of platform outages, expired permissions, account restrictions,
-            unsupported formats, rights or disclosure settings, or other
-            third-party platform requirements.
+            of Instagram outages, expired permissions, account restrictions,
+            unsupported formats, media-processing failures, rights or
+            disclosure settings, or other Instagram requirements.
+          </p>
+        </LegalSection>
+
+        <LegalSection title="Generated content and performance">
+          <p>
+            Automatically prepared carousel slides, captions, hooks, and other
+            generated content are drafts. Users must review their accuracy,
+            suitability, rights, and required disclosures before scheduling or
+            publishing them.
+          </p>
+          <p>
+            UGC Pilot does not guarantee that generated content will be approved
+            by Instagram, publish successfully, or achieve any particular reach,
+            engagement, sales, or other performance result.
           </p>
         </LegalSection>
 

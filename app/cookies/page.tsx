@@ -49,12 +49,12 @@ export default function CookiePolicyPage() {
           </LegalList>
         </LegalSection>
 
-        <LegalSection title="Third-party platforms">
+        <LegalSection title="Instagram authorization">
           <p>
-            When users connect Instagram, TikTok, YouTube, or another supported
-            platform, those platforms may use their own cookies or technologies
-            during authorization, account connection, or platform visits. Their
-            own privacy and cookie policies apply to those services.
+            When users connect Instagram, Meta or Instagram may use their own
+            cookies or similar technologies during authorization, account
+            connection, or visits to their services. Their own privacy and
+            cookie policies apply to those services.
           </p>
         </LegalSection>
 

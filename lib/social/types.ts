@@ -24,6 +24,7 @@ export type SocialConnection = {
   platformAccountId: string;
   platformAccountName: string | null;
   platformAccountUsername: string | null;
+  profilePictureUrl: string | null;
   provider: SocialProvider;
   refreshExpiresAt: string | null;
   scopes: string[];

@@ -10,7 +10,7 @@ import {
 export const metadata: Metadata = {
   title: "Data Deletion",
   description:
-    "Instructions for deleting UGC Pilot account data, connected social account data, uploaded media, and stored publishing data.",
+    "Instructions for deleting UGC Pilot account data, connected Instagram data, uploaded media, generated carousels, and scheduling records.",
 };
 
 type DataDeletionPageProps = {
@@ -29,8 +29,8 @@ export default async function DataDeletionPage({
   return (
     <LegalPageShell
       eyebrow="Data deletion"
-      title="Delete connected account data and content"
-      description="UGC Pilot users can disconnect social accounts, delete uploaded content, and request deletion of account data."
+      title="Delete Instagram account data and content"
+      description="UGC Pilot users can disconnect Instagram, delete uploaded or generated content, and request deletion of their account data."
     >
       <div className="space-y-8">
         {confirmation ? (
@@ -60,39 +60,26 @@ export default async function DataDeletionPage({
 
         <LegalSection title="What we delete">
           <LegalList>
-            <li>Connected platform identifiers and social account IDs.</li>
-            <li>Access tokens and refresh tokens where technically possible.</li>
-            <li>Uploaded media, product demos, app recordings, and screen recordings.</li>
-            <li>Generated videos, generated carousels, drafts, captions, and thumbnails.</li>
-            <li>Scheduled posts and publishing logs where deletion is legally and technically possible.</li>
-            <li>Stored analytics associated with the account.</li>
+            <li>Connected Instagram identifiers and professional account IDs.</li>
+            <li>Instagram access tokens where technically possible.</li>
+            <li>Uploaded images, videos, product demos, and screen recordings.</li>
+            <li>Generated videos, carousel slides, drafts, captions, and thumbnails.</li>
+            <li>Instagram schedules and publishing logs where deletion is legally and technically possible.</li>
+            <li>Stored Instagram media metadata and insights associated with the account.</li>
             <li>Stored AI disclosure, commercial disclosure, and rights confirmation settings.</li>
           </LegalList>
         </LegalSection>
 
-        <LegalSection title="Platform-specific notes">
+        <LegalSection title="Instagram-specific notes">
           <p>
             Disconnecting or deleting data in UGC Pilot does not delete content
-            that has already been published on TikTok, Instagram, YouTube, or
-            another social platform. To delete a post already published on a
-            social platform, use that platform directly.
+            that has already been published on Instagram. To delete a post that
+            is already live, use Instagram directly.
           </p>
           <p>
-            For YouTube, you can also revoke UGC Pilot access from Google
-            security settings at{" "}
-            <a
-              className="font-bold text-[#c2410c]"
-              href="https://security.google.com/settings/security/permissions"
-              rel="noreferrer"
-              target="_blank"
-            >
-              https://security.google.com/settings/security/permissions
-            </a>
-            . When YouTube access is revoked or deletion is requested, we delete
-            stored YouTube API data as soon as possible. User deletion and
-            account deletion requests are completed within 7 calendar days, and
-            Google security settings revocations are completed within 30
-            calendar days, unless retention is required by law.
+            Disconnecting Instagram stops future UGC Pilot scheduling and
+            publishing through that connection. Users may also revoke access
+            through their Instagram or Meta account settings.
           </p>
         </LegalSection>
 
@@ -107,11 +94,13 @@ export default async function DataDeletionPage({
 
         <LegalSection title="Meta data deletion callback">
           <p>
-            Meta and Instagram data deletion requests can be sent to{" "}
-            <span className="font-bold text-foreground-strong">
-              https://getugcpilot.com/api/meta/data-deletion
-            </span>
-            . This endpoint is used for platform-initiated deletion requests.
+            Meta can send platform-initiated Instagram data deletion requests
+            to{" "}
+            <a href="https://www.getugcpilot.com/api/meta/data-deletion">
+              https://www.getugcpilot.com/api/meta/data-deletion
+            </a>
+            . The endpoint validates the request and returns a confirmation code
+            and status URL for the associated deletion request.
           </p>
         </LegalSection>
       </div>

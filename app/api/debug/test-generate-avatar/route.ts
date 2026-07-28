@@ -11,7 +11,8 @@ import {
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
-import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
+import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
+import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 
 const AVATAR_JOB_TYPE = "generate_avatar";
 
@@ -65,7 +66,7 @@ function getMissingRuntimeEnv() {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireFirebaseUser(request);
+    const user = await requireAIStudioProUser(request);
     const body = (await request.json().catch(() => null)) as
       | {
           projectId?: unknown;

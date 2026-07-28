@@ -1,8 +1,9 @@
 "use client";
 
-import { Lock, Sparkles } from "lucide-react";
+import { Loader2, Lock, Sparkles } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { useAIStudioAccess } from "@/components/generation/use-ai-studio-access";
 import { VideoGenerationStudioPanel } from "@/components/video/video-generation-workspace";
 import { ImageGenerationStudioPanel } from "@/components/workspace/ugc-chat-workspace";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ export function AIStudioWorkspace({
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = toAIStudioMode(searchParams.get("mode") ?? initialMode);
+  const accessState = useAIStudioAccess();
 
   function selectMode(nextMode: AIStudioMode) {
     const params = new URLSearchParams(searchParams.toString());
@@ -66,18 +68,47 @@ export function AIStudioWorkspace({
           <div className="ml-auto flex items-center gap-2">
             <Badge
               variant="secondary"
-              className="hidden w-fit border border-border bg-card/80 text-muted shadow-sm sm:inline-flex"
+              className={cn(
+                "hidden w-fit border bg-card/80 shadow-sm sm:inline-flex",
+                accessState === "pro"
+                  ? "border-primary/30 text-primary"
+                  : "border-border text-muted",
+              )}
             >
-              <Lock data-icon="inline-start" aria-hidden="true" />
-              Preview workspace
+              {accessState === "pro" ? (
+                <>
+                  <Sparkles data-icon="inline-start" aria-hidden="true" />
+                  Pro access
+                </>
+              ) : accessState === "checking" ? (
+                <>
+                  <Loader2
+                    data-icon="inline-start"
+                    className="animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                  Checking access
+                </>
+              ) : (
+                <>
+                  <Lock data-icon="inline-start" aria-hidden="true" />
+                  Preview workspace
+                </>
+              )}
             </Badge>
             <AIStudioModeToggle value={mode} onChange={selectMode} />
           </div>
         </header>
 
         <div className="flex min-h-0 flex-1 flex-col">
-          <ImageGenerationStudioPanel active={mode === "images"} />
-          <VideoGenerationStudioPanel active={mode === "videos"} />
+          <ImageGenerationStudioPanel
+            accessState={accessState}
+            active={mode === "images"}
+          />
+          <VideoGenerationStudioPanel
+            accessState={accessState}
+            active={mode === "videos"}
+          />
         </div>
       </div>
     </section>

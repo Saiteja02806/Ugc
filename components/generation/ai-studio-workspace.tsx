@@ -1,9 +1,8 @@
 "use client";
 
-import { ImageIcon, Lock, Video } from "lucide-react";
+import { ImageIcon, Lock, Sparkles, Video } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { VideoGenerationStudioPanel } from "@/components/video/video-generation-workspace";
 import { ImageGenerationStudioPanel } from "@/components/workspace/ugc-chat-workspace";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +16,7 @@ const studioModes: Array<{
   value: AIStudioMode;
 }> = [
   {
-    description: "Feed, carousel, and Story visuals",
+    description: "Posts, carousels, and story visuals",
     label: "Images",
     value: "images",
   },
@@ -55,21 +54,19 @@ export function AIStudioWorkspace({
         <header className="flex flex-col gap-5 pb-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex max-w-3xl items-start gap-3.5">
-              <span className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-[13px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] text-white shadow-[0_12px_30px_rgb(214_41_118_/_0.18)]">
-                <SocialPlatformIcon
-                  className="size-5 !text-white"
-                  platform="instagram"
-                />
+              <span className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-[13px] border border-border bg-card-muted text-primary shadow-sm">
+                <Sparkles className="size-5" aria-hidden="true" />
               </span>
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
-                  Instagram production desk
+                  Creation workspace
                 </p>
                 <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.03em] text-balance text-foreground sm:text-[2rem]">
                   AI Studio
                 </h1>
                 <p className="mt-1.5 max-w-2xl text-sm leading-6 text-pretty text-muted">
-                  Shape the brief, format, and output for your next Instagram visual from one focused workspace.
+                  Shape the brief, format, and output for your next visual from
+                  one focused workspace.
                 </p>
               </div>
             </div>

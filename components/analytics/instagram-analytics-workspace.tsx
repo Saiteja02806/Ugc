@@ -8,6 +8,7 @@ import {
   ChartNoAxesCombined,
   CheckCircle2,
   ChevronRight,
+  CircleUserRound,
   Clock3,
   ExternalLink,
   Eye,
@@ -33,7 +34,6 @@ import {
   type ReactNode,
 } from "react";
 
-import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import {
   Alert,
   AlertDescription,
@@ -305,14 +305,14 @@ export function InstagramAnalyticsWorkspace() {
       if (!connectionsResponse.ok || connectionsData?.ok !== true) {
         throw new Error(
           connectionsData?.message ??
-            "Could not load your Instagram connection. Refresh and try again.",
+            "Could not load your account connection. Refresh and try again.",
         );
       }
 
       if (!schedulesResponse.ok || schedulesData?.ok !== true) {
         throw new Error(
           schedulesData?.message ??
-            "Could not load Instagram publishing activity. Refresh and try again.",
+            "Could not load publishing activity. Refresh and try again.",
         );
       }
 
@@ -339,7 +339,7 @@ export function InstagramAnalyticsWorkspace() {
           insightsResponse.ok && insightsData?.ok === true
             ? null
             : insightsData?.message ??
-              "Instagram insights could not load right now.",
+              "Performance insights could not load right now.",
         state: "ready",
       });
       setErrorMessage(null);
@@ -352,12 +352,12 @@ export function InstagramAnalyticsWorkspace() {
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Could not load Instagram analytics. Refresh and try again.",
+          : "Could not load analytics. Refresh and try again.",
       );
       setInsightsResult((current) => ({
         ...current,
         days: dateRangeDays,
-        message: "Instagram insights could not load right now.",
+        message: "Performance insights could not load right now.",
         state: "ready",
       }));
       setLoadState("error");
@@ -411,7 +411,7 @@ export function InstagramAnalyticsWorkspace() {
             response.ok && data?.ok === true
               ? null
               : data?.message ??
-                "Instagram content performance could not load right now.",
+                "Content performance could not load right now.",
           state: "ready",
         });
       } catch (error) {
@@ -425,7 +425,7 @@ export function InstagramAnalyticsWorkspace() {
           message:
             error instanceof Error
               ? error.message
-              : "Instagram content performance could not load right now.",
+              : "Content performance could not load right now.",
           state: "ready",
         });
       }
@@ -497,16 +497,15 @@ export function InstagramAnalyticsWorkspace() {
       <div className="mx-auto w-full max-w-[1180px]">
         <header className="flex flex-col gap-5 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">
-              <SocialPlatformIcon className="size-4" platform="instagram" />
-              Instagram performance
-            </div>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
+              Performance overview
+            </p>
             <h1 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-foreground-strong sm:text-4xl">
               Analytics
             </h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-muted sm:text-base">
-              Review real Instagram views, interactions, account readiness,
-              and publishing activity in one focused workspace.
+              Review views, interactions, account readiness, and publishing
+              activity in one focused workspace.
             </p>
           </div>
 
@@ -655,7 +654,7 @@ function AnalyticsReadyState({
             Performance snapshot
           </p>
           <h2 className="text-lg font-bold tracking-[-0.02em] text-foreground-strong">
-            Your Instagram signal at a glance
+            Your performance at a glance
           </h2>
           <p className="max-w-2xl text-sm leading-6 text-muted">
             Performance values come from Meta Insights. Publishing totals come
@@ -679,13 +678,13 @@ function AnalyticsReadyState({
           <SnapshotMetric
             icon={<CheckCircle2 aria-hidden="true" />}
             label="Published posts"
-            source="Instagram publishing records"
+            source="Publishing records"
             value={formatNumber(analytics.published)}
           />
           <SnapshotMetric
             icon={<CalendarClock aria-hidden="true" />}
             label="Upcoming posts"
-            source="Instagram schedule records"
+            source="Schedule records"
             value={formatNumber(analytics.scheduled)}
           />
         </div>
@@ -860,7 +859,7 @@ function PerformanceMetricSelector({
 }) {
   return (
     <div
-      aria-label="Instagram performance metric"
+      aria-label="Performance metric"
       className="grid w-full grid-cols-3 rounded-[var(--radius-control)] border border-border bg-card-muted p-1 sm:inline-grid sm:w-auto"
       role="group"
     >
@@ -994,7 +993,7 @@ function InstagramPerformanceTrendChart({
     <div className="mt-6">
       <div className="relative h-[280px] min-w-0 overflow-hidden rounded-[var(--radius-control)] border border-border bg-card-muted/35 px-1 pt-1">
         <svg
-          aria-label={`Daily Instagram ${performanceMetricLabels[
+          aria-label={`Daily ${performanceMetricLabels[
             metric
           ].toLowerCase()} from ${formatShortDate(
             points[0]?.date ?? "",
@@ -1171,7 +1170,7 @@ function InstagramPerformanceTrendChart({
                 href="/settings#instagram-publishing"
                 className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
               >
-                Manage Instagram
+                Manage connection
                 <ArrowRight className="size-3.5" aria-hidden="true" />
               </Link>
             ) : null}
@@ -1210,11 +1209,11 @@ function PerformanceTrendLoadingState() {
   return (
     <div
       className="mt-6"
-      aria-label="Loading Instagram performance trend"
+      aria-label="Loading performance trend"
       role="status"
     >
       <span className="sr-only">
-        Loading Instagram performance trend…
+        Loading performance trend…
       </span>
       <div className="flex h-[280px] items-end gap-2 overflow-hidden rounded-[var(--radius-control)] border border-border bg-card-muted/35 p-5">
         {[42, 64, 38, 78, 56, 84, 62, 72, 48, 68, 52, 76].map(
@@ -1341,7 +1340,7 @@ function InstagramReadinessPanel({
   const ready = Boolean(connection && !publishingBlockMessage);
   const accountName = connection
     ? getInstagramAccountName(connection)
-    : "No Instagram account";
+    : "No connected account";
   const accountHandle = connection
     ? getInstagramAccountHandle(connection)
     : null;
@@ -1376,7 +1375,7 @@ function InstagramReadinessPanel({
       <div className="mt-5 rounded-[var(--radius-control)] border border-border bg-card-muted/45 p-4">
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand-soft ring-1 ring-inset ring-primary/10">
-            <SocialPlatformIcon className="size-5" platform="instagram" />
+            <CircleUserRound className="size-5" aria-hidden="true" />
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground-strong">
@@ -1395,7 +1394,7 @@ function InstagramReadinessPanel({
         </div>
         {connectionCount > 1 ? (
           <p className="mt-3 text-xs text-muted">
-            +{formatNumber(connectionCount - 1)} more Instagram{" "}
+            +{formatNumber(connectionCount - 1)} more connected{" "}
             {connectionCount === 2 ? "account" : "accounts"}
           </p>
         ) : null}
@@ -1434,7 +1433,7 @@ function InstagramReadinessPanel({
       {publishingBlockMessage ? (
         <Alert variant="destructive" className="mt-5" aria-live="polite">
           <TriangleAlert aria-hidden="true" />
-          <AlertTitle>Instagram needs attention</AlertTitle>
+          <AlertTitle>Account needs attention</AlertTitle>
           <AlertDescription>{publishingBlockMessage}</AlertDescription>
         </Alert>
       ) : null}
@@ -1452,8 +1451,8 @@ function InstagramReadinessPanel({
         {insightAccount?.status === "permission_missing"
           ? "Reconnect in Settings"
           : connection
-            ? "Manage Instagram"
-            : "Connect Instagram"}
+            ? "Manage connection"
+            : "Connect account"}
         <ArrowRight data-icon="inline-end" aria-hidden="true" />
       </Link>
     </aside>
@@ -1558,7 +1557,7 @@ function InstagramContentPerformance({
                 Content performance
               </h2>
               <p className="mt-1 text-sm leading-6 text-muted">
-                See which Instagram posts are earning attention.
+                See which posts are earning attention.
               </p>
             </div>
 
@@ -1569,7 +1568,7 @@ function InstagramContentPerformance({
                 </legend>
                 <div
                   className="grid grid-cols-4 rounded-[var(--radius-control)] border border-border bg-card-muted/70 p-1"
-                  aria-label="Filter Instagram content type"
+                  aria-label="Filter content type"
                 >
                   {contentFilterOptions.map((option) => {
                     const selected = filter === option.value;
@@ -1627,7 +1626,7 @@ function InstagramContentPerformance({
                 className="mt-0.5 size-3.5 shrink-0"
                 aria-hidden="true"
               />
-              {formatNumber(unavailableAccounts.length)} connected Instagram{" "}
+              {formatNumber(unavailableAccounts.length)} connected{" "}
               {unavailableAccounts.length === 1 ? "account is" : "accounts are"}{" "}
               not included because its content insights are unavailable.
             </p>
@@ -1644,21 +1643,21 @@ function InstagramContentPerformance({
         ) : connectionCount === 0 ? (
           <ContentPerformanceState
             action
-            description="Connect an Instagram professional account to review post-level performance."
-            title="Connect Instagram to continue"
+            description="Connect a professional account to review post-level performance."
+            title="Connect an account to continue"
           />
         ) : readyAccountCount === 0 ? (
           <ContentPerformanceState
             action
             description={
               accounts[0]?.message ??
-              "Reconnect Instagram to grant content performance access."
+              "Reconnect your account to grant content performance access."
             }
             title="Content insights need attention"
           />
         ) : items.length === 0 ? (
           <ContentPerformanceState
-            description="No Instagram posts were published in this date range. Choose a longer range when more content is available."
+            description="No posts were published in this date range. Choose a longer range when more content is available."
             title="No content in this period"
           />
         ) : filteredItems.length === 0 ? (
@@ -1758,7 +1757,7 @@ function ContentPerformanceDesktopTable({
                       {showAccountName
                         ? getInstagramContentAccountLabel(item)
                         : item.caption
-                          ? "Instagram caption"
+                          ? "Post caption"
                           : "No caption"}
                     </p>
                   </div>
@@ -2045,7 +2044,7 @@ function ContentPerformanceDrawer({
                 </a>
               ) : (
                 <p className="text-center text-xs leading-5 text-muted">
-                  Instagram did not return a public link for this post.
+                  A public link was not returned for this post.
                 </p>
               )}
             </footer>
@@ -2061,9 +2060,9 @@ function ContentPerformanceLoadingState() {
     <div
       className="divide-y divide-border"
       role="status"
-      aria-label="Loading Instagram content performance"
+      aria-label="Loading content performance"
     >
-      <span className="sr-only">Loading Instagram content performance…</span>
+      <span className="sr-only">Loading content performance…</span>
       {[0, 1, 2].map((row) => (
         <div key={row} className="flex items-center gap-3 px-5 py-4 sm:px-6">
           <Skeleton className="h-14 w-12 shrink-0 rounded-[var(--radius-control)]" />
@@ -2106,7 +2105,7 @@ function ContentPerformanceState({
             "mt-5",
           )}
         >
-          Manage Instagram
+          Manage connection
           <ArrowRight data-icon="inline-end" aria-hidden="true" />
         </Link>
       ) : null}
@@ -2423,10 +2422,10 @@ function AnalyticsLoadingState() {
   return (
     <div
       className="space-y-5"
-      aria-label="Loading Instagram analytics"
+      aria-label="Loading analytics"
       role="status"
     >
-      <span className="sr-only">Loading Instagram analytics…</span>
+      <span className="sr-only">Loading analytics…</span>
       <Skeleton className="h-10 w-64 max-w-full rounded-[var(--radius-control)]" />
       <div className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card p-5 sm:p-6">
         <Skeleton className="h-3 w-36" />
@@ -2467,11 +2466,11 @@ function AnalyticsErrorState({
         </span>
         <div className="min-w-0">
           <h2 className="text-lg font-bold tracking-[-0.02em] text-foreground-strong">
-            Instagram analytics could not load
+            Analytics could not load
           </h2>
           <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted">
             {message ??
-              "Refresh to try again. Your Instagram account and publishing records were not changed."}
+              "Refresh to try again. Your account and publishing records were not changed."}
           </p>
         </div>
       </div>
@@ -2484,7 +2483,7 @@ function AnalyticsErrorState({
           href="/settings#instagram-publishing"
           className={buttonVariants({ size: "lg", variant: "outline" })}
         >
-          Manage Instagram
+          Manage connection
           <ArrowRight data-icon="inline-end" aria-hidden="true" />
         </Link>
       </div>
@@ -2557,9 +2556,9 @@ function getPerformanceTrendEmptyState({
   if (connectionCount === 0) {
     return {
       description:
-        "Connect an Instagram professional account to load real Meta Insights.",
+        "Connect a professional account to load real performance insights.",
       manageConnection: true,
-      title: "Connect Instagram to see performance",
+      title: "Connect an account to see performance",
     };
   }
 
@@ -2593,7 +2592,7 @@ function getPerformanceTrendEmptyState({
   }
 
   return {
-    description: `Meta returned no daily ${metricLabel} values for this period. Try another date range after Instagram records activity.`,
+    description: `Meta returned no daily ${metricLabel} values for this period. Try another date range after your account records activity.`,
     manageConnection: false,
     title: `No ${metricLabel} data for this period`,
   };
@@ -2665,7 +2664,7 @@ function buildInstagramAnalyticsSummary({
         id: `${schedule.id}:${target.id}`,
         platformPostUrl: target.platformPostUrl,
         status,
-        title: schedule.title?.trim() || "Instagram post",
+        title: schedule.title?.trim() || "Scheduled post",
       });
     }
   }
@@ -2751,14 +2750,14 @@ function getInsightMetricSource({
     }
 
     return insightSnapshot.readyAccountCount === 1
-      ? "Meta Instagram Insights"
+      ? "Meta Insights"
       : `${formatNumber(
           insightSnapshot.readyAccountCount,
-        )} Instagram accounts`;
+        )} connected accounts`;
   }
 
   if (insightSnapshot.totalAccountCount === 0) {
-    return "Connect Instagram to enable insights";
+    return "Connect an account to enable insights";
   }
 
   if (insightSnapshot.permissionMissing) {
@@ -2817,7 +2816,7 @@ function getInstagramInsightsReadiness({
 
   if (!insightAccount) {
     return {
-      message: "Instagram did not return an insight account.",
+      message: "The insights service did not return an account.",
       tone: "warning",
       value: "Unavailable",
     };
@@ -2903,7 +2902,7 @@ function getInstagramAccountName(connection: SocialConnection) {
   return (
     connection.platformAccountName ||
     connection.platformAccountUsername ||
-    "Instagram professional account"
+    "Professional account"
   );
 }
 
@@ -3042,7 +3041,7 @@ function getInstagramContentAccountLabel(item: InstagramContentItem) {
     return `@${username}`;
   }
 
-  return item.accountName?.trim() || "Instagram account";
+  return item.accountName?.trim() || "Connected account";
 }
 
 function formatDateOnly(value: string) {

@@ -16,7 +16,6 @@ import { useRouter } from "next/navigation";
 import type { FormEvent, KeyboardEvent, RefObject } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
-import { ReferenceImageAttachment } from "@/components/generation/reference-image-attachment";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -31,6 +30,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
+import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset } from "@/lib/media/types";
 import { cn } from "@/lib/utils";
@@ -109,6 +109,7 @@ type GeneratedVideo = {
   createdAt?: string;
   duration?: string;
   id: string;
+  mediaAssetId?: string;
   prompt: string;
   ratio: VideoRatio;
   status: "Ready" | "Processing" | "Failed";
@@ -118,13 +119,83 @@ type GeneratedVideo = {
 
 const videoRatios: VideoRatio[] = ["9:16", "1:1", "4:5", "16:9"];
 const videoCountOptions: VideoCount[] = [1, 2, 4];
-const VIDEO_GENERATION_LOCKED = true;
 const instagramVideoFormatLabels: Record<VideoRatio, string> = {
   "9:16": "Reel",
   "1:1": "Square",
   "4:5": "Feed",
   "16:9": "Landscape",
 };
+
+type GenerateVideoResponse =
+  | {
+      jobId: string;
+      message: string;
+      ok: true;
+      videoId: string;
+    }
+  | {
+      error: string;
+      ok: false;
+    };
+
+type VideoStatusResponse =
+  | {
+      job: {
+        error: string | null;
+        id: string;
+        isTerminal: boolean;
+        output: {
+          key: string | null;
+          ok: boolean;
+          provider: string | null;
+          url: string | null;
+          videoId: string | null;
+        } | null;
+        status: string;
+      };
+      ok: true;
+    }
+  | {
+      error: string;
+      ok: false;
+    };
+
+function sleep(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+async function pollVideoJob(jobId: string, token: string) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    await sleep(attempt === 0 ? 1_000 : 5_000);
+
+    const response = await fetch(
+      `/api/ai-studio/videos/status?jobId=${encodeURIComponent(jobId)}`,
+      {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+    const data = (await response.json()) as VideoStatusResponse;
+
+    if (!response.ok || !data.ok) {
+      throw new Error(
+        data.ok === false ? data.error : "Video generation status unavailable.",
+      );
+    }
+
+    if (data.job.status === "completed" && data.job.output?.url) {
+      return data.job.output;
+    }
+
+    if (data.job.isTerminal) {
+      throw new Error(data.job.error || "Video generation failed.");
+    }
+  }
+
+  throw new Error("Video generation timed out.");
+}
 
 export function VideoGenerationWorkspace() {
   return (
@@ -153,15 +224,17 @@ export function VideoGenerationWorkspace() {
 }
 
 export function VideoGenerationStudioPanel({
+  accessState = "locked",
   active = true,
 }: {
+  accessState?: AIStudioAccessState;
   active?: boolean;
 }) {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
   const [prompt, setPrompt] = useState("");
   const [ratio, setRatio] = useState<VideoRatio>("9:16");
-  const [videoCount, setVideoCount] = useState<VideoCount>(2);
+  const [videoCount, setVideoCount] = useState<VideoCount>(1);
   const [avatarLibrary, setAvatarLibrary] = useState<AvatarLibraryItem[]>([]);
   const [personalAvatarAssets, setPersonalAvatarAssets] = useState<MediaAsset[]>([]);
   const [avatarLoading, setAvatarLoading] = useState(true);
@@ -171,10 +244,10 @@ export function VideoGenerationStudioPanel({
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
   const [generationState, setGenerationState] =
     useState<GenerationState>("empty");
-  const [generatedVideos] = useState<GeneratedVideo[]>([]);
+  const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
-  const generationTimerRef = useRef<number | null>(null);
+  const generationLocked = accessState !== "pro";
 
   const personalAvatars = useMemo(
     () => personalAvatarAssets.map(mapPersonalMediaToAvatarOption),
@@ -192,14 +265,6 @@ export function VideoGenerationStudioPanel({
     ? avatarOptions.find((avatar) => avatar.id === selectedAvatarId) ?? null
     : null;
   const isGenerating = generationState === "generating";
-
-  useEffect(() => {
-    return () => {
-      if (generationTimerRef.current) {
-        window.clearTimeout(generationTimerRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (!active) {
@@ -293,10 +358,12 @@ export function VideoGenerationStudioPanel({
     };
   }, [active, authLoading, user]);
 
-  function handleSubmit(event?: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
 
-    if (VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating) {
+    const trimmedPrompt = prompt.trim();
+
+    if (generationLocked || !trimmedPrompt || isGenerating) {
       return;
     }
 
@@ -309,22 +376,75 @@ export function VideoGenerationStudioPanel({
       return;
     }
 
+    if (!selectedAvatar.thumbnailUrl) {
+      setActionNotice(
+        "Choose a presenter with a preview image before generating.",
+      );
+      return;
+    }
+
     setActionNotice(null);
     setGenerationState("generating");
 
-    if (generationTimerRef.current) {
-      window.clearTimeout(generationTimerRef.current);
-    }
+    try {
+      const token = await getCurrentUserIdToken();
 
-    generationTimerRef.current = window.setTimeout(() => {
+      if (!token) {
+        throw new Error("Sign in before generating a video.");
+      }
+
+      const response = await fetch("/api/ai-studio/videos/generate", {
+        body: JSON.stringify({
+          avatarImageUrl: selectedAvatar.thumbnailUrl,
+          prompt: trimmedPrompt,
+        }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      const data = (await response.json()) as GenerateVideoResponse;
+
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          data.ok === false ? data.error : "Video generation could not start.",
+        );
+      }
+
+      const output = await pollVideoJob(data.jobId, token);
+      const mediaAsset = await findGeneratedVideoAsset(data.jobId, token);
+      const videoId =
+        mediaAsset?.id ?? output.videoId ?? data.videoId ?? crypto.randomUUID();
+      const nextVideo: GeneratedVideo = {
+        avatarName: selectedAvatar.label,
+        createdAt: "Just now",
+        id: videoId,
+        mediaAssetId: mediaAsset?.id,
+        prompt: trimmedPrompt,
+        ratio: "9:16",
+        status: "Ready",
+        title: getGeneratedVideoTitle(trimmedPrompt),
+        url: mediaAsset?.url ?? output.url ?? undefined,
+      };
+
+      setGeneratedVideos((currentVideos) => [nextVideo, ...currentVideos]);
+      setSelectedVideoId(nextVideo.id);
+      setPrompt("");
+      setGenerationState("completed");
+    } catch (error) {
+      console.error("Video generation failed:", error);
+      setActionNotice(
+        getErrorMessage(error, "Video generation failed. Try again."),
+      );
       setGenerationState("failed");
-    }, 900);
+    }
   }
 
   function handleTextareaKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      handleSubmit();
+      void handleSubmit();
     }
   }
 
@@ -333,7 +453,7 @@ export function VideoGenerationStudioPanel({
     const enhancement =
       "Structure notes: lead with the stated hook, keep the message concise and direct, show only the described product context, and end with one clear action.";
 
-    if (VIDEO_GENERATION_LOCKED || !trimmedPrompt) {
+    if (generationLocked || !trimmedPrompt) {
       return;
     }
 
@@ -352,7 +472,14 @@ export function VideoGenerationStudioPanel({
       return;
     }
 
-    router.push(`/edit/${encodeURIComponent(video.id)}`);
+    if (!video.mediaAssetId) {
+      setActionNotice(
+        "The generated video is still being added to Creative Assets.",
+      );
+      return;
+    }
+
+    router.push(`/edit/${encodeURIComponent(video.mediaAssetId)}`);
   }
 
   function handleUseAsHook(video: GeneratedVideo) {
@@ -388,6 +515,7 @@ export function VideoGenerationStudioPanel({
         avatarErrorMessage={avatarErrorMessage}
         avatarLoading={avatarLoading}
         avatar={selectedAvatar}
+        generationLocked={generationLocked}
         globalAvatars={globalAvatars}
         isGenerating={isGenerating}
         personalAvatars={personalAvatars}
@@ -446,6 +574,37 @@ async function fetchPersonalInfluencers(token: string) {
   return data.assets;
 }
 
+async function findGeneratedVideoAsset(jobId: string, token: string) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const response = await fetch("/api/media?collection=video", {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = (await response.json()) as
+      | { assets: MediaAsset[]; ok: true }
+      | { error?: string; ok?: false };
+
+    if (response.ok && data.ok === true) {
+      const asset = data.assets.find(
+        (candidate) =>
+          candidate.sourceType === "generated_video" &&
+          candidate.sourceRecordId === jobId &&
+          candidate.status === "ready",
+      );
+
+      if (asset) {
+        return asset;
+      }
+    }
+
+    if (attempt < 7) {
+      await sleep(500);
+    }
+  }
+
+  return null;
+}
+
 function mapPersonalMediaToAvatarOption(asset: MediaAsset): AvatarOption {
   return {
     id: asset.id,
@@ -459,6 +618,14 @@ function mapPersonalMediaToAvatarOption(asset: MediaAsset): AvatarOption {
     },
     thumbnailUrl: asset.thumbnailUrl,
   };
+}
+
+function getGeneratedVideoTitle(prompt: string) {
+  const singleLinePrompt = prompt.replace(/\s+/g, " ").trim();
+
+  return singleLinePrompt.length > 54
+    ? `${singleLinePrompt.slice(0, 51)}…`
+    : singleLinePrompt;
 }
 
 function getApiErrorMessage(response: unknown, fallback: string) {
@@ -597,6 +764,7 @@ function VideoPromptBar({
   avatar,
   avatarErrorMessage,
   avatarLoading,
+  generationLocked,
   globalAvatars,
   isGenerating,
   onAvatarChange,
@@ -616,6 +784,7 @@ function VideoPromptBar({
   avatar: AvatarOption | null;
   avatarErrorMessage: string | null;
   avatarLoading: boolean;
+  generationLocked: boolean;
   globalAvatars: AvatarOption[];
   isGenerating: boolean;
   onAvatarChange: (avatarId: string | null) => void;
@@ -663,7 +832,9 @@ function VideoPromptBar({
           >
             Describe the Reel
           </label>
-          <ReferenceImageAttachment disabled={isGenerating} />
+          <span className="rounded-full border border-border bg-background/35 px-2.5 py-1 text-[11px] font-semibold text-muted">
+            Pro video
+          </span>
         </div>
 
         <textarea
@@ -684,10 +855,15 @@ function VideoPromptBar({
       <div className="mt-3 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <div className="w-[150px] max-w-full">
-            <RatioSelector value={ratio} onChange={onRatioChange} />
+            <RatioSelector
+              disabled
+              value={ratio}
+              onChange={onRatioChange}
+            />
           </div>
           <div className="w-[132px] max-w-full">
             <VideoCountSelector
+              disabled
               value={videoCount}
               onChange={onVideoCountChange}
             />
@@ -706,14 +882,14 @@ function VideoPromptBar({
           <button
             type="button"
             onClick={onEnhancePrompt}
-            disabled={VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating}
+            disabled={generationLocked || !prompt.trim() || isGenerating}
             aria-label={
-              VIDEO_GENERATION_LOCKED
+              generationLocked
                 ? "Video prompt enhancement locked"
                 : "Enhance video prompt"
             }
             title={
-              VIDEO_GENERATION_LOCKED
+              generationLocked
                 ? "Prompt enhancement is locked"
                 : undefined
             }
@@ -726,18 +902,20 @@ function VideoPromptBar({
 
         <button
           type="submit"
-          disabled={VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating || !avatar}
+          disabled={
+            generationLocked || !prompt.trim() || isGenerating || !avatar
+          }
           aria-label={
-            VIDEO_GENERATION_LOCKED
+            generationLocked
               ? "Video generation locked"
               : "Generate video"
           }
           title={
-            VIDEO_GENERATION_LOCKED ? "Video generation is locked" : undefined
+            generationLocked ? "Video generation is locked" : undefined
           }
           className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-primary/35 bg-brand-soft px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/55 hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-80 xl:w-auto xl:min-w-[236px]"
         >
-          {VIDEO_GENERATION_LOCKED ? (
+          {generationLocked ? (
             <>
               <Lock className="size-4" aria-hidden="true" />
               Generation unavailable in preview
@@ -760,9 +938,11 @@ function VideoPromptBar({
 }
 
 function RatioSelector({
+  disabled = false,
   onChange,
   value,
 }: {
+  disabled?: boolean;
   onChange: (ratio: VideoRatio) => void;
   value: VideoRatio;
 }) {
@@ -858,6 +1038,8 @@ function RatioSelector({
       <button
         ref={triggerRef}
         type="button"
+        disabled={disabled}
+        aria-disabled={disabled}
         aria-expanded={open}
         aria-controls={controlId}
         aria-haspopup="menu"
@@ -880,9 +1062,11 @@ function RatioSelector({
 }
 
 function VideoCountSelector({
+  disabled = false,
   onChange,
   value,
 }: {
+  disabled?: boolean;
   onChange: (count: VideoCount) => void;
   value: VideoCount;
 }) {
@@ -978,6 +1162,8 @@ function VideoCountSelector({
       <button
         ref={triggerRef}
         type="button"
+        disabled={disabled}
+        aria-disabled={disabled}
         aria-expanded={open}
         aria-controls={controlId}
         aria-haspopup="listbox"

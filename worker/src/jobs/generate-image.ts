@@ -1,4 +1,10 @@
 import { generateOpenAiImageBuffer } from "../lib/openai-image.js";
+import {
+  AI_STUDIO_IMAGE_HEIGHT,
+  AI_STUDIO_IMAGE_RATIO,
+  AI_STUDIO_IMAGE_WIDTH,
+  prepareAIStudioImageOutput,
+} from "../lib/image-output.js";
 import { uploadBufferToS3 } from "../lib/s3.js";
 import type { BackgroundJobRow } from "../types.js";
 import type { WorkerJobOutput } from "./index.js";
@@ -41,7 +47,8 @@ export async function runGenerateImageJob(
   const input = getInput(job);
   const userId = getPathSegment(job.user_id, "user");
   const projectId = getPathSegment(job.project_id, "default");
-  const imageBuffer = await generateOpenAiImageBuffer(input.prompt);
+  const generatedImageBuffer = await generateOpenAiImageBuffer(input.prompt);
+  const imageBuffer = await prepareAIStudioImageOutput(generatedImageBuffer);
 
   const uploaded = await uploadBufferToS3({
     buffer: imageBuffer,
@@ -52,9 +59,12 @@ export async function runGenerateImageJob(
 
   return {
     generationId: input.generationId,
+    height: AI_STUDIO_IMAGE_HEIGHT,
     key: uploaded.key,
     ok: true,
+    ratio: AI_STUDIO_IMAGE_RATIO,
     url: uploaded.url,
+    width: AI_STUDIO_IMAGE_WIDTH,
   };
 }
 

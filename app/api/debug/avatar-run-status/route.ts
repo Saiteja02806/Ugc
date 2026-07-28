@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
 import { getBackgroundJobById } from "@/lib/jobs/background-jobs";
-import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
+import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 
 type AvatarRunOutput = {
   ok?: unknown;
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
   let user;
 
   try {
-    user = await requireFirebaseUser(request);
+    user = await requireAIStudioProUser(request);
   } catch (error) {
     const status = error instanceof FirebaseAuthRequestError ? error.status : 500;
     return NextResponse.json({ ok: false, error: error instanceof FirebaseAuthRequestError ? error.message : "Could not verify your session." }, { status });

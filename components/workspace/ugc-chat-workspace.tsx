@@ -13,7 +13,7 @@ import {
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { ReferenceImageAttachment } from "@/components/generation/reference-image-attachment";
+import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +62,6 @@ type GeneratedAsset = {
 
 const aspectRatios: AspectRatio[] = ["4:5", "1:1", "9:16", "16:9"];
 const imageCountOptions: ImageCount[] = [1, 2, 4];
-const IMAGE_GENERATION_LOCKED = true;
 const instagramImageFormatLabels: Record<AspectRatio, string> = {
   "4:5": "Feed",
   "1:1": "Square",
@@ -85,7 +84,7 @@ async function pollImageJob(jobId: string, token: string) {
     await sleep(attempt === 0 ? 900 : 2_500);
 
     const response = await fetch(
-      `/api/image-test/status?jobId=${encodeURIComponent(jobId)}`,
+      `/api/ai-studio/images/status?jobId=${encodeURIComponent(jobId)}`,
       {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
@@ -136,22 +135,25 @@ export function UgcChatWorkspace() {
 }
 
 export function ImageGenerationStudioPanel({
+  accessState = "locked",
   active = true,
 }: {
+  accessState?: AIStudioAccessState;
   active?: boolean;
 }) {
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("4:5");
-  const [imageCount, setImageCount] = useState<ImageCount>(4);
+  const [imageCount, setImageCount] = useState<ImageCount>(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAssets, setGeneratedAssets] = useState<GeneratedAsset[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [generationFailed, setGenerationFailed] = useState(false);
+  const generationLocked = accessState !== "pro";
 
   async function generateFromPrompt(rawPrompt: string) {
     const trimmedPrompt = rawPrompt.trim();
 
-    if (IMAGE_GENERATION_LOCKED || !trimmedPrompt || isGenerating) {
+    if (generationLocked || !trimmedPrompt || isGenerating) {
       return;
     }
 
@@ -166,15 +168,13 @@ export function ImageGenerationStudioPanel({
         throw new Error("Sign in before generating images.");
       }
 
-      const response = await fetch("/api/image-test/generate", {
+      const response = await fetch("/api/ai-studio/images/generate", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          aspectRatio,
-          imageCount,
           prompt: trimmedPrompt,
         }),
       });
@@ -222,7 +222,7 @@ export function ImageGenerationStudioPanel({
     const enhancement =
       "Production notes: preserve the subject and intent, improve composition, lighting, clarity, and platform-ready framing without adding unrequested text or objects.";
 
-    if (IMAGE_GENERATION_LOCKED || !trimmedPrompt) {
+    if (generationLocked || !trimmedPrompt) {
       return;
     }
 
@@ -256,6 +256,7 @@ export function ImageGenerationStudioPanel({
 
       <ImageGenerationComposer
         aspectRatio={aspectRatio}
+        generationLocked={generationLocked}
         imageCount={imageCount}
         isGenerating={isGenerating}
         prompt={prompt}
@@ -372,6 +373,7 @@ function ResultsArea({
 function ImageGenerationComposer({
   active,
   aspectRatio,
+  generationLocked,
   imageCount,
   isGenerating,
   onAspectRatioChange,
@@ -384,6 +386,7 @@ function ImageGenerationComposer({
 }: {
   active: boolean;
   aspectRatio: AspectRatio;
+  generationLocked: boolean;
   imageCount: ImageCount;
   isGenerating: boolean;
   onAspectRatioChange: (ratio: AspectRatio) => void;
@@ -426,7 +429,9 @@ function ImageGenerationComposer({
           >
             Describe the visual
           </label>
-          <ReferenceImageAttachment disabled={isGenerating} />
+          <span className="rounded-full border border-border bg-background/35 px-2.5 py-1 text-[11px] font-semibold text-muted">
+            Pro image
+          </span>
         </div>
 
         <textarea
@@ -448,12 +453,14 @@ function ImageGenerationComposer({
         <div className="flex flex-wrap items-center gap-2">
           <div className="w-[150px] max-w-full">
             <AspectRatioSelector
+              disabled
               value={aspectRatio}
               onChange={onAspectRatioChange}
             />
           </div>
           <div className="w-[132px] max-w-full">
             <ImageCountSelector
+              disabled
               value={imageCount}
               onChange={onImageCountChange}
             />
@@ -461,14 +468,14 @@ function ImageGenerationComposer({
           <button
             type="button"
             onClick={onEnhancePrompt}
-            disabled={IMAGE_GENERATION_LOCKED || !prompt.trim() || isGenerating}
+            disabled={generationLocked || !prompt.trim() || isGenerating}
             aria-label={
-              IMAGE_GENERATION_LOCKED
+              generationLocked
                 ? "Image prompt enhancement locked"
                 : "Enhance image prompt"
             }
             title={
-              IMAGE_GENERATION_LOCKED
+              generationLocked
                 ? "Prompt enhancement is locked"
                 : undefined
             }
@@ -481,18 +488,18 @@ function ImageGenerationComposer({
 
         <button
           type="submit"
-          disabled={IMAGE_GENERATION_LOCKED || !prompt.trim() || isGenerating}
+          disabled={generationLocked || !prompt.trim() || isGenerating}
           aria-label={
-            IMAGE_GENERATION_LOCKED
+            generationLocked
               ? "Image generation locked"
               : "Generate image"
           }
           title={
-            IMAGE_GENERATION_LOCKED ? "Image generation is locked" : undefined
+            generationLocked ? "Image generation is locked" : undefined
           }
           className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-primary/35 bg-brand-soft px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/55 hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-80 lg:w-auto lg:min-w-[236px]"
         >
-          {IMAGE_GENERATION_LOCKED ? (
+          {generationLocked ? (
             <>
               <Lock className="size-4" aria-hidden="true" />
               Generation unavailable in preview
@@ -515,9 +522,11 @@ function ImageGenerationComposer({
 }
 
 function AspectRatioSelector({
+  disabled = false,
   onChange,
   value,
 }: {
+  disabled?: boolean;
   onChange: (ratio: AspectRatio) => void;
   value: AspectRatio;
 }) {
@@ -640,6 +649,8 @@ function AspectRatioSelector({
       <button
         ref={triggerRef}
         type="button"
+        disabled={disabled}
+        aria-disabled={disabled}
         aria-expanded={open}
         aria-controls={controlId}
         aria-haspopup="menu"
@@ -688,9 +699,11 @@ function RatioGlyph({
 }
 
 function ImageCountSelector({
+  disabled = false,
   onChange,
   value,
 }: {
+  disabled?: boolean;
   onChange: (count: ImageCount) => void;
   value: ImageCount;
 }) {
@@ -812,6 +825,8 @@ function ImageCountSelector({
       <button
         ref={triggerRef}
         type="button"
+        disabled={disabled}
+        aria-disabled={disabled}
         aria-expanded={open}
         aria-controls={controlId}
         aria-haspopup="listbox"

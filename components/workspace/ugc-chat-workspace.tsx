@@ -240,10 +240,20 @@ export function ImageGenerationStudioPanel({
       aria-labelledby="ai-studio-images-tab"
       hidden={!active}
       className={cn(
-        "min-h-0 flex-1 gap-4 lg:grid lg:grid-cols-[minmax(320px,0.72fr)_minmax(0,1.28fr)]",
+        "min-h-0 flex-1 flex-col gap-4",
         active ? "flex flex-col" : "hidden",
       )}
     >
+      <ResultsArea
+        aspectRatio={aspectRatio}
+        generatedAssets={generatedAssets}
+        generationFailed={generationFailed}
+        imageCount={imageCount}
+        isGenerating={isGenerating}
+        selectedAssetId={selectedAssetId}
+        onSelectAsset={setSelectedAssetId}
+      />
+
       <ImageGenerationComposer
         aspectRatio={aspectRatio}
         imageCount={imageCount}
@@ -256,16 +266,6 @@ export function ImageGenerationStudioPanel({
         onSubmit={handleSubmit}
         onTextareaKeyDown={handleTextareaKeyDown}
         active={active}
-      />
-
-      <ResultsArea
-        aspectRatio={aspectRatio}
-        generatedAssets={generatedAssets}
-        generationFailed={generationFailed}
-        imageCount={imageCount}
-        isGenerating={isGenerating}
-        selectedAssetId={selectedAssetId}
-        onSelectAsset={setSelectedAssetId}
       />
     </div>
   );
@@ -289,28 +289,26 @@ function ResultsArea({
   selectedAssetId: string | null;
 }) {
   return (
-    <section className="relative flex min-h-[420px] min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-panel)] border border-border bg-[#191919] shadow-[0_20px_55px_rgb(0_0_0_/_0.22)] lg:min-h-0">
-      <header className="relative z-10 flex items-center justify-between gap-3 border-b border-border/80 bg-card-muted/45 px-4 py-3 sm:px-5">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">
-            Preview canvas
-          </h2>
-          <p className="mt-0.5 text-xs text-muted">
-            {aspectRatio} {instagramImageFormatLabels[aspectRatio]} · {imageCount}{" "}
-            {imageCount === 1 ? "image" : "images"}
-          </p>
+    <section className="relative flex min-h-[360px] min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-panel)] border border-border bg-[#191919] shadow-[0_20px_55px_rgb(0_0_0_/_0.22)] md:min-h-0">
+      <header className="relative z-10 flex min-h-12 items-center justify-between gap-3 border-b border-border/70 bg-card-muted/35 px-4 sm:px-5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <ImageIcon className="size-4 shrink-0 text-primary" aria-hidden="true" />
+          <h2 className="text-sm font-semibold text-foreground">Images</h2>
+          <span className="text-xs text-muted">
+            {aspectRatio} {instagramImageFormatLabels[aspectRatio]}
+          </span>
         </div>
-        <span className="rounded-full border border-border bg-background/35 px-2.5 py-1 text-[11px] font-semibold text-muted">
+        <span className="text-xs font-medium text-muted">
           {generatedAssets.length > 0
             ? `${generatedAssets.length} generated`
-            : "No output yet"}
+            : `${imageCount} ${imageCount === 1 ? "output" : "outputs"}`}
         </span>
       </header>
 
       {generationFailed ? (
         <div
           role="alert"
-          className="absolute left-4 top-20 z-20 w-fit rounded-full border border-error/35 bg-[#2A2020] px-3 py-2 text-xs font-semibold text-error shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
+          className="absolute left-4 top-16 z-20 w-fit rounded-full border border-error/35 bg-[#2A2020] px-3 py-2 text-xs font-semibold text-error shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
         >
           <div className="flex items-center gap-2">
             <AlertCircle className="size-3.5" aria-hidden="true" />
@@ -322,7 +320,7 @@ function ResultsArea({
       {isGenerating ? (
         <div
           role="status"
-          className="absolute left-4 top-20 z-20 w-fit rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
+          className="absolute left-4 top-16 z-20 w-fit rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
         >
           <div className="flex items-center gap-2">
             <Loader2 className="size-3.5 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
@@ -353,29 +351,17 @@ function ResultsArea({
             className="absolute inset-0 opacity-[0.13] [background-image:linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] [background-size:32px_32px]"
           />
 
-          <div
-            className="relative flex h-[270px] max-h-[72%] min-h-[220px] w-auto max-w-[78%] flex-col overflow-hidden rounded-[18px] border border-dashed border-border-strong bg-card-muted/55 shadow-[0_26px_70px_rgb(0_0_0_/_0.28)] sm:h-[320px]"
-            style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
-          >
-            <div className="h-1 w-full bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]" />
-            <div className="flex flex-1 items-center justify-center p-5">
-              <div className="max-w-[230px]">
-                <span className="mx-auto flex size-11 items-center justify-center rounded-[12px] border border-primary/25 bg-brand-soft text-primary shadow-sm">
-                  <ImageIcon className="size-5" aria-hidden="true" />
-                </span>
-                <h3 className="mt-4 text-sm font-semibold text-foreground">
-                  Your image preview
-                </h3>
-                <p className="mt-1.5 text-xs leading-5 text-muted">
-                  Configure the creative brief now. Generated images will
-                  appear here when creation is enabled.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between border-t border-border/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-subtle">
-              <span>{instagramImageFormatLabels[aspectRatio]}</span>
-              <span>{aspectRatio}</span>
-            </div>
+          <div className="relative max-w-sm">
+            <span className="mx-auto flex size-12 items-center justify-center rounded-[14px] border border-primary/25 bg-brand-soft text-primary shadow-sm">
+              <ImageIcon className="size-5" aria-hidden="true" />
+            </span>
+            <h3 className="mt-4 text-sm font-semibold text-foreground">
+              No images yet
+            </h3>
+            <p className="mt-1.5 text-sm leading-6 text-muted">
+              Describe what you want to create below. Your generated images
+              will appear here.
+            </p>
           </div>
         </div>
       )}
@@ -423,33 +409,16 @@ function ImageGenerationComposer({
     }
 
     textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 132), 220)}px`;
+    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 56), 112)}px`;
   }, [active, prompt]);
 
   return (
     <form
       noValidate
       onSubmit={onSubmit}
-      className="flex min-h-[420px] w-full flex-col rounded-[var(--radius-panel)] border border-border bg-card p-4 shadow-card sm:p-5 lg:min-h-0"
+      className="mx-auto w-full max-w-[1120px] shrink-0 rounded-[var(--radius-panel)] border border-border bg-card p-3 shadow-[0_18px_48px_rgb(0_0_0_/_0.24)]"
     >
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-            Creative brief
-          </p>
-          <h2 className="mt-1 text-base font-semibold text-foreground">
-            Design an image
-          </h2>
-          <p className="mt-1 text-xs leading-5 text-muted">
-            Set the visual direction and output before generation is enabled.
-          </p>
-        </div>
-        <span className="rounded-full border border-border bg-card-muted px-2.5 py-1 text-[11px] font-semibold text-muted">
-          Images
-        </span>
-      </header>
-
-      <div className="mt-5 rounded-[var(--radius-card)] border border-border bg-card-muted/65 p-3 transition-[border-color,box-shadow] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
+      <div className="rounded-[var(--radius-card)] border border-border bg-card-muted/65 px-3 py-2 transition-[border-color,box-shadow] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
         <div className="flex items-center justify-between gap-3">
           <label
             htmlFor={promptId}
@@ -470,54 +439,46 @@ function ImageGenerationComposer({
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
           onKeyDown={onTextareaKeyDown}
-          className="mt-2 max-h-[220px] min-h-[132px] w-full resize-none overflow-y-hidden bg-transparent text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle"
+          className="mt-1 max-h-28 min-h-14 w-full resize-none overflow-y-auto bg-transparent text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle"
           placeholder="Describe the subject, setting, composition, lighting, and mood…"
         />
       </div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-        <div>
-          <p className="mb-2 text-xs font-semibold text-muted">Format</p>
-          <AspectRatioSelector
-            value={aspectRatio}
-            onChange={onAspectRatioChange}
-          />
+      <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="w-[150px] max-w-full">
+            <AspectRatioSelector
+              value={aspectRatio}
+              onChange={onAspectRatioChange}
+            />
+          </div>
+          <div className="w-[132px] max-w-full">
+            <ImageCountSelector
+              value={imageCount}
+              onChange={onImageCountChange}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={onEnhancePrompt}
+            disabled={IMAGE_GENERATION_LOCKED || !prompt.trim() || isGenerating}
+            aria-label={
+              IMAGE_GENERATION_LOCKED
+                ? "Image prompt enhancement locked"
+                : "Enhance image prompt"
+            }
+            title={
+              IMAGE_GENERATION_LOCKED
+                ? "Prompt enhancement is locked"
+                : undefined
+            }
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+            Enhance
+          </button>
         </div>
-        <div>
-          <p className="mb-2 text-xs font-semibold text-muted">Outputs</p>
-          <ImageCountSelector
-            value={imageCount}
-            onChange={onImageCountChange}
-          />
-        </div>
-      </div>
 
-      <button
-        type="button"
-        onClick={onEnhancePrompt}
-        disabled={IMAGE_GENERATION_LOCKED || !prompt.trim() || isGenerating}
-        aria-label={
-          IMAGE_GENERATION_LOCKED
-            ? "Image prompt enhancement locked"
-            : "Enhance image prompt"
-        }
-        title={
-          IMAGE_GENERATION_LOCKED ? "Prompt enhancement is locked" : undefined
-        }
-        className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-45"
-      >
-        <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-        Enhance prompt
-      </button>
-
-      <div className="mt-auto pt-5">
-        <div className="mb-3 flex items-start gap-2.5 rounded-[var(--radius-control)] border border-border bg-background/30 px-3 py-2.5 text-xs leading-5 text-muted">
-          <Lock className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
-          <p>
-            Your brief is not submitted or generated while this workspace is in
-            preview.
-          </p>
-        </div>
         <button
           type="submit"
           disabled={IMAGE_GENERATION_LOCKED || !prompt.trim() || isGenerating}
@@ -529,7 +490,7 @@ function ImageGenerationComposer({
           title={
             IMAGE_GENERATION_LOCKED ? "Image generation is locked" : undefined
           }
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-primary/35 bg-brand-soft px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/55 hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-80"
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-primary/35 bg-brand-soft px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/55 hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-80 lg:w-auto lg:min-w-[236px]"
         >
           {IMAGE_GENERATION_LOCKED ? (
             <>

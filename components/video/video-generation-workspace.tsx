@@ -109,6 +109,7 @@ type GeneratedVideo = {
   createdAt?: string;
   duration?: string;
   id: string;
+  jobId: string;
   mediaAssetId?: string;
   prompt: string;
   ratio: VideoRatio;
@@ -420,6 +421,7 @@ export function VideoGenerationStudioPanel({
         avatarName: selectedAvatar.label,
         createdAt: "Just now",
         id: videoId,
+        jobId: data.jobId,
         mediaAssetId: mediaAsset?.id,
         prompt: trimmedPrompt,
         ratio: "9:16",
@@ -464,7 +466,7 @@ export function VideoGenerationStudioPanel({
     setPrompt(`${trimmedPrompt}\n\n${enhancement}`);
   }
 
-  function handleEditVideo(video: GeneratedVideo) {
+  async function handleEditVideo(video: GeneratedVideo) {
     setSelectedVideoId(video.id);
 
     if (!video.url) {
@@ -472,14 +474,41 @@ export function VideoGenerationStudioPanel({
       return;
     }
 
-    if (!video.mediaAssetId) {
-      setActionNotice(
-        "The generated video is still being added to Creative Assets.",
+    let mediaAssetId = video.mediaAssetId;
+
+    if (!mediaAssetId) {
+      setActionNotice("Adding this video to Creative Assets...");
+
+      let mediaAsset: MediaAsset | null = null;
+
+      try {
+        const token = await getCurrentUserIdToken();
+        mediaAsset = token
+          ? await findGeneratedVideoAsset(video.jobId, token)
+          : null;
+      } catch (error) {
+        console.error("Could not refresh the generated video asset:", error);
+      }
+
+      if (!mediaAsset) {
+        setActionNotice(
+          "The video is ready, but Creative Assets is still syncing. Try Edit again.",
+        );
+        return;
+      }
+
+      mediaAssetId = mediaAsset.id;
+      setGeneratedVideos((currentVideos) =>
+        currentVideos.map((currentVideo) =>
+          currentVideo.id === video.id
+            ? { ...currentVideo, mediaAssetId }
+            : currentVideo,
+        ),
       );
-      return;
     }
 
-    router.push(`/edit/${encodeURIComponent(video.mediaAssetId)}`);
+    setActionNotice(null);
+    router.push(`/edit/${encodeURIComponent(mediaAssetId)}`);
   }
 
   function handleUseAsHook(video: GeneratedVideo) {
@@ -576,25 +605,29 @@ async function fetchPersonalInfluencers(token: string) {
 
 async function findGeneratedVideoAsset(jobId: string, token: string) {
   for (let attempt = 0; attempt < 8; attempt += 1) {
-    const response = await fetch("/api/media?collection=video", {
-      cache: "no-store",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = (await response.json()) as
-      | { assets: MediaAsset[]; ok: true }
-      | { error?: string; ok?: false };
+    try {
+      const response = await fetch("/api/media?collection=video", {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await response.json()) as
+        | { assets: MediaAsset[]; ok: true }
+        | { error?: string; ok?: false };
 
-    if (response.ok && data.ok === true) {
-      const asset = data.assets.find(
-        (candidate) =>
-          candidate.sourceType === "generated_video" &&
-          candidate.sourceRecordId === jobId &&
-          candidate.status === "ready",
-      );
+      if (response.ok && data.ok === true) {
+        const asset = data.assets.find(
+          (candidate) =>
+            candidate.sourceType === "generated_video" &&
+            candidate.sourceRecordId === jobId &&
+            candidate.status === "ready",
+        );
 
-      if (asset) {
-        return asset;
+        if (asset) {
+          return asset;
+        }
       }
+    } catch {
+      // A later retry or the Edit action can recover a delayed media record.
     }
 
     if (attempt < 7) {

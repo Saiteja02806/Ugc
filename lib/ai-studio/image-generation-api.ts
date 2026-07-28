@@ -32,6 +32,8 @@ type ImageJobOutput = {
 };
 
 const IMAGE_JOB_TYPE = "generate_image";
+const IMAGE_GENERATION_FAILED_MESSAGE =
+  "Image generation failed. Please try again.";
 const MAX_PROMPT_LENGTH = 2_000;
 const TERMINAL_STATUSES = new Set(["cancelled", "completed", "failed"]);
 const UUID_PATTERN =
@@ -150,10 +152,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
       });
     } catch (error) {
       await markBackgroundJobFailed({
-        errorMessage:
-          error instanceof Error
-            ? error.message
-            : "Could not enqueue image generation.",
+        errorMessage: IMAGE_GENERATION_FAILED_MESSAGE,
         jobId: backgroundJob.id,
       }).catch((persistenceError) => {
         console.error(
@@ -242,7 +241,7 @@ export async function handleAIStudioImageStatus(request: Request) {
 
     return NextResponse.json({
       job: {
-        error: job.errorMessage,
+        error: job.errorMessage ? IMAGE_GENERATION_FAILED_MESSAGE : null,
         id: job.id,
         isTerminal: TERMINAL_STATUSES.has(job.status),
         output: getSafeOutput(job.output),

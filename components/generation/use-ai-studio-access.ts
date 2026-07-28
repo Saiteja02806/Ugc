@@ -36,7 +36,9 @@ export function useAIStudioAccess() {
         const token = await getCurrentUserIdToken();
 
         if (!token) {
-          setAccessState("locked");
+          if (!controller.signal.aborted) {
+            setAccessState("locked");
+          }
           return;
         }
 

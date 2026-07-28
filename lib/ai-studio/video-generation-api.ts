@@ -16,6 +16,7 @@ import {
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
+import { isTrustedStorageUrl } from "@/lib/storage/s3";
 
 type GenerateVideoRequest = {
   avatarImageUrl?: unknown;
@@ -32,6 +33,8 @@ type VideoJobOutput = {
 };
 
 const VIDEO_JOB_TYPE = "generate_hook_video";
+const VIDEO_GENERATION_FAILED_MESSAGE =
+  "Video generation failed. Please try again.";
 const MAX_PROMPT_LENGTH = 1_000;
 const TERMINAL_STATUSES = new Set(["cancelled", "completed", "failed"]);
 const UUID_PATTERN =
@@ -51,7 +54,11 @@ function cleanHttpsUrl(value: unknown) {
   try {
     const url = new URL(value.trim());
 
-    return url.protocol === "https:" ? url.toString() : null;
+    if (url.protocol !== "https:") {
+      return null;
+    }
+
+    return isTrustedStorageUrl(url.toString()) ? url.toString() : null;
   } catch {
     return null;
   }
@@ -108,7 +115,7 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   const body = (await request.json().catch(() => null)) as
     | GenerateVideoRequest
     | null;
-  const prompt = cleanPrompt(body?.prompt ?? body?.hookIdea);
+  const prompt = cleanPrompt(body?.prompt) || cleanPrompt(body?.hookIdea);
   const avatarImageUrl = cleanHttpsUrl(body?.avatarImageUrl);
 
   if (!prompt) {
@@ -178,10 +185,7 @@ export async function handleAIStudioVideoGeneration(request: Request) {
       });
     } catch (error) {
       await markBackgroundJobFailed({
-        errorMessage:
-          error instanceof Error
-            ? error.message
-            : "Could not enqueue video generation.",
+        errorMessage: VIDEO_GENERATION_FAILED_MESSAGE,
         jobId: backgroundJob.id,
       }).catch((persistenceError) => {
         console.error(
@@ -270,7 +274,7 @@ export async function handleAIStudioVideoStatus(request: Request) {
 
     return NextResponse.json({
       job: {
-        error: job.errorMessage,
+        error: job.errorMessage ? VIDEO_GENERATION_FAILED_MESSAGE : null,
         id: job.id,
         isTerminal: TERMINAL_STATUSES.has(job.status),
         output: getSafeOutput(job.output),

@@ -8,7 +8,8 @@ import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "AI Studio",
-  description: "Configure Instagram images and short-form videos in one focused workspace.",
+  description:
+    "Configure images and short-form videos in one focused workspace.",
 };
 
 export default async function AIStudioPage({

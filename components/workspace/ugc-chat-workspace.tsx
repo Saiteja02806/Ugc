@@ -220,7 +220,7 @@ export function ImageGenerationStudioPanel({
   function handleEnhancePrompt() {
     const trimmedPrompt = prompt.trim();
     const enhancement =
-      "Production notes: preserve the subject and intent, improve composition, lighting, clarity, and Instagram-ready framing without adding unrequested text or objects.";
+      "Production notes: preserve the subject and intent, improve composition, lighting, clarity, and platform-ready framing without adding unrequested text or objects.";
 
     if (IMAGE_GENERATION_LOCKED || !trimmedPrompt) {
       return;
@@ -367,8 +367,8 @@ function ResultsArea({
                   Your image preview
                 </h3>
                 <p className="mt-1.5 text-xs leading-5 text-muted">
-                  Configure the creative brief now. Generated Instagram images
-                  will appear here when creation is enabled.
+                  Configure the creative brief now. Generated images will
+                  appear here when creation is enabled.
                 </p>
               </div>
             </div>
@@ -438,7 +438,7 @@ function ImageGenerationComposer({
             Creative brief
           </p>
           <h2 className="mt-1 text-base font-semibold text-foreground">
-            Design an Instagram image
+            Design an image
           </h2>
           <p className="mt-1 text-xs leading-5 text-muted">
             Set the visual direction and output before generation is enabled.

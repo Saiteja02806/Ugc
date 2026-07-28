@@ -590,8 +590,8 @@ function VideoResultsArea({
                   Your Reel preview
                 </h3>
                 <p className="mt-1.5 text-xs leading-5 text-muted">
-                  Configure the brief and presenter now. Generated Instagram
-                  videos will appear here when creation is enabled.
+                  Configure the brief and presenter now. Generated videos will
+                  appear here when creation is enabled.
                 </p>
               </div>
             </div>
@@ -675,7 +675,7 @@ function VideoPromptBar({
             Creative brief
           </p>
           <h2 className="mt-1 text-base font-semibold text-foreground">
-            Plan an Instagram Reel
+            Plan a short-form video
           </h2>
           <p className="mt-1 text-xs leading-5 text-muted">
             Define the concept, framing, and on-camera presenter.

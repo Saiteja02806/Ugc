@@ -43,16 +43,11 @@ export function AIStudioWorkspace({
   }
 
   return (
-    <section className="relative flex min-h-[calc(100dvh-4rem)] flex-1 flex-col overflow-x-hidden bg-background px-4 py-4 text-foreground sm:px-6 md:h-dvh md:min-h-0 md:overflow-hidden lg:px-8">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_70%_0%,color-mix(in_srgb,var(--instagram-rose)_10%,transparent),transparent_52%),radial-gradient(circle_at_28%_0%,color-mix(in_srgb,var(--instagram-orange)_8%,transparent),transparent_48%)]"
-      />
-
-      <div className="relative mx-auto flex min-h-0 w-full max-w-[1480px] flex-1 flex-col">
-        <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 pb-4">
+    <section className="flex min-h-[calc(100dvh-4rem)] flex-1 flex-col overflow-x-hidden bg-background px-4 py-4 text-foreground sm:px-6 md:h-dvh md:min-h-0 md:overflow-hidden lg:px-8">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1480px] flex-1 flex-col">
+        <header className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-[11px] border border-border bg-card-muted text-primary shadow-sm">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-border bg-card-muted text-primary">
               <Sparkles className="size-4" aria-hidden="true" />
             </span>
             <div className="min-w-0">
@@ -69,7 +64,7 @@ export function AIStudioWorkspace({
             <Badge
               variant="secondary"
               className={cn(
-                "hidden w-fit border bg-card/80 shadow-sm sm:inline-flex",
+                "hidden w-fit border bg-card-muted sm:inline-flex",
                 accessState === "pro"
                   ? "border-primary/30 text-primary"
                   : "border-border text-muted",
@@ -124,7 +119,7 @@ function AIStudioModeToggle({
 }) {
   return (
     <div
-      className="inline-grid grid-cols-2 gap-1 rounded-full border border-border bg-card-muted/80 p-1 shadow-sm"
+      className="inline-grid grid-cols-2 gap-1 rounded-[12px] border border-border bg-card-muted p-1"
       role="tablist"
       aria-label="AI Studio mode"
     >
@@ -143,10 +138,10 @@ function AIStudioModeToggle({
             aria-selected={selected}
             onClick={() => onChange(mode.value)}
             className={cn(
-              "inline-flex h-8 min-w-[72px] items-center justify-center rounded-full px-3 text-sm font-semibold transition-[background-color,color,box-shadow] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:h-9 sm:min-w-[82px] sm:px-4",
+              "inline-flex h-8 min-w-[72px] items-center justify-center rounded-[8px] px-3 text-sm font-semibold transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:h-9 sm:min-w-[82px] sm:px-4",
               selected
-                ? "bg-card text-foreground shadow-sm ring-1 ring-border"
-                : "bg-transparent text-muted hover:bg-card/55 hover:text-foreground",
+                ? "bg-card text-foreground ring-1 ring-border"
+                : "bg-transparent text-muted hover:bg-card hover:text-foreground",
             )}
           >
             {mode.label}

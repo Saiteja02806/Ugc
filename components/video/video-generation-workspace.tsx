@@ -700,8 +700,8 @@ function VideoResultsArea({
   videoCount: VideoCount;
 }) {
   return (
-    <section className="relative flex min-h-[360px] min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-panel)] border border-border bg-[#191919] shadow-[0_20px_55px_rgb(0_0_0_/_0.22)] md:min-h-0">
-      <header className="relative z-10 flex min-h-12 items-center justify-between gap-3 border-b border-border/70 bg-card-muted/35 px-4 sm:px-5">
+    <section className="relative flex min-h-[360px] min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-panel)] border border-border bg-[#1B1B1B] md:min-h-0">
+      <header className="relative z-10 flex min-h-12 items-center justify-between gap-3 border-b border-border/70 bg-[#202020] px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-2.5">
           <Video className="size-4 shrink-0 text-primary" aria-hidden="true" />
           <h2 className="text-sm font-semibold text-foreground">Videos</h2>
@@ -764,27 +764,36 @@ function VideoResultsArea({
           ))}
         </div>
       ) : (
-        <div className="relative flex flex-1 items-center justify-center overflow-hidden px-5 py-8 text-center">
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,color-mix(in_srgb,var(--instagram-violet)_13%,transparent),transparent_30%),radial-gradient(circle_at_58%_62%,color-mix(in_srgb,var(--instagram-rose)_11%,transparent),transparent_36%)]"
-          />
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 opacity-[0.13] [background-image:linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] [background-size:32px_32px]"
-          />
+        <div className="flex flex-1 items-center justify-center overflow-hidden px-5 py-8 sm:px-8">
+          <div className="grid w-full max-w-xl items-center gap-7 text-left sm:grid-cols-[116px_minmax(0,1fr)]">
+            <div
+              aria-hidden="true"
+              className="mx-auto flex h-[176px] w-[104px] items-center justify-center rounded-[18px] border border-border-strong bg-card-muted p-2"
+            >
+              <div className="flex size-full items-center justify-center rounded-[12px] border border-dashed border-border-strong bg-[#1B1B1B]">
+                <Video className="size-6 text-muted-subtle" />
+              </div>
+            </div>
 
-          <div className="relative max-w-sm">
-            <span className="mx-auto flex size-12 items-center justify-center rounded-[14px] border border-primary/25 bg-brand-soft text-primary shadow-sm">
-              <Video className="size-5" aria-hidden="true" />
-            </span>
-            <h3 className="mt-4 text-sm font-semibold text-foreground">
-              No videos yet
-            </h3>
-            <p className="mt-1.5 text-sm leading-6 text-muted">
-              Describe your Reel and choose a presenter below. Generated videos
-              will appear here.
-            </p>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                Ready for your first video
+              </p>
+              <h3 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-foreground">
+                Start with the moment that earns attention.
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Define the hook, scene, and delivery, then choose a presenter.
+                Your finished video will open here for review.
+              </p>
+              <ul className="mt-4 grid grid-cols-3 gap-3 text-xs font-medium text-muted">
+                <li className="border-l-2 border-border-strong pl-2">Hook</li>
+                <li className="border-l-2 border-border-strong pl-2">Scene</li>
+                <li className="border-l-2 border-border-strong pl-2">
+                  Delivery
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       )}
@@ -855,37 +864,35 @@ function VideoPromptBar({
     <form
       noValidate
       onSubmit={onSubmit}
-      className="mx-auto w-full max-w-[1120px] shrink-0 rounded-[var(--radius-panel)] border border-border bg-card p-3 shadow-[0_18px_48px_rgb(0_0_0_/_0.24)]"
+      className="w-full shrink-0 rounded-[var(--radius-panel)] border border-border bg-card px-4 py-3 transition-colors focus-within:border-border-strong sm:px-5"
     >
-      <div className="rounded-[var(--radius-card)] border border-border bg-card-muted/65 px-3 py-2 transition-[border-color,box-shadow] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
-        <div className="flex items-center justify-between gap-3">
-          <label
-            htmlFor={promptId}
-            className="text-xs font-semibold text-foreground"
-          >
-            Describe the Reel
-          </label>
-          <span className="rounded-full border border-border bg-background/35 px-2.5 py-1 text-[11px] font-semibold text-muted">
-            Pro video
-          </span>
-        </div>
-
-        <textarea
-          id={promptId}
-          ref={textareaRef}
-          rows={1}
-          aria-label="Video prompt"
-          autoComplete="off"
-          name="videoPrompt"
-          value={prompt}
-          onChange={(event) => onPromptChange(event.target.value)}
-          onKeyDown={onTextareaKeyDown}
-          className="mt-1 max-h-28 min-h-14 w-full resize-none overflow-y-auto bg-transparent text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle"
-          placeholder="Describe the hook, scene, movement, delivery, and closing action…"
-        />
+      <div className="flex items-center justify-between gap-3">
+        <label
+          htmlFor={promptId}
+          className="text-xs font-semibold text-foreground"
+        >
+          Video brief
+        </label>
+        <span className="hidden text-[11px] font-medium text-muted-subtle sm:block">
+          Enter to generate | Shift + Enter for a new line
+        </span>
       </div>
 
-      <div className="mt-3 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+      <textarea
+        id={promptId}
+        ref={textareaRef}
+        rows={1}
+        aria-label="Video prompt"
+        autoComplete="off"
+        name="videoPrompt"
+        value={prompt}
+        onChange={(event) => onPromptChange(event.target.value)}
+        onKeyDown={onTextareaKeyDown}
+        className="mt-1 max-h-28 min-h-14 w-full resize-none overflow-y-auto bg-transparent text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle"
+        placeholder="Describe the hook, scene, movement, delivery, and closing action…"
+      />
+
+      <div className="mt-2 flex flex-col gap-3 border-t border-border/70 pt-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <div className="w-[150px] max-w-full">
             <RatioSelector
@@ -946,7 +953,7 @@ function VideoPromptBar({
           title={
             generationLocked ? "Video generation is locked" : undefined
           }
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-primary/35 bg-brand-soft px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/55 hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-80 xl:w-auto xl:min-w-[236px]"
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:bg-card-muted disabled:text-muted-subtle xl:w-auto xl:min-w-[220px]"
         >
           {generationLocked ? (
             <>

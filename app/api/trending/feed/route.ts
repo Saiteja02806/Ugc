@@ -17,6 +17,7 @@ import {
   createCurrentTrendingFeedProviders,
   getTrendingFeedProviderAvailability,
 } from "@/lib/trending/feed-items";
+import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
 import { getTrendingHookFeedProvider } from "@/lib/trending/trending-hook-feed";
 import { filterWallTextProvidersForRuntime } from "@/lib/trending/wall-text-access";
 
@@ -33,6 +34,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 export async function GET(request: Request) {
   let userId: string;
+  const hookVideosEnabled = areTrendingHookVideosEnabled(request);
 
   try {
     userId = (await requireFirebaseUser(request)).uid;
@@ -104,7 +106,9 @@ export async function GET(request: Request) {
         timezone: new URL(request.url).searchParams.get("timezone"),
         userId,
       }),
-      getTrendingHookFeedProvider(profile),
+      hookVideosEnabled
+        ? getTrendingHookFeedProvider(profile)
+        : Promise.resolve(undefined),
     ]);
     const profileState =
       dailyFeed.carousels.length > 0

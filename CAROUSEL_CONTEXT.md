@@ -1145,6 +1145,12 @@ The Hook videos product flow, when enabled from an approved surface, is:
    owner-scoped Hook video draft for the Library. Schedule persists or reuses the
    same reviewed selection, creates a real `scheduled_posts` draft, and opens the
    Scheduling workspace with that exact draft ID.
+8. Hook ideas are a server-gated rollout. The server-only
+   `TRENDING_HOOK_VIDEOS_ENABLED` variable must equal `true` to query or return
+   Hook items outside production. Missing or false values fail closed. The
+   deployed Vercel production environment and the `getugcpilot.com` production
+   hosts always override this flag to `false`; localhost can explicitly enable
+   it for testing.
 
 Protected influencer playback uses a five-minute, HTTP-only, same-origin preview
 session. The preview route revalidates the signed video, influencer, source, and

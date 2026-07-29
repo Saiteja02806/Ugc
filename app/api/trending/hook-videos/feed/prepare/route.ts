@@ -4,6 +4,7 @@ import {
   hookVideoErrorResponse,
   hookVideoJson,
 } from "@/lib/trending/hook-video-api";
+import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
 import {
   prepareTrendingHookIdeas,
   TrendingHookPreparationError,
@@ -13,6 +14,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  if (!areTrendingHookVideosEnabled(request)) {
+    return hookVideoJson(
+      {
+        code: "feature_unavailable",
+        error: "Hook ideas are not available.",
+        ok: false,
+      },
+      404,
+    );
+  }
+
   const auth = await authenticateHookVideoRequest(request);
 
   if (!auth.ok) {

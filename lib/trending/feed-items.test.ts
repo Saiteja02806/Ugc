@@ -12,6 +12,10 @@ import {
   type TrendingHookVideoFeedItem,
   type TrendingWallTextFeedItem,
 } from "./feed-items.ts";
+import {
+  parseTrendingHookVideosEnabled,
+  resolveTrendingHookVideosEnabled,
+} from "./hook-video-feature.ts";
 
 const carouselSource = {
   assignmentId: "assignment-1",
@@ -107,6 +111,58 @@ test("keeps incomplete format providers out of the current unified feed", () => 
       { format: "hook_video", state: "unavailable" },
       { format: "wall_text", state: "unavailable" },
     ],
+  );
+});
+
+test("enables Hook videos only for an explicit true server value", () => {
+  assert.equal(parseTrendingHookVideosEnabled("true"), true);
+  assert.equal(parseTrendingHookVideosEnabled(" TRUE "), true);
+  assert.equal(parseTrendingHookVideosEnabled("1"), false);
+  assert.equal(parseTrendingHookVideosEnabled("false"), false);
+  assert.equal(parseTrendingHookVideosEnabled(undefined), false);
+});
+
+test("always hides Hook videos on the real production deployment", () => {
+  assert.equal(
+    resolveTrendingHookVideosEnabled({
+      deploymentEnvironment: "production",
+      featureFlag: "true",
+      requestUrl: "https://preview.example.com/api/trending/feed",
+    }),
+    false,
+  );
+  assert.equal(
+    resolveTrendingHookVideosEnabled({
+      deploymentEnvironment: "preview",
+      featureFlag: "true",
+      requestUrl: "https://getugcpilot.com/api/trending/feed",
+    }),
+    false,
+  );
+  assert.equal(
+    resolveTrendingHookVideosEnabled({
+      featureFlag: "true",
+      requestUrl: "https://www.getugcpilot.com/api/trending/feed",
+    }),
+    false,
+  );
+});
+
+test("allows explicitly enabled Hook videos on localhost for testing", () => {
+  assert.equal(
+    resolveTrendingHookVideosEnabled({
+      deploymentEnvironment: "development",
+      featureFlag: "true",
+      requestUrl: "http://127.0.0.1:4173/api/trending/feed",
+    }),
+    true,
+  );
+  assert.equal(
+    resolveTrendingHookVideosEnabled({
+      featureFlag: "false",
+      requestUrl: "http://localhost:4173/api/trending/feed",
+    }),
+    false,
   );
 });
 

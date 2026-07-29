@@ -18,6 +18,7 @@ import {
   getTrendingFeedProviderAvailability,
 } from "@/lib/trending/feed-items";
 import { getTrendingHookFeedProvider } from "@/lib/trending/trending-hook-feed";
+import { filterWallTextProvidersForRuntime } from "@/lib/trending/wall-text-access";
 
 export const runtime = "nodejs";
 
@@ -82,7 +83,9 @@ export async function GET(request: Request) {
     const profile = await getBusinessProfileForUser(userId);
 
     if (!profile) {
-      const providers = createCurrentTrendingFeedProviders([]);
+      const providers = filterWallTextProvidersForRuntime(
+        createCurrentTrendingFeedProviders([]),
+      );
 
       return jsonResponse({
         carousels: [],
@@ -111,9 +114,11 @@ export async function GET(request: Request) {
           : dailyFeed.feed.state === "preparing"
             ? "preparing"
             : "ready";
-    const providers = createCurrentTrendingFeedProviders(
-      dailyFeed.carousels,
-      hookProvider,
+    const providers = filterWallTextProvidersForRuntime(
+      createCurrentTrendingFeedProviders(
+        dailyFeed.carousels,
+        hookProvider,
+      ),
     );
 
     return jsonResponse({

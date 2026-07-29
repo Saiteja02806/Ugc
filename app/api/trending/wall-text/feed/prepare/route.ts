@@ -9,11 +9,16 @@ import {
   prepareTrendingWallTextIdeas,
   TrendingWallTextPreparationError,
 } from "@/lib/trending/trending-wall-text-feed";
+import { isWallTextLocalDevelopmentEnabled } from "@/lib/trending/wall-text-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  if (!isWallTextLocalDevelopmentEnabled()) {
+    return json({ error: "Not found.", ok: false }, 404);
+  }
+
   let userId: string;
 
   try {

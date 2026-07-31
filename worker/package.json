@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "test": "npm run build && node --test dist/processor.test.js dist/jobs/publish-social-post.test.js dist/lib/carousel-replenishment.test.js dist/lib/edit-overlay-render-spec.test.js dist/lib/google-oauth.test.js dist/lib/image-output.test.js dist/lib/queue-message.test.js dist/lib/render-engine.test.js dist/lib/instagram-oauth.test.js dist/lib/instagram-publisher.test.js dist/lib/youtube-publisher.test.js"
+    "test": "npm run build && node --test dist/processor.test.js dist/jobs/publish-social-post.test.js dist/lib/carousel-replenishment.test.js dist/lib/edit-overlay-render-spec.test.js dist/lib/google-oauth.test.js dist/lib/image-output.test.js dist/lib/queue-message.test.js dist/lib/render-engine.test.js dist/lib/video-output.test.js dist/lib/video-provider-fallback.test.js dist/lib/veo-video.test.js dist/lib/instagram-oauth.test.js dist/lib/instagram-publisher.test.js dist/lib/youtube-publisher.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1075.0",

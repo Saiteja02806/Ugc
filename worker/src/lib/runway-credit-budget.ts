@@ -5,9 +5,16 @@ const RUNWAY_VIDEO_CREDITS_PER_SECOND = {
   "veo3.1_fast": 10,
 } as const;
 
+const RUNWAY_HOOK_VIDEO_DURATION_SECONDS = 4;
+
 type RunwayVideoModel = keyof typeof RUNWAY_VIDEO_CREDITS_PER_SECOND;
 
 type RunwayUsageReader = {
+  retrieve(): PromiseLike<{
+    usage: {
+      models: Record<string, { dailyGenerations: number } | undefined>;
+    };
+  }>;
   retrieveUsage(input: {
     beforeDate: string;
     startDate: string;
@@ -62,8 +69,11 @@ export async function assertRunwayDailyCreditBudget(
 ) {
   const limit = resolveRunwayDailyCreditLimit(options.configuredLimit);
   const window = getRunwayUtcCreditWindow(options.now);
-  const usage = await usageReader.retrieveUsage(window);
-  const usedCredits = Math.max(
+  const [organization, usage] = await Promise.all([
+    usageReader.retrieve(),
+    usageReader.retrieveUsage(window),
+  ]);
+  const reportedCredits = Math.max(
     0,
     usage.results.reduce(
       (total, result) =>
@@ -71,6 +81,24 @@ export async function assertRunwayDailyCreditBudget(
         result.usedCredits.reduce((subtotal, item) => subtotal + item.amount, 0),
       0,
     ),
+  );
+  const estimatedCreditsFromDailyGenerations = (
+    Object.keys(RUNWAY_VIDEO_CREDITS_PER_SECOND) as RunwayVideoModel[]
+  ).reduce((total, model) => {
+    const dailyGenerations = Math.max(
+      0,
+      organization.usage.models[model]?.dailyGenerations ?? 0,
+    );
+
+    return (
+      total +
+      dailyGenerations *
+        estimateRunwayVideoCredits(model, RUNWAY_HOOK_VIDEO_DURATION_SECONDS)
+    );
+  }, 0);
+  const usedCredits = Math.max(
+    reportedCredits,
+    estimatedCreditsFromDailyGenerations,
   );
 
   if (usedCredits + estimatedCredits > limit) {
@@ -81,7 +109,9 @@ export async function assertRunwayDailyCreditBudget(
 
   return {
     estimatedCredits,
+    estimatedCreditsFromDailyGenerations,
     limit,
+    reportedCredits,
     remainingCreditsAfterGeneration:
       limit - usedCredits - estimatedCredits,
     usedCredits,

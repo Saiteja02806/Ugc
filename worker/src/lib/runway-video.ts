@@ -1,6 +1,10 @@
 import RunwayML from "@runwayml/sdk";
 
 import { downloadVideoToBuffer } from "./download-video.js";
+import {
+  assertRunwayDailyCreditBudget,
+  estimateRunwayVideoCredits,
+} from "./runway-credit-budget.js";
 
 type GenerateRunwayHookVideoParams = {
   prompt: string;
@@ -22,6 +26,21 @@ export async function generateRunwayHookVideoBuffer({
 }: GenerateRunwayHookVideoParams) {
   const client = getRunwayClient();
   const promptText = prompt.trim().slice(0, RUNWAY_PROMPT_LIMIT);
+  const estimatedCredits = referenceImageUrl
+    ? estimateRunwayVideoCredits(
+        RUNWAY_IMAGE_TO_VIDEO_MODEL,
+        RUNWAY_DURATION_SECONDS,
+      )
+    : estimateRunwayVideoCredits(
+        RUNWAY_TEXT_TO_VIDEO_MODEL,
+        RUNWAY_DURATION_SECONDS,
+      );
+
+  await assertRunwayDailyCreditBudget(
+    client.organization,
+    estimatedCredits,
+  );
+
   const task = referenceImageUrl
     ? await client.imageToVideo.create({
         duration: RUNWAY_DURATION_SECONDS,

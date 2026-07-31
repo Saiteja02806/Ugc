@@ -137,6 +137,11 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
 
       env {
+        name  = "RUNWAY_DAILY_CREDIT_LIMIT"
+        value = tostring(var.runway_daily_credit_limit)
+      }
+
+      env {
         name = "SUPABASE_URL"
         value_source {
           secret_key_ref {

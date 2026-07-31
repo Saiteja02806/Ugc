@@ -35,6 +35,9 @@ test("uses one UTC calendar day for credit accounting", () => {
 test("allows a generation that reaches exactly 100 credits", async () => {
   const result = await assertRunwayDailyCreditBudget(
     {
+      retrieve: async () => ({
+        usage: { models: { gen4_turbo: { dailyGenerations: 4 } } },
+      }),
       retrieveUsage: async () => ({
         results: [{ usedCredits: [{ amount: 80 }] }],
       }),
@@ -53,6 +56,7 @@ test("blocks a generation that would exceed 100 credits", async () => {
   await assert.rejects(
     assertRunwayDailyCreditBudget(
       {
+        retrieve: async () => ({ usage: { models: {} } }),
         retrieveUsage: async () => ({
           results: [{ usedCredits: [{ amount: 81 }] }],
         }),
@@ -62,4 +66,24 @@ test("blocks a generation that would exceed 100 credits", async () => {
     ),
     /100 credits per UTC day/,
   );
+});
+
+test("uses immediate generation counters when detailed credit usage lags", async () => {
+  const result = await assertRunwayDailyCreditBudget(
+    {
+      retrieve: async () => ({
+        usage: { models: { gen4_turbo: { dailyGenerations: 1 } } },
+      }),
+      retrieveUsage: async () => ({
+        results: [{ usedCredits: [] }],
+      }),
+    },
+    20,
+    { configuredLimit: "100" },
+  );
+
+  assert.equal(result.reportedCredits, 0);
+  assert.equal(result.estimatedCreditsFromDailyGenerations, 20);
+  assert.equal(result.usedCredits, 20);
+  assert.equal(result.remainingCreditsAfterGeneration, 60);
 });

@@ -311,13 +311,22 @@ test("the GCP AI-generation worker service consumes only AI generation jobs", ()
   assert.match(gcpAiGenerationWorkerMain, /OPENAI_IMAGE_MODEL/);
   assert.match(gcpAiGenerationWorkerMain, /GEMINI_API_KEY/);
   assert.match(gcpAiGenerationWorkerMain, /RUNWAYML_API_SECRET/);
+  assert.match(gcpAiGenerationWorkerMain, /RUNWAY_DAILY_CREDIT_LIMIT/);
   assert.match(
     gcpAiGenerationWorkerVariables,
     /generate_avatar,generate_image,generate_hook_video/,
   );
   assert.match(gcpAiGenerationWorkerVariables, /ugc-ai-generation-sub/);
   assert.match(gcpAiGenerationWorkerVariables, /ugcsaas-media/);
+  assert.match(
+    gcpAiGenerationWorkerVariables,
+    /runway_daily_credit_limit[\s\S]*default\s*=\s*100/,
+  );
   assert.match(gcpAiGenerationWorkerTfvars, /enable_ai_generation_worker = false/);
+  assert.match(
+    gcpAiGenerationWorkerTfvars,
+    /runway_daily_credit_limit\s*=\s*100/,
+  );
   assert.match(
     gcpAiGenerationWorkerTfvars,
     /worker_job_types\s*=\s*"generate_avatar,generate_image,generate_hook_video"/,

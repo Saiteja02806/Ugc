@@ -154,6 +154,17 @@ variable "runwayml_api_secret_id" {
   default     = "runwayml-api-secret"
 }
 
+variable "runway_daily_credit_limit" {
+  description = "Maximum Runway credits the worker may spend during one UTC calendar day."
+  type        = number
+  default     = 100
+
+  validation {
+    condition     = var.runway_daily_credit_limit > 0 && floor(var.runway_daily_credit_limit) == var.runway_daily_credit_limit
+    error_message = "runway_daily_credit_limit must be a positive integer."
+  }
+}
+
 variable "worker_version" {
   description = "Human-readable worker version label."
   type        = string

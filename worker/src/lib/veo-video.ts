@@ -1,4 +1,9 @@
-import { GoogleGenAI, type GeneratedVideo, type Image } from "@google/genai";
+import {
+  GoogleGenAI,
+  type GenerateVideosConfig,
+  type GeneratedVideo,
+  type Image,
+} from "@google/genai";
 import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -9,8 +14,8 @@ type GenerateVeoHookVideoParams = {
   referenceImageUrl?: string;
 };
 
-const VEO_MODEL = "veo-3.1-lite-generate-preview";
-const VEO_DURATION_SECONDS = 4;
+export const VEO_MODEL = "veo-3.1-lite-generate-preview";
+export const VEO_DURATION_SECONDS = 4;
 const VEO_POLL_INTERVAL_MS = 10_000;
 const VEO_TIMEOUT_MS = 8 * 60_000;
 
@@ -27,26 +32,9 @@ export async function generateVeoHookVideoBuffer({
   const startedAt = Date.now();
   let operation = await ai.models.generateVideos({
     model: VEO_MODEL,
-    ...(referenceImage
-      ? {
-          image: referenceImage,
-          prompt,
-        }
-      : {
-          source: {
-            prompt,
-          },
-        }),
-    config: {
-      aspectRatio: "9:16",
-      durationSeconds: VEO_DURATION_SECONDS,
-      enhancePrompt: true,
-      generateAudio: false,
-      negativePrompt:
-        "text overlays, captions, logos, watermarks, distorted face, extra people, robotic expression, glossy AI look",
-      numberOfVideos: 1,
-      personGeneration: "allow_adult",
-    },
+    prompt,
+    ...(referenceImage ? { image: referenceImage } : {}),
+    config: buildVeoGenerationConfig(),
   });
 
   while (!operation.done) {
@@ -69,6 +57,16 @@ export async function generateVeoHookVideoBuffer({
   }
 
   return downloadGeneratedVideo(ai, generatedVideo);
+}
+
+export function buildVeoGenerationConfig(): GenerateVideosConfig {
+  return {
+    aspectRatio: "9:16",
+    durationSeconds: VEO_DURATION_SECONDS,
+    numberOfVideos: 1,
+    personGeneration: "allow_adult",
+    resolution: "720p",
+  };
 }
 
 function getGoogleClient() {

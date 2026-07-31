@@ -3,6 +3,7 @@ import { generateRunwayHookVideoBuffer } from "../lib/runway-video.js";
 import { uploadBufferToS3 } from "../lib/s3.js";
 import {
   buildUgcVideoPrompt,
+  DEFAULT_HOOK_VIDEO_PROVIDER,
   hookVideoCameraStyles,
   hookVideoEmotions,
   hookVideoProviders,
@@ -10,6 +11,8 @@ import {
   type HookVideoEmotion,
   type HookVideoProvider,
 } from "../lib/ugc-video-prompt.js";
+import { assertGeneratedMp4 } from "../lib/video-output.js";
+import { shouldFallbackToRunway } from "../lib/video-provider-fallback.js";
 import { generateVeoHookVideoBuffer } from "../lib/veo-video.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobOutput } from "./index.js";
@@ -36,7 +39,9 @@ export async function runGenerateHookVideoJob(
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
   const prompt = buildUgcVideoPrompt(input);
-  const { buffer, provider } = await generateWithFallback(input, prompt);
+  const generated = await generateWithFallback(input, prompt);
+  const buffer = assertGeneratedMp4(generated.buffer);
+  const { provider } = generated;
 
   logger.info("Hook video generated", {
     bufferSize: buffer.length,
@@ -64,7 +69,7 @@ async function generateWithFallback(
   input: GenerateHookVideoInput,
   prompt: string,
 ) {
-  const preferredProvider = input.provider ?? "veo";
+  const preferredProvider = input.provider ?? DEFAULT_HOOK_VIDEO_PROVIDER;
 
   if (preferredProvider === "runway") {
     return generateWithProvider("runway", input, prompt);
@@ -73,8 +78,19 @@ async function generateWithFallback(
   try {
     return await generateWithProvider("veo", input, prompt);
   } catch (veoError) {
+    const veoErrorMessage = getErrorMessage(veoError);
+
+    if (!shouldFallbackToRunway(veoError)) {
+      logger.error("Veo hook video generation failed; fallback not eligible", {
+        error: veoErrorMessage,
+        videoId: input.videoId,
+      });
+
+      throw new Error(`Veo failed: ${veoErrorMessage}`);
+    }
+
     logger.warn("Veo hook video generation failed; trying Runway fallback", {
-      error: veoError instanceof Error ? veoError.message : String(veoError),
+      error: veoErrorMessage,
       videoId: input.videoId,
     });
 
@@ -82,9 +98,7 @@ async function generateWithFallback(
       return await generateWithProvider("runway", input, prompt);
     } catch (runwayError) {
       throw new Error(
-        `Veo failed: ${
-          veoError instanceof Error ? veoError.message : String(veoError)
-        }. Runway fallback failed: ${
+        `Veo failed: ${veoErrorMessage}. Runway fallback failed: ${
           runwayError instanceof Error
             ? runwayError.message
             : String(runwayError)
@@ -92,6 +106,10 @@ async function generateWithFallback(
       );
     }
   }
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 async function generateWithProvider(

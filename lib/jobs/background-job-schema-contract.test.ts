@@ -32,6 +32,12 @@ test("expands background jobs with durable GCP-only lifecycle fields", () => {
   }
 
   assert.match(expandMigration, /check \(queue_provider = 'gcp'\)/);
+  assert.match(expandMigration, /add column if not exists queue_message_id/);
+  assert.match(expandMigration, /background_jobs_sync_queue_message_id/);
+  assert.match(
+    expandMigration,
+    /Temporary rollout compatibility alias for queue_message_id\. It does not select or enable AWS\./,
+  );
   assert.match(expandMigration, /background_jobs_owner_type_idempotency_uidx/);
   assert.match(expandMigration, /background_jobs_recovery_heartbeat_idx/);
 });

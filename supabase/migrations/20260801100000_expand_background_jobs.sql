@@ -1,25 +1,5 @@
-do $$
-begin
-  if exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'background_jobs'
-      and column_name = 'aws_message_id'
-  ) and not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'background_jobs'
-      and column_name = 'queue_message_id'
-  ) then
-    alter table public.background_jobs
-      rename column aws_message_id to queue_message_id;
-  end if;
-end;
-$$;
-
 alter table public.background_jobs
+  add column if not exists queue_message_id text,
   add column if not exists stage text,
   add column if not exists progress smallint,
   add column if not exists input_reference text,
@@ -31,6 +11,52 @@ alter table public.background_jobs
   add column if not exists failed_at timestamptz,
   add column if not exists cancel_requested_at timestamptz,
   add column if not exists queue_provider text not null default 'gcp';
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'background_jobs'
+      and column_name = 'aws_message_id'
+  ) then
+    update public.background_jobs
+    set queue_message_id = aws_message_id
+    where queue_message_id is null
+      and aws_message_id is not null;
+  end if;
+end;
+$$;
+
+create or replace function public.sync_background_job_queue_message_id()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.queue_message_id is null then
+      new.queue_message_id := new.aws_message_id;
+    elsif new.aws_message_id is null then
+      new.aws_message_id := new.queue_message_id;
+    end if;
+  elsif new.queue_message_id is distinct from old.queue_message_id then
+    new.aws_message_id := new.queue_message_id;
+  elsif new.aws_message_id is distinct from old.aws_message_id then
+    new.queue_message_id := new.aws_message_id;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists background_jobs_sync_queue_message_id
+  on public.background_jobs;
+create trigger background_jobs_sync_queue_message_id
+before insert or update of queue_message_id, aws_message_id
+on public.background_jobs
+for each row execute function public.sync_background_job_queue_message_id();
 
 update public.background_jobs
 set
@@ -116,7 +142,6 @@ alter table public.background_jobs
   add constraint background_jobs_queue_provider_check
     check (queue_provider = 'gcp');
 
-drop index if exists public.background_jobs_aws_message_id_idx;
 drop index if exists public.background_jobs_idempotency_key_uidx;
 
 create index if not exists background_jobs_queue_message_id_idx
@@ -165,3 +190,5 @@ comment on column public.background_jobs.output_reference is
   'Stable typed record or Cloud Storage object reference written before completion.';
 comment on column public.background_jobs.queue_provider is
   'UGC Pilot runtime queue provider. GCP is the only supported value.';
+comment on column public.background_jobs.aws_message_id is
+  'Temporary rollout compatibility alias for queue_message_id. It does not select or enable AWS.';

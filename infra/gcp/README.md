@@ -34,6 +34,10 @@ must never be used as frontend state.
 
 The retired Pub/Sub worker transport and canary stack are no longer defined.
 Cloud Tasks is the only job-delivery system in the repository.
+The Pub/Sub API remains enabled during and after cutover so legacy resources
+can be inspected safely; enabling the API does not make Pub/Sub an active
+runtime transport. Cloud Monitoring also remains enabled for production
+observability.
 
 ## Cloud Tasks queues
 

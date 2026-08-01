@@ -472,7 +472,6 @@ function ImageGenerationComposer({
             Enhance
           </button>
         </div>
-
         <button
           type="submit"
           disabled={generationLocked || !prompt.trim() || isGenerating}

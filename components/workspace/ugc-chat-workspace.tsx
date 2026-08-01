@@ -3,7 +3,6 @@
 import {
   AlertCircle,
   CheckCircle2,
-  ChevronDown,
   Download,
   ImageIcon,
   Lock,
@@ -13,7 +12,7 @@ import {
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { ReferenceImageAttachment } from "@/components/generation/reference-image-attachment";
+import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
 
@@ -60,9 +59,6 @@ type GeneratedAsset = {
   url: string;
 };
 
-const aspectRatios: AspectRatio[] = ["4:5", "1:1", "9:16", "16:9"];
-const imageCountOptions: ImageCount[] = [1, 2, 4];
-const IMAGE_GENERATION_LOCKED = true;
 const instagramImageFormatLabels: Record<AspectRatio, string> = {
   "4:5": "Feed",
   "1:1": "Square",
@@ -85,7 +81,7 @@ async function pollImageJob(jobId: string, token: string) {
     await sleep(attempt === 0 ? 900 : 2_500);
 
     const response = await fetch(
-      `/api/image-test/status?jobId=${encodeURIComponent(jobId)}`,
+      `/api/ai-studio/images/status?jobId=${encodeURIComponent(jobId)}`,
       {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
@@ -136,22 +132,25 @@ export function UgcChatWorkspace() {
 }
 
 export function ImageGenerationStudioPanel({
+  accessState = "locked",
   active = true,
 }: {
+  accessState?: AIStudioAccessState;
   active?: boolean;
 }) {
   const [prompt, setPrompt] = useState("");
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>("4:5");
-  const [imageCount, setImageCount] = useState<ImageCount>(4);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAssets, setGeneratedAssets] = useState<GeneratedAsset[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [generationFailed, setGenerationFailed] = useState(false);
+  const aspectRatio: AspectRatio = "4:5";
+  const imageCount: ImageCount = 1;
+  const generationLocked = accessState !== "pro";
 
   async function generateFromPrompt(rawPrompt: string) {
     const trimmedPrompt = rawPrompt.trim();
 
-    if (IMAGE_GENERATION_LOCKED || !trimmedPrompt || isGenerating) {
+    if (generationLocked || !trimmedPrompt || isGenerating) {
       return;
     }
 
@@ -166,15 +165,13 @@ export function ImageGenerationStudioPanel({
         throw new Error("Sign in before generating images.");
       }
 
-      const response = await fetch("/api/image-test/generate", {
+      const response = await fetch("/api/ai-studio/images/generate", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          aspectRatio,
-          imageCount,
           prompt: trimmedPrompt,
         }),
       });
@@ -222,7 +219,7 @@ export function ImageGenerationStudioPanel({
     const enhancement =
       "Production notes: preserve the subject and intent, improve composition, lighting, clarity, and platform-ready framing without adding unrequested text or objects.";
 
-    if (IMAGE_GENERATION_LOCKED || !trimmedPrompt) {
+    if (generationLocked || !trimmedPrompt) {
       return;
     }
 
@@ -240,24 +237,10 @@ export function ImageGenerationStudioPanel({
       aria-labelledby="ai-studio-images-tab"
       hidden={!active}
       className={cn(
-        "min-h-0 flex-1 gap-4 lg:grid lg:grid-cols-[minmax(320px,0.72fr)_minmax(0,1.28fr)]",
+        "min-h-0 flex-1 flex-col gap-4",
         active ? "flex flex-col" : "hidden",
       )}
     >
-      <ImageGenerationComposer
-        aspectRatio={aspectRatio}
-        imageCount={imageCount}
-        isGenerating={isGenerating}
-        prompt={prompt}
-        onAspectRatioChange={setAspectRatio}
-        onEnhancePrompt={handleEnhancePrompt}
-        onImageCountChange={setImageCount}
-        onPromptChange={setPrompt}
-        onSubmit={handleSubmit}
-        onTextareaKeyDown={handleTextareaKeyDown}
-        active={active}
-      />
-
       <ResultsArea
         aspectRatio={aspectRatio}
         generatedAssets={generatedAssets}
@@ -266,6 +249,17 @@ export function ImageGenerationStudioPanel({
         isGenerating={isGenerating}
         selectedAssetId={selectedAssetId}
         onSelectAsset={setSelectedAssetId}
+      />
+
+      <ImageGenerationComposer
+        generationLocked={generationLocked}
+        isGenerating={isGenerating}
+        prompt={prompt}
+        onEnhancePrompt={handleEnhancePrompt}
+        onPromptChange={setPrompt}
+        onSubmit={handleSubmit}
+        onTextareaKeyDown={handleTextareaKeyDown}
+        active={active}
       />
     </div>
   );
@@ -289,28 +283,26 @@ function ResultsArea({
   selectedAssetId: string | null;
 }) {
   return (
-    <section className="relative flex min-h-[420px] min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-panel)] border border-border bg-[#191919] shadow-[0_20px_55px_rgb(0_0_0_/_0.22)] lg:min-h-0">
-      <header className="relative z-10 flex items-center justify-between gap-3 border-b border-border/80 bg-card-muted/45 px-4 py-3 sm:px-5">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">
-            Preview canvas
-          </h2>
-          <p className="mt-0.5 text-xs text-muted">
-            {aspectRatio} {instagramImageFormatLabels[aspectRatio]} · {imageCount}{" "}
-            {imageCount === 1 ? "image" : "images"}
-          </p>
+    <section className="relative flex min-h-[360px] min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-panel)] border border-border bg-[#191919] shadow-[0_20px_55px_rgb(0_0_0_/_0.22)] md:min-h-0">
+      <header className="relative z-10 flex min-h-12 items-center justify-between gap-3 border-b border-border/70 bg-card-muted/35 px-4 sm:px-5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <ImageIcon className="size-4 shrink-0 text-primary" aria-hidden="true" />
+          <h2 className="text-sm font-semibold text-foreground">Images</h2>
+          <span className="text-xs text-muted">
+            {aspectRatio} {instagramImageFormatLabels[aspectRatio]}
+          </span>
         </div>
-        <span className="rounded-full border border-border bg-background/35 px-2.5 py-1 text-[11px] font-semibold text-muted">
+        <span className="text-xs font-medium text-muted">
           {generatedAssets.length > 0
             ? `${generatedAssets.length} generated`
-            : "No output yet"}
+            : `${imageCount} ${imageCount === 1 ? "output" : "outputs"}`}
         </span>
       </header>
 
       {generationFailed ? (
         <div
           role="alert"
-          className="absolute left-4 top-20 z-20 w-fit rounded-full border border-error/35 bg-[#2A2020] px-3 py-2 text-xs font-semibold text-error shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
+          className="absolute left-4 top-16 z-20 w-fit rounded-full border border-error/35 bg-[#2A2020] px-3 py-2 text-xs font-semibold text-error shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
         >
           <div className="flex items-center gap-2">
             <AlertCircle className="size-3.5" aria-hidden="true" />
@@ -322,7 +314,7 @@ function ResultsArea({
       {isGenerating ? (
         <div
           role="status"
-          className="absolute left-4 top-20 z-20 w-fit rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
+          className="absolute left-4 top-16 z-20 w-fit rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
         >
           <div className="flex items-center gap-2">
             <Loader2 className="size-3.5 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
@@ -353,29 +345,17 @@ function ResultsArea({
             className="absolute inset-0 opacity-[0.13] [background-image:linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] [background-size:32px_32px]"
           />
 
-          <div
-            className="relative flex h-[270px] max-h-[72%] min-h-[220px] w-auto max-w-[78%] flex-col overflow-hidden rounded-[18px] border border-dashed border-border-strong bg-card-muted/55 shadow-[0_26px_70px_rgb(0_0_0_/_0.28)] sm:h-[320px]"
-            style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
-          >
-            <div className="h-1 w-full bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]" />
-            <div className="flex flex-1 items-center justify-center p-5">
-              <div className="max-w-[230px]">
-                <span className="mx-auto flex size-11 items-center justify-center rounded-[12px] border border-primary/25 bg-brand-soft text-primary shadow-sm">
-                  <ImageIcon className="size-5" aria-hidden="true" />
-                </span>
-                <h3 className="mt-4 text-sm font-semibold text-foreground">
-                  Your image preview
-                </h3>
-                <p className="mt-1.5 text-xs leading-5 text-muted">
-                  Configure the creative brief now. Generated images will
-                  appear here when creation is enabled.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between border-t border-border/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-subtle">
-              <span>{instagramImageFormatLabels[aspectRatio]}</span>
-              <span>{aspectRatio}</span>
-            </div>
+          <div className="relative max-w-sm">
+            <span className="mx-auto flex size-12 items-center justify-center rounded-[14px] border border-primary/25 bg-brand-soft text-primary shadow-sm">
+              <ImageIcon className="size-5" aria-hidden="true" />
+            </span>
+            <h3 className="mt-4 text-sm font-semibold text-foreground">
+              No images yet
+            </h3>
+            <p className="mt-1.5 text-sm leading-6 text-muted">
+              Describe what you want to create below. Your generated images
+              will appear here.
+            </p>
           </div>
         </div>
       )}
@@ -385,24 +365,18 @@ function ResultsArea({
 
 function ImageGenerationComposer({
   active,
-  aspectRatio,
-  imageCount,
+  generationLocked,
   isGenerating,
-  onAspectRatioChange,
   onEnhancePrompt,
-  onImageCountChange,
   onPromptChange,
   onSubmit,
   onTextareaKeyDown,
   prompt,
 }: {
   active: boolean;
-  aspectRatio: AspectRatio;
-  imageCount: ImageCount;
+  generationLocked: boolean;
   isGenerating: boolean;
-  onAspectRatioChange: (ratio: AspectRatio) => void;
   onEnhancePrompt: () => void;
-  onImageCountChange: (count: ImageCount) => void;
   onPromptChange: (prompt: string) => void;
   onSubmit: (event?: FormEvent<HTMLFormElement>) => void;
   onTextareaKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -423,33 +397,16 @@ function ImageGenerationComposer({
     }
 
     textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 132), 220)}px`;
+    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 56), 112)}px`;
   }, [active, prompt]);
 
   return (
     <form
       noValidate
       onSubmit={onSubmit}
-      className="flex min-h-[420px] w-full flex-col rounded-[var(--radius-panel)] border border-border bg-card p-4 shadow-card sm:p-5 lg:min-h-0"
+      className="mx-auto w-full max-w-[1120px] shrink-0 rounded-[var(--radius-panel)] border border-border bg-card p-3 shadow-[0_18px_48px_rgb(0_0_0_/_0.24)]"
     >
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-            Creative brief
-          </p>
-          <h2 className="mt-1 text-base font-semibold text-foreground">
-            Design an image
-          </h2>
-          <p className="mt-1 text-xs leading-5 text-muted">
-            Set the visual direction and output before generation is enabled.
-          </p>
-        </div>
-        <span className="rounded-full border border-border bg-card-muted px-2.5 py-1 text-[11px] font-semibold text-muted">
-          Images
-        </span>
-      </header>
-
-      <div className="mt-5 rounded-[var(--radius-card)] border border-border bg-card-muted/65 p-3 transition-[border-color,box-shadow] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
+      <div className="rounded-[var(--radius-card)] border border-border bg-card-muted/65 px-3 py-2 transition-[border-color,box-shadow] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
         <div className="flex items-center justify-between gap-3">
           <label
             htmlFor={promptId}
@@ -457,7 +414,9 @@ function ImageGenerationComposer({
           >
             Describe the visual
           </label>
-          <ReferenceImageAttachment disabled={isGenerating} />
+          <span className="rounded-full border border-border bg-background/35 px-2.5 py-1 text-[11px] font-semibold text-muted">
+            Pro image
+          </span>
         </div>
 
         <textarea
@@ -470,68 +429,64 @@ function ImageGenerationComposer({
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
           onKeyDown={onTextareaKeyDown}
-          className="mt-2 max-h-[220px] min-h-[132px] w-full resize-none overflow-y-hidden bg-transparent text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle"
+          className="mt-1 max-h-28 min-h-14 w-full resize-none overflow-y-auto bg-transparent text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle"
           placeholder="Describe the subject, setting, composition, lighting, and mood…"
         />
       </div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-        <div>
-          <p className="mb-2 text-xs font-semibold text-muted">Format</p>
-          <AspectRatioSelector
-            value={aspectRatio}
-            onChange={onAspectRatioChange}
-          />
-        </div>
-        <div>
-          <p className="mb-2 text-xs font-semibold text-muted">Outputs</p>
-          <ImageCountSelector
-            value={imageCount}
-            onChange={onImageCountChange}
-          />
-        </div>
-      </div>
+      <div className="mt-3 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            aria-label="Image format: 4:5 portrait"
+            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground"
+          >
+            <span
+              aria-hidden="true"
+              className="inline-block h-4 w-3.5 shrink-0 rounded-[4px] border-2 border-muted"
+            />
+            4:5 portrait
+          </div>
+          <div
+            aria-label="Output count: 1 image"
+            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground"
+          >
+            <ImageIcon className="size-3.5" aria-hidden="true" />
+            1 image
+          </div>
 
-      <button
-        type="button"
-        onClick={onEnhancePrompt}
-        disabled={IMAGE_GENERATION_LOCKED || !prompt.trim() || isGenerating}
-        aria-label={
-          IMAGE_GENERATION_LOCKED
-            ? "Image prompt enhancement locked"
-            : "Enhance image prompt"
-        }
-        title={
-          IMAGE_GENERATION_LOCKED ? "Prompt enhancement is locked" : undefined
-        }
-        className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-45"
-      >
-        <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-        Enhance prompt
-      </button>
-
-      <div className="mt-auto pt-5">
-        <div className="mb-3 flex items-start gap-2.5 rounded-[var(--radius-control)] border border-border bg-background/30 px-3 py-2.5 text-xs leading-5 text-muted">
-          <Lock className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
-          <p>
-            Your brief is not submitted or generated while this workspace is in
-            preview.
-          </p>
+          <button
+            type="button"
+            onClick={onEnhancePrompt}
+            disabled={generationLocked || !prompt.trim() || isGenerating}
+            aria-label={
+              generationLocked
+                ? "Image prompt enhancement locked"
+                : "Enhance image prompt"
+            }
+            title={
+              generationLocked ? "Prompt enhancement is locked" : undefined
+            }
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+            Enhance
+          </button>
         </div>
+
         <button
           type="submit"
-          disabled={IMAGE_GENERATION_LOCKED || !prompt.trim() || isGenerating}
+          disabled={generationLocked || !prompt.trim() || isGenerating}
           aria-label={
-            IMAGE_GENERATION_LOCKED
+            generationLocked
               ? "Image generation locked"
               : "Generate image"
           }
           title={
-            IMAGE_GENERATION_LOCKED ? "Image generation is locked" : undefined
+            generationLocked ? "Image generation is locked" : undefined
           }
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-primary/35 bg-brand-soft px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/55 hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-80"
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-primary/35 bg-brand-soft px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/55 hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-80 xl:w-auto xl:min-w-[236px]"
         >
-          {IMAGE_GENERATION_LOCKED ? (
+          {generationLocked ? (
             <>
               <Lock className="size-4" aria-hidden="true" />
               Generation unavailable in preview
@@ -550,327 +505,6 @@ function ImageGenerationComposer({
         </button>
       </div>
     </form>
-  );
-}
-
-function AspectRatioSelector({
-  onChange,
-  value,
-}: {
-  onChange: (ratio: AspectRatio) => void;
-  value: AspectRatio;
-}) {
-  const [open, setOpen] = useState(false);
-  const [focusedIndex, setFocusedIndex] = useState(() =>
-    aspectRatios.indexOf(value),
-  );
-  const controlId = useId();
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    function handlePointerDown(event: PointerEvent) {
-      if (!wrapperRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
-  function openAndFocus(index = aspectRatios.indexOf(value)) {
-    setOpen(true);
-    setFocusedIndex(index);
-    window.requestAnimationFrame(() => {
-      optionRefs.current[index]?.focus();
-    });
-  }
-
-  function selectRatio(ratio: AspectRatio) {
-    onChange(ratio);
-    setOpen(false);
-    triggerRef.current?.focus();
-  }
-
-  function handleTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      event.preventDefault();
-      openAndFocus(aspectRatios.indexOf(value));
-    }
-  }
-
-  function handleOptionKeyDown(
-    event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ) {
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      event.preventDefault();
-      const direction = event.key === "ArrowUp" ? -1 : 1;
-      const nextIndex =
-        (index + direction + aspectRatios.length) % aspectRatios.length;
-      setFocusedIndex(nextIndex);
-      optionRefs.current[nextIndex]?.focus();
-    }
-  }
-
-  return (
-    <div ref={wrapperRef} className="relative">
-      <div
-        id={controlId}
-        role="radiogroup"
-        aria-label="Aspect ratio"
-        aria-hidden={!open}
-        className={cn(
-          "absolute bottom-[calc(100%+6px)] left-0 z-30 flex w-[140px] flex-col gap-1 overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out motion-reduce:transition-none",
-          open
-            ? "max-h-44 translate-y-0 opacity-100"
-            : "pointer-events-none max-h-0 translate-y-2 opacity-0",
-        )}
-      >
-        {aspectRatios.map((ratio, index) => {
-          const selected = ratio === value;
-
-          return (
-            <button
-              key={ratio}
-              ref={(node) => {
-                optionRefs.current[index] = node;
-              }}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              tabIndex={open && index === focusedIndex ? 0 : -1}
-              onClick={() => selectRatio(ratio)}
-              onKeyDown={(event) => handleOptionKeyDown(event, index)}
-              className={cn(
-                "inline-flex h-8 w-full items-center gap-2 rounded-[var(--radius-control)] border px-2.5 text-sm font-medium shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-                selected
-                  ? "border-primary/40 bg-brand-soft text-primary"
-                  : "border-border bg-card text-foreground hover:border-border-strong hover:bg-card-muted",
-              )}
-            >
-              <RatioGlyph active={selected} ratio={ratio} />
-              <span>{ratio}</span>
-              <span className="text-xs text-muted">{instagramImageFormatLabels[ratio]}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-expanded={open}
-        aria-controls={controlId}
-        aria-haspopup="menu"
-        onClick={() => setOpen((currentOpen) => !currentOpen)}
-        onKeyDown={handleTriggerKeyDown}
-        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      >
-        <RatioGlyph ratio={value} />
-        <span>{value} {instagramImageFormatLabels[value]}</span>
-        <ChevronDown
-          className={cn(
-            "size-4 text-muted-subtle transition-transform duration-200 motion-reduce:transition-none",
-            open && "rotate-180",
-          )}
-          aria-hidden="true"
-        />
-      </button>
-    </div>
-  );
-}
-
-function RatioGlyph({
-  active,
-  ratio,
-}: {
-  active?: boolean;
-  ratio: AspectRatio;
-}) {
-  const shapeClassName: Record<AspectRatio, string> = {
-    "4:5": "h-4 w-3.5",
-    "1:1": "size-3.5",
-    "9:16": "h-5 w-3",
-    "16:9": "h-3 w-5",
-  };
-
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "inline-block shrink-0 rounded-[4px] border-2",
-        shapeClassName[ratio],
-        active ? "border-primary" : "border-muted",
-      )}
-    />
-  );
-}
-
-function ImageCountSelector({
-  onChange,
-  value,
-}: {
-  onChange: (count: ImageCount) => void;
-  value: ImageCount;
-}) {
-  const [open, setOpen] = useState(false);
-  const [focusedIndex, setFocusedIndex] = useState(() =>
-    imageCountOptions.indexOf(value),
-  );
-  const controlId = useId();
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    function handlePointerDown(event: PointerEvent) {
-      if (!wrapperRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
-  function openAndFocus(index = imageCountOptions.indexOf(value)) {
-    setOpen(true);
-    setFocusedIndex(index);
-    window.requestAnimationFrame(() => {
-      optionRefs.current[index]?.focus();
-    });
-  }
-
-  function selectCount(count: ImageCount) {
-    onChange(count);
-    setOpen(false);
-    triggerRef.current?.focus();
-  }
-
-  function handleTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      event.preventDefault();
-      openAndFocus(imageCountOptions.indexOf(value));
-    }
-  }
-
-  function handleOptionKeyDown(
-    event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ) {
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      event.preventDefault();
-      const direction = event.key === "ArrowUp" ? -1 : 1;
-      const nextIndex =
-        (index + direction + imageCountOptions.length) % imageCountOptions.length;
-      setFocusedIndex(nextIndex);
-      optionRefs.current[nextIndex]?.focus();
-    }
-  }
-
-  return (
-    <div ref={wrapperRef} className="relative">
-      <div
-        id={controlId}
-        role="listbox"
-        aria-label="Number of images"
-        aria-hidden={!open}
-        className={cn(
-          "absolute bottom-[calc(100%+6px)] left-0 z-30 flex w-[120px] flex-col gap-1 overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out motion-reduce:transition-none",
-          open
-            ? "max-h-32 translate-y-0 opacity-100"
-            : "pointer-events-none max-h-0 translate-y-2 opacity-0",
-        )}
-      >
-        {imageCountOptions.map((count, index) => {
-          const selected = count === value;
-
-          return (
-            <button
-              key={count}
-              ref={(node) => {
-                optionRefs.current[index] = node;
-              }}
-              type="button"
-              role="option"
-              aria-selected={selected}
-              tabIndex={open && index === focusedIndex ? 0 : -1}
-              onClick={() => selectCount(count)}
-              onKeyDown={(event) => handleOptionKeyDown(event, index)}
-              className={cn(
-                "inline-flex h-8 w-full items-center gap-2 rounded-[var(--radius-control)] border px-2.5 text-sm font-medium shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-                selected
-                  ? "border-primary/40 bg-brand-soft text-primary"
-                  : "border-border bg-card text-foreground hover:border-border-strong hover:bg-card-muted",
-              )}
-            >
-              <ImageIcon className="size-3.5" aria-hidden="true" />
-              {count} {count === 1 ? "image" : "images"}
-            </button>
-          );
-        })}
-      </div>
-
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-expanded={open}
-        aria-controls={controlId}
-        aria-haspopup="listbox"
-        onClick={() => setOpen((currentOpen) => !currentOpen)}
-        onKeyDown={handleTriggerKeyDown}
-        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      >
-        <ImageIcon className="size-3.5" aria-hidden="true" />
-        <span>
-          {value} {value === 1 ? "image" : "images"}
-        </span>
-        <ChevronDown
-          className={cn(
-            "size-4 text-muted-subtle transition-transform duration-200 motion-reduce:transition-none",
-            open && "rotate-180",
-          )}
-          aria-hidden="true"
-        />
-      </button>
-    </div>
   );
 }
 

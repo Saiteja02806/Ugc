@@ -15,16 +15,13 @@ worker_image_uri = ""
 
 worker_service_account_email = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
 service_name                 = "ugc-ai-generation-worker"
-pubsub_subscription_name     = "ugc-ai-generation-sub"
 queue_name                   = "ai-generation"
-worker_job_types             = "generate_avatar,generate_image,generate_hook_video"
+worker_job_types             = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_generation,media_analysis,analytics_sync"
 
-worker_poll_max_messages          = 1
-worker_poll_wait_seconds          = 20
 worker_visibility_timeout_seconds = 1800
 min_instance_count                = 1
 max_instance_count                = 1
-request_timeout_seconds           = 300
+request_timeout_seconds           = 1800
 cpu                               = "2"
 memory                            = "4Gi"
 container_port                    = 8080
@@ -37,6 +34,8 @@ openai_api_key_secret_id = "openai-api-key"
 openai_image_model       = "gpt-image-1"
 gemini_api_key_secret_id = "gemini-api-key"
 runwayml_api_secret_id   = "runwayml-api-secret"
+internal_app_url          = "https://www.getugcpilot.com"
+scheduling_secret_id     = "ugc-internal-scheduling-secret"
 
 worker_version    = "worker-gcp"
 worker_git_commit = "unknown"

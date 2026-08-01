@@ -2,14 +2,14 @@ import { createHash } from "node:crypto";
 
 import sharp from "sharp";
 
-import { uploadBufferToS3 } from "./s3.js";
+import { uploadBufferToStorage } from "./storage.js";
 
 const MAX_SOURCE_IMAGE_BYTES = 25 * 1024 * 1024;
 const SOURCE_IMAGE_TIMEOUT_MS = 30_000;
 
 type PrepareInstagramCarouselImagesDependencies = {
   fetchImpl?: typeof fetch;
-  upload?: typeof uploadBufferToS3;
+  upload?: typeof uploadBufferToStorage;
 };
 
 export async function prepareInstagramCarouselImages(
@@ -20,7 +20,7 @@ export async function prepareInstagramCarouselImages(
   dependencies: PrepareInstagramCarouselImagesDependencies = {},
 ) {
   const fetchImpl = dependencies.fetchImpl ?? fetch;
-  const upload = dependencies.upload ?? uploadBufferToS3;
+  const upload = dependencies.upload ?? uploadBufferToStorage;
   const preparedUrls: string[] = [];
 
   for (const [index, imageUrl] of params.imageUrls.entries()) {

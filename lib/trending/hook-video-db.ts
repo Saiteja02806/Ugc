@@ -23,13 +23,25 @@ type HookVideoSuggestionRow = {
   created_at: string;
   demo_asset_id: string | null;
   duration_seconds: number | null;
+  generation_job_id: string | null;
   generation_id: string;
+  generator_model: string | null;
   id: string;
   influencer_id: string;
+  influencer_key: string | null;
   influencer_name: string | null;
   influencer_source: HookVideoSourceKind;
   influencer_video_id: string;
   influencer_video_title: string | null;
+  input_context_hash: string | null;
+  opening_lines: Json | null;
+  pattern_id: string | null;
+  pattern_library_version: string | null;
+  prompt_version: string | null;
+  quality_score: number | null;
+  reaction_type: string | null;
+  readability_review: Json | null;
+  selection_version: string | null;
   source_duration_seconds: number | null;
   suggestion_context: "composition" | "trending";
   text: string;
@@ -37,6 +49,10 @@ type HookVideoSuggestionRow = {
   trim_end: number | null;
   trim_start: number | null;
   user_id: string;
+  validation_metadata: Json | null;
+  validator_version: string | null;
+  visual_fit: Json | null;
+  visual_group: string | null;
 };
 
 type UserHookVideoAssignmentRow = {
@@ -48,7 +64,11 @@ type UserHookVideoAssignmentRow = {
   id: string;
   last_opened_at: string | null;
   position: number;
-  state: "active" | "completed_skipped" | "selected";
+  state:
+    | "active"
+    | "completed_skipped"
+    | "selected"
+    | "superseded";
   updated_at: string;
   user_id: string;
 };
@@ -166,6 +186,9 @@ export type TrendingHookIdeaRecord = {
   influencerName: string;
   influencerVideoId: string;
   influencerVideoTitle: string;
+  openingLines: string[];
+  overlayFontSize: number;
+  patternId: string;
   position: number;
   sourceKind: HookVideoSourceKind;
   sourceDurationSeconds: number;
@@ -196,6 +219,7 @@ export function getMissingHookVideoDbEnvVars() {
 export async function createHookVideoSuggestions(params: {
   businessProfileId: string;
   demoAssetId: string;
+  generationJobId: string;
   influencerId: string;
   influencerVideoId: string;
   sourceKind: HookVideoSourceKind;
@@ -207,6 +231,7 @@ export async function createHookVideoSuggestions(params: {
     business_profile_id: params.businessProfileId,
     demo_asset_id: params.demoAssetId,
     generation_id: generationId,
+    generation_job_id: params.generationJobId,
     id: crypto.randomUUID(),
     influencer_id: params.influencerId,
     influencer_source: params.sourceKind,
@@ -226,81 +251,46 @@ export async function createHookVideoSuggestions(params: {
   return data.map((row) => ({ id: row.id, text: row.text }));
 }
 
-export async function createTrendingHookVideoSuggestions(params: {
-  businessProfileId: string;
-  businessProfileVersion: number;
-  candidates: Array<{
-    candidateIndex: number;
-    durationSeconds: number;
-    hookText: string;
-    influencerId: string;
-    influencerName: string;
-    influencerVideoId: string;
-    influencerVideoTitle: string;
-    sourceKind: HookVideoSourceKind;
-    sourceDurationSeconds: number;
-    thumbnailUrl: string | null;
-    trimEnd: number | null;
-    trimStart: number;
-  }>;
+export async function listHookVideoSuggestionsForJob(params: {
+  generationJobId: string;
   userId: string;
-}) {
-  const generationId = crypto.randomUUID();
-  const rows = params.candidates.map((candidate) => ({
-    business_profile_id: params.businessProfileId,
-    business_profile_version: params.businessProfileVersion,
-    candidate_index: candidate.candidateIndex,
-    demo_asset_id: null,
-    duration_seconds: candidate.durationSeconds,
-    generation_id: generationId,
-    id: crypto.randomUUID(),
-    influencer_id: candidate.influencerId,
-    influencer_name: candidate.influencerName.trim().slice(0, 140),
-    influencer_source: candidate.sourceKind,
-    influencer_video_id: candidate.influencerVideoId,
-    influencer_video_title: candidate.influencerVideoTitle
-      .trim()
-      .slice(0, 180),
-    source_duration_seconds: candidate.sourceDurationSeconds,
-    suggestion_context: "trending" as const,
-    text: candidate.hookText.trim().slice(0, 180),
-    thumbnail_url: candidate.thumbnailUrl,
-    trim_end: candidate.trimEnd,
-    trim_start: candidate.trimStart,
-    user_id: params.userId,
-  }));
-  const { error } = await getClient()
+}): Promise<HookSuggestion[]> {
+  const { data, error } = await getClient()
     .from("hook_video_suggestions")
-    .upsert(rows, {
-      ignoreDuplicates: true,
-      onConflict:
-        "business_profile_id,business_profile_version,suggestion_context,candidate_index",
-    });
+    .select("*")
+    .eq("generation_job_id", params.generationJobId)
+    .eq("user_id", params.userId)
+    .eq("suggestion_context", "composition")
+    .order("created_at", { ascending: true });
 
   if (error) {
-    throw new Error(`Could not save Trending Hook ideas: ${error.message}`);
+    throw new Error(`Could not restore hook suggestions: ${error.message}`);
   }
 
-  return listTrendingHookVideoSuggestions({
-    businessProfileId: params.businessProfileId,
-    businessProfileVersion: params.businessProfileVersion,
-    userId: params.userId,
-  });
+  return data.map((row) => ({ id: row.id, text: row.text }));
 }
 
 export async function listTrendingHookVideoSuggestions(params: {
   businessProfileId: string;
   businessProfileVersion: number;
+  promptVersion?: string;
   userId: string;
 }) {
-  const { data, error } = await getClient()
+  let query = getClient()
     .from("hook_video_suggestions")
     .select("*")
     .eq("user_id", params.userId)
     .eq("business_profile_id", params.businessProfileId)
     .eq("business_profile_version", params.businessProfileVersion)
-    .eq("suggestion_context", "trending")
-    .order("candidate_index", { ascending: true });
+    .eq("suggestion_context", "trending");
+
+  if (params.promptVersion) {
+    query = query.eq("prompt_version", params.promptVersion);
+  }
+
+  const { data, error } = await query.order("candidate_index", {
+    ascending: true,
+  });
 
   if (error) {
     throw new Error(`Could not load Trending Hook ideas: ${error.message}`);
@@ -309,47 +299,10 @@ export async function listTrendingHookVideoSuggestions(params: {
   return data;
 }
 
-export async function ensureTrendingHookVideoAssignments(params: {
-  businessProfileId: string;
-  businessProfileVersion: number;
-  suggestions: HookVideoSuggestionRow[];
-  userId: string;
-}) {
-  const rows = params.suggestions.flatMap((suggestion) =>
-    suggestion.candidate_index === null
-      ? []
-      : [
-          {
-            business_profile_id: params.businessProfileId,
-            business_profile_version: params.businessProfileVersion,
-            hook_suggestion_id: suggestion.id,
-            id: crypto.randomUUID(),
-            position: suggestion.candidate_index,
-            state: "active" as const,
-            user_id: params.userId,
-          },
-        ],
-  );
-
-  if (rows.length > 0) {
-    const { error } = await getClient()
-      .from("user_hook_video_assignments")
-      .upsert(rows, {
-        ignoreDuplicates: true,
-        onConflict: "user_id,hook_suggestion_id",
-      });
-
-    if (error) {
-      throw new Error(`Could not assign Trending Hook ideas: ${error.message}`);
-    }
-  }
-
-  return listActiveTrendingHookIdeas(params);
-}
-
 export async function listActiveTrendingHookIdeas(params: {
   businessProfileId: string;
   businessProfileVersion: number;
+  promptVersion?: string;
   userId: string;
 }): Promise<TrendingHookIdeaRecord[]> {
   const { data: assignments, error: assignmentError } = await getClient()
@@ -374,12 +327,24 @@ export async function listActiveTrendingHookIdeas(params: {
   const suggestionIds = assignments.map(
     (assignment) => assignment.hook_suggestion_id,
   );
-  const { data: suggestions, error: suggestionError } = await getClient()
+  let suggestionQuery = getClient()
     .from("hook_video_suggestions")
     .select("*")
     .in("id", suggestionIds)
     .eq("user_id", params.userId)
     .eq("suggestion_context", "trending");
+
+  if (params.promptVersion) {
+    suggestionQuery = suggestionQuery.eq(
+      "prompt_version",
+      params.promptVersion,
+    );
+  }
+
+  const {
+    data: suggestions,
+    error: suggestionError,
+  } = await suggestionQuery;
 
   if (suggestionError) {
     throw new Error(
@@ -393,13 +358,22 @@ export async function listActiveTrendingHookIdeas(params: {
 
   return assignments.flatMap((assignment) => {
     const suggestion = suggestionById.get(assignment.hook_suggestion_id);
+    const openingLines = parseOpeningLines(
+      suggestion?.opening_lines ?? null,
+    );
+    const overlayFontSize = parseOverlayFontSize(
+      suggestion?.visual_fit ?? null,
+    );
 
     if (
       !suggestion ||
       suggestion.business_profile_id !== params.businessProfileId ||
       suggestion.business_profile_version !==
         params.businessProfileVersion ||
-      !isCompleteTrendingHookSuggestion(suggestion)
+      !isCompleteTrendingHookSuggestion(suggestion) ||
+      !openingLines ||
+      !overlayFontSize ||
+      !suggestion.pattern_id
     ) {
       return [];
     }
@@ -416,6 +390,9 @@ export async function listActiveTrendingHookIdeas(params: {
         influencerName: suggestion.influencer_name,
         influencerVideoId: suggestion.influencer_video_id,
         influencerVideoTitle: suggestion.influencer_video_title,
+        openingLines,
+        overlayFontSize,
+        patternId: suggestion.pattern_id,
         position: assignment.position,
         sourceKind: suggestion.influencer_source,
         sourceDurationSeconds: suggestion.source_duration_seconds,
@@ -679,4 +656,34 @@ function isCompleteTrendingHookSuggestion(
     row.source_duration_seconds > 0 &&
     row.trim_start !== null
   );
+}
+
+function parseOpeningLines(value: Json | null) {
+  if (
+    !Array.isArray(value) ||
+    value.length < 1 ||
+    value.length > 3 ||
+    value.some(
+      (line) => typeof line !== "string" || !line.trim(),
+    )
+  ) {
+    return null;
+  }
+
+  return value.map((line) => String(line).trim());
+}
+
+function parseOverlayFontSize(value: Json | null) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const fontSize = value.fontSize;
+
+  return typeof fontSize === "number" &&
+    Number.isFinite(fontSize) &&
+    fontSize >= 34 &&
+    fontSize <= 52
+    ? fontSize
+    : null;
 }

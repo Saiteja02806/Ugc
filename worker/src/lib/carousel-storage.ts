@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { uploadBufferToS3 } from "./s3.js";
+import { uploadBufferToStorage } from "./storage.js";
 
 const IMAGE_WEBP_CONTENT_TYPE = "image/webp";
 
@@ -38,7 +38,7 @@ export async function uploadRenderedCarouselSlide(params: {
     `slide-${slideSlug}-${formatSlug}-${contentHash}.webp`,
   ].join("/");
 
-  return uploadBufferToS3({
+  return uploadBufferToStorage({
     buffer: params.buffer,
     cacheControl: "public, max-age=31536000, immutable",
     contentType: IMAGE_WEBP_CONTENT_TYPE,

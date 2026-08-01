@@ -4,6 +4,7 @@ import {
   hookVideoErrorResponse,
   hookVideoJson,
 } from "@/lib/trending/hook-video-api";
+import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
 import {
   prepareTrendingHookIdeas,
   TrendingHookPreparationError,
@@ -13,6 +14,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  if (!areTrendingHookVideosEnabled(request)) {
+    return hookVideoJson(
+      {
+        code: "feature_unavailable",
+        error: "Hook ideas are not available.",
+        ok: false,
+      },
+      404,
+    );
+  }
+
   const auth = await authenticateHookVideoRequest(request);
 
   if (!auth.ok) {
@@ -33,22 +45,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const ideas = await prepareTrendingHookIdeas(profile);
+    const preparation = await prepareTrendingHookIdeas(profile);
 
-    return hookVideoJson({ ideaCount: ideas.length, ok: true });
+    return hookVideoJson(
+      {
+        ...preparation,
+        ok: true,
+      },
+      preparation.status === "ready" ? 200 : 202,
+    );
   } catch (error) {
     if (error instanceof TrendingHookPreparationError) {
       return hookVideoJson({ error: error.message, ok: false }, error.status);
-    }
-
-    if (
-      error instanceof Error &&
-      error.message === "OpenAI is not configured."
-    ) {
-      return hookVideoJson(
-        { error: "Hook idea generation is not configured.", ok: false },
-        501,
-      );
     }
 
     return hookVideoErrorResponse(error, "Could not prepare Trending Hook ideas.");

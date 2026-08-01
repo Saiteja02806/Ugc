@@ -17,7 +17,9 @@ import {
   createCurrentTrendingFeedProviders,
   getTrendingFeedProviderAvailability,
 } from "@/lib/trending/feed-items";
+import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
 import { getTrendingHookFeedProvider } from "@/lib/trending/trending-hook-feed";
+import { getTrendingWallTextFeedProvider } from "@/lib/trending/trending-wall-text-feed";
 
 export const runtime = "nodejs";
 
@@ -32,6 +34,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 export async function GET(request: Request) {
   let userId: string;
+  const hookVideosEnabled = areTrendingHookVideosEnabled(request);
 
   try {
     userId = (await requireFirebaseUser(request)).uid;
@@ -82,7 +85,12 @@ export async function GET(request: Request) {
     const profile = await getBusinessProfileForUser(userId);
 
     if (!profile) {
-      const providers = createCurrentTrendingFeedProviders([]);
+      const providers = createCurrentTrendingFeedProviders(
+        [],
+        undefined,
+        undefined,
+        { includeHookVideos: hookVideosEnabled },
+      );
 
       return jsonResponse({
         carousels: [],
@@ -95,13 +103,16 @@ export async function GET(request: Request) {
       });
     }
 
-    const [dailyFeed, hookProvider] = await Promise.all([
+    const [dailyFeed, hookProvider, wallTextProvider] = await Promise.all([
       ensureTrendingDailyFeed({
         profile,
         timezone: new URL(request.url).searchParams.get("timezone"),
         userId,
       }),
-      getTrendingHookFeedProvider(profile),
+      hookVideosEnabled
+        ? getTrendingHookFeedProvider(profile)
+        : Promise.resolve(undefined),
+      getTrendingWallTextFeedProvider(profile),
     ]);
     const profileState =
       dailyFeed.carousels.length > 0
@@ -114,6 +125,8 @@ export async function GET(request: Request) {
     const providers = createCurrentTrendingFeedProviders(
       dailyFeed.carousels,
       hookProvider,
+      wallTextProvider,
+      { includeHookVideos: hookVideosEnabled },
     );
 
     return jsonResponse({

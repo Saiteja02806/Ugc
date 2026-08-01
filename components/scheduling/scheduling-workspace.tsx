@@ -77,6 +77,7 @@ const hookVideoSourceTypes: MediaSourceType[] = [
   "upload",
   "generated_video",
   "edit_export",
+  "wall_text_render",
 ];
 const scheduledVideoSourceTypes: MediaSourceType[] = [
   "demo_upload",
@@ -2777,7 +2778,7 @@ function getTargetStatusHelpText(
   }
 
   if (target.status === "scheduling") {
-    return "Creating the AWS schedule for this account.";
+    return "Creating the GCP Cloud Task for this account.";
   }
 
   if (target.status === "failed") {
@@ -5718,7 +5719,8 @@ function getScheduleMediaSourceType(value: unknown): ScheduleMediaOption["source
     value === "edit_export" ||
     value === "generated_video" ||
     value === "upload" ||
-    value === "user_video"
+    value === "user_video" ||
+    value === "wall_text_render"
   ) {
     if (value === "demo_upload") {
       return "demo_video";
@@ -5729,6 +5731,10 @@ function getScheduleMediaSourceType(value: unknown): ScheduleMediaOption["source
     }
 
     if (value === "upload") {
+      return "user_video";
+    }
+
+    if (value === "wall_text_render") {
       return "user_video";
     }
 
@@ -5888,7 +5894,7 @@ function getOpeningVideoEmptyCopy(source: OpeningVideoSourceTab) {
   if (source === "edited") {
     return {
       description:
-        "Open a video in Edit, export it, then select it here for scheduling.",
+        "Edit a video in Creative Assets, save it, then select it here for scheduling.",
       title: "No edited videos found.",
     };
   }

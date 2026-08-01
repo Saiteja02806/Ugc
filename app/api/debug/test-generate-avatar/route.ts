@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 
 import {
-  getMissingSqsEnvVars,
+  getMissingJobQueueEnvVars,
   getQueueNameForJobType,
   sendJobMessage,
-} from "@/lib/aws/sqs";
+} from "@/lib/queues/job-queue";
 import {
-  attachAwsMessageToBackgroundJob,
+  attachQueueMessageToBackgroundJob,
   createBackgroundJob,
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
-import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
+import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
+import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 
 const AVATAR_JOB_TYPE = "generate_avatar";
 
@@ -58,14 +59,14 @@ function getMissingRuntimeEnv() {
   return Array.from(
     new Set([
       ...getMissingBackgroundJobStorageEnvVars(),
-      ...getMissingSqsEnvVars([AVATAR_JOB_TYPE]),
+      ...getMissingJobQueueEnvVars([AVATAR_JOB_TYPE]),
     ]),
   );
 }
 
 export async function POST(request: Request) {
   try {
-    const user = await requireFirebaseUser(request);
+    const user = await requireAIStudioProUser(request);
     const body = (await request.json().catch(() => null)) as
       | {
           projectId?: unknown;
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: `AWS avatar generation is not configured. Add ${missingRuntimeEnv.join(
+          error: `GCP avatar generation is not configured. Add ${missingRuntimeEnv.join(
             ", ",
           )}.`,
         },
@@ -116,8 +117,8 @@ export async function POST(request: Request) {
         jobType: AVATAR_JOB_TYPE,
       });
 
-      await attachAwsMessageToBackgroundJob({
-        awsMessageId: message.messageId,
+      await attachQueueMessageToBackgroundJob({
+        queueMessageId: message.messageId,
         jobId: backgroundJob.id,
       });
     } catch (error) {
@@ -139,7 +140,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      message: "Avatar image generation queued in AWS",
+      message: "Avatar image generation queued in GCP Cloud Tasks",
       generationId,
       jobId: backgroundJob.id,
     });

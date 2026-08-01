@@ -8,6 +8,7 @@ export const mediaSourceTypes = [
   "generated_video",
   "edit_export",
   "combined_render",
+  "wall_text_render",
 ] as const;
 export const mediaAssetStatuses = [
   "uploading",

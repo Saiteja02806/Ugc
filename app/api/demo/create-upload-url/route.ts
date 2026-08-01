@@ -1,6 +1,6 @@
 import {
   authenticateDemoRequest,
-  getAwsDiagnostic,
+  getStorageDiagnostic,
   getMissingDemoRuntimeEnvVars,
   getNumber,
   getProjectId,
@@ -13,7 +13,7 @@ import {
   createDemoUploadTarget,
   DEMO_UPLOAD_URL_EXPIRES_IN_SECONDS,
 } from "@/lib/demo/demo-upload";
-import { createPresignedPutUrl } from "@/lib/storage/s3";
+import { createSignedPutUrl } from "@/lib/storage/storage";
 
 export const runtime = "nodejs";
 
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const uploadUrl = await createPresignedPutUrl({
+    const uploadUrl = await createSignedPutUrl({
       key: uploadTarget.target.key,
       contentType: uploadTarget.target.contentType,
       expiresInSeconds: DEMO_UPLOAD_URL_EXPIRES_IN_SECONDS,
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
       fileType: uploadTarget.target.contentType,
       projectId,
       sourceS3Key: uploadTarget.target.key,
-      sourceVideoUrl: uploadTarget.target.cloudFrontUrl,
+      sourceVideoUrl: uploadTarget.target.publicUrl,
       title: getString(body.title, 140),
       userId: auth.user.uid,
     });
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
       demo,
       key: uploadTarget.target.key,
       uploadUrl,
-      cloudFrontUrl: uploadTarget.target.cloudFrontUrl,
+      publicUrl: uploadTarget.target.publicUrl,
       expiresInSeconds: DEMO_UPLOAD_URL_EXPIRES_IN_SECONDS,
       requiredHeaders: {
         "Content-Type": uploadTarget.target.contentType,
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         error: "Could not create a demo upload URL.",
-        diagnostic: getAwsDiagnostic(error),
+        diagnostic: getStorageDiagnostic(error),
       },
       500,
     );

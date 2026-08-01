@@ -109,6 +109,19 @@ export async function getHookInfluencerForUser(params: {
   sourceKind: HookVideoSourceKind;
   userId: string;
 }) {
+  const parsed = parseHookInfluencerId(params.influencerId);
+
+  if (parsed?.sourceKind === "user" && params.sourceKind === "user") {
+    const asset = await getMediaAssetForOwner({
+      assetId: parsed.assetId,
+      userId: params.userId,
+    });
+
+    if (isUserHookSourceAsset(asset)) {
+      return mapUserInfluencer(asset);
+    }
+  }
+
   const influencers = await listHookInfluencers(params.userId);
   const influencer = influencers.find(
     (item) =>
@@ -125,7 +138,25 @@ export async function getHookInfluencerForUser(params: {
 
 export async function listHookVideoBrowseInventory(
   userId: string,
+  options?: { mediaAssetIds?: readonly string[] },
 ): Promise<HookVideoBrowseEntry[]> {
+  if (options?.mediaAssetIds) {
+    const selectedIds = new Set(options.mediaAssetIds);
+
+    if (selectedIds.size === 0) {
+      return [];
+    }
+
+    const assets = await listMediaAssets({ userId });
+
+    return assets
+      .filter(
+        (asset) =>
+          selectedIds.has(asset.id) && isUserHookSourceAsset(asset),
+      )
+      .map(mapUserBrowseEntry);
+  }
+
   const [catalogResult, userResult] = await Promise.allSettled([
     listReadyAvatarAssetsWithPreferences({ userId }),
     listMediaAssets({
@@ -181,8 +212,13 @@ export async function listHookVideoBrowseInventory(
           video: {
             durationSeconds: asset.duration_seconds,
             id: asset.id,
+            influencerKey: asset.influencer_key,
             influencerId,
             ratio: asset.ratio,
+            reactionType: getAvatarMetadataString(
+              asset,
+              "reactionType",
+            ),
             sourceKind: "catalog",
             thumbnailUrl: asset.thumbnail_url,
             title: asset.name,
@@ -190,6 +226,7 @@ export async function listHookVideoBrowseInventory(
               ? preference?.trim_end ?? asset.duration_seconds
               : asset.duration_seconds,
             trimStart: hasSavedTrim ? preference?.trim_start ?? 0 : 0,
+            visualGroup: asset.visual_group,
           },
         },
       ];
@@ -198,21 +235,7 @@ export async function listHookVideoBrowseInventory(
 
   const userEntries = (
     userResult.status === "fulfilled" ? userResult.value : []
-  ).map((asset): HookVideoBrowseEntry => {
-    const influencerId = buildUserInfluencerId(asset.id);
-    const influencer: HookInfluencerSummary = {
-      id: influencerId,
-      name: asset.title,
-      sourceKind: "user",
-      thumbnailUrl: asset.thumbnail_url,
-      videoCount: 1,
-    };
-
-    return {
-      influencer,
-      video: mapUserInfluencerVideo(asset, influencerId),
-    };
-  });
+  ).map(mapUserBrowseEntry);
 
   return [...catalogEntries, ...userEntries];
 }
@@ -245,8 +268,13 @@ export async function listHookInfluencerVideos(params: {
         return {
           durationSeconds: asset.duration_seconds,
           id: asset.id,
+          influencerKey: asset.influencer_key,
           influencerId: params.influencerId,
           ratio: asset.ratio,
+          reactionType: getAvatarMetadataString(
+            asset,
+            "reactionType",
+          ),
           sourceKind: "catalog",
           thumbnailUrl: asset.thumbnail_url,
           title: asset.name,
@@ -254,6 +282,7 @@ export async function listHookInfluencerVideos(params: {
             ? preference?.trim_end ?? asset.duration_seconds
             : asset.duration_seconds,
           trimStart: hasSavedTrim ? preference?.trim_start ?? 0 : 0,
+          visualGroup: asset.visual_group,
         };
       });
   }
@@ -263,7 +292,7 @@ export async function listHookInfluencerVideos(params: {
     userId: params.userId,
   });
 
-  if (!isUserInfluencerAsset(asset)) {
+  if (!isUserHookSourceAsset(asset)) {
     throw new HookVideoSourceError("This influencer was not found.", 404);
   }
 
@@ -338,7 +367,7 @@ export async function resolveHookVideoSource(params: {
     userId: params.userId,
   });
 
-  if (!isUserInfluencerAsset(asset)) {
+  if (!isUserHookSourceAsset(asset)) {
     throw new HookVideoSourceError("This influencer video was not found.", 404);
   }
 
@@ -463,25 +492,47 @@ function mapUserInfluencerVideo(
   return {
     durationSeconds: asset.duration_seconds,
     id: asset.id,
+    influencerKey: null,
     influencerId,
     ratio: asset.ratio,
+    reactionType: null,
     sourceKind: "user",
     thumbnailUrl: asset.thumbnail_url,
     title: asset.title,
     trimEnd: asset.duration_seconds,
     trimStart: 0,
+    visualGroup: null,
   };
 }
 
-function isUserInfluencerAsset(
+function isUserHookSourceAsset(
   asset: MediaAssetRow | null,
 ): asset is MediaAssetRow {
   return Boolean(
     asset &&
       asset.status === "ready" &&
-      asset.collection === "influencer" &&
-      asset.source_type === "influencer_upload",
+      (asset.collection === "influencer" || asset.collection === "video") &&
+      asset.mime_type.startsWith("video/"),
   );
+}
+
+function mapUserInfluencer(asset: MediaAssetRow): HookInfluencerSummary {
+  return {
+    id: buildUserInfluencerId(asset.id),
+    name: asset.title,
+    sourceKind: "user",
+    thumbnailUrl: asset.thumbnail_url,
+    videoCount: 1,
+  };
+}
+
+function mapUserBrowseEntry(asset: MediaAssetRow): HookVideoBrowseEntry {
+  const influencer = mapUserInfluencer(asset);
+
+  return {
+    influencer,
+    video: mapUserInfluencerVideo(asset, influencer.id),
+  };
 }
 
 function getVideoMimeType(key: string) {
@@ -490,4 +541,21 @@ function getVideoMimeType(key: string) {
   if (extension === "webm") return "video/webm";
   if (extension === "mov") return "video/quicktime";
   return "video/mp4";
+}
+
+function getAvatarMetadataString(
+  asset: AvatarAssetRow,
+  key: string,
+) {
+  const metadata =
+    asset.metadata &&
+    typeof asset.metadata === "object" &&
+    !Array.isArray(asset.metadata)
+      ? asset.metadata
+      : null;
+  const value = metadata?.[key];
+
+  return typeof value === "string" && value.trim()
+    ? value.trim()
+    : null;
 }

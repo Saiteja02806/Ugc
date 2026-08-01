@@ -4,18 +4,9 @@ import { hostname } from "node:os";
 
 import type { BackgroundJobType } from "./types.js";
 
-export type WorkerQueueProviderName = "aws" | "gcp";
-
 export type WorkerConfig = {
   allowedJobTypes: BackgroundJobType[];
-  awsRegion: string | null;
-  gcpProjectId: string | null;
-  pollMaxMessages: number;
-  pollWaitTimeSeconds: number;
-  pubsubSubscriptionName: string | null;
   queueName: string;
-  queueProvider: WorkerQueueProviderName;
-  queueUrl: string | null;
   socialReconciliationBatchSize: number;
   socialReconciliationEnabled: boolean;
   socialReconciliationIntervalSeconds: number;
@@ -30,31 +21,10 @@ export type WorkerConfig = {
 
 export function loadWorkerConfig(): WorkerConfig {
   loadLocalEnvForDevelopment();
-  const queueProvider = getWorkerQueueProvider();
 
   return {
     allowedJobTypes: getWorkerJobTypes(),
-    awsRegion:
-      queueProvider === "aws"
-        ? getRequiredEnv("AWS_REGION")
-        : getOptionalEnv("AWS_REGION", null),
-    gcpProjectId:
-      queueProvider === "gcp"
-        ? getRequiredGcpProjectId()
-        : getOptionalGcpProjectId(),
-    pollMaxMessages: getIntegerEnv("WORKER_POLL_MAX_MESSAGES", 1, {
-      max: 10,
-      min: 1,
-    }),
-    pollWaitTimeSeconds: getIntegerEnv("WORKER_POLL_WAIT_SECONDS", 10, {
-      max: 20,
-      min: 0,
-    }),
-    pubsubSubscriptionName:
-      queueProvider === "gcp" ? getWorkerPubSubSubscriptionName() : null,
     queueName: getOptionalEnv("WORKER_QUEUE_NAME", "media-processing"),
-    queueProvider,
-    queueUrl: queueProvider === "aws" ? getWorkerQueueUrl() : null,
     socialReconciliationBatchSize: getIntegerEnv(
       "SOCIAL_RECONCILIATION_BATCH_SIZE",
       10,
@@ -95,89 +65,21 @@ export function loadWorkerConfig(): WorkerConfig {
 }
 
 const validWorkerJobTypes = new Set<BackgroundJobType>([
+  "analytics_sync",
   "generate_avatar",
   "generate_carousel",
   "generate_hook_video",
   "generate_image",
+  "generate_trending_hook_copy",
+  "hook_text_generation",
+  "media_analysis",
   "publish_social_post",
   "render_edit_video",
   "render_schedule_combination",
+  "render_wall_text_video",
   "test_worker_job",
+  "wall_text_generation",
 ]);
-
-function getWorkerQueueUrl() {
-  const queueUrl =
-    process.env.WORKER_QUEUE_URL?.trim() ||
-    process.env.UGC_MEDIA_PROCESSING_QUEUE_URL?.trim() ||
-    "";
-
-  if (!queueUrl) {
-    throw new Error(
-      "Missing WORKER_QUEUE_URL. Set it to the SQS queue this worker service should poll.",
-    );
-  }
-
-  return queueUrl;
-}
-
-function getWorkerQueueProvider(): WorkerQueueProviderName {
-  const rawValue =
-    process.env.WORKER_QUEUE_PROVIDER?.trim() ||
-    process.env.QUEUE_PROVIDER?.trim() ||
-    process.env.UGC_QUEUE_PROVIDER?.trim() ||
-    "aws";
-  const normalizedValue = rawValue.toLowerCase();
-
-  if (normalizedValue === "aws" || normalizedValue === "sqs") {
-    return "aws";
-  }
-
-  if (
-    normalizedValue === "gcp" ||
-    normalizedValue === "google" ||
-    normalizedValue === "pubsub"
-  ) {
-    return "gcp";
-  }
-
-  throw new Error(
-    `Invalid WORKER_QUEUE_PROVIDER: ${rawValue}. Expected aws or gcp.`,
-  );
-}
-
-function getWorkerPubSubSubscriptionName() {
-  const subscriptionName =
-    process.env.WORKER_PUBSUB_SUBSCRIPTION?.trim() ||
-    process.env.GCP_PUBSUB_SUBSCRIPTION?.trim() ||
-    "";
-
-  if (!subscriptionName) {
-    throw new Error(
-      "Missing WORKER_PUBSUB_SUBSCRIPTION. Set it to the Pub/Sub subscription this worker service should pull.",
-    );
-  }
-
-  return subscriptionName;
-}
-
-function getRequiredGcpProjectId() {
-  const projectId = getOptionalGcpProjectId();
-
-  if (!projectId) {
-    throw new Error("Missing GCP_PROJECT_ID or GOOGLE_CLOUD_PROJECT");
-  }
-
-  return projectId;
-}
-
-function getOptionalGcpProjectId() {
-  return (
-    process.env.GCP_PROJECT_ID?.trim() ||
-    process.env.GOOGLE_CLOUD_PROJECT?.trim() ||
-    process.env.GCLOUD_PROJECT?.trim() ||
-    null
-  );
-}
 
 function getWorkerJobTypes() {
   const rawValue = process.env.WORKER_JOB_TYPES?.trim();

@@ -17,7 +17,7 @@ variable "environment" {
 }
 
 variable "enable_ai_generation_worker" {
-  description = "Set true after the worker image, Pub/Sub subscription, storage env, and AI Secret Manager versions are ready."
+  description = "Set true after the worker image, Cloud Tasks queue, storage env, and AI Secret Manager versions are ready."
   type        = bool
   default     = false
 }
@@ -34,16 +34,16 @@ variable "worker_service_account_email" {
   default     = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
 }
 
+variable "scheduler_service_account_email" {
+  description = "Service account used by Cloud Tasks to invoke this worker."
+  type        = string
+  default     = "ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com"
+}
+
 variable "service_name" {
   description = "Cloud Run Service name for the AI-generation worker."
   type        = string
   default     = "ugc-ai-generation-worker"
-}
-
-variable "pubsub_subscription_name" {
-  description = "Pub/Sub subscription the AI-generation worker pulls from."
-  type        = string
-  default     = "ugc-ai-generation-sub"
 }
 
 variable "queue_name" {
@@ -55,19 +55,7 @@ variable "queue_name" {
 variable "worker_job_types" {
   description = "Comma-separated job types allowed for this worker service."
   type        = string
-  default     = "generate_avatar,generate_image,generate_hook_video"
-}
-
-variable "worker_poll_max_messages" {
-  description = "Maximum Pub/Sub messages to pull per worker loop."
-  type        = number
-  default     = 1
-}
-
-variable "worker_poll_wait_seconds" {
-  description = "Pub/Sub pull wait behavior for the always-on worker."
-  type        = number
-  default     = 20
+  default     = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_generation,media_analysis,analytics_sync"
 }
 
 variable "worker_visibility_timeout_seconds" {
@@ -91,7 +79,7 @@ variable "max_instance_count" {
 variable "request_timeout_seconds" {
   description = "Cloud Run request timeout for health checks and incidental requests."
   type        = number
-  default     = 300
+  default     = 1800
 }
 
 variable "cpu" {
@@ -152,6 +140,18 @@ variable "runwayml_api_secret_id" {
   description = "Secret Manager secret ID injected as RUNWAYML_API_SECRET for Runway hook-video fallback."
   type        = string
   default     = "runwayml-api-secret"
+}
+
+variable "internal_app_url" {
+  description = "Production app base URL used for authenticated background persistence calls."
+  type        = string
+  default     = "https://www.getugcpilot.com"
+}
+
+variable "scheduling_secret_id" {
+  description = "Secret Manager secret ID used to authenticate internal worker calls."
+  type        = string
+  default     = "ugc-internal-scheduling-secret"
 }
 
 variable "worker_version" {

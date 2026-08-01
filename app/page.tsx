@@ -7,7 +7,6 @@ import {
   Clapperboard,
   Images,
   LayoutGrid,
-  Menu,
   ScanText,
   ShieldCheck,
   Sparkles,
@@ -16,6 +15,7 @@ import {
 import Link from "next/link";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
+import { LandingHeader } from "@/components/marketing/landing-header";
 
 const authHref = "/sign-in";
 
@@ -26,12 +26,6 @@ export const metadata: Metadata = {
   description:
     "Create Instagram Reel hooks, text-led videos, carousel posts, and approved publishing workflows in one workspace.",
 };
-
-const navItems = [
-  { label: "Instagram formats", href: "#formats" },
-  { label: "How it works", href: "#workflow" },
-  { label: "Pricing", href: "/pricing" },
-];
 
 const formatCards = [
   {
@@ -114,117 +108,68 @@ const legalFooterLinks = [
 export default function Home() {
   return (
     <main className="instagram-theme min-h-screen overflow-x-hidden bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/90 px-4 backdrop-blur-xl sm:px-6">
-        <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between gap-5">
-          <Link
-            href="/"
-            className="flex min-w-0 items-center gap-3 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label="UGCPilot home"
-          >
-            <ProductLogoMark
-              className="size-9 rounded-control bg-primary p-2"
-              imageClassName="brightness-0 invert"
-              sizes="36px"
-            />
-            <span className="truncate text-[17px] font-semibold text-foreground-strong">
-              UGCPilot
-            </span>
-          </Link>
+      <LandingHeader />
 
-          <nav
-            className="hidden items-center gap-7 text-sm font-medium text-muted md:flex"
-            aria-label="Primary navigation"
-          >
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="rounded-control transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                {item.label}
-              </Link>
-            ))}
-            <Link
-              href={authHref}
-              className="inline-flex h-10 items-center rounded-control border border-border bg-card px-4 text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              Sign in
-            </Link>
-            <Link
-              href={authHref}
-              className="inline-flex h-10 items-center rounded-control bg-primary px-4 font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              Start creating
-            </Link>
-          </nav>
-
-          <details className="group relative md:hidden">
-            <summary
-              aria-label="Open menu"
-              className="flex size-10 list-none items-center justify-center rounded-control border border-border bg-card text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden"
-            >
-              <Menu className="size-4" aria-hidden="true" />
-            </summary>
-            <div className="absolute right-0 top-12 w-60 rounded-card border border-border bg-card p-2 shadow-floating">
-              {[
-                ...navItems,
-                { label: "Sign in", href: authHref },
-                { label: "Start creating", href: authHref },
-              ].map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="block rounded-control px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-          </details>
-        </div>
-      </header>
-
-      <section className="relative px-4 pb-16 pt-12 sm:px-6 sm:pb-20 sm:pt-16 lg:px-8 lg:pb-24 lg:pt-20">
-        <div
-          className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[820px] -translate-x-1/2 opacity-25 blur-3xl"
-          style={{
-            background:
-              "radial-gradient(circle at 35% 35%, var(--instagram-rose), transparent 42%), radial-gradient(circle at 68% 48%, var(--instagram-violet), transparent 46%)",
-          }}
-          aria-hidden="true"
-        />
-
+      <section className="relative px-4 pb-16 pt-28 sm:px-6 sm:pb-20 sm:pt-32 lg:px-8 lg:pb-24 lg:pt-36">
         <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-12 lg:gap-16">
-          <div className="hero-rise max-w-[1000px] text-center">
-            <h1 className="mx-auto max-w-[1000px] text-[clamp(2.5rem,6.5vw,5.5rem)] font-semibold leading-[0.94] tracking-[-0.055em] text-foreground-strong">
-              Create Instagram content{" "}
-              <span className="mt-3 block bg-[linear-gradient(100deg,var(--instagram-orange),var(--instagram-rose)_48%,var(--instagram-violet))] bg-clip-text text-transparent">
-                worth stopping for.
+          <div className="hero-rise w-full max-w-[1200px] text-center">
+            <h1 className="mx-auto max-w-[1200px] text-[clamp(2rem,5.28vw,4.8rem)] font-semibold leading-[0.94] tracking-[-0.055em] text-foreground-strong">
+              <span className="block lg:whitespace-nowrap">
+                Stop guessing. Start posting.
+              </span>
+              <span className="mt-1 block lg:whitespace-nowrap sm:mt-2">
+                Your next post is{" "}
+                <span className="relative inline-block">
+                  ready to go.
+                  <svg
+                    viewBox="0 0 320 18"
+                    preserveAspectRatio="none"
+                    className="pointer-events-none absolute -bottom-[0.16em] left-[4%] h-[0.18em] w-[92%] overflow-visible opacity-90"
+                    aria-hidden="true"
+                  >
+                    <defs>
+                      <linearGradient
+                        id="ready-underline-gradient"
+                        x1="0"
+                        y1="9"
+                        x2="320"
+                        y2="9"
+                        gradientUnits="userSpaceOnUse"
+                      >
+                        <stop stopColor="var(--instagram-orange)" />
+                        <stop offset="0.52" stopColor="var(--instagram-rose)" />
+                        <stop offset="1" stopColor="var(--instagram-violet)" />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      d="M4 10.8C76 4.1 188 4.5 316 8.7"
+                      fill="none"
+                      stroke="url(#ready-underline-gradient)"
+                      strokeWidth="3.6"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
               </span>
             </h1>
 
-            <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-muted sm:text-lg sm:leading-8">
-              Build Reel hooks, text-led videos, and carousel posts from your
-              real business context, then review and schedule everything in one
-              focused workspace.
+            <p className="mx-auto mt-7 max-w-[860px] text-base leading-7 text-muted sm:text-lg sm:leading-8">
+              Turn proven Instagram formats into ready-to-publish content for
+              your business. Review, edit, and publish slideshows, Reel hooks,
+              and text-led videos designed to earn more attention and drive
+              action.
             </p>
 
-            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <div className="mt-8 flex justify-center">
               <Link
                 href={authHref}
-                className="group inline-flex h-12 items-center justify-center rounded-control bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="group inline-flex h-12 items-center justify-center rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                Start creating for Instagram
+                Start creating
                 <ArrowRight
                   className="ml-2 size-4 transition-transform group-hover:translate-x-0.5"
                   aria-hidden="true"
                 />
-              </Link>
-              <Link
-                href="#formats"
-                className="inline-flex h-12 items-center justify-center rounded-control border border-border bg-card/70 px-6 text-base font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                Explore the workspace
               </Link>
             </div>
 
@@ -487,14 +432,13 @@ export default function Home() {
 function InstagramWorkspacePreview() {
   return (
     <div className="relative mx-auto max-w-[920px]">
-      <div className="absolute -inset-8 rounded-full bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))] opacity-15 blur-3xl" />
       <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-[#17161a] p-2 shadow-[0_32px_100px_rgb(0_0_0_/_0.46)]">
         <div className="rounded-[18px] border border-white/8 bg-[#1e1d21]">
           <div className="flex items-center justify-between gap-4 border-b border-white/8 px-4 py-3.5 sm:px-5">
             <div className="flex items-center gap-3">
-              <span className="flex size-9 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]">
+              <span className="flex size-9 items-center justify-center rounded-[10px] border border-white/10 bg-white/[0.06]">
                 <LayoutGrid
-                  className="size-5 text-white"
+                  className="size-5 text-white/70"
                   aria-hidden="true"
                 />
               </span>

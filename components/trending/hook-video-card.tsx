@@ -5,11 +5,14 @@ import { useRef, type CSSProperties } from "react";
 
 import type { HookInfluencerVideoSummary } from "@/lib/trending/hook-video-types";
 import { cn } from "@/lib/utils";
+import { HookTextOverlay } from "@/components/trending/hook-text-overlay";
 
 export function HookVideoCard({
   className,
   dragOffset,
   exitingDirection = null,
+  hookFontSize = 52,
+  hookLines = null,
   hookText = null,
   previewError,
   previewLoading,
@@ -24,6 +27,8 @@ export function HookVideoCard({
   className?: string;
   dragOffset: number;
   exitingDirection?: "left" | "right" | null;
+  hookFontSize?: number;
+  hookLines?: readonly string[] | null;
   hookText?: string | null;
   previewError: string | null;
   previewLoading: boolean;
@@ -62,6 +67,8 @@ export function HookVideoCard({
         <img
           src={video.thumbnailUrl}
           alt=""
+          width={460}
+          height={818}
           draggable={false}
           className="absolute inset-0 size-full object-cover"
         />
@@ -102,13 +109,11 @@ export function HookVideoCard({
         />
       ) : null}
 
-      {hookText?.trim() ? (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-b from-black/10 via-black/5 to-black/35 px-5 py-8">
-          <p className="max-w-[18ch] rounded-[10px] bg-black/58 px-3.5 py-3 text-center text-[clamp(1rem,4.6vw,1.35rem)] font-extrabold leading-[1.08] tracking-[-0.025em] text-white shadow-[0_2px_12px_rgb(0_0_0_/_0.7)] backdrop-blur-[2px]">
-            {hookText}
-          </p>
-        </div>
-      ) : null}
+      <HookTextOverlay
+        fontSize={hookFontSize}
+        lines={hookLines}
+        text={hookText}
+      />
 
       {previewLoading ? (
         <div className="absolute inset-0 flex items-center justify-center bg-black/48 text-white">

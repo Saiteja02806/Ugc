@@ -6,12 +6,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "test": "npm run build && node --test dist/processor.test.js dist/jobs/publish-social-post.test.js dist/lib/carousel-replenishment.test.js dist/lib/edit-overlay-render-spec.test.js dist/lib/google-oauth.test.js dist/lib/queue-message.test.js dist/lib/render-engine.test.js dist/lib/instagram-oauth.test.js dist/lib/instagram-publisher.test.js dist/lib/youtube-publisher.test.js"
+    "test": "npm run build && node --test --test-concurrency=1 dist/processor.test.js dist/jobs/publish-social-post.test.js dist/jobs/render-wall-text-video.test.js dist/lib/carousel-replenishment.test.js dist/lib/edit-overlay-render-spec.test.js dist/lib/generation-provider.test.js dist/lib/google-oauth.test.js dist/lib/image-output.test.js dist/lib/queue-message.test.js dist/lib/render-engine.test.js dist/lib/trending-hook-copy.test.js dist/lib/video-output.test.js dist/lib/video-provider-fallback.test.js dist/lib/veo-video.test.js dist/lib/wall-text-render-spec.test.js dist/lib/instagram-oauth.test.js dist/lib/instagram-publisher.test.js dist/lib/youtube-publisher.test.js"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1075.0",
-    "@aws-sdk/client-sqs": "^3.1076.0",
-    "@google-cloud/pubsub": "^5.3.1",
+    "@fontsource/inter": "^5.2.8",
     "@google-cloud/storage": "^7.21.0",
     "@google/genai": "^2.10.0",
     "@runwayml/sdk": "^4.4.0",

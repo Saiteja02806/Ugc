@@ -59,7 +59,7 @@ try {
   createdDemoForCleanup = { demoId, key };
 
   console.log(`Created upload row: ${demoId}`);
-  console.log(`S3 key: ${key}`);
+  console.log(`Storage key: ${key}`);
 
   const putResponse = await fetch(uploadUrl, {
     body: fileBuffer,
@@ -70,10 +70,10 @@ try {
   });
 
   if (!putResponse.ok) {
-    throw new Error(`S3 upload failed with HTTP ${putResponse.status}`);
+    throw new Error(`Cloud Storage upload failed with HTTP ${putResponse.status}`);
   }
 
-  console.log("Uploaded source video to S3");
+  console.log("Uploaded source video to Google Cloud Storage");
 
   const completeUpload = await postJson("/api/demo/complete-upload", {
     demoId,

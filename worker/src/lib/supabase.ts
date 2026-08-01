@@ -7,6 +7,8 @@ import type {
   CategoryImageAssetRow,
   CarouselGenerationUpdate,
   CarouselSlideInsert,
+  GenerationProvider,
+  GenerationProviderOperationRow,
   Json,
   SocialPublishProviderOperationKind,
 } from "../types.js";
@@ -24,6 +26,7 @@ const CATEGORY_IMAGE_ASSETS_TABLE = "category_image_assets";
 const CATEGORY_IMAGE_ASSET_PAGE_SIZE = 1000;
 const DEMO_VIDEOS_TABLE = "demo_videos";
 const EDITABLE_VIDEOS_TABLE = "editable_videos";
+const GENERATION_PROVIDER_OPERATIONS_TABLE = "generation_provider_operations";
 const LIBRARY_CAROUSEL_SLIDES_TABLE = "library_carousel_slides";
 const LIBRARY_ITEMS_TABLE = "library_items";
 const MEDIA_ASSETS_TABLE = "media_assets";
@@ -31,6 +34,7 @@ const SCHEDULED_POSTS_TABLE = "scheduled_posts";
 const SCHEDULED_POST_TARGETS_TABLE = "scheduled_post_targets";
 const SOCIAL_CONNECTIONS_TABLE = "social_connections";
 const SOCIAL_PUBLISH_OPERATIONS_TABLE = "social_publish_operations";
+const USER_WALL_TEXT_ASSIGNMENTS_TABLE = "user_wall_text_assignments";
 const CLAIM_BACKGROUND_JOB_FUNCTION = "claim_background_job";
 const CLAIM_SOCIAL_PUBLISH_OPERATION_FUNCTION =
   "claim_social_publish_operation";
@@ -109,7 +113,13 @@ export class SupabaseJobStore {
       })
       .eq("id", params.jobId)
       .eq("claim_token", params.claimToken)
-      .eq("status", "processing")
+      .in("status", [
+        "processing",
+        "waiting_external_service",
+        "rendering",
+        "uploading_output",
+        "cancel_requested",
+      ])
       .select("id")
       .maybeSingle();
 
@@ -158,35 +168,328 @@ export class SupabaseJobStore {
     return data ?? 0;
   }
 
+  async persistTrendingHookCopyGeneration(params: {
+    businessProfileId: string;
+    businessProfileVersion: number;
+    candidates: Json;
+    generatorModel: string;
+    jobId: string;
+    promptVersion: string;
+    selectionVersion: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "persist_trending_hook_copy_generation_v4",
+      {
+        p_business_profile_id: params.businessProfileId,
+        p_business_profile_version: params.businessProfileVersion,
+        p_candidates: params.candidates,
+        p_generator_model: params.generatorModel,
+        p_job_id: params.jobId,
+        p_prompt_version: params.promptVersion,
+        p_selection_version: params.selectionVersion,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not persist Trending Hook copy: ${error.message}`,
+      );
+    }
+
+    return data ?? 0;
+  }
+
   async markCompleted(params: {
     claimToken: string;
     jobId: string;
     output: Record<string, Json | undefined>;
   }) {
-    const now = new Date().toISOString();
-
-    const job = await this.updateClaimedJob({
-      claimToken: params.claimToken,
-      jobId: params.jobId,
-      patch: {
-        claim_token: null,
-        completed_at: now,
-        error_message: null,
-        next_attempt_at: null,
-        output_json: toJsonObject(params.output),
-        status: "completed",
-      },
+    const { data, error } = await this.client.rpc("complete_background_job", {
+      p_claim_token: params.claimToken,
+      p_job_id: params.jobId,
+      p_output: toJsonObject(params.output),
+      p_output_reference: getStableOutputReference(params.output),
     });
 
-    if (job) {
-      await this.registerGeneratedMediaAsset(job, params.output);
+    if (error) {
+      throw new Error(`Could not complete background job: ${error.message}`);
     }
 
-    return job;
+    return data?.[0] ?? null;
+  }
+
+  async reserveGenerationProviderOperation(params: {
+    jobId: string;
+    metadata?: Record<string, Json | undefined>;
+    operationKey: string;
+    provider: GenerationProvider;
+    requestFingerprint: string;
+  }): Promise<{
+    operation: GenerationProviderOperationRow;
+    shouldSubmit: boolean;
+  }> {
+    const now = new Date().toISOString();
+    const { data, error } = await this.client
+      .from(GENERATION_PROVIDER_OPERATIONS_TABLE)
+      .insert({
+        job_id: params.jobId,
+        metadata: toJsonObject(params.metadata ?? {}),
+        operation_key: params.operationKey,
+        provider: params.provider,
+        request_fingerprint: params.requestFingerprint,
+      })
+      .select("*")
+      .maybeSingle();
+
+    if (!error && data) {
+      return { operation: data, shouldSubmit: true };
+    }
+
+    if (error && error.code !== "23505") {
+      throw new Error(
+        `Could not reserve provider generation: ${error.message}`,
+      );
+    }
+
+    const existing = await this.getGenerationProviderOperation({
+      jobId: params.jobId,
+      operationKey: params.operationKey,
+    });
+
+    if (!existing) {
+      throw new Error("Provider generation reservation was not found.");
+    }
+
+    if (
+      existing.provider !== params.provider ||
+      existing.request_fingerprint !== params.requestFingerprint
+    ) {
+      throw new Error(
+        "Provider generation reservation does not match this request.",
+      );
+    }
+
+    if (existing.status === "failed" && existing.retry_allowed) {
+      const { data: reset, error: resetError } = await this.client
+        .from(GENERATION_PROVIDER_OPERATIONS_TABLE)
+        .update({
+          last_error_code: null,
+          last_error_message: null,
+          metadata: toJsonObject(params.metadata ?? {}),
+          output_persisted_at: null,
+          output_reference: null,
+          output_url: null,
+          provider_completed_at: null,
+          provider_operation_id: null,
+          retry_allowed: false,
+          status: "reserved",
+          submitted_at: null,
+          updated_at: now,
+        })
+        .eq("id", existing.id)
+        .eq("status", "failed")
+        .eq("retry_allowed", true)
+        .select("*")
+        .maybeSingle();
+
+      if (resetError) {
+        throw new Error(
+          `Could not retry provider generation: ${resetError.message}`,
+        );
+      }
+
+      if (reset) {
+        return { operation: reset, shouldSubmit: true };
+      }
+    }
+
+    return { operation: existing, shouldSubmit: false };
+  }
+
+  async getGenerationProviderOperation(params: {
+    jobId: string;
+    operationKey: string;
+  }) {
+    const { data, error } = await this.client
+      .from(GENERATION_PROVIDER_OPERATIONS_TABLE)
+      .select("*")
+      .eq("job_id", params.jobId)
+      .eq("operation_key", params.operationKey)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not read provider generation: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  async getLatestPersistedGenerationOperation(jobId: string) {
+    const { data, error } = await this.client
+      .from(GENERATION_PROVIDER_OPERATIONS_TABLE)
+      .select("*")
+      .eq("job_id", jobId)
+      .in("status", ["provider_succeeded", "output_persisted"])
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        `Could not read persisted provider generation: ${error.message}`,
+      );
+    }
+
+    return data;
+  }
+
+  async markGenerationProviderSubmitted(params: {
+    jobId: string;
+    operationKey: string;
+    providerOperationId: string;
+  }) {
+    return this.updateGenerationProviderOperation({
+      jobId: params.jobId,
+      operationKey: params.operationKey,
+      patch: {
+        provider_operation_id: params.providerOperationId.slice(0, 1_000),
+        retry_allowed: false,
+        status: "submitted",
+        submitted_at: new Date().toISOString(),
+      },
+      statuses: ["reserved", "submitted"],
+    });
+  }
+
+  async markGenerationProviderSucceeded(params: {
+    jobId: string;
+    metadata?: Record<string, Json | undefined>;
+    operationKey: string;
+    outputUrl?: string;
+    providerOperationId?: string;
+  }) {
+    return this.updateGenerationProviderOperation({
+      jobId: params.jobId,
+      operationKey: params.operationKey,
+      patch: {
+        last_error_code: null,
+        last_error_message: null,
+        ...(params.metadata
+          ? { metadata: toJsonObject(params.metadata) }
+          : {}),
+        output_url: params.outputUrl ?? null,
+        provider_completed_at: new Date().toISOString(),
+        ...(params.providerOperationId
+          ? { provider_operation_id: params.providerOperationId.slice(0, 1_000) }
+          : {}),
+        retry_allowed: false,
+        status: "provider_succeeded",
+      },
+      statuses: ["reserved", "submitted", "provider_succeeded"],
+    });
+  }
+
+  async markGenerationOutputPersisted(params: {
+    jobId: string;
+    metadata?: Record<string, Json | undefined>;
+    operationKey: string;
+    outputReference: string;
+    outputUrl: string;
+  }) {
+    return this.updateGenerationProviderOperation({
+      jobId: params.jobId,
+      operationKey: params.operationKey,
+      patch: {
+        ...(params.metadata
+          ? { metadata: toJsonObject(params.metadata) }
+          : {}),
+        output_persisted_at: new Date().toISOString(),
+        output_reference: params.outputReference,
+        output_url: params.outputUrl,
+        retry_allowed: false,
+        status: "output_persisted",
+      },
+      statuses: [
+        "reserved",
+        "submitted",
+        "provider_succeeded",
+        "output_persisted",
+      ],
+    });
+  }
+
+  async markGenerationProviderFailed(params: {
+    errorCode: string;
+    errorMessage: string;
+    jobId: string;
+    operationKey: string;
+    retryAllowed: boolean;
+  }) {
+    return this.updateGenerationProviderOperation({
+      jobId: params.jobId,
+      operationKey: params.operationKey,
+      patch: {
+        last_error_code: params.errorCode.slice(0, 120),
+        last_error_message: params.errorMessage.slice(0, 1_000),
+        retry_allowed: params.retryAllowed,
+        status: "failed",
+      },
+      statuses: ["reserved", "submitted", "failed"],
+    });
+  }
+
+  async markGenerationProviderSubmissionUncertain(params: {
+    errorMessage: string;
+    jobId: string;
+    operationKey: string;
+  }) {
+    return this.updateGenerationProviderOperation({
+      jobId: params.jobId,
+      operationKey: params.operationKey,
+      patch: {
+        last_error_code: "provider_submission_uncertain",
+        last_error_message: params.errorMessage.slice(0, 1_000),
+        retry_allowed: false,
+        status: "submission_uncertain",
+      },
+      statuses: ["reserved", "submission_uncertain"],
+    });
+  }
+
+  private async updateGenerationProviderOperation(params: {
+    jobId: string;
+    operationKey: string;
+    patch: BackgroundJobsDatabase["public"]["Tables"]["generation_provider_operations"]["Update"];
+    statuses: GenerationProviderOperationRow["status"][];
+  }) {
+    const { data, error } = await this.client
+      .from(GENERATION_PROVIDER_OPERATIONS_TABLE)
+      .update({
+        ...params.patch,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("job_id", params.jobId)
+      .eq("operation_key", params.operationKey)
+      .in("status", params.statuses)
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not update provider generation: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error("Provider generation state changed unexpectedly.");
+    }
+
+    return data;
   }
 
   async markFailed(params: {
     claimToken?: string;
+    errorCode?: string;
     errorMessage: string;
     job: BackgroundJobRow;
   }) {
@@ -199,10 +502,13 @@ export class SupabaseJobStore {
         patch: {
           attempt_count: params.job.attempt_count + 1,
           claim_token: null,
-          completed_at: now,
+          error_code: params.errorCode?.slice(0, 120) || "JOB_FAILED",
           error_message: params.errorMessage.slice(0, 1_000),
+          failed_at: now,
           next_attempt_at: null,
+          stage: "failed",
           status: "failed",
+          worker_execution_id: null,
         },
       });
     }
@@ -211,9 +517,11 @@ export class SupabaseJobStore {
       .from(BACKGROUND_JOBS_TABLE)
       .update({
         attempt_count: params.job.attempt_count + 1,
-        completed_at: now,
+        error_code: params.errorCode?.slice(0, 120) || "JOB_FAILED",
         error_message: params.errorMessage.slice(0, 1_000),
+        failed_at: now,
         next_attempt_at: null,
+        stage: "failed",
         status: "failed",
         updated_at: now,
       })
@@ -242,14 +550,94 @@ export class SupabaseJobStore {
         attempt_count: params.job.attempt_count + 1,
         claim_token: null,
         completed_at: null,
+        error_code: null,
         error_message: params.errorMessage.slice(0, 1_000),
+        failed_at: null,
         last_heartbeat_at: null,
         locked_at: null,
         next_attempt_at: params.retryAt,
+        progress: null,
+        stage: "queued",
         status: "queued",
+        worker_execution_id: null,
         worker_id: null,
       },
     });
+  }
+
+  async updateJobStage(params: {
+    claimToken: string;
+    jobId: string;
+    progress?: number | null;
+    stage: string;
+    status:
+      | "processing"
+      | "rendering"
+      | "uploading_output"
+      | "waiting_external_service";
+  }) {
+    const now = new Date().toISOString();
+    const { data, error } = await this.client
+      .from(BACKGROUND_JOBS_TABLE)
+      .update({
+        last_heartbeat_at: now,
+        progress: params.progress ?? null,
+        stage: params.stage.slice(0, 120),
+        status: params.status,
+        updated_at: now,
+      })
+      .eq("id", params.jobId)
+      .eq("claim_token", params.claimToken)
+      .in("status", [
+        "processing",
+        "waiting_external_service",
+        "rendering",
+        "uploading_output",
+      ])
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not update background job stage: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  async markCancelled(params: {
+    claimToken?: string;
+    jobId: string;
+  }) {
+    const now = new Date().toISOString();
+    let query = this.client
+      .from(BACKGROUND_JOBS_TABLE)
+      .update({
+        claim_token: null,
+        completed_at: now,
+        error_code: null,
+        error_message: null,
+        locked_at: null,
+        progress: null,
+        stage: "cancelled",
+        status: "cancelled",
+        updated_at: now,
+        worker_execution_id: null,
+        worker_id: null,
+      })
+      .eq("id", params.jobId)
+      .in("status", ["cancel_requested"]);
+
+    if (params.claimToken) {
+      query = query.eq("claim_token", params.claimToken);
+    }
+
+    const { data, error } = await query.select("*").maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not cancel background job: ${error.message}`);
+    }
+
+    return data;
   }
 
   async markEditRenderRendering(renderId: string) {
@@ -608,6 +996,126 @@ export class SupabaseJobStore {
       scheduleId: params.scheduleId,
       userId: params.userId,
     });
+  }
+
+  async markWallTextRenderStarted(params: {
+    assignmentId: string;
+    jobId: string;
+    renderId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(USER_WALL_TEXT_ASSIGNMENTS_TABLE)
+      .update({
+        render_error: null,
+        render_job_id: params.jobId,
+        render_status: "rendering",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.assignmentId)
+      .eq("user_id", params.userId)
+      .eq("render_id", params.renderId)
+      .in("render_status", ["queued", "rendering"])
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not mark Wall-text render started: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error("Wall-text render assignment is stale.");
+    }
+  }
+
+  async markWallTextRenderCompleted(params: {
+    assignmentId: string;
+    creativeId: string;
+    durationSeconds: number;
+    key: string;
+    mediaAssetId: string;
+    projectId: string;
+    renderId: string;
+    title: string;
+    url: string;
+    userId: string;
+  }) {
+    const now = new Date().toISOString();
+
+    await this.saveMediaAsset({
+      collection: "video",
+      duration_seconds: params.durationSeconds,
+      file_name: null,
+      file_size_bytes: null,
+      height: 1920,
+      id: params.mediaAssetId,
+      metadata: {
+        assignmentId: params.assignmentId,
+        creativeId: params.creativeId,
+        renderId: params.renderId,
+      },
+      mime_type: "video/mp4",
+      parent_asset_id: null,
+      project_id: params.projectId,
+      ratio: "9:16",
+      source_record_id: params.renderId,
+      source_type: "wall_text_render",
+      status: "ready",
+      storage_key: params.key,
+      thumbnail_url: null,
+      title: params.title,
+      updated_at: now,
+      url: params.url,
+      user_id: params.userId,
+      width: 1080,
+    });
+
+    const { data, error } = await this.client
+      .from(USER_WALL_TEXT_ASSIGNMENTS_TABLE)
+      .update({
+        render_error: null,
+        render_status: "ready",
+        rendered_at: now,
+        rendered_media_asset_id: params.mediaAssetId,
+        updated_at: now,
+      })
+      .eq("id", params.assignmentId)
+      .eq("user_id", params.userId)
+      .eq("render_id", params.renderId)
+      .in("render_status", ["queued", "rendering"])
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not complete Wall-text render: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error("Wall-text render assignment changed before completion.");
+    }
+  }
+
+  async markWallTextRenderFailed(params: {
+    assignmentId: string;
+    errorMessage: string;
+    renderId: string;
+    userId: string;
+  }) {
+    const { error } = await this.client
+      .from(USER_WALL_TEXT_ASSIGNMENTS_TABLE)
+      .update({
+        render_error: params.errorMessage.slice(0, 1_000),
+        render_status: "failed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.assignmentId)
+      .eq("user_id", params.userId)
+      .eq("render_id", params.renderId)
+      .in("render_status", ["queued", "rendering"]);
+
+    if (error) {
+      throw new Error(`Could not mark Wall-text render failed: ${error.message}`);
+    }
   }
 
   async markScheduleCombinationFinalizationCompleted(params: {
@@ -1411,7 +1919,12 @@ export class SupabaseJobStore {
       })
       .eq("id", params.jobId)
       .eq("claim_token", params.claimToken)
-      .eq("status", "processing")
+      .in("status", [
+        "processing",
+        "waiting_external_service",
+        "rendering",
+        "uploading_output",
+      ])
       .select("*")
       .maybeSingle();
 
@@ -1523,54 +2036,6 @@ export class SupabaseJobStore {
     }
   }
 
-  private async registerGeneratedMediaAsset(
-    job: BackgroundJobRow,
-    output: Record<string, Json | undefined>,
-  ) {
-    if (!job.user_id || !["generate_avatar", "generate_hook_video", "generate_image"].includes(job.job_type)) {
-      return;
-    }
-
-    const key = getString(output.key);
-    const url = getString(output.url);
-
-    if (!key || !url) {
-      return;
-    }
-
-    const isVideo = job.job_type === "generate_hook_video";
-    await this.saveMediaAsset({
-      collection: isVideo ? "video" : "image",
-      duration_seconds: getNumber(output.durationSeconds),
-      file_name: null,
-      file_size_bytes: null,
-      height: getInteger(output.height),
-      id: crypto.randomUUID(),
-      metadata: {
-        backgroundJobId: job.id,
-        jobType: job.job_type,
-      },
-      mime_type: isVideo ? "video/mp4" : "image/png",
-      parent_asset_id: null,
-      project_id: job.project_id,
-      ratio: getRatio(output.ratio ?? getObjectValue(job.input_json, "aspectRatio")),
-      source_record_id: job.id,
-      source_type: isVideo ? "generated_video" : "generated_image",
-      status: "ready",
-      storage_key: key,
-      thumbnail_url: isVideo ? getString(output.thumbnailUrl) : url,
-      title: isVideo
-        ? "Generated influencer video"
-        : job.job_type === "generate_avatar"
-          ? "Generated influencer image"
-          : "Generated image",
-      updated_at: new Date().toISOString(),
-      url,
-      user_id: job.user_id,
-      width: getInteger(output.width),
-    });
-  }
-
   private async saveMediaAsset(
     row: BackgroundJobsDatabase["public"]["Tables"]["media_assets"]["Insert"],
   ) {
@@ -1606,26 +2071,32 @@ function toJsonObject(value: Record<string, Json | undefined>): Json {
   );
 }
 
+function getStableOutputReference(
+  output: Record<string, Json | undefined>,
+) {
+  for (const field of [
+    "mediaAssetId",
+    "libraryItemId",
+    "renderId",
+    "videoId",
+    "generationId",
+    "key",
+    "url",
+  ]) {
+    const value = output[field];
+
+    if (typeof value === "string" && value.trim()) {
+      return `${field}:${value.trim()}`.slice(0, 2_000);
+    }
+  }
+
+  return null;
+}
+
 function toJsonRecord(value: Json): Record<string, Json | undefined> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value
     : {};
-}
-
-function getString(value: Json | undefined) {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function getNumber(value: Json | undefined) {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
-}
-
-function getInteger(value: Json | undefined) {
-  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
-}
-
-function getRatio(value: Json | undefined) {
-  return value === "9:16" || value === "1:1" || value === "4:5" || value === "16:9" ? value : "other";
 }
 
 function areJsonValuesEqual(first: Json | undefined, second: Json | undefined) {
@@ -1655,8 +2126,4 @@ function normalizeJsonValue(value: Json | undefined): unknown {
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-function getObjectValue(value: Json, key: string) {
-  return value && typeof value === "object" && !Array.isArray(value) ? value[key] : undefined;
 }

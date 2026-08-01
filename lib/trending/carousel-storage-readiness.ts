@@ -2,7 +2,7 @@ import type {
   CarouselGenerationRecord,
   CarouselSlideRecord,
 } from "../carousel/db.ts";
-import { isTrustedStorageUrl } from "../storage/s3.ts";
+import { isTrustedStorageUrl } from "../storage/storage.ts";
 
 export function isCompleteReadyCarouselForCurrentStorage(status: {
   generation: CarouselGenerationRecord;

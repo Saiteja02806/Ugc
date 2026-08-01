@@ -54,14 +54,14 @@ const defaultPrompt =
 
 function getJobMessage(status: string) {
   if (status === "queued") {
-    return "OpenAI image generation is queued in AWS.";
+    return "OpenAI image generation is queued in GCP Cloud Tasks.";
   }
 
   if (status === "processing") {
-    return "Generating the image with OpenAI, then uploading it to CloudFront.";
+    return "Generating the image with OpenAI, then saving it to Cloud Storage.";
   }
 
-  return `AWS worker status: ${status}`;
+  return `GCP worker status: ${status}`;
 }
 
 export function ImageGenerationTester() {
@@ -69,7 +69,7 @@ export function ImageGenerationTester() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [images, setImages] = useState<ImageResult[]>([]);
   const [message, setMessage] = useState(
-    "Click generate to test OpenAI image generation through AWS.",
+    "Click generate to test OpenAI image generation through GCP.",
   );
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">(
     "idle",
@@ -107,7 +107,7 @@ export function ImageGenerationTester() {
 
         if (!response.ok) {
           setStatus("error");
-          setMessage("Could not read the AWS worker job status.");
+          setMessage("Could not read the GCP worker job status.");
           setJobId(null);
           return;
         }
@@ -115,7 +115,7 @@ export function ImageGenerationTester() {
         if (data.job.status === "completed" && data.job.output?.url) {
           setImages([{ url: data.job.output.url }]);
           setStatus("success");
-          setMessage("OpenAI image generated and uploaded to CloudFront.");
+          setMessage("OpenAI image generated and saved to Cloud Storage.");
           setJobId(null);
           return;
         }
@@ -162,7 +162,7 @@ export function ImageGenerationTester() {
 
     setStatus("loading");
     setJobId(null);
-    setMessage("Starting OpenAI image generation through AWS...");
+    setMessage("Starting OpenAI image generation through GCP...");
     setImages([]);
 
     try {
@@ -191,7 +191,7 @@ export function ImageGenerationTester() {
       }
 
       setJobId(data.jobId);
-      setMessage("OpenAI image generation started. Waiting for AWS...");
+      setMessage("OpenAI image generation started. Waiting for GCP...");
     } catch {
       setStatus("error");
       setMessage("Could not reach the internal OpenAI image generation route.");
@@ -298,7 +298,7 @@ export function ImageGenerationTester() {
                   />
                 </div>
                 <figcaption className="border-t border-border bg-card px-3 py-2 text-xs font-semibold text-muted">
-                  CloudFront preview
+                  Cloud Storage preview
                 </figcaption>
               </figure>
             ))}
@@ -313,8 +313,8 @@ export function ImageGenerationTester() {
                 No image generated yet
               </h3>
               <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
-                Use this screen to confirm OpenAI image generation, AWS workers,
-                S3 upload, and CloudFront delivery in one pass.
+                Use this screen to confirm OpenAI image generation, GCP workers,
+                Cloud Storage upload and delivery in one pass.
               </p>
             </div>
           </div>

@@ -193,7 +193,7 @@ export function AvatarGenerationWorkspace({
         if (data.job.status === "completed" && data.job.output?.url) {
           setImageUrl(data.job.output.url);
           setStatus("success");
-          setMessage("Avatar image generated and uploaded to CloudFront.");
+          setMessage("Avatar image generated and saved to Cloud Storage.");
           setPollJobId(null);
           return;
         }
@@ -423,7 +423,7 @@ export function AvatarGenerationWorkspace({
               </h3>
               <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
                 Generate one base creator image to confirm the OpenAI,
-                AWS worker, S3, and CloudFront path.
+                GCP worker and Cloud Storage path.
               </p>
             </div>
           )}

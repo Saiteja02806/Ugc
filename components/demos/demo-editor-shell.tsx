@@ -27,6 +27,7 @@ import {
   type EditableVideoRatio,
   type EditableVideoStatus,
 } from "@/lib/edit/video-library";
+import { CONTENT_REELS_HREF } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
 
@@ -96,7 +97,15 @@ type RenderStatusResponse =
     }
   | { error: string; ok: false };
 
-export function DemoEditorShell({ demoId }: { demoId: string }) {
+export function DemoEditorShell({
+  demoId,
+  returnHref = CONTENT_REELS_HREF,
+  returnLabel = "Back to Content",
+}: {
+  demoId: string;
+  returnHref?: string;
+  returnLabel?: string;
+}) {
   const router = useRouter();
   const [demo, setDemo] = useState<DemoVideo | null>(null);
   const [draft, setDraft] = useState<FocusedVideoEditorDraftState | null>(null);
@@ -207,12 +216,12 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
       return;
     }
 
-    router.push("/demos");
+    router.push(returnHref);
   }
 
   function handleLeaveWithoutSaving() {
     setShowLeaveDialog(false);
-    router.push("/demos");
+    router.push(returnHref);
   }
 
   function handleDiscardChanges() {
@@ -372,6 +381,7 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
         demo={demo}
         hasTitleChanged={hasTitleChanged}
         renderState={renderState}
+        returnLabel={returnLabel}
         saveState={saveState}
         title={title}
         onBackToDemos={handleBackToDemos}
@@ -393,7 +403,12 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
         {isLoading ? (
           <EditorLoadingState />
         ) : errorMessage ? (
-          <EditorErrorState message={errorMessage} onRetry={() => void loadDemo()} />
+          <EditorErrorState
+            message={errorMessage}
+            returnHref={returnHref}
+            returnLabel={returnLabel}
+            onRetry={() => void loadDemo()}
+          />
         ) : editableVideo ? (
           <FocusedVideoEditor
             key={`${editableVideo.id}-${editorResetKey}`}
@@ -413,6 +428,8 @@ export function DemoEditorShell({ demoId }: { demoId: string }) {
         ) : (
           <EditorErrorState
             message="This demo video could not be opened."
+            returnHref={returnHref}
+            returnLabel={returnLabel}
             onRetry={() => void loadDemo()}
           />
         )}
@@ -439,6 +456,7 @@ function DemoEditorTopBar({
   onSaveDraft,
   onTitleChange,
   renderState,
+  returnLabel,
   saveState,
   title,
 }: {
@@ -452,6 +470,7 @@ function DemoEditorTopBar({
   onSaveDraft: () => void;
   onTitleChange: (title: string) => void;
   renderState: RenderState;
+  returnLabel: string;
   saveState: SaveState;
   title: string;
 }) {
@@ -464,7 +483,7 @@ function DemoEditorTopBar({
           className="inline-flex h-8 items-center gap-2 rounded-md px-1 text-sm font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
-          Back to Demos
+          {returnLabel}
         </button>
 
         <div className="mt-2 flex max-w-3xl flex-col gap-2">
@@ -728,9 +747,13 @@ function EditorLoadingState() {
 function EditorErrorState({
   message,
   onRetry,
+  returnHref,
+  returnLabel,
 }: {
   message: string;
   onRetry: () => void;
+  returnHref: string;
+  returnLabel: string;
 }) {
   return (
     <section className="flex min-h-[520px] flex-1 items-center justify-center rounded-lg border border-border bg-card px-5 py-10 text-center">
@@ -753,10 +776,10 @@ function EditorErrorState({
             Retry
           </button>
           <Link
-            href="/demos"
+            href={returnHref}
             className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
           >
-            Back to demos
+            {returnLabel}
           </Link>
         </div>
       </div>

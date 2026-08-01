@@ -1,5 +1,5 @@
 export type EditOverlayRatio = "9:16" | "1:1" | "4:5" | "16:9";
-export type EditOverlayStyle = "clean" | "minimal" | "bubble";
+export type EditOverlayStyle = "clean" | "minimal" | "bubble" | "hook";
 
 export type EditOverlayTextLayout = {
   backgroundColor: string | undefined;
@@ -53,30 +53,35 @@ export const EDIT_OVERLAY_OUTPUT_DIMENSIONS: Record<
 const styleFontSizes: Record<EditOverlayStyle, number> = {
   bubble: 62,
   clean: 68,
+  hook: 52,
   minimal: 64,
 };
 
 const styleMinimumFontSizes: Record<EditOverlayStyle, number> = {
   bubble: 38,
   clean: 42,
+  hook: 34,
   minimal: 40,
 };
 
 const styleLineSpacing: Record<EditOverlayStyle, number> = {
   bubble: 22,
   clean: 24,
+  hook: 14,
   minimal: 22,
 };
 
 const styleAverageCharacterWidthFactor: Record<EditOverlayStyle, number> = {
   bubble: 0.58,
   clean: 0.55,
+  hook: 0.54,
   minimal: 0.55,
 };
 
 const styleBackgroundOpacity: Record<EditOverlayStyle, number | null> = {
   bubble: 0.65,
   clean: null,
+  hook: null,
   minimal: 0.35,
 };
 
@@ -113,7 +118,7 @@ export function getEditOverlayPaddingForFontSize(
   style: EditOverlayStyle,
   fontSize: number,
 ) {
-  if (style === "clean") {
+  if (style === "clean" || style === "hook") {
     return 0;
   }
 
@@ -172,6 +177,11 @@ export function buildEditOverlayTextLayout(
   const maxContainerHeight = Math.round(
     canvasHeight * (metrics.maxTextHeightPercent / 100),
   );
+  const requestedManualLineCount = text
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim()
+    .split("\n").length;
   let fallback: EditOverlayTextLayout | null = null;
 
   for (
@@ -191,7 +201,11 @@ export function buildEditOverlayTextLayout(
     });
     fallback = layout;
 
-    if (layout.bounds.containerHeight <= maxContainerHeight) {
+    if (
+      layout.bounds.containerHeight <= maxContainerHeight &&
+      (style !== "hook" ||
+        layout.lines.length === requestedManualLineCount)
+    ) {
       return layout;
     }
   }
@@ -455,7 +469,10 @@ function splitLongWordToWidth(
  * widths. Both renderers use it for the same wrapping and container geometry,
  * while drawing the natural font glyphs without horizontal distortion.
  */
-function estimateEditOverlayLineWidth(text: string, fontSize: number) {
+export function estimateEditOverlayLineWidth(
+  text: string,
+  fontSize: number,
+) {
   let emWidth = 0;
 
   for (const character of Array.from(text)) {

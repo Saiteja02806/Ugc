@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
 import {
-  getMissingSqsEnvVars,
+  getMissingJobQueueEnvVars,
   getQueueNameForJobType,
   getQueueProviderName,
   sendJobMessage,
-} from "@/lib/aws/sqs";
+} from "@/lib/queues/job-queue";
 import {
   GCP_CUTOVER_AUDIT_SIGNATURE_HEADER,
   GCP_CUTOVER_AUDIT_TIMESTAMP_HEADER,
@@ -15,21 +15,20 @@ import {
   verifyGcpCutoverAuditRequest,
 } from "@/lib/internal/gcp-cutover-audit-auth";
 import {
-  attachAwsMessageToBackgroundJob,
+  attachQueueMessageToBackgroundJob,
   createBackgroundJob,
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
+import { getGcpProjectId } from "@/lib/queues/config";
 import {
-  getGcpProjectId,
-  getGcpPubSubTopicNameForJobType,
-} from "@/lib/queues/config";
-import { getMissingSocialSchedulerEnvVars } from "@/lib/scheduling/social-scheduler";
-import { getSocialSchedulerProviderName } from "@/lib/scheduling/social-scheduler-config";
+  getMissingSocialSchedulerEnvVars,
+  getSocialSchedulerProviderName,
+} from "@/lib/scheduling/social-scheduler";
 import {
   getMissingStorageEnvVars,
   getStorageProviderName,
-} from "@/lib/storage/s3";
+} from "@/lib/storage/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -166,12 +165,12 @@ export async function POST(request: Request) {
 
     if (message.provider !== "gcp") {
       throw new Error(
-        `Expected GCP Pub/Sub provider, got ${message.provider}.`,
+        `Expected GCP Cloud Tasks provider, got ${message.provider}.`,
       );
     }
 
-    const updatedJob = await attachAwsMessageToBackgroundJob({
-      awsMessageId: message.messageId,
+    const updatedJob = await attachQueueMessageToBackgroundJob({
+      queueMessageId: message.messageId,
       jobId: backgroundJob.id,
     });
 
@@ -184,7 +183,7 @@ export async function POST(request: Request) {
         messageProvider: message.provider,
         queueName: updatedJob.queueName,
         status: updatedJob.status,
-        topicName: message.topicName,
+        taskQueueName: message.queueName,
       },
       ok: true,
       runtime: runtimeSnapshot,
@@ -236,7 +235,7 @@ function getRuntimeSnapshot() {
     storagePublicBaseUrlHost: getUrlHost(
       process.env.GCP_STORAGE_PUBLIC_BASE_URL?.trim(),
     ),
-    topicName: getGcpPubSubTopicNameForJobType(CANARY_JOB_TYPE),
+    workerQueue: getQueueNameForJobType(CANARY_JOB_TYPE),
   };
 }
 
@@ -244,7 +243,7 @@ function getMissingRuntimeEnv() {
   return Array.from(
     new Set([
       ...getMissingBackgroundJobStorageEnvVars(),
-      ...getMissingSqsEnvVars([CANARY_JOB_TYPE]),
+      ...getMissingJobQueueEnvVars([CANARY_JOB_TYPE]),
       ...getMissingStorageEnvVars(),
       ...getMissingSocialSchedulerEnvVars(),
     ]),

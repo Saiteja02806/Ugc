@@ -1,119 +1,221 @@
+import {
+  CalendarSync,
+  Check,
+  ImageIcon,
+  ShieldCheck,
+  Video,
+} from "lucide-react";
 import Link from "next/link";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { PricingCard } from "@/components/pricing/pricing-card";
+import { PricingComparison } from "@/components/pricing/pricing-comparison";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { pricingPlans } from "@/lib/pricing/plans";
+
+const creditGuideItems = [
+  {
+    icon: ImageIcon,
+    title: "Image credits",
+    description: "Used only when an image variation is created.",
+    iconClassName: "bg-brand-soft text-primary",
+  },
+  {
+    icon: Video,
+    title: "Video credits",
+    description: "Used only when a video output is created.",
+    iconClassName: "bg-card-muted text-muted",
+  },
+  {
+    icon: CalendarSync,
+    title: "Monthly renewal",
+    description: "The plan allowance refreshes on each billing date.",
+    iconClassName: "bg-success/10 text-success",
+  },
+];
 
 export function PricingPage() {
   return (
-    <main className="instagram-theme min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-card/95 px-5 py-4 backdrop-blur sm:px-8 lg:px-10">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-5">
+    <div className="instagram-theme min-h-screen bg-background text-foreground">
+      <Link
+        href="#pricing-content"
+        className="sr-only focus:fixed focus:left-4 focus:top-4 focus:not-sr-only focus:rounded-control focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-foreground-strong focus:ring-2 focus:ring-focus"
+      >
+        Skip to pricing
+      </Link>
+      <main className="min-h-screen">
+        <header className="border-b border-border bg-background/95 px-5 py-3.5 backdrop-blur sm:px-8 lg:px-10">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-5">
           <Link
             href="/"
-            className="flex min-w-0 items-center gap-2 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-            aria-label="UGC Pilot home"
+            className="flex min-w-0 items-center gap-2.5 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            aria-label="UGCPilot home"
           >
-            <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-small bg-brand">
-              <ProductLogoMark
-                className="size-7"
-                imageClassName="brightness-0 invert"
-                sizes="28px"
-              />
-            </span>
-            <span className="truncate text-[15px] font-bold text-foreground-strong">
-              UGC Pilot
+            <ProductLogoMark
+              className="size-9 rounded-small bg-primary p-2"
+              imageClassName="brightness-0 invert"
+              sizes="36px"
+            />
+            <span className="truncate text-[16px] font-semibold text-foreground-strong">
+              UGCPilot
             </span>
           </Link>
 
-          <nav className="flex items-center gap-4 text-sm font-semibold text-muted">
-            <Link
-              href="/"
-              className="hidden rounded-control px-2 py-1.5 transition hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:inline-flex"
-            >
-              Home
-            </Link>
+          <nav
+            aria-label="Pricing navigation"
+            className="flex items-center gap-2"
+          >
+            <span className="hidden text-sm font-medium text-muted sm:inline">
+              Already have an account?
+            </span>
             <Link
               href="/sign-in"
-              className="rounded-control bg-primary px-3 py-2 text-primary-foreground transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className={buttonVariants({
+                variant: "outline",
+                size: "lg",
+              })}
             >
               Sign in
             </Link>
           </nav>
         </div>
-      </header>
-
-      <div
-        aria-hidden="true"
-        className="h-px bg-[linear-gradient(90deg,transparent_8%,var(--instagram-orange)_32%,var(--instagram-rose)_58%,var(--instagram-violet)_78%,transparent_94%)] opacity-80"
-      />
-
-      <div className="px-5 pb-16 pt-14 sm:px-8 sm:pb-20 sm:pt-18 lg:px-10">
-        <section className="mx-auto max-w-4xl text-center" aria-labelledby="pricing-title">
-          <p className="mx-auto w-fit rounded-full border border-primary/15 bg-brand-soft px-4 py-2 text-sm font-black text-primary">
-            Monthly credits
-          </p>
-          <h1
-            id="pricing-title"
-            className="mx-auto mt-5 max-w-3xl text-balance text-4xl font-black leading-[1.02] tracking-normal text-foreground-strong sm:text-5xl lg:text-6xl"
-          >
-            Choose the right plan for your Instagram workflow
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-pretty text-base font-medium leading-7 text-muted sm:text-lg sm:leading-8">
-            Create supporting images and videos for your Instagram content with
-            monthly credits designed for different levels of usage.
-          </p>
-          <p className="mt-4 text-sm font-semibold leading-6 text-muted-subtle">
-            All plans are billed monthly. Applicable taxes may be added at
-            checkout.
-          </p>
-        </section>
+        </header>
 
         <section
-          aria-label="Pricing plans"
-          className="mx-auto mt-10 grid max-w-5xl items-stretch gap-5 md:grid-cols-2"
+          id="pricing-content"
+          aria-labelledby="pricing-title"
+          className="px-5 pb-16 pt-9 sm:px-8 sm:pt-11 lg:px-10"
+          tabIndex={-1}
         >
-          {pricingPlans.map((plan) => (
-            <PricingCard key={plan.slug} plan={plan} />
-          ))}
+        <div className="mx-auto max-w-5xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <Badge variant="secondary">Monthly plans</Badge>
+            <h1
+              id="pricing-title"
+              className="mt-4 text-balance text-3xl font-bold leading-tight tracking-normal text-foreground-strong sm:text-4xl"
+            >
+              Choose the right plan for your workflow
+            </h1>
+            <p className="mx-auto mt-3 max-w-xl text-pretty text-sm font-medium leading-6 text-muted sm:text-base">
+              Generate more images and videos each month with a plan built for
+              your publishing cadence.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-semibold text-foreground">
+              {[
+                "Credits refresh monthly",
+                "Commercial usage",
+                "Watermark-free exports",
+              ].map((item) => (
+                <span key={item} className="inline-flex items-center gap-2">
+                  <Check className="size-4 text-success" aria-hidden="true" />
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div
+            aria-label="Pricing plans"
+            className="mt-8 grid items-stretch gap-5 md:grid-cols-2"
+          >
+            {pricingPlans.map((plan) => (
+              <PricingCard key={plan.slug} plan={plan} />
+            ))}
+          </div>
+        </div>
         </section>
+
+        <PricingComparison plans={pricingPlans} />
 
         <section
           aria-labelledby="credits-title"
-          className="mx-auto mt-8 max-w-5xl rounded-[var(--radius-panel)] border border-border bg-card-muted p-5 sm:p-6"
+          className="px-5 py-12 sm:px-8 lg:px-10"
         >
-          <div className="grid gap-5 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.08em] text-primary">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:gap-12">
+            <div className="max-w-md">
+              <p className="text-xs font-bold uppercase text-primary">
                 Credit guide
               </p>
               <h2
                 id="credits-title"
-                className="mt-2 text-2xl font-black leading-tight tracking-normal text-foreground-strong"
+                className="mt-3 text-2xl font-bold leading-tight tracking-normal text-foreground-strong sm:text-3xl"
               >
                 How credits work
               </h2>
+              <p className="mt-3 text-sm font-medium leading-6 text-muted">
+                Credits stay tied to their generation type. Unused credits
+                expire when the billing period ends.
+              </p>
             </div>
-            <div className="grid gap-3 text-sm font-semibold leading-6 text-muted sm:grid-cols-2">
-              <p>Image Generation Credits are used only for image creation.</p>
-              <p>Video Generation Credits are used only for video creation.</p>
-              <p>Credits refresh with each monthly billing cycle.</p>
-              <p>Unused credits expire at the end of the billing period.</p>
+
+            <div className="grid border-y border-border sm:grid-cols-3">
+              {creditGuideItems.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <article
+                    key={item.title}
+                    className="border-b border-border py-5 last:border-b-0 sm:border-b-0 sm:border-r sm:px-5 sm:first:pl-0 sm:last:border-r-0 sm:last:pr-0"
+                  >
+                    <span
+                      className={cn(
+                        "flex size-9 items-center justify-center rounded-small",
+                        item.iconClassName,
+                      )}
+                    >
+                      <Icon className="size-4" aria-hidden="true" />
+                    </span>
+                    <h3 className="mt-4 text-sm font-bold text-foreground-strong">
+                      {item.title}
+                    </h3>
+                    <p className="mt-1.5 text-sm font-medium leading-6 text-muted">
+                      {item.description}
+                    </p>
+                  </article>
+                );
+              })}
             </div>
           </div>
+
+          <div className="mt-10 flex flex-col gap-5 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <ShieldCheck
+                className="mt-0.5 size-5 shrink-0 text-success"
+                aria-hidden="true"
+              />
+              <div>
+                <p className="text-sm font-bold text-foreground-strong">
+                  Need help choosing?
+                </p>
+                <p className="mt-1 text-sm font-medium text-muted">
+                  Tell us your publishing cadence and we will recommend a plan.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/contact"
+              className={buttonVariants({
+                variant: "outline",
+                size: "lg",
+                className: "w-full sm:w-auto",
+              })}
+            >
+              Contact support
+            </Link>
+          </div>
+        </div>
         </section>
 
-        <footer className="mx-auto mt-8 max-w-5xl text-center text-sm font-semibold text-muted">
-          Need help choosing a plan?{" "}
-          <Link
-            href="/contact"
-            className="font-black text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            Contact support
-          </Link>
-          .
+        <footer className="border-t border-border px-5 py-6 sm:px-8 lg:px-10">
+        <div className="mx-auto flex max-w-5xl flex-col gap-2 text-xs font-medium text-muted sm:flex-row sm:items-center sm:justify-between">
+          <span>UGCPilot monthly plans</span>
+          <span>Prices shown in USD. Taxes may apply.</span>
+        </div>
         </footer>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

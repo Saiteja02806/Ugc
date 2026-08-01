@@ -5,12 +5,12 @@ import type {
 
 type DispatchableBackgroundJob = Pick<
   BackgroundJobRecord,
-  "awsMessageId" | "id" | "input" | "jobType" | "status"
+  "queueMessageId" | "id" | "input" | "jobType" | "status"
 >;
 
 type DispatchMessageDependencies = {
   attachMessage: (params: {
-    awsMessageId: string;
+    queueMessageId: string;
     jobId: string;
   }) => Promise<unknown>;
   getJob: (jobId: string) => Promise<DispatchableBackgroundJob | null>;
@@ -76,11 +76,11 @@ export async function dispatchScheduledSocialPublishJob(
     );
   }
 
-  if (job.awsMessageId) {
+  if (job.queueMessageId) {
     return {
       delivery: "already_attached" as const,
       jobStatus: job.status,
-      messageId: job.awsMessageId,
+      messageId: job.queueMessageId,
     };
   }
 
@@ -99,7 +99,7 @@ export async function dispatchScheduledSocialPublishJob(
 
   try {
     await dependencies.attachMessage({
-      awsMessageId: message.messageId,
+      queueMessageId: message.messageId,
       jobId: job.id,
     });
   } catch (error) {

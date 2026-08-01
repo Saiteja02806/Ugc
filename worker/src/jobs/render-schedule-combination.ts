@@ -1,6 +1,6 @@
 import { getErrorMessage, logger } from "../logger.js";
 import {
-  renderScheduleCombinationToS3 as defaultRenderScheduleCombinationToS3,
+  renderScheduleCombinationToStorage as defaultRenderScheduleCombinationToStorage,
   type RenderScheduleCombinationPayload,
 } from "../lib/render-engine.js";
 import {
@@ -20,13 +20,13 @@ type RenderScheduleCombinationDependencies = {
     scheduleId: string;
     userId: string;
   }) => Promise<ScheduleFinalizationResult>;
-  renderScheduleCombinationToS3: typeof defaultRenderScheduleCombinationToS3;
+  renderScheduleCombinationToStorage: typeof defaultRenderScheduleCombinationToStorage;
 };
 
 const defaultDependencies: RenderScheduleCombinationDependencies = {
   createMediaAssetId: () => crypto.randomUUID(),
   finalizeRenderedSchedule: defaultFinalizeRenderedSchedule,
-  renderScheduleCombinationToS3: defaultRenderScheduleCombinationToS3,
+  renderScheduleCombinationToStorage: defaultRenderScheduleCombinationToStorage,
 };
 
 export async function runRenderScheduleCombinationJob(
@@ -60,12 +60,12 @@ export async function runRenderScheduleCombinationJob(
   });
 
   let result: Awaited<
-    ReturnType<typeof defaultRenderScheduleCombinationToS3>
+    ReturnType<typeof defaultRenderScheduleCombinationToStorage>
   >;
   const mediaAssetId = dependencies.createMediaAssetId();
 
   try {
-    result = await dependencies.renderScheduleCombinationToS3(payload);
+    result = await dependencies.renderScheduleCombinationToStorage(payload);
 
     await context.store.markScheduleCombinationRenderCompleted({
       autoFinalize: payload.autoFinalize,

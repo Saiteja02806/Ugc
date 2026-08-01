@@ -30,7 +30,7 @@ test("renders and asks the server to finalize a planned schedule", async () => {
           status: "scheduled",
         };
       },
-      async renderScheduleCombinationToS3(payload) {
+      async renderScheduleCombinationToStorage(payload) {
         fixture.events.push("render");
         assert.equal(payload.hookText, "The old way takes twice the effort.");
         assert.equal(payload.hookTrimStart, 0.5);
@@ -66,7 +66,7 @@ test("does not call server finalization for a render-only request", async () => 
         finalizationCalls += 1;
         throw new Error("Finalization must not run.");
       },
-      async renderScheduleCombinationToS3(payload) {
+      async renderScheduleCombinationToStorage(payload) {
         fixture.events.push("render");
         return createRenderOutput(payload);
       },
@@ -93,7 +93,7 @@ test("keeps the completed video available when server finalization fails", async
         fixture.events.push("finalize");
         throw new Error("finalization endpoint unavailable");
       },
-      async renderScheduleCombinationToS3(payload) {
+      async renderScheduleCombinationToStorage(payload) {
         fixture.events.push("render");
         return createRenderOutput(payload);
       },
@@ -125,7 +125,7 @@ test("records a render failure and does not attempt final scheduling", async () 
           finalizationCalls += 1;
           throw new Error("Finalization must not run.");
         },
-        async renderScheduleCombinationToS3() {
+        async renderScheduleCombinationToStorage() {
           fixture.events.push("render");
           throw new Error("ffmpeg failed");
         },
@@ -196,11 +196,14 @@ function createJob(autoFinalize: boolean): BackgroundJobRow {
 
   return {
     attempt_count: 0,
-    aws_message_id: "message-1",
+    cancel_requested_at: null,
+    queue_message_id: "message-1",
     claim_token: "00000000-0000-4000-8000-000000000205",
     completed_at: null,
     created_at: now,
+    error_code: null,
     error_message: null,
+    failed_at: null,
     id: JOB_ID,
     input_json: {
       autoFinalize,
@@ -219,17 +222,26 @@ function createJob(autoFinalize: boolean): BackgroundJobRow {
       title: "Combined schedule",
       userId: "user-test",
     },
+    input_reference: null,
     job_type: "render_schedule_combination",
+    last_delivery_at: now,
     last_heartbeat_at: now,
     locked_at: now,
+    max_attempts: 3,
     next_attempt_at: null,
     output_json: null,
+    output_reference: null,
+    progress: null,
     project_id: "00000000-0000-4000-8000-000000000208",
     queue_name: "video-render",
+    queue_provider: "gcp",
+    queued_at: now,
+    stage: "processing",
     started_at: now,
     status: "processing",
     updated_at: now,
     user_id: "user-test",
+    worker_execution_id: null,
     worker_id: "worker-test",
   };
 }

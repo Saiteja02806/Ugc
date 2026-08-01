@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 
 import { AuthProvider } from "@/contexts/auth-context";
+import { JobQueryProvider } from "@/components/providers/job-query-provider";
 
 import "./globals.css";
 
@@ -38,6 +39,13 @@ const geistEditOverlay = localFont({
   weight: "600",
 });
 
+const interWallText = localFont({
+  src: "../node_modules/@fontsource/inter/files/inter-latin-700-normal.woff2",
+  display: "swap",
+  variable: "--font-wall-text",
+  weight: "700",
+});
+
 export const metadata: Metadata = {
   title: {
     default: "UGC Pilot",
@@ -55,12 +63,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} h-full`}
+      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} h-full`}
     >
       <body
         className={`${geistSans.className} min-h-full bg-background text-foreground antialiased`}
       >
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <JobQueryProvider>{children}</JobQueryProvider>
+        </AuthProvider>
       </body>
     </html>
   );

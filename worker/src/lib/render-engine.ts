@@ -5,7 +5,10 @@ import { join } from "node:path";
 
 import sharp from "sharp";
 
-import { getStorageProviderName, uploadBufferToS3 } from "./s3.js";
+import {
+  getStorageProviderName,
+  uploadBufferToStorage,
+} from "./storage.js";
 import { downloadVideoToBuffer } from "./download-video.js";
 import {
   EDIT_OVERLAY_FONT_FAMILY,
@@ -16,11 +19,21 @@ import {
   buildEditOverlayTextLayout,
   type EditOverlayTextLayout,
 } from "./edit-overlay-render-spec.js";
+import {
+  buildWallTextRenderLayout,
+  buildWallTextOverlaySvg,
+  WALL_TEXT_OUTLINE_WIDTH,
+  WALL_TEXT_RENDER_WIDTH,
+  type WallTextNormalizedBox,
+  type WallTextPlacementZone,
+  type WallTextRenderContent,
+  type WallTextSafeArea,
+} from "./wall-text-render-spec.js";
 import { logger } from "../logger.js";
 
 export type RenderRatio = "9:16" | "1:1" | "4:5" | "16:9";
 export type TextOverlayPosition = "top" | "middle" | "bottom";
-export type TextOverlayStyle = "clean" | "minimal" | "bubble";
+export type TextOverlayStyle = "clean" | "minimal" | "bubble" | "hook";
 export type PreparedTextOverlay = {
   imagePath: string;
   layout: EditOverlayTextLayout;
@@ -39,6 +52,7 @@ const EDIT_OVERLAY_FONT_REGISTRATION_TEXT = "MW@gi 0123";
 const EDIT_OVERLAY_FONT_REGISTRATION_SIZE = 64;
 let editOverlayFontRegistrationPromise: Promise<EditOverlayFontRegistration> | null =
   null;
+let wallTextFontRegistrationPromise: Promise<void> | null = null;
 
 export type EditOverlayFontRegistration = {
   directBounds: { height: number; width: number };
@@ -96,11 +110,35 @@ export type RenderScheduleCombinationOutput = {
   url: string;
 };
 
+export type RenderWallTextVideoPayload = {
+  assignmentId: string;
+  creativeId: string;
+  durationSeconds: number;
+  placement: WallTextPlacementZone;
+  projectId: string;
+  renderId: string;
+  safeArea: WallTextSafeArea;
+  sourceVideoUrl: string;
+  text: WallTextRenderContent;
+  textBox: WallTextNormalizedBox;
+  title: string;
+  userId: string;
+};
+
+export type RenderWallTextVideoOutput = {
+  assignmentId: string;
+  creativeId: string;
+  key: string;
+  ok: true;
+  renderId: string;
+  url: string;
+};
+
 const OUTPUT_CONTENT_TYPE = "video/mp4";
 const MAX_FFMPEG_LOG_LENGTH = 8_000;
 const renderDimensions = EDIT_OVERLAY_OUTPUT_DIMENSIONS;
 
-export async function renderEditedVideoToS3(
+export async function renderEditedVideoToStorage(
   payload: RenderEditVideoPayload,
 ): Promise<RenderEditedVideoOutput> {
   const renderStartedAt = Date.now();
@@ -144,7 +182,7 @@ export async function renderEditedVideoToS3(
 
     const renderedBuffer = await readFile(outputPath);
     const key = buildRenderedVideoKey(payload);
-    const result = await uploadBufferToS3({
+    const result = await uploadBufferToStorage({
       key,
       buffer: renderedBuffer,
       contentType: OUTPUT_CONTENT_TYPE,
@@ -182,7 +220,7 @@ export async function renderEditedVideoToS3(
   }
 }
 
-export async function renderScheduleCombinationToS3(
+export async function renderScheduleCombinationToStorage(
   payload: RenderScheduleCombinationPayload,
 ): Promise<RenderScheduleCombinationOutput> {
   const workDir = await mkdtemp(join(tmpdir(), "ugc-combine-render-"));
@@ -196,8 +234,8 @@ export async function renderScheduleCombinationToS3(
     imagePath: join(workDir, "hook-overlay.png"),
     overlay: {
       id: "hook-text",
-      position: "bottom",
-      style: "minimal",
+      position: "middle",
+      style: "hook",
       text: payload.hookText,
     },
     ratio: payload.ratio,
@@ -270,7 +308,7 @@ export async function renderScheduleCombinationToS3(
 
     const renderedBuffer = await readFile(outputPath);
     const key = buildScheduleCombinationVideoKey(payload);
-    const result = await uploadBufferToS3({
+    const result = await uploadBufferToStorage({
       key,
       buffer: renderedBuffer,
       contentType: OUTPUT_CONTENT_TYPE,
@@ -301,6 +339,153 @@ export async function renderScheduleCombinationToS3(
       recursive: true,
     });
   }
+}
+
+export async function renderWallTextVideoToStorage(
+  payload: RenderWallTextVideoPayload,
+): Promise<RenderWallTextVideoOutput> {
+  const workDir = await mkdtemp(join(tmpdir(), "ugc-wall-text-render-"));
+  const inputPath = join(workDir, "source-video");
+  const overlayPath = join(workDir, "wall-text-overlay.png");
+  const outputPath = join(workDir, "wall-text-video.mp4");
+
+  try {
+    const sourceBuffer = await downloadVideoToBuffer(payload.sourceVideoUrl);
+    await ensureWallTextFontsRegistered();
+    await validateWallTextRenderedLineWidths(payload.text, payload.textBox);
+    const overlaySvg = buildWallTextOverlaySvg({
+      content: payload.text,
+      placement: payload.placement,
+      safeArea: payload.safeArea,
+      textBox: payload.textBox,
+    });
+
+    await Promise.all([
+      writeFile(inputPath, sourceBuffer),
+      sharp(Buffer.from(overlaySvg))
+        .png({ compressionLevel: 9 })
+        .toFile(overlayPath),
+    ]);
+
+    const hasAudio = await inputHasAudio(inputPath);
+
+    await runFfmpegCommand({
+      args: buildWallTextVideoArgs({
+        hasAudio,
+        inputPath,
+        outputPath,
+        overlayPath,
+        payload,
+      }),
+      label: "wall-text video render",
+      renderId: payload.renderId,
+    });
+
+    const renderedBuffer = await readFile(outputPath);
+    const key = buildWallTextVideoKey(payload);
+    const result = await uploadBufferToStorage({
+      key,
+      buffer: renderedBuffer,
+      contentType: OUTPUT_CONTENT_TYPE,
+      cacheControl: "public, max-age=31536000, immutable",
+    });
+
+    logger.info("Wall-text video render uploaded to object storage", {
+      assignmentId: payload.assignmentId,
+      creativeId: payload.creativeId,
+      key: result.key,
+      renderId: payload.renderId,
+      renderedSize: renderedBuffer.length,
+      storageProvider: getStorageProviderName(),
+      url: result.url,
+    });
+
+    return {
+      assignmentId: payload.assignmentId,
+      creativeId: payload.creativeId,
+      key: result.key,
+      ok: true,
+      renderId: payload.renderId,
+      url: result.url,
+    };
+  } finally {
+    await rm(workDir, {
+      force: true,
+      recursive: true,
+    });
+  }
+}
+
+export function buildWallTextVideoArgs({
+  hasAudio,
+  inputPath,
+  outputPath,
+  overlayPath,
+  payload,
+}: {
+  hasAudio: boolean;
+  inputPath: string;
+  outputPath: string;
+  overlayPath: string;
+  payload: Pick<RenderWallTextVideoPayload, "durationSeconds">;
+}) {
+  const args = [
+    "-y",
+    "-i",
+    inputPath,
+    "-loop",
+    "1",
+    "-framerate",
+    "30",
+    "-i",
+    overlayPath,
+  ];
+
+  if (!hasAudio) {
+    args.push(
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=channel_layout=stereo:sample_rate=48000",
+    );
+  }
+
+  args.push(
+    "-t",
+    formatSeconds(payload.durationSeconds),
+    "-filter_complex",
+    [
+      `[0:v]${buildVideoFilters({ ratio: "9:16" })},setpts=PTS-STARTPTS[video]`,
+      "[1:v]format=rgba,setpts=PTS-STARTPTS[overlay]",
+      "[video][overlay]overlay=x=0:y=0:shortest=1:format=auto[rendered]",
+    ].join(";"),
+    "-map",
+    "[rendered]",
+    "-map",
+    hasAudio ? "0:a:0" : "2:a:0",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "medium",
+    "-crf",
+    "20",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-ar",
+    "48000",
+    "-ac",
+    "2",
+    "-movflags",
+    "+faststart",
+    "-shortest",
+    outputPath,
+  );
+
+  return args;
 }
 
 async function runFfmpeg({
@@ -724,6 +909,91 @@ export function buildPreparedTextOverlaySvg(
   ].join("");
 }
 
+export function ensureWallTextFontsRegistered() {
+  wallTextFontRegistrationPromise ??= registerWallTextFonts();
+  return wallTextFontRegistrationPromise;
+}
+
+async function registerWallTextFonts() {
+  const fontPath = await getWallTextFontPath();
+  const directText = await sharp({
+    text: {
+      dpi: 72,
+      font: "Inter Bold 52",
+      fontfile: fontPath,
+      rgba: true,
+      text: "Wall text 0123",
+      wrap: "none",
+    },
+  }).metadata();
+
+  if (!directText.width || !directText.height) {
+    throw new Error(
+      "Inter Bold could not be registered for Wall-of-text rendering.",
+    );
+  }
+}
+
+async function validateWallTextRenderedLineWidths(
+  content: WallTextRenderContent,
+  textBox: WallTextNormalizedBox,
+) {
+  const maximumWidth = Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH);
+  const layout = buildWallTextRenderLayout({ content, textBox });
+  const fontPath = await getWallTextFontPath();
+
+  for (const segment of layout.segments) {
+    for (const line of segment.lines) {
+      const metadata = await sharp({
+        text: {
+          dpi: 72,
+          font: `Inter Bold ${segment.fontSize}`,
+          fontfile: fontPath,
+          rgba: true,
+          text: escapePangoMarkup(line),
+          wrap: "none",
+        },
+      }).metadata();
+
+      if (
+        !metadata.width ||
+        metadata.width + WALL_TEXT_OUTLINE_WIDTH * 2 > maximumWidth
+      ) {
+        throw new Error(
+          `Wall-of-text line exceeds the measured Inter text width: "${line}"`,
+        );
+      }
+    }
+  }
+}
+
+async function getWallTextFontPath() {
+  const fontParts = [
+    "node_modules",
+    "@fontsource",
+    "inter",
+    "files",
+    "inter-latin-700-normal.woff",
+  ];
+  const candidatePaths = [
+    join(process.cwd(), ...fontParts),
+    join(process.cwd(), "..", ...fontParts),
+  ];
+
+  for (const fontPath of candidatePaths) {
+    try {
+      await readFile(fontPath);
+      return fontPath;
+    } catch {
+      // Try the next packaged font path.
+    }
+  }
+
+  throw new Error(
+    "Inter Bold is unavailable; refusing to render with a fallback font.",
+  );
+}
+
 export function ensureEditOverlayFontRegistered() {
   editOverlayFontRegistrationPromise ??= registerAndVerifyEditOverlayFont();
   return editOverlayFontRegistrationPromise;
@@ -895,6 +1165,17 @@ function buildScheduleCombinationVideoKey(
     cleanPathPart(payload.userId),
     cleanPathPart(payload.projectId),
     "schedule-combinations",
+    `${cleanPathPart(payload.renderId)}.mp4`,
+  ].join("/");
+}
+
+function buildWallTextVideoKey(payload: RenderWallTextVideoPayload) {
+  return [
+    "videos",
+    "rendered",
+    cleanPathPart(payload.userId),
+    cleanPathPart(payload.projectId),
+    "wall-text",
     `${cleanPathPart(payload.renderId)}.mp4`,
   ].join("/");
 }

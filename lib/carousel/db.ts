@@ -270,7 +270,7 @@ export type WebsiteAnalysisForCarousel = {
 export type ReadyCategoryImageAsset = {
   assetScope: CategoryImageAssetScope;
   assetVariant: CategoryImageAssetVariant;
-  baseS3Key: string;
+  baseObjectKey: string;
   baseUrl: string;
   bestForSlideTypes: Json;
   broadVisualBucket: string | null;
@@ -728,7 +728,7 @@ export async function listReadyCategoryImageAssets(params: {
     .map((asset) => ({
       assetScope: asset.asset_scope,
       assetVariant: asset.asset_variant,
-      baseS3Key: asset.base_s3_key,
+      baseObjectKey: asset.base_s3_key,
       baseUrl: asset.base_url,
       bestForSlideTypes: asset.best_for_slide_types,
       broadVisualBucket: asset.broad_visual_bucket,

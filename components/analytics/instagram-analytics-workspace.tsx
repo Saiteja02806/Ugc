@@ -60,6 +60,7 @@ import {
   type InstagramContentSort,
   type InstagramContentType,
 } from "@/lib/analytics/instagram-content-insights";
+import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
 import {
   aggregateInstagramInsightDaily,
   getUniqueInstagramConnections,
@@ -240,7 +241,10 @@ export function InstagramAnalyticsWorkspace() {
       state: "loading",
     });
 
-  const loadAnalytics = useCallback(async (signal?: AbortSignal) => {
+  const loadAnalytics = useCallback(async (
+    signal?: AbortSignal,
+    idempotencyKey?: string,
+  ) => {
     try {
       const token = await getCurrentUserIdToken();
 
@@ -270,7 +274,7 @@ export function InstagramAnalyticsWorkspace() {
       const [
         connectionsResponse,
         schedulesResponse,
-        insightsResponse,
+        insightsOutput,
       ] = await Promise.all([
         fetch("/api/social/connections", {
           cache: "no-store",
@@ -282,10 +286,12 @@ export function InstagramAnalyticsWorkspace() {
           headers,
           signal,
         }),
-        fetch(`/api/analytics/instagram/insights?days=${dateRangeDays}`, {
-          cache: "no-store",
-          headers,
+        runAnalyticsBackgroundSync({
+          body: { days: dateRangeDays },
+          idempotencyKey,
           signal,
+          token,
+          url: "/api/analytics/instagram/insights",
         }),
       ]);
       const connectionsData = (await connectionsResponse
@@ -294,9 +300,8 @@ export function InstagramAnalyticsWorkspace() {
       const schedulesData = (await schedulesResponse
         .json()
         .catch(() => null)) as SchedulesResponse | null;
-      const insightsData = (await insightsResponse
-        .json()
-        .catch(() => null)) as InstagramInsightsResponse | null;
+      const insightsData =
+        insightsOutput as InstagramInsightsResponse | null;
 
       if (signal?.aborted) {
         return;
@@ -330,16 +335,9 @@ export function InstagramAnalyticsWorkspace() {
           : [],
       );
       setInsightsResult({
-        accounts:
-          insightsResponse.ok && insightsData?.ok === true
-            ? insightsData.accounts ?? []
-            : [],
+        accounts: insightsData?.accounts ?? [],
         days: dateRangeDays,
-        message:
-          insightsResponse.ok && insightsData?.ok === true
-            ? null
-            : insightsData?.message ??
-              "Performance insights could not load right now.",
+        message: null,
         state: "ready",
       });
       setErrorMessage(null);
@@ -365,7 +363,7 @@ export function InstagramAnalyticsWorkspace() {
   }, [dateRangeDays]);
 
   const loadContentPerformance = useCallback(
-    async (signal?: AbortSignal) => {
+    async (signal?: AbortSignal, idempotencyKey?: string) => {
       try {
         const token = await getCurrentUserIdToken();
 
@@ -387,31 +385,23 @@ export function InstagramAnalyticsWorkspace() {
           ...current,
           state: "loading",
         }));
-        const response = await fetch(
-          `/api/analytics/instagram/content?days=${dateRangeDays}`,
-          {
-            cache: "no-store",
-            headers: { Authorization: `Bearer ${token}` },
-            signal,
-          },
-        );
-        const data = (await response
-          .json()
-          .catch(() => null)) as InstagramContentResponse | null;
+        const output = await runAnalyticsBackgroundSync({
+          body: { days: dateRangeDays },
+          idempotencyKey,
+          signal,
+          token,
+          url: "/api/analytics/instagram/content",
+        });
+        const data = output as InstagramContentResponse | null;
 
         if (signal?.aborted) {
           return;
         }
 
         setContentResult({
-          accounts:
-            response.ok && data?.ok === true ? data.accounts ?? [] : [],
+          accounts: data?.accounts ?? [],
           days: dateRangeDays,
-          message:
-            response.ok && data?.ok === true
-              ? null
-              : data?.message ??
-                "Content performance could not load right now.",
+          message: null,
           state: "ready",
         });
       } catch (error) {
@@ -449,8 +439,9 @@ export function InstagramAnalyticsWorkspace() {
   const retryAnalytics = useCallback(() => {
     setErrorMessage(null);
     setLoadState("loading");
-    void loadAnalytics();
-    void loadContentPerformance();
+    const refreshKey = crypto.randomUUID();
+    void loadAnalytics(undefined, refreshKey);
+    void loadContentPerformance(undefined, refreshKey);
   }, [loadAnalytics, loadContentPerformance]);
 
   const analytics = useMemo(

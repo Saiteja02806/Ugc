@@ -12,7 +12,14 @@ type WebsiteAnalysisDatabase = {
     Tables: {
       website_analyses: {
         Row: {
+          analysis_json: WebsiteBusinessAnalysis;
           id: string;
+          normalized_domain: string | null;
+          source_context: string | null;
+          source_job_id: string | null;
+          source_type: "manual" | "mobile_app_ai_prompt" | "website";
+          user_id: string;
+          website_url: string | null;
         };
         Insert: WebsiteAnalysisInsert;
         Update: Partial<WebsiteAnalysisInsert>;
@@ -45,6 +52,7 @@ type WebsiteAnalysisInsert = {
   project_id: string;
   recommended_carousel_structure: string[];
   source_context?: string | null;
+  source_job_id?: string | null;
   source_type?: "manual" | "mobile_app_ai_prompt" | "website";
   target_audience: string[];
   user_id: string;
@@ -58,6 +66,7 @@ type InsertWebsiteAnalysisInput = {
   normalizedDomain?: string | null;
   projectId: string;
   sourceContext?: string | null;
+  sourceJobId?: string | null;
   sourceType?: "manual" | "mobile_app_ai_prompt" | "website";
   userId: string;
   websiteUrl?: string | null;
@@ -128,6 +137,7 @@ export async function insertWebsiteAnalysis({
   normalizedDomain,
   projectId,
   sourceContext,
+  sourceJobId,
   sourceType = "website",
   userId,
   websiteUrl,
@@ -155,6 +165,7 @@ export async function insertWebsiteAnalysis({
       project_id: projectId,
       recommended_carousel_structure: analysis.recommendedCarouselStructure,
       source_context: sourceContext?.slice(0, 24_000) ?? null,
+      source_job_id: sourceJobId ?? null,
       source_type: sourceType,
       target_audience: analysis.targetAudience,
       user_id: userId,
@@ -166,6 +177,17 @@ export async function insertWebsiteAnalysis({
     .single();
 
   if (error) {
+    if (error.code === "23505" && sourceJobId) {
+      const existing = await getWebsiteAnalysisBySourceJobId({
+        sourceJobId,
+        userId,
+      });
+
+      if (existing) {
+        return existing.id;
+      }
+    }
+
     console.error("Failed to store website analysis:", error);
     throw new WebsiteAnalysisError("Could not store the website analysis.", 500);
   }
@@ -175,4 +197,36 @@ export async function insertWebsiteAnalysis({
   }
 
   return data.id;
+}
+
+export async function getWebsiteAnalysisBySourceJobId(params: {
+  sourceJobId: string;
+  userId: string;
+}) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(WEBSITE_ANALYSES_TABLE)
+    .select(
+      "analysis_json,id,normalized_domain,source_context,source_job_id,source_type,user_id,website_url",
+    )
+    .eq("source_job_id", params.sourceJobId)
+    .eq("user_id", params.userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new WebsiteAnalysisError(
+      "Could not restore the saved website analysis.",
+      500,
+    );
+  }
+
+  return data
+    ? {
+        analysis: data.analysis_json,
+        id: data.id,
+        normalizedDomain: data.normalized_domain,
+        sourceContext: data.source_context,
+        sourceType: data.source_type,
+        websiteUrl: data.website_url,
+      }
+    : null;
 }

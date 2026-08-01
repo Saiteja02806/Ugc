@@ -54,7 +54,7 @@ const importManifest = {
     baseRendition: `${BASE_WIDTH}x${BASE_HEIGHT} webp, fit cover, center crop`,
     thumbnailRendition: `${THUMB_WIDTH}x${THUMB_HEIGHT} webp, fit cover, center crop`,
     uploadCheckpoint:
-      "This package is local-only. The import uploader should upload original, base, and thumbnail files to S3, then insert category_image_assets rows.",
+      "This package is local-only. The import uploader should upload original, base, and thumbnail files through the configured object-storage provider, then insert category_image_assets rows.",
   },
   summary,
   assets: preparedAssets,
@@ -120,7 +120,7 @@ async function prepareAsset(asset, outputDir) {
   writeFileSync(baseOutputPath, baseBuffer);
   writeFileSync(thumbOutputPath, thumbBuffer);
 
-  const s3Prefix = `category-library/${asset.categorySlug}/${asset.broadVisualBucket}/${assetId}`;
+  const storagePrefix = `category-library/${asset.categorySlug}/${asset.broadVisualBucket}/${assetId}`;
   const generatedCrop =
     asset.runtime.preferredFileRole !== "carousel_rendition" ||
     asset.sourceFiles.preferredRender.width !== BASE_WIDTH ||
@@ -130,9 +130,9 @@ async function prepareAsset(asset, outputDir) {
     ...asset,
     dbRow: buildDbRow({
       asset,
-      baseS3Key: `${s3Prefix}/base-1080x1350.webp`,
-      originalS3Key: `${s3Prefix}/original${originalExtension}`,
-      thumbS3Key: `${s3Prefix}/thumb-320x400.webp`,
+      baseObjectKey: `${storagePrefix}/base-1080x1350.webp`,
+      originalObjectKey: `${storagePrefix}/original${originalExtension}`,
+      thumbObjectKey: `${storagePrefix}/thumb-320x400.webp`,
     }),
     files: {
       base: toRelativePath(baseOutputPath, outputDir),
@@ -141,22 +141,27 @@ async function prepareAsset(asset, outputDir) {
     },
     generatedCrop,
     importAssetId: assetId,
-    s3: {
-      baseKey: `${s3Prefix}/base-1080x1350.webp`,
-      originalKey: `${s3Prefix}/original${originalExtension}`,
-      thumbKey: `${s3Prefix}/thumb-320x400.webp`,
+    storage: {
+      baseKey: `${storagePrefix}/base-1080x1350.webp`,
+      originalKey: `${storagePrefix}/original${originalExtension}`,
+      thumbKey: `${storagePrefix}/thumb-320x400.webp`,
     },
   };
 }
 
-function buildDbRow({ asset, baseS3Key, originalS3Key, thumbS3Key }) {
+function buildDbRow({
+  asset,
+  baseObjectKey,
+  originalObjectKey,
+  thumbObjectKey,
+}) {
   return {
     asset_scope: asset.assetScope,
     asset_variant:
       asset.assetVariant === "canonical_with_carousel_rendition"
         ? "canonical"
         : asset.assetVariant,
-    base_s3_key: baseS3Key,
+    base_s3_key: baseObjectKey,
     best_for_slide_types: asset.subcategories,
     broad_visual_bucket: asset.broadVisualBucket,
     bucket_taxonomy_version: asset.bucketTaxonomyVersion,
@@ -188,9 +193,10 @@ function buildDbRow({ asset, baseS3Key, originalS3Key, thumbS3Key }) {
         asset.sourceFiles.preferredRender.relativePath,
       subcategories: asset.subcategories,
       textSafeAreas: asset.textSafeAreas,
+      review: asset.review,
       warnings: asset.warnings,
     },
-    source_original_s3_key: originalS3Key,
+    source_original_s3_key: originalObjectKey,
     source_perceptual_hash: asset.sourcePerceptualHash,
     source_provider: "local",
     source_query: asset.caption,
@@ -199,13 +205,14 @@ function buildDbRow({ asset, baseS3Key, originalS3Key, thumbS3Key }) {
       analyzer_version: "manual-local-image-review-v1",
       mode: "manual-review-confirmed",
       policy: "object-only-backgrounds-required",
+      review: asset.review,
       reviewed: true,
       source: "local-tag-manifest",
     },
     subject_analyzed_at: new Date().toISOString(),
     subject_analyzer_version: "manual-local-image-review-v1",
     subject_review_status: asset.reviewStatus === "approved" ? "approved" : "unreviewed",
-    thumb_s3_key: thumbS3Key,
+    thumb_s3_key: thumbObjectKey,
     usable_profiles: asset.usableProfiles,
     visual_setting: asset.visualSetting,
     visual_style: asset.visualStyle,
@@ -283,7 +290,7 @@ function renderSummary(manifest) {
     "- All prepared assets now have local 1080x1350 base webp files.",
     "- Existing carousel-ready 4:5 images were normalized to the same output format.",
     "- Flat and 9:16 inputs were center-cropped to 4:5.",
-    "- This command does not upload to AWS and does not write to Supabase.",
+    "- This command does not upload to object storage and does not write to Supabase.",
     "",
   );
 
@@ -300,9 +307,9 @@ function renderCsv(assets) {
     "baseFile",
     "thumbFile",
     "originalFile",
-    "baseS3Key",
-    "thumbS3Key",
-    "originalS3Key",
+    "baseObjectKey",
+    "thumbObjectKey",
+    "originalObjectKey",
   ];
   const rows = assets.map((asset) => [
     asset.assetKey,
@@ -313,9 +320,9 @@ function renderCsv(assets) {
     asset.files.base,
     asset.files.thumb,
     asset.files.original,
-    asset.s3.baseKey,
-    asset.s3.thumbKey,
-    asset.s3.originalKey,
+    asset.storage.baseKey,
+    asset.storage.thumbKey,
+    asset.storage.originalKey,
   ]);
 
   return `${[headers, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\n")}\n`;

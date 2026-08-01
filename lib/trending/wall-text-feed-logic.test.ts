@@ -20,19 +20,27 @@ function asset(
     formatFamily: "wall_text_overlay",
     id: "asset-1",
     lastUsedAt: null,
-    motionLevel: "low",
+    placementAnalysis: {
+      contrastScore: 0.7,
+      faceBoxes: [],
+      faceOverlap: 0,
+      importantRegions: [],
+      selectedZone: "upper-middle",
+      version: "wall-text-placement-v2",
+    },
     previewUrl: "https://media.example.com/wall.mp4",
-    readabilityScore: 0.9,
-    recommendedPosition: "top-center",
+    sourceBatch: "wall-text-real-2026-07-28",
+    sourceFileSha256:
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     status: "active",
-    textCapacity: "high",
     thumbnailUrl: null,
     usageCount: 0,
+    visualGroup: "indoor_closeup",
     ...overrides,
   };
 }
 
-test("accepts only analyzed active vertical Wall-of-text videos", () => {
+test("accepts reviewed vertical Wall-of-text videos at their native duration", () => {
   assert.equal(isEligibleWallTextVideo(asset()), true);
   assert.equal(
     isEligibleWallTextVideo(asset({ assetType: "image" })),
@@ -44,23 +52,44 @@ test("accepts only analyzed active vertical Wall-of-text videos", () => {
   );
   assert.equal(
     isEligibleWallTextVideo(asset({ durationSeconds: 5 })),
+    true,
+  );
+  assert.equal(
+    isEligibleWallTextVideo(asset({ sourceFileSha256: null })),
     false,
   );
   assert.equal(
-    isEligibleWallTextVideo(asset({ motionLevel: "high" })),
+    isEligibleWallTextVideo(asset({ visualGroup: null })),
     false,
   );
   assert.equal(
-    isEligibleWallTextVideo(asset({ textCapacity: "low" })),
+    isEligibleWallTextVideo(asset({ placementAnalysis: null })),
     false,
+  );
+  assert.equal(
+    isEligibleWallTextVideo(
+      asset({
+        placementAnalysis: {
+          ...asset().placementAnalysis!,
+          faceOverlap: 0.35,
+        },
+      }),
+    ),
+    true,
   );
 });
 
-test("selects low-usage unique videos and preserves real durations", () => {
+test("preserves native durations and diversifies visual groups before reuse", () => {
   const selected = selectTrendingWallTextCandidates([
-    asset({ id: "used", usageCount: 12, durationSeconds: 20 }),
-    asset({ id: "fresh", usageCount: 0, durationSeconds: 9.25 }),
-    asset({ id: "fresh", usageCount: 0, durationSeconds: 9.25 }),
+    asset({ id: "car-2", usageCount: 1, visualGroup: "car_selfie" }),
+    asset({
+      durationSeconds: 5.056,
+      id: "car-1",
+      usageCount: 0,
+      visualGroup: "car_selfie",
+    }),
+    asset({ id: "indoor-1", usageCount: 2, visualGroup: "indoor_closeup" }),
+    asset({ id: "outdoor-1", usageCount: 3, visualGroup: "outdoor_static" }),
   ]);
 
   assert.deepEqual(
@@ -69,20 +98,47 @@ test("selects low-usage unique videos and preserves real durations", () => {
       id: candidate.entry.id,
     })),
     [
-      { durationSeconds: 9.25, id: "fresh" },
-      { durationSeconds: 20, id: "used" },
+      { durationSeconds: 5.056, id: "car-1" },
+      { durationSeconds: 12, id: "indoor-1" },
+      { durationSeconds: 12, id: "outdoor-1" },
+      { durationSeconds: 12, id: "car-2" },
     ],
   );
 });
 
-test("uses asset placement metadata to build a safe deterministic layout", () => {
-  assert.equal(createWallTextLayout("top-left").placement, "top");
-  assert.equal(createWallTextLayout("bottom").placement, "bottom");
-  assert.equal(createWallTextLayout(null).placement, "center");
-  assert.deepEqual(createWallTextLayout(null).safeArea, {
-    bottom: 0.2,
-    left: 0.08,
-    right: 0.08,
-    top: 0.18,
+test("uses face-aware zones and a visual-group fallback", () => {
+  const analyzed = createWallTextLayout(
+    asset({
+      placementAnalysis: {
+        contrastScore: 0.82,
+        faceBoxes: [{ height: 0.2, width: 0.2, x: 0.4, y: 0.2 }],
+        faceOverlap: 0.02,
+        importantRegions: [],
+        selectedZone: "upper-middle",
+        version: "wall-text-placement-v2",
+      },
+    }),
+  );
+  const fallback = createWallTextLayout(
+    asset({ placementAnalysis: null, visualGroup: "indoor_closeup" }),
+  );
+
+  assert.equal(analyzed.alignment, "center");
+  assert.equal(analyzed.placement, "upper-middle");
+  assert.equal(analyzed.placementSource, "face-analysis");
+  assert.equal(fallback.placement, "lower-middle");
+  assert.equal(fallback.placementSource, "visual-group-fallback");
+  assert.equal(analyzed.version, "wall-text-layout-v4");
+  assert.deepEqual(analyzed.safeArea, {
+    bottom: 460 / 1920,
+    left: 120 / 1080,
+    right: 200 / 1080,
+    top: 280 / 1920,
+  });
+  assert.deepEqual(analyzed.textBox, {
+    height: 480 / 1920,
+    width: 620 / 1080,
+    x: 230 / 1080,
+    y: 560 / 1920,
   });
 });

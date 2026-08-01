@@ -11,6 +11,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { buttonClassName } from "@/components/ui/button";
+import {
+  CREATIVE_ASSETS_VIDEOS_HREF,
+  getCreativeAssetEditorHref,
+} from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
 import type {
@@ -181,7 +185,7 @@ function VideoPreview({
               className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#173454] px-4 text-sm font-bold text-white transition hover:bg-foreground"
             >
               <Scissors className="size-4" aria-hidden="true" />
-              Open in Edit
+              Edit video
             </button>
           ) : null}
         </div>
@@ -510,9 +514,13 @@ export function VideoGenerationPanel({
 
 async function openServerVideoInEdit(videoUrl: string, router: ReturnType<typeof useRouter>) {
   const token = await getCurrentUserIdToken();
-  if (!token) throw new Error("Sign in before opening Edit.");
+  if (!token) throw new Error("Sign in before editing this video.");
   const response = await fetch("/api/media?collection=video&sourceTypes=generated_video", { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
   const data = (await response.json()) as { assets?: Array<{ id: string; url: string }> };
   const asset = data.assets?.find((item) => item.url === videoUrl);
-  router.push(asset ? `/edit/${encodeURIComponent(asset.id)}` : "/avatars?tab=videos");
+  router.push(
+    asset
+      ? getCreativeAssetEditorHref(asset.id)
+      : CREATIVE_ASSETS_VIDEOS_HREF,
+  );
 }

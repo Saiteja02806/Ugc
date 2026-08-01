@@ -1,156 +1,127 @@
-"use client";
-
 import {
   ArrowRight,
   BadgeCheck,
-  Camera,
   CheckCircle2,
-  CirclePlay,
+  Gauge,
 } from "lucide-react";
+import Link from "next/link";
 
-import { buttonClassName } from "@/components/ui/button";
+import { PricingCreditSummary } from "@/components/pricing/pricing-credit-summary";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import type { PlanSlug, PricingPlan } from "@/lib/pricing/plans";
+import {
+  formatPricingAmount,
+  type PricingPlan,
+} from "@/lib/pricing/plans";
 
 type PricingCardProps = {
-  onSelectPlan?: (plan: PlanSlug) => void;
   plan: PricingPlan;
 };
 
-export function PricingCard({ onSelectPlan, plan }: PricingCardProps) {
-  const canSelectPlan = Boolean(onSelectPlan);
-
+export function PricingCard({ plan }: PricingCardProps) {
   return (
     <article
       className={cn(
-        "relative flex h-full min-h-[620px] flex-col rounded-[var(--radius-panel)] border bg-card p-5 shadow-card transition duration-200 sm:p-6",
+        "relative flex h-full flex-col rounded-card border bg-card shadow-card",
         plan.highlighted
-          ? "border-primary/35 shadow-[0_18px_44px_rgb(201_71_22_/_0.12)]"
+          ? "border-primary/55 shadow-[0_18px_48px_rgb(0_0_0_/_0.24)]"
           : "border-border",
       )}
     >
-      <div className="flex min-h-8 items-start justify-between gap-3">
-        <PricingBadge visible={Boolean(plan.highlighted)}>
-          Most Popular
-        </PricingBadge>
-      </div>
+      <div className="flex h-full flex-col p-5 sm:p-6">
+        <div className="flex min-h-6 items-start justify-between gap-3">
+          <p className="text-xs font-bold uppercase text-muted">
+            {plan.bestFor}
+          </p>
+          {plan.badgeLabel ? (
+            <Badge variant="secondary">
+              <BadgeCheck data-icon="inline-start" aria-hidden="true" />
+              {plan.badgeLabel}
+            </Badge>
+          ) : null}
+        </div>
 
-      <div className="mt-5">
-        <h2 className="text-2xl font-black leading-tight tracking-normal text-foreground-strong">
-          {plan.name}
-        </h2>
-        <p className="mt-3 min-h-12 text-sm font-medium leading-6 text-muted">
-          {plan.description}
+        <div className="mt-5">
+          <h2 className="text-2xl font-bold leading-none tracking-normal text-foreground-strong">
+            {plan.name}
+          </h2>
+          <p className="mt-3 max-w-md text-sm font-medium leading-6 text-muted">
+            {plan.description}
+          </p>
+        </div>
+
+        <div className="mt-6 flex items-end gap-2">
+          <span className="text-4xl font-bold leading-none tracking-normal text-foreground-strong sm:text-5xl">
+            {formatPricingAmount(plan.monthlyPrice)}
+          </span>
+          <span className="pb-1.5 text-sm font-semibold text-muted">
+            {plan.billingText}
+          </span>
+        </div>
+
+        <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Gauge className="size-4 text-primary" aria-hidden="true" />
+          <span>{plan.capacityLabel}</span>
+        </div>
+
+        <div className="mt-6">
+          <p className="text-xs font-bold uppercase text-muted">
+            Monthly production allowance
+          </p>
+          <div className="mt-2 border-y border-border">
+            <PricingCreditSummary
+              amount={plan.imageCredits}
+              kind="image"
+            />
+            <Separator />
+            <PricingCreditSummary
+              amount={plan.videoCredits}
+              kind="video"
+            />
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <Link
+            href="/sign-in"
+            aria-label={`${plan.buttonLabel}, ${formatPricingAmount(plan.monthlyPrice)} per month`}
+            className={buttonVariants({
+              variant: plan.highlighted ? "default" : "outline",
+              size: "lg",
+              className: "h-11 w-full text-sm font-semibold",
+            })}
+          >
+            {plan.buttonLabel}
+            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+          </Link>
+          <p className="mt-2.5 text-center text-xs font-medium text-muted-subtle">
+            Sign in to continue to checkout
+          </p>
+        </div>
+
+        <Separator className="my-6" />
+
+        <ul className="grid gap-3">
+          {plan.features.map((feature) => (
+            <li
+              key={feature}
+              className="flex gap-3 text-sm font-semibold leading-6 text-foreground"
+            >
+              <CheckCircle2
+                className="mt-0.5 size-4 shrink-0 text-success"
+                aria-hidden="true"
+              />
+              <span>{feature}</span>
+            </li>
+          ))}
+        </ul>
+
+        <p className="mt-auto pt-6 text-xs font-medium leading-5 text-muted-subtle">
+          Billed monthly. Applicable taxes may be added at checkout.
         </p>
       </div>
-
-      <div className="mt-6 flex items-end gap-2">
-        <span className="text-5xl font-black leading-none tracking-normal text-foreground-strong">
-          ${plan.monthlyPrice}
-        </span>
-        <span className="pb-1.5 text-sm font-bold text-muted">
-          {plan.billingText}
-        </span>
-      </div>
-
-      <div className="mt-7 grid gap-3">
-        <PricingCreditRow
-          icon="image"
-          label="Image Generation Credits"
-          value={plan.imageCredits}
-        />
-        <PricingCreditRow
-          icon="video"
-          label="Video Generation Credits"
-          value={plan.videoCredits}
-        />
-      </div>
-
-      <div className="my-7 border-t border-border" />
-
-      <PricingFeatureList features={plan.features} />
-
-      <div className="mt-auto pt-8">
-        {/* TODO: Wire this through onSelectPlan when Dodo checkout routes are added. */}
-        <button
-          type="button"
-          disabled={!canSelectPlan}
-          onClick={() => onSelectPlan?.(plan.slug)}
-          className={buttonClassName({
-            className: cn(
-              "h-12 w-full gap-2 rounded-control text-sm",
-              plan.highlighted
-                ? "bg-primary text-primary-foreground hover:bg-primary-hover"
-                : "border-border-strong bg-card-muted text-foreground hover:bg-border",
-              "disabled:cursor-default disabled:opacity-100",
-            ),
-          })}
-        >
-          {plan.buttonLabel}
-          <ArrowRight className="size-4" aria-hidden="true" />
-        </button>
-      </div>
     </article>
-  );
-}
-
-export function PricingBadge({
-  children,
-  visible,
-}: {
-  children: string;
-  visible: boolean;
-}) {
-  if (!visible) {
-    return <span className="min-h-8" aria-hidden="true" />;
-  }
-
-  return (
-    <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-primary/20 bg-brand-soft px-3 text-xs font-black text-primary">
-      <BadgeCheck className="size-3.5" aria-hidden="true" />
-      {children}
-    </span>
-  );
-}
-
-export function PricingCreditRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: "image" | "video";
-  label: string;
-  value: number;
-}) {
-  const Icon = icon === "image" ? Camera : CirclePlay;
-
-  return (
-    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-control border border-border bg-surface-subtle px-3 py-3">
-      <span className="flex size-10 items-center justify-center rounded-control bg-card text-primary shadow-sm">
-        <Icon className="size-5" aria-hidden="true" />
-      </span>
-      <span className="min-w-0 text-sm font-bold leading-5 text-foreground-strong">
-        {label}
-      </span>
-      <span className="rounded-small border border-border bg-card px-2.5 py-1 text-sm font-black tabular-nums text-foreground-strong">
-        {value}
-      </span>
-    </div>
-  );
-}
-
-export function PricingFeatureList({ features }: { features: string[] }) {
-  return (
-    <ul className="grid gap-3">
-      {features.map((feature) => (
-        <li key={feature} className="flex gap-3 text-sm font-semibold leading-6 text-foreground">
-          <CheckCircle2
-            className="mt-0.5 size-5 shrink-0 text-success"
-            aria-hidden="true"
-          />
-          <span>{feature}</span>
-        </li>
-      ))}
-    </ul>
   );
 }

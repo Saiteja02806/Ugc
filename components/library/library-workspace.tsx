@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 
 import { UploadedPostsTab } from "@/components/demos/demos-workspace";
 import { HookVideoLibraryTab } from "@/components/library/hook-video-library-tab";
+import { WallTextLibraryTab } from "@/components/library/wall-text-library-tab";
 import {
   PlatformSelectionModal,
   type SchedulePlatformContext,
@@ -201,6 +202,7 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
             <LibraryContentTab onShowPosts={() => selectTab("posts")} />
           ) : (
             <div className="flex flex-col gap-4">
+              <WallTextLibraryTab />
               <HookVideoLibraryTab />
               <UploadedPostsTab embeddedInLibrary />
             </div>

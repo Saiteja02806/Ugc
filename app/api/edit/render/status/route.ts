@@ -75,7 +75,7 @@ function mapBackgroundJobStatus(status: BackgroundJobStatus) {
   return "FAILED";
 }
 
-function getAwsRenderStatusResponse(job: BackgroundJobRecord) {
+function getRenderStatusResponse(job: BackgroundJobRecord) {
   return NextResponse.json({
     ok: true,
     run: {
@@ -203,7 +203,7 @@ async function getAwsRenderStatus(jobId: string, userId: string) {
     );
   }
 
-  return getAwsRenderStatusResponse(job);
+  return getRenderStatusResponse(job);
 }
 
 export async function GET(request: Request) {
@@ -241,7 +241,7 @@ export async function GET(request: Request) {
     try {
       return await getAwsRenderStatus(jobId, user.uid);
     } catch (error) {
-      console.error("Failed to retrieve AWS edited video render status:", error);
+      console.error("Failed to retrieve edited video render status:", error);
 
       return NextResponse.json(
         {

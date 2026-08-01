@@ -5,7 +5,12 @@ import {
   CheckCircle2,
   FileImage,
   Film,
+  Folder,
+  FolderMinus,
+  FolderOpen,
+  FolderPlus,
   Loader2,
+  Pencil,
   Plus,
   RefreshCw,
   Trash2,
@@ -14,10 +19,11 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +32,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { getCreativeAssetEditorHref } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type {
   MediaAsset,
@@ -39,9 +54,34 @@ type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
   | { error?: string; ok?: false };
 
+type CreativeAssetGroup = {
+  createdAt: string;
+  id: string;
+  mediaType: "image" | "video";
+  name: string;
+  updatedAt: string;
+};
+
+type GroupListResponse =
+  | { groups: CreativeAssetGroup[]; ok: true }
+  | { error?: string; ok?: false };
+
+type GroupAssetsResponse =
+  | {
+      assets: Array<{ addedAt: string; asset: MediaAsset }>;
+      group: CreativeAssetGroup;
+      ok: true;
+    }
+  | { error?: string; ok?: false };
+
+type GroupMutationResponse =
+  | { group: CreativeAssetGroup; ok: true }
+  | { error?: string; ok?: false };
+
 export function UserMediaCollection({
   collection,
   description,
+  displayCollections,
   emptyDescription,
   emptyTitle,
   variant = "default",
@@ -50,6 +90,7 @@ export function UserMediaCollection({
 }: {
   collection: MediaCollection;
   description: string;
+  displayCollections?: MediaCollection[];
   emptyDescription: string;
   emptyTitle: string;
   sourceTypes?: MediaSourceType[];
@@ -58,24 +99,66 @@ export function UserMediaCollection({
 }) {
   const { loading: authLoading, user } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [assets, setAssets] = useState<MediaAsset[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [allAssets, setAllAssets] = useState<MediaAsset[]>([]);
+  const [groupAssets, setGroupAssets] = useState<MediaAsset[]>([]);
+  const [groups, setGroups] = useState<CreativeAssetGroup[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(true);
+  const [isLoadingGroupAssets, setIsLoadingGroupAssets] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const [pendingDeleteAsset, setPendingDeleteAsset] = useState<MediaAsset | null>(null);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [groupDialogMode, setGroupDialogMode] = useState<
+    "create" | "rename" | null
+  >(null);
+  const [groupName, setGroupName] = useState("");
+  const [groupFormError, setGroupFormError] = useState<string | null>(null);
+  const [isSavingGroup, setIsSavingGroup] = useState(false);
+  const [pendingDeleteGroup, setPendingDeleteGroup] =
+    useState<CreativeAssetGroup | null>(null);
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
+  const [isAddAssetsOpen, setIsAddAssetsOpen] = useState(false);
+  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isAddingAssets, setIsAddingAssets] = useState(false);
   const isDarkVariant = variant === "dark";
+  const groupMediaType = collection === "image" ? "image" : "video";
+  const collectionsToLoad = useMemo(
+    () =>
+      displayCollections?.length
+        ? Array.from(new Set(displayCollections))
+        : [collection],
+    [collection, displayCollections],
+  );
+  const selectedGroup = useMemo(
+    () => groups.find((group) => group.id === selectedGroupId) ?? null,
+    [groups, selectedGroupId],
+  );
+  const assets = selectedGroup ? groupAssets : allAssets;
+  const isLoading = selectedGroup
+    ? isLoadingGroupAssets
+    : isLoadingLibrary;
+  const groupAssetIds = useMemo(
+    () => new Set(groupAssets.map((asset) => asset.id)),
+    [groupAssets],
+  );
+  const assetsAvailableToAdd = useMemo(
+    () => allAssets.filter((asset) => !groupAssetIds.has(asset.id)),
+    [allAssets, groupAssetIds],
+  );
 
-  const loadAssets = useCallback(async () => {
+  const loadAllAssets = useCallback(async () => {
     if (authLoading) {
       return;
     }
 
-    setIsLoading(true);
+    setIsLoadingLibrary(true);
     setErrorMessage(null);
-    setSuccessMessage(null);
 
     try {
       if (!user) {
@@ -83,34 +166,142 @@ export function UserMediaCollection({
       }
 
       const token = await requireToken();
-      const params = new URLSearchParams({ collection });
+      const results = await Promise.all(
+        collectionsToLoad.map(async (displayCollection) => {
+          const params = new URLSearchParams({
+            collection: displayCollection,
+          });
 
-      if (sourceTypes?.length) {
-        params.set("sourceTypes", sourceTypes.join(","));
-      }
+          if (sourceTypes?.length) {
+            params.set("sourceTypes", sourceTypes.join(","));
+          }
 
-      const response = await fetch(`/api/media?${params.toString()}`, {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = (await response.json()) as MediaListResponse;
+          const response = await fetch(`/api/media?${params.toString()}`, {
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = (await response.json()) as MediaListResponse;
 
-      if (!response.ok || data.ok !== true) {
-        throw new Error(getApiError(data, "Could not load your media."));
-      }
+          if (!response.ok || data.ok !== true) {
+            throw new Error(getApiError(data, "Could not load your media."));
+          }
 
-      setAssets(data.assets);
+          return data.assets;
+        }),
+      );
+      const uniqueAssets = Array.from(
+        new Map(results.flat().map((asset) => [asset.id, asset])).values(),
+      ).sort(
+        (first, second) =>
+          Date.parse(second.updatedAt) - Date.parse(first.updatedAt),
+      );
+
+      setAllAssets(uniqueAssets);
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Could not load your media."));
     } finally {
-      setIsLoading(false);
+      setIsLoadingLibrary(false);
     }
-  }, [authLoading, collection, sourceTypes, user]);
+  }, [authLoading, collectionsToLoad, sourceTypes, user]);
+
+  const loadGroups = useCallback(async () => {
+    if (authLoading) {
+      return;
+    }
+
+    setIsLoadingGroups(true);
+
+    try {
+      if (!user) {
+        throw new Error("Sign in to open your media library.");
+      }
+
+      const token = await requireToken();
+      const params = new URLSearchParams({ mediaType: groupMediaType });
+      const response = await fetch(
+        `/api/media/groups?${params.toString()}`,
+        {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = (await response.json()) as GroupListResponse;
+
+      if (!response.ok || data.ok !== true) {
+        throw new Error(getApiError(data, "Could not load your groups."));
+      }
+
+      setGroups(data.groups);
+      setSelectedGroupId((current) =>
+        current && data.groups.some((group) => group.id === current)
+          ? current
+          : null,
+      );
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "Could not load your groups."));
+    } finally {
+      setIsLoadingGroups(false);
+    }
+  }, [authLoading, groupMediaType, user]);
+
+  const loadGroupAssets = useCallback(
+    async (groupId: string) => {
+      if (authLoading) {
+        return;
+      }
+
+      setIsLoadingGroupAssets(true);
+      setErrorMessage(null);
+
+      try {
+        if (!user) {
+          throw new Error("Sign in to open your media library.");
+        }
+
+        const token = await requireToken();
+        const response = await fetch(
+          `/api/media/groups/${encodeURIComponent(groupId)}/items`,
+          {
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        const data = (await response.json()) as GroupAssetsResponse;
+
+        if (!response.ok || data.ok !== true) {
+          throw new Error(getApiError(data, "Could not load this group."));
+        }
+
+        setGroupAssets(data.assets.map((item) => item.asset));
+      } catch (error) {
+        setGroupAssets([]);
+        setErrorMessage(getErrorMessage(error, "Could not load this group."));
+      } finally {
+        setIsLoadingGroupAssets(false);
+      }
+    },
+    [authLoading, user],
+  );
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void loadAssets(), 0);
+    const timer = window.setTimeout(
+      () => void Promise.all([loadAllAssets(), loadGroups()]),
+      0,
+    );
     return () => window.clearTimeout(timer);
-  }, [loadAssets]);
+  }, [loadAllAssets, loadGroups]);
+
+  useEffect(() => {
+    if (!selectedGroupId) {
+      return;
+    }
+
+    const timer = window.setTimeout(
+      () => void loadGroupAssets(selectedGroupId),
+      0,
+    );
+    return () => window.clearTimeout(timer);
+  }, [loadGroupAssets, selectedGroupId]);
 
   async function handleFile(file: File | undefined) {
     if (!file || isUploading) {
@@ -189,12 +380,39 @@ export function UserMediaCollection({
         throw new Error(completed.error || "Could not finish this upload.");
       }
 
-      setAssets((current) => [
-        completed.asset as MediaAsset,
-        ...current.filter((asset) => asset.id !== completed.asset?.id),
-      ]);
-      setSuccessMessage(`${completed.asset.title} uploaded.`);
+      const uploadedAsset = completed.asset;
       incompleteUpload = null;
+      setAllAssets((current) => [
+        uploadedAsset,
+        ...current.filter((asset) => asset.id !== uploadedAsset.id),
+      ]);
+
+      if (selectedGroupId) {
+        const grouped = await addAssetsToGroup({
+          groupId: selectedGroupId,
+          mediaAssetIds: [uploadedAsset.id],
+          token,
+        }).catch(() => false);
+
+        if (grouped) {
+          setGroupAssets((current) => [
+            uploadedAsset,
+            ...current.filter((asset) => asset.id !== uploadedAsset.id),
+          ]);
+          setSuccessMessage(
+            `${uploadedAsset.title} uploaded and added to ${selectedGroup?.name ?? "the group"}.`,
+          );
+        } else {
+          setSuccessMessage(
+            `${uploadedAsset.title} uploaded to All assets.`,
+          );
+          setErrorMessage(
+            "The upload is safe in All assets, but it could not be added to this group.",
+          );
+        }
+      } else {
+        setSuccessMessage(`${uploadedAsset.title} uploaded.`);
+      }
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Could not upload this media."));
 
@@ -226,10 +444,22 @@ export function UserMediaCollection({
 
     try {
       const token = await requireToken();
-      const response = await fetch(`/api/media/${encodeURIComponent(asset.id)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        method: "DELETE",
-      });
+      const response = selectedGroupId
+        ? await fetch(
+            `/api/media/groups/${encodeURIComponent(selectedGroupId)}/items`,
+            {
+              body: JSON.stringify({ mediaAssetId: asset.id }),
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              method: "DELETE",
+            },
+          )
+        : await fetch(`/api/media/${encodeURIComponent(asset.id)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            method: "DELETE",
+          });
       const data = (await response.json().catch(() => null)) as {
         error?: string;
         ok?: boolean;
@@ -239,9 +469,24 @@ export function UserMediaCollection({
         throw new Error(getApiError(data, "Could not remove this asset."));
       }
 
-      setAssets((current) => current.filter((item) => item.id !== asset.id));
+      if (selectedGroupId) {
+        setGroupAssets((current) =>
+          current.filter((item) => item.id !== asset.id),
+        );
+      } else {
+        setAllAssets((current) =>
+          current.filter((item) => item.id !== asset.id),
+        );
+        setGroupAssets((current) =>
+          current.filter((item) => item.id !== asset.id),
+        );
+      }
       setPendingDeleteAsset(null);
-      setSuccessMessage(getRemovalSuccessMessage(asset));
+      setSuccessMessage(
+        selectedGroupId
+          ? `${asset.title} was removed from ${selectedGroup?.name ?? "the group"}. It is still in All assets.`
+          : getRemovalSuccessMessage(asset),
+      );
     } catch (error) {
       setDeleteErrorMessage(getErrorMessage(error, "Could not remove this asset."));
     } finally {
@@ -249,8 +494,269 @@ export function UserMediaCollection({
     }
   }
 
+  function openCreateGroupDialog() {
+    setGroupDialogMode("create");
+    setGroupName("");
+    setGroupFormError(null);
+  }
+
+  function openRenameGroupDialog() {
+    if (!selectedGroup) {
+      return;
+    }
+
+    setGroupDialogMode("rename");
+    setGroupName(selectedGroup.name);
+    setGroupFormError(null);
+  }
+
+  async function saveGroup(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (isSavingGroup) {
+      return;
+    }
+
+    const name = groupName.trim();
+
+    if (!name || name.length > 80) {
+      setGroupFormError("Use a group name with 80 characters or fewer.");
+      return;
+    }
+
+    setIsSavingGroup(true);
+    setGroupFormError(null);
+
+    try {
+      const token = await requireToken();
+      const isRenaming = groupDialogMode === "rename" && selectedGroup;
+      const response = await fetch(
+        isRenaming
+          ? `/api/media/groups/${encodeURIComponent(selectedGroup.id)}`
+          : "/api/media/groups",
+        {
+          body: JSON.stringify(
+            isRenaming ? { name } : { mediaType: groupMediaType, name },
+          ),
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          method: isRenaming ? "PATCH" : "POST",
+        },
+      );
+      const data = (await response.json()) as GroupMutationResponse;
+
+      if (!response.ok || data.ok !== true) {
+        throw new Error(getApiError(data, "Could not save this group."));
+      }
+
+      setGroups((current) =>
+        isRenaming
+          ? current.map((group) =>
+              group.id === data.group.id ? data.group : group,
+            )
+          : [data.group, ...current],
+      );
+      setSelectedGroupId(data.group.id);
+      setGroupDialogMode(null);
+      setSuccessMessage(
+        isRenaming
+          ? `Group renamed to ${data.group.name}.`
+          : `${data.group.name} created. Add any assets you want.`,
+      );
+    } catch (error) {
+      setGroupFormError(getErrorMessage(error, "Could not save this group."));
+    } finally {
+      setIsSavingGroup(false);
+    }
+  }
+
+  async function deleteGroup() {
+    if (!pendingDeleteGroup || isDeletingGroup) {
+      return;
+    }
+
+    setIsDeletingGroup(true);
+
+    try {
+      const token = await requireToken();
+      const response = await fetch(
+        `/api/media/groups/${encodeURIComponent(pendingDeleteGroup.id)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          method: "DELETE",
+        },
+      );
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+        ok?: boolean;
+      } | null;
+
+      if (!response.ok || data?.ok !== true) {
+        throw new Error(getApiError(data, "Could not delete this group."));
+      }
+
+      const deletedName = pendingDeleteGroup.name;
+      setGroups((current) =>
+        current.filter((group) => group.id !== pendingDeleteGroup.id),
+      );
+      setSelectedGroupId(null);
+      setPendingDeleteGroup(null);
+      setSuccessMessage(
+        `${deletedName} was deleted. Its assets are still in All assets.`,
+      );
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "Could not delete this group."));
+    } finally {
+      setIsDeletingGroup(false);
+    }
+  }
+
+  function openAddAssetsDialog() {
+    setSelectedAssetIds(new Set());
+    setIsAddAssetsOpen(true);
+  }
+
+  function toggleAssetSelection(assetId: string, checked: boolean) {
+    setSelectedAssetIds((current) => {
+      const next = new Set(current);
+
+      if (checked) {
+        next.add(assetId);
+      } else {
+        next.delete(assetId);
+      }
+
+      return next;
+    });
+  }
+
+  async function addSelectedAssets() {
+    if (!selectedGroup || selectedAssetIds.size === 0 || isAddingAssets) {
+      return;
+    }
+
+    setIsAddingAssets(true);
+    setErrorMessage(null);
+
+    try {
+      const token = await requireToken();
+      const mediaAssetIds = Array.from(selectedAssetIds);
+      const added = await addAssetsToGroup({
+        groupId: selectedGroup.id,
+        mediaAssetIds,
+        token,
+      });
+
+      if (!added) {
+        throw new Error("Could not add the selected assets.");
+      }
+
+      await loadGroupAssets(selectedGroup.id);
+      setIsAddAssetsOpen(false);
+      setSelectedAssetIds(new Set());
+      setSuccessMessage(
+        `${mediaAssetIds.length} ${mediaAssetIds.length === 1 ? "asset" : "assets"} added to ${selectedGroup.name}.`,
+      );
+    } catch (error) {
+      setErrorMessage(
+        getErrorMessage(error, "Could not add the selected assets."),
+      );
+    } finally {
+      setIsAddingAssets(false);
+    }
+  }
+
+  async function refreshLibrary() {
+    setSuccessMessage(null);
+    await Promise.all([
+      loadAllAssets(),
+      loadGroups(),
+      selectedGroupId
+        ? loadGroupAssets(selectedGroupId)
+        : Promise.resolve(),
+    ]);
+  }
+
   return (
     <section>
+      <div className="mb-3 rounded-[var(--radius-card)] border border-border bg-card p-3 shadow-card sm:p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-border bg-card-muted text-primary">
+              <FolderOpen className="size-4.5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-semibold text-foreground">
+                  Groups
+                </h2>
+                <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted">
+                  Optional
+                </span>
+              </div>
+              <p className="mt-0.5 text-sm leading-5 text-muted">
+                Keep everything in All assets, or organize related items into groups.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={openCreateGroupDialog}
+          >
+            <FolderPlus data-icon="inline-start" aria-hidden="true" />
+            Create group
+          </Button>
+        </div>
+
+        <nav
+          aria-label={`${title} groups`}
+          className="mt-3 flex max-w-full items-center gap-2 overflow-x-auto pb-1"
+        >
+          <Button
+            type="button"
+            variant={selectedGroupId === null ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => {
+              setSelectedGroupId(null);
+              setErrorMessage(null);
+              setSuccessMessage(null);
+            }}
+            aria-current={selectedGroupId === null ? "page" : undefined}
+          >
+            All assets
+          </Button>
+          {groups.map((group) => (
+            <Button
+              key={group.id}
+              type="button"
+              variant={selectedGroupId === group.id ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => {
+                setSelectedGroupId(group.id);
+                setErrorMessage(null);
+                setSuccessMessage(null);
+              }}
+              aria-current={selectedGroupId === group.id ? "page" : undefined}
+              className="max-w-52 shrink-0"
+            >
+              <Folder data-icon="inline-start" aria-hidden="true" />
+              <span className="truncate">{group.name}</span>
+            </Button>
+          ))}
+          {isLoadingGroups ? (
+            <span className="inline-flex items-center gap-2 px-2 text-xs text-muted">
+              <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              Loading groups…
+            </span>
+          ) : null}
+        </nav>
+      </div>
+
       <div className="flex flex-col gap-4 rounded-[var(--radius-card)] border border-border bg-card px-3.5 py-3.5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
           <span
@@ -265,29 +771,66 @@ export function UserMediaCollection({
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+              <h2 className="text-sm font-semibold text-foreground">
+                {selectedGroup?.name ?? title}
+              </h2>
               <span className="text-xs text-muted">
                 {isLoading ? "Loading…" : `${assets.length} ${assets.length === 1 ? "asset" : "assets"}`}
               </span>
             </div>
-            <p className="mt-0.5 max-w-2xl text-sm leading-5 text-muted">{description}</p>
+            <p className="mt-0.5 max-w-2xl text-sm leading-5 text-muted">
+              {selectedGroup
+                ? `Only assets added to ${selectedGroup.name} are shown here.`
+                : description}
+            </p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 sm:justify-end">
-          <button
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <Button
             type="button"
-            onClick={() => void loadAssets()}
-            disabled={isLoading || isUploading}
-            className={cn(
-              "inline-flex size-9 items-center justify-center rounded-[var(--radius-control)] border border-border text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
-              "bg-card-muted hover:border-border-strong hover:bg-card",
-            )}
+            variant="outline"
+            size="icon-sm"
+            onClick={() => void refreshLibrary()}
+            disabled={isLoading || isUploading || isLoadingGroups}
             aria-label={`Refresh ${title}`}
             title={`Refresh ${title}`}
           >
             <RefreshCw className={isLoading ? "size-4 animate-spin motion-reduce:animate-none" : "size-4"} aria-hidden="true" />
-          </button>
+          </Button>
+          {selectedGroup ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={openAddAssetsDialog}
+              >
+                <Plus data-icon="inline-start" aria-hidden="true" />
+                Add assets
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={openRenameGroupDialog}
+                aria-label={`Rename ${selectedGroup.name}`}
+                title={`Rename ${selectedGroup.name}`}
+              >
+                <Pencil aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setPendingDeleteGroup(selectedGroup)}
+                aria-label={`Delete ${selectedGroup.name}`}
+                title={`Delete ${selectedGroup.name}`}
+              >
+                <Trash2 aria-hidden="true" />
+              </Button>
+            </>
+          ) : null}
           <input
             ref={inputRef}
             type="file"
@@ -296,15 +839,23 @@ export function UserMediaCollection({
             onChange={(event) => void handleFile(event.target.files?.[0])}
             className="sr-only"
           />
-          <button
+          <Button
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={isUploading}
-            className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-primary px-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+            size="sm"
           >
-            {isUploading ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Plus className="size-4" aria-hidden="true" />}
+            {isUploading ? (
+              <Loader2
+                data-icon="inline-start"
+                className="animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+            ) : (
+              <Plus data-icon="inline-start" aria-hidden="true" />
+            )}
             {isUploading ? "Uploading…" : getUploadLabel(collection)}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -344,6 +895,7 @@ export function UserMediaCollection({
                 key={asset.id}
                 asset={asset}
                 deleting={deletingAssetId === asset.id}
+                grouped={Boolean(selectedGroup)}
                 variant={variant}
                 onRemove={() => {
                   setDeleteErrorMessage(null);
@@ -362,10 +914,32 @@ export function UserMediaCollection({
                   : "border-border bg-card text-muted",
               )}
             >
-              <Upload className="size-4.5" aria-hidden="true" />
+              {selectedGroup ? (
+                <FolderOpen className="size-4.5" aria-hidden="true" />
+              ) : (
+                <Upload className="size-4.5" aria-hidden="true" />
+              )}
             </span>
-            <h3 className="mt-3 text-sm font-semibold text-foreground">{emptyTitle}</h3>
-            <p className="mt-1 max-w-md text-sm leading-5 text-muted">{emptyDescription}</p>
+            <h3 className="mt-3 text-sm font-semibold text-foreground">
+              {selectedGroup ? "No assets in this group" : emptyTitle}
+            </h3>
+            <p className="mt-1 max-w-md text-sm leading-5 text-muted">
+              {selectedGroup
+                ? "Add existing assets, or upload a new one while this group is open."
+                : emptyDescription}
+            </p>
+            {selectedGroup && allAssets.length > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={openAddAssetsDialog}
+              >
+                <Plus data-icon="inline-start" aria-hidden="true" />
+                Add existing assets
+              </Button>
+            ) : null}
           </div>
         )}
       </div>
@@ -381,9 +955,15 @@ export function UserMediaCollection({
       >
         <DialogContent showCloseButton={!deletingAssetId}>
           <DialogHeader className="pr-8">
-            <DialogTitle className="text-lg font-semibold">Remove this asset?</DialogTitle>
+            <DialogTitle className="text-lg font-semibold">
+              {selectedGroup ? "Remove from this group?" : "Remove this asset?"}
+            </DialogTitle>
             <DialogDescription>
-              {pendingDeleteAsset ? getRemovalDescription(pendingDeleteAsset) : ""}
+              {pendingDeleteAsset
+                ? selectedGroup
+                  ? `This removes ${pendingDeleteAsset.title} from ${selectedGroup.name}. The asset stays in All assets and any other groups.`
+                  : getRemovalDescription(pendingDeleteAsset)
+                : ""}
             </DialogDescription>
           </DialogHeader>
 
@@ -429,7 +1009,7 @@ export function UserMediaCollection({
               }}
               disabled={Boolean(deletingAssetId)}
             >
-              Keep asset
+              {selectedGroup ? "Keep in group" : "Keep asset"}
             </Button>
             <Button
               type="button"
@@ -437,8 +1017,266 @@ export function UserMediaCollection({
               onClick={() => void removeAsset()}
               disabled={Boolean(deletingAssetId)}
             >
-              {deletingAssetId ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
-              {deletingAssetId ? "Removing…" : "Remove asset"}
+              {deletingAssetId ? (
+                <Loader2
+                  data-icon="inline-start"
+                  className="animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              ) : selectedGroup ? (
+                <FolderMinus data-icon="inline-start" aria-hidden="true" />
+              ) : (
+                <Trash2 data-icon="inline-start" aria-hidden="true" />
+              )}
+              {deletingAssetId
+                ? "Removing…"
+                : selectedGroup
+                  ? "Remove from group"
+                  : "Remove asset"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={groupDialogMode !== null}
+        onOpenChange={(open) => {
+          if (!open && !isSavingGroup) {
+            setGroupDialogMode(null);
+            setGroupFormError(null);
+          }
+        }}
+      >
+        <DialogContent showCloseButton={!isSavingGroup}>
+          <DialogHeader>
+            <DialogTitle>
+              {groupDialogMode === "rename" ? "Rename group" : "Create group"}
+            </DialogTitle>
+            <DialogDescription>
+              Groups are optional. They help you organize related assets without
+              changing All assets.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="flex flex-col gap-5" onSubmit={saveGroup}>
+            <FieldGroup>
+              <Field data-invalid={Boolean(groupFormError)}>
+                <FieldLabel htmlFor={`${collection}-group-name`}>
+                  Group name
+                </FieldLabel>
+                <Input
+                  id={`${collection}-group-name`}
+                  value={groupName}
+                  onChange={(event) => {
+                    setGroupName(event.target.value);
+                    setGroupFormError(null);
+                  }}
+                  placeholder={
+                    collection === "image"
+                      ? "Product photos"
+                      : "Fitness influencers"
+                  }
+                  maxLength={80}
+                  autoComplete="off"
+                  autoFocus
+                  aria-invalid={Boolean(groupFormError)}
+                />
+                <FieldDescription>
+                  You can add the same asset to more than one group.
+                </FieldDescription>
+                <FieldError>{groupFormError}</FieldError>
+              </Field>
+            </FieldGroup>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setGroupDialogMode(null)}
+                disabled={isSavingGroup}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSavingGroup}>
+                {isSavingGroup ? (
+                  <Loader2
+                    data-icon="inline-start"
+                    className="animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                ) : null}
+                {isSavingGroup
+                  ? "Saving…"
+                  : groupDialogMode === "rename"
+                    ? "Save name"
+                    : "Create group"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isAddAssetsOpen}
+        onOpenChange={(open) => {
+          if (!isAddingAssets) {
+            setIsAddAssetsOpen(open);
+
+            if (!open) {
+              setSelectedAssetIds(new Set());
+            }
+          }
+        }}
+      >
+        <DialogContent showCloseButton={!isAddingAssets}>
+          <DialogHeader>
+            <DialogTitle>Add assets to {selectedGroup?.name}</DialogTitle>
+            <DialogDescription>
+              Choose any assets from All assets. They remain available everywhere
+              else.
+            </DialogDescription>
+          </DialogHeader>
+
+          {assetsAvailableToAdd.length > 0 ? (
+            <FieldGroup className="max-h-[52vh] overflow-y-auto pr-1">
+              {assetsAvailableToAdd.map((asset) => {
+                const checkboxId = `${collection}-group-asset-${asset.id}`;
+                const checked = selectedAssetIds.has(asset.id);
+
+                return (
+                  <Field
+                    key={asset.id}
+                    orientation="horizontal"
+                    className="rounded-[var(--radius-control)] border border-border bg-card-muted p-3"
+                  >
+                    <Checkbox
+                      id={checkboxId}
+                      checked={checked}
+                      onCheckedChange={(value) =>
+                        toggleAssetSelection(asset.id, value === true)
+                      }
+                    />
+                    <FieldLabel
+                      htmlFor={checkboxId}
+                      className="min-w-0 cursor-pointer"
+                    >
+                      <span className="relative size-12 shrink-0 overflow-hidden rounded-lg border border-border bg-card">
+                        {asset.collection === "image" ? (
+                          <Image
+                            src={asset.thumbnailUrl || asset.url}
+                            alt=""
+                            fill
+                            unoptimized
+                            className="object-cover"
+                            sizes="48px"
+                          />
+                        ) : (
+                          <video
+                            src={asset.url}
+                            poster={asset.thumbnailUrl || undefined}
+                            preload="metadata"
+                            muted
+                            className="size-full object-cover"
+                          />
+                        )}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-foreground">
+                          {asset.title}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs font-normal text-muted">
+                          {getSourceLabel(asset)} · {formatAssetDate(asset.createdAt)}
+                        </span>
+                      </span>
+                    </FieldLabel>
+                  </Field>
+                );
+              })}
+            </FieldGroup>
+          ) : (
+            <div className="rounded-[var(--radius-control)] border border-dashed border-border bg-card-muted p-6 text-center">
+              <p className="text-sm font-medium text-foreground">
+                Every available asset is already in this group.
+              </p>
+              <p className="mt-1 text-sm text-muted">
+                Upload another asset or return to All assets.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsAddAssetsOpen(false)}
+              disabled={isAddingAssets}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void addSelectedAssets()}
+              disabled={selectedAssetIds.size === 0 || isAddingAssets}
+            >
+              {isAddingAssets ? (
+                <Loader2
+                  data-icon="inline-start"
+                  className="animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Plus data-icon="inline-start" aria-hidden="true" />
+              )}
+              {isAddingAssets
+                ? "Adding…"
+                : `Add ${selectedAssetIds.size || ""} ${
+                    selectedAssetIds.size === 1 ? "asset" : "assets"
+                  }`.trim()}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={pendingDeleteGroup !== null}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingGroup) {
+            setPendingDeleteGroup(null);
+          }
+        }}
+      >
+        <DialogContent showCloseButton={!isDeletingGroup}>
+          <DialogHeader>
+            <DialogTitle>Delete this group?</DialogTitle>
+            <DialogDescription>
+              {pendingDeleteGroup
+                ? `${pendingDeleteGroup.name} will be removed. Its assets stay safe in All assets and any other groups.`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDeleteGroup(null)}
+              disabled={isDeletingGroup}
+            >
+              Keep group
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void deleteGroup()}
+              disabled={isDeletingGroup}
+            >
+              {isDeletingGroup ? (
+                <Loader2
+                  data-icon="inline-start"
+                  className="animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Trash2 data-icon="inline-start" aria-hidden="true" />
+              )}
+              {isDeletingGroup ? "Deleting…" : "Delete group"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -450,11 +1288,13 @@ export function UserMediaCollection({
 function MediaAssetCard({
   asset,
   deleting,
+  grouped,
   onRemove,
   variant = "default",
 }: {
   asset: MediaAsset;
   deleting: boolean;
+  grouped: boolean;
   onRemove: () => void;
   variant?: "default" | "dark";
 }) {
@@ -486,10 +1326,10 @@ function MediaAssetCard({
         <div className="mt-3 flex items-center gap-2">
           {!isImage ? (
             <Link
-              href={`/edit/${encodeURIComponent(asset.id)}`}
+              href={getCreativeAssetEditorHref(asset.id)}
               className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
-              Open in Edit
+              Edit video
             </Link>
           ) : (
             <span className="min-w-0 flex-1 text-xs text-muted">Available across your image tools</span>
@@ -502,9 +1342,22 @@ function MediaAssetCard({
               "inline-flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-border text-muted transition-colors hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
               "bg-card hover:border-error/40 hover:bg-error/10",
             )}
-            aria-label={`Remove ${asset.title}`}
+            aria-label={
+              grouped
+                ? `Remove ${asset.title} from group`
+                : `Remove ${asset.title}`
+            }
           >
-            {deleting ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Trash2 className="size-3.5" aria-hidden="true" />}
+            {deleting ? (
+              <Loader2
+                className="size-3.5 animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+            ) : grouped ? (
+              <FolderMinus className="size-3.5" aria-hidden="true" />
+            ) : (
+              <Trash2 className="size-3.5" aria-hidden="true" />
+            )}
           </button>
         </div>
       </div>
@@ -569,16 +1422,17 @@ function getSourceLabel(asset: MediaAsset) {
     generated_video: "Generated video",
     influencer_upload: "Your influencer",
     upload: "Your upload",
+    wall_text_render: "Wall-text Reel",
   };
   return labels[asset.sourceType];
 }
 
 function getRemovalDescription(asset: MediaAsset) {
   if (asset.sourceType === "catalog_influencer") {
-    return "This removes the influencer from your personal Edit library only. The shared UGC Pilot influencer stays protected and remains available in the catalog.";
+    return "This removes the influencer from your Creative Assets only. The shared UGC Pilot influencer stays protected and remains available in the catalog.";
   }
 
-  return "This hides the asset from your collection and Edit. The stored file is retained for recovery, so it is not permanently erased.";
+  return "This hides the asset from Creative Assets and its editor. The stored file is retained for recovery, so it is not permanently erased.";
 }
 
 function getRemovalSuccessMessage(asset: MediaAsset) {
@@ -609,6 +1463,38 @@ async function requireToken() {
   const token = await getCurrentUserIdToken();
   if (!token) throw new Error("Sign in to manage your media.");
   return token;
+}
+
+async function addAssetsToGroup({
+  groupId,
+  mediaAssetIds,
+  token,
+}: {
+  groupId: string;
+  mediaAssetIds: string[];
+  token: string;
+}) {
+  const response = await fetch(
+    `/api/media/groups/${encodeURIComponent(groupId)}/items`,
+    {
+      body: JSON.stringify({ mediaAssetIds }),
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    },
+  );
+  const data = (await response.json().catch(() => null)) as {
+    error?: string;
+    ok?: boolean;
+  } | null;
+
+  if (!response.ok || data?.ok !== true) {
+    throw new Error(getApiError(data, "Could not add assets to this group."));
+  }
+
+  return true;
 }
 
 function getApiError(value: unknown, fallback: string) {

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { WorkerConfig } from "./config.js";
+import { JobCancellationRequestedError } from "./job-cancellation.js";
 import { getErrorMessage, logger } from "./logger.js";
 import { hasWorkerJobHandler, runWorkerJob } from "./jobs/index.js";
 import {
@@ -168,6 +169,17 @@ async function processClaimableJob(params: {
   if (!processingJob) {
     const latestJob = await store.getJobById(job.id);
 
+    if (latestJob?.status === "cancel_requested") {
+      await store.markCancelled({ jobId: latestJob.id });
+      await deleteDeliveryMessage({ config, message, queue });
+      logger.info("Background job cancelled before execution", {
+        jobId: latestJob.id,
+        jobType: latestJob.job_type,
+        messageId,
+      });
+      return false;
+    }
+
     if (!latestJob || terminalJobStatuses.has(latestJob.status)) {
       logger.info("Dropping duplicate queue message after claim was denied", {
         jobId: job.id,
@@ -216,7 +228,35 @@ async function processClaimableJob(params: {
     });
 
   try {
+    const checkpoint = async (checkpointParams: {
+      progress?: number | null;
+      stage: string;
+      status:
+        | "processing"
+        | "rendering"
+        | "uploading_output"
+        | "waiting_external_service";
+    }) => {
+      const updatedJob = await store.updateJobStage({
+        claimToken,
+        jobId: processingJob.id,
+        ...checkpointParams,
+      });
+
+      if (updatedJob) {
+        return;
+      }
+
+      const latestJob = await store.getJobById(processingJob.id);
+
+      if (latestJob?.status === "cancel_requested") {
+        throw new JobCancellationRequestedError();
+      }
+
+      throw new Error("Background job claim was lost at a checkpoint.");
+    };
     const output = await (dependencies?.runJob ?? runWorkerJob)(processingJob, {
+      checkpoint,
       store,
     });
 
@@ -228,11 +268,39 @@ async function processClaimableJob(params: {
 
     heartbeat = null;
 
-    const completedJob = await store.markCompleted({
-      claimToken,
-      jobId: processingJob.id,
-      output,
-    });
+    const latestBeforeCompletion = await store.getJobById(processingJob.id);
+
+    if (latestBeforeCompletion?.status === "cancel_requested") {
+      await store.markCancelled({
+        claimToken,
+        jobId: processingJob.id,
+      });
+      await deleteDeliveryMessage({ config, message, queue });
+      logger.info("Background job cancelled at completion checkpoint", {
+        jobId: processingJob.id,
+        jobType: processingJob.job_type,
+        messageId,
+      });
+      return false;
+    }
+
+    let completedJob;
+
+    try {
+      completedJob = await store.markCompleted({
+        claimToken,
+        jobId: processingJob.id,
+        output,
+      });
+    } catch {
+      throw new RetryableJobError(
+        "The generated output was saved, but its database record could not be finalized yet.",
+        {
+          code: "job_completion_persistence_failed",
+          retryAfterSeconds: 30,
+        },
+      );
+    }
 
     if (!completedJob) {
       const latestJob = await store.getJobById(processingJob.id);
@@ -263,7 +331,35 @@ async function processClaimableJob(params: {
     await heartbeat?.stop();
     heartbeat = null;
 
+    if (error instanceof JobCancellationRequestedError) {
+      await store.markCancelled({
+        claimToken,
+        jobId: processingJob.id,
+      });
+      await deleteDeliveryMessage({ config, message, queue });
+      logger.info("Background job cancelled at a durable checkpoint", {
+        jobId: processingJob.id,
+        jobType: processingJob.job_type,
+        messageId,
+      });
+      return false;
+    }
+
     if (error instanceof RetryableJobError) {
+      if (processingJob.attempt_count + 1 >= processingJob.max_attempts) {
+        await failKnownJobAndDeleteMessage({
+          claimToken,
+          config,
+          errorCode: error.code,
+          errorMessage: error.message,
+          job: processingJob,
+          message,
+          queue,
+          store,
+        });
+        return false;
+      }
+
       await retryKnownJob({
         claimToken,
         config,
@@ -279,6 +375,7 @@ async function processClaimableJob(params: {
     await failKnownJobAndDeleteMessage({
       claimToken,
       config,
+      errorCode: getStructuredErrorCode(error),
       errorMessage: getErrorMessage(error),
       job: processingJob,
       message,
@@ -343,6 +440,7 @@ async function retryKnownJob(params: {
 async function failKnownJobAndDeleteMessage(params: {
   claimToken?: string;
   config: WorkerConfig;
+  errorCode?: string;
   errorMessage: string;
   job: BackgroundJobRow;
   message?: WorkerDeliveryMessage;
@@ -354,6 +452,7 @@ async function failKnownJobAndDeleteMessage(params: {
   try {
     const failedJob = await params.store.markFailed({
       claimToken: params.claimToken,
+      errorCode: params.errorCode,
       errorMessage: params.errorMessage,
       job: params.job,
     });
@@ -532,4 +631,16 @@ function getFutureRetryDelaySeconds(nextAttemptAt: string | null) {
     43_200,
     Math.max(1, Math.ceil((retryAtMs - Date.now()) / 1_000)),
   );
+}
+
+function getStructuredErrorCode(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+
+  const code = (error as { code?: unknown }).code;
+
+  return typeof code === "string" && code.trim()
+    ? code.trim().slice(0, 120)
+    : undefined;
 }

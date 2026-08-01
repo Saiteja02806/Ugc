@@ -75,6 +75,6 @@ test("recognizes only GCP social publish schedule names", () => {
   const name = getGcpSocialPublishScheduleName(TARGET_ID);
 
   assert.equal(isGcpSocialPublishScheduleName(name), true);
-  assert.equal(isGcpSocialPublishScheduleName("ugc-social-aws-target"), false);
+  assert.equal(isGcpSocialPublishScheduleName("ugc-social-invalid-target"), false);
   assert.equal(isGcpSocialPublishScheduleName("ugc-social-gcp-bad.name"), false);
 });

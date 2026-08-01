@@ -4,10 +4,10 @@ UGC is a Next.js app for generating reusable AI creator avatars for short-form U
 
 ## Current Slice
 
-The app uses Next.js API routes to create durable `background_jobs` rows and
-enqueue worker messages. AWS SQS/ECS and S3/CloudFront remain the production
-defaults while GCP Pub/Sub, Cloud Run worker canary tooling, and GCS storage are
-available as dark-launch paths.
+The app uses Next.js API routes to create durable Supabase `background_jobs`
+rows and enqueue authenticated GCP Cloud Tasks. Cloud Run workers claim jobs
+from Supabase, checkpoint progress, and store durable outputs in Google Cloud
+Storage. Supabase remains the source of truth for job state and recovery.
 
 The original foundation includes:
 
@@ -54,12 +54,17 @@ Set these server-side values in `.env.local`, then restart Next.js:
 
 ```txt
 OPENAI_API_KEY=sk-...
-AWS_REGION=...
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-AWS_S3_BUCKET=...
-CLOUDFRONT_DOMAIN=...
+SUPABASE_URL=...
+SUPABASE_SERVICE_ROLE_KEY=...
+GCP_PROJECT_ID=ugcsaas
+GCP_REGION=us-central1
+GCP_STORAGE_BUCKET=ugcsaas-media
+GCP_CLOUD_TASKS_LOCATION=us-central1
+GOOGLE_CLOUD_CREDENTIALS_JSON=...
 ```
+
+Set the queue names and Cloud Run task URLs shown in `.env.example`. See
+`infra/gcp/README.md` for the service-account and Terraform setup.
 
 Run both local processes:
 

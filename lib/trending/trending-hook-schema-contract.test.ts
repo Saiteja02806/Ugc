@@ -4,7 +4,42 @@ import test from "node:test";
 
 const migration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260725120000_add_trending_hook_ideas.sql",
+    "../../supabase/migrations/20260728183858_add_trending_hook_ideas.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const indexMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260728184236_index_trending_hook_foreign_keys.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const copyWorkerMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260729113000_add_validated_trending_hook_copy_worker.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const legacyCompatibilityMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260729114500_preserve_legacy_trending_hook_candidate_contract.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const patternedCopyMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260729191556_add_patterned_trending_hook_copy_v3.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const tightenedHookMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260730120000_tighten_trending_hook_opening_v4.sql",
     import.meta.url,
   ),
   "utf8",
@@ -40,4 +75,123 @@ test("persists variable source and trimmed Hook durations", () => {
   assert.match(migration, /source_duration_seconds numeric/i);
   assert.match(migration, /trim_start numeric/i);
   assert.match(migration, /trim_end numeric/i);
+});
+
+test("indexes Trending Hook assignment foreign keys", () => {
+  assert.match(
+    indexMigration,
+    /on public\.user_hook_video_assignments \(business_profile_id\)/i,
+  );
+  assert.match(
+    indexMigration,
+    /on public\.user_hook_video_assignments \(hook_suggestion_id\)/i,
+  );
+});
+
+test("persists only AI-reviewed, visually fitting Hook copy generations", () => {
+  assert.match(
+    copyWorkerMigration,
+    /generate_trending_hook_copy/i,
+  );
+  assert.match(
+    copyWorkerMigration,
+    /persist_trending_hook_copy_generation/i,
+  );
+  assert.match(
+    copyWorkerMigration,
+    /readabilityReview,readable[\s\S]*'true'/i,
+  );
+  assert.match(
+    copyWorkerMigration,
+    /readabilityReview,estimatedReadingSeconds[\s\S]*durationSeconds/i,
+  );
+  assert.match(
+    copyWorkerMigration,
+    /visualFit,fits[\s\S]*'true'/i,
+  );
+});
+
+test("supersedes only active feed assignments and preserves saved selections", () => {
+  assert.match(
+    copyWorkerMigration,
+    /state in \([\s\S]*'superseded'[\s\S]*\)/i,
+  );
+  assert.match(
+    copyWorkerMigration,
+    /where user_id = p_user_id[\s\S]*and state = 'active'/i,
+  );
+  assert.doesNotMatch(
+    copyWorkerMigration,
+    /delete from public\.hook_video_suggestions/i,
+  );
+  assert.doesNotMatch(
+    copyWorkerMigration,
+    /delete from public\.hook_video_drafts/i,
+  );
+});
+
+test("keeps the deployed v1 candidate conflict target compatible", () => {
+  assert.match(
+    legacyCompatibilityMigration,
+    /hook_video_suggestions_trending_candidate_unique unique/i,
+  );
+  assert.match(
+    legacyCompatibilityMigration,
+    /coalesce\(max\(suggestion\.candidate_index\), -1\) \+ 1/i,
+  );
+  assert.match(
+    legacyCompatibilityMigration,
+    /position = suggestion\.candidate_index - slot_base/i,
+  );
+  assert.doesNotMatch(
+    legacyCompatibilityMigration,
+    /delete from public\.hook_video_suggestions/i,
+  );
+});
+
+test("persists v3 Hook patterns, semantic lines, and hard-validation evidence", () => {
+  assert.match(patternedCopyMigration, /opening_lines jsonb/i);
+  assert.match(patternedCopyMigration, /pattern_library_version text/i);
+  assert.match(patternedCopyMigration, /validator_version text/i);
+  assert.match(patternedCopyMigration, /input_context_hash text/i);
+  assert.match(
+    patternedCopyMigration,
+    /readabilityReview,scores,total[\s\S]*between 80 and 100/i,
+  );
+  assert.match(
+    patternedCopyMigration,
+    /visualFit,overlayVersion[\s\S]*hook-overlay-v3/i,
+  );
+});
+
+test("persists v4 Hooks only after opening, evidence, and human-voice gates pass", () => {
+  assert.match(
+    tightenedHookMigration,
+    /persist_trending_hook_copy_generation_v4/i,
+  );
+  assert.match(
+    tightenedHookMigration,
+    /jsonb_array_length\(candidate -> 'openingLines'\) not between 1 and 2/i,
+  );
+  assert.match(
+    tightenedHookMigration,
+    /trending-hook-patterns-v2/i,
+  );
+  assert.match(
+    tightenedHookMigration,
+    /problem_observation/i,
+  );
+  assert.match(
+    tightenedHookMigration,
+    /validation,evidenceBindings/i,
+  );
+  assert.match(
+    tightenedHookMigration,
+    /readabilityReview,humanVoice[\s\S]*readabilityReview,openingOnly[\s\S]*readabilityReview,singleIdea/i,
+  );
+  assert.match(
+    tightenedHookMigration,
+    /from public, anon, authenticated/i,
+  );
+  assert.match(tightenedHookMigration, /to service_role/i);
 });

@@ -13,11 +13,6 @@ output "worker_image_uri" {
   description = "Worker image URI configured for the social-publish worker."
 }
 
-output "pubsub_subscription_name" {
-  value       = var.pubsub_subscription_name
-  description = "Pub/Sub subscription configured for the social-publish worker."
-}
-
 output "social_reconciliation_enabled" {
   value       = var.social_reconciliation_enabled
   description = "Whether DB recovery reconciliation is enabled for this worker."

@@ -17,6 +17,7 @@ import {
   type FocusedVideoEditorDraftState,
 } from "@/components/edit/focused-video-editor";
 import { buttonClassName } from "@/components/ui/button";
+import { CREATIVE_ASSETS_VIDEOS_HREF } from "@/lib/edit/routes";
 import type { EditableVideo } from "@/lib/edit/video-library";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
@@ -40,7 +41,15 @@ type RenderStatusResponse =
     }
   | { error: string; ok: false };
 
-export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
+export function FocusedVideoEditorShell({
+  returnHref = CREATIVE_ASSETS_VIDEOS_HREF,
+  returnLabel = "Back to Creative Assets",
+  videoId,
+}: {
+  returnHref?: string;
+  returnLabel?: string;
+  videoId: string;
+}) {
   const [video, setVideo] = useState<EditableVideo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [draft, setDraft] = useState<FocusedVideoEditorDraftState | null>(null);
@@ -425,6 +434,8 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
         isCurrentVersionSaved={isCurrentVersionSaved}
         renderState={renderState}
         renderedVideoUrl={video?.renderedVideoUrl ?? null}
+        returnHref={returnHref}
+        returnLabel={returnLabel}
         saveState={saveState}
         video={video}
         onRenderVideo={() => void handleRenderVideo()}
@@ -463,7 +474,11 @@ export function FocusedVideoEditorShell({ videoId }: { videoId: string }) {
             onDraftValidityChange={setIsDraftValid}
           />
         ) : (
-          <VideoNotFound videoId={videoId} />
+          <VideoNotFound
+            returnHref={returnHref}
+            returnLabel={returnLabel}
+            videoId={videoId}
+          />
         )}
       </div>
     </section>
@@ -476,6 +491,8 @@ function EditorTopBar({
   onRenderVideo,
   renderState,
   renderedVideoUrl,
+  returnHref,
+  returnLabel,
   saveState,
   video,
 }: {
@@ -484,6 +501,8 @@ function EditorTopBar({
   onRenderVideo: () => void;
   renderState: RenderState;
   renderedVideoUrl: string | null;
+  returnHref: string;
+  returnLabel: string;
   saveState: SaveState;
   video: EditableVideo | null;
 }) {
@@ -493,8 +512,8 @@ function EditorTopBar({
     <header className="flex w-full shrink-0 flex-col gap-3 border-b border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <Link
-          href="/edit"
-          aria-label="Back to video library"
+          href={returnHref}
+          aria-label={returnLabel}
           className="inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-border text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
           <ArrowLeft aria-hidden="true" />
@@ -606,14 +625,24 @@ function RenderStatusNotice({
   );
 }
 
-function VideoNotFound({ videoId }: { videoId: string }) {
+function VideoNotFound({
+  returnHref,
+  returnLabel,
+  videoId,
+}: {
+  returnHref: string;
+  returnLabel: string;
+  videoId: string;
+}) {
   return (
     <section aria-label="Video not found" className="flex min-h-[420px] flex-1 items-center justify-center rounded-[28px] border border-border bg-card/60 px-5 py-10 text-center">
       <div>
         <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-error/20 bg-error/5 text-error shadow-sm"><AlertCircle className="size-6" aria-hidden="true" /></div>
         <h2 className="mt-5 text-lg font-bold text-foreground">This video is not in your account.</h2>
         <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-muted">No server media asset exists for ID {videoId}. Add a video in Creative Assets, then open it here.</p>
-        <Link href="/edit" className={buttonClassName({ variant: "primary", className: "mt-5" })}>Back to library</Link>
+        <Link href={returnHref} className={buttonClassName({ variant: "primary", className: "mt-5" })}>
+          {returnLabel}
+        </Link>
       </div>
     </section>
   );

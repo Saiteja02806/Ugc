@@ -7,9 +7,11 @@ const validWorkerJobTypes = new Set<BackgroundJobType>([
   "generate_carousel",
   "generate_hook_video",
   "generate_image",
+  "generate_trending_hook_copy",
   "publish_social_post",
   "render_edit_video",
   "render_schedule_combination",
+  "render_wall_text_video",
   "test_worker_job",
 ]);
 
@@ -35,8 +37,14 @@ export function parseWorkerDeliveryMessage(
   }
 
   return {
+    ...(typeof parsedBody.attempt === "number"
+      ? { attempt: parsedBody.attempt }
+      : {}),
     jobId: parsedBody.jobId,
     jobType: parsedBody.jobType as BackgroundJobType,
+    ...(typeof parsedBody.schemaVersion === "number"
+      ? { schemaVersion: parsedBody.schemaVersion }
+      : {}),
   };
 }
 

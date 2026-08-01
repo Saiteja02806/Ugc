@@ -93,6 +93,7 @@ const report = {
     legacyBucketCounts,
     safeApprovedAssetCount: assets.length,
     sourceCategoryCounts: countBy(assets, (asset) => asset.categorySlug),
+    sourceProviderCounts: countBy(assets, (asset) => asset.sourceProvider),
   },
   broadMatcherVersion: CAROUSEL_BROAD_RUNTIME_MATCHER_VERSION,
   categorySlug,
@@ -116,6 +117,7 @@ const report = {
     score: selection.score,
     slideNumber: selection.slideNumber,
     sourceCategorySlug: selection.asset.categorySlug,
+    sourceProvider: selection.asset.sourceProvider,
     sourceQuery: selection.asset.sourceQuery,
     targetBroadBucketId: selection.targetBroadBucketId,
   })),
@@ -128,6 +130,9 @@ const report = {
       ["exact_match", "partial_tag_match"].includes(selection.fallbackReason),
     ).length,
     legacySelectionCount: legacySelections.length,
+    localSelectionCount: broadSelections.filter(
+      (selection) => selection.asset.sourceProvider === "local",
+    ).length,
     missingBroadSelectionCount: slides.length - broadSelections.length,
     profileFallbackCount: broadSelections.filter(
       (selection) => selection.fallbackReason === "profile_fallback",
@@ -173,6 +178,7 @@ function buildDiversityReport(candidateRuns) {
       fallbackReason: selection.fallbackReason,
       pexelsPhotoId: selection.asset.pexelsPhotoId,
       slideNumber: selection.slideNumber,
+      sourceProvider: selection.asset.sourceProvider,
     })),
   );
   const assetCounts = countBy(selections, (selection) => selection.assetId);
@@ -193,12 +199,36 @@ function buildDiversityReport(candidateRuns) {
       (left, right) =>
         right.count - left.count || left.assetId.localeCompare(right.assetId),
     );
+  const localSelections = Object.entries(
+    selections
+      .filter((selection) => selection.sourceProvider === "local")
+      .reduce((counts, selection) => {
+        counts[selection.assetId] = (counts[selection.assetId] ?? 0) + 1;
+        return counts;
+      }, {}),
+  )
+    .map(([assetId, count]) => ({
+      assetId,
+      count,
+    }))
+    .sort(
+      (left, right) =>
+        right.count - left.count || left.assetId.localeCompare(right.assetId),
+    );
 
   return {
     candidateCount: candidateRuns.length,
     duplicateSafeReuseCount: selections.filter(
       (selection) => selection.fallbackReason === "duplicate_safe_reuse",
     ).length,
+    localSelectionCount: selections.filter(
+      (selection) => selection.sourceProvider === "local",
+    ).length,
+    localSelections,
+    sourceProviderCounts: countBy(
+      selections,
+      (selection) => selection.sourceProvider,
+    ),
     topRepeatedAssetCount: topRepeatedAssets[0]?.count ?? 0,
     topRepeatedAssets: topRepeatedAssets.slice(0, 12),
     totalSelectionCount: selections.length,
@@ -246,9 +276,14 @@ function parseArgs(values) {
 }
 
 function getAuditSlides(selectedProfileId) {
-  return selectedProfileId === "productivity-saas"
-    ? getProductivitySaasAuditSlides()
-    : getMarketingSaasAuditSlides();
+  switch (selectedProfileId) {
+    case "fitness-health":
+      return getFitnessHealthAuditSlides();
+    case "productivity-saas":
+      return getProductivitySaasAuditSlides();
+    default:
+      return getMarketingSaasAuditSlides();
+  }
 }
 
 function getMarketingSaasAuditSlides() {
@@ -270,6 +305,17 @@ function getProductivitySaasAuditSlides() {
     mockSlide(4, "solution", "Automate the handoff behind every task", "Use one software system for routine follow-up."),
     mockSlide(5, "benefit", "Keep the next action visible before work stalls", "Notifications and reminders stay close."),
     mockSlide(6, "cta", "Start with one cleaner productivity loop", "Make the next workflow easier to repeat."),
+  ];
+}
+
+function getFitnessHealthAuditSlides() {
+  return [
+    mockSlide(1, "hook", "Healthy tracking should not feel like homework", "See every meal and fitness habit clearly."),
+    mockSlide(2, "problem", "Lunch choices get harder when nutrition stays invisible", "Food and calorie details are easy to forget."),
+    mockSlide(3, "problem", "Workout plans stall without a simple routine", "Gym, recovery, and hydration habits drift apart."),
+    mockSlide(4, "solution", "Log every meal and workout in one app", "Keep nutrition and fitness progress together."),
+    mockSlide(5, "benefit", "Build a calmer hydration and recovery habit", "Keep water and wellness reminders close."),
+    mockSlide(6, "cta", "Start with one healthier daily routine", "Try a simpler way to track food and fitness."),
   ];
 }
 

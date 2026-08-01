@@ -11,6 +11,7 @@ import {
 } from "@/lib/social/oauth";
 import {
   isProviderPlatformPair,
+  isSocialOAuthIntent,
   isSocialOAuthReturnTo,
   isSocialPlatform,
   isSocialProvider,
@@ -22,6 +23,8 @@ export const dynamic = "force-dynamic";
 type StartBody = {
   carouselId?: unknown;
   forceConsent?: unknown;
+  connectionId?: unknown;
+  intent?: unknown;
   libraryItemId?: unknown;
   platform?: unknown;
   provider?: unknown;
@@ -51,6 +54,8 @@ export async function POST(request: Request) {
   const platform = typeof body?.platform === "string" ? body.platform : "";
   const provider = typeof body?.provider === "string" ? body.provider : "";
   const returnTo = typeof body?.returnTo === "string" ? body.returnTo : "accounts";
+  const intent = typeof body?.intent === "string" ? body.intent : "add";
+  const expectedConnectionId = normalizeString(body?.connectionId);
 
   if (!isSocialPlatform(platform) || !isSocialProvider(provider)) {
     return json({ ok: false, message: "Choose a supported social platform." }, 400);
@@ -65,6 +70,27 @@ export async function POST(request: Request) {
 
   if (!isSocialOAuthReturnTo(returnTo)) {
     return json({ ok: false, message: "The account connection source is invalid." }, 400);
+  }
+
+  if (!isSocialOAuthIntent(intent)) {
+    return json({ ok: false, message: "Choose a valid connection action." }, 400);
+  }
+
+  if (intent === "reconnect" && !isUuid(expectedConnectionId)) {
+    return json(
+      { ok: false, message: "Choose the Instagram account to reconnect." },
+      400,
+    );
+  }
+
+  if (intent === "add" && expectedConnectionId) {
+    return json(
+      {
+        ok: false,
+        message: "Add another account without selecting an existing connection.",
+      },
+      400,
+    );
   }
 
   let libraryItemId: string | null = null;
@@ -126,6 +152,8 @@ export async function POST(request: Request) {
     const result = await createSocialAuthorization({
       carouselId,
       forceConsent: body?.forceConsent === true,
+      expectedConnectionId,
+      intent,
       libraryItemId,
       platform,
       provider,
@@ -162,4 +190,13 @@ async function readJsonBody<T>(request: Request) {
 
 function normalizeString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function isUuid(value: string | null): value is string {
+  return Boolean(
+    value &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        value,
+      ),
+  );
 }

@@ -17,6 +17,9 @@ export type HookVideoProvider = (typeof hookVideoProviders)[number];
 export type HookVideoEmotion = (typeof hookVideoEmotions)[number];
 export type HookVideoCameraStyle = (typeof hookVideoCameraStyles)[number];
 
+export const DEFAULT_HOOK_VIDEO_PROVIDER =
+  "runway" satisfies HookVideoProvider;
+
 export type BuildUgcVideoPromptInput = {
   cameraStyle: HookVideoCameraStyle;
   emotion: HookVideoEmotion;

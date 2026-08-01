@@ -112,7 +112,7 @@ test("keeps the reported overlay wrapping stable across ratios and styles", () =
 
 test("reserves background padding inside the 84 percent width", () => {
   const ratios: EditOverlayRatio[] = ["9:16", "1:1", "4:5", "16:9"];
-  const styles: EditOverlayStyle[] = ["clean", "minimal", "bubble"];
+  const styles: EditOverlayStyle[] = ["clean", "minimal", "bubble", "hook"];
 
   for (const ratio of ratios) {
     for (const style of styles) {
@@ -137,6 +137,37 @@ test("reserves background padding inside the 84 percent width", () => {
       assert.equal(layout.lineHeight, layout.fontSize + layout.lineSpacing);
     }
   }
+});
+
+test("renders Hook copy as restrained text without a background plate", () => {
+  const layout = buildEditOverlayTextLayout(
+    "Tired of slow meal logging?",
+    "hook",
+    "9:16",
+  );
+
+  assert.equal(layout.backgroundColor, undefined);
+  assert.equal(layout.backgroundOpacity, null);
+  assert.equal(layout.fontSize, 52);
+  assert.equal(layout.fontWeight, 600);
+  assert.equal(layout.padding, 0);
+  assert.equal(layout.lineHeight, 66);
+  assert.equal(layout.isTruncated, false);
+});
+
+test("shrinks Hook text before breaking semantic lines", () => {
+  const layout = buildEditOverlayTextLayout(
+    "Quitting stems from slow meal logging\nFaster entry makes consistency possible",
+    "hook",
+    "9:16",
+  );
+
+  assert.deepEqual(layout.lines, [
+    "Quitting stems from slow meal logging",
+    "Faster entry makes consistency possible",
+  ]);
+  assert.equal(layout.fontSize, 44);
+  assert.equal(layout.isTruncated, false);
 });
 
 test("preserves manual lines and deterministically splits long words", () => {

@@ -6,9 +6,9 @@ import {
   requireFirebaseUser,
 } from "@/lib/firebase/server-auth";
 import {
-  prepareTrendingWallTextIdeas,
-  TrendingWallTextPreparationError,
-} from "@/lib/trending/trending-wall-text-feed";
+  getPublicBackgroundJob,
+} from "@/lib/jobs/background-job-contract";
+import { enqueueTrendingWallTextJob } from "@/lib/trending/wall-text-jobs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,43 +54,26 @@ export async function POST(request: Request) {
       );
     }
 
-    const ideas = await prepareTrendingWallTextIdeas(profile);
-
-    return json({
-      ideaCount: ideas.length,
-      ideas: ideas.map((idea) => ({
-        backgroundAssetId: idea.backgroundAssetId,
-        durationSeconds: idea.durationSeconds,
-        id: idea.id,
-        layout: idea.layout,
-        previewUrl: idea.previewUrl,
-        text: idea.text,
-        thumbnailUrl: idea.thumbnailUrl,
-      })),
-      ok: true,
+    const job = await enqueueTrendingWallTextJob({
+      businessProfileId: profile.id,
+      businessProfileVersion: profile.profileVersion,
+      userId,
     });
-  } catch (error) {
-    if (error instanceof TrendingWallTextPreparationError) {
-      return json({ error: error.message, ok: false }, error.status);
-    }
 
-    if (
-      error instanceof Error &&
-      error.message === "OpenAI is not configured."
-    ) {
-      return json(
-        {
-          error: "Wall-of-text idea generation is not configured.",
-          ok: false,
-        },
-        501,
-      );
-    }
-
-    console.error("Could not prepare Trending Wall-of-text ideas:", error);
     return json(
-      { error: "Could not prepare Trending Wall-of-text ideas.", ok: false },
-      500,
+      {
+        job: getPublicBackgroundJob(job),
+        jobId: job.id,
+        ok: true,
+        status: job.status,
+      },
+      job.status === "completed" ? 200 : 202,
+    );
+  } catch (error) {
+    console.error("Could not queue Trending Wall-of-text ideas:", error);
+    return json(
+      { error: "Could not queue Trending Wall-of-text ideas.", ok: false },
+      502,
     );
   }
 }

@@ -1,9 +1,20 @@
 import RunwayML from "@runwayml/sdk";
 
 import { downloadVideoToBuffer } from "./download-video.js";
+import {
+  ProviderOperationPollingError,
+  ProviderOperationTerminalError,
+  ProviderRequestNotSubmittedError,
+} from "./generation-provider.js";
 
 type GenerateRunwayHookVideoParams = {
+  onOperationCreated?: (operationId: string) => Promise<void>;
+  onOperationSucceeded?: (
+    operationId: string,
+    outputUrl: string,
+  ) => Promise<void>;
   prompt: string;
+  providerOperationId?: string;
   referenceImageUrl?: string;
 };
 
@@ -17,32 +28,43 @@ const RUNWAY_TEXT_TO_VIDEO_MODEL = "veo3.1_fast";
 let runwayClient: RunwayML | null = null;
 
 export async function generateRunwayHookVideoBuffer({
+  onOperationCreated,
+  onOperationSucceeded,
   prompt,
+  providerOperationId,
   referenceImageUrl,
 }: GenerateRunwayHookVideoParams) {
   const client = getRunwayClient();
   const promptText = prompt.trim().slice(0, RUNWAY_PROMPT_LIMIT);
-  const task = referenceImageUrl
-    ? await client.imageToVideo.create({
-        duration: RUNWAY_DURATION_SECONDS,
-        model: RUNWAY_IMAGE_TO_VIDEO_MODEL,
-        promptImage: [
-          {
-            position: "first",
-            uri: referenceImageUrl,
-          },
-        ],
-        promptText,
-        ratio: "720:1280",
-      })
-    : await client.textToVideo.create({
-        audio: false,
-        duration: RUNWAY_DURATION_SECONDS,
-        model: RUNWAY_TEXT_TO_VIDEO_MODEL,
-        promptText,
-        ratio: "720:1280",
-      });
-  const outputUrl = await waitForRunwayOutput(client, task.id);
+  let operationId = providerOperationId;
+
+  if (!operationId) {
+    const task = referenceImageUrl
+      ? await client.imageToVideo.create({
+          duration: RUNWAY_DURATION_SECONDS,
+          model: RUNWAY_IMAGE_TO_VIDEO_MODEL,
+          promptImage: [
+            {
+              position: "first",
+              uri: referenceImageUrl,
+            },
+          ],
+          promptText,
+          ratio: "720:1280",
+        })
+      : await client.textToVideo.create({
+          audio: false,
+          duration: RUNWAY_DURATION_SECONDS,
+          model: RUNWAY_TEXT_TO_VIDEO_MODEL,
+          promptText,
+          ratio: "720:1280",
+        });
+    operationId = task.id;
+    await onOperationCreated?.(operationId);
+  }
+
+  const outputUrl = await waitForRunwayOutput(client, operationId);
+  await onOperationSucceeded?.(operationId, outputUrl);
 
   return downloadVideoToBuffer(outputUrl);
 }
@@ -51,6 +73,7 @@ function getRunwayClient() {
   if (!runwayClient) {
     runwayClient = new RunwayML({
       apiKey: getRequiredEnv("RUNWAYML_API_SECRET"),
+      maxRetries: 0,
     });
   }
 
@@ -61,7 +84,16 @@ async function waitForRunwayOutput(client: RunwayML, taskId: string) {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt <= RUNWAY_TIMEOUT_MS) {
-    const task = await client.tasks.retrieve(taskId);
+    let task;
+
+    try {
+      task = await client.tasks.retrieve(taskId);
+    } catch (error) {
+      throw new ProviderOperationPollingError(
+        "Runway task status could not be read.",
+        { cause: error },
+      );
+    }
 
     if (task.status === "SUCCEEDED") {
       const outputUrl = task.output[0];
@@ -74,17 +106,25 @@ async function waitForRunwayOutput(client: RunwayML, taskId: string) {
     }
 
     if (task.status === "FAILED") {
-      throw new Error(`Runway task failed: ${task.failure}`);
+      throw new ProviderOperationTerminalError(
+        `Runway task failed: ${task.failure}`,
+        task,
+      );
     }
 
     if (task.status === "CANCELLED") {
-      throw new Error("Runway task was cancelled.");
+      throw new ProviderOperationTerminalError(
+        "Runway task was cancelled.",
+        task,
+      );
     }
 
     await sleep(RUNWAY_POLL_INTERVAL_MS);
   }
 
-  throw new Error("Runway video generation timed out.");
+  throw new ProviderOperationPollingError(
+    "Runway video generation is still processing.",
+  );
 }
 
 function sleep(ms: number) {
@@ -97,7 +137,7 @@ function getRequiredEnv(name: string) {
   const value = process.env[name]?.trim();
 
   if (!value) {
-    throw new Error(`Missing ${name}`);
+    throw new ProviderRequestNotSubmittedError(`Missing ${name}`);
   }
 
   return value;

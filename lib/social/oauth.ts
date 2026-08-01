@@ -13,6 +13,11 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getConnectionPublishingBlock } from "@/lib/scheduling/social-connection-policy";
 import { getEffectiveSocialConnectionStatus } from "@/lib/social/connection-status";
 import { buildInstagramOAuthAuthorizationUrl } from "@/lib/social/instagram-oauth-config";
+import {
+  assertSocialOAuthReconnectTarget,
+  SocialOAuthReconnectPolicyError,
+  type SocialOAuthReconnectTarget,
+} from "@/lib/social/oauth-reconnect-policy";
 import { splitScopes } from "@/lib/social/split-scopes";
 import {
   buildTikTokOAuthAuthorizationUrl,
@@ -28,6 +33,7 @@ import {
   isProviderPlatformPair,
   type SocialConnection,
   type SocialConnectionStatus,
+  type SocialOAuthIntent,
   type SocialOAuthReturnTo,
   type SocialPlatform,
   type SocialProvider,
@@ -40,8 +46,10 @@ type SocialOAuthSessionRow = {
   code_verifier: string | null;
   consumed_at: string | null;
   created_at: string;
+  expected_connection_id: string | null;
   expires_at: string;
   id: string;
+  intent: SocialOAuthIntent;
   library_item_id: string | null;
   platform: SocialPlatform;
   provider: SocialProvider;
@@ -218,7 +226,8 @@ export type SocialOAuthTraceStage =
   | "validate_oauth_state"
   | "validate_tiktok_configuration"
   | "validate_youtube_configuration"
-  | "verify_connected_account";
+  | "verify_connected_account"
+  | "verify_reconnect_account";
 
 export type SocialOAuthTraceContext = {
   callbackHost: string;
@@ -236,7 +245,9 @@ let supabaseClient: SupabaseClient<SocialOAuthDatabase> | null = null;
 
 export async function createSocialAuthorization(params: {
   carouselId?: string | null;
+  expectedConnectionId?: string | null;
   forceConsent?: boolean;
+  intent?: SocialOAuthIntent;
   libraryItemId?: string | null;
   platform: SocialPlatform;
   provider: SocialProvider;
@@ -251,6 +262,10 @@ export async function createSocialAuthorization(params: {
     );
   }
 
+  const intent = params.intent ?? "add";
+  const expectedConnectionId = normalizeOptionalValue(
+    params.expectedConnectionId,
+  );
   const missing = getMissingSocialOAuthEnvVars(params.platform);
 
   if (missing.length > 0) {
@@ -261,6 +276,21 @@ export async function createSocialAuthorization(params: {
     );
   }
 
+  const reconnectTarget = await getSocialOAuthReconnectTarget({
+    expectedConnectionId,
+    platform: params.platform,
+    provider: params.provider,
+    userId: params.userId,
+  });
+  enforceSocialOAuthReconnectTarget({
+    expectedConnectionId,
+    intent,
+    platform: params.platform,
+    provider: params.provider,
+    target: reconnectTarget,
+    userId: params.userId,
+  });
+
   const state = createOpaqueToken(32);
   const codeVerifier =
     params.platform === "youtube" ? createPkceCodeVerifier() : null;
@@ -270,10 +300,12 @@ export async function createSocialAuthorization(params: {
     .insert({
       carousel_id: normalizeOptionalValue(params.carouselId),
       code_verifier: codeVerifier,
+      expected_connection_id: expectedConnectionId,
       expires_at: new Date(
         Date.now() + STATE_TTL_MINUTES * 60 * 1000,
       ).toISOString(),
       library_item_id: normalizeOptionalValue(params.libraryItemId),
+      intent,
       platform: params.platform,
       provider: params.provider,
       return_to: params.returnTo,
@@ -412,6 +444,21 @@ export async function completeSocialOAuthCallback(params: {
     tokenSet.platformAccountId,
     params.trace,
   );
+  const reconnectTarget = await getSocialOAuthReconnectTarget({
+    expectedConnectionId: session.expected_connection_id,
+    platform: params.platform,
+    provider: params.provider,
+    userId: session.user_id,
+  });
+  enforceSocialOAuthReconnectTarget({
+    expectedConnectionId: session.expected_connection_id,
+    intent: session.intent,
+    platform: params.platform,
+    provider: params.provider,
+    returnedPlatformAccountId: account.id,
+    target: reconnectTarget,
+    userId: session.user_id,
+  });
 
   const connection = await upsertSocialConnection({
     account,
@@ -473,6 +520,73 @@ export async function listSocialConnections(
   );
 
   return connections.map(mapSocialConnection);
+}
+
+async function getSocialOAuthReconnectTarget(params: {
+  expectedConnectionId: string | null;
+  platform: SocialPlatform;
+  provider: SocialProvider;
+  userId: string;
+}): Promise<SocialOAuthReconnectTarget | null> {
+  if (!params.expectedConnectionId) {
+    return null;
+  }
+
+  const { data, error } = await getClient()
+    .from("social_connections")
+    .select(
+      "id,platform,platform_account_id,provider,revoked_at,user_id",
+    )
+    .eq("id", params.expectedConnectionId)
+    .eq("user_id", params.userId)
+    .eq("platform", params.platform)
+    .eq("provider", params.provider)
+    .maybeSingle();
+
+  if (error) {
+    throw new SocialOAuthError(
+      "Could not verify the account selected for reconnection.",
+      500,
+      "reconnect_connection_lookup_failed",
+      "verify_reconnect_account",
+    );
+  }
+
+  return data
+    ? {
+        connectionId: data.id,
+        platform: data.platform,
+        platformAccountId: data.platform_account_id,
+        provider: data.provider,
+        revokedAt: data.revoked_at,
+        userId: data.user_id,
+      }
+    : null;
+}
+
+function enforceSocialOAuthReconnectTarget(params: {
+  expectedConnectionId: string | null;
+  intent: SocialOAuthIntent;
+  platform: SocialPlatform;
+  provider: SocialProvider;
+  returnedPlatformAccountId?: string | null;
+  target: SocialOAuthReconnectTarget | null;
+  userId: string;
+}) {
+  try {
+    assertSocialOAuthReconnectTarget(params);
+  } catch (error) {
+    if (error instanceof SocialOAuthReconnectPolicyError) {
+      throw new SocialOAuthError(
+        error.message,
+        error.status,
+        error.code,
+        "verify_reconnect_account",
+      );
+    }
+
+    throw error;
+  }
 }
 
 async function getYouTubeOAuthDiagnosticForUser(params: {

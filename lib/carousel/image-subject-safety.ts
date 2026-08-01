@@ -1,17 +1,22 @@
-import {
-  DetectFacesCommand,
-  DetectLabelsCommand,
-  RekognitionClient,
-  type FaceDetail,
-  type Label,
-} from "@aws-sdk/client-rekognition";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import sharp from "sharp";
 import { z } from "zod";
 
 const DEFAULT_OPENAI_MODEL = "gpt-5.4-nano";
-export const IMAGE_SUBJECT_ANALYZER_VERSION = "openai-vision-v1";
+export const IMAGE_SUBJECT_ANALYZER_VERSION = "openai-vision-v2";
+
+type FaceDetail = {
+  BoundingBox?: { Height?: number; Width?: number };
+  Confidence?: number;
+  FaceOccluded?: { Confidence?: number; Value?: boolean };
+};
+
+type Label = {
+  Confidence?: number;
+  Instances?: unknown[];
+  Name?: string;
+};
 
 export const SAFE_CAROUSEL_IMAGE_SUBJECT_CLASSES = [
   "object-only",
@@ -40,7 +45,6 @@ const CLEAR_FACE_AREA_RATIO = 0.012;
 const CLEAR_FACE_DIMENSION_RATIO = 0.12;
 const MAX_ANALYSIS_DIMENSION = 1_600;
 
-let rekognitionClient: RekognitionClient | null = null;
 let openAIClient: OpenAI | null = null;
 
 const OpenAIImageSubjectAnalysisSchema = z.object({
@@ -54,16 +58,6 @@ const OpenAIImageSubjectAnalysisSchema = z.object({
   maxFaceAreaRatio: z.number().min(0).max(1),
   personCount: z.number().int().min(0),
 });
-
-function getRekognitionClient() {
-  if (!rekognitionClient) {
-    rekognitionClient = new RekognitionClient({
-      region: process.env.AWS_REGION?.trim() || "us-east-1",
-    });
-  }
-
-  return rekognitionClient;
-}
 
 function getOpenAIClient() {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
@@ -179,35 +173,6 @@ async function normalizeForAnalysis(inputBuffer: Buffer) {
     .toBuffer();
 }
 
-async function analyzeCarouselImageSubjectWithRekognition(
-  inputBuffer: Buffer,
-): Promise<CarouselImageSubjectAnalysis> {
-  const imageBytes = await normalizeForAnalysis(inputBuffer);
-  const client = getRekognitionClient();
-  const [facesResult, labelsResult] = await Promise.all([
-    client.send(
-      new DetectFacesCommand({
-        Attributes: ["DEFAULT", "FACE_OCCLUDED"],
-        Image: { Bytes: imageBytes },
-      }),
-    ),
-    client.send(
-      new DetectLabelsCommand({
-        Features: ["GENERAL_LABELS"],
-        Image: { Bytes: imageBytes },
-        MaxLabels: 40,
-        MinConfidence: PERSON_CONFIDENCE_THRESHOLD,
-      }),
-    ),
-  ]);
-
-  return classifyCarouselImageSubject({
-    faces: facesResult.FaceDetails,
-    labels: labelsResult.Labels,
-  });
-}
-
-
 async function analyzeCarouselImageSubjectWithOpenAI(
   inputBuffer: Buffer,
 ): Promise<CarouselImageSubjectAnalysis> {
@@ -269,10 +234,6 @@ async function analyzeCarouselImageSubjectWithOpenAI(
 export async function analyzeCarouselImageSubject(
   inputBuffer: Buffer,
 ): Promise<CarouselImageSubjectAnalysis> {
-  if (process.env.CAROUSEL_IMAGE_ANALYZER?.trim() === "rekognition") {
-    return analyzeCarouselImageSubjectWithRekognition(inputBuffer);
-  }
-
   return analyzeCarouselImageSubjectWithOpenAI(inputBuffer);
 }
 

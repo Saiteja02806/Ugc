@@ -16,8 +16,9 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 
 import { useAuth } from "@/contexts/auth-context";
 import { UserMediaCollection } from "@/components/media/user-media-collection";
+import { getCreativeAssetEditorHref } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import type { MediaSourceType } from "@/lib/media/types";
+import type { MediaCollection, MediaSourceType } from "@/lib/media/types";
 import { cn } from "@/lib/utils";
 
 type AvatarRatio = "9:16" | "1:1" | "4:5" | "16:9" | "other";
@@ -337,12 +338,12 @@ export function AvatarsWorkspace({
         | { error?: string; ok?: false };
 
       if (!response.ok || data.ok !== true) {
-        throw new Error(getApiErrorMessage(data, "Could not open this source video in Edit."));
+        throw new Error(getApiErrorMessage(data, "Could not open this source video in the editor."));
       }
 
-      router.push(`/edit/${encodeURIComponent(data.asset.id)}`);
+      router.push(getCreativeAssetEditorHref(data.asset.id));
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not open this source video in Edit."));
+      setErrorMessage(getErrorMessage(error, "Could not open this source video in the editor."));
     } finally {
       setOpeningInEdit(false);
     }
@@ -473,6 +474,7 @@ export function AvatarsWorkspace({
           {activeTab === "videos" ? (
             <UserMediaCollection
               collection="video"
+              displayCollections={creativeAssetVideoCollections}
               sourceTypes={hookVideoSourceTypes}
               title="Video library"
               description="Uploaded footage and generated videos ready for your Instagram workflow."
@@ -500,8 +502,14 @@ type MediaWorkspaceTab = "videos" | "images";
 
 const hookVideoSourceTypes: MediaSourceType[] = [
   "upload",
-  "demo_upload",
+  "influencer_upload",
+  "catalog_influencer",
   "generated_video",
+];
+
+const creativeAssetVideoCollections: MediaCollection[] = [
+  "video",
+  "influencer",
 ];
 
 const mediaWorkspaceTabs: {
@@ -776,7 +784,7 @@ function AvatarFullPageEditor({
               ) : (
                 <Pencil className="size-4" aria-hidden="true" />
               )}
-              {openingInEdit ? "Opening" : "Open in Edit"}
+              {openingInEdit ? "Opening" : "Edit video"}
             </button>
             <button
               type="button"

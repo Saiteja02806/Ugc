@@ -6,8 +6,10 @@ import {
   CalendarCheck,
   Check,
   CircleAlert,
+  Library,
   Loader2,
   RefreshCw,
+  RotateCcw,
   Save,
   Sparkles,
   X,
@@ -30,13 +32,25 @@ import {
 } from "@/components/social/platform-selection-modal";
 import { HookVideoCard } from "@/components/trending/hook-video-card";
 import { HookVideoComposer } from "@/components/trending/hook-video-composer";
+import { CreativeAssetsVideoPicker } from "@/components/trending/creative-assets-video-picker";
+import {
+  HookVideoScheduleDrawer,
+  type HookVideoScheduleSelection,
+} from "@/components/trending/hook-video-schedule-drawer";
+import {
+  WallTextDetailView,
+  type WallTextDetailActionState,
+} from "@/components/trending/wall-text-detail-view";
+import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { useBackgroundJob } from "@/lib/jobs/background-job-client";
 import {
   createAndPublishCarouselSchedule,
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
 import {
+  compareTrendingFeedItems,
   createCarouselTrendingFeedProvider,
   isPreviewReadyCarousel,
   type TrendingCarouselCreative,
@@ -46,6 +60,7 @@ import {
   type TrendingFeedItem,
   type TrendingFeedProviderAvailability,
   type TrendingHookVideoFeedItem,
+  type TrendingWallTextFeedItem,
 } from "@/lib/trending/feed-items";
 import {
   beginHookVideoComposition,
@@ -55,6 +70,7 @@ import type {
   HookInfluencerSummary,
   HookInfluencerVideoSummary,
 } from "@/lib/trending/hook-video-types";
+import type { TrendingVideoSourceFormat } from "@/lib/trending/video-source-selection";
 import { cn } from "@/lib/utils";
 
 type CarouselHistoryState = "error" | "idle" | "loading" | "ready";
@@ -82,7 +98,15 @@ type CompleteHookVideo = {
   item: TrendingHookVideoFeedItem;
 };
 
-type TrendingCandidate = CompleteCarousel | CompleteHookVideo;
+type CompleteWallText = {
+  format: "wall_text";
+  item: TrendingWallTextFeedItem;
+};
+
+type TrendingCandidate =
+  | CompleteCarousel
+  | CompleteHookVideo
+  | CompleteWallText;
 
 type DeckDepth = 0 | 1 | 2;
 
@@ -147,6 +171,29 @@ type SaveCarouselLibraryResponse =
       ok: false;
     };
 
+type SavedWallTextDraft = {
+  assignmentId: string;
+  id: string;
+  renderError: string | null;
+  renderedMediaAssetId: string | null;
+  renderedVideoUrl: string | null;
+  renderStatus: "not_requested" | "queued" | "rendering" | "ready" | "failed";
+  text: {
+    text: string;
+  };
+};
+
+type SavedWallTextDraftResponse =
+  | {
+      draft: SavedWallTextDraft;
+      jobId?: string;
+      ok: true;
+    }
+  | {
+      error?: string;
+      ok?: false;
+    };
+
 type CompleteTrendingActionResponse =
   | {
       assignment: {
@@ -180,6 +227,7 @@ type CarouselActionNotice = {
   actionHref?: string;
   actionLabel?: string;
   message: string;
+  onAction?: () => void | Promise<void>;
 };
 
 const HISTORY_POLL_INTERVAL_MS = 6_000;
@@ -222,6 +270,8 @@ export function TrendingWorkspace() {
   const loadedFeedLocalDate = useRef<string | null>(null);
   const loadedFeedUserId = useRef<string | null>(null);
   const hookPreparationAttemptKey = useRef<string | null>(null);
+  const wallTextPreparationAttemptKey = useRef<string | null>(null);
+  const resolvedWallTextJobIds = useRef(new Set<string>());
   const [trendingItems, setTrendingItems] = useState<TrendingFeedItem[]>([]);
   const [formatAvailability, setFormatAvailability] = useState<
     TrendingFeedProviderAvailability[]
@@ -240,6 +290,9 @@ export function TrendingWorkspace() {
   const [dailyFeedState, setDailyFeedState] =
     useState<TrendingDailyFeedState | null>(null);
   const [carouselHistoryRefreshKey, setCarouselHistoryRefreshKey] = useState(0);
+  const [wallTextPreparationJobId, setWallTextPreparationJobId] =
+    useState<string | null>(null);
+  const wallTextPreparationJob = useBackgroundJob(wallTextPreparationJobId);
 
   const hasAuthenticatedUser = Boolean(user);
   const visibleTrendingItems = useMemo(
@@ -253,11 +306,7 @@ export function TrendingWorkspace() {
   const visibleCarouselHistoryError = user ? carouselHistoryError : null;
   const visibleDailyFeedState = user ? dailyFeedState : null;
   const orderedTrendingItems = useMemo(
-    () =>
-      [...visibleTrendingItems].sort(
-        (first, second) =>
-          first.position - second.position || first.id.localeCompare(second.id),
-      ),
+    () => [...visibleTrendingItems].sort(compareTrendingFeedItems),
     [visibleTrendingItems],
   );
   const carouselFeedProfile: CarouselProfileFeed | null = user
@@ -405,6 +454,7 @@ export function TrendingWorkspace() {
 
     hookPreparationAttemptKey.current = attemptKey;
     const controller = new AbortController();
+    let preparationCompleted = false;
 
     async function prepareHookIdeas() {
       try {
@@ -414,26 +464,43 @@ export function TrendingWorkspace() {
           return;
         }
 
-        const response = await fetch(
-          "/api/trending/hook-videos/feed/prepare",
-          {
-            headers: { Authorization: `Bearer ${idToken}` },
-            method: "POST",
-            signal: controller.signal,
-          },
+        for (let attempt = 0; attempt < 60; attempt += 1) {
+          const response = await fetch(
+            "/api/trending/hook-videos/feed/prepare",
+            {
+              headers: { Authorization: `Bearer ${idToken}` },
+              method: "POST",
+              signal: controller.signal,
+            },
+          );
+          const data = (await response.json().catch(() => null)) as {
+            error?: string;
+            ok?: boolean;
+            status?: "processing" | "queued" | "ready";
+          } | null;
+
+          if (!response.ok || data?.ok !== true) {
+            throw new Error(
+              data?.error ?? "Could not prepare Hook ideas.",
+            );
+          }
+
+          if (data.status === "ready") {
+            if (!controller.signal.aborted) {
+              preparationCompleted = true;
+              setCarouselHistoryRefreshKey(
+                (current) => current + 1,
+              );
+            }
+            return;
+          }
+
+          await waitForHookPreparationPoll(controller.signal);
+        }
+
+        throw new Error(
+          "Hook ideas are still being reviewed. Refresh Trending shortly.",
         );
-        const data = (await response.json().catch(() => null)) as {
-          error?: string;
-          ok?: boolean;
-        } | null;
-
-        if (!response.ok || data?.ok !== true) {
-          throw new Error(data?.error ?? "Could not prepare Hook ideas.");
-        }
-
-        if (!controller.signal.aborted) {
-          setCarouselHistoryRefreshKey((current) => current + 1);
-        }
       } catch (error) {
         if (!controller.signal.aborted) {
           console.error("Could not prepare unified Instagram Reel ideas:", error);
@@ -443,7 +510,16 @@ export function TrendingWorkspace() {
 
     void prepareHookIdeas();
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+
+      if (
+        !preparationCompleted &&
+        hookPreparationAttemptKey.current === attemptKey
+      ) {
+        hookPreparationAttemptKey.current = null;
+      }
+    };
   }, [
     carouselHistoryState,
     carouselProfile,
@@ -452,10 +528,126 @@ export function TrendingWorkspace() {
   ]);
 
   useEffect(() => {
+    const wallTextAvailability = formatAvailability.find(
+      (format) => format.format === "wall_text",
+    );
+    const profileId = carouselProfile?.id;
+    const profileVersion = carouselProfile?.profileVersion;
+
+    if (
+      !user ||
+      carouselHistoryState !== "ready" ||
+      !profileId ||
+      !profileVersion ||
+      wallTextAvailability?.state !== "unavailable"
+    ) {
+      return;
+    }
+
+    const attemptKey = `${user.uid}:${profileId}:${profileVersion}`;
+
+    if (wallTextPreparationAttemptKey.current === attemptKey) {
+      return;
+    }
+
+    wallTextPreparationAttemptKey.current = attemptKey;
+    const controller = new AbortController();
+    let preparationCompleted = false;
+
+    async function prepareWallTextIdeas() {
+      try {
+        const idToken = await getCurrentUserIdToken();
+
+        if (!idToken) {
+          return;
+        }
+
+        const response = await fetch(
+          "/api/trending/wall-text/feed/prepare",
+          {
+            headers: { Authorization: `Bearer ${idToken}` },
+            method: "POST",
+            signal: controller.signal,
+          },
+        );
+        const data = (await response.json().catch(() => null)) as {
+          error?: string;
+          jobId?: string;
+          ok?: boolean;
+        } | null;
+
+        if (!response.ok || data?.ok !== true) {
+          throw new Error(
+            data?.error ?? "Could not prepare Wall-of-text ideas.",
+          );
+        }
+
+        if (!controller.signal.aborted) {
+          preparationCompleted = true;
+          if (data.jobId) {
+            setWallTextPreparationJobId(data.jobId);
+          }
+
+          if (response.status === 200) {
+            setCarouselHistoryRefreshKey((current) => current + 1);
+          }
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error(
+            "Could not prepare unified Wall-of-text ideas:",
+            error,
+          );
+        }
+      }
+    }
+
+    void prepareWallTextIdeas();
+
+    return () => {
+      controller.abort();
+
+      if (
+        !preparationCompleted &&
+        wallTextPreparationAttemptKey.current === attemptKey
+      ) {
+        wallTextPreparationAttemptKey.current = null;
+      }
+    };
+  }, [
+    carouselHistoryState,
+    carouselProfile,
+    formatAvailability,
+    user,
+  ]);
+
+  useEffect(() => {
+    const job = wallTextPreparationJob.data;
+
+    if (
+      !job ||
+      job.status !== "completed" ||
+      resolvedWallTextJobIds.current.has(job.id)
+    ) {
+      return;
+    }
+
+    resolvedWallTextJobIds.current.add(job.id);
+
+    async function refreshCompletedWallTextJob() {
+      await Promise.resolve();
+      setCarouselHistoryRefreshKey((current) => current + 1);
+    }
+
+    void refreshCompletedWallTextJob();
+  }, [wallTextPreparationJob.data]);
+
+  useEffect(() => {
     if (!user) {
       loadedFeedLocalDate.current = null;
       loadedFeedUserId.current = null;
       hookPreparationAttemptKey.current = null;
+      wallTextPreparationAttemptKey.current = null;
       return;
     }
 
@@ -564,7 +756,8 @@ export function TrendingWorkspace() {
               Trending
             </h1>
             <p className="mt-1.5 max-w-2xl text-[15px] leading-[22px] text-[#B9B5AF]">
-              Build Reel hooks and carousel posts from your real business profile.
+              Explore Carousel, Hook, and Wall-of-text ideas made from your
+              business profile.
             </p>
           </div>
 
@@ -700,8 +893,8 @@ function CarouselProfilePrompt({ onAction }: { onAction: () => void }) {
         Complete your profile
       </h2>
       <p className="mt-2 text-sm leading-6 text-[#B9B5AF]">
-        Add your business details to prepare personalized Carousel and Hook
-        ideas.
+        Add your business details to prepare personalized Carousel, Hook, and
+        Wall-of-text ideas.
       </p>
       <button
         type="button"
@@ -732,10 +925,16 @@ function TrendingFeed({
   const [activeItemIndex, setActiveItemIndex] = useState(0);
   const [hookComposition, setHookComposition] =
     useState<TrendingHookVideoFeedItem | null>(null);
+  const [sourcePickerFormat, setSourcePickerFormat] =
+    useState<TrendingVideoSourceFormat | null>(null);
 
   const candidates = items.flatMap<TrendingCandidate>((item) => {
     if (item.format === "hook_video") {
       return [{ format: "hook_video", item }];
+    }
+
+    if (item.format === "wall_text") {
+      return [{ format: "wall_text", item }];
     }
 
     if (item.format !== "carousel") {
@@ -789,6 +988,7 @@ function TrendingFeed({
           onActiveItemChange={setActiveItemIndex}
           onActiveSlideChange={setActiveSlide}
           onCarouselCompleted={onCarouselCompleted}
+          onChooseVideoSource={setSourcePickerFormat}
           onHookCompose={setHookComposition}
         />
       ) : null}
@@ -804,6 +1004,22 @@ function TrendingFeed({
         <CarouselFailureState
           count={failedCarousels.length}
           onRetry={onRetryPreparation}
+        />
+      ) : null}
+
+      {sourcePickerFormat ? (
+        <CreativeAssetsVideoPicker
+          format={sourcePickerFormat}
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setSourcePickerFormat(null);
+            }
+          }}
+          onSelectionSaved={() => {
+            setSourcePickerFormat(null);
+            onCarouselCompleted();
+          }}
         />
       ) : null}
     </div>
@@ -840,13 +1056,16 @@ function TrendingHookComposer({
   const video: HookInfluencerVideoSummary = {
     durationSeconds: creative.sourceDurationSeconds,
     id: creative.videoId,
+    influencerKey: null,
     influencerId: creative.influencerId,
     ratio: creative.aspectRatio,
+    reactionType: null,
     sourceKind: creative.sourceKind,
     thumbnailUrl: creative.thumbnailUrl,
     title: creative.title,
     trimEnd: creative.trimEnd,
     trimStart: creative.trimStart,
+    visualGroup: null,
   };
 
   useEffect(() => {
@@ -902,7 +1121,11 @@ function TrendingHookComposer({
       flowState={flowState}
       influencer={influencer}
       openingPreviewUrl={previewUrl}
+      overlayFontSize={creative.text.fontSize}
       video={video}
+      onCommitted={() =>
+        completeTrendingHookAction(item, "selected")
+      }
       onClose={onClose}
       onStateChange={setFlowState}
     />
@@ -916,6 +1139,7 @@ function TrendingDeck({
   onActiveItemChange,
   onActiveSlideChange,
   onCarouselCompleted,
+  onChooseVideoSource,
   onHookCompose,
 }: {
   activeItemIndex: number;
@@ -924,6 +1148,7 @@ function TrendingDeck({
   onActiveItemChange: (itemIndex: number) => void;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
   onCarouselCompleted: () => void;
+  onChooseVideoSource: (format: TrendingVideoSourceFormat) => void;
   onHookCompose: (item: TrendingHookVideoFeedItem) => void;
 }) {
   const swipeTimerRef = useRef<number | null>(null);
@@ -932,6 +1157,14 @@ function TrendingDeck({
   const dragXRef = useRef(0);
   const [actionCandidate, setActionCandidate] =
     useState<CompleteCarousel | null>(null);
+  const [wallTextCandidate, setWallTextCandidate] =
+    useState<CompleteWallText | null>(null);
+  const [wallTextActionState, setWallTextActionState] =
+    useState<WallTextDetailActionState>({ status: "idle" });
+  const [pendingWallTextScheduleCandidate, setPendingWallTextScheduleCandidate] =
+    useState<CompleteWallText | null>(null);
+  const [pendingWallTextDraft, setPendingWallTextDraft] =
+    useState<SavedWallTextDraft | null>(null);
   const [actionNotice, setActionNotice] = useState<CarouselActionNotice | null>(
     null,
   );
@@ -961,9 +1194,6 @@ function TrendingDeck({
     candidates,
     safeActiveItemIndex,
   );
-  const canGoPrevious = safeActiveItemIndex > 0;
-  const canGoNext = safeActiveItemIndex < lastItemIndex;
-
   useEffect(() => {
     const nextCandidate = candidates[safeActiveItemIndex + 1];
     const nextSlideIndex =
@@ -1017,7 +1247,7 @@ function TrendingDeck({
     actionNoticeTimerRef.current = window.setTimeout(() => {
       actionNoticeTimerRef.current = null;
       setActionNotice(null);
-    }, notice.actionHref ? 5200 : 2400);
+    }, notice.actionHref || notice.onAction ? 6200 : 2400);
   }
 
   function resetDrag() {
@@ -1026,21 +1256,6 @@ function TrendingDeck({
     setDragX(0);
     setIsDragging(false);
     setExitDirection(null);
-  }
-
-  function goToItem(nextIndex: number) {
-    if (
-      exitDirection ||
-      pendingSkipItemId ||
-      nextIndex < 0 ||
-      nextIndex > lastItemIndex ||
-      nextIndex === safeActiveItemIndex
-    ) {
-      return;
-    }
-
-    resetDrag();
-    onActiveItemChange(nextIndex);
   }
 
   function advancePastActiveItem(
@@ -1082,7 +1297,12 @@ function TrendingDeck({
       resetDrag();
 
       if (activeCandidate.format === "hook_video") {
-        void handleSelectHook();
+        handleSelectHook();
+        return;
+      }
+
+      if (activeCandidate.format === "wall_text") {
+        void handleSelectWallText();
         return;
       }
 
@@ -1154,16 +1374,20 @@ function TrendingDeck({
   }
 
   function handleDeckKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
-    if (event.target !== event.currentTarget || exitDirection) {
+    if (
+      event.target !== event.currentTarget ||
+      exitDirection ||
+      pendingSkipItemId
+    ) {
       return;
     }
 
-    if (event.key === "ArrowLeft" && canGoPrevious) {
+    if (event.key === "ArrowLeft") {
       event.preventDefault();
-      goToItem(safeActiveItemIndex - 1);
-    } else if (event.key === "ArrowRight" && canGoNext) {
+      completeCandidateSwipe("left");
+    } else if (event.key === "ArrowRight" || event.key === "Enter") {
       event.preventDefault();
-      goToItem(safeActiveItemIndex + 1);
+      completeCandidateSwipe("right");
     }
   }
 
@@ -1177,19 +1401,53 @@ function TrendingDeck({
       return;
     }
 
-    resetDrag();
     setPendingSkipItemId(activeCandidate.item.id);
+    const skippedCandidate = activeCandidate;
 
     try {
+      // Preserve the released drag position while persistence completes. Resetting
+      // here makes the card snap back to the user before its committed exit.
       if (activeCandidate.format === "carousel") {
         await completeTrendingCarouselAction(activeCandidate, "skipped");
-      } else {
+      } else if (activeCandidate.format === "hook_video") {
         await completeTrendingHookAction(activeCandidate.item, "skipped");
+      } else {
+        await completeTrendingWallTextAction(
+          activeCandidate.item,
+          "skipped",
+        );
       }
 
-      showActionNotice({ message: "Skipped." });
+      showActionNotice(
+        skippedCandidate.format === "wall_text"
+          ? {
+              actionLabel: "Undo",
+              message: "Wall-text idea skipped.",
+              onAction: async () => {
+                try {
+                  await completeTrendingWallTextAction(
+                    skippedCandidate.item,
+                    "restored",
+                  );
+                  showActionNotice({
+                    message: "Wall-text idea restored.",
+                  });
+                  onCarouselCompleted();
+                } catch (error) {
+                  showActionNotice({
+                    message: getErrorMessage(
+                      error,
+                      "Could not restore this Wall-text idea.",
+                    ),
+                  });
+                }
+              },
+            }
+          : { message: "Skipped." },
+      );
       advancePastActiveItem("left", onCarouselCompleted);
     } catch (error) {
+      resetDrag();
       showActionNotice({
         message: getErrorMessage(error, "Could not skip this idea."),
       });
@@ -1254,7 +1512,7 @@ function TrendingDeck({
     }
   }
 
-  async function handleSelectHook() {
+  function handleSelectHook() {
     if (
       activeCandidate.format !== "hook_video" ||
       pendingSkipItemId
@@ -1262,27 +1520,157 @@ function TrendingDeck({
       return;
     }
 
-    setPendingSkipItemId(activeCandidate.item.id);
+    // Opening the composer is reversible. The assignment is completed only
+    // after the reviewed composition is saved or scheduled successfully.
+    onHookCompose(activeCandidate.item);
+  }
+
+  async function handleSelectWallText() {
+    if (
+      activeCandidate.format !== "wall_text" ||
+      pendingSkipItemId
+    ) {
+      return;
+    }
+
+    setWallTextActionState({ status: "idle" });
+    setWallTextCandidate(activeCandidate);
+  }
+
+  async function handleSaveWallText() {
+    if (!wallTextCandidate) {
+      return;
+    }
+
+    setWallTextActionState({ status: "saving" });
 
     try {
-      await completeTrendingHookAction(activeCandidate.item, "selected");
-      onHookCompose(activeCandidate.item);
-    } catch (error) {
+      await saveWallTextDraft(wallTextCandidate.item);
+      setWallTextCandidate(null);
+      setWallTextActionState({ status: "idle" });
       showActionNotice({
-        message: getErrorMessage(error, "Could not select this Hook idea."),
+        actionHref: "/library?tab=posts",
+        actionLabel: "View Content",
+        message: "Saved to Content. Reel preparation is queued.",
       });
-    } finally {
-      setPendingSkipItemId(null);
+      advancePastActiveItem("right", onCarouselCompleted);
+    } catch (error) {
+      setWallTextActionState({
+        message: getErrorMessage(
+          error,
+          "Could not save this Wall-of-text video.",
+        ),
+        status: "error",
+      });
     }
   }
 
+  async function handleScheduleWallText() {
+    if (!wallTextCandidate) {
+      return;
+    }
+
+    setWallTextActionState({ status: "scheduling" });
+
+    try {
+      const draft = await saveWallTextDraft(wallTextCandidate.item);
+      setPendingWallTextDraft(draft);
+      setPendingWallTextScheduleCandidate(wallTextCandidate);
+      setWallTextActionState({ status: "idle" });
+    } catch (error) {
+      setWallTextActionState({
+        message: getErrorMessage(
+          error,
+          "Could not prepare this Wall-of-text video for scheduling.",
+        ),
+        status: "error",
+      });
+    }
+  }
+
+  async function confirmWallTextSchedule(
+    selection: HookVideoScheduleSelection,
+  ) {
+    const candidate = pendingWallTextScheduleCandidate;
+    const currentDraft = pendingWallTextDraft;
+
+    if (!candidate || !currentDraft) {
+      throw new Error("Choose a Wall-of-text video before scheduling.");
+    }
+
+    const readyDraft =
+      currentDraft.renderStatus === "ready" &&
+      currentDraft.renderedMediaAssetId
+        ? currentDraft
+        : await waitForWallTextRender(currentDraft.assignmentId);
+
+    if (!readyDraft.renderedMediaAssetId) {
+      throw new Error("The Wall-of-text Reel is not ready to schedule yet.");
+    }
+
+    await createWallTextSchedule({
+      candidate,
+      draft: readyDraft,
+      selection,
+    });
+
+    setPendingWallTextDraft(null);
+    setPendingWallTextScheduleCandidate(null);
+    setWallTextCandidate(null);
+    setWallTextActionState({ status: "idle" });
+    showActionNotice({
+      actionHref: "/scheduling",
+      actionLabel: "View schedule",
+      message: "Wall-text Reel scheduled.",
+    });
+    advancePastActiveItem("right", onCarouselCompleted);
+  }
+
+  if (wallTextCandidate) {
+    return (
+      <section
+        aria-label="Wall-text Reel preview"
+        className="relative w-full"
+      >
+        <WallTextDetailView
+          actionState={wallTextActionState}
+          item={wallTextCandidate.item}
+          onBack={() => {
+            if (!pendingWallTextScheduleCandidate) {
+              setWallTextActionState({ status: "idle" });
+              setWallTextCandidate(null);
+            }
+          }}
+          onSave={handleSaveWallText}
+          onSchedule={handleScheduleWallText}
+        />
+        {pendingWallTextScheduleCandidate ? (
+          <HookVideoScheduleDrawer
+            summary={{
+              backgroundTitle:
+                pendingWallTextScheduleCandidate.item.creative.title,
+              kind: "wall_text",
+              text:
+                pendingWallTextScheduleCandidate.item.creative.text.fullText,
+            }}
+            onClose={() => {
+              setPendingWallTextDraft(null);
+              setPendingWallTextScheduleCandidate(null);
+            }}
+            onConfirm={confirmWallTextSchedule}
+          />
+        ) : null}
+      </section>
+    );
+  }
+
   return (
-    <section aria-label="Trending content ideas" className="w-full">
+    <section aria-label="Trending content ideas" className="relative w-full">
       <div
         role="group"
         aria-roledescription="Trending content deck"
         tabIndex={0}
-        aria-label={`Trending content deck. Showing idea ${safeActiveItemIndex + 1} of ${candidates.length}. Use left and right arrow keys to change ideas.`}
+        aria-label={`Trending content deck. Showing idea ${safeActiveItemIndex + 1} of ${candidates.length}. Press left arrow to skip or right arrow to use this idea.`}
         onKeyDown={handleDeckKeyDown}
         className="relative isolate mx-auto mt-3 h-[410px] w-full max-w-xl overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E16540] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1F1F1F] sm:mt-7"
       >
@@ -1304,6 +1692,62 @@ function TrendingDeck({
             onPointerUp={finishPointerInteraction}
           />
         ))}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-4 top-4 z-20 rounded-full border border-[#46B879]/65 bg-[#173326]/90 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[#73D5A2]"
+          style={{
+            opacity: Math.min(Math.max(dragX / SWIPE_THRESHOLD_PX, 0), 1),
+          }}
+        >
+          Use
+        </div>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-4 top-4 z-20 rounded-full border border-[#E15A5A]/65 bg-[#3A2020]/90 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[#F08383]"
+          style={{
+            opacity: Math.min(Math.max(-dragX / SWIPE_THRESHOLD_PX, 0), 1),
+          }}
+        >
+          Skip
+        </div>
+      </div>
+      <div
+        className={cn(
+          "mx-auto mt-4 flex w-full items-center gap-3",
+          activeCandidate.format === "carousel"
+            ? "max-w-[320px]"
+            : "max-w-[470px]",
+        )}
+      >
+        {activeCandidate.format !== "carousel" ? (
+          <button
+            type="button"
+            onClick={() => onChooseVideoSource(activeCandidate.format)}
+            disabled={Boolean(exitDirection || pendingSkipItemId)}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-control border border-border-strong bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Library className="size-4" aria-hidden="true" />
+            Choose
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => void handleSkipActiveCandidate()}
+          disabled={Boolean(exitDirection || pendingSkipItemId)}
+          className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-control border border-border-strong bg-card px-4 text-sm font-semibold text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <X className="size-4" aria-hidden="true" />
+          Skip
+        </button>
+        <button
+          type="button"
+          onClick={() => completeCandidateSwipe("right")}
+          disabled={Boolean(exitDirection || pendingSkipItemId)}
+          className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Check className="size-4" aria-hidden="true" />
+          Use
+        </button>
       </div>
       <span className="sr-only" aria-live="polite">
         Showing {title}, idea {safeActiveItemIndex + 1} of {candidates.length}
@@ -1591,7 +2035,15 @@ function CarouselActionToast({ notice }: { notice: CarouselActionNotice }) {
       className="fixed bottom-5 left-1/2 z-[var(--z-modal)] flex -translate-x-1/2 items-center gap-3 rounded-full border border-[#383838] bg-[#292929] px-4 py-2 text-sm font-semibold text-[#F5F3F0] shadow-[0_18px_45px_rgb(0_0_0_/_0.38)]"
     >
       <span>{notice.message}</span>
-      {notice.actionHref && notice.actionLabel ? (
+      {notice.onAction && notice.actionLabel ? (
+        <button
+          type="button"
+          onClick={() => void notice.onAction?.()}
+          className="rounded-full bg-[#3A2721] px-3 py-1 text-xs font-bold text-[#E16540] transition-colors hover:bg-[#E16540] hover:text-[#1F1F1F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E16540]"
+        >
+          {notice.actionLabel}
+        </button>
+      ) : notice.actionHref && notice.actionLabel ? (
         <Link
           href={notice.actionHref}
           className="rounded-full bg-[#3A2721] px-3 py-1 text-xs font-bold text-[#E16540] transition-colors hover:bg-[#E16540] hover:text-[#1F1F1F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E16540]"
@@ -1638,6 +2090,22 @@ function TrendingDeckCard({
     case "hook_video":
       return (
         <TrendingHookDeckCard
+          candidate={candidate}
+          depth={props.depth}
+          dragX={props.dragX}
+          exitDirection={props.exitDirection}
+          isDragging={props.isDragging}
+          itemCount={itemCount}
+          itemIndex={itemIndex}
+          onPointerCancel={props.onPointerCancel}
+          onPointerDown={props.onPointerDown}
+          onPointerMove={props.onPointerMove}
+          onPointerUp={props.onPointerUp}
+        />
+      );
+    case "wall_text":
+      return (
+        <TrendingWallTextDeckCard
           candidate={candidate}
           depth={props.depth}
           dragX={props.dragX}
@@ -1790,6 +2258,8 @@ function TrendingHookDeckCard({
       >
         <HookVideoCard
           dragOffset={0}
+          hookFontSize={creative.text.fontSize}
+          hookLines={creative.text.lines}
           hookText={creative.text.value}
           previewError={isActive ? previewError : null}
           previewLoading={isActive && previewLoading}
@@ -1799,13 +2269,16 @@ function TrendingHookDeckCard({
           video={{
             durationSeconds: creative.sourceDurationSeconds,
             id: creative.videoId,
+            influencerKey: null,
             influencerId: creative.influencerId,
             ratio: creative.aspectRatio,
+            reactionType: null,
             sourceKind: creative.sourceKind,
             thumbnailUrl: creative.thumbnailUrl,
             title: creative.title,
             trimEnd: creative.trimEnd,
             trimStart: creative.trimStart,
+            visualGroup: null,
           }}
           onPreviewError={() => {
             setPreviewUrl(null);
@@ -1814,6 +2287,138 @@ function TrendingHookDeckCard({
           }}
           onRetryPreview={() => setPreviewRetryKey((current) => current + 1)}
         />
+      </article>
+    </div>
+  );
+}
+
+function TrendingWallTextDeckCard({
+  candidate,
+  depth,
+  dragX,
+  exitDirection,
+  isDragging,
+  itemCount,
+  itemIndex,
+  onPointerCancel,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+}: {
+  candidate: CompleteWallText;
+  depth: DeckDepth;
+  dragX: number;
+  exitDirection: "left" | "right" | null;
+  isDragging: boolean;
+  itemCount: number;
+  itemIndex: number;
+  onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
+}) {
+  const isActive = depth === 0;
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const creative = candidate.item.creative;
+  const deckStyle = DECK_CARD_STYLES[depth];
+  const clampedRotation = Math.max(
+    -MAX_ROTATION_DEGREES,
+    Math.min(MAX_ROTATION_DEGREES, dragX / 28),
+  );
+  const translateX = exitDirection
+    ? exitDirection === "left"
+      ? "-115vw"
+      : "115vw"
+    : `${dragX}px`;
+  const cardStyle: CSSProperties = {
+    opacity: deckStyle.opacity,
+    touchAction: isActive ? "pan-y" : undefined,
+    transform: `translateX(${isActive ? translateX : "0px"}) translateY(${deckStyle.translateY}px) rotate(${isActive ? clampedRotation : 0}deg) scale(${deckStyle.scale})`,
+    transition: isDragging ? "none" : undefined,
+  };
+  useEffect(() => {
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    if (!isActive) {
+      video.pause();
+      return;
+    }
+
+    video.currentTime = 0;
+    void video.play().catch(() => undefined);
+  }, [creative.previewUrl, isActive]);
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-1"
+      style={{ zIndex: deckStyle.zIndex }}
+    >
+      <article
+        aria-label={`${creative.title}, Wall-of-text idea ${itemIndex + 1} of ${itemCount}`}
+        aria-hidden={isActive ? undefined : "true"}
+        className={cn(
+          "w-[min(72vw,230px)] origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
+          isActive
+            ? "pointer-events-auto cursor-grab active:cursor-grabbing"
+            : "pointer-events-none",
+        )}
+        onPointerCancel={isActive ? onPointerCancel : undefined}
+        onPointerDown={isActive ? onPointerDown : undefined}
+        onPointerMove={isActive ? onPointerMove : undefined}
+        onPointerUp={isActive ? onPointerUp : undefined}
+        style={cardStyle}
+      >
+        <div
+          className={cn(
+            "relative aspect-[9/16] overflow-hidden rounded-lg bg-[#171717]",
+            isActive
+              ? "shadow-[0_10px_18px_rgb(9_9_11_/_0.28)]"
+              : "shadow-[0_6px_12px_rgb(9_9_11_/_0.18)]",
+          )}
+        >
+          <video
+            ref={videoRef}
+            src={creative.previewUrl}
+            poster={creative.thumbnailUrl ?? undefined}
+            autoPlay={isActive}
+            muted
+            playsInline
+            preload={isActive ? "auto" : "metadata"}
+            aria-hidden="true"
+            className="pointer-events-none size-full object-cover"
+          />
+          <WallTextOverlay
+            content={creative.text}
+            layout={creative.layout}
+          />
+          {isActive ? (
+            <button
+              type="button"
+              data-deck-control
+              aria-label="Replay Wall-text preview"
+              title="Replay"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                const video = videoRef.current;
+
+                if (!video) {
+                  return;
+                }
+
+                video.currentTime = 0;
+                void video.play().catch(() => undefined);
+              }}
+              className="absolute bottom-2 right-2 z-10 inline-flex size-9 items-center justify-center rounded-full border border-white/15 bg-black/72 text-white transition-colors hover:bg-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <RotateCcw className="size-3.5" aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
       </article>
     </div>
   );
@@ -1897,7 +2502,7 @@ function CarouselDeckCard({
         aria-label={`${title}, idea ${carouselIndex + 1} of ${carouselCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
-          "w-[min(86vw,300px)] origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none sm:w-[300px]",
+          "w-[min(78vw,270px)] origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none sm:w-[270px]",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
             : "pointer-events-none",
@@ -1916,7 +2521,7 @@ function CarouselDeckCard({
               : "shadow-[0_6px_12px_rgb(9_9_11_/_0.14)]",
           )}
         >
-          {/* Rendered Carousel slides are immutable CloudFront creative assets. */}
+          {/* Rendered Carousel slides are immutable Cloud Storage creative assets. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={activeSlide.renderedUrl}
@@ -2336,6 +2941,199 @@ async function completeTrendingHookAction(
   }
 }
 
+async function completeTrendingWallTextAction(
+  item: TrendingWallTextFeedItem,
+  action: "restored" | "selected" | "skipped",
+) {
+  const token = await getCurrentUserIdToken();
+
+  if (!token) {
+    throw new Error("Sign in before updating this Wall-of-text idea.");
+  }
+
+  const response = await fetch("/api/trending/wall-text/feed/actions", {
+    body: JSON.stringify({
+      action,
+      assignmentId: item.assignmentId,
+    }),
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+  const data = (await response.json().catch(() => null)) as
+    | { error?: string; ok: false }
+    | { ok: true }
+    | null;
+
+  if (!response.ok || data?.ok !== true) {
+    throw new Error(
+      data?.ok === false && data.error
+        ? data.error
+        : "Could not update this Wall-of-text idea.",
+    );
+  }
+}
+
+async function saveWallTextDraft(item: TrendingWallTextFeedItem) {
+  const token = await getCurrentUserIdToken();
+
+  if (!token) {
+    throw new Error("Sign in before saving this Wall-of-text video.");
+  }
+
+  const response = await fetch("/api/trending/wall-text/drafts", {
+    body: JSON.stringify({
+      assignmentId: item.assignmentId,
+    }),
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+  const data = (await response.json().catch(() => null)) as
+    | SavedWallTextDraftResponse
+    | null;
+
+  if (!response.ok || !data || data.ok !== true) {
+    throw new Error(
+      data?.ok === false && data.error
+        ? data.error
+        : "Could not save this Wall-of-text video.",
+    );
+  }
+
+  return data.draft;
+}
+
+async function getSavedWallTextDraft(assignmentId: string) {
+  const token = await getCurrentUserIdToken();
+
+  if (!token) {
+    throw new Error("Sign in before checking this Wall-of-text video.");
+  }
+
+  const response = await fetch(
+    `/api/trending/wall-text/drafts?assignmentId=${encodeURIComponent(assignmentId)}`,
+    {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  const data = (await response.json().catch(() => null)) as
+    | SavedWallTextDraftResponse
+    | null;
+
+  if (!response.ok || !data || data.ok !== true) {
+    throw new Error(
+      data?.ok === false && data.error
+        ? data.error
+        : "Could not check this Wall-of-text video.",
+    );
+  }
+
+  return data.draft;
+}
+
+async function waitForWallTextRender(assignmentId: string) {
+  const maximumAttempts = 45;
+
+  for (let attempt = 0; attempt < maximumAttempts; attempt += 1) {
+    const draft = await getSavedWallTextDraft(assignmentId);
+
+    if (draft.renderStatus === "ready" && draft.renderedMediaAssetId) {
+      return draft;
+    }
+
+    if (draft.renderStatus === "failed") {
+      throw new Error(
+        draft.renderError ||
+          "The Wall-of-text Reel could not be prepared. Save it again to retry.",
+      );
+    }
+
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 2_000);
+    });
+  }
+
+  throw new Error(
+    "The Reel is still preparing. It is saved in Content, so you can schedule it there when it is ready.",
+  );
+}
+
+async function createWallTextSchedule(params: {
+  candidate: CompleteWallText;
+  draft: SavedWallTextDraft;
+  selection: HookVideoScheduleSelection;
+}) {
+  const mediaAssetId = params.draft.renderedMediaAssetId;
+
+  if (!mediaAssetId) {
+    throw new Error("The Wall-of-text Reel is not ready to schedule.");
+  }
+
+  const token = await getCurrentUserIdToken();
+
+  if (!token) {
+    throw new Error("Sign in before scheduling this Wall-of-text Reel.");
+  }
+
+  const response = await fetch("/api/schedules", {
+    body: JSON.stringify({
+      caption: "",
+      idempotencyKey: [
+        "wall-text-schedule",
+        params.draft.assignmentId,
+        params.selection.scheduledDate,
+        params.selection.scheduledTime,
+        params.selection.timezone,
+      ].join(":"),
+      metadata: {
+        mediaMode: "single_video",
+        scheduledVideoId: mediaAssetId,
+        scheduledVideoSourceType: "wall_text_render",
+        wallTextAssignmentId: params.draft.assignmentId,
+        wallTextCreativeId: params.draft.id,
+      },
+      scheduledDate: params.selection.scheduledDate,
+      scheduledTime: params.selection.scheduledTime,
+      source: {
+        id: mediaAssetId,
+        kind: "media_asset",
+      },
+      targets: params.selection.targets.map((target) => ({
+        connectionId: target.connectionId,
+        platform: target.platform,
+        settings: target.settings,
+      })),
+      timezone: params.selection.timezone,
+      title: params.candidate.item.creative.title,
+    }),
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+  const data = (await response.json().catch(() => null)) as
+    | { message?: string; ok?: false }
+    | { ok: true }
+    | null;
+
+  if (!response.ok || !data || data.ok !== true) {
+    throw new Error(
+      data?.ok === false && data.message
+        ? data.message
+        : "Could not schedule this Wall-of-text Reel.",
+    );
+  }
+}
+
 async function scheduleTrendingCarousel(params: {
   candidate: CompleteCarousel;
   context: SchedulePlatformContext;
@@ -2400,9 +3198,15 @@ function getCarouselTitle(carousel: GeneratedCarousel) {
 }
 
 function getTrendingCandidateTitle(candidate: TrendingCandidate) {
-  return candidate.format === "carousel"
-    ? getCarouselTitle(candidate.carousel)
-    : candidate.item.creative.text.value;
+  if (candidate.format === "carousel") {
+    return getCarouselTitle(candidate.carousel);
+  }
+
+  if (candidate.format === "hook_video") {
+    return candidate.item.creative.text.value;
+  }
+
+  return candidate.item.creative.title;
 }
 
 function getPreparationTitle(carousels: GeneratedCarousel[]) {
@@ -2452,4 +3256,24 @@ function getBrowserLocalDate() {
   return year && month && day
     ? `${year}-${month}-${day}`
     : new Date().toISOString().slice(0, 10);
+}
+
+function waitForHookPreparationPoll(signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      signal.removeEventListener("abort", handleAbort);
+      resolve();
+    }, 2_000);
+    const handleAbort = () => {
+      window.clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+
+    signal.addEventListener("abort", handleAbort, { once: true });
+  });
 }

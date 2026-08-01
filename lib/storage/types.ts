@@ -1,4 +1,4 @@
-export type StorageProviderName = "aws" | "gcp";
+export type StorageProviderName = "gcp";
 
 export type UploadBufferParams = {
   key: string;

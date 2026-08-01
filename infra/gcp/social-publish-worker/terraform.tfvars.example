@@ -14,12 +14,9 @@ worker_image_uri = ""
 
 worker_service_account_email = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
 service_name                 = "ugc-social-publish-worker"
-pubsub_subscription_name     = "ugc-social-publish-sub"
 queue_name                   = "social-publish"
 worker_job_types             = "publish_social_post"
 
-worker_poll_max_messages          = 1
-worker_poll_wait_seconds          = 20
 worker_visibility_timeout_seconds = 300
 min_instance_count                = 1
 max_instance_count                = 1
@@ -42,7 +39,7 @@ social_publish_retry_base_seconds = 30
 social_publish_retry_max_seconds  = 900
 
 # Keep false for the first GCP canary so the worker cannot recover and publish
-# old due jobs from the database without an explicit Pub/Sub message.
+# due jobs from the database before Cloud Tasks delivery has been verified.
 social_reconciliation_enabled          = false
 social_reconciliation_batch_size       = 10
 social_reconciliation_interval_seconds = 15

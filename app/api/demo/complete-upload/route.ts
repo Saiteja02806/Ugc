@@ -1,6 +1,6 @@
 import {
   authenticateDemoRequest,
-  getAwsDiagnostic,
+  getStorageDiagnostic,
   getDemoId,
   getFiniteNumber,
   getMissingDemoRuntimeEnvVars,
@@ -8,7 +8,7 @@ import {
   getProjectId,
   getString,
   isDemoStorageNotFoundError,
-  isS3NotFoundError,
+  isStorageNotFoundError,
   jsonResponse,
   normalizeContentType,
   readJsonBody,
@@ -29,7 +29,10 @@ import {
   serializeMediaAsset,
   upsertReadyMediaAsset,
 } from "@/lib/media/media-storage";
-import { buildCloudFrontUrl, headS3Object } from "@/lib/storage/s3";
+import {
+  buildPublicStorageUrl,
+  headStorageObject,
+} from "@/lib/storage/storage";
 
 export const runtime = "nodejs";
 
@@ -162,7 +165,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const object = await headS3Object({ key: key.key });
+    const object = await headStorageObject({ key: key.key });
     const contentType = normalizeContentType(object.ContentType);
     const size = object.ContentLength ?? 0;
 
@@ -206,7 +209,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const demoUrl = buildCloudFrontUrl(key.key);
+    const demoUrl = buildPublicStorageUrl(key.key);
     const demo = await markDemoVideoReady({
       demoId,
       durationSeconds,
@@ -255,11 +258,12 @@ export async function POST(request: Request) {
       );
     }
 
-    if (isS3NotFoundError(error)) {
+    if (isStorageNotFoundError(error)) {
       return jsonResponse(
         {
           ok: false,
-          error: "Demo video was not found in S3. Upload the file before completing.",
+          error:
+            "Demo video was not found in Cloud Storage. Upload the file before completing.",
         },
         404,
       );
@@ -269,7 +273,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         error: "Could not verify the demo upload.",
-        diagnostic: getAwsDiagnostic(error),
+        diagnostic: getStorageDiagnostic(error),
       },
       500,
     );

@@ -20,6 +20,23 @@ test("parses the shared queue message contract", () => {
   );
 });
 
+test("accepts dedicated Trending Hook copy jobs on the AI queue", () => {
+  assert.deepEqual(
+    parseWorkerDeliveryMessage({
+      body: JSON.stringify({
+        jobId: "job-2",
+        jobType: "generate_trending_hook_copy",
+      }),
+      id: "message-2",
+      providerName: "gcp",
+    }),
+    {
+      jobId: "job-2",
+      jobType: "generate_trending_hook_copy",
+    },
+  );
+});
+
 test("rejects invalid worker queue job types", () => {
   assert.throws(
     () =>
@@ -29,7 +46,7 @@ test("rejects invalid worker queue job types", () => {
           jobType: "unknown_job",
         }),
         id: "message-1",
-        providerName: "aws",
+        providerName: "gcp",
       }),
     /Invalid worker job type/,
   );

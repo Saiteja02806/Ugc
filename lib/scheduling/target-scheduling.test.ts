@@ -156,7 +156,7 @@ function createDependencies(
     async createProviderSchedule() {
       events.push("create-provider-schedule");
       return {
-        arn: "arn:aws:scheduler:us-east-2:123:schedule/provider-schedule-1",
+        arn: "projects/ugcsaas/locations/us-central1/queues/ugc-social-publish-scheduler/tasks/provider-schedule-1",
         name: "provider-schedule-1",
       };
     },

@@ -130,7 +130,7 @@ function getCandidateAssetIdentity(asset: CategoryImageAssetRow) {
 
   return asset.pexels_photo_id
     ? `pexels:${asset.pexels_photo_id}`
-    : `s3:${asset.base_s3_key}`;
+    : `object:${asset.base_s3_key}`;
 }
 
 function uniqueByAssetIdentity(items: CategoryImageAssetRow[]) {

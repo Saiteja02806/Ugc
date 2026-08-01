@@ -1,6 +1,12 @@
-import type { TrendingWallTextContent } from "./wall-text-types.ts";
+import type {
+  TrendingWallTextContent,
+  TrendingWallTextLayout,
+} from "./wall-text-types.ts";
 
-export type { TrendingWallTextContent } from "./wall-text-types.ts";
+export type {
+  TrendingWallTextContent,
+  TrendingWallTextLayout,
+} from "./wall-text-types.ts";
 
 export const trendingFeedFormats = [
   "carousel",
@@ -9,6 +15,11 @@ export const trendingFeedFormats = [
 ] as const;
 
 export type TrendingFeedFormat = (typeof trendingFeedFormats)[number];
+export const trendingFeedDisplayOrder = [
+  "wall_text",
+  "hook_video",
+  "carousel",
+] as const satisfies readonly TrendingFeedFormat[];
 export type TrendingFeedItemReadiness = "preview_ready";
 export type TrendingFeedItemSource = "carried" | "new";
 export type TrendingFeedProviderState = "ready" | "unavailable";
@@ -45,9 +56,15 @@ export type TrendingCarouselSourceRecord = TrendingCarouselCreative & {
 };
 
 export type TrendingHookTextContent = {
+  fontSize: number;
   kind: "hook";
+  lines: string[];
+  patternId: string;
   placement: "center";
-  styleVersion: "hook-overlay-v1";
+  styleVersion:
+    | "hook-overlay-v1"
+    | "hook-overlay-v2"
+    | "hook-overlay-v3";
   value: string;
 };
 
@@ -68,6 +85,24 @@ export type TrendingHookVideoCreative = {
 };
 
 export type TrendingHookVideoSourceRecord = TrendingHookVideoCreative & {
+  assignmentId: string;
+  creativeId: string;
+  feedItemId: string;
+  feedPosition: number;
+  feedSource: TrendingFeedItemSource;
+};
+
+export type TrendingWallTextCreative = {
+  aspectRatio: "9:16";
+  durationSeconds: number;
+  layout: TrendingWallTextLayout;
+  previewUrl: string;
+  text: TrendingWallTextContent;
+  thumbnailUrl: string | null;
+  title: string;
+};
+
+export type TrendingWallTextSourceRecord = TrendingWallTextCreative & {
   assignmentId: string;
   creativeId: string;
   feedItemId: string;
@@ -98,14 +133,7 @@ export type TrendingHookVideoFeedItem =
 
 export type TrendingWallTextFeedItem =
   TrendingFeedItemBase<"wall_text"> & {
-    creative: {
-      aspectRatio: "9:16";
-      durationSeconds: number;
-      previewUrl: string;
-      text: TrendingWallTextContent;
-      thumbnailUrl: string | null;
-      title: string;
-    };
+    creative: TrendingWallTextCreative;
   };
 
 export type TrendingFeedItem =
@@ -126,8 +154,20 @@ export type TrendingFeedProviderResult<
 };
 
 const formatOrder = new Map<TrendingFeedFormat, number>(
-  trendingFeedFormats.map((format, index) => [format, index]),
+  trendingFeedDisplayOrder.map((format, index) => [format, index]),
 );
+
+export function compareTrendingFeedItems(
+  first: TrendingFeedItem,
+  second: TrendingFeedItem,
+) {
+  return (
+    (formatOrder.get(first.format) ?? Number.MAX_SAFE_INTEGER) -
+      (formatOrder.get(second.format) ?? Number.MAX_SAFE_INTEGER) ||
+    first.position - second.position ||
+    first.id.localeCompare(second.id)
+  );
+}
 
 export function createCarouselTrendingFeedProvider(
   carousels: readonly TrendingCarouselSourceRecord[],
@@ -147,6 +187,16 @@ export function createHookTrendingFeedProvider(
   return {
     format: "hook_video",
     items: hooks.map(toHookTrendingFeedItem),
+    state: "ready",
+  };
+}
+
+export function createWallTextTrendingFeedProvider(
+  ideas: readonly TrendingWallTextSourceRecord[],
+): TrendingFeedProviderResult<TrendingWallTextFeedItem> {
+  return {
+    format: "wall_text",
+    items: ideas.map(toWallTextTrendingFeedItem),
     state: "ready",
   };
 }
@@ -172,14 +222,17 @@ export function createCurrentTrendingFeedProviders(
       "hook_video",
       "Hook ideas are being prepared from the business profile.",
     ),
+  wallTextProvider: TrendingFeedProviderResult<TrendingWallTextFeedItem> =
+    createUnavailableTrendingFeedProvider(
+      "wall_text",
+      "Wall-of-text ideas are being prepared from the business profile.",
+    ),
+  options: { includeHookVideos?: boolean } = {},
 ): TrendingFeedProviderResult[] {
   return [
     createCarouselTrendingFeedProvider(carousels),
-    hookProvider,
-    createUnavailableTrendingFeedProvider(
-      "wall_text",
-      "Wall-of-text videos must produce preview-ready completed creatives before joining the unified feed.",
-    ),
+    ...(options.includeHookVideos === false ? [] : [hookProvider]),
+    wallTextProvider,
   ];
 }
 
@@ -206,13 +259,7 @@ export function buildUnifiedTrendingFeed(
     }
   }
 
-  return [...itemById.values()].sort(
-    (first, second) =>
-      first.position - second.position ||
-      (formatOrder.get(first.format) ?? Number.MAX_SAFE_INTEGER) -
-        (formatOrder.get(second.format) ?? Number.MAX_SAFE_INTEGER) ||
-      first.id.localeCompare(second.id),
-  );
+  return [...itemById.values()].sort(compareTrendingFeedItems);
 }
 
 export function getTrendingFeedProviderAvailability(
@@ -286,6 +333,31 @@ function toHookTrendingFeedItem(
     feedItemId,
     format: "hook_video",
     id: `hook_video:${feedItemId}`,
+    position: feedPosition,
+    readiness: "preview_ready",
+    source: feedSource,
+  };
+}
+
+function toWallTextTrendingFeedItem(
+  idea: TrendingWallTextSourceRecord,
+): TrendingWallTextFeedItem {
+  const {
+    assignmentId,
+    creativeId,
+    feedItemId,
+    feedPosition,
+    feedSource,
+    ...creative
+  } = idea;
+
+  return {
+    assignmentId,
+    creative,
+    creativeId,
+    feedItemId,
+    format: "wall_text",
+    id: `wall_text:${feedItemId}`,
     position: feedPosition,
     readiness: "preview_ready",
     source: feedSource,

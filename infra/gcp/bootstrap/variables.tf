@@ -35,6 +35,6 @@ variable "labels" {
     application = "ugc-pilot"
     environment = "prod"
     managed_by  = "terraform"
-    migration   = "aws-to-gcp"
+    runtime     = "gcp-only"
   }
 }

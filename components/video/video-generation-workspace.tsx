@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock3,
-  Film,
   Lock,
   Loader2,
   Sparkles,
@@ -13,10 +12,9 @@ import {
   Video,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { FormEvent, KeyboardEvent, RefObject } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
-import { ReferenceImageAttachment } from "@/components/generation/reference-image-attachment";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -31,7 +29,17 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
+import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
+import { getCreativeAssetEditorHref } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import {
+  persistJobIdInUrl,
+  useBackgroundJob,
+  useCancelBackgroundJob,
+  usePersistedJobIdFromUrl,
+  useRetryBackgroundJob,
+} from "@/lib/jobs/background-job-client";
+import type { Json } from "@/lib/jobs/background-jobs";
 import type { MediaAsset } from "@/lib/media/types";
 import { cn } from "@/lib/utils";
 import {
@@ -109,6 +117,7 @@ type GeneratedVideo = {
   createdAt?: string;
   duration?: string;
   id: string;
+  mediaAssetId?: string;
   prompt: string;
   ratio: VideoRatio;
   status: "Ready" | "Processing" | "Failed";
@@ -116,15 +125,75 @@ type GeneratedVideo = {
   url?: string;
 };
 
-const videoRatios: VideoRatio[] = ["9:16", "1:1", "4:5", "16:9"];
-const videoCountOptions: VideoCount[] = [1, 2, 4];
-const VIDEO_GENERATION_LOCKED = true;
 const instagramVideoFormatLabels: Record<VideoRatio, string> = {
   "9:16": "Reel",
   "1:1": "Square",
   "4:5": "Feed",
   "16:9": "Landscape",
 };
+
+type GenerateVideoResponse =
+  | {
+      jobId: string;
+      message: string;
+      ok: true;
+      videoId: string;
+    }
+  | {
+      error: string;
+      ok: false;
+    };
+
+function sleep(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function getVideoJobOutput(output: Json | null) {
+  if (!output || typeof output !== "object" || Array.isArray(output)) {
+    return null;
+  }
+
+  return {
+    url: typeof output.url === "string" ? output.url : null,
+    videoId: typeof output.videoId === "string" ? output.videoId : null,
+  };
+}
+
+function persistPendingVideoMetadata(
+  jobId: string,
+  metadata: { avatarName: string; prompt: string },
+) {
+  try {
+    window.sessionStorage.setItem(
+      `ugc-video-job:${jobId}`,
+      JSON.stringify(metadata),
+    );
+  } catch {
+    // Supabase remains authoritative; this metadata only restores local labels.
+  }
+}
+
+function getPendingVideoMetadata(jobId: string) {
+  try {
+    const rawValue = window.sessionStorage.getItem(`ugc-video-job:${jobId}`);
+
+    if (!rawValue) {
+      return null;
+    }
+
+    const value = JSON.parse(rawValue) as Record<string, unknown>;
+
+    return {
+      avatarName:
+        typeof value.avatarName === "string" ? value.avatarName : "",
+      prompt: typeof value.prompt === "string" ? value.prompt : "",
+    };
+  } catch {
+    return null;
+  }
+}
 
 export function VideoGenerationWorkspace() {
   return (
@@ -153,15 +222,15 @@ export function VideoGenerationWorkspace() {
 }
 
 export function VideoGenerationStudioPanel({
+  accessState = "locked",
   active = true,
 }: {
+  accessState?: AIStudioAccessState;
   active?: boolean;
 }) {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
   const [prompt, setPrompt] = useState("");
-  const [ratio, setRatio] = useState<VideoRatio>("9:16");
-  const [videoCount, setVideoCount] = useState<VideoCount>(2);
   const [avatarLibrary, setAvatarLibrary] = useState<AvatarLibraryItem[]>([]);
   const [personalAvatarAssets, setPersonalAvatarAssets] = useState<MediaAsset[]>([]);
   const [avatarLoading, setAvatarLoading] = useState(true);
@@ -171,10 +240,20 @@ export function VideoGenerationStudioPanel({
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
   const [generationState, setGenerationState] =
     useState<GenerationState>("empty");
-  const [generatedVideos] = useState<GeneratedVideo[]>([]);
+  const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
-  const generationTimerRef = useRef<number | null>(null);
+  const resolvedJobIdsRef = useRef(new Set<string>());
+  const submissionKeyRef = useRef<string | null>(null);
+  const persistedJobId = usePersistedJobIdFromUrl();
+  const activeJobId = submittedJobId ?? persistedJobId;
+  const activeJobQuery = useBackgroundJob(activeJobId);
+  const cancelJob = useCancelBackgroundJob();
+  const retryJob = useRetryBackgroundJob();
+  const generationLocked = accessState !== "pro";
+  const ratio: VideoRatio = "9:16";
+  const videoCount: VideoCount = 1;
 
   const personalAvatars = useMemo(
     () => personalAvatarAssets.map(mapPersonalMediaToAvatarOption),
@@ -191,15 +270,109 @@ export function VideoGenerationStudioPanel({
   const selectedAvatar = selectedAvatarId
     ? avatarOptions.find((avatar) => avatar.id === selectedAvatarId) ?? null
     : null;
-  const isGenerating = generationState === "generating";
+  const durableJob = activeJobQuery.data;
+  const durableOutput = durableJob
+    ? getVideoJobOutput(durableJob.output)
+    : null;
+  const durableNotice =
+    durableJob?.status === "cancelled"
+      ? "Video generation was cancelled."
+      : durableJob?.status === "failed"
+        ? durableJob.error?.message || "Video generation failed. You can retry it."
+        : durableJob?.status === "completed" && !durableOutput?.url
+          ? "Video generation completed without a usable output."
+          : null;
+  const effectiveGenerationState: GenerationState =
+    activeJobId && activeJobQuery.isPending
+      ? "generating"
+      : durableJob && !["cancelled", "completed", "failed"].includes(durableJob.status)
+        ? "generating"
+        : durableJob?.status === "failed" ||
+            durableJob?.status === "cancelled" ||
+            (durableJob?.status === "completed" && !durableOutput?.url)
+          ? "failed"
+          : generationState;
+  const isGenerating =
+    effectiveGenerationState === "generating";
 
   useEffect(() => {
-    return () => {
-      if (generationTimerRef.current) {
-        window.clearTimeout(generationTimerRef.current);
+    const job = activeJobQuery.data;
+
+    if (!job || resolvedJobIdsRef.current.has(job.id)) {
+      return;
+    }
+
+    if (job.status !== "completed") {
+      return;
+    }
+
+    const output = getVideoJobOutput(job.output);
+
+    if (!output?.url) {
+      return;
+    }
+
+    const completedJob = job;
+    const completedOutput = output;
+    const outputUrl = output.url;
+
+    let ignore = false;
+
+    async function restoreCompletedVideo() {
+      try {
+        const token = await getCurrentUserIdToken();
+
+        if (!token) {
+          throw new Error("Sign in to restore the generated video.");
+        }
+
+        const metadata = getPendingVideoMetadata(completedJob.id);
+        const mediaAsset = await findGeneratedVideoAsset(completedJob.id, token);
+        const videoId =
+          mediaAsset?.id ?? completedOutput.videoId ?? completedJob.id;
+        const nextVideo: GeneratedVideo = {
+          avatarName: metadata?.avatarName || "Generated presenter",
+          createdAt: "Just now",
+          id: videoId,
+          mediaAssetId: mediaAsset?.id,
+          prompt: metadata?.prompt || "Generated video",
+          ratio: "9:16",
+          status: "Ready",
+          title: getGeneratedVideoTitle(
+            metadata?.prompt || "Generated video",
+          ),
+          url: mediaAsset?.url ?? outputUrl,
+        };
+
+        if (ignore) {
+          return;
+        }
+
+        resolvedJobIdsRef.current.add(completedJob.id);
+        setGeneratedVideos((currentVideos) =>
+          currentVideos.some((video) => video.id === nextVideo.id)
+            ? currentVideos
+            : [nextVideo, ...currentVideos],
+        );
+        setSelectedVideoId(nextVideo.id);
+        setGenerationState("completed");
+        setActionNotice(null);
+      } catch (error) {
+        if (!ignore) {
+          setGenerationState("failed");
+          setActionNotice(
+            getErrorMessage(error, "Could not restore the generated video."),
+          );
+        }
       }
+    }
+
+    void restoreCompletedVideo();
+
+    return () => {
+      ignore = true;
     };
-  }, []);
+  }, [activeJobQuery.data]);
 
   useEffect(() => {
     if (!active) {
@@ -293,10 +466,12 @@ export function VideoGenerationStudioPanel({
     };
   }, [active, authLoading, user]);
 
-  function handleSubmit(event?: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
 
-    if (VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating) {
+    const trimmedPrompt = prompt.trim();
+
+    if (generationLocked || !trimmedPrompt || isGenerating) {
       return;
     }
 
@@ -309,22 +484,101 @@ export function VideoGenerationStudioPanel({
       return;
     }
 
+    if (!selectedAvatar.thumbnailUrl) {
+      setActionNotice(
+        "Choose a presenter with a preview image before generating.",
+      );
+      return;
+    }
+
     setActionNotice(null);
     setGenerationState("generating");
 
-    if (generationTimerRef.current) {
-      window.clearTimeout(generationTimerRef.current);
+    try {
+      const token = await getCurrentUserIdToken();
+
+      if (!token) {
+        throw new Error("Sign in before generating a video.");
+      }
+
+      const idempotencyKey =
+        submissionKeyRef.current ?? crypto.randomUUID();
+      submissionKeyRef.current = idempotencyKey;
+
+      const response = await fetch("/api/ai-studio/videos/generate", {
+        body: JSON.stringify({
+          avatarImageUrl: selectedAvatar.thumbnailUrl,
+          idempotencyKey,
+          prompt: trimmedPrompt,
+        }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
+        method: "POST",
+      });
+      const data = (await response.json()) as GenerateVideoResponse;
+
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          data.ok === false ? data.error : "Video generation could not start.",
+        );
+      }
+      persistPendingVideoMetadata(data.jobId, {
+        avatarName: selectedAvatar.label,
+        prompt: trimmedPrompt,
+      });
+      persistJobIdInUrl(data.jobId);
+      resolvedJobIdsRef.current.delete(data.jobId);
+      setSubmittedJobId(data.jobId);
+      submissionKeyRef.current = null;
+      setPrompt("");
+    } catch (error) {
+      console.error("Video generation failed:", error);
+      setActionNotice(
+        getErrorMessage(error, "Video generation failed. Try again."),
+      );
+      setGenerationState("failed");
+    }
+  }
+
+  async function handleCancelGeneration() {
+    if (!activeJobId || cancelJob.isPending) {
+      return;
     }
 
-    generationTimerRef.current = window.setTimeout(() => {
-      setGenerationState("failed");
-    }, 900);
+    try {
+      await cancelJob.mutateAsync(activeJobId);
+      setActionNotice(
+        "Cancellation requested. The current checkpoint will stop safely.",
+      );
+    } catch (error) {
+      setActionNotice(
+        getErrorMessage(error, "Could not cancel this video job."),
+      );
+    }
+  }
+
+  async function handleRetryGeneration() {
+    if (!activeJobId || retryJob.isPending) {
+      return;
+    }
+
+    try {
+      resolvedJobIdsRef.current.delete(activeJobId);
+      await retryJob.mutateAsync(activeJobId);
+      setGenerationState("generating");
+      setActionNotice(null);
+    } catch (error) {
+      setActionNotice(getErrorMessage(error, "Could not retry this video job."));
+    }
   }
 
   function handleTextareaKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      handleSubmit();
+      void handleSubmit();
     }
   }
 
@@ -333,7 +587,7 @@ export function VideoGenerationStudioPanel({
     const enhancement =
       "Structure notes: lead with the stated hook, keep the message concise and direct, show only the described product context, and end with one clear action.";
 
-    if (VIDEO_GENERATION_LOCKED || !trimmedPrompt) {
+    if (generationLocked || !trimmedPrompt) {
       return;
     }
 
@@ -352,7 +606,14 @@ export function VideoGenerationStudioPanel({
       return;
     }
 
-    router.push(`/edit/${encodeURIComponent(video.id)}`);
+    if (!video.mediaAssetId) {
+      setActionNotice(
+        "The generated video is still being added to Creative Assets.",
+      );
+      return;
+    }
+
+    router.push(getCreativeAssetEditorHref(video.mediaAssetId));
   }
 
   function handleUseAsHook(video: GeneratedVideo) {
@@ -367,41 +628,50 @@ export function VideoGenerationStudioPanel({
       aria-labelledby="ai-studio-videos-tab"
       hidden={!active}
       className={cn(
-        "min-h-0 flex-1 gap-4 lg:grid lg:grid-cols-[minmax(360px,0.78fr)_minmax(0,1.22fr)]",
+        "min-h-0 flex-1 flex-col gap-4",
         active ? "flex flex-col" : "hidden",
       )}
     >
-      <VideoPromptBar
-        active={active}
-        avatarErrorMessage={avatarErrorMessage}
-        avatarLoading={avatarLoading}
-        avatar={selectedAvatar}
-        globalAvatars={globalAvatars}
-        isGenerating={isGenerating}
-        personalAvatars={personalAvatars}
-        prompt={prompt}
-        ratio={ratio}
-        selectedAvatarId={selectedAvatarId}
-        videoCount={videoCount}
-        onAvatarChange={setSelectedAvatarId}
-        onEnhancePrompt={handleEnhancePrompt}
-        onPromptChange={setPrompt}
-        onRatioChange={setRatio}
-        onSubmit={handleSubmit}
-        onTextareaKeyDown={handleTextareaKeyDown}
-        onVideoCountChange={setVideoCount}
-      />
-
       <VideoResultsArea
-        actionNotice={actionNotice}
+        actionNotice={durableNotice ?? actionNotice}
         generatedVideos={generatedVideos}
-        generationState={generationState}
+        generationState={effectiveGenerationState}
         ratio={ratio}
         selectedVideoId={selectedVideoId}
         videoCount={videoCount}
         onEditVideo={handleEditVideo}
         onSelectVideo={setSelectedVideoId}
         onUseAsHook={handleUseAsHook}
+      />
+
+      <VideoPromptBar
+        active={active}
+        avatarErrorMessage={avatarErrorMessage}
+        avatarLoading={avatarLoading}
+        avatar={selectedAvatar}
+        generationLocked={generationLocked}
+        globalAvatars={globalAvatars}
+        isGenerating={isGenerating}
+        canRetry={
+          activeJobQuery.data?.status === "failed" &&
+          Boolean(activeJobQuery.data.error?.retryable)
+        }
+        personalAvatars={personalAvatars}
+        prompt={prompt}
+        selectedAvatarId={selectedAvatarId}
+        onAvatarChange={(avatarId) => {
+          submissionKeyRef.current = null;
+          setSelectedAvatarId(avatarId);
+        }}
+        onCancel={() => void handleCancelGeneration()}
+        onEnhancePrompt={handleEnhancePrompt}
+        onPromptChange={(nextPrompt) => {
+          submissionKeyRef.current = null;
+          setPrompt(nextPrompt);
+        }}
+        onRetry={() => void handleRetryGeneration()}
+        onSubmit={handleSubmit}
+        onTextareaKeyDown={handleTextareaKeyDown}
       />
     </div>
   );
@@ -446,6 +716,37 @@ async function fetchPersonalInfluencers(token: string) {
   return data.assets;
 }
 
+async function findGeneratedVideoAsset(jobId: string, token: string) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const response = await fetch("/api/media?collection=video", {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = (await response.json()) as
+      | { assets: MediaAsset[]; ok: true }
+      | { error?: string; ok?: false };
+
+    if (response.ok && data.ok === true) {
+      const asset = data.assets.find(
+        (candidate) =>
+          candidate.sourceType === "generated_video" &&
+          candidate.sourceRecordId === jobId &&
+          candidate.status === "ready",
+      );
+
+      if (asset) {
+        return asset;
+      }
+    }
+
+    if (attempt < 7) {
+      await sleep(500);
+    }
+  }
+
+  return null;
+}
+
 function mapPersonalMediaToAvatarOption(asset: MediaAsset): AvatarOption {
   return {
     id: asset.id,
@@ -459,6 +760,14 @@ function mapPersonalMediaToAvatarOption(asset: MediaAsset): AvatarOption {
     },
     thumbnailUrl: asset.thumbnailUrl,
   };
+}
+
+function getGeneratedVideoTitle(prompt: string) {
+  const singleLinePrompt = prompt.replace(/\s+/g, " ").trim();
+
+  return singleLinePrompt.length > 54
+    ? `${singleLinePrompt.slice(0, 51)}…`
+    : singleLinePrompt;
 }
 
 function getApiErrorMessage(response: unknown, fallback: string) {
@@ -500,28 +809,26 @@ function VideoResultsArea({
   videoCount: VideoCount;
 }) {
   return (
-    <section className="relative flex min-h-[440px] min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-panel)] border border-border bg-[#191919] shadow-[0_20px_55px_rgb(0_0_0_/_0.22)] lg:min-h-0">
-      <header className="relative z-10 flex items-center justify-between gap-3 border-b border-border/80 bg-card-muted/45 px-4 py-3 sm:px-5">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">
-            Reel preview
-          </h2>
-          <p className="mt-0.5 text-xs text-muted">
-            {ratio} {instagramVideoFormatLabels[ratio]} · {videoCount}{" "}
-            {videoCount === 1 ? "video" : "videos"}
-          </p>
+    <section className="relative flex min-h-[360px] min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-panel)] border border-border bg-[#191919] shadow-[0_20px_55px_rgb(0_0_0_/_0.22)] md:min-h-0">
+      <header className="relative z-10 flex min-h-12 items-center justify-between gap-3 border-b border-border/70 bg-card-muted/35 px-4 sm:px-5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Video className="size-4 shrink-0 text-primary" aria-hidden="true" />
+          <h2 className="text-sm font-semibold text-foreground">Videos</h2>
+          <span className="text-xs text-muted">
+            {ratio} {instagramVideoFormatLabels[ratio]}
+          </span>
         </div>
-        <span className="rounded-full border border-border bg-background/35 px-2.5 py-1 text-[11px] font-semibold text-muted">
+        <span className="text-xs font-medium text-muted">
           {generatedVideos.length > 0
             ? `${generatedVideos.length} generated`
-            : "No output yet"}
+            : `${videoCount} ${videoCount === 1 ? "output" : "outputs"}`}
         </span>
       </header>
 
       {generationState === "failed" ? (
         <div
           role="alert"
-          className="absolute left-4 top-20 z-20 w-fit rounded-full border border-error/35 bg-[#2A2020] px-3 py-2 text-xs font-semibold text-error shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
+          className="absolute left-4 top-16 z-20 w-fit rounded-full border border-error/35 bg-[#2A2020] px-3 py-2 text-xs font-semibold text-error shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
         >
           <div className="flex items-center gap-2">
             <AlertCircle className="size-3.5" aria-hidden="true" />
@@ -533,7 +840,7 @@ function VideoResultsArea({
       {generationState === "generating" ? (
         <div
           role="status"
-          className="absolute left-4 top-20 z-20 w-fit rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
+          className="absolute left-4 top-16 z-20 w-fit rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
         >
           <div className="flex items-center gap-2">
             <Loader2 className="size-3.5 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
@@ -546,7 +853,7 @@ function VideoResultsArea({
         <div
           role="status"
           aria-live="polite"
-          className="absolute left-4 top-20 z-20 w-fit rounded-[var(--radius-control)] border border-border bg-card px-3 py-2 text-xs font-medium text-muted shadow-card sm:left-5"
+          className="absolute left-4 top-16 z-20 w-fit rounded-[var(--radius-control)] border border-border bg-card px-3 py-2 text-xs font-medium text-muted shadow-card sm:left-5"
         >
           {actionNotice}
         </div>
@@ -576,29 +883,17 @@ function VideoResultsArea({
             className="absolute inset-0 opacity-[0.13] [background-image:linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] [background-size:32px_32px]"
           />
 
-          <div
-            className="relative flex h-[300px] max-h-[75%] min-h-[250px] w-auto max-w-[78%] flex-col overflow-hidden rounded-[22px] border border-dashed border-border-strong bg-card-muted/55 shadow-[0_26px_70px_rgb(0_0_0_/_0.3)] sm:h-[350px]"
-            style={{ aspectRatio: ratio.replace(":", " / ") }}
-          >
-            <div className="h-1 w-full bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]" />
-            <div className="flex flex-1 items-center justify-center p-5">
-              <div className="max-w-[230px]">
-                <span className="mx-auto flex size-11 items-center justify-center rounded-[12px] border border-primary/25 bg-brand-soft text-primary shadow-sm">
-                  <Video className="size-5" aria-hidden="true" />
-                </span>
-                <h3 className="mt-4 text-sm font-semibold text-foreground">
-                  Your Reel preview
-                </h3>
-                <p className="mt-1.5 text-xs leading-5 text-muted">
-                  Configure the brief and presenter now. Generated videos will
-                  appear here when creation is enabled.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between border-t border-border/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-subtle">
-              <span>{instagramVideoFormatLabels[ratio]}</span>
-              <span>{ratio}</span>
-            </div>
+          <div className="relative max-w-sm">
+            <span className="mx-auto flex size-12 items-center justify-center rounded-[14px] border border-primary/25 bg-brand-soft text-primary shadow-sm">
+              <Video className="size-5" aria-hidden="true" />
+            </span>
+            <h3 className="mt-4 text-sm font-semibold text-foreground">
+              No videos yet
+            </h3>
+            <p className="mt-1.5 text-sm leading-6 text-muted">
+              Describe your Reel and choose a presenter below. Generated videos
+              will appear here.
+            </p>
           </div>
         </div>
       )}
@@ -611,39 +906,39 @@ function VideoPromptBar({
   avatar,
   avatarErrorMessage,
   avatarLoading,
+  canRetry,
+  generationLocked,
   globalAvatars,
   isGenerating,
   onAvatarChange,
+  onCancel,
   onEnhancePrompt,
   onPromptChange,
-  onRatioChange,
+  onRetry,
   onSubmit,
   onTextareaKeyDown,
-  onVideoCountChange,
   personalAvatars,
   prompt,
-  ratio,
   selectedAvatarId,
-  videoCount,
 }: {
   active: boolean;
   avatar: AvatarOption | null;
   avatarErrorMessage: string | null;
   avatarLoading: boolean;
+  canRetry: boolean;
+  generationLocked: boolean;
   globalAvatars: AvatarOption[];
   isGenerating: boolean;
   onAvatarChange: (avatarId: string | null) => void;
+  onCancel: () => void;
   onEnhancePrompt: () => void;
   onPromptChange: (prompt: string) => void;
-  onRatioChange: (ratio: VideoRatio) => void;
+  onRetry: () => void;
   onSubmit: (event?: FormEvent<HTMLFormElement>) => void;
   onTextareaKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
-  onVideoCountChange: (count: VideoCount) => void;
   personalAvatars: AvatarOption[];
   prompt: string;
-  ratio: VideoRatio;
   selectedAvatarId: string | null;
-  videoCount: VideoCount;
 }) {
   const promptId = useId();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -660,33 +955,16 @@ function VideoPromptBar({
     }
 
     textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 112), 190)}px`;
+    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 56), 112)}px`;
   }, [active, prompt]);
 
   return (
     <form
       noValidate
       onSubmit={onSubmit}
-      className="flex min-h-[440px] w-full flex-col rounded-[var(--radius-panel)] border border-border bg-card p-4 shadow-card sm:p-5 lg:min-h-0"
+      className="mx-auto w-full max-w-[1120px] shrink-0 rounded-[var(--radius-panel)] border border-border bg-card p-3 shadow-[0_18px_48px_rgb(0_0_0_/_0.24)]"
     >
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-            Creative brief
-          </p>
-          <h2 className="mt-1 text-base font-semibold text-foreground">
-            Plan a short-form video
-          </h2>
-          <p className="mt-1 text-xs leading-5 text-muted">
-            Define the concept, framing, and on-camera presenter.
-          </p>
-        </div>
-        <span className="rounded-full border border-border bg-card-muted px-2.5 py-1 text-[11px] font-semibold text-muted">
-          Videos
-        </span>
-      </header>
-
-      <div className="mt-4 rounded-[var(--radius-card)] border border-border bg-card-muted/65 p-3 transition-[border-color,box-shadow] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
+      <div className="rounded-[var(--radius-card)] border border-border bg-card-muted/65 px-3 py-2 transition-[border-color,box-shadow] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
         <div className="flex items-center justify-between gap-3">
           <label
             htmlFor={promptId}
@@ -694,7 +972,9 @@ function VideoPromptBar({
           >
             Describe the Reel
           </label>
-          <ReferenceImageAttachment disabled={isGenerating} />
+          <span className="rounded-full border border-border bg-background/35 px-2.5 py-1 text-[11px] font-semibold text-muted">
+            Pro video
+          </span>
         </div>
 
         <textarea
@@ -707,78 +987,100 @@ function VideoPromptBar({
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
           onKeyDown={onTextareaKeyDown}
-          className="mt-2 max-h-[190px] min-h-[112px] w-full resize-none overflow-y-hidden bg-transparent text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle"
+          className="mt-1 max-h-28 min-h-14 w-full resize-none overflow-y-auto bg-transparent text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle"
           placeholder="Describe the hook, scene, movement, delivery, and closing action…"
         />
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div>
-          <p className="mb-2 text-xs font-semibold text-muted">Format</p>
-          <RatioSelector value={ratio} onChange={onRatioChange} />
-        </div>
-        <div>
-          <p className="mb-2 text-xs font-semibold text-muted">Outputs</p>
-          <VideoCountSelector
-            value={videoCount}
-            onChange={onVideoCountChange}
-          />
-        </div>
-      </div>
+      <div className="mt-3 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            aria-label="Video format: 9:16 vertical"
+            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground"
+          >
+            <span
+              aria-hidden="true"
+              className="inline-block h-5 w-3 shrink-0 rounded-[4px] border-2 border-muted"
+            />
+            9:16 vertical
+          </div>
+          <div
+            aria-label="Output count: 1 video"
+            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground"
+          >
+            <Video className="size-3.5" aria-hidden="true" />
+            1 video
+          </div>
 
-      <div className="mt-4">
-        <p className="mb-2 text-xs font-semibold text-muted">Presenter</p>
-        <AvatarPicker
-          avatarErrorMessage={avatarErrorMessage}
-          avatarLoading={avatarLoading}
-          globalAvatars={globalAvatars}
-          personalAvatars={personalAvatars}
-          selectedAvatarId={selectedAvatarId}
-          selectedAvatar={avatar}
-          onChange={onAvatarChange}
-        />
-      </div>
+          <div className="w-full sm:w-auto sm:min-w-[180px]">
+            <AvatarPicker
+              avatarErrorMessage={avatarErrorMessage}
+              avatarLoading={avatarLoading}
+              globalAvatars={globalAvatars}
+              personalAvatars={personalAvatars}
+              selectedAvatarId={selectedAvatarId}
+              selectedAvatar={avatar}
+              onChange={onAvatarChange}
+            />
+          </div>
 
-      <button
-        type="button"
-        onClick={onEnhancePrompt}
-        disabled={VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating}
-        aria-label={
-          VIDEO_GENERATION_LOCKED
-            ? "Video prompt enhancement locked"
-            : "Enhance video prompt"
-        }
-        title={
-          VIDEO_GENERATION_LOCKED ? "Prompt enhancement is locked" : undefined
-        }
-        className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-45"
-      >
-        <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-        Enhance prompt
-      </button>
-
-      <div className="mt-auto pt-4">
-        <div className="mb-3 flex items-start gap-2.5 rounded-[var(--radius-control)] border border-border bg-background/30 px-3 py-2.5 text-xs leading-5 text-muted">
-          <Lock className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
-          <p>
-            Your brief is not submitted or generated while this workspace is in
-            preview.
-          </p>
+          <button
+            type="button"
+            onClick={onEnhancePrompt}
+            disabled={generationLocked || !prompt.trim() || isGenerating}
+            aria-label={
+              generationLocked
+                ? "Video prompt enhancement locked"
+                : "Enhance video prompt"
+            }
+            title={
+              generationLocked ? "Prompt enhancement is locked" : undefined
+            }
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+            Enhance
+          </button>
         </div>
-        <button
-          type="submit"
-          disabled={VIDEO_GENERATION_LOCKED || !prompt.trim() || isGenerating || !avatar}
+
+        <div className="flex w-full items-center gap-2 xl:w-auto">
+          {isGenerating ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] border border-border px-3 text-sm font-semibold text-muted transition-colors hover:border-error/45 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              Cancel
+            </button>
+          ) : null}
+          {canRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] border border-border px-3 text-sm font-semibold text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              Retry
+            </button>
+          ) : null}
+          <button
+            type="submit"
+          disabled={
+            generationLocked ||
+            !prompt.trim() ||
+            isGenerating ||
+            !avatar?.thumbnailUrl
+          }
           aria-label={
-            VIDEO_GENERATION_LOCKED
+            generationLocked
               ? "Video generation locked"
               : "Generate video"
           }
           title={
-            VIDEO_GENERATION_LOCKED ? "Video generation is locked" : undefined
+            generationLocked ? "Video generation is locked" : undefined
           }
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-primary/35 bg-brand-soft px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/55 hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-80"
+          className="inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-primary/35 bg-brand-soft px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/55 hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-80 xl:min-w-[236px]"
         >
-          {VIDEO_GENERATION_LOCKED ? (
+          {generationLocked ? (
             <>
               <Lock className="size-4" aria-hidden="true" />
               Generation unavailable in preview
@@ -794,251 +1096,10 @@ function VideoPromptBar({
               <Sparkles className="size-4" aria-hidden="true" />
             </>
           )}
-        </button>
+          </button>
+        </div>
       </div>
     </form>
-  );
-}
-
-function RatioSelector({
-  onChange,
-  value,
-}: {
-  onChange: (ratio: VideoRatio) => void;
-  value: VideoRatio;
-}) {
-  const [open, setOpen] = useState(false);
-  const [focusedIndex, setFocusedIndex] = useState(() =>
-    videoRatios.indexOf(value),
-  );
-  const controlId = useId();
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
-
-  useFloatingMenu(open, wrapperRef, triggerRef, setOpen);
-
-  function openAndFocus(index = videoRatios.indexOf(value)) {
-    setOpen(true);
-    setFocusedIndex(index);
-    window.requestAnimationFrame(() => {
-      optionRefs.current[index]?.focus();
-    });
-  }
-
-  function selectRatio(ratio: VideoRatio) {
-    onChange(ratio);
-    setOpen(false);
-    triggerRef.current?.focus();
-  }
-
-  function handleTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      event.preventDefault();
-      openAndFocus(videoRatios.indexOf(value));
-    }
-  }
-
-  function handleOptionKeyDown(
-    event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ) {
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      event.preventDefault();
-      const direction = event.key === "ArrowUp" ? -1 : 1;
-      const nextIndex = (index + direction + videoRatios.length) % videoRatios.length;
-      setFocusedIndex(nextIndex);
-      optionRefs.current[nextIndex]?.focus();
-    }
-  }
-
-  return (
-    <div ref={wrapperRef} className="relative">
-      <div
-        id={controlId}
-        role="radiogroup"
-        aria-label="Video ratio"
-        aria-hidden={!open}
-        className={cn(
-          "absolute bottom-[calc(100%+6px)] left-0 z-30 flex w-[140px] flex-col gap-1 overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out motion-reduce:transition-none",
-          open
-            ? "max-h-44 translate-y-0 opacity-100"
-            : "pointer-events-none max-h-0 translate-y-2 opacity-0",
-        )}
-      >
-        {videoRatios.map((ratio, index) => {
-          const selected = ratio === value;
-
-          return (
-            <button
-              key={ratio}
-              ref={(node) => {
-                optionRefs.current[index] = node;
-              }}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              tabIndex={open && index === focusedIndex ? 0 : -1}
-              onClick={() => selectRatio(ratio)}
-              onKeyDown={(event) => handleOptionKeyDown(event, index)}
-              className={cn(
-                "inline-flex h-8 w-full items-center gap-2 rounded-[var(--radius-control)] border px-2.5 text-sm font-medium shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-                selected
-                  ? "border-primary/40 bg-brand-soft text-primary"
-                  : "border-border bg-card text-foreground hover:border-border-strong hover:bg-card-muted",
-              )}
-            >
-              <RatioGlyph active={selected} ratio={ratio} />
-              <span>{ratio}</span>
-              <span className="text-xs text-muted">{instagramVideoFormatLabels[ratio]}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-expanded={open}
-        aria-controls={controlId}
-        aria-haspopup="menu"
-        onClick={() => setOpen((currentOpen) => !currentOpen)}
-        onKeyDown={handleTriggerKeyDown}
-        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      >
-        <RatioGlyph ratio={value} />
-        <span>{value} {instagramVideoFormatLabels[value]}</span>
-        <ChevronDown
-          className={cn(
-            "size-4 text-muted-subtle transition-transform duration-200 motion-reduce:transition-none",
-            open && "rotate-180",
-          )}
-          aria-hidden="true"
-        />
-      </button>
-    </div>
-  );
-}
-
-function VideoCountSelector({
-  onChange,
-  value,
-}: {
-  onChange: (count: VideoCount) => void;
-  value: VideoCount;
-}) {
-  const [open, setOpen] = useState(false);
-  const [focusedIndex, setFocusedIndex] = useState(() =>
-    videoCountOptions.indexOf(value),
-  );
-  const controlId = useId();
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
-
-  useFloatingMenu(open, wrapperRef, triggerRef, setOpen);
-
-  function openAndFocus(index = videoCountOptions.indexOf(value)) {
-    setOpen(true);
-    setFocusedIndex(index);
-    window.requestAnimationFrame(() => {
-      optionRefs.current[index]?.focus();
-    });
-  }
-
-  function selectCount(count: VideoCount) {
-    onChange(count);
-    setOpen(false);
-    triggerRef.current?.focus();
-  }
-
-  function handleTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      event.preventDefault();
-      openAndFocus(videoCountOptions.indexOf(value));
-    }
-  }
-
-  function handleOptionKeyDown(
-    event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ) {
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      event.preventDefault();
-      const direction = event.key === "ArrowUp" ? -1 : 1;
-      const nextIndex =
-        (index + direction + videoCountOptions.length) % videoCountOptions.length;
-      setFocusedIndex(nextIndex);
-      optionRefs.current[nextIndex]?.focus();
-    }
-  }
-
-  return (
-    <div ref={wrapperRef} className="relative">
-      <div
-        id={controlId}
-        role="listbox"
-        aria-label="Number of videos"
-        aria-hidden={!open}
-        className={cn(
-          "absolute bottom-[calc(100%+6px)] left-0 z-30 flex w-[120px] flex-col gap-1 overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out motion-reduce:transition-none",
-          open
-            ? "max-h-32 translate-y-0 opacity-100"
-            : "pointer-events-none max-h-0 translate-y-2 opacity-0",
-        )}
-      >
-        {videoCountOptions.map((count, index) => {
-          const selected = count === value;
-
-          return (
-            <button
-              key={count}
-              ref={(node) => {
-                optionRefs.current[index] = node;
-              }}
-              type="button"
-              role="option"
-              aria-selected={selected}
-              tabIndex={open && index === focusedIndex ? 0 : -1}
-              onClick={() => selectCount(count)}
-              onKeyDown={(event) => handleOptionKeyDown(event, index)}
-              className={cn(
-                "inline-flex h-8 w-full items-center gap-2 rounded-[var(--radius-control)] border px-2.5 text-sm font-medium shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-                selected
-                  ? "border-primary/40 bg-brand-soft text-primary"
-                  : "border-border bg-card text-foreground hover:border-border-strong hover:bg-card-muted",
-              )}
-            >
-              <Film className="size-3.5" aria-hidden="true" />
-              {count} {count === 1 ? "video" : "videos"}
-            </button>
-          );
-        })}
-      </div>
-
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-expanded={open}
-        aria-controls={controlId}
-        aria-haspopup="listbox"
-        onClick={() => setOpen((currentOpen) => !currentOpen)}
-        onKeyDown={handleTriggerKeyDown}
-        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      >
-        <Film className="size-3.5" aria-hidden="true" />
-        <span>
-          {value} {value === 1 ? "video" : "videos"}
-        </span>
-        <ChevronDown
-          className={cn(
-            "size-4 text-muted-subtle transition-transform duration-200 motion-reduce:transition-none",
-            open && "rotate-180",
-          )}
-          aria-hidden="true"
-        />
-      </button>
-    </div>
   );
 }
 
@@ -1367,65 +1428,4 @@ function VideoResultCard({
       </div>
     </article>
   );
-}
-
-function RatioGlyph({
-  active,
-  ratio,
-}: {
-  active?: boolean;
-  ratio: VideoRatio;
-}) {
-  const shapeClassName: Record<VideoRatio, string> = {
-    "9:16": "h-5 w-3",
-    "1:1": "size-3.5",
-    "4:5": "h-4 w-3.5",
-    "16:9": "h-3 w-5",
-  };
-
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "inline-block shrink-0 rounded-[4px] border-2",
-        shapeClassName[ratio],
-        active ? "border-primary" : "border-muted",
-      )}
-    />
-  );
-}
-
-function useFloatingMenu(
-  open: boolean,
-  wrapperRef: RefObject<HTMLDivElement | null>,
-  triggerRef: RefObject<HTMLButtonElement | null>,
-  setOpen: (open: boolean) => void,
-) {
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    function handlePointerDown(event: PointerEvent) {
-      if (!wrapperRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open, setOpen, triggerRef, wrapperRef]);
 }

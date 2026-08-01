@@ -3,12 +3,12 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import {
-  getMissingSqsEnvVars,
+  getMissingJobQueueEnvVars,
   getQueueNameForJobType,
   sendJobMessage,
-} from "@/lib/aws/sqs";
+} from "@/lib/queues/job-queue";
 import {
-  attachAwsMessageToBackgroundJob,
+  attachQueueMessageToBackgroundJob,
   createBackgroundJob,
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
@@ -33,7 +33,7 @@ import {
   resolveOpeningRenderAsset,
   type RenderableScheduleAsset,
 } from "@/lib/scheduling/render-asset-resolution";
-import { isTrustedStorageUrl } from "@/lib/storage/s3";
+import { isTrustedStorageUrl } from "@/lib/storage/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,7 +74,7 @@ export async function POST(
       ...getMissingBackgroundJobStorageEnvVars(),
       ...getMissingMediaStorageEnvVars(),
       ...getMissingScheduleDbEnvVars(),
-      ...getMissingSqsEnvVars([COMBINATION_RENDER_JOB_TYPE]),
+      ...getMissingJobQueueEnvVars([COMBINATION_RENDER_JOB_TYPE]),
     ]),
   );
 
@@ -172,7 +172,7 @@ export async function POST(
     return jsonResponse(
       {
         ok: false,
-        message: "Both videos must be app-owned S3 or CloudFront assets.",
+        message: "Both videos must be app-owned Cloud Storage assets.",
       },
       400,
     );
@@ -305,6 +305,7 @@ export async function POST(
 
   try {
     backgroundJob = await createBackgroundJob({
+      idempotencyKey: `schedule-render:${renderId}`,
       input,
       jobType: COMBINATION_RENDER_JOB_TYPE,
       projectId,
@@ -353,18 +354,21 @@ export async function POST(
       jobId: backgroundJob.id,
       jobType: COMBINATION_RENDER_JOB_TYPE,
     });
-    const updatedJob = await attachAwsMessageToBackgroundJob({
-      awsMessageId: message.messageId,
+    const updatedJob = await attachQueueMessageToBackgroundJob({
+      queueMessageId: message.messageId,
       jobId: backgroundJob.id,
     });
 
-    return jsonResponse({
-      jobId: updatedJob.id,
-      ok: true,
-      renderId,
-      schedule: queuedSchedule,
-      status: "queued",
-    });
+    return jsonResponse(
+      {
+        jobId: updatedJob.id,
+        ok: true,
+        renderId,
+        schedule: queuedSchedule,
+        status: "queued",
+      },
+      202,
+    );
   } catch (error) {
     console.error("Failed to queue schedule combination render:", error);
 

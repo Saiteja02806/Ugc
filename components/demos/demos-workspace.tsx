@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { getContentDemoEditorHref } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
 
@@ -90,7 +91,7 @@ type VideoMetadata = {
 };
 
 type CreateUploadResponse = {
-  cloudFrontUrl: string;
+  publicUrl: string;
   demoId: string;
   key: string;
   ok: true;
@@ -248,7 +249,7 @@ export function UploadedPostsTab({
         status: "uploading",
       });
 
-      await uploadFileToS3({
+      await uploadFileToStorage({
         contentType,
         file,
         onProgress: (progress) => {
@@ -1115,7 +1116,7 @@ export function DemoCard({
             </p>
           </div>
           <Link
-            href={`/demos/${encodeURIComponent(demo.id)}`}
+            href={getContentDemoEditorHref(demo.id)}
             className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <Pencil className="size-3.5" aria-hidden="true" />
@@ -1381,7 +1382,7 @@ async function cleanupIncompleteUpload({
   }
 }
 
-function uploadFileToS3({
+function uploadFileToStorage({
   contentType,
   file,
   onProgress,
@@ -1416,7 +1417,7 @@ function uploadFileToS3({
         resolve();
       } else {
         console.error(
-          "Demo S3 upload failed",
+          "Demo Cloud Storage upload failed",
           getStorageUploadDiagnostics({
             contentType,
             responseBody: getSafeXhrResponseText(xhr),
@@ -1434,7 +1435,7 @@ function uploadFileToS3({
 
     xhr.onerror = () => {
       console.error(
-        "Demo S3 upload network error",
+        "Demo Cloud Storage upload network error",
         getStorageUploadDiagnostics({
           contentType,
           uploadUrl,
@@ -1486,7 +1487,6 @@ function getStorageUploadDiagnostics({
     statusText: xhr.statusText,
     uploadHostname: uploadTarget.hostname,
     uploadPathname: uploadTarget.pathname,
-    uploadRegion: uploadTarget.region,
   };
 }
 
@@ -1497,21 +1497,13 @@ function getUploadTargetDiagnostics(uploadUrl: string) {
     return {
       hostname: parsedUrl.hostname,
       pathname: parsedUrl.pathname,
-      region: getS3RegionFromHostname(parsedUrl.hostname),
     };
   } catch {
     return {
       hostname: "unparseable",
       pathname: "unparseable",
-      region: "unknown",
     };
   }
-}
-
-function getS3RegionFromHostname(hostname: string) {
-  const match = hostname.match(/\.s3[.-]([a-z0-9-]+)\.amazonaws\.com$/i);
-
-  return match?.[1] ?? "unknown";
 }
 
 function getSafeXhrResponseText(xhr: XMLHttpRequest) {
@@ -1524,8 +1516,8 @@ function getSafeXhrResponseText(xhr: XMLHttpRequest) {
 
 function sanitizeStorageResponse(responseText: string) {
   return responseText
-    .replace(/<AWSAccessKeyId>[^<]*<\/AWSAccessKeyId>/gi, "<AWSAccessKeyId>[redacted]</AWSAccessKeyId>")
-    .replace(/X-Amz-Credential=[^&<\s]+/gi, "X-Amz-Credential=[redacted]")
+    .replace(/X-Goog-Credential=[^&<\s]+/gi, "X-Goog-Credential=[redacted]")
+    .replace(/X-Goog-Signature=[^&<\s]+/gi, "X-Goog-Signature=[redacted]")
     .slice(0, 1200);
 }
 

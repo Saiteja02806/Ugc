@@ -1,0 +1,289 @@
+{
+  "sourceFolder": "C:/Users/chund/OneDrive/Desktop/slideshows",
+  "reviewStatus": "final_full_resolution_review",
+  "reviewMethod": "uncropped_contain_contact_sheets_plus_full_resolution_spot_checks",
+  "reviewedAt": "2026-07-28",
+  "summary": {
+    "files": 72,
+    "approvedCandidates": 61,
+    "rejected": 11
+  },
+  "approvedGroups": [
+    {
+      "runtimeCategory": "productivity-saas",
+      "broadVisualBucket": "notes-and-planning",
+      "contentTags": [
+        "productivity",
+        "planning",
+        "calendar",
+        "notes",
+        "schedule",
+        "task",
+        "deadline",
+        "workflow"
+      ],
+      "objectTags": [
+        "planner",
+        "notebook",
+        "sticky-notes",
+        "laptop",
+        "calendar"
+      ],
+      "moodTags": [
+        "organized",
+        "focused",
+        "calm"
+      ],
+      "files": [
+        "01-blank-daily-plan-coffee.jpg",
+        "01-sticky-note-planning-workspace.jpg",
+        "02-laptop-open-planner-workspace.jpg",
+        "02-minimal-home-office-sticky-notes.jpg",
+        "03-weekly-planner-minimal-desk.jpg",
+        "04-blank-sticky-notes-task-grid.jpg",
+        "05-creative-monthly-planner-workspace.jpg",
+        "05-laptop-sticky-notes-planning.jpg",
+        "06-cozy-weekly-planner-and-coffee.jpg",
+        "06-monochrome-planner-coffee-desk.jpg",
+        "07-digital-and-paper-planning-tools.jpg",
+        "07-open-monthly-calendar-pen.jpg",
+        "08-blank-spiral-notebook-coffee.jpg",
+        "09-calendar-and-modern-desk.jpg",
+        "10-busy-task-planning-desk.jpg"
+      ]
+    },
+    {
+      "runtimeCategory": "productivity-saas",
+      "broadVisualBucket": "workspace-objects",
+      "contentTags": [
+        "productivity",
+        "workspace",
+        "focus",
+        "remote-work",
+        "workflow",
+        "software",
+        "work",
+        "desk"
+      ],
+      "objectTags": [
+        "laptop",
+        "desk",
+        "coffee",
+        "workspace"
+      ],
+      "moodTags": [
+        "focused",
+        "calm"
+      ],
+      "files": [
+        "02-coffee-water-laptop-workspace.jpg",
+        "03-morning-coffee-laptop.jpg",
+        "04-laptop-and-water-break.jpg",
+        "04-minimal-coffee-laptop-table.jpg",
+        "05-top-view-coffee-laptop.jpg",
+        "06-steaming-coffee-focus.jpg",
+        "07-evening-focus-workspace.jpg",
+        "08-overhead-coffee-laptop-plant.jpg",
+        "09-coffee-notebook-laptop-desk.jpg"
+      ]
+    },
+    {
+      "runtimeCategory": "productivity-saas",
+      "broadVisualBucket": "phone-and-devices",
+      "contentTags": [
+        "productivity",
+        "workflow",
+        "planning",
+        "device",
+        "phone",
+        "app",
+        "notification",
+        "reminder"
+      ],
+      "objectTags": [
+        "phone",
+        "laptop",
+        "planner"
+      ],
+      "moodTags": [
+        "organized",
+        "focused"
+      ],
+      "files": [
+        "10-planner-laptop-phone-workflow.jpg"
+      ]
+    },
+    {
+      "runtimeCategory": "fitness-health",
+      "broadVisualBucket": "food-and-table",
+      "contentTags": [
+        "food",
+        "meal",
+        "nutrition",
+        "healthy-eating",
+        "lunch",
+        "calorie",
+        "tracking",
+        "grocery",
+        "snack"
+      ],
+      "objectTags": [
+        "meal",
+        "lunchbox",
+        "fruit",
+        "laptop"
+      ],
+      "moodTags": [
+        "fresh",
+        "practical"
+      ],
+      "files": [
+        "01-healthy-office-lunch-and-laptop.jpg",
+        "02-work-from-home-healthy-lunch.jpg",
+        "03-lunchbox-at-organized-work-desk.jpg",
+        "09-fruit-and-laptop-workspace.jpg",
+        "ChatGPT Image Jul 28, 2026, 12_13_29 PM (1).png",
+        "ChatGPT Image Jul 28, 2026, 12_13_39 PM (2).png",
+        "ChatGPT Image Jul 28, 2026, 12_13_39 PM (3).png",
+        "ChatGPT Image Jul 28, 2026, 12_13_39 PM (4).png",
+        "ChatGPT Image Jul 28, 2026, 12_13_39 PM (5).png",
+        "ChatGPT Image Jul 28, 2026, 12_13_39 PM (6).png",
+        "ChatGPT Image Jul 28, 2026, 12_13_39 PM (7).png",
+        "ChatGPT Image Jul 28, 2026, 12_13_39 PM (8).png",
+        "ChatGPT Image Jul 28, 2026, 12_13_39 PM (9).png",
+        "ChatGPT Image Jul 28, 2026, 12_13_39 PM (10).png"
+      ]
+    },
+    {
+      "runtimeCategory": "fitness-health",
+      "broadVisualBucket": "fitness-wellness-objects",
+      "contentTags": [
+        "fitness",
+        "wellness",
+        "nutrition",
+        "healthy-habit",
+        "workout",
+        "gym",
+        "hydrate",
+        "hydration",
+        "water",
+        "recovery",
+        "habit",
+        "routine",
+        "meal"
+      ],
+      "objectTags": [
+        "fitness-equipment",
+        "meal",
+        "water-bottle",
+        "yoga-mat"
+      ],
+      "moodTags": [
+        "fresh",
+        "active",
+        "calm"
+      ],
+      "files": [
+        "04-yoga-mat-laptop-calm-workspace.jpg",
+        "ChatGPT Image Jul 28, 2026, 12_14_16 PM (1).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_16 PM (2).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_16 PM (3).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_16 PM (4).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_16 PM (5).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_16 PM (6).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_25 PM (1).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_26 PM (2).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_26 PM (3).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_26 PM (4).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_26 PM (5).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_26 PM (6).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_36 PM (1).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_36 PM (2).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_36 PM (3).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_36 PM (4).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_36 PM (5).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_36 PM (6).png",
+        "ChatGPT Image Jul 28, 2026, 12_14_36 PM (7).png"
+      ]
+    },
+    {
+      "runtimeCategory": "shared",
+      "assetScope": "shared",
+      "broadVisualBucket": "home-lifestyle",
+      "usableProfiles": [
+        "productivity-saas",
+        "fitness-health",
+        "wellness",
+        "beauty-skincare",
+        "generic-business"
+      ],
+      "contentTags": [
+        "home",
+        "routine",
+        "remote-work",
+        "calm",
+        "evening"
+      ],
+      "objectTags": [
+        "home-office",
+        "laptop",
+        "plant",
+        "window"
+      ],
+      "moodTags": [
+        "calm",
+        "serene"
+      ],
+      "files": [
+        "09-calm-remote-work-with-ocean-view.jpg",
+        "09-serene-home-office.jpg"
+      ]
+    }
+  ],
+  "rejected": [
+    {
+      "file": "01-home-office-movement-break.jpg",
+      "reason": "visible_person"
+    },
+    {
+      "file": "02-office-stretching-break.jpg",
+      "reason": "visible_person"
+    },
+    {
+      "file": "03-blank-notebook-coffee-writing.jpg",
+      "reason": "visible_hand_and_arm"
+    },
+    {
+      "file": "03-ergonomic-standing-desk-workspace.jpg",
+      "reason": "visible_person"
+    },
+    {
+      "file": "05-breakfast-and-focused-home-work.jpg",
+      "reason": "visible_person"
+    },
+    {
+      "file": "05-laptop-work-on-yoga-mat.jpg",
+      "reason": "visible_person"
+    },
+    {
+      "file": "06-healthy-lunch-and-hydration-while-working.jpg",
+      "reason": "visible_person"
+    },
+    {
+      "file": "07-online-yoga-and-remote-wellness.jpg",
+      "reason": "visible_person_on_laptop_screen"
+    },
+    {
+      "file": "10-hourglass-time-management.jpg",
+      "reason": "blurred_person_in_background"
+    },
+    {
+      "file": "10-meditation-break-at-home.jpg",
+      "reason": "visible_person"
+    },
+    {
+      "file": "10-yoga-mat-laptop-work-life-balance.jpg",
+      "reason": "visible_person"
+    }
+  ]
+}

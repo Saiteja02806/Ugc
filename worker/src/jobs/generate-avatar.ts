@@ -1,8 +1,13 @@
 import { buildAvatarPrompt, type AvatarPromptInput } from "../lib/avatar-prompt.js";
+import {
+  createGenerationRequestFingerprint,
+  persistProviderSubmissionFailure,
+  ProviderSubmissionUncertainError,
+} from "../lib/generation-provider.js";
 import { generateOpenAiImageBuffer } from "../lib/openai-image.js";
-import { uploadBufferToS3 } from "../lib/s3.js";
+import { getStoredObject, uploadBufferToStorage } from "../lib/storage.js";
 import type { BackgroundJobRow, Json } from "../types.js";
-import type { WorkerJobOutput } from "./index.js";
+import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 
 const MAX_INPUT_LENGTH = 240;
 
@@ -40,22 +45,89 @@ function getInput(job: BackgroundJobRow): GenerateAvatarInput {
 
 export async function runGenerateAvatarJob(
   job: BackgroundJobRow,
+  context: WorkerJobContext,
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
-  const imageBuffer = await generateOpenAiImageBuffer(
-    buildAvatarPrompt(input.input),
-  );
-  const uploaded = await uploadBufferToS3({
-    buffer: imageBuffer,
-    cacheControl: "public, max-age=31536000, immutable",
-    contentType: "image/png",
-    key: `avatars/base/${input.userId}/${input.projectId}/${input.generationId}.png`,
+  const outputKey = `avatars/base/${input.userId}/${input.projectId}/${input.generationId}.png`;
+  const existingOutput = await getStoredObject(outputKey);
+
+  if (existingOutput) {
+    return buildOutput(input.generationId, existingOutput);
+  }
+
+  await context.checkpoint({
+    stage: "waiting_for_avatar_provider",
+    status: "waiting_external_service",
+  });
+  const prompt = buildAvatarPrompt(input.input);
+  const operationKey = "openai-avatar";
+  const requestFingerprint = createGenerationRequestFingerprint({
+    generationId: input.generationId,
+    outputKey,
+    prompt,
+  });
+  const reservation = await context.store.reserveGenerationProviderOperation({
+    jobId: job.id,
+    operationKey,
+    provider: "openai",
+    requestFingerprint,
   });
 
+  if (!reservation.shouldSubmit) {
+    throw new ProviderSubmissionUncertainError();
+  }
+
+  let generated;
+
+  try {
+    generated = await generateOpenAiImageBuffer(prompt);
+  } catch (error) {
+    return persistProviderSubmissionFailure({
+      error,
+      jobId: job.id,
+      operationKey,
+      store: context.store,
+    });
+  }
+
+  await context.store.markGenerationProviderSucceeded({
+    jobId: job.id,
+    metadata: { model: generated.model },
+    operationKey,
+    providerOperationId: generated.requestId ?? undefined,
+  });
+  await context.checkpoint({
+    progress: 90,
+    stage: "uploading_avatar",
+    status: "uploading_output",
+  });
+  const uploaded = await uploadBufferToStorage({
+    buffer: generated.buffer,
+    cacheControl: "public, max-age=31536000, immutable",
+    contentType: "image/png",
+    key: outputKey,
+  });
+
+  await context.store.markGenerationOutputPersisted({
+    jobId: job.id,
+    metadata: { model: generated.model },
+    operationKey,
+    outputReference: uploaded.key,
+    outputUrl: uploaded.url,
+  });
+
+  return buildOutput(input.generationId, uploaded);
+}
+
+function buildOutput(
+  generationId: string,
+  uploaded: { key: string; url: string },
+) {
   return {
-    generationId: input.generationId,
+    generationId,
     key: uploaded.key,
     ok: true,
+    provider: "openai",
     url: uploaded.url,
   };
 }

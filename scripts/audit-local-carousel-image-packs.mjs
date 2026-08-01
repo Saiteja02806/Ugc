@@ -908,11 +908,14 @@ function createStableGroupKey(group) {
 
 function toFileReference(image) {
   return {
+    averageHash: image.averageHash,
     categorySlug: image.categorySlug,
     fileName: image.fileName,
     height: image.height,
+    perceptualHash: image.perceptualHash,
     relativePath: image.relativePath,
     rootPath: image.rootPath,
+    sha256Hash: image.sha256Hash,
     topFolder: image.topFolder,
     width: image.width,
   };

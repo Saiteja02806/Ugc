@@ -1,32 +1,101 @@
+import { randomUUID } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
-import { analyzeWebsiteBusiness } from "@/lib/website-analysis/analyze-business";
-import { WebsiteAnalysisError } from "@/lib/website-analysis/errors";
-import { scrapeWebsitePages } from "@/lib/website-analysis/firecrawl";
-import {
-  getMissingWebsiteAnalysisEnvVars,
-  insertWebsiteAnalysis,
-} from "@/lib/website-analysis/supabase";
-import {
-  buildImportantPageUrls,
-  validateWebsiteUrl,
-} from "@/lib/website-analysis/url";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
 } from "@/lib/firebase/server-auth";
+import { getPublicBackgroundJob } from "@/lib/jobs/background-job-contract";
+import { getMissingBackgroundJobStorageEnvVars } from "@/lib/jobs/background-jobs";
+import { getMissingBackgroundJobCloudTasksEnvVars } from "@/lib/jobs/gcp-cloud-tasks";
+import { enqueueWebsiteAnalysisJob } from "@/lib/website-analysis/jobs";
 
 export const runtime = "nodejs";
 
 const DEFAULT_PROJECT_ID = "test-project-001";
 
 type AnalyzeWebsiteBody = {
+  idempotencyKey?: unknown;
   projectId?: unknown;
   websiteUrl?: unknown;
 };
 
-function getString(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
+export async function POST(request: Request) {
+  let userId: string;
+
+  try {
+    userId = (await requireFirebaseUser(request)).uid;
+  } catch (error) {
+    if (error instanceof FirebaseAuthRequestError) {
+      return errorResponse(
+        error.status === 401
+          ? "Sign in before analyzing a website."
+          : error.message,
+        error.status,
+      );
+    }
+
+    console.error("Failed to verify website analysis requester:", error);
+    return errorResponse("Could not verify your sign-in session.", 500);
+  }
+
+  const body = await readBody(request);
+
+  if (!body) {
+    return errorResponse("Send website analysis details as JSON.", 400);
+  }
+
+  const websiteUrl = getString(body.websiteUrl, 2_048);
+
+  if (!websiteUrl) {
+    return errorResponse("Website URL is required.", 400);
+  }
+
+  const missing = Array.from(
+    new Set([
+      ...getMissingBackgroundJobStorageEnvVars(),
+      ...getMissingBackgroundJobCloudTasksEnvVars(["media_analysis"]),
+    ]),
+  );
+
+  if (missing.length > 0) {
+    return errorResponse(
+      `Website analysis jobs are not configured. Add ${missing.join(", ")}.`,
+      501,
+    );
+  }
+
+  const idempotencyKey =
+    getString(request.headers.get("Idempotency-Key"), 200) ||
+    getString(body.idempotencyKey, 200) ||
+    randomUUID();
+  const projectId =
+    getString(body.projectId, 120) || DEFAULT_PROJECT_ID;
+
+  try {
+    const job = await enqueueWebsiteAnalysisJob({
+      idempotencyKey,
+      projectId,
+      userId,
+      websiteUrl,
+    });
+
+    return NextResponse.json(
+      {
+        job: getPublicBackgroundJob(job),
+        jobId: job.id,
+        ok: true,
+      },
+      {
+        headers: { "Cache-Control": "no-store" },
+        status: job.status === "completed" ? 200 : 202,
+      },
+    );
+  } catch (error) {
+    console.error("Could not queue website analysis:", error);
+    return errorResponse("Could not start the website analysis.", 502);
+  }
 }
 
 async function readBody(request: Request) {
@@ -37,84 +106,13 @@ async function readBody(request: Request) {
   }
 }
 
-function errorResponse(message: string, status: number) {
-  return NextResponse.json(
-    {
-      ok: false,
-      message,
-    },
-    { status },
-  );
+function getString(value: unknown, maxLength: number) {
+  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
-export async function POST(request: Request) {
-  let userId: string;
-
-  try {
-    userId = (await requireFirebaseUser(request)).uid;
-  } catch (error) {
-    if (error instanceof FirebaseAuthRequestError) {
-      return errorResponse(
-        error.status === 401 ? "Sign in before analyzing a website." : error.message,
-        error.status,
-      );
-    }
-
-    console.error("Failed to verify website analysis requester:", error);
-    return errorResponse("Could not verify your sign-in session.", 500);
-  }
-
-  const missingEnvVars = getMissingWebsiteAnalysisEnvVars();
-
-  if (missingEnvVars.length > 0) {
-    return errorResponse(
-      `Website analysis is not configured. Add ${missingEnvVars.join(
-        ", ",
-      )} in server environment variables.`,
-      501,
-    );
-  }
-
-  const body = await readBody(request);
-
-  if (!body) {
-    return errorResponse("Send website analysis details as JSON.", 400);
-  }
-
-  const projectId = getString(body.projectId) || DEFAULT_PROJECT_ID;
-
-  try {
-    const website = await validateWebsiteUrl(body.websiteUrl);
-    const importantPageUrls = buildImportantPageUrls(website.origin);
-    const pages = await scrapeWebsitePages({
-      homepageUrl: website.url,
-      importantPageUrls,
-    });
-    const analysis = await analyzeWebsiteBusiness({
-      normalizedDomain: website.normalizedDomain,
-      pages,
-      websiteUrl: website.url,
-    });
-    const analysisId = await insertWebsiteAnalysis({
-      analysis,
-      normalizedDomain: website.normalizedDomain,
-      projectId,
-      userId,
-      websiteUrl: website.url,
-    });
-
-    return NextResponse.json({
-      ok: true,
-      analysisId,
-      normalizedDomain: website.normalizedDomain,
-      analysis,
-    });
-  } catch (error) {
-    if (error instanceof WebsiteAnalysisError) {
-      return errorResponse(error.message, error.status);
-    }
-
-    console.error("Website analysis failed:", error);
-    return errorResponse("Could not analyze the website right now.", 500);
-  }
+function errorResponse(message: string, status: number) {
+  return NextResponse.json(
+    { message, ok: false },
+    { headers: { "Cache-Control": "no-store" }, status },
+  );
 }

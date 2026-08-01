@@ -1,6 +1,6 @@
 import { getErrorMessage, logger } from "../logger.js";
 import {
-  renderEditedVideoToS3,
+  renderEditedVideoToStorage,
   type RenderEditVideoPayload,
 } from "../lib/render-engine.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
@@ -30,7 +30,7 @@ export async function runRenderEditVideoJob(
   await context.store.markEditRenderRendering(payload.renderId);
 
   try {
-    const result = await renderEditedVideoToS3(payload);
+    const result = await renderEditedVideoToStorage(payload);
 
     await context.store.markEditRenderCompleted({
       key: result.key,

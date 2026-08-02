@@ -16,7 +16,7 @@ worker_image_uri = ""
 worker_service_account_email = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
 service_name                 = "ugc-ai-generation-worker"
 queue_name                   = "ai-generation"
-worker_job_types             = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_generation,media_analysis,analytics_sync"
+worker_job_types             = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_generation,media_analysis,analytics_sync,test_worker_job"
 
 worker_visibility_timeout_seconds = 1800
 min_instance_count                = 1

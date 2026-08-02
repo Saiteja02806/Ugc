@@ -53,6 +53,15 @@ test("the Saved tab reuses owner-scoped existing stores", () => {
   assert.match(wallLibrary, /\/api\/trending\/wall-text\/drafts/);
 });
 
+test("saved content waits for Firebase to restore the signed-in user", () => {
+  const authSource = readProjectFile("lib/firebase/auth.ts");
+
+  assert.match(
+    authSource,
+    /export async function getCurrentUserIdToken\(\)[\s\S]*await auth\.authStateReady\(\)/,
+  );
+});
+
 test("Trending save confirmations point to Creative Assets", () => {
   assert.equal(
     countMatches(trendingWorkspace, /actionHref: "\/avatars\?tab=saved"/g),

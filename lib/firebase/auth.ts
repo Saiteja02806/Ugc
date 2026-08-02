@@ -157,6 +157,8 @@ export async function getCurrentUserIdToken() {
     return e2eTestToken;
   }
 
+  await auth.authStateReady();
+
   return auth.currentUser ? getIdToken(auth.currentUser) : null;
 }
 

@@ -6,17 +6,9 @@ import Link from "next/link";
 import "./globals.css";
 
 const globalErrorThemeScript = `(() => {
-  try {
-    const savedTheme = window.localStorage.getItem("ugc-pilot-theme");
-    const theme = savedTheme === "dark" ? "dark" : "light";
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.style.colorScheme = theme;
-  } catch {
-    document.documentElement.classList.remove("dark");
-    document.documentElement.dataset.theme = "light";
-    document.documentElement.style.colorScheme = "light";
-  }
+  document.documentElement.classList.add("dark");
+  document.documentElement.dataset.theme = "dark";
+  document.documentElement.style.colorScheme = "dark";
 })();`;
 
 export default function GlobalError({

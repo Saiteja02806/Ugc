@@ -6,6 +6,15 @@ export function isThemePreference(value: unknown): value is ThemePreference {
   return value === "light" || value === "dark";
 }
 
-export function resolveInitialTheme(value: unknown): ThemePreference {
+export function isProductionThemeLocked(value: unknown) {
+  return value === "production";
+}
+
+export function resolveInitialTheme(
+  value: unknown,
+  forceDark = false,
+): ThemePreference {
+  if (forceDark) return "dark";
+
   return isThemePreference(value) ? value : "light";
 }

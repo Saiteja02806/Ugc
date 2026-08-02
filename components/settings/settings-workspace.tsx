@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 export function SettingsWorkspace() {
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const { setTheme, theme } = useTheme();
+  const { locked: themeLocked, setTheme, theme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
@@ -166,7 +166,11 @@ export function SettingsWorkspace() {
           </SettingsSection>
 
           <SettingsSection
-            description="Choose how UGC Pilot looks on this device. New users always start in light mode."
+            description={
+              themeLocked
+                ? "UGC Pilot uses one consistent dark appearance in production."
+                : "Choose how UGC Pilot looks on this device. New users always start in light mode."
+            }
             icon={<Palette className="size-5" aria-hidden="true" />}
             title="Appearance"
           >
@@ -184,11 +188,14 @@ export function SettingsWorkspace() {
                     <p className="text-sm font-bold text-foreground-strong">
                       {theme === "light" ? "Light theme" : "Dark theme"}
                     </p>
-                    <Badge variant="secondary">Saved on this device</Badge>
+                    <Badge variant="secondary">
+                      {themeLocked ? "Production theme" : "Saved on this device"}
+                    </Badge>
                   </div>
                   <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-                    Your choice overrides the product default and is applied
-                    before the page appears.
+                    {themeLocked
+                      ? "Dark theme is fixed in production to keep the product appearance consistent."
+                      : "Your choice overrides the product default and is applied before the page appears."}
                   </p>
                 </div>
               </div>
@@ -198,6 +205,7 @@ export function SettingsWorkspace() {
                 size="lg"
                 aria-pressed={theme === "dark"}
                 onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                disabled={themeLocked}
                 className="w-full sm:w-auto"
               >
                 {theme === "light" ? (
@@ -205,7 +213,9 @@ export function SettingsWorkspace() {
                 ) : (
                   <Sun data-icon="inline-start" aria-hidden="true" />
                 )}
-                Use {theme === "light" ? "dark" : "light"} theme
+                {themeLocked
+                  ? "Dark theme locked"
+                  : `Use ${theme === "light" ? "dark" : "light"} theme`}
               </Button>
             </div>
           </SettingsSection>

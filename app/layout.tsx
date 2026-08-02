@@ -4,7 +4,10 @@ import localFont from "next/font/local";
 import { AuthProvider } from "@/contexts/auth-context";
 import { JobQueryProvider } from "@/components/providers/job-query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { THEME_STORAGE_KEY } from "@/lib/theme";
+import {
+  isProductionThemeLocked,
+  THEME_STORAGE_KEY,
+} from "@/lib/theme";
 
 import "./globals.css";
 
@@ -57,18 +60,22 @@ export const metadata: Metadata = {
     "Create Instagram Reel hooks, text-led videos, carousel posts, and approved publishing workflows in one focused workspace.",
 };
 
+const forceDarkTheme = isProductionThemeLocked(process.env.VERCEL_ENV);
+
 const themeInitializationScript = `(() => {
+  const forceDark = ${JSON.stringify(forceDarkTheme)};
   try {
     const savedTheme = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
-    const theme = savedTheme === "dark" ? "dark" : "light";
+    const theme = forceDark || savedTheme === "dark" ? "dark" : "light";
     const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
     root.dataset.theme = theme;
     root.style.colorScheme = theme;
   } catch {
-    document.documentElement.classList.remove("dark");
-    document.documentElement.dataset.theme = "light";
-    document.documentElement.style.colorScheme = "light";
+    const theme = forceDark ? "dark" : "light";
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
   }
 })();`;
 
@@ -80,7 +87,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} h-full`}
+      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} h-full${forceDarkTheme ? " dark" : ""}`}
+      data-theme={forceDarkTheme ? "dark" : undefined}
+      style={forceDarkTheme ? { colorScheme: "dark" } : undefined}
       suppressHydrationWarning
     >
       <head>
@@ -92,7 +101,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.className} min-h-full bg-background text-foreground antialiased`}
       >
-        <ThemeProvider>
+        <ThemeProvider forceDark={forceDarkTheme}>
           <AuthProvider>
             <JobQueryProvider>{children}</JobQueryProvider>
           </AuthProvider>

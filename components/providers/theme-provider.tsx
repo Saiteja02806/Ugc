@@ -16,6 +16,7 @@ import {
 } from "@/lib/theme";
 
 type ThemeContextValue = {
+  locked: boolean;
   setTheme: (theme: ThemePreference) => void;
   theme: ThemePreference;
 };
@@ -31,20 +32,23 @@ function applyTheme(theme: ThemePreference) {
   root.style.colorScheme = theme;
 }
 
-function getThemeSnapshot(): ThemePreference {
-  return resolveInitialTheme(document.documentElement.dataset.theme);
+function getThemeSnapshot(forceDark: boolean): ThemePreference {
+  return resolveInitialTheme(
+    document.documentElement.dataset.theme,
+    forceDark,
+  );
 }
 
-function getServerThemeSnapshot(): ThemePreference {
-  return "light";
+function getServerThemeSnapshot(forceDark: boolean): ThemePreference {
+  return forceDark ? "dark" : "light";
 }
 
-function subscribeToTheme(onStoreChange: () => void) {
+function subscribeToTheme(onStoreChange: () => void, forceDark: boolean) {
   const handleThemeChange = () => onStoreChange();
   const handleStorage = (event: StorageEvent) => {
     if (event.key !== THEME_STORAGE_KEY) return;
 
-    applyTheme(resolveInitialTheme(event.newValue));
+    applyTheme(resolveInitialTheme(event.newValue, forceDark));
     onStoreChange();
   };
 
@@ -57,26 +61,50 @@ function subscribeToTheme(onStoreChange: () => void) {
   };
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export function ThemeProvider({
+  children,
+  forceDark = false,
+}: {
+  children: ReactNode;
+  forceDark?: boolean;
+}) {
+  const subscribe = useCallback(
+    (onStoreChange: () => void) =>
+      subscribeToTheme(onStoreChange, forceDark),
+    [forceDark],
+  );
+  const getSnapshot = useCallback(
+    () => getThemeSnapshot(forceDark),
+    [forceDark],
+  );
+  const getServerSnapshot = useCallback(
+    () => getServerThemeSnapshot(forceDark),
+    [forceDark],
+  );
   const theme = useSyncExternalStore(
-    subscribeToTheme,
-    getThemeSnapshot,
-    getServerThemeSnapshot,
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
   );
 
   const setTheme = useCallback((nextTheme: ThemePreference) => {
-    applyTheme(nextTheme);
+    const resolvedTheme = resolveInitialTheme(nextTheme, forceDark);
+
+    applyTheme(resolvedTheme);
 
     try {
-      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+      window.localStorage.setItem(THEME_STORAGE_KEY, resolvedTheme);
     } catch {
       // The visual preference still applies for this session when storage is blocked.
     }
 
     window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
-  }, []);
+  }, [forceDark]);
 
-  const value = useMemo(() => ({ setTheme, theme }), [setTheme, theme]);
+  const value = useMemo(
+    () => ({ locked: forceDark, setTheme, theme }),
+    [forceDark, setTheme, theme],
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

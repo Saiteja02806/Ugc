@@ -27,6 +27,10 @@ import {
   type EditableVideoRatio,
   type EditableVideoStatus,
 } from "@/lib/edit/video-library";
+import {
+  getCurrentDemoRenderedVideoUrl,
+  type DemoDisplayStatus,
+} from "@/lib/demo/demo-display";
 import { CONTENT_REELS_HREF } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
@@ -34,14 +38,7 @@ import { cn } from "@/lib/utils";
 const DEFAULT_PROJECT_ID = "test-project-001";
 
 type DemoRatio = "9:16" | "1:1" | "4:5" | "16:9" | "other";
-type DemoStatus =
-  | "uploading"
-  | "processing"
-  | "ready"
-  | "draft"
-  | "rendering"
-  | "rendered"
-  | "failed";
+type DemoStatus = DemoDisplayStatus;
 
 type DemoVideo = {
   created_at: string;
@@ -135,6 +132,10 @@ export function DemoEditorShell({
   );
   const isRendering = renderState === "starting" || renderState === "rendering";
   const canRender = Boolean(demo?.source_video_url) && !isRendering && saveState !== "saving";
+  const currentRenderedVideoUrl =
+    renderState === "rendered" && demo
+      ? getCurrentDemoRenderedVideoUrl(demo)
+      : null;
 
   const loadDemo = useCallback(async () => {
     setErrorMessage(null);
@@ -168,7 +169,9 @@ export function DemoEditorShell({
       setTitle(data.demo.title);
       setDraft(null);
       setEditorResetKey((current) => current + 1);
-      setRenderState(data.demo.rendered_video_url ? "rendered" : "idle");
+      setRenderState(
+        getCurrentDemoRenderedVideoUrl(data.demo) ? "rendered" : "idle",
+      );
       setRenderMessage(null);
       setSaveState("idle");
       setSaveMessage(null);
@@ -188,6 +191,14 @@ export function DemoEditorShell({
   }, [loadDemo]);
 
   function handleDraftChange(nextDraft: FocusedVideoEditorDraftState) {
+    const differsFromSavedDraft = Boolean(
+      demo &&
+        !areDraftInputsEqual(
+          normalizeDraftForSave(nextDraft),
+          getSavedDraftInput(demo),
+        ),
+    );
+
     setDraft(nextDraft);
 
     if (saveState === "saved") {
@@ -195,7 +206,7 @@ export function DemoEditorShell({
       setSaveMessage(null);
     }
 
-    if (renderState === "rendered") {
+    if (renderState === "rendered" && differsFromSavedDraft) {
       setRenderState("idle");
       setRenderMessage(null);
     }
@@ -232,7 +243,9 @@ export function DemoEditorShell({
     setTitle(demo.title);
     setDraft(null);
     setEditorResetKey((current) => current + 1);
-    setRenderState(demo.rendered_video_url ? "rendered" : "idle");
+    setRenderState(
+      getCurrentDemoRenderedVideoUrl(demo) ? "rendered" : "idle",
+    );
     setRenderMessage(null);
     setSaveState("idle");
     setSaveMessage(null);
@@ -299,7 +312,11 @@ export function DemoEditorShell({
     setSaveMessage("Saving draft…");
 
     try {
-      await persistDemoDraft(demo, draft);
+      const saved = await persistDemoDraft(demo, draft);
+      setRenderState(
+        getCurrentDemoRenderedVideoUrl(saved.demo) ? "rendered" : "idle",
+      );
+      setRenderMessage(null);
       setSaveState("saved");
       setSaveMessage("Draft saved to your demo library.");
     } catch (error) {
@@ -392,9 +409,9 @@ export function DemoEditorShell({
       />
 
       <div className="mx-auto flex w-full max-w-[1360px] flex-1 flex-col pb-8 pt-4">
-        {renderMessage || demo?.rendered_video_url ? (
+        {renderMessage || currentRenderedVideoUrl ? (
           <DemoRenderStatusNotice
-            renderedVideoUrl={demo?.rendered_video_url ?? null}
+            renderedVideoUrl={currentRenderedVideoUrl}
             renderMessage={renderMessage}
             renderState={renderState}
           />
@@ -544,7 +561,7 @@ function DemoEditorTopBar({
           ) : (
             <Download className="size-4" aria-hidden="true" />
           )}
-          {getRenderButtonLabel(renderState, demo)}
+          {getRenderButtonLabel(renderState)}
         </button>
         <button
           type="button"
@@ -683,7 +700,7 @@ function UnsavedChangesDialog({
 }) {
   return (
     <div
-      className="fixed inset-0 z-modal flex items-center justify-center bg-black/45 px-4"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-overlay px-4"
       role="presentation"
     >
       <section
@@ -722,18 +739,18 @@ function UnsavedChangesDialog({
 function EditorLoadingState() {
   return (
     <section className="grid min-h-[560px] flex-1 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-[344px_minmax(0,1fr)]">
-      <div className="border-b border-border bg-[#f5f5f6] p-6 lg:border-b-0 lg:border-r">
-        <div className="mx-auto aspect-[9/16] w-full max-w-[280px] animate-pulse rounded-md bg-[#dedfe2] motion-reduce:animate-none" />
+      <div className="border-b border-border bg-card-muted p-6 lg:border-b-0 lg:border-r">
+        <div className="mx-auto aspect-[9/16] w-full max-w-[280px] animate-pulse rounded-md bg-border motion-reduce:animate-none" />
       </div>
       <div className="space-y-8 p-6">
         <div className="space-y-3">
-          <div className="h-4 w-24 animate-pulse rounded bg-[#dedfe2] motion-reduce:animate-none" />
-          <div className="h-16 animate-pulse rounded-md bg-[#eff0f1] motion-reduce:animate-none" />
-          <div className="h-10 animate-pulse rounded-md bg-[#eff0f1] motion-reduce:animate-none" />
+          <div className="h-4 w-24 animate-pulse rounded bg-border motion-reduce:animate-none" />
+          <div className="h-16 animate-pulse rounded-md bg-card-muted motion-reduce:animate-none" />
+          <div className="h-10 animate-pulse rounded-md bg-card-muted motion-reduce:animate-none" />
         </div>
         <div className="space-y-3 border-t border-border pt-6">
-          <div className="h-4 w-32 animate-pulse rounded bg-[#dedfe2] motion-reduce:animate-none" />
-          <div className="h-20 animate-pulse rounded-md bg-[#eff0f1] motion-reduce:animate-none" />
+          <div className="h-4 w-32 animate-pulse rounded bg-border motion-reduce:animate-none" />
+          <div className="h-20 animate-pulse rounded-md bg-card-muted motion-reduce:animate-none" />
         </div>
         <div className="flex items-center gap-2 text-sm font-medium text-muted">
           <Loader2 className="size-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
@@ -795,7 +812,7 @@ function mapDemoToEditableVideo(demo: DemoVideo): EditableVideo {
     id: demo.id,
     projectId: demo.project_id,
     ratio: mapDemoRatioToEditableRatio(demo),
-    renderedVideoUrl: demo.rendered_video_url,
+    renderedVideoUrl: getCurrentDemoRenderedVideoUrl(demo),
     source: "demo",
     status: mapDemoStatusToEditableStatus(demo.status),
     thumbnailUrl: demo.thumbnail_url,
@@ -949,7 +966,7 @@ function getDemoStatusLabel(status: DemoStatus) {
   return labels[status];
 }
 
-function getRenderButtonLabel(renderState: RenderState, demo: DemoVideo | null) {
+function getRenderButtonLabel(renderState: RenderState) {
   if (renderState === "starting") {
     return "Preparing";
   }
@@ -958,7 +975,7 @@ function getRenderButtonLabel(renderState: RenderState, demo: DemoVideo | null) 
     return "Exporting";
   }
 
-  if (renderState === "rendered" || demo?.rendered_video_url) {
+  if (renderState === "rendered") {
     return "Export again";
   }
 

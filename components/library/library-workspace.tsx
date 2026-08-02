@@ -196,7 +196,7 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
           className="min-w-0 pt-1"
         >
           {activeTab === "content" ? (
-            <LibraryContentTab onShowPosts={() => selectTab("posts")} />
+            <CarouselLibraryTab onShowPosts={() => selectTab("posts")} />
           ) : (
             <UploadedPostsTab embeddedInLibrary />
           )}
@@ -206,7 +206,11 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
   );
 }
 
-function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
+export function CarouselLibraryTab({
+  onShowPosts,
+}: {
+  onShowPosts?: () => void;
+} = {}) {
   const [serverItems, setServerItems] = useState<LibraryCarouselItem[]>([]);
   const [browserItems, setBrowserItems] = useState<LibraryCarouselItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -533,7 +537,7 @@ function LibraryContentTab({ onShowPosts }: { onShowPosts: () => void }) {
 function LibraryContentEmptyState({
   onShowPosts,
 }: {
-  onShowPosts: () => void;
+  onShowPosts?: () => void;
 }) {
   return (
     <div className="grid min-h-[330px] items-center gap-8 rounded-panel border border-dashed border-border-strong bg-card px-5 py-8 sm:grid-cols-[minmax(0,1fr)_280px] sm:px-8">
@@ -557,14 +561,16 @@ function LibraryContentEmptyState({
             Explore carousel ideas
             <ArrowRight className="size-4" aria-hidden="true" />
           </Link>
-          <button
-            type="button"
-            onClick={onShowPosts}
-            className={secondaryActionClassName}
-          >
-            <FileVideo className="size-4" aria-hidden="true" />
-            View demo footage
-          </button>
+          {onShowPosts ? (
+            <button
+              type="button"
+              onClick={onShowPosts}
+              className={secondaryActionClassName}
+            >
+              <FileVideo className="size-4" aria-hidden="true" />
+              View demo footage
+            </button>
+          ) : null}
         </div>
       </div>
       <div className="rounded-panel border border-border bg-surface-subtle p-4">
@@ -582,7 +588,7 @@ function LibraryContentEmptyState({
             <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-card text-xs font-bold text-primary ring-1 ring-inset ring-border">
               2
             </span>
-            Save the full slide set to Content.
+            Save the full slide set to Creative Assets.
           </li>
           <li className="flex gap-3">
             <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-card text-xs font-bold text-primary ring-1 ring-inset ring-border">

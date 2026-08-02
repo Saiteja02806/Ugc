@@ -22,6 +22,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/contexts/auth-context";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -40,7 +41,13 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  getCreativeAssetDisplayState,
+  hasRenderingEditProjects,
+  indexLatestEditProjectsByAssetId,
+} from "@/lib/edit/creative-asset-display";
 import { getCreativeAssetEditorHref } from "@/lib/edit/routes";
+import type { EditableVideo } from "@/lib/edit/video-library";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type {
   MediaAsset,
@@ -52,6 +59,10 @@ import { cn } from "@/lib/utils";
 
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
+  | { error?: string; ok?: false };
+
+type EditableVideosResponse =
+  | { ok: true; videos: EditableVideo[] }
   | { error?: string; ok?: false };
 
 type CreativeAssetGroup = {
@@ -99,8 +110,10 @@ export function UserMediaCollection({
 }) {
   const { loading: authLoading, user } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
+  const lastLoadedGroupIdRef = useRef<string | null>(null);
   const [allAssets, setAllAssets] = useState<MediaAsset[]>([]);
   const [groupAssets, setGroupAssets] = useState<MediaAsset[]>([]);
+  const [editProjects, setEditProjects] = useState<EditableVideo[]>([]);
   const [groups, setGroups] = useState<CreativeAssetGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
@@ -111,6 +124,9 @@ export function UserMediaCollection({
   const [pendingDeleteAsset, setPendingDeleteAsset] = useState<MediaAsset | null>(null);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [editProjectErrorMessage, setEditProjectErrorMessage] = useState<
+    string | null
+  >(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [groupDialogMode, setGroupDialogMode] = useState<
     "create" | "rename" | null
@@ -151,6 +167,24 @@ export function UserMediaCollection({
     () => allAssets.filter((asset) => !groupAssetIds.has(asset.id)),
     [allAssets, groupAssetIds],
   );
+  const editProjectsByAssetId = useMemo(
+    () => indexLatestEditProjectsByAssetId(editProjects),
+    [editProjects],
+  );
+  const renderingEditProjectIds = useMemo(
+    () =>
+      editProjects
+        .filter((project) => project.status === "rendering")
+        .map((project) => project.id)
+        .sort()
+        .join(","),
+    [editProjects],
+  );
+  const hasRenderingEditProject = useMemo(
+    () => hasRenderingEditProjects(editProjects),
+    [editProjects],
+  );
+  const visibleErrorMessage = errorMessage ?? editProjectErrorMessage;
 
   const loadAllAssets = useCallback(async () => {
     if (authLoading) {
@@ -244,6 +278,45 @@ export function UserMediaCollection({
     }
   }, [authLoading, groupMediaType, user]);
 
+  const loadEditProjects = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (authLoading || groupMediaType !== "video") {
+        return;
+      }
+
+      if (!options?.silent) {
+        setEditProjectErrorMessage(null);
+      }
+
+      try {
+        if (!user) {
+          throw new Error("Sign in to load saved video edits.");
+        }
+
+        const token = await requireToken();
+        const response = await fetch("/api/edit/videos", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = (await response.json()) as EditableVideosResponse;
+
+        if (!response.ok || data.ok !== true) {
+          throw new Error(
+            getApiError(data, "Could not load saved video edit status."),
+          );
+        }
+
+        setEditProjects(data.videos);
+        setEditProjectErrorMessage(null);
+      } catch (error) {
+        setEditProjectErrorMessage(
+          getErrorMessage(error, "Could not load saved video edit status."),
+        );
+      }
+    },
+    [authLoading, groupMediaType, user],
+  );
+
   const loadGroupAssets = useCallback(
     async (groupId: string) => {
       if (authLoading) {
@@ -273,8 +346,11 @@ export function UserMediaCollection({
         }
 
         setGroupAssets(data.assets.map((item) => item.asset));
+        lastLoadedGroupIdRef.current = groupId;
       } catch (error) {
-        setGroupAssets([]);
+        if (lastLoadedGroupIdRef.current !== groupId) {
+          setGroupAssets([]);
+        }
         setErrorMessage(getErrorMessage(error, "Could not load this group."));
       } finally {
         setIsLoadingGroupAssets(false);
@@ -285,11 +361,12 @@ export function UserMediaCollection({
 
   useEffect(() => {
     const timer = window.setTimeout(
-      () => void Promise.all([loadAllAssets(), loadGroups()]),
+      () =>
+        void Promise.all([loadAllAssets(), loadGroups(), loadEditProjects()]),
       0,
     );
     return () => window.clearTimeout(timer);
-  }, [loadAllAssets, loadGroups]);
+  }, [loadAllAssets, loadEditProjects, loadGroups]);
 
   useEffect(() => {
     if (!selectedGroupId) {
@@ -302,6 +379,53 @@ export function UserMediaCollection({
     );
     return () => window.clearTimeout(timer);
   }, [loadGroupAssets, selectedGroupId]);
+
+  useEffect(() => {
+    if (
+      groupMediaType !== "video" ||
+      !renderingEditProjectIds ||
+      !hasRenderingEditProject
+    ) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void loadEditProjects({ silent: true });
+    }, 4_000);
+
+    return () => window.clearInterval(timer);
+  }, [
+    groupMediaType,
+    hasRenderingEditProject,
+    loadEditProjects,
+    renderingEditProjectIds,
+  ]);
+
+  useEffect(() => {
+    if (groupMediaType !== "video") {
+      return;
+    }
+
+    function refreshEditProjectsWhenVisible() {
+      if (document.visibilityState === "visible") {
+        void loadEditProjects({ silent: true });
+      }
+    }
+
+    window.addEventListener("focus", refreshEditProjectsWhenVisible);
+    document.addEventListener(
+      "visibilitychange",
+      refreshEditProjectsWhenVisible,
+    );
+
+    return () => {
+      window.removeEventListener("focus", refreshEditProjectsWhenVisible);
+      document.removeEventListener(
+        "visibilitychange",
+        refreshEditProjectsWhenVisible,
+      );
+    };
+  }, [groupMediaType, loadEditProjects]);
 
   async function handleFile(file: File | undefined) {
     if (!file || isUploading) {
@@ -672,6 +796,7 @@ export function UserMediaCollection({
     setSuccessMessage(null);
     await Promise.all([
       loadAllAssets(),
+      loadEditProjects(),
       loadGroups(),
       selectedGroupId
         ? loadGroupAssets(selectedGroupId)
@@ -859,7 +984,7 @@ export function UserMediaCollection({
         </div>
       </div>
 
-      {errorMessage ? (
+      {visibleErrorMessage ? (
         <div
           role="alert"
           className={cn(
@@ -868,7 +993,7 @@ export function UserMediaCollection({
           )}
         >
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          {errorMessage}
+          {visibleErrorMessage}
         </div>
       ) : null}
 
@@ -895,6 +1020,7 @@ export function UserMediaCollection({
                 key={asset.id}
                 asset={asset}
                 deleting={deletingAssetId === asset.id}
+                editProject={editProjectsByAssetId.get(asset.id) ?? null}
                 grouped={Boolean(selectedGroup)}
                 variant={variant}
                 onRemove={() => {
@@ -1288,18 +1414,23 @@ export function UserMediaCollection({
 function MediaAssetCard({
   asset,
   deleting,
+  editProject,
   grouped,
   onRemove,
   variant = "default",
 }: {
   asset: MediaAsset;
   deleting: boolean;
+  editProject: EditableVideo | null;
   grouped: boolean;
   onRemove: () => void;
   variant?: "default" | "dark";
 }) {
   const isImage = asset.collection === "image";
   const isDarkVariant = variant === "dark";
+  const displayState = getCreativeAssetDisplayState(asset.url, editProject);
+  const statusLabel = getCreativeAssetCardStatusLabel(editProject);
+  const statusVariant = getCreativeAssetCardStatusVariant(editProject);
 
   return (
     <article className="group overflow-hidden rounded-[var(--radius-card)] border border-border bg-card shadow-card transition-colors hover:border-border-strong">
@@ -1307,7 +1438,7 @@ function MediaAssetCard({
         {isImage ? (
           <Image src={asset.thumbnailUrl || asset.url} alt={asset.title} fill unoptimized className="object-cover" sizes="(max-width: 640px) 100vw, 25vw" />
         ) : (
-          <video src={asset.url} poster={asset.thumbnailUrl || undefined} preload="metadata" muted controls className="size-full object-cover" />
+          <video key={displayState.playbackUrl} src={displayState.playbackUrl} poster={asset.thumbnailUrl || undefined} preload="metadata" muted controls className="size-full object-cover" />
         )}
       </div>
       <div className="p-3">
@@ -1318,10 +1449,19 @@ function MediaAssetCard({
               {getSourceLabel(asset)} · {formatAssetDate(asset.createdAt)}
             </p>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1.5 pt-0.5 text-[11px] font-medium text-success">
-            <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
-            Ready
-          </span>
+          <Badge
+            aria-label={`${asset.title} status: ${statusLabel}`}
+            aria-live="polite"
+            role="status"
+            variant={statusVariant}
+          >
+            {displayState.isRendering ? (
+              <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            ) : (
+              <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+            )}
+            {statusLabel}
+          </Badge>
         </div>
         <div className="mt-3 flex items-center gap-2">
           {!isImage ? (
@@ -1363,6 +1503,37 @@ function MediaAssetCard({
       </div>
     </article>
   );
+}
+
+function getCreativeAssetCardStatusLabel(editProject: EditableVideo | null) {
+  if (!editProject || editProject.status === "ready") {
+    return "Ready";
+  }
+
+  const labels: Record<Exclude<EditableVideo["status"], "ready">, string> = {
+    draft: "Draft",
+    failed: "Save failed",
+    rendered: "Saved",
+    rendering: "Saving",
+  };
+
+  return labels[editProject.status];
+}
+
+function getCreativeAssetCardStatusVariant(editProject: EditableVideo | null) {
+  if (editProject?.status === "failed") {
+    return "failed" as const;
+  }
+
+  if (editProject?.status === "rendering") {
+    return "rendering" as const;
+  }
+
+  if (editProject?.status === "draft") {
+    return "draft" as const;
+  }
+
+  return "ready" as const;
 }
 
 async function readMediaMetadata(file: File, collection: MediaCollection) {

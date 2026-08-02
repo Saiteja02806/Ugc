@@ -10,7 +10,12 @@ import {
 import { useEffect, useRef } from "react";
 
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
-import type { TrendingWallTextFeedItem } from "@/lib/trending/feed-items";
+import type {
+  TrendingWallTextContent,
+  TrendingWallTextFeedItem,
+  TrendingWallTextLayout,
+} from "@/lib/trending/feed-items";
+import type { TrendingTextColor } from "@/lib/trending/text-color";
 
 export type WallTextDetailActionState =
   | { status: "idle" }
@@ -19,20 +24,32 @@ export type WallTextDetailActionState =
 
 export function WallTextDetailView({
   actionState,
+  content,
   item,
+  layout,
   onBack,
   onSave,
   onSchedule,
+  previewUrl,
+  thumbnailUrl,
+  textColor,
 }: {
   actionState: WallTextDetailActionState;
+  content?: TrendingWallTextContent;
   item: TrendingWallTextFeedItem;
+  layout?: TrendingWallTextLayout;
   onBack: () => void;
   onSave: () => void | Promise<void>;
   onSchedule: () => void | Promise<void>;
+  previewUrl?: string | null;
+  thumbnailUrl?: string | null;
+  textColor?: TrendingTextColor;
 }) {
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const creative = item.creative;
+  const visibleContent = content ?? creative.text;
+  const visibleLayout = layout ?? creative.layout;
   const busy =
     actionState.status === "saving" || actionState.status === "scheduling";
   useEffect(() => {
@@ -82,8 +99,8 @@ export function WallTextDetailView({
           <div className="relative aspect-[9/16] overflow-hidden rounded-panel bg-[#171717] ring-1 ring-inset ring-border">
             <video
               ref={videoRef}
-              src={creative.previewUrl}
-              poster={creative.thumbnailUrl ?? undefined}
+              src={previewUrl ?? creative.previewUrl}
+              poster={thumbnailUrl ?? creative.thumbnailUrl ?? undefined}
               autoPlay
               muted
               playsInline
@@ -92,8 +109,9 @@ export function WallTextDetailView({
               className="size-full object-cover"
             />
             <WallTextOverlay
-              content={creative.text}
-              layout={creative.layout}
+              content={visibleContent}
+              layout={visibleLayout}
+              textColor={textColor}
             />
           </div>
           <button
@@ -124,7 +142,7 @@ export function WallTextDetailView({
           <div className="mt-6 border-l-2 border-primary/60 pl-4">
             <p className="text-xs font-semibold text-muted">Overlay copy</p>
             <div className="mt-2 max-w-2xl space-y-3 text-[15px] font-medium leading-7 text-foreground-strong">
-              {creative.text.segments.map((segment, index) => (
+              {visibleContent.segments.map((segment, index) => (
                 <p key={`${segment.role}-${index}`}>
                   {segment.lines.join(" ")}
                 </p>
@@ -158,7 +176,7 @@ export function WallTextDetailView({
               )}
               {actionState.status === "saving"
                 ? "Saving and preparing…"
-                : "Save to Content"}
+                : "Save to Creative Assets"}
             </button>
             <button
               type="button"

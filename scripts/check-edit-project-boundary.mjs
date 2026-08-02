@@ -16,6 +16,9 @@ const files = {
   editorPreview: read("components/edit/focused-video-editor.tsx"),
   mediaRoute: read("app/api/media/[assetId]/route.ts"),
   renderRoute: read("app/api/edit/render/route.ts"),
+  renderTerminalMigration: read(
+    "supabase/migrations/20260802213000_finalize_edit_render_atomically.sql",
+  ),
   renderWorker: read("worker/src/jobs/render-edit-video.ts"),
   renderEngine: read("worker/src/lib/render-engine.ts"),
   overlaySpec: read("worker/src/lib/edit-overlay-render-spec.ts"),
@@ -95,9 +98,12 @@ assert(
   "Edit saves must not create Creative Asset export rows.",
 );
 assert(
-  files.workerStore.includes("areJsonValuesEqual") &&
-    files.workerStore.includes('status: draftIsCurrent ? "rendered" : "draft"') &&
-    files.workerStore.includes('status: draftIsCurrent ? "failed" : "draft"'),
+  files.workerStore.includes('.rpc("finalize_edit_render"') &&
+    files.renderTerminalMigration.includes(
+      "editable.draft_json is not distinct from v_render_job.draft_json",
+    ) &&
+    files.renderTerminalMigration.includes("then 'rendered'") &&
+    files.renderTerminalMigration.includes("then 'failed'"),
   "Background Save completion must not mark newer Edit changes as Saved.",
 );
 assert(

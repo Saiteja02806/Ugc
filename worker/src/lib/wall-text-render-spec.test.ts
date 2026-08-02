@@ -38,6 +38,7 @@ test("uses Inter Bold, center alignment, outline, and compact section rhythm", (
   const svg = buildWallTextOverlaySvg({
     content,
     placement: "middle",
+    textColor: "#67e8f9",
     textBox: {
       height: 480 / 1920,
       width: 620 / 1080,
@@ -54,6 +55,7 @@ test("uses Inter Bold, center alignment, outline, and compact section rhythm", (
   assert.match(svg, /letter-spacing="-0\.2"/);
   assert.match(svg, /text-anchor="middle"/);
   assert.match(svg, /stroke-width="4"/);
+  assert.match(svg, /fill="#67e8f9"/);
   assert.doesNotMatch(svg, /wallTextScrim|radialGradient/);
 });
 

@@ -14,7 +14,8 @@ export default async function AvatarsPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { tab } = await searchParams;
-  const initialTab = tab === "images" ? "images" : "videos";
+  const initialTab =
+    tab === "images" || tab === "saved" ? tab : "videos";
 
   return (
     <AppShell activeKey="avatars">

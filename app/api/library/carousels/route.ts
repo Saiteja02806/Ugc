@@ -4,6 +4,7 @@ import {
   getCarouselGenerationStatus,
   getMissingCarouselDbEnvVars,
   type CarouselGenerationRecord,
+  type CarouselSlideRecord,
 } from "@/lib/carousel/db";
 import {
   FirebaseAuthRequestError,
@@ -13,6 +14,8 @@ import {
   getMissingLibraryDbEnvVars,
   saveGeneratedCarouselToLibrary,
 } from "@/lib/library/db";
+import { isTrustedStorageUrl } from "@/lib/storage/storage";
+import { loadSavedTrendingCreativeEditForDownstream } from "@/lib/trending/creative-edit-service";
 
 export const runtime = "nodejs";
 
@@ -151,9 +154,53 @@ export async function POST(request: Request) {
       );
     }
 
+    const savedEdit = await loadSavedTrendingCreativeEditForDownstream({
+      creativeId: carouselId,
+      format: "carousel",
+      userId,
+    });
+
+    if (savedEdit && savedEdit.renderState !== "ready") {
+      return jsonResponse(
+        {
+          ok: false,
+          message:
+            savedEdit.renderState === "failed"
+              ? "The latest Carousel edit could not be rendered. Save the edit again before adding it to Library."
+              : "The latest Carousel edit is still rendering. Wait for it to finish before adding it to Library.",
+        },
+        409,
+      );
+    }
+
+    const editedSlides = savedEdit
+      ? getReadyEditedSlides({ edit: savedEdit, originalSlides: readySlides })
+      : null;
+
+    if (savedEdit && !editedSlides) {
+      return jsonResponse(
+        {
+          ok: false,
+          message: "The latest Carousel edit is missing one or more rendered slides.",
+        },
+        409,
+      );
+    }
+
     const result = await saveGeneratedCarouselToLibrary({
+      edit:
+        savedEdit && savedEdit.content.format === "carousel"
+          ? {
+              id: savedEdit.id!,
+              revision: savedEdit.revision,
+              slides: savedEdit.content.slides.map((slide) => ({
+                slideNumber: slide.slideNumber,
+                textPosition: slide.textPosition,
+              })),
+            }
+          : null,
       generation: status.generation,
-      slides: readySlides,
+      slides: editedSlides ?? readySlides,
       title: getCarouselTitle(status.generation),
       userId,
     });
@@ -173,6 +220,63 @@ export async function POST(request: Request) {
       500,
     );
   }
+}
+
+function getReadyEditedSlides(params: {
+  edit: Awaited<ReturnType<typeof loadSavedTrendingCreativeEditForDownstream>>;
+  originalSlides: CarouselSlideRecord[];
+}) {
+  const { edit, originalSlides } = params;
+
+  if (
+    !edit ||
+    !edit.id ||
+    edit.content.format !== "carousel" ||
+    !edit.renderOutput
+  ) {
+    return null;
+  }
+
+  const contentBySlideNumber = new Map(
+    edit.content.slides.map((slide) => [slide.slideNumber, slide]),
+  );
+  const outputBySlideNumber = new Map(
+    edit.renderOutput.slides.map((slide) => [slide.slideNumber, slide]),
+  );
+
+  if (
+    edit.content.slides.length !== originalSlides.length ||
+    edit.renderOutput.slides.length !== originalSlides.length
+  ) {
+    return null;
+  }
+
+  const slides: CarouselSlideRecord[] = [];
+
+  for (const slide of originalSlides) {
+    const content = contentBySlideNumber.get(slide.slideNumber);
+    const output = outputBySlideNumber.get(slide.slideNumber);
+
+    if (
+      !content ||
+      content.slideId !== slide.id ||
+      !output ||
+      !isTrustedStorageUrl(output.renderedUrl)
+    ) {
+      return null;
+    }
+
+    slides.push({
+      ...slide,
+      ctaText: content.ctaText || null,
+      headline: content.headline,
+      renderedS3Key: output.renderedS3Key,
+      renderedUrl: output.renderedUrl,
+      subtext: content.subtext || null,
+    });
+  }
+
+  return slides;
 }
 
 function getCarouselTitle(generation: CarouselGenerationRecord) {

@@ -4,6 +4,7 @@ import { AlertCircle, Loader2, Play, Video } from "lucide-react";
 import { useRef, type CSSProperties } from "react";
 
 import type { HookInfluencerVideoSummary } from "@/lib/trending/hook-video-types";
+import type { TrendingTextColor } from "@/lib/trending/text-color";
 import { cn } from "@/lib/utils";
 import { HookTextOverlay } from "@/components/trending/hook-text-overlay";
 
@@ -13,6 +14,8 @@ export function HookVideoCard({
   exitingDirection = null,
   hookFontSize = 52,
   hookLines = null,
+  hookPosition = null,
+  hookTextColor,
   hookText = null,
   previewError,
   previewLoading,
@@ -29,6 +32,8 @@ export function HookVideoCard({
   exitingDirection?: "left" | "right" | null;
   hookFontSize?: number;
   hookLines?: readonly string[] | null;
+  hookPosition?: { x: number; y: number } | null;
+  hookTextColor?: TrendingTextColor;
   hookText?: string | null;
   previewError: string | null;
   previewLoading: boolean;
@@ -110,8 +115,10 @@ export function HookVideoCard({
       ) : null}
 
       <HookTextOverlay
+        color={hookTextColor}
         fontSize={hookFontSize}
         lines={hookLines}
+        position={hookPosition}
         text={hookText}
       />
 

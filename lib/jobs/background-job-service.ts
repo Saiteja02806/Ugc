@@ -16,11 +16,28 @@ import { getQueueNameForJobType } from "@/lib/queues/config";
 
 export async function createAndDispatchBackgroundJob(
   input: Omit<CreateBackgroundJobInput, "queueName">,
+  options?: {
+    beforeDispatch?: (job: BackgroundJobRecord) => Promise<void>;
+  },
 ) {
   const result = await createBackgroundJobWithCreationResult({
     ...input,
     queueName: getQueueNameForJobType(input.jobType),
   });
+
+  try {
+    await options?.beforeDispatch?.(result.job);
+  } catch (error) {
+    if (result.created) {
+      await markBackgroundJobFailed({
+        errorCode: "PRE_DISPATCH_PERSISTENCE_FAILED",
+        errorMessage: getInternalErrorMessage(error),
+        jobId: result.job.id,
+      }).catch(() => undefined);
+    }
+
+    throw error;
+  }
 
   if (!result.created || result.job.queueMessageId) {
     return result.job;

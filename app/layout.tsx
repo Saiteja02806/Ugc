@@ -3,6 +3,8 @@ import localFont from "next/font/local";
 
 import { AuthProvider } from "@/contexts/auth-context";
 import { JobQueryProvider } from "@/components/providers/job-query-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { THEME_STORAGE_KEY } from "@/lib/theme";
 
 import "./globals.css";
 
@@ -55,6 +57,21 @@ export const metadata: Metadata = {
     "Create Instagram Reel hooks, text-led videos, carousel posts, and approved publishing workflows in one focused workspace.",
 };
 
+const themeInitializationScript = `(() => {
+  try {
+    const savedTheme = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
+    const theme = savedTheme === "dark" ? "dark" : "light";
+    const root = document.documentElement;
+    root.classList.toggle("dark", theme === "dark");
+    root.dataset.theme = theme;
+    root.style.colorScheme = theme;
+  } catch {
+    document.documentElement.classList.remove("dark");
+    document.documentElement.dataset.theme = "light";
+    document.documentElement.style.colorScheme = "light";
+  }
+})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -64,13 +81,22 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} h-full`}
+      suppressHydrationWarning
     >
+      <head>
+        <script
+          id="ugc-pilot-theme"
+          dangerouslySetInnerHTML={{ __html: themeInitializationScript }}
+        />
+      </head>
       <body
         className={`${geistSans.className} min-h-full bg-background text-foreground antialiased`}
       >
-        <AuthProvider>
-          <JobQueryProvider>{children}</JobQueryProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <JobQueryProvider>{children}</JobQueryProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

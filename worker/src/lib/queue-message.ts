@@ -11,6 +11,7 @@ const validWorkerJobTypes = new Set<BackgroundJobType>([
   "publish_social_post",
   "render_edit_video",
   "render_schedule_combination",
+  "render_trending_carousel_edit",
   "render_wall_text_video",
   "test_worker_job",
 ]);

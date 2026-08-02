@@ -17,6 +17,7 @@ import {
   EDIT_OVERLAY_SHADOW_OFFSET_PX,
   EDIT_OVERLAY_VERTICAL_INSET_PERCENT,
   buildEditOverlayTextLayout,
+  buildResolvedEditOverlayTextLayout,
   type EditOverlayTextLayout,
 } from "./edit-overlay-render-spec.js";
 import {
@@ -37,15 +38,20 @@ export type TextOverlayStyle = "clean" | "minimal" | "bubble" | "hook";
 export type PreparedTextOverlay = {
   imagePath: string;
   layout: EditOverlayTextLayout;
+  normalizedPosition?: NormalizedTextPosition | null;
   position: TextOverlayPosition;
   style: TextOverlayStyle;
 };
 
 type RenderTextOverlay = {
+  fontSize?: number | null;
   id: string;
+  lines?: string[] | null;
+  normalizedPosition?: NormalizedTextPosition | null;
   position: TextOverlayPosition;
   style: TextOverlayStyle;
   text: string;
+  textColor?: string;
 };
 
 const EDIT_OVERLAY_FONT_REGISTRATION_TEXT = "MW@gi 0123";
@@ -58,6 +64,11 @@ export type EditOverlayFontRegistration = {
   directBounds: { height: number; width: number };
   fontPath: string;
   registeredBounds: { height: number; width: number };
+};
+
+export type NormalizedTextPosition = {
+  x: number;
+  y: number;
 };
 
 export type RenderEditVideoPayload = {
@@ -88,6 +99,10 @@ export type RenderScheduleCombinationPayload = {
   demoVideoId: string;
   demoVideoUrl: string;
   hookText: string;
+  hookTextFontSize?: number | null;
+  hookTextLines?: string[] | null;
+  hookTextPosition?: NormalizedTextPosition | null;
+  hookTextColor: string;
   hookTrimEnd: number | null;
   hookTrimStart: number;
   hookVideoId: string;
@@ -112,6 +127,8 @@ export type RenderScheduleCombinationOutput = {
 
 export type RenderWallTextVideoPayload = {
   assignmentId: string;
+  creativeEditId: string | null;
+  creativeEditRevision: number | null;
   creativeId: string;
   durationSeconds: number;
   placement: WallTextPlacementZone;
@@ -120,6 +137,7 @@ export type RenderWallTextVideoPayload = {
   safeArea: WallTextSafeArea;
   sourceVideoUrl: string;
   text: WallTextRenderContent;
+  textColor: string;
   textBox: WallTextNormalizedBox;
   title: string;
   userId: string;
@@ -178,9 +196,15 @@ export async function renderEditedVideoToStorage(
       payload,
       preparedTextOverlays,
     });
+    await validateRenderedVideoFile(outputPath, payload.renderId);
     const encodedAt = Date.now();
 
     const renderedBuffer = await readFile(outputPath);
+
+    if (renderedBuffer.length === 0) {
+      throw new Error("Edited video render produced an empty MP4.");
+    }
+
     const key = buildRenderedVideoKey(payload);
     const result = await uploadBufferToStorage({
       key,
@@ -234,9 +258,13 @@ export async function renderScheduleCombinationToStorage(
     imagePath: join(workDir, "hook-overlay.png"),
     overlay: {
       id: "hook-text",
+      fontSize: payload.hookTextFontSize,
+      lines: payload.hookTextLines,
+      normalizedPosition: payload.hookTextPosition,
       position: "middle",
       style: "hook",
       text: payload.hookText,
+      textColor: payload.hookTextColor,
     },
     ratio: payload.ratio,
   });
@@ -357,6 +385,7 @@ export async function renderWallTextVideoToStorage(
       content: payload.text,
       placement: payload.placement,
       safeArea: payload.safeArea,
+      textColor: payload.textColor,
       textBox: payload.textBox,
     });
 
@@ -595,6 +624,102 @@ async function normalizeCombinationSegment({
   });
 }
 
+type RenderedVideoProbe = {
+  format?: {
+    duration?: number | string;
+    format_name?: string;
+  };
+  streams?: Array<{
+    codec_name?: string;
+    codec_type?: string;
+    height?: number;
+    width?: number;
+  }>;
+};
+
+export function validateRenderedVideoProbe(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("ffprobe did not return video metadata.");
+  }
+
+  const probe = value as RenderedVideoProbe;
+  const videoStream = probe.streams?.find(
+    (stream) => stream.codec_type === "video",
+  );
+  const duration = Number(probe.format?.duration);
+
+  if (
+    !videoStream?.codec_name ||
+    !videoStream.width ||
+    !videoStream.height ||
+    !Number.isFinite(duration) ||
+    duration <= 0
+  ) {
+    throw new Error(
+      "Rendered MP4 is missing a playable video stream, dimensions, or duration.",
+    );
+  }
+
+  return {
+    codecName: videoStream.codec_name,
+    durationSeconds: duration,
+    height: videoStream.height,
+    width: videoStream.width,
+  };
+}
+
+async function validateRenderedVideoFile(outputPath: string, renderId: string) {
+  const ffprobePath = process.env.FFPROBE_PATH || "ffprobe";
+  const args = [
+    "-v",
+    "error",
+    "-show_entries",
+    "format=duration,format_name:stream=codec_name,codec_type,width,height",
+    "-of",
+    "json",
+    outputPath,
+  ];
+  const stdout = await new Promise<string>((resolve, reject) => {
+    const ffprobe = spawn(ffprobePath, args, { windowsHide: true });
+    let output = "";
+    let stderr = "";
+
+    ffprobe.stdout.on("data", (chunk: Buffer) => {
+      output += chunk.toString();
+    });
+    ffprobe.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+    ffprobe.on("error", reject);
+    ffprobe.on("close", (code) => {
+      if (code === 0) {
+        resolve(output);
+        return;
+      }
+
+      reject(
+        new Error(
+          `ffprobe exited with code ${code ?? "unknown"}: ${stderr.trim()}`,
+        ),
+      );
+    });
+  });
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(stdout);
+  } catch {
+    throw new Error("ffprobe returned invalid JSON for the rendered MP4.");
+  }
+
+  const metadata = validateRenderedVideoProbe(parsed);
+
+  logger.info("Validated edited video MP4 before upload", {
+    ...metadata,
+    renderId,
+  });
+}
+
 export function buildScheduleCombinationSegmentArgs({
   hasAudio,
   inputPath,
@@ -817,22 +942,36 @@ function buildPreparedTextOverlay(params: {
   imagePath: string;
   overlay: RenderTextOverlay;
   ratio: RenderRatio;
-}) {
+}): PreparedTextOverlay | null {
   const text = params.overlay.text.trim();
 
   if (!text) {
     return null;
   }
 
-  const layout = buildEditOverlayTextLayout(
-    text,
-    params.overlay.style,
-    params.ratio,
-  );
+  const layout =
+    params.overlay.fontSize !== null &&
+    params.overlay.fontSize !== undefined &&
+    params.overlay.lines &&
+    params.overlay.lines.length > 0
+      ? buildResolvedEditOverlayTextLayout({
+          fontSize: params.overlay.fontSize,
+          lines: params.overlay.lines,
+          ratio: params.ratio,
+          style: params.overlay.style,
+          textColor: params.overlay.textColor,
+        })
+      : buildEditOverlayTextLayout(
+          text,
+          params.overlay.style,
+          params.ratio,
+          params.overlay.textColor,
+        );
 
   return {
     imagePath: params.imagePath,
     layout,
+    normalizedPosition: params.overlay.normalizedPosition ?? null,
     position: params.overlay.position,
     style: params.overlay.style,
   };
@@ -852,17 +991,26 @@ async function renderPreparedTextOverlayImage(
 export function buildPreparedTextOverlaySvg(
   preparedTextOverlay: PreparedTextOverlay,
 ) {
-  const { layout, position, style } = preparedTextOverlay;
+  const { layout, normalizedPosition, position, style } = preparedTextOverlay;
   const {
     canvasHeight,
     canvasWidth,
     containerHeight,
     containerWidth,
-    containerX,
+    containerX: defaultContainerX,
   } = layout.bounds;
-  const containerY = getOverlayContainerY(layout, position);
+  const containerX = getOverlayContainerX(
+    layout,
+    defaultContainerX,
+    normalizedPosition,
+  );
+  const containerY = getOverlayContainerY(
+    layout,
+    position,
+    normalizedPosition,
+  );
   const textTop = containerY + layout.padding;
-  const centerX = canvasWidth / 2;
+  const centerX = containerX + containerWidth / 2;
   const fontFamily = escapeXml(
     `${EDIT_OVERLAY_FONT_FAMILY}, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif`,
   );
@@ -1094,11 +1242,20 @@ function requireImageBounds(
 function getOverlayContainerY(
   layout: EditOverlayTextLayout,
   position: TextOverlayPosition,
+  normalizedPosition?: NormalizedTextPosition | null,
 ) {
   const { canvasHeight, containerHeight } = layout.bounds;
   const verticalInset = Math.round(
     canvasHeight * (EDIT_OVERLAY_VERTICAL_INSET_PERCENT / 100),
   );
+
+  if (normalizedPosition) {
+    return clampNumber(
+      Math.round(normalizedPosition.y * canvasHeight - containerHeight / 2),
+      verticalInset,
+      canvasHeight - verticalInset - containerHeight,
+    );
+  }
 
   if (position === "top") {
     return verticalInset;
@@ -1109,6 +1266,29 @@ function getOverlayContainerY(
   }
 
   return canvasHeight - verticalInset - containerHeight;
+}
+
+function getOverlayContainerX(
+  layout: EditOverlayTextLayout,
+  fallback: number,
+  normalizedPosition?: NormalizedTextPosition | null,
+) {
+  if (!normalizedPosition) {
+    return fallback;
+  }
+
+  const { canvasWidth, containerWidth } = layout.bounds;
+  const horizontalInset = Math.round(canvasWidth * 0.04);
+
+  return clampNumber(
+    Math.round(normalizedPosition.x * canvasWidth - containerWidth / 2),
+    horizontalInset,
+    canvasWidth - horizontalInset - containerWidth,
+  );
+}
+
+function clampNumber(value: number, minimum: number, maximum: number) {
+  return Math.min(maximum, Math.max(minimum, value));
 }
 
 function getOverlayCornerRadius(

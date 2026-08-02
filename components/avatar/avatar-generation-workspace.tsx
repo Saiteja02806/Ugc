@@ -253,7 +253,7 @@ export function AvatarGenerationWorkspace({
             <input
               value={input.persona}
               onChange={(event) => updateInput("persona", event.target.value)}
-              className="h-11 rounded-lg border border-border bg-white px-4 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
+              className="h-11 rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
               placeholder="SaaS productivity creator"
             />
           </label>
@@ -266,7 +266,7 @@ export function AvatarGenerationWorkspace({
               <select
                 value={input.ageRange}
                 onChange={(event) => updateInput("ageRange", event.target.value)}
-                className="h-11 rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
+                className="h-11 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
               >
                 {ageRangeOptions.map((option) => (
                   <option key={option} value={option}>
@@ -285,7 +285,7 @@ export function AvatarGenerationWorkspace({
                 onChange={(event) =>
                   updateInput("expression", event.target.value)
                 }
-                className="h-11 rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
+                className="h-11 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
               >
                 {expressionOptions.map((option) => (
                   <option key={option} value={option}>
@@ -303,7 +303,7 @@ export function AvatarGenerationWorkspace({
             <textarea
               value={input.hair}
               onChange={(event) => updateInput("hair", event.target.value)}
-              className="min-h-24 resize-y rounded-lg border border-border bg-white px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
+              className="min-h-24 resize-y rounded-lg border border-border bg-card px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
               placeholder="Hair, face, styling, and natural details"
             />
           </label>
@@ -315,7 +315,7 @@ export function AvatarGenerationWorkspace({
             <input
               value={input.background}
               onChange={(event) => updateInput("background", event.target.value)}
-              className="h-11 rounded-lg border border-border bg-white px-4 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
+              className="h-11 rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
               placeholder="modern home office"
             />
           </label>
@@ -353,7 +353,7 @@ export function AvatarGenerationWorkspace({
             status === "error"
               ? "border-error/25 bg-error/5 text-error"
               : status === "success"
-                ? "border-success/25 bg-success/5 text-[#087443]"
+                ? "border-success/25 bg-success/5 text-success"
                 : "border-border bg-card-muted text-muted",
           )}
         >
@@ -382,7 +382,7 @@ export function AvatarGenerationWorkspace({
             className={cn(
               "w-fit rounded-full border px-3 py-1 text-xs font-semibold",
               status === "success"
-                ? "border-success/25 bg-success/5 text-[#087443]"
+                ? "border-success/25 bg-success/5 text-success"
                 : status === "error"
                   ? "border-error/25 bg-error/5 text-error"
                   : "border-border bg-card-muted text-muted",

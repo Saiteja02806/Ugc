@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildEditOverlayTextLayout,
+  buildResolvedEditOverlayTextLayout,
   type EditOverlayRatio,
   type EditOverlayStyle,
 } from "./edit-overlay-render-spec.js";
@@ -168,6 +169,42 @@ test("shrinks Hook text before breaking semantic lines", () => {
   ]);
   assert.equal(layout.fontSize, 44);
   assert.equal(layout.isTruncated, false);
+});
+
+test("uses saved Hook lines and font size without recalculating", () => {
+  const layout = buildResolvedEditOverlayTextLayout({
+    fontSize: 44,
+    lines: [
+      "Quitting stems from slow meal logging",
+      "Faster entry makes consistency possible",
+    ],
+    ratio: "9:16",
+    style: "hook",
+    textColor: "#f472b6",
+  });
+
+  assert.equal(layout.fontSize, 44);
+  assert.deepEqual(layout.lines, [
+    "Quitting stems from slow meal logging",
+    "Faster entry makes consistency possible",
+  ]);
+  assert.equal(layout.isTruncated, false);
+  assert.equal(layout.textColor, "#f472b6");
+});
+
+test("rejects a saved Hook layout that would wrap differently", () => {
+  assert.throws(
+    () =>
+      buildResolvedEditOverlayTextLayout({
+        fontSize: 52,
+        lines: [
+          "This deliberately oversized saved Hook line cannot fit the renderer width",
+        ],
+        ratio: "9:16",
+        style: "hook",
+      }),
+    /do not fit the saved font size/,
+  );
 });
 
 test("preserves manual lines and deterministically splits long words", () => {

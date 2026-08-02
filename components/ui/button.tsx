@@ -15,21 +15,27 @@ const legacyVariantClasses: Record<LegacyButtonVariant, string> = {
 };
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-55 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        default: "bg-primary text-primary-foreground hover:bg-primary-hover",
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-border-strong bg-card text-foreground hover:bg-card-muted hover:text-foreground-strong aria-expanded:bg-card-muted aria-expanded:text-foreground-strong",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         muted:
           "border-border-strong bg-card-muted text-muted hover:bg-card hover:text-foreground-strong aria-expanded:bg-card aria-expanded:text-foreground-strong",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "text-muted hover:bg-card-muted hover:text-foreground aria-expanded:bg-card-muted aria-expanded:text-foreground",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
+        "creative-reject":
+          "border-border-strong bg-card text-error shadow-sm hover:border-error/35 hover:bg-error/10 focus-visible:border-error/60 focus-visible:ring-error/20",
+        "creative-accept":
+          "border-border-strong bg-card text-success shadow-sm hover:border-success/35 hover:bg-success/10 focus-visible:border-success/60 focus-visible:ring-success/20",
+        "creative-edit":
+          "border-border-strong bg-card text-foreground shadow-sm hover:bg-card-muted focus-visible:border-ring focus-visible:ring-ring/35",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
@@ -46,6 +52,10 @@ const buttonVariants = cva(
         "icon-sm":
           "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
+        "creative-icon":
+          "size-14 rounded-full sm:size-16 [&_svg:not([class*='size-'])]:size-6",
+        "creative-edit":
+          "h-10 rounded-full px-4 sm:h-11 sm:px-5 [&_svg:not([class*='size-'])]:size-4",
       },
     },
     defaultVariants: {

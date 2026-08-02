@@ -461,6 +461,67 @@ export async function getHookVideoSuggestionForUser(params: {
   return data;
 }
 
+export async function getEditableTrendingHookIdea(params: {
+  assignmentId: string;
+  suggestionId: string;
+  userId: string;
+}): Promise<TrendingHookIdeaRecord | null> {
+  const [{ data: assignment, error: assignmentError }, suggestion] =
+    await Promise.all([
+      getClient()
+        .from("user_hook_video_assignments")
+        .select("*")
+        .eq("id", params.assignmentId)
+        .eq("hook_suggestion_id", params.suggestionId)
+        .eq("user_id", params.userId)
+        .in("state", ["active", "selected"])
+        .maybeSingle(),
+      getHookVideoSuggestionForUser({
+        suggestionId: params.suggestionId,
+        userId: params.userId,
+      }),
+    ]);
+
+  if (assignmentError) {
+    throw new Error(
+      `Could not load this Trending Hook assignment: ${assignmentError.message}`,
+    );
+  }
+
+  if (!assignment || !suggestion || !isCompleteTrendingHookSuggestion(suggestion)) {
+    return null;
+  }
+
+  const openingLines = parseOpeningLines(suggestion.opening_lines);
+  const overlayFontSize = parseOverlayFontSize(suggestion.visual_fit);
+
+  if (!openingLines || !overlayFontSize || !suggestion.pattern_id) {
+    return null;
+  }
+
+  return {
+    assignmentId: assignment.id,
+    candidateIndex: suggestion.candidate_index,
+    createdAt: suggestion.created_at,
+    durationSeconds: suggestion.duration_seconds,
+    hookText: suggestion.text,
+    id: suggestion.id,
+    influencerId: suggestion.influencer_id,
+    influencerName: suggestion.influencer_name,
+    influencerVideoId: suggestion.influencer_video_id,
+    influencerVideoTitle: suggestion.influencer_video_title,
+    openingLines,
+    overlayFontSize,
+    patternId: suggestion.pattern_id,
+    position: assignment.position,
+    sourceKind: suggestion.influencer_source,
+    sourceDurationSeconds: suggestion.source_duration_seconds,
+    thumbnailUrl: suggestion.thumbnail_url,
+    trimEnd: suggestion.trim_end,
+    trimStart: suggestion.trim_start,
+  };
+}
+
 export async function saveHookVideoDraft(params: {
   demoAssetId: string;
   demoTitle: string;
@@ -471,6 +532,7 @@ export async function saveHookVideoDraft(params: {
   influencerVideoId: string;
   influencerVideoTitle: string;
   librarySaved: boolean;
+  metadata?: Json;
   previewThumbnailUrl: string | null;
   selectedHookId: string;
   sourceKind: HookVideoSourceKind;
@@ -491,6 +553,7 @@ export async function saveHookVideoDraft(params: {
     ...(params.librarySaved
       ? { library_saved_at: now, status: "saved" as const }
       : {}),
+    ...(params.metadata === undefined ? {} : { metadata: params.metadata }),
     preview_thumbnail_url: params.previewThumbnailUrl,
     selected_hook_id: params.selectedHookId,
     trim_end: params.trimEnd,

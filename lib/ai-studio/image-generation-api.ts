@@ -4,6 +4,11 @@ import { NextResponse } from "next/server";
 
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
 import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
+import {
+  AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
+  getAIStudioPromptLengthError,
+  normalizeAIStudioPrompt,
+} from "@/lib/ai-studio/prompt-policy";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
   getBackgroundJobById,
@@ -20,6 +25,7 @@ type ImageJobOutput = {
   generationId?: unknown;
   height?: unknown;
   key?: unknown;
+  mediaAssetId?: unknown;
   ok?: unknown;
   ratio?: unknown;
   url?: unknown;
@@ -27,16 +33,9 @@ type ImageJobOutput = {
 };
 
 const IMAGE_JOB_TYPE = "generate_image";
-const MAX_PROMPT_LENGTH = 2_000;
 const TERMINAL_STATUSES = new Set(["cancelled", "completed", "failed"]);
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function cleanPrompt(value: unknown) {
-  return typeof value === "string"
-    ? value.trim().slice(0, MAX_PROMPT_LENGTH)
-    : "";
-}
 
 function getMissingRuntimeEnv() {
   return Array.from(
@@ -62,6 +61,10 @@ function getSafeOutput(output: unknown) {
     height:
       typeof imageOutput.height === "number" ? imageOutput.height : null,
     key: typeof imageOutput.key === "string" ? imageOutput.key : null,
+    mediaAssetId:
+      typeof imageOutput.mediaAssetId === "string"
+        ? imageOutput.mediaAssetId
+        : null,
     ok: imageOutput.ok === true,
     ratio: typeof imageOutput.ratio === "string" ? imageOutput.ratio : null,
     url: typeof imageOutput.url === "string" ? imageOutput.url : null,
@@ -93,7 +96,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
   const body = (await request.json().catch(() => null)) as
     | GenerateRequest
     | null;
-  const prompt = cleanPrompt(body?.prompt);
+  const prompt = normalizeAIStudioPrompt(body?.prompt);
 
   if (!prompt) {
     return NextResponse.json(
@@ -101,6 +104,18 @@ export async function handleAIStudioImageGeneration(request: Request) {
         message: "Add a prompt before generating an image.",
         ok: false,
       },
+      { status: 400 },
+    );
+  }
+
+  const promptLengthError = getAIStudioPromptLengthError(
+    prompt,
+    AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
+  );
+
+  if (promptLengthError) {
+    return NextResponse.json(
+      { message: promptLengthError, ok: false },
       { status: 400 },
     );
   }

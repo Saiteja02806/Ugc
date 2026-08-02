@@ -1,167 +1,345 @@
 "use client";
 
-import {
-  AlertCircle,
-  CheckCircle2,
-  Download,
-  ImageIcon,
-  Lock,
-  Loader2,
-  Sparkles,
-} from "lucide-react";
+import { ExternalLink, ImageIcon, Sparkles } from "lucide-react";
 import type { FormEvent, KeyboardEvent } from "react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import {
+  AiStudioComposer,
+  AiStudioSetting,
+} from "@/components/generation/ai-studio-composer";
+import {
+  AiStudioResults,
+  type AiStudioResultsStatus,
+} from "@/components/generation/ai-studio-results";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
+import {
+  fetchAIStudioMediaAsset,
+  fetchAIStudioMediaAssets,
+} from "@/lib/ai-studio/media-client";
+import {
+  getAIStudioImageResults,
+  type AIStudioImageResult,
+  upsertAIStudioResult,
+} from "@/lib/ai-studio/media-results";
+import {
+  AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
+  getAIStudioPromptLengthError,
+  normalizeAIStudioPrompt,
+} from "@/lib/ai-studio/prompt-policy";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import {
+  persistJobIdInUrl,
+  useBackgroundJob,
+  usePersistedJobIdFromUrl,
+} from "@/lib/jobs/background-job-client";
+import type { Json } from "@/lib/jobs/background-jobs";
 import { cn } from "@/lib/utils";
-
-type AspectRatio = "4:5" | "1:1" | "9:16" | "16:9";
-type ImageCount = 1 | 2 | 4;
 
 type GenerateResponse =
   | {
-      ok: true;
       generationId: string;
       jobId: string;
       message: string;
-    }
-  | {
-      ok: false;
-      message: string;
-    };
-
-type StatusResponse =
-  | {
       ok: true;
-      job: {
-        error: string | null;
-        id: string;
-        isTerminal: boolean;
-        output: {
-          generationId: string | null;
-          key: string | null;
-          ok: boolean;
-          url: string | null;
-        } | null;
-        status: string;
-      };
     }
   | {
-      ok: false;
       message: string;
+      ok: false;
     };
 
-type GeneratedAsset = {
-  aspectRatio: AspectRatio;
-  id: string;
-  prompt: string;
-  url: string;
-};
+const IMAGE_JOB_STORAGE_PREFIX = "ugc-ai-studio.latest-image-job.v2.";
+const IMAGE_JOB_METADATA_PREFIX = "ugc-ai-studio.image-job.v2.";
+const IMAGE_JOB_URL_PARAMETER = "imageJob";
+const activeJobStatuses = new Set([
+  "cancel_requested",
+  "created",
+  "processing",
+  "queued",
+  "rendering",
+  "stalled",
+  "uploading_output",
+  "waiting_external_service",
+]);
 
-const instagramImageFormatLabels: Record<AspectRatio, string> = {
-  "4:5": "Feed",
-  "1:1": "Square",
-  "9:16": "Story",
-  "16:9": "Landscape",
-};
-
-function createMessageId() {
-  return crypto.randomUUID();
-}
-
-function sleep(ms: number) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
-
-async function pollImageJob(jobId: string, token: string) {
-  for (let attempt = 0; attempt < 72; attempt += 1) {
-    await sleep(attempt === 0 ? 900 : 2_500);
-
-    const response = await fetch(
-      `/api/ai-studio/images/status?jobId=${encodeURIComponent(jobId)}`,
-      {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-    const data = (await response.json()) as StatusResponse;
-
-    if (!response.ok || !data.ok) {
-      throw new Error("Generation status unavailable.");
-    }
-
-    if (data.job.status === "completed" && data.job.output?.url) {
-      return data.job.output.url;
-    }
-
-    if (data.job.isTerminal) {
-      throw new Error("Generation failed.");
-    }
+function getImageJobOutput(output: Json | null) {
+  if (!output || typeof output !== "object" || Array.isArray(output)) {
+    return null;
   }
 
-  throw new Error("Generation timed out.");
+  return {
+    generationId:
+      typeof output.generationId === "string" ? output.generationId : null,
+    mediaAssetId:
+      typeof output.mediaAssetId === "string" ? output.mediaAssetId : null,
+    url: typeof output.url === "string" ? output.url : null,
+  };
 }
 
-export function UgcChatWorkspace() {
-  return (
-    <section className="flex min-h-screen flex-1 flex-col overflow-hidden bg-[#1F1F1F] px-4 py-4 text-[#F5F3F0] sm:px-6 lg:h-screen lg:px-10 lg:py-6">
-      <header className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-normal text-[#F5F3F0] sm:text-3xl">
-            AI Studio
-          </h1>
-          <p className="mt-1 text-sm font-medium leading-6 text-[#B9B5AF]">
-            Generate images and videos from one focused workspace.
-          </p>
-        </div>
+function persistImageJob(userId: string, jobId: string, prompt: string) {
+  try {
+    window.localStorage.setItem(`${IMAGE_JOB_STORAGE_PREFIX}${userId}`, jobId);
+    window.localStorage.setItem(
+      `${IMAGE_JOB_METADATA_PREFIX}${userId}.${jobId}`,
+      JSON.stringify({ prompt }),
+    );
+  } catch {
+    // The owner-scoped URL remains the resume fallback when storage is blocked.
+  }
+}
 
-        <div className="inline-flex h-8 w-fit items-center gap-2 rounded-[var(--radius-control)] border border-[#383838] bg-[#242424] px-3 text-xs font-semibold text-[#B9B5AF]">
-          <Lock className="size-3.5" aria-hidden="true" />
-          Preview mode
-        </div>
-      </header>
+function getImageJobPrompt(userId: string, jobId: string) {
+  try {
+    const rawValue = window.localStorage.getItem(
+      `${IMAGE_JOB_METADATA_PREFIX}${userId}.${jobId}`,
+    );
+    const value = rawValue ? (JSON.parse(rawValue) as unknown) : null;
 
-      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col pt-5">
-        <ImageGenerationStudioPanel />
-      </div>
-    </section>
-  );
+    return value &&
+      typeof value === "object" &&
+      "prompt" in value &&
+      typeof value.prompt === "string"
+      ? value.prompt
+      : "Generated image";
+  } catch {
+    return "Generated image";
+  }
 }
 
 export function ImageGenerationStudioPanel({
+  accessMessage,
   accessState = "locked",
   active = true,
 }: {
+  accessMessage?: string | null;
   accessState?: AIStudioAccessState;
   active?: boolean;
 }) {
+  const { loading: authLoading, user } = useAuth();
   const [prompt, setPrompt] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedAssets, setGeneratedAssets] = useState<GeneratedAsset[]>([]);
-  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
-  const [generationFailed, setGenerationFailed] = useState(false);
-  const aspectRatio: AspectRatio = "4:5";
-  const imageCount: ImageCount = 1;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [generatedAssets, setGeneratedAssets] = useState<
+    AIStudioImageResult[]
+  >([]);
+  const [resultsLoading, setResultsLoading] = useState(true);
+  const [resultsError, setResultsError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [storedJobId, setStoredJobId] = useState<string | null>(null);
+  const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
+  const [ignoredPersistedJobId, setIgnoredPersistedJobId] = useState<
+    string | null
+  >(null);
+  const resolvedJobIdsRef = useRef(new Set<string>());
+  const persistedJobId = usePersistedJobIdFromUrl(IMAGE_JOB_URL_PARAMETER);
+  const urlJobId =
+    persistedJobId && persistedJobId !== ignoredPersistedJobId
+      ? persistedJobId
+      : null;
+  const activeJobId = submittedJobId ?? urlJobId ?? storedJobId;
+  const activeJobQuery = useBackgroundJob(activeJobId);
+  const queriedJob = activeJobQuery.data;
+  const durableJob =
+    queriedJob?.jobType === "image_generation" ? queriedJob : null;
   const generationLocked = accessState !== "pro";
+  const isGenerating =
+    isSubmitting ||
+    Boolean(activeJobId && activeJobQuery.isPending) ||
+    Boolean(durableJob && activeJobStatuses.has(durableJob.status));
+
+  useEffect(() => {
+    if (!active || authLoading) {
+      return;
+    }
+
+    let ignore = false;
+
+    async function loadResults() {
+      if (!user) {
+        if (!ignore) {
+          setGeneratedAssets([]);
+          setStoredJobId(null);
+          setResultsError("Sign in to view your generated images.");
+          setResultsLoading(false);
+        }
+        return;
+      }
+
+      setResultsLoading(true);
+      setResultsError(null);
+
+      try {
+        const token = await getCurrentUserIdToken();
+
+        if (!token) {
+          throw new Error("Sign in to view your generated images.");
+        }
+
+        const assets = await fetchAIStudioMediaAssets({
+          collection: "image",
+          sourceType: "generated_image",
+          token,
+        });
+
+        if (!ignore) {
+          setGeneratedAssets(getAIStudioImageResults(assets));
+          setSubmittedJobId(null);
+          setIgnoredPersistedJobId(null);
+          setStoredJobId(
+            window.localStorage.getItem(
+              `${IMAGE_JOB_STORAGE_PREFIX}${user.uid}`,
+            ),
+          );
+        }
+      } catch (error) {
+        if (!ignore) {
+          setResultsError(
+            getErrorMessage(error, "Could not load your generated images."),
+          );
+        }
+      } finally {
+        if (!ignore) {
+          setResultsLoading(false);
+        }
+      }
+    }
+
+    void loadResults();
+
+    return () => {
+      ignore = true;
+    };
+  }, [active, authLoading, user]);
+
+  useEffect(() => {
+    if (
+      queriedJob &&
+      queriedJob.jobType !== "image_generation" &&
+      activeJobId === persistedJobId
+    ) {
+      const timeoutId = window.setTimeout(
+        () => setIgnoredPersistedJobId(persistedJobId),
+        0,
+      );
+
+      return () => window.clearTimeout(timeoutId);
+    }
+  }, [activeJobId, persistedJobId, queriedJob]);
+
+  useEffect(() => {
+    if (
+      !durableJob ||
+      durableJob.status !== "completed" ||
+      resolvedJobIdsRef.current.has(durableJob.id) ||
+      !user
+    ) {
+      return;
+    }
+
+    const completedJob = durableJob;
+    const output = getImageJobOutput(completedJob.output);
+    const userId = user.uid;
+    let ignore = false;
+
+    async function reconcileCompletedImage() {
+      if (!output?.url) {
+        if (!ignore) {
+          setActionError("Image generation completed without a usable output.");
+        }
+        return;
+      }
+
+      try {
+        const token = await getCurrentUserIdToken();
+
+        if (!token) {
+          throw new Error("Sign in to restore the generated image.");
+        }
+
+        let persistedResult: AIStudioImageResult | null = null;
+
+        try {
+          if (output.mediaAssetId) {
+            const asset = await fetchAIStudioMediaAsset(
+              output.mediaAssetId,
+              token,
+            );
+            persistedResult = getAIStudioImageResults([asset], 1)[0] ?? null;
+          } else {
+            const assets = await fetchAIStudioMediaAssets({
+              collection: "image",
+              sourceType: "generated_image",
+              token,
+            });
+            persistedResult =
+              getAIStudioImageResults(
+                assets.filter(
+                  (asset) => asset.sourceRecordId === completedJob.id,
+                ),
+                1,
+              )[0] ?? null;
+          }
+        } catch {
+          // The durable job output is still usable while media persistence
+          // catches up or the media endpoint is temporarily unavailable.
+        }
+
+        const nextResult: AIStudioImageResult =
+          persistedResult ?? {
+            aspectRatio: "4:5",
+            createdAt: completedJob.completedAt ?? completedJob.updatedAt,
+            id: output.generationId ?? completedJob.id,
+            title: getImageJobPrompt(userId, completedJob.id),
+            url: output.url,
+          };
+
+        if (!ignore) {
+          resolvedJobIdsRef.current.add(completedJob.id);
+          setGeneratedAssets((current) =>
+            upsertAIStudioResult(current, nextResult),
+          );
+          setActionError(null);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setActionError(
+            getErrorMessage(error, "Could not restore the generated image."),
+          );
+        }
+      }
+    }
+
+    void reconcileCompletedImage();
+
+    return () => {
+      ignore = true;
+    };
+  }, [durableJob, user]);
 
   async function generateFromPrompt(rawPrompt: string) {
-    const trimmedPrompt = rawPrompt.trim();
+    const trimmedPrompt = normalizeAIStudioPrompt(rawPrompt);
+    const promptLengthError = getAIStudioPromptLengthError(
+      trimmedPrompt,
+      AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
+    );
 
     if (generationLocked || !trimmedPrompt || isGenerating) {
       return;
     }
 
-    setPrompt("");
-    setIsGenerating(true);
-    setGenerationFailed(false);
+    if (promptLengthError) {
+      setActionError(promptLengthError);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setActionError(null);
 
     try {
       const token = await getCurrentUserIdToken();
 
-      if (!token) {
+      if (!token || !user) {
         throw new Error("Sign in before generating images.");
       }
 
@@ -171,34 +349,29 @@ export function ImageGenerationStudioPanel({
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          prompt: trimmedPrompt,
-        }),
+        body: JSON.stringify({ prompt: trimmedPrompt }),
       });
       const data = (await response.json()) as GenerateResponse;
 
       if (!response.ok || !data.ok) {
-        throw new Error("Generation could not start.");
+        throw new Error(
+          data.ok === false ? data.message : "Generation could not start.",
+        );
       }
 
-      const imageUrl = await pollImageJob(data.jobId, token);
-      const assetId = createMessageId();
-
-      setGeneratedAssets((currentAssets) => [
-        {
-          aspectRatio,
-          id: assetId,
-          prompt: trimmedPrompt,
-          url: imageUrl,
-        },
-        ...currentAssets,
-      ]);
-      setSelectedAssetId(assetId);
+      persistImageJob(user.uid, data.jobId, trimmedPrompt);
+      persistJobIdInUrl(data.jobId, IMAGE_JOB_URL_PARAMETER);
+      resolvedJobIdsRef.current.delete(data.jobId);
+      setStoredJobId(data.jobId);
+      setSubmittedJobId(data.jobId);
+      setPrompt("");
     } catch (error) {
       console.error("Image generation failed:", error);
-      setGenerationFailed(true);
+      setActionError(
+        getErrorMessage(error, "Image generation failed. Try again."),
+      );
     } finally {
-      setIsGenerating(false);
+      setIsSubmitting(false);
     }
   }
 
@@ -215,20 +388,47 @@ export function ImageGenerationStudioPanel({
   }
 
   function handleEnhancePrompt() {
-    const trimmedPrompt = prompt.trim();
+    const trimmedPrompt = normalizeAIStudioPrompt(prompt);
     const enhancement =
       "Production notes: preserve the subject and intent, improve composition, lighting, clarity, and platform-ready framing without adding unrequested text or objects.";
 
-    if (generationLocked || !trimmedPrompt) {
+    if (generationLocked || !trimmedPrompt || trimmedPrompt.includes("Production notes:")) {
       return;
     }
 
-    if (trimmedPrompt.includes("Production notes:")) {
+    const enhancedPrompt = `${trimmedPrompt}\n\n${enhancement}`;
+    const promptLengthError = getAIStudioPromptLengthError(
+      enhancedPrompt,
+      AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
+    );
+
+    if (promptLengthError) {
+      setActionError(promptLengthError);
       return;
     }
 
-    setPrompt(`${trimmedPrompt}\n\n${enhancement}`);
+    setActionError(null);
+    setPrompt(enhancedPrompt);
   }
+
+  const jobQueryError = activeJobQuery.isError
+    ? getErrorMessage(
+        activeJobQuery.error,
+        "Could not retrieve the image generation job.",
+      )
+    : null;
+  const durableError =
+    durableJob?.status === "failed"
+      ? durableJob.error?.message || "Image generation failed. Try again."
+      : durableJob?.status === "cancelled"
+        ? "Image generation was cancelled."
+        : null;
+  const resultsErrorMessage = actionError ?? jobQueryError ?? durableError ?? resultsError;
+  const resultsStatus: AiStudioResultsStatus | null = resultsErrorMessage
+    ? { label: resultsErrorMessage, tone: "error" }
+    : isGenerating
+      ? { label: "Creating your image…", tone: "progress" }
+      : null;
 
   return (
     <div
@@ -237,339 +437,123 @@ export function ImageGenerationStudioPanel({
       aria-labelledby="ai-studio-images-tab"
       hidden={!active}
       className={cn(
-        "min-h-0 flex-1 flex-col gap-4",
+        "min-h-0 flex-1 flex-col",
         active ? "flex flex-col" : "hidden",
       )}
     >
-      <ResultsArea
-        aspectRatio={aspectRatio}
-        generatedAssets={generatedAssets}
-        generationFailed={generationFailed}
-        imageCount={imageCount}
-        isGenerating={isGenerating}
-        selectedAssetId={selectedAssetId}
-        onSelectAsset={setSelectedAssetId}
-      />
+      <AiStudioResults
+        ariaLabel="Generated images"
+        emptyDescription="Describe the image you want below. Finished generations are saved to your account."
+        hasResults={generatedAssets.length > 0}
+        loading={resultsLoading}
+        status={resultsStatus}
+      >
+        {generatedAssets.map((asset) => (
+          <GeneratedAssetCard key={asset.id} asset={asset} />
+        ))}
+      </AiStudioResults>
 
-      <ImageGenerationComposer
+      <AiStudioComposer
+        accessMessage={accessMessage}
+        active={active}
+        ariaLabel="Image prompt"
+        generateDisabled={generationLocked || !prompt.trim() || isGenerating}
+        generateLabel="Generate image"
         generationLocked={generationLocked}
         isGenerating={isGenerating}
+        maxLength={AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH}
+        name="imagePrompt"
+        placeholder="Describe the image you want to create…"
         prompt={prompt}
-        onEnhancePrompt={handleEnhancePrompt}
-        onPromptChange={setPrompt}
+        onPromptChange={(nextPrompt) => {
+          setActionError(null);
+          setPrompt(nextPrompt);
+        }}
         onSubmit={handleSubmit}
         onTextareaKeyDown={handleTextareaKeyDown}
-        active={active}
+        settings={
+          <>
+            <AiStudioSetting
+              icon={
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-4 w-3.5 shrink-0 rounded-[4px] border-2 border-muted"
+                />
+              }
+              label="4:5 portrait"
+            />
+            <AiStudioSetting
+              icon={<ImageIcon className="size-4" aria-hidden="true" />}
+              label="1 image"
+            />
+            <Button
+              type="button"
+              variant="muted"
+              size="lg"
+              onClick={handleEnhancePrompt}
+              disabled={generationLocked || !prompt.trim() || isGenerating}
+              aria-label={
+                generationLocked
+                  ? "Image prompt enhancement locked"
+                  : "Enhance image prompt"
+              }
+              title={generationLocked ? accessMessage ?? undefined : undefined}
+            >
+              <Sparkles data-icon="inline-start" aria-hidden="true" />
+              Enhance
+            </Button>
+          </>
+        }
       />
     </div>
   );
 }
 
-function ResultsArea({
-  aspectRatio,
-  generatedAssets,
-  generationFailed,
-  imageCount,
-  isGenerating,
-  onSelectAsset,
-  selectedAssetId,
-}: {
-  aspectRatio: AspectRatio;
-  generatedAssets: GeneratedAsset[];
-  generationFailed: boolean;
-  imageCount: ImageCount;
-  isGenerating: boolean;
-  onSelectAsset: (assetId: string) => void;
-  selectedAssetId: string | null;
-}) {
+function GeneratedAssetCard({ asset }: { asset: AIStudioImageResult }) {
   return (
-    <section className="relative flex min-h-[360px] min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-panel)] border border-border bg-[#191919] shadow-[0_20px_55px_rgb(0_0_0_/_0.22)] md:min-h-0">
-      <header className="relative z-10 flex min-h-12 items-center justify-between gap-3 border-b border-border/70 bg-card-muted/35 px-4 sm:px-5">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <ImageIcon className="size-4 shrink-0 text-primary" aria-hidden="true" />
-          <h2 className="text-sm font-semibold text-foreground">Images</h2>
-          <span className="text-xs text-muted">
-            {aspectRatio} {instagramImageFormatLabels[aspectRatio]}
-          </span>
-        </div>
-        <span className="text-xs font-medium text-muted">
-          {generatedAssets.length > 0
-            ? `${generatedAssets.length} generated`
-            : `${imageCount} ${imageCount === 1 ? "output" : "outputs"}`}
-        </span>
-      </header>
-
-      {generationFailed ? (
-        <div
-          role="alert"
-          className="absolute left-4 top-16 z-20 w-fit rounded-full border border-error/35 bg-[#2A2020] px-3 py-2 text-xs font-semibold text-error shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
-        >
-          <div className="flex items-center gap-2">
-            <AlertCircle className="size-3.5" aria-hidden="true" />
-            Generation failed. Review the prompt and try again.
-          </div>
-        </div>
-      ) : null}
-
-      {isGenerating ? (
-        <div
-          role="status"
-          className="absolute left-4 top-16 z-20 w-fit rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-[0_10px_28px_rgb(0_0_0_/_0.18)] sm:left-5"
-        >
-          <div className="flex items-center gap-2">
-            <Loader2 className="size-3.5 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
-            Generating image asset…
-          </div>
-        </div>
-      ) : null}
-
-      {generatedAssets.length > 0 ? (
-        <div className="grid flex-1 auto-rows-min grid-cols-1 gap-4 overflow-y-auto p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3">
-          {generatedAssets.map((asset) => (
-            <GeneratedAssetCard
-              key={asset.id}
-              asset={asset}
-              selected={selectedAssetId === asset.id}
-              onSelect={() => onSelectAsset(asset.id)}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="relative flex flex-1 items-center justify-center overflow-hidden px-5 py-8 text-center">
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 bg-[radial-gradient(circle_at_50%_46%,color-mix(in_srgb,var(--instagram-rose)_12%,transparent),transparent_30%),radial-gradient(circle_at_62%_55%,color-mix(in_srgb,var(--instagram-violet)_10%,transparent),transparent_36%)]"
-          />
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 opacity-[0.13] [background-image:linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] [background-size:32px_32px]"
-          />
-
-          <div className="relative max-w-sm">
-            <span className="mx-auto flex size-12 items-center justify-center rounded-[14px] border border-primary/25 bg-brand-soft text-primary shadow-sm">
-              <ImageIcon className="size-5" aria-hidden="true" />
-            </span>
-            <h3 className="mt-4 text-sm font-semibold text-foreground">
-              No images yet
-            </h3>
-            <p className="mt-1.5 text-sm leading-6 text-muted">
-              Describe what you want to create below. Your generated images
-              will appear here.
-            </p>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function ImageGenerationComposer({
-  active,
-  generationLocked,
-  isGenerating,
-  onEnhancePrompt,
-  onPromptChange,
-  onSubmit,
-  onTextareaKeyDown,
-  prompt,
-}: {
-  active: boolean;
-  generationLocked: boolean;
-  isGenerating: boolean;
-  onEnhancePrompt: () => void;
-  onPromptChange: (prompt: string) => void;
-  onSubmit: (event?: FormEvent<HTMLFormElement>) => void;
-  onTextareaKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
-  prompt: string;
-}) {
-  const promptId = useId();
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  useEffect(() => {
-    const textarea = textareaRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    if (!active) {
-      return;
-    }
-
-    textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 56), 112)}px`;
-  }, [active, prompt]);
-
-  return (
-    <form
-      noValidate
-      onSubmit={onSubmit}
-      className="mx-auto w-full max-w-[1120px] shrink-0 rounded-[var(--radius-panel)] border border-border bg-card p-3 shadow-[0_18px_48px_rgb(0_0_0_/_0.24)]"
-    >
-      <div className="rounded-[var(--radius-card)] border border-border bg-card-muted/65 px-3 py-2 transition-[border-color,box-shadow] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
-        <div className="flex items-center justify-between gap-3">
-          <label
-            htmlFor={promptId}
-            className="text-xs font-semibold text-foreground"
-          >
-            Describe the visual
-          </label>
-          <span className="rounded-full border border-border bg-background/35 px-2.5 py-1 text-[11px] font-semibold text-muted">
-            Pro image
-          </span>
-        </div>
-
-        <textarea
-          id={promptId}
-          ref={textareaRef}
-          rows={1}
-          aria-label="Image prompt"
-          autoComplete="off"
-          name="imagePrompt"
-          value={prompt}
-          onChange={(event) => onPromptChange(event.target.value)}
-          onKeyDown={onTextareaKeyDown}
-          className="mt-1 max-h-28 min-h-14 w-full resize-none overflow-y-auto bg-transparent text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle"
-          placeholder="Describe the subject, setting, composition, lighting, and mood…"
-        />
-      </div>
-
-      <div className="mt-3 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <div
-            aria-label="Image format: 4:5 portrait"
-            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground"
-          >
-            <span
-              aria-hidden="true"
-              className="inline-block h-4 w-3.5 shrink-0 rounded-[4px] border-2 border-muted"
-            />
-            4:5 portrait
-          </div>
-          <div
-            aria-label="Output count: 1 image"
-            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground"
-          >
-            <ImageIcon className="size-3.5" aria-hidden="true" />
-            1 image
-          </div>
-
-          <button
-            type="button"
-            onClick={onEnhancePrompt}
-            disabled={generationLocked || !prompt.trim() || isGenerating}
-            aria-label={
-              generationLocked
-                ? "Image prompt enhancement locked"
-                : "Enhance image prompt"
-            }
-            title={
-              generationLocked ? "Prompt enhancement is locked" : undefined
-            }
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-            Enhance
-          </button>
-        </div>
-        <button
-          type="submit"
-          disabled={generationLocked || !prompt.trim() || isGenerating}
-          aria-label={
-            generationLocked
-              ? "Image generation locked"
-              : "Generate image"
-          }
-          title={
-            generationLocked ? "Image generation is locked" : undefined
-          }
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border border-primary/35 bg-brand-soft px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/55 hover:bg-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-80 xl:w-auto xl:min-w-[236px]"
-        >
-          {generationLocked ? (
-            <>
-              <Lock className="size-4" aria-hidden="true" />
-              Generation unavailable in preview
-            </>
-          ) : isGenerating ? (
-            <>
-              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-              Generating…
-            </>
-          ) : (
-            <>
-              Generate image
-              <Sparkles className="size-4" aria-hidden="true" />
-            </>
-          )}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function GeneratedAssetCard({
-  asset,
-  onSelect,
-  selected,
-}: {
-  asset: GeneratedAsset;
-  onSelect: () => void;
-  selected: boolean;
-}) {
-  return (
-    <article
-      className={cn(
-        "min-w-0 rounded-[var(--radius-card)] border bg-card p-2 shadow-card transition-colors",
-        selected ? "border-success/45" : "border-border",
-      )}
-    >
+    <article className="group min-w-0">
       <div
-        className="overflow-hidden rounded-[var(--radius-control)] bg-card-muted"
+        className="overflow-hidden rounded-[var(--radius-card)] bg-card-muted ring-1 ring-border"
         style={{ aspectRatio: asset.aspectRatio.replace(":", " / ") }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={asset.url}
-          alt="Generated UGC image asset"
+          alt={asset.title}
           width={1200}
           height={getGeneratedImageHeight(asset.aspectRatio)}
           loading="lazy"
           className="size-full object-cover"
         />
       </div>
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onSelect}
-          aria-pressed={selected}
-          className="inline-flex min-w-0 items-center gap-1.5 rounded-md text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        >
-          <CheckCircle2
-            className={cn(
-              "size-3.5",
-              selected ? "text-success" : "text-muted-subtle",
-            )}
-            aria-hidden="true"
-          />
-          <span className="truncate">{asset.prompt}</span>
-        </button>
+      <div className="mt-2 flex items-center justify-between gap-2 px-1">
+        <div className="min-w-0">
+          <h3 className="truncate text-xs font-semibold text-foreground">
+            {asset.title}
+          </h3>
+          <p className="mt-0.5 text-xs text-muted-subtle">
+            {formatGeneratedAt(asset.createdAt)}
+          </p>
+        </div>
         <a
           href={asset.url}
           target="_blank"
           rel="noreferrer"
-          download={`ugc-image-${asset.id}`}
-          aria-label="Download generated image"
-          className="inline-flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-muted-subtle transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          aria-label={`Open ${asset.title} in a new tab`}
+          title="Open image in a new tab"
+          className="inline-flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-muted-subtle transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none"
         >
-          <Download className="size-3.5" aria-hidden="true" />
+          <ExternalLink className="size-3.5" aria-hidden="true" />
         </a>
       </div>
     </article>
   );
 }
 
-function getGeneratedImageHeight(aspectRatio: AspectRatio) {
-  const heights: Record<AspectRatio, number> = {
+function getGeneratedImageHeight(
+  aspectRatio: AIStudioImageResult["aspectRatio"],
+) {
+  const heights: Record<AIStudioImageResult["aspectRatio"], number> = {
     "4:5": 1500,
     "1:1": 1200,
     "9:16": 2133,
@@ -577,4 +561,19 @@ function getGeneratedImageHeight(aspectRatio: AspectRatio) {
   };
 
   return heights[aspectRatio];
+}
+
+function formatGeneratedAt(value: string) {
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? "Generated"
+    : new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date);
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
 }

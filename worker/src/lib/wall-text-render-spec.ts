@@ -1,3 +1,5 @@
+import { resolveTextColor } from "./edit-overlay-render-spec.js";
+
 export type WallTextSafeArea = {
   bottom: number;
   left: number;
@@ -155,9 +157,11 @@ export function buildWallTextOverlaySvg(params: {
   content: WallTextRenderContent;
   placement: WallTextPlacementZone;
   safeArea?: WallTextSafeArea;
+  textColor?: unknown;
   textBox?: WallTextNormalizedBox;
 }) {
   const layout = buildWallTextRenderLayout(params);
+  const textColor = resolveTextColor(params.textColor);
   const fontFamily =
     "Inter, Arial, Helvetica Neue, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif";
   const shadowFilter = [
@@ -181,7 +185,7 @@ export function buildWallTextOverlaySvg(params: {
         'xml:space="preserve"',
       ].join(" ");
 
-      return `<text x="${segment.centerX}" y="${baseline.toFixed(2)}" ${attributes} fill="#ffffff" stroke="#000000" stroke-width="${WALL_TEXT_OUTLINE_WIDTH}" stroke-linejoin="round" paint-order="stroke fill" filter="url(#wallTextShadow)">${escaped}</text>`;
+      return `<text x="${segment.centerX}" y="${baseline.toFixed(2)}" ${attributes} fill="${textColor}" stroke="#000000" stroke-width="${WALL_TEXT_OUTLINE_WIDTH}" stroke-linejoin="round" paint-order="stroke fill" filter="url(#wallTextShadow)">${escaped}</text>`;
     }),
   );
 

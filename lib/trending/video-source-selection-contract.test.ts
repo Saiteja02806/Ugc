@@ -14,6 +14,9 @@ const picker = readProjectFile(
 const workspace = readProjectFile(
   "components/trending/trending-workspace.tsx",
 );
+const editor = readProjectFile(
+  "components/trending/trending-creative-editor.tsx",
+);
 const selectionStorage = readProjectFile(
   "lib/trending/video-source-selection.ts",
 );
@@ -87,12 +90,26 @@ test("the picker supports whole groups, single videos, and the required empty st
   assert.match(picker, /\/api\/media\/groups\/\$\{encodeURIComponent\(groupId\)\}\/items/);
 });
 
-test("Choose appears only for Hook and Wall-of-text Trending cards", () => {
+test("Trending cards use the unified creative action row", () => {
+  assert.match(workspace, /CreativeCardActions/);
+  assert.doesNotMatch(workspace, /CreativeAssetsVideoPicker/);
+  assert.doesNotMatch(workspace, />\s*Choose\s*</);
+  assert.match(workspace, /TrendingCreativeEditor/);
+});
+
+test("Trending Edit offers a swipeable library or one exact video", () => {
+  assert.match(editor, /fetch\("\/api\/media"/);
+  assert.match(editor, /\/api\/media\/groups\?mediaType=video/);
   assert.match(
-    workspace,
-    /activeCandidate\.format !== "carousel"[\s\S]*onChooseVideoSource\(activeCandidate\.format\)[\s\S]*Choose/,
+    editor,
+    /\/api\/media\/groups\/\$\{encodeURIComponent\(groupId\)\}\/items/,
   );
-  assert.match(workspace, /CreativeAssetsVideoPicker/);
+  assert.match(editor, /selectEntireLibrary/);
+  assert.match(editor, /selectExactVideo/);
+  assert.match(editor, /Use entire library/);
+  assert.match(editor, /Use this video/);
+  assert.match(editor, /CreativeAssetDeck/);
+  assert.match(editor, /StaticCreativeTextOverlay/);
 });
 
 test("saved Hook selections limit candidate preparation and the visible feed", () => {

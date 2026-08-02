@@ -1,6 +1,39 @@
 export type EditOverlayRatio = "9:16" | "1:1" | "4:5" | "16:9";
 export type EditOverlayStyle = "clean" | "minimal" | "bubble" | "hook";
 
+export const TEXT_COLOR_VALUES = [
+  "#ffffff",
+  "#fde047",
+  "#fb923c",
+  "#f472b6",
+  "#67e8f9",
+  "#86efac",
+] as const;
+
+export type TextColor = (typeof TEXT_COLOR_VALUES)[number];
+
+export const DEFAULT_TEXT_COLOR: TextColor = "#ffffff";
+
+export function isTextColor(value: unknown): value is TextColor {
+  return TEXT_COLOR_VALUES.some((color) => color === value);
+}
+
+export function resolveTextColor(value: unknown): TextColor {
+  return isTextColor(value) ? value : DEFAULT_TEXT_COLOR;
+}
+
+export function parseTextColor(value: unknown, fieldName: string): TextColor {
+  if (value === undefined || value === null) {
+    return DEFAULT_TEXT_COLOR;
+  }
+
+  if (!isTextColor(value)) {
+    throw new Error(`${fieldName} is not a supported text color.`);
+  }
+
+  return value;
+}
+
 export type EditOverlayTextLayout = {
   backgroundColor: string | undefined;
   backgroundOpacity: number | null;
@@ -35,7 +68,7 @@ export const EDIT_OVERLAY_MAX_TEXT_WIDTH_PERCENT =
   100 - EDIT_OVERLAY_HORIZONTAL_INSET_PERCENT * 2;
 export const EDIT_OVERLAY_FONT_FAMILY = "Geist";
 export const EDIT_OVERLAY_FONT_WEIGHT = 600;
-export const EDIT_OVERLAY_TEXT_COLOR = "#ffffff";
+export const EDIT_OVERLAY_TEXT_COLOR = DEFAULT_TEXT_COLOR;
 export const EDIT_OVERLAY_SHADOW_COLOR = "rgba(0, 0, 0, 0.45)";
 export const EDIT_OVERLAY_FFMPEG_SHADOW_COLOR = "black@0.45";
 export const EDIT_OVERLAY_SHADOW_OFFSET_PX = 2;
@@ -167,6 +200,7 @@ export function buildEditOverlayTextLayout(
   text: string,
   style: EditOverlayStyle,
   ratio: EditOverlayRatio,
+  textColor?: unknown,
 ): EditOverlayTextLayout {
   const metrics = getEditOverlayRenderMetrics(style, ratio);
   const { height: canvasHeight, width: canvasWidth } =
@@ -199,6 +233,7 @@ export function buildEditOverlayTextLayout(
       style,
       text,
     });
+    layout.textColor = resolveTextColor(textColor);
     fallback = layout;
 
     if (
@@ -223,7 +258,66 @@ export function buildEditOverlayTextLayout(
       text,
     });
 
+  overflowLayout.textColor = resolveTextColor(textColor);
+
   return truncateEditOverlayLayoutToHeight(overflowLayout);
+}
+
+export function buildResolvedEditOverlayTextLayout(params: {
+  fontSize: number;
+  lines: readonly string[];
+  ratio: EditOverlayRatio;
+  style: EditOverlayStyle;
+  textColor?: unknown;
+}): EditOverlayTextLayout {
+  const metrics = getEditOverlayRenderMetrics(params.style, params.ratio);
+  const normalizedLines = params.lines
+    .map((line) => line.replace(/\s+/gu, " ").trim())
+    .filter(Boolean);
+
+  if (
+    normalizedLines.length < 1 ||
+    (params.style === "hook" && normalizedLines.length > 2) ||
+    !Number.isInteger(params.fontSize) ||
+    params.fontSize < metrics.minFontSize ||
+    params.fontSize > metrics.fontSize ||
+    params.fontSize % 2 !== 0
+  ) {
+    throw new Error("The saved text layout is outside the supported limits.");
+  }
+
+  const { height: canvasHeight, width: canvasWidth } =
+    getEditOverlayOutputDimensions(params.ratio);
+  const maxContainerWidth = Math.round(
+    canvasWidth * (metrics.maxTextWidthPercent / 100),
+  );
+  const maxContainerHeight = Math.round(
+    canvasHeight * (metrics.maxTextHeightPercent / 100),
+  );
+  const layout = buildLayoutAtFontSize({
+    canvasHeight,
+    canvasWidth,
+    fontSize: params.fontSize,
+    maxContainerHeight,
+    maxContainerWidth,
+    ratio: params.ratio,
+    style: params.style,
+    text: normalizedLines.join("\n"),
+  });
+  layout.textColor = resolveTextColor(params.textColor);
+
+  if (
+    layout.isTruncated ||
+    layout.bounds.containerHeight > maxContainerHeight ||
+    layout.lines.length !== normalizedLines.length ||
+    layout.lines.some((line, index) => line !== normalizedLines[index])
+  ) {
+    throw new Error(
+      "The saved text lines do not fit the saved font size without wrapping.",
+    );
+  }
+
+  return layout;
 }
 
 function buildLayoutAtFontSize(params: {

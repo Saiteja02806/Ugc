@@ -60,6 +60,7 @@ const canonicalTypeByImplementation: Record<
   render_demo_video: "final_render",
   render_edit_video: "final_render",
   render_schedule_combination: "final_render",
+  render_trending_carousel_edit: "carousel_generation",
   render_wall_text_video: "final_render",
   social_publish: "social_publish",
   test_worker_job: "media_analysis",

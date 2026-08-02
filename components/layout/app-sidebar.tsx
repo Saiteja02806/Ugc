@@ -22,7 +22,6 @@ import {
 } from "@/components/icons/sidebar-icon";
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
-import { useActiveBackgroundJobs } from "@/lib/jobs/background-job-client";
 import { cn } from "@/lib/utils";
 
 export type AppSidebarActiveKey =
@@ -206,8 +205,6 @@ export function AppSidebar({
 
         <SidebarNavigation activeKey={activeKey} collapsed={collapsed} />
 
-        <BackgroundJobsIndicator collapsed={collapsed} />
-
         <AccountSection
           active={activeKey === "settings"}
           collapsed={collapsed}
@@ -224,7 +221,7 @@ export function AppSidebar({
             tabIndex={-1}
             aria-label="Close navigation"
             onClick={() => setIsMobileNavigationOpen(false)}
-            className="absolute inset-0 cursor-default bg-black/35"
+            className="absolute inset-0 cursor-default bg-overlay"
           />
           <aside
             ref={mobileNavigationRef}
@@ -255,8 +252,6 @@ export function AppSidebar({
               onNavigate={() => setIsMobileNavigationOpen(false)}
             />
 
-            <BackgroundJobsIndicator />
-
             <AccountSection
               active={activeKey === "settings"}
               displayName={displayName}
@@ -268,126 +263,6 @@ export function AppSidebar({
       ) : null}
     </>
   );
-}
-
-function BackgroundJobsIndicator({ collapsed = false }: { collapsed?: boolean }) {
-  const jobsQuery = useActiveBackgroundJobs();
-  const jobs = jobsQuery.data ?? [];
-
-  if (jobs.length === 0) {
-    return null;
-  }
-
-  const attentionCount = jobs.filter((job) => job.status === "stalled").length;
-  const label = attentionCount
-    ? `${attentionCount} job${attentionCount === 1 ? "" : "s"} need attention`
-    : `${jobs.length} job${jobs.length === 1 ? "" : "s"} running`;
-
-  return (
-    <details className="group/jobs relative mx-3 mb-3">
-      <summary
-        role="status"
-        aria-live="polite"
-        title={collapsed ? `${label}. Open background jobs.` : undefined}
-        className={cn(
-          "flex cursor-pointer list-none items-center rounded-control border border-border bg-card-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden",
-          collapsed ? "h-10 justify-center px-0" : "gap-2.5 px-3 py-2.5",
-        )}
-      >
-        <span className="relative flex size-2.5 shrink-0" aria-hidden="true">
-          {attentionCount === 0 ? (
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-30 motion-reduce:animate-none" />
-          ) : null}
-          <span
-            className={cn(
-              "relative inline-flex size-2.5 rounded-full",
-              attentionCount > 0 ? "bg-warning" : "bg-brand",
-            )}
-          />
-        </span>
-        {collapsed ? (
-          <span className="sr-only">{label}</span>
-        ) : (
-          <span className="min-w-0">
-            <span className="block truncate text-xs font-semibold text-foreground">
-              {attentionCount > 0
-                ? "Work needs attention"
-                : "Creating in background"}
-            </span>
-            <span className="block text-[11px] font-medium text-muted tabular-nums">
-              {label}
-            </span>
-          </span>
-        )}
-      </summary>
-      <div
-        className={cn(
-          "z-[var(--z-popover)] mt-2 space-y-1 rounded-control border border-border bg-card p-1.5 shadow-floating",
-          collapsed && "absolute bottom-0 left-[calc(100%+8px)] mt-0 w-64",
-        )}
-      >
-        {jobs.map((job) => (
-          <Link
-            key={job.id}
-            href={getBackgroundJobHref(job.jobType, job.id)}
-            className="block rounded-small px-2.5 py-2 transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            <span className="block truncate text-xs font-semibold text-foreground">
-              {getBackgroundJobLabel(job.jobType)}
-            </span>
-            <span
-            className={cn(
-              "block truncate text-[11px] font-medium",
-              job.status === "stalled" ? "text-warning" : "text-muted",
-            )}
-            >
-              {job.stage || job.status.replaceAll("_", " ")}
-            </span>
-          </Link>
-        ))}
-      </div>
-    </details>
-  );
-}
-
-function getBackgroundJobLabel(jobType: string) {
-  const labels: Record<string, string> = {
-    analytics_sync: "Syncing analytics",
-    carousel_generation: "Generating Carousel",
-    final_render: "Rendering final video",
-    hook_text_generation: "Generating Hook copy",
-    image_generation: "Generating image",
-    media_analysis: "Analyzing media",
-    preview_render: "Rendering preview",
-    social_publish: "Publishing social post",
-    video_generation: "Generating video",
-    wall_text_generation: "Generating Wall-of-text",
-  };
-
-  return labels[jobType] || "Background work";
-}
-
-function getBackgroundJobHref(jobType: string, jobId: string) {
-  const encodedJobId = encodeURIComponent(jobId);
-
-  if (jobType === "video_generation" || jobType === "image_generation") {
-    const mode = jobType === "video_generation" ? "videos" : "images";
-    return `/ai-studio?mode=${mode}&job=${encodedJobId}`;
-  }
-
-  if (jobType === "final_render" || jobType === "preview_render") {
-    return `/scheduling?job=${encodedJobId}`;
-  }
-
-  if (jobType === "analytics_sync") {
-    return `/analytics?job=${encodedJobId}`;
-  }
-
-  if (jobType === "media_analysis") {
-    return `/onboarding?job=${encodedJobId}`;
-  }
-
-  return `/dashboard?job=${encodedJobId}`;
 }
 
 function Brand() {

@@ -10,6 +10,7 @@ import {
   Save,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -50,6 +51,7 @@ export function FocusedVideoEditorShell({
   returnLabel?: string;
   videoId: string;
 }) {
+  const router = useRouter();
   const [video, setVideo] = useState<EditableVideo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [draft, setDraft] = useState<FocusedVideoEditorDraftState | null>(null);
@@ -58,15 +60,18 @@ export function FocusedVideoEditorShell({
   const [lastRenderedDraftKey, setLastRenderedDraftKey] = useState<string | null>(
     null,
   );
+  const [lastSavedDraftKey, setLastSavedDraftKey] = useState<string | null>(null);
   const [isDraftValid, setIsDraftValid] = useState(true);
   const [renderState, setRenderState] = useState<RenderState>("idle");
   const [renderMessage, setRenderMessage] = useState<string | null>(null);
   const [resumePollGeneration, setResumePollGeneration] = useState(0);
+  const [isLeaving, setIsLeaving] = useState(false);
   const activeRenderDraftKeyRef = useRef<string | null>(null);
   const localRenderPollActiveRef = useRef(false);
   const currentDraftKeyRef = useRef<string | null>(null);
-  const lastSavedDraftKeyRef = useRef<string | null>(null);
   const lastRenderedDraftKeyRef = useRef<string | null>(null);
+  const draftSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const allowUnloadRef = useRef(false);
 
   const loadVideo = useCallback(async () => {
     setIsLoading(true);
@@ -109,7 +114,7 @@ export function FocusedVideoEditorShell({
       currentDraftKeyRef.current = initialDraftKey;
       activeRenderDraftKeyRef.current =
         data.video.status === "rendering" ? initialDraftKey : null;
-      lastSavedDraftKeyRef.current = initialDraftKey;
+      setLastSavedDraftKey(initialDraftKey);
       lastRenderedDraftKeyRef.current = initialRenderedDraftKey;
       setLastRenderedDraftKey(initialRenderedDraftKey);
       setDraft(initialDraft);
@@ -145,35 +150,85 @@ export function FocusedVideoEditorShell({
   }, [loadVideo]);
 
   const persistDraft = useCallback(
-    async (
+    (
       currentVideo: EditableVideo,
       currentDraft: FocusedVideoEditorDraftState,
     ) => {
-      const token = await requireToken();
-      const response = await fetch(
-        `/api/edit/videos/${encodeURIComponent(currentVideo.id)}`,
-        {
-          body: JSON.stringify({ draft: currentDraft }),
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+      const operation = draftSaveQueueRef.current.then(async () => {
+        const token = await requireToken();
+        const response = await fetch(
+          `/api/edit/videos/${encodeURIComponent(currentVideo.id)}`,
+          {
+            body: JSON.stringify({ draft: currentDraft }),
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            method: "PATCH",
           },
-          method: "PATCH",
-        },
+        );
+        const data = (await response.json()) as
+          | { ok: true; video: EditableVideo }
+          | { error?: string; ok?: false };
+
+        if (!response.ok || data.ok !== true) {
+          throw new Error(getApiError(data, "Could not save these changes."));
+        }
+
+        setVideo(data.video);
+        return data.video;
+      });
+
+      draftSaveQueueRef.current = operation.then(
+        () => undefined,
+        () => undefined,
       );
-      const data = (await response.json()) as
-        | { ok: true; video: EditableVideo }
-        | { error?: string; ok?: false };
 
-      if (!response.ok || data.ok !== true) {
-        throw new Error(getApiError(data, "Could not save these changes."));
-      }
-
-      setVideo(data.video);
-      return data.video;
+      return operation;
     },
     [],
   );
+
+  async function handleReturnToLibrary() {
+    if (isLeaving) {
+      return;
+    }
+
+    if (!video || !draft) {
+      allowUnloadRef.current = true;
+      router.push(returnHref);
+      return;
+    }
+
+    const draftKey = serializeDraft(draft);
+
+    if (draftKey === lastSavedDraftKey) {
+      allowUnloadRef.current = true;
+      router.push(returnHref);
+      return;
+    }
+
+    setIsLeaving(true);
+    setSaveState("saving");
+    setSaveMessage(null);
+
+    try {
+      await persistDraft(video, draft);
+      setLastSavedDraftKey(draftKey);
+      setSaveState("saved");
+      allowUnloadRef.current = true;
+      router.push(returnHref);
+    } catch (error) {
+      setIsLeaving(false);
+      setSaveState("failed");
+      setSaveMessage(
+        getErrorMessage(
+          error,
+          "Could not save your latest changes before leaving.",
+        ),
+      );
+    }
+  }
 
   useEffect(() => {
     if (!video || !draft) {
@@ -183,19 +238,8 @@ export function FocusedVideoEditorShell({
     const draftKey = serializeDraft(draft);
     currentDraftKeyRef.current = draftKey;
 
-    if (draftKey === lastSavedDraftKeyRef.current) {
+    if (draftKey === lastSavedDraftKey) {
       return;
-    }
-
-    setSaveState("idle");
-    setSaveMessage(null);
-
-    const isSavingVideo =
-      renderState === "starting" || renderState === "rendering";
-
-    if (draftKey !== lastRenderedDraftKeyRef.current && !isSavingVideo) {
-      setRenderState("idle");
-      setRenderMessage(null);
     }
 
     const timer = window.setTimeout(() => {
@@ -203,7 +247,7 @@ export function FocusedVideoEditorShell({
 
       void persistDraft(video, draft)
         .then(() => {
-          lastSavedDraftKeyRef.current = draftKey;
+          setLastSavedDraftKey(draftKey);
           setSaveState("saved");
           setSaveMessage(null);
         })
@@ -216,7 +260,7 @@ export function FocusedVideoEditorShell({
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [draft, persistDraft, renderState, video]);
+  }, [draft, lastSavedDraftKey, persistDraft, video]);
 
   useEffect(() => {
     if (
@@ -320,7 +364,7 @@ export function FocusedVideoEditorShell({
 
     try {
       await persistDraft(video, draftForRender);
-      lastSavedDraftKeyRef.current = draftForRenderKey;
+      setLastSavedDraftKey(draftForRenderKey);
       setSaveState("saved");
       setSaveMessage(null);
       const idToken = await requireToken();
@@ -410,6 +454,9 @@ export function FocusedVideoEditorShell({
 
   const isRendering = renderState === "starting" || renderState === "rendering";
   const currentDraftKey = draft ? serializeDraft(draft) : null;
+  const hasUnsavedDraft =
+    currentDraftKey !== null &&
+    currentDraftKey !== lastSavedDraftKey;
   const hasSavedVideoWithNewerChanges =
     video?.status === "draft" && Boolean(video.renderedVideoUrl);
   const shouldShowRenderStatus =
@@ -422,6 +469,24 @@ export function FocusedVideoEditorShell({
     currentDraftKey !== null &&
     currentDraftKey === lastRenderedDraftKey;
 
+  useEffect(() => {
+    if (!hasUnsavedDraft) {
+      return;
+    }
+
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (allowUnloadRef.current) {
+        return;
+      }
+
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedDraft]);
+
   return (
     <section className="flex min-h-[calc(100dvh-4rem)] min-w-0 w-full flex-1 flex-col overflow-x-hidden bg-background text-foreground md:min-h-dvh lg:h-dvh lg:overflow-hidden">
       <EditorTopBar
@@ -429,12 +494,14 @@ export function FocusedVideoEditorShell({
           Boolean(video?.videoUrl) &&
           isDraftValid &&
           !isRendering &&
+          !isLeaving &&
           !isCurrentVersionSaved
         }
         isCurrentVersionSaved={isCurrentVersionSaved}
+        isReturning={isLeaving}
+        onReturn={() => void handleReturnToLibrary()}
         renderState={renderState}
         renderedVideoUrl={video?.renderedVideoUrl ?? null}
-        returnHref={returnHref}
         returnLabel={returnLabel}
         saveState={saveState}
         video={video}
@@ -470,7 +537,24 @@ export function FocusedVideoEditorShell({
             isCurrentVersionSaved={isCurrentVersionSaved}
             renderedVideoUrl={video.renderedVideoUrl}
             video={video}
-            onDraftChange={setDraft}
+            onDraftChange={(nextDraft) => {
+              allowUnloadRef.current = false;
+              setSaveState("idle");
+              setSaveMessage(null);
+
+              const isSavingVideo =
+                renderState === "starting" || renderState === "rendering";
+
+              if (
+                serializeDraft(nextDraft) !== lastRenderedDraftKeyRef.current &&
+                !isSavingVideo
+              ) {
+                setRenderState("idle");
+                setRenderMessage(null);
+              }
+
+              setDraft(nextDraft);
+            }}
             onDraftValidityChange={setIsDraftValid}
           />
         ) : (
@@ -488,20 +572,22 @@ export function FocusedVideoEditorShell({
 function EditorTopBar({
   canSaveVideo,
   isCurrentVersionSaved,
+  isReturning,
   onRenderVideo,
+  onReturn,
   renderState,
   renderedVideoUrl,
-  returnHref,
   returnLabel,
   saveState,
   video,
 }: {
   canSaveVideo: boolean;
   isCurrentVersionSaved: boolean;
+  isReturning: boolean;
   onRenderVideo: () => void;
+  onReturn: () => void;
   renderState: RenderState;
   renderedVideoUrl: string | null;
-  returnHref: string;
   returnLabel: string;
   saveState: SaveState;
   video: EditableVideo | null;
@@ -511,13 +597,19 @@ function EditorTopBar({
   return (
     <header className="flex w-full shrink-0 flex-col gap-3 border-b border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <Link
-          href={returnHref}
+        <button
+          type="button"
+          onClick={onReturn}
+          disabled={isReturning}
           aria-label={returnLabel}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-border text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+          className="inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-border text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
         >
-          <ArrowLeft aria-hidden="true" />
-        </Link>
+          {isReturning ? (
+            <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          ) : (
+            <ArrowLeft aria-hidden="true" />
+          )}
+        </button>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-muted">Edit video</span>

@@ -62,6 +62,9 @@ const jobQueueConfig = {
   render_schedule_combination: {
     queueName: "video-render",
   },
+  render_trending_carousel_edit: {
+    queueName: "carousel",
+  },
   render_wall_text_video: {
     queueName: "video-render",
   },

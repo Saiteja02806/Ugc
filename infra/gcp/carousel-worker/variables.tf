@@ -55,7 +55,7 @@ variable "queue_name" {
 variable "worker_job_types" {
   description = "Comma-separated job types allowed for this worker service."
   type        = string
-  default     = "generate_carousel"
+  default     = "generate_carousel,render_trending_carousel_edit"
 }
 
 variable "worker_visibility_timeout_seconds" {

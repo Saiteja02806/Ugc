@@ -38,6 +38,7 @@ export type BackgroundJobType =
   | "render_demo_video"
   | "render_edit_video"
   | "render_schedule_combination"
+  | "render_trending_carousel_edit"
   | "render_wall_text_video"
   | "social_publish"
   | "test_worker_job"
@@ -476,6 +477,27 @@ export type CarouselSlideRow = {
   updated_at: string;
 };
 
+export type TrendingCreativeEditRow = {
+  assignment_id: string;
+  content_json: Json;
+  created_at: string;
+  creative_id: string;
+  format: "carousel" | "hook_video" | "wall_text";
+  id: string;
+  position_json: Json;
+  render_error: string | null;
+  render_job_id: string | null;
+  render_output_json: Json | null;
+  render_status: "draft" | "failed" | "queued" | "ready" | "rendering";
+  resolved_media_asset_id: string | null;
+  revision: number;
+  source_group_id: string | null;
+  source_media_asset_id: string | null;
+  source_selection_kind: "asset" | "group" | null;
+  updated_at: string;
+  user_id: string;
+};
+
 export type CarouselSlideInsert = {
   carousel_generation_id: string;
   category_image_asset_id?: string | null;
@@ -590,6 +612,19 @@ export type BackgroundJobsDatabase = {
         };
         Returns: BackgroundJobRow[];
       };
+      finalize_edit_render: {
+        Args: {
+          p_error_message: string | null;
+          p_output_s3_key: string | null;
+          p_output_url: string | null;
+          p_project_id: string;
+          p_render_id: string;
+          p_source_video_id: string;
+          p_terminal_status: "completed" | "failed";
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
       claim_social_publish_operation: {
         Args: {
           p_claim_token: string;
@@ -673,6 +708,12 @@ export type BackgroundJobsDatabase = {
         Relationships: [];
         Row: CarouselSlideRow;
         Update: Partial<CarouselSlideInsert>;
+      };
+      trending_creative_edits: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: TrendingCreativeEditRow;
+        Update: Partial<TrendingCreativeEditRow>;
       };
       category_image_assets: {
         Insert: Record<string, never>;

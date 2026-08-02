@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
 import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -696,7 +697,7 @@ export function PlatformSelectionModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
-        className="instagram-theme max-h-[calc(100dvh-1rem)] max-w-[calc(100%-1rem)] gap-0 overflow-hidden rounded-[22px] border border-border bg-card p-0 text-foreground shadow-floating ring-0 sm:max-h-[calc(100dvh-2rem)] sm:max-w-[960px]"
+        className="instagram-theme max-h-[calc(100dvh-1rem)] max-w-[calc(100%-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-[22px] border border-border bg-card p-0 text-foreground shadow-floating ring-0 sm:max-h-[calc(100dvh-2rem)] sm:max-w-[960px]"
         showCloseButton={!submitting}
       >
         <div className="relative overflow-hidden border-b border-border bg-card">
@@ -783,7 +784,7 @@ export function PlatformSelectionModal({
           </div>
         </div>
 
-        <div className="min-h-0 overflow-y-auto bg-background/35 px-5 py-5 sm:min-h-[360px] sm:px-7 sm:py-6">
+        <div className="min-h-0 overflow-y-auto overscroll-contain bg-background/35 px-5 py-5 sm:px-7 sm:py-6">
           {confirmError || loadError || popupError ? (
             <Alert variant="destructive" className="mb-5">
               <AlertCircle />
@@ -882,7 +883,7 @@ export function PlatformSelectionModal({
         </div>
 
         {!submitting ? (
-          <DialogFooter className="mx-0 mb-0 rounded-none rounded-b-[22px] border-t border-border bg-card px-5 py-4 sm:px-7">
+          <DialogFooter className="mx-0 mb-0 shrink-0 rounded-none rounded-b-[22px] border-t border-border bg-card px-5 py-4 sm:px-7">
             {step === "accounts" ? (
               <Button
                 size="lg"
@@ -1026,12 +1027,7 @@ function AccountsStep({
                       unavailableMessage && "cursor-not-allowed",
                     )}
                   >
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] text-white">
-                      <SocialPlatformIcon
-                        platform={connection.platform}
-                        className="size-5"
-                      />
-                    </span>
+                    <SocialAccountAvatar connection={connection} size="lg" />
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold text-foreground">
@@ -1308,16 +1304,15 @@ function CarouselAccountSettings({
 }) {
   return (
     <div className="py-4 first:pt-3 last:pb-3">
-      <div className="flex items-center justify-between gap-3">
-        <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-          <SocialPlatformIcon
-            platform={connection.platform}
-            className="size-4 shrink-0"
-          />
-          {getPlatformLabel(connection.platform)}
-        </span>
-        <span className="truncate text-xs text-muted-foreground">
-          {getConnectionAccountName(connection)}
+      <div className="flex min-w-0 items-center gap-3">
+        <SocialAccountAvatar connection={connection} />
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-foreground">
+            {getPlatformLabel(connection.platform)}
+          </span>
+          <span className="block truncate text-xs text-muted-foreground">
+            {getConnectionAccountName(connection)}
+          </span>
         </span>
       </div>
 
@@ -1861,13 +1856,13 @@ function getStatusDisplay(
   status: SocialConnectionStatus | "connecting" | "not_connected",
 ): {
   label: string;
-  variant: "destructive" | "outline" | "secondary";
+  variant: "connected" | "destructive" | "disconnected" | "rendering";
 } {
   switch (status) {
     case "connected":
-      return { label: "Connected", variant: "secondary" };
+      return { label: "Connected", variant: "connected" };
     case "connecting":
-      return { label: "Connecting", variant: "outline" };
+      return { label: "Connecting", variant: "rendering" };
     case "expired":
       return { label: "Expired", variant: "destructive" };
     case "permission_missing":
@@ -1875,9 +1870,9 @@ function getStatusDisplay(
     case "error":
       return { label: "Connection error", variant: "destructive" };
     case "revoked":
-      return { label: "Disconnected", variant: "outline" };
+      return { label: "Disconnected", variant: "disconnected" };
     case "not_connected":
-      return { label: "Not connected", variant: "outline" };
+      return { label: "Not connected", variant: "disconnected" };
   }
 }
 

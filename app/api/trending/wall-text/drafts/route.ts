@@ -21,6 +21,8 @@ import {
   markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
+import { loadSavedTrendingCreativeEditForDownstream } from "@/lib/trending/creative-edit-service";
+import { TrendingCreativeEditAccessError } from "@/lib/trending/creative-edits";
 import {
   attachWallTextRenderJob,
   claimWallTextRender,
@@ -30,6 +32,7 @@ import {
   markWallTextRenderQueueFailed,
 } from "@/lib/trending/wall-text-db";
 import { getWallTextPreviewTitle } from "@/lib/trending/wall-text-text-logic";
+import { DEFAULT_TRENDING_TEXT_COLOR } from "@/lib/trending/text-color";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -121,8 +124,20 @@ export async function POST(request: Request) {
   }
 
   try {
+    const draft = await getRequiredDraft(parsed.data.assignmentId, userId);
+    const creativeEdit = await loadSavedTrendingCreativeEditForDownstream({
+      creativeId: draft.id,
+      format: "wall_text",
+      userId,
+    });
+    const editedContent =
+      creativeEdit?.content.format === "wall_text"
+        ? creativeEdit.content
+        : null;
     let claimed = await claimWallTextRender({
       assignmentId: parsed.data.assignmentId,
+      editId: creativeEdit?.id,
+      editRevision: creativeEdit?.revision,
       userId,
     });
 
@@ -133,7 +148,6 @@ export async function POST(request: Request) {
       existingJob &&
       ["completed", "processing", "queued"].includes(existingJob.status)
     ) {
-      const draft = await getRequiredDraft(parsed.data.assignmentId, userId);
       return json({ draft, jobId: existingJob.id, ok: true });
     }
 
@@ -146,6 +160,8 @@ export async function POST(request: Request) {
       });
       claimed = await claimWallTextRender({
         assignmentId: parsed.data.assignmentId,
+        editId: creativeEdit?.id,
+        editRevision: creativeEdit?.revision,
         userId,
       });
     }
@@ -158,9 +174,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const draft = await getRequiredDraft(parsed.data.assignmentId, userId);
+  const sourceVideoUrl =
+    creativeEdit?.source?.resolvedAssetUrl ?? draft.previewUrl;
 
-  if (!isTrustedStorageUrl(draft.previewUrl)) {
+  if (!isTrustedStorageUrl(sourceVideoUrl)) {
     await markWallTextRenderQueueFailed({
       assignmentId: claimed.id,
       errorMessage: "The selected Wall-of-text background is not app-owned.",
@@ -177,23 +194,33 @@ export async function POST(request: Request) {
     idempotencyKey: `wall-text-render:${claimed.render_id}`,
     input: {
       assignmentId: claimed.id,
+      creativeEditId: creativeEdit?.id ?? null,
+      creativeEditRevision: creativeEdit?.revision ?? null,
       creativeId: draft.id,
-      durationSeconds: draft.durationSeconds,
+      durationSeconds:
+        creativeEdit?.source?.resolvedAssetDurationSeconds ??
+        draft.durationSeconds,
       layout: {
-        placement: draft.layout.placement,
+        placement: editedContent?.layout.placement ?? draft.layout.placement,
         safeArea: {
-          bottom: draft.layout.safeArea.bottom,
-          left: draft.layout.safeArea.left,
-          right: draft.layout.safeArea.right,
-          top: draft.layout.safeArea.top,
+          bottom:
+            editedContent?.layout.safeArea.bottom ?? draft.layout.safeArea.bottom,
+          left:
+            editedContent?.layout.safeArea.left ?? draft.layout.safeArea.left,
+          right:
+            editedContent?.layout.safeArea.right ?? draft.layout.safeArea.right,
+          top: editedContent?.layout.safeArea.top ?? draft.layout.safeArea.top,
         },
-        textBox: draft.layout.textBox,
+        textBox: editedContent?.layout.textBox ?? draft.layout.textBox,
       },
       projectId: "trending-wall-text",
       renderId: claimed.render_id,
-      sourceVideoUrl: draft.previewUrl,
-      text: draft.text,
-      title: getWallTextPreviewTitle(draft.text.fullText),
+      sourceVideoUrl,
+      text: editedContent?.content ?? draft.text,
+      textColor: editedContent?.textColor ?? DEFAULT_TRENDING_TEXT_COLOR,
+      title: getWallTextPreviewTitle(
+        editedContent?.content.fullText ?? draft.text.fullText,
+      ),
       userId,
     },
     jobType: WALL_TEXT_RENDER_JOB_TYPE,
@@ -270,6 +297,10 @@ export async function POST(request: Request) {
       ok: true,
     });
   } catch (error) {
+    if (error instanceof TrendingCreativeEditAccessError) {
+      return json({ error: error.message, ok: false }, error.status);
+    }
+
     console.error("Could not save the Wall-of-text video:", error);
     return json(
       { error: "Could not save and prepare this Wall-of-text video.", ok: false },

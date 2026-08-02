@@ -2169,9 +2169,9 @@ function ContentTypeBadge({ type }: { type: InstagramContentType }) {
       variant="outline"
       className={cn(
         "w-fit",
-        type === "reel" && "border-[#d62976]/25 bg-[#d62976]/8 text-[#df4b8a]",
+        type === "reel" && "border-instagram-rose/25 bg-instagram-rose/8 text-instagram-rose",
         type === "carousel" &&
-          "border-[#7a35c9]/25 bg-[#7a35c9]/8 text-[#a56ae4]",
+          "border-instagram-violet/25 bg-instagram-violet/8 text-instagram-violet",
         type === "post" && "border-primary/25 bg-primary/8 text-primary",
       )}
     >
@@ -2389,10 +2389,7 @@ function ActivityStatusBadge({
 }) {
   if (status === "published") {
     return (
-      <Badge
-        variant="outline"
-        className="border-success/25 bg-success/5 text-success"
-      >
+      <Badge variant="published">
         Published
       </Badge>
     );
@@ -2403,10 +2400,10 @@ function ActivityStatusBadge({
   }
 
   if (status === "scheduled") {
-    return <Badge variant="secondary">Scheduled</Badge>;
+    return <Badge variant="scheduled">Scheduled</Badge>;
   }
 
-  return <Badge variant="outline">Draft</Badge>;
+  return <Badge variant="draft">Draft</Badge>;
 }
 
 function AnalyticsLoadingState() {

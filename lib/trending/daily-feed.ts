@@ -60,14 +60,18 @@ const CAROUSEL_INVENTORY_PAGE_SIZE = 50;
 const ACTIVE_ASSIGNMENT_STATES = ["pending", "in_progress"] as const;
 
 type AssignmentState =
+  | "accepted"
   | "completed_saved"
   | "completed_scheduled"
   | "completed_skipped"
   | "failed"
   | "in_progress"
   | "pending";
-type CompletionAction = "saved" | "scheduled" | "skipped";
-export type TrendingFeedCompletionAction = CompletionAction;
+type CompletionAction = "accepted" | "saved" | "scheduled" | "skipped";
+export type TrendingFeedCompletionAction = Exclude<
+  CompletionAction,
+  "accepted"
+>;
 type SubscriptionEntitlementRow = {
   created_at: string;
   daily_carousel_limit: number;
@@ -383,7 +387,12 @@ export async function completeTrendingFeedAssignment(params: {
     })
     .eq("id", params.assignmentId)
     .eq("user_id", params.userId)
-    .in("state", [...ACTIVE_ASSIGNMENT_STATES])
+    .in(
+      "state",
+      params.action === "skipped"
+        ? [...ACTIVE_ASSIGNMENT_STATES]
+        : [...ACTIVE_ASSIGNMENT_STATES, "accepted"],
+    )
     .select("*")
     .maybeSingle();
 
@@ -1587,7 +1596,9 @@ function toTrendingFeedCarousel(params: {
   };
 }
 
-function getCompletedState(action: CompletionAction): AssignmentState {
+function getCompletedState(
+  action: TrendingFeedCompletionAction,
+): AssignmentState {
   switch (action) {
     case "saved":
       return "completed_saved";
@@ -1604,6 +1615,7 @@ function isActiveAssignmentState(state: AssignmentState) {
 
 function isCompletedAssignmentState(state: AssignmentState) {
   return (
+    state === "accepted" ||
     state === "completed_saved" ||
     state === "completed_scheduled" ||
     state === "completed_skipped"

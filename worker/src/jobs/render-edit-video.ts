@@ -17,22 +17,46 @@ export async function runRenderEditVideoJob(
     store: SupabaseJobStore;
   },
 ) {
-  const payload = parseRenderEditVideoPayload(job.input_json);
-
-  logger.info("Edited video render worker started", {
-    jobId: job.id,
-    projectId: payload.projectId,
-    renderId: payload.renderId,
-    sourceVideoId: payload.sourceVideoId,
-    userId: payload.userId,
-  });
-
-  await context.store.markEditRenderRendering(payload.renderId);
-
   try {
+    const payload = parseRenderEditVideoPayload(job.input_json);
+
+    logger.info("Edited video render worker started", {
+      jobId: job.id,
+      projectId: payload.projectId,
+      renderId: payload.renderId,
+      sourceVideoId: payload.sourceVideoId,
+      userId: payload.userId,
+    });
+
+    const renderStart = await context.store.markEditRenderRendering(
+      payload.renderId,
+    );
+
+    if (renderStart.status === "completed") {
+      const repaired = await context.store.markEditRenderCompleted({
+        key: renderStart.key,
+        projectId: payload.projectId,
+        renderId: payload.renderId,
+        sourceVideoId: payload.sourceVideoId,
+        url: renderStart.url,
+        userId: payload.userId,
+      });
+
+      if (!repaired) {
+        throw new Error(
+          "Completed edited video render no longer matches its persisted run.",
+        );
+      }
+
+      return {
+        key: renderStart.key,
+        url: renderStart.url,
+      } satisfies Record<string, Json>;
+    }
+
     const result = await renderEditedVideoToStorage(payload);
 
-    await context.store.markEditRenderCompleted({
+    const persisted = await context.store.markEditRenderCompleted({
       key: result.key,
       projectId: payload.projectId,
       renderId: payload.renderId,
@@ -41,25 +65,67 @@ export async function runRenderEditVideoJob(
       userId: payload.userId,
     });
 
-    return result satisfies Record<string, Json>;
-  } catch (error) {
-    try {
-      await context.store.markEditRenderFailed({
-        errorMessage: getErrorMessage(error),
-        projectId: payload.projectId,
-        renderId: payload.renderId,
-        sourceVideoId: payload.sourceVideoId,
-        userId: payload.userId,
-      });
-    } catch (persistenceError) {
-      logger.error("Could not persist edited video render failure", {
-        error: getErrorMessage(persistenceError),
-        jobId: job.id,
-        renderId: payload.renderId,
-      });
+    if (!persisted) {
+      throw new Error(
+        "Edited video render finished after its persisted run became terminal.",
+      );
     }
 
+    return result satisfies Record<string, Json>;
+  } catch (error) {
+    await reconcileRenderEditVideoJobFailure(
+      job,
+      context.store,
+      getErrorMessage(error),
+    );
     throw error;
+  }
+}
+
+export async function reconcileRenderEditVideoJobFailure(
+  job: BackgroundJobRow,
+  store: SupabaseJobStore,
+  errorMessage: string,
+) {
+  if (job.job_type !== "render_edit_video") {
+    return;
+  }
+
+  const identity = getRenderEditVideoIdentity(job.input_json);
+
+  if (!identity) {
+    logger.error("Could not identify edited video render for reconciliation", {
+      jobId: job.id,
+    });
+    return;
+  }
+
+  try {
+    await store.markEditRenderFailed({
+      errorMessage,
+      ...identity,
+    });
+  } catch (persistenceError) {
+    logger.error("Could not persist edited video render failure", {
+      error: getErrorMessage(persistenceError),
+      jobId: job.id,
+      renderId: identity.renderId,
+    });
+  }
+}
+
+function getRenderEditVideoIdentity(value: Json) {
+  try {
+    const input = getJsonRecord(value, "input_json");
+
+    return {
+      projectId: getRequiredString(input.projectId, "projectId"),
+      renderId: getRequiredString(input.renderId, "renderId"),
+      sourceVideoId: getRequiredString(input.sourceVideoId, "sourceVideoId"),
+      userId: getRequiredString(input.userId, "userId"),
+    };
+  } catch {
+    return null;
   }
 }
 

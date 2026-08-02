@@ -4,6 +4,11 @@ import { NextResponse } from "next/server";
 
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
 import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
+import {
+  AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
+  getAIStudioPromptLengthError,
+  normalizeAIStudioPrompt,
+} from "@/lib/ai-studio/prompt-policy";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
   getBackgroundJobById,
@@ -20,6 +25,7 @@ type GenerateVideoRequest = {
 
 type VideoJobOutput = {
   key?: unknown;
+  mediaAssetId?: unknown;
   ok?: unknown;
   provider?: unknown;
   url?: unknown;
@@ -27,16 +33,9 @@ type VideoJobOutput = {
 };
 
 const VIDEO_JOB_TYPE = "generate_hook_video";
-const MAX_PROMPT_LENGTH = 1_000;
 const TERMINAL_STATUSES = new Set(["cancelled", "completed", "failed"]);
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function cleanPrompt(value: unknown) {
-  return typeof value === "string"
-    ? value.trim().slice(0, MAX_PROMPT_LENGTH)
-    : "";
-}
 
 function cleanHttpsUrl(value: unknown) {
   if (typeof value !== "string" || !value.trim()) {
@@ -70,6 +69,10 @@ function getSafeOutput(output: unknown) {
 
   return {
     key: typeof videoOutput.key === "string" ? videoOutput.key : null,
+    mediaAssetId:
+      typeof videoOutput.mediaAssetId === "string"
+        ? videoOutput.mediaAssetId
+        : null,
     ok: videoOutput.ok === true,
     provider:
       typeof videoOutput.provider === "string" ? videoOutput.provider : null,
@@ -103,7 +106,7 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   const body = (await request.json().catch(() => null)) as
     | GenerateVideoRequest
     | null;
-  const prompt = cleanPrompt(body?.prompt ?? body?.hookIdea);
+  const prompt = normalizeAIStudioPrompt(body?.prompt ?? body?.hookIdea);
   const avatarImageUrl = cleanHttpsUrl(body?.avatarImageUrl);
 
   if (!prompt) {
@@ -112,6 +115,18 @@ export async function handleAIStudioVideoGeneration(request: Request) {
         error: "Add a prompt before generating a video.",
         ok: false,
       },
+      { status: 400 },
+    );
+  }
+
+  const promptLengthError = getAIStudioPromptLengthError(
+    prompt,
+    AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
+  );
+
+  if (promptLengthError) {
+    return NextResponse.json(
+      { error: promptLengthError, ok: false },
       { status: 400 },
     );
   }

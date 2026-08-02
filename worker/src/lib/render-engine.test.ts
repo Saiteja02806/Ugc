@@ -10,6 +10,7 @@ import {
   buildScheduleCombinationSegmentArgs,
   buildPreparedTextOverlaySvg,
   ensureEditOverlayFontRegistered,
+  validateRenderedVideoProbe,
 } from "./render-engine.js";
 import {
   buildWallTextOverlaySvg,
@@ -33,6 +34,7 @@ test("applies Hook trim and text only to the opening segment", () => {
     demoVideoId: "demo-1",
     demoVideoUrl: "https://cdn.example.com/demo.mp4",
     hookText: "The old way takes twice the effort.",
+    hookTextColor: "#ffffff",
     hookTrimEnd: 4.5,
     hookTrimStart: 1.25,
     hookVideoId: "hook-1",
@@ -83,6 +85,7 @@ test("rasterizes the shared overlay plan without distorting the font", async () 
     "After seeing this onboarding, i got to know how much time i wasted",
     "bubble",
     "9:16",
+    "#f472b6",
   );
   const svg = buildPreparedTextOverlaySvg({
     imagePath: "unused-in-svg-test.png",
@@ -93,6 +96,7 @@ test("rasterizes the shared overlay plan without distorting the font", async () 
 
   assert.match(svg, /viewBox="0 0 1080 1920"/);
   assert.match(svg, /font-family="Geist, Noto Sans CJK SC/);
+  assert.match(svg, /fill="#f472b6"/);
   assert.doesNotMatch(svg, /@font-face|data:font\/ttf;base64,/);
   assert.doesNotMatch(svg, /textLength=|lengthAdjust=/);
   assert.equal(svg.match(/<text /g)?.length, layout.lines.length * 2);
@@ -227,4 +231,35 @@ test("renders Wall text as one standalone video with no demo input", () => {
   assert.equal(args.filter((value) => value === "-i").length, 3);
   assert.equal(args.filter((value) => value.endsWith(".mp4")).length, 2);
   assert.equal(args.some((value) => /demo/i.test(value)), false);
+});
+
+test("accepts only rendered MP4 probes with a playable video stream", () => {
+  assert.deepEqual(
+    validateRenderedVideoProbe({
+      format: { duration: "4.2", format_name: "mov,mp4,m4a,3gp,3g2,mj2" },
+      streams: [
+        {
+          codec_name: "h264",
+          codec_type: "video",
+          height: 1920,
+          width: 1080,
+        },
+      ],
+    }),
+    {
+      codecName: "h264",
+      durationSeconds: 4.2,
+      height: 1920,
+      width: 1080,
+    },
+  );
+
+  assert.throws(
+    () =>
+      validateRenderedVideoProbe({
+        format: { duration: "0" },
+        streams: [],
+      }),
+    /missing a playable video stream/i,
+  );
 });

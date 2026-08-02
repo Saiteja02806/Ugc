@@ -109,6 +109,8 @@ export type UserWallTextAssignmentRow = {
   id: string;
   last_opened_at: string | null;
   position: number;
+  render_edit_id: string | null;
+  render_edit_revision: number | null;
   render_error: string | null;
   render_id: string | null;
   render_job_id: string | null;
@@ -138,6 +140,8 @@ type WallTextDatabase = {
       claim_wall_text_render: {
         Args: {
           p_assignment_id: string;
+          p_edit_id: string | null;
+          p_edit_revision: number | null;
           p_user_id: string;
         };
         Returns: UserWallTextAssignmentRow[];
@@ -777,12 +781,41 @@ export async function getSavedWallTextDraft(params: {
   return (await hydrateSavedWallTextDrafts([assignment], params.userId))[0] ?? null;
 }
 
+export async function getEditableWallTextDraft(params: {
+  assignmentId: string;
+  creativeId: string;
+  userId: string;
+}): Promise<SavedWallTextDraft | null> {
+  const { data: assignment, error } = await getClient()
+    .from("user_wall_text_assignments")
+    .select("*")
+    .eq("id", params.assignmentId)
+    .eq("wall_text_creative_id", params.creativeId)
+    .eq("user_id", params.userId)
+    .in("state", ["active", "selected"])
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load this Wall-of-text edit: ${error.message}`);
+  }
+
+  if (!assignment) {
+    return null;
+  }
+
+  return (await hydrateSavedWallTextDrafts([assignment], params.userId))[0] ?? null;
+}
+
 export async function claimWallTextRender(params: {
   assignmentId: string;
+  editId?: string | null;
+  editRevision?: number | null;
   userId: string;
 }) {
   const { data, error } = await getClient().rpc("claim_wall_text_render", {
     p_assignment_id: params.assignmentId,
+    p_edit_id: params.editId ?? null,
+    p_edit_revision: params.editRevision ?? null,
     p_user_id: params.userId,
   });
 

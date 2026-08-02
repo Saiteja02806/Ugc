@@ -4,6 +4,8 @@ import type { WorkerConfig } from "./config.js";
 import { JobCancellationRequestedError } from "./job-cancellation.js";
 import { getErrorMessage, logger } from "./logger.js";
 import { hasWorkerJobHandler, runWorkerJob } from "./jobs/index.js";
+import { reconcileRenderEditVideoJobFailure } from "./jobs/render-edit-video.js";
+import { reconcileTrendingCarouselEditJobFailure } from "./jobs/render-trending-carousel-edit.js";
 import {
   isAllowedWorkerJobType,
   parseWorkerDeliveryMessage,
@@ -171,6 +173,11 @@ async function processClaimableJob(params: {
 
     if (latestJob?.status === "cancel_requested") {
       await store.markCancelled({ jobId: latestJob.id });
+      await reconcileDurableOutputJobFailure(
+        latestJob,
+        store,
+        "Video save was cancelled before execution.",
+      );
       await deleteDeliveryMessage({ config, message, queue });
       logger.info("Background job cancelled before execution", {
         jobId: latestJob.id,
@@ -275,6 +282,11 @@ async function processClaimableJob(params: {
         claimToken,
         jobId: processingJob.id,
       });
+      await reconcileDurableOutputJobFailure(
+        processingJob,
+        store,
+        "Video save was cancelled before completion.",
+      );
       await deleteDeliveryMessage({ config, message, queue });
       logger.info("Background job cancelled at completion checkpoint", {
         jobId: processingJob.id,
@@ -336,6 +348,11 @@ async function processClaimableJob(params: {
         claimToken,
         jobId: processingJob.id,
       });
+      await reconcileDurableOutputJobFailure(
+        processingJob,
+        store,
+        "Video save was cancelled at a durable checkpoint.",
+      );
       await deleteDeliveryMessage({ config, message, queue });
       logger.info("Background job cancelled at a durable checkpoint", {
         jobId: processingJob.id,
@@ -473,6 +490,12 @@ async function failKnownJobAndDeleteMessage(params: {
       return;
     }
 
+    await reconcileDurableOutputJobFailure(
+      params.job,
+      params.store,
+      params.errorMessage,
+    );
+
     await deleteDeliveryMessage(params);
 
     logger.error("Worker job failed", {
@@ -490,6 +513,15 @@ async function failKnownJobAndDeleteMessage(params: {
     });
     throw error;
   }
+}
+
+async function reconcileDurableOutputJobFailure(
+  job: BackgroundJobRow,
+  store: SupabaseJobStore,
+  errorMessage: string,
+) {
+  await reconcileRenderEditVideoJobFailure(job, store, errorMessage);
+  await reconcileTrendingCarouselEditJobFailure(job, store, errorMessage);
 }
 
 async function deleteDeliveryMessage(params: {

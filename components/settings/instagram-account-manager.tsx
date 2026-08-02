@@ -55,7 +55,7 @@ type OAuthTraceInput = {
 };
 
 type InstagramConnectionViewState = {
-  badgeVariant: "destructive" | "outline" | "secondary";
+  badgeVariant: "connected" | "destructive";
   description: string;
   label: string;
 };
@@ -548,7 +548,7 @@ function InstagramConnectionRow({
               {getInstagramAccountName(connection)}
             </h3>
             <Badge variant={viewState.badgeVariant}>
-              {viewState.badgeVariant === "outline" ? (
+              {viewState.badgeVariant === "connected" ? (
                 <CheckCircle2 data-icon="inline-start" aria-hidden="true" />
               ) : null}
               {viewState.label}
@@ -684,7 +684,7 @@ function getInstagramConnectionViewState(
   }
 
   return {
-    badgeVariant: "outline",
+    badgeVariant: "connected",
     description:
       "Ready for approved Instagram posts and scheduled publishing.",
     label: "Ready to publish",

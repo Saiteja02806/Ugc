@@ -38,7 +38,7 @@ export function LandingHeader() {
       <div
         className={`pointer-events-auto mx-auto flex w-full items-center justify-between border transition-[max-width,height,padding,gap,background-color,border-color,border-radius,box-shadow] duration-300 ease-out motion-reduce:transition-none ${
           isScrolled
-            ? "h-16 max-w-[560px] gap-3 rounded-[32px] border-white/[0.09] bg-[rgba(36,36,36,0.82)] px-3 shadow-[0_16px_48px_-16px_rgb(0_0_0/0.75)] backdrop-blur-xl sm:px-4"
+            ? "h-16 max-w-[560px] gap-3 rounded-[32px] border-border bg-card/90 px-3 shadow-floating backdrop-blur-xl sm:px-4"
             : "h-16 max-w-[1200px] gap-5 rounded-none border-transparent bg-transparent px-0 shadow-none"
         }`}
       >
@@ -94,7 +94,7 @@ export function LandingHeader() {
         <details className="group relative md:hidden">
           <summary
             aria-label="Open navigation menu"
-            className="flex size-10 list-none items-center justify-center rounded-control bg-transparent text-foreground transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden"
+            className="flex size-10 list-none items-center justify-center rounded-control bg-transparent text-foreground transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden"
           >
             <Menu className="size-5" aria-hidden="true" />
           </summary>

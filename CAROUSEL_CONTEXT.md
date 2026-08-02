@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-07-27
+Last updated: 2026-08-02
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -1768,6 +1768,72 @@ Do not describe planned behavior as deployed behavior.
   domain until the application is deployed and the authenticated production
   flow is verified.
 
+## 2026-08-02 Unified Trending Creative Decisions
+
+- Trending uses one shared action row for every preview-ready Carousel, Hook
+  video, and Wall-of-text card: circular red reject, compact Edit, and circular
+  green accept. Left/right swipe, keyboard decisions, and the reject/accept
+  buttons call the same client decision handler.
+- Decisions are durable server records with the authenticated user ID,
+  assignment ID, creative ID, format, `accepted` or `rejected`, and
+  `decided_at`. The database function records the decision and retires the
+  format-specific active assignment in one transaction. Identical retries are
+  idempotent; a conflicting second decision fails closed.
+- A decision animates first, then the card is optimistically advanced while
+  persistence runs. One synchronous client lock prevents duplicate submission.
+  If persistence fails, the prior card index is restored.
+- Accept is a review decision, not publication. Carousel acceptance preserves
+  the generated creative in an intermediate `accepted` assignment state and
+  opens the existing save-or-schedule review flow. Only a successful later
+  save or schedule moves it to `completed_saved` or `completed_scheduled`;
+  Hook acceptance opens product-demo composition; Wall acceptance opens its
+  focused final-review/render flow. The existing render, schedule, and publish
+  workers remain separate downstream stages.
+- Edit opens the format-specific Trending creative editor for the assigned
+  creative. Saving persists an owner-scoped revision; Carousel saves wait for
+  the revision-specific worker render before downstream Library use.
+- Trending never renders non-ready cards. When no preview-ready item exists,
+  the customer sees only "We’re preparing new content for you." The sidebar
+  background-job indicator and the Trending render-progress/failure panels are
+  removed from customer UI; job tables, polling, queues, workers, and backend
+  logs remain unchanged.
+- This implementation and its Supabase migration are local worktree changes.
+  Do not describe the unified decisions as deployed or production-verified
+  until the migration and application are deployed and the authenticated
+  production flow is checked.
+
+## 2026-08-02 Trending Creative Edit Persistence
+
+- Trending edits are stored in the owner-scoped
+  `trending_creative_edits` table. One row represents the latest revision for
+  one assigned creative, and every content save clears prior render output.
+  The editor submits its loaded revision, so a stale tab receives a conflict
+  instead of overwriting a newer save.
+  Source assets are resolved server-side and database validation requires a
+  ready owner video (and current group membership for group selections).
+- Carousel edits use the durable `render_trending_carousel_edit` background-job
+  contract. The edit row is attached to the job before Cloud Tasks dispatch,
+  and worker transitions are fenced by edit ID, owner, revision, and job ID so
+  an older render cannot overwrite a newer edit.
+- The Carousel worker reuses the production Sharp slide pipeline, preserves the
+  normalized dragged X/Y anchor inside publishing-safe bounds, and uploads each
+  revision under immutable content-hashed GCP keys. It reloads the original
+  generation job's persisted text style so editing copy or position does not
+  change the Carousel design. Render output preserves
+  both the public URL and storage key for every slide.
+- Saving a Carousel to Library uses the latest edit when one exists. A queued,
+  rendering, draft, failed, incomplete, or non-GCP edit is rejected rather
+  than silently saving the original. A ready edit refreshes the existing
+  generated-Carousel Library item and its ordered slides, including edited
+  copy and normalized placement metadata.
+- Hook and Wall downstream save paths resolve saved edit content and selected
+  source on the server. Hook combination renders carry the normalized text
+  anchor. Wall render claims include edit ID/revision so a previously ready
+  render cannot mask a newer Wall edit.
+- These schema, app, and worker changes are local worktree changes. Do not call
+  them deployed or production-verified until the migration and worker/app
+  revisions are deployed and the authenticated production flow is checked.
+
 ## Next Implementation Slice
 
 Name: **Run a profile-scoped GCP broad-matcher live canary**
@@ -1801,3 +1867,25 @@ Name: **Run a profile-scoped GCP broad-matcher live canary**
 - Keep the production Carousel worker font files in sync with the font family
   used for text measurement and SVG rendering.
 - Update this file whenever a product rule or architecture decision changes.
+
+## 2026-08-02 Creative Assets Saved Collection and Scheduling UI
+
+- Creative Assets now exposes a `Saved` tab beside Videos and Images. It is a
+  unified customer surface over the existing owner-scoped Carousel, Hook, and
+  Wall-of-Text stores; it does not duplicate rendered media or introduce a
+  second source of truth.
+- Trending save confirmations for all three formats link to
+  `/avatars?tab=saved`. Existing saved creatives appear automatically because
+  the tab reads the established Library and saved-draft APIs. Repeated saves
+  keep the existing idempotent behavior of each format.
+- A saved Hook is identified as a composition until the downstream scheduling
+  render combines it with the selected footage. Carousel and Wall-of-Text keep
+  their existing rendered/preparing states.
+- Scheduling account rows now display the backend-provided
+  `profilePictureUrl`, with the platform icon as an image-load fallback. The
+  same shared avatar is used by Carousel, Hook, and Wall-of-Text scheduling.
+- The Carousel scheduling dialog uses fixed header, scrollable-content, and
+  footer grid rows. The content no longer forces a minimum height, so the Back
+  and Next controls remain visible on shorter screens.
+- These UI changes are production-build validated locally. They are not
+  deployed or authenticated-production verified yet.

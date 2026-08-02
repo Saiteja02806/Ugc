@@ -27,6 +27,26 @@ test("active assignments can be completed when no action was recorded", () => {
   }
 });
 
+test("accepted assignments can advance only into saved or scheduled workflows", () => {
+  for (const action of ["saved", "scheduled"] as const) {
+    assert.deepEqual(
+      decideTrendingCompletionTransition({
+        action,
+        assignment: { completionAction: "accepted", state: "accepted" },
+      }),
+      { kind: "complete" },
+    );
+  }
+
+  assert.deepEqual(
+    decideTrendingCompletionTransition({
+      action: "skipped",
+      assignment: { completionAction: "accepted", state: "accepted" },
+    }),
+    { kind: "invalid" },
+  );
+});
+
 test("same-action completion retries are idempotent", () => {
   for (const [action, state] of completedCases) {
     assert.deepEqual(

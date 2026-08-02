@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -82,28 +82,39 @@ export function useRetryBackgroundJob() {
   });
 }
 
-export function persistJobIdInUrl(jobId: string | null) {
+export function persistJobIdInUrl(
+  jobId: string | null,
+  parameterName = "job",
+) {
   const url = new URL(window.location.href);
 
   if (jobId) {
-    url.searchParams.set("job", jobId);
+    url.searchParams.set(parameterName, jobId);
   } else {
-    url.searchParams.delete("job");
+    url.searchParams.delete(parameterName);
   }
 
   window.history.replaceState(window.history.state, "", url);
   window.dispatchEvent(new Event(JOB_URL_CHANGE_EVENT));
 }
 
-export function getPersistedJobIdFromUrl() {
-  return new URL(window.location.href).searchParams.get("job")?.trim() || null;
+export function getPersistedJobIdFromUrl(parameterName = "job") {
+  return (
+    new URL(window.location.href).searchParams.get(parameterName)?.trim() || null
+  );
 }
 
-export function usePersistedJobIdFromUrl() {
+export function usePersistedJobIdFromUrl(parameterName = "job") {
+  const getSnapshot = useCallback(
+    () => getPersistedJobIdFromUrl(parameterName),
+    [parameterName],
+  );
+  const getServerSnapshot = useCallback(() => null, []);
+
   return useSyncExternalStore(
     subscribeToJobUrl,
-    getPersistedJobIdFromUrl,
-    () => null,
+    getSnapshot,
+    getServerSnapshot,
   );
 }
 

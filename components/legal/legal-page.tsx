@@ -97,7 +97,7 @@ export function LegalPageShell({
         </div>
       </article>
 
-      <footer className="border-t border-border bg-[#191919] px-5 py-6 sm:px-8 lg:px-10">
+      <footer className="border-t border-border bg-card-muted px-5 py-6 sm:px-8 lg:px-10">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm text-muted">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <p className="font-semibold">

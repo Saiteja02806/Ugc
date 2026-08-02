@@ -2,10 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getAIStudioAccessMessage,
   hasAIStudioProAccess,
   normalizeAIStudioEmail,
   parseAIStudioAllowedEmails,
 } from "./access-policy.ts";
+
+test("distinguishes access-check failures from a locked account", () => {
+  assert.match(getAIStudioAccessMessage("error") ?? "", /could not be verified/i);
+  assert.match(getAIStudioAccessMessage("locked") ?? "", /approved Pro/i);
+  assert.equal(getAIStudioAccessMessage("pro"), null);
+});
 
 test("normalizes AI Studio emails before comparison", () => {
   assert.equal(

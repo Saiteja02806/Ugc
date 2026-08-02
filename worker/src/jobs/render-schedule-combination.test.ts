@@ -33,6 +33,12 @@ test("renders and asks the server to finalize a planned schedule", async () => {
       async renderScheduleCombinationToStorage(payload) {
         fixture.events.push("render");
         assert.equal(payload.hookText, "The old way takes twice the effort.");
+        assert.equal(payload.hookTextFontSize, 44);
+        assert.deepEqual(payload.hookTextLines, [
+          "The old way takes",
+          "twice the effort.",
+        ]);
+        assert.equal(payload.hookTextColor, "#fde047");
         assert.equal(payload.hookTrimStart, 0.5);
         assert.equal(payload.hookTrimEnd, 4.5);
         assert.equal(payload.compositionFingerprint, "fingerprint-1");
@@ -81,6 +87,36 @@ test("does not call server finalization for a render-only request", async () => 
     "render",
     "render-completed",
   ]);
+});
+
+test("defaults legacy schedule payloads without a text color to white", async () => {
+  const fixture = createStore();
+  const job = createJob(false);
+  delete (job.input_json as Record<string, unknown>).hookTextColor;
+
+  await runRenderScheduleCombinationJob(job, {
+    dependencies: {
+      createMediaAssetId: () => MEDIA_ASSET_ID,
+      async renderScheduleCombinationToStorage(payload) {
+        fixture.events.push("render");
+        assert.equal(payload.hookTextColor, "#ffffff");
+        return createRenderOutput(payload);
+      },
+    },
+    store: fixture.store,
+  });
+});
+
+test("rejects unsupported Hook text colors before rendering", async () => {
+  const fixture = createStore();
+  const job = createJob(false);
+  (job.input_json as Record<string, unknown>).hookTextColor = "url(evil)";
+
+  await assert.rejects(
+    runRenderScheduleCombinationJob(job, { store: fixture.store }),
+    /hookTextColor is not a supported text color/,
+  );
+  assert.deepEqual(fixture.events, []);
 });
 
 test("keeps the completed video available when server finalization fails", async () => {
@@ -211,6 +247,9 @@ function createJob(autoFinalize: boolean): BackgroundJobRow {
       demoVideoId: "00000000-0000-4000-8000-000000000206",
       demoVideoUrl: "https://cdn.example.com/demo.mp4",
       hookText: "The old way takes twice the effort.",
+      hookTextFontSize: 44,
+      hookTextLines: ["The old way takes", "twice the effort."],
+      hookTextColor: "#fde047",
       hookTrimEnd: 4.5,
       hookTrimStart: 0.5,
       hookVideoId: "00000000-0000-4000-8000-000000000207",

@@ -399,7 +399,7 @@ test("carousel scheduling stays inline on Trending and Library", () => {
   assert.match(trendingWorkspace, /await scheduleTrendingCarousel\(/);
   assert.match(
     trendingWorkspace,
-    /await scheduleTrendingCarousel\([\s\S]*?await completeTrendingCarouselAction\([\s\S]*?"scheduled"/,
+    /await scheduleTrendingCarousel\([\s\S]*?await completeAcceptedCarouselWorkflow\([\s\S]*?"scheduled"/,
   );
   assert.match(libraryWorkspace, /await scheduleLibraryCarousel\(/);
   assert.match(libraryWorkspace, /Carousel scheduled\. View it on the Scheduled page\./);

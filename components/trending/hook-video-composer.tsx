@@ -41,6 +41,7 @@ import {
   usePersistedJobIdFromUrl,
 } from "@/lib/jobs/background-job-client";
 import type { MediaAsset } from "@/lib/media/types";
+import type { TrendingTextColor } from "@/lib/trending/text-color";
 import { uploadHookVideoDemo } from "@/lib/trending/hook-video-client-upload";
 import {
   returnToHookSuggestionSelection,
@@ -87,6 +88,9 @@ export function HookVideoComposer({
   influencer,
   openingPreviewUrl,
   overlayFontSize = 52,
+  overlayLines = null,
+  overlayPosition = null,
+  overlayTextColor,
   video,
   onCommitted,
   onClose,
@@ -96,6 +100,9 @@ export function HookVideoComposer({
   influencer: HookInfluencerSummary;
   openingPreviewUrl: string | null;
   overlayFontSize?: number;
+  overlayLines?: readonly string[] | null;
+  overlayPosition?: { x: number; y: number } | null;
+  overlayTextColor?: TrendingTextColor;
   video: HookInfluencerVideoSummary;
   onCommitted?: () => Promise<void>;
   onClose: () => void;
@@ -417,13 +424,13 @@ export function HookVideoComposer({
         ...flowState,
         draft: { ...flowState.draft, id: data.draft.id },
       });
-      setActionNotice("Saved to Content.");
+      setActionNotice("Saved to Creative Assets as a Hook composition.");
 
       try {
         await recordCommittedSelection();
       } catch (error) {
         setActionError(
-          `Saved to Content, but Trending could not be updated. ${getErrorMessage(
+          `Saved to Creative Assets, but Trending could not be updated. ${getErrorMessage(
             error,
             "Refresh the page to try again.",
           )}`,
@@ -588,6 +595,9 @@ export function HookVideoComposer({
               influencer={influencer}
               openingPreviewUrl={openingPreviewUrl}
               overlayFontSize={overlayFontSize}
+              overlayLines={overlayLines}
+              overlayPosition={overlayPosition}
+              overlayTextColor={overlayTextColor}
               video={video}
             />
             <DemoSelection
@@ -619,6 +629,9 @@ export function HookVideoComposer({
             openingPreviewUrl={openingPreviewUrl}
             openingVideoRef={openingVideoRef}
             overlayFontSize={overlayFontSize}
+            overlayLines={overlayLines}
+            overlayPosition={overlayPosition}
+            overlayTextColor={overlayTextColor}
             previewMode={previewMode}
             trimEnd={trimEnd}
             trimStart={flowState.draft.trimStart}
@@ -637,12 +650,20 @@ export function HookVideoComposer({
           </p>
         ) : null}
         {actionNotice ? (
-          <p
+          <div
             role="status"
-            className="mt-5 border-l-2 border-success px-3 py-1 text-sm font-semibold text-success"
+            className="mt-5 flex flex-col gap-1 border-l-2 border-success px-3 py-1 text-sm font-semibold text-success sm:flex-row sm:items-center sm:justify-between"
           >
-            {actionNotice}
-          </p>
+            <span>{actionNotice}</span>
+            {actionNotice.startsWith("Saved to Creative Assets") ? (
+              <Link
+                href="/avatars?tab=saved"
+                className="shrink-0 underline underline-offset-4"
+              >
+                View Saved
+              </Link>
+            ) : null}
+          </div>
         ) : null}
       </main>
 
@@ -663,7 +684,7 @@ export function HookVideoComposer({
               ) : (
                 <Library className="size-4" aria-hidden="true" />
               )}
-              Save to Content
+              Save to Creative Assets
             </button>
             {scheduledPostId ? (
               <Link
@@ -744,12 +765,18 @@ function ComposerOpeningPreview({
   influencer,
   openingPreviewUrl,
   overlayFontSize,
+  overlayLines,
+  overlayPosition,
+  overlayTextColor,
   video,
 }: {
   hookText: string | null;
   influencer: HookInfluencerSummary;
   openingPreviewUrl: string | null;
   overlayFontSize: number;
+  overlayLines: readonly string[] | null;
+  overlayPosition: { x: number; y: number } | null;
+  overlayTextColor: TrendingTextColor | undefined;
   video: HookInfluencerVideoSummary;
 }) {
   return (
@@ -781,7 +808,10 @@ function ComposerOpeningPreview({
           </div>
         )}
         <HookTextOverlay
+          color={overlayTextColor}
           fontSize={overlayFontSize}
+          lines={overlayLines}
+          position={overlayPosition}
           size="compact"
           text={hookText}
         />
@@ -1126,7 +1156,7 @@ function DemoPickerDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        overlayClassName="bg-black/55 [backdrop-filter:none] supports-backdrop-filter:[backdrop-filter:none]"
+        overlayClassName="bg-overlay [backdrop-filter:none] supports-backdrop-filter:[backdrop-filter:none]"
         className="max-h-[calc(100dvh-1rem)] gap-0 overflow-hidden rounded-[18px] border border-border bg-background p-0 ring-0 sm:max-w-[760px]"
       >
         <DialogHeader className="border-b border-border px-5 py-4 pr-12">
@@ -1240,6 +1270,9 @@ function ReviewComposition({
   openingPreviewUrl,
   openingVideoRef,
   overlayFontSize,
+  overlayLines,
+  overlayPosition,
+  overlayTextColor,
   previewMode,
   trimEnd,
   trimStart,
@@ -1254,6 +1287,9 @@ function ReviewComposition({
   openingPreviewUrl: string | null;
   openingVideoRef: React.RefObject<HTMLVideoElement | null>;
   overlayFontSize: number;
+  overlayLines: readonly string[] | null;
+  overlayPosition: { x: number; y: number } | null;
+  overlayTextColor: TrendingTextColor | undefined;
   previewMode: "demo" | "opening";
   trimEnd: number | null;
   trimStart: number;
@@ -1342,7 +1378,10 @@ function ReviewComposition({
 
           {previewMode === "opening" ? (
             <HookTextOverlay
+              color={overlayTextColor}
               fontSize={overlayFontSize}
+              lines={overlayLines}
+              position={overlayPosition}
               size="review"
               text={hookText}
             />

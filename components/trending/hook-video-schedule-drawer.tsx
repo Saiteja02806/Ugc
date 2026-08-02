@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
 import {
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
@@ -326,7 +326,7 @@ export function HookVideoScheduleDrawer({
     >
       <DialogContent
         showCloseButton={false}
-        overlayClassName="bg-black/55 [backdrop-filter:none] supports-backdrop-filter:[backdrop-filter:none]"
+        overlayClassName="bg-overlay [backdrop-filter:none] supports-backdrop-filter:[backdrop-filter:none]"
         className="max-h-[calc(100dvh-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-[18px] border border-border bg-background p-0 ring-0 sm:max-w-[520px]"
       >
         <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border px-4 py-3.5 sm:px-5">
@@ -537,9 +537,7 @@ function ConnectionRow({
           onChange={onToggle}
           className="size-4 shrink-0 accent-primary"
         />
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-card-muted text-muted">
-          <SocialPlatformIcon platform={connection.platform} className="size-4" />
-        </span>
+        <SocialAccountAvatar connection={connection} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-xs font-semibold text-foreground-strong">
             {connection.platformAccountName || connection.platformAccountUsername || label}
@@ -675,9 +673,7 @@ function ScheduleReview({
 
             return (
               <div key={connection.id} className="flex items-center gap-3 border border-border px-3 py-2.5">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-card-muted text-muted">
-                  <SocialPlatformIcon platform={connection.platform} className="size-4" />
-                </span>
+                <SocialAccountAvatar connection={connection} />
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold text-foreground-strong">
                     {connection.platformAccountName || connection.platformAccountUsername || label}

@@ -10,13 +10,19 @@ import {
   WALL_TEXT_OUTLINE_WIDTH,
   WALL_TEXT_SECTION_GAP,
 } from "@/lib/trending/wall-text-visual-style";
+import {
+  DEFAULT_TRENDING_TEXT_COLOR,
+  type TrendingTextColor,
+} from "@/lib/trending/text-color";
 
 export function WallTextOverlay({
   content,
   layout,
+  textColor = DEFAULT_TRENDING_TEXT_COLOR,
 }: {
   content: TrendingWallTextContent;
   layout: TrendingWallTextLayout;
+  textColor?: TrendingTextColor;
 }) {
   const textBoxStyle = {
     height: `${layout.textBox.height * 100}%`,
@@ -32,9 +38,10 @@ export function WallTextOverlay({
       className="pointer-events-none absolute inset-0 [container-type:inline-size]"
     >
       <div
-        className="absolute flex flex-col justify-center overflow-visible text-center text-white"
+        className="absolute flex flex-col justify-center overflow-visible text-center"
         style={{
           ...textBoxStyle,
+          color: textColor,
           fontFamily:
             "var(--font-wall-text), Inter, Arial, 'Helvetica Neue', sans-serif",
           fontSize: `${fontSize / 10.8}cqw`,

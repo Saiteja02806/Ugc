@@ -24,8 +24,6 @@ const CAROUSEL_GENERATIONS_TABLE = "carousel_generations";
 const CAROUSEL_SLIDES_TABLE = "carousel_slides";
 const CATEGORY_IMAGE_ASSETS_TABLE = "category_image_assets";
 const CATEGORY_IMAGE_ASSET_PAGE_SIZE = 1000;
-const DEMO_VIDEOS_TABLE = "demo_videos";
-const EDITABLE_VIDEOS_TABLE = "editable_videos";
 const GENERATION_PROVIDER_OPERATIONS_TABLE = "generation_provider_operations";
 const LIBRARY_CAROUSEL_SLIDES_TABLE = "library_carousel_slides";
 const LIBRARY_ITEMS_TABLE = "library_items";
@@ -34,6 +32,7 @@ const SCHEDULED_POSTS_TABLE = "scheduled_posts";
 const SCHEDULED_POST_TARGETS_TABLE = "scheduled_post_targets";
 const SOCIAL_CONNECTIONS_TABLE = "social_connections";
 const SOCIAL_PUBLISH_OPERATIONS_TABLE = "social_publish_operations";
+const TRENDING_CREATIVE_EDITS_TABLE = "trending_creative_edits";
 const USER_WALL_TEXT_ASSIGNMENTS_TABLE = "user_wall_text_assignments";
 const CLAIM_BACKGROUND_JOB_FUNCTION = "claim_background_job";
 const CLAIM_SOCIAL_PUBLISH_OPERATION_FUNCTION =
@@ -642,18 +641,53 @@ export class SupabaseJobStore {
 
   async markEditRenderRendering(renderId: string) {
     const now = new Date().toISOString();
-    const { error } = await this.client
+    const { data, error } = await this.client
       .from(VIDEO_RENDER_JOBS_TABLE)
       .update({
         started_at: now,
         status: "rendering",
         updated_at: now,
       })
-      .eq("render_id", renderId);
+      .eq("render_id", renderId)
+      .in("status", ["queued", "rendering"])
+      .select("render_id")
+      .maybeSingle();
 
     if (error) {
       throw new Error(`Could not mark render as running: ${error.message}`);
     }
+
+    if (data) {
+      return { status: "rendering" as const };
+    }
+
+    const { data: terminalRender, error: terminalRenderError } = await this.client
+      .from(VIDEO_RENDER_JOBS_TABLE)
+      .select("status, output_s3_key, output_url")
+      .eq("render_id", renderId)
+      .maybeSingle();
+
+    if (terminalRenderError) {
+      throw new Error(
+        `Could not inspect terminal edit render: ${terminalRenderError.message}`,
+      );
+    }
+
+    if (
+      terminalRender?.status === "completed" &&
+      typeof terminalRender.output_s3_key === "string" &&
+      terminalRender.output_s3_key.trim() &&
+      typeof terminalRender.output_url === "string" &&
+      terminalRender.output_url.trim()
+    ) {
+      return {
+        key: terminalRender.output_s3_key,
+        status: "completed" as const,
+        url: terminalRender.output_url,
+      };
+    }
+
+    throw new Error("Edited video render is already terminal.");
   }
 
   async markEditRenderCompleted(params: {
@@ -664,76 +698,22 @@ export class SupabaseJobStore {
     url: string;
     userId: string;
   }) {
-    const now = new Date().toISOString();
-    const { data: completedRenderJob, error: renderJobError } = await this.client
-      .from(VIDEO_RENDER_JOBS_TABLE)
-      .update({
-        completed_at: now,
-        error_message: null,
-        output_s3_key: params.key,
-        output_url: params.url,
-        status: "completed",
-        updated_at: now,
-      })
-      .eq("render_id", params.renderId)
-      .select("draft_json")
-      .maybeSingle();
-
-    if (renderJobError) {
-      throw new Error(
-        `Could not mark render as completed: ${renderJobError.message}`,
-      );
-    }
-
-    const renderDraft = completedRenderJob?.draft_json;
-    const { data: editableVideo, error: editableVideoReadError } =
-      await this.client
-        .from(EDITABLE_VIDEOS_TABLE)
-        .select("draft_json")
-        .eq("user_id", params.userId)
-        .eq("project_id", params.projectId)
-        .eq("source_video_id", params.sourceVideoId)
-        .eq("latest_render_id", params.renderId)
-        .is("deleted_at", null)
-        .maybeSingle();
-
-    if (editableVideoReadError) {
-      throw new Error(
-        `Could not load editable video before marking it rendered: ${editableVideoReadError.message}`,
-      );
-    }
-
-    const draftIsCurrent = areJsonValuesEqual(
-      editableVideo?.draft_json,
-      renderDraft,
-    );
-    const { error: editableVideoError } = await this.client
-      .from(EDITABLE_VIDEOS_TABLE)
-      .update({
-        rendered_video_url: params.url,
-        status: draftIsCurrent ? "rendered" : "draft",
-        ...(draftIsCurrent ? { updated_at: now } : {}),
-      })
-      .eq("user_id", params.userId)
-      .eq("project_id", params.projectId)
-      .eq("source_video_id", params.sourceVideoId)
-      .eq("latest_render_id", params.renderId)
-      .is("deleted_at", null);
-
-    if (editableVideoError) {
-      throw new Error(
-        `Could not mark editable video as rendered: ${editableVideoError.message}`,
-      );
-    }
-
-    await this.markDemoRenderCompletedIfPresent({
-      projectId: params.projectId,
-      renderDraft,
-      renderId: params.renderId,
-      sourceVideoId: params.sourceVideoId,
-      url: params.url,
-      userId: params.userId,
+    const { data, error } = await this.client.rpc("finalize_edit_render", {
+      p_error_message: null,
+      p_output_s3_key: params.key,
+      p_output_url: params.url,
+      p_project_id: params.projectId,
+      p_render_id: params.renderId,
+      p_source_video_id: params.sourceVideoId,
+      p_terminal_status: "completed",
+      p_user_id: params.userId,
     });
+
+    if (error) {
+      throw new Error(`Could not mark render as completed: ${error.message}`);
+    }
+
+    return data === true;
   }
 
   async markEditRenderFailed(params: {
@@ -743,167 +723,22 @@ export class SupabaseJobStore {
     sourceVideoId: string;
     userId: string;
   }) {
-    const now = new Date().toISOString();
-    const { data: failedRenderJob, error: renderJobError } = await this.client
-      .from(VIDEO_RENDER_JOBS_TABLE)
-      .update({
-        completed_at: now,
-        error_message: params.errorMessage.slice(0, 1_000),
-        status: "failed",
-        updated_at: now,
-      })
-      .eq("render_id", params.renderId)
-      .select("draft_json")
-      .maybeSingle();
-
-    if (renderJobError) {
-      throw new Error(
-        `Could not mark render as failed: ${renderJobError.message}`,
-      );
-    }
-
-    const { data: editableVideo, error: editableVideoReadError } =
-      await this.client
-        .from(EDITABLE_VIDEOS_TABLE)
-        .select("draft_json")
-        .eq("user_id", params.userId)
-        .eq("project_id", params.projectId)
-        .eq("source_video_id", params.sourceVideoId)
-        .eq("latest_render_id", params.renderId)
-        .is("deleted_at", null)
-        .maybeSingle();
-
-    if (editableVideoReadError) {
-      throw new Error(
-        `Could not load editable video before marking render failed: ${editableVideoReadError.message}`,
-      );
-    }
-
-    const draftIsCurrent = areJsonValuesEqual(
-      editableVideo?.draft_json,
-      failedRenderJob?.draft_json,
-    );
-    const { error: editableVideoError } = await this.client
-      .from(EDITABLE_VIDEOS_TABLE)
-      .update({
-        status: draftIsCurrent ? "failed" : "draft",
-        ...(draftIsCurrent ? { updated_at: now } : {}),
-      })
-      .eq("user_id", params.userId)
-      .eq("project_id", params.projectId)
-      .eq("source_video_id", params.sourceVideoId)
-      .eq("latest_render_id", params.renderId)
-      .is("deleted_at", null);
-
-    if (editableVideoError) {
-      throw new Error(
-        `Could not mark editable video render as failed: ${editableVideoError.message}`,
-      );
-    }
-
-    await this.markDemoRenderFailedIfPresent({
-      ...params,
-      renderDraft: failedRenderJob?.draft_json,
+    const { data, error } = await this.client.rpc("finalize_edit_render", {
+      p_error_message: params.errorMessage,
+      p_output_s3_key: null,
+      p_output_url: null,
+      p_project_id: params.projectId,
+      p_render_id: params.renderId,
+      p_source_video_id: params.sourceVideoId,
+      p_terminal_status: "failed",
+      p_user_id: params.userId,
     });
-  }
-
-  private async markDemoRenderCompletedIfPresent(params: {
-    projectId: string;
-    renderDraft: Json | undefined;
-    renderId: string;
-    sourceVideoId: string;
-    url: string;
-    userId: string;
-  }) {
-    const { data: demoVideo, error: demoVideoReadError } = await this.client
-      .from(DEMO_VIDEOS_TABLE)
-      .select("draft_json")
-      .eq("id", params.sourceVideoId)
-      .eq("user_id", params.userId)
-      .eq("project_id", params.projectId)
-      .eq("latest_render_id", params.renderId)
-      .is("deleted_at", null)
-      .maybeSingle();
-
-    if (demoVideoReadError) {
-      throw new Error(`Could not load demo before marking render completed: ${demoVideoReadError.message}`);
-    }
-
-    if (!demoVideo) {
-      return;
-    }
-
-    const draftIsCurrent = areJsonValuesEqual(
-      demoVideo.draft_json,
-      params.renderDraft,
-    );
-    const { error } = await this.client
-      .from(DEMO_VIDEOS_TABLE)
-      .update({
-        error_message: null,
-        latest_render_id: params.renderId,
-        rendered_video_url: params.url,
-        status: draftIsCurrent ? "rendered" : "draft",
-        ...(draftIsCurrent ? { updated_at: new Date().toISOString() } : {}),
-      })
-      .eq("id", params.sourceVideoId)
-      .eq("user_id", params.userId)
-      .eq("project_id", params.projectId)
-      .eq("latest_render_id", params.renderId)
-      .is("deleted_at", null);
 
     if (error) {
-      throw new Error(`Could not mark demo render completed: ${error.message}`);
-    }
-  }
-
-  private async markDemoRenderFailedIfPresent(params: {
-    errorMessage: string;
-    projectId: string;
-    renderDraft: Json | undefined;
-    renderId: string;
-    sourceVideoId: string;
-    userId: string;
-  }) {
-    const { data: demoVideo, error: demoVideoReadError } = await this.client
-      .from(DEMO_VIDEOS_TABLE)
-      .select("draft_json")
-      .eq("id", params.sourceVideoId)
-      .eq("user_id", params.userId)
-      .eq("project_id", params.projectId)
-      .eq("latest_render_id", params.renderId)
-      .is("deleted_at", null)
-      .maybeSingle();
-
-    if (demoVideoReadError) {
-      throw new Error(`Could not load demo before marking render failed: ${demoVideoReadError.message}`);
+      throw new Error(`Could not mark render as failed: ${error.message}`);
     }
 
-    if (!demoVideo) {
-      return;
-    }
-
-    const draftIsCurrent = areJsonValuesEqual(
-      demoVideo.draft_json,
-      params.renderDraft,
-    );
-    const { error } = await this.client
-      .from(DEMO_VIDEOS_TABLE)
-      .update({
-        error_message: params.errorMessage.slice(0, 1_000),
-        latest_render_id: params.renderId,
-        status: draftIsCurrent ? "failed" : "draft",
-        ...(draftIsCurrent ? { updated_at: new Date().toISOString() } : {}),
-      })
-      .eq("id", params.sourceVideoId)
-      .eq("user_id", params.userId)
-      .eq("project_id", params.projectId)
-      .eq("latest_render_id", params.renderId)
-      .is("deleted_at", null);
-
-    if (error) {
-      throw new Error(`Could not mark demo render failed: ${error.message}`);
-    }
+    return data === true;
   }
 
   async markScheduleCombinationRenderStarted(params: {
@@ -1030,6 +865,8 @@ export class SupabaseJobStore {
 
   async markWallTextRenderCompleted(params: {
     assignmentId: string;
+    creativeEditId: string | null;
+    creativeEditRevision: number | null;
     creativeId: string;
     durationSeconds: number;
     key: string;
@@ -1051,6 +888,8 @@ export class SupabaseJobStore {
       id: params.mediaAssetId,
       metadata: {
         assignmentId: params.assignmentId,
+        creativeEditId: params.creativeEditId,
+        creativeEditRevision: params.creativeEditRevision,
         creativeId: params.creativeId,
         renderId: params.renderId,
       },
@@ -1757,6 +1596,134 @@ export class SupabaseJobStore {
     return data;
   }
 
+  async getTrendingCarouselEdit(params: {
+    editId: string;
+    revision: number;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(TRENDING_CREATIVE_EDITS_TABLE)
+      .select("*")
+      .eq("id", params.editId)
+      .eq("user_id", params.userId)
+      .eq("format", "carousel")
+      .eq("revision", params.revision)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not load Trending Carousel edit: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  async listCarouselSlides(carouselId: string) {
+    const { data, error } = await this.client
+      .from(CAROUSEL_SLIDES_TABLE)
+      .select("*")
+      .eq("carousel_generation_id", carouselId)
+      .order("slide_number", { ascending: true });
+
+    if (error) {
+      throw new Error(`Could not load Carousel slides: ${error.message}`);
+    }
+
+    return data ?? [];
+  }
+
+  async markTrendingCarouselEditRendering(params: {
+    editId: string;
+    jobId: string;
+    revision: number;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(TRENDING_CREATIVE_EDITS_TABLE)
+      .update({
+        render_error: null,
+        render_status: "rendering",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.editId)
+      .eq("user_id", params.userId)
+      .eq("revision", params.revision)
+      .eq("render_job_id", params.jobId)
+      .in("render_status", ["queued", "rendering"])
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        `Could not mark Trending Carousel edit as rendering: ${error.message}`,
+      );
+    }
+
+    if (!data) {
+      throw new Error("Trending Carousel edit render is stale.");
+    }
+  }
+
+  async markTrendingCarouselEditReady(params: {
+    editId: string;
+    jobId: string;
+    output: Json;
+    revision: number;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(TRENDING_CREATIVE_EDITS_TABLE)
+      .update({
+        render_error: null,
+        render_output_json: params.output,
+        render_status: "ready",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.editId)
+      .eq("user_id", params.userId)
+      .eq("revision", params.revision)
+      .eq("render_job_id", params.jobId)
+      .in("render_status", ["queued", "rendering"])
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        `Could not complete Trending Carousel edit render: ${error.message}`,
+      );
+    }
+
+    if (!data) {
+      throw new Error("Trending Carousel edit changed before render completion.");
+    }
+  }
+
+  async markTrendingCarouselEditFailed(params: {
+    editId: string;
+    errorMessage: string;
+    jobId: string;
+    revision: number;
+    userId: string;
+  }) {
+    const { error } = await this.client
+      .from(TRENDING_CREATIVE_EDITS_TABLE)
+      .update({
+        render_error: params.errorMessage.slice(0, 1_000),
+        render_status: "failed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.editId)
+      .eq("user_id", params.userId)
+      .eq("revision", params.revision)
+      .eq("render_job_id", params.jobId)
+      .in("render_status", ["queued", "rendering"]);
+
+    if (error) {
+      throw new Error(
+        `Could not fail Trending Carousel edit render: ${error.message}`,
+      );
+    }
+  }
+
   async updateCarouselGeneration(
     carouselId: string,
     patch: CarouselGenerationUpdate,
@@ -2097,31 +2064,6 @@ function toJsonRecord(value: Json): Record<string, Json | undefined> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value
     : {};
-}
-
-function areJsonValuesEqual(first: Json | undefined, second: Json | undefined) {
-  return stableJsonString(first) === stableJsonString(second);
-}
-
-function stableJsonString(value: Json | undefined) {
-  return JSON.stringify(normalizeJsonValue(value));
-}
-
-function normalizeJsonValue(value: Json | undefined): unknown {
-  if (Array.isArray(value)) {
-    return value.map(normalizeJsonValue);
-  }
-
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter((entry): entry is [string, Json] => entry[1] !== undefined)
-        .sort(([firstKey], [secondKey]) => firstKey.localeCompare(secondKey))
-        .map(([key, nestedValue]) => [key, normalizeJsonValue(nestedValue)]),
-    );
-  }
-
-  return value ?? null;
 }
 
 function isUuid(value: string) {

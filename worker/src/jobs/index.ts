@@ -3,6 +3,7 @@ import { runPublishSocialPostJob } from "./publish-social-post.js";
 import { runTestWorkerJob } from "./test-worker-job.js";
 import { runRenderEditVideoJob } from "./render-edit-video.js";
 import { runRenderScheduleCombinationJob } from "./render-schedule-combination.js";
+import { runRenderTrendingCarouselEditJob } from "./render-trending-carousel-edit.js";
 import { runRenderWallTextVideoJob } from "./render-wall-text-video.js";
 import { runGenerateCarouselJob } from "./generate-carousel.js";
 import { runGenerateHookVideoJob } from "./generate-hook-video.js";
@@ -28,6 +29,7 @@ const implementedWorkerJobTypes = new Set<BackgroundJobType>([
   "publish_social_post",
   "render_edit_video",
   "render_schedule_combination",
+  "render_trending_carousel_edit",
   "render_wall_text_video",
   "test_worker_job",
 ]);
@@ -46,6 +48,10 @@ export async function runWorkerJob(
 
   if (job.job_type === "render_schedule_combination") {
     return runRenderScheduleCombinationJob(job, context);
+  }
+
+  if (job.job_type === "render_trending_carousel_edit") {
+    return runRenderTrendingCarouselEditJob(job, context);
   }
 
   if (job.job_type === "render_wall_text_video") {

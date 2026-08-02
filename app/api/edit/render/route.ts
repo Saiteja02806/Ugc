@@ -387,6 +387,40 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error("Failed to persist queued edited video render:", error);
 
+      try {
+        await markRenderJobFailed({
+          errorMessage:
+            error instanceof Error
+              ? error.message
+              : "Could not prepare this video save.",
+          projectId,
+          renderId,
+          sourceVideoId,
+          userId: user.uid,
+        });
+      } catch (persistenceError) {
+        console.error(
+          "Failed to reconcile the unqueued edited video render:",
+          persistenceError,
+        );
+      }
+
+      if (sourceAsset.source_type === "demo_upload") {
+        try {
+          await markDemoVideoFailed({
+            demoId: sourceVideoId,
+            errorMessage: "Could not prepare this video save.",
+            projectId,
+            userId: user.uid,
+          });
+        } catch (persistenceError) {
+          console.error(
+            "Failed to reconcile the unqueued demo render:",
+            persistenceError,
+          );
+        }
+      }
+
       return NextResponse.json(
         {
           ok: false,

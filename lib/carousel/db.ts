@@ -317,6 +317,7 @@ export type CarouselGenerationRecord = {
   candidateCount: number;
   candidateIndex: number;
   categorySlug: string | null;
+  contentPlanNormalized: Json | null;
   createdAt: string;
   errorMessage: string | null;
   format: CarouselFormat;
@@ -326,6 +327,7 @@ export type CarouselGenerationRecord = {
   id: string;
   originDailyFeedId: string | null;
   projectId: string;
+  rendererVersion: string | null;
   selectedAngle: string | null;
   slideCount: number;
   status: CarouselGenerationStatus;
@@ -350,6 +352,11 @@ export type CarouselSlideRecord = {
   status: CarouselSlideStatus;
   subtext: string | null;
   textPosition: string | null;
+};
+
+export type CarouselEditBackground = {
+  id: string;
+  url: string;
 };
 
 function isRuntimeSafeCategoryImageAsset(
@@ -412,6 +419,7 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     candidateCount: row.candidate_count,
     candidateIndex: row.candidate_index,
     categorySlug: row.category_slug,
+    contentPlanNormalized: row.content_plan_normalized,
     createdAt: row.created_at,
     errorMessage: row.error_message,
     format: row.format,
@@ -421,6 +429,7 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     id: row.id,
     originDailyFeedId: row.origin_daily_feed_id,
     projectId: row.project_id,
+    rendererVersion: row.renderer_version,
     selectedAngle: row.selected_angle,
     slideCount: row.slide_count,
     status: row.status,
@@ -905,6 +914,29 @@ export async function getCarouselGenerationStatus(carouselId: string) {
     generation,
     slides: await mapRuntimeSafeSlides(data ?? []),
   };
+}
+
+export async function getCarouselEditBackgrounds(assetIds: string[]) {
+  const ids = Array.from(new Set(assetIds.filter(Boolean)));
+
+  if (ids.length === 0) {
+    return [] satisfies CarouselEditBackground[];
+  }
+
+  const { data, error } = await getSupabaseServerClient()
+    .from(CATEGORY_IMAGE_ASSETS_TABLE)
+    .select("id,base_url,status,subject_review_status")
+    .in("id", ids);
+
+  if (error) {
+    throw new Error(`Could not load Carousel edit backgrounds: ${error.message}`);
+  }
+
+  return (data ?? []).flatMap((asset) =>
+    asset.status === "ready" && asset.subject_review_status === "approved"
+      ? [{ id: asset.id, url: asset.base_url }]
+      : [],
+  ) satisfies CarouselEditBackground[];
 }
 
 async function getCarouselGenerationStatusesForRows(

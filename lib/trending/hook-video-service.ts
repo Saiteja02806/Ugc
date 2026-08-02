@@ -1,9 +1,12 @@
 import "server-only";
 
+import { loadSavedTrendingCreativeEditForDownstream } from "@/lib/trending/creative-edit-service";
 import {
   getHookVideoSuggestionForUser,
   saveHookVideoDraft,
 } from "@/lib/trending/hook-video-db";
+import { buildUserInfluencerId } from "@/lib/trending/hook-video-source-logic";
+import { createHookTextLayout } from "@/lib/trending/hook-text-layout";
 import {
   getHookDemoAsset,
   getHookInfluencerForUser,
@@ -18,21 +21,15 @@ export async function persistHookVideoSelection(params: {
   userId: string;
 }) {
   const { input, userId } = params;
-  const [influencer, source, demo, suggestion] = await Promise.all([
-    getHookInfluencerForUser({
-      influencerId: input.influencerId,
-      sourceKind: input.sourceKind,
-      userId,
-    }),
-    resolveHookVideoSource({
-      influencerId: input.influencerId,
-      sourceKind: input.sourceKind,
-      userId,
-      videoId: input.influencerVideoId,
-    }),
+  const [demo, suggestion, creativeEdit] = await Promise.all([
     getHookDemoAsset({ assetId: input.demoAssetId, userId }),
     getHookVideoSuggestionForUser({
       suggestionId: input.selectedHookId,
+      userId,
+    }),
+    loadSavedTrendingCreativeEditForDownstream({
+      creativeId: input.selectedHookId,
+      format: "hook_video",
       userId,
     }),
   ]);
@@ -44,12 +41,39 @@ export async function persistHookVideoSelection(params: {
     );
   }
 
+  const savedSource = creativeEdit?.source;
+  const effectiveSelection = savedSource
+    ? {
+        influencerId: buildUserInfluencerId(savedSource.resolvedAssetId),
+        sourceKind: "user" as const,
+        videoId: savedSource.resolvedAssetId,
+      }
+    : {
+        influencerId: input.influencerId,
+        sourceKind: input.sourceKind,
+        videoId: input.influencerVideoId,
+      };
+  const [influencer, source] = await Promise.all([
+    getHookInfluencerForUser({
+      influencerId: effectiveSelection.influencerId,
+      sourceKind: effectiveSelection.sourceKind,
+      userId,
+    }),
+    resolveHookVideoSource({
+      influencerId: effectiveSelection.influencerId,
+      sourceKind: effectiveSelection.sourceKind,
+      userId,
+      videoId: effectiveSelection.videoId,
+    }),
+  ]);
+
   if (
     (suggestion.demo_asset_id !== null &&
       suggestion.demo_asset_id !== input.demoAssetId) ||
-    suggestion.influencer_id !== input.influencerId ||
-    suggestion.influencer_video_id !== input.influencerVideoId ||
-    suggestion.influencer_source !== input.sourceKind
+    (!savedSource &&
+      (suggestion.influencer_id !== input.influencerId ||
+        suggestion.influencer_video_id !== input.influencerVideoId ||
+        suggestion.influencer_source !== input.sourceKind))
   ) {
     throw new HookVideoSelectionError(
       "This hook was generated for a different video selection.",
@@ -69,16 +93,41 @@ export async function persistHookVideoSelection(params: {
     );
   }
 
+  const editedHookContent =
+    creativeEdit?.content.format === "hook_video"
+      ? creativeEdit.content
+      : null;
+  const hookRenderSpec = createHookTextLayout(
+    editedHookContent?.hookText ?? suggestion.text,
+    editedHookContent
+      ? {
+          fontSize: editedHookContent.fontSize,
+          lines: editedHookContent.lines,
+        }
+      : { enforceMaximum: false, enforceMinimum: false },
+  );
+
   const draft = await saveHookVideoDraft({
     demoAssetId: demo.id,
     demoTitle: demo.title,
     draftId: input.draftId,
-    hookText: suggestion.text,
+    hookText: hookRenderSpec.hookText,
     influencerId: influencer.id,
     influencerName: influencer.name,
     influencerVideoId: source.id,
     influencerVideoTitle: source.title,
     librarySaved: params.librarySaved,
+    metadata: creativeEdit
+      ? {
+          trendingCreativeEditId: creativeEdit.id,
+          trendingCreativeEditRevision: creativeEdit.revision,
+          trendingHookTextFontSize: hookRenderSpec.fontSize,
+          trendingHookTextLines: hookRenderSpec.lines,
+          trendingHookTextPosition:
+            editedHookContent?.position ?? null,
+          trendingHookTextColor: editedHookContent?.textColor ?? null,
+        }
+      : undefined,
     previewThumbnailUrl: source.thumbnailUrl,
     selectedHookId: suggestion.id,
     sourceKind: source.sourceKind,
@@ -87,7 +136,14 @@ export async function persistHookVideoSelection(params: {
     userId,
   });
 
-  return { demo, draft, influencer, source };
+  return {
+    creativeEdit,
+    demo,
+    draft,
+    hookRenderSpec,
+    influencer,
+    source,
+  };
 }
 
 export class HookVideoSelectionError extends Error {

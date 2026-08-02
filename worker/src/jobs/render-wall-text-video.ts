@@ -12,6 +12,7 @@ import type {
   WallTextSegment,
   WallTextSegmentRole,
 } from "../lib/wall-text-render-spec.js";
+import { parseTextColor } from "../lib/edit-overlay-render-spec.js";
 
 type RenderWallTextDependencies = {
   createMediaAssetId: () => string;
@@ -57,6 +58,8 @@ export async function runRenderWallTextVideoJob(
 
     await context.store.markWallTextRenderCompleted({
       assignmentId: payload.assignmentId,
+      creativeEditId: payload.creativeEditId,
+      creativeEditRevision: payload.creativeEditRevision,
       creativeId: payload.creativeId,
       durationSeconds: payload.durationSeconds,
       key: result.key,
@@ -101,9 +104,22 @@ function parseRenderWallTextVideoPayload(
   const input = getRecord(value, "input_json");
   const layout = getRecord(input.layout, "layout");
   const safeArea = getRecord(layout.safeArea, "layout.safeArea");
+  const creativeEditId = getOptionalNullableString(input.creativeEditId, 64);
+  const creativeEditRevision = getOptionalNullablePositiveInteger(
+    input.creativeEditRevision,
+    "creativeEditRevision",
+  );
+
+  if ((creativeEditId === null) !== (creativeEditRevision === null)) {
+    throw new Error(
+      "creativeEditId and creativeEditRevision must be provided together.",
+    );
+  }
 
   return {
     assignmentId: getRequiredString(input.assignmentId, "assignmentId", 64),
+    creativeEditId,
+    creativeEditRevision,
     creativeId: getRequiredString(input.creativeId, "creativeId", 64),
     durationSeconds: getPositiveNumber(
       input.durationSeconds,
@@ -121,6 +137,7 @@ function parseRenderWallTextVideoPayload(
     },
     sourceVideoUrl: getHttpUrl(input.sourceVideoUrl, "sourceVideoUrl"),
     text: getWallTextContent(input.text),
+    textColor: parseTextColor(input.textColor, "textColor"),
     textBox: getTextBox(layout.textBox),
     title: getRequiredString(input.title, "title", 140),
     userId: getRequiredString(input.userId, "userId", 200),
@@ -241,6 +258,29 @@ function getPositiveNumber(
     value > maximum
   ) {
     throw new Error(`${fieldName} must be between 0 and ${maximum}.`);
+  }
+
+  return value;
+}
+
+function getOptionalNullableString(value: Json | undefined, maximum: number) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  return getRequiredString(value, "optional string", maximum);
+}
+
+function getOptionalNullablePositiveInteger(
+  value: Json | undefined,
+  fieldName: string,
+) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+    throw new Error(`${fieldName} must be a positive integer or null.`);
   }
 
   return value;

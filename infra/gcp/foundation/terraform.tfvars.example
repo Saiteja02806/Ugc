@@ -6,7 +6,7 @@ name_prefix    = "ugc"
 
 # Enable after the recovery route and Cloud Tasks worker URLs are deployed.
 enable_background_job_recovery_scheduler = false
-background_job_recovery_url               = "https://www.getugcpilot.com/api/internal/jobs/recover"
+background_job_recovery_url               = "https://getugcpilot.com/api/internal/jobs/recover"
 background_job_recovery_schedule          = "*/5 * * * *"
 
 # Bucket names are globally unique. Change this if Terraform reports it is taken.

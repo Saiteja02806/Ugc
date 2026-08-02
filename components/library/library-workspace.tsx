@@ -17,8 +17,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { UploadedPostsTab } from "@/components/demos/demos-workspace";
-import { HookVideoLibraryTab } from "@/components/library/hook-video-library-tab";
-import { WallTextLibraryTab } from "@/components/library/wall-text-library-tab";
 import {
   PlatformSelectionModal,
   type SchedulePlatformContext,
@@ -83,7 +81,7 @@ type LibraryContentResponse =
 
 const tabs: Array<{ label: string; value: LibraryTab }> = [
   {
-    label: "Reels & footage",
+    label: "Demo footage",
     value: "posts",
   },
   {
@@ -152,9 +150,8 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
               Content Library
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-              Keep approved Instagram creative in one place. Review Reel hooks
-              and footage, save carousel ideas from Trending, then
-              schedule posts.
+              Keep reusable demo footage and saved carousel ideas in one place,
+              ready for your next post.
             </p>
           </div>
 
@@ -201,11 +198,7 @@ export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
           {activeTab === "content" ? (
             <LibraryContentTab onShowPosts={() => selectTab("posts")} />
           ) : (
-            <div className="flex flex-col gap-4">
-              <WallTextLibraryTab />
-              <HookVideoLibraryTab />
-              <UploadedPostsTab embeddedInLibrary />
-            </div>
+            <UploadedPostsTab embeddedInLibrary />
           )}
         </div>
       </div>

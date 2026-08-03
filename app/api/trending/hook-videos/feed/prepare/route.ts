@@ -45,22 +45,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const ideas = await prepareTrendingHookIdeas(profile);
+    const preparation = await prepareTrendingHookIdeas(profile);
 
-    return hookVideoJson({ ideaCount: ideas.length, ok: true });
+    return hookVideoJson(
+      {
+        ...preparation,
+        ok: true,
+      },
+      preparation.status === "ready" ? 200 : 202,
+    );
   } catch (error) {
     if (error instanceof TrendingHookPreparationError) {
       return hookVideoJson({ error: error.message, ok: false }, error.status);
-    }
-
-    if (
-      error instanceof Error &&
-      error.message === "OpenAI is not configured."
-    ) {
-      return hookVideoJson(
-        { error: "Hook idea generation is not configured.", ok: false },
-        501,
-      );
     }
 
     return hookVideoErrorResponse(error, "Could not prepare Trending Hook ideas.");

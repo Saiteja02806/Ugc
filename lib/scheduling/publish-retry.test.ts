@@ -5,7 +5,7 @@ import { deliverSocialPublishRetry } from "./publish-retry.ts";
 
 test("a newly created retry sends and records exactly one queue message", async () => {
   const sentJobIds: string[] = [];
-  const attachedMessages: Array<{ awsMessageId: string; jobId: string }> = [];
+  const attachedMessages: Array<{ queueMessageId: string; jobId: string }> = [];
 
   const result = await deliverSocialPublishRetry(
     { jobId: "job-1", outcome: "retry_created" },
@@ -22,7 +22,7 @@ test("a newly created retry sends and records exactly one queue message", async 
 
   assert.deepEqual(sentJobIds, ["job-1"]);
   assert.deepEqual(attachedMessages, [
-    { awsMessageId: "message-1", jobId: "job-1" },
+    { queueMessageId: "message-1", jobId: "job-1" },
   ]);
   assert.deepEqual(result, { delivery: "queue", messageId: "message-1" });
 });

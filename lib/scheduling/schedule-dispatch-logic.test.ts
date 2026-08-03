@@ -18,7 +18,7 @@ test("enqueues and records a queued social publish job", async () => {
     },
     {
       async attachMessage(params) {
-        events.push(`attach:${params.awsMessageId}`);
+        events.push(`attach:${params.queueMessageId}`);
       },
       async getJob() {
         return job();
@@ -26,17 +26,17 @@ test("enqueues and records a queued social publish job", async () => {
       async sendMessage(params) {
         events.push(`send:${params.jobType}`);
         assert.equal(params.jobId, JOB_ID);
-        return { messageId: "pubsub-message-1" };
+        return { messageId: "cloud-task-1" };
       },
     },
   );
 
-  assert.deepEqual(events, ["send:publish_social_post", "attach:pubsub-message-1"]);
+  assert.deepEqual(events, ["send:publish_social_post", "attach:cloud-task-1"]);
   assert.deepEqual(result, {
     attached: true,
     delivery: "queue",
     jobStatus: "queued",
-    messageId: "pubsub-message-1",
+    messageId: "cloud-task-1",
   });
 });
 
@@ -51,7 +51,7 @@ test("does not enqueue when a queue message is already attached", async () => {
         throw new Error("should not attach");
       },
       async getJob() {
-        return job({ awsMessageId: "message-existing" });
+        return job({ queueMessageId: "message-existing" });
       },
       async sendMessage() {
         throw new Error("should not send");
@@ -147,13 +147,13 @@ test("rejects target mismatches", async () => {
 
 function job(
   overrides: Partial<{
-    awsMessageId: string | null;
+    queueMessageId: string | null;
     jobType: "generate_carousel" | "publish_social_post";
     status: "cancelled" | "completed" | "failed" | "processing" | "queued";
   }> = {},
 ) {
   return {
-    awsMessageId: overrides.awsMessageId ?? null,
+    queueMessageId: overrides.queueMessageId ?? null,
     id: JOB_ID,
     input: {
       targetId: TARGET_ID,

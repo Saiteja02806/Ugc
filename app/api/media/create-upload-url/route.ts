@@ -8,7 +8,10 @@ import {
   MEDIA_UPLOAD_EXPIRES_IN_SECONDS,
 } from "@/lib/media/media-upload";
 import { isMediaCollection } from "@/lib/media/types";
-import { createPresignedPutUrl, getMissingStorageEnvVars } from "@/lib/storage/s3";
+import {
+  createSignedPutUrl,
+  getMissingStorageEnvVars,
+} from "@/lib/storage/storage";
 
 export const runtime = "nodejs";
 
@@ -55,7 +58,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const uploadUrl = await createPresignedPutUrl({
+    const uploadUrl = await createSignedPutUrl({
       contentType: target.target.contentType,
       expiresInSeconds: MEDIA_UPLOAD_EXPIRES_IN_SECONDS,
       key: target.target.key,
@@ -70,7 +73,7 @@ export async function POST(request: Request) {
       sourceType: target.target.collection === "influencer" ? "influencer_upload" : "upload",
       storageKey: target.target.key,
       title: target.target.title,
-      url: target.target.cloudFrontUrl,
+      url: target.target.publicUrl,
       userId: user.uid,
     });
 

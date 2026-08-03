@@ -5,10 +5,12 @@ export const socialOAuthReturnTargets = [
   "library",
   "trending",
 ] as const;
+export const socialOAuthIntents = ["add", "reconnect"] as const;
 
 export type SocialPlatform = (typeof socialPlatforms)[number];
 export type SocialProvider = (typeof socialProviders)[number];
 export type SocialOAuthReturnTo = (typeof socialOAuthReturnTargets)[number];
+export type SocialOAuthIntent = (typeof socialOAuthIntents)[number];
 export type SocialConnectionStatus =
   | "connected"
   | "error"
@@ -36,6 +38,7 @@ export type SocialConnection = {
 
 export type SocialOAuthResultMessage = {
   callbackHost?: string;
+  connectionId?: string;
   correlationId?: string;
   errorCode?: string;
   failedStage?: string;
@@ -69,6 +72,10 @@ export function isSocialOAuthReturnTo(
   return socialOAuthReturnTargets.includes(value as SocialOAuthReturnTo);
 }
 
+export function isSocialOAuthIntent(value: string): value is SocialOAuthIntent {
+  return socialOAuthIntents.includes(value as SocialOAuthIntent);
+}
+
 export function isProviderPlatformPair(
   provider: SocialProvider,
   platform: SocialPlatform,
@@ -91,6 +98,8 @@ export function isSocialOAuthResultMessage(
     isSocialPlatform(message.platform) &&
     typeof message.provider === "string" &&
     isSocialProvider(message.provider) &&
+    (message.connectionId === undefined ||
+      typeof message.connectionId === "string") &&
     (message.status === "success" || message.status === "error")
   );
 }

@@ -100,15 +100,15 @@ try {
     );
   }
 
-  if (canary.topicName !== "ugc-ai-generation") {
+  if (canary.taskQueueName !== "ugc-ai-generation") {
     throw new Error(
-      `Expected ugc-ai-generation Pub/Sub topic, got ${canary.topicName ?? "unknown"}.`,
+      `Expected ugc-ai-generation Cloud Tasks queue, got ${canary.taskQueueName ?? "unknown"}.`,
     );
   }
 
   canaryJobId = getRequiredString(canary.jobId, "canary.jobId");
   console.log(`Production app enqueued GCP canary job ${canaryJobId}`);
-  console.log(`Pub/Sub message ${canary.messageId}`);
+  console.log(`Cloud Task ${canary.messageId}`);
 
   const finalJob = await waitForJobCompletion(canaryJobId);
 
@@ -322,7 +322,12 @@ function assertExpectedCanaryFailure(job) {
     );
   }
 
-  if (!job.aws_message_id || !job.started_at || !job.completed_at || !job.worker_id) {
+  if (
+    !job.queue_message_id ||
+    !job.started_at ||
+    !(job.failed_at || job.completed_at) ||
+    !job.worker_id
+  ) {
     throw new Error(
       "The job reached a terminal state, but it does not show full queue and worker metadata.",
     );

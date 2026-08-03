@@ -34,16 +34,16 @@ variable "worker_service_account_email" {
   default     = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
 }
 
+variable "scheduler_service_account_email" {
+  description = "Service account used by Cloud Tasks to invoke this worker."
+  type        = string
+  default     = "ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com"
+}
+
 variable "service_name" {
   description = "Cloud Run Service name for the Carousel worker."
   type        = string
   default     = "ugc-carousel-worker"
-}
-
-variable "pubsub_subscription_name" {
-  description = "Pub/Sub subscription the Carousel worker pulls from."
-  type        = string
-  default     = "ugc-carousel-sub"
 }
 
 variable "queue_name" {
@@ -55,19 +55,7 @@ variable "queue_name" {
 variable "worker_job_types" {
   description = "Comma-separated job types allowed for this worker service."
   type        = string
-  default     = "generate_carousel"
-}
-
-variable "worker_poll_max_messages" {
-  description = "Maximum Pub/Sub messages to pull per worker loop."
-  type        = number
-  default     = 1
-}
-
-variable "worker_poll_wait_seconds" {
-  description = "Pub/Sub pull wait behavior for the always-on worker."
-  type        = number
-  default     = 20
+  default     = "generate_carousel,render_trending_carousel_edit"
 }
 
 variable "worker_visibility_timeout_seconds" {
@@ -77,7 +65,7 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Minimum Cloud Run instances for the Carousel worker. Keep 1 for active queue consumption."
+  description = "Minimum Cloud Run instances for the Carousel worker."
   type        = number
   default     = 1
 }
@@ -131,7 +119,7 @@ variable "gcp_storage_public_base_url" {
 }
 
 variable "carousel_broad_matcher_mode" {
-  description = "Carousel broad matcher mode to preserve the current AWS worker rollout posture."
+  description = "Carousel broad matcher mode used by the GCP worker."
   type        = string
   default     = "dry-run"
 }

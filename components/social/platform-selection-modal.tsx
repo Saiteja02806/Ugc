@@ -10,11 +10,13 @@ import {
   Clock3,
   ExternalLink,
   LoaderCircle,
+  Plus,
   Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
 import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +52,7 @@ import {
 import {
   type SocialConnection,
   type SocialConnectionStatus,
+  type SocialOAuthIntent,
   type SocialOAuthResultMessage,
   type SocialPlatform,
 } from "@/lib/social/types";
@@ -133,6 +136,7 @@ const visiblePlatforms = platforms.filter(
 
 const defaultTimezone =
   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+const MAX_SELECTED_INSTAGRAM_ACCOUNTS = 5;
 
 const stepDetails: Record<
   ModalStep,
@@ -279,11 +283,15 @@ export function PlatformSelectionModal({
       correlationId: result.correlationId,
       platform: result.platform,
     });
-    const connection = getPreferredConnection(
-      refreshedConnections.filter(
-        (candidate) => candidate.platform === result.platform,
-      ),
+    const platformConnections = refreshedConnections.filter(
+      (candidate) => candidate.platform === result.platform,
     );
+    const connection =
+      (result.connectionId
+        ? platformConnections.find(
+            (candidate) => candidate.id === result.connectionId,
+          )
+        : null) ?? getPreferredConnection(platformConnections);
 
     setRenderTrace({
       callbackHost: result.callbackHost,
@@ -298,11 +306,18 @@ export function PlatformSelectionModal({
   const {
     clearPopupError,
     closePopup,
+    connectingConnectionId,
+    connectingIntent,
     connectingPlatform,
     popupError,
     startConnection,
   } = useSocialOAuthPopup({
-    onPopupClosed: async ({ platform, previousConnectionUpdatedAt }) => {
+    onPopupClosed: async ({
+      expectedConnectionId,
+      intent,
+      platform,
+      previousConnectionUpdatedAt,
+    }) => {
       const refreshedConnections = await loadConnections();
       const previousUpdatedAt = previousConnectionUpdatedAt
         ? Date.parse(previousConnectionUpdatedAt)
@@ -312,6 +327,8 @@ export function PlatformSelectionModal({
           (candidate) =>
             candidate.platform === platform &&
             candidate.status === "connected" &&
+            (intent !== "reconnect" ||
+              candidate.id === expectedConnectionId) &&
             (previousUpdatedAt === null ||
               Date.parse(candidate.updatedAt) > previousUpdatedAt),
         ),
@@ -459,6 +476,18 @@ export function PlatformSelectionModal({
     const selecting =
       forceSelected ?? !selectedConnectionIds.includes(connection.id);
 
+    if (
+      selecting &&
+      !selectedConnectionIds.includes(connection.id) &&
+      selectedConnectionIds.length >= MAX_SELECTED_INSTAGRAM_ACCOUNTS
+    ) {
+      setConfirmError(
+        `Choose up to ${MAX_SELECTED_INSTAGRAM_ACCOUNTS} Instagram accounts per post.`,
+      );
+      return;
+    }
+
+    setConfirmError(null);
     setSelectedConnectionIds((current) =>
       selecting
         ? current.includes(connection.id)
@@ -668,7 +697,7 @@ export function PlatformSelectionModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
-        className="instagram-theme max-h-[calc(100dvh-1rem)] max-w-[calc(100%-1rem)] gap-0 overflow-hidden rounded-[22px] border border-border bg-card p-0 text-foreground shadow-floating ring-0 sm:max-h-[calc(100dvh-2rem)] sm:max-w-[960px]"
+        className="instagram-theme max-h-[calc(100dvh-1rem)] max-w-[calc(100%-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-[22px] border border-border bg-card p-0 text-foreground shadow-floating ring-0 sm:max-h-[calc(100dvh-2rem)] sm:max-w-[960px]"
         showCloseButton={!submitting}
       >
         <div className="relative overflow-hidden border-b border-border bg-card">
@@ -681,24 +710,19 @@ export function PlatformSelectionModal({
             aria-hidden="true"
           />
           <DialogHeader className="relative gap-3 px-5 pb-4 pr-14 pt-5 sm:px-7 sm:pb-5 sm:pr-16 sm:pt-6">
-            <div className="flex items-start gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] text-white shadow-[0_10px_24px_rgb(214_41_118_/_0.18)]">
-                <SocialPlatformIcon platform="instagram" className="size-5" />
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                Instagram carousel
+              </p>
+              <DialogTitle className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
+                {currentStep.title}
+              </DialogTitle>
+              <DialogDescription className="mt-1 leading-5">
+                {currentStep.description}
+              </DialogDescription>
+              <span className="sr-only">
+                Step {currentStep.number} of 4
               </span>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-                  Instagram carousel
-                </p>
-                <DialogTitle className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
-                  {currentStep.title}
-                </DialogTitle>
-                <DialogDescription className="mt-1 leading-5">
-                  {currentStep.description}
-                </DialogDescription>
-                <span className="sr-only">
-                  Step {currentStep.number} of 4
-                </span>
-              </div>
             </div>
 
             <ol
@@ -755,7 +779,7 @@ export function PlatformSelectionModal({
           </div>
         </div>
 
-        <div className="min-h-0 overflow-y-auto bg-background/35 px-5 py-5 sm:min-h-[360px] sm:px-7 sm:py-6">
+        <div className="min-h-0 overflow-y-auto overscroll-contain bg-background/35 px-5 py-5 sm:px-7 sm:py-6">
           {confirmError || loadError || popupError ? (
             <Alert variant="destructive" className="mb-5">
               <AlertCircle />
@@ -790,6 +814,8 @@ export function PlatformSelectionModal({
           ) : step === "accounts" ? (
             <AccountsStep
               carouselConnections={carouselConnections}
+              connectingConnectionId={connectingConnectionId}
+              connectingIntent={connectingIntent}
               connectingPlatform={connectingPlatform}
               context={context}
               loading={loading}
@@ -802,7 +828,9 @@ export function PlatformSelectionModal({
 
                 void startConnection({
                   carouselId: context.carouselId,
+                  expectedConnectionId: connection?.id,
                   forceConsent: Boolean(connection),
+                  intent: connection ? "reconnect" : "add",
                   libraryItemId: context.libraryItemId,
                   platform: definition.platform,
                   previousConnectionUpdatedAt: connection?.updatedAt ?? null,
@@ -850,7 +878,7 @@ export function PlatformSelectionModal({
         </div>
 
         {!submitting ? (
-          <DialogFooter className="mx-0 mb-0 rounded-none rounded-b-[22px] border-t border-border bg-card px-5 py-4 sm:px-7">
+          <DialogFooter className="mx-0 mb-0 shrink-0 rounded-none rounded-b-[22px] border-t border-border bg-card px-5 py-4 sm:px-7">
             {step === "accounts" ? (
               <Button
                 size="lg"
@@ -906,6 +934,8 @@ export function PlatformSelectionModal({
 
 function AccountsStep({
   carouselConnections,
+  connectingConnectionId,
+  connectingIntent,
   connectingPlatform,
   context,
   loading,
@@ -914,6 +944,8 @@ function AccountsStep({
   selectedConnectionIds,
 }: {
   carouselConnections: SocialConnection[];
+  connectingConnectionId: string | null;
+  connectingIntent: SocialOAuthIntent | null;
   connectingPlatform: SocialPlatform | null;
   context: SchedulePlatformContext | null;
   loading: boolean;
@@ -931,8 +963,8 @@ function AccountsStep({
           Publishing account
         </h3>
         <p className="mt-1 text-sm leading-5 text-muted-foreground">
-          Select the connected Instagram account that should publish this
-          carousel.
+          Select one or more Instagram accounts. Each selected account
+          publishes its own copy of this carousel. You can choose up to five.
         </p>
       </div>
 
@@ -952,7 +984,8 @@ function AccountsStep({
               const accountName = getConnectionAccountName(connection);
               const selected = selectedConnectionIds.includes(connection.id);
               const status =
-                connectingPlatform === connection.platform
+                connectingIntent === "reconnect" &&
+                connectingConnectionId === connection.id
                   ? "connecting"
                   : connection.status;
               const statusDisplay = getStatusDisplay(status);
@@ -989,12 +1022,7 @@ function AccountsStep({
                       unavailableMessage && "cursor-not-allowed",
                     )}
                   >
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] text-white">
-                      <SocialPlatformIcon
-                        platform={connection.platform}
-                        className="size-5"
-                      />
-                    </span>
+                    <SocialAccountAvatar connection={connection} size="lg" />
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold text-foreground">
@@ -1016,7 +1044,7 @@ function AccountsStep({
                       variant="ghost"
                       className="shrink-0 text-muted-foreground hover:text-foreground"
                       onClick={() => onConnect(definition, connection)}
-                      disabled={loading || status === "connecting"}
+                      disabled={loading || Boolean(connectingPlatform)}
                     >
                       {status === "connecting" ? (
                         <LoaderCircle
@@ -1040,6 +1068,31 @@ function AccountsStep({
                 </div>
               );
             })}
+            {visiblePlatforms.map((definition) => (
+              <Button
+                key={`add-${definition.platform}`}
+                type="button"
+                variant="outline"
+                onClick={() => onConnect(definition)}
+                disabled={loading || Boolean(connectingPlatform)}
+                className="w-full sm:w-fit"
+              >
+                {connectingIntent === "add" &&
+                connectingPlatform === definition.platform ? (
+                  <LoaderCircle
+                    data-icon="inline-start"
+                    className="animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Plus data-icon="inline-start" aria-hidden="true" />
+                )}
+                {connectingIntent === "add" &&
+                connectingPlatform === definition.platform
+                  ? "Opening Instagram..."
+                  : "Add another Instagram account"}
+              </Button>
+            ))}
           </div>
         ) : (
           <div className="rounded-card border border-dashed border-border bg-card px-5 py-8 text-center">
@@ -1246,16 +1299,15 @@ function CarouselAccountSettings({
 }) {
   return (
     <div className="py-4 first:pt-3 last:pb-3">
-      <div className="flex items-center justify-between gap-3">
-        <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-          <SocialPlatformIcon
-            platform={connection.platform}
-            className="size-4 shrink-0"
-          />
-          {getPlatformLabel(connection.platform)}
-        </span>
-        <span className="truncate text-xs text-muted-foreground">
-          {getConnectionAccountName(connection)}
+      <div className="flex min-w-0 items-center gap-3">
+        <SocialAccountAvatar connection={connection} />
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-foreground">
+            {getPlatformLabel(connection.platform)}
+          </span>
+          <span className="block truncate text-xs text-muted-foreground">
+            {getConnectionAccountName(connection)}
+          </span>
         </span>
       </div>
 
@@ -1799,13 +1851,13 @@ function getStatusDisplay(
   status: SocialConnectionStatus | "connecting" | "not_connected",
 ): {
   label: string;
-  variant: "destructive" | "outline" | "secondary";
+  variant: "connected" | "destructive" | "disconnected" | "rendering";
 } {
   switch (status) {
     case "connected":
-      return { label: "Connected", variant: "secondary" };
+      return { label: "Connected", variant: "connected" };
     case "connecting":
-      return { label: "Connecting", variant: "outline" };
+      return { label: "Connecting", variant: "rendering" };
     case "expired":
       return { label: "Expired", variant: "destructive" };
     case "permission_missing":
@@ -1813,9 +1865,9 @@ function getStatusDisplay(
     case "error":
       return { label: "Connection error", variant: "destructive" };
     case "revoked":
-      return { label: "Disconnected", variant: "outline" };
+      return { label: "Disconnected", variant: "disconnected" };
     case "not_connected":
-      return { label: "Not connected", variant: "outline" };
+      return { label: "Not connected", variant: "disconnected" };
   }
 }
 

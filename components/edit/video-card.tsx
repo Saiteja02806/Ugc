@@ -55,7 +55,7 @@ export function VideoCard({ video }: { video: EditableVideo }) {
                   : video.status === "rendering"
                     ? "bg-primary/10 text-primary"
                     : video.status === "ready"
-                      ? "bg-success/10 text-[#087443]"
+                      ? "bg-success/10 text-success"
                       : video.status === "rendered"
                         ? "bg-primary/10 text-primary"
                         : "bg-card-muted text-muted",

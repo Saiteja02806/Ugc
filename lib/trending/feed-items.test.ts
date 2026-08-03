@@ -114,6 +114,25 @@ test("keeps incomplete format providers out of the current unified feed", () => 
   );
 });
 
+test("omits the Hook provider when the server feature is disabled", () => {
+  const providers = createCurrentTrendingFeedProviders(
+    [carouselSource],
+    undefined,
+    undefined,
+    { includeHookVideos: false },
+  );
+
+  assert.deepEqual(
+    getTrendingFeedProviderAvailability(providers).map(
+      ({ format, state }) => ({ format, state }),
+    ),
+    [
+      { format: "carousel", state: "ready" },
+      { format: "wall_text", state: "unavailable" },
+    ],
+  );
+});
+
 test("enables Hook videos only for an explicit true server value", () => {
   assert.equal(parseTrendingHookVideosEnabled("true"), true);
   assert.equal(parseTrendingHookVideosEnabled(" TRUE "), true);
@@ -166,7 +185,7 @@ test("allows explicitly enabled Hook videos on localhost for testing", () => {
   );
 });
 
-test("combines preview-ready providers in stable feed order without duplicates", () => {
+test("groups preview-ready items by Wall, Hook, then Carousel without duplicates", () => {
   const hookItem = {
     assignmentId: "assignment-hook",
     creative: {
@@ -179,7 +198,10 @@ test("combines preview-ready providers in stable feed order without duplicates",
       sourceDurationSeconds: 8,
       sourceKind: "catalog",
       text: {
+        fontSize: 52,
         kind: "hook",
+        lines: ["A business-profile Hook"],
+        patternId: "direct_capability",
         placement: "center",
         styleVersion: "hook-overlay-v1",
         value: "A business-profile Hook",
@@ -202,17 +224,46 @@ test("combines preview-ready providers in stable feed order without duplicates",
     assignmentId: "assignment-wall",
     creative: {
       aspectRatio: "9:16",
-      durationSeconds: 15,
+      durationSeconds: 6.016,
+      layout: {
+        alignment: "center",
+        placement: "upper-middle",
+        placementSource: "face-analysis",
+        safeArea: {
+          bottom: 460 / 1920,
+          left: 120 / 1080,
+          right: 200 / 1080,
+          top: 280 / 1920,
+        },
+        textBox: {
+          height: 480 / 1920,
+          width: 620 / 1080,
+          x: 230 / 1080,
+          y: 560 / 1920,
+        },
+        version: "wall-text-layout-v4",
+      },
       previewUrl: "https://cdn.example.com/wall.mp4",
       text: {
-        blocks: [
+        fullText:
+          "I logged every meal but skipped drinks oil and small bites. Those missing details quietly changed the final total.",
+        kind: "wall_text",
+        layoutVersion: "wall-text-overlay-v4",
+        pattern: "situation_discovery",
+        segments: [
           {
-            id: "headline",
-            text: "Readable wall-of-text copy",
+            lines: ["I logged every meal"],
+            role: "lead",
+          },
+          {
+            lines: ["but skipped drinks", "oil and small bites."],
+            role: "support",
+          },
+          {
+            lines: ["Those missing details", "quietly changed", "the final total."],
+            role: "closing",
           },
         ],
-        kind: "wall_text",
-        layoutVersion: "wall-text-overlay-v1",
       },
       thumbnailUrl: null,
       title: "Wall-of-text creative",
@@ -241,6 +292,30 @@ test("combines preview-ready providers in stable feed order without duplicates",
 
   assert.deepEqual(
     buildUnifiedTrendingFeed(providers).map((item) => item.id),
-    ["hook_video:feed-hook", "carousel:feed-item-1", "wall_text:feed-wall"],
+    ["wall_text:feed-wall", "hook_video:feed-hook", "carousel:feed-item-1"],
+  );
+});
+
+test("keeps each format in its own persisted position order", () => {
+  const laterCarousel = {
+    ...carouselSource,
+    assignmentId: "assignment-2",
+    carouselId: "carousel-2",
+    feedItemId: "feed-item-2",
+    feedPosition: 9,
+  } satisfies TrendingCarouselSourceRecord;
+  const earlierCarousel = {
+    ...carouselSource,
+    assignmentId: "assignment-3",
+    carouselId: "carousel-3",
+    feedItemId: "feed-item-3",
+    feedPosition: 1,
+  } satisfies TrendingCarouselSourceRecord;
+
+  assert.deepEqual(
+    buildUnifiedTrendingFeed([
+      createCarouselTrendingFeedProvider([laterCarousel, earlierCarousel]),
+    ]).map((item) => item.id),
+    ["carousel:feed-item-3", "carousel:feed-item-2"],
   );
 });

@@ -99,7 +99,7 @@ export function EditLibraryWorkspace() {
           <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
             Edit
           </h1>
-          <p className="mt-1 text-sm font-medium leading-6 text-[#405977]">
+          <p className="mt-1 text-sm font-medium leading-6 text-muted">
             Trim, add text, and save videos from Creative Assets.
           </p>
         </div>

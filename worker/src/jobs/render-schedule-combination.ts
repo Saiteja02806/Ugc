@@ -1,6 +1,6 @@
 import { getErrorMessage, logger } from "../logger.js";
 import {
-  renderScheduleCombinationToS3 as defaultRenderScheduleCombinationToS3,
+  renderScheduleCombinationToStorage as defaultRenderScheduleCombinationToStorage,
   type RenderScheduleCombinationPayload,
 } from "../lib/render-engine.js";
 import {
@@ -8,6 +8,7 @@ import {
   type ScheduleFinalizationResult,
 } from "../lib/schedule-finalization.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
+import { parseTextColor } from "../lib/edit-overlay-render-spec.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 
 const videoRatios = new Set(["9:16", "1:1", "4:5", "16:9"]);
@@ -20,13 +21,13 @@ type RenderScheduleCombinationDependencies = {
     scheduleId: string;
     userId: string;
   }) => Promise<ScheduleFinalizationResult>;
-  renderScheduleCombinationToS3: typeof defaultRenderScheduleCombinationToS3;
+  renderScheduleCombinationToStorage: typeof defaultRenderScheduleCombinationToStorage;
 };
 
 const defaultDependencies: RenderScheduleCombinationDependencies = {
   createMediaAssetId: () => crypto.randomUUID(),
   finalizeRenderedSchedule: defaultFinalizeRenderedSchedule,
-  renderScheduleCombinationToS3: defaultRenderScheduleCombinationToS3,
+  renderScheduleCombinationToStorage: defaultRenderScheduleCombinationToStorage,
 };
 
 export async function runRenderScheduleCombinationJob(
@@ -60,12 +61,12 @@ export async function runRenderScheduleCombinationJob(
   });
 
   let result: Awaited<
-    ReturnType<typeof defaultRenderScheduleCombinationToS3>
+    ReturnType<typeof defaultRenderScheduleCombinationToStorage>
   >;
   const mediaAssetId = dependencies.createMediaAssetId();
 
   try {
-    result = await dependencies.renderScheduleCombinationToS3(payload);
+    result = await dependencies.renderScheduleCombinationToStorage(payload);
 
     await context.store.markScheduleCombinationRenderCompleted({
       autoFinalize: payload.autoFinalize,
@@ -203,6 +204,10 @@ function parseRenderScheduleCombinationPayload(
     demoVideoId: getRequiredString(input.demoVideoId, "demoVideoId"),
     demoVideoUrl: getHttpUrl(input.demoVideoUrl, "demoVideoUrl"),
     hookText: getOptionalString(input.hookText, 220),
+    hookTextFontSize: getOptionalHookTextFontSize(input.hookTextFontSize),
+    hookTextLines: getOptionalHookTextLines(input.hookTextLines),
+    hookTextPosition: getOptionalNormalizedPosition(input.hookTextPosition),
+    hookTextColor: parseTextColor(input.hookTextColor, "hookTextColor"),
     hookTrimEnd,
     hookTrimStart,
     hookVideoId: getRequiredString(input.hookVideoId, "hookVideoId"),
@@ -260,6 +265,46 @@ function getOptionalString(value: Json | undefined, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
+function getOptionalHookTextFontSize(value: Json | undefined) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 34 &&
+    value <= 52 &&
+    value % 2 === 0
+  ) {
+    return value;
+  }
+
+  throw new Error("hookTextFontSize must be an even number from 34 to 52.");
+}
+
+function getOptionalHookTextLines(value: Json | undefined) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (
+    !Array.isArray(value) ||
+    value.length < 1 ||
+    value.length > 2 ||
+    value.some(
+      (line) =>
+        typeof line !== "string" ||
+        !line.trim() ||
+        Array.from(line.trim()).length > 78,
+    )
+  ) {
+    throw new Error("hookTextLines must contain one or two text lines.");
+  }
+
+  return value.map((line) => String(line).trim().replace(/\s+/gu, " "));
+}
+
 function getOptionalNonNegativeNumber(
   value: Json | undefined,
   fieldName: string,
@@ -289,6 +334,32 @@ function getOptionalNullablePositiveNumber(
   }
 
   throw new Error(`${fieldName} must be a positive number or null.`);
+}
+
+function getOptionalNormalizedPosition(value: Json | undefined) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const position = getJsonRecord(value, "hookTextPosition");
+
+  return {
+    x: getUnitNumber(position.x, "hookTextPosition.x"),
+    y: getUnitNumber(position.y, "hookTextPosition.y"),
+  };
+}
+
+function getUnitNumber(value: Json | undefined, fieldName: string) {
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value < 0 ||
+    value > 1
+  ) {
+    throw new Error(`${fieldName} must be between 0 and 1.`);
+  }
+
+  return value;
 }
 
 function getHttpUrl(value: Json | undefined, fieldName: string) {

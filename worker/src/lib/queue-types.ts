@@ -1,11 +1,8 @@
-import type { WorkerQueueProviderName } from "../config.js";
-
 export type WorkerDeliveryMessage = {
   ackId?: string | null;
   body: string | null;
   id: string;
-  providerName: WorkerQueueProviderName;
-  receiptHandle?: string | null;
+  providerName: "gcp";
 };
 
 export type WorkerQueueTransport = {
@@ -14,6 +11,6 @@ export type WorkerQueueTransport = {
     visibilityTimeoutSeconds: number,
   ) => Promise<void>;
   deleteMessage: (message: WorkerDeliveryMessage) => Promise<void>;
-  providerName: WorkerQueueProviderName;
+  providerName: "gcp";
   receiveMessages: () => Promise<WorkerDeliveryMessage[]>;
 };

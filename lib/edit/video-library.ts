@@ -1,3 +1,5 @@
+import { getCreativeAssetEditorHref } from "@/lib/edit/routes";
+
 export type EditableVideoRatio = "9:16" | "1:1" | "4:5" | "16:9";
 
 export type EditableVideoSource = "hook" | "demo" | "draft" | "final";
@@ -139,7 +141,7 @@ export function getEditableVideoById(videoId: string) {
 }
 
 export function getEditableVideoHref(video: EditableVideo) {
-  return `/edit/${encodeURIComponent(video.id)}`;
+  return getCreativeAssetEditorHref(video.id);
 }
 
 export function createEditableVideo(input: EditableVideoInput): EditableVideo {

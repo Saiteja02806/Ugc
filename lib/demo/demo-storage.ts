@@ -242,6 +242,9 @@ export async function updateDemoVideoDraft(input: UpdateDemoVideoDraftInput) {
   return updateDemoVideoForOwner(
     {
       draft_json: input.draft,
+      error_message: null,
+      latest_render_id: null,
+      rendered_video_url: null,
       status: "draft",
       title: input.title?.trim() || undefined,
     },
@@ -270,6 +273,12 @@ export async function updateDemoVideoDetails(input: UpdateDemoVideoDetailsInput)
     update.status = input.status;
   } else if (input.draft) {
     update.status = "draft";
+  }
+
+  if (input.draft && update.status === "draft") {
+    update.error_message = null;
+    update.latest_render_id = null;
+    update.rendered_video_url = null;
   }
 
   if (Object.keys(update).length === 0) {

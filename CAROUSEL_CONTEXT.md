@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-07-27
+Last updated: 2026-08-03
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -37,16 +37,16 @@ optional caption, provider settings, and publish time. Library opens the same
 modal directly for server-backed items. Normal Carousel scheduling must not
 navigate to the Scheduling page.
 
-The scheduling backend now stores server-backed `scheduled_posts` and
-`scheduled_post_targets` rows and can create EventBridge Scheduler entries for
-connected social accounts. Scheduler payloads contain only `{ version,
-targetId }`; captions, media URLs, OAuth tokens, cookies, and other secrets do
-not pass through EventBridge.
+The scheduling backend stores server-backed `scheduled_posts` and
+`scheduled_post_targets` rows and creates delayed GCP Cloud Tasks for connected
+social accounts. Scheduler payloads contain only `{ version, targetId }`;
+captions, media URLs, OAuth tokens, cookies, and other secrets do not pass
+through Cloud Tasks.
 
 Saved carousels are scheduled as `library_item` sources; they must never be
 silently replaced with a video media asset. The Scheduling editor preserves the
 Library item, collects an exact connected account plus wall-clock date/time,
-and only then creates EventBridge targets. Undated drafts remain visible in the
+and only then creates Cloud Tasks. Undated drafts remain visible in the
 Drafts list and do not appear as timed calendar entries.
 
 The visible Scheduling workspace and inline Carousel scheduling modal are
@@ -59,6 +59,14 @@ definitions, validation, and publishing logic remain preserved as dormant
 multi-platform support, and legacy non-Instagram planned targets must not be
 silently removed when an older draft is edited. This does not change the inline
 Carousel scheduling boundary described above.
+
+Instagram OAuth distinguishes adding an account from reconnecting one. Adding
+must never revoke or replace another connection. Reconnect sessions persist the
+selected `social_connections.id`, and the callback must verify that the returned
+Instagram account ID matches that connection before updating credentials. Both
+Settings and the inline account picker expose Add another account; the picker
+may select up to five exact Instagram connections, with each selected account
+remaining a separate publish target.
 
 The modal flow is Step 1 action choice, Step 2 exact account selection, Step 3
 optional caption and provider settings, and Step 4 ASAP or later scheduling.
@@ -82,7 +90,7 @@ caption support.
 The social publish worker loads the ordered `library_carousel_slides` rows at
 publish time. Instagram publishes a 2-10 image carousel through child media
 containers plus one persisted parent container. Before container creation, the
-worker converts the rendered WebP slides to deterministic CloudFront-backed
+worker converts the rendered WebP slides to deterministic GCS-backed
 JPEG publish copies; the Library carousel and frontend renders remain
 unchanged. Dormant legacy TikTok targets publish the verified WebP URLs as a
 2-35 image photo post through the Content Posting API and persist the publish
@@ -93,14 +101,13 @@ code so old schedules are not damaged. Existing Reel, TikTok video, and YouTube
 video paths remain separate. Do not describe a scheduled post as actually
 published until the worker updates its target row to `published`.
 
-During the AWS to GCP migration, Carousel generation keeps the same durable
-background job contract. The queue message body remains `{ jobId, jobType }`,
-and Supabase `background_jobs` remains the source of truth for claims, retries,
-heartbeats, and completion. AWS SQS is still the default queue provider. GCP
-Pub/Sub is available only as an explicit dark path behind `QUEUE_PROVIDER=gcp`
-for the app and `WORKER_QUEUE_PROVIDER=gcp` for the worker. Do not treat
-Carousel queue cutover as complete until the deployed worker profile has been
-verified against the chosen GCP subscription.
+Carousel generation uses the shared durable job contract. Supabase
+`background_jobs` and `background_job_events` are authoritative for ownership,
+idempotency, claims, checkpoints, cancellation, retries, recovery, and terminal
+state. The app dispatches a versioned `{ jobId, jobType, attempt }` payload to a
+deterministically named GCP Cloud Task. An authenticated Cloud Run HTTP worker
+reloads the full input from Supabase; the queue payload is never the source of
+truth. Carousel has no selectable alternate queue provider.
 
 For the Vercel app runtime, GCP queue publishing cannot rely on
 `GOOGLE_APPLICATION_CREDENTIALS` unless it points to a real file. The app
@@ -110,15 +117,11 @@ supports `GOOGLE_CLOUD_CREDENTIALS_JSON` or the split
 and the configured app queue provider; worker-side storage is validated through
 the deployed worker profile and GCP smoke test.
 
-After setting `STORAGE_PROVIDER=gcp`, Trending feed readiness is storage-aware:
+Trending feed readiness is GCP-storage-aware:
 completed Carousel rows are display-ready only when every ready slide URL is
-trusted by the currently configured storage provider. This prevents old
-AWS/CloudFront rendered rows from filling the dashboard after the GCP cutover.
-Do not rewrite old rendered URLs in place. Reset affected feed items and let the
-app generate fresh GCP Carousel inventory instead. Use
-`npm run carousel:gcp-cutover-feed:reset -- --user-id <firebase-uid>` for the
-dry run, then repeat with `--execute --yes` only after the storage-aware feed
-code is deployed.
+trusted by GCS storage. Historical rows with URLs from retired providers are
+not display-ready. Do not rewrite old rendered URLs in place; reset affected
+feed items and let the app generate fresh GCP Carousel inventory instead.
 
 ## Non-Negotiable Image Safety
 
@@ -417,7 +420,8 @@ npm run carousel:local-images:check
 ```
 
 It verifies runtime category mapping, allowed broad buckets, strict safety
-fields, duplicate S3/hash identities, and prepared base/thumb dimensions.
+fields, duplicate object-key/hash identities, and prepared base/thumb
+dimensions.
 
 Then run the live structure preflight:
 
@@ -435,11 +439,12 @@ It is dry-run by default. The execute form is:
 npm run carousel:local-images:import -- --execute --yes
 ```
 
-The importer uploads original, base, and thumbnail files to S3/CloudFront under
+The importer uploads original, base, and thumbnail files to GCS under
 `category-library/<runtime-category>/<broad-bucket>/<asset-id>/`, then inserts
 the corresponding rows into `category_image_assets`. It checks for existing
 local rows by `base_s3_key` and `source_file_sha256` before inserting, and it
-preflights the remote schema before the first S3 upload.
+preflights the remote schema before the first GCS upload. The `*_s3_key`
+column names are legacy schema names only.
 
 After importing, run:
 
@@ -448,7 +453,7 @@ npm run carousel:local-images:verify-import
 ```
 
 It reads the import manifest and import result, verifies all production rows
-match the manifest, and can optionally sample uploaded CloudFront URLs.
+match the manifest, and can optionally sample uploaded GCS URLs.
 
 Original files are the canonical source when an `originals` folder is present.
 `carousel_4x5` or `carousel_1080x1350` files are derived renditions of the same
@@ -529,7 +534,7 @@ asset-scope, and usable-profile metadata, and creates `carousel_image_usage`
 for future per-user image freshness tracking. This does not by itself import
 or approve any local image. Runtime duplicate identity now prefers
 `canonical_asset_id`, then `source_file_sha256`, then `source_perceptual_hash`,
-then existing Pexels/S3 identity.
+then existing Pexels/object-key identity.
 
 ## Daily Trending Feed
 
@@ -562,7 +567,7 @@ Migration `20260717100000_add_daily_carousel_replenishment.sql` adds
 `daily_carousel_refill_batches`, the persisted profile timezone, daily-origin
 and availability metadata on `carousel_generations`, batch-local candidate
 uniqueness, idempotency keys for background jobs, and a delivery timestamp used
-to lease Carousel SQS redelivery attempts. It also adds the singleton daily
+to lease Carousel Cloud Tasks redelivery attempts. It also adds the singleton daily
 replenishment sweep checkpoint and service-role-only claim/advance RPCs.
 
 Default entitlement rows are `pro` with 10 daily carousels and `ultra_pro` with
@@ -723,7 +728,11 @@ was redeployed. Manual execution `ugc-carousel-replenishment-ckb6c` then
 completed successfully with one page, 3 processed profiles, and 0 failures.
 The Cloud Scheduler job remained paused after the canary.
 
-The generic GCP Pub/Sub worker canary is also validated. Terraform applied
+Historical note: the following 2026-07-18 Pub/Sub canary and AWS comparison
+record is retained only as migration evidence. Both transports are retired;
+the current implementation uses Cloud Tasks, Cloud Run, Supabase, and GCS.
+
+The generic GCP Pub/Sub worker canary was validated. Terraform applied
 Cloud Run Job `ugc-worker-canary-test` from `infra/gcp/worker-canary`, running
 `test_worker_job` against `ugc-media-processing-sub` with
 `WORKER_QUEUE_PROVIDER=gcp`. Early executions with `WORKER_POLL_WAIT_SECONDS=0`
@@ -753,8 +762,8 @@ The real GCP Carousel generation smoke test on 2026-07-18 completed Carousel
 `19919982775905874`. Cloud Run logs showed message receipt, content planning,
 image matching, text-containment validation, and job completion. The smoke
 script verified 5 rendered slides and downloaded the GCS public URLs. This
-validates the GCP Carousel worker path, but normal app-created Carousel jobs
-still use AWS until the app environment is flipped to `QUEUE_PROVIDER=gcp`.
+validated the GCP Carousel worker path at that time. The current application
+is GCP-only and ignores alternate queue-provider values.
 
 The scheduler only includes profiles with a persisted Trending timezone. The
 first authenticated browser feed request records the user's IANA timezone and
@@ -911,24 +920,25 @@ The renderer must avoid fake app UI:
 The frontend displays already-rendered slide URLs and should not reconstruct the
 slide typography.
 
-## Live Architecture
+## Current Live Architecture
 
 ```text
 Frontend
   -> Next.js API route (thin controller)
   -> Supabase generation/job metadata
-  -> AWS worker
+  -> GCP Cloud Tasks
+  -> private Cloud Run worker
   -> LLM slide plan + safe image matcher + Sharp renderer
-  -> S3 rendered slides
-  -> CloudFront delivery
+  -> GCS rendered slides
   -> Supabase slide/generation status
   -> Frontend polling and candidate/slide navigation
 ```
 
-Supabase stores analysis, assets, generation metadata, and slide metadata. S3
-stores source assets and rendered slides. Pexels is used for controlled library
-sourcing, not for ad hoc unsafe selection during a live render. The live heavy
-Carousel worker is AWS, not a Supabase Edge Function.
+Supabase stores analysis, assets, durable job state, generation metadata, and
+slide metadata. GCS stores source assets and rendered slides. Pexels is used
+for controlled library sourcing, not for ad hoc unsafe selection during a live
+render. Cloud Tasks is the only Carousel delivery queue; the worker runs on
+Cloud Run.
 
 Core tables:
 
@@ -977,10 +987,17 @@ Hook feed items use a separate Hook text payload and become preview-ready when
 the protected short source video, business-profile-generated Hook text, source
 duration, and trim values are all available. A product demo is intentionally not
 part of the Trending Hook card. A right swipe carries that exact Hook text and
-source video into product-demo selection. The unified deck now mixes ready
-Carousel and Hook items and the former Carousel/Hook mode selector is removed.
-Wall-of-text remains unavailable in the unified feed while its backend
-preparation slice is isolated from the display/swipe slice.
+source video into product-demo selection. The unified deck contains ready
+Carousel, Hook, and Wall-of-text items and the former Carousel/Hook mode
+selector is removed. Items are grouped by format in this fixed display order:
+
+1. All Wall-of-text videos.
+2. All Hook videos.
+3. All Carousels.
+
+Persisted feed position orders items only within its own format group. The
+backend and frontend use the same shared comparator so the page cannot
+accidentally restore interleaving.
 
 Text data must not be flattened into one generic `text` field across formats:
 
@@ -988,28 +1005,27 @@ Text data must not be flattened into one generic `text` field across formats:
   type, and CTA semantics.
 - Hook content is one short business-profile-generated overlay with
   duration-aware readability limits and Hook-specific placement/style metadata.
-- Wall-of-text content will be a longer ordered block/paragraph structure with
-  its own reading-time and layout rules.
+- Wall-of-text content is one continuous text value with its own validation and
+  full-overlay layout rules. It has no separate headline, body, or closing
+  fields.
 
 The shared feed owns only common assignment, position, readiness, and format
 metadata. Each format keeps separate generation, validation, persistence, and
 rendering rules.
 
-The first Wall-of-text backend slice is implemented behind
-`POST /api/trending/wall-text/feed/prepare`. It does not add Wall cards to the
-unified feed. It:
+Wall-of-text preparation is implemented behind
+`POST /api/trending/wall-text/feed/prepare`. Preview-ready Wall creatives are
+included in the unified feed. The preparation path:
 
 - selects only active, analyzed, 9:16 video rows from the shared
   `overlay_media_assets` catalog;
-- rejects source videos shorter than six seconds, high-motion videos, and
-  assets explicitly marked as having low text capacity;
 - prefers low-usage videos and avoids the caller's recently prepared
   backgrounds when fresh inventory exists, while allowing safe reuse rather
   than failing when the catalog is small;
-- generates a separate duration-aware three-block Wall payload (headline,
-  body, closing) from the caller's current business profile;
-- computes deterministic text-safe layout metadata from the source asset rather
-  than asking the text model to invent placement;
+- generates one continuous Wall-specific text value from the caller's current
+  business profile;
+- applies deterministic full-overlay layout metadata rather than asking the
+  text model to invent placement;
 - stores generated, owner-scoped `wall_text_creatives` and
   `user_wall_text_assignments` without duplicating the shared source video; and
 - validates current business-profile ownership/version and source readiness in
@@ -1023,8 +1039,8 @@ direct table privileges; the authenticated server route owns preparation.
 The source catalog remains storage-provider neutral at runtime. Wall
 preparation reads the source key/URL metadata produced by the configured media
 upload path and contains no fixed GCS bucket, GCP hostname, S3 bucket, or
-CloudFront hostname. Upload tooling and final MP4 rendering are separate future
-slices.
+CloudFront hostname. Source upload tooling and final MP4 export remain separate
+from feed preview.
 
 - The feed receives the real ordered slide records for every returned candidate,
   including `renderedUrl`, slide number, type, text metadata, and status.
@@ -1052,9 +1068,11 @@ slices.
   the swipe direction before the next candidate becomes active. Reduced-motion
   users get an immediate state change. Inner controls must be excluded from the
   outer pointer gesture at pointer-down time.
-- The active portrait card is approximately 300px wide and capped for narrow
-  mobile viewports. All slides for the active candidate and the selected slide
-  of the next candidate are preloaded when the active candidate changes.
+- The active Carousel card is approximately 270px wide and capped for narrow
+  mobile viewports. This keeps it visually closer to the 230px Hook and
+  Wall-of-text cards while retaining readable 4:5 slides. All slides for the
+  active candidate and the selected slide of the next candidate are preloaded
+  when the active candidate changes.
 - Every candidate owns its own active-slide state. The centre card renders only
   that candidate's active slide; its left/right controls and five dots are
   positioned inside the image card and move only through that candidate's five
@@ -1111,7 +1129,7 @@ Hook-specific text generated from the caller's current business profile,
 variable source/trim duration, and a stable owner-scoped assignment. It does not
 contain a product demo.
 
-Migration `20260725120000_add_trending_hook_ideas.sql` adds a `trending`
+Migration `20260728183858_add_trending_hook_ideas.sql` adds a `trending`
 suggestion context to the Hook-specific suggestion table and a separate
 `user_hook_video_assignments` exposure layer. Existing `composition`
 suggestions remain demo-specific. The two text-generation contexts are not
@@ -1126,13 +1144,17 @@ The Hook videos product flow, when enabled from an approved surface, is:
    profile only. It is constrained by the selected source video's real trimmed
    duration; there is no hard-coded five-second assumption.
 3. A left swipe records a Hook-specific skip and moves to the next mixed feed
-   item. A right swipe records that the Hook was selected and starts composition
-   with the same source video and Hook text already selected. These interactions
-   do not mutate a Carousel assignment.
+   item. A right swipe opens composition with the same source video and Hook
+   text already selected, but opening or closing that reversible composer does
+   not complete the Hook assignment. The Hook is recorded as selected only
+   after Save to Content succeeds or after a real schedule and render request
+   succeeds. These interactions do not mutate a Carousel assignment.
 4. Product demos come only after a right swipe, from the caller's ready
-   `media_assets` video collection or a new owner upload. Selecting a demo moves
-   a prefilled Trending Hook directly to Review. Save and Schedule remain final
-   composition actions.
+   `media_assets` video collection or a new owner upload. The first screen shows
+   only `Upload demo video` and `Choose existing`; saved videos are fetched and
+   displayed only after the user opens the existing-demo picker. Selecting or
+   uploading a demo moves a prefilled Trending Hook directly to Review. Save
+   and Schedule remain final composition actions.
 5. The product must not fabricate demo, influencer, or Hook records when real
    inventory is empty.
 6. The legacy `POST /api/trending/hook-videos/suggestions` composition path
@@ -1142,15 +1164,16 @@ The Hook videos product flow, when enabled from an approved surface, is:
    the returned suggestions. Static or random suggestion text is forbidden.
 7. Review previews the opening and demo separately, overlays the selected hook,
    and allows trim changes only for the opening clip. Save persists an
-   owner-scoped Hook video draft for the Library. Schedule persists or reuses the
+   owner-scoped Hook video draft for Content. Schedule persists or reuses the
    same reviewed selection, creates a real `scheduled_posts` draft, and opens the
    Scheduling workspace with that exact draft ID.
 8. Hook ideas are a server-gated rollout. The server-only
    `TRENDING_HOOK_VIDEOS_ENABLED` variable must equal `true` to query or return
-   Hook items outside production. Missing or false values fail closed. The
-   deployed Vercel production environment and the `getugcpilot.com` production
-   hosts always override this flag to `false`; localhost can explicitly enable
-   it for testing.
+   the Hook feed provider or to run Hook preparation. Missing or false values
+   fail closed. The deployed Vercel production environment and the
+   `getugcpilot.com` production hosts always override that flag to `false`;
+   localhost and non-production preview environments can explicitly enable it
+   for testing.
 
 Protected influencer playback uses a five-minute, HTTP-only, same-origin preview
 session. The preview route revalidates the signed video, influencer, source, and
@@ -1655,34 +1678,225 @@ Do not describe planned behavior as deployed behavior.
   test data, or media systems scheduled for replacement; that is not evidence
   of a Carousel migration gap.
 
+## 2026-07-28 Reviewed Slideshows Asset Import
+
+- The flat source folder
+  `C:/Users/chund/OneDrive/Desktop/slideshows` contained 72 readable images,
+  zero corrupt files, zero exact duplicates, and zero perceptual near-duplicate
+  groups. It had no provenance sidecar and included 17 already-cropped
+  1080x1350 files without corresponding originals, so those files remain
+  marked as cropped-only canonical sources.
+- The durable per-file decision map is
+  `scripts/data/slideshows-carousel-review-2026-07-28.json`. Final uncropped
+  contact-sheet inspection approved 61 files and rejected 11. The second,
+  larger visual pass caught `07-online-yoga-and-remote-wellness.jpg`, which
+  contains a visible person on a laptop screen; it is rejected along with the
+  ten previously identified person/hand images. Rejected files were not
+  uploaded and have no `category_image_assets` rows.
+- The 61 approved assets are mapped as follows:
+  - Productivity SaaS: 15 `notes-and-planning`, 9 `workspace-objects`, and
+    1 `phone-and-devices`.
+  - Fitness Health: 14 `food-and-table` and 20
+    `fitness-wellness-objects`.
+  - Shared: 2 `home-lifestyle`, usable by Productivity SaaS, Fitness Health,
+    Wellness, Beauty Skincare, and Generic Business.
+- Each approved file now has a SHA-256 source hash and a perceptual hash.
+  The local review-map pipeline fails closed if the map is not marked
+  `final_full_resolution_review`, if any audited file is missing a decision, if
+  a decision names an unknown file, or if a runtime category/broad-bucket/scope
+  combination is invalid. The old whole-folder approval flag remains only for
+  backward compatibility and cannot be combined with a review map.
+- The import path now uses the configured storage abstraction and is explicitly
+  guarded to GCP for this reviewed batch. It no longer hard-codes AWS SDK or
+  CloudFront configuration. The existing `base_s3_key`, `thumb_s3_key`, and
+  `source_original_s3_key` database column names remain unchanged for schema
+  compatibility even though the objects live in GCS.
+- On 2026-07-28, all 61 approved assets were uploaded to
+  `gs://ugcsaas-media` and inserted into production
+  `category_image_assets`: 25 Productivity SaaS, 34 Fitness Health, and
+  2 Shared. All rows are `ready`, manually `approved`, `object-only`,
+  `has_human = false`, `face_count = 0`, `person_count = 0`, and have no
+  runtime exclusion reason. The import preflight found no matching storage
+  keys, SHA-256 hashes, or perceptual hashes in production.
+- Post-import verification found 61/61 matching production rows and successfully
+  read all 183 public GCP objects: 61 originals, 61 normalized 1080x1350 WebP
+  bases, and 61 320x400 WebP thumbnails. Metadata-only corrections can be
+  safely re-applied with
+  `scripts/sync-local-carousel-image-asset-metadata.mjs`; the command requires
+  exact base-key and source-hash matches before updating a row.
+- Relevance tags were validated against the production broad matcher rather
+  than merely stored. Across 50 simulated candidate Carousels, all 25 new
+  Productivity assets were selected at least once. In a Fitness-specific
+  50-candidate audit, 33 of 34 new Fitness assets were selected, with selections
+  from both `food-and-table` and `fitness-wellness-objects`. Both audits
+  produced complete 6/6 selections with zero missing selection.
+- An isolated GCP render canary read six newly imported production URLs—one
+  from every imported category/bucket group—and rendered six valid 1080x1350
+  Carousel slides. The output and report are under
+  `.tmp/local-carousel-render-canary/2026-07-28T08-29-59-344Z`.
+- Production `CAROUSEL_BROAD_MATCHER_MODE` remains `dry-run`. These assets are
+  present, safe, and selectable by the broad matcher, but the legacy matcher is
+  still authoritative for the user-facing feed. Do not describe the new local
+  assets as live feed selections until a separately deployed, profile-scoped
+  broad-matcher canary is verified.
+
+## 2026-07-28 Unified Trending Wall-of-text Decision
+
+- Trending is one mixed Tinder-style feed containing preview-ready Carousel,
+  Hook-video, and Wall-of-text ideas. Each format keeps its own Business
+  Profile prompt and text schema; Carousel slide copy, Hook opener text, and
+  Wall-of-text copy must never be reused interchangeably.
+- A Wall-of-text preview is a reviewed platform background video plus
+  Business-Profile-specific Wall copy and a fixed full-overlay layout. It does
+  not include a product demo.
+- One continuous Wall copy value is visible for the full native video duration.
+  It has no separate headline, body, or closing fields. The background plays
+  once and does not loop. Copy length is limited by visual fit, not by a
+  reading-time calculation based on video duration.
+- Wall source selection does not use motion level, readability score, text
+  capacity, or recommended text position. A video must be an active reviewed
+  9:16 Wall asset with one `visual_group`, one `source_batch`, and one unique
+  SHA-256 hash. Selection spreads a candidate set across visual groups before
+  reusing a group.
+- The reviewed `videos_real` batch contains 51 unique approved videos and 15
+  exact duplicate files that were rejected. The production catalog contains
+  all 51 approved videos and thumbnails in GCP, with zero incomplete rows.
+  The durable map is
+  `scripts/data/wall-text-videos-real-2026-07-28.json`.
+- The application worktree now includes the Wall provider, preparation route,
+  full-overlay video card, and left-skip/right-select persistence. These
+  user-facing code changes must not be described as live on the production
+  domain until the application is deployed and the authenticated production
+  flow is verified.
+
+## 2026-08-02 Unified Trending Creative Decisions
+
+- Trending uses one shared action row for every preview-ready Carousel, Hook
+  video, and Wall-of-text card. The row presents three equal, labeled touch
+  targets in the order Reject, Edit, Accept. Restrained error, neutral, and
+  success treatments preserve the decision meaning without relying on an X or
+  check icon alone. Left/right swipe, keyboard decisions, and the Reject/Accept
+  buttons call the same client decision handler.
+- Decisions are durable server records with the authenticated user ID,
+  assignment ID, creative ID, format, `accepted` or `rejected`, and
+  `decided_at`. The database function records the decision and retires the
+  format-specific active assignment in one transaction. Identical retries are
+  idempotent; a conflicting second decision fails closed.
+- A decision animates first, then the card is optimistically advanced while
+  persistence runs. One synchronous client lock prevents duplicate submission.
+  If persistence fails, the prior card index is restored.
+- Accept is a review decision, not publication. Carousel acceptance preserves
+  the generated creative in an intermediate `accepted` assignment state and
+  opens the existing save-or-schedule review flow. Only a successful later
+  save or schedule moves it to `completed_saved` or `completed_scheduled`;
+  Hook acceptance opens product-demo composition; Wall acceptance opens its
+  focused final-review/render flow. The existing render, schedule, and publish
+  workers remain separate downstream stages.
+- Edit opens the format-specific Trending creative editor for the assigned
+  creative. Saving persists an owner-scoped revision; Carousel saves wait for
+  the revision-specific worker render before downstream Library use.
+- Trending never renders non-ready cards. When no preview-ready item exists,
+  the customer sees only "We’re preparing new content for you." The sidebar
+  background-job indicator and the Trending render-progress/failure panels are
+  removed from customer UI; job tables, polling, queues, workers, and backend
+  logs remain unchanged.
+- This implementation and its Supabase migration are local worktree changes.
+  Do not describe the unified decisions as deployed or production-verified
+  until the migration and application are deployed and the authenticated
+  production flow is checked.
+
+## 2026-08-02 Trending Creative Edit Persistence
+
+- Trending edits are stored in the owner-scoped
+  `trending_creative_edits` table. One row represents the latest revision for
+  one assigned creative, and every content save clears prior render output.
+  The editor submits its loaded revision, so a stale tab receives a conflict
+  instead of overwriting a newer save.
+  Source assets are resolved server-side and database validation requires a
+  ready owner video (and current group membership for group selections).
+- Carousel edits use the durable `render_trending_carousel_edit` background-job
+  contract. The edit row is attached to the job before Cloud Tasks dispatch,
+  and worker transitions are fenced by edit ID, owner, revision, and job ID so
+  an older render cannot overwrite a newer edit.
+- The Carousel worker reuses the production Sharp slide pipeline, preserves the
+  normalized dragged X/Y anchor inside publishing-safe bounds, and uploads each
+  revision under immutable content-hashed GCP keys. It reloads the original
+  generation job's persisted text style so editing copy or position does not
+  change the Carousel design. Render output preserves
+  both the public URL and storage key for every slide.
+- The Carousel editor previews the clean source background with a live inline
+  SVG white-bubble treatment instead of showing the already-flattened rendered
+  slide or a plain-text substitute. The worker remains the authority for final
+  wrapping, containment, safe-bound clamping, and exported pixels. Supporting
+  text takes precedence over CTA text, matching the production renderer.
+- Saving a Carousel to Library uses the latest edit when one exists. A queued,
+  rendering, draft, failed, incomplete, or non-GCP edit is rejected rather
+  than silently saving the original. A ready edit refreshes the existing
+  generated-Carousel Library item and its ordered slides, including edited
+  copy and normalized placement metadata.
+- Hook and Wall downstream save paths resolve saved edit content and selected
+  source on the server. Hook combination renders carry the normalized text
+  anchor. Wall render claims include edit ID/revision so a previously ready
+  render cannot mask a newer Wall edit.
+- These schema, app, and worker changes are local worktree changes. Do not call
+  them deployed or production-verified until the migration and worker/app
+  revisions are deployed and the authenticated production flow is checked.
+
 ## Next Implementation Slice
 
-Name: **Finish dry-run shadow validation before live broad matcher enablement**
+Name: **Run a profile-scoped GCP broad-matcher live canary**
 
 1. Keep `CAROUSEL_BROAD_MATCHER_MODE=dry-run` and
    `CAROUSEL_DISABLE_CATEGORY_FALLBACK=true`.
-2. Run controlled AWS dry-run/shadow samples for Productivity SaaS and Generic
-   Business against worker revision 11.
-3. Manually inspect the Beauty Skincare and Wellness contact sheets before
-   considering live enablement.
-4. If the remaining profile samples have zero missing selections, zero safety
-   violations, and acceptable repeated-asset concentration, prepare a separate
-   one-profile live canary plan.
-5. Do not enable broad matching live in the same slice as shadow validation.
-   Do not source more images unless a dry-run profile shows missing selections,
-   safety violations, or unacceptable repeated-asset concentration.
+2. Run controlled production GCP worker shadow samples for Productivity SaaS
+   and Fitness Health and confirm the selected asset IDs include this reviewed
+   local batch with zero safety or render failures.
+3. Add an explicit profile/user allowlist mechanism so `enabled` behavior can
+   be tested without changing every Carousel generation.
+4. Deploy one Productivity SaaS canary profile/user, generate complete
+   Carousels, and visually inspect the rendered outputs from the real
+   production domain.
+5. Keep the global mode in `dry-run` until that canary is accepted. Global
+   enablement is a separate product rollout decision.
 
 ## Working Rules
 
 - Make one behavior change per slice and validate it before deployment.
-- Keep API routes thin; heavy generation belongs in the AWS worker.
+- Keep API routes thin; heavy generation belongs in authenticated GCP Cloud Run
+  workers.
 - Never use Supabase Edge Functions for Sharp rendering.
 - Never make unreviewed assets selectable.
 - Never silently fall back to an unrelated category.
 - Never trim approved surplus assets.
-- Never claim AWS behavior changed until the deployed worker version is verified.
+- Never claim GCP worker behavior changed until the deployed revision is
+  verified.
 - Never overwrite a rendered Carousel asset behind an immutable URL. Rendered
   keys must change when either the renderer version or output bytes change.
 - Keep the production Carousel worker font files in sync with the font family
   used for text measurement and SVG rendering.
 - Update this file whenever a product rule or architecture decision changes.
+
+## 2026-08-02 Creative Assets Saved Collection and Scheduling UI
+
+- Creative Assets now exposes a `Saved` tab beside Videos and Images. It is a
+  unified customer surface over the existing owner-scoped Carousel, Hook, and
+  Wall-of-Text stores; it does not duplicate rendered media or introduce a
+  second source of truth.
+- Trending save confirmations for all three formats link to
+  `/avatars?tab=saved`. Existing saved creatives appear automatically because
+  the tab reads the established Library and saved-draft APIs. Repeated saves
+  keep the existing idempotent behavior of each format.
+- A saved Hook is identified as a composition until the downstream scheduling
+  render combines it with the selected footage. Carousel and Wall-of-Text keep
+  their existing rendered/preparing states.
+- Scheduling account rows now display the backend-provided
+  `profilePictureUrl`, with the platform icon as an image-load fallback. The
+  same shared avatar is used by Carousel, Hook, and Wall-of-Text scheduling.
+- The Carousel scheduling dialog uses fixed header, scrollable-content, and
+  footer grid rows. The content no longer forces a minimum height, so the Back
+  and Next controls remain visible on shorter screens.
+- The Carousel scheduling header is text-only and does not repeat the
+  Instagram logo. Publishing-account rows still show the selected account's
+  real profile picture because that identity is actionable confirmation.
+- These UI changes are production-build validated locally. They are not
+  deployed or authenticated-production verified yet.

@@ -688,7 +688,7 @@ export async function seedCategoryImageLibrary(
 
         await insertCategoryImageAsset({
           avg_color: candidate.photo.avg_color ?? null,
-          base_s3_key: upload.baseS3Key,
+          base_s3_key: upload.baseObjectKey,
           base_url: upload.baseUrl,
           category_slug: payload.categorySlug,
           content_tags: contentTags,
@@ -713,7 +713,7 @@ export async function seedCategoryImageLibrary(
           subject_analyzer_version:
             subjectAnalysis?.analyzerVersion ?? MANUAL_SUBJECT_ANALYZER_VERSION,
           subject_review_status: "unreviewed",
-          thumb_s3_key: upload.thumbS3Key,
+          thumb_s3_key: upload.thumbObjectKey,
           thumb_url: upload.thumbUrl,
           visual_setting: metadata.visualSetting,
           visual_style: metadata.visualStyle,

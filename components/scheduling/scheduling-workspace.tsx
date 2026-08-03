@@ -31,6 +31,11 @@ import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { getScheduleMediaIssue } from "@/lib/scheduling/media-availability";
 import {
+  getInitialScheduleConnectionIds,
+  getSocialConnectionAccountLabel,
+  getUnavailableSavedInstagramTargets,
+} from "@/lib/scheduling/schedule-form-persistence";
+import {
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
   type ScheduleTargetSettings,
@@ -65,6 +70,7 @@ import {
   canEditSchedule,
   getScheduleEditBlockReason,
 } from "@/lib/scheduling/schedule-action-policy";
+import { getSchedulePublishFailureMessage } from "@/lib/scheduling/schedule-publish-outcome";
 import type { SocialConnection } from "@/lib/social/types";
 import {
   getTikTokPrivacyLabel,
@@ -77,6 +83,7 @@ const hookVideoSourceTypes: MediaSourceType[] = [
   "upload",
   "generated_video",
   "edit_export",
+  "wall_text_render",
 ];
 const scheduledVideoSourceTypes: MediaSourceType[] = [
   "demo_upload",
@@ -112,6 +119,7 @@ const scheduleSetupSteps = [
 ] as const;
 const scheduleDialogFocusableSelector =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const MAX_SCHEDULE_CAPTION_LENGTH = 5_000;
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
   | { error?: string; ok?: false };
@@ -167,6 +175,16 @@ type ScheduleRenderResponse =
 type SchedulePublishResponse =
   | { created: boolean; ok: true; schedule: ScheduledPost }
   | { message?: string; ok?: false };
+
+class SchedulePublishOutcomeError extends Error {
+  constructor(
+    message: string,
+    readonly result: { created: boolean; schedule: ScheduledPost },
+  ) {
+    super(message);
+    this.name = "SchedulePublishOutcomeError";
+  }
+}
 
 type SchedulePublishRetryResponse =
   | {
@@ -234,6 +252,7 @@ export function SchedulingWorkspace() {
   const [hookMediaOptions, setHookMediaOptions] = useState<ScheduleMediaOption[]>([]);
   const [demoMediaOptions, setDemoMediaOptions] = useState<ScheduleMediaOption[]>([]);
   const [scheduleMediaLoaded, setScheduleMediaLoaded] = useState(false);
+  const [socialConnections, setSocialConnections] = useState<SocialConnection[]>([]);
   const drafts = useMemo(() => {
     const activeOpeningIds = new Set(hookMediaOptions.map((option) => option.id));
     const activeDemoIds = new Set(demoMediaOptions.map((option) => option.id));
@@ -246,10 +265,19 @@ export function SchedulingWorkspace() {
         schedule,
       });
 
-      return mapScheduledPostToScheduleDraft(schedule, mediaIssue);
+      return mapScheduledPostToScheduleDraft(
+        schedule,
+        mediaIssue,
+        socialConnections,
+      );
     });
-  }, [demoMediaOptions, hookMediaOptions, scheduleMediaLoaded, serverSchedules]);
-  const [socialConnections, setSocialConnections] = useState<SocialConnection[]>([]);
+  }, [
+    demoMediaOptions,
+    hookMediaOptions,
+    scheduleMediaLoaded,
+    serverSchedules,
+    socialConnections,
+  ]);
   const [activeTab, setActiveTab] = useState<ScheduleTab>(getInitialScheduleTab);
   const [viewMode, setViewMode] = useState<ScheduleViewMode>(
     getInitialScheduleViewMode,
@@ -424,9 +452,7 @@ export function SchedulingWorkspace() {
         );
       }
 
-      setSocialConnections(
-        data.connections.filter((connection) => connection.status !== "revoked"),
-      );
+      setSocialConnections(data.connections);
     } catch {
       setActionNotice("Could not load connected Instagram accounts.");
     }
@@ -701,6 +727,7 @@ export function SchedulingWorkspace() {
       const shouldAutoScheduleFinal = selectedConnectionIds.length > 0;
       const isCarouselSchedule = submission.scheduledSource.kind === "library_item";
       const shouldRenderCombination = !isCarouselSchedule && submission.useOpeningClip;
+      let finalSchedulingAttempted = false;
       const mediaLabel = isCarouselSchedule ? "carousel" : "video";
       let nextNotice = shouldAutoScheduleFinal
         ? shouldRenderCombination
@@ -724,6 +751,7 @@ export function SchedulingWorkspace() {
           });
           nextSchedule = renderResult.schedule;
           if (shouldAutoScheduleFinal && renderResult.status === "ready") {
+            finalSchedulingAttempted = true;
             const publishResult = await requestFinalSchedule({
               connectionIds: selectedConnectionIds,
               scheduleId: renderResult.schedule.id,
@@ -746,6 +774,7 @@ export function SchedulingWorkspace() {
                 : "Combination draft saved and video preparation started.";
           }
         } else if (shouldAutoScheduleFinal) {
+          finalSchedulingAttempted = true;
           const publishResult = await requestFinalSchedule({
             connectionIds: selectedConnectionIds,
             scheduleId: data.schedule.id,
@@ -771,11 +800,15 @@ export function SchedulingWorkspace() {
           }
         }
       } catch (scheduleError) {
+        if (scheduleError instanceof SchedulePublishOutcomeError) {
+          nextSchedule = scheduleError.result.schedule;
+        }
+
         nextNotice = `${editing ? "Changes" : "Draft"} saved, but ${
-          shouldRenderCombination ? "video preparation" : "platform scheduling"
-        } did not start: ${getErrorMessage(
-          scheduleError,
-        )}`;
+          finalSchedulingAttempted
+            ? "platform scheduling failed"
+            : "video preparation did not start"
+        }: ${getErrorMessage(scheduleError)}`;
       }
 
       setServerSchedules((currentSchedules) => {
@@ -866,6 +899,20 @@ export function SchedulingWorkspace() {
           : "Final combined video was already scheduled.",
       );
     } catch (error) {
+      if (error instanceof SchedulePublishOutcomeError) {
+        const failedSchedule = error.result.schedule;
+
+        setServerSchedules((currentSchedules) => [
+          failedSchedule,
+          ...currentSchedules.filter(
+            (schedule) => schedule.id !== failedSchedule.id,
+          ),
+        ]);
+        setActiveTab(
+          getPrimaryTabForDraft(mapScheduledPostToScheduleDraft(failedSchedule)),
+        );
+      }
+
       setActionNotice(
         getErrorMessage(error, "Could not schedule the final post."),
       );
@@ -1381,7 +1428,7 @@ function ScheduleDraftPreview({
           </div>
           <span
             className={cn(
-              "shrink-0 rounded-full px-2 py-1 text-[11px] font-bold",
+              "shrink-0 rounded-full border px-2 py-1 text-[11px] font-bold",
               getDraftStatusBadgeClass(draft.status),
             )}
           >
@@ -1560,7 +1607,7 @@ function CancelScheduleDialog({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-overlay p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.currentTarget === event.target && !cancelling) {
           onClose();
@@ -1644,6 +1691,13 @@ function ScheduleTargetStatusList({
   retryingPublishTargetId?: string | null;
 }) {
   const targets = draft.targets ?? [];
+  const plannedAccounts = (draft.plannedConnectionIds ?? []).flatMap(
+    (connectionId) => {
+      const label = draft.accountLabelsByConnectionId?.[connectionId];
+
+      return label ? [{ connectionId, label }] : [];
+    },
+  );
 
   if (targets.length === 0) {
     return (
@@ -1653,7 +1707,17 @@ function ScheduleTargetStatusList({
           compact && "mt-2",
         )}
       >
-        {draft.platforms.length > 0 ? (
+        {plannedAccounts.length > 0 ? (
+          plannedAccounts.map((account) => (
+            <span
+              key={account.connectionId}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-2.5 py-1"
+            >
+              <SocialPlatformIcon className="size-3.5" platform="instagram" />
+              {account.label}
+            </span>
+          ))
+        ) : draft.platforms.length > 0 ? (
           draft.platforms.map((platform) => (
             <span
               key={platform}
@@ -1690,6 +1754,8 @@ function ScheduleTargetStatusList({
           const showPublishRetry = canRetryTargetPublishing(target);
           const customerErrorMessage =
             getCustomerFacingTargetErrorMessage(target);
+          const accountLabel =
+            draft.accountLabelsByConnectionId?.[target.socialConnectionId];
 
           return (
             <div
@@ -1705,9 +1771,14 @@ function ScheduleTargetStatusList({
                   <span className="text-xs font-bold text-foreground">
                     {getScheduleDraftPlatformLabel(draft, target.platform)}
                   </span>
+                  {accountLabel ? (
+                    <span className="truncate text-xs font-semibold text-muted">
+                      {accountLabel}
+                    </span>
+                  ) : null}
                   <span
                     className={cn(
-                      "rounded-full px-2 py-0.5 text-[11px] font-bold",
+                      "rounded-full border px-2 py-0.5 text-[11px] font-bold",
                       getTargetStatusBadgeClass(target.status),
                     )}
                   >
@@ -2475,7 +2546,7 @@ function SelectedDayDraftCard({
         </div>
         <span
           className={cn(
-            "shrink-0 rounded-full px-2 py-1 text-[11px] font-bold",
+            "shrink-0 rounded-full border px-2 py-1 text-[11px] font-bold",
             getDraftStatusBadgeClass(draft.status),
           )}
         >
@@ -2683,15 +2754,15 @@ function getDraftStatusDotClass(status: ScheduleDraftStatus) {
 
 function getDraftStatusBadgeClass(status: ScheduleDraftStatus) {
   if (status === "ready" || status === "published") {
-    return "bg-success/10 text-success";
+    return "border-success/25 bg-success/10 text-success";
   }
 
   if (status === "rendering" || status === "scheduling" || status === "publishing") {
-    return "bg-info/10 text-info";
+    return "border-info/25 bg-info/10 text-info";
   }
 
   if (status === "scheduled" || status === "scheduled_preview") {
-    return "bg-brand-soft text-primary";
+    return "border-accent-purple/25 bg-accent-purple/10 text-accent-purple";
   }
 
   if (
@@ -2701,10 +2772,10 @@ function getDraftStatusBadgeClass(status: ScheduleDraftStatus) {
     status === "render_failed" ||
     status === "publishing_unavailable"
   ) {
-    return "bg-error/10 text-error";
+    return "border-error/25 bg-error/10 text-error";
   }
 
-  return "bg-brand-soft text-primary";
+  return "border-border bg-secondary text-secondary-foreground";
 }
 
 function getTargetStatusLabel(status: ScheduledPostTarget["status"]) {
@@ -2725,15 +2796,15 @@ function getTargetStatusLabel(status: ScheduledPostTarget["status"]) {
 
 function getTargetStatusBadgeClass(status: ScheduledPostTarget["status"]) {
   if (status === "published") {
-    return "bg-success/10 text-success";
+    return "border-success/25 bg-success/10 text-success";
   }
 
   if (status === "publishing" || status === "scheduling") {
-    return "bg-info/10 text-info";
+    return "border-info/25 bg-info/10 text-info";
   }
 
   if (status === "scheduled") {
-    return "bg-brand-soft text-primary";
+    return "border-accent-purple/25 bg-accent-purple/10 text-accent-purple";
   }
 
   if (
@@ -2742,10 +2813,10 @@ function getTargetStatusBadgeClass(status: ScheduledPostTarget["status"]) {
     status === "cancelled" ||
     status === "skipped"
   ) {
-    return "bg-error/10 text-error";
+    return "border-error/25 bg-error/10 text-error";
   }
 
-  return "bg-card-muted text-muted";
+  return "border-border bg-secondary text-secondary-foreground";
 }
 
 function getTargetStatusHelpText(
@@ -2777,7 +2848,7 @@ function getTargetStatusHelpText(
   }
 
   if (target.status === "scheduling") {
-    return "Creating the AWS schedule for this account.";
+    return "Creating the GCP Cloud Task for this account.";
   }
 
   if (target.status === "failed") {
@@ -3105,7 +3176,9 @@ function NewScheduleDrawer({
   const instagramConnections = useMemo(
     () =>
       socialConnections.filter(
-        (connection) => connection.platform === "instagram",
+        (connection) =>
+          connection.platform === "instagram" &&
+          connection.status !== "revoked",
       ),
     [socialConnections],
   );
@@ -3123,11 +3196,14 @@ function NewScheduleDrawer({
    * legacy non-Instagram targets stay dormant and are not shown in this form.
    */
   const dormantLegacyTargets = initialPlannedTargets.filter(
-    (target) =>
-      target.platform !== "instagram" &&
-      !instagramConnections.some(
+    (target) => {
+      const savedConnection = socialConnections.find(
         (connection) => connection.id === target.connectionId,
-      ),
+      );
+      const platform = target.platform ?? savedConnection?.platform;
+
+      return platform !== undefined && platform !== "instagram";
+    },
   );
   const [preparedHookMediaOptions, setPreparedHookMediaOptions] =
     useState<ScheduleMediaOption[]>([]);
@@ -3150,6 +3226,7 @@ function NewScheduleDrawer({
   const [caption, setCaption] = useState(editingSchedule?.caption ?? "");
   const [selectedConnectionIds, setSelectedConnectionIds] =
     useState<string[]>(initialConnectionIds);
+  const [accountSelectionChanged, setAccountSelectionChanged] = useState(false);
   const [publishingSettings, setPublishingSettings] = useState<
     Record<string, ConnectionPublishingSettings>
   >(() =>
@@ -3215,6 +3292,7 @@ function NewScheduleDrawer({
       socialConnections.filter(
         (connection) =>
           connection.platform === "instagram" &&
+          connection.status !== "revoked" &&
           (!isCarouselSchedule ||
             supportsCarouselPublishing(connection.platform)),
       ),
@@ -3227,6 +3305,25 @@ function NewScheduleDrawer({
       ),
     [availableSocialConnections, selectedConnectionIds],
   );
+  const unavailableSavedInstagramTargets =
+    getUnavailableSavedInstagramTargets({
+      connections: socialConnections,
+      plannedTargets: initialPlannedTargets,
+    });
+  const unavailableSavedTargetError =
+    editingSchedule &&
+    unavailableSavedInstagramTargets.length > 0 &&
+    !accountSelectionChanged
+      ? `${
+          unavailableSavedInstagramTargets.length === 1
+            ? "A previously selected Instagram account is"
+            : `${unavailableSavedInstagramTargets.length} previously selected Instagram accounts are`
+        } unavailable. Reconnect the account or explicitly confirm a replacement selection before saving.`
+      : null;
+  const captionValidationError =
+    caption.length > MAX_SCHEDULE_CAPTION_LENGTH
+      ? `Caption must be ${MAX_SCHEDULE_CAPTION_LENGTH.toLocaleString()} characters or fewer.`
+      : null;
   const publishingSettingsError = getPublishingSettingsError({
     connections: selectedConnections,
     settings: publishingSettings,
@@ -3278,6 +3375,8 @@ function NewScheduleDrawer({
       scheduledTime &&
       !scheduleTimeValidation.error &&
       !publishingSettingsError &&
+      !captionValidationError &&
+      !unavailableSavedTargetError &&
       (!requireScheduleTarget || hasSelectedConnections) &&
       !saving,
   );
@@ -3353,6 +3452,8 @@ function NewScheduleDrawer({
       (candidate) => candidate.id === connectionId,
     );
     const selecting = !selectedConnectionIds.includes(connectionId);
+
+    setAccountSelectionChanged(true);
 
     setSelectedConnectionIds((currentConnectionIds) =>
       currentConnectionIds.includes(connectionId)
@@ -3567,7 +3668,9 @@ function NewScheduleDrawer({
       mediaValidationError ||
       (isCarouselSchedule ? !carouselLibraryItemId : !selectedDemoMedia) ||
       !scheduleTimeValidation.scheduledFor ||
-      scheduleTimeValidation.error
+      scheduleTimeValidation.error ||
+      captionValidationError ||
+      unavailableSavedTargetError
     ) {
       return;
     }
@@ -3606,7 +3709,7 @@ function NewScheduleDrawer({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-0 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-0 backdrop-blur-sm sm:p-4"
       onMouseDown={(event) => {
         if (event.currentTarget === event.target) {
           onClose();
@@ -3713,17 +3816,31 @@ function NewScheduleDrawer({
                     />
                   )}
                   <label className="block">
-                    <span className="text-sm font-bold text-foreground">
-                      Caption
-                      {isCarouselSchedule ? (
-                        <span className="ml-1 font-semibold text-muted">
-                          (optional)
-                        </span>
-                      ) : null}
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-bold text-foreground">
+                        Caption
+                        {isCarouselSchedule ? (
+                          <span className="ml-1 font-semibold text-muted">
+                            (optional)
+                          </span>
+                        ) : null}
+                      </span>
+                      <span
+                        id="schedule-caption-count"
+                        className={cn(
+                          "text-xs font-semibold tabular-nums text-muted",
+                          captionValidationError && "text-error",
+                        )}
+                      >
+                        {caption.length.toLocaleString()}/
+                        {MAX_SCHEDULE_CAPTION_LENGTH.toLocaleString()}
+                      </span>
                     </span>
                     <textarea
                       name="scheduleCaption"
+                      aria-describedby="schedule-caption-count"
                       autoComplete="off"
+                      maxLength={MAX_SCHEDULE_CAPTION_LENGTH}
                       rows={5}
                       value={caption}
                       onChange={(event) => setCaption(event.target.value)}
@@ -3734,6 +3851,11 @@ function NewScheduleDrawer({
                       }
                       className="mt-2 min-h-32 w-full resize-none rounded-control border border-border bg-card-muted px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-muted-subtle hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
                     />
+                    {captionValidationError ? (
+                      <span className="mt-2 block text-xs font-semibold text-error">
+                        {captionValidationError}
+                      </span>
+                    ) : null}
                   </label>
                   {!isCarouselSchedule ? (
                     <ScheduleOpeningClipControl
@@ -3788,6 +3910,30 @@ function NewScheduleDrawer({
                 onToggle={toggleConnection}
                 selectedConnectionIds={selectedConnectionIds}
               />
+
+              {unavailableSavedTargetError ? (
+                <div
+                  role="alert"
+                  className="mt-3 flex items-start gap-2 rounded-lg border border-error/20 bg-error/10 px-3 py-2 text-xs font-semibold leading-5 text-error"
+                >
+                  <Info
+                    className="mt-0.5 size-3.5 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <p>{unavailableSavedTargetError}</p>
+                    {hasSelectedConnections ? (
+                      <button
+                        type="button"
+                        onClick={() => setAccountSelectionChanged(true)}
+                        className="mt-2 inline-flex h-8 items-center justify-center rounded-control border border-error/25 bg-card px-3 text-xs font-bold text-foreground transition hover:bg-card-muted"
+                      >
+                        Use selected {selectedConnections.length === 1 ? "account" : "accounts"}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
 
               {selectedConnections.length > 0 ? (
                 <PlatformPublishingSettings
@@ -3917,19 +4063,21 @@ function NewScheduleDrawer({
           ) : null}
           <div className="mx-auto flex max-w-[1280px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="max-w-3xl text-xs font-semibold leading-5 text-muted">
-              {hasSelectedConnections
-                ? useOpeningClip
-                  ? "We prepare one combined video first, then schedule it automatically when ready."
-                  : isCarouselSchedule
-                    ? "The saved carousel will be scheduled to the selected account."
-                    : "This selected video will be scheduled directly without extra preparation."
-                : requireScheduleTarget
-                  ? "Choose a connected account before scheduling this post."
-                  : editingSchedule
-                    ? "Saved changes replace this draft. Active platform jobs cannot be edited."
+              {unavailableSavedTargetError
+                ? unavailableSavedTargetError
+                : hasSelectedConnections
+                  ? useOpeningClip
+                    ? "We prepare one combined video first, then schedule it automatically when ready."
                     : isCarouselSchedule
-                      ? "Choose an account to schedule automatically, or keep this as a carousel draft."
-                      : "Choose an account to schedule automatically, or save a video draft without publishing."}
+                      ? "The saved carousel will be scheduled to the selected account."
+                      : "This selected video will be scheduled directly without extra preparation."
+                  : requireScheduleTarget
+                    ? "Choose a connected account before scheduling this post."
+                    : editingSchedule
+                      ? "Saved changes replace this draft. Active platform jobs cannot be edited."
+                      : isCarouselSchedule
+                        ? "Choose an account to schedule automatically, or keep this as a carousel draft."
+                        : "Choose an account to schedule automatically, or save a video draft without publishing."}
             </p>
             <button
               type="button"
@@ -3952,13 +4100,17 @@ function NewScheduleDrawer({
                       : isCarouselSchedule
                         ? "Save carousel draft"
                         : "Save video draft"
-                  : publishingSettingsError
-                    ? "Review publishing settings"
-                    : requireScheduleTarget && !hasSelectedConnections
-                      ? "Choose an account"
-                      : isCarouselSchedule || selectedDemoMedia
-                        ? "Choose date and time"
-                        : mediaValidationError ?? "Select media to schedule"}
+                  : unavailableSavedTargetError
+                    ? "Review saved account"
+                    : captionValidationError
+                      ? "Shorten caption"
+                      : publishingSettingsError
+                        ? "Review publishing settings"
+                        : requireScheduleTarget && !hasSelectedConnections
+                          ? "Choose an account"
+                          : isCarouselSchedule || selectedDemoMedia
+                            ? "Choose date and time"
+                            : mediaValidationError ?? "Select media to schedule"}
             </button>
           </div>
         </div>
@@ -5436,14 +5588,45 @@ async function requestFinalSchedule({
     );
   }
 
+  const failureMessage = getSchedulePublishFailureMessage(
+    data.schedule,
+    connectionIds,
+  );
+
+  if (failureMessage) {
+    throw new SchedulePublishOutcomeError(failureMessage, {
+      created: data.created,
+      schedule: data.schedule,
+    });
+  }
+
   return data;
 }
 
 function mapScheduledPostToScheduleDraft(
   schedule: ScheduledPost,
   mediaIssue: ScheduleMediaIssue | null = null,
+  socialConnections: SocialConnection[] = [],
 ): ScheduleDraft {
   const metadata = schedule.metadata;
+  const savedPlannedTargets = getSavedPlannedTargets(schedule);
+  const plannedConnectionIds = [
+    ...new Set([
+      ...savedPlannedTargets.map((target) => target.connectionId),
+      ...getMetadataCsv(metadata.plannedConnectionIds),
+    ]),
+  ];
+  const relevantConnectionIds = new Set([
+    ...schedule.targets.map((target) => target.socialConnectionId),
+    ...plannedConnectionIds,
+  ]);
+  const accountLabelEntries: Array<[string, string]> = socialConnections.flatMap(
+    (connection) =>
+      relevantConnectionIds.has(connection.id)
+        ? [[connection.id, getSocialConnectionAccountLabel(connection)]]
+        : [],
+  );
+  const accountLabelsByConnectionId = Object.fromEntries(accountLabelEntries);
   const plannedScheduledDate =
     typeof metadata.scheduledDate === "string" && metadata.scheduledDate
       ? metadata.scheduledDate
@@ -5485,6 +5668,10 @@ function mapScheduledPostToScheduleDraft(
       : undefined;
 
   return {
+    accountLabelsByConnectionId:
+      Object.keys(accountLabelsByConnectionId).length > 0
+        ? accountLabelsByConnectionId
+        : undefined,
     canCancel: canCancelSchedule(schedule),
     canEdit: canEditSchedule(schedule),
     caption: schedule.caption,
@@ -5504,7 +5691,7 @@ function mapScheduledPostToScheduleDraft(
           ? "combined_video"
           : "single_video",
     mediaTitle: schedule.title,
-    plannedConnectionIds: getMetadataCsv(metadata.plannedConnectionIds),
+    plannedConnectionIds,
     plannedScheduledFor: plannedScheduledFor ?? undefined,
     platforms: getDraftPlatformsFromSchedule(schedule),
     scheduledDate,
@@ -5718,7 +5905,8 @@ function getScheduleMediaSourceType(value: unknown): ScheduleMediaOption["source
     value === "edit_export" ||
     value === "generated_video" ||
     value === "upload" ||
-    value === "user_video"
+    value === "user_video" ||
+    value === "wall_text_render"
   ) {
     if (value === "demo_upload") {
       return "demo_video";
@@ -5729,6 +5917,10 @@ function getScheduleMediaSourceType(value: unknown): ScheduleMediaOption["source
     }
 
     if (value === "upload") {
+      return "user_video";
+    }
+
+    if (value === "wall_text_render") {
       return "user_video";
     }
 
@@ -5888,7 +6080,7 @@ function getOpeningVideoEmptyCopy(source: OpeningVideoSourceTab) {
   if (source === "edited") {
     return {
       description:
-        "Open a video in Edit, export it, then select it here for scheduling.",
+        "Edit a video in Creative Assets, save it, then select it here for scheduling.",
       title: "No edited videos found.",
     };
   }
@@ -5991,38 +6183,6 @@ async function completeTrendingScheduleAssignment(params: {
   } catch {
     return "The post is scheduled, but Trending may need a refresh.";
   }
-}
-
-function getInitialScheduleConnectionIds(params: {
-  connections: SocialConnection[];
-  isCarouselSchedule: boolean;
-  plannedPlatforms: SchedulePlatform[];
-  plannedTargets: ScheduleCreateTargetInput[];
-}) {
-  const allowedConnections = params.isCarouselSchedule
-    ? params.connections.filter((connection) =>
-        supportsCarouselPublishing(connection.platform),
-      )
-    : params.connections;
-  const allowedConnectionIds = new Set(
-    allowedConnections.map((connection) => connection.id),
-  );
-  const savedConnectionIds = params.plannedTargets
-    .map((target) => target.connectionId)
-    .filter((connectionId) => allowedConnectionIds.has(connectionId));
-
-  if (savedConnectionIds.length > 0) {
-    return savedConnectionIds;
-  }
-
-  return params.plannedPlatforms.flatMap((platform) => {
-    const connection = allowedConnections.find(
-      (candidate) =>
-        candidate.platform === platform && candidate.status === "connected",
-    );
-
-    return connection ? [connection.id] : [];
-  });
 }
 
 function supportsCarouselPublishing(platform: SchedulePlatform) {

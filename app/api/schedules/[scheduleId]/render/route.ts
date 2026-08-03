@@ -3,12 +3,12 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import {
-  getMissingSqsEnvVars,
+  getMissingJobQueueEnvVars,
   getQueueNameForJobType,
   sendJobMessage,
-} from "@/lib/aws/sqs";
+} from "@/lib/queues/job-queue";
 import {
-  attachAwsMessageToBackgroundJob,
+  attachQueueMessageToBackgroundJob,
   createBackgroundJob,
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
@@ -33,7 +33,8 @@ import {
   resolveOpeningRenderAsset,
   type RenderableScheduleAsset,
 } from "@/lib/scheduling/render-asset-resolution";
-import { isTrustedStorageUrl } from "@/lib/storage/s3";
+import { isTrustedStorageUrl } from "@/lib/storage/storage";
+import { resolveTrendingTextColor } from "@/lib/trending/text-color";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,7 +75,7 @@ export async function POST(
       ...getMissingBackgroundJobStorageEnvVars(),
       ...getMissingMediaStorageEnvVars(),
       ...getMissingScheduleDbEnvVars(),
-      ...getMissingSqsEnvVars([COMBINATION_RENDER_JOB_TYPE]),
+      ...getMissingJobQueueEnvVars([COMBINATION_RENDER_JOB_TYPE]),
     ]),
   );
 
@@ -172,7 +173,7 @@ export async function POST(
     return jsonResponse(
       {
         ok: false,
-        message: "Both videos must be app-owned S3 or CloudFront assets.",
+        message: "Both videos must be app-owned Cloud Storage assets.",
       },
       400,
     );
@@ -226,6 +227,10 @@ export async function POST(
   }
 
   const hookText = getString(metadata.hookText)?.slice(0, 220) ?? "";
+  const hookTextFontSize = getHookTextFontSize(metadata.hookTextFontSize);
+  const hookTextLines = getHookTextLines(metadata.hookTextLines);
+  const hookTextPosition = getNormalizedPosition(metadata.hookTextPosition);
+  const hookTextColor = resolveTrendingTextColor(metadata.hookTextColor);
   const hookTrimStart = getNonNegativeNumber(metadata.hookTrimStart) ?? 0;
   const hookTrimEnd = getPositiveNumber(metadata.hookTrimEnd);
 
@@ -247,6 +252,10 @@ export async function POST(
     demoUpdatedAt: resolvedDemoAsset.asset.updated_at,
     demoVideoId: resolvedDemoAsset.asset.id,
     hookText,
+    hookTextFontSize,
+    hookTextLines,
+    hookTextPosition,
+    hookTextColor,
     hookTrimEnd,
     hookTrimStart,
     hookUpdatedAt: resolvedHookAsset.asset.updated_at,
@@ -289,6 +298,10 @@ export async function POST(
     demoVideoId: resolvedDemoAsset.asset.id,
     demoVideoUrl: resolvedDemoAsset.asset.url,
     hookText,
+    hookTextFontSize,
+    hookTextLines,
+    hookTextPosition,
+    hookTextColor,
     hookTrimEnd,
     hookTrimStart,
     hookVideoId: resolvedHookAsset.asset.id,
@@ -305,6 +318,7 @@ export async function POST(
 
   try {
     backgroundJob = await createBackgroundJob({
+      idempotencyKey: `schedule-render:${renderId}`,
       input,
       jobType: COMBINATION_RENDER_JOB_TYPE,
       projectId,
@@ -353,18 +367,21 @@ export async function POST(
       jobId: backgroundJob.id,
       jobType: COMBINATION_RENDER_JOB_TYPE,
     });
-    const updatedJob = await attachAwsMessageToBackgroundJob({
-      awsMessageId: message.messageId,
+    const updatedJob = await attachQueueMessageToBackgroundJob({
+      queueMessageId: message.messageId,
       jobId: backgroundJob.id,
     });
 
-    return jsonResponse({
-      jobId: updatedJob.id,
-      ok: true,
-      renderId,
-      schedule: queuedSchedule,
-      status: "queued",
-    });
+    return jsonResponse(
+      {
+        jobId: updatedJob.id,
+        ok: true,
+        renderId,
+        schedule: queuedSchedule,
+        status: "queued",
+      },
+      202,
+    );
   } catch (error) {
     console.error("Failed to queue schedule combination render:", error);
 
@@ -518,10 +535,63 @@ function getPositiveNumber(value: unknown) {
     : null;
 }
 
+function getNormalizedPosition(value: unknown) {
+  const position = getRecord(value);
+  const x = position?.x;
+  const y = position?.y;
+
+  if (
+    typeof x !== "number" ||
+    !Number.isFinite(x) ||
+    x < 0 ||
+    x > 1 ||
+    typeof y !== "number" ||
+    !Number.isFinite(y) ||
+    y < 0 ||
+    y > 1
+  ) {
+    return null;
+  }
+
+  return { x, y };
+}
+
+function getHookTextFontSize(value: unknown) {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 34 &&
+    value <= 52 &&
+    value % 2 === 0
+    ? value
+    : null;
+}
+
+function getHookTextLines(value: unknown) {
+  if (
+    !Array.isArray(value) ||
+    value.length < 1 ||
+    value.length > 2 ||
+    value.some(
+      (line) =>
+        typeof line !== "string" ||
+        !line.trim() ||
+        Array.from(line.trim()).length > 78,
+    )
+  ) {
+    return null;
+  }
+
+  return value.map((line) => line.trim().replace(/\s+/gu, " "));
+}
+
 function createCompositionFingerprint(value: {
   demoUpdatedAt: string;
   demoVideoId: string;
   hookText: string;
+  hookTextFontSize: number | null;
+  hookTextLines: string[] | null;
+  hookTextPosition: { x: number; y: number } | null;
+  hookTextColor: string;
   hookTrimEnd: number | null;
   hookTrimStart: number;
   hookUpdatedAt: string;

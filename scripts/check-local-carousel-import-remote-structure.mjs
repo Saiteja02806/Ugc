@@ -178,7 +178,7 @@ async function checkExistingStructure() {
   report.existingSamples = (data ?? []).map((row) => ({
     assetScope: row.asset_scope,
     assetVariant: row.asset_variant,
-    baseS3Key: row.base_s3_key,
+    baseObjectKey: row.base_s3_key,
     broadVisualBucket: row.broad_visual_bucket,
     bucketTaxonomyVersion: row.bucket_taxonomy_version,
     categorySlug: row.category_slug,
@@ -206,9 +206,12 @@ async function checkExistingStructure() {
 }
 
 async function checkPotentialDuplicates() {
-  const baseKeys = assets.map((asset) => asset.s3.baseKey);
+  const baseKeys = assets.map((asset) => asset.storage.baseKey);
   const sourceHashes = assets
     .map((asset) => asset.dbRow?.source_file_sha256)
+    .filter(Boolean);
+  const perceptualHashes = assets
+    .map((asset) => asset.dbRow?.source_perceptual_hash)
     .filter(Boolean);
   const existingBaseKeyRows = await queryExistingValues({
     column: "base_s3_key",
@@ -218,20 +221,32 @@ async function checkPotentialDuplicates() {
     column: "source_file_sha256",
     values: sourceHashes,
   });
+  const existingPerceptualHashRows = await queryExistingValues({
+    column: "source_perceptual_hash",
+    values: perceptualHashes,
+  });
 
   report.duplicateChecks = {
     existingBaseKeyRows,
     existingHashRows,
+    existingPerceptualHashRows,
     importedBaseKeys: baseKeys.length,
+    importedPerceptualHashes: perceptualHashes.length,
     importedSourceHashes: sourceHashes.length,
   };
 
   if (existingBaseKeyRows.length > 0) {
-    errors.push(`${existingBaseKeyRows.length} prepared base S3 keys already exist remotely.`);
+    errors.push(`${existingBaseKeyRows.length} prepared base object keys already exist remotely.`);
   }
 
   if (existingHashRows.length > 0) {
     errors.push(`${existingHashRows.length} prepared source hashes already exist remotely.`);
+  }
+
+  if (existingPerceptualHashRows.length > 0) {
+    errors.push(
+      `${existingPerceptualHashRows.length} prepared perceptual hashes already exist remotely.`,
+    );
   }
 }
 

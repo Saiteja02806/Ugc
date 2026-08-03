@@ -246,7 +246,7 @@ export function ConnectedAccountsWorkspace() {
             type="button"
             onClick={() => void loadConnections()}
             disabled={loading}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border-strong bg-white px-4 text-sm font-bold text-foreground transition hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border-strong bg-card px-4 text-sm font-bold text-foreground transition hover:bg-card-muted disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? (
               <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
@@ -273,7 +273,7 @@ export function ConnectedAccountsWorkspace() {
           {groupedConnections.map((platform) => (
             <article
               key={platform.value}
-              className="rounded-[12px] border border-border bg-white p-5 shadow-[0_12px_28px_rgb(24_24_27_/_0.05)]"
+              className="rounded-[12px] border border-border bg-card p-5 shadow-card"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -318,7 +318,7 @@ export function ConnectedAccountsWorkspace() {
                 type="button"
                 onClick={() => void connectPlatform(platform.value)}
                 disabled={Boolean(connectingPlatform)}
-                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-foreground-strong px-4 text-sm font-bold text-white transition hover:bg-[#2a2a30] disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {connectingPlatform === platform.value ? (
                   <LoaderCircle
@@ -384,7 +384,7 @@ function ConnectionCard({
         type="button"
         onClick={onDisconnect}
         disabled={disconnecting}
-        className="mt-4 inline-flex h-9 items-center gap-2 rounded-md border border-border-strong bg-white px-3 text-xs font-bold text-error transition hover:bg-error/5 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-4 inline-flex h-9 items-center gap-2 rounded-md border border-border-strong bg-card px-3 text-xs font-bold text-error transition hover:bg-error/5 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {disconnecting ? (
           <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />

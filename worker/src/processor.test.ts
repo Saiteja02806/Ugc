@@ -133,6 +133,41 @@ test("persists retry state and keeps the queue delivery", async () => {
   );
 });
 
+test("retries an atomic completion failure without losing the saved output", async () => {
+  const job = createJob();
+  const commands: string[] = [];
+  const store = createJobStore(job);
+
+  store.markCompleted = (async () => {
+    throw new Error("temporary database outage");
+  }) as SupabaseJobStore["markCompleted"];
+
+  await processWorkerMessage({
+    config: createConfig(),
+    dependencies: {
+      heartbeatIntervalMs: 1_000,
+      async runJob() {
+        return { key: "generated/output.png", ok: true };
+      },
+    },
+    message: createMessage(),
+    queue: createQueue(commands),
+    store,
+  });
+
+  assert.equal(job.status, "queued");
+  assert.equal(job.attempt_count, 1);
+  assert.equal(job.error_message?.includes("database record"), true);
+  assert.equal(
+    commands.filter((name) => name === "ChangeMessageVisibilityCommand").length,
+    1,
+  );
+  assert.equal(
+    commands.filter((name) => name === "DeleteMessageCommand").length,
+    0,
+  );
+});
+
 test("defers an early duplicate delivery until the stored retry time", async () => {
   const job = createJob();
   const commands: string[] = [];
@@ -191,24 +226,36 @@ function createJob(): BackgroundJobRow {
 
   return {
     attempt_count: 0,
-    aws_message_id: null,
+    cancel_requested_at: null,
+    queue_message_id: null,
     claim_token: null,
     completed_at: null,
     created_at: now,
+    error_code: null,
     error_message: null,
+    failed_at: null,
     id: "d8187032-2774-4aa6-9a8a-f3c46f8e0c7a",
     input_json: {},
+    input_reference: null,
     job_type: "test_worker_job",
+    last_delivery_at: null,
     last_heartbeat_at: null,
     locked_at: null,
+    max_attempts: 3,
     next_attempt_at: null,
     output_json: null,
+    output_reference: null,
+    progress: null,
     project_id: null,
     queue_name: "test",
+    queue_provider: "gcp",
+    queued_at: now,
+    stage: "queued",
     started_at: null,
     status: "queued",
     updated_at: now,
     user_id: "user-test",
+    worker_execution_id: null,
     worker_id: null,
   };
 }
@@ -231,6 +278,7 @@ function createJobStore(job: BackgroundJobRow) {
 
       job.claim_token = params.claimToken;
       job.last_heartbeat_at = new Date().toISOString();
+      job.stage = "processing";
       job.status = "processing";
       job.worker_id = params.workerId;
       return { ...job };
@@ -263,6 +311,32 @@ function createJobStore(job: BackgroundJobRow) {
       job.status = "completed";
       return { ...job };
     },
+    async updateJobStage(params: {
+      claimToken: string;
+      jobId: string;
+      progress?: number | null;
+      stage: string;
+      status: BackgroundJobRow["status"];
+    }) {
+      if (
+        job.id !== params.jobId ||
+        job.claim_token !== params.claimToken ||
+        job.status === "cancel_requested"
+      ) {
+        return null;
+      }
+
+      job.progress = params.progress ?? null;
+      job.stage = params.stage;
+      job.status = params.status;
+      return { ...job };
+    },
+    async markCancelled() {
+      job.claim_token = null;
+      job.stage = "cancelled";
+      job.status = "cancelled";
+      return { ...job };
+    },
     async markFailed() {
       throw new Error("markFailed should not be called in this test.");
     },
@@ -293,14 +367,7 @@ function createJobStore(job: BackgroundJobRow) {
 function createConfig(): WorkerConfig {
   return {
     allowedJobTypes: ["test_worker_job"],
-    awsRegion: "us-east-2",
-    gcpProjectId: null,
-    pollMaxMessages: 1,
-    pollWaitTimeSeconds: 0,
-    pubsubSubscriptionName: null,
     queueName: "test",
-    queueProvider: "aws",
-    queueUrl: "https://sqs.us-east-2.amazonaws.com/123456789012/test",
     socialReconciliationBatchSize: 10,
     socialReconciliationEnabled: true,
     socialReconciliationIntervalSeconds: 15,
@@ -321,8 +388,8 @@ function createMessage() {
       jobType: "test_worker_job",
     }),
     id: "message-test",
-    providerName: "aws" as const,
-    receiptHandle: "receipt-test",
+    ackId: "ack-test",
+    providerName: "gcp" as const,
   };
 }
 
@@ -334,7 +401,7 @@ function createQueue(commands: string[]): WorkerQueueTransport {
     async deleteMessage() {
       commands.push("DeleteMessageCommand");
     },
-    providerName: "aws",
+    providerName: "gcp",
     async receiveMessages() {
       return [];
     },

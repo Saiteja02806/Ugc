@@ -2,22 +2,22 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 
-import {
-  getMissingSqsEnvVars,
-  getQueueNameForJobType,
-  sendJobMessage,
-} from "@/lib/aws/sqs";
+import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
 import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
+import {
+  AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
+  getAIStudioPromptLengthError,
+  normalizeAIStudioPrompt,
+} from "@/lib/ai-studio/prompt-policy";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
-  attachAwsMessageToBackgroundJob,
-  createBackgroundJob,
   getBackgroundJobById,
   getMissingBackgroundJobStorageEnvVars,
-  markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
+import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 
 type GenerateRequest = {
+  idempotencyKey?: unknown;
   prompt?: unknown;
 };
 
@@ -25,6 +25,7 @@ type ImageJobOutput = {
   generationId?: unknown;
   height?: unknown;
   key?: unknown;
+  mediaAssetId?: unknown;
   ok?: unknown;
   ratio?: unknown;
   url?: unknown;
@@ -32,24 +33,15 @@ type ImageJobOutput = {
 };
 
 const IMAGE_JOB_TYPE = "generate_image";
-const IMAGE_GENERATION_FAILED_MESSAGE =
-  "Image generation failed. Please try again.";
-const MAX_PROMPT_LENGTH = 2_000;
 const TERMINAL_STATUSES = new Set(["cancelled", "completed", "failed"]);
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function cleanPrompt(value: unknown) {
-  return typeof value === "string"
-    ? value.trim().slice(0, MAX_PROMPT_LENGTH)
-    : "";
-}
 
 function getMissingRuntimeEnv() {
   return Array.from(
     new Set([
       ...getMissingBackgroundJobStorageEnvVars(),
-      ...getMissingSqsEnvVars([IMAGE_JOB_TYPE]),
+      ...getMissingJobQueueEnvVars([IMAGE_JOB_TYPE]),
     ]),
   );
 }
@@ -69,6 +61,10 @@ function getSafeOutput(output: unknown) {
     height:
       typeof imageOutput.height === "number" ? imageOutput.height : null,
     key: typeof imageOutput.key === "string" ? imageOutput.key : null,
+    mediaAssetId:
+      typeof imageOutput.mediaAssetId === "string"
+        ? imageOutput.mediaAssetId
+        : null,
     ok: imageOutput.ok === true,
     ratio: typeof imageOutput.ratio === "string" ? imageOutput.ratio : null,
     url: typeof imageOutput.url === "string" ? imageOutput.url : null,
@@ -100,7 +96,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
   const body = (await request.json().catch(() => null)) as
     | GenerateRequest
     | null;
-  const prompt = cleanPrompt(body?.prompt);
+  const prompt = normalizeAIStudioPrompt(body?.prompt);
 
   if (!prompt) {
     return NextResponse.json(
@@ -108,6 +104,18 @@ export async function handleAIStudioImageGeneration(request: Request) {
         message: "Add a prompt before generating an image.",
         ok: false,
       },
+      { status: 400 },
+    );
+  }
+
+  const promptLengthError = getAIStudioPromptLengthError(
+    prompt,
+    AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
+  );
+
+  if (promptLengthError) {
+    return NextResponse.json(
+      { message: promptLengthError, ok: false },
       { status: 400 },
     );
   }
@@ -128,7 +136,11 @@ export async function handleAIStudioImageGeneration(request: Request) {
 
   try {
     const generationId = crypto.randomUUID();
-    const backgroundJob = await createBackgroundJob({
+    const idempotencyKey = cleanIdempotencyKey(
+      request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
+    );
+    const backgroundJob = await createAndDispatchBackgroundJob({
+      idempotencyKey,
       input: {
         aspectRatio: "4:5",
         generationId,
@@ -136,40 +148,19 @@ export async function handleAIStudioImageGeneration(request: Request) {
       },
       jobType: IMAGE_JOB_TYPE,
       projectId: "ai-studio",
-      queueName: getQueueNameForJobType(IMAGE_JOB_TYPE),
       userId: user.uid,
     });
 
-    try {
-      const message = await sendJobMessage({
+    return NextResponse.json(
+      {
+        generationId:
+          getJobInputString(backgroundJob.input, "generationId") || generationId,
         jobId: backgroundJob.id,
-        jobType: IMAGE_JOB_TYPE,
-      });
-
-      await attachAwsMessageToBackgroundJob({
-        awsMessageId: message.messageId,
-        jobId: backgroundJob.id,
-      });
-    } catch (error) {
-      await markBackgroundJobFailed({
-        errorMessage: IMAGE_GENERATION_FAILED_MESSAGE,
-        jobId: backgroundJob.id,
-      }).catch((persistenceError) => {
-        console.error(
-          "Failed to persist image generation enqueue failure:",
-          persistenceError,
-        );
-      });
-
-      throw error;
-    }
-
-    return NextResponse.json({
-      generationId,
-      jobId: backgroundJob.id,
-      message: "Image generation started.",
-      ok: true,
-    });
+        message: "Image generation started.",
+        ok: true,
+      },
+      { status: 202 },
+    );
   } catch (error) {
     console.error("Failed to start image generation:", error);
 
@@ -181,6 +172,22 @@ export async function handleAIStudioImageGeneration(request: Request) {
       { status: 502 },
     );
   }
+}
+
+function cleanIdempotencyKey(value: unknown) {
+  return typeof value === "string" && value.trim()
+    ? value.trim().slice(0, 200)
+    : crypto.randomUUID();
+}
+
+function getJobInputString(value: unknown, key: string) {
+  return value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    key in value &&
+    typeof value[key as keyof typeof value] === "string"
+    ? String(value[key as keyof typeof value])
+    : "";
 }
 
 export async function handleAIStudioImageStatus(request: Request) {
@@ -241,7 +248,7 @@ export async function handleAIStudioImageStatus(request: Request) {
 
     return NextResponse.json({
       job: {
-        error: job.errorMessage ? IMAGE_GENERATION_FAILED_MESSAGE : null,
+        error: job.errorMessage,
         id: job.id,
         isTerminal: TERMINAL_STATUSES.has(job.status),
         output: getSafeOutput(job.output),

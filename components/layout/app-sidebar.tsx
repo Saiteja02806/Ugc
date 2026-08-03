@@ -29,7 +29,6 @@ export type AppSidebarActiveKey =
   | "ai-studio"
   | "library"
   | "avatars"
-  | "edit"
   | "analytics"
   | "scheduling"
   | "settings";
@@ -59,12 +58,6 @@ const primaryNavigationItems: SidebarItem[] = [
     label: "Creative Assets",
     href: "/avatars",
     icon: "creative-assets",
-  },
-  {
-    key: "edit",
-    label: "Edit",
-    href: "/edit",
-    icon: "edit",
   },
   {
     key: "analytics",
@@ -228,7 +221,7 @@ export function AppSidebar({
             tabIndex={-1}
             aria-label="Close navigation"
             onClick={() => setIsMobileNavigationOpen(false)}
-            className="absolute inset-0 cursor-default bg-black/35"
+            className="absolute inset-0 cursor-default bg-overlay"
           />
           <aside
             ref={mobileNavigationRef}

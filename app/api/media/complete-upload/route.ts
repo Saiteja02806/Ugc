@@ -6,7 +6,7 @@ import {
 } from "@/lib/media/media-storage";
 import { getAllowedContentTypes, getMaxUploadBytes } from "@/lib/media/media-upload";
 import { isMediaRatio } from "@/lib/media/types";
-import { headS3Object } from "@/lib/storage/s3";
+import { headStorageObject } from "@/lib/storage/storage";
 
 export const runtime = "nodejs";
 
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const object = await headS3Object({ key });
+    const object = await headStorageObject({ key });
     const objectType = object.ContentType?.split(";", 1)[0]?.trim().toLowerCase() || "";
     const objectSize = object.ContentLength ?? 0;
 

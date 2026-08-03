@@ -4,11 +4,41 @@ import path from "node:path";
 
 const DEFAULT_AUDIT_ROOT = ".tmp/local-carousel-image-pack-audit";
 const DEFAULT_OUTPUT_ROOT = ".tmp/local-carousel-image-tags";
+const FINAL_REVIEW_STATUS = "final_full_resolution_review";
 const SUPPORTED_RECOMMENDATIONS = new Set([
   "canonical_original",
   "cropped_only_candidate",
   "flat_candidate",
 ]);
+const ALLOWED_BUCKETS_BY_RUNTIME_CATEGORY = {
+  "fitness-health": new Set([
+    "abstract-backgrounds",
+    "fitness-wellness-objects",
+    "food-and-table",
+    "home-lifestyle",
+    "phone-and-devices",
+    "product-still-life",
+  ]),
+  "productivity-saas": new Set([
+    "abstract-backgrounds",
+    "data-and-screens",
+    "home-lifestyle",
+    "notes-and-planning",
+    "phone-and-devices",
+    "workspace-objects",
+  ]),
+  shared: new Set([
+    "abstract-backgrounds",
+    "clean-texture-backgrounds",
+    "fitness-wellness-objects",
+    "food-and-table",
+    "home-lifestyle",
+    "notes-and-planning",
+    "phone-and-devices",
+    "product-still-life",
+    "workspace-objects",
+  ]),
+};
 
 const CATEGORY_CONFIG = {
   calorie_tracking: {
@@ -187,8 +217,22 @@ const auditReportPath = path.resolve(
 const outputRoot = path.resolve(args["out-dir"] || DEFAULT_OUTPUT_ROOT);
 const generatedAt = new Date().toISOString();
 const outputDir = path.join(outputRoot, generatedAt.replace(/[:.]/g, "-"));
-const manualReviewApproved = Boolean(args["manual-review-approved"]);
 const audit = JSON.parse(readFileSync(auditReportPath, "utf8"));
+const reviewMapPath = args["review-map"]
+  ? path.resolve(args["review-map"])
+  : null;
+const reviewMap = reviewMapPath
+  ? loadAndValidateReviewMap({ audit, reviewMapPath })
+  : null;
+const manualReviewApproved = reviewMap
+  ? reviewMap.reviewStatus === FINAL_REVIEW_STATUS
+  : Boolean(args["manual-review-approved"]);
+
+if (reviewMap && args["manual-review-approved"]) {
+  throw new Error(
+    "Use either --review-map or --manual-review-approved, not both. A review map already contains per-file approval decisions.",
+  );
+}
 
 mkdirSync(outputDir, { recursive: true });
 
@@ -205,6 +249,19 @@ const skippedFiles = [];
 for (const recommendation of audit.recommendations ?? []) {
   const fileKey = getFileKey(recommendation);
   const pairedCrop = cropByOriginalKey.get(fileKey);
+  const reviewDecision = reviewMap?.decisionsByFile.get(
+    normalizeReviewFileName(recommendation.relativePath),
+  );
+
+  if (reviewDecision?.decision === "rejected") {
+    skippedFiles.push({
+      file: toFileReference(recommendation),
+      reason: `Manual review rejected this file: ${reviewDecision.reason}`,
+      recommendation: recommendation.recommendation,
+      reviewDecision,
+    });
+    continue;
+  }
 
   if (recommendation.recommendation === "derived_crop" && originalByCropKey.has(fileKey)) {
     skippedFiles.push({
@@ -228,8 +285,14 @@ for (const recommendation of audit.recommendations ?? []) {
     buildTaggedAsset({
       audit,
       canonicalFile: recommendation,
-      manualReviewApproved,
+      manualReviewApproved:
+        reviewDecision?.decision === "approved"
+          ? manualReviewApproved
+          : manualReviewApproved && !reviewMap,
       preferredRenderFile: pairedCrop ?? recommendation,
+      reviewDecision,
+      reviewMapPath,
+      reviewStatus: reviewMap?.reviewStatus ?? null,
     }),
   );
 }
@@ -240,12 +303,16 @@ const manifest = {
   input: {
     auditReportPath,
     manualReviewApproved,
+    reviewMapPath,
+    reviewStatus: reviewMap?.reviewStatus ?? null,
   },
   policy: {
     carouselRuntimeSource:
       "Use the 4:5 carousel rendition as the runtime image when present. Keep the original as provenance/canonical source.",
     manualReview:
-      manualReviewApproved
+      reviewMap
+        ? `Per-file decisions came from ${reviewMapPath}. Only approved files from a ${FINAL_REVIEW_STATUS} map are importable.`
+        : manualReviewApproved
         ? "User confirmed the source set was manually reviewed. Manifest marks assets approved for the import pipeline, but still does not upload or publish them."
         : "Manifest keeps assets unreviewed. Pass --manual-review-approved only after manual strict object-only review.",
     verticalImages:
@@ -277,7 +344,15 @@ for (const category of summary.categories) {
   );
 }
 
-function buildTaggedAsset({ audit, canonicalFile, manualReviewApproved, preferredRenderFile }) {
+function buildTaggedAsset({
+  audit,
+  canonicalFile,
+  manualReviewApproved,
+  preferredRenderFile,
+  reviewDecision,
+  reviewMapPath,
+  reviewStatus,
+}) {
   const categoryConfig = getCategoryConfig(canonicalFile.categorySlug);
   const text = normalizeText([
     canonicalFile.relativePath,
@@ -300,7 +375,36 @@ function buildTaggedAsset({ audit, canonicalFile, manualReviewApproved, preferre
     ...asArray(preferredRenderFile.qualityWarnings),
   ]);
   const duplicateFamilyId = getDuplicateFamilyId(audit, canonicalFile, preferredRenderFile);
-  const runtimeCategorySlug = categoryConfig.runtimeCategorySlug;
+  const runtimeCategorySlug =
+    reviewDecision?.runtimeCategory ?? categoryConfig.runtimeCategorySlug;
+  const assetScope =
+    reviewDecision?.assetScope ??
+    (runtimeCategorySlug === "shared" ? "shared" : "category");
+  const broadVisualBucket =
+    reviewDecision?.broadVisualBucket ?? inferred.broadVisualBucket;
+  const contentTags = unique(
+    reviewDecision?.contentTags?.length
+      ? reviewDecision.contentTags
+      : inferred.contentTags,
+  );
+  const objectTags = unique(
+    reviewDecision?.objectTags?.length
+      ? reviewDecision.objectTags
+      : inferred.objectTags,
+  );
+  const moodTags = unique(
+    reviewDecision?.moodTags?.length
+      ? reviewDecision.moodTags
+      : inferred.moodTags,
+  );
+  const usableProfiles = unique(
+    reviewDecision?.usableProfiles?.length
+      ? reviewDecision.usableProfiles
+      : getDefaultProfilesForRuntimeCategory(
+          runtimeCategorySlug,
+          categoryConfig.defaultProfiles,
+        ),
+  );
   const assetIdSeed = [
     canonicalFile.categorySlug,
     canonicalFile.sha256Hash,
@@ -314,26 +418,26 @@ function buildTaggedAsset({ audit, canonicalFile, manualReviewApproved, preferre
       .update(assetIdSeed)
       .digest("hex")
       .slice(0, 16)}`,
-    assetScope: "category",
+    assetScope,
     assetVariant: getAssetVariant(canonicalFile, preferredRenderFile),
-    broadVisualBucket: inferred.broadVisualBucket,
+    broadVisualBucket,
     bucketTaxonomyVersion: "broad-v1",
     caption: createCaption({
       categoryConfig,
-      contentTags: inferred.contentTags,
-      objectTags: inferred.objectTags,
+      contentTags,
+      objectTags,
       scene: inferred.scene,
     }),
     categorySlug: runtimeCategorySlug,
-    contentTags: inferred.contentTags,
+    contentTags,
     duplicateFamilyId,
     hasFace: false,
     hasPerson: false,
     imageSubjectClass: "object-only",
     importantObjectArea: inferImportantObjectArea(dimensions.orientation),
     licenseInformation: "User-provided/manual-reviewed local image pack",
-    moodTags: inferred.moodTags,
-    objectTags: inferred.objectTags,
+    moodTags,
+    objectTags,
     qualityScore: getQualityScore({
       preferredRenderFile,
       qualityWarnings,
@@ -351,6 +455,14 @@ function buildTaggedAsset({ audit, canonicalFile, manualReviewApproved, preferre
       sourceProvider: "local",
     },
     scene: inferred.scene,
+    review: reviewDecision
+      ? {
+          decision: reviewDecision.decision,
+          reviewMapPath,
+          reviewStatus,
+          runtimeCategory: runtimeCategorySlug,
+        }
+      : null,
     sourceFiles: {
       canonical: toFileReference(canonicalFile),
       preferredRender: toFileReference(preferredRenderFile),
@@ -363,7 +475,7 @@ function buildTaggedAsset({ audit, canonicalFile, manualReviewApproved, preferre
     textSafeAreas: asArray(preferredRenderFile.textSafeAreaHint).length
       ? asArray(preferredRenderFile.textSafeAreaHint)
       : inferTextSafeAreas(dimensions.orientation),
-    usableProfiles: categoryConfig.defaultProfiles,
+    usableProfiles,
     visualSetting: inferred.scene,
     visualStyle: "object-only",
     warnings: getImportWarnings({
@@ -615,6 +727,8 @@ function renderSummary(manifest) {
     `- Tagged assets: ${manifest.summary.assets}`,
     `- Skipped files: ${manifest.summary.skippedFiles}`,
     `- Manual review approved flag: ${manifest.input.manualReviewApproved ? "yes" : "no"}`,
+    `- Review map: ${manifest.input.reviewMapPath ?? "none"}`,
+    `- Review status: ${manifest.input.reviewStatus ?? "none"}`,
     "",
     "## Categories",
     "",
@@ -742,14 +856,230 @@ function parseArgs(rawArgs) {
 
 function toFileReference(file) {
   return {
+    averageHash: file.averageHash ?? null,
     categorySlug: file.categorySlug,
     fileName: file.fileName,
     height: Number(file.height),
+    perceptualHash: file.perceptualHash ?? null,
     relativePath: file.relativePath,
     rootPath: file.rootPath,
+    sha256Hash: file.sha256Hash ?? null,
     topFolder: file.topFolder,
     width: Number(file.width),
   };
+}
+
+function loadAndValidateReviewMap({ audit, reviewMapPath }) {
+  if (!existsSync(reviewMapPath)) {
+    throw new Error(`Review map not found: ${reviewMapPath}`);
+  }
+
+  const reviewMap = JSON.parse(readFileSync(reviewMapPath, "utf8"));
+
+  if (reviewMap.reviewStatus !== FINAL_REVIEW_STATUS) {
+    throw new Error(
+      `Review map must have reviewStatus=${FINAL_REVIEW_STATUS} before it can approve imports. Got ${String(
+        reviewMap.reviewStatus,
+      )}.`,
+    );
+  }
+
+  const auditFiles = new Map();
+  for (const recommendation of audit.recommendations ?? []) {
+    const fileName = normalizeReviewFileName(recommendation.relativePath);
+
+    if (auditFiles.has(fileName)) {
+      throw new Error(
+        `Audit contains duplicate review file name ${fileName}. Review maps require unique relative paths.`,
+      );
+    }
+
+    auditFiles.set(fileName, recommendation);
+  }
+
+  const decisionsByFile = new Map();
+
+  for (const group of reviewMap.approvedGroups ?? []) {
+    validateApprovedGroup(group);
+
+    for (const file of group.files ?? []) {
+      addReviewDecision(decisionsByFile, file, {
+        assetScope:
+          group.assetScope ??
+          (group.runtimeCategory === "shared" ? "shared" : "category"),
+        broadVisualBucket: group.broadVisualBucket,
+        contentTags: normalizeStringArray(group.contentTags),
+        decision: "approved",
+        moodTags: normalizeStringArray(group.moodTags),
+        objectTags: normalizeStringArray(group.objectTags),
+        runtimeCategory: group.runtimeCategory,
+        usableProfiles: normalizeStringArray(group.usableProfiles),
+      });
+    }
+  }
+
+  for (const rejected of reviewMap.rejected ?? []) {
+    if (!rejected?.file || !rejected?.reason) {
+      throw new Error("Every rejected review item must include file and reason.");
+    }
+
+    addReviewDecision(decisionsByFile, rejected.file, {
+      decision: "rejected",
+      reason: String(rejected.reason),
+    });
+  }
+
+  const unknownFiles = Array.from(decisionsByFile.keys()).filter(
+    (fileName) => !auditFiles.has(fileName),
+  );
+  const missingFiles = Array.from(auditFiles.keys()).filter(
+    (fileName) => !decisionsByFile.has(fileName),
+  );
+
+  if (unknownFiles.length > 0 || missingFiles.length > 0) {
+    throw new Error(
+      [
+        unknownFiles.length
+          ? `Review map contains unknown files: ${unknownFiles.join(", ")}`
+          : null,
+        missingFiles.length
+          ? `Review map is missing audit files: ${missingFiles.join(", ")}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+  }
+
+  const approvedCount = Array.from(decisionsByFile.values()).filter(
+    (decision) => decision.decision === "approved",
+  ).length;
+  const rejectedCount = decisionsByFile.size - approvedCount;
+
+  if (
+    reviewMap.summary?.files !== undefined &&
+    Number(reviewMap.summary.files) !== decisionsByFile.size
+  ) {
+    throw new Error(
+      `Review map summary.files=${reviewMap.summary.files} does not match ${decisionsByFile.size} decisions.`,
+    );
+  }
+
+  if (
+    reviewMap.summary?.approvedCandidates !== undefined &&
+    Number(reviewMap.summary.approvedCandidates) !== approvedCount
+  ) {
+    throw new Error(
+      `Review map summary.approvedCandidates=${reviewMap.summary.approvedCandidates} does not match ${approvedCount} approved decisions.`,
+    );
+  }
+
+  if (
+    reviewMap.summary?.rejected !== undefined &&
+    Number(reviewMap.summary.rejected) !== rejectedCount
+  ) {
+    throw new Error(
+      `Review map summary.rejected=${reviewMap.summary.rejected} does not match ${rejectedCount} rejected decisions.`,
+    );
+  }
+
+  const auditRootPaths = unique(
+    (audit.recommendations ?? []).map((item) =>
+      normalizeComparablePath(item.rootPath),
+    ),
+  );
+
+  if (
+    reviewMap.sourceFolder &&
+    auditRootPaths.length === 1 &&
+    normalizeComparablePath(reviewMap.sourceFolder) !== auditRootPaths[0]
+  ) {
+    throw new Error(
+      `Review map sourceFolder does not match the audited folder: ${reviewMap.sourceFolder}`,
+    );
+  }
+
+  return {
+    decisionsByFile,
+    reviewStatus: reviewMap.reviewStatus,
+  };
+}
+
+function validateApprovedGroup(group) {
+  if (!group?.runtimeCategory || !group?.broadVisualBucket) {
+    throw new Error(
+      "Every approved review group must include runtimeCategory and broadVisualBucket.",
+    );
+  }
+
+  if (!Array.isArray(group.files) || group.files.length === 0) {
+    throw new Error("Every approved review group must contain at least one file.");
+  }
+
+  const allowedBuckets = ALLOWED_BUCKETS_BY_RUNTIME_CATEGORY[group.runtimeCategory];
+
+  if (!allowedBuckets?.has(group.broadVisualBucket)) {
+    throw new Error(
+      `Broad bucket ${group.broadVisualBucket} is not allowed for runtime category ${group.runtimeCategory}.`,
+    );
+  }
+
+  const assetScope =
+    group.assetScope ??
+    (group.runtimeCategory === "shared" ? "shared" : "category");
+
+  if (
+    (group.runtimeCategory === "shared" && assetScope !== "shared") ||
+    (group.runtimeCategory !== "shared" && assetScope !== "category")
+  ) {
+    throw new Error(
+      `Review group ${group.runtimeCategory}/${group.broadVisualBucket} has incompatible assetScope ${assetScope}.`,
+    );
+  }
+
+  if (
+    group.runtimeCategory === "shared" &&
+    normalizeStringArray(group.usableProfiles).length === 0
+  ) {
+    throw new Error("Shared review groups must include usableProfiles.");
+  }
+}
+
+function addReviewDecision(decisionsByFile, file, decision) {
+  const fileName = normalizeReviewFileName(file);
+
+  if (decisionsByFile.has(fileName)) {
+    throw new Error(`Review map contains more than one decision for ${fileName}.`);
+  }
+
+  decisionsByFile.set(fileName, decision);
+}
+
+function normalizeReviewFileName(value) {
+  return String(value).replaceAll("\\", "/").replace(/^\.\/+/, "");
+}
+
+function normalizeComparablePath(value) {
+  return path.resolve(String(value)).replaceAll("\\", "/").toLowerCase();
+}
+
+function normalizeStringArray(value) {
+  return unique(
+    asArray(value)
+      .map((item) => String(item).trim())
+      .filter(Boolean),
+  );
+}
+
+function getDefaultProfilesForRuntimeCategory(runtimeCategory, fallback) {
+  switch (runtimeCategory) {
+    case "fitness-health":
+      return ["fitness-health", "wellness"];
+    case "productivity-saas":
+      return ["productivity-saas", "generic-business"];
+    default:
+      return fallback;
+  }
 }
 
 function getFileKey(file) {

@@ -147,14 +147,14 @@ try {
 
   const dispatchedJob = await waitForDispatchOutcome(backgroundJob.id);
 
-  if (!dispatchedJob.aws_message_id) {
+  if (!dispatchedJob.queue_message_id) {
     throw new Error(
       `Cloud Tasks did not attach a queue message id. Final status: ${dispatchedJob.status}.`,
     );
   }
 
   if (isExpectedSafeWorkerFailure(dispatchedJob)) {
-    console.log(`Attached Pub/Sub message ${dispatchedJob.aws_message_id}`);
+    console.log(`Attached Cloud Task ${dispatchedJob.queue_message_id}`);
     console.log(
       `Always-on social worker consumed dummy job ${backgroundJob.id} safely`,
     );
@@ -178,7 +178,7 @@ try {
     );
   }
 
-  console.log(`Attached Pub/Sub message ${dispatchedJob.aws_message_id}`);
+  console.log(`Attached Cloud Task ${dispatchedJob.queue_message_id}`);
   console.log(`Cancelled dummy background job ${backgroundJob.id}`);
   console.log("GCP Cloud Tasks social dispatch canary passed");
 } catch (error) {
@@ -338,7 +338,7 @@ function printDryRunPlan(plan) {
 
   console.log("GCP Cloud Tasks social dispatch canary dry run");
   console.log(
-    "This would create one fake publish_social_post job, one Cloud Task, verify the deployed dispatch route attaches a Pub/Sub message id, then either cancel the dummy job or accept the live worker's safe fake-target failure.",
+    "This would create one fake publish_social_post job, one Cloud Task, verify the deployed dispatch route attaches the task id, then either cancel the dummy job or accept the live worker's safe fake-target failure.",
   );
   console.log(JSON.stringify(plan, null, 2));
 
@@ -408,7 +408,7 @@ async function createCanaryBackgroundJob() {
       updated_at: now,
       user_id: canaryUserId,
     })
-    .select("id,status,aws_message_id")
+    .select("id,status,queue_message_id")
     .single();
 
   if (error) {
@@ -504,14 +504,14 @@ async function waitForDispatchOutcome(jobId) {
     const job = await getCanaryJob(jobId);
 
     console.log(
-      `poll dispatch job=${job.id} status=${job.status} message=${job.aws_message_id ? "attached" : "pending"}`,
+      `poll dispatch job=${job.id} status=${job.status} message=${job.queue_message_id ? "attached" : "pending"}`,
     );
 
     if (isTerminalJobStatus(job.status)) {
       return job;
     }
 
-    if (job.aws_message_id) {
+    if (job.queue_message_id) {
       firstMessageAttachedAt ||= Date.now();
 
       if (Date.now() - firstMessageAttachedAt >= workerGraceMs) {
@@ -528,7 +528,7 @@ async function waitForDispatchOutcome(jobId) {
 async function getCanaryJob(jobId) {
   const { data, error } = await supabase
     .from("background_jobs")
-    .select("id,status,aws_message_id,error_message,worker_id")
+    .select("id,status,queue_message_id,error_message,worker_id")
     .eq("id", jobId)
     .single();
 

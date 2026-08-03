@@ -1,17 +1,29 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import {
   getFirebaseAuthErrorMessage,
   signInWithGoogle,
 } from "@/lib/firebase/auth";
+import { cn } from "@/lib/utils";
 
-export function GoogleSignInButton() {
+type GoogleSignInButtonProps = {
+  appearance?: "card" | "header" | "menu";
+  label?: string;
+};
+
+export function GoogleSignInButton({
+  appearance = "card",
+  label = "Continue with Google",
+}: GoogleSignInButtonProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const isCard = appearance === "card";
 
   async function handleGoogleSignIn() {
     setIsLoading(true);
@@ -38,26 +50,50 @@ export function GoogleSignInButton() {
   }
 
   return (
-    <div className="w-full">
-      <button
+    <div
+      className={cn(
+        isCard ? "w-full" : "relative",
+        appearance === "header" ? "shrink-0" : "w-full",
+      )}
+    >
+      <Button
         type="button"
         onClick={handleGoogleSignIn}
         disabled={isLoading}
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-2xl border border-border bg-background/70 px-5 text-sm font-bold text-foreground shadow-sm outline-none transition hover:bg-card-muted focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-70"
+        aria-busy={isLoading}
+        variant="muted"
+        size={isCard ? "auth" : "auth-compact"}
+        className={cn(
+          "font-semibold shadow-sm",
+          isCard && "w-full",
+          appearance === "menu" && "w-full justify-start",
+        )}
       >
-        <span
+        <Image
           aria-hidden="true"
-          className="flex size-5 items-center justify-center rounded-full bg-white text-sm font-bold text-[#4285f4]"
-        >
-          G
-        </span>
-        {isLoading ? "Signing in…" : "Continue with Google"}
-      </button>
+          alt=""
+          src="/icons/google.svg"
+          width={20}
+          height={20}
+          unoptimized
+          className={cn(
+            "shrink-0",
+            isCard ? "size-5" : "size-[18px]",
+          )}
+        />
+        <span>{isLoading ? "Signing in…" : label}</span>
+      </Button>
 
       {errorMessage ? (
         <p
           role="alert"
-          className="mt-3 text-center text-sm font-semibold text-error"
+          className={
+            isCard
+              ? "mt-3 text-center text-sm font-semibold text-error"
+              : appearance === "header"
+                ? "absolute right-0 top-[calc(100%+0.625rem)] z-50 w-72 rounded-control border border-border bg-card/95 px-3 py-2.5 text-left text-xs font-medium leading-5 text-error shadow-floating backdrop-blur-xl"
+                : "mt-2 px-3 text-left text-xs font-medium leading-5 text-error"
+          }
         >
           {errorMessage}
         </p>

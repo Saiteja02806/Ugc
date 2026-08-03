@@ -186,6 +186,7 @@ function getGcpSocialPublishTasksQueue(
   env: Record<string, string | undefined> = process.env,
 ) {
   return (
+    env.GCP_SOCIAL_PUBLISH_SCHEDULER_TASKS_QUEUE?.trim() ||
     env.GCP_SOCIAL_PUBLISH_TASKS_QUEUE?.trim() ||
     DEFAULT_GCP_SOCIAL_PUBLISH_TASKS_QUEUE
   );

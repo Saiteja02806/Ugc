@@ -1,12 +1,26 @@
 .agents/
 .chrome-carousel-upgrade-check/
 .codex/
+.next/
 .playwright-mcp/
 .tmp/
+.tools/
+.vercel/
 hatch-pet-runs/
 local-run-logs/
+node_modules/
+out/
 tmp/
 tmp-logs/
+worker/dist/
+worker/node_modules/
+
+**/.terraform/
+*.tfplan
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
 
 *.log
 .env*
@@ -16,3 +30,8 @@ carousel-*.png
 carousel-*.webp
 ugc-home-*.png
 ugcpilot_logo__1.png
+ai-studio-images-desktop.png
+auth-desktop.png
+local-landing-page.png
+desktop.ini
+folderico-QfzIGG.ico

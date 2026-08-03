@@ -201,7 +201,7 @@ test("manual publish retry locks one post and target before changing state", () 
     "revoke all on function public.retry_social_publish_target",
   );
   const postLock = retryFunction.indexOf("select post.status");
-  const targetLock = retryFunction.indexOf("select\n    target.status");
+  const targetLock = retryFunction.search(/select\r?\n\s+target\.status/);
 
   assert.ok(postLock >= 0);
   assert.ok(targetLock > postLock);
@@ -399,7 +399,7 @@ test("carousel scheduling stays inline on Trending and Library", () => {
   assert.match(trendingWorkspace, /await scheduleTrendingCarousel\(/);
   assert.match(
     trendingWorkspace,
-    /await scheduleTrendingCarousel\([\s\S]*?await completeTrendingCarouselAction\([\s\S]*?"scheduled"/,
+    /await scheduleTrendingCarousel\([\s\S]*?await completeAcceptedCarouselWorkflow\([\s\S]*?"scheduled"/,
   );
   assert.match(libraryWorkspace, /await scheduleLibraryCarousel\(/);
   assert.match(libraryWorkspace, /Carousel scheduled\. View it on the Scheduled page\./);

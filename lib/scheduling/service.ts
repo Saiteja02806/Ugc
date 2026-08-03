@@ -4,9 +4,12 @@ import {
   createSocialPublishSchedule,
   deleteSocialPublishSchedule,
 } from "@/lib/scheduling/social-scheduler";
-import { getQueueNameForJobType, sendJobMessage } from "@/lib/aws/sqs";
 import {
-  attachAwsMessageToBackgroundJob,
+  getQueueNameForJobType,
+  sendJobMessage,
+} from "@/lib/queues/job-queue";
+import {
+  attachQueueMessageToBackgroundJob,
   createBackgroundJob,
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
@@ -81,6 +84,7 @@ const directScheduledVideoSourceTypes = new Set([
   "upload",
   "generated_video",
   "edit_export",
+  "wall_text_render",
 ]);
 
 type ScheduleMediaMode = "single_video" | "combined_video" | "carousel";
@@ -717,7 +721,7 @@ export async function retryUserScheduleTargetPublishing(params: {
   }
 
   await deliverSocialPublishRetry(claim, {
-    attachMessage: attachAwsMessageToBackgroundJob,
+    attachMessage: attachQueueMessageToBackgroundJob,
     reportError: (event, details) => {
       console.error(`Social publish retry ${event}:`, details);
     },
@@ -1982,6 +1986,7 @@ async function scheduleTargetRows(params: {
     createProviderSchedule: createSocialPublishSchedule,
     createPublishJob: ({ projectId, targetId, userId }) =>
       createBackgroundJob({
+        idempotencyKey: `social-publish:${targetId}`,
         input: { targetId },
         jobType: "publish_social_post",
         projectId,

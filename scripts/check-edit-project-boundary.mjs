@@ -3,12 +3,22 @@ import { resolve } from "node:path";
 
 const files = {
   appLayout: read("app/layout.tsx"),
+  appSidebar: read("components/layout/app-sidebar.tsx"),
   creativeAssets: read("components/avatars/avatars-workspace.tsx"),
+  demoEditor: read("components/demos/demo-editor-shell.tsx"),
+  demoLegacyPage: read("app/demos/[demoId]/page.tsx"),
+  demosWorkspace: read("components/demos/demos-workspace.tsx"),
+  editDetailPage: read("app/edit/[videoId]/page.tsx"),
+  editIndexPage: read("app/edit/page.tsx"),
   editLibrary: read("components/edit/edit-library-workspace.tsx"),
+  editorRoutes: read("lib/edit/routes.ts"),
   editor: read("components/edit/focused-video-editor-shell.tsx"),
   editorPreview: read("components/edit/focused-video-editor.tsx"),
   mediaRoute: read("app/api/media/[assetId]/route.ts"),
   renderRoute: read("app/api/edit/render/route.ts"),
+  renderTerminalMigration: read(
+    "supabase/migrations/20260802213000_finalize_edit_render_atomically.sql",
+  ),
   renderWorker: read("worker/src/jobs/render-edit-video.ts"),
   renderEngine: read("worker/src/lib/render-engine.ts"),
   overlaySpec: read("worker/src/lib/edit-overlay-render-spec.ts"),
@@ -25,6 +35,45 @@ assert(
     '"edit_export"',
   ),
   "Creative Assets videos must exclude Edit exports.",
+);
+assert(
+  !getConstBody(files.creativeAssets, "hookVideoSourceTypes").includes(
+    '"demo_upload"',
+  ) &&
+    getConstBody(files.creativeAssets, "hookVideoSourceTypes").includes(
+      '"influencer_upload"',
+    ) &&
+    getConstBody(files.creativeAssets, "hookVideoSourceTypes").includes(
+      '"catalog_influencer"',
+    ) &&
+    files.creativeAssets.includes(
+      "displayCollections={creativeAssetVideoCollections}",
+    ),
+  "Creative Assets must combine uploaded, generated, and influencer videos without absorbing Content demos.",
+);
+assert(
+  !files.appSidebar.includes('label: "Edit"') &&
+    !files.appSidebar.includes('href: "/edit"'),
+  "Edit must remain a contextual capability, not primary navigation.",
+);
+assert(
+  files.editor.includes("returnHref") &&
+    files.editor.includes("returnLabel") &&
+    files.demoEditor.includes("returnHref") &&
+    files.demoEditor.includes("returnLabel"),
+  "Video and demo editors must support contextual return navigation.",
+);
+assert(
+  files.editorRoutes.includes("/avatars/media/") &&
+    files.editorRoutes.includes("/library/demos/") &&
+    files.demosWorkspace.includes("getContentDemoEditorHref") &&
+    files.demoLegacyPage.includes("redirect(getContentDemoEditorHref(demoId))"),
+  "Creative Assets and Content must own their editor entry points.",
+);
+assert(
+  files.editIndexPage.includes("redirect(CREATIVE_ASSETS_VIDEOS_HREF)") &&
+    files.editDetailPage.includes("redirect(getCreativeAssetEditorHref(videoId))"),
+  "Legacy Edit URLs must redirect to Creative Assets.",
 );
 assert(
   files.editLibrary.includes('fetch("/api/edit/videos"'),
@@ -49,23 +98,26 @@ assert(
   "Edit saves must not create Creative Asset export rows.",
 );
 assert(
-  files.workerStore.includes("areJsonValuesEqual") &&
-    files.workerStore.includes('status: draftIsCurrent ? "rendered" : "draft"') &&
-    files.workerStore.includes('status: draftIsCurrent ? "failed" : "draft"'),
+  files.workerStore.includes('.rpc("finalize_edit_render"') &&
+    files.renderTerminalMigration.includes(
+      "editable.draft_json is not distinct from v_render_job.draft_json",
+    ) &&
+    files.renderTerminalMigration.includes("then 'rendered'") &&
+    files.renderTerminalMigration.includes("then 'failed'"),
   "Background Save completion must not mark newer Edit changes as Saved.",
 );
 assert(
   files.schedulingResolution.includes("getEditableVideoForOwner") &&
     files.schedulingResolution.includes("getLatestEditableVideoRenderForOwner") &&
     files.schedulingResolution.includes("rendered_video_url") &&
-    files.schedulingResolution.includes("Save the selected opening video"),
+    files.schedulingResolution.includes("getSavedEditRenderAsset"),
   "Scheduling must resolve saved Edit outputs from Edit project records.",
 );
 assert(
   (files.schedulingResolution.includes("getDemoVideo") ||
     files.schedulingResolution.includes("findDemoVideo")) &&
     files.schedulingResolution.includes("rendered_video_url") &&
-    files.schedulingResolution.includes("Save the selected demo"),
+    files.schedulingResolution.includes("getSavedDemoRenderAsset"),
   "Scheduling must resolve saved Demo outputs from demo records.",
 );
 assert(

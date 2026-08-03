@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   ArrowLeft,
+  BookmarkCheck,
   CheckCircle2,
   FileImage,
   Film,
@@ -14,11 +15,16 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { SavedCreativeAssetsTab } from "@/components/avatars/saved-creative-assets-tab";
 import { useAuth } from "@/contexts/auth-context";
 import { UserMediaCollection } from "@/components/media/user-media-collection";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/ui/toggle-group";
+import { getCreativeAssetEditorHref } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import type { MediaSourceType } from "@/lib/media/types";
-import { cn } from "@/lib/utils";
+import type { MediaCollection, MediaSourceType } from "@/lib/media/types";
 
 type AvatarRatio = "9:16" | "1:1" | "4:5" | "16:9" | "other";
 type AvatarStatus = "ready" | "disabled" | "processing" | "failed";
@@ -337,12 +343,12 @@ export function AvatarsWorkspace({
         | { error?: string; ok?: false };
 
       if (!response.ok || data.ok !== true) {
-        throw new Error(getApiErrorMessage(data, "Could not open this source video in Edit."));
+        throw new Error(getApiErrorMessage(data, "Could not open this source video in the editor."));
       }
 
-      router.push(`/edit/${encodeURIComponent(data.asset.id)}`);
+      router.push(getCreativeAssetEditorHref(data.asset.id));
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not open this source video in Edit."));
+      setErrorMessage(getErrorMessage(error, "Could not open this source video in the editor."));
     } finally {
       setOpeningInEdit(false);
     }
@@ -441,38 +447,42 @@ export function AvatarsWorkspace({
             </p>
           </div>
 
-          <nav
+          <ToggleGroup
             aria-label="Creative asset collections"
-            className="inline-flex w-full rounded-[var(--radius-control)] border border-border bg-card-muted p-1 md:w-auto"
+            value={[activeTab]}
+            onValueChange={(value) => {
+              const nextTab = value[0] as MediaWorkspaceTab | undefined;
+
+              if (nextTab) {
+                handleTabChange(nextTab);
+              }
+            }}
+            spacing={1}
+            className="inline-flex w-full rounded-[var(--radius-panel)] border border-border bg-card-muted p-1 md:w-auto"
           >
             {mediaWorkspaceTabs.map((tab) => {
               const Icon = tab.icon;
 
               return (
-                <button
+                <ToggleGroupItem
                   key={tab.id}
-                  type="button"
-                  onClick={() => handleTabChange(tab.id)}
+                  value={tab.id}
                   aria-current={activeTab === tab.id ? "page" : undefined}
-                  className={cn(
-                    "inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus md:flex-none",
-                    activeTab === tab.id
-                      ? "bg-card text-foreground shadow-sm ring-1 ring-border"
-                      : "text-muted hover:bg-card/60 hover:text-foreground",
-                  )}
+                  className="h-9 flex-1 gap-2 rounded-[calc(var(--radius-panel)-4px)] px-4 text-muted hover:bg-card/60 hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-card aria-pressed:ring-1 aria-pressed:ring-border md:flex-none"
                 >
                   <Icon className="size-4" aria-hidden="true" />
                   {tab.label}
-                </button>
+                </ToggleGroupItem>
               );
             })}
-          </nav>
+          </ToggleGroup>
         </header>
 
         <div className="flex-1 pt-5">
           {activeTab === "videos" ? (
             <UserMediaCollection
               collection="video"
+              displayCollections={creativeAssetVideoCollections}
               sourceTypes={hookVideoSourceTypes}
               title="Video library"
               description="Uploaded footage and generated videos ready for your Instagram workflow."
@@ -480,7 +490,7 @@ export function AvatarsWorkspace({
               emptyDescription="Upload a video or create one in the workspace. Your real assets will appear here."
               variant="dark"
             />
-          ) : (
+          ) : activeTab === "images" ? (
             <UserMediaCollection
               collection="image"
               title="Image library"
@@ -489,6 +499,8 @@ export function AvatarsWorkspace({
               emptyDescription="Upload an image or create one in the workspace. Your real assets will appear here."
               variant="dark"
             />
+          ) : (
+            <SavedCreativeAssetsTab />
           )}
         </div>
       </div>
@@ -496,12 +508,18 @@ export function AvatarsWorkspace({
   );
 }
 
-type MediaWorkspaceTab = "videos" | "images";
+type MediaWorkspaceTab = "videos" | "images" | "saved";
 
 const hookVideoSourceTypes: MediaSourceType[] = [
   "upload",
-  "demo_upload",
+  "influencer_upload",
+  "catalog_influencer",
   "generated_video",
+];
+
+const creativeAssetVideoCollections: MediaCollection[] = [
+  "video",
+  "influencer",
 ];
 
 const mediaWorkspaceTabs: {
@@ -511,6 +529,7 @@ const mediaWorkspaceTabs: {
 }[] = [
   { icon: Film, id: "videos", label: "Videos" },
   { icon: FileImage, id: "images", label: "Images" },
+  { icon: BookmarkCheck, id: "saved", label: "Saved" },
 ];
 
 function AvatarEditorShell({
@@ -776,7 +795,7 @@ function AvatarFullPageEditor({
               ) : (
                 <Pencil className="size-4" aria-hidden="true" />
               )}
-              {openingInEdit ? "Opening" : "Open in Edit"}
+              {openingInEdit ? "Opening" : "Edit video"}
             </button>
             <button
               type="button"

@@ -3,7 +3,7 @@ locals {
     application = "ugc-pilot"
     environment = var.environment
     managed_by  = "terraform"
-    migration   = "aws-to-gcp"
+    runtime     = "gcp-only"
     slice       = "carousel-worker"
   }
 }

@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     const status = error instanceof FirebaseAuthRequestError ? error.status : 500;
 
     if (status >= 500) {
-      console.error("Could not open catalog influencer in Edit:", error);
+      console.error("Could not open catalog influencer in the editor:", error);
     }
 
     return Response.json(

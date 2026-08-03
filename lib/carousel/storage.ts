@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { uploadBufferToS3 } from "@/lib/storage/s3";
+import { uploadBufferToStorage } from "@/lib/storage/storage";
 
 const CATEGORY_LIBRARY_PREFIX = "category-library";
 const IMAGE_WEBP_CONTENT_TYPE = "image/webp";
@@ -47,13 +47,13 @@ export async function uploadCategoryImageAsset(params: {
   });
 
   const [base, thumb] = await Promise.all([
-    uploadBufferToS3({
+    uploadBufferToStorage({
       key: keys.baseKey,
       buffer: params.baseBuffer,
       contentType: IMAGE_WEBP_CONTENT_TYPE,
       cacheControl: "public, max-age=31536000, immutable",
     }),
-    uploadBufferToS3({
+    uploadBufferToStorage({
       key: keys.thumbKey,
       buffer: params.thumbBuffer,
       contentType: IMAGE_WEBP_CONTENT_TYPE,
@@ -62,9 +62,9 @@ export async function uploadCategoryImageAsset(params: {
   ]);
 
   return {
-    baseS3Key: base.key,
+    baseObjectKey: base.key,
     baseUrl: base.url,
-    thumbS3Key: thumb.key,
+    thumbObjectKey: thumb.key,
     thumbUrl: thumb.url,
   };
 }
@@ -95,7 +95,7 @@ export async function uploadRenderedCarouselSlide(params: {
     `slide-${slideSlug}-${formatSlug}-${contentHash}.webp`,
   ].join("/");
 
-  return uploadBufferToS3({
+  return uploadBufferToStorage({
     key,
     buffer: params.buffer,
     contentType: IMAGE_WEBP_CONTENT_TYPE,

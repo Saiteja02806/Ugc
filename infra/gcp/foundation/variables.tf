@@ -28,6 +28,32 @@ variable "name_prefix" {
   default     = "ugc"
 }
 
+variable "enable_background_job_recovery_scheduler" {
+  description = "Enable the Cloud Scheduler request that recovers stale durable background jobs."
+  type        = bool
+  default     = false
+}
+
+variable "background_job_recovery_url" {
+  description = "HTTPS URL for /api/internal/jobs/recover on the deployed app."
+  type        = string
+  default     = ""
+
+  validation {
+    condition = (
+      !var.enable_background_job_recovery_scheduler ||
+      can(regex("^https://", var.background_job_recovery_url))
+    )
+    error_message = "background_job_recovery_url must be an HTTPS URL when recovery scheduling is enabled."
+  }
+}
+
+variable "background_job_recovery_schedule" {
+  description = "Cron schedule for stale background-job recovery."
+  type        = string
+  default     = "*/5 * * * *"
+}
+
 variable "media_bucket_name" {
   description = "Globally unique Cloud Storage bucket name for app media."
   type        = string
@@ -68,18 +94,6 @@ variable "cdn_domain_names" {
   description = "Optional custom domains used when the media CDN is enabled. Leave empty until DNS is ready."
   type        = list(string)
   default     = []
-}
-
-variable "monitoring_notification_channels" {
-  description = "Optional Monitoring notification channel IDs for alert policies."
-  type        = list(string)
-  default     = []
-}
-
-variable "enable_monitoring_alerts" {
-  description = "Create starter alert policies for Pub/Sub DLQ backlog."
-  type        = bool
-  default     = false
 }
 
 variable "secret_ids" {

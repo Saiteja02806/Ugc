@@ -1,9 +1,91 @@
 import {
   WALL_TEXT_CONTENT_LAYOUT_VERSION,
+  WALL_TEXT_PATTERNS,
+  WALL_TEXT_SEGMENT_ROLES,
   type TrendingWallTextContent,
+  type WallTextPattern,
+  type WallTextSegment,
+  type WallTextSegmentRole,
 } from "./wall-text-types.ts";
+import type { WebsiteBusinessAnalysis } from "../website-analysis/schema.ts";
 
 const MAX_WALL_TEXT_IDEA_COUNT = 6;
+export const WALL_TEXT_PREFERRED_MIN_WORDS = 18;
+export const WALL_TEXT_PREFERRED_MAX_WORDS = 21;
+export const MAX_WALL_TEXT_WORDS = 24;
+export const MAX_WALL_TEXT_RENDERED_LINES = 7;
+export const PREFERRED_WALL_TEXT_RENDERED_LINES = { maximum: 6, minimum: 6 };
+export const MIN_WALL_TEXT_WORDS = 16;
+export const MIN_WALL_TEXT_RENDERED_LINES = 5;
+export const MAX_WALL_TEXT_WORDS_PER_LINE = 6;
+export const MIN_WALL_TEXT_WORDS_PER_LINE = 2;
+const MAX_EXCLAMATION_MARKS = 1;
+const SOCIAL_OVERLAY_READING_WORDS_PER_SECOND = 4.3;
+const SENTENCE_TRANSITION_SECONDS = 0.12;
+const PROMOTIONAL_CLICHES = [
+  /\bare you tired of\b/iu,
+  /\bbook a call\b/iu,
+  /\bcutting[- ]edge\b/iu,
+  /\belevate your\b/iu,
+  /\bgame[- ]changer\b/iu,
+  /\bget started(?: today)?\b/iu,
+  /\bjoin the waitlist\b/iu,
+  /\blog smarter\b/iu,
+  /\bnext[- ]level\b/iu,
+  /\breclaim your time\b/iu,
+  /\breclaim (?:minutes|hours|time)\b/iu,
+  /\brevolutioni[sz]e\b/iu,
+  /\bseamless(?:ly)?\b/iu,
+  /\bstart tracking(?: today)?\b/iu,
+  /\bsupercharge\b/iu,
+  /\btake control\b/iu,
+  /\btrack \w+(?:\s+\w+)? confidently\b/iu,
+  /\btransform your\b/iu,
+  /\bunlock your\b/iu,
+] as const;
+const CTA_PATTERNS = [
+  /(?:^|[.!?]\s+)(?:book|check(?:\s+your|\s+the)|click|download|focus(?:\s+on)|follow|get started|join|review(?:\s+your|\s+the)|schedule|see(?:\s+your|\s+the)|sign up|start|track(?:\s+your|\s+the)|try|use)\b/iu,
+  /\b(?:available now|link in bio|learn more|shop now)\b/iu,
+] as const;
+const AWKWARD_GRAMMAR_PATTERNS = [
+  /(?:^|[.!?]\s+)(?:assuming|ending|finding|thinking)\b/iu,
+  /\b(?:clear|better|useful) (?:context|guidance|insights?),\s*(?:easier|better|simpler)\b/iu,
+  /\bchoices? (?:are|become|feel) relevant,?\s*not rigid\b/iu,
+  /\bgives choices context to goals\b/iu,
+  /\bguidance is not (?:rigid )?rules\b/iu,
+  /\bmaintain it\b/iu,
+  /\btyping meals\b/iu,
+] as const;
+const UNSAFE_LINE_END_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "as",
+  "at",
+  "before",
+  "but",
+  "by",
+  "for",
+  "from",
+  "if",
+  "in",
+  "into",
+  "nor",
+  "of",
+  "on",
+  "or",
+  "over",
+  "so",
+  "than",
+  "that",
+  "the",
+  "to",
+  "under",
+  "when",
+  "while",
+  "with",
+  "yet",
+]);
 
 export type WallTextGenerationCandidate = {
   candidateIndex: number;
@@ -11,17 +93,54 @@ export type WallTextGenerationCandidate = {
 };
 
 export type GeneratedWallTextIdea = {
-  body: string;
   candidateIndex: number;
-  closing: string;
-  headline: string;
+  fullText: string;
+  pattern: WallTextPattern;
+  segments: WallTextSegment[];
 };
 
-export function getWallTextMaximumWords(durationSeconds: number) {
-  return Math.min(
-    72,
-    Math.max(18, Math.floor(normalizeDuration(durationSeconds) * 2.5)),
-  );
+export type WallTextBusinessContext = {
+  brandTone: string | null;
+  businessName: string | null;
+  category: string | null;
+  claimsToAvoid: string[];
+  differentiators: string[];
+  mainProblem: string | null;
+  mainPromise: string | null;
+  painPoints: string[];
+  productSummary: string | null;
+  targetAudience: string[];
+  valueProps: string[];
+};
+
+export function getWallTextMaximumWords() {
+  return MAX_WALL_TEXT_WORDS;
+}
+
+export function getWallTextPatternForCandidate(
+  candidateIndex: number,
+): WallTextPattern {
+  return WALL_TEXT_PATTERNS[
+    Math.abs(Math.trunc(candidateIndex)) % WALL_TEXT_PATTERNS.length
+  ]!;
+}
+
+export function buildWallTextBusinessContext(
+  business: WebsiteBusinessAnalysis,
+): WallTextBusinessContext {
+  return {
+    brandTone: business.brandTone,
+    businessName: business.businessName,
+    category: business.category,
+    claimsToAvoid: [...business.claimsToAvoid],
+    differentiators: [...business.differentiators],
+    mainProblem: business.mainProblem,
+    mainPromise: business.mainPromise,
+    painPoints: [...business.painPoints],
+    productSummary: business.productSummary,
+    targetAudience: [...business.targetAudience],
+    valueProps: [...business.valueProps],
+  };
 }
 
 export function normalizeWallTextGenerationCandidates(
@@ -36,20 +155,24 @@ export function normalizeWallTextGenerationCandidates(
 
   const normalized = candidates.map((candidate) => ({
     candidateIndex: Math.trunc(candidate.candidateIndex),
-    durationSeconds: normalizeDuration(candidate.durationSeconds),
+    durationSeconds:
+      Math.round(Number(candidate.durationSeconds) * 1000) / 1000,
   }));
 
   if (
     normalized.some(
       (candidate) =>
         candidate.candidateIndex < 0 ||
-        !Number.isInteger(candidate.candidateIndex),
+        !Number.isInteger(candidate.candidateIndex) ||
+        !Number.isFinite(candidate.durationSeconds) ||
+        candidate.durationSeconds <= 0 ||
+        candidate.durationSeconds > 60,
     ) ||
     new Set(normalized.map((candidate) => candidate.candidateIndex)).size !==
       normalized.length
   ) {
     throw new Error(
-      "Wall-of-text candidate indexes must be unique non-negative integers.",
+      "Wall-of-text candidates need unique indexes and valid clip durations.",
     );
   }
 
@@ -65,6 +188,8 @@ export function validateGeneratedWallTextIdeas(params: {
     candidates.map((candidate) => [candidate.candidateIndex, candidate]),
   );
   const generatedByIndex = new Map<number, TrendingWallTextContent>();
+  const seenCopy = new Set<string>();
+  const seenOpenings = new Set<string>();
 
   for (const idea of params.generated) {
     const candidate = candidateByIndex.get(idea.candidateIndex);
@@ -76,15 +201,28 @@ export function validateGeneratedWallTextIdeas(params: {
     }
 
     const content = toWallTextContent(idea);
-    const wordCount = content.blocks.reduce(
-      (total, block) => total + countWords(block.text),
-      0,
-    );
+    validateWallTextContent(content, candidate.durationSeconds);
 
-    if (wordCount > getWallTextMaximumWords(candidate.durationSeconds)) {
+    if (content.pattern !== getWallTextPatternForCandidate(idea.candidateIndex)) {
       throw new Error(
-        "The AI returned Wall-of-text copy that is too long to read.",
+        "The AI returned a Wall-of-text pattern that does not match the assigned candidate format.",
       );
+    }
+
+    const copyKey = toComparisonKey(content.fullText);
+    const openingKey = toOpeningKey(copyKey);
+
+    if (
+      seenCopy.has(copyKey) ||
+      (openingKey !== null && seenOpenings.has(openingKey))
+    ) {
+      throw new Error("The AI returned repetitive Wall-of-text ideas.");
+    }
+
+    seenCopy.add(copyKey);
+
+    if (openingKey !== null) {
+      seenOpenings.add(openingKey);
     }
 
     generatedByIndex.set(idea.candidateIndex, content);
@@ -102,29 +240,214 @@ export function validateGeneratedWallTextIdeas(params: {
   }));
 }
 
+export function validateWallTextContent(
+  content: TrendingWallTextContent,
+  durationSeconds: number,
+) {
+  const wordCount = countWords(content.fullText);
+  const lineCount = content.segments.reduce(
+    (total, segment) => total + segment.lines.length,
+    0,
+  );
+
+  if (wordCount < MIN_WALL_TEXT_WORDS || wordCount > MAX_WALL_TEXT_WORDS) {
+    throw new Error(
+      `Wall-of-text copy must contain ${MIN_WALL_TEXT_WORDS}–${MAX_WALL_TEXT_WORDS} words.`,
+    );
+  }
+
+  if (
+    lineCount < MIN_WALL_TEXT_RENDERED_LINES ||
+    lineCount > MAX_WALL_TEXT_RENDERED_LINES
+  ) {
+    throw new Error(
+      `Wall-of-text copy must render in ${MIN_WALL_TEXT_RENDERED_LINES}–${MAX_WALL_TEXT_RENDERED_LINES} semantic lines.`,
+    );
+  }
+
+  if (
+    [...content.fullText].filter((character) => character === "!").length >
+    MAX_EXCLAMATION_MARKS
+  ) {
+    throw new Error(
+      "The AI returned Wall-of-text copy with excessive exclamation marks.",
+    );
+  }
+
+  if (PROMOTIONAL_CLICHES.some((pattern) => pattern.test(content.fullText))) {
+    throw new Error(
+      "The AI returned generic promotional copy instead of Wall-of-text copy.",
+    );
+  }
+
+  if (CTA_PATTERNS.some((pattern) => pattern.test(content.fullText))) {
+    throw new Error("Wall-of-text copy must not contain a call to action.");
+  }
+
+  const sentenceCount =
+    content.fullText.match(/[.!?](?=\s|$)/gu)?.length ?? 0;
+
+  if (sentenceCount < 2 || sentenceCount > 3) {
+    throw new Error(
+      "Wall-of-text copy must contain two or three short grammatical sentences.",
+    );
+  }
+
+  if (
+    AWKWARD_GRAMMAR_PATTERNS.some((pattern) => pattern.test(content.fullText))
+  ) {
+    throw new Error(
+      "Wall-of-text copy contains an awkward grammatical fragment.",
+    );
+  }
+
+  validateSegmentRoles(content.segments);
+  validateSemanticLines(content.segments);
+
+  const readingSeconds = estimateWallTextReadingSeconds(
+    content.fullText,
+    content.segments.length,
+  );
+
+  if (readingSeconds > durationSeconds + 0.15) {
+    throw new Error(
+      `Wall-of-text copy needs about ${readingSeconds.toFixed(1)} seconds to read, longer than the ${durationSeconds.toFixed(1)}-second clip.`,
+    );
+  }
+}
+
+export function estimateWallTextReadingSeconds(
+  value: string,
+  semanticBeatCount = 2,
+) {
+  const sentenceTransitions = Math.max(0, semanticBeatCount - 1);
+  return (
+    countWords(value) / SOCIAL_OVERLAY_READING_WORDS_PER_SECOND +
+    sentenceTransitions * SENTENCE_TRANSITION_SECONDS
+  );
+}
+
+export function getWallTextPreviewTitle(value: string) {
+  const normalized = normalizeText(value);
+
+  if (normalized.length <= 72) {
+    return normalized;
+  }
+
+  const shortened = normalized.slice(0, 69).replace(/\s+\S*$/u, "").trim();
+  return `${shortened || normalized.slice(0, 69).trim()}…`;
+}
+
 function toWallTextContent(
   idea: GeneratedWallTextIdea,
 ): TrendingWallTextContent {
-  const headline = normalizeBlock(idea.headline, "headline");
-  const body = normalizeBlock(idea.body, "body");
-  const closing = normalizeBlock(idea.closing, "closing");
+  const segments = normalizeSegments(idea.segments);
+  const reconstructed = segments
+    .map((segment) => segment.lines.join(" "))
+    .join(" ");
+  const fullText = normalizeText(idea.fullText);
+
+  if (toComparisonKey(reconstructed) !== toComparisonKey(fullText)) {
+    throw new Error(
+      "Wall-of-text fullText must exactly represent the supplied semantic lines.",
+    );
+  }
 
   return {
-    blocks: [
-      { id: "headline", text: headline },
-      { id: "body", text: body },
-      { id: "closing", text: closing },
-    ],
+    fullText,
     kind: "wall_text",
     layoutVersion: WALL_TEXT_CONTENT_LAYOUT_VERSION,
+    pattern: normalizePattern(idea.pattern),
+    segments,
   };
 }
 
-function normalizeBlock(value: string, label: string) {
+function normalizePattern(pattern: WallTextPattern) {
+  if (!WALL_TEXT_PATTERNS.includes(pattern)) {
+    throw new Error("Wall-of-text copy uses an unsupported six-second pattern.");
+  }
+
+  return pattern;
+}
+
+function normalizeSegments(
+  segments: readonly WallTextSegment[],
+): WallTextSegment[] {
+  if (segments.length < 2 || segments.length > 3) {
+    throw new Error("Wall-of-text copy must contain 2–3 semantic paragraphs.");
+  }
+
+  return segments.map((segment) => {
+    if (
+      !WALL_TEXT_SEGMENT_ROLES.includes(segment.role) ||
+      !Array.isArray(segment.lines) ||
+      segment.lines.length < 1 ||
+      segment.lines.length > 4
+    ) {
+      throw new Error("Wall-of-text contains an invalid semantic segment.");
+    }
+
+    return {
+      lines: segment.lines.map(normalizeText),
+      role: segment.role,
+    };
+  });
+}
+
+function validateSegmentRoles(segments: readonly WallTextSegment[]) {
+  const expectedRoles: WallTextSegmentRole[] =
+    segments.length === 2
+      ? ["lead", "closing"]
+      : ["lead", "support", "closing"];
+
+  if (
+    segments.some((segment, index) => segment.role !== expectedRoles[index])
+  ) {
+    throw new Error(
+      "Wall-of-text segments must follow lead, optional support, and closing order.",
+    );
+  }
+}
+
+function validateSemanticLines(segments: readonly WallTextSegment[]) {
+  for (const segment of segments) {
+    for (const [index, line] of segment.lines.entries()) {
+      const wordCount = countWords(line);
+
+      if (wordCount < MIN_WALL_TEXT_WORDS_PER_LINE) {
+        throw new Error("Wall-of-text cannot contain one-word orphan lines.");
+      }
+
+      if (wordCount > MAX_WALL_TEXT_WORDS_PER_LINE) {
+        throw new Error(
+          `Wall-of-text lines cannot exceed ${MAX_WALL_TEXT_WORDS_PER_LINE} words.`,
+        );
+      }
+
+      if (index < segment.lines.length - 1 && endsWithUnsafeBreakWord(line)) {
+        throw new Error(
+          "Wall-of-text line breaks cannot follow an article, conjunction, or preposition.",
+        );
+      }
+    }
+  }
+}
+
+function endsWithUnsafeBreakWord(value: string) {
+  const words = value
+    .toLocaleLowerCase("en-US")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/u)
+    .filter(Boolean);
+
+  return UNSAFE_LINE_END_WORDS.has(words.at(-1) ?? "");
+}
+
+function normalizeText(value: string) {
   const normalized = value.replace(/\s+/gu, " ").trim();
 
   if (!normalized) {
-    throw new Error(`Wall-of-text ${label} copy cannot be empty.`);
+    throw new Error("Wall-of-text copy cannot be empty.");
   }
 
   return normalized;
@@ -134,12 +457,15 @@ function countWords(value: string) {
   return value.split(/\s+/u).filter(Boolean).length;
 }
 
-function normalizeDuration(durationSeconds: number) {
-  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-    throw new Error(
-      "Wall-of-text candidates require a valid video duration.",
-    );
-  }
+function toComparisonKey(value: string) {
+  return value
+    .toLocaleLowerCase("en-US")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
 
-  return Math.round(durationSeconds * 1000) / 1000;
+function toOpeningKey(copyKey: string) {
+  const words = copyKey.split(" ").filter(Boolean);
+  return words.length >= 4 ? words.slice(0, 4).join(" ") : null;
 }

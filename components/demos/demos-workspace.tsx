@@ -16,14 +16,22 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  getDemoPlaybackUrl,
+  isActiveDemoStatus,
+  type DemoDisplayStatus,
+} from "@/lib/demo/demo-display";
+import { getContentDemoEditorHref } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 const DEFAULT_PROJECT_ID = "test-project-001";
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 const DEMO_UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
+const MAX_ACTIVE_STATUS_POLL_ATTEMPTS = 120;
 const MIN_DURATION_SECONDS = 1;
 const MAX_DURATION_SECONDS = 60;
 const ALLOWED_EXTENSIONS = new Set(["mp4", "mov", "webm"]);
@@ -41,14 +49,7 @@ const demoMetricChipClassName =
 
 type DemoContentType = "video/mp4" | "video/quicktime" | "video/webm";
 type DemoRatio = "9:16" | "1:1" | "4:5" | "16:9" | "other";
-type DemoStatus =
-  | "uploading"
-  | "processing"
-  | "ready"
-  | "draft"
-  | "rendering"
-  | "rendered"
-  | "failed";
+type DemoStatus = DemoDisplayStatus;
 
 type DemoVideo = {
   created_at: string;
@@ -90,7 +91,7 @@ type VideoMetadata = {
 };
 
 type CreateUploadResponse = {
-  cloudFrontUrl: string;
+  publicUrl: string;
   demoId: string;
   key: string;
   ok: true;
@@ -119,6 +120,8 @@ export function UploadedPostsTab({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const activeUploadRequestRef = useRef<XMLHttpRequest | null>(null);
   const failedUploadFileRef = useRef<File | null>(null);
+  const latestDemoLoadRequestIdRef = useRef(0);
+  const latestBlockingDemoLoadRequestIdRef = useRef(0);
   const uploadCancelledRef = useRef(false);
   const [demos, setDemos] = useState<DemoVideo[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -142,16 +145,31 @@ export function UploadedPostsTab({
   const loadErrorFallback = embeddedInLibrary
     ? "Could not load uploaded posts."
     : "Could not load demo videos.";
+  const activeDemoStatusSignature = useMemo(
+    () =>
+      demos
+        .filter((demo) => isActiveDemoStatus(demo.status))
+        .map((demo) => `${demo.id}:${demo.status}:${demo.updated_at}`)
+        .sort()
+        .join("|"),
+    [demos],
+  );
 
-  const loadDemos = useCallback(async () => {
-    setErrorMessage(null);
+  const loadDemos = useCallback(async (options?: { silent?: boolean }) => {
+    const requestId = latestDemoLoadRequestIdRef.current + 1;
+    latestDemoLoadRequestIdRef.current = requestId;
+
+    if (!options?.silent) {
+      latestBlockingDemoLoadRequestIdRef.current = requestId;
+      setIsLoading(true);
+      setErrorMessage(null);
+    }
 
     try {
       const token = await getCurrentUserIdToken();
 
       if (!token) {
-        setDemos([]);
-        return;
+        throw new Error("Sign in again to refresh your demo videos.");
       }
 
       const response = await fetch(
@@ -170,11 +188,21 @@ export function UploadedPostsTab({
         throw new Error(getApiErrorMessage(data, loadErrorFallback));
       }
 
-      setDemos(data.demos);
+      if (latestDemoLoadRequestIdRef.current === requestId) {
+        setDemos(data.demos);
+        setErrorMessage(null);
+      }
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, loadErrorFallback));
+      if (latestDemoLoadRequestIdRef.current === requestId) {
+        setErrorMessage(getErrorMessage(error, loadErrorFallback));
+      }
     } finally {
-      setIsLoading(false);
+      if (
+        !options?.silent &&
+        latestBlockingDemoLoadRequestIdRef.current === requestId
+      ) {
+        setIsLoading(false);
+      }
     }
   }, [loadErrorFallback]);
 
@@ -184,6 +212,42 @@ export function UploadedPostsTab({
     }, 0);
 
     return () => window.clearTimeout(timer);
+  }, [loadDemos]);
+
+  useEffect(() => {
+    if (!activeDemoStatusSignature) {
+      return;
+    }
+
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+
+      if (attempts > MAX_ACTIVE_STATUS_POLL_ATTEMPTS) {
+        window.clearInterval(timer);
+        return;
+      }
+
+      void loadDemos({ silent: true });
+    }, 5_000);
+
+    return () => window.clearInterval(timer);
+  }, [activeDemoStatusSignature, loadDemos]);
+
+  useEffect(() => {
+    function refreshDemosWhenVisible() {
+      if (document.visibilityState === "visible") {
+        void loadDemos({ silent: true });
+      }
+    }
+
+    window.addEventListener("focus", refreshDemosWhenVisible);
+    document.addEventListener("visibilitychange", refreshDemosWhenVisible);
+
+    return () => {
+      window.removeEventListener("focus", refreshDemosWhenVisible);
+      document.removeEventListener("visibilitychange", refreshDemosWhenVisible);
+    };
   }, [loadDemos]);
 
   useEffect(() => {
@@ -248,7 +312,7 @@ export function UploadedPostsTab({
         status: "uploading",
       });
 
-      await uploadFileToS3({
+      await uploadFileToStorage({
         contentType,
         file,
         onProgress: (progress) => {
@@ -568,7 +632,7 @@ function EmbeddedDemoWorkspace({
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <span className={demoMetricChipClassName}>
-            {isLoading
+            {isLoading && demos.length === 0
               ? "Loading"
               : `${demos.length} ${demos.length === 1 ? "demo" : "demos"}`}
           </span>
@@ -648,7 +712,7 @@ function EmbeddedDemoWorkspace({
           </div>
         ) : null}
 
-        {isLoading ? (
+        {isLoading && demos.length === 0 ? (
           <div
             className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
             aria-label="Loading demos"
@@ -990,13 +1054,13 @@ export function DemoLibrary({
           </p>
         </div>
         <span className="shrink-0 text-xs font-semibold text-muted">
-          {isLoading
+          {isLoading && demos.length === 0
             ? "Loading"
             : `${demos.length} ${demos.length === 1 ? itemLabel : `${itemLabel}s`}`}
         </span>
       </div>
 
-      {isLoading ? (
+      {isLoading && demos.length === 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Loading demos">
           {Array.from({ length: 4 }, (_, index) => (
             <div key={index} className="overflow-hidden rounded-card border border-border bg-card">
@@ -1053,12 +1117,18 @@ export function DemoCard({
   onPlay: () => void;
   playing: boolean;
 }) {
-  const playable = isPlayableDemo(demo);
+  const playbackUrl = getDemoPlaybackUrl(demo);
+  const playable = Boolean(playbackUrl);
 
   return (
     <article className="group min-w-0 overflow-hidden rounded-panel border border-border bg-card transition-colors hover:border-border-strong">
       <div className="relative aspect-[4/5] overflow-hidden bg-[#17181b] text-white">
-        <DemoMediaPreview demo={demo} playing={playing} />
+        <DemoMediaPreview
+          key={`${demo.id}:${playbackUrl ?? "unavailable"}:${demo.thumbnail_url ?? "no-thumbnail"}`}
+          demo={demo}
+          playbackUrl={playbackUrl}
+          playing={playing}
+        />
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-linear-to-t from-black/60 to-transparent p-3">
           <button
             type="button"
@@ -1115,7 +1185,7 @@ export function DemoCard({
             </p>
           </div>
           <Link
-            href={`/demos/${encodeURIComponent(demo.id)}`}
+            href={getContentDemoEditorHref(demo.id)}
             className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <Pencil className="size-3.5" aria-hidden="true" />
@@ -1129,9 +1199,11 @@ export function DemoCard({
 
 function DemoMediaPreview({
   demo,
+  playbackUrl,
   playing,
 }: {
   demo: DemoVideo;
+  playbackUrl: string | null;
   playing: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -1140,7 +1212,7 @@ function DemoMediaPreview({
   );
   const [previewKey, setPreviewKey] = useState(0);
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
-  const playable = isPlayableDemo(demo);
+  const playable = Boolean(playbackUrl);
 
   useEffect(() => {
     const videoElement = videoRef.current;
@@ -1217,7 +1289,7 @@ function DemoMediaPreview({
       <video
         key={previewKey}
         ref={videoRef}
-        src={demo.source_video_url}
+        src={playbackUrl ?? undefined}
         poster={demo.thumbnail_url ?? undefined}
         aria-label={`Preview of ${demo.title}`}
         className={cn(
@@ -1247,25 +1319,38 @@ function DemoMediaPreview({
 }
 
 function StatusBadge({ status }: { status: DemoStatus }) {
-  const styles: Record<DemoStatus, string> = {
-    draft: "bg-primary/95 text-white",
-    failed: "bg-error/95 text-white",
-    processing: "bg-card-muted/95 text-foreground",
-    ready: "bg-success/95 text-white",
-    rendered: "bg-brand-soft text-primary",
-    rendering: "bg-card-muted/95 text-foreground",
-    uploading: "bg-card-muted/95 text-foreground",
+  const variants: Record<
+    DemoStatus,
+    "draft" | "failed" | "info" | "ready" | "rendering" | "success"
+  > = {
+    draft: "draft",
+    failed: "failed",
+    processing: "info",
+    ready: "ready",
+    rendered: "success",
+    rendering: "rendering",
+    uploading: "info",
   };
+  const labels: Record<DemoStatus, string> = {
+    draft: "Draft",
+    failed: "Save Failed",
+    processing: "Processing",
+    ready: "Ready",
+    rendered: "Saved",
+    rendering: "Saving",
+    uploading: "Uploading",
+  };
+  const label = labels[status];
 
   return (
-    <span
-      className={cn(
-        "rounded-full px-2 py-1 text-[11px] font-bold capitalize shadow-sm",
-        styles[status],
-      )}
+    <Badge
+      aria-label={`Demo status: ${label}`}
+      aria-live="polite"
+      role="status"
+      variant={variants[status]}
     >
-      {status}
-    </span>
+      {label}
+    </Badge>
   );
 }
 
@@ -1381,7 +1466,7 @@ async function cleanupIncompleteUpload({
   }
 }
 
-function uploadFileToS3({
+function uploadFileToStorage({
   contentType,
   file,
   onProgress,
@@ -1416,7 +1501,7 @@ function uploadFileToS3({
         resolve();
       } else {
         console.error(
-          "Demo S3 upload failed",
+          "Demo Cloud Storage upload failed",
           getStorageUploadDiagnostics({
             contentType,
             responseBody: getSafeXhrResponseText(xhr),
@@ -1434,7 +1519,7 @@ function uploadFileToS3({
 
     xhr.onerror = () => {
       console.error(
-        "Demo S3 upload network error",
+        "Demo Cloud Storage upload network error",
         getStorageUploadDiagnostics({
           contentType,
           uploadUrl,
@@ -1486,7 +1571,6 @@ function getStorageUploadDiagnostics({
     statusText: xhr.statusText,
     uploadHostname: uploadTarget.hostname,
     uploadPathname: uploadTarget.pathname,
-    uploadRegion: uploadTarget.region,
   };
 }
 
@@ -1497,21 +1581,13 @@ function getUploadTargetDiagnostics(uploadUrl: string) {
     return {
       hostname: parsedUrl.hostname,
       pathname: parsedUrl.pathname,
-      region: getS3RegionFromHostname(parsedUrl.hostname),
     };
   } catch {
     return {
       hostname: "unparseable",
       pathname: "unparseable",
-      region: "unknown",
     };
   }
-}
-
-function getS3RegionFromHostname(hostname: string) {
-  const match = hostname.match(/\.s3[.-]([a-z0-9-]+)\.amazonaws\.com$/i);
-
-  return match?.[1] ?? "unknown";
 }
 
 function getSafeXhrResponseText(xhr: XMLHttpRequest) {
@@ -1524,8 +1600,8 @@ function getSafeXhrResponseText(xhr: XMLHttpRequest) {
 
 function sanitizeStorageResponse(responseText: string) {
   return responseText
-    .replace(/<AWSAccessKeyId>[^<]*<\/AWSAccessKeyId>/gi, "<AWSAccessKeyId>[redacted]</AWSAccessKeyId>")
-    .replace(/X-Amz-Credential=[^&<\s]+/gi, "X-Amz-Credential=[redacted]")
+    .replace(/X-Goog-Credential=[^&<\s]+/gi, "X-Goog-Credential=[redacted]")
+    .replace(/X-Goog-Signature=[^&<\s]+/gi, "X-Goog-Signature=[redacted]")
     .slice(0, 1200);
 }
 
@@ -1723,8 +1799,4 @@ function getFileTypeLabel(contentType: DemoContentType) {
 
 function getDimensionsLabel(demo: DemoVideo) {
   return demo.width && demo.height ? `${demo.width}x${demo.height}` : "Custom";
-}
-
-function isPlayableDemo(demo: DemoVideo) {
-  return Boolean(demo.source_video_url && demo.status !== "failed");
 }

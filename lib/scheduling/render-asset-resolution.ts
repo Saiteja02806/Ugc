@@ -100,7 +100,7 @@ export async function resolveOpeningRenderAsset(params: {
       return {
         ok: false,
         message:
-          "Save the selected opening clip in Edit before scheduling so saved text and trim edits are included.",
+          "Edit and save the selected opening clip in Creative Assets before scheduling so text and trim changes are included.",
         status: 409,
       };
     }
@@ -147,7 +147,7 @@ export async function resolveOpeningRenderAsset(params: {
     return {
       ok: false,
       message:
-        "The latest saved opening clip could not be resolved. Open it in Edit and save it again.",
+        "The latest saved opening clip could not be resolved. Open it from Creative Assets and save it again.",
       status: 409,
     };
   }
@@ -156,7 +156,7 @@ export async function resolveOpeningRenderAsset(params: {
     return {
       ok: false,
       message:
-        "Save the selected opening clip in Edit before scheduling so saved text and trim edits are included.",
+        "Edit and save the selected opening clip in Creative Assets before scheduling so text and trim changes are included.",
       status: 409,
     };
   }

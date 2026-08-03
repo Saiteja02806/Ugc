@@ -13,11 +13,6 @@ output "worker_image_uri" {
   description = "Worker image URI configured for the AI-generation worker."
 }
 
-output "pubsub_subscription_name" {
-  value       = var.pubsub_subscription_name
-  description = "Pub/Sub subscription configured for the AI-generation worker."
-}
-
 output "storage_public_base_url" {
   value       = var.gcp_storage_public_base_url
   description = "Public base URL used for generated AI media."

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
 import {
-  getMissingSqsEnvVars,
+  getMissingJobQueueEnvVars,
   getQueueNameForJobType,
   sendJobMessage,
-} from "@/lib/aws/sqs";
+} from "@/lib/queues/job-queue";
 import {
-  attachAwsMessageToBackgroundJob,
+  attachQueueMessageToBackgroundJob,
   createBackgroundJob,
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
@@ -59,7 +59,7 @@ function getMissingRuntimeEnv() {
   return Array.from(
     new Set([
       ...getMissingBackgroundJobStorageEnvVars(),
-      ...getMissingSqsEnvVars([AVATAR_JOB_TYPE]),
+      ...getMissingJobQueueEnvVars([AVATAR_JOB_TYPE]),
     ]),
   );
 }
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: `AWS avatar generation is not configured. Add ${missingRuntimeEnv.join(
+          error: `GCP avatar generation is not configured. Add ${missingRuntimeEnv.join(
             ", ",
           )}.`,
         },
@@ -117,8 +117,8 @@ export async function POST(request: Request) {
         jobType: AVATAR_JOB_TYPE,
       });
 
-      await attachAwsMessageToBackgroundJob({
-        awsMessageId: message.messageId,
+      await attachQueueMessageToBackgroundJob({
+        queueMessageId: message.messageId,
         jobId: backgroundJob.id,
       });
     } catch (error) {
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      message: "Avatar image generation queued in AWS",
+      message: "Avatar image generation queued in GCP Cloud Tasks",
       generationId,
       jobId: backgroundJob.id,
     });

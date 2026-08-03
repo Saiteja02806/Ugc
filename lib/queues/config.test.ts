@@ -3,46 +3,25 @@ import test from "node:test";
 
 import {
   buildJobMessageBody,
-  getGcpPubSubTopicNameForJobType,
   getMissingQueueEnvVars,
   getQueueNameForJobType,
   getQueueProviderName,
 } from "./config.ts";
 
-test("uses AWS queue provider by default", () => {
-  assert.equal(getQueueProviderName({}), "aws");
+test("uses only the GCP queue provider", () => {
+  assert.equal(getQueueProviderName({}), "gcp");
+  assert.equal(getQueueProviderName({ QUEUE_PROVIDER: "unexpected" }), "gcp");
 });
 
-test("accepts GCP queue provider aliases", () => {
-  assert.equal(getQueueProviderName({ QUEUE_PROVIDER: "gcp" }), "gcp");
-  assert.equal(getQueueProviderName({ QUEUE_PROVIDER: "pubsub" }), "gcp");
-});
-
-test("reports AWS queue requirements without requiring GCP values", () => {
+test("reports GCP queue requirements", () => {
   assert.deepEqual(
-    getMissingQueueEnvVars(["generate_carousel"], {
-      QUEUE_PROVIDER: "aws",
-    }),
-    [
-      "AWS_REGION",
-      "AWS_APP_ENQUEUE_ACCESS_KEY_ID/AWS_APP_ENQUEUE_SECRET_ACCESS_KEY or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY",
-      "UGC_CAROUSEL_QUEUE_URL",
-    ],
-  );
-});
-
-test("reports GCP queue requirements without requiring AWS values", () => {
-  assert.deepEqual(
-    getMissingQueueEnvVars(["generate_carousel"], {
-      QUEUE_PROVIDER: "gcp",
-    }),
+    getMissingQueueEnvVars(["generate_carousel"], {}),
     ["GCP_PROJECT_ID or GOOGLE_CLOUD_PROJECT"],
   );
 
   assert.deepEqual(
     getMissingQueueEnvVars(["generate_carousel"], {
       GCP_PROJECT_ID: "ugcsaas",
-      QUEUE_PROVIDER: "gcp",
     }),
     [],
   );
@@ -50,7 +29,6 @@ test("reports GCP queue requirements without requiring AWS values", () => {
   assert.deepEqual(
     getMissingQueueEnvVars(["generate_carousel"], {
       GCP_PROJECT_ID: "ugcsaas",
-      QUEUE_PROVIDER: "gcp",
       VERCEL: "1",
     }),
     [
@@ -62,14 +40,13 @@ test("reports GCP queue requirements without requiring AWS values", () => {
     getMissingQueueEnvVars(["generate_carousel"], {
       GCP_PROJECT_ID: "ugcsaas",
       GOOGLE_CLOUD_CREDENTIALS_JSON: "{}",
-      QUEUE_PROVIDER: "gcp",
       VERCEL: "1",
     }),
     [],
   );
 });
 
-test("keeps the existing background job message payload shape", () => {
+test("adds a version and attempt to the background job message", () => {
   assert.deepEqual(
     JSON.parse(
       buildJobMessageBody({
@@ -78,24 +55,16 @@ test("keeps the existing background job message payload shape", () => {
       }),
     ),
     {
+      attempt: 0,
       jobId: "job-1",
       jobType: "generate_carousel",
+      schemaVersion: 1,
     },
   );
 });
 
-test("maps carousel jobs to the GCP topic created by Terraform", () => {
+test("maps carousel jobs to the logical GCP queue", () => {
   assert.equal(getQueueNameForJobType("generate_carousel"), "carousel");
-  assert.equal(
-    getGcpPubSubTopicNameForJobType("generate_carousel", {}),
-    "ugc-carousel",
-  );
-  assert.equal(
-    getGcpPubSubTopicNameForJobType("generate_carousel", {
-      UGC_CAROUSEL_PUBSUB_TOPIC: "custom-carousel-topic",
-    }),
-    "custom-carousel-topic",
-  );
 });
 
 test("maps all active production job types to migrated GCP queues", () => {
@@ -104,28 +73,37 @@ test("maps all active production job types to migrated GCP queues", () => {
       ["generate_avatar", getQueueNameForJobType("generate_avatar")],
       ["generate_image", getQueueNameForJobType("generate_image")],
       ["generate_hook_video", getQueueNameForJobType("generate_hook_video")],
+      [
+        "generate_trending_hook_copy",
+        getQueueNameForJobType("generate_trending_hook_copy"),
+      ],
+      ["wall_text_generation", getQueueNameForJobType("wall_text_generation")],
+      ["media_analysis", getQueueNameForJobType("media_analysis")],
+      ["analytics_sync", getQueueNameForJobType("analytics_sync")],
       ["generate_carousel", getQueueNameForJobType("generate_carousel")],
       ["render_edit_video", getQueueNameForJobType("render_edit_video")],
       [
         "render_schedule_combination",
         getQueueNameForJobType("render_schedule_combination"),
       ],
+      ["render_wall_text_video", getQueueNameForJobType("render_wall_text_video")],
       ["publish_social_post", getQueueNameForJobType("publish_social_post")],
     ],
     [
       ["generate_avatar", "ai-generation"],
       ["generate_image", "ai-generation"],
       ["generate_hook_video", "ai-generation"],
+      ["generate_trending_hook_copy", "ai-generation"],
+      ["wall_text_generation", "ai-generation"],
+      ["media_analysis", "ai-generation"],
+      ["analytics_sync", "ai-generation"],
       ["generate_carousel", "carousel"],
       ["render_edit_video", "video-render"],
       ["render_schedule_combination", "video-render"],
+      ["render_wall_text_video", "video-render"],
       ["publish_social_post", "social-publish"],
     ],
   );
 
   assert.equal(getQueueNameForJobType("test_worker_job"), "media-processing");
-  assert.equal(
-    getGcpPubSubTopicNameForJobType("test_worker_job", {}),
-    "ugc-media-processing",
-  );
 });

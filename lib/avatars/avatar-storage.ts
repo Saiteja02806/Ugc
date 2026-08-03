@@ -22,17 +22,22 @@ type AvatarAssetInsert = {
   deleted_at?: string | null;
   description?: string | null;
   duration_seconds?: number | null;
+  has_audio?: boolean;
   height?: number | null;
   id?: string;
+  influencer_key?: string | null;
   metadata?: Json;
   name: string;
   ratio?: AvatarAssetRatio;
   sort_order?: number;
+  source_batch?: string | null;
+  source_file_sha256?: string | null;
   source_s3_key: string;
   source_video_url: string;
   status?: AvatarAssetStatus;
   thumbnail_url?: string | null;
   updated_at?: string;
+  visual_group?: string | null;
   width?: number | null;
 };
 
@@ -77,15 +82,20 @@ type AvatarDatabase = {
 type CreateAvatarAssetInput = {
   description?: string | null;
   durationSeconds?: number | null;
+  hasAudio: boolean;
   height?: number | null;
+  influencerKey: string;
   metadata?: Json;
   name: string;
   ratio?: AvatarAssetRatio;
   sortOrder?: number;
+  sourceBatch: string;
+  sourceFileSha256: string;
   sourceS3Key: string;
   sourceVideoUrl: string;
   status?: AvatarAssetStatus;
   thumbnailUrl?: string | null;
+  visualGroup: string;
   width?: number | null;
 };
 
@@ -153,16 +163,21 @@ export async function createAvatarAsset(input: CreateAvatarAssetInput) {
       avatar_type: "global",
       description: input.description ?? null,
       duration_seconds: input.durationSeconds ?? null,
+      has_audio: input.hasAudio,
       height: input.height ?? null,
+      influencer_key: input.influencerKey.trim(),
       metadata: input.metadata ?? {},
       name: input.name.trim(),
       ratio: input.ratio ?? "9:16",
       sort_order: input.sortOrder ?? 0,
+      source_batch: input.sourceBatch.trim(),
+      source_file_sha256: input.sourceFileSha256.trim().toLowerCase(),
       source_s3_key: input.sourceS3Key.trim(),
       source_video_url: input.sourceVideoUrl.trim(),
       status: input.status ?? "ready",
       thumbnail_url: input.thumbnailUrl ?? null,
       updated_at: now,
+      visual_group: input.visualGroup.trim(),
       width: input.width ?? null,
     })
     .select("*")

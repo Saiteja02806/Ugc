@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       return Response.json(
         {
           ok: false,
-          error: "Only raw Creative Assets videos can be opened in Edit.",
+          error: "Only raw Creative Assets videos can be edited.",
         },
         { status: 400 },
       );
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    return editVideoErrorResponse(error, "Could not open this video in Edit.");
+    return editVideoErrorResponse(error, "Could not open this video in the editor.");
   }
 }
 

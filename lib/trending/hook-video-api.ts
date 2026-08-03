@@ -9,6 +9,7 @@ import {
 } from "@/lib/firebase/server-auth";
 import { HookVideoSourceError } from "@/lib/trending/hook-video-sources";
 import { HookVideoSelectionError } from "@/lib/trending/hook-video-service";
+import { TrendingCreativeEditAccessError } from "@/lib/trending/creative-edits";
 
 export type AuthenticatedHookVideoRequest =
   | { ok: true; user: VerifiedFirebaseUser }
@@ -66,6 +67,10 @@ export function hookVideoErrorResponse(
   }
 
   if (error instanceof HookVideoSelectionError) {
+    return hookVideoJson({ error: error.message, ok: false }, error.status);
+  }
+
+  if (error instanceof TrendingCreativeEditAccessError) {
     return hookVideoJson({ error: error.message, ok: false }, error.status);
   }
 

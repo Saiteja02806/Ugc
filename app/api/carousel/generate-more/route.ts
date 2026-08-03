@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import {
   enqueueCarouselGenerationJob,
   getMissingCarouselGenerationEnvVars,
-} from "@/lib/carousel/aws-generation";
+} from "@/lib/carousel/generation-jobs";
 import { getCarouselCandidateAngles } from "@/lib/carousel/candidate-angles";
 import { resolveCarouselCategoryProfile } from "@/lib/carousel/category-profile-resolver";
 import {

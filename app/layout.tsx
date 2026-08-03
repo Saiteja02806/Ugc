@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 
 import { AuthProvider } from "@/contexts/auth-context";
+import { JobQueryProvider } from "@/components/providers/job-query-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import {
+  isProductionThemeLocked,
+  THEME_STORAGE_KEY,
+} from "@/lib/theme";
 
 import "./globals.css";
 
@@ -38,6 +44,13 @@ const geistEditOverlay = localFont({
   weight: "600",
 });
 
+const interWallText = localFont({
+  src: "../node_modules/@fontsource/inter/files/inter-latin-700-normal.woff2",
+  display: "swap",
+  variable: "--font-wall-text",
+  weight: "700",
+});
+
 export const metadata: Metadata = {
   title: {
     default: "UGC Pilot",
@@ -47,6 +60,25 @@ export const metadata: Metadata = {
     "Create Instagram Reel hooks, text-led videos, carousel posts, and approved publishing workflows in one focused workspace.",
 };
 
+const forceDarkTheme = isProductionThemeLocked(process.env.VERCEL_ENV);
+
+const themeInitializationScript = `(() => {
+  const forceDark = ${JSON.stringify(forceDarkTheme)};
+  try {
+    const savedTheme = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
+    const theme = forceDark || savedTheme === "dark" ? "dark" : "light";
+    const root = document.documentElement;
+    root.classList.toggle("dark", theme === "dark");
+    root.dataset.theme = theme;
+    root.style.colorScheme = theme;
+  } catch {
+    const theme = forceDark ? "dark" : "light";
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+  }
+})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -55,12 +87,25 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} h-full`}
+      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} h-full${forceDarkTheme ? " dark" : ""}`}
+      data-theme={forceDarkTheme ? "dark" : undefined}
+      style={forceDarkTheme ? { colorScheme: "dark" } : undefined}
+      suppressHydrationWarning
     >
+      <head>
+        <script
+          id="ugc-pilot-theme"
+          dangerouslySetInnerHTML={{ __html: themeInitializationScript }}
+        />
+      </head>
       <body
         className={`${geistSans.className} min-h-full bg-background text-foreground antialiased`}
       >
-        <AuthProvider>{children}</AuthProvider>
+        <ThemeProvider forceDark={forceDarkTheme}>
+          <AuthProvider>
+            <JobQueryProvider>{children}</JobQueryProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

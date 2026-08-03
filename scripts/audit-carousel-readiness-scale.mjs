@@ -544,7 +544,7 @@ function buildReport({
     fullRender: {
       status: "not_run",
       reason:
-        "This script intentionally runs Stage A only: no SQS, ECS, S3 upload, CloudFront, or frontend render test.",
+        "This script intentionally runs Stage A only: no Cloud Task, Cloud Run, GCS upload, CDN, or frontend render test.",
       nextBatches: [10, 25, 100],
     },
     inventory,
@@ -578,7 +578,7 @@ function buildReport({
       workerDeployment: {
         status: "not_checked",
         reason:
-          "Live ECS deployment verification requires the separate AWS deployment/check step.",
+          "Live Cloud Run deployment verification requires a separate production check.",
       },
     },
   };
@@ -680,7 +680,7 @@ function buildMarkdownReport(report) {
     `Matcher: ${report.versions.matcher}`,
     `Renderer: ${report.versions.renderer}`,
     `Safety policy: ${report.versions.safetyPolicy}`,
-    `Live ECS worker: ${report.versions.workerDeployment.status}`,
+    `Live Cloud Run worker: ${report.versions.workerDeployment.status}`,
     "",
     "## 11. Problems Found",
     "",
@@ -770,7 +770,7 @@ function formatFixes(report) {
   }
 
   if (report.versions.workerDeployment.status !== "checked") {
-    fixes.push("- Verify live ECS worker version before declaring production-ready.");
+    fixes.push("- Verify the live Cloud Run worker version before declaring production-ready.");
   }
 
   if (fixes.length === 0) {
@@ -1110,7 +1110,7 @@ function scenario(value) {
 
 function mapReadyAsset(row) {
   return {
-    baseS3Key: row.base_s3_key,
+    baseObjectKey: row.base_s3_key,
     baseUrl: row.base_url,
     bestForSlideTypes: row.best_for_slide_types,
     bucketType: row.bucket_type,

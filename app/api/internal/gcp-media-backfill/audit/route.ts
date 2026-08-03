@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import {
   auditAwsMediaForGcpBackfill,
   getMissingAwsMediaBackfillAuditEnvVars,
-} from "@/lib/internal/aws-media-backfill-audit";
+} from "@/lib/internal/legacy-cloud-media-audit";
 import {
   getMissingGcpCutoverAuditAuthEnvVars,
   verifyGcpCutoverAuditRequest,
@@ -12,7 +12,7 @@ import {
   GCP_CUTOVER_AUDIT_SIGNATURE_HEADER,
   GCP_CUTOVER_AUDIT_TIMESTAMP_HEADER,
 } from "@/lib/internal/gcp-cutover-audit-signature";
-import { getStorageProviderName } from "@/lib/storage/s3";
+import { getStorageProviderName } from "@/lib/storage/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

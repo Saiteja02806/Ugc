@@ -1,8 +1,11 @@
 export type PlanSlug = "creator" | "pro";
 
 export type PricingPlan = {
+  badgeLabel?: string;
+  bestFor: string;
   billingText: string;
   buttonLabel: string;
+  capacityLabel: string;
   description: string;
   features: string[];
   highlighted?: boolean;
@@ -13,37 +16,51 @@ export type PricingPlan = {
   videoCredits: number;
 };
 
+const usdPriceFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
+export function formatPricingAmount(amount: number) {
+  return usdPriceFormatter.format(amount);
+}
+
 export const pricingPlans: PricingPlan[] = [
   {
     slug: "creator",
     name: "Creator",
-    description: "For focused creators building a consistent content rhythm.",
+    bestFor: "Solo creators",
+    description: "For creators publishing on a consistent weekly schedule.",
     monthlyPrice: 19,
     billingText: "per month",
     imageCredits: 200,
     videoCredits: 200,
     highlighted: true,
-    buttonLabel: "Choose Creator",
+    badgeLabel: "Most popular",
+    buttonLabel: "Start with Creator",
+    capacityLabel: "Steady weekly output",
     features: [
       "Watermark-free exports",
       "Commercial usage",
-      "Monthly credit renewal",
+      "Credits renew every month",
     ],
   },
   {
     slug: "pro",
     name: "Pro",
-    description: "For teams producing more image and video variations.",
+    bestFor: "Teams & studios",
+    description: "For higher-volume campaigns, testing, and creative variants.",
     monthlyPrice: 49,
     billingText: "per month",
     imageCredits: 600,
     videoCredits: 600,
-    buttonLabel: "Choose Pro",
+    buttonLabel: "Start with Pro",
+    capacityLabel: "3x Creator capacity",
     features: [
       "Watermark-free exports",
       "Commercial usage",
-      "Monthly credit renewal",
-      "Higher generation capacity",
+      "Credits renew every month",
     ],
   },
 ];

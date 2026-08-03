@@ -15,7 +15,7 @@ export type SocialPublishRetryClaim = {
 
 type PublishRetryDeliveryDependencies = {
   attachMessage: (params: {
-    awsMessageId: string;
+    queueMessageId: string;
     jobId: string;
   }) => Promise<unknown>;
   reportError?: (
@@ -54,7 +54,7 @@ export async function deliverSocialPublishRetry(
 
   try {
     await dependencies.attachMessage({
-      awsMessageId: message.messageId,
+      queueMessageId: message.messageId,
       jobId: claim.jobId,
     });
   } catch (error) {

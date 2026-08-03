@@ -1,8 +1,12 @@
-import { createServer, type Server } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from "node:http";
 
 import { loadWorkerConfig } from "./config.js";
 import { getErrorMessage, logger } from "./logger.js";
-import { createWorkerQueueTransport } from "./lib/queue.js";
 import { createSupabaseJobStore } from "./lib/supabase.js";
 import {
   CAROUSEL_IMAGE_SAFETY_POLICY_VERSION,
@@ -17,8 +21,8 @@ import { CAROUSEL_RENDERER_VERSION } from "./lib/carousel-render-slide.js";
 import { getCarouselFontRuntimeInfo } from "./lib/carousel-font-runtime.js";
 import {
   processRecoveredWorkerJob,
-  processWorkerMessage,
 } from "./processor.js";
+import { parseWorkerDeliveryMessage } from "./lib/queue-message.js";
 
 let shouldStop = false;
 
@@ -34,21 +38,27 @@ void main().catch((error) => {
 
 async function main() {
   const config = loadWorkerConfig();
-  const healthServer = await startWorkerHealthServer();
-  const queue = createWorkerQueueTransport(config);
   const store = createSupabaseJobStore({
     supabaseServiceRoleKey: config.supabaseServiceRoleKey,
     supabaseUrl: config.supabaseUrl,
   });
+  const oneShotJobId = process.env.BACKGROUND_JOB_ID?.trim();
+
+  if (oneShotJobId) {
+    await runOneShotBackgroundJob({ config, jobId: oneShotJobId, store });
+    return;
+  }
+
+  if (config.workerRunOnce) {
+    throw new Error("WORKER_RUN_ONCE requires BACKGROUND_JOB_ID.");
+  }
+
+  const healthServer = await startWorkerHttpServer({ config, store });
 
   logger.info("UGC worker started", {
     allowedJobTypes: config.allowedJobTypes,
-    hasWorkerQueueUrl: Boolean(config.queueUrl),
-    pollMaxMessages: config.pollMaxMessages,
-    pollWaitTimeSeconds: config.pollWaitTimeSeconds,
-    pubsubSubscriptionName: config.pubsubSubscriptionName,
     queueName: config.queueName,
-    queueProvider: queue.providerName,
+    queueProvider: "cloud-tasks",
     runOnce: config.workerRunOnce,
     socialReconciliationBatchSize: config.socialReconciliationBatchSize,
     socialReconciliationEnabled: config.socialReconciliationEnabled,
@@ -71,65 +81,8 @@ async function main() {
     carouselRendererVersion: CAROUSEL_RENDERER_VERSION,
   });
 
-  let nextSocialReconciliationAt = 0;
-
   try {
-    while (!shouldStop) {
-      try {
-        if (
-          config.socialReconciliationEnabled &&
-          config.allowedJobTypes.includes("publish_social_post") &&
-          Date.now() >= nextSocialReconciliationAt
-        ) {
-          nextSocialReconciliationAt =
-            Date.now() + config.socialReconciliationIntervalSeconds * 1_000;
-          await reconcileDueSocialPublishJobs({ config, store }).catch((error) => {
-            logger.error("Social schedule reconciliation failed", {
-              error: getErrorMessage(error),
-            });
-          });
-        }
-
-        const messages = await queue.receiveMessages();
-
-        if (messages.length === 0) {
-          logger.debug("No worker messages received");
-
-          if (config.workerRunOnce) {
-            break;
-          }
-
-          continue;
-        }
-
-        for (const message of messages) {
-          if (shouldStop) {
-            break;
-          }
-
-          await processWorkerMessage({
-            config,
-            message,
-            queue,
-            store,
-          });
-        }
-
-        if (config.workerRunOnce) {
-          break;
-        }
-      } catch (error) {
-        logger.error("Worker polling iteration failed", {
-          error: getErrorMessage(error),
-        });
-
-        if (config.workerRunOnce) {
-          throw error;
-        }
-
-        await sleep(5_000);
-      }
-    }
+    await waitForShutdown();
 
     logger.info("UGC worker stopped", {
       workerId: config.workerId,
@@ -139,41 +92,48 @@ async function main() {
   }
 }
 
-async function reconcileDueSocialPublishJobs(params: {
+async function runOneShotBackgroundJob(params: {
   config: ReturnType<typeof loadWorkerConfig>;
+  jobId: string;
   store: ReturnType<typeof createSupabaseJobStore>;
 }) {
-  const staleAfterSeconds = Math.max(
-    60,
-    Math.min(43_200, params.config.visibilityTimeoutSeconds * 2),
-  );
-  const normalizedCount = await params.store.reconcileSocialScheduleState({
-    limit: params.config.socialReconciliationBatchSize,
-    staleAfterSeconds: Math.min(staleAfterSeconds, 3_600),
-  });
-  const jobIds = await params.store.listDueSocialPublishJobIds({
-    limit: params.config.socialReconciliationBatchSize,
-    staleAfterSeconds,
-  });
+  const expectedJobType = process.env.BACKGROUND_JOB_TYPE?.trim();
+  const job = await params.store.getJobById(params.jobId);
 
-  if (normalizedCount > 0 || jobIds.length > 0) {
-    logger.info("Social schedule reconciliation found recovery work", {
-      dueJobCount: jobIds.length,
-      normalizedScheduleCount: normalizedCount,
+  if (!job) {
+    logger.warn("Cloud Run Job referenced a missing background job", {
+      jobId: params.jobId,
     });
+    return;
   }
 
-  for (const jobId of jobIds) {
-    if (shouldStop) {
-      break;
-    }
-
-    await processRecoveredWorkerJob({
-      config: params.config,
-      jobId,
-      store: params.store,
-    });
+  if (expectedJobType && job.job_type !== expectedJobType) {
+    throw new Error(
+      `Cloud Run Job type ${expectedJobType} does not match stored type ${job.job_type}.`,
+    );
   }
+
+  await processRecoveredWorkerJob({
+    config: params.config,
+    jobId: job.id,
+    store: params.store,
+  });
+
+  const latestJob = await params.store.getJobById(job.id);
+
+  if (
+    latestJob &&
+    !["cancelled", "completed", "failed", "queued"].includes(latestJob.status)
+  ) {
+    throw new Error(
+      `Cloud Run Job exited while durable job remained ${latestJob.status}.`,
+    );
+  }
+
+  logger.info("Cloud Run Job execution finished", {
+    jobId: job.id,
+    status: latestJob?.status ?? "missing",
+  });
 }
 
 function requestShutdown(signal: string) {
@@ -189,7 +149,10 @@ function sleep(ms: number) {
   });
 }
 
-async function startWorkerHealthServer() {
+async function startWorkerHttpServer(params: {
+  config: ReturnType<typeof loadWorkerConfig>;
+  store: ReturnType<typeof createSupabaseJobStore>;
+}) {
   const rawPort =
     process.env.WORKER_HTTP_PORT?.trim() || process.env.PORT?.trim();
 
@@ -207,6 +170,24 @@ async function startWorkerHealthServer() {
     if (request.url === "/" || request.url === "/healthz") {
       response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
       response.end("ok\n");
+      return;
+    }
+
+    if (request.url === "/tasks/jobs" && request.method === "POST") {
+      void handleBackgroundJobTask(request, response, params).catch((error) => {
+        logger.error("Unhandled Cloud Tasks request error", {
+          error: getErrorMessage(error),
+        });
+
+        if (!response.headersSent) {
+          writeJsonResponse(response, 500, {
+            error: "Background job task failed.",
+            ok: false,
+          });
+        } else if (!response.writableEnded) {
+          response.end();
+        }
+      });
       return;
     }
 
@@ -229,11 +210,141 @@ async function startWorkerHealthServer() {
     server.listen(port, "0.0.0.0");
   });
 
-  logger.info("Worker health server started", {
+  logger.info("Worker HTTP server started", {
     port,
   });
 
   return server;
+}
+
+async function handleBackgroundJobTask(
+  request: IncomingMessage,
+  response: ServerResponse,
+  params: {
+    config: ReturnType<typeof loadWorkerConfig>;
+    store: ReturnType<typeof createSupabaseJobStore>;
+  },
+) {
+  const body = await readRequestBody(request);
+  const taskName = getHeader(request.headers["x-cloudtasks-taskname"]);
+  let payload;
+
+  try {
+    payload = parseWorkerDeliveryMessage({
+      body,
+      id: taskName || "cloud-task",
+      providerName: "gcp",
+    });
+  } catch (error) {
+    logger.warn("Rejected invalid Cloud Tasks payload", {
+      error: getErrorMessage(error),
+      taskName,
+    });
+    writeJsonResponse(response, 400, {
+      error: getErrorMessage(error),
+      ok: false,
+    });
+    return;
+  }
+
+  if (payload.schemaVersion !== undefined && payload.schemaVersion !== 1) {
+    writeJsonResponse(response, 400, {
+      error: "Unsupported background job task schema version.",
+      ok: false,
+    });
+    return;
+  }
+
+  const job = await params.store.getJobById(payload.jobId);
+
+  if (!job) {
+    logger.warn("Cloud Task referenced a missing background job", {
+      jobId: payload.jobId,
+      taskName,
+    });
+    writeJsonResponse(response, 200, { dropped: true, ok: true });
+    return;
+  }
+
+  if (job.job_type !== payload.jobType) {
+    writeJsonResponse(response, 400, {
+      error: "Task job type does not match the durable job record.",
+      ok: false,
+    });
+    return;
+  }
+
+  const completed = await processRecoveredWorkerJob({
+    config: params.config,
+    jobId: job.id,
+    store: params.store,
+  });
+  const latestJob = await params.store.getJobById(job.id);
+
+  if (
+    completed ||
+    !latestJob ||
+    ["cancelled", "completed", "failed"].includes(latestJob.status)
+  ) {
+    writeJsonResponse(response, 200, {
+      jobId: job.id,
+      ok: true,
+      status: latestJob?.status ?? "missing",
+    });
+    return;
+  }
+
+  writeJsonResponse(response, 503, {
+    error: "The durable job is not ready to execute yet.",
+    jobId: job.id,
+    ok: false,
+    status: latestJob.status,
+  });
+}
+
+function readRequestBody(
+  request: IncomingMessage,
+) {
+  return new Promise<string>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let bytes = 0;
+
+    request.on("data", (chunk: Buffer) => {
+      bytes += chunk.length;
+
+      if (bytes > 1_000_000) {
+        reject(new Error("Background job task body is too large."));
+        request.destroy();
+        return;
+      }
+
+      chunks.push(chunk);
+    });
+    request.once("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    request.once("error", reject);
+  });
+}
+
+function writeJsonResponse(
+  response: ServerResponse,
+  status: number,
+  body: Record<string, unknown>,
+) {
+  response.writeHead(status, {
+    "cache-control": "no-store",
+    "content-type": "application/json; charset=utf-8",
+  });
+  response.end(`${JSON.stringify(body)}\n`);
+}
+
+function getHeader(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] || "" : value || "";
+}
+
+async function waitForShutdown() {
+  while (!shouldStop) {
+    await sleep(1_000);
+  }
 }
 
 async function stopWorkerHealthServer(server: Server | null) {

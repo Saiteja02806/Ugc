@@ -1,113 +1,96 @@
 import type { BackgroundJobType } from "@/lib/jobs/background-jobs";
 import { getMissingVercelGcpCredentialEnvVars } from "../gcp/credentials.ts";
 
-export type QueueProviderName = "aws" | "gcp";
+export type QueueProviderName = "gcp";
 
 type QueueConfig = {
-  awsQueueUrlEnvName: string;
-  gcpTopicEnvName: string;
-  gcpTopicName: string;
   queueName: string;
 };
 
 const jobQueueConfig = {
+  analytics_sync: {
+    queueName: "ai-generation",
+  },
+  carousel_generation: {
+    queueName: "carousel",
+  },
+  final_render: {
+    queueName: "video-render",
+  },
   generate_avatar: {
-    awsQueueUrlEnvName: "UGC_AI_GENERATION_QUEUE_URL",
-    gcpTopicEnvName: "UGC_AI_GENERATION_PUBSUB_TOPIC",
-    gcpTopicName: "ugc-ai-generation",
     queueName: "ai-generation",
   },
   generate_carousel: {
-    awsQueueUrlEnvName: "UGC_CAROUSEL_QUEUE_URL",
-    gcpTopicEnvName: "UGC_CAROUSEL_PUBSUB_TOPIC",
-    gcpTopicName: "ugc-carousel",
     queueName: "carousel",
   },
   generate_hook_video: {
-    awsQueueUrlEnvName: "UGC_AI_GENERATION_QUEUE_URL",
-    gcpTopicEnvName: "UGC_AI_GENERATION_PUBSUB_TOPIC",
-    gcpTopicName: "ugc-ai-generation",
     queueName: "ai-generation",
   },
   generate_image: {
-    awsQueueUrlEnvName: "UGC_AI_GENERATION_QUEUE_URL",
-    gcpTopicEnvName: "UGC_AI_GENERATION_PUBSUB_TOPIC",
-    gcpTopicName: "ugc-ai-generation",
     queueName: "ai-generation",
   },
+  generate_thumbnail: {
+    queueName: "media-processing",
+  },
+  generate_trending_hook_copy: {
+    queueName: "ai-generation",
+  },
+  extract_video_metadata: {
+    queueName: "media-processing",
+  },
+  hook_text_generation: {
+    queueName: "ai-generation",
+  },
+  image_generation: {
+    queueName: "ai-generation",
+  },
+  media_analysis: {
+    queueName: "ai-generation",
+  },
+  preview_render: {
+    queueName: "video-render",
+  },
   publish_social_post: {
-    awsQueueUrlEnvName: "UGC_SOCIAL_PUBLISH_QUEUE_URL",
-    gcpTopicEnvName: "UGC_SOCIAL_PUBLISH_PUBSUB_TOPIC",
-    gcpTopicName: "ugc-social-publish",
     queueName: "social-publish",
   },
+  render_demo_video: {
+    queueName: "video-render",
+  },
   render_edit_video: {
-    awsQueueUrlEnvName: "UGC_VIDEO_RENDER_QUEUE_URL",
-    gcpTopicEnvName: "UGC_VIDEO_RENDER_PUBSUB_TOPIC",
-    gcpTopicName: "ugc-video-render",
     queueName: "video-render",
   },
   render_schedule_combination: {
-    awsQueueUrlEnvName: "UGC_VIDEO_RENDER_QUEUE_URL",
-    gcpTopicEnvName: "UGC_VIDEO_RENDER_PUBSUB_TOPIC",
-    gcpTopicName: "ugc-video-render",
     queueName: "video-render",
   },
+  render_trending_carousel_edit: {
+    queueName: "carousel",
+  },
+  render_wall_text_video: {
+    queueName: "video-render",
+  },
+  social_publish: {
+    queueName: "social-publish",
+  },
   test_worker_job: {
-    awsQueueUrlEnvName: "UGC_MEDIA_PROCESSING_QUEUE_URL",
-    gcpTopicEnvName: "UGC_MEDIA_PROCESSING_PUBSUB_TOPIC",
-    gcpTopicName: "ugc-media-processing",
     queueName: "media-processing",
+  },
+  video_generation: {
+    queueName: "ai-generation",
+  },
+  wall_text_generation: {
+    queueName: "ai-generation",
   },
 } satisfies Record<BackgroundJobType, QueueConfig>;
 
 export function getQueueProviderName(
-  env: Record<string, string | undefined> = process.env,
+  _env: Record<string, string | undefined> = process.env,
 ): QueueProviderName {
-  const rawValue =
-    env.QUEUE_PROVIDER?.trim() ||
-    env.UGC_QUEUE_PROVIDER?.trim() ||
-    "aws";
-  const normalizedValue = rawValue.toLowerCase();
-
-  if (normalizedValue === "aws" || normalizedValue === "sqs") {
-    return "aws";
-  }
-
-  if (
-    normalizedValue === "gcp" ||
-    normalizedValue === "google" ||
-    normalizedValue === "pubsub"
-  ) {
-    return "gcp";
-  }
-
-  throw new Error(
-    `Invalid QUEUE_PROVIDER: ${rawValue}. Expected aws or gcp.`,
-  );
+  void _env;
+  return "gcp";
 }
 
 export function getQueueNameForJobType(jobType: BackgroundJobType) {
   return getQueueConfig(jobType).queueName;
-}
-
-export function getAwsQueueUrlEnvNameForJobType(jobType: BackgroundJobType) {
-  return getQueueConfig(jobType).awsQueueUrlEnvName;
-}
-
-export function getGcpPubSubTopicEnvNameForJobType(
-  jobType: BackgroundJobType,
-) {
-  return getQueueConfig(jobType).gcpTopicEnvName;
-}
-
-export function getGcpPubSubTopicNameForJobType(
-  jobType: BackgroundJobType,
-  env: Record<string, string | undefined> = process.env,
-) {
-  const config = getQueueConfig(jobType);
-
-  return env[config.gcpTopicEnvName]?.trim() || config.gcpTopicName;
 }
 
 export function getGcpProjectId(
@@ -122,55 +105,27 @@ export function getGcpProjectId(
 }
 
 export function getMissingQueueEnvVars(
-  jobTypes?: BackgroundJobType[],
+  _jobTypes?: BackgroundJobType[],
   env: Record<string, string | undefined> = process.env,
 ) {
-  return getQueueProviderName(env) === "gcp"
-    ? getMissingGcpQueueEnvVars(env)
-    : getMissingAwsQueueEnvVars(jobTypes, env);
+  return getMissingGcpQueueEnvVars(env);
 }
 
 export function buildJobMessageBody(params: {
+  attempt?: number;
   jobId: string;
   jobType: BackgroundJobType;
 }) {
   return JSON.stringify({
+    attempt: params.attempt ?? 0,
     jobId: params.jobId,
     jobType: params.jobType,
+    schemaVersion: 1,
   });
 }
 
 function getQueueConfig(jobType: BackgroundJobType) {
   return jobQueueConfig[jobType];
-}
-
-function getMissingAwsQueueEnvVars(
-  jobTypes?: BackgroundJobType[],
-  env: Record<string, string | undefined> = process.env,
-) {
-  const missing = new Set<string>();
-
-  if (!env.AWS_REGION?.trim()) {
-    missing.add("AWS_REGION");
-  }
-
-  if (!hasAppSqsCredentials(env)) {
-    missing.add(
-      "AWS_APP_ENQUEUE_ACCESS_KEY_ID/AWS_APP_ENQUEUE_SECRET_ACCESS_KEY or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY",
-    );
-  }
-
-  for (const jobType of jobTypes ?? Object.keys(jobQueueConfig)) {
-    const envName = getAwsQueueUrlEnvNameForJobType(
-      jobType as BackgroundJobType,
-    );
-
-    if (!env[envName]?.trim()) {
-      missing.add(envName);
-    }
-  }
-
-  return Array.from(missing);
 }
 
 function getMissingGcpQueueEnvVars(
@@ -187,16 +142,4 @@ function getMissingGcpQueueEnvVars(
   }
 
   return Array.from(missing);
-}
-
-function hasAppSqsCredentials(env: Record<string, string | undefined>) {
-  const hasDedicatedCredentials = Boolean(
-    env.AWS_APP_ENQUEUE_ACCESS_KEY_ID?.trim() &&
-      env.AWS_APP_ENQUEUE_SECRET_ACCESS_KEY?.trim(),
-  );
-  const hasDefaultAwsCredentials = Boolean(
-    env.AWS_ACCESS_KEY_ID?.trim() && env.AWS_SECRET_ACCESS_KEY?.trim(),
-  );
-
-  return hasDedicatedCredentials || hasDefaultAwsCredentials;
 }

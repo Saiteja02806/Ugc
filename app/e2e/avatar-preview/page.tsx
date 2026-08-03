@@ -33,7 +33,7 @@ export default async function AvatarPreviewE2EPage() {
           {avatars.map((avatar) => (
             <article
               key={avatar.id}
-              className="rounded-3xl border border-border bg-white p-3 shadow-sm"
+              className="rounded-3xl border border-border bg-card p-3 shadow-sm"
             >
               <div className="overflow-hidden rounded-2xl bg-[#102033]">
                 <video

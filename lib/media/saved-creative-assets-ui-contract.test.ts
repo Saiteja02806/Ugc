@@ -51,6 +51,25 @@ test("Saved category controls stay readable on narrow screens", () => {
   assert.match(savedTab, /w-full justify-start/);
 });
 
+test("saved carousel cards use a compact grid without thumbnail letterboxing", () => {
+  const cardSource = carouselLibrary.slice(
+    carouselLibrary.indexOf("function LibraryCarouselCard"),
+    carouselLibrary.indexOf("function LibraryCarouselViewer"),
+  );
+
+  assert.match(
+    carouselLibrary,
+    /grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5/,
+  );
+  assert.doesNotMatch(cardSource, /max-h-\[440px\]/);
+  assert.match(cardSource, /size-full object-cover/);
+  assert.doesNotMatch(cardSource, /object-contain/);
+  assert.match(cardSource, /onClick=\{onView\}/);
+  assert.match(cardSource, /onClick=\{onSchedule\}/);
+  assert.match(cardSource, />\s*Preview\s*</);
+  assert.match(cardSource, />\s*Schedule\s*</);
+});
+
 test("Content Library is dedicated to compact demo footage", () => {
   assert.match(carouselLibrary, /<UploadedPostsTab embeddedInLibrary \/>/);
   assert.doesNotMatch(carouselLibrary, /aria-label="Library sections"/);

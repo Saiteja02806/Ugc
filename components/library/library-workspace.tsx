@@ -379,7 +379,7 @@ export function CarouselLibraryTab({
         {showSkeleton ? (
           <LibraryContentSkeleton />
         ) : items.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {items.map((item) => (
               <LibraryCarouselCard
                 key={item.id}
@@ -544,7 +544,7 @@ function LibraryCarouselCard({
         type="button"
         aria-label={`Preview ${item.title}`}
         onClick={onView}
-        className="relative block aspect-[4/5] max-h-[440px] w-full overflow-hidden bg-foreground-strong text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+        className="relative block aspect-[4/5] w-full overflow-hidden bg-foreground-strong text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card"
       >
         {coverUrl ? (
           // Saved carousel slides are already rendered media assets.
@@ -552,7 +552,7 @@ function LibraryCarouselCard({
           <img
             src={coverUrl}
             alt=""
-            className="size-full object-contain transition-transform duration-200 group-hover:scale-[1.015] motion-reduce:transition-none"
+            className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.015] motion-reduce:transition-none"
           />
         ) : (
           <div className="flex size-full items-center justify-center text-white/70">
@@ -574,21 +574,21 @@ function LibraryCarouselCard({
         ) : null}
       </button>
 
-      <div className="flex flex-col gap-3 p-4">
+      <div className="flex flex-col gap-2.5 p-3">
         <div>
-          <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-foreground-strong">
+          <h3 className="line-clamp-2 min-h-9 text-[13px] font-semibold leading-[18px] text-foreground-strong">
             {item.title}
           </h3>
-          <p className="mt-1 text-xs font-semibold text-muted">
+          <p className="mt-0.5 text-[11px] font-semibold text-muted">
             Saved {formatDate(item.savedAt)}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 border-t border-border pt-3">
+        <div className="flex items-center gap-1.5 border-t border-border pt-2.5">
           <button
             type="button"
             onClick={onView}
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-10"
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-control bg-primary px-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-9"
           >
             <Eye className="size-3.5" aria-hidden="true" />
             Preview
@@ -599,7 +599,7 @@ function LibraryCarouselCard({
             aria-disabled={scheduleBlocked}
             aria-describedby={scheduleBlocked ? scheduleHelpId : undefined}
             className={cn(
-              "inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:min-h-10",
+              "inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-control border border-border bg-card px-2 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:min-h-9",
               scheduleBlocked && "text-muted opacity-75",
             )}
           >
@@ -609,13 +609,13 @@ function LibraryCarouselCard({
         </div>
 
         {scheduleBlocked ? (
-          <p id={scheduleHelpId} className="text-xs font-medium leading-5 text-muted">
+          <p id={scheduleHelpId} className="text-[11px] font-medium leading-4 text-muted">
             Online Library save required before scheduling.
           </p>
         ) : null}
 
         <details className="group/actions">
-          <summary className="flex min-h-10 list-none items-center justify-center gap-1.5 rounded-control text-xs font-semibold text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
+          <summary className="flex min-h-9 list-none items-center justify-center gap-1.5 rounded-control text-xs font-semibold text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
             <MoreHorizontal className="size-3.5" aria-hidden="true" />
             More actions
           </summary>
@@ -744,16 +744,16 @@ function RemoveCarouselDialog({
 function LibraryContentSkeleton() {
   return (
     <div
-      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
+      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
       aria-label="Loading Library content"
     >
-      {Array.from({ length: 4 }, (_, index) => (
+      {Array.from({ length: 5 }, (_, index) => (
         <div
           key={index}
           className="overflow-hidden rounded-card border border-border bg-card"
         >
           <div className="aspect-[4/5] animate-pulse bg-card-muted motion-reduce:animate-none" />
-          <div className="space-y-3 p-4">
+          <div className="flex flex-col gap-2.5 p-3">
             <div className="h-4 w-3/4 animate-pulse rounded bg-card-muted motion-reduce:animate-none" />
             <div className="h-3 w-1/2 animate-pulse rounded bg-surface-subtle motion-reduce:animate-none" />
             <div className="flex gap-2 border-t border-border pt-3">

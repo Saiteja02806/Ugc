@@ -64,6 +64,10 @@ test("analysis retries restore provider output from a job-scoped database row", 
 test("the worker implements every newly migrated Slice 6 job type", () => {
   const config = readFileSync("worker/src/config.ts", "utf8");
   const handlers = readFileSync("worker/src/jobs/index.ts", "utf8");
+  const types = readFileSync("worker/src/types.ts", "utf8");
+
+  assert.match(config, /EXECUTABLE_BACKGROUND_JOB_TYPES/);
+  assert.match(handlers, /EXECUTABLE_BACKGROUND_JOB_TYPES/);
 
   for (const jobType of [
     "analytics_sync",
@@ -71,8 +75,7 @@ test("the worker implements every newly migrated Slice 6 job type", () => {
     "media_analysis",
     "wall_text_generation",
   ]) {
-    assert.match(config, new RegExp(`"${jobType}"`));
-    assert.match(handlers, new RegExp(`"${jobType}"`));
+    assert.match(types, new RegExp(`"${jobType}"`));
   }
 });
 

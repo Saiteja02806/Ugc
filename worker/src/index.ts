@@ -236,6 +236,10 @@ async function handleBackgroundJobTask(
       providerName: "gcp",
     });
   } catch (error) {
+    logger.warn("Rejected invalid Cloud Tasks payload", {
+      error: getErrorMessage(error),
+      taskName,
+    });
     writeJsonResponse(response, 400, {
       error: getErrorMessage(error),
       ok: false,

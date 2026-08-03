@@ -2,7 +2,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { hostname } from "node:os";
 
-import type { BackgroundJobType } from "./types.js";
+import {
+  EXECUTABLE_BACKGROUND_JOB_TYPES,
+  type BackgroundJobType,
+} from "./types.js";
 
 export type WorkerConfig = {
   allowedJobTypes: BackgroundJobType[];
@@ -64,23 +67,9 @@ export function loadWorkerConfig(): WorkerConfig {
   };
 }
 
-const validWorkerJobTypes = new Set<BackgroundJobType>([
-  "analytics_sync",
-  "generate_avatar",
-  "generate_carousel",
-  "generate_hook_video",
-  "generate_image",
-  "generate_trending_hook_copy",
-  "hook_text_generation",
-  "media_analysis",
-  "publish_social_post",
-  "render_edit_video",
-  "render_schedule_combination",
-  "render_trending_carousel_edit",
-  "render_wall_text_video",
-  "test_worker_job",
-  "wall_text_generation",
-]);
+const validWorkerJobTypes = new Set<BackgroundJobType>(
+  EXECUTABLE_BACKGROUND_JOB_TYPES,
+);
 
 function getWorkerJobTypes() {
   const rawValue = process.env.WORKER_JOB_TYPES?.trim();

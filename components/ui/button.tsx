@@ -52,10 +52,8 @@ const buttonVariants = cva(
         "icon-sm":
           "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
-        "creative-icon":
-          "size-14 rounded-full sm:size-16 [&_svg:not([class*='size-'])]:size-6",
-        "creative-edit":
-          "h-10 rounded-full px-4 sm:h-11 sm:px-5 [&_svg:not([class*='size-'])]:size-4",
+        "creative-action":
+          "h-11 min-w-0 gap-1.5 rounded-full px-2.5 text-sm font-semibold sm:h-12 sm:gap-2 sm:px-5 [&_svg:not([class*='size-'])]:size-4.5",
       },
     },
     defaultVariants: {

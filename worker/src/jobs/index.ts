@@ -14,25 +14,16 @@ import { runGenerateHookSuggestionsJob } from "./generate-hook-suggestions.js";
 import { runAnalyticsSyncJob } from "./sync-analytics.js";
 import { runMediaAnalysisJob } from "./process-media-analysis.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
-import type { BackgroundJobRow, BackgroundJobType, Json } from "../types.js";
+import {
+  EXECUTABLE_BACKGROUND_JOB_TYPES,
+  type BackgroundJobRow,
+  type BackgroundJobType,
+  type Json,
+} from "../types.js";
 
-const implementedWorkerJobTypes = new Set<BackgroundJobType>([
-  "generate_avatar",
-  "generate_carousel",
-  "generate_hook_video",
-  "generate_image",
-  "generate_trending_hook_copy",
-  "wall_text_generation",
-  "media_analysis",
-  "hook_text_generation",
-  "analytics_sync",
-  "publish_social_post",
-  "render_edit_video",
-  "render_schedule_combination",
-  "render_trending_carousel_edit",
-  "render_wall_text_video",
-  "test_worker_job",
-]);
+const implementedWorkerJobTypes = new Set<BackgroundJobType>(
+  EXECUTABLE_BACKGROUND_JOB_TYPES,
+);
 
 export async function runWorkerJob(
   job: BackgroundJobRow,

@@ -14,6 +14,8 @@ import {
 import {
   useCallback,
   useEffect,
+  useId,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -590,7 +592,7 @@ export function TrendingCreativeEditor({
           ) : null}
         </ScrollArea>
 
-        <DialogFooter className="m-0 shrink-0 rounded-none px-5 py-4 sm:px-6">
+        <DialogFooter className="m-0 shrink-0 rounded-none bg-card px-5 py-4 sm:px-6">
           <Button
             type="button"
             variant="outline"
@@ -650,6 +652,8 @@ function EditorPreview({
       return null;
     }
 
+    const supportingText = slide.subtext || slide.ctaText;
+
     return (
       <div className="relative mx-auto aspect-[4/5] w-full max-w-[340px] overflow-hidden rounded-xl border border-border bg-foreground-strong shadow-floating [container-type:inline-size]">
         {/* Original background media is retained while edited text is composed. */}
@@ -660,7 +664,6 @@ function EditorPreview({
           draggable={false}
           className="absolute inset-0 size-full object-cover"
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/35" />
         <DraggableOverlay
           ariaLabel={`Move text for slide ${slide.slideNumber}`}
           position={slide.textPosition}
@@ -675,19 +678,13 @@ function EditorPreview({
             })
           }
         >
-          <div className="w-[82cqw] text-center text-white [text-shadow:0_2px_8px_rgb(0_0_0_/_0.75)]">
-            <p className="text-[8.4cqw] font-black leading-[0.98] tracking-[-0.055em]">
-              {slide.headline || "Add a headline"}
-            </p>
-            {slide.subtext ? (
-              <p className="mx-auto mt-[2.5cqw] max-w-[70cqw] text-[3.5cqw] font-semibold leading-[1.2]">
-                {slide.subtext}
-              </p>
-            ) : null}
-            {slide.ctaText ? (
-              <span className="mt-[3cqw] inline-flex rounded-full bg-white px-[3cqw] py-[1.4cqw] text-[2.9cqw] font-bold text-black shadow-sm">
-                {slide.ctaText}
-              </span>
+          <div className="w-[82cqw] text-center">
+            <CarouselBubbleText
+              kind="headline"
+              text={slide.headline || "Add a headline"}
+            />
+            {supportingText ? (
+              <CarouselBubbleText kind="body" text={supportingText} />
             ) : null}
           </div>
         </DraggableOverlay>
@@ -762,6 +759,160 @@ function EditorPreview({
   }
 
   return null;
+}
+
+type CarouselBubbleGeometry = {
+  height: number;
+  rects: Array<{
+    height: number;
+    radius: number;
+    width: number;
+    x: number;
+    y: number;
+  }>;
+  width: number;
+};
+
+function CarouselBubbleText({
+  kind,
+  text,
+}: {
+  kind: "body" | "headline";
+  text: string;
+}) {
+  const containerRef = useRef<HTMLParagraphElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const filterId = `carousel-bubble-shadow-${useId().replace(/:/g, "")}`;
+  const [geometry, setGeometry] = useState<CarouselBubbleGeometry>({
+    height: 0,
+    rects: [],
+    width: 0,
+  });
+
+  const measureBubble = useCallback(() => {
+    const container = containerRef.current;
+    const textElement = textRef.current;
+
+    if (!container || !textElement) {
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    if (containerRect.width <= 0 || containerRect.height <= 0) {
+      return;
+    }
+
+    const paddingX = containerRect.width * (18 / 842.4);
+    const paddingY =
+      containerRect.width * (kind === "headline" ? 7 / 842.4 : 6 / 842.4);
+    const radius = containerRect.width * (20 / 842.4);
+    const nextGeometry: CarouselBubbleGeometry = {
+      height: roundBubbleCoordinate(containerRect.height),
+      rects: Array.from(textElement.getClientRects())
+        .filter((rect) => rect.width > 0 && rect.height > 0)
+        .map((rect) => ({
+          height: roundBubbleCoordinate(rect.height + paddingY * 2),
+          radius: roundBubbleCoordinate(radius),
+          width: roundBubbleCoordinate(rect.width + paddingX * 2),
+          x: roundBubbleCoordinate(rect.left - containerRect.left - paddingX),
+          y: roundBubbleCoordinate(rect.top - containerRect.top - paddingY),
+        })),
+      width: roundBubbleCoordinate(containerRect.width),
+    };
+
+    setGeometry((current) =>
+      hasMatchingBubbleGeometry(current, nextGeometry) ? current : nextGeometry,
+    );
+  }, [kind]);
+
+  useLayoutEffect(() => {
+    measureBubble();
+
+    const container = containerRef.current;
+    if (!container || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(measureBubble);
+    observer.observe(container);
+
+    void document.fonts?.ready.then(measureBubble);
+
+    return () => observer.disconnect();
+  }, [measureBubble, text]);
+
+  return (
+    <p
+      ref={containerRef}
+      className={cn(
+        "relative isolate mx-auto max-w-[78cqw] text-center text-[#111316]",
+        kind === "headline"
+          ? "text-[5cqw] font-bold leading-[1.04]"
+          : "mt-[2.2cqw] text-[3.5cqw] font-semibold leading-[1.05]",
+      )}
+    >
+      {geometry.width > 0 && geometry.height > 0 ? (
+        <svg
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 size-full overflow-visible"
+          viewBox={`0 0 ${geometry.width} ${geometry.height}`}
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <filter id={filterId} x="-25%" y="-35%" width="150%" height="170%">
+              <feDropShadow
+                dx="0"
+                dy="1.5"
+                stdDeviation="2.5"
+                floodColor="#000000"
+                floodOpacity="0.16"
+              />
+            </filter>
+          </defs>
+          <g filter={`url(#${filterId})`}>
+            {geometry.rects.map((rect, index) => (
+              <rect
+                key={index}
+                fill="#ffffff"
+                height={rect.height}
+                rx={rect.radius}
+                width={rect.width}
+                x={rect.x}
+                y={rect.y}
+              />
+            ))}
+          </g>
+        </svg>
+      ) : null}
+      <span ref={textRef}>{text}</span>
+    </p>
+  );
+}
+
+function roundBubbleCoordinate(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+function hasMatchingBubbleGeometry(
+  current: CarouselBubbleGeometry,
+  next: CarouselBubbleGeometry,
+) {
+  return (
+    current.height === next.height &&
+    current.width === next.width &&
+    current.rects.length === next.rects.length &&
+    current.rects.every((rect, index) => {
+      const nextRect = next.rects[index];
+      return (
+        nextRect !== undefined &&
+        rect.height === nextRect.height &&
+        rect.radius === nextRect.radius &&
+        rect.width === nextRect.width &&
+        rect.x === nextRect.x &&
+        rect.y === nextRect.y
+      );
+    })
+  );
 }
 
 function getHookEditorLayout(
@@ -1168,6 +1319,9 @@ function EditorFields({
               maxLength={120}
               onChange={(event) => updateSlide("ctaText", event.target.value)}
             />
+            <FieldDescription>
+              Rendered when Supporting text is empty.
+            </FieldDescription>
           </Field>
         </FieldGroup>
       </div>

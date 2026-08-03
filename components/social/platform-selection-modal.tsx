@@ -710,24 +710,19 @@ export function PlatformSelectionModal({
             aria-hidden="true"
           />
           <DialogHeader className="relative gap-3 px-5 pb-4 pr-14 pt-5 sm:px-7 sm:pb-5 sm:pr-16 sm:pt-6">
-            <div className="flex items-start gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] text-white shadow-[0_10px_24px_rgb(214_41_118_/_0.18)]">
-                <SocialPlatformIcon platform="instagram" className="size-5" />
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                Instagram carousel
+              </p>
+              <DialogTitle className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
+                {currentStep.title}
+              </DialogTitle>
+              <DialogDescription className="mt-1 leading-5">
+                {currentStep.description}
+              </DialogDescription>
+              <span className="sr-only">
+                Step {currentStep.number} of 4
               </span>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-                  Instagram carousel
-                </p>
-                <DialogTitle className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
-                  {currentStep.title}
-                </DialogTitle>
-                <DialogDescription className="mt-1 leading-5">
-                  {currentStep.description}
-                </DialogDescription>
-                <span className="sr-only">
-                  Step {currentStep.number} of 4
-                </span>
-              </div>
             </div>
 
             <ol

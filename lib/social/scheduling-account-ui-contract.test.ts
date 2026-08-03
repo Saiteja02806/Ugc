@@ -11,6 +11,10 @@ const carouselModal = readProjectFile(
 const reelDrawer = readProjectFile(
   "components/trending/hook-video-schedule-drawer.tsx",
 );
+const carouselHeader = carouselModal.slice(
+  carouselModal.indexOf("<DialogHeader"),
+  carouselModal.indexOf("</DialogHeader>") + "</DialogHeader>".length,
+);
 
 test("scheduling account rows render the returned profile picture with fallback", () => {
   assert.match(avatar, /connection\.profilePictureUrl/);
@@ -29,6 +33,13 @@ test("Carousel scheduling reserves a visible footer row at short heights", () =>
   assert.match(carouselModal, /overflow-y-auto overscroll-contain/);
   assert.doesNotMatch(carouselModal, /sm:min-h-\[360px\]/);
   assert.match(carouselModal, /<DialogFooter className="[^"]*shrink-0/);
+});
+
+test("Carousel scheduling keeps the header text-only without a redundant Instagram logo", () => {
+  assert.match(carouselHeader, /Instagram carousel/);
+  assert.match(carouselHeader, /\{currentStep\.title\}/);
+  assert.doesNotMatch(carouselHeader, /<SocialPlatformIcon/);
+  assert.match(carouselModal, /<SocialAccountAvatar connection=\{connection\}/);
 });
 
 function readProjectFile(relativePath: string) {

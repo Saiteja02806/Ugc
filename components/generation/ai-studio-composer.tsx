@@ -26,6 +26,7 @@ export function AiStudioComposer({
   generateLabel,
   generationLocked,
   isGenerating,
+  layout = "standard",
   leadingControl,
   maxLength,
   name,
@@ -44,6 +45,7 @@ export function AiStudioComposer({
   generateLabel: string;
   generationLocked: boolean;
   isGenerating: boolean;
+  layout?: "standard" | "unified";
   leadingControl?: ReactNode;
   maxLength: number;
   name: string;
@@ -70,18 +72,36 @@ export function AiStudioComposer({
     }
 
     textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 64), 128)}px`;
-  }, [active, prompt]);
+    const minimumHeight = layout === "unified" ? 112 : 64;
+    const maximumHeight = layout === "unified" ? 240 : 128;
+    textarea.style.height = `${Math.min(
+      Math.max(textarea.scrollHeight, minimumHeight),
+      maximumHeight,
+    )}px`;
+  }, [active, layout, prompt]);
 
   return (
     <div className="sticky bottom-0 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
       <form
+        data-layout={layout}
         noValidate
         onSubmit={onSubmit}
-        className="mx-auto w-full max-w-[1024px] rounded-[var(--radius-panel)] border border-border bg-card p-2.5 shadow-floating sm:p-3"
+        className={cn(
+          "mx-auto w-full max-w-[1024px] border bg-card shadow-floating",
+          layout === "unified"
+            ? "rounded-[24px] border-border-strong p-0 transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20"
+            : "rounded-[var(--radius-panel)] border-border p-2.5 sm:p-3",
+        )}
       >
-        <FieldGroup className="gap-2">
-          <Field className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-1 pt-1">
+        <FieldGroup className={layout === "unified" ? "gap-0" : "gap-2"}>
+          <Field
+            className={cn(
+              "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2",
+              layout === "unified"
+                ? "px-4 pb-2 pt-4 sm:px-5 sm:pb-3 sm:pt-5"
+                : "px-1 pt-1",
+            )}
+          >
             {leadingControl}
             <FieldLabel htmlFor={promptId} className="sr-only">
               {ariaLabel}
@@ -98,7 +118,10 @@ export function AiStudioComposer({
               onChange={(event) => onPromptChange(event.target.value)}
               onKeyDown={onTextareaKeyDown}
               className={cn(
-                "max-h-32 min-h-16 w-full resize-none overflow-y-auto rounded-lg bg-transparent px-2 py-1.5 text-sm font-medium leading-6 text-foreground outline-none placeholder:text-muted-subtle focus-visible:ring-2 focus-visible:ring-focus sm:text-[15px]",
+                "w-full resize-none overflow-y-auto bg-transparent text-foreground outline-none placeholder:text-muted-subtle",
+                layout === "unified"
+                  ? "max-h-60 min-h-28 rounded-none px-0 py-0 text-base font-normal leading-7"
+                  : "max-h-32 min-h-16 rounded-lg px-2 py-1.5 text-sm font-medium leading-6 focus-visible:ring-2 focus-visible:ring-focus sm:text-[15px]",
                 leadingControl ? "col-start-2 row-start-1" : "col-span-full",
               )}
               placeholder={placeholder}
@@ -106,7 +129,8 @@ export function AiStudioComposer({
             <FieldDescription
               id={promptHelperId}
               className={cn(
-                "col-span-full flex min-w-0 items-start justify-between gap-3 px-2 text-xs",
+                "col-span-full flex min-w-0 items-start justify-between gap-3 text-xs",
+                layout === "unified" ? "px-0 pt-1" : "px-2",
                 leadingControl && "col-start-2",
                 promptTooLong && "text-destructive",
               )}
@@ -129,74 +153,90 @@ export function AiStudioComposer({
             </FieldDescription>
           </Field>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <Button
-              type="button"
-              variant="muted"
-              size="lg"
-              aria-controls={controlsId}
-              aria-expanded={controlsOpen}
-              onClick={() => setControlsOpen((current) => !current)}
-              className="w-full justify-between sm:hidden"
-            >
-              <SlidersHorizontal data-icon="inline-start" aria-hidden="true" />
-              <span className="mr-auto">Controls</span>
-              <ChevronDown
-                data-icon="inline-end"
+          <div
+            className={cn(
+              "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
+              layout === "unified" && "px-3 pb-3 sm:px-4 sm:pb-4",
+            )}
+          >
+            <div className="min-w-0 flex-1">
+              {layout === "standard" ? (
+                <Button
+                  type="button"
+                  variant="muted"
+                  size="lg"
+                  aria-controls={controlsId}
+                  aria-expanded={controlsOpen}
+                  onClick={() => setControlsOpen((current) => !current)}
+                  className="w-full justify-between sm:hidden"
+                >
+                  <SlidersHorizontal
+                    data-icon="inline-start"
+                    aria-hidden="true"
+                  />
+                  <span className="mr-auto">Controls</span>
+                  <ChevronDown
+                    data-icon="inline-end"
+                    className={cn(
+                      "transition-transform motion-reduce:transition-none",
+                      controlsOpen && "rotate-180",
+                    )}
+                    aria-hidden="true"
+                  />
+                </Button>
+              ) : null}
+              <div
+                id={controlsId}
                 className={cn(
-                  "transition-transform motion-reduce:transition-none",
-                  controlsOpen && "rotate-180",
+                  "flex-wrap items-center gap-2",
+                  layout === "unified"
+                    ? "flex"
+                    : cn(
+                        "mt-2 sm:mt-0 sm:flex",
+                        controlsOpen ? "flex" : "hidden",
+                      ),
                 )}
-                aria-hidden="true"
-              />
-            </Button>
+              >
+                {settings}
+              </div>
+            </div>
+
             <div
-              id={controlsId}
               className={cn(
-                "mt-2 flex-wrap items-center gap-2 sm:mt-0 sm:flex",
-                controlsOpen ? "flex" : "hidden",
+                "flex min-w-0 flex-col gap-1.5 sm:items-end",
+                layout === "unified" && "w-full sm:w-auto",
               )}
             >
-              {settings}
+              <div className="flex min-w-0 items-center gap-2">
+                {secondaryActions}
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={generateDisabled || promptTooLong}
+                  title={generationLocked ? accessMessage ?? undefined : undefined}
+                  className={cn(
+                    "min-w-0 flex-1 sm:min-w-[168px]",
+                    layout === "unified" && "w-full",
+                  )}
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2
+                        data-icon="inline-start"
+                        className="animate-spin motion-reduce:animate-none"
+                        aria-hidden="true"
+                      />
+                      Generating…
+                    </>
+                  ) : (
+                    <>
+                      {generateLabel}
+                      <Sparkles data-icon="inline-end" aria-hidden="true" />
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-          </div>
-
-          <div className="flex min-w-0 flex-col gap-1.5 sm:items-end">
-            {generationLocked ? (
-              <p
-                className="px-0.5 text-[11px] font-medium text-muted-subtle"
-              >
-                {accessMessage ?? "Generation is currently unavailable."}
-              </p>
-            ) : null}
-            <div className="flex min-w-0 items-center gap-2">
-              {secondaryActions}
-              <Button
-                type="submit"
-                size="lg"
-                disabled={generateDisabled || promptTooLong}
-                title={generationLocked ? accessMessage ?? undefined : undefined}
-                className="min-w-0 flex-1 sm:min-w-[168px]"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2
-                      data-icon="inline-start"
-                      className="animate-spin motion-reduce:animate-none"
-                      aria-hidden="true"
-                    />
-                    Generating…
-                  </>
-                ) : (
-                  <>
-                    {generateLabel}
-                    <Sparkles data-icon="inline-end" aria-hidden="true" />
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
           </div>
         </FieldGroup>
       </form>

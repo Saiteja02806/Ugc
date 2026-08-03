@@ -158,28 +158,13 @@ function AIStudioModeToggle({
 }
 
 function AIStudioAccessBadge({ state }: { state: AIStudioAccessState }) {
-  const labels: Record<AIStudioAccessState, string> = {
-    checking: "Checking access",
-    error: "Access unavailable",
-    locked: "Pro access required",
-    pro: "Pro",
-  };
+  if (state !== "pro") {
+    return null;
+  }
 
   return (
-    <Badge
-      variant={
-        state === "pro"
-          ? "pro"
-          : state === "error"
-            ? "destructive"
-            : state === "locked"
-              ? "warning"
-              : "secondary"
-      }
-      role="status"
-      aria-live="polite"
-    >
-      {labels[state]}
+    <Badge variant="pro" role="status" aria-live="polite">
+      Pro
     </Badge>
   );
 }

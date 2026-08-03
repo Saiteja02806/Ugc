@@ -19,24 +19,24 @@ export function CreativeCardActions({
     <div
       data-deck-control
       aria-label="Creative actions"
-      className="mx-auto mt-4 flex w-full max-w-[300px] items-center justify-center gap-4 sm:gap-5"
+      className="mx-auto mt-4 grid w-full max-w-md grid-cols-3 gap-2 sm:gap-3"
       role="group"
     >
       <Button
         type="button"
         variant="creative-reject"
-        size="creative-icon"
+        size="creative-action"
         aria-label="Reject this creative"
-        title="Reject"
         disabled={disabled}
         onClick={onReject}
       >
-        <X aria-hidden="true" />
+        <X data-icon="inline-start" aria-hidden="true" />
+        Reject
       </Button>
       <Button
         type="button"
         variant="creative-edit"
-        size="creative-edit"
+        size="creative-action"
         aria-label="Edit this creative"
         disabled={disabled}
         onClick={onEdit}
@@ -47,13 +47,13 @@ export function CreativeCardActions({
       <Button
         type="button"
         variant="creative-accept"
-        size="creative-icon"
+        size="creative-action"
         aria-label="Accept this creative"
-        title="Accept"
         disabled={disabled}
         onClick={onAccept}
       >
-        <Check aria-hidden="true" />
+        <Check data-icon="inline-start" aria-hidden="true" />
+        Accept
       </Button>
     </div>
   );

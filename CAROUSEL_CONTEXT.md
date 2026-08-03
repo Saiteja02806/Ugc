@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-08-02
+Last updated: 2026-08-03
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -1771,8 +1771,10 @@ Do not describe planned behavior as deployed behavior.
 ## 2026-08-02 Unified Trending Creative Decisions
 
 - Trending uses one shared action row for every preview-ready Carousel, Hook
-  video, and Wall-of-text card: circular red reject, compact Edit, and circular
-  green accept. Left/right swipe, keyboard decisions, and the reject/accept
+  video, and Wall-of-text card. The row presents three equal, labeled touch
+  targets in the order Reject, Edit, Accept. Restrained error, neutral, and
+  success treatments preserve the decision meaning without relying on an X or
+  check icon alone. Left/right swipe, keyboard decisions, and the Reject/Accept
   buttons call the same client decision handler.
 - Decisions are durable server records with the authenticated user ID,
   assignment ID, creative ID, format, `accepted` or `rejected`, and
@@ -1821,6 +1823,11 @@ Do not describe planned behavior as deployed behavior.
   generation job's persisted text style so editing copy or position does not
   change the Carousel design. Render output preserves
   both the public URL and storage key for every slide.
+- The Carousel editor previews the clean source background with a live inline
+  SVG white-bubble treatment instead of showing the already-flattened rendered
+  slide or a plain-text substitute. The worker remains the authority for final
+  wrapping, containment, safe-bound clamping, and exported pixels. Supporting
+  text takes precedence over CTA text, matching the production renderer.
 - Saving a Carousel to Library uses the latest edit when one exists. A queued,
   rendering, draft, failed, incomplete, or non-GCP edit is rejected rather
   than silently saving the original. A ready edit refreshes the existing
@@ -1887,5 +1894,8 @@ Name: **Run a profile-scoped GCP broad-matcher live canary**
 - The Carousel scheduling dialog uses fixed header, scrollable-content, and
   footer grid rows. The content no longer forces a minimum height, so the Back
   and Next controls remain visible on shorter screens.
+- The Carousel scheduling header is text-only and does not repeat the
+  Instagram logo. Publishing-account rows still show the selected account's
+  real profile picture because that identity is actionable confirmation.
 - These UI changes are production-build validated locally. They are not
   deployed or authenticated-production verified yet.

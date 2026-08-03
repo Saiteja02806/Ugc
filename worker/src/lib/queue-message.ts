@@ -1,20 +1,14 @@
 import type { WorkerConfig } from "../config.js";
-import type { BackgroundJobType, WorkerQueueMessage } from "../types.js";
+import {
+  EXECUTABLE_BACKGROUND_JOB_TYPES,
+  type BackgroundJobType,
+  type WorkerQueueMessage,
+} from "../types.js";
 import type { WorkerDeliveryMessage } from "./queue-types.js";
 
-const validWorkerJobTypes = new Set<BackgroundJobType>([
-  "generate_avatar",
-  "generate_carousel",
-  "generate_hook_video",
-  "generate_image",
-  "generate_trending_hook_copy",
-  "publish_social_post",
-  "render_edit_video",
-  "render_schedule_combination",
-  "render_trending_carousel_edit",
-  "render_wall_text_video",
-  "test_worker_job",
-]);
+const validWorkerJobTypes = new Set<BackgroundJobType>(
+  EXECUTABLE_BACKGROUND_JOB_TYPES,
+);
 
 export function parseWorkerDeliveryMessage(
   message: WorkerDeliveryMessage,

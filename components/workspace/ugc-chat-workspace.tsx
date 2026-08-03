@@ -461,6 +461,7 @@ export function ImageGenerationStudioPanel({
         generateLabel="Generate image"
         generationLocked={generationLocked}
         isGenerating={isGenerating}
+        layout="unified"
         maxLength={AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH}
         name="imagePrompt"
         placeholder="Describe the image you want to create…"

@@ -45,6 +45,24 @@ export type BackgroundJobType =
   | "video_generation"
   | "wall_text_generation";
 
+export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
+  "analytics_sync",
+  "generate_avatar",
+  "generate_carousel",
+  "generate_hook_video",
+  "generate_image",
+  "generate_trending_hook_copy",
+  "hook_text_generation",
+  "media_analysis",
+  "publish_social_post",
+  "render_edit_video",
+  "render_schedule_combination",
+  "render_trending_carousel_edit",
+  "render_wall_text_video",
+  "test_worker_job",
+  "wall_text_generation",
+] as const satisfies readonly BackgroundJobType[];
+
 type ScheduledPostStatus =
   | "cancelled"
   | "draft"

@@ -72,8 +72,8 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
       }
 
       env {
-        name  = "WORKER_PUBSUB_SUBSCRIPTION"
-        value = var.pubsub_subscription_name
+        name  = "WORKER_TRANSPORT"
+        value = "cloud-tasks"
       }
 
       env {
@@ -84,16 +84,6 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
       env {
         name  = "WORKER_JOB_TYPES"
         value = var.worker_job_types
-      }
-
-      env {
-        name  = "WORKER_POLL_MAX_MESSAGES"
-        value = tostring(var.worker_poll_max_messages)
-      }
-
-      env {
-        name  = "WORKER_POLL_WAIT_SECONDS"
-        value = tostring(var.worker_poll_wait_seconds)
       }
 
       env {
@@ -167,4 +157,93 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
       }
     }
   }
+}
+
+resource "google_cloud_run_v2_service_iam_member" "cloud_tasks_invoker" {
+  count = var.enable_video_render_worker ? 1 : 0
+
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.video_render_worker[0].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.scheduler_service_account_email}"
+}
+
+resource "google_cloud_run_v2_job" "video_render_worker" {
+  count = var.enable_video_render_worker ? 1 : 0
+
+  project  = var.project_id
+  name     = var.job_name
+  location = var.region
+  labels   = local.labels
+
+  template {
+    task_count = 1
+
+    template {
+      service_account = var.worker_service_account_email
+      timeout         = "${var.job_timeout_seconds}s"
+      max_retries     = var.job_max_retries
+
+      containers {
+        image = var.worker_image_uri
+
+        resources {
+          limits = {
+            cpu    = var.cpu
+            memory = var.memory
+          }
+        }
+
+        dynamic "env" {
+          for_each = local.video_render_job_env
+
+          content {
+            name  = env.key
+            value = env.value
+          }
+        }
+
+        env {
+          name = "SUPABASE_URL"
+          value_source {
+            secret_key_ref {
+              secret  = "supabase-url"
+              version = "latest"
+            }
+          }
+        }
+
+        env {
+          name = "SUPABASE_SERVICE_ROLE_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = "supabase-service-role-key"
+              version = "latest"
+            }
+          }
+        }
+
+        env {
+          name = "UGC_INTERNAL_SCHEDULING_SECRET"
+          value_source {
+            secret_key_ref {
+              secret  = var.scheduling_secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "google_cloud_run_v2_job_iam_member" "app_launcher" {
+  count = var.enable_video_render_worker ? 1 : 0
+
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_job.video_render_worker[0].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.app_launcher_service_account_email}"
 }

@@ -2,6 +2,11 @@ import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import {
+  getStorageProviderName,
+  isTrustedStorageUrl,
+} from "../lib/storage/storage.ts";
+
 const DEFAULT_IMPORT_ROOT = ".tmp/local-carousel-image-import";
 const RESULT_FILE_NAME = "post-import-verification.json";
 
@@ -13,15 +18,26 @@ const manifestPath = path.resolve(
 );
 const manifestDir = path.dirname(manifestPath);
 const importResultPath = path.join(manifestDir, "import-result.json");
+const metadataSyncResultPath = path.join(
+  manifestDir,
+  "metadata-sync-result.json",
+);
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 const importResult = existsSync(importResultPath)
   ? JSON.parse(readFileSync(importResultPath, "utf8"))
+  : null;
+const metadataSyncResult = existsSync(metadataSyncResultPath)
+  ? JSON.parse(readFileSync(metadataSyncResultPath, "utf8"))
   : null;
 const assets = Array.isArray(manifest.assets) ? manifest.assets : [];
 const urlSampleCount = Number.parseInt(args["url-samples"] ?? "0", 10);
 
 assertOneRequiredEnvVar(["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"]);
 assertRequiredEnvVars(["SUPABASE_SERVICE_ROLE_KEY"]);
+
+if (getStorageProviderName() !== "gcp") {
+  throw new Error("Post-import verification requires STORAGE_PROVIDER=gcp.");
+}
 
 const supabase = createClient(
   getRequiredEnv("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"),
@@ -94,7 +110,7 @@ if (errors.length > 0) {
 console.log("OK: imported production rows match the manifest.");
 
 async function fetchImportedRows(assets) {
-  const baseKeys = assets.map((asset) => asset.s3.baseKey);
+  const baseKeys = assets.map((asset) => asset.storage.baseKey);
   const rows = [];
 
   for (let index = 0; index < baseKeys.length; index += 100) {
@@ -111,21 +127,27 @@ async function fetchImportedRows(assets) {
           "broad_visual_bucket",
           "bucket_taxonomy_version",
           "category_slug",
+          "content_tags",
           "face_count",
           "has_human",
           "image_subject_class",
           "max_face_area_ratio",
+          "mood_tags",
           "near_duplicate_group",
+          "object_tags",
           "person_count",
           "runtime_exclusion_reason",
           "source_file_sha256",
           "source_original_s3_key",
           "source_original_url",
+          "source_perceptual_hash",
           "source_provider",
           "status",
           "subject_review_status",
           "thumb_s3_key",
           "thumb_url",
+          "usable_profiles",
+          "visual_keywords",
         ].join(","),
       )
       .in("base_s3_key", chunk);
@@ -143,13 +165,32 @@ async function fetchImportedRows(assets) {
 
 function verifyImportResult() {
   if (!importResult) {
-    errors.push("Missing import-result.json for this manifest.");
+    if (
+      metadataSyncResult?.mode === "execute" &&
+      metadataSyncResult?.rowsUpdated === assets.length
+    ) {
+      return;
+    }
+
+    errors.push(
+      "Missing a complete import-result.json or metadata-sync-result.json for this manifest.",
+    );
     return;
   }
 
-  if (importResult.inserted?.length !== assets.length) {
+  const completedCount =
+    (importResult.inserted?.length ?? 0) +
+    (importResult.skippedExisting?.length ?? 0);
+
+  if (completedCount !== assets.length) {
     errors.push(
-      `Import result inserted ${importResult.inserted?.length ?? 0}, expected ${assets.length}.`,
+      `Import result completed ${completedCount} assets, expected ${assets.length}.`,
+    );
+  }
+
+  if (importResult.storageProvider !== "gcp") {
+    errors.push(
+      `Import result storage provider is ${String(importResult.storageProvider)}, expected gcp.`,
     );
   }
 
@@ -164,7 +205,7 @@ function verifyRows() {
   }
 
   for (const asset of assets) {
-    const row = rowsByBaseKey.get(asset.s3.baseKey);
+    const row = rowsByBaseKey.get(asset.storage.baseKey);
 
     if (!row) {
       errors.push(`${asset.assetKey}: missing production row.`);
@@ -185,11 +226,12 @@ function verifyRows() {
       person_count: 0,
       runtime_exclusion_reason: null,
       source_file_sha256: asset.dbRow.source_file_sha256,
-      source_original_s3_key: asset.s3.originalKey,
+      source_original_s3_key: asset.storage.originalKey,
+      source_perceptual_hash: asset.dbRow.source_perceptual_hash,
       source_provider: "local",
       status: "ready",
       subject_review_status: "approved",
-      thumb_s3_key: asset.s3.thumbKey,
+      thumb_s3_key: asset.storage.thumbKey,
     };
 
     for (const [field, expected] of Object.entries(checks)) {
@@ -202,18 +244,55 @@ function verifyRows() {
       }
     }
 
-    if (!row.base_url?.includes(asset.s3.baseKey)) {
+    const arrayChecks = {
+      content_tags: asset.dbRow.content_tags,
+      mood_tags: asset.dbRow.mood_tags,
+      object_tags: asset.dbRow.object_tags,
+      usable_profiles: asset.dbRow.usable_profiles,
+      visual_keywords: asset.dbRow.visual_keywords,
+    };
+
+    for (const [field, expected] of Object.entries(arrayChecks)) {
+      if (!sameStringArray(row[field], expected)) {
+        errors.push(
+          `${asset.assetKey}: expected ${field}=${JSON.stringify(expected)}, got ${JSON.stringify(
+            row[field],
+          )}`,
+        );
+      }
+    }
+
+    if (!row.base_url?.includes(asset.storage.baseKey)) {
       errors.push(`${asset.assetKey}: base_url does not contain base key.`);
     }
 
-    if (!row.thumb_url?.includes(asset.s3.thumbKey)) {
+    if (!row.thumb_url?.includes(asset.storage.thumbKey)) {
       errors.push(`${asset.assetKey}: thumb_url does not contain thumb key.`);
     }
 
-    if (!row.source_original_url?.includes(asset.s3.originalKey)) {
+    if (!row.source_original_url?.includes(asset.storage.originalKey)) {
       errors.push(`${asset.assetKey}: source_original_url does not contain original key.`);
     }
+
+    for (const [field, url] of [
+      ["base_url", row.base_url],
+      ["thumb_url", row.thumb_url],
+      ["source_original_url", row.source_original_url],
+    ]) {
+      if (!url || !isTrustedStorageUrl(url)) {
+        errors.push(`${asset.assetKey}: ${field} is not a trusted GCP storage URL.`);
+      }
+    }
   }
+}
+
+function sameStringArray(first, second) {
+  const normalize = (value) =>
+    Array.isArray(value)
+      ? value.map((item) => String(item)).sort()
+      : [];
+
+  return JSON.stringify(normalize(first)) === JSON.stringify(normalize(second));
 }
 
 async function verifyUrlSamples(sampleCount) {
@@ -221,17 +300,30 @@ async function verifyUrlSamples(sampleCount) {
   const checks = [];
 
   for (const asset of samples) {
-    const row = rowsByBaseKey.get(asset.s3.baseKey);
+    const row = rowsByBaseKey.get(asset.storage.baseKey);
 
-    if (!row?.base_url) {
+    if (!row) {
       continue;
     }
 
-    const check = await checkUrl(row.base_url, asset.assetKey);
-    checks.push(check);
+    for (const [role, url] of [
+      ["base", row.base_url],
+      ["thumb", row.thumb_url],
+      ["original", row.source_original_url],
+    ]) {
+      if (!url) {
+        errors.push(`${asset.assetKey}: missing ${role} URL for availability check.`);
+        continue;
+      }
 
-    if (!check.ok) {
-      errors.push(`${asset.assetKey}: URL check failed with status ${check.status}`);
+      const check = await checkUrl(url, `${asset.assetKey}:${role}`);
+      checks.push(check);
+
+      if (!check.ok) {
+        errors.push(
+          `${asset.assetKey}: ${role} URL check failed with status ${check.status}`,
+        );
+      }
     }
   }
 

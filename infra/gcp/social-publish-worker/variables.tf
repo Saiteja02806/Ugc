@@ -34,16 +34,16 @@ variable "worker_service_account_email" {
   default     = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
 }
 
+variable "scheduler_service_account_email" {
+  description = "Service account used by Cloud Tasks to invoke this worker."
+  type        = string
+  default     = "ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com"
+}
+
 variable "service_name" {
   description = "Cloud Run Service name for the social-publish worker."
   type        = string
   default     = "ugc-social-publish-worker"
-}
-
-variable "pubsub_subscription_name" {
-  description = "Pub/Sub subscription the social-publish worker pulls from."
-  type        = string
-  default     = "ugc-social-publish-sub"
 }
 
 variable "queue_name" {
@@ -58,18 +58,6 @@ variable "worker_job_types" {
   default     = "publish_social_post"
 }
 
-variable "worker_poll_max_messages" {
-  description = "Maximum Pub/Sub messages to pull per worker loop."
-  type        = number
-  default     = 1
-}
-
-variable "worker_poll_wait_seconds" {
-  description = "Pub/Sub pull wait behavior for the always-on worker."
-  type        = number
-  default     = 20
-}
-
 variable "worker_visibility_timeout_seconds" {
   description = "Worker delivery visibility timeout for social publish jobs."
   type        = number
@@ -77,7 +65,7 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Minimum Cloud Run instances for the social-publish worker. Keep 1 for active queue consumption after cutover."
+  description = "Minimum Cloud Run instances for the social-publish worker."
   type        = number
   default     = 1
 }

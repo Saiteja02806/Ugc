@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { FocusedVideoEditorShell } from "@/components/edit/focused-video-editor-shell";
-import { AppShell } from "@/components/layout/app-shell";
+import { getCreativeAssetEditorHref } from "@/lib/edit/routes";
 
 export const metadata: Metadata = {
   title: "Edit video",
@@ -16,10 +16,5 @@ type EditVideoPageProps = {
 
 export default async function EditVideoPage({ params }: EditVideoPageProps) {
   const { videoId } = await params;
-
-  return (
-    <AppShell activeKey="edit" defaultSidebarCollapsed>
-      <FocusedVideoEditorShell videoId={videoId} />
-    </AppShell>
-  );
+  redirect(getCreativeAssetEditorHref(videoId));
 }

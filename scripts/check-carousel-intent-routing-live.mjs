@@ -191,7 +191,7 @@ async function listReadyAssets(categorySlug, bucketIds) {
 
 function mapReadyAsset(row) {
   return {
-    baseS3Key: row.base_s3_key,
+    baseObjectKey: row.base_s3_key,
     baseUrl: row.base_url,
     bestForSlideTypes: row.best_for_slide_types,
     bucketType: row.bucket_type,

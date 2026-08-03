@@ -1,4 +1,5 @@
 export const trendingAssignmentStates = [
+  "accepted",
   "completed_saved",
   "completed_scheduled",
   "completed_skipped",
@@ -18,6 +19,9 @@ export const acceptableCreatedScheduleStatuses = [
 export type TrendingAssignmentState =
   (typeof trendingAssignmentStates)[number];
 export type TrendingCompletionAction = "saved" | "scheduled" | "skipped";
+export type TrendingAssignmentCompletionAction =
+  | "accepted"
+  | TrendingCompletionAction;
 export type CreatedScheduleStatus =
   (typeof acceptableCreatedScheduleStatuses)[number];
 
@@ -31,7 +35,7 @@ export type TrendingCompletionTransition =
 export function decideTrendingCompletionTransition(params: {
   action: TrendingCompletionAction;
   assignment: {
-    completionAction: TrendingCompletionAction | null;
+    completionAction: TrendingAssignmentCompletionAction | null;
     state: TrendingAssignmentState;
   };
 }): TrendingCompletionTransition {
@@ -42,6 +46,14 @@ export function decideTrendingCompletionTransition(params: {
     params.assignment.completionAction === params.action
   ) {
     return { kind: "idempotent" };
+  }
+
+  if (
+    params.assignment.state === "accepted" &&
+    params.assignment.completionAction === "accepted" &&
+    (params.action === "saved" || params.action === "scheduled")
+  ) {
+    return { kind: "complete" };
   }
 
   const completedAction = getCompletionActionForState(params.assignment.state);
@@ -114,6 +126,7 @@ function getCompletionActionForState(
       return "scheduled";
     case "completed_skipped":
       return "skipped";
+    case "accepted":
     case "failed":
     case "in_progress":
     case "pending":

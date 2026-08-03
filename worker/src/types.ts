@@ -8,20 +8,60 @@ export type Json =
 
 export type BackgroundJobStatus =
   | "cancelled"
+  | "cancel_requested"
   | "completed"
+  | "created"
   | "failed"
   | "processing"
-  | "queued";
+  | "queued"
+  | "rendering"
+  | "stalled"
+  | "uploading_output"
+  | "waiting_external_service";
 
 export type BackgroundJobType =
+  | "analytics_sync"
+  | "carousel_generation"
+  | "final_render"
   | "generate_avatar"
   | "generate_carousel"
   | "generate_hook_video"
   | "generate_image"
+  | "generate_thumbnail"
+  | "generate_trending_hook_copy"
+  | "extract_video_metadata"
+  | "hook_text_generation"
+  | "image_generation"
+  | "media_analysis"
+  | "preview_render"
   | "publish_social_post"
+  | "render_demo_video"
   | "render_edit_video"
   | "render_schedule_combination"
-  | "test_worker_job";
+  | "render_trending_carousel_edit"
+  | "render_wall_text_video"
+  | "social_publish"
+  | "test_worker_job"
+  | "video_generation"
+  | "wall_text_generation";
+
+export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
+  "analytics_sync",
+  "generate_avatar",
+  "generate_carousel",
+  "generate_hook_video",
+  "generate_image",
+  "generate_trending_hook_copy",
+  "hook_text_generation",
+  "media_analysis",
+  "publish_social_post",
+  "render_edit_video",
+  "render_schedule_combination",
+  "render_trending_carousel_edit",
+  "render_wall_text_video",
+  "test_worker_job",
+  "wall_text_generation",
+] as const satisfies readonly BackgroundJobType[];
 
 type ScheduledPostStatus =
   | "cancelled"
@@ -54,39 +94,58 @@ type SocialConnectionStatus =
 
 export type BackgroundJobRow = {
   attempt_count: number;
-  aws_message_id: string | null;
+  cancel_requested_at: string | null;
+  queue_message_id: string | null;
   claim_token: string | null;
   completed_at: string | null;
   created_at: string;
+  error_code: string | null;
   error_message: string | null;
+  failed_at: string | null;
   id: string;
   input_json: Json;
+  input_reference: string | null;
   job_type: BackgroundJobType;
+  last_delivery_at: string | null;
   last_heartbeat_at: string | null;
   locked_at: string | null;
+  max_attempts: number;
   next_attempt_at: string | null;
   output_json: Json | null;
+  output_reference: string | null;
+  progress: number | null;
   project_id: string | null;
   queue_name: string;
+  queue_provider: "gcp";
+  queued_at: string | null;
+  stage: string | null;
   started_at: string | null;
   status: BackgroundJobStatus;
   updated_at: string;
   user_id: string | null;
+  worker_execution_id: string | null;
   worker_id: string | null;
 };
 
 export type BackgroundJobUpdate = Partial<{
   attempt_count: number;
+  cancel_requested_at: string | null;
   claim_token: string | null;
   completed_at: string | null;
+  error_code: string | null;
   error_message: string | null;
+  failed_at: string | null;
   last_heartbeat_at: string | null;
   locked_at: string | null;
   next_attempt_at: string | null;
   output_json: Json | null;
+  output_reference: string | null;
+  progress: number | null;
+  stage: string | null;
   started_at: string | null;
   status: BackgroundJobStatus;
   updated_at: string;
+  worker_execution_id: string | null;
   worker_id: string | null;
 }>;
 
@@ -190,7 +249,8 @@ type MediaAssetInsert = {
     | "generated_image"
     | "generated_video"
     | "edit_export"
-    | "combined_render";
+    | "combined_render"
+    | "wall_text_render";
   status: "uploading" | "processing" | "ready" | "failed";
   storage_key: string;
   thumbnail_url: string | null;
@@ -200,6 +260,69 @@ type MediaAssetInsert = {
   user_id: string;
   width: number | null;
 };
+
+type UserWallTextAssignmentUpdate = Partial<{
+  render_error: string | null;
+  render_job_id: string | null;
+  render_status: "not_requested" | "queued" | "rendering" | "ready" | "failed";
+  rendered_at: string | null;
+  rendered_media_asset_id: string | null;
+  updated_at: string;
+}>;
+
+export type GenerationProvider = "openai" | "runway" | "veo";
+
+export type GenerationProviderOperationStatus =
+  | "failed"
+  | "output_persisted"
+  | "provider_succeeded"
+  | "reserved"
+  | "submission_uncertain"
+  | "submitted";
+
+export type GenerationProviderOperationRow = {
+  created_at: string;
+  id: string;
+  job_id: string;
+  last_error_code: string | null;
+  last_error_message: string | null;
+  metadata: Json;
+  operation_key: string;
+  output_persisted_at: string | null;
+  output_reference: string | null;
+  output_url: string | null;
+  provider: GenerationProvider;
+  provider_completed_at: string | null;
+  provider_operation_id: string | null;
+  request_fingerprint: string;
+  retry_allowed: boolean;
+  status: GenerationProviderOperationStatus;
+  submitted_at: string | null;
+  updated_at: string;
+};
+
+export type GenerationProviderOperationInsert = {
+  job_id: string;
+  metadata?: Json;
+  operation_key: string;
+  provider: GenerationProvider;
+  request_fingerprint: string;
+};
+
+export type GenerationProviderOperationUpdate = Partial<{
+  last_error_code: string | null;
+  last_error_message: string | null;
+  metadata: Json;
+  output_persisted_at: string | null;
+  output_reference: string | null;
+  output_url: string | null;
+  provider_completed_at: string | null;
+  provider_operation_id: string | null;
+  retry_allowed: boolean;
+  status: GenerationProviderOperationStatus;
+  submitted_at: string | null;
+  updated_at: string;
+}>;
 
 export type CarouselFormat = "1:1" | "4:5";
 export type CarouselGenerationStatus = "completed" | "failed" | "processing";
@@ -372,6 +495,27 @@ export type CarouselSlideRow = {
   updated_at: string;
 };
 
+export type TrendingCreativeEditRow = {
+  assignment_id: string;
+  content_json: Json;
+  created_at: string;
+  creative_id: string;
+  format: "carousel" | "hook_video" | "wall_text";
+  id: string;
+  position_json: Json;
+  render_error: string | null;
+  render_job_id: string | null;
+  render_output_json: Json | null;
+  render_status: "draft" | "failed" | "queued" | "ready" | "rendering";
+  resolved_media_asset_id: string | null;
+  revision: number;
+  source_group_id: string | null;
+  source_media_asset_id: string | null;
+  source_selection_kind: "asset" | "group" | null;
+  updated_at: string;
+  user_id: string;
+};
+
 export type CarouselSlideInsert = {
   carousel_generation_id: string;
   category_image_asset_id?: string | null;
@@ -477,6 +621,28 @@ export type BackgroundJobsDatabase = {
         };
         Returns: BackgroundJobRow[];
       };
+      complete_background_job: {
+        Args: {
+          p_claim_token: string;
+          p_job_id: string;
+          p_output: Json;
+          p_output_reference: string | null;
+        };
+        Returns: BackgroundJobRow[];
+      };
+      finalize_edit_render: {
+        Args: {
+          p_error_message: string | null;
+          p_output_s3_key: string | null;
+          p_output_url: string | null;
+          p_project_id: string;
+          p_render_id: string;
+          p_source_video_id: string;
+          p_terminal_status: "completed" | "failed";
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
       claim_social_publish_operation: {
         Args: {
           p_claim_token: string;
@@ -515,6 +681,32 @@ export type BackgroundJobsDatabase = {
         Args: { asset_ids: string[] };
         Returns: null;
       };
+      persist_trending_hook_copy_generation: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_candidates: Json;
+          p_generator_model: string;
+          p_job_id: string;
+          p_prompt_version: string;
+          p_selection_version: string;
+          p_user_id: string;
+        };
+        Returns: number;
+      };
+      persist_trending_hook_copy_generation_v4: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_candidates: Json;
+          p_generator_model: string;
+          p_job_id: string;
+          p_prompt_version: string;
+          p_selection_version: string;
+          p_user_id: string;
+        };
+        Returns: number;
+      };
     };
     Tables: {
       background_jobs: {
@@ -535,6 +727,12 @@ export type BackgroundJobsDatabase = {
         Row: CarouselSlideRow;
         Update: Partial<CarouselSlideInsert>;
       };
+      trending_creative_edits: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: TrendingCreativeEditRow;
+        Update: Partial<TrendingCreativeEditRow>;
+      };
       category_image_assets: {
         Insert: Record<string, never>;
         Relationships: [];
@@ -546,6 +744,12 @@ export type BackgroundJobsDatabase = {
         Relationships: [];
         Row: Record<string, Json>;
         Update: EditableVideoUpdate;
+      };
+      generation_provider_operations: {
+        Insert: GenerationProviderOperationInsert;
+        Relationships: [];
+        Row: GenerationProviderOperationRow;
+        Update: GenerationProviderOperationUpdate;
       };
       demo_videos: {
         Insert: Record<string, never>;
@@ -561,6 +765,16 @@ export type BackgroundJobsDatabase = {
           deleted_at: string | null;
         };
         Update: Partial<MediaAssetInsert> & { deleted_at?: string | null };
+      };
+      user_wall_text_assignments: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: {
+          id: string;
+          render_id: string | null;
+          user_id: string;
+        };
+        Update: UserWallTextAssignmentUpdate;
       };
       library_carousel_slides: {
         Insert: Record<string, never>;
@@ -680,6 +894,8 @@ export type BackgroundJobsDatabase = {
 };
 
 export type WorkerQueueMessage = {
+  attempt?: number;
   jobId: string;
   jobType: BackgroundJobType;
+  schemaVersion?: number;
 };

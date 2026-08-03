@@ -1,19 +1,21 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import {
-  generateBusinessTrendingHookTexts,
-} from "@/lib/trending/generate-trending-hook-ideas";
-import {
-  createTrendingHookVideoSuggestions,
-  ensureTrendingHookVideoAssignments,
   listActiveTrendingHookIdeas,
   listTrendingHookVideoSuggestions,
   type TrendingHookIdeaRecord,
 } from "@/lib/trending/hook-video-db";
+import {
+  TRENDING_HOOK_PROMPT_VERSION,
+  type TrendingHookPreparationStatus,
+} from "@/lib/trending/trending-hook-copy-contract";
+import { enqueueTrendingHookCopyJob } from "@/lib/trending/trending-hook-copy-jobs";
 import { listHookVideoBrowseInventory } from "@/lib/trending/hook-video-sources";
 import { selectTrendingHookCandidates } from "@/lib/trending/trending-hook-feed-logic";
-import type { GeneratedTrendingHookText } from "@/lib/trending/trending-hook-text-logic";
+import { resolveTrendingVideoSource } from "@/lib/trending/video-source-selection";
 import {
   createHookTrendingFeedProvider,
   createUnavailableTrendingFeedProvider,
@@ -25,22 +27,50 @@ import {
 export async function prepareTrendingHookIdeas(
   profile: BusinessProfileRecord,
 ) {
-  const existing = await listTrendingHookVideoSuggestions({
-    businessProfileId: profile.id,
-    businessProfileVersion: profile.profileVersion,
+  const source = await resolveTrendingVideoSource({
+    format: "hook_video",
     userId: profile.userId,
   });
+  const selectedAssetIds = source.selection
+    ? new Set(source.assets.map((asset) => asset.id))
+    : null;
+  const allExisting = await listTrendingHookVideoSuggestions({
+    businessProfileId: profile.id,
+    businessProfileVersion: profile.profileVersion,
+    promptVersion: TRENDING_HOOK_PROMPT_VERSION,
+    userId: profile.userId,
+  });
+  const existing = selectedAssetIds
+    ? allExisting.filter((idea) =>
+        selectedAssetIds.has(idea.influencer_video_id),
+      )
+    : allExisting;
 
   if (existing.length > 0) {
-    return ensureTrendingHookVideoAssignments({
+    const allActive = await listActiveTrendingHookIdeas({
       businessProfileId: profile.id,
       businessProfileVersion: profile.profileVersion,
-      suggestions: existing,
+      promptVersion: TRENDING_HOOK_PROMPT_VERSION,
       userId: profile.userId,
     });
+    const active = filterHookIdeasBySelectedAssets(
+      allActive,
+      selectedAssetIds,
+    );
+
+    return {
+      ideaCount: active.length,
+      jobId: existing[0]?.generation_job_id ?? null,
+      status: "ready" as const,
+    };
   }
 
-  const inventory = await listHookVideoBrowseInventory(profile.userId);
+  const inventory = await listHookVideoBrowseInventory(
+    profile.userId,
+    selectedAssetIds
+      ? { mediaAssetIds: [...selectedAssetIds] }
+      : undefined,
+  );
   const candidates = selectTrendingHookCandidates(inventory);
 
   if (candidates.length === 0) {
@@ -50,50 +80,93 @@ export async function prepareTrendingHookIdeas(
     );
   }
 
-  const generated = await generateBusinessTrendingHookTexts({
-    business: profile.context,
-    candidates: candidates.map((candidate) => ({
-      candidateIndex: candidate.candidateIndex,
-      durationSeconds: candidate.durationSeconds,
-    })),
-  });
-  const generatedByIndex = new Map(
-    generated.map((hook) => [hook.candidateIndex, hook]),
-  );
-  const suggestions = await createTrendingHookVideoSuggestions({
+  const job = await enqueueTrendingHookCopyJob({
+    businessProfile: profile.context,
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,
-    candidates: candidates.map((candidate) =>
-      toStoredTrendingHookCandidate(
-        candidate,
-        getGeneratedHook(generatedByIndex, candidate.candidateIndex),
-      ),
-    ),
+    candidates: candidates.map(toHookCopyJobCandidate),
+    sourceSelectionKey: source.selection
+      ? createSourceSelectionKey(
+          source.selection.selectionKind,
+          source.assets.map((asset) => asset.id),
+        )
+      : null,
     userId: profile.userId,
   });
 
-  return ensureTrendingHookVideoAssignments({
-    businessProfileId: profile.id,
-    businessProfileVersion: profile.profileVersion,
-    suggestions,
-    userId: profile.userId,
-  });
+  if (job.status === "failed" || job.status === "cancelled") {
+    throw new TrendingHookPreparationError(
+      job.errorMessage ||
+        "The Hook-copy worker could not prepare these ideas.",
+      503,
+    );
+  }
+
+  if (job.status === "completed") {
+    throw new TrendingHookPreparationError(
+      "The Hook-copy job completed without saving validated ideas.",
+      500,
+    );
+  }
+
+  return {
+    ideaCount: 0,
+    jobId: job.id,
+    status: (
+      job.status === "created" || job.status === "queued"
+        ? "queued"
+        : "processing"
+    ) satisfies TrendingHookPreparationStatus,
+  };
+}
+
+function createSourceSelectionKey(
+  selectionKind: "asset" | "group",
+  assetIds: string[],
+) {
+  return createHash("sha256")
+    .update(`${selectionKind}:${[...assetIds].sort().join(",")}`)
+    .digest("hex")
+    .slice(0, 24);
 }
 
 export async function getTrendingHookFeedProvider(
   profile: BusinessProfileRecord,
 ): Promise<TrendingFeedProviderResult<TrendingHookVideoFeedItem>> {
   try {
-    const ideas = await listActiveTrendingHookIdeas({
-      businessProfileId: profile.id,
-      businessProfileVersion: profile.profileVersion,
-      userId: profile.userId,
-    });
+    const [allIdeas, source] = await Promise.all([
+      listActiveTrendingHookIdeas({
+        businessProfileId: profile.id,
+        businessProfileVersion: profile.profileVersion,
+        promptVersion: TRENDING_HOOK_PROMPT_VERSION,
+        userId: profile.userId,
+      }),
+      resolveTrendingVideoSource({
+        format: "hook_video",
+        userId: profile.userId,
+      }),
+    ]);
+    const selectedAssetIds = source.selection
+      ? new Set(source.assets.map((asset) => asset.id))
+      : null;
+    const ideas = filterHookIdeasBySelectedAssets(
+      allIdeas,
+      selectedAssetIds,
+    );
+
+    if (source.selection && selectedAssetIds?.size === 0) {
+      return createUnavailableTrendingFeedProvider<TrendingHookVideoFeedItem>(
+        "hook_video",
+        "The selected Creative Assets source has no available videos.",
+      );
+    }
 
     if (ideas.length === 0) {
       return createUnavailableTrendingFeedProvider<TrendingHookVideoFeedItem>(
         "hook_video",
-        "Hook ideas are being prepared from the business profile.",
+        source.selection
+          ? "Hook ideas are being prepared from the selected videos."
+          : "Hook ideas are being prepared from the business profile.",
       );
     }
 
@@ -107,6 +180,17 @@ export async function getTrendingHookFeedProvider(
   }
 }
 
+function filterHookIdeasBySelectedAssets<
+  T extends { influencerVideoId: string },
+>(
+  ideas: T[],
+  selectedAssetIds: Set<string> | null,
+) {
+  return selectedAssetIds
+    ? ideas.filter((idea) => selectedAssetIds.has(idea.influencerVideoId))
+    : ideas;
+}
+
 export class TrendingHookPreparationError extends Error {
   constructor(
     message: string,
@@ -117,36 +201,24 @@ export class TrendingHookPreparationError extends Error {
   }
 }
 
-function getGeneratedHook(
-  generatedByIndex: Map<number, GeneratedTrendingHookText>,
-  candidateIndex: number,
-) {
-  const generated = generatedByIndex.get(candidateIndex);
-
-  if (!generated) {
-    throw new Error("A generated Trending Hook idea is missing.");
-  }
-
-  return generated;
-}
-
-function toStoredTrendingHookCandidate(
+function toHookCopyJobCandidate(
   candidate: ReturnType<typeof selectTrendingHookCandidates>[number],
-  generated: GeneratedTrendingHookText,
 ) {
   return {
     candidateIndex: candidate.candidateIndex,
     durationSeconds: candidate.durationSeconds,
-    hookText: generated.text,
     influencerId: candidate.entry.influencer.id,
+    influencerKey: candidate.entry.video.influencerKey,
     influencerName: candidate.entry.influencer.name,
     influencerVideoId: candidate.entry.video.id,
     influencerVideoTitle: candidate.entry.video.title,
+    reactionType: candidate.entry.video.reactionType,
     sourceKind: candidate.entry.video.sourceKind,
     sourceDurationSeconds: candidate.sourceDurationSeconds,
     thumbnailUrl: candidate.entry.video.thumbnailUrl,
     trimEnd: candidate.entry.video.trimEnd,
     trimStart: candidate.entry.video.trimStart,
+    visualGroup: candidate.entry.video.visualGroup,
   };
 }
 
@@ -167,9 +239,12 @@ function toHookSourceRecord(
     sourceKind: idea.sourceKind,
     sourceDurationSeconds: idea.sourceDurationSeconds,
     text: {
+      fontSize: idea.overlayFontSize,
       kind: "hook",
+      lines: idea.openingLines,
+      patternId: idea.patternId,
       placement: "center",
-      styleVersion: "hook-overlay-v1",
+      styleVersion: "hook-overlay-v3",
       value: idea.hookText,
     },
     thumbnailUrl: idea.thumbnailUrl,

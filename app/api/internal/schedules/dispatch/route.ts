@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 
-import { sendJobMessage } from "@/lib/aws/sqs";
 import {
-  attachAwsMessageToBackgroundJob,
+  getMissingJobQueueEnvVars,
+  sendJobMessage,
+} from "@/lib/queues/job-queue";
+import {
+  attachQueueMessageToBackgroundJob,
   getBackgroundJobById,
   getMissingBackgroundJobStorageEnvVars,
 } from "@/lib/jobs/background-jobs";
-import { getMissingQueueEnvVars } from "@/lib/queues/config";
 import {
   getMissingCloudTasksOidcEnvVars,
   getSocialPublishDispatchAudienceForRequest,
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
     ...new Set([
       ...getMissingCloudTasksOidcEnvVars(),
       ...getMissingBackgroundJobStorageEnvVars(),
-      ...getMissingQueueEnvVars(["publish_social_post"]),
+      ...getMissingJobQueueEnvVars(["publish_social_post"]),
     ]),
   ];
 
@@ -111,7 +113,7 @@ export async function POST(request: Request) {
 
   try {
     const result = await dispatchScheduledSocialPublishJob(input, {
-      attachMessage: attachAwsMessageToBackgroundJob,
+      attachMessage: attachQueueMessageToBackgroundJob,
       getJob: getBackgroundJobById,
       reportError: (event, details) => {
         console.error(`Social schedule dispatch ${event}:`, details);

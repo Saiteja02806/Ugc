@@ -135,7 +135,7 @@ function getCandidateAssetIdentity(asset: ReadyAsset) {
 
   return asset.pexelsPhotoId
     ? `pexels:${asset.pexelsPhotoId}`
-    : `s3:${asset.baseS3Key}`;
+    : `object:${asset.baseObjectKey}`;
 }
 
 function uniqueByAssetIdentity(items: ReadyAsset[]) {

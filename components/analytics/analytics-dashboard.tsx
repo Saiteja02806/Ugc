@@ -23,6 +23,7 @@ import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { buttonClassName } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
 import {
   schedulePlatforms,
   type ScheduledPost,
@@ -214,7 +215,7 @@ export function DormantMultiPlatformAnalyticsDashboard() {
         Authorization: `Bearer ${token}`,
       };
 
-      const [connectionsResponse, schedulesResponse, tiktokAnalyticsResponse] =
+      const [connectionsResponse, schedulesResponse, tiktokAnalyticsOutput] =
         await Promise.all([
           fetch("/api/social/connections", {
             cache: "no-store",
@@ -226,10 +227,10 @@ export function DormantMultiPlatformAnalyticsDashboard() {
             headers,
             signal,
           }),
-          fetch("/api/analytics/tiktok/videos", {
-            cache: "no-store",
-            headers,
+          runAnalyticsBackgroundSync({
             signal,
+            token,
+            url: "/api/analytics/tiktok/videos",
           }),
         ]);
 
@@ -239,9 +240,8 @@ export function DormantMultiPlatformAnalyticsDashboard() {
       const schedulesData = (await schedulesResponse
         .json()
         .catch(() => null)) as SchedulesResponse | null;
-      const tiktokAnalyticsData = (await tiktokAnalyticsResponse
-        .json()
-        .catch(() => null)) as TikTokAnalyticsResponse | null;
+      const tiktokAnalyticsData =
+        tiktokAnalyticsOutput as TikTokAnalyticsResponse | null;
 
       if (signal?.aborted) {
         return;
@@ -259,18 +259,12 @@ export function DormantMultiPlatformAnalyticsDashboard() {
         );
       }
 
-      if (!tiktokAnalyticsResponse.ok || !tiktokAnalyticsData?.ok) {
-        throw new Error(
-          tiktokAnalyticsData?.message || "We could not load TikTok analytics.",
-        );
-      }
-
       setConnections(
         Array.isArray(connectionsData.connections) ? connectionsData.connections : [],
       );
       setSchedules(Array.isArray(schedulesData.schedules) ? schedulesData.schedules : []);
       setTikTokAnalyticsAccounts(
-        Array.isArray(tiktokAnalyticsData.accounts)
+        Array.isArray(tiktokAnalyticsData?.accounts)
           ? tiktokAnalyticsData.accounts
           : [],
       );

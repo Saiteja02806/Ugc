@@ -82,16 +82,19 @@ export async function POST(request: Request) {
       userId: auth.user.uid,
     });
     const ownedHook = await prepareOwnedHookMediaAsset({
-      influencerId: parsed.data.influencerId,
-      sourceKind: parsed.data.sourceKind,
+      influencerId: composition.source.influencerId,
+      sourceKind: composition.source.sourceKind,
       userId: auth.user.uid,
-      videoId: parsed.data.influencerVideoId,
+      videoId: composition.source.id,
     });
     const scheduleResult = await createUserSchedule({
       input: {
         idempotencyKey: createHookVideoScheduleIdempotencyKey({
           ...parsed.data,
           draftId: composition.draft.id,
+          influencerId: composition.source.influencerId,
+          influencerVideoId: composition.source.id,
+          sourceKind: composition.source.sourceKind,
         }),
         metadata: {
           demoMediaId: composition.demo.id,
@@ -99,6 +102,16 @@ export async function POST(request: Request) {
           hookMediaId: ownedHook.id,
           hookMediaTitle: composition.source.title,
           hookText: composition.draft.hookText,
+          hookTextFontSize: composition.hookRenderSpec.fontSize,
+          hookTextLines: composition.hookRenderSpec.lines,
+          hookTextPosition:
+            composition.creativeEdit?.content.format === "hook_video"
+              ? composition.creativeEdit.content.position
+              : null,
+          hookTextColor:
+            composition.creativeEdit?.content.format === "hook_video"
+              ? composition.creativeEdit.content.textColor
+              : null,
           hookTrimEnd: composition.draft.trimEnd,
           hookTrimStart: composition.draft.trimStart,
           hookVideoDraftId: composition.draft.id,

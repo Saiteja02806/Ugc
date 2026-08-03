@@ -1,772 +1,99 @@
-# GCP Migration Infrastructure
+# UGC Pilot GCP infrastructure
 
-This folder starts the AWS to GCP migration safely for project `ugcsaas`
-(`58051192797`). It creates infrastructure only. It does not copy secrets and it
-does not change application traffic by itself.
+GCP is the only supported runtime platform for queues, workers, scheduling,
+and object storage. Supabase is the durable source of truth for background-job
+state and audit events.
 
-Use `MIGRATION_CHECKLIST.md` for the current done/not-done migration checklist.
-Items there are checked only after they are live and verified.
+## Runtime architecture
 
-## Layout
+1. An authenticated app route inserts a `background_jobs` row in Supabase.
+2. The app creates one deterministic HTTP task in the workload's Cloud Tasks
+   queue.
+3. Cloud Tasks invokes `POST /tasks/jobs` on the appropriate private Cloud Run
+   worker with the scheduler service account's OIDC token.
+4. The worker atomically claims the Supabase job, persists stages and real
+   progress, heartbeats the lease, writes output to GCS/Supabase, then marks the
+   job terminal.
+5. Cloud Scheduler invokes `/api/internal/jobs/recover` every five minutes to
+   recover stale or undelivered jobs.
 
-- `bootstrap/`: creates the GCS bucket used for Terraform remote state.
-- `foundation/`: creates the first GCP foundation resources for the app.
-- `worker-canary/`: creates an optional one-off Cloud Run Job for a Pub/Sub
-  worker canary.
-- `carousel-worker/`: creates an always-on Cloud Run Service that consumes
-  `generate_carousel` jobs from `ugc-carousel-sub`.
-- `video-render-worker/`: creates an always-on Cloud Run Service that consumes
-  `render_edit_video` and `render_schedule_combination` jobs from
-  `ugc-video-render-sub`.
-- `ai-generation-worker/`: creates an always-on Cloud Run Service that consumes
-  `generate_avatar`, `generate_image`, and `generate_hook_video` jobs from
-  `ugc-ai-generation-sub`.
-- `social-publish-worker/`: creates an always-on Cloud Run Service that
-  consumes `publish_social_post` jobs from `ugc-social-publish-sub`.
-- `carousel-scheduler/`: creates an optional Cloud Run Job plus Cloud Scheduler
-  trigger that replaces the removed Trigger.dev Carousel cron.
+Cloud Tasks is the delivery transport. Supabase is authoritative; task state
+must never be used as frontend state.
 
-## What The Foundation Creates
+## Infrastructure layout
 
-- Required Google Cloud APIs
-- Service accounts replacing AWS IAM roles
-- Secret Manager secret containers, without secret values
-- Artifact Registry repository for worker Docker images
-- Cloud Storage media bucket
-- Cloud CDN load balancer pieces for media delivery
-- Pub/Sub job topics, subscriptions, and DLQs
-- Cloud Tasks queue for scheduled social publish dispatch
-- Optional Pub/Sub DLQ alert policies
+- `bootstrap/`: Terraform remote-state bucket.
+- `foundation/`: APIs, service accounts, secrets, GCS/CDN, Cloud Tasks queues,
+  and the optional recovery scheduler.
+- `ai-generation-worker/`: AI generation, Hook/Wall copy, media analysis, and
+  analytics synchronization jobs.
+- `carousel-worker/`: Carousel generation jobs.
+- `video-render-worker/`: edit, schedule-combination, and wall-text renders.
+- `social-publish-worker/`: social publish jobs.
+- `carousel-scheduler/`: scheduled Carousel replenishment.
 
-## Safe Apply Order
+The retired Pub/Sub worker transport and canary stack are no longer defined.
+Cloud Tasks is the only job-delivery system in the repository.
+The Pub/Sub API remains enabled during and after cutover so legacy resources
+can be inspected safely; enabling the API does not make Pub/Sub an active
+runtime transport. Cloud Monitoring also remains enabled for production
+observability.
 
-Run these from `C:\Users\chund\OneDrive\Desktop\UGC`.
+## Cloud Tasks queues
 
-If you installed the local Terraform and Google Cloud CLI toolchain for this
-repo, open a configured PowerShell session first:
+The foundation creates:
 
-```powershell
-powershell -ExecutionPolicy Bypass -NoProfile -NoExit -File .\infra\gcp\use-local-tools.ps1
-```
+- `ugc-ai-generation`
+- `ugc-carousel`
+- `ugc-media-processing`
+- `ugc-social-publish`
+- `ugc-video-render`
+- `ugc-social-publish-scheduler` for future-dated social targets
 
-The `-ExecutionPolicy Bypass` flag is needed on Windows machines that block
-local `.ps1` scripts by default.
+Rate and concurrency limits live in `foundation/cloud-tasks.tf` and should be
+kept below downstream provider quotas.
 
-```powershell
-cd infra\gcp\bootstrap
-copy terraform.tfvars.example terraform.tfvars
-terraform init
-terraform plan
-terraform apply
-```
-
-Then initialize the main foundation:
-
-```powershell
-cd ..\foundation
-copy terraform.tfvars.example terraform.tfvars
-terraform init
-terraform plan
-terraform apply
-```
-
-If you change the bootstrap state bucket name, update `foundation/backend.tf`
-before running `terraform init`.
-
-## Secret Values
-
-Terraform creates only empty Secret Manager containers. Add values after apply
-using the Google Cloud console, CI/CD, or `gcloud secrets versions add`.
-
-Do not commit `.env.local`, `terraform.tfvars`, state files, or downloaded
-Terraform provider directories.
-
-## Application Storage Slice
-
-The app now supports a dark-launched GCP object storage path behind the existing
-`lib/storage/s3.ts` compatibility exports. AWS remains the default unless
-`STORAGE_PROVIDER=gcp` or `UGC_STORAGE_PROVIDER=gcp` is set.
-
-Testing-phase cutover can happen after:
-
-- the `foundation/` Terraform has been applied;
-- the media bucket exists and the app/worker service accounts can write to it;
-- `GCP_STORAGE_BUCKET` and `GCP_STORAGE_PUBLIC_BASE_URL` are configured;
-- Cloud CDN/DNS/public read access is verified for generated media URLs;
-- existing S3 media has either been copied to GCS or the team accepts that only
-  new generated media will be on GCS during testing.
-
-Do not remove the AWS S3/CloudFront env vars until all stored database media
-URLs and scheduled/pending worker jobs no longer depend on AWS-hosted objects.
-
-Current checkpoint: `gs://ugcsaas-media` allows public object reads for
-testing-phase generated media, and GCP Carousel output uses
-`https://storage.googleapis.com/ugcsaas-media`.
-
-## Media CDN Domain Slice
-
-The GCP side of the final public media domain is prepared for:
+## Required app environment
 
 ```text
-https://media.getugcpilot.com
+GCP_PROJECT_ID=ugcsaas
+GCP_REGION=us-central1
+GCP_CLOUD_TASKS_LOCATION=us-central1
+GCP_CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL=ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com
+GCP_AI_GENERATION_TASK_URL=<Cloud Run service URL>
+GCP_CAROUSEL_TASK_URL=<Cloud Run service URL>
+GCP_MEDIA_PROCESSING_TASK_URL=<Cloud Run service URL>
+GCP_SOCIAL_PUBLISH_TASK_URL=<Cloud Run service URL>
+GCP_VIDEO_RENDER_TASK_URL=<Cloud Run service URL>
+GCP_STORAGE_BUCKET=ugcsaas-media
+GCP_STORAGE_PUBLIC_BASE_URL=https://storage.googleapis.com/ugcsaas-media
 ```
 
-Terraform has created HTTPS Cloud CDN resources on the existing media CDN IP:
-
-- global IP: `8.233.40.78`
-- managed certificate: `ugc-prod-media-cdn-cert`
-- HTTPS proxy: `ugc-prod-media-cdn-https-proxy`
-- HTTPS forwarding rule: `ugc-prod-media-cdn-https`
-
-DNS is managed by Vercel for this domain. Before changing app or worker env,
-add or replace this Vercel DNS record:
-
-```text
-Type: A
-Name: media
-Value: 8.233.40.78
-```
-
-If Vercel shows explicit `media` A records pointing at Vercel IPs, replace
-them. The current DNS still resolves `media.getugcpilot.com` to Vercel IPs, so
-the GCP managed certificate remains `PROVISIONING`.
-
-After DNS is changed, wait for this command to show the certificate as
-`ACTIVE`:
-
-```powershell
-$env:CLOUDSDK_CONFIG='C:\Users\chund\OneDrive\Desktop\UGC\.tools\gcloud-config'
-.\.tools\google-cloud-sdk\bin\gcloud.cmd compute ssl-certificates describe ugc-prod-media-cdn-cert --global --project ugcsaas --format="value(managed.status)"
-```
-
-Then run:
-
-```powershell
-npm run media-cdn:gcp:check
-```
-
-Only after both checks pass, update production app and worker env values:
-
-```text
-GCP_STORAGE_PUBLIC_BASE_URL=https://media.getugcpilot.com
-```
-
-Apply the worker Terraform stacks after updating their local `terraform.tfvars`
-values, redeploy Vercel so the app env takes effect, then rerun:
-
-```powershell
-npm run production:gcp-storage:audit
-```
-
-Do not cut over `GCP_STORAGE_PUBLIC_BASE_URL` before DNS and the managed
-certificate are active, because new media rows would store URLs that users
-cannot read.
-
-## Application Queue Slice
-
-The app now supports a dark-launched GCP queue path behind the existing
-`lib/aws/sqs.ts` compatibility exports. AWS/SQS remains the default unless
-`QUEUE_PROVIDER=gcp` or `UGC_QUEUE_PROVIDER=gcp` is set.
-
-When the app runs on Vercel, also set a Vercel-safe GCP credential for the app
-publisher. Use either `GOOGLE_CLOUD_CREDENTIALS_JSON` with the `ugc-app-sa`
-service-account JSON, or the split `GOOGLE_CLOUD_CLIENT_EMAIL` /
-`GOOGLE_CLOUD_PRIVATE_KEY` pair. Do not use `GOOGLE_APPLICATION_CREDENTIALS` on
-Vercel unless it points to an actual file.
-
-The worker now supports `WORKER_QUEUE_PROVIDER=aws` for the existing SQS loop
-and `WORKER_QUEUE_PROVIDER=gcp` for Pub/Sub pull subscriptions. Pub/Sub uses the
-same durable background job message body as AWS:
-
-```json
-{ "jobId": "<background_jobs.id>", "jobType": "generate_carousel" }
-```
-
-The GCP defaults match the Terraform topic and subscription names:
-
-- app publisher topics: `ugc-ai-generation`, `ugc-carousel`,
-  `ugc-video-render`, `ugc-media-processing`, `ugc-social-publish`
-- worker subscriptions: `ugc-ai-generation-sub`, `ugc-carousel-sub`,
-  `ugc-video-render-sub`, `ugc-media-processing-sub`,
-  `ugc-social-publish-sub`
-
-`ugc-media-processing` is retained for the generic `test_worker_job`
-infrastructure canary. Current production work is handled by the dedicated
-AI-generation, Carousel, Video Render, and Social Publish workers, so there is
-no separate production media-processing Cloud Run Service.
-
-Safe dark test order:
-
-1. Keep production `QUEUE_PROVIDER=aws`.
-2. Dry-run the image plan:
-
-   ```powershell
-   npm run worker:gcp:image:dry-run
-   ```
-
-3. Push a worker image to Artifact Registry:
-
-   ```powershell
-   npm run worker:gcp:image:push
-   ```
-
-   If Docker Desktop is not running locally but Cloud Build is enabled, build
-   remotely instead:
-
-   ```powershell
-   npm run worker:gcp:image:push -- --cloud-build
-   ```
-
-   The image URI shape is:
-
-   ```text
-   us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:<tag>
-   ```
-
-4. Add Secret Manager values for at least `supabase-url` and
-   `supabase-service-role-key`.
-5. Enable and apply the one-off Cloud Run Job canary in
-   `infra/gcp/worker-canary`. This canary uses `WORKER_QUEUE_PROVIDER=gcp`,
-   `WORKER_RUN_ONCE=true`, `WORKER_JOB_TYPES=test_worker_job`, and
-   `WORKER_PUBSUB_SUBSCRIPTION=ugc-media-processing-sub`. Keep
-   `WORKER_POLL_WAIT_SECONDS` non-zero, currently `10`, so the one-shot Cloud
-   Run Job does not exit before Pub/Sub returns the message.
-6. Run the canary smoke test:
-
-   ```powershell
-   npm run worker:gcp:canary:test
-   ```
-
-   The script creates one durable `test_worker_job`, publishes one Pub/Sub
-   message, executes the Cloud Run Job, and verifies Supabase completion.
-
-Current checkpoint: Cloud Run Job `ugc-worker-canary-test` has been applied.
-The final canary execution `ugc-worker-canary-test-bbd2b` passed after the
-worker canary pull wait was changed from `0` to `10` seconds. Verified
-background job `24391910-4824-42a3-b432-2ff31f6bf775` completed with output
-worker `gcp-cloud-run-job`.
-
-The same Terraform stack also contains a separate disabled-by-default
-fake-target social-publish worker canary:
-
-```hcl
-enable_social_publish_canary_job = false
-```
-
-When enabled, it creates Cloud Run Job `ugc-social-publish-worker-canary`.
-That job is still one-off, uses `WORKER_RUN_ONCE=true`, reads only
-`ugc-social-publish-sub`, allows only `publish_social_post`, pulls up to 10
-messages so stale terminal canary messages do not block the current test, and
-keeps `SOCIAL_RECONCILIATION_ENABLED=false`. This validates Pub/Sub consumption
-without starting the always-on social-publish worker.
-
-## Carousel Worker Slice
-
-The production-shaped GCP Carousel worker is a Cloud Run Service, not a
-one-off Job, because it must keep consuming Pub/Sub messages after the app queue
-provider is flipped. The worker image exposes `/healthz` for Cloud Run startup
-checks, while the same process runs the background Pub/Sub loop.
-
-The Terraform stack lives in `infra/gcp/carousel-worker` and configures:
-
-- Cloud Run Service: `ugc-carousel-worker`
-- min/max instances: `1/1`
-- ingress: internal only
-- CPU always allocated: `cpu_idle = false`
-- subscription: `ugc-carousel-sub`
-- queue/job profile: `carousel` / `generate_carousel`
-- output storage: `STORAGE_PROVIDER=gcp`
-- public media base URL: `https://storage.googleapis.com/ugcsaas-media`
-
-Current checkpoint: image
-`us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718142523`
-has been pushed, Terraform has applied `ugc-carousel-worker`, and
-`terraform plan -detailed-exitcode` for `infra/gcp/carousel-worker` reports no
-changes. The real GCP Carousel smoke test passed with Carousel
-`433cf650-3a79-4f00-a6d4-b1107f38b785`, background job
-`ad451643-fdee-4e1f-93ce-ef925762584d`, and Pub/Sub message
-`19919982775905874`; it rendered 5 GCS-backed slides and downloaded them
-successfully.
-
-Do not remove SQS queues or EventBridge scheduling until every worker profile
-and scheduled social publish path has completed this queue cutover.
-
-## Video Render Worker Slice
-
-Video rendering has been moved to a production-shaped GCP worker. This maps the
-old AWS `video-render` worker profile to a Cloud Run Service that consumes the
-existing Pub/Sub subscription `ugc-video-render-sub`.
-
-The Terraform stack lives in `infra/gcp/video-render-worker` and configures:
-
-- Cloud Run Service: `ugc-video-render-worker`
-- min/max instances: `1/1`
-- ingress: internal only
-- CPU always allocated: `cpu_idle = false`
-- subscription: `ugc-video-render-sub`
-- queue/job profile: `video-render` /
-  `render_edit_video,render_schedule_combination`
-- output storage: `STORAGE_PROVIDER=gcp`
-- public media base URL: `https://storage.googleapis.com/ugcsaas-media`
-- schedule finalization callback URL: `https://getugcpilot.com`
-
-The deployed stack uses worker image:
-
-```text
-us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718203317
-```
-
-To re-plan or update the stack:
-
-```powershell
-cd infra\gcp\video-render-worker
-terraform init
-terraform plan
-```
-
-Required prerequisites:
-
-- the worker image has been pushed to Artifact Registry;
-- Secret Manager has enabled versions for `supabase-url`,
-  `supabase-service-role-key`, and `ugc-internal-scheduling-secret`;
-- `ugc-internal-scheduling-secret` matches the production finalization secret.
-  In the current testing setup, it is derived from `SUPABASE_SERVICE_ROLE_KEY`,
-  so the production app can use its existing fallback when
-  `UGC_INTERNAL_SCHEDULING_SECRET` is not set in Vercel;
-- GCS public reads are verified for rendered MP4s.
-
-After applying changes, run:
-
-```powershell
-npm run worker:test:video-render:gcp
-```
-
-The smoke test creates one `render_edit_video` background job, publishes it to
-`ugc-video-render`, waits for the Cloud Run worker to complete it, verifies the
-database rows, and downloads the GCS-backed MP4.
-
-Verified GCP smoke test:
-
-- Cloud Run Service: `ugc-video-render-worker`
-- revision: `ugc-video-render-worker-00001-4s6`
-- background job: `5c55d0ff-83ad-4674-a851-704f67b1421e`
-- Pub/Sub message: `20499814925163732`
-- render: `8e9fda30-2192-4234-810b-eee289617f22`
-- output:
-  `https://storage.googleapis.com/ugcsaas-media/videos/rendered/gcp-video-render-canary/gcp-video-render-canary/8e9fda30-2192-4234-810b-eee289617f22.mp4`
-
-## AI Generation Worker Slice
-
-The GCP replacement for the AWS `ai-generation` worker profile is implemented
-as a Cloud Run Service in `infra/gcp/ai-generation-worker`.
-
-It maps:
-
-- AWS SQS queue: `UGC_AI_GENERATION_QUEUE_URL`
-- GCP Pub/Sub topic: `ugc-ai-generation`
-- GCP Pub/Sub subscription: `ugc-ai-generation-sub`
-- Worker queue name: `ai-generation`
-- Worker job types: `generate_avatar,generate_image,generate_hook_video`
-- output storage: `STORAGE_PROVIDER=gcp`
-- public media base URL: `https://storage.googleapis.com/ugcsaas-media`
-
-Safe apply order:
-
-```powershell
-npm run worker:gcp:image:push -- --cloud-build
-cd infra\gcp\ai-generation-worker
-copy terraform.tfvars.example terraform.tfvars
-```
-
-Set `worker_image_uri` to the pushed Artifact Registry image. Keep
-`enable_ai_generation_worker = false` for the first plan, then enable it only
-after Secret Manager has enabled versions for:
-
-- `supabase-url`
-- `supabase-service-role-key`
-- `openai-api-key`
-- `gemini-api-key`
-- `runwayml-api-secret`
-
-The service canary intentionally does not spend AI provider credits:
-
-```powershell
-npm run ai-generation:gcp:service-dry-run
-npm run ai-generation:gcp:service-canary
-```
-
-The canary creates one invalid `generate_image` background job without
-`input.prompt`, publishes it to `ugc-ai-generation`, waits for the always-on
-Cloud Run worker to consume it, and expects the job to fail with
-`generate_image requires input.prompt.` That proves Pub/Sub and Cloud Run
-consumption before OpenAI, Gemini, or Runway can be called.
-
-Current checkpoint:
-
-- Cloud Run Service: `ugc-ai-generation-worker`
-- revision: `ugc-ai-generation-worker-00001-97p`
-- service URL:
-  `https://ugc-ai-generation-worker-ano542ohmq-uc.a.run.app`
-- worker image:
-  `us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260719053832`
-- subscription: `ugc-ai-generation-sub`
-- queue/job profile: `ai-generation` /
-  `generate_avatar,generate_image,generate_hook_video`
-- output storage: `STORAGE_PROVIDER=gcp`
-
-The no-spend service canary passed. Background job
-`081aa700-90e9-4886-a543-f46bb2530b8f` was published to Pub/Sub message
-`20561160922574488`, consumed by `ugc-ai-generation-worker`, and failed with
-the expected safe error `generate_image requires input.prompt.` Terraform
-`plan -detailed-exitcode` returned no changes after apply.
-
-## Social Publish Worker Slice
-
-The GCP replacement for the AWS `social-publish` worker profile is implemented
-in `infra/gcp/social-publish-worker`.
-
-The Terraform stack configures:
-
-- Cloud Run Service: `ugc-social-publish-worker`
-- min/max instances: `1/1`
-- ingress: internal only
-- CPU always allocated: `cpu_idle = false`
-- subscription: `ugc-social-publish-sub`
-- queue/job profile: `social-publish` / `publish_social_post`
-- output/helper storage: `STORAGE_PROVIDER=gcp`
-- token encryption secret: `oauth-token-encryption-key`
-- provider secrets: TikTok client key/secret and Google client ID/secret
-
-The stack was disabled by default during preparation:
-
-```powershell
-cd infra\gcp\social-publish-worker
-copy terraform.tfvars.example terraform.tfvars
-terraform init
-terraform plan
-```
-
-Keep `enable_social_publish_worker = false` until social publishing is ready
-for an intentional canary. For the first enabled canary, keep:
-
-```hcl
-social_reconciliation_enabled = false
-```
-
-That prevents the GCP worker from recovering older due social publish jobs from
-the database without an explicit Pub/Sub delivery. This is important because a
-recovered social publish job can publish to a real connected account.
-
-Before enabling the worker, confirm Secret Manager has enabled versions for:
-
-- `supabase-url`
-- `supabase-service-role-key`
-- `oauth-token-encryption-key`
-- `tiktok-client-key`
-- `tiktok-client-secret`
-- `google-client-id`
-- `google-client-secret`
-
-Do not run a real social publish canary until the target account, platform, and
-post visibility are intentionally chosen. TikTok photo carousel publishing also
-requires a verified pull URL host; `storage.googleapis.com` is not a final
-production media domain.
-
-Before a real account/post canary, run the fake-target worker canary:
-
-```powershell
-npm run social-publish:gcp:worker-dry-run
-npm run social-publish:gcp:worker-canary
-```
-
-This creates one fake `publish_social_post` background job, publishes it to
-`ugc-social-publish`, executes `ugc-social-publish-worker-canary`, and expects
-the job to fail with `Publish target was not found.` That failure is the
-success condition because it proves the worker consumed the Pub/Sub message and
-stopped before any social provider call. Before publishing the new canary
-message, the script drains only terminal canary messages from
-`ugc-social-publish-sub` and aborts if it sees non-terminal work.
-
-Current checkpoint: worker image
-`us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718203317`
-with digest
-`sha256:df802f3e3218fd7f48b88016372f6dc4e15ad2b3bc1658ca72844d817d418c38`
-has been pushed, Terraform has applied Cloud Run Job
-`ugc-social-publish-worker-canary`, and fake-target execution
-`ugc-social-publish-worker-canary-x6qm5` passed. The verified background job was
-`a76048d0-2c66-4ddf-b829-96b75c8285bc`, Pub/Sub message
-`20639648512021525`, and final status was expected failure:
-`Publish target was not found.`
-
-The always-on Cloud Run Service is now applied:
-
-- service: `ugc-social-publish-worker`
-- revision: `ugc-social-publish-worker-00001-pvs`
-- service URL:
-  `https://ugc-social-publish-worker-ano542ohmq-uc.a.run.app`
-- subscription: `ugc-social-publish-sub`
-- queue/job profile: `social-publish` / `publish_social_post`
-- worker image digest:
-  `sha256:df802f3e3218fd7f48b88016372f6dc4e15ad2b3bc1658ca72844d817d418c38`
-- `SOCIAL_RECONCILIATION_ENABLED=false`
-
-Startup logs confirm the service runs with `queueProvider: gcp`,
-`pubsubSubscriptionName: ugc-social-publish-sub`, and allowed job type
-`publish_social_post`.
-
-The always-on service fake-target canary passed. Background job
-`3c63f479-6351-4a17-be82-636bc0424cb1` was published to Pub/Sub message
-`20487418590912439`, consumed by `ugc-social-publish-worker`, and failed with
-`Publish target was not found.` This proves the Cloud Run Service consumes the
-GCP social publish queue without calling a social provider.
-
-Use this guard before real social publish tests:
-
-```powershell
-npm run social-publish:gcp:cutover-check
-```
-
-Use this service canary to retest the always-on worker without spending on media
-generation or publishing to a provider:
-
-```powershell
-npm run social-publish:gcp:service-dry-run
-npm run social-publish:gcp:service-canary
-```
-
-## Social Schedule Dispatcher Slice
-
-The app now has a GCP replacement path for AWS EventBridge Scheduler, behind
-`SOCIAL_SCHEDULER_PROVIDER=gcp`.
-
-When `SOCIAL_SCHEDULER_PROVIDER=gcp`, the app creates one Cloud Tasks HTTP task
-per scheduled social target in the existing Terraform queue:
-
-```text
-ugc-social-publish-scheduler
-```
-
-At the scheduled time, Cloud Tasks calls:
-
-```text
-POST /api/internal/schedules/dispatch
-```
-
-That internal route verifies the Google OIDC token minted for:
-
-```text
-ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com
-```
-
-After verification, the route only enqueues the existing
-`publish_social_post` background job through the current queue provider. It does
-not generate media and does not directly publish to social platforms.
-
-Required production app env before switching this provider:
-
-- `SOCIAL_SCHEDULER_PROVIDER=gcp`
-- `QUEUE_PROVIDER=gcp`
-- `GCP_PROJECT_ID=ugcsaas`
-- `GOOGLE_CLOUD_CREDENTIALS_JSON` for `ugc-app-sa`
-- `APP_BASE_URL` or `UGC_INTERNAL_APP_URL`
-- `GCP_CLOUD_TASKS_LOCATION=us-central1`
-- `GCP_SOCIAL_PUBLISH_TASKS_QUEUE=ugc-social-publish-scheduler`
-- `GCP_CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL=ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com`
-
-Before enabling this for normal scheduling, apply and test the GCP
-social-publish worker with an intentional canary account/post. Otherwise Cloud
-Tasks can correctly enqueue jobs that no GCP social worker is ready to consume.
-
-To test only the Cloud Tasks dispatcher handoff without a real social account or
-real publish, use the guarded canary:
-
-```powershell
-npm run social-dispatch:gcp:dry-run
-```
-
-When the dry-run plan looks correct, intentionally execute it:
-
-```powershell
-npm run social-dispatch:gcp:canary
-```
-
-The canary creates one fake `publish_social_post` background job, creates one
-Cloud Task against the deployed `/api/internal/schedules/dispatch` route,
-verifies that the route attached a Pub/Sub message id, then cancels the dummy
-job if no worker consumes it. With the always-on GCP social-publish worker
-enabled, the safe success path is that the worker consumes the fake target and
-fails with `Publish target was not found.` It does not create scheduled post
-rows, does not use a connected social account, and does not publish.
-
-Current checkpoint: Vercel production `SOCIAL_SCHEDULER_PROVIDER` has been set
-to `gcp`. The Cloud Tasks queue `ugc-social-publish-scheduler` is running, and
-the production fake-target canary passed. Cloud Task
-`projects/ugcsaas/locations/us-central1/queues/ugc-social-publish-scheduler/tasks/ugc-social-gcp-1527883f-9958-436f-89d2-e14e735808a5`
-called the deployed dispatch route, attached Pub/Sub message
-`20102510015581694` to background job
-`bef7648b-7539-4506-adff-5ae6231ab63b`, and the GCP social worker failed it
-safely with `Publish target was not found.`
-
-## Production app cutover audit
-
-The final app-side cutover check is implemented as a protected internal route:
-
-```text
-POST /api/internal/gcp-cutover/audit
-```
-
-It verifies that the deployed app resolves these providers to GCP before it
-queues anything:
-
-- `QUEUE_PROVIDER=gcp`
-- `STORAGE_PROVIDER=gcp`
-- `SOCIAL_SCHEDULER_PROVIDER=gcp`
-
-If any provider is still AWS, the route returns `409` and does not enqueue a
-job. When all three providers are GCP, it creates one invalid `generate_image`
-background job through the normal app queue sender. The live
-`ugc-ai-generation-worker` Cloud Run service should consume it and fail with
-`generate_image requires input.prompt.` This is intentional and avoids OpenAI,
-Gemini, or Runway spend.
-
-Run the audit after the route is deployed to Vercel:
-
-```powershell
-npm run production:gcp-cutover:audit:dry-run
-npm run production:gcp-cutover:audit
-```
-
-The runner signs the request using `UGC_INTERNAL_CUTOVER_AUDIT_SECRET` when set;
-otherwise it derives a domain-separated signing key from
-`SUPABASE_SERVICE_ROLE_KEY`, matching the deployed route fallback.
-
-## Production GCP storage upload audit
-
-The next storage-specific check is implemented as another protected internal
-route:
-
-```text
-POST /api/internal/gcp-storage/audit
-```
-
-It uses the same signed-upload functions as normal user media uploads. The
-route refuses to run unless the deployed app resolves `STORAGE_PROVIDER=gcp`.
-When it runs, it creates one temporary `media_assets` row, signs a GCP Storage
-PUT URL for a tiny PNG, uploads it to `ugcsaas-media`, verifies object metadata,
-checks the configured public URL is readable, deletes the GCS object, and
-soft-deletes the audit media row.
-
-Run it only after this route is deployed to Vercel:
-
-```powershell
-npm run production:gcp-storage:audit:dry-run
-npm run production:gcp-storage:audit
-```
-
-The success criteria are:
-
-- runtime storage provider is `gcp`;
-- runtime bucket is `ugcsaas-media`;
-- object metadata and public read both report `image/png`;
-- uploaded byte count matches the tiny audit image;
-- cleanup reports both the GCS object and Supabase media row were removed.
-
-Current checkpoint: the production audit passed against
-`https://getugcpilot.com`. The deployed app uploaded a 68-byte PNG to
-`ugcsaas-media`, read it through public host `storage.googleapis.com`, and
-cleaned up the temporary GCS object plus Supabase media row.
-
-After production is creating new schedules in GCP, audit old AWS EventBridge
-social schedules:
-
-```powershell
-npm run social-scheduler:aws-migration:dry-run
-```
-
-The AWS credential used for this command must be able to inspect and remove the
-old scheduler group:
-
-```text
-scheduler:ListSchedules
-scheduler:DeleteSchedule
-```
-
-The migration command compares Supabase `scheduled_post_targets` rows with the
-AWS EventBridge schedule group. Active AWS-backed targets are only eligible when
-they have a `publish_job_id` and are outside the safety window, so the script
-does not accidentally create an immediately firing Cloud Task. In execute mode,
-eligible active targets are migrated in this order:
-
-1. Create the replacement GCP Cloud Task.
-2. Delete the AWS EventBridge schedule.
-3. Update Supabase to store the GCP task name/path.
-
-Terminal targets are cleaned by deleting their AWS schedule and marking
-`scheduler_deleted_at`. Orphan AWS schedules are reported but not deleted unless
-the command is explicitly run with `--delete-orphans`.
-
-When the dry-run plan is clean and intentional:
-
-```powershell
-npm run social-scheduler:aws-migration:execute
-```
-
-Use the strict audit to verify the AWS scheduler surface is empty:
-
-```powershell
-npm run social-scheduler:aws-audit
-```
-
-## Carousel Scheduler Slice
-
-Trigger.dev has been removed. The replacement is a Cloud Scheduler job that
-starts a Cloud Run Job. The Cloud Run Job runs:
-
-```text
-node dist/scheduler/replenish-daily-carousels.js
-```
-
-The runner signs calls to the existing internal route:
-
-```text
-POST /api/internal/carousels/replenish
-```
-
-using `UGC_INTERNAL_CAROUSEL_SECRET`, then keeps requesting pages until the
-database sweep state reports the cycle is complete.
-
-The Terraform stack is disabled by default:
-
-```powershell
-cd infra\gcp\carousel-scheduler
-copy terraform.tfvars.example terraform.tfvars
-terraform init
-terraform plan
-```
-
-Enable it only after:
-
-- a worker image has been pushed to Artifact Registry;
-- Secret Manager has enabled versions for `app_base_url` and
-  `ugc-internal-carousel-secret`;
-- the production app has the same `UGC_INTERNAL_CAROUSEL_SECRET`;
-- a production canary of the internal replenishment route succeeds.
-
-Keep `scheduler_paused = true` for the first apply. Unpause only after manually
-executing the Cloud Run Job and checking Cloud Run logs plus Supabase sweep
-state.
-
-Current checkpoint: image
-`us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718111431`
-has been pushed, Terraform has applied Cloud Run Job
-`ugc-carousel-replenishment`, and Cloud Scheduler job
-`ugc-carousel-replenishment-quarter-hour` is still paused. Manual execution
-`ugc-carousel-replenishment-ckb6c` completed successfully after the production
-Vercel `UGC_INTERNAL_CAROUSEL_SECRET` was corrected; it processed one page with
-3 profiles and 0 failures.
-
-## Cache Decision
-
-This app needs Cloud CDN as the CloudFront replacement. It does not need Redis,
-Upstash, or Memorystore for the first migration because Supabase already stores
-job state, locks, retries, and scheduling metadata.
+For an app hosted outside GCP, also configure the `ugc-app-sa` credential using
+`GOOGLE_CLOUD_CREDENTIALS_JSON`, or the split client-email/private-key values.
+Never commit credentials.
+
+## Safe apply order
+
+1. Apply the Supabase migrations in timestamp order.
+2. Plan and apply `foundation/` to create Cloud Tasks queues.
+3. Build and push the worker image with `npm run worker:gcp:image:push`.
+4. Apply each enabled Cloud Run worker stack. The stacks set
+   `WORKER_TRANSPORT=cloud-tasks` and grant the scheduler service account
+   `roles/run.invoker`.
+5. Configure the worker URLs in the app environment and deploy the app.
+6. Run a no-spend `test_worker_job` through `POST /api/jobs` and verify its
+   Supabase status through `GET /api/jobs/{jobId}`.
+7. Set `enable_background_job_recovery_scheduler=true` in the foundation only
+   after the deployed recovery route passes an authenticated manual check.
+8. Verify authenticated production flows on `https://www.getugcpilot.com`.
+
+Before applying the foundation after this migration, review the plan for the
+expected removal of retired Pub/Sub resources and confirm there are no
+in-flight legacy deliveries.
+
+## Media cleanup audit
+
+`npm run storage:gcp-backfill:audit` is intentionally read-only. It reports
+historical non-GCP media URLs that still need a separately reviewed migration;
+it cannot enqueue work, mutate rows, or select a runtime provider.

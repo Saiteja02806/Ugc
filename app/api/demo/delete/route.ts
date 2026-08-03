@@ -1,6 +1,6 @@
 import {
   authenticateDemoRequest,
-  getAwsDiagnostic,
+  getStorageDiagnostic,
   getDemoId,
   getMissingDemoRuntimeEnvVars,
   getProjectId,
@@ -11,7 +11,7 @@ import {
 } from "@/lib/demo/demo-api";
 import { getDemoVideo, softDeleteDemoVideo } from "@/lib/demo/demo-storage";
 import { validateRawDemoKeyForOwner } from "@/lib/demo/demo-upload";
-import { deleteS3Object } from "@/lib/storage/s3";
+import { deleteStorageObject } from "@/lib/storage/storage";
 
 export const runtime = "nodejs";
 
@@ -122,12 +122,12 @@ export async function DELETE(request: Request) {
         key: demo.source_s3_key,
         storageDeleted: false,
         storageWarning:
-          "Demo was removed from the library, but S3 cleanup is not configured.",
+          "Demo was removed from the library, but Cloud Storage cleanup is not configured.",
       });
     }
 
     try {
-      await deleteS3Object({ key: demo.source_s3_key });
+      await deleteStorageObject({ key: demo.source_s3_key });
 
       return jsonResponse({
         ok: true,
@@ -136,7 +136,7 @@ export async function DELETE(request: Request) {
         storageDeleted: true,
       });
     } catch (error) {
-      console.error("Failed to delete demo upload from S3:", error);
+      console.error("Failed to delete demo upload from Cloud Storage:", error);
 
       return jsonResponse({
         ok: true,
@@ -145,7 +145,7 @@ export async function DELETE(request: Request) {
         storageDeleted: false,
         storageWarning:
           "Demo was removed from the library, but the source object could not be deleted.",
-        diagnostic: getAwsDiagnostic(error),
+        diagnostic: getStorageDiagnostic(error),
       });
     }
   } catch (error) {

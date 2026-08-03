@@ -19,7 +19,11 @@ import {
 } from "@/lib/trending/feed-items";
 import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
 import { getTrendingHookFeedProvider } from "@/lib/trending/trending-hook-feed";
-import { filterWallTextProvidersForRuntime } from "@/lib/trending/wall-text-access";
+import { getTrendingWallTextFeedProvider } from "@/lib/trending/trending-wall-text-feed";
+import {
+  filterWallTextProvidersForRuntime,
+  isWallTextLocalDevelopmentEnabled,
+} from "@/lib/trending/wall-text-access";
 
 export const runtime = "nodejs";
 
@@ -86,7 +90,12 @@ export async function GET(request: Request) {
 
     if (!profile) {
       const providers = filterWallTextProvidersForRuntime(
-        createCurrentTrendingFeedProviders([]),
+        createCurrentTrendingFeedProviders(
+          [],
+          undefined,
+          undefined,
+          { includeHookVideos: hookVideosEnabled },
+        ),
       );
 
       return jsonResponse({
@@ -100,7 +109,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const [dailyFeed, hookProvider] = await Promise.all([
+    const [dailyFeed, hookProvider, wallTextProvider] = await Promise.all([
       ensureTrendingDailyFeed({
         profile,
         timezone: new URL(request.url).searchParams.get("timezone"),
@@ -108,6 +117,9 @@ export async function GET(request: Request) {
       }),
       hookVideosEnabled
         ? getTrendingHookFeedProvider(profile)
+        : Promise.resolve(undefined),
+      isWallTextLocalDevelopmentEnabled()
+        ? getTrendingWallTextFeedProvider(profile)
         : Promise.resolve(undefined),
     ]);
     const profileState =
@@ -122,6 +134,8 @@ export async function GET(request: Request) {
       createCurrentTrendingFeedProviders(
         dailyFeed.carousels,
         hookProvider,
+        wallTextProvider,
+        { includeHookVideos: hookVideosEnabled },
       ),
     );
 

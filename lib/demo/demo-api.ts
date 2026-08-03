@@ -7,7 +7,7 @@ import {
   requireFirebaseUser,
   type VerifiedFirebaseUser,
 } from "@/lib/firebase/server-auth";
-import { getMissingStorageEnvVars } from "@/lib/storage/s3";
+import { getMissingStorageEnvVars } from "@/lib/storage/storage";
 
 import { getMissingDemoVideoStorageEnvVars } from "./demo-storage";
 
@@ -135,12 +135,12 @@ export function getProjectIdFromUrl(request: Request) {
   return getProjectId(url.searchParams.get("projectId"));
 }
 
-export function getAwsDiagnostic(error: unknown) {
+export function getStorageDiagnostic(error: unknown) {
   if (!error || typeof error !== "object") {
     return null;
   }
 
-  const awsError = error as {
+  const storageError = error as {
     $metadata?: { httpStatusCode?: number; requestId?: string };
     Code?: string;
     code?: string;
@@ -149,15 +149,16 @@ export function getAwsDiagnostic(error: unknown) {
   };
 
   return {
-    code: awsError.Code ?? awsError.code ?? awsError.name ?? "Unknown",
-    httpStatusCode: awsError.$metadata?.httpStatusCode ?? null,
-    message: awsError.message ?? "No diagnostic message available",
-    requestId: awsError.$metadata?.requestId ?? null,
+    code:
+      storageError.Code ?? storageError.code ?? storageError.name ?? "Unknown",
+    httpStatusCode: storageError.$metadata?.httpStatusCode ?? null,
+    message: storageError.message ?? "No diagnostic message available",
+    requestId: storageError.$metadata?.requestId ?? null,
   };
 }
 
-export function isS3NotFoundError(error: unknown) {
-  const diagnostic = getAwsDiagnostic(error);
+export function isStorageNotFoundError(error: unknown) {
+  const diagnostic = getStorageDiagnostic(error);
 
   return (
     diagnostic?.httpStatusCode === 404 ||

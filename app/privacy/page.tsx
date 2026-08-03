@@ -30,11 +30,11 @@ export default function PrivacyPolicyPage() {
           </p>
           <p>
             Privacy questions can be sent to{" "}
-            <a className="font-bold text-[#c2410c]" href="mailto:privacy@getugcpilot.com">
+            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
               privacy@getugcpilot.com
             </a>
             . General support questions can be sent to{" "}
-            <a className="font-bold text-[#c2410c]" href="mailto:support@getugcpilot.com">
+            <a className="font-bold text-primary" href="mailto:support@getugcpilot.com">
               support@getugcpilot.com
             </a>
             .
@@ -216,11 +216,11 @@ export default function PrivacyPolicyPage() {
           <p>
             Users can request deletion by using product settings where available
             or by emailing{" "}
-            <a className="font-bold text-[#c2410c]" href="mailto:privacy@getugcpilot.com">
+            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
               privacy@getugcpilot.com
             </a>
             . Data deletion instructions are available at{" "}
-            <a className="font-bold text-[#c2410c]" href="https://getugcpilot.com/data-deletion">
+            <a className="font-bold text-primary" href="https://getugcpilot.com/data-deletion">
               https://getugcpilot.com/data-deletion
             </a>
             .
@@ -255,7 +255,7 @@ export default function PrivacyPolicyPage() {
           <p>
             Users may request access, correction, deletion, export, or
             restriction of their personal data by contacting{" "}
-            <a className="font-bold text-[#c2410c]" href="mailto:privacy@getugcpilot.com">
+            <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">
               privacy@getugcpilot.com
             </a>
             .

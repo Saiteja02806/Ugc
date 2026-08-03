@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildUserInfluencerId,
   createNonRepeatingHookVideoCycle,
+  getCatalogInfluencerKey,
   groupCatalogInfluencers,
   getHookVideoBrowseEntryKey,
   parseHookInfluencerId,
@@ -63,6 +64,19 @@ test("parses catalog and user influencer identifiers without exposing media path
   assert.equal(parseHookInfluencerId("asset-123"), null);
 });
 
+test("uses the indexed catalog influencer key before legacy metadata", () => {
+  assert.equal(
+    getCatalogInfluencerKey({
+      id: "asset-1",
+      influencer_key: "creator_001",
+      metadata: { avatar: "legacy-name" },
+      name: "Legacy Name - Shocked",
+      thumbnail_url: null,
+    }),
+    "creator-001",
+  );
+});
+
 test("shuffles every video exactly once without mutating the source list", () => {
   const source = ["video-1", "video-2", "video-3", "video-4"];
   const randomValues = [0.75, 0.1, 0.5];
@@ -120,13 +134,16 @@ function buildBrowseEntry(videoId: string): HookVideoBrowseEntry {
     video: {
       durationSeconds: 8,
       id: videoId,
+      influencerKey: "maya",
       influencerId: "catalog:maya",
       ratio: "9:16",
+      reactionType: "focused_attention",
       sourceKind: "catalog",
       thumbnailUrl: null,
       title: videoId,
       trimEnd: 8,
       trimStart: 0,
+      visualGroup: "indoor_selfie_closeup",
     },
   };
 }

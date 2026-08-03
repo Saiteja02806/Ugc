@@ -15,6 +15,7 @@ const SOURCE_CATEGORY_RUNTIME_MAP = {
   personal_finance: "personal-finance",
   productivity: "productivity-saas",
 };
+const FINAL_REVIEW_STATUS = "final_full_resolution_review";
 
 const ALLOWED_BUCKETS_BY_RUNTIME_CATEGORY = {
   "fitness-health": new Set([
@@ -42,6 +43,17 @@ const ALLOWED_BUCKETS_BY_RUNTIME_CATEGORY = {
     "phone-and-devices",
     "workspace-objects",
   ]),
+  shared: new Set([
+    "abstract-backgrounds",
+    "clean-texture-backgrounds",
+    "fitness-wellness-objects",
+    "food-and-table",
+    "home-lifestyle",
+    "notes-and-planning",
+    "phone-and-devices",
+    "product-still-life",
+    "workspace-objects",
+  ]),
 };
 
 const args = parseArgs(process.argv.slice(2));
@@ -53,7 +65,7 @@ const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 const assets = Array.isArray(manifest.assets) ? manifest.assets : [];
 const errors = [];
 const seenAssetKeys = new Set();
-const seenBaseS3Keys = new Set();
+const seenBaseObjectKeys = new Set();
 const seenSourceHashes = new Set();
 
 for (const asset of assets) {
@@ -92,17 +104,30 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
-console.log("OK: tags, runtime categories, safety fields, S3 keys, and image dimensions are valid.");
+console.log("OK: tags, runtime categories, safety fields, storage keys, hashes, and image dimensions are valid.");
 
 async function checkAsset(asset) {
   const expectedRuntimeCategory =
-    SOURCE_CATEGORY_RUNTIME_MAP[asset.sourceLocalCategorySlug];
+    SOURCE_CATEGORY_RUNTIME_MAP[asset.sourceLocalCategorySlug] ??
+    (asset.review?.reviewStatus === FINAL_REVIEW_STATUS
+      ? asset.review.runtimeCategory
+      : null);
 
   if (!expectedRuntimeCategory) {
     errors.push(`${asset.assetKey}: unknown source category ${asset.sourceLocalCategorySlug}`);
   } else if (asset.categorySlug !== expectedRuntimeCategory) {
     errors.push(
       `${asset.assetKey}: expected runtime category ${expectedRuntimeCategory}, got ${asset.categorySlug}`,
+    );
+  }
+
+  if (
+    asset.sourceLocalCategorySlug === "slideshows_review" &&
+    (asset.review?.decision !== "approved" ||
+      asset.review?.reviewStatus !== FINAL_REVIEW_STATUS)
+  ) {
+    errors.push(
+      `${asset.assetKey}: slideshows_review assets require an approved ${FINAL_REVIEW_STATUS} decision.`,
     );
   }
 
@@ -116,9 +141,9 @@ async function checkAsset(asset) {
 
   checkUnique(seenAssetKeys, asset.assetKey, `${asset.assetKey}: duplicate assetKey`);
   checkUnique(
-    seenBaseS3Keys,
-    asset.s3?.baseKey,
-    `${asset.assetKey}: duplicate base S3 key ${asset.s3?.baseKey}`,
+    seenBaseObjectKeys,
+    asset.storage?.baseKey,
+    `${asset.assetKey}: duplicate base object key ${asset.storage?.baseKey}`,
   );
   checkUnique(
     seenSourceHashes,
@@ -167,16 +192,20 @@ function checkDbRow(asset) {
     errors.push(`${asset.assetKey}: dbRow category does not match asset category.`);
   }
 
-  if (row.base_s3_key !== asset.s3?.baseKey) {
-    errors.push(`${asset.assetKey}: dbRow base key does not match asset S3 key.`);
+  if (row.base_s3_key !== asset.storage?.baseKey) {
+    errors.push(`${asset.assetKey}: dbRow base key does not match asset object key.`);
   }
 
-  if (row.thumb_s3_key !== asset.s3?.thumbKey) {
-    errors.push(`${asset.assetKey}: dbRow thumb key does not match asset S3 key.`);
+  if (row.thumb_s3_key !== asset.storage?.thumbKey) {
+    errors.push(`${asset.assetKey}: dbRow thumb key does not match asset object key.`);
   }
 
-  if (row.source_original_s3_key !== asset.s3?.originalKey) {
-    errors.push(`${asset.assetKey}: dbRow original key does not match asset S3 key.`);
+  if (row.source_original_s3_key !== asset.storage?.originalKey) {
+    errors.push(`${asset.assetKey}: dbRow original key does not match asset object key.`);
+  }
+
+  if (!row.source_perceptual_hash) {
+    errors.push(`${asset.assetKey}: dbRow.source_perceptual_hash is required.`);
   }
 }
 

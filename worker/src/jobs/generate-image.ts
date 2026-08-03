@@ -1,13 +1,22 @@
 import { generateOpenAiImageBuffer } from "../lib/openai-image.js";
 import {
+  createGenerationRequestFingerprint,
+  persistProviderSubmissionFailure,
+  ProviderSubmissionUncertainError,
+} from "../lib/generation-provider.js";
+import {
   AI_STUDIO_IMAGE_HEIGHT,
   AI_STUDIO_IMAGE_RATIO,
   AI_STUDIO_IMAGE_WIDTH,
   prepareAIStudioImageOutput,
 } from "../lib/image-output.js";
-import { uploadBufferToS3 } from "../lib/s3.js";
-import type { BackgroundJobRow } from "../types.js";
-import type { WorkerJobOutput } from "./index.js";
+import {
+  downloadStoredObjectBuffer,
+  getStoredObject,
+  uploadBufferToStorage,
+} from "../lib/storage.js";
+import type { BackgroundJobRow, Json } from "../types.js";
+import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 
 const MAX_PROMPT_LENGTH = 2_000;
 type GenerateImageInput = {
@@ -43,29 +52,151 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
 
 export async function runGenerateImageJob(
   job: BackgroundJobRow,
+  context: WorkerJobContext,
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
   const userId = getPathSegment(job.user_id, "user");
   const projectId = getPathSegment(job.project_id, "default");
-  const generatedImageBuffer = await generateOpenAiImageBuffer(input.prompt);
+  const outputKey = `images/generated/${userId}/${projectId}/${input.generationId}.png`;
+  const stagingKey = `generation-staging/${job.id}/openai-image-source.png`;
+  const existingOutput = await getStoredObject(outputKey);
+
+  if (existingOutput) {
+    return buildOutput(input.generationId, existingOutput);
+  }
+
+  await context.checkpoint({
+    stage: "waiting_for_image_provider",
+    status: "waiting_external_service",
+  });
+  const operationKey = "openai-image";
+  const requestFingerprint = createGenerationRequestFingerprint({
+    generationId: input.generationId,
+    outputKey,
+    prompt: input.prompt,
+  });
+  const reservation = await context.store.reserveGenerationProviderOperation({
+    jobId: job.id,
+    operationKey,
+    provider: "openai",
+    requestFingerprint,
+  });
+  let generatedImageBuffer: Buffer;
+
+  if (reservation.shouldSubmit) {
+    let generated;
+
+    try {
+      generated = await generateOpenAiImageBuffer(input.prompt);
+    } catch (error) {
+      return persistProviderSubmissionFailure({
+        error,
+        jobId: job.id,
+        operationKey,
+        store: context.store,
+      });
+    }
+
+    await context.store.markGenerationProviderSucceeded({
+      jobId: job.id,
+      metadata: { model: generated.model },
+      operationKey,
+      providerOperationId: generated.requestId ?? undefined,
+    });
+    const staged = await uploadBufferToStorage({
+      buffer: generated.buffer,
+      cacheControl: "private, max-age=86400",
+      contentType: "image/png",
+      key: stagingKey,
+    });
+    await context.store.markGenerationProviderSucceeded({
+      jobId: job.id,
+      metadata: {
+        model: generated.model,
+        stagingKey: staged.key,
+      },
+      operationKey,
+      providerOperationId: generated.requestId ?? undefined,
+    });
+    generatedImageBuffer = generated.buffer;
+  } else {
+    const savedStagingKey = getJsonString(
+      reservation.operation.metadata,
+      "stagingKey",
+    );
+
+    if (
+      !savedStagingKey ||
+      !["provider_succeeded", "output_persisted"].includes(
+        reservation.operation.status,
+      )
+    ) {
+      throw new ProviderSubmissionUncertainError();
+    }
+
+    generatedImageBuffer = await downloadStoredObjectBuffer(savedStagingKey);
+  }
+
+  await context.checkpoint({
+    progress: 80,
+    stage: "processing_image",
+    status: "processing",
+  });
   const imageBuffer = await prepareAIStudioImageOutput(generatedImageBuffer);
 
-  const uploaded = await uploadBufferToS3({
+  await context.checkpoint({
+    progress: 90,
+    stage: "uploading_image",
+    status: "uploading_output",
+  });
+  const uploaded = await uploadBufferToStorage({
     buffer: imageBuffer,
     cacheControl: "public, max-age=31536000, immutable",
     contentType: "image/png",
-    key: `images/generated/${userId}/${projectId}/${input.generationId}.png`,
+    key: outputKey,
   });
 
+  await context.store.markGenerationOutputPersisted({
+    jobId: job.id,
+    metadata: {
+      height: AI_STUDIO_IMAGE_HEIGHT,
+      ratio: AI_STUDIO_IMAGE_RATIO,
+      stagingKey,
+      width: AI_STUDIO_IMAGE_WIDTH,
+    },
+    operationKey,
+    outputReference: uploaded.key,
+    outputUrl: uploaded.url,
+  });
+
+  return buildOutput(input.generationId, uploaded);
+}
+
+function buildOutput(
+  generationId: string,
+  uploaded: { key: string; url: string },
+) {
   return {
-    generationId: input.generationId,
+    fileSizeBytes: undefined,
+    generationId,
     height: AI_STUDIO_IMAGE_HEIGHT,
     key: uploaded.key,
     ok: true,
+    provider: "openai",
     ratio: AI_STUDIO_IMAGE_RATIO,
     url: uploaded.url,
     width: AI_STUDIO_IMAGE_WIDTH,
   };
+}
+
+function getJsonString(value: Json, key: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const child = value[key];
+
+  return typeof child === "string" && child.trim() ? child.trim() : null;
 }
 
 function getPathSegment(value: string | null, fallback: string) {

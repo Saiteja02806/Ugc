@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 
 import {
-  getBackgroundJobById,
+  getBackgroundJobForUser,
   getMissingBackgroundJobStorageEnvVars,
 } from "@/lib/jobs/background-jobs";
+import { getPublicBackgroundJob } from "@/lib/jobs/background-job-contract";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
@@ -85,7 +86,10 @@ export async function GET(request: Request) {
   }
 
   try {
-    const job = await getBackgroundJobById(jobId);
+    const job = await getBackgroundJobForUser({
+      jobId,
+      userId: user.uid,
+    });
 
     if (!job) {
       return jsonResponse(
@@ -97,30 +101,9 @@ export async function GET(request: Request) {
       );
     }
 
-    if (job.userId && job.userId !== user.uid) {
-      return jsonResponse(
-        {
-          ok: false,
-          error: "You do not have access to this worker job.",
-        },
-        403,
-      );
-    }
-
     return jsonResponse({
       ok: true,
-      job: {
-        completedAt: job.completedAt,
-        createdAt: job.createdAt,
-        error: job.errorMessage,
-        id: job.id,
-        jobType: job.jobType,
-        output: job.output,
-        queueName: job.queueName,
-        startedAt: job.startedAt,
-        status: job.status,
-        updatedAt: job.updatedAt,
-      },
+      job: getPublicBackgroundJob(job),
     });
   } catch (error) {
     console.error("Failed to read worker job status:", error);

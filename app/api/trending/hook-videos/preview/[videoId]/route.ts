@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-import { getS3Object } from "@/lib/storage/s3";
+import { getStorageObject } from "@/lib/storage/storage";
 import {
   HOOK_VIDEO_PREVIEW_COOKIE,
   verifyHookVideoPreviewSession,
@@ -43,7 +43,7 @@ export async function GET(
       userId: claims.userId,
       videoId: claims.videoId,
     });
-    const object = await getS3Object({ key: source.storageKey, range });
+    const object = await getStorageObject({ key: source.storageKey, range });
 
     if (!object.Body) {
       return new Response("Preview unavailable.", { status: 404 });

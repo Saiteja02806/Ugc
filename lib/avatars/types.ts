@@ -18,17 +18,22 @@ export type AvatarAssetRow = {
   deleted_at: string | null;
   description: string | null;
   duration_seconds: number | null;
+  has_audio: boolean;
   height: number | null;
   id: string;
+  influencer_key: string | null;
   metadata: Json;
   name: string;
   ratio: AvatarAssetRatio;
   sort_order: number;
+  source_batch: string | null;
+  source_file_sha256: string | null;
   source_s3_key: string;
   source_video_url: string;
   status: AvatarAssetStatus;
   thumbnail_url: string | null;
   updated_at: string;
+  visual_group: string | null;
   width: number | null;
 };
 

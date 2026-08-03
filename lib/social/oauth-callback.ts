@@ -136,15 +136,22 @@ export async function handleSocialOAuthCallback(
   }
 
   try {
-    await completeSocialOAuthCallback({ code, state, trace, ...config });
+    const result = await completeSocialOAuthCallback({
+      code,
+      state,
+      trace,
+      ...config,
+    });
 
     logSocialOAuthTrace(trace, "completed", {
       callbackSucceeded: true,
+      connectionIdPresent: Boolean(result.connection.id),
       databaseRowVerified: true,
     });
 
     return renderCallbackPage({
       callbackHost: trace.callbackHost,
+      connectionId: result.connection.id,
       correlationId: trace.correlationId,
       message: `${getPlatformLabel(config.platform)} is connected.`,
       ...config,
@@ -170,6 +177,7 @@ export async function handleSocialOAuthCallback(
 
 function renderCallbackPage(params: {
   callbackHost: string;
+  connectionId?: string;
   correlationId: string;
   errorCode?: string;
   failedStage?: SocialOAuthTraceStage;
@@ -182,6 +190,7 @@ function renderCallbackPage(params: {
   const targetOrigins = getAllowedTargetOrigins(appBaseUrl);
   const payload: SocialOAuthResultMessage = {
     callbackHost: params.callbackHost,
+    ...(params.connectionId ? { connectionId: params.connectionId } : {}),
     correlationId: params.correlationId,
     ...(params.errorCode ? { errorCode: params.errorCode } : {}),
     ...(params.failedStage ? { failedStage: params.failedStage } : {}),
@@ -395,6 +404,17 @@ function getFailureMessage(platform: SocialPlatform, errorCode: string) {
 
   if (errorCode === "tiktok_publish_permission_missing") {
     return "Reconnect TikTok to grant publishing permission.";
+  }
+
+  if (errorCode === "reconnect_account_mismatch") {
+    return "You signed in to a different Instagram account. Sign in to the selected account, or add this account separately.";
+  }
+
+  if (
+    errorCode === "reconnect_connection_required" ||
+    errorCode === "reconnect_connection_unavailable"
+  ) {
+    return "That Instagram connection is no longer available. Return to UGC Pilot, refresh the account list, and try again.";
   }
 
   return `${getPlatformLabel(platform)} could not be connected. Return to UGC Pilot and try again.`;

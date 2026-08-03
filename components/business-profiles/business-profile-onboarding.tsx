@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
@@ -39,6 +39,11 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import {
+  persistJobIdInUrl,
+  useBackgroundJob,
+  usePersistedJobIdFromUrl,
+} from "@/lib/jobs/background-job-client";
 import { cn } from "@/lib/utils";
 
 const aiIdePrompt = `Analyze this mobile app codebase and return a concise business-context report for marketing creative generation. Do not include source code, secrets, or implementation details. Use the following headings:\n\n- App name\n- App category\n- One-sentence product summary\n- Target users\n- Main user problem\n- Core features\n- Key benefits\n- Differentiators\n- Brand tone\n- Claims to avoid\n- Suggested visual keywords\n\nOnly state facts supported by the codebase and product copy. Keep every item short.`;
@@ -115,12 +120,27 @@ export function BusinessProfileOnboarding() {
   const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
   const [copied, setCopied] = useState(false);
+  const persistedJobId = usePersistedJobIdFromUrl();
+  const backgroundJobQuery = useBackgroundJob(persistedJobId);
+  const idempotencyKeyRef = useRef<string | null>(null);
+  const idempotencyPayloadRef = useRef<string | null>(null);
   const websiteInputId = useId();
   const websiteHintId = useId();
   const aiContextInputId = useId();
   const aiContextHintId = useId();
-  const isSaving = status === "saving";
+  const backgroundJob = backgroundJobQuery.data;
+  const backgroundJobTerminal =
+    backgroundJob?.status === "cancelled" ||
+    backgroundJob?.status === "completed" ||
+    backgroundJob?.status === "failed";
+  const isSaving =
+    Boolean(backgroundJob && !backgroundJobTerminal) ||
+    (status === "saving" && !backgroundJobTerminal);
   const isRetrying = status === "retrying";
+  const backgroundJobError =
+    backgroundJob?.status === "failed" || backgroundJob?.status === "cancelled"
+      ? backgroundJob.error?.message ?? "Business profile setup did not complete."
+      : null;
   const hasUnsavedChanges =
     websiteUrl.trim().length > 0 ||
     aiIdeContext.trim().length > 0 ||
@@ -179,6 +199,21 @@ export function BusinessProfileOnboarding() {
   }, [authLoading, profileLoadAttempt, user]);
 
   useEffect(() => {
+    if (
+      backgroundJob?.status !== "completed" ||
+      !backgroundJob.output ||
+      typeof backgroundJob.output !== "object" ||
+      Array.isArray(backgroundJob.output) ||
+      backgroundJob.output.operation !== "business_profile_setup"
+    ) {
+      return;
+    }
+
+    persistJobIdInUrl(null);
+    router.replace("/dashboard");
+  }, [backgroundJob, router]);
+
+  useEffect(() => {
     if (!hasUnsavedChanges) {
       return;
     }
@@ -205,20 +240,34 @@ export function BusinessProfileOnboarding() {
         throw new Error("Sign in before creating your business profile.");
       }
 
+      const payload = {
+        aiIdeContext,
+        intakeType,
+        manual,
+        websiteUrl,
+      };
+      const payloadFingerprint = JSON.stringify(payload);
+
+      if (idempotencyPayloadRef.current !== payloadFingerprint) {
+        idempotencyPayloadRef.current = payloadFingerprint;
+        idempotencyKeyRef.current = crypto.randomUUID();
+      }
+
+      const idempotencyKey =
+        idempotencyKeyRef.current ?? crypto.randomUUID();
+      idempotencyKeyRef.current = idempotencyKey;
+
       const response = await fetch("/api/business-profile", {
-        body: JSON.stringify({
-          aiIdeContext,
-          intakeType,
-          manual,
-          websiteUrl,
-        }),
+        body: JSON.stringify(payload),
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
         },
         method: "POST",
       });
       const data = (await response.json().catch(() => null)) as {
+        jobId?: string;
         message?: string;
         ok?: boolean;
       } | null;
@@ -227,7 +276,11 @@ export function BusinessProfileOnboarding() {
         throw new Error(data?.message ?? "Could not create your business profile.");
       }
 
-      router.replace("/dashboard");
+      if (!data.jobId) {
+        throw new Error("Business profile setup returned no job ID.");
+      }
+
+      persistJobIdInUrl(data.jobId);
     } catch (submitError) {
       setError(
         getFriendlyProfileError(
@@ -328,8 +381,8 @@ export function BusinessProfileOnboarding() {
 
   return (
     <OnboardingFrame
-      pipelineState="input"
-      confirmNavigation={hasUnsavedChanges}
+      pipelineState={isSaving ? "preparing" : "input"}
+      confirmNavigation={hasUnsavedChanges && !persistedJobId}
     >
       <form
         onSubmit={submit}
@@ -645,9 +698,9 @@ export function BusinessProfileOnboarding() {
           </section>
         ) : null}
 
-          {error ? (
+          {error || backgroundJobError ? (
             <ErrorNotice
-              message={error}
+              message={error ?? backgroundJobError ?? ""}
               onRetry={profileLoadFailed ? retryProfileLoad : undefined}
             />
           ) : null}

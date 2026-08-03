@@ -42,7 +42,7 @@ export default function SignInPage() {
       </header>
 
       <section className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-6xl items-center justify-center pb-12">
-        <div className="relative w-full max-w-[420px] overflow-hidden rounded-3xl border border-border bg-card/95 p-7 shadow-[0_24px_80px_rgb(0_0_0_/_0.34)] backdrop-blur sm:p-8">
+        <div className="relative w-full max-w-[420px] overflow-hidden rounded-3xl border border-border bg-card/95 p-7 shadow-floating backdrop-blur sm:p-8">
           <div
             aria-hidden="true"
             className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet),transparent)]"

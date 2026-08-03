@@ -1,5 +1,38 @@
 export type EditOverlayRatio = "9:16" | "1:1" | "4:5" | "16:9";
-export type EditOverlayStyle = "clean" | "minimal" | "bubble";
+export type EditOverlayStyle = "clean" | "minimal" | "bubble" | "hook";
+
+export const TEXT_COLOR_VALUES = [
+  "#ffffff",
+  "#fde047",
+  "#fb923c",
+  "#f472b6",
+  "#67e8f9",
+  "#86efac",
+] as const;
+
+export type TextColor = (typeof TEXT_COLOR_VALUES)[number];
+
+export const DEFAULT_TEXT_COLOR: TextColor = "#ffffff";
+
+export function isTextColor(value: unknown): value is TextColor {
+  return TEXT_COLOR_VALUES.some((color) => color === value);
+}
+
+export function resolveTextColor(value: unknown): TextColor {
+  return isTextColor(value) ? value : DEFAULT_TEXT_COLOR;
+}
+
+export function parseTextColor(value: unknown, fieldName: string): TextColor {
+  if (value === undefined || value === null) {
+    return DEFAULT_TEXT_COLOR;
+  }
+
+  if (!isTextColor(value)) {
+    throw new Error(`${fieldName} is not a supported text color.`);
+  }
+
+  return value;
+}
 
 export type EditOverlayTextLayout = {
   backgroundColor: string | undefined;
@@ -35,7 +68,7 @@ export const EDIT_OVERLAY_MAX_TEXT_WIDTH_PERCENT =
   100 - EDIT_OVERLAY_HORIZONTAL_INSET_PERCENT * 2;
 export const EDIT_OVERLAY_FONT_FAMILY = "Geist";
 export const EDIT_OVERLAY_FONT_WEIGHT = 600;
-export const EDIT_OVERLAY_TEXT_COLOR = "#ffffff";
+export const EDIT_OVERLAY_TEXT_COLOR = DEFAULT_TEXT_COLOR;
 export const EDIT_OVERLAY_SHADOW_COLOR = "rgba(0, 0, 0, 0.45)";
 export const EDIT_OVERLAY_FFMPEG_SHADOW_COLOR = "black@0.45";
 export const EDIT_OVERLAY_SHADOW_OFFSET_PX = 2;
@@ -53,30 +86,35 @@ export const EDIT_OVERLAY_OUTPUT_DIMENSIONS: Record<
 const styleFontSizes: Record<EditOverlayStyle, number> = {
   bubble: 62,
   clean: 68,
+  hook: 52,
   minimal: 64,
 };
 
 const styleMinimumFontSizes: Record<EditOverlayStyle, number> = {
   bubble: 38,
   clean: 42,
+  hook: 34,
   minimal: 40,
 };
 
 const styleLineSpacing: Record<EditOverlayStyle, number> = {
   bubble: 22,
   clean: 24,
+  hook: 14,
   minimal: 22,
 };
 
 const styleAverageCharacterWidthFactor: Record<EditOverlayStyle, number> = {
   bubble: 0.58,
   clean: 0.55,
+  hook: 0.54,
   minimal: 0.55,
 };
 
 const styleBackgroundOpacity: Record<EditOverlayStyle, number | null> = {
   bubble: 0.65,
   clean: null,
+  hook: null,
   minimal: 0.35,
 };
 
@@ -113,7 +151,7 @@ export function getEditOverlayPaddingForFontSize(
   style: EditOverlayStyle,
   fontSize: number,
 ) {
-  if (style === "clean") {
+  if (style === "clean" || style === "hook") {
     return 0;
   }
 
@@ -162,6 +200,7 @@ export function buildEditOverlayTextLayout(
   text: string,
   style: EditOverlayStyle,
   ratio: EditOverlayRatio,
+  textColor?: unknown,
 ): EditOverlayTextLayout {
   const metrics = getEditOverlayRenderMetrics(style, ratio);
   const { height: canvasHeight, width: canvasWidth } =
@@ -172,6 +211,11 @@ export function buildEditOverlayTextLayout(
   const maxContainerHeight = Math.round(
     canvasHeight * (metrics.maxTextHeightPercent / 100),
   );
+  const requestedManualLineCount = text
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim()
+    .split("\n").length;
   let fallback: EditOverlayTextLayout | null = null;
 
   for (
@@ -189,9 +233,14 @@ export function buildEditOverlayTextLayout(
       style,
       text,
     });
+    layout.textColor = resolveTextColor(textColor);
     fallback = layout;
 
-    if (layout.bounds.containerHeight <= maxContainerHeight) {
+    if (
+      layout.bounds.containerHeight <= maxContainerHeight &&
+      (style !== "hook" ||
+        layout.lines.length === requestedManualLineCount)
+    ) {
       return layout;
     }
   }
@@ -209,7 +258,66 @@ export function buildEditOverlayTextLayout(
       text,
     });
 
+  overflowLayout.textColor = resolveTextColor(textColor);
+
   return truncateEditOverlayLayoutToHeight(overflowLayout);
+}
+
+export function buildResolvedEditOverlayTextLayout(params: {
+  fontSize: number;
+  lines: readonly string[];
+  ratio: EditOverlayRatio;
+  style: EditOverlayStyle;
+  textColor?: unknown;
+}): EditOverlayTextLayout {
+  const metrics = getEditOverlayRenderMetrics(params.style, params.ratio);
+  const normalizedLines = params.lines
+    .map((line) => line.replace(/\s+/gu, " ").trim())
+    .filter(Boolean);
+
+  if (
+    normalizedLines.length < 1 ||
+    (params.style === "hook" && normalizedLines.length > 2) ||
+    !Number.isInteger(params.fontSize) ||
+    params.fontSize < metrics.minFontSize ||
+    params.fontSize > metrics.fontSize ||
+    params.fontSize % 2 !== 0
+  ) {
+    throw new Error("The saved text layout is outside the supported limits.");
+  }
+
+  const { height: canvasHeight, width: canvasWidth } =
+    getEditOverlayOutputDimensions(params.ratio);
+  const maxContainerWidth = Math.round(
+    canvasWidth * (metrics.maxTextWidthPercent / 100),
+  );
+  const maxContainerHeight = Math.round(
+    canvasHeight * (metrics.maxTextHeightPercent / 100),
+  );
+  const layout = buildLayoutAtFontSize({
+    canvasHeight,
+    canvasWidth,
+    fontSize: params.fontSize,
+    maxContainerHeight,
+    maxContainerWidth,
+    ratio: params.ratio,
+    style: params.style,
+    text: normalizedLines.join("\n"),
+  });
+  layout.textColor = resolveTextColor(params.textColor);
+
+  if (
+    layout.isTruncated ||
+    layout.bounds.containerHeight > maxContainerHeight ||
+    layout.lines.length !== normalizedLines.length ||
+    layout.lines.some((line, index) => line !== normalizedLines[index])
+  ) {
+    throw new Error(
+      "The saved text lines do not fit the saved font size without wrapping.",
+    );
+  }
+
+  return layout;
 }
 
 function buildLayoutAtFontSize(params: {
@@ -455,7 +563,10 @@ function splitLongWordToWidth(
  * widths. Both renderers use it for the same wrapping and container geometry,
  * while drawing the natural font glyphs without horizontal distortion.
  */
-function estimateEditOverlayLineWidth(text: string, fontSize: number) {
+export function estimateEditOverlayLineWidth(
+  text: string,
+  fontSize: number,
+) {
   let emWidth = 0;
 
   for (const character of Array.from(text)) {

@@ -14,17 +14,18 @@ enable_video_render_worker = false
 worker_image_uri = ""
 
 worker_service_account_email = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
+app_launcher_service_account_email = "ugc-app-sa@ugcsaas.iam.gserviceaccount.com"
 service_name                 = "ugc-video-render-worker"
-pubsub_subscription_name     = "ugc-video-render-sub"
+job_name                     = "ugc-video-render-job"
 queue_name                   = "video-render"
-worker_job_types             = "render_edit_video,render_schedule_combination"
+worker_job_types             = "render_edit_video,render_schedule_combination,render_wall_text_video"
 
-worker_poll_max_messages          = 1
-worker_poll_wait_seconds          = 20
 worker_visibility_timeout_seconds = 900
 min_instance_count                = 1
 max_instance_count                = 1
 request_timeout_seconds           = 300
+job_timeout_seconds               = 3600
+job_max_retries                   = 0
 cpu                               = "2"
 memory                            = "4Gi"
 container_port                    = 8080

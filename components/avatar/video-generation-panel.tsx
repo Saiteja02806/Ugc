@@ -11,6 +11,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { buttonClassName } from "@/components/ui/button";
+import {
+  CREATIVE_ASSETS_VIDEOS_HREF,
+  getCreativeAssetEditorHref,
+} from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
 import type {
@@ -134,7 +138,7 @@ function StatusMessage({
         status === "error"
           ? "border-error/25 bg-error/5 text-error"
           : status === "success"
-            ? "border-success/25 bg-success/5 text-[#087443]"
+            ? "border-success/25 bg-success/5 text-success"
             : "border-border bg-card-muted text-muted",
       )}
     >
@@ -178,10 +182,10 @@ function VideoPreview({
             <button
               type="button"
               onClick={onOpenInEdit}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#173454] px-4 text-sm font-bold text-white transition hover:bg-foreground"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-primary-hover"
             >
               <Scissors className="size-4" aria-hidden="true" />
-              Open in Edit
+              Edit video
             </button>
           ) : null}
         </div>
@@ -376,7 +380,7 @@ export function VideoGenerationPanel({
               onChange={(event) =>
                 updateHookInput("hookIdea", event.target.value)
               }
-              className="min-h-24 resize-y rounded-lg border border-border bg-white px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
+              className="min-h-24 resize-y rounded-lg border border-border bg-card px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
             />
           </label>
 
@@ -393,7 +397,7 @@ export function VideoGenerationPanel({
                     event.target.value as HookVideoProvider,
                   )
                 }
-                className="h-11 rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
+                className="h-11 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
               >
                 {providerOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -415,7 +419,7 @@ export function VideoGenerationPanel({
                     event.target.value as HookVideoEmotion,
                   )
                 }
-                className="h-11 rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
+                className="h-11 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
               >
                 {emotionOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -438,7 +442,7 @@ export function VideoGenerationPanel({
                   event.target.value as HookVideoCameraStyle,
                 )
               }
-              className="h-11 rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
+              className="h-11 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
             >
               {cameraStyleOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -457,7 +461,7 @@ export function VideoGenerationPanel({
               onChange={(event) =>
                 updateHookInput("productName", event.target.value)
               }
-              className="h-11 rounded-lg border border-border bg-white px-4 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
+              className="h-11 rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
             />
           </label>
 
@@ -470,7 +474,7 @@ export function VideoGenerationPanel({
               onChange={(event) =>
                 updateHookInput("productDescription", event.target.value)
               }
-              className="min-h-20 resize-y rounded-lg border border-border bg-white px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
+              className="min-h-20 resize-y rounded-lg border border-border bg-card px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15"
             />
           </label>
         </div>
@@ -510,9 +514,13 @@ export function VideoGenerationPanel({
 
 async function openServerVideoInEdit(videoUrl: string, router: ReturnType<typeof useRouter>) {
   const token = await getCurrentUserIdToken();
-  if (!token) throw new Error("Sign in before opening Edit.");
+  if (!token) throw new Error("Sign in before editing this video.");
   const response = await fetch("/api/media?collection=video&sourceTypes=generated_video", { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
   const data = (await response.json()) as { assets?: Array<{ id: string; url: string }> };
   const asset = data.assets?.find((item) => item.url === videoUrl);
-  router.push(asset ? `/edit/${encodeURIComponent(asset.id)}` : "/avatars?tab=videos");
+  router.push(
+    asset
+      ? getCreativeAssetEditorHref(asset.id)
+      : CREATIVE_ASSETS_VIDEOS_HREF,
+  );
 }

@@ -1,16 +1,15 @@
+import { randomUUID } from "node:crypto";
+
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
+import { getPublicBackgroundJob } from "@/lib/jobs/background-job-contract";
+import { getMissingBackgroundJobStorageEnvVars } from "@/lib/jobs/background-jobs";
+import { getMissingBackgroundJobCloudTasksEnvVars } from "@/lib/jobs/gcp-cloud-tasks";
 import {
   authenticateHookVideoRequest,
   hookVideoErrorResponse,
   hookVideoJson,
 } from "@/lib/trending/hook-video-api";
-import { createHookVideoSuggestions } from "@/lib/trending/hook-video-db";
-import { generateBusinessHookSuggestions } from "@/lib/trending/generate-hook-suggestions";
-import {
-  getHookDemoAsset,
-  getHookInfluencerForUser,
-  resolveHookVideoSource,
-} from "@/lib/trending/hook-video-sources";
+import { enqueueHookSuggestionJob } from "@/lib/trending/hook-suggestion-jobs";
 import { HookSuggestionRequestSchema } from "@/lib/trending/hook-video-validation";
 
 export const runtime = "nodejs";
@@ -48,50 +47,42 @@ export async function POST(request: Request) {
       );
     }
 
-    const [influencer, source, demo] = await Promise.all([
-      getHookInfluencerForUser({
-        influencerId: parsed.data.influencerId,
-        sourceKind: parsed.data.sourceKind,
-        userId: auth.user.uid,
-      }),
-      resolveHookVideoSource({
-        influencerId: parsed.data.influencerId,
-        sourceKind: parsed.data.sourceKind,
-        userId: auth.user.uid,
-        videoId: parsed.data.influencerVideoId,
-      }),
-      getHookDemoAsset({
-        assetId: parsed.data.demoAssetId,
-        userId: auth.user.uid,
-      }),
-    ]);
-    const texts = await generateBusinessHookSuggestions({
-      business: profile.context,
-      demoTitle: demo.title,
-      influencerName: influencer.name,
-    });
-    const suggestions = await createHookVideoSuggestions({
-      businessProfileId: profile.id,
-      demoAssetId: demo.id,
-      influencerId: influencer.id,
-      influencerVideoId: source.id,
-      sourceKind: source.sourceKind,
-      texts,
-      userId: auth.user.uid,
-    });
+    const missing = Array.from(
+      new Set([
+        ...getMissingBackgroundJobStorageEnvVars(),
+        ...getMissingBackgroundJobCloudTasksEnvVars(["hook_text_generation"]),
+      ]),
+    );
 
-    return hookVideoJson({ ok: true, suggestions });
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === "OpenAI is not configured."
-    ) {
+    if (missing.length > 0) {
       return hookVideoJson(
-        { error: "AI hook generation is not configured.", ok: false },
+        {
+          error: `Hook generation jobs are not configured. Add ${missing.join(", ")}.`,
+          ok: false,
+        },
         501,
       );
     }
 
-    return hookVideoErrorResponse(error, "Could not generate hook suggestions.");
+    const idempotencyKey =
+      request.headers.get("Idempotency-Key")?.trim().slice(0, 200) ||
+      randomUUID();
+    const job = await enqueueHookSuggestionJob({
+      idempotencyKey,
+      input: parsed.data,
+      userId: auth.user.uid,
+    });
+
+    return hookVideoJson(
+      {
+        job: getPublicBackgroundJob(job),
+        jobId: job.id,
+        ok: true,
+      },
+      job.status === "completed" ? 200 : 202,
+    );
+  } catch (error) {
+    console.error("Could not queue Hook suggestions:", error);
+    return hookVideoErrorResponse(error, "Could not start Hook generation.");
   }
 }

@@ -4,11 +4,11 @@
 export const CAROUSEL_JOB_REDELIVERY_INTERVAL_MS = 30 * 60 * 1_000;
 
 export type CarouselDeliveryJob = {
-  awsMessageId: string | null;
+  queueMessageId: string | null;
   lastDeliveryAt: string | null;
   lastHeartbeatAt: string | null;
   lockedAt: string | null;
-  status: "cancelled" | "completed" | "failed" | "processing" | "queued";
+  status: BackgroundJobStatus;
   updatedAt: string;
 };
 
@@ -22,7 +22,7 @@ export function shouldDeliverCarouselJobMessage(params: {
   if (params.job.status === "queued") {
     return (
       (params.wasJustCreated &&
-        !params.job.awsMessageId &&
+        !params.job.queueMessageId &&
         !params.job.lastDeliveryAt) ||
       isStaleTimestamp(
         params.job.lastDeliveryAt ?? params.job.updatedAt,
@@ -57,3 +57,4 @@ function isStaleTimestamp(value: string, now: number) {
     now - timestamp >= CAROUSEL_JOB_REDELIVERY_INTERVAL_MS
   );
 }
+import type { BackgroundJobStatus } from "./background-jobs.ts";

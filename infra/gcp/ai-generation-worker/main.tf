@@ -72,8 +72,8 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
 
       env {
-        name  = "WORKER_PUBSUB_SUBSCRIPTION"
-        value = var.pubsub_subscription_name
+        name  = "WORKER_TRANSPORT"
+        value = "cloud-tasks"
       }
 
       env {
@@ -84,16 +84,6 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       env {
         name  = "WORKER_JOB_TYPES"
         value = var.worker_job_types
-      }
-
-      env {
-        name  = "WORKER_POLL_MAX_MESSAGES"
-        value = tostring(var.worker_poll_max_messages)
-      }
-
-      env {
-        name  = "WORKER_POLL_WAIT_SECONDS"
-        value = tostring(var.worker_poll_wait_seconds)
       }
 
       env {
@@ -139,6 +129,11 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       env {
         name  = "RUNWAY_DAILY_CREDIT_LIMIT"
         value = tostring(var.runway_daily_credit_limit)
+      }
+
+      env {
+        name  = "UGC_INTERNAL_APP_URL"
+        value = var.internal_app_url
       }
 
       env {
@@ -190,6 +185,26 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
           }
         }
       }
+
+      env {
+        name = "UGC_INTERNAL_SCHEDULING_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = var.scheduling_secret_id
+            version = "latest"
+          }
+        }
+      }
     }
   }
+}
+
+resource "google_cloud_run_v2_service_iam_member" "cloud_tasks_invoker" {
+  count = var.enable_ai_generation_worker ? 1 : 0
+
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.ai_generation_worker[0].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.scheduler_service_account_email}"
 }

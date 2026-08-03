@@ -5,7 +5,10 @@ import { join } from "node:path";
 
 import sharp from "sharp";
 
-import { getStorageProviderName, uploadBufferToS3 } from "./s3.js";
+import {
+  getStorageProviderName,
+  uploadBufferToStorage,
+} from "./storage.js";
 import { downloadVideoToBuffer } from "./download-video.js";
 import {
   EDIT_OVERLAY_FONT_FAMILY,
@@ -14,36 +17,58 @@ import {
   EDIT_OVERLAY_SHADOW_OFFSET_PX,
   EDIT_OVERLAY_VERTICAL_INSET_PERCENT,
   buildEditOverlayTextLayout,
+  buildResolvedEditOverlayTextLayout,
   type EditOverlayTextLayout,
 } from "./edit-overlay-render-spec.js";
+import {
+  buildWallTextRenderLayout,
+  buildWallTextOverlaySvg,
+  WALL_TEXT_OUTLINE_WIDTH,
+  WALL_TEXT_RENDER_WIDTH,
+  type WallTextNormalizedBox,
+  type WallTextPlacementZone,
+  type WallTextRenderContent,
+  type WallTextSafeArea,
+} from "./wall-text-render-spec.js";
 import { logger } from "../logger.js";
 
 export type RenderRatio = "9:16" | "1:1" | "4:5" | "16:9";
 export type TextOverlayPosition = "top" | "middle" | "bottom";
-export type TextOverlayStyle = "clean" | "minimal" | "bubble";
+export type TextOverlayStyle = "clean" | "minimal" | "bubble" | "hook";
 export type PreparedTextOverlay = {
   imagePath: string;
   layout: EditOverlayTextLayout;
+  normalizedPosition?: NormalizedTextPosition | null;
   position: TextOverlayPosition;
   style: TextOverlayStyle;
 };
 
 type RenderTextOverlay = {
+  fontSize?: number | null;
   id: string;
+  lines?: string[] | null;
+  normalizedPosition?: NormalizedTextPosition | null;
   position: TextOverlayPosition;
   style: TextOverlayStyle;
   text: string;
+  textColor?: string;
 };
 
 const EDIT_OVERLAY_FONT_REGISTRATION_TEXT = "MW@gi 0123";
 const EDIT_OVERLAY_FONT_REGISTRATION_SIZE = 64;
 let editOverlayFontRegistrationPromise: Promise<EditOverlayFontRegistration> | null =
   null;
+let wallTextFontRegistrationPromise: Promise<void> | null = null;
 
 export type EditOverlayFontRegistration = {
   directBounds: { height: number; width: number };
   fontPath: string;
   registeredBounds: { height: number; width: number };
+};
+
+export type NormalizedTextPosition = {
+  x: number;
+  y: number;
 };
 
 export type RenderEditVideoPayload = {
@@ -74,6 +99,10 @@ export type RenderScheduleCombinationPayload = {
   demoVideoId: string;
   demoVideoUrl: string;
   hookText: string;
+  hookTextFontSize?: number | null;
+  hookTextLines?: string[] | null;
+  hookTextPosition?: NormalizedTextPosition | null;
+  hookTextColor: string;
   hookTrimEnd: number | null;
   hookTrimStart: number;
   hookVideoId: string;
@@ -96,11 +125,38 @@ export type RenderScheduleCombinationOutput = {
   url: string;
 };
 
+export type RenderWallTextVideoPayload = {
+  assignmentId: string;
+  creativeEditId: string | null;
+  creativeEditRevision: number | null;
+  creativeId: string;
+  durationSeconds: number;
+  placement: WallTextPlacementZone;
+  projectId: string;
+  renderId: string;
+  safeArea: WallTextSafeArea;
+  sourceVideoUrl: string;
+  text: WallTextRenderContent;
+  textColor: string;
+  textBox: WallTextNormalizedBox;
+  title: string;
+  userId: string;
+};
+
+export type RenderWallTextVideoOutput = {
+  assignmentId: string;
+  creativeId: string;
+  key: string;
+  ok: true;
+  renderId: string;
+  url: string;
+};
+
 const OUTPUT_CONTENT_TYPE = "video/mp4";
 const MAX_FFMPEG_LOG_LENGTH = 8_000;
 const renderDimensions = EDIT_OVERLAY_OUTPUT_DIMENSIONS;
 
-export async function renderEditedVideoToS3(
+export async function renderEditedVideoToStorage(
   payload: RenderEditVideoPayload,
 ): Promise<RenderEditedVideoOutput> {
   const renderStartedAt = Date.now();
@@ -140,11 +196,17 @@ export async function renderEditedVideoToS3(
       payload,
       preparedTextOverlays,
     });
+    await validateRenderedVideoFile(outputPath, payload.renderId);
     const encodedAt = Date.now();
 
     const renderedBuffer = await readFile(outputPath);
+
+    if (renderedBuffer.length === 0) {
+      throw new Error("Edited video render produced an empty MP4.");
+    }
+
     const key = buildRenderedVideoKey(payload);
-    const result = await uploadBufferToS3({
+    const result = await uploadBufferToStorage({
       key,
       buffer: renderedBuffer,
       contentType: OUTPUT_CONTENT_TYPE,
@@ -182,7 +244,7 @@ export async function renderEditedVideoToS3(
   }
 }
 
-export async function renderScheduleCombinationToS3(
+export async function renderScheduleCombinationToStorage(
   payload: RenderScheduleCombinationPayload,
 ): Promise<RenderScheduleCombinationOutput> {
   const workDir = await mkdtemp(join(tmpdir(), "ugc-combine-render-"));
@@ -196,9 +258,13 @@ export async function renderScheduleCombinationToS3(
     imagePath: join(workDir, "hook-overlay.png"),
     overlay: {
       id: "hook-text",
-      position: "bottom",
-      style: "minimal",
+      fontSize: payload.hookTextFontSize,
+      lines: payload.hookTextLines,
+      normalizedPosition: payload.hookTextPosition,
+      position: "middle",
+      style: "hook",
       text: payload.hookText,
+      textColor: payload.hookTextColor,
     },
     ratio: payload.ratio,
   });
@@ -270,7 +336,7 @@ export async function renderScheduleCombinationToS3(
 
     const renderedBuffer = await readFile(outputPath);
     const key = buildScheduleCombinationVideoKey(payload);
-    const result = await uploadBufferToS3({
+    const result = await uploadBufferToStorage({
       key,
       buffer: renderedBuffer,
       contentType: OUTPUT_CONTENT_TYPE,
@@ -301,6 +367,154 @@ export async function renderScheduleCombinationToS3(
       recursive: true,
     });
   }
+}
+
+export async function renderWallTextVideoToStorage(
+  payload: RenderWallTextVideoPayload,
+): Promise<RenderWallTextVideoOutput> {
+  const workDir = await mkdtemp(join(tmpdir(), "ugc-wall-text-render-"));
+  const inputPath = join(workDir, "source-video");
+  const overlayPath = join(workDir, "wall-text-overlay.png");
+  const outputPath = join(workDir, "wall-text-video.mp4");
+
+  try {
+    const sourceBuffer = await downloadVideoToBuffer(payload.sourceVideoUrl);
+    await ensureWallTextFontsRegistered();
+    await validateWallTextRenderedLineWidths(payload.text, payload.textBox);
+    const overlaySvg = buildWallTextOverlaySvg({
+      content: payload.text,
+      placement: payload.placement,
+      safeArea: payload.safeArea,
+      textColor: payload.textColor,
+      textBox: payload.textBox,
+    });
+
+    await Promise.all([
+      writeFile(inputPath, sourceBuffer),
+      sharp(Buffer.from(overlaySvg))
+        .png({ compressionLevel: 9 })
+        .toFile(overlayPath),
+    ]);
+
+    const hasAudio = await inputHasAudio(inputPath);
+
+    await runFfmpegCommand({
+      args: buildWallTextVideoArgs({
+        hasAudio,
+        inputPath,
+        outputPath,
+        overlayPath,
+        payload,
+      }),
+      label: "wall-text video render",
+      renderId: payload.renderId,
+    });
+
+    const renderedBuffer = await readFile(outputPath);
+    const key = buildWallTextVideoKey(payload);
+    const result = await uploadBufferToStorage({
+      key,
+      buffer: renderedBuffer,
+      contentType: OUTPUT_CONTENT_TYPE,
+      cacheControl: "public, max-age=31536000, immutable",
+    });
+
+    logger.info("Wall-text video render uploaded to object storage", {
+      assignmentId: payload.assignmentId,
+      creativeId: payload.creativeId,
+      key: result.key,
+      renderId: payload.renderId,
+      renderedSize: renderedBuffer.length,
+      storageProvider: getStorageProviderName(),
+      url: result.url,
+    });
+
+    return {
+      assignmentId: payload.assignmentId,
+      creativeId: payload.creativeId,
+      key: result.key,
+      ok: true,
+      renderId: payload.renderId,
+      url: result.url,
+    };
+  } finally {
+    await rm(workDir, {
+      force: true,
+      recursive: true,
+    });
+  }
+}
+
+export function buildWallTextVideoArgs({
+  hasAudio,
+  inputPath,
+  outputPath,
+  overlayPath,
+  payload,
+}: {
+  hasAudio: boolean;
+  inputPath: string;
+  outputPath: string;
+  overlayPath: string;
+  payload: Pick<RenderWallTextVideoPayload, "durationSeconds">;
+}) {
+  const args = [
+    "-y",
+    "-i",
+    inputPath,
+    "-loop",
+    "1",
+    "-framerate",
+    "30",
+    "-i",
+    overlayPath,
+  ];
+
+  if (!hasAudio) {
+    args.push(
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=channel_layout=stereo:sample_rate=48000",
+    );
+  }
+
+  args.push(
+    "-t",
+    formatSeconds(payload.durationSeconds),
+    "-filter_complex",
+    [
+      `[0:v]${buildVideoFilters({ ratio: "9:16" })},setpts=PTS-STARTPTS[video]`,
+      "[1:v]format=rgba,setpts=PTS-STARTPTS[overlay]",
+      "[video][overlay]overlay=x=0:y=0:shortest=1:format=auto[rendered]",
+    ].join(";"),
+    "-map",
+    "[rendered]",
+    "-map",
+    hasAudio ? "0:a:0" : "2:a:0",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "medium",
+    "-crf",
+    "20",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-ar",
+    "48000",
+    "-ac",
+    "2",
+    "-movflags",
+    "+faststart",
+    "-shortest",
+    outputPath,
+  );
+
+  return args;
 }
 
 async function runFfmpeg({
@@ -407,6 +621,102 @@ async function normalizeCombinationSegment({
     args,
     label: `schedule ${segmentLabel} segment normalize`,
     renderId: payload.renderId,
+  });
+}
+
+type RenderedVideoProbe = {
+  format?: {
+    duration?: number | string;
+    format_name?: string;
+  };
+  streams?: Array<{
+    codec_name?: string;
+    codec_type?: string;
+    height?: number;
+    width?: number;
+  }>;
+};
+
+export function validateRenderedVideoProbe(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("ffprobe did not return video metadata.");
+  }
+
+  const probe = value as RenderedVideoProbe;
+  const videoStream = probe.streams?.find(
+    (stream) => stream.codec_type === "video",
+  );
+  const duration = Number(probe.format?.duration);
+
+  if (
+    !videoStream?.codec_name ||
+    !videoStream.width ||
+    !videoStream.height ||
+    !Number.isFinite(duration) ||
+    duration <= 0
+  ) {
+    throw new Error(
+      "Rendered MP4 is missing a playable video stream, dimensions, or duration.",
+    );
+  }
+
+  return {
+    codecName: videoStream.codec_name,
+    durationSeconds: duration,
+    height: videoStream.height,
+    width: videoStream.width,
+  };
+}
+
+async function validateRenderedVideoFile(outputPath: string, renderId: string) {
+  const ffprobePath = process.env.FFPROBE_PATH || "ffprobe";
+  const args = [
+    "-v",
+    "error",
+    "-show_entries",
+    "format=duration,format_name:stream=codec_name,codec_type,width,height",
+    "-of",
+    "json",
+    outputPath,
+  ];
+  const stdout = await new Promise<string>((resolve, reject) => {
+    const ffprobe = spawn(ffprobePath, args, { windowsHide: true });
+    let output = "";
+    let stderr = "";
+
+    ffprobe.stdout.on("data", (chunk: Buffer) => {
+      output += chunk.toString();
+    });
+    ffprobe.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+    ffprobe.on("error", reject);
+    ffprobe.on("close", (code) => {
+      if (code === 0) {
+        resolve(output);
+        return;
+      }
+
+      reject(
+        new Error(
+          `ffprobe exited with code ${code ?? "unknown"}: ${stderr.trim()}`,
+        ),
+      );
+    });
+  });
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(stdout);
+  } catch {
+    throw new Error("ffprobe returned invalid JSON for the rendered MP4.");
+  }
+
+  const metadata = validateRenderedVideoProbe(parsed);
+
+  logger.info("Validated edited video MP4 before upload", {
+    ...metadata,
+    renderId,
   });
 }
 
@@ -632,22 +942,36 @@ function buildPreparedTextOverlay(params: {
   imagePath: string;
   overlay: RenderTextOverlay;
   ratio: RenderRatio;
-}) {
+}): PreparedTextOverlay | null {
   const text = params.overlay.text.trim();
 
   if (!text) {
     return null;
   }
 
-  const layout = buildEditOverlayTextLayout(
-    text,
-    params.overlay.style,
-    params.ratio,
-  );
+  const layout =
+    params.overlay.fontSize !== null &&
+    params.overlay.fontSize !== undefined &&
+    params.overlay.lines &&
+    params.overlay.lines.length > 0
+      ? buildResolvedEditOverlayTextLayout({
+          fontSize: params.overlay.fontSize,
+          lines: params.overlay.lines,
+          ratio: params.ratio,
+          style: params.overlay.style,
+          textColor: params.overlay.textColor,
+        })
+      : buildEditOverlayTextLayout(
+          text,
+          params.overlay.style,
+          params.ratio,
+          params.overlay.textColor,
+        );
 
   return {
     imagePath: params.imagePath,
     layout,
+    normalizedPosition: params.overlay.normalizedPosition ?? null,
     position: params.overlay.position,
     style: params.overlay.style,
   };
@@ -667,17 +991,26 @@ async function renderPreparedTextOverlayImage(
 export function buildPreparedTextOverlaySvg(
   preparedTextOverlay: PreparedTextOverlay,
 ) {
-  const { layout, position, style } = preparedTextOverlay;
+  const { layout, normalizedPosition, position, style } = preparedTextOverlay;
   const {
     canvasHeight,
     canvasWidth,
     containerHeight,
     containerWidth,
-    containerX,
+    containerX: defaultContainerX,
   } = layout.bounds;
-  const containerY = getOverlayContainerY(layout, position);
+  const containerX = getOverlayContainerX(
+    layout,
+    defaultContainerX,
+    normalizedPosition,
+  );
+  const containerY = getOverlayContainerY(
+    layout,
+    position,
+    normalizedPosition,
+  );
   const textTop = containerY + layout.padding;
-  const centerX = canvasWidth / 2;
+  const centerX = containerX + containerWidth / 2;
   const fontFamily = escapeXml(
     `${EDIT_OVERLAY_FONT_FAMILY}, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif`,
   );
@@ -722,6 +1055,91 @@ export function buildPreparedTextOverlaySvg(
     ...textLines,
     "</svg>",
   ].join("");
+}
+
+export function ensureWallTextFontsRegistered() {
+  wallTextFontRegistrationPromise ??= registerWallTextFonts();
+  return wallTextFontRegistrationPromise;
+}
+
+async function registerWallTextFonts() {
+  const fontPath = await getWallTextFontPath();
+  const directText = await sharp({
+    text: {
+      dpi: 72,
+      font: "Inter Bold 52",
+      fontfile: fontPath,
+      rgba: true,
+      text: "Wall text 0123",
+      wrap: "none",
+    },
+  }).metadata();
+
+  if (!directText.width || !directText.height) {
+    throw new Error(
+      "Inter Bold could not be registered for Wall-of-text rendering.",
+    );
+  }
+}
+
+async function validateWallTextRenderedLineWidths(
+  content: WallTextRenderContent,
+  textBox: WallTextNormalizedBox,
+) {
+  const maximumWidth = Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH);
+  const layout = buildWallTextRenderLayout({ content, textBox });
+  const fontPath = await getWallTextFontPath();
+
+  for (const segment of layout.segments) {
+    for (const line of segment.lines) {
+      const metadata = await sharp({
+        text: {
+          dpi: 72,
+          font: `Inter Bold ${segment.fontSize}`,
+          fontfile: fontPath,
+          rgba: true,
+          text: escapePangoMarkup(line),
+          wrap: "none",
+        },
+      }).metadata();
+
+      if (
+        !metadata.width ||
+        metadata.width + WALL_TEXT_OUTLINE_WIDTH * 2 > maximumWidth
+      ) {
+        throw new Error(
+          `Wall-of-text line exceeds the measured Inter text width: "${line}"`,
+        );
+      }
+    }
+  }
+}
+
+async function getWallTextFontPath() {
+  const fontParts = [
+    "node_modules",
+    "@fontsource",
+    "inter",
+    "files",
+    "inter-latin-700-normal.woff",
+  ];
+  const candidatePaths = [
+    join(process.cwd(), ...fontParts),
+    join(process.cwd(), "..", ...fontParts),
+  ];
+
+  for (const fontPath of candidatePaths) {
+    try {
+      await readFile(fontPath);
+      return fontPath;
+    } catch {
+      // Try the next packaged font path.
+    }
+  }
+
+  throw new Error(
+    "Inter Bold is unavailable; refusing to render with a fallback font.",
+  );
 }
 
 export function ensureEditOverlayFontRegistered() {
@@ -824,11 +1242,20 @@ function requireImageBounds(
 function getOverlayContainerY(
   layout: EditOverlayTextLayout,
   position: TextOverlayPosition,
+  normalizedPosition?: NormalizedTextPosition | null,
 ) {
   const { canvasHeight, containerHeight } = layout.bounds;
   const verticalInset = Math.round(
     canvasHeight * (EDIT_OVERLAY_VERTICAL_INSET_PERCENT / 100),
   );
+
+  if (normalizedPosition) {
+    return clampNumber(
+      Math.round(normalizedPosition.y * canvasHeight - containerHeight / 2),
+      verticalInset,
+      canvasHeight - verticalInset - containerHeight,
+    );
+  }
 
   if (position === "top") {
     return verticalInset;
@@ -839,6 +1266,29 @@ function getOverlayContainerY(
   }
 
   return canvasHeight - verticalInset - containerHeight;
+}
+
+function getOverlayContainerX(
+  layout: EditOverlayTextLayout,
+  fallback: number,
+  normalizedPosition?: NormalizedTextPosition | null,
+) {
+  if (!normalizedPosition) {
+    return fallback;
+  }
+
+  const { canvasWidth, containerWidth } = layout.bounds;
+  const horizontalInset = Math.round(canvasWidth * 0.04);
+
+  return clampNumber(
+    Math.round(normalizedPosition.x * canvasWidth - containerWidth / 2),
+    horizontalInset,
+    canvasWidth - horizontalInset - containerWidth,
+  );
+}
+
+function clampNumber(value: number, minimum: number, maximum: number) {
+  return Math.min(maximum, Math.max(minimum, value));
 }
 
 function getOverlayCornerRadius(
@@ -895,6 +1345,17 @@ function buildScheduleCombinationVideoKey(
     cleanPathPart(payload.userId),
     cleanPathPart(payload.projectId),
     "schedule-combinations",
+    `${cleanPathPart(payload.renderId)}.mp4`,
+  ].join("/");
+}
+
+function buildWallTextVideoKey(payload: RenderWallTextVideoPayload) {
+  return [
+    "videos",
+    "rendered",
+    cleanPathPart(payload.userId),
+    cleanPathPart(payload.projectId),
+    "wall-text",
     `${cleanPathPart(payload.renderId)}.mp4`,
   ].join("/");
 }

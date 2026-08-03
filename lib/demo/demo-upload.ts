@@ -1,10 +1,10 @@
-import { buildCloudFrontUrl } from "@/lib/storage/s3";
+import { buildPublicStorageUrl } from "@/lib/storage/storage";
 
 export const MAX_DEMO_UPLOAD_BYTES = 100 * 1024 * 1024;
 export const MIN_DEMO_DURATION_SECONDS = 1;
 export const MAX_DEMO_DURATION_SECONDS = 60;
 export const DEMO_UPLOAD_URL_EXPIRES_IN_SECONDS = 10 * 60;
-export const RAW_DEMO_S3_PREFIX = "demos/raw";
+export const RAW_DEMO_STORAGE_PREFIX = "demos/raw";
 
 export const ALLOWED_DEMO_CONTENT_TYPES = [
   "video/mp4",
@@ -34,7 +34,7 @@ export type DemoUploadTarget = {
   fileSize: number;
   extension: DemoFileExtension;
   key: string;
-  cloudFrontUrl: string;
+  publicUrl: string;
 };
 
 export type DemoKeyValidationInput = {
@@ -240,10 +240,10 @@ export function buildRawDemoKeyPrefix(params: {
   userId: string;
   projectId: string;
 }) {
-  return `${RAW_DEMO_S3_PREFIX}/${params.userId}/${params.projectId}/`;
+  return `${RAW_DEMO_STORAGE_PREFIX}/${params.userId}/${params.projectId}/`;
 }
 
-export function buildRawDemoS3Key(params: {
+export function buildRawDemoStorageKey(params: {
   userId: string;
   projectId: string;
   demoId: string;
@@ -262,7 +262,7 @@ export function createDemoUploadTarget(
   }
 
   const demoId = crypto.randomUUID();
-  const key = buildRawDemoS3Key({
+  const key = buildRawDemoStorageKey({
     userId: validation.value.userId,
     projectId: validation.value.projectId,
     demoId,
@@ -274,7 +274,7 @@ export function createDemoUploadTarget(
     target: {
       demoId,
       key,
-      cloudFrontUrl: buildCloudFrontUrl(key),
+      publicUrl: buildPublicStorageUrl(key),
       ...validation.value,
     },
   };

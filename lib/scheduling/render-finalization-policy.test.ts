@@ -93,7 +93,7 @@ test("deduplicates a second render-finalization callback", () => {
   );
 });
 
-test("allows a clean retry only when every target failed at AWS creation", () => {
+test("allows a clean retry only when every target failed during scheduler creation", () => {
   const retryable = createSchedule({
     status: "failed",
     targets: [

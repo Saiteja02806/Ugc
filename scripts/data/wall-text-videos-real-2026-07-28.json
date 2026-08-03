@@ -1,0 +1,386 @@
+{
+  "schemaVersion": "wall-text-video-manifest-v1",
+  "sourceBatch": "wall-text-real-2026-07-28",
+  "reviewedAt": "2026-07-28",
+  "playback": {
+    "mode": "once",
+    "textVisibility": "full-duration"
+  },
+  "visualGroups": {
+    "car_selfie": "Influencer filmed inside a car in a selfie-style composition.",
+    "indoor_closeup": "Indoor influencer framed primarily as a close-up.",
+    "indoor_medium": "Indoor influencer framed as a medium or seated shot.",
+    "outdoor_static_selfie": "Outdoor influencer in a mostly static selfie composition.",
+    "outdoor_walking_selfie": "Outdoor influencer walking while filming in selfie style."
+  },
+  "assets": [
+    {
+      "catalogName": "car-selfie-001",
+      "fileName": "Eyes_looking_at_camera_202607281157 (1)-silent.mp4",
+      "sha256": "43c8a93dbb47f49cd142be4fc15f6ccf1c3f318eb0c12584d8f193bc434491b7",
+      "visualGroup": "car_selfie"
+    },
+    {
+      "catalogName": "car-selfie-002",
+      "fileName": "Eyes_looking_at_camera_202607281159 (1)-silent.mp4",
+      "sha256": "f11b4765bc9a156a30485cab3821c9659111e36ab80fef8f3db3fc1b49173a53",
+      "visualGroup": "car_selfie"
+    },
+    {
+      "catalogName": "car-selfie-003",
+      "fileName": "Head_turn_looking_at_camera_202607271930 (1)-silent.mp4",
+      "sha256": "79334730fd1de85081f3fc0cf8682e23cbd249292f91a0c9759d9666d57d11ee",
+      "visualGroup": "car_selfie"
+    },
+    {
+      "catalogName": "outdoor-static-selfie-001",
+      "fileName": "Influencer_holding_phone_selfie_202607281159 (1)-silent.mp4",
+      "sha256": "b7403ecbc71a8d721254c66cb86e4d3c71545dc0a8b2c03333a969bb6a4e7f99",
+      "visualGroup": "outdoor_static_selfie"
+    },
+    {
+      "catalogName": "indoor-medium-001",
+      "fileName": "Influencer_in_original_pose_202607242333 (2)-silent.mp4",
+      "sha256": "7444b8d6239d8867cd55996ea0c96fecd79a569af213ea9891bbfed3bd1283f2",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-closeup-001",
+      "fileName": "Influencer_in_photorealistic_video_202607271928 (1)-silent.mp4",
+      "sha256": "e22edfb56ad2bf5d5e569116ddba979f174f9ce3a78dc66418df95413ed21c84",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-002",
+      "fileName": "Influencer_looking_toward_camera_202607242300_1_-Vmake-silent.mp4",
+      "sha256": "890c1076d485a03c8efac2b1f7e18d96eb86e2494814ec2ce8ffbdec0c4ec067",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-medium-003",
+      "fileName": "Influencer_looking_toward_camera_202607242300_2_-Vmake-silent.mp4",
+      "sha256": "0321621e154d4f66db78dece88c640d060d6fdf09641c103a5ced50f52e3b132",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "outdoor-static-selfie-002",
+      "fileName": "Influencer_looking_toward_camera_202607242300_3_-Vmake-silent.mp4",
+      "sha256": "73eca01b1894a441d0733b493ff305c31921711bd381de974c129204ef0e1b0d",
+      "visualGroup": "outdoor_static_selfie"
+    },
+    {
+      "catalogName": "indoor-medium-004",
+      "fileName": "Influencer_looking_toward_camera_202607242300-Vmake-silent.mp4",
+      "sha256": "a131e8874ea11e7e06c77c6668f7b7859c68c4ca9290c94e9163abc63775e0a4",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-medium-005",
+      "fileName": "Influencer_looking_toward_camera_202607242304-Vmake-silent.mp4",
+      "sha256": "b8d50651fc3a1a9588787b6394b7fe272a165a21a8fe8e91bdcbcc0dd0ffabd5",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-closeup-002",
+      "fileName": "Influencer_looking_toward_camera_202607261050 (1)-silent.mp4",
+      "sha256": "3a83162bb491fa5db6bdfdcf774fd27a774d972821ade00ff26a72878316f76a",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-closeup-003",
+      "fileName": "Influencer_looking_toward_camera_202607271936 (1)-silent.mp4",
+      "sha256": "d52f696ec3be9187cfb283f059553270877bdefc65e61da2fa08ee7702cb3939",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-closeup-004",
+      "fileName": "Influencer_looking_up_briefly_202607242331-Vmake-silent.mp4",
+      "sha256": "8223100bf0b2d563d1f3e3572495b9c9855b7f6a83e43454c3f218c3cf4762e8",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-closeup-005",
+      "fileName": "Influencer_looking_up_briefly_202607242333_gwr_video_mvp-silent.mp4",
+      "sha256": "d347555923aaea52e5ddfc1fe4a0539fbe8e31b5264890e8cc77c9af02d9fd32",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-closeup-006",
+      "fileName": "Influencer_making_small_nod_202607242331-Vmake-silent.mp4",
+      "sha256": "84bd7ca74b7b1ed5b91b1136e2e227cb35624cfabbf46a72521c9bd87f14285d",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-006",
+      "fileName": "Influencer_making_small_nod_202607261050 (1)-silent.mp4",
+      "sha256": "53ac282ee19d1cf7035215ef4f067ee4b6ae79068182471afe9f2e5921e770c7",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-closeup-007",
+      "fileName": "Influencer_making_small_nod_202607261051 (1)-silent.mp4",
+      "sha256": "e1212fc34fdf812de62d756f4f8cd990ee96bf4d1e5d134a908efa9d60034d15",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-007",
+      "fileName": "Influencer_making_small_nod_202607261054 (1)-silent.mp4",
+      "sha256": "4ffe817f9e09af88fe6258ed7da187158eb74bd842e85da33ebf889c7fe7ef1d",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-closeup-008",
+      "fileName": "Influencer_making_small_nod_202607281158 (2)-silent.mp4",
+      "sha256": "39c12ad59090ac3bd66b513bfb51ee85ac7319ce1c94078ea6855c3a2a87299c",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-closeup-009",
+      "fileName": "Influencer_making_small_nod_202607281158_1-silent.mp4",
+      "sha256": "3649e32178cd2a6c26f9b6d7b48dcef8fd0144f06220afe7770a209cf9ce9dd6",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-008",
+      "fileName": "Influencer_making_subtle_adjustment_202607271928 (1)-silent.mp4",
+      "sha256": "df523b3614e31f994437ba594188347025c90c162ebe9260b6e89281524b0c70",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-medium-009",
+      "fileName": "Influencer_raises_chin_slightly_202607261057 (1)-silent.mp4",
+      "sha256": "d3c247b2d68133bb6af8ea0b24120e47e2ec602d387bfcc01d1dc18f06e557b6",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "outdoor-static-selfie-003",
+      "fileName": "Influencer_relaxed_in_same_position_202607242259_1_-Vmake-silent.mp4",
+      "sha256": "1254a20fe1cba911be940e9bfbdfdeb12febf63b5de86d2130875453dc4cac6e",
+      "visualGroup": "outdoor_static_selfie"
+    },
+    {
+      "catalogName": "indoor-medium-010",
+      "fileName": "Influencer_relaxed_in_same_position_202607242259_2_-Vmake-silent.mp4",
+      "sha256": "2e0be2ed2a82e85a6e9e2a5e4690eee33d75a8e674370c92d47f7d5a6fbad778",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-medium-011",
+      "fileName": "Influencer_relaxed_in_same_position_202607242259-Vmake-silent.mp4",
+      "sha256": "8dfffee52d8816e44b9cefdb6e02a5caedb06f105e4a8846142670cda34900c0",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "car-selfie-004",
+      "fileName": "Influencer_relaxed_in_same_position_202607261048 (1)-silent.mp4",
+      "sha256": "7cd8483dfb045c1cc0cbbcf2614812122c65bea20142afca70cce22f2681b4ad",
+      "visualGroup": "car_selfie"
+    },
+    {
+      "catalogName": "indoor-closeup-010",
+      "fileName": "Influencer_rotates_upper_body_su_202607242331-Vmake-silent.mp4",
+      "sha256": "7f1bda28231f0017c80e8fba9fbe6f7482d3245b1fd050501456ea69f91d2d60",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-012",
+      "fileName": "Influencer_rotates_upper_body_su_202607261050-silent.mp4",
+      "sha256": "1b59c26871daddbd065bcba0546621221f1e0ff26faca981597da4cadc2b3cef",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-medium-013",
+      "fileName": "Influencer_seated_adjustment_subtle_202607242317-Vmake-silent.mp4",
+      "sha256": "59d3b9ff11fc646074f770ea88fd8ec4ab29352fdacbe7cbfe860fd917fe8e1c",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "outdoor-static-selfie-004",
+      "fileName": "Influencer_selfie_video_outdoor_202607281200-silent.mp4",
+      "sha256": "960be62529fd23fb3c2366917a2ba2fd8e3c5328e4eb94bfbde3f6f7ac0ffbd0",
+      "visualGroup": "outdoor_static_selfie"
+    },
+    {
+      "catalogName": "indoor-medium-014",
+      "fileName": "Influencer_tilts_head_and_blinks_202607242321-Vmake-silent.mp4",
+      "sha256": "af8feaf2fffff10a3a80b77dea1cf54e264c5439500c681cc6e095dfed79c08a",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-closeup-011",
+      "fileName": "Influencer_tilts_head_slightly_202607242331-Vmake-silent.mp4",
+      "sha256": "161f2e54f2bd4616ddf9ed28a6363351c7e1b8c58ef23baa16f47911331b4d65",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-closeup-012",
+      "fileName": "Influencer_tilts_head_slightly_202607281157 (1)-silent.mp4",
+      "sha256": "faaa0f98dedb5af029ad9b26f265f391b93ff565f275b922493528996f4ea19c",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-015",
+      "fileName": "Influencer_turns_head_slightly_202607271929 (2)-silent.mp4",
+      "sha256": "81217520b2bcba990437dda6a793c4071b744f87f6ca4177763a519379f015bc",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-medium-016",
+      "fileName": "Influencer_turns_head_slightly_202607271929_1-silent.mp4",
+      "sha256": "b025bf5813c1896b6b08b1202007a03bbcf796bdcfea6aba6d9e664814336e4b",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-closeup-013",
+      "fileName": "Influencer_turns_head_slightly_202607271930 (1)-silent.mp4",
+      "sha256": "b366c51d1e06d35c9c1b4cfa32d9631840800bfaa9c1d3f2ab5acf5078a22ac2",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-017",
+      "fileName": "Influencer_turns_head_slightly_202607281158 (1)-silent.mp4",
+      "sha256": "e7bce3e6e68ab68fc98c054438a62e17818eae6a3160db9190dbeae99746dd7c",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "outdoor-walking-selfie-001",
+      "fileName": "Influencer_walking_outdoor_selfie_202607281159 (1)-silent.mp4",
+      "sha256": "ef7fdd5d9ef1ee80b0d4622c01ea28ccd4df42e283c336a32aad1ada07a3f2b4",
+      "visualGroup": "outdoor_walking_selfie"
+    },
+    {
+      "catalogName": "indoor-closeup-014",
+      "fileName": "Influencer_with_calm_eye_contact_202607242331-Vmake-silent.mp4",
+      "sha256": "d5f3a8961898acfdb3ad9fc15a8cb6dc773b34c8edfb521a3d51b99623e8001c",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-closeup-015",
+      "fileName": "Influencer_with_curious_expression_202607242321-Vmake-silent.mp4",
+      "sha256": "d28c98d33207d4e4e5a78a01b88d1c3b3897c9602efd58f086f99e1dee8a088b",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "car-selfie-005",
+      "fileName": "Influencer_with_slight_smile_202607242300-Vmake-silent.mp4",
+      "sha256": "8a0273ce42574757148046141581c26134352f383b239ce987833c0330bcab27",
+      "visualGroup": "car_selfie"
+    },
+    {
+      "catalogName": "indoor-closeup-016",
+      "fileName": "Influencer_with_slight_smile_202607242304_1-silent.mp4",
+      "sha256": "cd4df2a9ea46cfcdee7af570a5f44f4702bdc9ff484a8fffaf2499b0d32d74b7",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-018",
+      "fileName": "Influencer_with_slight_smile_202607242304-Vmake-silent.mp4",
+      "sha256": "bab9dea55bfc8389dd3cf6d5f4e47fe207cc0979532a5a1389a4befc600d7aeb",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-closeup-017",
+      "fileName": "Influencer_with_slight_smile_202607242321_1_-Vmake-silent.mp4",
+      "sha256": "78642b480787948b10176a6896d3188965caa1b851149136ba08e82936debc2d",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-019",
+      "fileName": "Influencer_with_subtle_eye_movement_202607271927 (1)-silent.mp4",
+      "sha256": "4196417ee056cbe1603169f7fd4112460463e6fedb9ef7e5058e0533bacddc46",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-medium-020",
+      "fileName": "Influencer_with_subtle_micro-mov_202607261052-silent.mp4",
+      "sha256": "798e1792e5101c9987b2ebc3fd9d3a25474a665735d97df58f00690ded58fe3c",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "car-selfie-006",
+      "fileName": "Look_at_camera_blink_laugh_202607281157 (1)-silent.mp4",
+      "sha256": "f7e7554e9913f2517574cdcfe83899acc9ad658a25d3741142b4438c860a7a17",
+      "visualGroup": "car_selfie"
+    },
+    {
+      "catalogName": "indoor-closeup-018",
+      "fileName": "Normalize_hand_position_look_camera_202607271928 (1)-silent.mp4",
+      "sha256": "dfb993e6ed745d9809ecb23270449eb6bedba7cadc4f91127b41cb23447c3109",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-closeup-019",
+      "fileName": "Normalize_hand_position_look_camera_202607271930 (1)-silent.mp4",
+      "sha256": "f934b8b27a3f61b94699035d8f644076b74d1bd3c7ad81a1dd3fb7c1961b293e",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-021",
+      "fileName": "Vmake-Vmake-silent.mp4",
+      "sha256": "91a304f316c0337eb33f1d6a19d55a5403ac7e5810d307024e791e41f3486046",
+      "visualGroup": "indoor_medium"
+    }
+  ],
+  "rejectedDuplicates": [
+    {
+      "fileName": "s1 (1).mp4",
+      "duplicateOf": "Influencer_making_small_nod_202607261051 (1)-silent.mp4"
+    },
+    {
+      "fileName": "s1 (2).mp4",
+      "duplicateOf": "Influencer_making_small_nod_202607261054 (1)-silent.mp4"
+    },
+    {
+      "fileName": "s1 (3).mp4",
+      "duplicateOf": "Influencer_making_small_nod_202607281158 (2)-silent.mp4"
+    },
+    {
+      "fileName": "s1 (4).mp4",
+      "duplicateOf": "Influencer_making_small_nod_202607281158_1-silent.mp4"
+    },
+    {
+      "fileName": "s1 (5).mp4",
+      "duplicateOf": "Influencer_making_subtle_adjustment_202607271928 (1)-silent.mp4"
+    },
+    {
+      "fileName": "s1 (6).mp4",
+      "duplicateOf": "Influencer_raises_chin_slightly_202607261057 (1)-silent.mp4"
+    },
+    {
+      "fileName": "s1 (7).mp4",
+      "duplicateOf": "Influencer_relaxed_in_same_position_202607242259_1_-Vmake-silent.mp4"
+    },
+    {
+      "fileName": "s1 (8).mp4",
+      "duplicateOf": "Influencer_relaxed_in_same_position_202607242259_2_-Vmake-silent.mp4"
+    },
+    {
+      "fileName": "s1 (9).mp4",
+      "duplicateOf": "Influencer_relaxed_in_same_position_202607242259-Vmake-silent.mp4"
+    },
+    {
+      "fileName": "s1 (10).mp4",
+      "duplicateOf": "Influencer_relaxed_in_same_position_202607261048 (1)-silent.mp4"
+    },
+    {
+      "fileName": "s1 (11).mp4",
+      "duplicateOf": "Influencer_rotates_upper_body_su_202607242331-Vmake-silent.mp4"
+    },
+    {
+      "fileName": "s1 (12).mp4",
+      "duplicateOf": "Influencer_rotates_upper_body_su_202607261050-silent.mp4"
+    },
+    {
+      "fileName": "s1 (13).mp4",
+      "duplicateOf": "Influencer_seated_adjustment_subtle_202607242317-Vmake-silent.mp4"
+    },
+    {
+      "fileName": "s1 (14).mp4",
+      "duplicateOf": "Influencer_selfie_video_outdoor_202607281200-silent.mp4"
+    },
+    {
+      "fileName": "s1 (15).mp4",
+      "duplicateOf": "Influencer_tilts_head_and_blinks_202607242321-Vmake-silent.mp4"
+    }
+  ]
+}

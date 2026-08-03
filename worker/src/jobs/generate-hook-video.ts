@@ -1,6 +1,14 @@
 import { logger } from "../logger.js";
+import {
+  assertProviderOperationCanContinue,
+  createGenerationRequestFingerprint,
+  persistProviderSubmissionFailure,
+  ProviderOperationTerminalError,
+  ProviderSubmissionUncertainError,
+  toProviderPollingRetry,
+} from "../lib/generation-provider.js";
 import { generateRunwayHookVideoBuffer } from "../lib/runway-video.js";
-import { uploadBufferToS3 } from "../lib/s3.js";
+import { getStoredObject, uploadBufferToStorage } from "../lib/storage.js";
 import {
   buildUgcVideoPrompt,
   DEFAULT_HOOK_VIDEO_PROVIDER,
@@ -14,8 +22,9 @@ import {
 import { assertGeneratedMp4 } from "../lib/video-output.js";
 import { shouldFallbackToRunway } from "../lib/video-provider-fallback.js";
 import { generateVeoHookVideoBuffer } from "../lib/veo-video.js";
+import { RetryableJobError } from "../retryable-job-error.js";
 import type { BackgroundJobRow, Json } from "../types.js";
-import type { WorkerJobOutput } from "./index.js";
+import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 
 type GenerateHookVideoInput = {
   avatarImageUrl?: string;
@@ -36,10 +45,41 @@ const MAX_PRODUCT_DESCRIPTION_LENGTH = 500;
 
 export async function runGenerateHookVideoJob(
   job: BackgroundJobRow,
+  context: WorkerJobContext,
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
   const prompt = buildUgcVideoPrompt(input);
-  const generated = await generateWithFallback(input, prompt);
+  const outputKey = `videos/hooks/${input.userId}/${input.projectId}/${input.videoId}.mp4`;
+  const existingOutput = await getStoredObject(outputKey);
+
+  if (existingOutput) {
+    const persistedOperation =
+      await context.store.getLatestPersistedGenerationOperation(job.id);
+    const persistedProvider = persistedOperation?.provider;
+
+    return buildOutput({
+      bufferSize: undefined,
+      input,
+      provider:
+        (persistedProvider === "runway" || persistedProvider === "veo"
+          ? persistedProvider
+          : undefined) ??
+        input.provider ??
+        DEFAULT_HOOK_VIDEO_PROVIDER,
+      uploaded: existingOutput,
+    });
+  }
+
+  await context.checkpoint({
+    stage: "waiting_for_video_provider",
+    status: "waiting_external_service",
+  });
+  const generated = await generateWithFallback(job, context, input, prompt);
+  await context.checkpoint({
+    progress: 80,
+    stage: "validating_video_output",
+    status: "processing",
+  });
   const buffer = assertGeneratedMp4(generated.buffer);
   const { provider } = generated;
 
@@ -49,36 +89,79 @@ export async function runGenerateHookVideoJob(
     videoId: input.videoId,
   });
 
-  const uploaded = await uploadBufferToS3({
+  await context.checkpoint({
+    progress: 90,
+    stage: "uploading_video",
+    status: "uploading_output",
+  });
+  const uploaded = await uploadBufferToStorage({
     buffer,
     cacheControl: "public, max-age=31536000, immutable",
     contentType: "video/mp4",
-    key: `videos/hooks/${input.userId}/${input.projectId}/${input.videoId}.mp4`,
+    key: outputKey,
+  });
+  await context.store.markGenerationOutputPersisted({
+    jobId: job.id,
+    metadata: {
+      durationSeconds: 4,
+      provider,
+      ratio: "9:16",
+    },
+    operationKey: generated.operationKey,
+    outputReference: uploaded.key,
+    outputUrl: uploaded.url,
+  });
+  await context.checkpoint({
+    progress: 98,
+    stage: "finalizing_video",
+    status: "processing",
   });
 
-  return {
-    key: uploaded.key,
-    ok: true,
+  return buildOutput({
+    bufferSize: buffer.length,
+    input,
     provider,
-    url: uploaded.url,
-    videoId: input.videoId,
-  };
+    uploaded,
+  });
 }
 
 async function generateWithFallback(
+  job: BackgroundJobRow,
+  context: WorkerJobContext,
   input: GenerateHookVideoInput,
   prompt: string,
 ) {
   const preferredProvider = input.provider ?? DEFAULT_HOOK_VIDEO_PROVIDER;
 
   if (preferredProvider === "runway") {
-    return generateWithProvider("runway", input, prompt);
+    return generateWithProvider(
+      job,
+      context,
+      "runway",
+      "primary",
+      input,
+      prompt,
+    );
   }
 
   try {
-    return await generateWithProvider("veo", input, prompt);
+    return await generateWithProvider(
+      job,
+      context,
+      "veo",
+      "primary",
+      input,
+      prompt,
+    );
   } catch (veoError) {
     const veoErrorMessage = getErrorMessage(veoError);
+
+    if (
+      veoError instanceof ProviderSubmissionUncertainError ||
+      veoError instanceof RetryableJobError
+    ) {
+      throw veoError;
+    }
 
     if (!shouldFallbackToRunway(veoError)) {
       logger.error("Veo hook video generation failed; fallback not eligible", {
@@ -95,7 +178,14 @@ async function generateWithFallback(
     });
 
     try {
-      return await generateWithProvider("runway", input, prompt);
+      return await generateWithProvider(
+        job,
+        context,
+        "runway",
+        "fallback",
+        input,
+        prompt,
+      );
     } catch (runwayError) {
       throw new Error(
         `Veo failed: ${veoErrorMessage}. Runway fallback failed: ${
@@ -113,25 +203,117 @@ function getErrorMessage(error: unknown) {
 }
 
 async function generateWithProvider(
+  job: BackgroundJobRow,
+  context: WorkerJobContext,
   provider: HookVideoProvider,
+  role: "fallback" | "primary",
   input: GenerateHookVideoInput,
   prompt: string,
 ) {
-  const params = {
+  const operationKey = `${role}-${provider}`;
+  const requestFingerprint = createGenerationRequestFingerprint({
     prompt,
+    provider,
     referenceImageUrl: input.avatarImageUrl,
+    videoId: input.videoId,
+  });
+  const reservation = await context.store.reserveGenerationProviderOperation({
+    jobId: job.id,
+    metadata: { role },
+    operationKey,
+    provider,
+    requestFingerprint,
+  });
+  const action = assertProviderOperationCanContinue(reservation);
+  let operationSubmitted = action === "resume";
+  const providerOperationId =
+    action === "resume"
+      ? reservation.operation.provider_operation_id ?? undefined
+      : undefined;
+  const onOperationCreated = async (operationId: string) => {
+    await context.store.markGenerationProviderSubmitted({
+      jobId: job.id,
+      operationKey,
+      providerOperationId: operationId,
+    });
+    operationSubmitted = true;
+  };
+  const onOperationSucceeded = async (
+    operationId: string,
+    outputUrl?: string,
+  ) => {
+    await context.store.markGenerationProviderSucceeded({
+      jobId: job.id,
+      metadata: { provider, role },
+      operationKey,
+      outputUrl,
+      providerOperationId: operationId,
+    });
   };
 
-  if (provider === "runway") {
+  try {
+    const params = {
+      onOperationCreated,
+      prompt,
+      providerOperationId,
+      referenceImageUrl: input.avatarImageUrl,
+    };
+
     return {
-      buffer: await generateRunwayHookVideoBuffer(params),
+      buffer:
+        provider === "runway"
+          ? await generateRunwayHookVideoBuffer({
+              ...params,
+              onOperationSucceeded,
+            })
+          : await generateVeoHookVideoBuffer({
+              ...params,
+              onOperationSucceeded: async (operationId) =>
+                onOperationSucceeded(operationId),
+            }),
+      operationKey,
       provider,
     };
-  }
+  } catch (error) {
+    if (error instanceof ProviderOperationTerminalError) {
+      await context.store.markGenerationProviderFailed({
+        errorCode: "provider_operation_failed",
+        errorMessage: error.message,
+        jobId: job.id,
+        operationKey,
+        retryAllowed: false,
+      });
+      throw error;
+    }
 
+    if (operationSubmitted || providerOperationId) {
+      throw toProviderPollingRetry(error);
+    }
+
+    return persistProviderSubmissionFailure({
+      error,
+      jobId: job.id,
+      operationKey,
+      store: context.store,
+    });
+  }
+}
+
+function buildOutput(params: {
+  bufferSize?: number;
+  input: GenerateHookVideoInput;
+  provider: HookVideoProvider;
+  uploaded: { key: string; url: string };
+}) {
   return {
-    buffer: await generateVeoHookVideoBuffer(params),
-    provider,
+    durationSeconds: 4,
+    fileSizeBytes: params.bufferSize,
+    key: params.uploaded.key,
+    ok: true,
+    provider: params.provider,
+    ratio: "9:16",
+    url: params.uploaded.url,
+    videoId: params.input.videoId,
   };
 }
 

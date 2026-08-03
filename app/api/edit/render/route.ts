@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
 import {
-  getMissingSqsEnvVars,
+  getMissingJobQueueEnvVars,
   getQueueNameForJobType,
   sendJobMessage,
-} from "@/lib/aws/sqs";
+} from "@/lib/queues/job-queue";
 import {
   createQueuedRenderJob,
   DEFAULT_EDIT_PROJECT_ID,
@@ -17,12 +17,12 @@ import {
   requireFirebaseUser,
 } from "@/lib/firebase/server-auth";
 import {
-  attachAwsMessageToBackgroundJob,
+  attachQueueMessageToBackgroundJob,
   createBackgroundJob,
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
-import { isTrustedStorageUrl } from "@/lib/storage/s3";
+import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import {
   markDemoVideoFailed,
@@ -43,7 +43,7 @@ const editableMediaSourceTypes = new Set([
 const textOverlayPositions = new Set(["top", "middle", "bottom"]);
 const textOverlayStyles = new Set(["clean", "minimal", "bubble"]);
 const MAX_TEXT_OVERLAYS = 3;
-const AWS_RENDER_JOB_TYPE = "render_edit_video";
+const RENDER_JOB_TYPE = "render_edit_video";
 
 type RenderRequestBody = {
   draft?: {
@@ -209,11 +209,11 @@ async function readBody(request: Request) {
   }
 }
 
-function getAwsRenderMissingEnvVars() {
+function getRenderMissingEnvVars() {
   return Array.from(
     new Set([
       ...getMissingBackgroundJobStorageEnvVars(),
-      ...getMissingSqsEnvVars([AWS_RENDER_JOB_TYPE]),
+      ...getMissingJobQueueEnvVars([RENDER_JOB_TYPE]),
     ]),
   );
 }
@@ -273,7 +273,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: "Save source must be an app-owned S3 or CloudFront video URL.",
+        error: "Save source must be an app-owned Cloud Storage video URL.",
       },
       { status: 400 },
     );
@@ -387,6 +387,40 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error("Failed to persist queued edited video render:", error);
 
+      try {
+        await markRenderJobFailed({
+          errorMessage:
+            error instanceof Error
+              ? error.message
+              : "Could not prepare this video save.",
+          projectId,
+          renderId,
+          sourceVideoId,
+          userId: user.uid,
+        });
+      } catch (persistenceError) {
+        console.error(
+          "Failed to reconcile the unqueued edited video render:",
+          persistenceError,
+        );
+      }
+
+      if (sourceAsset.source_type === "demo_upload") {
+        try {
+          await markDemoVideoFailed({
+            demoId: sourceVideoId,
+            errorMessage: "Could not prepare this video save.",
+            projectId,
+            userId: user.uid,
+          });
+        } catch (persistenceError) {
+          console.error(
+            "Failed to reconcile the unqueued demo render:",
+            persistenceError,
+          );
+        }
+      }
+
       return NextResponse.json(
         {
           ok: false,
@@ -406,9 +440,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const missingAwsEnvVars = getAwsRenderMissingEnvVars();
+  const missingRuntimeEnvVars = getRenderMissingEnvVars();
 
-  if (missingAwsEnvVars.length > 0) {
+  if (missingRuntimeEnvVars.length > 0) {
     if (sourceAsset.source_type === "demo_upload") {
       try {
         await markDemoVideoFailed({
@@ -437,7 +471,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: `Video saving is not configured. Add ${missingAwsEnvVars.join(
+        error: `Video saving is not configured. Add ${missingRuntimeEnvVars.join(
           ", ",
         )}.`,
       },
@@ -449,32 +483,36 @@ export async function POST(request: Request) {
 
   try {
     backgroundJob = await createBackgroundJob({
+      idempotencyKey: `edit-render:${renderId}`,
       input: renderPayload,
-      jobType: AWS_RENDER_JOB_TYPE,
+      jobType: RENDER_JOB_TYPE,
       projectId,
-      queueName: getQueueNameForJobType(AWS_RENDER_JOB_TYPE),
+      queueName: getQueueNameForJobType(RENDER_JOB_TYPE),
       userId: user.uid,
     });
 
     const message = await sendJobMessage({
       jobId: backgroundJob.id,
-      jobType: AWS_RENDER_JOB_TYPE,
+      jobType: RENDER_JOB_TYPE,
     });
-    const updatedJob = await attachAwsMessageToBackgroundJob({
-      awsMessageId: message.messageId,
+    const updatedJob = await attachQueueMessageToBackgroundJob({
+      queueMessageId: message.messageId,
       jobId: backgroundJob.id,
     });
 
-    return NextResponse.json({
-      ok: true,
-      backend: "aws",
-      message: "Video save started.",
-      renderId,
-      jobId: updatedJob.id,
-      sourceVideoId,
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        backend: "gcp",
+        message: "Video save started.",
+        renderId,
+        jobId: updatedJob.id,
+        sourceVideoId,
+      },
+      { status: 202 },
+    );
   } catch (error) {
-    console.error("Failed to enqueue AWS edited video render:", error);
+    console.error("Failed to enqueue edited video render:", error);
 
     if (backgroundJob) {
       try {
@@ -486,7 +524,7 @@ export async function POST(request: Request) {
           jobId: backgroundJob.id,
         });
       } catch (persistenceError) {
-        console.error("Failed to persist AWS render queue failure:", persistenceError);
+        console.error("Failed to persist render queue failure:", persistenceError);
       }
     }
 

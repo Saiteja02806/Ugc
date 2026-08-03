@@ -119,7 +119,7 @@ export default function VerifyEmailPage() {
       </header>
 
       <section className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-6xl items-center justify-center pb-12">
-        <div className="w-full max-w-md rounded-3xl border border-border bg-card/95 p-7 shadow-[0_24px_80px_rgb(0_0_0_/_0.34)] backdrop-blur sm:p-8">
+        <div className="w-full max-w-md rounded-3xl border border-border bg-card/95 p-7 shadow-floating backdrop-blur sm:p-8">
           <div className="mb-8 text-center">
             <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-brand-soft text-primary">
               <MailCheck className="size-7" aria-hidden="true" />

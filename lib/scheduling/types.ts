@@ -160,6 +160,7 @@ export type ScheduleMediaSelection = {
 };
 
 export type ScheduleDraft = {
+  accountLabelsByConnectionId?: Record<string, string>;
   canCancel?: boolean;
   canEdit?: boolean;
   caption: string;
@@ -189,6 +190,7 @@ export type ScheduleDraft = {
 };
 
 export type ScheduleDraftInput = {
+  accountLabelsByConnectionId?: Record<string, string>;
   canCancel?: boolean;
   canEdit?: boolean;
   caption?: string;

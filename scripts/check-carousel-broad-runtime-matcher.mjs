@@ -546,7 +546,7 @@ function mockAsset({
   usageCount = 0,
 }) {
   return {
-    baseS3Key: `category-library/${categorySlug}/${broadBucketId}/${id}.webp`,
+    baseObjectKey: `category-library/${categorySlug}/${broadBucketId}/${id}.webp`,
     baseUrl: `https://cdn.example.test/${id}.webp`,
     bestForSlideTypes: [],
     broadVisualBucket: broadBucketId,

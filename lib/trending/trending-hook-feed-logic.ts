@@ -6,35 +6,92 @@ export function selectTrendingHookCandidates(
   inventory: readonly HookVideoBrowseEntry[],
 ) {
   const seenVideoIds = new Set<string>();
+  const validEntries = inventory.flatMap((entry) => {
+    const durationSeconds = getEffectiveHookDuration(entry);
 
-  return inventory
-    .flatMap((entry) => {
-      const durationSeconds = getEffectiveHookDuration(entry);
+    if (
+      entry.video.ratio !== "9:16" ||
+      durationSeconds === null ||
+      seenVideoIds.has(entry.video.id)
+    ) {
+      return [];
+    }
 
-      if (
-        entry.video.ratio !== "9:16" ||
-        durationSeconds === null ||
-        seenVideoIds.has(entry.video.id)
-      ) {
-        return [];
-      }
+    seenVideoIds.add(entry.video.id);
 
-      seenVideoIds.add(entry.video.id);
+    return [
+      {
+        candidateIndex: 0,
+        durationSeconds,
+        entry,
+        sourceDurationSeconds: entry.video.durationSeconds!,
+      },
+    ];
+  });
+  const selected = selectDiverseCandidates(validEntries);
 
-      return [
-        {
-          candidateIndex: 0,
-          durationSeconds,
-          entry,
-          sourceDurationSeconds: entry.video.durationSeconds!,
-        },
-      ];
-    })
-    .slice(0, TRENDING_HOOK_IDEA_COUNT)
+  return selected
     .map((candidate, candidateIndex) => ({
       ...candidate,
       candidateIndex,
     }));
+}
+
+function selectDiverseCandidates<T extends {
+  entry: HookVideoBrowseEntry;
+}>(candidates: readonly T[]) {
+  const selected: T[] = [];
+  const remaining = [...candidates];
+  const usedInfluencers = new Set<string>();
+  const usedReactionTypes = new Set<string>();
+  const usedVisualGroups = new Set<string>();
+
+  while (
+    selected.length < TRENDING_HOOK_IDEA_COUNT &&
+    remaining.length > 0
+  ) {
+    let bestIndex = 0;
+    let bestScore = Number.NEGATIVE_INFINITY;
+
+    for (const [index, candidate] of remaining.entries()) {
+      const influencerKey =
+        candidate.entry.video.influencerKey ||
+        candidate.entry.influencer.id;
+      const reactionType =
+        candidate.entry.video.reactionType || "unspecified";
+      const visualGroup =
+        candidate.entry.video.visualGroup || "unspecified";
+      const score =
+        (usedInfluencers.has(influencerKey) ? 0 : 100) +
+        (usedReactionTypes.has(reactionType) ? 0 : 10) +
+        (usedVisualGroups.has(visualGroup) ? 0 : 1);
+
+      if (score > bestScore) {
+        bestIndex = index;
+        bestScore = score;
+      }
+    }
+
+    const [next] = remaining.splice(bestIndex, 1);
+
+    if (!next) {
+      break;
+    }
+
+    selected.push(next);
+    usedInfluencers.add(
+      next.entry.video.influencerKey ||
+        next.entry.influencer.id,
+    );
+    usedReactionTypes.add(
+      next.entry.video.reactionType || "unspecified",
+    );
+    usedVisualGroups.add(
+      next.entry.video.visualGroup || "unspecified",
+    );
+  }
+
+  return selected;
 }
 
 function getEffectiveHookDuration(entry: HookVideoBrowseEntry) {

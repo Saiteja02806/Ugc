@@ -3,8 +3,8 @@
 import {
   AlertCircle,
   CheckCircle2,
-  ExternalLink,
   LoaderCircle,
+  Plus,
   RefreshCw,
   Trash2,
 } from "lucide-react";
@@ -55,7 +55,7 @@ type OAuthTraceInput = {
 };
 
 type InstagramConnectionViewState = {
-  badgeVariant: "destructive" | "outline" | "secondary";
+  badgeVariant: "connected" | "destructive";
   description: string;
   label: string;
 };
@@ -130,11 +130,18 @@ export function InstagramAccountManager() {
 
   const {
     clearPopupError,
+    connectingConnectionId,
+    connectingIntent,
     connectingPlatform,
     popupError,
     startConnection,
   } = useSocialOAuthPopup({
-    onPopupClosed: async ({ platform, previousConnectionUpdatedAt }) => {
+    onPopupClosed: async ({
+      expectedConnectionId,
+      intent,
+      platform,
+      previousConnectionUpdatedAt,
+    }) => {
       const refreshedConnections = await loadInstagramConnections();
       const previousUpdatedAt = previousConnectionUpdatedAt
         ? Date.parse(previousConnectionUpdatedAt)
@@ -143,6 +150,8 @@ export function InstagramAccountManager() {
         (connection) =>
           connection.platform === platform &&
           connection.status === "connected" &&
+          (intent !== "reconnect" ||
+            connection.id === expectedConnectionId) &&
           (previousUpdatedAt === null ||
             Date.parse(connection.updatedAt) > previousUpdatedAt),
       );
@@ -162,7 +171,7 @@ export function InstagramAccountManager() {
         return;
       }
 
-      await loadInstagramConnections({
+      const refreshedConnections = await loadInstagramConnections({
         callbackHost: result.callbackHost,
         correlationId: result.correlationId,
         platform: result.platform,
@@ -172,7 +181,16 @@ export function InstagramAccountManager() {
         correlationId: result.correlationId,
         platform: result.platform,
       });
-      setMessage("Instagram account connected.");
+      const connectedAccount = result.connectionId
+        ? refreshedConnections.find(
+            (connection) => connection.id === result.connectionId,
+          )
+        : null;
+      setMessage(
+        connectedAccount
+          ? `${getInstagramAccountName(connectedAccount)} is connected.`
+          : "Instagram account connected.",
+      );
     },
   });
 
@@ -200,17 +218,33 @@ export function InstagramAccountManager() {
     });
   }, [connections, renderTrace]);
 
-  async function connectInstagram() {
+  async function addInstagram() {
     setLoadError(null);
     setMessage(null);
     clearPopupError();
 
     await startConnection({
       forceConsent: connections.length > 0,
+      intent: "add",
       platform: INSTAGRAM_PLATFORM,
       previousConnectionUpdatedAt: connections[0]?.updatedAt ?? null,
       // "accounts" remains the stable internal OAuth source identifier. The
       // former /connected-accounts page now redirects to this Settings section.
+      returnTo: "accounts",
+    });
+  }
+
+  async function reconnectInstagram(connection: SocialConnection) {
+    setLoadError(null);
+    setMessage(null);
+    clearPopupError();
+
+    await startConnection({
+      expectedConnectionId: connection.id,
+      forceConsent: true,
+      intent: "reconnect",
+      platform: INSTAGRAM_PLATFORM,
+      previousConnectionUpdatedAt: connection.updatedAt,
       returnTo: "accounts",
     });
   }
@@ -269,6 +303,7 @@ export function InstagramAccountManager() {
   }
 
   const isConnecting = connectingPlatform === INSTAGRAM_PLATFORM;
+  const isAdding = isConnecting && connectingIntent === "add";
 
   return (
     <>
@@ -334,11 +369,18 @@ export function InstagramAccountManager() {
             {connections.map((connection) => (
               <InstagramConnectionRow
                 key={connection.id}
+                connectionActionPending={isConnecting}
                 connection={connection}
+                reconnecting={
+                  isConnecting &&
+                  connectingIntent === "reconnect" &&
+                  connectingConnectionId === connection.id
+                }
                 onDisconnect={() => {
                   setDisconnectError(null);
                   setPendingDisconnect(connection);
                 }}
+                onReconnect={() => void reconnectInstagram(connection)}
               />
             ))}
           </div>
@@ -351,8 +393,8 @@ export function InstagramAccountManager() {
 
       <div className="flex flex-col gap-3 bg-card-muted/35 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p className="max-w-xl text-sm leading-6 text-muted">
-          UGC Pilot only requests the Instagram permissions needed for
-          publishing and connection status.
+          To add another profile, switch to that professional account in the
+          Instagram authorization window.
         </p>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <Button
@@ -373,23 +415,23 @@ export function InstagramAccountManager() {
           <Button
             type="button"
             size="lg"
-            onClick={() => void connectInstagram()}
+            onClick={() => void addInstagram()}
             disabled={Boolean(connectingPlatform)}
             className="w-full sm:w-auto"
           >
-            {isConnecting ? (
+            {isAdding ? (
               <LoaderCircle
                 data-icon="inline-start"
                 className="animate-spin motion-reduce:animate-none"
                 aria-hidden="true"
               />
             ) : (
-              <ExternalLink data-icon="inline-start" aria-hidden="true" />
+              <Plus data-icon="inline-start" aria-hidden="true" />
             )}
-            {isConnecting
+            {isAdding
               ? "Opening Instagram…"
               : connections.length > 0
-                ? "Reconnect Instagram"
+                ? "Add another account"
                 : "Connect Instagram"}
           </Button>
         </div>
@@ -478,11 +520,17 @@ export function InstagramAccountManager() {
 }
 
 function InstagramConnectionRow({
+  connectionActionPending,
   connection,
   onDisconnect,
+  onReconnect,
+  reconnecting,
 }: {
+  connectionActionPending: boolean;
   connection: SocialConnection;
   onDisconnect: () => void;
+  onReconnect: () => void;
+  reconnecting: boolean;
 }) {
   const accountHandle = getInstagramAccountHandle(connection);
   const viewState = getInstagramConnectionViewState(connection);
@@ -500,7 +548,7 @@ function InstagramConnectionRow({
               {getInstagramAccountName(connection)}
             </h3>
             <Badge variant={viewState.badgeVariant}>
-              {viewState.badgeVariant === "outline" ? (
+              {viewState.badgeVariant === "connected" ? (
                 <CheckCircle2 data-icon="inline-start" aria-hidden="true" />
               ) : null}
               {viewState.label}
@@ -519,16 +567,38 @@ function InstagramConnectionRow({
           </p>
         </div>
       </div>
-      <Button
-        type="button"
-        variant="destructive"
-        size="sm"
-        onClick={onDisconnect}
-        className="w-full sm:w-auto"
-      >
-        <Trash2 data-icon="inline-start" aria-hidden="true" />
-        Disconnect
-      </Button>
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onReconnect}
+          disabled={connectionActionPending}
+          className="w-full sm:w-auto"
+        >
+          {reconnecting ? (
+            <LoaderCircle
+              data-icon="inline-start"
+              className="animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+          ) : (
+            <RefreshCw data-icon="inline-start" aria-hidden="true" />
+          )}
+          {reconnecting ? "Opening Instagram..." : "Reconnect"}
+        </Button>
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          onClick={onDisconnect}
+          disabled={connectionActionPending}
+          className="w-full sm:w-auto"
+        >
+          <Trash2 data-icon="inline-start" aria-hidden="true" />
+          Disconnect
+        </Button>
+      </div>
     </article>
   );
 }
@@ -614,7 +684,7 @@ function getInstagramConnectionViewState(
   }
 
   return {
-    badgeVariant: "outline",
+    badgeVariant: "connected",
     description:
       "Ready for approved Instagram posts and scheduled publishing.",
     label: "Ready to publish",

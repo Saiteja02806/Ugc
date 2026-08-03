@@ -55,9 +55,25 @@ type RenderJobInsert = {
   user_id: string;
 };
 
+type FinalizeEditRenderArgs = {
+  p_error_message: string | null;
+  p_output_s3_key: string | null;
+  p_output_url: string | null;
+  p_project_id: string;
+  p_render_id: string;
+  p_source_video_id: string;
+  p_terminal_status: "completed" | "failed";
+  p_user_id: string;
+};
+
 type RenderDatabase = {
   public: {
-    Functions: Record<string, never>;
+    Functions: {
+      finalize_edit_render: {
+        Args: FinalizeEditRenderArgs;
+        Returns: boolean;
+      };
+    };
     Tables: {
       editable_videos: {
         Insert: EditableVideoInsert;
@@ -338,6 +354,7 @@ export async function saveEditableVideoDraftForOwner(params: {
 export async function createQueuedRenderJob(input: CreateQueuedRenderJobInput) {
   const now = new Date().toISOString();
   const draftJson = toJson(input.draft);
+  const previousEditableVideo = await getEditableVideoRowForOwner(input);
 
   const editableVideo: EditableVideoInsert = {
     draft_json: draftJson,
@@ -391,7 +408,66 @@ export async function createQueuedRenderJob(input: CreateQueuedRenderJobInput) {
     .insert(renderJob);
 
   if (renderJobError) {
+    try {
+      await compensateEditableVideoAfterQueueFailure({
+        input,
+        previousEditableVideo,
+      });
+    } catch (compensationError) {
+      throw new Error(
+        `Could not persist render job: ${renderJobError.message}. Could not restore the Edit project: ${compensationError instanceof Error ? compensationError.message : "Unknown compensation error."}`,
+      );
+    }
+
     throw new Error(`Could not persist render job: ${renderJobError.message}`);
+  }
+}
+
+async function compensateEditableVideoAfterQueueFailure(params: {
+  input: CreateQueuedRenderJobInput;
+  previousEditableVideo: EditableVideoRow | null;
+}) {
+  const client = getSupabaseServerClient();
+
+  if (!params.previousEditableVideo) {
+    const { error } = await client
+      .from(EDITABLE_VIDEOS_TABLE)
+      .delete()
+      .eq("user_id", params.input.userId)
+      .eq("project_id", params.input.projectId)
+      .eq("source_video_id", params.input.sourceVideoId)
+      .eq("latest_render_id", params.input.renderId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return;
+  }
+
+  const previous = params.previousEditableVideo;
+  const { error } = await client
+    .from(EDITABLE_VIDEOS_TABLE)
+    .update({
+      draft_json: previous.draft_json,
+      duration_seconds: previous.duration_seconds,
+      latest_render_id: previous.latest_render_id,
+      ratio: previous.ratio,
+      rendered_video_url: previous.rendered_video_url,
+      source: previous.source,
+      source_video_url: previous.source_video_url,
+      status: previous.status,
+      thumbnail_url: previous.thumbnail_url,
+      title: previous.title,
+      updated_at: previous.updated_at,
+    })
+    .eq("user_id", params.input.userId)
+    .eq("project_id", params.input.projectId)
+    .eq("source_video_id", params.input.sourceVideoId)
+    .eq("latest_render_id", params.input.renderId);
+
+  if (error) {
+    throw new Error(error.message);
   }
 }
 
@@ -412,51 +488,16 @@ export async function markRenderJobRendering(renderId: string) {
 }
 
 export async function markRenderJobCompleted(input: CompleteRenderJobInput) {
-  const now = new Date().toISOString();
-  const client = getSupabaseServerClient();
-  const { data: completedRenderJob, error: renderJobError } = await client
-    .from(VIDEO_RENDER_JOBS_TABLE)
-    .update({
-      completed_at: now,
-      error_message: null,
-      output_s3_key: input.key,
-      output_url: input.url,
-      status: "completed",
-      updated_at: now,
-    })
-    .eq("render_id", input.renderId)
-    .select("draft_json")
-    .maybeSingle();
-
-  if (renderJobError) {
-    throw new Error(`Could not mark render as completed: ${renderJobError.message}`);
-  }
-
-  const current = await getEditableVideoRowForOwner({
-    sourceVideoId: input.sourceVideoId,
-    userId: input.userId,
+  return finalizeRenderJob({
+    p_error_message: null,
+    p_output_s3_key: input.key,
+    p_output_url: input.url,
+    p_project_id: input.projectId,
+    p_render_id: input.renderId,
+    p_source_video_id: input.sourceVideoId,
+    p_terminal_status: "completed",
+    p_user_id: input.userId,
   });
-  const draftIsCurrent =
-    current?.latest_render_id === input.renderId &&
-    areJsonValuesEqual(current.draft_json, completedRenderJob?.draft_json);
-  const { error: editableVideoError } = await client
-    .from(EDITABLE_VIDEOS_TABLE)
-    .update({
-      rendered_video_url: input.url,
-      status: draftIsCurrent ? "rendered" : "draft",
-      ...(draftIsCurrent ? { updated_at: now } : {}),
-    })
-    .eq("user_id", input.userId)
-    .eq("project_id", input.projectId)
-    .eq("source_video_id", input.sourceVideoId)
-    .eq("latest_render_id", input.renderId)
-    .is("deleted_at", null);
-
-  if (editableVideoError) {
-    throw new Error(
-      `Could not mark editable video as rendered: ${editableVideoError.message}`,
-    );
-  }
 }
 
 export async function markRenderJobFailed(params: {
@@ -466,45 +507,29 @@ export async function markRenderJobFailed(params: {
   sourceVideoId: string;
   userId: string;
 }) {
-  const now = new Date().toISOString();
-  const client = getSupabaseServerClient();
-  const { data: failedRenderJob, error: renderJobError } = await client
-    .from(VIDEO_RENDER_JOBS_TABLE)
-    .update({
-      completed_at: now,
-      error_message: params.errorMessage.slice(0, 1000),
-      status: "failed",
-      updated_at: now,
-    })
-    .eq("render_id", params.renderId)
-    .select("draft_json")
-    .maybeSingle();
+  return finalizeRenderJob({
+    p_error_message: params.errorMessage,
+    p_output_s3_key: null,
+    p_output_url: null,
+    p_project_id: params.projectId,
+    p_render_id: params.renderId,
+    p_source_video_id: params.sourceVideoId,
+    p_terminal_status: "failed",
+    p_user_id: params.userId,
+  });
+}
 
-  if (renderJobError) {
-    throw new Error(`Could not mark render as failed: ${renderJobError.message}`);
+async function finalizeRenderJob(args: FinalizeEditRenderArgs) {
+  const { data, error } = await getSupabaseServerClient().rpc(
+    "finalize_edit_render",
+    args,
+  );
+
+  if (error) {
+    throw new Error(`Could not finalize edit render: ${error.message}`);
   }
 
-  const current = await getEditableVideoRowForOwner(params);
-  const draftIsCurrent =
-    current?.latest_render_id === params.renderId &&
-    areJsonValuesEqual(current.draft_json, failedRenderJob?.draft_json);
-  const { error: editableVideoError } = await client
-    .from(EDITABLE_VIDEOS_TABLE)
-    .update({
-      status: draftIsCurrent ? "failed" : "draft",
-      ...(draftIsCurrent ? { updated_at: now } : {}),
-    })
-    .eq("user_id", params.userId)
-    .eq("project_id", params.projectId)
-    .eq("source_video_id", params.sourceVideoId)
-    .eq("latest_render_id", params.renderId)
-    .is("deleted_at", null);
-
-  if (editableVideoError) {
-    throw new Error(
-      `Could not mark editable video render as failed: ${editableVideoError.message}`,
-    );
-  }
+  return data === true;
 }
 
 async function getEditableVideoRowForOwner(params: {
@@ -550,31 +575,6 @@ function serializeEditableVideo(row: EditableVideoRow): EditableVideo {
     title: row.title,
     videoUrl: row.source_video_url ?? null,
   };
-}
-
-function areJsonValuesEqual(first: Json | undefined, second: Json | undefined) {
-  return stableJsonString(first) === stableJsonString(second);
-}
-
-function stableJsonString(value: Json | undefined) {
-  return JSON.stringify(normalizeJsonValue(value));
-}
-
-function normalizeJsonValue(value: Json | undefined): unknown {
-  if (Array.isArray(value)) {
-    return value.map(normalizeJsonValue);
-  }
-
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter((entry): entry is [string, Json] => entry[1] !== undefined)
-        .sort(([firstKey], [secondKey]) => firstKey.localeCompare(secondKey))
-        .map(([key, nestedValue]) => [key, normalizeJsonValue(nestedValue)]),
-    );
-  }
-
-  return value ?? null;
 }
 
 function toJson(value: RenderDraftInput): Json {

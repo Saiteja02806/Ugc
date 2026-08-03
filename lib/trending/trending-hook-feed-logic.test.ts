@@ -7,14 +7,19 @@ import type { HookVideoBrowseEntry } from "./hook-video-types.ts";
 function createEntry(params: {
   durationSeconds: number | null;
   id: string;
+  influencerKey?: string;
   ratio?: "4:5" | "9:16";
+  reactionType?: string;
   trimEnd?: number | null;
   trimStart?: number;
+  visualGroup?: string;
 }): HookVideoBrowseEntry {
+  const influencerKey = params.influencerKey ?? "maya";
+
   return {
     influencer: {
-      id: "catalog:maya",
-      name: "Maya",
+      id: `catalog:${influencerKey}`,
+      name: influencerKey,
       sourceKind: "catalog",
       thumbnailUrl: null,
       videoCount: 1,
@@ -22,13 +27,16 @@ function createEntry(params: {
     video: {
       durationSeconds: params.durationSeconds,
       id: params.id,
-      influencerId: "catalog:maya",
+      influencerId: `catalog:${influencerKey}`,
+      influencerKey,
       ratio: params.ratio ?? "9:16",
+      reactionType: params.reactionType ?? "focused_attention",
       sourceKind: "catalog",
       thumbnailUrl: null,
       title: params.id,
       trimEnd: params.trimEnd ?? null,
       trimStart: params.trimStart ?? 0,
+      visualGroup: params.visualGroup ?? "indoor_selfie_closeup",
     },
   };
 }
@@ -68,4 +76,47 @@ test("uses the actual trimmed duration and ignores unsuitable sources", () => {
   assert.equal(candidates.length, 1);
   assert.equal(candidates[0]?.durationSeconds, 4);
   assert.equal(candidates[0]?.sourceDurationSeconds, 8);
+});
+
+test("prefers different influencers, reactions, and visual groups", () => {
+  const candidates = selectTrendingHookCandidates([
+    createEntry({
+      durationSeconds: 4,
+      id: "maya-shock-1",
+      influencerKey: "maya",
+      reactionType: "shock_surprise",
+      visualGroup: "indoor_selfie_closeup",
+    }),
+    createEntry({
+      durationSeconds: 4,
+      id: "maya-shock-2",
+      influencerKey: "maya",
+      reactionType: "shock_surprise",
+      visualGroup: "indoor_selfie_closeup",
+    }),
+    createEntry({
+      durationSeconds: 4,
+      id: "amara-curious",
+      influencerKey: "amara",
+      reactionType: "curiosity_discovery",
+      visualGroup: "sofa_reaction",
+    }),
+    createEntry({
+      durationSeconds: 4,
+      id: "talia-concern",
+      influencerKey: "talia",
+      reactionType: "concern_anxiety",
+      visualGroup: "office_selfie",
+    }),
+  ]);
+
+  assert.deepEqual(
+    candidates.map((candidate) => candidate.entry.video.id),
+    [
+      "maya-shock-1",
+      "amara-curious",
+      "talia-concern",
+      "maya-shock-2",
+    ],
+  );
 });

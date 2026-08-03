@@ -33,30 +33,21 @@ output "media_cdn_ip_address" {
   description = "Global IP address for the optional media CDN load balancer, or null when disabled."
 }
 
-output "pubsub_topics" {
-  value = {
-    for key, topic in google_pubsub_topic.jobs : key => topic.name
-  }
-  description = "Pub/Sub job topic names."
-}
-
-output "pubsub_subscriptions" {
-  value = {
-    for key, subscription in google_pubsub_subscription.jobs : key => subscription.name
-  }
-  description = "Pub/Sub job subscription names."
-}
-
-output "pubsub_dlq_topics" {
-  value = {
-    for key, topic in google_pubsub_topic.dlq : key => topic.name
-  }
-  description = "Pub/Sub dead-letter topic names."
-}
-
 output "cloud_tasks_social_publish_queue" {
   value       = google_cloud_tasks_queue.social_publish_scheduler.name
   description = "Cloud Tasks queue for scheduled social publish dispatch."
+}
+
+output "cloud_tasks_background_job_queues" {
+  value = {
+    for key, queue in google_cloud_tasks_queue.background_jobs : key => queue.name
+  }
+  description = "Cloud Tasks queues used by the shared durable background-job runtime."
+}
+
+output "background_job_recovery_scheduler" {
+  value       = try(google_cloud_scheduler_job.background_job_recovery[0].name, null)
+  description = "Cloud Scheduler job that invokes durable background-job recovery, when enabled."
 }
 
 output "secret_ids" {

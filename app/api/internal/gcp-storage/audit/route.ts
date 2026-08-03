@@ -16,12 +16,12 @@ import {
 } from "@/lib/media/media-storage";
 import { createMediaUploadTarget } from "@/lib/media/media-upload";
 import {
-  createPresignedPutUrl,
-  deleteS3Object,
+  createSignedPutUrl,
+  deleteStorageObject,
   getMissingStorageEnvVars,
   getStorageProviderName,
-  headS3Object,
-} from "@/lib/storage/s3";
+  headStorageObject,
+} from "@/lib/storage/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -167,7 +167,7 @@ export async function POST(request: Request) {
   let objectCreated = false;
 
   try {
-    const signedPutUrl = await createPresignedPutUrl({
+    const signedPutUrl = await createSignedPutUrl({
       contentType: target.contentType,
       expiresInSeconds: 5 * 60,
       key: target.key,
@@ -185,7 +185,7 @@ export async function POST(request: Request) {
       sourceType: "upload",
       storageKey: target.key,
       title: target.title,
-      url: target.cloudFrontUrl,
+      url: target.publicUrl,
       userId,
     });
     mediaAssetCreated = true;
@@ -212,7 +212,7 @@ export async function POST(request: Request) {
 
     objectCreated = true;
 
-    const objectHead = await headS3Object({ key: target.key });
+    const objectHead = await headStorageObject({ key: target.key });
 
     assertExpectedContentType(objectHead.ContentType, target.contentType);
     assertExpectedContentLength(objectHead.ContentLength, target.fileSize);
@@ -225,7 +225,7 @@ export async function POST(request: Request) {
       width: 1,
     });
 
-    const publicRead = await fetch(target.cloudFrontUrl, {
+    const publicRead = await fetch(target.publicUrl, {
       cache: "no-store",
       method: "GET",
     });
@@ -269,7 +269,7 @@ export async function POST(request: Request) {
         contentType: publicContentType,
         ok: true,
         status: publicRead.status,
-        urlHost: getUrlHost(target.cloudFrontUrl),
+        urlHost: getUrlHost(target.publicUrl),
       },
       runtime: runtimeSnapshot,
       upload: {
@@ -306,7 +306,7 @@ export async function POST(request: Request) {
         target: {
           assetId: target.assetId,
           key: target.key,
-          publicUrlHost: getUrlHost(target.cloudFrontUrl),
+          publicUrlHost: getUrlHost(target.publicUrl),
         },
       },
       502,
@@ -329,7 +329,7 @@ async function cleanupAuditResources(params: {
 
   if (params.objectCreated) {
     try {
-      await deleteS3Object({ key: params.key });
+      await deleteStorageObject({ key: params.key });
       result.objectDeleted = true;
     } catch (error) {
       result.errors.push(

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { EditLibraryWorkspace } from "@/components/edit/edit-library-workspace";
-import { AppShell } from "@/components/layout/app-shell";
+import { CREATIVE_ASSETS_VIDEOS_HREF } from "@/lib/edit/routes";
 
 export const metadata: Metadata = {
   title: "Edit",
@@ -9,9 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function EditPage() {
-  return (
-    <AppShell activeKey="edit">
-      <EditLibraryWorkspace />
-    </AppShell>
-  );
+  redirect(CREATIVE_ASSETS_VIDEOS_HREF);
 }

@@ -8,6 +8,7 @@ const USER_PREFIX = "user:";
 
 export type CatalogAvatarMetadataRow = {
   id: string;
+  influencer_key?: string | null;
   metadata: unknown;
   name: string;
   thumbnail_url: string | null;
@@ -48,6 +49,12 @@ export function groupCatalogInfluencers(
 }
 
 export function getCatalogInfluencerKey(asset: CatalogAvatarMetadataRow) {
+  const catalogKey = getNonEmptyString(asset.influencer_key);
+
+  if (catalogKey) {
+    return normalizeKey(catalogKey);
+  }
+
   const metadata = getRecord(asset.metadata);
   const metadataKey = getNonEmptyString(metadata?.avatar);
 

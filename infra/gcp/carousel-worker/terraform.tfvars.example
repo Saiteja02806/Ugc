@@ -15,12 +15,9 @@ worker_image_uri = ""
 
 worker_service_account_email = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
 service_name                 = "ugc-carousel-worker"
-pubsub_subscription_name     = "ugc-carousel-sub"
 queue_name                   = "carousel"
-worker_job_types             = "generate_carousel"
+worker_job_types             = "generate_carousel,render_trending_carousel_edit"
 
-worker_poll_max_messages          = 1
-worker_poll_wait_seconds          = 20
 worker_visibility_timeout_seconds = 900
 min_instance_count                = 1
 max_instance_count                = 1

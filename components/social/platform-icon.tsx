@@ -12,7 +12,7 @@ export function SocialPlatformIcon({
     return (
       <svg
         aria-hidden="true"
-        className={cn("text-[#d62976]", className)}
+        className={cn("text-instagram-rose", className)}
         fill="none"
         viewBox="0 0 24 24"
       >

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
 import {
-  getMissingSqsEnvVars,
+  getMissingJobQueueEnvVars,
   getQueueNameForJobType,
   sendJobMessage,
-} from "@/lib/aws/sqs";
+} from "@/lib/queues/job-queue";
 import {
-  attachAwsMessageToBackgroundJob,
+  attachQueueMessageToBackgroundJob,
   createBackgroundJob,
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
@@ -134,7 +134,7 @@ export async function POST(request: Request) {
   const missingRuntimeEnv = Array.from(
     new Set([
       ...getMissingBackgroundJobStorageEnvVars(),
-      ...getMissingSqsEnvVars([jobType]),
+      ...getMissingJobQueueEnvVars([jobType]),
     ]),
   );
 
@@ -166,8 +166,8 @@ export async function POST(request: Request) {
       jobId: job.id,
       jobType,
     });
-    const updatedJob = await attachAwsMessageToBackgroundJob({
-      awsMessageId: message.messageId,
+    const updatedJob = await attachQueueMessageToBackgroundJob({
+      queueMessageId: message.messageId,
       jobId: job.id,
     });
 

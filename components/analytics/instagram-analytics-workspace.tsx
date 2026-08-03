@@ -60,6 +60,7 @@ import {
   type InstagramContentSort,
   type InstagramContentType,
 } from "@/lib/analytics/instagram-content-insights";
+import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
 import {
   aggregateInstagramInsightDaily,
   getUniqueInstagramConnections,
@@ -240,7 +241,10 @@ export function InstagramAnalyticsWorkspace() {
       state: "loading",
     });
 
-  const loadAnalytics = useCallback(async (signal?: AbortSignal) => {
+  const loadAnalytics = useCallback(async (
+    signal?: AbortSignal,
+    idempotencyKey?: string,
+  ) => {
     try {
       const token = await getCurrentUserIdToken();
 
@@ -270,7 +274,7 @@ export function InstagramAnalyticsWorkspace() {
       const [
         connectionsResponse,
         schedulesResponse,
-        insightsResponse,
+        insightsOutput,
       ] = await Promise.all([
         fetch("/api/social/connections", {
           cache: "no-store",
@@ -282,10 +286,12 @@ export function InstagramAnalyticsWorkspace() {
           headers,
           signal,
         }),
-        fetch(`/api/analytics/instagram/insights?days=${dateRangeDays}`, {
-          cache: "no-store",
-          headers,
+        runAnalyticsBackgroundSync({
+          body: { days: dateRangeDays },
+          idempotencyKey,
           signal,
+          token,
+          url: "/api/analytics/instagram/insights",
         }),
       ]);
       const connectionsData = (await connectionsResponse
@@ -294,9 +300,8 @@ export function InstagramAnalyticsWorkspace() {
       const schedulesData = (await schedulesResponse
         .json()
         .catch(() => null)) as SchedulesResponse | null;
-      const insightsData = (await insightsResponse
-        .json()
-        .catch(() => null)) as InstagramInsightsResponse | null;
+      const insightsData =
+        insightsOutput as InstagramInsightsResponse | null;
 
       if (signal?.aborted) {
         return;
@@ -330,16 +335,9 @@ export function InstagramAnalyticsWorkspace() {
           : [],
       );
       setInsightsResult({
-        accounts:
-          insightsResponse.ok && insightsData?.ok === true
-            ? insightsData.accounts ?? []
-            : [],
+        accounts: insightsData?.accounts ?? [],
         days: dateRangeDays,
-        message:
-          insightsResponse.ok && insightsData?.ok === true
-            ? null
-            : insightsData?.message ??
-              "Performance insights could not load right now.",
+        message: null,
         state: "ready",
       });
       setErrorMessage(null);
@@ -365,7 +363,7 @@ export function InstagramAnalyticsWorkspace() {
   }, [dateRangeDays]);
 
   const loadContentPerformance = useCallback(
-    async (signal?: AbortSignal) => {
+    async (signal?: AbortSignal, idempotencyKey?: string) => {
       try {
         const token = await getCurrentUserIdToken();
 
@@ -387,31 +385,23 @@ export function InstagramAnalyticsWorkspace() {
           ...current,
           state: "loading",
         }));
-        const response = await fetch(
-          `/api/analytics/instagram/content?days=${dateRangeDays}`,
-          {
-            cache: "no-store",
-            headers: { Authorization: `Bearer ${token}` },
-            signal,
-          },
-        );
-        const data = (await response
-          .json()
-          .catch(() => null)) as InstagramContentResponse | null;
+        const output = await runAnalyticsBackgroundSync({
+          body: { days: dateRangeDays },
+          idempotencyKey,
+          signal,
+          token,
+          url: "/api/analytics/instagram/content",
+        });
+        const data = output as InstagramContentResponse | null;
 
         if (signal?.aborted) {
           return;
         }
 
         setContentResult({
-          accounts:
-            response.ok && data?.ok === true ? data.accounts ?? [] : [],
+          accounts: data?.accounts ?? [],
           days: dateRangeDays,
-          message:
-            response.ok && data?.ok === true
-              ? null
-              : data?.message ??
-                "Content performance could not load right now.",
+          message: null,
           state: "ready",
         });
       } catch (error) {
@@ -449,8 +439,9 @@ export function InstagramAnalyticsWorkspace() {
   const retryAnalytics = useCallback(() => {
     setErrorMessage(null);
     setLoadState("loading");
-    void loadAnalytics();
-    void loadContentPerformance();
+    const refreshKey = crypto.randomUUID();
+    void loadAnalytics(undefined, refreshKey);
+    void loadContentPerformance(undefined, refreshKey);
   }, [loadAnalytics, loadContentPerformance]);
 
   const analytics = useMemo(
@@ -2178,9 +2169,9 @@ function ContentTypeBadge({ type }: { type: InstagramContentType }) {
       variant="outline"
       className={cn(
         "w-fit",
-        type === "reel" && "border-[#d62976]/25 bg-[#d62976]/8 text-[#df4b8a]",
+        type === "reel" && "border-instagram-rose/25 bg-instagram-rose/8 text-instagram-rose",
         type === "carousel" &&
-          "border-[#7a35c9]/25 bg-[#7a35c9]/8 text-[#a56ae4]",
+          "border-instagram-violet/25 bg-instagram-violet/8 text-instagram-violet",
         type === "post" && "border-primary/25 bg-primary/8 text-primary",
       )}
     >
@@ -2398,10 +2389,7 @@ function ActivityStatusBadge({
 }) {
   if (status === "published") {
     return (
-      <Badge
-        variant="outline"
-        className="border-success/25 bg-success/5 text-success"
-      >
+      <Badge variant="published">
         Published
       </Badge>
     );
@@ -2412,10 +2400,10 @@ function ActivityStatusBadge({
   }
 
   if (status === "scheduled") {
-    return <Badge variant="secondary">Scheduled</Badge>;
+    return <Badge variant="scheduled">Scheduled</Badge>;
   }
 
-  return <Badge variant="outline">Draft</Badge>;
+  return <Badge variant="draft">Draft</Badge>;
 }
 
 function AnalyticsLoadingState() {

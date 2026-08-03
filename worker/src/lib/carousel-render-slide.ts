@@ -4,10 +4,16 @@ import type { CarouselFormat } from "../types.js";
 import type { CarouselRenderStyle } from "./carousel-render-style.js";
 import type { PlannedCarouselSlide } from "./carousel-slide-plan.js";
 
+export type CarouselNormalizedTextPosition = {
+  x: number;
+  y: number;
+};
+
 type RenderCarouselSlideInput = {
   assetUrl: string;
   businessName?: string | null;
   format: CarouselFormat;
+  normalizedTextPosition?: CarouselNormalizedTextPosition;
   slide: PlannedCarouselSlide;
   textStyle: CarouselRenderStyle;
 };
@@ -588,6 +594,7 @@ async function downloadImageBuffer(imageUrl: string) {
 async function getRegionSignal(params: {
   backgroundBuffer: Buffer;
   height: number;
+  normalizedTextPosition?: CarouselNormalizedTextPosition;
   position: PlannedCarouselSlide["textPosition"];
   width: number;
 }): Promise<RegionSignal> {
@@ -599,10 +606,21 @@ async function getRegionSignal(params: {
     })
     .raw()
     .toBuffer({ resolveWithObject: true });
-  const xStart = Math.round(info.width * 0.11);
-  const xEnd = Math.round(info.width * 0.89);
-  const [yStartRatio, yEndRatio] =
-    params.position === "top"
+  const xCenterRatio = params.normalizedTextPosition
+    ? clamp(params.normalizedTextPosition.x, 0.1, 0.9)
+    : 0.5;
+  const xStart = Math.round(
+    info.width * Math.max(0.05, xCenterRatio - 0.39),
+  );
+  const xEnd = Math.round(
+    info.width * Math.min(0.95, xCenterRatio + 0.39),
+  );
+  const [yStartRatio, yEndRatio] = params.normalizedTextPosition
+    ? [
+        Math.max(0.05, params.normalizedTextPosition.y - 0.2),
+        Math.min(0.95, params.normalizedTextPosition.y + 0.2),
+      ]
+    : params.position === "top"
       ? [0.12, 0.48]
       : params.position === "center"
         ? [0.28, 0.72]
@@ -1171,6 +1189,7 @@ function buildSvgDocument(params: {
 async function buildOverlaySvg(params: {
   format: CarouselFormat;
   height: number;
+  normalizedTextPosition?: CarouselNormalizedTextPosition;
   safetyBoost: number;
   slide: PlannedCarouselSlide;
   typographyScale: number;
@@ -1298,14 +1317,30 @@ async function buildOverlaySvg(params: {
     body.lines.length > 0 ? clamp(Math.round(body.fontSize * 0.56), 20, 28) : 0;
   const blockHeight = headlineMetrics.groupHeight + blockGap + bodyMetrics.groupHeight;
   const preferredCenterY = Math.round(
-    params.height * getPreferredCenterRatio(params.slide.textPosition),
+    params.height *
+      (params.normalizedTextPosition
+        ? clamp(params.normalizedTextPosition.y, 0.1, 0.9)
+        : getPreferredCenterRatio(params.slide.textPosition)),
   );
   const blockTop = clamp(
     Math.round(preferredCenterY - blockHeight / 2),
     safeMarginY,
     params.height - safeMarginY - blockHeight,
   );
-  const textX = Math.round(params.width / 2);
+  const widestBubble = Math.max(
+    0,
+    ...headlineMetrics.rects.map((rect) => rect.visualWidth),
+    ...bodyMetrics.rects.map((rect) => rect.visualWidth),
+  );
+  const textX = params.normalizedTextPosition
+    ? Math.round(
+        clamp(
+          params.width * clamp(params.normalizedTextPosition.x, 0.1, 0.9),
+          safeMarginX + widestBubble / 2,
+          params.width - safeMarginX - widestBubble / 2,
+        ),
+      )
+    : Math.round(params.width / 2);
   const headlineY = blockTop;
   const bodyY = headlineY + headlineMetrics.groupHeight + blockGap;
   const headlineMarkup = buildBubbleText({
@@ -1415,6 +1450,7 @@ async function validateTextPixelContainment(layers: OverlayLayers) {
 async function buildValidatedOverlay(params: {
   format: CarouselFormat;
   height: number;
+  normalizedTextPosition?: CarouselNormalizedTextPosition;
   slide: PlannedCarouselSlide;
   width: number;
 }) {
@@ -1450,6 +1486,7 @@ async function buildValidatedOverlay(params: {
 
 export async function inspectCarouselSlideLayout(input: {
   format: CarouselFormat;
+  normalizedTextPosition?: CarouselNormalizedTextPosition;
   slide: PlannedCarouselSlide;
 }) {
   const dimensions = FORMAT_DIMENSIONS[input.format];
@@ -1457,6 +1494,7 @@ export async function inspectCarouselSlideLayout(input: {
   return (await buildValidatedOverlay({
     format: input.format,
     height: dimensions.height,
+    normalizedTextPosition: input.normalizedTextPosition,
     slide: input.slide,
     width: dimensions.width,
   })).diagnostics;
@@ -1470,12 +1508,14 @@ export async function renderCarouselSlideWithDiagnostics(
   const signal = await getRegionSignal({
     backgroundBuffer,
     height: dimensions.height,
+    normalizedTextPosition: input.normalizedTextPosition,
     position: input.slide.textPosition,
     width: dimensions.width,
   });
   const overlay = await buildValidatedOverlay({
     format: input.format,
     height: dimensions.height,
+    normalizedTextPosition: input.normalizedTextPosition,
     slide: input.slide,
     width: dimensions.width,
   });

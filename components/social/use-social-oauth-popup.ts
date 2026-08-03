@@ -7,13 +7,16 @@ import {
   getProviderForPlatform,
   isSocialOAuthResultMessage,
   type SocialOAuthResultMessage,
+  type SocialOAuthIntent,
   type SocialOAuthReturnTo,
   type SocialPlatform,
 } from "@/lib/social/types";
 
 type StartConnectionParams = {
   carouselId?: string;
+  expectedConnectionId?: string;
   forceConsent?: boolean;
+  intent?: SocialOAuthIntent;
   libraryItemId?: string;
   platform: SocialPlatform;
   previousConnectionUpdatedAt?: string | null;
@@ -32,6 +35,8 @@ type StartConnectionResponse =
     };
 
 type PopupClosedContext = {
+  expectedConnectionId: string | null;
+  intent: SocialOAuthIntent;
   platform: SocialPlatform;
   previousConnectionUpdatedAt: string | null;
   provider: ReturnType<typeof getProviderForPlatform>;
@@ -47,6 +52,10 @@ export function useSocialOAuthPopup(params?: {
   const onResultRef = useRef(params?.onResult);
   const [connectingPlatform, setConnectingPlatform] =
     useState<SocialPlatform | null>(null);
+  const [connectingConnectionId, setConnectingConnectionId] =
+    useState<string | null>(null);
+  const [connectingIntent, setConnectingIntent] =
+    useState<SocialOAuthIntent | null>(null);
   const [popupError, setPopupError] = useState<string | null>(null);
   const clearPopupError = useCallback(() => setPopupError(null), []);
 
@@ -74,6 +83,8 @@ export function useSocialOAuthPopup(params?: {
 
     popupRef.current = null;
     setConnectingPlatform(null);
+    setConnectingConnectionId(null);
+    setConnectingIntent(null);
   }, [clearClosePoll]);
 
   useEffect(() => {
@@ -92,6 +103,8 @@ export function useSocialOAuthPopup(params?: {
       }
       popupRef.current = null;
       setConnectingPlatform(null);
+      setConnectingConnectionId(null);
+      setConnectingIntent(null);
 
       if (event.data.status === "error") {
         setPopupError(getOAuthResultErrorMessage(event.data));
@@ -123,6 +136,8 @@ export function useSocialOAuthPopup(params?: {
 
       setPopupError(null);
       setConnectingPlatform(input.platform);
+      setConnectingConnectionId(input.expectedConnectionId ?? null);
+      setConnectingIntent(input.intent ?? "add");
 
       const popup = window.open(
         "about:blank",
@@ -132,6 +147,8 @@ export function useSocialOAuthPopup(params?: {
 
       if (!popup) {
         setConnectingPlatform(null);
+        setConnectingConnectionId(null);
+        setConnectingIntent(null);
         setPopupError(
           "Your browser blocked the connection window. Allow popups for UGC Pilot and try again.",
         );
@@ -150,7 +167,9 @@ export function useSocialOAuthPopup(params?: {
         const response = await fetch("/api/social/oauth/start", {
           body: JSON.stringify({
             carouselId: input.carouselId,
+            connectionId: input.expectedConnectionId,
             forceConsent: input.forceConsent === true,
+            intent: input.intent ?? "add",
             libraryItemId: input.libraryItemId,
             platform: input.platform,
             provider: getProviderForPlatform(input.platform),
@@ -185,9 +204,13 @@ export function useSocialOAuthPopup(params?: {
           clearClosePoll();
           popupRef.current = null;
           setConnectingPlatform(null);
+          setConnectingConnectionId(null);
+          setConnectingIntent(null);
 
           void (async () => {
             const handled = await onPopupClosedRef.current?.({
+              expectedConnectionId: input.expectedConnectionId ?? null,
+              intent: input.intent ?? "add",
               platform: input.platform,
               previousConnectionUpdatedAt:
                 input.previousConnectionUpdatedAt ?? null,
@@ -209,6 +232,8 @@ export function useSocialOAuthPopup(params?: {
         popup.close();
         popupRef.current = null;
         setConnectingPlatform(null);
+        setConnectingConnectionId(null);
+        setConnectingIntent(null);
         setPopupError(
           error instanceof Error
             ? error.message
@@ -222,6 +247,8 @@ export function useSocialOAuthPopup(params?: {
   return {
     clearPopupError,
     closePopup,
+    connectingConnectionId,
+    connectingIntent,
     connectingPlatform,
     popupError,
     startConnection,
@@ -268,6 +295,15 @@ function getOAuthResultErrorMessage(result: SocialOAuthResultMessage) {
       break;
     case "provider_exchange_failed":
       message = `${getPlatformLabel(result.platform)} authorized the request, but the token exchange failed. Check the provider setup and redirect URI.`;
+      break;
+    case "reconnect_account_mismatch":
+      message =
+        "You signed in to a different Instagram account. Sign in to the account you selected, or add this account separately.";
+      break;
+    case "reconnect_connection_required":
+    case "reconnect_connection_unavailable":
+      message =
+        "That Instagram connection is no longer available. Refresh your accounts and try again.";
       break;
     case "account_lookup_failed":
       message = `${getPlatformLabel(result.platform)} connected, but the account profile could not be loaded. Check the granted permissions.`;

@@ -10,8 +10,17 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
 import {
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
@@ -56,11 +65,18 @@ export type HookVideoScheduleSelection = {
   timezone: string;
 };
 
-export type HookVideoScheduleSummary = {
-  demoTitle: string;
-  hookText: string;
-  influencerName: string;
-};
+export type HookVideoScheduleSummary =
+  | {
+      demoTitle: string;
+      hookText: string;
+      influencerName: string;
+      kind?: "hook_video";
+    }
+  | {
+      backgroundTitle: string;
+      kind: "wall_text";
+      text: string;
+    };
 
 const platformDetails: Record<SocialPlatform, { label: string }> = {
   instagram: { label: "Instagram" },
@@ -151,15 +167,6 @@ export function HookVideoScheduleDrawer({
 
     return () => window.clearTimeout(timer);
   }, [loadConnections]);
-
-  useEffect(() => {
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape" && !submitting) onClose();
-    }
-
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onClose, submitting]);
 
   // Keep every provider in state so legacy schedules and provider-specific
   // validation remain intact. New Reel scheduling only exposes Instagram.
@@ -303,56 +310,66 @@ export function HookVideoScheduleDrawer({
     }
   }
 
+  const scheduleTitle =
+    stage === "review"
+      ? "Review schedule"
+      : summary.kind === "wall_text"
+        ? "Schedule post"
+        : "Schedule Reel";
+
   return (
-    <div className="absolute inset-0 z-50" role="presentation">
-      <button
-        type="button"
-        aria-label="Close schedule"
-        className="absolute inset-0 cursor-default bg-foreground-strong/24 backdrop-blur-[1px]"
-        onClick={() => {
-          if (!submitting) onClose();
-        }}
-      />
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="hook-schedule-heading"
-        className="absolute inset-x-0 bottom-0 flex max-h-[86dvh] flex-col border-t border-border bg-card shadow-[0_-16px_42px_rgb(23_23_27_/_0.16)] sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[410px] sm:border-l sm:border-t-0 sm:shadow-[-16px_0_42px_rgb(23_23_27_/_0.14)]"
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !submitting) onClose();
+      }}
+    >
+      <DialogContent
+        showCloseButton={false}
+        overlayClassName="bg-overlay [backdrop-filter:none] supports-backdrop-filter:[backdrop-filter:none]"
+        className="max-h-[calc(100dvh-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-[18px] border border-border bg-background p-0 ring-0 sm:max-w-[520px]"
       >
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
+        <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border px-4 py-3.5 sm:px-5">
           <div className="flex items-center gap-2">
             {stage === "review" ? (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setStage("details")}
                 disabled={submitting}
-                className="inline-flex size-8 items-center justify-center rounded-full text-muted hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 aria-label="Back to schedule details"
                 title="Back"
               >
-                <ArrowLeft className="size-4" aria-hidden="true" />
-              </button>
+                <ArrowLeft aria-hidden="true" />
+              </Button>
             ) : (
-              <CalendarClock className="size-4 text-primary" aria-hidden="true" />
+              <span className="flex size-8 items-center justify-center rounded-[10px] bg-card-muted text-primary">
+                <CalendarClock className="size-4" aria-hidden="true" />
+              </span>
             )}
-            <h3 id="hook-schedule-heading" className="text-sm font-semibold text-foreground-strong">
-              {stage === "review" ? "Review schedule" : "Schedule"}
-            </h3>
+            <div>
+              <DialogTitle>{scheduleTitle}</DialogTitle>
+              <DialogDescription className="mt-1 text-xs">
+                {stage === "review"
+                  ? "Confirm the destination and publish time."
+                  : "Choose an account, date, and time."}
+              </DialogDescription>
+            </div>
           </div>
-          <button
+          <Button
             type="button"
-            autoFocus
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             disabled={submitting}
-            className="inline-flex size-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
             aria-label="Close schedule"
             title="Close"
           >
-            <X className="size-4.5" aria-hidden="true" />
-          </button>
-        </header>
+            <X aria-hidden="true" />
+          </Button>
+        </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <div className="min-h-0 overflow-y-auto px-4 py-4 sm:px-5">
           {stage === "details" ? (
             <>
               <section aria-labelledby="schedule-accounts-heading">
@@ -376,7 +393,7 @@ export function HookVideoScheduleDrawer({
                 {loading ? (
                   <div className="mt-3 space-y-2">
                     {[0, 1, 2].map((item) => (
-                      <div key={item} className="h-14 animate-pulse border border-border bg-card-muted motion-reduce:animate-none" />
+                      <Skeleton key={item} className="h-14 rounded-[12px]" />
                     ))}
                   </div>
                 ) : (
@@ -398,7 +415,7 @@ export function HookVideoScheduleDrawer({
                       />
                     ))}
                     {visibleConnections.length === 0 ? (
-                      <div className="border border-dashed border-border-strong px-3 py-5 text-center">
+                      <div className="rounded-[12px] border border-dashed border-border-strong px-3 py-5 text-center">
                         <p className="text-xs font-medium text-muted">
                           No Instagram account connected.
                         </p>
@@ -422,7 +439,9 @@ export function HookVideoScheduleDrawer({
                   <label className="text-xs font-semibold text-muted">
                     Date
                     <input
+                      name="scheduled-date"
                       type="date"
+                      autoComplete="off"
                       min={getLocalDate(new Date())}
                       value={scheduledDate}
                       onChange={(event) => setScheduledDate(event.target.value)}
@@ -432,7 +451,9 @@ export function HookVideoScheduleDrawer({
                   <label className="text-xs font-semibold text-muted">
                     Time
                     <input
+                      name="scheduled-time"
                       type="time"
+                      autoComplete="off"
                       value={scheduledTime}
                       onChange={(event) => setScheduledTime(event.target.value)}
                       className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
@@ -463,25 +484,26 @@ export function HookVideoScheduleDrawer({
           ) : null}
         </div>
 
-        <footer className="shrink-0 border-t border-border bg-card px-4 py-3">
-          <button
+        <footer className="border-t border-border bg-background px-4 py-3 sm:px-5">
+          <Button
             type="button"
+            size="lg"
             onClick={stage === "details" ? continueToReview : () => void confirmSchedule()}
             disabled={loading || submitting}
-            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-10 w-full rounded-[10px]"
           >
             {submitting ? (
               <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
             ) : stage === "review" ? (
-              <CalendarClock className="size-4" aria-hidden="true" />
+              <CalendarClock data-icon="inline-start" aria-hidden="true" />
             ) : (
-              <Check className="size-4" aria-hidden="true" />
+              <Check data-icon="inline-start" aria-hidden="true" />
             )}
             {stage === "review" ? "Confirm schedule" : "Review"}
-          </button>
+          </Button>
         </footer>
-      </aside>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -506,7 +528,7 @@ function ConnectionRow({
   const available = connection.status === "connected";
 
   return (
-    <div className={cn("border bg-card", selected ? "border-primary" : "border-border", !available && "opacity-55")}>
+    <div className={cn("overflow-hidden rounded-[12px] border bg-card", selected ? "border-primary" : "border-border", !available && "opacity-55")}>
       <label className={cn("flex min-h-14 items-center gap-3 px-3 py-2", available ? "cursor-pointer" : "cursor-not-allowed")}>
         <input
           type="checkbox"
@@ -515,9 +537,7 @@ function ConnectionRow({
           onChange={onToggle}
           className="size-4 shrink-0 accent-primary"
         />
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-card-muted text-muted">
-          <SocialPlatformIcon platform={connection.platform} className="size-4" />
-        </span>
+        <SocialAccountAvatar connection={connection} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-xs font-semibold text-foreground-strong">
             {connection.platformAccountName || connection.platformAccountUsername || label}
@@ -607,26 +627,43 @@ function ScheduleReview({
       </div>
       <div className="border-b border-border py-4">
         <p className="text-xs font-semibold text-muted">Composition</p>
-        <dl className="mt-2 space-y-2 text-xs">
-          <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
-            <dt className="font-medium text-muted">Opening source</dt>
-            <dd className="truncate font-semibold text-foreground-strong">
-              {summary.influencerName}
-            </dd>
-          </div>
-          <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
-            <dt className="font-medium text-muted">Demo</dt>
-            <dd className="truncate font-semibold text-foreground-strong">
-              {summary.demoTitle}
-            </dd>
-          </div>
-          <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
-            <dt className="font-medium text-muted">Hook</dt>
-            <dd className="line-clamp-3 font-semibold leading-5 text-foreground-strong">
-              {summary.hookText}
-            </dd>
-          </div>
-        </dl>
+        {summary.kind === "wall_text" ? (
+          <dl className="mt-2 space-y-2 text-xs">
+            <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
+              <dt className="font-medium text-muted">Background</dt>
+              <dd className="truncate font-semibold text-foreground-strong">
+                {summary.backgroundTitle}
+              </dd>
+            </div>
+            <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
+              <dt className="font-medium text-muted">Overlay copy</dt>
+              <dd className="line-clamp-5 font-semibold leading-5 text-foreground-strong">
+                {summary.text}
+              </dd>
+            </div>
+          </dl>
+        ) : (
+          <dl className="mt-2 space-y-2 text-xs">
+            <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
+              <dt className="font-medium text-muted">Opening source</dt>
+              <dd className="truncate font-semibold text-foreground-strong">
+                {summary.influencerName}
+              </dd>
+            </div>
+            <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
+              <dt className="font-medium text-muted">Demo</dt>
+              <dd className="truncate font-semibold text-foreground-strong">
+                {summary.demoTitle}
+              </dd>
+            </div>
+            <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
+              <dt className="font-medium text-muted">Hook</dt>
+              <dd className="line-clamp-3 font-semibold leading-5 text-foreground-strong">
+                {summary.hookText}
+              </dd>
+            </div>
+          </dl>
+        )}
       </div>
       <div className="pt-4">
         <p className="text-xs font-semibold text-muted">Accounts</p>
@@ -636,9 +673,7 @@ function ScheduleReview({
 
             return (
               <div key={connection.id} className="flex items-center gap-3 border border-border px-3 py-2.5">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-card-muted text-muted">
-                  <SocialPlatformIcon platform={connection.platform} className="size-4" />
-                </span>
+                <SocialAccountAvatar connection={connection} />
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold text-foreground-strong">
                     {connection.platformAccountName || connection.platformAccountUsername || label}

@@ -12,7 +12,7 @@ function job(
   patch: Partial<Parameters<typeof shouldDeliverCarouselJobMessage>[0]["job"]> = {},
 ) {
   return {
-    awsMessageId: "message-1",
+    queueMessageId: "message-1",
     lastDeliveryAt: null,
     lastHeartbeatAt: null,
     lockedAt: null,
@@ -25,7 +25,7 @@ function job(
 test("delivers a newly persisted queued job without a queue message", () => {
   assert.equal(
     shouldDeliverCarouselJobMessage({
-      job: job({ awsMessageId: null }),
+      job: job({ queueMessageId: null }),
       now: NOW,
       wasJustCreated: true,
     }),
@@ -36,7 +36,7 @@ test("delivers a newly persisted queued job without a queue message", () => {
 test("a concurrent observer leaves a fresh creator-owned delivery alone", () => {
   assert.equal(
     shouldDeliverCarouselJobMessage({
-      job: job({ awsMessageId: null }),
+      job: job({ queueMessageId: null }),
       now: NOW,
       wasJustCreated: false,
     }),

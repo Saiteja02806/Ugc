@@ -2,30 +2,31 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 
-import {
-  getMissingSqsEnvVars,
-  getQueueNameForJobType,
-  sendJobMessage,
-} from "@/lib/aws/sqs";
+import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
 import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
+import {
+  AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
+  getAIStudioPromptLengthError,
+  normalizeAIStudioPrompt,
+} from "@/lib/ai-studio/prompt-policy";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
-  attachAwsMessageToBackgroundJob,
-  createBackgroundJob,
   getBackgroundJobById,
   getMissingBackgroundJobStorageEnvVars,
-  markBackgroundJobFailed,
 } from "@/lib/jobs/background-jobs";
-import { isTrustedStorageUrl } from "@/lib/storage/s3";
+import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
+import { isTrustedStorageUrl } from "@/lib/storage/storage";
 
 type GenerateVideoRequest = {
   avatarImageUrl?: unknown;
   hookIdea?: unknown;
+  idempotencyKey?: unknown;
   prompt?: unknown;
 };
 
 type VideoJobOutput = {
   key?: unknown;
+  mediaAssetId?: unknown;
   ok?: unknown;
   provider?: unknown;
   url?: unknown;
@@ -33,18 +34,9 @@ type VideoJobOutput = {
 };
 
 const VIDEO_JOB_TYPE = "generate_hook_video";
-const VIDEO_GENERATION_FAILED_MESSAGE =
-  "Video generation failed. Please try again.";
-const MAX_PROMPT_LENGTH = 1_000;
 const TERMINAL_STATUSES = new Set(["cancelled", "completed", "failed"]);
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function cleanPrompt(value: unknown) {
-  return typeof value === "string"
-    ? value.trim().slice(0, MAX_PROMPT_LENGTH)
-    : "";
-}
 
 function cleanHttpsUrl(value: unknown) {
   if (typeof value !== "string" || !value.trim()) {
@@ -68,7 +60,7 @@ function getMissingRuntimeEnv() {
   return Array.from(
     new Set([
       ...getMissingBackgroundJobStorageEnvVars(),
-      ...getMissingSqsEnvVars([VIDEO_JOB_TYPE]),
+      ...getMissingJobQueueEnvVars([VIDEO_JOB_TYPE]),
     ]),
   );
 }
@@ -82,6 +74,10 @@ function getSafeOutput(output: unknown) {
 
   return {
     key: typeof videoOutput.key === "string" ? videoOutput.key : null,
+    mediaAssetId:
+      typeof videoOutput.mediaAssetId === "string"
+        ? videoOutput.mediaAssetId
+        : null,
     ok: videoOutput.ok === true,
     provider:
       typeof videoOutput.provider === "string" ? videoOutput.provider : null,
@@ -115,7 +111,7 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   const body = (await request.json().catch(() => null)) as
     | GenerateVideoRequest
     | null;
-  const prompt = cleanPrompt(body?.prompt) || cleanPrompt(body?.hookIdea);
+  const prompt = normalizeAIStudioPrompt(body?.prompt ?? body?.hookIdea);
   const avatarImageUrl = cleanHttpsUrl(body?.avatarImageUrl);
 
   if (!prompt) {
@@ -124,6 +120,18 @@ export async function handleAIStudioVideoGeneration(request: Request) {
         error: "Add a prompt before generating a video.",
         ok: false,
       },
+      { status: 400 },
+    );
+  }
+
+  const promptLengthError = getAIStudioPromptLengthError(
+    prompt,
+    AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
+  );
+
+  if (promptLengthError) {
+    return NextResponse.json(
+      { error: promptLengthError, ok: false },
       { status: 400 },
     );
   }
@@ -155,7 +163,11 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   try {
     const projectId = "ai-studio";
     const videoId = crypto.randomUUID();
-    const backgroundJob = await createBackgroundJob({
+    const idempotencyKey = cleanIdempotencyKey(
+      request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
+    );
+    const backgroundJob = await createAndDispatchBackgroundJob({
+      idempotencyKey,
       input: {
         avatarImageUrl,
         cameraStyle: "iphone_selfie",
@@ -169,40 +181,18 @@ export async function handleAIStudioVideoGeneration(request: Request) {
       },
       jobType: VIDEO_JOB_TYPE,
       projectId,
-      queueName: getQueueNameForJobType(VIDEO_JOB_TYPE),
       userId: user.uid,
     });
 
-    try {
-      const message = await sendJobMessage({
+    return NextResponse.json(
+      {
         jobId: backgroundJob.id,
-        jobType: VIDEO_JOB_TYPE,
-      });
-
-      await attachAwsMessageToBackgroundJob({
-        awsMessageId: message.messageId,
-        jobId: backgroundJob.id,
-      });
-    } catch (error) {
-      await markBackgroundJobFailed({
-        errorMessage: VIDEO_GENERATION_FAILED_MESSAGE,
-        jobId: backgroundJob.id,
-      }).catch((persistenceError) => {
-        console.error(
-          "Failed to persist video generation enqueue failure:",
-          persistenceError,
-        );
-      });
-
-      throw error;
-    }
-
-    return NextResponse.json({
-      jobId: backgroundJob.id,
-      message: "Video generation started.",
-      ok: true,
-      videoId,
-    });
+        message: "Video generation started.",
+        ok: true,
+        videoId: getJobInputString(backgroundJob.input, "videoId") || videoId,
+      },
+      { status: 202 },
+    );
   } catch (error) {
     console.error("Failed to start video generation:", error);
 
@@ -214,6 +204,22 @@ export async function handleAIStudioVideoGeneration(request: Request) {
       { status: 502 },
     );
   }
+}
+
+function cleanIdempotencyKey(value: unknown) {
+  return typeof value === "string" && value.trim()
+    ? value.trim().slice(0, 200)
+    : crypto.randomUUID();
+}
+
+function getJobInputString(value: unknown, key: string) {
+  return value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    key in value &&
+    typeof value[key as keyof typeof value] === "string"
+    ? String(value[key as keyof typeof value])
+    : "";
 }
 
 export async function handleAIStudioVideoStatus(request: Request) {
@@ -274,7 +280,7 @@ export async function handleAIStudioVideoStatus(request: Request) {
 
     return NextResponse.json({
       job: {
-        error: job.errorMessage ? VIDEO_GENERATION_FAILED_MESSAGE : null,
+        error: job.errorMessage,
         id: job.id,
         isTerminal: TERMINAL_STATUSES.has(job.status),
         output: getSafeOutput(job.output),

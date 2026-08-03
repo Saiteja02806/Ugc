@@ -7,7 +7,7 @@ import {
   updateBusinessProfilePreparation,
   type BusinessProfileRecord,
 } from "@/lib/business-profiles/db";
-import { enqueueCarouselGenerationJob } from "@/lib/carousel/aws-generation";
+import { enqueueCarouselGenerationJob } from "@/lib/carousel/generation-jobs";
 import {
   AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
   AUTOMATIC_CAROUSEL_SLIDE_COUNT,

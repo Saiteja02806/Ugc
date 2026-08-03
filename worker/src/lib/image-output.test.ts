@@ -10,25 +10,23 @@ import {
   prepareAIStudioImageOutput,
 } from "./image-output.js";
 
-test("prepares generated images as one 4:5 PNG", async () => {
+test("prepares one exact 4:5 PNG for AI Studio", async () => {
   const source = await sharp({
     create: {
-      background: { alpha: 1, b: 48, g: 96, r: 192 },
+      background: { alpha: 1, b: 60, g: 40, r: 20 },
       channels: 4,
-      height: 768,
-      width: 1_024,
+      height: 150,
+      width: 100,
     },
   })
     .png()
     .toBuffer();
+
   const output = await prepareAIStudioImageOutput(source);
   const metadata = await sharp(output).metadata();
 
+  assert.equal(AI_STUDIO_IMAGE_RATIO, "4:5");
   assert.equal(metadata.format, "png");
   assert.equal(metadata.width, AI_STUDIO_IMAGE_WIDTH);
   assert.equal(metadata.height, AI_STUDIO_IMAGE_HEIGHT);
-  assert.equal(
-    `${metadata.width! / 256}:${metadata.height! / 256}`,
-    AI_STUDIO_IMAGE_RATIO,
-  );
 });

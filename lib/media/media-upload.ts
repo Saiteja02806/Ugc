@@ -1,5 +1,5 @@
 import type { MediaCollection } from "@/lib/media/types";
-import { buildCloudFrontUrl } from "@/lib/storage/s3";
+import { buildPublicStorageUrl } from "@/lib/storage/storage";
 
 export const MEDIA_UPLOAD_EXPIRES_IN_SECONDS = 10 * 60;
 export const MAX_IMAGE_UPLOAD_BYTES = 25 * 1024 * 1024;
@@ -18,7 +18,7 @@ const videoTypes = new Map([
 
 export type MediaUploadTarget = {
   assetId: string;
-  cloudFrontUrl: string;
+  publicUrl: string;
   collection: MediaCollection;
   contentType: string;
   extension: string;
@@ -85,7 +85,7 @@ export function createMediaUploadTarget(input: {
     ok: true as const,
     target: {
       assetId,
-      cloudFrontUrl: buildCloudFrontUrl(key),
+      publicUrl: buildPublicStorageUrl(key),
       collection: input.collection,
       contentType,
       extension,

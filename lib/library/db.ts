@@ -136,6 +136,14 @@ export function getMissingLibraryDbEnvVars() {
 }
 
 export async function saveGeneratedCarouselToLibrary(input: {
+  edit?: {
+    id: string;
+    revision: number;
+    slides: Array<{
+      slideNumber: number;
+      textPosition: { x: number; y: number };
+    }>;
+  } | null;
   generation: CarouselGenerationRecord;
   slides: CarouselSlideRecord[];
   title: string;
@@ -148,6 +156,12 @@ export async function saveGeneratedCarouselToLibrary(input: {
     orderedSlides[0]?.renderedUrl ??
     orderedSlides.find((slide) => Boolean(slide.renderedUrl))?.renderedUrl ??
     null;
+  const editPositionBySlideNumber = new Map(
+    (input.edit?.slides ?? []).map((slide) => [
+      slide.slideNumber,
+      slide.textPosition,
+    ]),
+  );
   const slidesPayload = orderedSlides.map((slide) => ({
     carouselGenerationId: slide.carouselGenerationId,
     carouselSlideId: slide.id,
@@ -156,6 +170,8 @@ export async function saveGeneratedCarouselToLibrary(input: {
       ctaText: slide.ctaText,
       imageDirection: slide.imageDirection,
       layoutPreset: slide.layoutPreset,
+      normalizedTextPosition:
+        editPositionBySlideNumber.get(slide.slideNumber) ?? null,
       textPosition: slide.textPosition,
     },
     renderedS3Key: slide.renderedS3Key,
@@ -175,6 +191,9 @@ export async function saveGeneratedCarouselToLibrary(input: {
         generationBatchId: input.generation.generationBatchId,
         generationSource: input.generation.generationSource,
         selectedAngle: input.generation.selectedAngle,
+        trendingCreativeEdit: input.edit
+          ? { id: input.edit.id, revision: input.edit.revision }
+          : null,
       },
       p_project_id: input.generation.projectId,
       p_slides: slidesPayload,

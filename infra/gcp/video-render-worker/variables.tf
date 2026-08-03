@@ -17,9 +17,15 @@ variable "environment" {
 }
 
 variable "enable_video_render_worker" {
-  description = "Set true after the worker image, storage env, Pub/Sub subscription, and required Secret Manager versions are ready."
+  description = "Set true after the worker image, storage env, and required Secret Manager versions are ready."
   type        = bool
   default     = false
+}
+
+variable "app_launcher_service_account_email" {
+  description = "Service account used by the app to launch Cloud Run render jobs."
+  type        = string
+  default     = "ugc-app-sa@ugcsaas.iam.gserviceaccount.com"
 }
 
 variable "worker_image_uri" {
@@ -34,16 +40,34 @@ variable "worker_service_account_email" {
   default     = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
 }
 
+variable "scheduler_service_account_email" {
+  description = "Service account used by Cloud Tasks to invoke this worker."
+  type        = string
+  default     = "ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com"
+}
+
 variable "service_name" {
   description = "Cloud Run Service name for the video-render worker."
   type        = string
   default     = "ugc-video-render-worker"
 }
 
-variable "pubsub_subscription_name" {
-  description = "Pub/Sub subscription the video-render worker pulls from."
+variable "job_name" {
+  description = "Cloud Run Job name for long-running video renders."
   type        = string
-  default     = "ugc-video-render-sub"
+  default     = "ugc-video-render-job"
+}
+
+variable "job_timeout_seconds" {
+  description = "Maximum duration of a one-shot render execution."
+  type        = number
+  default     = 3600
+}
+
+variable "job_max_retries" {
+  description = "Infrastructure retries for a render execution; durable job recovery controls subsequent attempts."
+  type        = number
+  default     = 0
 }
 
 variable "queue_name" {
@@ -55,19 +79,7 @@ variable "queue_name" {
 variable "worker_job_types" {
   description = "Comma-separated job types allowed for this worker service."
   type        = string
-  default     = "render_edit_video,render_schedule_combination"
-}
-
-variable "worker_poll_max_messages" {
-  description = "Maximum Pub/Sub messages to pull per worker loop."
-  type        = number
-  default     = 1
-}
-
-variable "worker_poll_wait_seconds" {
-  description = "Pub/Sub pull wait behavior for the always-on worker."
-  type        = number
-  default     = 20
+  default     = "render_edit_video,render_schedule_combination,render_wall_text_video"
 }
 
 variable "worker_visibility_timeout_seconds" {
@@ -77,7 +89,7 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Minimum Cloud Run instances for the video-render worker. Keep 1 for active queue consumption."
+  description = "Minimum Cloud Run instances for the video-render worker."
   type        = number
   default     = 1
 }

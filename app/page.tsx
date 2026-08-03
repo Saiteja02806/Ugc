@@ -7,7 +7,6 @@ import {
   Clapperboard,
   Images,
   LayoutGrid,
-  Menu,
   ScanText,
   ShieldCheck,
   Sparkles,
@@ -16,6 +15,8 @@ import {
 import Link from "next/link";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
+import { LandingHeader } from "@/components/marketing/landing-header";
+import { cn } from "@/lib/utils";
 
 const authHref = "/sign-in";
 
@@ -26,12 +27,6 @@ export const metadata: Metadata = {
   description:
     "Create Instagram Reel hooks, text-led videos, carousel posts, and approved publishing workflows in one workspace.",
 };
-
-const navItems = [
-  { label: "Instagram formats", href: "#formats" },
-  { label: "How it works", href: "#workflow" },
-  { label: "Pricing", href: "/pricing" },
-];
 
 const formatCards = [
   {
@@ -114,117 +109,68 @@ const legalFooterLinks = [
 export default function Home() {
   return (
     <main className="instagram-theme min-h-screen overflow-x-hidden bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/90 px-4 backdrop-blur-xl sm:px-6">
-        <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between gap-5">
-          <Link
-            href="/"
-            className="flex min-w-0 items-center gap-3 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label="UGCPilot home"
-          >
-            <ProductLogoMark
-              className="size-9 rounded-control bg-primary p-2"
-              imageClassName="brightness-0 invert"
-              sizes="36px"
-            />
-            <span className="truncate text-[17px] font-semibold text-foreground-strong">
-              UGCPilot
-            </span>
-          </Link>
+      <LandingHeader />
 
-          <nav
-            className="hidden items-center gap-7 text-sm font-medium text-muted md:flex"
-            aria-label="Primary navigation"
-          >
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="rounded-control transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                {item.label}
-              </Link>
-            ))}
-            <Link
-              href={authHref}
-              className="inline-flex h-10 items-center rounded-control border border-border bg-card px-4 text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              Sign in
-            </Link>
-            <Link
-              href={authHref}
-              className="inline-flex h-10 items-center rounded-control bg-primary px-4 font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              Start creating
-            </Link>
-          </nav>
-
-          <details className="group relative md:hidden">
-            <summary
-              aria-label="Open menu"
-              className="flex size-10 list-none items-center justify-center rounded-control border border-border bg-card text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden"
-            >
-              <Menu className="size-4" aria-hidden="true" />
-            </summary>
-            <div className="absolute right-0 top-12 w-60 rounded-card border border-border bg-card p-2 shadow-floating">
-              {[
-                ...navItems,
-                { label: "Sign in", href: authHref },
-                { label: "Start creating", href: authHref },
-              ].map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="block rounded-control px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-          </details>
-        </div>
-      </header>
-
-      <section className="relative px-4 pb-16 pt-12 sm:px-6 sm:pb-20 sm:pt-16 lg:px-8 lg:pb-24 lg:pt-20">
-        <div
-          className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[820px] -translate-x-1/2 opacity-25 blur-3xl"
-          style={{
-            background:
-              "radial-gradient(circle at 35% 35%, var(--instagram-rose), transparent 42%), radial-gradient(circle at 68% 48%, var(--instagram-violet), transparent 46%)",
-          }}
-          aria-hidden="true"
-        />
-
+      <section className="relative px-4 pb-16 pt-28 sm:px-6 sm:pb-20 sm:pt-32 lg:px-8 lg:pb-24 lg:pt-36">
         <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-12 lg:gap-16">
-          <div className="hero-rise max-w-[1000px] text-center">
-            <h1 className="mx-auto max-w-[1000px] text-[clamp(2.5rem,6.5vw,5.5rem)] font-semibold leading-[0.94] tracking-[-0.055em] text-foreground-strong">
-              Create Instagram content{" "}
-              <span className="mt-3 block bg-[linear-gradient(100deg,var(--instagram-orange),var(--instagram-rose)_48%,var(--instagram-violet))] bg-clip-text text-transparent">
-                worth stopping for.
+          <div className="hero-rise w-full max-w-[1200px] text-center">
+            <h1 className="mx-auto max-w-[1200px] text-[clamp(2rem,5.28vw,4.8rem)] font-semibold leading-[0.94] tracking-[-0.055em] text-foreground-strong">
+              <span className="block lg:whitespace-nowrap">
+                Stop guessing. Start posting.
+              </span>
+              <span className="mt-1 block lg:whitespace-nowrap sm:mt-2">
+                Your next post is{" "}
+                <span className="relative inline-block">
+                  ready to go.
+                  <svg
+                    viewBox="0 0 320 18"
+                    preserveAspectRatio="none"
+                    className="pointer-events-none absolute -bottom-[0.16em] left-[4%] h-[0.18em] w-[92%] overflow-visible opacity-90"
+                    aria-hidden="true"
+                  >
+                    <defs>
+                      <linearGradient
+                        id="ready-underline-gradient"
+                        x1="0"
+                        y1="9"
+                        x2="320"
+                        y2="9"
+                        gradientUnits="userSpaceOnUse"
+                      >
+                        <stop stopColor="var(--instagram-orange)" />
+                        <stop offset="0.52" stopColor="var(--instagram-rose)" />
+                        <stop offset="1" stopColor="var(--instagram-violet)" />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      d="M4 10.8C76 4.1 188 4.5 316 8.7"
+                      fill="none"
+                      stroke="url(#ready-underline-gradient)"
+                      strokeWidth="3.6"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
               </span>
             </h1>
 
-            <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-muted sm:text-lg sm:leading-8">
-              Build Reel hooks, text-led videos, and carousel posts from your
-              real business context, then review and schedule everything in one
-              focused workspace.
+            <p className="mx-auto mt-7 max-w-[860px] text-base leading-7 text-muted sm:text-lg sm:leading-8">
+              Turn proven Instagram formats into ready-to-publish content for
+              your business. Review, edit, and publish slideshows, Reel hooks,
+              and text-led videos designed to earn more attention and drive
+              action.
             </p>
 
-            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <div className="mt-8 flex justify-center">
               <Link
                 href={authHref}
-                className="group inline-flex h-12 items-center justify-center rounded-control bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="group inline-flex h-12 items-center justify-center rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                Start creating for Instagram
+                Start creating
                 <ArrowRight
                   className="ml-2 size-4 transition-transform group-hover:translate-x-0.5"
                   aria-hidden="true"
                 />
-              </Link>
-              <Link
-                href="#formats"
-                className="inline-flex h-12 items-center justify-center rounded-control border border-border bg-card/70 px-6 text-base font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                Explore the workspace
               </Link>
             </div>
 
@@ -428,17 +374,16 @@ export default function Home() {
                 }}
                 aria-hidden="true"
               />
-              <div className="absolute inset-6 flex items-center justify-center rounded-[var(--radius-panel)] border border-white/15 bg-background/60 p-6 backdrop-blur-xl sm:inset-10">
+              <div className="absolute inset-6 flex items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card/80 p-6 shadow-card backdrop-blur-xl sm:inset-10">
                 <div className="text-center">
                   <ProductLogoMark
-                    className="mx-auto size-16 rounded-[18px] bg-white/10 p-4 ring-1 ring-inset ring-white/15"
-                    imageClassName="brightness-0 invert"
+                    className="mx-auto size-16 rounded-[18px] bg-card p-4 shadow-card ring-1 ring-inset ring-border"
                     sizes="64px"
                   />
-                  <p className="mt-5 text-lg font-semibold text-white">
+                  <p className="mt-5 text-lg font-semibold text-foreground-strong">
                     Reels · Carousels · Scheduling
                   </p>
-                  <p className="mt-2 text-sm text-white/70">
+                  <p className="mt-2 text-sm text-muted">
                     One focused Instagram workflow
                   </p>
                 </div>
@@ -487,27 +432,26 @@ export default function Home() {
 function InstagramWorkspacePreview() {
   return (
     <div className="relative mx-auto max-w-[920px]">
-      <div className="absolute -inset-8 rounded-full bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))] opacity-15 blur-3xl" />
-      <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-[#17161a] p-2 shadow-[0_32px_100px_rgb(0_0_0_/_0.46)]">
-        <div className="rounded-[18px] border border-white/8 bg-[#1e1d21]">
-          <div className="flex items-center justify-between gap-4 border-b border-white/8 px-4 py-3.5 sm:px-5">
+      <div className="relative overflow-hidden rounded-[24px] border border-border-strong bg-card p-2 shadow-floating">
+        <div className="rounded-[18px] border border-border bg-card">
+          <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-3.5 sm:px-5">
             <div className="flex items-center gap-3">
-              <span className="flex size-9 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]">
+              <span className="flex size-9 items-center justify-center rounded-[10px] border border-border bg-card-muted">
                 <LayoutGrid
-                  className="size-5 text-white"
+                  className="size-5 text-muted"
                   aria-hidden="true"
                 />
               </span>
               <div>
-                <p className="text-sm font-semibold text-white">
+                <p className="text-sm font-semibold text-foreground-strong">
                   Instagram content workspace
                 </p>
-                <p className="mt-0.5 text-[11px] text-white/45">
+                <p className="mt-0.5 text-[11px] text-muted">
                   Approved media only
                 </p>
               </div>
             </div>
-            <span className="hidden rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/60 sm:inline">
+            <span className="hidden rounded-full border border-border bg-card-muted px-3 py-1 text-[11px] font-medium text-muted sm:inline">
               Draft
             </span>
           </div>
@@ -523,43 +467,43 @@ function InstagramWorkspacePreview() {
               <PreviewMode icon={LayoutGrid} label="Carousels" />
             </div>
 
-            <div className="rounded-[16px] border border-white/8 bg-[#151417] p-3 sm:p-4">
+            <div className="rounded-[16px] border border-border bg-card-muted p-3 sm:p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold text-white">
+                  <p className="text-xs font-semibold text-foreground-strong">
                     Reel hook library
                   </p>
-                  <p className="mt-1 text-[11px] text-white/45">
+                  <p className="mt-1 text-[11px] text-muted">
                     Filled from your approved video source
                   </p>
                 </div>
-                <WandSparkles className="size-4 text-[#ff6f91]" aria-hidden="true" />
+                <WandSparkles className="size-4 text-accent-pink" aria-hidden="true" />
               </div>
 
               <div className="mt-4 grid grid-cols-3 gap-2.5">
                 {[0, 1, 2].map((slot) => (
                   <div
                     key={slot}
-                    className="relative aspect-[9/14] overflow-hidden rounded-[12px] border border-dashed border-white/15 bg-[linear-gradient(155deg,#27252b,#1b1a1e)]"
+                    className="relative aspect-[9/14] overflow-hidden rounded-[12px] border border-dashed border-border-strong bg-[linear-gradient(155deg,var(--card),var(--surface-subtle))]"
                   >
                     <div className="absolute inset-x-2 top-2 flex items-center justify-between">
-                      <span className="h-1.5 w-8 rounded-full bg-white/10" />
-                      <span className="size-4 rounded-full border border-white/10" />
+                      <span className="h-1.5 w-8 rounded-full bg-border" />
+                      <span className="size-4 rounded-full border border-border" />
                     </div>
                     <div className="absolute inset-x-2 bottom-2 grid gap-1.5">
-                      <span className="h-1.5 w-full rounded-full bg-white/12" />
-                      <span className="h-1.5 w-3/4 rounded-full bg-white/8" />
+                      <span className="h-1.5 w-full rounded-full bg-border-strong" />
+                      <span className="h-1.5 w-3/4 rounded-full bg-border" />
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-3 flex items-center justify-between gap-3 rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2.5">
-                <p className="text-[11px] leading-5 text-white/45">
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-[10px] border border-border bg-card px-3 py-2.5">
+                <p className="text-[11px] leading-5 text-muted">
                   Real videos load after sign-in.
                 </p>
                 <ChevronRight
-                  className="size-4 shrink-0 text-white/35"
+                  className="size-4 shrink-0 text-muted-subtle"
                   aria-hidden="true"
                 />
               </div>
@@ -582,14 +526,15 @@ function PreviewMode({
 }) {
   return (
     <div
-      className={
+      className={cn(
+        "rounded-[12px] border p-3",
         active
-          ? "rounded-[12px] border border-[#ff6f91]/25 bg-[#ff6f91]/10 p-3 text-white"
-          : "rounded-[12px] border border-white/8 bg-white/[0.025] p-3 text-white/50"
-      }
+          ? "border-primary/25 bg-selected text-foreground-strong"
+          : "border-border bg-card text-muted",
+      )}
     >
       <Icon
-        className={active ? "size-4 text-[#ff6f91]" : "size-4"}
+        className={cn("size-4", active && "text-accent-pink")}
         aria-hidden="true"
       />
       <p className="mt-3 text-[11px] font-semibold leading-tight sm:text-xs">
@@ -673,21 +618,21 @@ function TextReelBuilder() {
           ))}
         </div>
 
-        <div className="relative mx-auto aspect-[9/14] w-full max-w-[220px] overflow-hidden rounded-card border border-border-strong bg-[linear-gradient(155deg,#2b2930,#1a191d)]">
+        <div className="relative mx-auto aspect-[9/14] w-full max-w-[220px] overflow-hidden rounded-card border border-border-strong bg-[linear-gradient(155deg,var(--card),var(--surface-subtle))] shadow-card">
           <div className="absolute inset-x-4 top-4 flex items-center justify-between">
-            <span className="h-2 w-12 rounded-full bg-white/10" />
+            <span className="h-2 w-12 rounded-full bg-border" />
             <ScanText
-              className="size-5 text-white/40"
+              className="size-5 text-muted-subtle"
               aria-hidden="true"
             />
           </div>
           <div className="absolute inset-x-4 top-[32%] grid gap-2">
-            <span className="h-3 rounded-full bg-white/25" />
-            <span className="h-3 rounded-full bg-white/20" />
-            <span className="h-3 w-4/5 rounded-full bg-white/15" />
-            <span className="mt-1 h-3 w-3/5 rounded-full bg-[#ff6f91]/55" />
+            <span className="h-3 rounded-full bg-border-strong" />
+            <span className="h-3 rounded-full bg-border-strong/80" />
+            <span className="h-3 w-4/5 rounded-full bg-border" />
+            <span className="mt-1 h-3 w-3/5 rounded-full bg-accent-pink/45" />
           </div>
-          <div className="absolute inset-x-4 bottom-4 h-9 rounded-[9px] border border-white/10 bg-white/5" />
+          <div className="absolute inset-x-4 bottom-4 h-9 rounded-[9px] border border-border bg-card" />
         </div>
       </div>
     </article>

@@ -7,8 +7,8 @@ import {
   acceptableCreatedScheduleStatuses,
   decideTrendingCompletionTransition,
   isCompletionResultForAction,
+  type TrendingAssignmentCompletionAction,
   type TrendingAssignmentState,
-  type TrendingCompletionAction,
 } from "@/lib/trending/completion-integrity-logic";
 
 const USER_CAROUSEL_ASSIGNMENTS_TABLE = "user_carousel_assignments";
@@ -17,7 +17,7 @@ const SCHEDULED_POSTS_TABLE = "scheduled_posts";
 
 type AssignmentRow = {
   carousel_id: string;
-  completion_action: TrendingCompletionAction | null;
+  completion_action: TrendingAssignmentCompletionAction | null;
   id: string;
   state: TrendingAssignmentState;
   user_id: string;

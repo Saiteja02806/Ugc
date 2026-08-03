@@ -8,6 +8,7 @@ import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
 type AccessResponse = {
   isPro?: unknown;
+  message?: unknown;
   ok?: unknown;
 };
 
@@ -37,7 +38,7 @@ export function useAIStudioAccess() {
 
         if (!token) {
           if (!controller.signal.aborted) {
-            setAccessState("locked");
+            setAccessState("error");
           }
           return;
         }
@@ -52,18 +53,18 @@ export function useAIStudioAccess() {
         const data = (await response.json()) as AccessResponse;
 
         if (!controller.signal.aborted) {
-          setAccessState(
-            response.ok && data.ok === true && data.isPro === true
-              ? "pro"
-              : "locked",
-          );
+          if (!response.ok || data.ok !== true) {
+            setAccessState("error");
+          } else {
+            setAccessState(data.isPro === true ? "pro" : "locked");
+          }
         }
       } catch (error) {
         if (
           !controller.signal.aborted &&
           !(error instanceof DOMException && error.name === "AbortError")
         ) {
-          setAccessState("locked");
+          setAccessState("error");
         }
       }
     }

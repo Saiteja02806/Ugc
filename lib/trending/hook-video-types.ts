@@ -15,13 +15,16 @@ export type HookInfluencerSummary = {
 export type HookInfluencerVideoSummary = {
   durationSeconds: number | null;
   id: string;
+  influencerKey: string | null;
   influencerId: string;
   ratio: MediaRatio;
+  reactionType: string | null;
   sourceKind: HookVideoSourceKind;
   thumbnailUrl: string | null;
   title: string;
   trimEnd: number | null;
   trimStart: number;
+  visualGroup: string | null;
 };
 
 export type HookVideoBrowseEntry = {

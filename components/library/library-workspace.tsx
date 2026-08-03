@@ -12,9 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { UploadedPostsTab } from "@/components/demos/demos-workspace";
 import {
@@ -43,8 +41,6 @@ import {
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
 import { cn } from "@/lib/utils";
-
-export type LibraryTab = "content" | "posts";
 
 type LibraryCarouselSlide = {
   headline: string | null;
@@ -79,17 +75,6 @@ type LibraryContentResponse =
       ok: false;
     };
 
-const tabs: Array<{ label: string; value: LibraryTab }> = [
-  {
-    label: "Demo footage",
-    value: "posts",
-  },
-  {
-    label: "Carousels",
-    value: "content",
-  },
-];
-
 const primaryActionClassName =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60";
 const secondaryActionClassName =
@@ -101,105 +86,24 @@ const iconActionClassName =
 const metricChipClassName =
   "inline-flex min-h-10 items-center rounded-control bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-border";
 
-export function LibraryWorkspace({ initialTab }: { initialTab: LibraryTab }) {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<LibraryTab>(initialTab);
-
-  function selectTab(tab: LibraryTab) {
-    setActiveTab(tab);
-
-    const params = new URLSearchParams(window.location.search);
-    params.set("tab", tab);
-    router.replace(`/library?${params.toString()}`);
-  }
-
-  function handleTabKeyDown(
-    event: ReactKeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ) {
-    let nextIndex: number | null = null;
-
-    if (event.key === "ArrowRight") {
-      nextIndex = (index + 1) % tabs.length;
-    } else if (event.key === "ArrowLeft") {
-      nextIndex = (index - 1 + tabs.length) % tabs.length;
-    } else if (event.key === "Home") {
-      nextIndex = 0;
-    } else if (event.key === "End") {
-      nextIndex = tabs.length - 1;
-    }
-
-    if (nextIndex === null) {
-      return;
-    }
-
-    event.preventDefault();
-    const nextTab = tabs[nextIndex];
-    selectTab(nextTab.value);
-    window.requestAnimationFrame(() => {
-      document.getElementById(`library-tab-${nextTab.value}`)?.focus();
-    });
-  }
-
+export function LibraryWorkspace() {
   return (
     <section className="min-h-screen flex-1 bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8 lg:py-7">
       <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-4">
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <header>
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-normal text-foreground-strong sm:text-[28px]">
               Content Library
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-              Keep reusable demo footage and saved carousel ideas in one place,
-              ready for your next post.
+              Keep reusable demo footage in one place, ready for your next
+              post.
             </p>
-          </div>
-
-          <div
-            role="tablist"
-            aria-label="Library sections"
-            className="grid w-full grid-cols-2 items-center rounded-panel border border-border bg-card p-1 shadow-[0_1px_2px_rgb(23_23_27_/_0.03)] sm:w-fit"
-          >
-            {tabs.map((tab, index) => (
-              <button
-                key={tab.value}
-                id={`library-tab-${tab.value}`}
-                type="button"
-                role="tab"
-                aria-controls={`library-panel-${tab.value}`}
-                aria-selected={activeTab === tab.value}
-                tabIndex={activeTab === tab.value ? 0 : -1}
-                onClick={() => selectTab(tab.value)}
-                onKeyDown={(event) => handleTabKeyDown(event, index)}
-                className={cn(
-                  "inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-control px-3 text-sm font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none sm:min-w-[148px]",
-                  activeTab === tab.value
-                    ? "bg-selected text-foreground-strong shadow-sm ring-1 ring-primary/20"
-                    : "text-muted hover:bg-card-muted hover:text-foreground-strong",
-                )}
-              >
-                {tab.value === "posts" ? (
-                  <FileVideo className="size-4" aria-hidden="true" />
-                ) : (
-                  <Images className="size-4" aria-hidden="true" />
-                )}
-                {tab.label}
-              </button>
-            ))}
           </div>
         </header>
 
-        <div
-          id={`library-panel-${activeTab}`}
-          role="tabpanel"
-          aria-labelledby={`library-tab-${activeTab}`}
-          className="min-w-0 pt-1"
-        >
-          {activeTab === "content" ? (
-            <CarouselLibraryTab onShowPosts={() => selectTab("posts")} />
-          ) : (
-            <UploadedPostsTab embeddedInLibrary />
-          )}
+        <div className="min-w-0 pt-1">
+          <UploadedPostsTab embeddedInLibrary />
         </div>
       </div>
     </section>

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const avatarsPage = readProjectFile("app/avatars/page.tsx");
+const libraryPage = readProjectFile("app/library/page.tsx");
 const workspace = readProjectFile(
   "components/avatars/avatars-workspace.tsx",
 );
@@ -11,6 +12,9 @@ const savedTab = readProjectFile(
 );
 const carouselLibrary = readProjectFile(
   "components/library/library-workspace.tsx",
+);
+const demosWorkspace = readProjectFile(
+  "components/demos/demos-workspace.tsx",
 );
 const hookLibrary = readProjectFile(
   "components/library/hook-video-library-tab.tsx",
@@ -45,6 +49,17 @@ test("Saved category controls stay readable on narrow screens", () => {
   assert.match(savedTab, /grid-cols-2/);
   assert.match(savedTab, /sm:flex/);
   assert.match(savedTab, /w-full justify-start/);
+});
+
+test("Content Library is dedicated to compact demo footage", () => {
+  assert.match(carouselLibrary, /<UploadedPostsTab embeddedInLibrary \/>/);
+  assert.doesNotMatch(carouselLibrary, /aria-label="Library sections"/);
+  assert.doesNotMatch(libraryPage, /tab === "content"/);
+  assert.match(
+    demosWorkspace,
+    /"grid min-h-\[220px\] items-center gap-5 rounded-panel border border-dashed px-4 py-5/,
+  );
+  assert.doesNotMatch(demosWorkspace, /min-h-\[330px\]/);
 });
 
 test("the Saved tab reuses owner-scoped existing stores", () => {

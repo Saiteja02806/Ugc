@@ -611,7 +611,7 @@ function EmbeddedDemoWorkspace({
       aria-labelledby="library-demo-heading"
       className="overflow-hidden rounded-panel border border-border bg-card"
     >
-      <header className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <header className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
             <FileVideo className="size-[18px]" aria-hidden="true" />
@@ -698,7 +698,7 @@ function EmbeddedDemoWorkspace({
           void onFiles(event.dataTransfer.files);
         }}
         className={cn(
-          "relative border-t border-border bg-surface-subtle/55 p-4 transition-colors sm:p-5",
+          "relative border-t border-border bg-surface-subtle/55 p-3 transition-colors sm:p-4",
           isDragActive && "bg-brand-soft/30",
         )}
       >
@@ -746,40 +746,40 @@ function EmbeddedDemoWorkspace({
         ) : !showUploadStatus ? (
           <div
             className={cn(
-              "grid min-h-[330px] items-center gap-8 rounded-panel border border-dashed px-5 py-8 transition-colors sm:grid-cols-[minmax(0,1fr)_250px] sm:px-8",
+              "grid min-h-[220px] items-center gap-5 rounded-panel border border-dashed px-4 py-5 transition-colors sm:grid-cols-[minmax(0,1fr)_220px] sm:px-6",
               isDragActive
                 ? "border-primary bg-brand-soft/30"
                 : "border-border-strong bg-card",
             )}
           >
             <div className="max-w-xl text-left">
-              <span className="flex size-12 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
-                <Upload className="size-5" aria-hidden="true" />
+              <span className="flex size-10 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
+                <Upload className="size-4" aria-hidden="true" />
               </span>
-              <h3 className="mt-4 text-xl font-semibold text-foreground-strong">
+              <h3 className="mt-3 text-lg font-semibold text-foreground-strong">
                 {isDragActive ? "Drop your video here" : "Add demo footage"}
               </h3>
-              <p className="mt-2 max-w-md text-sm leading-6 text-muted">
+              <p className="mt-1.5 max-w-lg text-sm leading-5 text-muted">
                 Upload a product walkthrough or screen recording. It will stay
                 here and can be used later when you prepare a post.
               </p>
               <button
                 type="button"
                 onClick={onBrowse}
-                className={cn(demoPrimaryActionClassName, "mt-5")}
+                className={cn(demoPrimaryActionClassName, "mt-4")}
               >
                 <Upload className="size-4" aria-hidden="true" />
                 Choose video
               </button>
-              <p className="mt-3 text-xs font-medium text-muted-subtle">
+              <p className="mt-2 text-xs font-medium text-muted-subtle">
                 or drop a file anywhere in this area
               </p>
             </div>
-            <div className="rounded-panel bg-surface-subtle p-4">
+            <div className="rounded-control bg-surface-subtle p-3.5">
               <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-subtle">
                 Upload rules
               </p>
-              <div className="mt-3 flex flex-col gap-2 text-sm font-semibold text-muted">
+              <div className="mt-2 flex flex-col gap-1.5 text-sm font-semibold text-muted">
                 <span>MP4, MOV or WebM</span>
                 <span>Up to 100 MB</span>
                 <span>1-60 seconds</span>

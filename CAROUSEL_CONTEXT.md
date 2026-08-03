@@ -1900,3 +1900,15 @@ Name: **Run a profile-scoped GCP broad-matcher live canary**
   real profile picture because that identity is actionable confirmation.
 - These UI changes are production-build validated locally. They are not
   deployed or authenticated-production verified yet.
+
+## 2026-08-03 Content Library Demo-Footage Boundary
+
+- The visible `/library` Content Library is dedicated to reusable demo footage.
+  Its duplicate Carousels tab is removed, and legacy `?tab=content` links now
+  resolve to the demo-footage view.
+- Saved Carousels remain available under Creative Assets > Saved through the
+  existing `CarouselLibraryTab`. Carousel storage, save APIs, preview,
+  scheduling, publishing, and deletion behavior are unchanged.
+- This is a frontend navigation and presentation decision only. It does not
+  remove Carousel records, routes, workers, or the Library-backed scheduling
+  source of truth.

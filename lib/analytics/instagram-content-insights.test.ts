@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  aggregateInstagramContentPerformanceByPublishedDate,
   filterAndSortInstagramContent,
   flattenReadyInstagramContentAccounts,
   getInstagramContentTitle,
@@ -180,6 +181,67 @@ test("flattens only ready accounts for multi-account workspaces", () => {
   assert.deepEqual(
     flattenReadyInstagramContentAccounts(accounts).map((item) => item.id),
     ["ready-1"],
+  );
+});
+
+test("groups real content performance by publish date for trend fallback", () => {
+  const accounts: InstagramContentAccount[] = [
+    {
+      ...account,
+      items: [
+        createItem({
+          id: "first",
+          metrics: {
+            ...emptyMetrics(),
+            interactions: 3,
+            reach: 20,
+            views: 30,
+          },
+          publishedAt: "2026-07-25T10:00:00.000Z",
+        }),
+        createItem({
+          id: "second",
+          metrics: {
+            ...emptyMetrics(),
+            interactions: 2,
+            reach: null,
+            views: 12,
+          },
+          publishedAt: "2026-07-25T18:00:00.000Z",
+        }),
+        createItem({
+          id: "third",
+          metrics: {
+            ...emptyMetrics(),
+            interactions: 1,
+            reach: 8,
+            views: null,
+          },
+          publishedAt: "2026-07-26T10:00:00.000Z",
+        }),
+      ],
+      lastSyncedAt: "2026-07-26T12:00:00.000Z",
+      message: null,
+      status: "ready",
+    },
+  ];
+
+  assert.deepEqual(
+    aggregateInstagramContentPerformanceByPublishedDate(accounts),
+    [
+      {
+        date: "2026-07-25",
+        interactions: 5,
+        reach: 20,
+        views: 42,
+      },
+      {
+        date: "2026-07-26",
+        interactions: 1,
+        reach: 8,
+        views: null,
+      },
+    ],
   );
 });
 

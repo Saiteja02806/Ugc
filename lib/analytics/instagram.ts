@@ -143,15 +143,47 @@ async function requestInstagramAccountInsights(params: {
   accountId: string;
   days: InstagramInsightsRangeDays;
 }) {
+  const { since, until } = getUtcInsightRange(params.days);
+  const [timeSeriesPayload, totalValuePayload] = await Promise.all([
+    requestInstagramAccountInsightsPayload({
+      ...params,
+      metrics: ["reach"],
+      metricType: "time_series",
+      since,
+      until,
+    }),
+    requestInstagramAccountInsightsPayload({
+      ...params,
+      metrics: instagramAccountInsightMetrics,
+      metricType: "total_value",
+      since,
+      until,
+    }),
+  ]);
+
+  return normalizeInstagramAccountInsights([
+    timeSeriesPayload,
+    totalValuePayload,
+  ]);
+}
+
+async function requestInstagramAccountInsightsPayload(params: {
+  accessToken: string;
+  accountId: string;
+  metrics: readonly string[];
+  metricType: "time_series" | "total_value";
+  since: number;
+  until: number;
+}) {
   const url = buildInstagramGraphUrl(
     `/${encodeURIComponent(params.accountId)}/insights`,
   );
-  const { since, until } = getUtcInsightRange(params.days);
 
-  url.searchParams.set("metric", instagramAccountInsightMetrics.join(","));
+  url.searchParams.set("metric", params.metrics.join(","));
+  url.searchParams.set("metric_type", params.metricType);
   url.searchParams.set("period", "day");
-  url.searchParams.set("since", String(since));
-  url.searchParams.set("until", String(until));
+  url.searchParams.set("since", String(params.since));
+  url.searchParams.set("until", String(params.until));
 
   const response = await fetch(url, {
     cache: "no-store",
@@ -208,7 +240,7 @@ async function requestInstagramAccountInsights(params: {
     );
   }
 
-  return normalizeInstagramAccountInsights(payload);
+  return payload;
 }
 
 function buildInstagramGraphUrl(path: string) {

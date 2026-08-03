@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  aggregateInstagramContentPerformanceByPublishedDate,
   filterAndSortInstagramContent,
   flattenReadyInstagramContentAccounts,
   getInstagramContentTitle,
@@ -617,9 +618,20 @@ function AnalyticsReadyState({
     () =>
       buildInstagramPerformanceTrend(
         insightAccounts,
+        contentAccounts,
         dateRangeDays,
       ),
-    [dateRangeDays, insightAccounts],
+    [contentAccounts, dateRangeDays, insightAccounts],
+  );
+  const performanceTrendUsesContent = useMemo(
+    () =>
+      !aggregateInstagramInsightDaily(insightAccounts).some(
+        (point) => point[performanceMetric] !== null,
+      ) &&
+      performanceTrend.some(
+        (point) => point[performanceMetric] !== null,
+      ),
+    [insightAccounts, performanceMetric, performanceTrend],
   );
 
   return (
@@ -689,7 +701,11 @@ function AnalyticsReadyState({
               onChange={onPerformanceMetricChange}
             />
           }
-          description="Daily values returned by Meta for the selected date range."
+          description={
+            performanceTrendUsesContent
+              ? "Current Meta content metrics grouped by each post's publish date."
+              : "Daily account values returned by Meta for the selected date range."
+          }
           eyebrow="Performance trend"
           title={`${performanceMetricLabels[performanceMetric]} over time`}
         >
@@ -700,6 +716,7 @@ function AnalyticsReadyState({
             insightSnapshot={insightSnapshot}
             metric={performanceMetric}
             points={performanceTrend}
+            groupedByPublishDate={performanceTrendUsesContent}
           />
         </AnalyticsSurface>
 
@@ -889,6 +906,7 @@ function PerformanceMetricSelector({
 
 function InstagramPerformanceTrendChart({
   connectionCount,
+  groupedByPublishDate,
   insightSnapshot,
   insightsLoading,
   insightsMessage,
@@ -896,6 +914,7 @@ function InstagramPerformanceTrendChart({
   points,
 }: {
   connectionCount: number;
+  groupedByPublishDate: boolean;
   insightSnapshot: InstagramInsightSnapshot;
   insightsLoading: boolean;
   insightsMessage: string | null;
@@ -984,9 +1003,9 @@ function InstagramPerformanceTrendChart({
     <div className="mt-6">
       <div className="relative h-[280px] min-w-0 overflow-hidden rounded-[var(--radius-control)] border border-border bg-card-muted/35 px-1 pt-1">
         <svg
-          aria-label={`Daily ${performanceMetricLabels[
-            metric
-          ].toLowerCase()} from ${formatShortDate(
+          aria-label={`${
+            groupedByPublishDate ? "Published-content" : "Daily"
+          } ${performanceMetricLabels[metric].toLowerCase()} from ${formatShortDate(
             points[0]?.date ?? "",
           )} to ${formatShortDate(points.at(-1)?.date ?? "")}`}
           className="h-full w-full"
@@ -2481,6 +2500,7 @@ function AnalyticsErrorState({
 
 function buildInstagramPerformanceTrend(
   accounts: InstagramInsightsAccount[],
+  contentAccounts: InstagramContentAccount[],
   dateRangeDays: DateRangeDays,
 ): PerformanceTrendPoint[] {
   const aggregatedByDate = new Map(
@@ -2489,15 +2509,27 @@ function buildInstagramPerformanceTrend(
       point,
     ]),
   );
+  const contentByDate = new Map(
+    aggregateInstagramContentPerformanceByPublishedDate(
+      contentAccounts,
+    ).map((point) => [point.date, point]),
+  );
 
   return getUtcDateRangeKeys(dateRangeDays).map(
-    (date): PerformanceTrendPoint =>
-      aggregatedByDate.get(date) ?? {
+    (date): PerformanceTrendPoint => {
+      const accountPoint = aggregatedByDate.get(date);
+      const contentPoint = contentByDate.get(date);
+
+      return {
         date,
-        interactions: null,
-        reach: null,
-        views: null,
-      },
+        interactions:
+          accountPoint?.interactions ??
+          contentPoint?.interactions ??
+          null,
+        reach: accountPoint?.reach ?? contentPoint?.reach ?? null,
+        views: accountPoint?.views ?? contentPoint?.views ?? null,
+      };
+    },
   );
 }
 

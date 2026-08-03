@@ -116,21 +116,27 @@ export type NormalizedInstagramInsights = {
 };
 
 export function normalizeInstagramAccountInsights(
-  payload: unknown,
+  payload: unknown | readonly unknown[],
 ): NormalizedInstagramInsights {
-  const entries = getInsightEntries(payload);
+  const entries = (Array.isArray(payload) ? payload : [payload]).flatMap(
+    getInsightEntries,
+  );
   const dailyByDate = new Map<string, InstagramInsightTotals>();
   const metricTotals = new Map<InstagramAccountInsightMetric, number | null>();
 
   for (const metric of instagramAccountInsightMetrics) {
-    const entry = entries.find((candidate) => candidate.name === metric);
+    const metricEntries = entries.filter(
+      (candidate) => candidate.name === metric,
+    );
 
-    if (!entry) {
+    if (metricEntries.length === 0) {
       metricTotals.set(metric, null);
       continue;
     }
 
-    const values = getInsightValues(entry.values);
+    const values = metricEntries.flatMap((entry) =>
+      getInsightValues(entry.values),
+    );
     const numericValues = values
       .map((value) =>
         getUtcDateKey(value.end_time)
@@ -138,13 +144,16 @@ export function normalizeInstagramAccountInsights(
           : null,
       )
       .filter((value): value is number => value !== null);
-    const totalValue = getNonNegativeNumber(entry.total_value?.value);
+    const totalValue = metricEntries
+      .map((entry) => getNonNegativeNumber(entry.total_value?.value))
+      .find((value): value is number => value !== null) ?? null;
 
     metricTotals.set(
       metric,
-      numericValues.length > 0
-        ? numericValues.reduce((total, value) => total + value, 0)
-        : totalValue,
+      totalValue ??
+        (numericValues.length > 0
+          ? numericValues.reduce((total, value) => total + value, 0)
+          : null),
     );
 
     for (const value of values) {

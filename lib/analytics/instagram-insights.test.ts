@@ -108,6 +108,49 @@ test("keeps unavailable Instagram metrics null instead of inventing zero", () =>
   assert.deepEqual(result.daily, []);
 });
 
+test("combines Meta time-series points with authoritative period totals", () => {
+  const result = normalizeInstagramAccountInsights([
+    {
+      data: [
+        {
+          name: "reach",
+          values: [
+            { end_time: "2026-07-25T08:00:00+0000", value: 9 },
+            { end_time: "2026-07-26T08:00:00+0000", value: 14 },
+          ],
+        },
+      ],
+    },
+    {
+      data: [
+        { name: "views", total_value: { value: 30 } },
+        { name: "total_interactions", total_value: { value: 8 } },
+        { name: "reach", total_value: { value: 18 } },
+      ],
+    },
+  ]);
+
+  assert.deepEqual(result.totals, {
+    interactions: 8,
+    reach: 18,
+    views: 30,
+  });
+  assert.deepEqual(result.daily, [
+    {
+      date: "2026-07-25",
+      interactions: null,
+      reach: 9,
+      views: null,
+    },
+    {
+      date: "2026-07-26",
+      interactions: null,
+      reach: 14,
+      views: null,
+    },
+  ]);
+});
+
 test("ignores malformed or negative provider values", () => {
   const result = normalizeInstagramAccountInsights({
     data: [

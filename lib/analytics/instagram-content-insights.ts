@@ -60,6 +60,13 @@ export type InstagramContentSort =
   | "shares"
   | "views";
 
+export type InstagramPublishedContentPerformance = {
+  date: string;
+  interactions: number | null;
+  reach: number | null;
+  views: number | null;
+};
+
 type InstagramMediaObject = {
   caption?: unknown;
   comments_count?: unknown;
@@ -186,6 +193,49 @@ export function flattenReadyInstagramContentAccounts(
   return accounts.flatMap((account) =>
     account.status === "ready" ? account.items : [],
   );
+}
+
+export function aggregateInstagramContentPerformanceByPublishedDate(
+  accounts: InstagramContentAccount[],
+): InstagramPublishedContentPerformance[] {
+  const performanceByDate = new Map<
+    string,
+    Omit<InstagramPublishedContentPerformance, "date">
+  >();
+
+  for (const item of flattenReadyInstagramContentAccounts(accounts)) {
+    const publishedAt = getIsoDate(item.publishedAt);
+
+    if (!publishedAt) {
+      continue;
+    }
+
+    const date = publishedAt.slice(0, 10);
+    const performance = performanceByDate.get(date) ?? {
+      interactions: null,
+      reach: null,
+      views: null,
+    };
+
+    performance.interactions = sumOptionalMetric(
+      performance.interactions,
+      item.metrics.interactions,
+    );
+    performance.reach = sumOptionalMetric(
+      performance.reach,
+      item.metrics.reach,
+    );
+    performance.views = sumOptionalMetric(
+      performance.views,
+      item.metrics.views,
+    );
+    performanceByDate.set(date, performance);
+  }
+
+  return Array.from(performanceByDate, ([date, performance]) => ({
+    date,
+    ...performance,
+  })).sort((left, right) => left.date.localeCompare(right.date));
 }
 
 export function filterAndSortInstagramContent(params: {
@@ -327,6 +377,10 @@ function getNonNegativeNumber(value: unknown) {
         : NaN;
 
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function sumOptionalMetric(current: number | null, next: number | null) {
+  return next === null ? current : (current ?? 0) + next;
 }
 
 function getNonEmptyString(value: unknown) {

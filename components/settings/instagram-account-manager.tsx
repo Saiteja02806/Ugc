@@ -484,7 +484,7 @@ export function InstagramAccountManager() {
             </Alert>
           ) : null}
 
-          <DialogFooter>
+          <DialogFooter className="border-border bg-popover">
             <Button
               type="button"
               variant="outline"
@@ -499,16 +499,18 @@ export function InstagramAccountManager() {
             <Button
               type="button"
               variant="destructive"
+              className="bg-error text-error-foreground shadow-sm hover:bg-error/90"
               onClick={() => void disconnectInstagram()}
               disabled={Boolean(disconnectingId)}
             >
               {disconnectingId ? (
                 <LoaderCircle
+                  data-icon="inline-start"
                   className="animate-spin motion-reduce:animate-none"
                   aria-hidden="true"
                 />
               ) : (
-                <Trash2 aria-hidden="true" />
+                <Trash2 data-icon="inline-start" aria-hidden="true" />
               )}
               {disconnectingId ? "Disconnecting…" : "Disconnect Instagram"}
             </Button>

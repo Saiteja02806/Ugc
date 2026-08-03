@@ -144,3 +144,27 @@ test("account surfaces keep add and reconnect actions distinct", () => {
   assert.match(modalSource, /Add another Instagram account/);
   assert.match(schedulingSource, /normalized\.length > 5/);
 });
+
+test("Instagram disconnect confirmation uses one dark surface and a clear destructive action", () => {
+  const settingsSource = readFileSync(
+    projectFile("components/settings/instagram-account-manager.tsx"),
+    "utf8",
+  );
+
+  assert.match(
+    settingsSource,
+    /<DialogFooter className="border-border bg-popover">/,
+  );
+  assert.match(
+    settingsSource,
+    /variant="outline"[\s\S]*Keep connected/,
+  );
+  assert.match(
+    settingsSource,
+    /variant="destructive"[\s\S]*className="bg-error text-error-foreground shadow-sm hover:bg-error\/90"/,
+  );
+  assert.match(
+    settingsSource,
+    /onClick=\{\(\) => void disconnectInstagram\(\)\}/,
+  );
+});

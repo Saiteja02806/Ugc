@@ -53,6 +53,7 @@ import {
   aggregateInstagramContentPerformanceByPublishedDate,
   filterAndSortInstagramContent,
   flattenReadyInstagramContentAccounts,
+  groupInstagramContentByPublishedDate,
   getInstagramContentTitle,
   getInstagramInteractionRate,
   type InstagramContentAccount,
@@ -711,6 +712,7 @@ function AnalyticsReadyState({
         >
           <InstagramPerformanceTrendChart
             connectionCount={connectionCount}
+            contentAccounts={contentAccounts}
             insightsLoading={insightsLoading}
             insightsMessage={insightsMessage}
             insightSnapshot={insightSnapshot}
@@ -906,6 +908,7 @@ function PerformanceMetricSelector({
 
 function InstagramPerformanceTrendChart({
   connectionCount,
+  contentAccounts,
   groupedByPublishDate,
   insightSnapshot,
   insightsLoading,
@@ -914,6 +917,7 @@ function InstagramPerformanceTrendChart({
   points,
 }: {
   connectionCount: number;
+  contentAccounts: InstagramContentAccount[];
   groupedByPublishDate: boolean;
   insightSnapshot: InstagramInsightSnapshot;
   insightsLoading: boolean;
@@ -922,6 +926,11 @@ function InstagramPerformanceTrendChart({
   points: PerformanceTrendPoint[];
 }) {
   const [activeDate, setActiveDate] = useState<string | null>(null);
+  const [selectedContentDate, setSelectedContentDate] = useState<string | null>(
+    null,
+  );
+  const [selectedItem, setSelectedItem] =
+    useState<InstagramContentItem | null>(null);
   const gradientId = `instagram-performance-${useId().replaceAll(":", "")}`;
   const chartWidth = 720;
   const chartHeight = 280;
@@ -974,6 +983,45 @@ function InstagramPerformanceTrendChart({
     metric,
   });
   const metricColor = performanceMetricColors[metric];
+  const contentItems = useMemo(
+    () => flattenReadyInstagramContentAccounts(contentAccounts),
+    [contentAccounts],
+  );
+  const contentByDate = useMemo(
+    () =>
+      new Map(
+        groupInstagramContentByPublishedDate(contentAccounts).map((group) => [
+          group.date,
+          group.items,
+        ]),
+      ),
+    [contentAccounts],
+  );
+  const contentMarkers = availablePoints.flatMap((point) => {
+    const items = sortContentForPerformanceMarker(
+      contentByDate.get(point.date) ?? [],
+      metric,
+    );
+    const previewItem = items.find((item) => item.thumbnailUrl);
+
+    return previewItem ? [{ items, point, previewItem }] : [];
+  });
+  const contentMarkerDates = new Set(
+    contentMarkers.map((marker) => marker.point.date),
+  );
+  const selectedDateItems = selectedContentDate
+    ? sortContentForPerformanceMarker(
+        contentByDate.get(selectedContentDate) ?? [],
+        metric,
+      )
+    : [];
+  const activeSelectedItem = selectedItem
+    ? contentItems.find(
+        (item) =>
+          item.id === selectedItem.id &&
+          item.connectionId === selectedItem.connectionId,
+      ) ?? null
+    : null;
 
   const activateNearestPoint = (
     event: ReactPointerEvent<SVGSVGElement>,
@@ -1001,7 +1049,7 @@ function InstagramPerformanceTrendChart({
 
   return (
     <div className="mt-6">
-      <div className="relative h-[280px] min-w-0 overflow-hidden rounded-[var(--radius-control)] border border-border bg-card-muted/35 px-1 pt-1">
+      <div className="relative h-[280px] min-w-0 overflow-hidden rounded-[var(--radius-control)] border border-border bg-card-muted/35">
         <svg
           aria-label={`${
             groupedByPublishDate ? "Published-content" : "Daily"
@@ -1092,35 +1140,37 @@ function InstagramPerformanceTrendChart({
               vectorEffect="non-scaling-stroke"
             />
           ) : null}
-          {availablePoints.map((point) => (
-            <circle
-              key={point.date}
-              aria-label={`${formatFullDate(point.date)}: ${formatNumber(
-                point.value,
-              )} ${performanceMetricLabels[metric].toLowerCase()}`}
-              cx={point.x}
-              cy={point.y}
-              fill={metricColor}
-              onBlur={() => setActiveDate(null)}
-              onFocus={() => setActiveDate(point.date)}
-              onPointerEnter={() => setActiveDate(point.date)}
-              r={activePoint?.date === point.date ? 5 : 3}
-              role="img"
-              stroke={
-                activePoint?.date === point.date
-                  ? "#f5f3f0"
-                  : "rgb(41 41 41)"
-              }
-              strokeWidth={activePoint?.date === point.date ? 2.5 : 1.5}
-              tabIndex={0}
-              vectorEffect="non-scaling-stroke"
-            >
-              <title>
-                {formatFullDate(point.date)}: {formatNumber(point.value)}{" "}
-                {performanceMetricLabels[metric].toLowerCase()}
-              </title>
-            </circle>
-          ))}
+          {availablePoints.map((point) =>
+            contentMarkerDates.has(point.date) ? null : (
+              <circle
+                key={point.date}
+                aria-label={`${formatFullDate(point.date)}: ${formatNumber(
+                  point.value,
+                )} ${performanceMetricLabels[metric].toLowerCase()}`}
+                cx={point.x}
+                cy={point.y}
+                fill={metricColor}
+                onBlur={() => setActiveDate(null)}
+                onFocus={() => setActiveDate(point.date)}
+                onPointerEnter={() => setActiveDate(point.date)}
+                r={activePoint?.date === point.date ? 5 : 3}
+                role="img"
+                stroke={
+                  activePoint?.date === point.date
+                    ? "#f5f3f0"
+                    : "rgb(41 41 41)"
+                }
+                strokeWidth={activePoint?.date === point.date ? 2.5 : 1.5}
+                tabIndex={0}
+                vectorEffect="non-scaling-stroke"
+              >
+                <title>
+                  {formatFullDate(point.date)}: {formatNumber(point.value)}{" "}
+                  {performanceMetricLabels[metric].toLowerCase()}
+                </title>
+              </circle>
+            ),
+          )}
           {hasData ? (
             <>
               <text
@@ -1146,6 +1196,34 @@ function InstagramPerformanceTrendChart({
             </>
           ) : null}
         </svg>
+
+        {contentMarkers.map((marker) => (
+          <PerformanceContentMarker
+            key={marker.point.date}
+            active={activePoint?.date === marker.point.date}
+            chartHeight={chartHeight}
+            chartWidth={chartWidth}
+            items={marker.items}
+            metric={metric}
+            metricColor={metricColor}
+            onActivate={setActiveDate}
+            onSelect={() => {
+              setActiveDate(marker.point.date);
+
+              if (marker.items.length === 1) {
+                setSelectedContentDate(null);
+                setSelectedItem(marker.items[0]);
+                return;
+              }
+
+              setSelectedItem(null);
+              setSelectedContentDate(marker.point.date);
+            }}
+            peak={peakPoint?.date === marker.point.date}
+            point={marker.point}
+            previewItem={marker.previewItem}
+          />
+        ))}
 
         {activePoint ? (
           <PerformanceTrendTooltip
@@ -1211,8 +1289,153 @@ function InstagramPerformanceTrendChart({
           )}`}
         />
       </dl>
+
+      <ContentDayPickerDialog
+        date={selectedContentDate}
+        items={selectedDateItems}
+        metric={metric}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedContentDate(null);
+          }
+        }}
+        onSelect={(item) => {
+          setSelectedContentDate(null);
+          setSelectedItem(item);
+        }}
+        showAccountName={connectionCount > 1}
+      />
+      <ContentPerformanceDrawer
+        item={activeSelectedItem}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedItem(null);
+          }
+        }}
+        showAccountName={connectionCount > 1}
+      />
     </div>
   );
+}
+
+function PerformanceContentMarker({
+  active,
+  chartHeight,
+  chartWidth,
+  items,
+  metric,
+  metricColor,
+  onActivate,
+  onSelect,
+  peak,
+  point,
+  previewItem,
+}: {
+  active: boolean;
+  chartHeight: number;
+  chartWidth: number;
+  items: InstagramContentItem[];
+  metric: PerformanceMetric;
+  metricColor: string;
+  onActivate: (date: string | null) => void;
+  onSelect: () => void;
+  peak: boolean;
+  point: AvailablePerformanceTrendPoint;
+  previewItem: InstagramContentItem;
+}) {
+  const multiple = items.length > 1;
+  const markerLabel = multiple
+    ? `Choose from ${formatNumber(items.length)} posts published ${formatFullDate(
+        point.date,
+      )}`
+    : `Open ${getInstagramContentTitle(previewItem)}, published ${formatFullDate(
+        point.date,
+      )}`;
+
+  return (
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      aria-label={markerLabel}
+      className={cn(
+        "absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full p-0 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none",
+        peak ? "size-11" : "size-9",
+        active && "scale-105",
+      )}
+      onBlur={() => onActivate(null)}
+      onClick={onSelect}
+      onFocus={() => onActivate(point.date)}
+      onPointerEnter={() => onActivate(point.date)}
+      onPointerLeave={() => onActivate(null)}
+      style={{
+        left: `${(point.x / chartWidth) * 100}%`,
+        top: `${(point.y / chartHeight) * 100}%`,
+      }}
+      title={markerLabel}
+    >
+      {multiple ? (
+        <span
+          className="absolute inset-0 translate-x-1 -translate-y-1 rounded-full border-2 bg-card-muted"
+          style={{ borderColor: metricColor }}
+          aria-hidden="true"
+        />
+      ) : null}
+      <span
+        className="relative flex size-full items-center justify-center overflow-hidden rounded-full border-2 bg-card-muted text-muted"
+        style={{
+          borderColor: metricColor,
+          boxShadow: `0 0 0 3px ${metricColor}26, 0 7px 18px rgb(0 0 0 / 0.38)`,
+        }}
+        aria-hidden="true"
+      >
+        <ImageIcon className="size-4" />
+        {previewItem.thumbnailUrl ? (
+          // Instagram owns these short-lived media URLs; optimization would
+          // cache expired signed URLs, so graph thumbnails render directly.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={previewItem.thumbnailUrl}
+            alt=""
+            width={48}
+            height={48}
+            className="absolute inset-0 size-full object-cover"
+            loading="lazy"
+            onError={(event) => {
+              event.currentTarget.hidden = true;
+            }}
+            referrerPolicy="no-referrer"
+          />
+        ) : null}
+      </span>
+      {multiple ? (
+        <span className="absolute -bottom-1 -right-1 flex min-w-5 items-center justify-center rounded-full border border-border-strong bg-card px-1 font-mono text-[9px] font-bold leading-4 text-foreground-strong shadow-card">
+          {formatNumber(items.length)}
+        </span>
+      ) : null}
+      <span className="sr-only">
+        {formatNumber(point.value)} {performanceMetricLabels[metric].toLowerCase()}
+      </span>
+    </button>
+  );
+}
+
+function sortContentForPerformanceMarker(
+  items: InstagramContentItem[],
+  metric: PerformanceMetric,
+) {
+  return [...items].sort((left, right) => {
+    const leftValue = left.metrics[metric];
+    const rightValue = right.metrics[metric];
+
+    if (leftValue !== null || rightValue !== null) {
+      return (rightValue ?? -1) - (leftValue ?? -1);
+    }
+
+    return (
+      Date.parse(right.publishedAt) - Date.parse(left.publishedAt) ||
+      left.id.localeCompare(right.id)
+    );
+  });
 }
 
 function PerformanceTrendLoadingState() {
@@ -1934,6 +2157,76 @@ function ContentPerformancePagination({
         </Button>
       </div>
     </div>
+  );
+}
+
+function ContentDayPickerDialog({
+  date,
+  items,
+  metric,
+  onOpenChange,
+  onSelect,
+  showAccountName,
+}: {
+  date: string | null;
+  items: InstagramContentItem[];
+  metric: PerformanceMetric;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (item: InstagramContentItem) => void;
+  showAccountName: boolean;
+}) {
+  return (
+    <Dialog open={Boolean(date && items.length > 1)} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[min(80dvh,640px)] gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="border-b border-border px-5 py-5 pr-14 sm:px-6">
+          <DialogTitle className="text-lg font-bold leading-6 tracking-[-0.02em] text-foreground-strong">
+            Posts from {formatFullDate(date ?? "")}
+          </DialogTitle>
+          <DialogDescription className="text-sm leading-6 text-muted">
+            {formatNumber(items.length)} posts were published on this day. Select
+            one to view its exact content metrics and preview.
+          </DialogDescription>
+        </DialogHeader>
+
+        <ul className="flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain p-3 sm:p-4">
+          {items.map((item) => (
+            <li key={`${item.connectionId}:${item.id}`}>
+              <button
+                type="button"
+                className="flex min-h-20 w-full items-center gap-3 rounded-[var(--radius-control)] border border-border bg-card p-3 text-left transition-[border-color,background-color,box-shadow] hover:border-border-strong hover:bg-card-muted/45 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+                onClick={() => onSelect(item)}
+              >
+                <ContentThumbnail item={item} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <ContentTypeBadge type={item.contentType} />
+                    {showAccountName ? (
+                      <span className="truncate text-[11px] font-medium text-muted-subtle">
+                        {getInstagramContentAccountLabel(item)}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="mt-2 line-clamp-1 block text-sm font-semibold text-foreground-strong">
+                    {getInstagramContentTitle(item)}
+                  </span>
+                  <span className="mt-1 block text-xs text-muted">
+                    {formatDateTime(item.publishedAt)}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block font-mono text-sm font-semibold tabular-nums text-foreground-strong">
+                    {formatOptionalNumber(item.metrics[metric])}
+                  </span>
+                  <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-subtle">
+                    {performanceMetricLabels[metric]}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </DialogContent>
+    </Dialog>
   );
 }
 

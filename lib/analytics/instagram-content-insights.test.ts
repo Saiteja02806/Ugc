@@ -5,6 +5,7 @@ import {
   aggregateInstagramContentPerformanceByPublishedDate,
   filterAndSortInstagramContent,
   flattenReadyInstagramContentAccounts,
+  groupInstagramContentByPublishedDate,
   getInstagramContentTitle,
   getInstagramInteractionRate,
   mergeInstagramContentMetrics,
@@ -241,6 +242,57 @@ test("groups real content performance by publish date for trend fallback", () =>
         reach: 8,
         views: null,
       },
+    ],
+  );
+});
+
+test("groups exact content records by publish date for graph markers", () => {
+  const accounts: InstagramContentAccount[] = [
+    {
+      ...account,
+      items: [
+        createItem({
+          id: "morning",
+          publishedAt: "2026-07-25T08:00:00.000Z",
+        }),
+        createItem({
+          id: "evening",
+          publishedAt: "2026-07-25T18:00:00.000Z",
+        }),
+        createItem({
+          id: "next-day",
+          publishedAt: "2026-07-26T10:00:00.000Z",
+        }),
+      ],
+      lastSyncedAt: "2026-07-26T12:00:00.000Z",
+      message: null,
+      status: "ready",
+    },
+    {
+      accountName: "South Studio",
+      accountUsername: "southstudio",
+      connectionId: "connection-2",
+      items: [
+        createItem({
+          connectionId: "connection-2",
+          id: "not-ready",
+          publishedAt: "2026-07-25T20:00:00.000Z",
+        }),
+      ],
+      lastSyncedAt: null,
+      message: "Reconnect Instagram.",
+      status: "permission_missing",
+    },
+  ];
+
+  assert.deepEqual(
+    groupInstagramContentByPublishedDate(accounts).map((group) => ({
+      date: group.date,
+      ids: group.items.map((item) => item.id),
+    })),
+    [
+      { date: "2026-07-25", ids: ["evening", "morning"] },
+      { date: "2026-07-26", ids: ["next-day"] },
     ],
   );
 });

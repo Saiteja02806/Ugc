@@ -67,6 +67,11 @@ export type InstagramPublishedContentPerformance = {
   views: number | null;
 };
 
+export type InstagramPublishedContentGroup = {
+  date: string;
+  items: InstagramContentItem[];
+};
+
 type InstagramMediaObject = {
   caption?: unknown;
   comments_count?: unknown;
@@ -195,13 +200,10 @@ export function flattenReadyInstagramContentAccounts(
   );
 }
 
-export function aggregateInstagramContentPerformanceByPublishedDate(
+export function groupInstagramContentByPublishedDate(
   accounts: InstagramContentAccount[],
-): InstagramPublishedContentPerformance[] {
-  const performanceByDate = new Map<
-    string,
-    Omit<InstagramPublishedContentPerformance, "date">
-  >();
+): InstagramPublishedContentGroup[] {
+  const contentByDate = new Map<string, InstagramContentItem[]>();
 
   for (const item of flattenReadyInstagramContentAccounts(accounts)) {
     const publishedAt = getIsoDate(item.publishedAt);
@@ -211,25 +213,53 @@ export function aggregateInstagramContentPerformanceByPublishedDate(
     }
 
     const date = publishedAt.slice(0, 10);
-    const performance = performanceByDate.get(date) ?? {
-      interactions: null,
-      reach: null,
-      views: null,
+    const items = contentByDate.get(date) ?? [];
+
+    items.push(item);
+    contentByDate.set(date, items);
+  }
+
+  return Array.from(contentByDate, ([date, items]) => ({
+    date,
+    items: [...items].sort(
+      (left, right) =>
+        Date.parse(right.publishedAt) - Date.parse(left.publishedAt) ||
+        left.id.localeCompare(right.id),
+    ),
+  })).sort((left, right) => left.date.localeCompare(right.date));
+}
+
+export function aggregateInstagramContentPerformanceByPublishedDate(
+  accounts: InstagramContentAccount[],
+): InstagramPublishedContentPerformance[] {
+  const performanceByDate = new Map<
+    string,
+    Omit<InstagramPublishedContentPerformance, "date">
+  >();
+
+  for (const group of groupInstagramContentByPublishedDate(accounts)) {
+    const performance = {
+      interactions: null as number | null,
+      reach: null as number | null,
+      views: null as number | null,
     };
 
-    performance.interactions = sumOptionalMetric(
-      performance.interactions,
-      item.metrics.interactions,
-    );
-    performance.reach = sumOptionalMetric(
-      performance.reach,
-      item.metrics.reach,
-    );
-    performance.views = sumOptionalMetric(
-      performance.views,
-      item.metrics.views,
-    );
-    performanceByDate.set(date, performance);
+    for (const item of group.items) {
+      performance.interactions = sumOptionalMetric(
+        performance.interactions,
+        item.metrics.interactions,
+      );
+      performance.reach = sumOptionalMetric(
+        performance.reach,
+        item.metrics.reach,
+      );
+      performance.views = sumOptionalMetric(
+        performance.views,
+        item.metrics.views,
+      );
+    }
+
+    performanceByDate.set(group.date, performance);
   }
 
   return Array.from(performanceByDate, ([date, performance]) => ({

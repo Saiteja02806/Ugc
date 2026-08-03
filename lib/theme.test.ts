@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -26,4 +27,26 @@ test("production locks the product to dark regardless of saved preference", () =
   assert.equal(isProductionThemeLocked(undefined), false);
   assert.equal(resolveInitialTheme("light", true), "dark");
   assert.equal(resolveInitialTheme(null, true), "dark");
+});
+
+test("dialog footers and destructive actions use semantic colors in both themes", () => {
+  const dialogSource = readFileSync(
+    new URL("../components/ui/dialog.tsx", import.meta.url),
+    "utf8",
+  );
+  const styles = readFileSync(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(dialogSource, /border-border bg-popover/);
+  assert.doesNotMatch(dialogSource, /bg-muted\/50/);
+  assert.match(
+    styles,
+    /:root,[\s\S]*?--error-foreground: #ffffff;[\s\S]*?--popover: var\(--card\);/,
+  );
+  assert.match(
+    styles,
+    /\.dark,[\s\S]*?--error-foreground: #2a1010;[\s\S]*?--popover: var\(--card\);/,
+  );
 });

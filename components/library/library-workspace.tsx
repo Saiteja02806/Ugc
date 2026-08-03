@@ -726,7 +726,7 @@ function RemoveCarouselDialog({
             type="button"
             onClick={onConfirm}
             disabled={removing}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-error px-4 text-sm font-semibold text-white transition-colors hover:bg-error/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-error px-4 text-sm font-semibold text-error-foreground transition-colors hover:bg-error/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
           >
             {removing ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />

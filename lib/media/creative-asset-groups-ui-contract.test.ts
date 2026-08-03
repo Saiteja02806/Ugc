@@ -117,6 +117,22 @@ test("asset removal confirmation uses a clear destructive action", () => {
   assert.match(removalDialog, /onClick=\{\(\) => void removeAsset\(\)\}/);
 });
 
+test("group deletion confirmation uses the shared surface and a clear destructive action", () => {
+  const deletionDialog = getSection(
+    collection,
+    "open={pendingDeleteGroup !== null}",
+    "function MediaAssetCard",
+  );
+
+  assert.match(deletionDialog, /<DialogFooter>/);
+  assert.match(deletionDialog, /variant="outline"[\s\S]*Keep group/);
+  assert.match(
+    deletionDialog,
+    /variant="destructive"[\s\S]*className="bg-error text-error-foreground shadow-sm hover:bg-error\/90"/,
+  );
+  assert.match(deletionDialog, /onClick=\{\(\) => void deleteGroup\(\)\}/);
+});
+
 function readProjectFile(relativePath: string) {
   return readFileSync(
     new URL(`../../${relativePath}`, import.meta.url),

@@ -1391,6 +1391,7 @@ export function UserMediaCollection({
             <Button
               type="button"
               variant="destructive"
+              className="bg-error text-error-foreground shadow-sm hover:bg-error/90"
               onClick={() => void deleteGroup()}
               disabled={isDeletingGroup}
             >

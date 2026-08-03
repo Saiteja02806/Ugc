@@ -4,57 +4,67 @@ import { Check, Pencil, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-export function CreativeCardActions({
+export function CreativeDecisionActions({
   disabled = false,
   onAccept,
-  onEdit,
   onReject,
 }: {
   disabled?: boolean;
   onAccept: () => void;
-  onEdit: () => void;
   onReject: () => void;
 }) {
   return (
     <div
       data-deck-control
-      aria-label="Creative actions"
-      className="mx-auto mt-4 grid w-full max-w-md grid-cols-3 gap-2 sm:gap-3"
+      aria-label="Creative decisions"
+      className="mx-auto mt-5 flex items-center justify-center gap-4 sm:gap-5"
       role="group"
     >
       <Button
         type="button"
         variant="creative-reject"
-        size="creative-action"
+        size="creative-icon"
         aria-label="Reject this creative"
+        title="Reject"
         disabled={disabled}
         onClick={onReject}
       >
         <X data-icon="inline-start" aria-hidden="true" />
-        Reject
-      </Button>
-      <Button
-        type="button"
-        variant="creative-edit"
-        size="creative-action"
-        aria-label="Edit this creative"
-        disabled={disabled}
-        onClick={onEdit}
-      >
-        <Pencil data-icon="inline-start" aria-hidden="true" />
-        Edit
       </Button>
       <Button
         type="button"
         variant="creative-accept"
-        size="creative-action"
+        size="creative-icon"
         aria-label="Accept this creative"
+        title="Accept"
         disabled={disabled}
         onClick={onAccept}
       >
         <Check data-icon="inline-start" aria-hidden="true" />
-        Accept
       </Button>
     </div>
+  );
+}
+
+export function CreativeEditAction({
+  disabled = false,
+  onEdit,
+}: {
+  disabled?: boolean;
+  onEdit: () => void;
+}) {
+  return (
+    <Button
+      data-deck-control
+      type="button"
+      variant="creative-edit"
+      size="creative-edit"
+      aria-label="Edit this creative"
+      disabled={disabled}
+      onClick={onEdit}
+    >
+      <Pencil data-icon="inline-start" aria-hidden="true" />
+      Edit
+    </Button>
   );
 }

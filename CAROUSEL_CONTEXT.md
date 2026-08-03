@@ -1771,12 +1771,15 @@ Do not describe planned behavior as deployed behavior.
 
 ## 2026-08-02 Unified Trending Creative Decisions
 
-- Trending uses one shared action row for every preview-ready Carousel, Hook
-  video, and Wall-of-text card. The row presents three equal, labeled touch
-  targets in the order Reject, Edit, Accept. Restrained error, neutral, and
-  success treatments preserve the decision meaning without relying on an X or
-  check icon alone. Left/right swipe, keyboard decisions, and the Reject/Accept
-  buttons call the same client decision handler.
+- Trending uses the same review actions for every preview-ready Carousel, Hook
+  video, and Wall-of-text card. The current reference layout places one labeled
+  Edit pill at the top-right of the page header and centers two compact,
+  circular, icon-only Reject and Accept buttons below the content card. Each
+  icon-only decision has an accessible label and tooltip, while restrained
+  error, neutral, and success treatments preserve meaning. This supersedes the
+  earlier three-equal-labeled-buttons row. Left/right swipe, keyboard
+  decisions, and the Reject/Accept buttons call the same client decision
+  handler.
 - Decisions are durable server records with the authenticated user ID,
   assignment ID, creative ID, format, `accepted` or `rejected`, and
   `decided_at`. The database function records the decision and retires the

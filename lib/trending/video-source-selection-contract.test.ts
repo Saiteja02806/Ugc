@@ -90,8 +90,9 @@ test("the picker supports whole groups, single videos, and the required empty st
   assert.match(picker, /\/api\/media\/groups\/\$\{encodeURIComponent\(groupId\)\}\/items/);
 });
 
-test("Trending cards use the unified creative action row", () => {
-  assert.match(workspace, /CreativeCardActions/);
+test("Trending cards use shared creative review actions", () => {
+  assert.match(workspace, /CreativeDecisionActions/);
+  assert.match(workspace, /CreativeEditAction/);
   assert.doesNotMatch(workspace, /CreativeAssetsVideoPicker/);
   assert.doesNotMatch(workspace, />\s*Choose\s*</);
   assert.match(workspace, /TrendingCreativeEditor/);

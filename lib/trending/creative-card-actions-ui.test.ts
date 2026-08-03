@@ -14,25 +14,29 @@ const editor = readProjectFile(
 const buttons = readProjectFile("components/ui/button.tsx");
 const sidebar = readProjectFile("components/layout/app-sidebar.tsx");
 
-test("renders one shared reject, edit, and accept control in that order", () => {
+test("places Edit in the page header and keeps circular decisions below the card", () => {
+  assert.match(actions, /export function CreativeDecisionActions/);
   assert.match(actions, /variant="creative-reject"/);
   assert.match(actions, /aria-label="Reject this creative"/);
-  assert.match(actions, />\s*Reject\s*</);
-  assert.match(actions, />\s*Edit\s*</);
+  assert.match(actions, /title="Reject"/);
   assert.match(actions, /aria-label="Accept this creative"/);
-  assert.match(actions, />\s*Accept\s*</);
-  assert.ok(
-    actions.indexOf("creative-reject") < actions.indexOf("creative-edit") &&
-      actions.indexOf("creative-edit") < actions.indexOf("creative-accept"),
-  );
-  assert.equal((workspace.match(/<CreativeCardActions/g) ?? []).length, 1);
+  assert.match(actions, /title="Accept"/);
+  assert.match(actions, /export function CreativeEditAction/);
+  assert.match(actions, /variant="creative-edit"/);
+  assert.match(actions, />\s*Edit\s*</);
+  assert.equal((workspace.match(/<CreativeDecisionActions/g) ?? []).length, 1);
+  assert.equal((workspace.match(/<CreativeEditAction/g) ?? []).length, 1);
+  assert.match(workspace, /createPortal\([\s\S]*<CreativeEditAction/);
+  assert.match(workspace, /ref=\{setHeaderActionsRoot\}/);
 });
 
-test("uses three equal labeled touch targets instead of icon-only controls", () => {
-  assert.match(actions, /grid-cols-3/);
-  assert.equal((actions.match(/size="creative-action"/g) ?? []).length, 3);
-  assert.match(buttons, /"creative-action":\s*\n\s*"h-11[^"]*sm:h-12/);
-  assert.doesNotMatch(actions, /size="creative-icon"/);
+test("uses two accessible circular decision targets and a separate Edit pill", () => {
+  assert.match(actions, /flex items-center justify-center gap-4 sm:gap-5/);
+  assert.equal((actions.match(/size="creative-icon"/g) ?? []).length, 2);
+  assert.equal((actions.match(/size="creative-edit"/g) ?? []).length, 1);
+  assert.match(buttons, /"creative-icon":\s*\n\s*"size-14[^"]*sm:size-16/);
+  assert.match(buttons, /"creative-edit":\s*\n\s*"h-11[^"]*sm:h-12/);
+  assert.doesNotMatch(actions, /size="creative-action"/);
 });
 
 test("keeps reject and accept controls neutral with restrained semantic color", () => {

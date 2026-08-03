@@ -23,10 +23,14 @@ import type {
   TransitionEvent as ReactTransitionEvent,
 } from "react";
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/contexts/auth-context";
-import { CreativeCardActions } from "@/components/trending/creative-card-actions";
+import {
+  CreativeDecisionActions,
+  CreativeEditAction,
+} from "@/components/trending/creative-card-actions";
 import { TrendingCreativeEditor } from "@/components/trending/trending-creative-editor";
 import {
   PlatformSelectionModal,
@@ -264,6 +268,8 @@ export function TrendingWorkspace() {
   const wallTextPreparationAttemptKey = useRef<string | null>(null);
   const resolvedWallTextJobIds = useRef(new Set<string>());
   const [trendingItems, setTrendingItems] = useState<TrendingFeedItem[]>([]);
+  const [headerActionsRoot, setHeaderActionsRoot] =
+    useState<HTMLDivElement | null>(null);
   const [formatAvailability, setFormatAvailability] = useState<
     TrendingFeedProviderAvailability[]
   >([]);
@@ -688,7 +694,7 @@ export function TrendingWorkspace() {
   return (
     <section className="min-h-dvh flex-1 bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8 lg:py-8 xl:px-10">
       <div className="mx-auto flex min-h-full max-w-[1360px] flex-col">
-        <header>
+        <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-balance text-[32px] font-semibold leading-10 text-foreground-strong">
               Trending
@@ -698,12 +704,16 @@ export function TrendingWorkspace() {
               business profile.
             </p>
           </div>
-
+          <div
+            ref={setHeaderActionsRoot}
+            className="flex shrink-0 items-center"
+          />
         </header>
 
         <section className="mt-8 min-h-[560px]">
           <div className="flex min-h-[502px] items-start py-6 sm:py-7">
             <TrendingFeedGallery
+              headerActionsRoot={headerActionsRoot}
               items={orderedTrendingItems}
               error={visibleCarouselHistoryError}
               loading={carouselFeedLoading}
@@ -725,6 +735,7 @@ export function TrendingWorkspace() {
 
 function TrendingFeedGallery({
   error,
+  headerActionsRoot,
   items,
   loading,
   onCompleteProfile,
@@ -733,6 +744,7 @@ function TrendingFeedGallery({
   profile,
 }: {
   error: string | null;
+  headerActionsRoot: HTMLDivElement | null;
   items: TrendingFeedItem[];
   loading: boolean;
   onCompleteProfile: () => void;
@@ -767,6 +779,7 @@ function TrendingFeedGallery({
 
   return (
     <TrendingFeed
+      headerActionsRoot={headerActionsRoot}
       items={items}
       onCarouselCompleted={onCarouselCompleted}
     />
@@ -806,9 +819,11 @@ function CarouselProfilePrompt({ onAction }: { onAction: () => void }) {
 }
 
 function TrendingFeed({
+  headerActionsRoot,
   items,
   onCarouselCompleted,
 }: {
+  headerActionsRoot: HTMLDivElement | null;
   items: TrendingFeedItem[];
   onCarouselCompleted: () => void;
 }) {
@@ -865,6 +880,7 @@ function TrendingFeed({
         <TrendingDeck
           activeSlideByCarouselId={activeSlideByCarouselId}
           candidates={candidates}
+          headerActionsRoot={headerActionsRoot}
           onActiveSlideChange={setActiveSlide}
           onCarouselCompleted={onCarouselCompleted}
           onHookCompose={(item, edit) => setHookComposition({ edit, item })}
@@ -1006,12 +1022,14 @@ function TrendingHookComposer({
 function TrendingDeck({
   activeSlideByCarouselId,
   candidates,
+  headerActionsRoot,
   onActiveSlideChange,
   onCarouselCompleted,
   onHookCompose,
 }: {
   activeSlideByCarouselId: Record<string, number>;
   candidates: TrendingCandidate[];
+  headerActionsRoot: HTMLDivElement | null;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
   onCarouselCompleted: () => void;
   onHookCompose: (
@@ -1666,6 +1684,15 @@ function TrendingDeck({
 
   return (
     <section aria-label="Trending content ideas" className="relative w-full">
+      {activeCandidate && headerActionsRoot
+        ? createPortal(
+            <CreativeEditAction
+              disabled={Boolean(exitDirection || pendingDecisionItemId)}
+              onEdit={handleEditActiveCandidate}
+            />,
+            headerActionsRoot,
+          )
+        : null}
       {activeCandidate ? (
         <>
           <div
@@ -1715,10 +1742,9 @@ function TrendingDeck({
               Reject
             </div>
           </div>
-          <CreativeCardActions
+          <CreativeDecisionActions
             disabled={Boolean(exitDirection || pendingDecisionItemId)}
             onAccept={() => requestCreativeDecision("accepted")}
-            onEdit={handleEditActiveCandidate}
             onReject={() => requestCreativeDecision("rejected")}
           />
           <span className="sr-only" aria-live="polite">

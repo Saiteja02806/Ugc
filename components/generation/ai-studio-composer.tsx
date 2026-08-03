@@ -87,10 +87,10 @@ export function AiStudioComposer({
         noValidate
         onSubmit={onSubmit}
         className={cn(
-          "mx-auto w-full max-w-[1024px] border bg-card shadow-floating",
+          "mx-auto w-full border bg-card shadow-floating",
           layout === "unified"
-            ? "rounded-[24px] border-border-strong p-0 transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20"
-            : "rounded-[var(--radius-panel)] border-border p-2.5 sm:p-3",
+            ? "max-w-[944px] rounded-[24px] border-border-strong p-0 transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20"
+            : "max-w-[1024px] rounded-[var(--radius-panel)] border-border p-2.5 sm:p-3",
         )}
       >
         <FieldGroup className={layout === "unified" ? "gap-0" : "gap-2"}>

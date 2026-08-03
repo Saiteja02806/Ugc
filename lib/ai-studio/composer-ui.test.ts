@@ -24,17 +24,28 @@ test("the image prompt uses one unified composer surface", () => {
   assert.match(composer, /data-layout=\{layout\}/);
   assert.match(
     composer,
-    /"mx-auto w-full max-w-\[1024px\] border bg-card shadow-floating"/,
+    /"mx-auto w-full border bg-card shadow-floating"/,
   );
   assert.match(
     composer,
-    /layout === "unified"[\s\S]*?"rounded-\[24px\] border-border-strong p-0/,
+    /layout === "unified"[\s\S]*?"max-w-\[944px\] rounded-\[24px\] border-border-strong p-0/,
   );
   assert.match(
     composer,
     /"max-h-36 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-7"/,
   );
   assert.match(composer, /layout === "unified"\s*\?\s*"flex"/);
+});
+
+test("the unified composer is narrower without squeezing standard layouts", () => {
+  assert.match(
+    composer,
+    /layout === "unified"[\s\S]*?\? "max-w-\[944px\]/,
+  );
+  assert.match(
+    composer,
+    /: "max-w-\[1024px\] rounded-\[var\(--radius-panel\)\]/,
+  );
 });
 
 test("the unified composer stays compact while supporting multiline prompts", () => {

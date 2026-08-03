@@ -98,6 +98,25 @@ test("deleting a group keeps the underlying media assets", () => {
   );
 });
 
+test("asset removal confirmation uses a clear destructive action", () => {
+  const removalDialog = getSection(
+    collection,
+    "open={pendingDeleteAsset !== null}",
+    "open={groupDialogMode !== null}",
+  );
+
+  assert.match(
+    removalDialog,
+    /<DialogFooter className="border-border bg-popover">/,
+  );
+  assert.match(removalDialog, /variant="outline"[\s\S]*Keep asset/);
+  assert.match(
+    removalDialog,
+    /variant="destructive"[\s\S]*className="bg-error text-error-foreground shadow-sm hover:bg-error\/90"/,
+  );
+  assert.match(removalDialog, /onClick=\{\(\) => void removeAsset\(\)\}/);
+});
+
 function readProjectFile(relativePath: string) {
   return readFileSync(
     new URL(`../../${relativePath}`, import.meta.url),

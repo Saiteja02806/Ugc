@@ -1125,7 +1125,7 @@ export function UserMediaCollection({
             </div>
           ) : null}
 
-          <DialogFooter>
+          <DialogFooter className="border-border bg-popover">
             <Button
               type="button"
               variant="outline"
@@ -1140,6 +1140,7 @@ export function UserMediaCollection({
             <Button
               type="button"
               variant="destructive"
+              className="bg-error text-error-foreground shadow-sm hover:bg-error/90"
               onClick={() => void removeAsset()}
               disabled={Boolean(deletingAssetId)}
             >

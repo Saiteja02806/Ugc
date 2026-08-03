@@ -184,7 +184,7 @@ export function AppSidebar({
         id="ugc-desktop-sidebar"
         className={cn(
           "sticky top-0 z-[var(--z-sidebar)] hidden h-dvh shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
-          collapsed ? "w-[68px]" : "w-[224px]",
+          collapsed ? "w-[60px]" : "w-[196px]",
         )}
       >
         <div
@@ -346,7 +346,7 @@ function SidebarNavigation({
       aria-label="Primary navigation"
       className={cn(
         "min-h-0 flex-1 py-3.5",
-        collapsed ? "px-[14px]" : "px-3",
+        collapsed ? "px-[10px]" : "px-3",
         collapsed ? "overflow-visible" : "overflow-y-auto overflow-x-hidden",
       )}
     >
@@ -491,7 +491,7 @@ function CollapsedMagneticNavItem({
       {active ? (
         <span
           aria-hidden="true"
-          className="absolute -left-[14px] top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-brand"
+          className="absolute -left-[10px] top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-brand"
         />
       ) : null}
       <span
@@ -533,7 +533,7 @@ function AccountSection({
     <div
       className={cn(
         "mt-auto border-t border-border",
-        collapsed ? "p-2" : "p-3",
+        collapsed ? "flex justify-center p-2" : "p-2",
       )}
     >
       <Link
@@ -544,7 +544,7 @@ function AccountSection({
           "group/settings relative flex items-center rounded-control transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
           collapsed
             ? "size-10 justify-center"
-            : "gap-3 px-2.5 py-2",
+            : "gap-2 px-2 py-2",
           active
             ? "bg-selected text-primary"
             : "text-muted hover:bg-card-muted hover:text-foreground-strong",
@@ -572,12 +572,12 @@ function AccountSection({
               photoUrl={photoUrl}
             />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-foreground-strong">
+              <span className="block truncate text-sm font-semibold text-foreground-strong">
                 {displayName}
-              </p>
-              <p className="truncate text-xs text-muted-subtle">
+              </span>
+              <span className="block truncate text-xs text-muted-subtle">
                 Profile & settings
-              </p>
+              </span>
             </div>
             <Settings
               className={cn(

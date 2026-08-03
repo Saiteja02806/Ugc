@@ -72,8 +72,8 @@ export function AiStudioComposer({
     }
 
     textarea.style.height = "auto";
-    const minimumHeight = layout === "unified" ? 112 : 64;
-    const maximumHeight = layout === "unified" ? 240 : 128;
+    const minimumHeight = layout === "unified" ? 40 : 64;
+    const maximumHeight = layout === "unified" ? 144 : 128;
     textarea.style.height = `${Math.min(
       Math.max(textarea.scrollHeight, minimumHeight),
       maximumHeight,
@@ -96,10 +96,10 @@ export function AiStudioComposer({
         <FieldGroup className={layout === "unified" ? "gap-0" : "gap-2"}>
           <Field
             className={cn(
-              "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2",
+              "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3",
               layout === "unified"
-                ? "px-4 pb-2 pt-4 sm:px-5 sm:pb-3 sm:pt-5"
-                : "px-1 pt-1",
+                ? "gap-y-1 px-4 pb-1 pt-3 sm:px-5"
+                : "gap-y-2 px-1 pt-1",
             )}
           >
             {leadingControl}
@@ -120,7 +120,7 @@ export function AiStudioComposer({
               className={cn(
                 "w-full resize-none overflow-y-auto bg-transparent text-foreground outline-none placeholder:text-muted-subtle",
                 layout === "unified"
-                  ? "max-h-60 min-h-28 rounded-none px-0 py-0 text-base font-normal leading-7"
+                  ? "max-h-36 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-7"
                   : "max-h-32 min-h-16 rounded-lg px-2 py-1.5 text-sm font-medium leading-6 focus-visible:ring-2 focus-visible:ring-focus sm:text-[15px]",
                 leadingControl ? "col-start-2 row-start-1" : "col-span-full",
               )}
@@ -130,7 +130,7 @@ export function AiStudioComposer({
               id={promptHelperId}
               className={cn(
                 "col-span-full flex min-w-0 items-start justify-between gap-3 text-xs",
-                layout === "unified" ? "px-0 pt-1" : "px-2",
+                layout === "unified" ? "px-0" : "px-2",
                 leadingControl && "col-start-2",
                 promptTooLong && "text-destructive",
               )}
@@ -156,7 +156,7 @@ export function AiStudioComposer({
           <div
             className={cn(
               "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
-              layout === "unified" && "px-3 pb-3 sm:px-4 sm:pb-4",
+              layout === "unified" && "px-3 pb-2 sm:px-4 sm:pb-3",
             )}
           >
             <div className="min-w-0 flex-1">

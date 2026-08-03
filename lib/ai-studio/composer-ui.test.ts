@@ -32,14 +32,30 @@ test("the image prompt uses one unified composer surface", () => {
   );
   assert.match(
     composer,
-    /"max-h-60 min-h-28 rounded-none px-0 py-0 text-base font-normal leading-7"/,
+    /"max-h-36 min-h-10 rounded-none px-0 py-0 text-base font-normal leading-7"/,
   );
   assert.match(composer, /layout === "unified"\s*\?\s*"flex"/);
 });
 
+test("the unified composer stays compact while supporting multiline prompts", () => {
+  assert.match(
+    composer,
+    /const minimumHeight = layout === "unified" \? 40 : 64;/,
+  );
+  assert.match(
+    composer,
+    /const maximumHeight = layout === "unified" \? 144 : 128;/,
+  );
+  assert.match(
+    composer,
+    /layout === "unified"\s*\? "gap-y-1 px-4 pb-1 pt-3 sm:px-5"/,
+  );
+  assert.doesNotMatch(composer, /max-h-60 min-h-28/);
+});
+
 test("the unified toolbar keeps settings and Generate inside the same form", () => {
   assert.match(composer, /<form[\s\S]*?\{settings\}[\s\S]*?type="submit"/);
-  assert.match(composer, /layout === "unified" && "px-3 pb-3 sm:px-4 sm:pb-4"/);
+  assert.match(composer, /layout === "unified" && "px-3 pb-2 sm:px-4 sm:pb-3"/);
   assert.match(imageWorkspace, /label="4:5 portrait"/);
   assert.match(imageWorkspace, /label="1 image"/);
   assert.match(imageWorkspace, />\s*Enhance\s*</);

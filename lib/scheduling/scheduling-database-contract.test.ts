@@ -3,6 +3,12 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import {
+  DEFAULT_SOCIAL_SCHEDULING_CALENDAR_START_AT,
+  getSocialSchedulingCalendarStartAt,
+  isScheduleDraftVisibleInCalendar,
+} from "./calendar-start.ts";
+
 const recoveryMigration = readProjectFile(
   "supabase/migrations/20260715191340_harden_schedule_recovery.sql",
 );
@@ -587,7 +593,7 @@ test("calendar and Day view include all posts, with upcoming posts first", () =>
     "function getMonthCalendarDays(",
   );
 
-  assert.match(calendarSelection, /groupDraftsByDate\(drafts\)/);
+  assert.match(calendarSelection, /groupDraftsByDate\(calendarDrafts\)/);
   assert.doesNotMatch(calendarSelection, /groupDraftsByDate\(visibleDrafts\)/);
   assert.match(scheduleContent, /calendarDrafts: ScheduleDraft\[\]/);
   assert.match(scheduleContent, /drafts=\{calendarDrafts\}/);
@@ -599,6 +605,51 @@ test("calendar and Day view include all posts, with upcoming posts first", () =>
   assert.match(
     dateGrouping,
     /if \(draft\.status === "published"\) \{\s*return 1/,
+  );
+});
+
+test("Calendar starts at the fixed rollout boundary and hides historical posts", () => {
+  const calendarStartAt = getSocialSchedulingCalendarStartAt(
+    "2026-08-08T19:11:15.366Z",
+  );
+
+  assert.equal(
+    getSocialSchedulingCalendarStartAt("not-a-date"),
+    DEFAULT_SOCIAL_SCHEDULING_CALENDAR_START_AT,
+  );
+  assert.equal(
+    isScheduleDraftVisibleInCalendar(
+      {
+        createdAt: "2026-08-08T19:11:15.365Z",
+        scheduledDate: "2026-08-09",
+      },
+      calendarStartAt,
+    ),
+    false,
+  );
+  assert.equal(
+    isScheduleDraftVisibleInCalendar(
+      {
+        createdAt: "2026-08-08T19:11:15.366Z",
+        scheduledDate: "2026-08-09",
+      },
+      calendarStartAt,
+    ),
+    true,
+  );
+  assert.equal(
+    isScheduleDraftVisibleInCalendar(
+      {
+        createdAt: "2026-08-08T19:11:16.000Z",
+      },
+      calendarStartAt,
+    ),
+    false,
+  );
+  assert.match(schedulesRoute, /calendarStartAt/);
+  assert.match(
+    schedulingWorkspace,
+    /isScheduleDraftVisibleInCalendar\(draft, calendarStartAt\)/,
   );
 });
 

@@ -82,6 +82,11 @@ import {
   validateScheduleLeadTime,
 } from "@/lib/scheduling/schedule-time";
 import {
+  DEFAULT_SOCIAL_SCHEDULING_CALENDAR_START_AT,
+  getSocialSchedulingCalendarStartAt,
+  isScheduleDraftVisibleInCalendar,
+} from "@/lib/scheduling/calendar-start";
+import {
   canCancelSchedule,
   canEditSchedule,
   getScheduleEditBlockReason,
@@ -181,6 +186,7 @@ type PreparedCatalogInfluencerResponse =
 
 type ScheduleListResponse =
   | {
+      calendarStartAt?: string;
       minimumRenderLeadMinutes?: number;
       minimumScheduleLeadMinutes?: number;
       ok: true;
@@ -343,6 +349,9 @@ export function SchedulingWorkspace() {
   const [minimumScheduleLeadMinutes, setMinimumScheduleLeadMinutes] = useState(
     DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   );
+  const [calendarStartAt, setCalendarStartAt] = useState(
+    DEFAULT_SOCIAL_SCHEDULING_CALENDAR_START_AT,
+  );
   const defaultNewScheduleSlot = getDefaultScheduleSlot(
     newScheduleInitialDate,
     minimumScheduleLeadMinutes,
@@ -453,6 +462,9 @@ export function SchedulingWorkspace() {
       }
 
       setServerSchedules(data.schedules);
+      setCalendarStartAt(
+        getSocialSchedulingCalendarStartAt(data.calendarStartAt),
+      );
       const configuredLeadMinutes =
         data.minimumScheduleLeadMinutes ?? data.minimumRenderLeadMinutes;
 
@@ -546,9 +558,16 @@ export function SchedulingWorkspace() {
     () => filterDraftsByTab(drafts, activeTab),
     [activeTab, drafts],
   );
+  const calendarDrafts = useMemo(
+    () =>
+      drafts.filter((draft) =>
+        isScheduleDraftVisibleInCalendar(draft, calendarStartAt),
+      ),
+    [calendarStartAt, drafts],
+  );
   const selectedDayDrafts = useMemo(() => {
-    return groupDraftsByDate(drafts).get(selectedCalendarDate) ?? [];
-  }, [drafts, selectedCalendarDate]);
+    return groupDraftsByDate(calendarDrafts).get(selectedCalendarDate) ?? [];
+  }, [calendarDrafts, selectedCalendarDate]);
 
   function handleSelectCalendarDate(dateKey: string) {
     setSelectedCalendarDate(dateKey);
@@ -1131,7 +1150,7 @@ export function SchedulingWorkspace() {
             <ScheduleContent
               activeTab={activeTab}
               calendarMonth={visibleCalendarMonth}
-              calendarDrafts={drafts}
+              calendarDrafts={calendarDrafts}
               drafts={visibleDrafts}
               hasAnyDrafts={drafts.length > 0}
               renderingScheduleId={renderingScheduleId}
@@ -2055,7 +2074,7 @@ function CalendarPlanner({
             </span>
           </div>
           <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-            Open any date to see every upcoming, published, and completed post.
+            New posts only. Older posts remain available in the history tabs.
           </p>
         </div>
 

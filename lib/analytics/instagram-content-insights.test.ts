@@ -8,6 +8,7 @@ import {
   groupInstagramContentByPublishedDate,
   getInstagramContentTitle,
   getInstagramInteractionRate,
+  mergeInstagramContentItems,
   mergeInstagramContentMetrics,
   normalizeInstagramMedia,
   normalizeInstagramMediaInsights,
@@ -118,6 +119,25 @@ test("merges media insights without overwriting real like and comment counts", (
       shares: 2,
       views: 100,
     },
+  );
+});
+
+test("keeps feed media and adds a missing published post only once", () => {
+  const feedItem = createItem({
+    id: "media-from-feed",
+    publishedAt: "2026-08-09T09:00:00.000Z",
+  });
+  const fetchedPublishedItem = createItem({
+    id: "media-from-schedule",
+    publishedAt: "2026-08-09T09:03:00.000Z",
+  });
+
+  assert.deepEqual(
+    mergeInstagramContentItems(
+      [feedItem],
+      [feedItem, fetchedPublishedItem],
+    ).map((item) => item.id),
+    ["media-from-schedule", "media-from-feed"],
   );
 });
 

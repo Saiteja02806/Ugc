@@ -15,6 +15,19 @@ export type InstagramInsightTotals = {
   views: number | null;
 };
 
+export type InstagramAccountInsightMetricKey = keyof InstagramInsightTotals;
+
+/**
+ * Meta returns daily account points for Reach. Views and total interactions
+ * are returned as one total for the requested period, so drawing them as a
+ * daily line would invent data that Meta did not provide.
+ */
+export function hasInstagramAccountDailyTrend(
+  metric: InstagramAccountInsightMetricKey,
+) {
+  return metric === "reach";
+}
+
 export type InstagramInsightPoint = InstagramInsightTotals & {
   date: string;
 };

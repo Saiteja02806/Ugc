@@ -192,6 +192,32 @@ export function mergeInstagramContentMetrics(
   };
 }
 
+/**
+ * Keeps the normal Meta media feed and UGC Pilot's saved publish references in
+ * one list. A post can briefly be absent from Meta's account media feed after
+ * publishing, so a matching saved media ID must not create a duplicate row.
+ */
+export function mergeInstagramContentItems(
+  feedItems: readonly InstagramContentItem[],
+  publishedItems: readonly InstagramContentItem[],
+): InstagramContentItem[] {
+  const itemsByIdentity = new Map<string, InstagramContentItem>();
+
+  for (const item of [...feedItems, ...publishedItems]) {
+    const identity = `${item.connectionId}:${item.id}`;
+
+    if (!itemsByIdentity.has(identity)) {
+      itemsByIdentity.set(identity, item);
+    }
+  }
+
+  return Array.from(itemsByIdentity.values()).sort(
+    (left, right) =>
+      Date.parse(right.publishedAt) - Date.parse(left.publishedAt) ||
+      left.id.localeCompare(right.id),
+  );
+}
+
 export function flattenReadyInstagramContentAccounts(
   accounts: InstagramContentAccount[],
 ) {

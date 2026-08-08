@@ -122,6 +122,21 @@ test("published target reconciliation does not reference an undefined post alias
   assert.doesNotMatch(publishedTargetUpdate, /\bpost\./);
 });
 
+test("analytics reconciliation only reads the owner's published Instagram posts", () => {
+  const publishedReferences = getSection(
+    schedulingDb,
+    "export async function listPublishedInstagramPostReferencesForUser",
+    "export async function getScheduledPostForUser",
+  );
+
+  assert.match(publishedReferences, /\.eq\("user_id", params\.userId\)/);
+  assert.match(publishedReferences, /\.eq\("platform", "instagram"\)/);
+  assert.match(publishedReferences, /\.eq\("status", "published"\)/);
+  assert.match(publishedReferences, /\.not\("platform_post_id", "is", null\)/);
+  assert.match(publishedReferences, /\.gte\("published_at", params\.from\)/);
+  assert.match(publishedReferences, /\.lte\("published_at", params\.to\)/);
+});
+
 test("TikTok refresh is leased and atomically rotates every token field", () => {
   const claimFunction = getSection(
     tiktokHardeningMigration,

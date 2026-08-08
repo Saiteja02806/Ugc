@@ -5,6 +5,7 @@ import {
   aggregateInstagramInsightDaily,
   buildInstagramAccountDailyTrend,
   getUniqueInstagramConnections,
+  hasInstagramAccountDailyTrend,
   normalizeInstagramAccountInsights,
   type InstagramInsightsAccount,
 } from "./instagram-insights.ts";
@@ -37,6 +38,12 @@ test("keeps only the newest row for each Instagram account", () => {
     connections.map((connection) => connection.id),
     ["instagram-new", "instagram-second-account"],
   );
+});
+
+test("uses a daily line only for metrics Meta returns as time-series data", () => {
+  assert.equal(hasInstagramAccountDailyTrend("reach"), true);
+  assert.equal(hasInstagramAccountDailyTrend("views"), false);
+  assert.equal(hasInstagramAccountDailyTrend("interactions"), false);
 });
 
 test("normalizes real daily Instagram insight values and totals", () => {

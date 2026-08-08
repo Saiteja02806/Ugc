@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   getFirebaseAuthErrorMessage,
   signInWithGoogle,
+  signInWithGoogleRedirect,
 } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +37,11 @@ export function GoogleSignInButton({
       if (isFirebaseError(error, "auth/popup-closed-by-user")) {
         setErrorMessage("Sign-in was cancelled. Try again when you are ready.");
       } else if (isFirebaseError(error, "auth/popup-blocked")) {
-        setErrorMessage("Popup was blocked. Please allow popups and try again.");
+        try {
+          await signInWithGoogleRedirect();
+        } catch (redirectError) {
+          setErrorMessage(getFirebaseAuthErrorMessage(redirectError));
+        }
       } else if (isMissingInitialStateError(error)) {
         setErrorMessage(
           "Your browser lost the Google sign-in state. Refresh this page and try again.",

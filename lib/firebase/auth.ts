@@ -10,6 +10,7 @@ import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   type User,
 } from "firebase/auth";
@@ -18,6 +19,8 @@ import { auth, googleProvider } from "./client";
 
 export const EDIT_RENDER_E2E_TOKEN_STORAGE_KEY =
   "ugc-studio.edit-render-e2e-token";
+export const GOOGLE_SIGN_IN_REDIRECT_PENDING_KEY =
+  "ugc-pilot.google-sign-in-redirect-pending";
 
 export type AuthUser = {
   uid: string;
@@ -58,6 +61,38 @@ export async function signInWithGoogle() {
   } catch (error) {
     console.error("Google sign-in failed:", error);
     throw error;
+  }
+}
+
+export async function signInWithGoogleRedirect() {
+  setGoogleRedirectPending();
+
+  try {
+    return await signInWithRedirect(auth, googleProvider);
+  } catch (error) {
+    clearGoogleRedirectPending();
+    console.error("Google redirect sign-in failed:", error);
+    throw error;
+  }
+}
+
+export function consumeGoogleRedirectPending() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    const isPending =
+      window.sessionStorage.getItem(GOOGLE_SIGN_IN_REDIRECT_PENDING_KEY) ===
+      "true";
+
+    if (isPending) {
+      window.sessionStorage.removeItem(GOOGLE_SIGN_IN_REDIRECT_PENDING_KEY);
+    }
+
+    return isPending;
+  } catch {
+    return false;
   }
 }
 
@@ -174,6 +209,33 @@ function getEditRenderE2ETestToken() {
   return window.localStorage
     .getItem(EDIT_RENDER_E2E_TOKEN_STORAGE_KEY)
     ?.trim() || null;
+}
+
+function setGoogleRedirectPending() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(
+      GOOGLE_SIGN_IN_REDIRECT_PENDING_KEY,
+      "true",
+    );
+  } catch {
+    // The redirect still works when browser storage is unavailable.
+  }
+}
+
+function clearGoogleRedirectPending() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.removeItem(GOOGLE_SIGN_IN_REDIRECT_PENDING_KEY);
+  } catch {
+    // Nothing else is required when browser storage is unavailable.
+  }
 }
 
 export function listenToAuthState(

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 
+import { GoogleAuthRedirectHandler } from "@/components/auth/google-auth-redirect-handler";
 import { AuthProvider } from "@/contexts/auth-context";
 import { JobQueryProvider } from "@/components/providers/job-query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -103,6 +104,7 @@ export default function RootLayout({
       >
         <ThemeProvider forceDark={forceDarkTheme}>
           <AuthProvider>
+            <GoogleAuthRedirectHandler />
             <JobQueryProvider>{children}</JobQueryProvider>
           </AuthProvider>
         </ThemeProvider>

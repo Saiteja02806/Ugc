@@ -5,6 +5,7 @@ import {
   CalendarPlus,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
@@ -14,6 +15,7 @@ import {
   Layers2,
   List,
   Loader2,
+  Play,
   Plus,
   Pencil,
   RefreshCw,
@@ -23,12 +25,24 @@ import {
   X,
   Video,
 } from "lucide-react";
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  ReactNode,
+  RefObject,
+} from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { getScheduleMediaIssue } from "@/lib/scheduling/media-availability";
 import {
   getInitialScheduleConnectionIds,
@@ -59,10 +73,12 @@ import {
   type ScheduleViewMode,
 } from "@/lib/scheduling/types";
 import {
-  DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+  DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
+  getEarliestScheduleTimestamp,
   getZonedDateTimeParts,
   resolveZonedDateTime,
   ScheduleTimeError,
+  SOCIAL_SCHEDULING_TIME_STEP_SECONDS,
   validateScheduleLeadTime,
 } from "@/lib/scheduling/schedule-time";
 import {
@@ -119,7 +135,20 @@ const scheduleSetupSteps = [
 ] as const;
 const scheduleDialogFocusableSelector =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 2_000;
+const ACTIVE_SCHEDULE_LOOKAHEAD_MS = 60_000;
 const MAX_SCHEDULE_CAPTION_LENGTH = 5_000;
+const scheduleHourValues = Array.from({ length: 24 }, (_, hour) =>
+  String(hour).padStart(2, "0"),
+);
+const scheduleMinuteStepMinutes = Math.max(
+  1,
+  Math.round(SOCIAL_SCHEDULING_TIME_STEP_SECONDS / 60),
+);
+const scheduleMinuteValues = Array.from(
+  { length: Math.ceil(60 / scheduleMinuteStepMinutes) },
+  (_, index) => String(index * scheduleMinuteStepMinutes).padStart(2, "0"),
+).filter((minute) => Number(minute) < 60);
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
   | { error?: string; ok?: false };
@@ -153,6 +182,7 @@ type PreparedCatalogInfluencerResponse =
 type ScheduleListResponse =
   | {
       minimumRenderLeadMinutes?: number;
+      minimumScheduleLeadMinutes?: number;
       ok: true;
       schedules: ScheduledPost[];
     }
@@ -310,8 +340,12 @@ export function SchedulingWorkspace() {
     string | null
   >(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
-  const [minimumRenderLeadMinutes, setMinimumRenderLeadMinutes] = useState(
-    DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+  const [minimumScheduleLeadMinutes, setMinimumScheduleLeadMinutes] = useState(
+    DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
+  );
+  const defaultNewScheduleSlot = getDefaultScheduleSlot(
+    newScheduleInitialDate,
+    minimumScheduleLeadMinutes,
   );
 
   useEffect(() => {
@@ -419,14 +453,15 @@ export function SchedulingWorkspace() {
       }
 
       setServerSchedules(data.schedules);
-      const configuredLeadMinutes = data.minimumRenderLeadMinutes;
+      const configuredLeadMinutes =
+        data.minimumScheduleLeadMinutes ?? data.minimumRenderLeadMinutes;
 
       if (
         typeof configuredLeadMinutes === "number" &&
         Number.isInteger(configuredLeadMinutes) &&
         configuredLeadMinutes >= 1
       ) {
-        setMinimumRenderLeadMinutes(configuredLeadMinutes);
+        setMinimumScheduleLeadMinutes(configuredLeadMinutes);
       }
     } catch {
       setActionNotice("Could not load server schedules.");
@@ -501,7 +536,7 @@ export function SchedulingWorkspace() {
 
     const timer = window.setInterval(() => {
       void loadSchedules();
-    }, 6000);
+    }, ACTIVE_SCHEDULE_POLL_INTERVAL_MS);
 
     return () => window.clearInterval(timer);
   }, [hasActiveServerWork, loadSchedules]);
@@ -512,8 +547,8 @@ export function SchedulingWorkspace() {
     [activeTab, drafts],
   );
   const selectedDayDrafts = useMemo(() => {
-    return groupDraftsByDate(visibleDrafts).get(selectedCalendarDate) ?? [];
-  }, [selectedCalendarDate, visibleDrafts]);
+    return groupDraftsByDate(drafts).get(selectedCalendarDate) ?? [];
+  }, [drafts, selectedCalendarDate]);
 
   function handleSelectCalendarDate(dateKey: string) {
     setSelectedCalendarDate(dateKey);
@@ -1067,7 +1102,6 @@ export function SchedulingWorkspace() {
 
         {dayPlannerOpen ? (
           <DayScheduleWorkspace
-            activeTab={activeTab}
             drafts={selectedDayDrafts}
             isSchedulingFinalDraftId={schedulingFinalDraftId}
             retryingPublishTargetId={retryingPublishTargetId}
@@ -1097,6 +1131,7 @@ export function SchedulingWorkspace() {
             <ScheduleContent
               activeTab={activeTab}
               calendarMonth={visibleCalendarMonth}
+              calendarDrafts={drafts}
               drafts={visibleDrafts}
               hasAnyDrafts={drafts.length > 0}
               renderingScheduleId={renderingScheduleId}
@@ -1128,9 +1163,9 @@ export function SchedulingWorkspace() {
           editingSchedule={editingSchedule}
           errorMessage={drawerError}
           hookMediaOptions={hookMediaOptions}
-          initialScheduledDate={newScheduleInitialDate}
-          initialScheduledTime={getDefaultScheduledTime()}
-          minimumRenderLeadMinutes={minimumRenderLeadMinutes}
+          initialScheduledDate={defaultNewScheduleSlot.date}
+          initialScheduledTime={defaultNewScheduleSlot.time}
+          minimumScheduleLeadMinutes={minimumScheduleLeadMinutes}
           onClose={handleCloseScheduleDrawer}
           onRefreshMedia={loadScheduleMedia}
           onSave={handleSaveScheduleDraft}
@@ -1259,6 +1294,7 @@ function ViewButton({
 function ScheduleContent({
   activeTab,
   calendarMonth,
+  calendarDrafts,
   drafts,
   hasAnyDrafts,
   onCancelDraft,
@@ -1279,6 +1315,7 @@ function ScheduleContent({
 }: {
   activeTab: ScheduleTab;
   calendarMonth: string;
+  calendarDrafts: ScheduleDraft[];
   drafts: ScheduleDraft[];
   hasAnyDrafts: boolean;
   onCancelDraft: (draft: ScheduleDraft) => void;
@@ -1306,7 +1343,7 @@ function ScheduleContent({
     content = (
       <CalendarPlanner
         calendarMonth={calendarMonth}
-        drafts={drafts}
+        drafts={calendarDrafts}
         selectedDate={selectedDate}
         onCreateDraftForDate={onCreateDraftForDate}
         onMonthChange={onMonthChange}
@@ -1980,7 +2017,7 @@ function CalendarPlanner({
     [calendarMonth],
   );
   const draftsByDate = useMemo(() => groupDraftsByDate(drafts), [drafts]);
-  const plannedCount = drafts.filter((draft) => draft.scheduledDate).length;
+  const postCount = drafts.filter((draft) => draft.scheduledDate).length;
   const selectedDayDrafts = draftsByDate.get(selectedDate) ?? [];
 
   function moveMonth(monthOffset: number) {
@@ -2014,11 +2051,11 @@ function CalendarPlanner({
               {getMonthLabel(calendarMonth)}
             </h2>
             <span className="rounded-full bg-card-muted px-2.5 py-1 text-xs font-bold text-muted ring-1 ring-inset ring-border">
-              {plannedCount} planned
+              {postCount} {postCount === 1 ? "post" : "posts"}
             </span>
           </div>
           <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-            Select a date to review its Instagram publishing plan.
+            Open any date to see every upcoming, published, and completed post.
           </p>
         </div>
 
@@ -2079,6 +2116,7 @@ function CalendarPlanner({
                   day={day}
                   drafts={dayDrafts}
                   selected={day.dateKey === selectedDate}
+                  onOpenDate={onOpenDate}
                   onSelectDate={selectDate}
                 />
               );
@@ -2104,7 +2142,7 @@ function CalendarPlanner({
                 day={day}
                 draftCount={(draftsByDate.get(day.dateKey) ?? []).length}
                 selected={day.dateKey === selectedDate}
-                onSelectDate={selectDate}
+                onOpenDate={onOpenDate}
               />
             ))}
           </div>
@@ -2124,11 +2162,13 @@ function CalendarPlanner({
 function CalendarDayCell({
   day,
   drafts,
+  onOpenDate,
   onSelectDate,
   selected,
 }: {
   day: CalendarDay;
   drafts: ScheduleDraft[];
+  onOpenDate: (dateKey: string) => void;
   onSelectDate: (dateKey: string) => void;
   selected: boolean;
 }) {
@@ -2159,10 +2199,9 @@ function CalendarDayCell({
       type="button"
       data-date-key={day.dateKey}
       tabIndex={selected ? 0 : -1}
-      aria-pressed={selected}
-      onClick={() => onSelectDate(day.dateKey)}
+      onClick={() => onOpenDate(day.dateKey)}
       onKeyDown={handleKeyDown}
-      aria-label={`${getReadableDateLabel(day.dateKey)}${drafts.length ? `, ${drafts.length} scheduled` : ""}`}
+      aria-label={`Open ${getReadableDateLabel(day.dateKey)} day view${drafts.length ? `, ${drafts.length} scheduled` : ""}`}
       className={cn(
         "min-h-[92px] border-b border-r border-border bg-card p-2 text-left transition hover:bg-card-muted focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-focus xl:min-h-[104px]",
         !day.isCurrentMonth && "bg-card-muted/45 text-muted",
@@ -2206,20 +2245,19 @@ function CalendarDayCell({
 function CompactCalendarDay({
   day,
   draftCount,
-  onSelectDate,
+  onOpenDate,
   selected,
 }: {
   day: CalendarDay;
   draftCount: number;
-  onSelectDate: (dateKey: string) => void;
+  onOpenDate: (dateKey: string) => void;
   selected: boolean;
 }) {
   return (
     <button
       type="button"
-      aria-label={`${getReadableDateLabel(day.dateKey)}${draftCount ? `, ${draftCount} scheduled` : ""}`}
-      aria-pressed={selected}
-      onClick={() => onSelectDate(day.dateKey)}
+      aria-label={`Open ${getReadableDateLabel(day.dateKey)} day view${draftCount ? `, ${draftCount} scheduled` : ""}`}
+      onClick={() => onOpenDate(day.dateKey)}
       className={cn(
         "relative flex min-h-11 items-center justify-center rounded-control text-xs font-bold text-foreground transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
         !day.isCurrentMonth && "text-muted-subtle",
@@ -2299,16 +2337,14 @@ function SelectedCalendarDayPanel({
           <Plus className="size-4" aria-hidden="true" />
           Schedule post
         </button>
-        {drafts.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => onOpenDate(selectedDate)}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            View day details
-            <ChevronRight className="size-4" aria-hidden="true" />
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={() => onOpenDate(selectedDate)}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-control border border-border bg-card px-4 text-sm font-semibold text-foreground transition hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          View day
+          <ChevronRight className="size-4" aria-hidden="true" />
+        </button>
       </div>
     </aside>
   );
@@ -2336,7 +2372,6 @@ function CalendarDraftPill({ draft }: { draft: ScheduleDraft }) {
 }
 
 function DayScheduleWorkspace({
-  activeTab,
   drafts,
   isSchedulingFinalDraftId,
   onBackToCalendar,
@@ -2350,7 +2385,6 @@ function DayScheduleWorkspace({
   retryingPublishTargetId,
   selectedDate,
 }: {
-  activeTab: ScheduleTab;
   drafts: ScheduleDraft[];
   isSchedulingFinalDraftId: string | null;
   onBackToCalendar: () => void;
@@ -2399,7 +2433,7 @@ function DayScheduleWorkspace({
         <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-normal text-muted">
-              Selected day
+              Day view
             </p>
             <h2
               id="day-schedule-title"
@@ -2408,8 +2442,8 @@ function DayScheduleWorkspace({
               {getReadableDateLabel(selectedDate)}
             </h2>
             <p className="mt-1 text-sm font-medium leading-6 text-muted">
-              {drafts.length} {drafts.length === 1 ? "item" : "items"} in{" "}
-              {tabLabels[activeTab].toLowerCase()} for this day.
+              {drafts.length} {drafts.length === 1 ? "post" : "posts"} for this
+              day.
             </p>
           </div>
           <button
@@ -2445,8 +2479,8 @@ function DayScheduleWorkspace({
           <div className="rounded-[var(--radius-card)] border border-border bg-card p-4">
             <p className="text-sm font-bold text-foreground">What appears here</p>
             <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-              Drafts, videos being prepared, ready combined videos, and
-              scheduled posts for this selected calendar date.
+              Upcoming posts first, then published posts and other publishing
+              statuses for this selected calendar date.
             </p>
           </div>
         </div>
@@ -2455,10 +2489,10 @@ function DayScheduleWorkspace({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-bold text-foreground">
-                Schedule for this day
+                Posts for this day
               </p>
               <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-                Video preparation and publishing status will update here.
+                Upcoming posts appear first. Publishing status updates here.
               </p>
             </div>
             <span className="inline-flex w-fit items-center rounded-full bg-card-muted px-3 py-1 text-xs font-bold text-muted ring-1 ring-inset ring-border">
@@ -2634,12 +2668,42 @@ function groupDraftsByDate(drafts: ScheduleDraft[]) {
   }
 
   for (const draftsForDate of grouped.values()) {
-    draftsForDate.sort((first, second) =>
-      (first.scheduledTime ?? "").localeCompare(second.scheduledTime ?? ""),
-    );
+    draftsForDate.sort((first, second) => {
+      const statusDifference =
+        getCalendarDayDraftSortRank(first) -
+        getCalendarDayDraftSortRank(second);
+
+      if (statusDifference !== 0) {
+        return statusDifference;
+      }
+
+      const timeDifference = (first.scheduledTime ?? "").localeCompare(
+        second.scheduledTime ?? "",
+      );
+
+      return timeDifference !== 0
+        ? timeDifference
+        : first.createdAt.localeCompare(second.createdAt);
+    });
   }
 
   return grouped;
+}
+
+function getCalendarDayDraftSortRank(draft: ScheduleDraft) {
+  if (isUpcomingDraft(draft)) {
+    return 0;
+  }
+
+  if (draft.status === "published") {
+    return 1;
+  }
+
+  if (isFailedDraft(draft)) {
+    return 2;
+  }
+
+  return 3;
 }
 
 function getMonthCalendarDays(monthKey: string): CalendarDay[] {
@@ -3066,19 +3130,24 @@ function getTimeKey(date: Date) {
   ).padStart(2, "0")}`;
 }
 
-function getDefaultScheduledTime() {
-  const date = new Date();
-  date.setMinutes(date.getMinutes() + 60);
-  const roundedMinutes = Math.ceil(date.getMinutes() / 15) * 15;
+function getDefaultScheduleSlot(
+  selectedDate: string,
+  minimumLeadMinutes: number,
+  now = Date.now(),
+) {
+  const currentDate = toDateKey(new Date(now));
+  const earliestDate = new Date(
+    getEarliestScheduleTimestamp({
+      minimumLeadMinutes,
+      now,
+    }),
+  );
 
-  if (roundedMinutes >= 60) {
-    date.setHours(date.getHours() + 1);
-    date.setMinutes(0, 0, 0);
-  } else {
-    date.setMinutes(roundedMinutes, 0, 0);
-  }
-
-  return getTimeKey(date);
+  return {
+    date:
+      selectedDate === currentDate ? toDateKey(earliestDate) : selectedDate,
+    time: getTimeKey(earliestDate),
+  };
 }
 
 function getScheduleTimeValidation(params: {
@@ -3136,7 +3205,7 @@ function NewScheduleDrawer({
   hookMediaOptions,
   initialScheduledDate,
   initialScheduledTime,
-  minimumRenderLeadMinutes,
+  minimumScheduleLeadMinutes,
   onClose,
   onRefreshMedia,
   onSave,
@@ -3151,7 +3220,7 @@ function NewScheduleDrawer({
   hookMediaOptions: ScheduleMediaOption[];
   initialScheduledDate: string;
   initialScheduledTime: string;
-  minimumRenderLeadMinutes: number;
+  minimumScheduleLeadMinutes: number;
   onClose: () => void;
   onRefreshMedia: () => Promise<boolean>;
   onSave: (submission: ScheduleFormSubmission) => void;
@@ -3333,14 +3402,14 @@ function NewScheduleDrawer({
     () =>
       getScheduleTimeValidation({
         date: scheduledDate,
-        minimumLeadMinutes: minimumRenderLeadMinutes,
+        minimumLeadMinutes: minimumScheduleLeadMinutes,
         now: currentTime,
         time: scheduledTime,
         timezone,
       }),
     [
       currentTime,
-      minimumRenderLeadMinutes,
+      minimumScheduleLeadMinutes,
       scheduledDate,
       scheduledTime,
       timezone,
@@ -3805,13 +3874,13 @@ function NewScheduleDrawer({
                     <ScheduledCarouselSourceCard schedule={editingSchedule} />
                   ) : (
                     <ScheduleRoleMediaPicker
-                      description="Choose the video that will be published."
+                      description="Select one video from Creative Assets to publish as an Instagram Reel."
                       emptyDescription="Select a video from your library or edited exports."
                       emptyTitle="No scheduled videos found."
                       icon={<FileVideo className="size-4" aria-hidden="true" />}
                       mediaOptions={demoMediaOptions}
                       selectedMediaId={activeDemoMediaId}
-                      title="Scheduled video"
+                      title="Choose a video"
                       onSelectMedia={setSelectedDemoMediaId}
                     />
                   )}
@@ -3972,28 +4041,24 @@ function NewScheduleDrawer({
                         min={minimumScheduledDate}
                         value={scheduledDate}
                         onChange={(event) => setScheduledDate(event.target.value)}
-                        className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition [color-scheme:dark] hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
                       />
                     </label>
-                    <label className="block">
+                    <div className="block">
                       <span className="text-sm font-bold text-foreground">
                         Time
                       </span>
-                      <input
-                        name="scheduledTime"
-                        autoComplete="off"
-                        type="time"
-                        aria-describedby={
+                      <ScheduleTimePicker
+                        value={scheduledTime}
+                        errorMessageId={
                           scheduleTimeValidation.error
                             ? "schedule-time-feedback"
                             : undefined
                         }
-                        aria-invalid={Boolean(scheduleTimeValidation.error)}
-                        value={scheduledTime}
-                        onChange={(event) => setScheduledTime(event.target.value)}
-                        className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        invalid={Boolean(scheduleTimeValidation.error)}
+                        onChange={setScheduledTime}
                       />
-                    </label>
+                    </div>
                   </div>
 
                   <label className="block">
@@ -4131,20 +4196,194 @@ function ScheduleFlowSection({
   title: string;
 }) {
   return (
-    <section className="grid gap-5 py-6 lg:grid-cols-[190px_minmax(0,1fr)] lg:gap-8 lg:py-7">
-      <div className="flex items-start gap-3 lg:sticky lg:top-6 lg:block lg:self-start">
-        <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-control bg-brand-soft text-xs font-bold text-primary ring-1 ring-inset ring-primary/10">
-          {step}
-        </span>
-        <div className="min-w-0 lg:mt-3">
-          <h3 className="text-sm font-bold text-foreground">{title}</h3>
-          <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-            {description}
-          </p>
-        </div>
-      </div>
+    <section
+      aria-labelledby={`schedule-step-${step}-title`}
+      aria-describedby={`schedule-step-${step}-description`}
+      className="py-6 lg:py-7"
+    >
+      <h3 id={`schedule-step-${step}-title`} className="sr-only">
+        {title}
+      </h3>
+      <p id={`schedule-step-${step}-description`} className="sr-only">
+        {description}
+      </p>
       <div className="min-w-0">{children}</div>
     </section>
+  );
+}
+
+function ScheduleTimePicker({
+  errorMessageId,
+  invalid,
+  onChange,
+  value,
+}: {
+  errorMessageId?: string;
+  invalid: boolean;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedHourRef = useRef<HTMLButtonElement | null>(null);
+  const selectedMinuteRef = useRef<HTMLButtonElement | null>(null);
+  const [rawHour = "00", rawMinute = "00"] = value.split(":");
+  const hour = scheduleHourValues.includes(rawHour) ? rawHour : "00";
+  const minute = scheduleMinuteValues.includes(rawMinute) ? rawMinute : "00";
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const scrollTimer = window.setTimeout(() => {
+      centerScheduleTimeOption(selectedHourRef);
+      centerScheduleTimeOption(selectedMinuteRef);
+    }, 100);
+
+    return () => window.clearTimeout(scrollTimer);
+  }, [hour, minute, open]);
+
+  return (
+    <div className="mt-2">
+      <input type="hidden" name="scheduledTime" value={`${hour}:${minute}`} />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          render={
+            <button
+              type="button"
+              aria-label={`Choose publish time, currently ${hour}:${minute}`}
+              aria-describedby={errorMessageId}
+              className={cn(
+                "flex h-11 w-full items-center gap-3 rounded-control border bg-card-muted px-4 text-sm font-bold tabular-nums text-foreground outline-none transition hover:border-border-strong focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15",
+                invalid && "border-error/60",
+              )}
+            />
+          }
+        >
+          <Clock3 className="size-4 text-primary" aria-hidden="true" />
+          <span>{hour}:{minute}</span>
+          <ChevronDown
+            className={cn(
+              "ml-auto size-4 text-muted transition-transform motion-reduce:transition-none",
+              open && "rotate-180",
+            )}
+            aria-hidden="true"
+          />
+        </PopoverTrigger>
+
+        <PopoverContent
+          align="end"
+          sideOffset={8}
+          className="w-[min(92vw,460px)] gap-0 overflow-hidden p-0"
+        >
+          <PopoverHeader className="border-b border-border px-4 py-3">
+            <PopoverTitle className="text-sm font-bold text-foreground">
+              Choose publish time
+            </PopoverTitle>
+            <PopoverDescription className="text-xs font-semibold text-muted">
+              24-hour time with 1-minute precision.
+            </PopoverDescription>
+          </PopoverHeader>
+
+          <div className="divide-y divide-border">
+            <ScheduleTimeRail
+              label="Hour"
+              selectedRef={selectedHourRef}
+              selectedValue={hour}
+              values={scheduleHourValues}
+              onSelect={(nextHour) => onChange(`${nextHour}:${minute}`)}
+            />
+            <ScheduleTimeRail
+              label="Minute"
+              selectedRef={selectedMinuteRef}
+              selectedValue={minute}
+              values={scheduleMinuteValues}
+              onSelect={(nextMinute) => onChange(`${hour}:${nextMinute}`)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-border bg-card-muted/50 px-3 py-2.5">
+            <span className="flex items-center gap-2 text-[11px] font-semibold text-muted">
+              <Clock3 className="size-3.5 text-primary" aria-hidden="true" />
+              Selected {hour}:{minute}
+            </span>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="inline-flex h-8 items-center justify-center rounded-control bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              Done
+            </button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+function centerScheduleTimeOption(
+  selectedRef: RefObject<HTMLButtonElement | null>,
+) {
+  const selectedOption = selectedRef.current;
+  const scrollRail = selectedOption?.parentElement;
+
+  if (!selectedOption || !scrollRail) {
+    return;
+  }
+
+  scrollRail.scrollLeft = Math.max(
+    0,
+    selectedOption.offsetLeft -
+      (scrollRail.clientWidth - selectedOption.clientWidth) / 2,
+  );
+}
+
+function ScheduleTimeRail({
+  label,
+  onSelect,
+  selectedRef,
+  selectedValue,
+  values,
+}: {
+  label: string;
+  onSelect: (value: string) => void;
+  selectedRef: RefObject<HTMLButtonElement | null>;
+  selectedValue: string;
+  values: string[];
+}) {
+  return (
+    <div className="grid min-w-0 grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-2 px-3 py-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+        {label}
+      </p>
+      <div
+        role="group"
+        aria-label={label}
+        className="flex min-w-0 snap-x snap-mandatory gap-1.5 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:thin]"
+      >
+        {values.map((option) => {
+          const selected = option === selectedValue;
+
+          return (
+            <button
+              key={option}
+              ref={selected ? selectedRef : undefined}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onSelect(option)}
+              className={cn(
+                "flex h-9 w-11 shrink-0 snap-center items-center justify-center rounded-control text-sm font-bold tabular-nums transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
+                selected
+                  ? "bg-primary text-primary-foreground shadow-[0_6px_16px_rgb(225_101_64_/_0.2)]"
+                  : "bg-card-muted text-foreground hover:bg-card",
+              )}
+            >
+              {option}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -4591,11 +4830,16 @@ function ScheduleRoleMediaPicker({
   selectedMediaId: string;
   title: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const selectedMedia = mediaOptions.find(
+    (option) => option.id === selectedMediaId,
+  );
+
   return (
-    <div className="rounded-[var(--radius-card)] border border-border bg-card p-3">
-      <div className="flex items-center justify-between gap-3">
+    <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-card">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-card-muted/45 px-4 py-3">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-primary">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
             {icon}
           </span>
           <div className="min-w-0">
@@ -4605,24 +4849,99 @@ function ScheduleRoleMediaPicker({
             </p>
           </div>
         </div>
-        <span className="shrink-0 text-xs font-semibold text-muted">
-          {mediaOptions.length} available
+        <span className="shrink-0 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-bold tabular-nums text-muted">
+          {mediaOptions.length} {mediaOptions.length === 1 ? "video" : "videos"}
         </span>
       </div>
 
       {mediaOptions.length > 0 ? (
-        <div className="mt-3 grid max-h-[260px] gap-2 overflow-y-auto pr-1">
-          {mediaOptions.map((option) => (
-            <ScheduleMediaOptionButton
-              key={option.id}
-              option={option}
-              selected={option.id === selectedMediaId}
-              onSelect={() => onSelectMedia(option.id)}
-            />
-          ))}
+        <div className="p-3">
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label={
+                    selectedMedia
+                      ? `Change selected video, currently ${selectedMedia.title}`
+                      : "Choose a video to publish"
+                  }
+                  className={cn(
+                    "group flex min-h-20 w-full items-center gap-3 rounded-[var(--radius-card)] border bg-card-muted p-2.5 text-left transition hover:border-border-strong hover:bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                    selectedMedia
+                      ? "border-primary/45 ring-1 ring-primary/10"
+                      : "border-dashed border-border",
+                  )}
+                />
+              }
+            >
+              <span className="relative flex size-16 shrink-0 overflow-hidden rounded-control border border-border bg-background">
+                {selectedMedia ? (
+                  <ScheduleMediaVisual option={selectedMedia} compact />
+                ) : (
+                  <span className="flex size-full items-center justify-center bg-brand-soft/40 text-primary">
+                    <FileVideo className="size-5" aria-hidden="true" />
+                  </span>
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-foreground">
+                  {selectedMedia?.title ?? "No video selected"}
+                </span>
+                <span className="mt-1 block truncate text-xs font-semibold text-muted">
+                  {selectedMedia
+                    ? `${getMediaSourceLabel(selectedMedia)} - ${selectedMedia.durationLabel || "Duration pending"}`
+                    : "Open the video library and choose one."}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-2 text-xs font-bold text-primary">
+                {selectedMedia ? "Change" : "Choose"}
+                <ChevronDown
+                  className={cn(
+                    "size-4 transition-transform motion-reduce:transition-none",
+                    open && "rotate-180",
+                  )}
+                  aria-hidden="true"
+                />
+              </span>
+            </PopoverTrigger>
+
+            <PopoverContent
+              align="start"
+              sideOffset={8}
+              className="w-[min(92vw,860px)] gap-0 overflow-hidden p-0"
+            >
+              <PopoverHeader className="border-b border-border px-4 py-3">
+                <PopoverTitle className="text-sm font-bold text-foreground">
+                  Choose a video
+                </PopoverTitle>
+                <PopoverDescription className="text-xs font-semibold text-muted">
+                  Scroll sideways through Creative Assets. Selecting a video closes this list.
+                </PopoverDescription>
+              </PopoverHeader>
+
+              <div
+                aria-label="Choose a video to publish"
+                className="flex snap-x snap-mandatory gap-3 overflow-x-auto p-3 pb-4"
+              >
+                {mediaOptions.map((option) => (
+                  <SchedulePrimaryMediaCard
+                    key={option.id}
+                    className="w-44 shrink-0 snap-start sm:w-52"
+                    option={option}
+                    selected={option.id === selectedMediaId}
+                    onSelect={() => {
+                      onSelectMedia(option.id);
+                      setOpen(false);
+                    }}
+                  />
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       ) : (
-        <div className="mt-3 rounded-[var(--radius-card)] border border-dashed border-border bg-card-muted px-4 py-5 text-center">
+        <div className="m-3 rounded-[var(--radius-card)] border border-dashed border-border bg-card-muted px-4 py-7 text-center">
           <Video className="mx-auto size-7 text-muted" aria-hidden="true" />
           <p className="mt-3 text-sm font-bold text-foreground">
             {emptyTitle}
@@ -4633,6 +4952,121 @@ function ScheduleRoleMediaPicker({
         </div>
       )}
     </div>
+  );
+}
+
+function SchedulePrimaryMediaCard({
+  className,
+  onSelect,
+  option,
+  selected,
+}: {
+  className?: string;
+  onSelect: () => void;
+  option: ScheduleMediaOption;
+  selected: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={cn(
+        "group relative min-w-0 overflow-hidden rounded-[var(--radius-card)] border bg-card-muted text-left transition duration-200 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        selected
+          ? "border-primary shadow-[0_14px_36px_rgb(225_101_64_/_0.14)] ring-2 ring-primary/20"
+          : "border-border hover:-translate-y-0.5 hover:border-border-strong hover:bg-card motion-reduce:hover:translate-y-0",
+        className,
+      )}
+    >
+      <div className="relative h-28 overflow-hidden border-b border-border bg-background">
+        <ScheduleMediaVisual option={option} />
+        <span
+          className={cn(
+            "absolute right-2 top-2 inline-flex size-7 items-center justify-center rounded-full border shadow-sm backdrop-blur transition",
+            selected
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-white/15 bg-black/55 text-white/70 group-hover:text-white",
+          )}
+          aria-hidden="true"
+        >
+          <CheckCircle2 className="size-4" />
+        </span>
+        <span className="absolute bottom-2 left-2 rounded-full border border-white/10 bg-black/65 px-2 py-1 text-[10px] font-bold text-white backdrop-blur">
+          {option.durationLabel || "Video"}
+        </span>
+      </div>
+      <span className="block p-3">
+        <span className="block truncate text-sm font-bold text-foreground">
+          {option.title}
+        </span>
+        <span className="mt-1 flex items-center justify-between gap-2 text-[11px] font-semibold text-muted">
+          <span className="truncate">{getMediaSourceLabel(option)}</span>
+          <span className={cn("shrink-0", selected && "text-primary")}>
+            {selected ? "Selected" : "Choose"}
+          </span>
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function ScheduleMediaVisual({
+  compact = false,
+  option,
+}: {
+  compact?: boolean;
+  option: ScheduleMediaOption;
+}) {
+  const [failedThumbnailUrl, setFailedThumbnailUrl] = useState<string | null>(
+    null,
+  );
+
+  if (option.thumbnailUrl && failedThumbnailUrl !== option.thumbnailUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={option.thumbnailUrl}
+        alt=""
+        width={360}
+        height={440}
+        loading="lazy"
+        onError={() => setFailedThumbnailUrl(option.thumbnailUrl ?? null)}
+        className="size-full object-cover transition duration-300 group-hover:scale-[1.02] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+      />
+    );
+  }
+
+  if (option.mediaUrl) {
+    return (
+      <span className="relative block size-full bg-background">
+        <video
+          src={option.mediaUrl}
+          aria-hidden="true"
+          muted
+          playsInline
+          preload="metadata"
+          className="size-full object-cover"
+        />
+        <span
+          className={cn(
+            "pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white shadow-sm backdrop-blur",
+            compact ? "size-7" : "size-9",
+          )}
+        >
+          <Play
+            className={cn("ml-0.5 fill-current", compact ? "size-3" : "size-4")}
+            aria-hidden="true"
+          />
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex size-full items-center justify-center bg-brand-soft/40 text-muted">
+      <FileVideo className="size-8" aria-hidden="true" />
+    </span>
   );
 }
 
@@ -5524,7 +5958,8 @@ function hasActiveSchedulingWork(schedule: ScheduledPost) {
 
     return (
       target.status === "scheduled" &&
-      Date.parse(target.scheduledFor) <= Date.now() + 5_000
+      Date.parse(target.scheduledFor) <=
+        Date.now() + ACTIVE_SCHEDULE_LOOKAHEAD_MS
     );
   });
 

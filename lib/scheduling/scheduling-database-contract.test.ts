@@ -34,6 +34,12 @@ const schedulingWorkspace = readProjectFile(
 const carouselScheduleModal = readProjectFile(
   "components/social/platform-selection-modal.tsx",
 );
+const hookVideoScheduleDrawer = readProjectFile(
+  "components/trending/hook-video-schedule-drawer.tsx",
+);
+const scheduleTime = readProjectFile("lib/scheduling/schedule-time.ts");
+const schedulingService = readProjectFile("lib/scheduling/service.ts");
+const schedulesRoute = readProjectFile("app/api/schedules/route.ts");
 const carouselScheduleClient = readProjectFile(
   "lib/scheduling/carousel-scheduling-client.ts",
 );
@@ -464,6 +470,135 @@ test("inline carousel submission persists a recoverable draft before publishing"
   assert.doesNotMatch(
     carouselScheduleClient,
     /caption:\s*submission\.caption\s*\|\|/,
+  );
+});
+
+test("social scheduling uses one five-minute rule without quarter-hour rounding", () => {
+  assert.match(
+    scheduleTime,
+    /DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES = 5/,
+  );
+  assert.match(
+    schedulingService,
+    /process\.env\.SOCIAL_SCHEDULING_MIN_LEAD_MINUTES/,
+  );
+  assert.doesNotMatch(
+    schedulingService,
+    /process\.env\.SCHEDULING_MIN_RENDER_LEAD_MINUTES/,
+  );
+  assert.match(
+    schedulingService,
+    /assertMinimumLead: assertTaskCreationBuffer/,
+  );
+  assert.match(
+    schedulingService,
+    /leadPolicy: "render_finalization"/,
+  );
+  assert.match(schedulesRoute, /minimumScheduleLeadMinutes/);
+
+  for (const schedulingUi of [carouselScheduleModal, hookVideoScheduleDrawer]) {
+    assert.match(
+      schedulingUi,
+      /step=\{SOCIAL_SCHEDULING_TIME_STEP_SECONDS\}/,
+    );
+    assert.doesNotMatch(schedulingUi, /getMinutes\(\) \/ 15/);
+  }
+
+  assert.match(
+    schedulingWorkspace,
+    /SOCIAL_SCHEDULING_TIME_STEP_SECONDS \/ 60/,
+  );
+  assert.match(schedulingWorkspace, /function ScheduleTimePicker/);
+  assert.doesNotMatch(schedulingWorkspace, /type="time"/);
+  assert.doesNotMatch(schedulingWorkspace, /getMinutes\(\) \/ 15/);
+
+  assert.doesNotMatch(carouselScheduleModal, /minimumLeadMinutes \+ 2/);
+  assert.match(
+    schedulingWorkspace,
+    /ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 2_000/,
+  );
+});
+
+test("the main scheduler uses compact horizontal video and time dropdowns", () => {
+  assert.match(
+    schedulingWorkspace,
+    /setDemoMediaOptions\([\s\S]*filter\(isScheduledVideoMediaAsset\)/,
+  );
+  assert.match(schedulingWorkspace, /title="Choose a video"/);
+  assert.match(schedulingWorkspace, /Choose a video to publish/);
+  assert.match(
+    schedulingWorkspace,
+    /Scroll sideways through Creative Assets\. Selecting a video closes this list\./,
+  );
+  assert.match(
+    schedulingWorkspace,
+    /flex snap-x snap-mandatory gap-3 overflow-x-auto/,
+  );
+  assert.match(schedulingWorkspace, /function SchedulePrimaryMediaCard/);
+  assert.match(schedulingWorkspace, /<ScheduleMediaVisual option=\{option\}/);
+  assert.match(schedulingWorkspace, /setFailedThumbnailUrl/);
+  assert.match(schedulingWorkspace, /24-hour time with 1-minute precision\./);
+  assert.match(schedulingWorkspace, /function ScheduleTimeRail/);
+  assert.match(
+    schedulingWorkspace,
+    /snap-x snap-mandatory gap-1\.5 overflow-x-auto/,
+  );
+  assert.match(schedulingWorkspace, /aria-label="Scheduling checklist"/);
+});
+
+test("every calendar date opens the dedicated day view", () => {
+  const calendarPlanner = getSection(
+    schedulingWorkspace,
+    "function CalendarPlanner(",
+    "function CalendarDayCell(",
+  );
+  const calendarDayCell = getSection(
+    schedulingWorkspace,
+    "function CalendarDayCell(",
+    "function CompactCalendarDay(",
+  );
+  const compactCalendarDay = getSection(
+    schedulingWorkspace,
+    "function CompactCalendarDay(",
+    "function SelectedCalendarDayPanel(",
+  );
+
+  assert.match(calendarPlanner, /onOpenDate=\{onOpenDate\}/);
+  assert.match(calendarDayCell, /onClick=\{\(\) => onOpenDate\(day\.dateKey\)\}/);
+  assert.match(compactCalendarDay, /onClick=\{\(\) => onOpenDate\(day\.dateKey\)\}/);
+  assert.match(schedulingWorkspace, /function handleOpenDayPlanner[\s\S]*setDayPlannerOpen\(true\)/);
+  assert.match(schedulingWorkspace, /<DayScheduleWorkspace/);
+});
+
+test("calendar and Day view include all posts, with upcoming posts first", () => {
+  const calendarSelection = getSection(
+    schedulingWorkspace,
+    "const visibleDrafts = useMemo(",
+    "function handleSelectCalendarDate",
+  );
+  const scheduleContent = getSection(
+    schedulingWorkspace,
+    "function ScheduleContent({",
+    "function ScheduleDraftPreview({",
+  );
+  const dateGrouping = getSection(
+    schedulingWorkspace,
+    "function groupDraftsByDate(",
+    "function getMonthCalendarDays(",
+  );
+
+  assert.match(calendarSelection, /groupDraftsByDate\(drafts\)/);
+  assert.doesNotMatch(calendarSelection, /groupDraftsByDate\(visibleDrafts\)/);
+  assert.match(scheduleContent, /calendarDrafts: ScheduleDraft\[\]/);
+  assert.match(scheduleContent, /drafts=\{calendarDrafts\}/);
+  assert.match(dateGrouping, /function getCalendarDayDraftSortRank/);
+  assert.match(
+    dateGrouping,
+    /if \(isUpcomingDraft\(draft\)\) \{\s*return 0/,
+  );
+  assert.match(
+    dateGrouping,
+    /if \(draft\.status === "published"\) \{\s*return 1/,
   );
 });
 

@@ -6,8 +6,8 @@ import {
 } from "@/lib/firebase/server-auth";
 import {
   createUserSchedule,
-  getMinimumRenderLeadMinutes,
   getMissingSchedulingRuntimeEnvVars,
+  getSocialSchedulingMinimumLeadMinutes,
   listUserSchedules,
   SchedulingRequestError,
 } from "@/lib/scheduling/service";
@@ -53,10 +53,13 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
+  const minimumScheduleLeadMinutes =
+    getSocialSchedulingMinimumLeadMinutes();
 
   if (url.searchParams.get("configOnly") === "1") {
     return jsonResponse({
-      minimumRenderLeadMinutes: getMinimumRenderLeadMinutes(),
+      minimumRenderLeadMinutes: minimumScheduleLeadMinutes,
+      minimumScheduleLeadMinutes,
       ok: true,
     });
   }
@@ -82,7 +85,8 @@ export async function GET(request: Request) {
     });
 
     return jsonResponse({
-      minimumRenderLeadMinutes: getMinimumRenderLeadMinutes(),
+      minimumRenderLeadMinutes: minimumScheduleLeadMinutes,
+      minimumScheduleLeadMinutes,
       ok: true,
       schedules,
     });

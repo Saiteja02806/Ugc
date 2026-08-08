@@ -53,10 +53,12 @@ import {
 } from "@/lib/scheduling/platform-settings";
 import {
   getZonedDateTimeParts,
-  parseMinimumRenderLeadMinutes,
+  parseSchedulingTaskCreationBufferSeconds,
+  parseSocialSchedulingMinimumLeadMinutes,
   resolveZonedDateTime,
   ScheduleTimeError,
   validateScheduleLeadTime,
+  validateSchedulingTaskCreationBuffer,
   validateTimeZone,
 } from "@/lib/scheduling/schedule-time";
 import { getScheduleEditBlockReason } from "@/lib/scheduling/schedule-action-policy";
@@ -88,6 +90,7 @@ const directScheduledVideoSourceTypes = new Set([
 ]);
 
 type ScheduleMediaMode = "single_video" | "combined_video" | "carousel";
+type ScheduleLeadPolicy = "render_finalization" | "standard";
 
 export type ScheduleRenderedPostInput = {
   connectionIds?: unknown;
@@ -285,6 +288,7 @@ export async function createUserSchedule(params: {
 
 export async function scheduleRenderedPost(params: {
   input: ScheduleRenderedPostInput;
+  leadPolicy?: ScheduleLeadPolicy;
   postId: string;
   userId: string;
 }) {
@@ -343,7 +347,17 @@ export async function scheduleRenderedPost(params: {
     );
   }
 
-  const normalized = normalizeRenderedScheduleInput(params.input, existing);
+  const leadPolicy = params.leadPolicy ?? "standard";
+  const normalized = normalizeRenderedScheduleInput(
+    params.input,
+    existing,
+  );
+  const assertLeadTime =
+    leadPolicy === "render_finalization"
+      ? assertTaskCreationBuffer
+      : assertMinimumScheduleLead;
+
+  assertLeadTime(normalized.scheduledFor);
   const targetConnections = await resolveScheduleTargets({
     targets: normalized.targets,
     userId: params.userId,
@@ -985,9 +999,9 @@ export async function updateUserSchedule(params: {
   return updated;
 }
 
-export function getMinimumRenderLeadMinutes() {
-  return parseMinimumRenderLeadMinutes(
-    process.env.SCHEDULING_MIN_RENDER_LEAD_MINUTES,
+export function getSocialSchedulingMinimumLeadMinutes() {
+  return parseSocialSchedulingMinimumLeadMinutes(
+    process.env.SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   );
 }
 
@@ -1031,6 +1045,7 @@ export async function finalizeRenderedScheduleFromWorker(
 
   const result = await scheduleRenderedPost({
     input: {},
+    leadPolicy: "render_finalization",
     postId: existing.id,
     userId: input.userId,
   });
@@ -1385,6 +1400,7 @@ function normalizeRenderedScheduleInput(
         }
       : getPlannedScheduleTimeInput(existing, timezone),
     true,
+    false,
   );
 
   if (!scheduleTime) {
@@ -1764,7 +1780,7 @@ function normalizeScheduleField(value: unknown) {
 }
 
 function assertMinimumScheduleLead(scheduledFor: string) {
-  const minimumLeadMinutes = getMinimumRenderLeadMinutes();
+  const minimumLeadMinutes = getSocialSchedulingMinimumLeadMinutes();
   const leadTime = validateScheduleLeadTime({
     minimumLeadMinutes,
     scheduledFor,
@@ -1774,7 +1790,25 @@ function assertMinimumScheduleLead(scheduledFor: string) {
     throw new SchedulingRequestError(
       `Choose a time at least ${minimumLeadMinutes} ${
         minimumLeadMinutes === 1 ? "minute" : "minutes"
-      } from now so the final video has time to be prepared.`,
+      } from now.`,
+      409,
+      "schedule_time_too_soon",
+    );
+  }
+}
+
+function assertTaskCreationBuffer(scheduledFor: string) {
+  const minimumBufferSeconds = parseSchedulingTaskCreationBufferSeconds(
+    process.env.SOCIAL_SCHEDULING_TASK_CREATION_BUFFER_SECONDS,
+  );
+  const buffer = validateSchedulingTaskCreationBuffer({
+    minimumBufferSeconds,
+    scheduledFor,
+  });
+
+  if (!buffer.valid) {
+    throw new SchedulingRequestError(
+      "The video finished preparing too close to its publish time. Choose a new future time and schedule it again.",
       409,
       "schedule_time_too_soon",
     );
@@ -1981,7 +2015,7 @@ async function scheduleTargetRows(params: {
   userId: string;
 }) {
   return scheduleTargetRowsWithDependencies(params, {
-    assertMinimumLead: assertMinimumScheduleLead,
+    assertMinimumLead: assertTaskCreationBuffer,
     attachPublishJob: attachPublishJobToScheduleTarget,
     createProviderSchedule: createSocialPublishSchedule,
     createPublishJob: ({ projectId, targetId, userId }) =>

@@ -1,10 +1,14 @@
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIME_PATTERN = /^(\d{2}):(\d{2})$/;
 const MINUTES_PER_DAY = 24 * 60;
+const SECONDS_PER_DAY = MINUTES_PER_DAY * 60;
+const MILLISECONDS_PER_MINUTE = 60_000;
 const OFFSET_SAMPLE_WINDOW_HOURS = 48;
 const OFFSET_SAMPLE_STEP_HOURS = 6;
 
-export const DEFAULT_MINIMUM_RENDER_LEAD_MINUTES = 15;
+export const DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES = 5;
+export const DEFAULT_SCHEDULING_TASK_CREATION_BUFFER_SECONDS = 30;
+export const SOCIAL_SCHEDULING_TIME_STEP_SECONDS = 60;
 
 export type ScheduleTimeErrorCode =
   | "ambiguous_local_time"
@@ -91,9 +95,14 @@ export function validateScheduleLeadTime(params: {
   const scheduledTimestamp = getTimestamp(params.scheduledFor);
   const minimumLeadMinutes = normalizeLeadMinutes(params.minimumLeadMinutes);
   const now = params.now ?? Date.now();
-  const earliestTimestamp = now + minimumLeadMinutes * 60_000;
+  const currentMinuteTimestamp = getCurrentMinuteTimestamp(now);
+  const earliestTimestamp = getEarliestScheduleTimestamp({
+    minimumLeadMinutes,
+    now,
+  });
 
   return {
+    currentMinuteTimestamp,
     earliestTimestamp,
     minimumLeadMinutes,
     remainingMilliseconds: scheduledTimestamp - now,
@@ -101,16 +110,65 @@ export function validateScheduleLeadTime(params: {
   };
 }
 
-export function parseMinimumRenderLeadMinutes(value: string | null | undefined) {
+export function getEarliestScheduleTimestamp(params: {
+  minimumLeadMinutes: number;
+  now?: number;
+}) {
+  const minimumLeadMinutes = normalizeLeadMinutes(params.minimumLeadMinutes);
+  const now = params.now ?? Date.now();
+
+  return (
+    getCurrentMinuteTimestamp(now) +
+    minimumLeadMinutes * MILLISECONDS_PER_MINUTE
+  );
+}
+
+export function validateSchedulingTaskCreationBuffer(params: {
+  minimumBufferSeconds: number;
+  now?: number;
+  scheduledFor: string | number | Date;
+}) {
+  const scheduledTimestamp = getTimestamp(params.scheduledFor);
+  const minimumBufferSeconds = normalizeBufferSeconds(
+    params.minimumBufferSeconds,
+  );
+  const now = params.now ?? Date.now();
+  const earliestTimestamp = now + minimumBufferSeconds * 1_000;
+
+  return {
+    earliestTimestamp,
+    minimumBufferSeconds,
+    remainingMilliseconds: scheduledTimestamp - now,
+    valid: scheduledTimestamp >= earliestTimestamp,
+  };
+}
+
+export function parseSocialSchedulingMinimumLeadMinutes(
+  value: string | null | undefined,
+) {
   if (!value?.trim()) {
-    return DEFAULT_MINIMUM_RENDER_LEAD_MINUTES;
+    return DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES;
   }
 
   const parsed = Number(value);
 
   return Number.isInteger(parsed) && parsed >= 1 && parsed <= MINUTES_PER_DAY
     ? parsed
-    : DEFAULT_MINIMUM_RENDER_LEAD_MINUTES;
+    : DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES;
+}
+
+export function parseSchedulingTaskCreationBufferSeconds(
+  value: string | null | undefined,
+) {
+  if (!value?.trim()) {
+    return DEFAULT_SCHEDULING_TASK_CREATION_BUFFER_SECONDS;
+  }
+
+  const parsed = Number(value);
+
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= SECONDS_PER_DAY
+    ? parsed
+    : DEFAULT_SCHEDULING_TASK_CREATION_BUFFER_SECONDS;
 }
 
 export function validateTimeZone(value: string) {
@@ -216,7 +274,18 @@ function getTimestamp(value: string | number | Date) {
 function normalizeLeadMinutes(value: number) {
   return Number.isFinite(value) && value >= 1
     ? Math.ceil(value)
-    : DEFAULT_MINIMUM_RENDER_LEAD_MINUTES;
+    : DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES;
+}
+
+function getCurrentMinuteTimestamp(value: number) {
+  return Math.floor(value / MILLISECONDS_PER_MINUTE) *
+    MILLISECONDS_PER_MINUTE;
+}
+
+function normalizeBufferSeconds(value: number) {
+  return Number.isFinite(value) && value >= 1
+    ? Math.ceil(value)
+    : DEFAULT_SCHEDULING_TASK_CREATION_BUFFER_SECONDS;
 }
 
 type NumericDateTimeParts = {

@@ -37,9 +37,11 @@ import {
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
 import {
-  DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+  DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
+  getEarliestScheduleTimestamp,
   getZonedDateTimeParts,
   resolveZonedDateTime,
+  SOCIAL_SCHEDULING_TIME_STEP_SECONDS,
   validateScheduleLeadTime,
 } from "@/lib/scheduling/schedule-time";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
@@ -82,7 +84,11 @@ type ConnectionsResponse =
   | { message: string; ok: false };
 
 type ScheduleConfigResponse =
-  | { minimumRenderLeadMinutes?: number; ok: true }
+  | {
+      minimumRenderLeadMinutes?: number;
+      minimumScheduleLeadMinutes?: number;
+      ok: true;
+    }
   | { message?: string; ok: false };
 
 type TikTokPublishSettingsResponse =
@@ -188,14 +194,15 @@ export function PlatformSelectionModal({
   >({});
   const [caption, setCaption] = useState("");
   const [timezone, setTimezone] = useState(defaultTimezone);
-  const initialLaterSlot = getFutureSlot(
-    Date.now() + 60 * 60_000,
+  const initialLaterSlot = getEarliestScheduleSlot(
+    Date.now(),
+    DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
     defaultTimezone,
   );
   const [scheduledDate, setScheduledDate] = useState(initialLaterSlot.date);
   const [scheduledTime, setScheduledTime] = useState(initialLaterSlot.time);
   const [minimumLeadMinutes, setMinimumLeadMinutes] = useState(
-    DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+    DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   );
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [loading, setLoading] = useState(false);
@@ -258,7 +265,7 @@ export function PlatformSelectionModal({
         | ScheduleConfigResponse
         | null;
       const leadMinutes = data?.ok === true
-        ? data.minimumRenderLeadMinutes
+        ? data.minimumScheduleLeadMinutes ?? data.minimumRenderLeadMinutes
         : null;
 
       if (
@@ -435,7 +442,12 @@ export function PlatformSelectionModal({
     );
 
   function resetModal() {
-    const nextSlot = getFutureSlot(Date.now() + 60 * 60_000, defaultTimezone);
+    const now = Date.now();
+    const nextSlot = getEarliestScheduleSlot(
+      now,
+      minimumLeadMinutes,
+      defaultTimezone,
+    );
 
     closePopup();
     clearPopupError();
@@ -448,6 +460,7 @@ export function PlatformSelectionModal({
     setTimezone(defaultTimezone);
     setScheduledDate(nextSlot.date);
     setScheduledTime(nextSlot.time);
+    setCurrentTime(now);
     setConfirmError(null);
     setRecoveryDraftId(null);
     setSubmitting(false);
@@ -1566,6 +1579,7 @@ function LaterScheduleStep({
           </span>
           <input
             type="time"
+            step={SOCIAL_SCHEDULING_TIME_STEP_SECONDS}
             value={time}
             onChange={(event) => onTimeChange(event.target.value)}
             className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-3 text-sm text-foreground outline-none hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
@@ -1719,10 +1733,10 @@ function getEarliestScheduleSlot(
   minimumLeadMinutes: number,
   timezone: string,
 ) {
-  const scheduledTimestamp =
-    Math.ceil(
-      (now + (minimumLeadMinutes + 2) * 60_000) / 60_000,
-    ) * 60_000;
+  const scheduledTimestamp = getEarliestScheduleTimestamp({
+    minimumLeadMinutes,
+    now,
+  });
   const parts = getFutureSlot(scheduledTimestamp, timezone);
 
   return {

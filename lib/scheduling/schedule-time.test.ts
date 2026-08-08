@@ -2,22 +2,26 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+  DEFAULT_SCHEDULING_TASK_CREATION_BUFFER_SECONDS,
+  DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
+  getEarliestScheduleTimestamp,
   getZonedDateTimeParts,
-  parseMinimumRenderLeadMinutes,
+  parseSchedulingTaskCreationBufferSeconds,
+  parseSocialSchedulingMinimumLeadMinutes,
   resolveZonedDateTime,
   ScheduleTimeError,
   validateScheduleLeadTime,
+  validateSchedulingTaskCreationBuffer,
 } from "./schedule-time.ts";
 
 test("converts an India wall-clock time to UTC", () => {
   assert.equal(
     resolveZonedDateTime({
       date: "2026-07-20",
-      time: "09:00",
+      time: "15:03",
       timeZone: "Asia/Calcutta",
     }),
-    "2026-07-20T03:30:00.000Z",
+    "2026-07-20T09:33:00.000Z",
   );
 });
 
@@ -104,57 +108,74 @@ test("reconstructs calendar values in the schedule timezone", () => {
   );
 });
 
-test("accepts the exact minimum render lead boundary", () => {
-  const now = Date.UTC(2026, 6, 20, 12, 0, 0);
+test("uses a five-minute social scheduling lead with minute-aligned tolerance", () => {
+  const now = Date.UTC(2026, 6, 20, 12, 0, 20);
 
   assert.equal(
     validateScheduleLeadTime({
-      minimumLeadMinutes: 15,
+      minimumLeadMinutes: 5,
       now,
-      scheduledFor: now + 15 * 60_000,
+      scheduledFor: Date.UTC(2026, 6, 20, 12, 4, 0),
+    }).valid,
+    false,
+  );
+  assert.equal(
+    validateScheduleLeadTime({
+      minimumLeadMinutes: 5,
+      now,
+      scheduledFor: Date.UTC(2026, 6, 20, 12, 5, 0),
     }).valid,
     true,
   );
   assert.equal(
     validateScheduleLeadTime({
-      minimumLeadMinutes: 15,
+      minimumLeadMinutes: 5,
       now,
-      scheduledFor: now + 15 * 60_000 - 1,
-    }).valid,
-    false,
-  );
-});
-
-test("detects when rendering consumes the remaining lead time", () => {
-  const submittedAt = Date.UTC(2026, 6, 20, 12, 0, 0);
-  const scheduledFor = submittedAt + 30 * 60_000;
-
-  assert.equal(
-    validateScheduleLeadTime({
-      minimumLeadMinutes: 15,
-      now: submittedAt,
-      scheduledFor,
+      scheduledFor: Date.UTC(2026, 6, 20, 12, 6, 0),
     }).valid,
     true,
   );
+});
+
+test("returns an arbitrary-minute earliest slot without quarter-hour rounding", () => {
+  const now = Date.UTC(2026, 6, 20, 12, 2, 41);
+
   assert.equal(
-    validateScheduleLeadTime({
-      minimumLeadMinutes: 15,
-      now: submittedAt + 20 * 60_000,
-      scheduledFor,
-    }).valid,
-    false,
+    getEarliestScheduleTimestamp({ minimumLeadMinutes: 5, now }),
+    Date.UTC(2026, 6, 20, 12, 7, 0),
   );
 });
 
-test("uses a safe configurable render lead", () => {
-  assert.equal(parseMinimumRenderLeadMinutes("30"), 30);
+test("allows a short exact-task creation buffer after lead validation", () => {
+  const now = Date.UTC(2026, 6, 20, 12, 4, 20);
+
   assert.equal(
-    parseMinimumRenderLeadMinutes("0"),
-    DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+    validateSchedulingTaskCreationBuffer({
+      minimumBufferSeconds: 30,
+      now,
+      scheduledFor: Date.UTC(2026, 6, 20, 12, 4, 49),
+    }).valid,
+    false,
   );
   assert.equal(
-    parseMinimumRenderLeadMinutes("not-a-number"),
-    DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+    validateSchedulingTaskCreationBuffer({
+      minimumBufferSeconds: 30,
+      now,
+      scheduledFor: Date.UTC(2026, 6, 20, 12, 4, 50),
+    }).valid,
+    true,
+  );
+});
+
+test("uses safe configurable scheduling defaults", () => {
+  assert.equal(parseSocialSchedulingMinimumLeadMinutes("5"), 5);
+  assert.equal(
+    parseSocialSchedulingMinimumLeadMinutes("0"),
+    DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
+  );
+  assert.equal(parseSchedulingTaskCreationBufferSeconds("45"), 45);
+  assert.equal(
+    parseSchedulingTaskCreationBufferSeconds("not-a-number"),
+    DEFAULT_SCHEDULING_TASK_CREATION_BUFFER_SECONDS,
   );
 });

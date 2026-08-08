@@ -28,9 +28,11 @@ import {
   type TikTokScheduleCapabilityState,
 } from "@/lib/scheduling/platform-settings";
 import {
-  DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+  DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
+  getEarliestScheduleTimestamp,
   resolveZonedDateTime,
   ScheduleTimeError,
+  SOCIAL_SCHEDULING_TIME_STEP_SECONDS,
   validateScheduleLeadTime,
 } from "@/lib/scheduling/schedule-time";
 import {
@@ -49,7 +51,11 @@ type TikTokCapabilitiesResponse =
   | { message?: string; ok?: false };
 
 type ScheduleConfigResponse =
-  | { minimumRenderLeadMinutes: number; ok: true }
+  | {
+      minimumRenderLeadMinutes?: number;
+      minimumScheduleLeadMinutes?: number;
+      ok: true;
+    }
   | { message?: string; ok?: false };
 
 type PublishingSettings = ScheduleTargetSettings;
@@ -107,8 +113,8 @@ export function HookVideoScheduleDrawer({
   >({});
   const [scheduledDate, setScheduledDate] = useState(initialDateTime.date);
   const [scheduledTime, setScheduledTime] = useState(initialDateTime.time);
-  const [minimumRenderLeadMinutes, setMinimumRenderLeadMinutes] = useState(
-    DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+  const [minimumScheduleLeadMinutes, setMinimumScheduleLeadMinutes] = useState(
+    DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   );
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -145,14 +151,17 @@ export function HookVideoScheduleDrawer({
       }
 
       setConnections(data.connections);
-      const configuredLeadMinutes = Number.isFinite(
-        configData.minimumRenderLeadMinutes,
-      )
-        ? Math.max(1, Math.ceil(configData.minimumRenderLeadMinutes))
-        : DEFAULT_MINIMUM_RENDER_LEAD_MINUTES;
+      const configuredLeadValue =
+        configData.minimumScheduleLeadMinutes ??
+        configData.minimumRenderLeadMinutes;
+      const configuredLeadMinutes =
+        typeof configuredLeadValue === "number" &&
+        Number.isFinite(configuredLeadValue)
+        ? Math.max(1, Math.ceil(configuredLeadValue))
+        : DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES;
       const nextDateTime = getInitialDateTime(configuredLeadMinutes);
 
-      setMinimumRenderLeadMinutes(configuredLeadMinutes);
+      setMinimumScheduleLeadMinutes(configuredLeadMinutes);
       setScheduledDate(nextDateTime.date);
       setScheduledTime(nextDateTime.time);
     } catch (error) {
@@ -272,7 +281,7 @@ export function HookVideoScheduleDrawer({
       selectedConnections,
       settings,
       tiktokCapabilities,
-      minimumRenderLeadMinutes,
+      minimumScheduleLeadMinutes,
       timezone,
     });
 
@@ -454,6 +463,7 @@ export function HookVideoScheduleDrawer({
                       name="scheduled-time"
                       type="time"
                       autoComplete="off"
+                      step={SOCIAL_SCHEDULING_TIME_STEP_SECONDS}
                       value={scheduledTime}
                       onChange={(event) => setScheduledTime(event.target.value)}
                       className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
@@ -461,9 +471,9 @@ export function HookVideoScheduleDrawer({
                   </label>
                 </div>
                 <p className="mt-2 text-[11px] font-medium leading-4 text-muted">
-                  {timezone}. Allow at least {minimumRenderLeadMinutes}{" "}
-                  {minimumRenderLeadMinutes === 1 ? "minute" : "minutes"} for
-                  video preparation.
+                  {timezone}. Schedule at least {minimumScheduleLeadMinutes}{" "}
+                  {minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"}{" "}
+                  ahead.
                 </p>
               </section>
             </>
@@ -690,7 +700,7 @@ function ScheduleReview({
 }
 
 function getValidationError(params: {
-  minimumRenderLeadMinutes: number;
+  minimumScheduleLeadMinutes: number;
   scheduledDate: string;
   scheduledTime: string;
   selectedConnections: SocialConnection[];
@@ -723,14 +733,14 @@ function getValidationError(params: {
       timeZone: params.timezone,
     });
     const leadTime = validateScheduleLeadTime({
-      minimumLeadMinutes: params.minimumRenderLeadMinutes,
+      minimumLeadMinutes: params.minimumScheduleLeadMinutes,
       scheduledFor,
     });
 
     if (!leadTime.valid) {
-      return `Choose a time at least ${params.minimumRenderLeadMinutes} ${
-        params.minimumRenderLeadMinutes === 1 ? "minute" : "minutes"
-      } from now so the final video has time to be prepared.`;
+      return `Choose a time at least ${params.minimumScheduleLeadMinutes} ${
+        params.minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
+      } from now.`;
     }
   } catch (error) {
     return error instanceof ScheduleTimeError
@@ -742,11 +752,13 @@ function getValidationError(params: {
 }
 
 function getInitialDateTime(
-  minimumLeadMinutes = DEFAULT_MINIMUM_RENDER_LEAD_MINUTES,
+  minimumLeadMinutes = DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
 ) {
-  const initialLeadMinutes = Math.max(60, minimumLeadMinutes + 15);
-  const date = new Date(Date.now() + initialLeadMinutes * 60 * 1000);
-  date.setMinutes(Math.ceil(date.getMinutes() / 15) * 15, 0, 0);
+  const date = new Date(
+    getEarliestScheduleTimestamp({
+      minimumLeadMinutes,
+    }),
+  );
 
   return {
     date: getLocalDate(date),

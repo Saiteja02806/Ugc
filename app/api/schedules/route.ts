@@ -11,6 +11,7 @@ import {
   listUserSchedules,
   SchedulingRequestError,
 } from "@/lib/scheduling/service";
+import { getSocialSchedulingCalendarStartAt } from "@/lib/scheduling/calendar-start";
 import {
   scheduledPostStatuses,
   type ScheduleCreateInput,
@@ -55,9 +56,13 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const minimumScheduleLeadMinutes =
     getSocialSchedulingMinimumLeadMinutes();
+  const calendarStartAt = getSocialSchedulingCalendarStartAt(
+    process.env.SOCIAL_SCHEDULING_CALENDAR_START_AT,
+  );
 
   if (url.searchParams.get("configOnly") === "1") {
     return jsonResponse({
+      calendarStartAt,
       minimumRenderLeadMinutes: minimumScheduleLeadMinutes,
       minimumScheduleLeadMinutes,
       ok: true,
@@ -85,6 +90,7 @@ export async function GET(request: Request) {
     });
 
     return jsonResponse({
+      calendarStartAt,
       minimumRenderLeadMinutes: minimumScheduleLeadMinutes,
       minimumScheduleLeadMinutes,
       ok: true,

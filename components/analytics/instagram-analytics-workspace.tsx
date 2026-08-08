@@ -50,7 +50,6 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  aggregateInstagramContentPerformanceByPublishedDate,
   filterAndSortInstagramContent,
   flattenReadyInstagramContentAccounts,
   groupInstagramContentByPublishedDate,
@@ -64,7 +63,7 @@ import {
 } from "@/lib/analytics/instagram-content-insights";
 import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
 import {
-  aggregateInstagramInsightDaily,
+  buildInstagramAccountDailyTrend,
   getUniqueInstagramConnections,
   type InstagramInsightPoint,
   type InstagramInsightsAccount,
@@ -619,20 +618,9 @@ function AnalyticsReadyState({
     () =>
       buildInstagramPerformanceTrend(
         insightAccounts,
-        contentAccounts,
         dateRangeDays,
       ),
-    [contentAccounts, dateRangeDays, insightAccounts],
-  );
-  const performanceTrendUsesContent = useMemo(
-    () =>
-      !aggregateInstagramInsightDaily(insightAccounts).some(
-        (point) => point[performanceMetric] !== null,
-      ) &&
-      performanceTrend.some(
-        (point) => point[performanceMetric] !== null,
-      ),
-    [insightAccounts, performanceMetric, performanceTrend],
+    [dateRangeDays, insightAccounts],
   );
 
   return (
@@ -661,15 +649,16 @@ function AnalyticsReadyState({
             Your performance at a glance
           </h2>
           <p className="max-w-2xl text-sm leading-6 text-muted">
-            Performance values come from Meta Insights. Publishing totals come
-            from your workspace, and unavailable metrics remain empty.
+            Account views and interactions come from Meta Insights for this
+            period. Publishing totals come from your workspace. Per-post views
+            below are separate current post totals.
           </p>
         </header>
 
         <div className="grid grid-cols-2 border-t border-border lg:grid-cols-4">
           <SnapshotMetric
             icon={<Eye aria-hidden="true" />}
-            label="Views"
+            label="Account views"
             source={viewsSource}
             value={formatOptionalNumber(displayedViews)}
           />
@@ -703,9 +692,7 @@ function AnalyticsReadyState({
             />
           }
           description={
-            performanceTrendUsesContent
-              ? "Current Meta content metrics grouped by each post's publish date."
-              : "Daily account values returned by Meta for the selected date range."
+            "Daily account values returned by Meta for the selected date range."
           }
           eyebrow="Performance trend"
           title={`${performanceMetricLabels[performanceMetric]} over time`}
@@ -718,7 +705,7 @@ function AnalyticsReadyState({
             insightSnapshot={insightSnapshot}
             metric={performanceMetric}
             points={performanceTrend}
-            groupedByPublishDate={performanceTrendUsesContent}
+            groupedByPublishDate={false}
           />
         </AnalyticsSurface>
 
@@ -1790,7 +1777,8 @@ function InstagramContentPerformance({
                 Content performance
               </h2>
               <p className="mt-1 text-sm leading-6 text-muted">
-                See which posts are earning attention.
+                Current views for each post. These are separate from the
+                account-view total above.
               </p>
             </div>
 
@@ -2793,37 +2781,12 @@ function AnalyticsErrorState({
 
 function buildInstagramPerformanceTrend(
   accounts: InstagramInsightsAccount[],
-  contentAccounts: InstagramContentAccount[],
   dateRangeDays: DateRangeDays,
 ): PerformanceTrendPoint[] {
-  const aggregatedByDate = new Map(
-    aggregateInstagramInsightDaily(accounts).map((point) => [
-      point.date,
-      point,
-    ]),
-  );
-  const contentByDate = new Map(
-    aggregateInstagramContentPerformanceByPublishedDate(
-      contentAccounts,
-    ).map((point) => [point.date, point]),
-  );
-
-  return getUtcDateRangeKeys(dateRangeDays).map(
-    (date): PerformanceTrendPoint => {
-      const accountPoint = aggregatedByDate.get(date);
-      const contentPoint = contentByDate.get(date);
-
-      return {
-        date,
-        interactions:
-          accountPoint?.interactions ??
-          contentPoint?.interactions ??
-          null,
-        reach: accountPoint?.reach ?? contentPoint?.reach ?? null,
-        views: accountPoint?.views ?? contentPoint?.views ?? null,
-      };
-    },
-  );
+  return buildInstagramAccountDailyTrend({
+    accounts,
+    dateKeys: getUtcDateRangeKeys(dateRangeDays),
+  });
 }
 
 function splitPerformanceTrendSegments(

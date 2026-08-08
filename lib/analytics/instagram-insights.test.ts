@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   aggregateInstagramInsightDaily,
+  buildInstagramAccountDailyTrend,
   getUniqueInstagramConnections,
   normalizeInstagramAccountInsights,
   type InstagramInsightsAccount,
@@ -265,4 +266,51 @@ test("aggregates daily values without inventing missing metrics", () => {
       views: null,
     },
   ]);
+});
+
+test("builds a daily trend only from Meta daily account values", () => {
+  const accounts: InstagramInsightsAccount[] = [
+    {
+      accountName: "North",
+      accountUsername: "north",
+      connectionId: "north",
+      daily: [
+        {
+          date: "2026-07-25",
+          interactions: null,
+          reach: 9,
+          views: null,
+        },
+      ],
+      lastSyncedAt: "2026-07-26T12:00:00.000Z",
+      message: null,
+      status: "ready",
+      totals: {
+        interactions: 12,
+        reach: 9,
+        views: 120,
+      },
+    },
+  ];
+
+  assert.deepEqual(
+    buildInstagramAccountDailyTrend({
+      accounts,
+      dateKeys: ["2026-07-25", "2026-07-26"],
+    }),
+    [
+      {
+        date: "2026-07-25",
+        interactions: null,
+        reach: 9,
+        views: null,
+      },
+      {
+        date: "2026-07-26",
+        interactions: null,
+        reach: null,
+        views: null,
+      },
+    ],
+  );
 });

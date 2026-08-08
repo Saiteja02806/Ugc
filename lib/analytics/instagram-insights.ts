@@ -97,6 +97,34 @@ export function aggregateInstagramInsightDaily(
   })).sort((left, right) => left.date.localeCompare(right.date));
 }
 
+/**
+ * Builds a chart series from Meta's daily account data only. A period total or
+ * a current per-post total must never be placed on a calendar day, because it
+ * describes a different thing from views earned on that day.
+ */
+export function buildInstagramAccountDailyTrend(params: {
+  accounts: InstagramInsightsAccount[];
+  dateKeys: readonly string[];
+}): InstagramInsightPoint[] {
+  const dailyByDate = new Map(
+    aggregateInstagramInsightDaily(params.accounts).map((point) => [
+      point.date,
+      point,
+    ]),
+  );
+
+  return params.dateKeys.map((date) => {
+    const point = dailyByDate.get(date);
+
+    return point
+      ? { ...point }
+      : {
+          date,
+          ...emptyInsightTotals(),
+        };
+  });
+}
+
 type InstagramInsightValue = {
   end_time?: unknown;
   value?: unknown;

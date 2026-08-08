@@ -56,11 +56,13 @@ import {
   type InstagramAnalyticsSummary,
 } from "@/lib/analytics/instagram-activity";
 import {
+  buildInstagramContentPerformanceTrend,
   filterAndSortInstagramContent,
   flattenReadyInstagramContentAccounts,
   groupInstagramContentByPublishedDate,
   getInstagramContentTitle,
   getInstagramInteractionRate,
+  summarizeInstagramContentPerformance,
   type InstagramContentAccount,
   type InstagramContentFilter,
   type InstagramContentItem,
@@ -69,9 +71,7 @@ import {
 } from "@/lib/analytics/instagram-content-insights";
 import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
 import {
-  buildInstagramAccountDailyTrend,
   getUniqueInstagramConnections,
-  hasInstagramAccountDailyTrend,
   type InstagramInsightPoint,
   type InstagramInsightsAccount,
 } from "@/lib/analytics/instagram-insights";
@@ -135,6 +135,10 @@ type InstagramInsightSnapshot = {
   reach: number | null;
   totalAccountCount: number;
   views: number | null;
+};
+
+type InstagramVisibleContentSnapshot = InstagramInsightSnapshot & {
+  publishedPosts: number;
 };
 
 type PerformanceTrendPoint = InstagramInsightPoint;
@@ -464,14 +468,6 @@ export function InstagramAnalyticsWorkspace() {
     () => getPrimaryInstagramConnection(connections),
     [connections],
   );
-  const insightSnapshot = useMemo(
-    () =>
-      buildInstagramInsightSnapshot(
-        activeInsightAccounts,
-        activeConnectionIds.size,
-      ),
-    [activeConnectionIds.size, activeInsightAccounts],
-  );
   const primaryInsightAccount = useMemo(
     () =>
       primaryConnection
@@ -554,10 +550,8 @@ export function InstagramAnalyticsWorkspace() {
               contentMessage={contentResult.message}
               dateRangeDays={dateRangeDays}
               insightAccount={primaryInsightAccount}
-              insightAccounts={activeInsightAccounts}
               insightsLoading={insightsLoading}
               insightsMessage={insightsResult.message}
-              insightSnapshot={insightSnapshot}
               onDateRangeChange={setDateRangeDays}
               onPerformanceMetricChange={setPerformanceMetric}
               performanceMetric={performanceMetric}
@@ -578,10 +572,8 @@ function AnalyticsReadyState({
   contentMessage,
   dateRangeDays,
   insightAccount,
-  insightAccounts,
   insightsLoading,
   insightsMessage,
-  insightSnapshot,
   onDateRangeChange,
   onPerformanceMetricChange,
   performanceMetric,
@@ -594,42 +586,41 @@ function AnalyticsReadyState({
   contentMessage: string | null;
   dateRangeDays: DateRangeDays;
   insightAccount: InstagramInsightsAccount | null;
-  insightAccounts: InstagramInsightsAccount[];
   insightsLoading: boolean;
   insightsMessage: string | null;
-  insightSnapshot: InstagramInsightSnapshot;
   onDateRangeChange: (days: DateRangeDays) => void;
   onPerformanceMetricChange: (metric: PerformanceMetric) => void;
   performanceMetric: PerformanceMetric;
 }) {
-  const displayedViews = insightsLoading
+  const contentSnapshot = useMemo(
+    () =>
+      buildInstagramVisibleContentSnapshot(
+        contentAccounts,
+        connectionCount,
+      ),
+    [connectionCount, contentAccounts],
+  );
+  const contentMetricsReady = contentSnapshot.readyAccountCount > 0;
+  const displayedViews = contentLoading || !contentMetricsReady
     ? null
-    : insightSnapshot.views;
-  const displayedInteractions = insightsLoading
+    : contentSnapshot.views;
+  const displayedInteractions = contentLoading || !contentMetricsReady
     ? null
-    : insightSnapshot.interactions;
-  const viewsSource = getInsightMetricSource({
-    insightSnapshot,
-    insightsLoading,
-    insightsMessage,
-    metricAvailable: displayedViews !== null,
-  });
-  const interactionsSource = getInsightMetricSource({
-    insightSnapshot,
-    insightsLoading,
-    insightsMessage,
-    metricAvailable: displayedInteractions !== null,
+    : contentSnapshot.interactions;
+  const contentMetricSource = getContentMetricSource({
+    contentSnapshot,
+    contentLoading,
+    contentMessage,
   });
   const performanceTrend = useMemo(
     () =>
-      buildInstagramPerformanceTrend(
-        insightAccounts,
-        dateRangeDays,
-      ),
-    [dateRangeDays, insightAccounts],
+      buildInstagramContentPerformanceTrend({
+        accounts: contentAccounts,
+        dateKeys: getDateRangeKeys(dateRangeDays),
+        getPublishedDateKey: getLocalPublishedDateKey,
+      }),
+    [contentAccounts, dateRangeDays],
   );
-  const hasDailyPerformanceTrend =
-    hasInstagramAccountDailyTrend(performanceMetric);
 
   return (
     <div className="space-y-5">
@@ -657,30 +648,34 @@ function AnalyticsReadyState({
             Your performance at a glance
           </h2>
           <p className="max-w-2xl text-sm leading-6 text-muted">
-            Account views come from Meta for all eligible content on the active
-            Instagram account or accounts in this period. Publishing totals
-            include only active Instagram connections in this workspace.
+            Views, interactions, and published-post totals use only posts that
+            Instagram currently returns for the selected period. Deleted or
+            unavailable posts are not counted.
           </p>
         </header>
 
         <div className="grid grid-cols-2 border-t border-border lg:grid-cols-4">
           <SnapshotMetric
             icon={<Eye aria-hidden="true" />}
-            label="All account views"
-            source={viewsSource}
+            label="Post views"
+            source={contentMetricSource}
             value={formatOptionalNumber(displayedViews)}
           />
           <SnapshotMetric
             icon={<Heart aria-hidden="true" />}
             label="Interactions"
-            source={interactionsSource}
+            source={contentMetricSource}
             value={formatOptionalNumber(displayedInteractions)}
           />
           <SnapshotMetric
             icon={<CheckCircle2 aria-hidden="true" />}
             label="Published posts"
-            source="Active Instagram records"
-            value={formatNumber(analytics.published)}
+            source={contentMetricSource}
+            value={formatOptionalNumber(
+              contentLoading || !contentMetricsReady
+                ? null
+                : contentSnapshot.publishedPosts,
+            )}
           />
           <SnapshotMetric
             icon={<CalendarClock aria-hidden="true" />}
@@ -699,42 +694,20 @@ function AnalyticsReadyState({
               onChange={onPerformanceMetricChange}
             />
           }
-          description={
-            hasDailyPerformanceTrend
-              ? "Daily account reach returned by Meta for the selected date range."
-              : "Meta returns one account-wide total for this metric, not daily points."
-          }
-          eyebrow={
-            hasDailyPerformanceTrend
-              ? "Performance trend"
-              : "Performance total"
-          }
-          title={
-            hasDailyPerformanceTrend
-              ? `${performanceMetricLabels[performanceMetric]} over time`
-              : `${performanceMetricLabels[performanceMetric]} for this period`
-          }
+          description="Current totals for Instagram posts published in the selected period, grouped by their publish date."
+          eyebrow="Content trend"
+          title={`${performanceMetricLabels[performanceMetric]} by publish date`}
         >
-          {hasDailyPerformanceTrend ? (
-            <InstagramPerformanceTrendChart
-              connectionCount={connectionCount}
-              contentAccounts={contentAccounts}
-              insightsLoading={insightsLoading}
-              insightsMessage={insightsMessage}
-              insightSnapshot={insightSnapshot}
-              metric={performanceMetric}
-              points={performanceTrend}
-              groupedByPublishDate={false}
-            />
-          ) : (
-            <InstagramPerformancePeriodTotal
-              connectionCount={connectionCount}
-              insightSnapshot={insightSnapshot}
-              insightsLoading={insightsLoading}
-              insightsMessage={insightsMessage}
-              metric={performanceMetric}
-            />
-          )}
+          <InstagramPerformanceTrendChart
+            connectionCount={connectionCount}
+            contentAccounts={contentAccounts}
+            insightsLoading={contentLoading}
+            insightsMessage={contentMessage}
+            insightSnapshot={contentSnapshot}
+            metric={performanceMetric}
+            points={performanceTrend}
+            groupedByPublishDate
+          />
         </AnalyticsSurface>
 
         <InstagramReadinessPanel
@@ -921,92 +894,6 @@ function PerformanceMetricSelector({
   );
 }
 
-function InstagramPerformancePeriodTotal({
-  connectionCount,
-  insightSnapshot,
-  insightsLoading,
-  insightsMessage,
-  metric,
-}: {
-  connectionCount: number;
-  insightSnapshot: InstagramInsightSnapshot;
-  insightsLoading: boolean;
-  insightsMessage: string | null;
-  metric: PerformanceMetric;
-}) {
-  if (insightsLoading) {
-    return <PerformanceTrendLoadingState />;
-  }
-
-  const value = insightSnapshot[metric];
-  const emptyState = getPerformanceTrendEmptyState({
-    connectionCount,
-    insightSnapshot,
-    insightsMessage,
-    metric,
-  });
-  const metricLabel = performanceMetricLabels[metric];
-
-  return (
-    <div className="mt-6">
-      <div className="flex min-h-[280px] items-center justify-center rounded-[var(--radius-control)] border border-border bg-card-muted/35 px-5 py-8 text-center">
-        {value !== null ? (
-          <div className="max-w-md">
-            <span className="mx-auto flex size-12 items-center justify-center rounded-full border border-border bg-card text-primary">
-              {metric === "views" ? (
-                <Eye className="size-5" aria-hidden="true" />
-              ) : (
-                <Heart className="size-5" aria-hidden="true" />
-              )}
-            </span>
-            <p className="mt-4 text-xs font-bold uppercase tracking-[0.12em] text-muted">
-              Meta period total
-            </p>
-            <p className="mt-2 font-mono text-4xl font-bold tabular-nums text-foreground-strong sm:text-5xl">
-              {formatNumber(value)}
-            </p>
-            <p className="mt-3 text-sm leading-6 text-muted">
-              {metricLabel} for the selected date range. Meta provides one
-              account-wide total for this metric, so a daily line would not be
-              accurate.
-            </p>
-          </div>
-        ) : (
-          <div className="max-w-md">
-            <span className="mx-auto flex size-10 items-center justify-center rounded-full border border-border bg-card text-muted">
-              <ChartNoAxesCombined className="size-5" aria-hidden="true" />
-            </span>
-            <p className="mt-3 text-sm font-semibold text-foreground-strong">
-              {emptyState.title}
-            </p>
-            <p className="mt-1 text-xs leading-5 text-muted">
-              {emptyState.description}
-            </p>
-            {emptyState.manageConnection ? (
-              <Link
-                href="/settings#instagram-publishing"
-                className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card px-3 text-xs font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-              >
-                Manage connection
-                <ArrowRight className="size-3.5" aria-hidden="true" />
-              </Link>
-            ) : null}
-          </div>
-        )}
-      </div>
-
-      <dl className="mt-4 grid grid-cols-3 gap-2">
-        <ChartStat
-          label="Period total"
-          value={formatOptionalNumber(value)}
-        />
-        <ChartStat label="Daily trend" value="Not provided" textValue />
-        <ChartStat label="Source" value="Meta Insights" textValue />
-      </dl>
-    </div>
-  );
-}
-
 function InstagramPerformanceTrendChart({
   connectionCount,
   contentAccounts,
@@ -1089,10 +976,10 @@ function InstagramPerformanceTrendChart({
   const contentByDate = useMemo(
     () =>
       new Map(
-        groupInstagramContentByPublishedDate(contentAccounts).map((group) => [
-          group.date,
-          group.items,
-        ]),
+        groupInstagramContentByPublishedDate(
+          contentAccounts,
+          getLocalPublishedDateKey,
+        ).map((group) => [group.date, group.items]),
       ),
     [contentAccounts],
   );
@@ -1367,11 +1254,11 @@ function InstagramPerformanceTrendChart({
 
       <dl className="mt-4 grid grid-cols-3 gap-2">
         <ChartStat
-          label="Period total"
+          label="Visible total"
           value={formatOptionalNumber(total)}
         />
         <ChartStat
-          label="Peak day"
+          label="Peak publish date"
           value={
             peakPoint
               ? `${formatNumber(peakPoint.value)} · ${formatShortDate(
@@ -1382,7 +1269,7 @@ function InstagramPerformanceTrendChart({
           textValue
         />
         <ChartStat
-          label="Reporting days"
+          label="Publish dates"
           value={`${formatNumber(availablePoints.length)} / ${formatNumber(
             points.length,
           )}`}
@@ -1889,9 +1776,8 @@ function InstagramContentPerformance({
                 Content performance
               </h2>
               <p className="mt-1 text-sm leading-6 text-muted">
-                Each post has its own current values. They do not add up to the
-                account-wide value above. Posts Meta is still processing remain
-                listed with unavailable values.
+                Current values for posts Instagram still returns. Deleted,
+                unavailable, or database-only records are not shown or counted.
               </p>
             </div>
 
@@ -2892,16 +2778,6 @@ function AnalyticsErrorState({
   );
 }
 
-function buildInstagramPerformanceTrend(
-  accounts: InstagramInsightsAccount[],
-  dateRangeDays: DateRangeDays,
-): PerformanceTrendPoint[] {
-  return buildInstagramAccountDailyTrend({
-    accounts,
-    dateKeys: getUtcDateRangeKeys(dateRangeDays),
-  });
-}
-
 function splitPerformanceTrendSegments(
   points: PositionedPerformanceTrendPoint[],
 ) {
@@ -2974,26 +2850,27 @@ function getPerformanceTrendEmptyState({
 
   if (insightSnapshot[metric] !== null) {
     return {
-      description: `Meta returned a period total, but no daily ${metricLabel} values for this range.`,
+      description: `Instagram returned a current ${metricLabel} total, but no matching publish-date value for this range.`,
       manageConnection: false,
-      title: "Daily values are not available",
+      title: "Publish-date values are unavailable",
     };
   }
 
   return {
-    description: `Meta returned no daily ${metricLabel} values for this period. Try another date range after your account records activity.`,
+    description: `Instagram returned no current ${metricLabel} values for posts published in this period.`,
     manageConnection: false,
     title: `No ${metricLabel} data for this period`,
   };
 }
 
-function buildInstagramInsightSnapshot(
-  accounts: InstagramInsightsAccount[],
+function buildInstagramVisibleContentSnapshot(
+  accounts: InstagramContentAccount[],
   totalAccountCount: number,
-): InstagramInsightSnapshot {
-  const readyAccounts = accounts.filter(
+): InstagramVisibleContentSnapshot {
+  const summary = summarizeInstagramContentPerformance(accounts);
+  const readyAccountCount = accounts.filter(
     (account) => account.status === "ready",
-  );
+  ).length;
 
   return {
     hasUnavailableAccounts: accounts.some(
@@ -3001,82 +2878,65 @@ function buildInstagramInsightSnapshot(
         account.status === "error" ||
         account.status === "unavailable",
     ),
-    interactions: sumAvailableInsightMetric(
-      readyAccounts.map((account) => account.totals.interactions),
-    ),
+    interactions: summary.interactions,
     permissionMissing: accounts.some(
       (account) => account.status === "permission_missing",
     ),
-    reach: sumAvailableInsightMetric(
-      readyAccounts.map((account) => account.totals.reach),
-    ),
-    readyAccountCount: readyAccounts.length,
+    publishedPosts: summary.posts,
+    reach: summary.reach,
+    readyAccountCount,
     totalAccountCount,
-    views: sumAvailableInsightMetric(
-      readyAccounts.map((account) => account.totals.views),
-    ),
+    views: summary.views,
   };
 }
 
-function sumAvailableInsightMetric(values: Array<number | null>) {
-  const availableValues = values.filter(
-    (value): value is number => value !== null,
-  );
-
-  return availableValues.length > 0
-    ? availableValues.reduce((total, value) => total + value, 0)
-    : null;
-}
-
-function getInsightMetricSource({
-  insightSnapshot,
-  insightsLoading,
-  insightsMessage,
-  metricAvailable,
+function getContentMetricSource({
+  contentSnapshot,
+  contentLoading,
+  contentMessage,
 }: {
-  insightSnapshot: InstagramInsightSnapshot;
-  insightsLoading: boolean;
-  insightsMessage: string | null;
-  metricAvailable: boolean;
+  contentSnapshot: InstagramVisibleContentSnapshot;
+  contentLoading: boolean;
+  contentMessage: string | null;
 }) {
-  if (insightsLoading) {
-    return "Loading Meta Insights…";
+  if (contentLoading) {
+    return "Loading Instagram posts…";
   }
 
-  if (metricAvailable) {
+  if (contentSnapshot.readyAccountCount > 0) {
     if (
-      insightSnapshot.readyAccountCount <
-      insightSnapshot.totalAccountCount
+      contentSnapshot.readyAccountCount <
+      contentSnapshot.totalAccountCount
     ) {
       return `${formatNumber(
-        insightSnapshot.readyAccountCount,
-      )} of ${formatNumber(insightSnapshot.totalAccountCount)} accounts synced`;
+        contentSnapshot.readyAccountCount,
+      )} of ${formatNumber(contentSnapshot.totalAccountCount)} accounts loaded`;
     }
 
-    return insightSnapshot.readyAccountCount === 1
-      ? "Meta Insights"
+    return contentSnapshot.readyAccountCount === 1
+      ? "Current Instagram posts"
       : `${formatNumber(
-          insightSnapshot.readyAccountCount,
+          contentSnapshot.readyAccountCount,
         )} connected accounts`;
   }
 
-  if (insightSnapshot.totalAccountCount === 0) {
-    return "Connect an account to enable insights";
+  if (contentSnapshot.totalAccountCount === 0) {
+    return "Connect an account to load posts";
   }
 
-  if (insightSnapshot.permissionMissing) {
-    return "Reconnect to enable insights";
+  if (contentSnapshot.permissionMissing) {
+    return "Reconnect to enable content insights";
   }
 
-  if (insightSnapshot.hasUnavailableAccounts) {
-    return "Insights unavailable for this account";
+  if (contentSnapshot.hasUnavailableAccounts) {
+    return "Instagram posts unavailable for this account";
   }
 
-  if (insightsMessage) {
-    return "Insights temporarily unavailable";
+  if (contentMessage) {
+    return "Instagram posts temporarily unavailable";
   }
 
-  return "No Meta data for this period";
+  return "No Instagram posts for this period";
 }
 
 function getInstagramInsightsReadiness({
@@ -3192,21 +3052,10 @@ function getDateRangeKeys(days: DateRangeDays) {
   );
 }
 
-function getUtcDateRangeKeys(days: DateRangeDays) {
-  const now = new Date();
-  const today = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-    ),
-  );
+function getLocalPublishedDateKey(publishedAt: string) {
+  const date = new Date(publishedAt);
 
-  return Array.from({ length: days }, (_, index) => {
-    const date = new Date(today);
-    date.setUTCDate(date.getUTCDate() + index - (days - 1));
-    return date.toISOString().slice(0, 10);
-  });
+  return Number.isNaN(date.getTime()) ? null : toDateKey(date);
 }
 
 function getRangeLabel(rangeKeys: string[]) {

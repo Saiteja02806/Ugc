@@ -72,6 +72,17 @@ export type InstagramPublishedContentGroup = {
   items: InstagramContentItem[];
 };
 
+export type InstagramContentPerformanceSummary = {
+  interactions: number | null;
+  posts: number;
+  reach: number | null;
+  views: number | null;
+};
+
+type InstagramPublishedDateKeyResolver = (
+  publishedAt: string,
+) => string | null;
+
 type InstagramMediaObject = {
   caption?: unknown;
   comments_count?: unknown;
@@ -228,17 +239,17 @@ export function flattenReadyInstagramContentAccounts(
 
 export function groupInstagramContentByPublishedDate(
   accounts: InstagramContentAccount[],
+  getPublishedDateKey: InstagramPublishedDateKeyResolver = getIsoPublishedDateKey,
 ): InstagramPublishedContentGroup[] {
   const contentByDate = new Map<string, InstagramContentItem[]>();
 
   for (const item of flattenReadyInstagramContentAccounts(accounts)) {
-    const publishedAt = getIsoDate(item.publishedAt);
+    const date = getPublishedDateKey(item.publishedAt);
 
-    if (!publishedAt) {
+    if (!date) {
       continue;
     }
 
-    const date = publishedAt.slice(0, 10);
     const items = contentByDate.get(date) ?? [];
 
     items.push(item);
@@ -257,13 +268,17 @@ export function groupInstagramContentByPublishedDate(
 
 export function aggregateInstagramContentPerformanceByPublishedDate(
   accounts: InstagramContentAccount[],
+  getPublishedDateKey?: InstagramPublishedDateKeyResolver,
 ): InstagramPublishedContentPerformance[] {
   const performanceByDate = new Map<
     string,
     Omit<InstagramPublishedContentPerformance, "date">
   >();
 
-  for (const group of groupInstagramContentByPublishedDate(accounts)) {
+  for (const group of groupInstagramContentByPublishedDate(
+    accounts,
+    getPublishedDateKey,
+  )) {
     const performance = {
       interactions: null as number | null,
       reach: null as number | null,
@@ -292,6 +307,51 @@ export function aggregateInstagramContentPerformanceByPublishedDate(
     date,
     ...performance,
   })).sort((left, right) => left.date.localeCompare(right.date));
+}
+
+export function buildInstagramContentPerformanceTrend(params: {
+  accounts: InstagramContentAccount[];
+  dateKeys: readonly string[];
+  getPublishedDateKey?: InstagramPublishedDateKeyResolver;
+}): InstagramPublishedContentPerformance[] {
+  const performanceByDate = new Map(
+    aggregateInstagramContentPerformanceByPublishedDate(
+      params.accounts,
+      params.getPublishedDateKey,
+    ).map((point) => [point.date, point]),
+  );
+
+  return params.dateKeys.map((date) =>
+    performanceByDate.get(date) ?? {
+      date,
+      interactions: null,
+      reach: null,
+      views: null,
+    },
+  );
+}
+
+export function summarizeInstagramContentPerformance(
+  accounts: InstagramContentAccount[],
+): InstagramContentPerformanceSummary {
+  const items = flattenReadyInstagramContentAccounts(accounts);
+  const summary: InstagramContentPerformanceSummary = {
+    interactions: null,
+    posts: items.length,
+    reach: null,
+    views: null,
+  };
+
+  for (const item of items) {
+    summary.interactions = sumOptionalMetric(
+      summary.interactions,
+      item.metrics.interactions,
+    );
+    summary.reach = sumOptionalMetric(summary.reach, item.metrics.reach);
+    summary.views = sumOptionalMetric(summary.views, item.metrics.views);
+  }
+
+  return summary;
 }
 
 export function filterAndSortInstagramContent(params: {
@@ -471,4 +531,8 @@ function getIsoDate(value: unknown) {
   const date = new Date(candidate);
 
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function getIsoPublishedDateKey(publishedAt: string) {
+  return getIsoDate(publishedAt)?.slice(0, 10) ?? null;
 }

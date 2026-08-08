@@ -153,7 +153,7 @@ async function loadInstagramContentAccount(params: {
       publishedPostReferences: params.publishedPostReferences,
     });
     const itemsWithInsights = await mapWithConcurrency(
-      reconciledMedia.items,
+      reconciledMedia,
       mediaInsightConcurrency,
       async (item) => {
         try {
@@ -180,10 +180,7 @@ async function loadInstagramContentAccount(params: {
       accountName: credential.connection.platformAccountName,
       accountUsername: credential.connection.platformAccountUsername,
       connectionId: credential.connection.id,
-      items: mergeInstagramContentItems(
-        itemsWithInsights,
-        reconciledMedia.unavailableItems,
-      ),
+      items: itemsWithInsights,
       lastSyncedAt: new Date().toISOString(),
       message: null,
       status: "ready",
@@ -266,8 +263,8 @@ async function requestInstagramMedia(params: {
 /**
  * Meta's account media feed can lag behind a post that was published through
  * UGC Pilot. Read the saved, non-sensitive media IDs and ask Meta for only the
- * missing posts. If Meta is still processing one, keep an honest placeholder
- * in the content table instead of silently making a published post disappear.
+ * missing posts. A saved database reference is not enough proof that a post is
+ * still live: if Meta cannot return it, Analytics must not invent an empty row.
  */
 async function reconcilePublishedInstagramMedia(params: {
   accessToken: string;
@@ -276,10 +273,7 @@ async function reconcilePublishedInstagramMedia(params: {
   connectionId: string;
   feedItems: InstagramContentItem[];
   publishedPostReferences: PublishedInstagramPostReference[];
-}): Promise<{
-  items: InstagramContentItem[];
-  unavailableItems: InstagramContentItem[];
-}> {
+}): Promise<InstagramContentItem[]> {
   const feedIds = new Set(params.feedItems.map((item) => item.id));
   const missingReferences = Array.from(
     new Map(
@@ -290,10 +284,7 @@ async function reconcilePublishedInstagramMedia(params: {
   );
 
   if (missingReferences.length === 0) {
-    return {
-      items: params.feedItems,
-      unavailableItems: [],
-    };
+    return params.feedItems;
   }
 
   const lookups = await mapWithConcurrency(
@@ -301,43 +292,23 @@ async function reconcilePublishedInstagramMedia(params: {
     mediaInsightConcurrency,
     async (reference) => {
       try {
-        return {
-          item: await requestInstagramMediaById({
-            accessToken: params.accessToken,
-            accountName: params.accountName,
-            accountUsername: params.accountUsername,
-            connectionId: params.connectionId,
-            mediaId: reference.platformPostId,
-          }),
-          reference,
-        };
-      } catch {
-        return { item: null, reference };
-      }
-    },
-  );
-  const availableItems: InstagramContentItem[] = [];
-  const unavailableItems: InstagramContentItem[] = [];
-
-  for (const lookup of lookups) {
-    if (lookup.item) {
-      availableItems.push(lookup.item);
-    } else {
-      unavailableItems.push(
-        createUnavailablePublishedInstagramItem({
+        return await requestInstagramMediaById({
+          accessToken: params.accessToken,
           accountName: params.accountName,
           accountUsername: params.accountUsername,
           connectionId: params.connectionId,
-          reference: lookup.reference,
-        }),
-      );
-    }
-  }
+          mediaId: reference.platformPostId,
+        });
+      } catch {
+        return null;
+      }
+    },
+  );
+  const availableItems = lookups.filter(
+    (item): item is InstagramContentItem => item !== null,
+  );
 
-  return {
-    items: mergeInstagramContentItems(params.feedItems, availableItems),
-    unavailableItems,
-  };
+  return mergeInstagramContentItems(params.feedItems, availableItems);
 }
 
 async function requestInstagramMediaById(params: {
@@ -369,62 +340,6 @@ async function requestInstagramMediaById(params: {
       },
     )[0] ?? null
   );
-}
-
-function createUnavailablePublishedInstagramItem(params: {
-  accountName: string | null;
-  accountUsername: string | null;
-  connectionId: string;
-  reference: PublishedInstagramPostReference;
-}): InstagramContentItem {
-  return {
-    accountName: params.accountName,
-    accountUsername: params.accountUsername,
-    caption: null,
-    connectionId: params.connectionId,
-    contentType: getPublishedInstagramContentType(
-      params.reference.platformPostUrl,
-    ),
-    id: `unavailable:${params.reference.platformPostId}`,
-    mediaType: null,
-    metrics: {
-      comments: null,
-      interactions: null,
-      likes: null,
-      reach: null,
-      saves: null,
-      shares: null,
-      views: null,
-    },
-    permalink: getHttpUrl(params.reference.platformPostUrl),
-    publishedAt: params.reference.publishedAt,
-    thumbnailUrl: null,
-  };
-}
-
-function getPublishedInstagramContentType(
-  platformPostUrl: string | null,
-): InstagramContentItem["contentType"] {
-  const url = getHttpUrl(platformPostUrl);
-  const path = url ? new URL(url).pathname : "";
-
-  return path.startsWith("/reel/") ? "reel" : "post";
-}
-
-function getHttpUrl(value: string | null) {
-  if (!value?.trim()) {
-    return null;
-  }
-
-  try {
-    const url = new URL(value);
-
-    return url.protocol === "http:" || url.protocol === "https:"
-      ? url.toString()
-      : null;
-  } catch {
-    return null;
-  }
 }
 
 async function requestInstagramMediaInsights(params: {

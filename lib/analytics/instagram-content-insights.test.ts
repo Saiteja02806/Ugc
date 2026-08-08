@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
   aggregateInstagramContentPerformanceByPublishedDate,
+  buildInstagramContentPerformanceTrend,
   filterAndSortInstagramContent,
   flattenReadyInstagramContentAccounts,
   groupInstagramContentByPublishedDate,
@@ -12,9 +14,22 @@ import {
   mergeInstagramContentMetrics,
   normalizeInstagramMedia,
   normalizeInstagramMediaInsights,
+  summarizeInstagramContentPerformance,
   type InstagramContentAccount,
   type InstagramContentItem,
 } from "./instagram-content-insights.ts";
+
+const instagramContentSource = readFileSync(
+  new URL("./instagram-content.ts", import.meta.url),
+  "utf8",
+);
+const analyticsWorkspaceSource = readFileSync(
+  new URL(
+    "../../components/analytics/instagram-analytics-workspace.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 const account = {
   accountName: "North Studio",
@@ -138,6 +153,132 @@ test("keeps feed media and adds a missing published post only once", () => {
       [feedItem, fetchedPublishedItem],
     ).map((item) => item.id),
     ["media-from-schedule", "media-from-feed"],
+  );
+});
+
+test("does not invent empty rows when Meta cannot return a saved post", () => {
+  assert.doesNotMatch(instagramContentSource, /unavailable:/);
+  assert.doesNotMatch(
+    instagramContentSource,
+    /createUnavailablePublishedInstagramItem/,
+  );
+  assert.match(
+    instagramContentSource,
+    /mergeInstagramContentItems\(params\.feedItems, availableItems\)/,
+  );
+});
+
+test("shows visible-post totals in a real publish-date chart", () => {
+  assert.match(analyticsWorkspaceSource, /label="Post views"/);
+  assert.match(
+    analyticsWorkspaceSource,
+    /buildInstagramContentPerformanceTrend\(/,
+  );
+  assert.match(analyticsWorkspaceSource, /groupedByPublishDate/);
+  assert.match(
+    analyticsWorkspaceSource,
+    /Deleted or\s+unavailable posts are not counted/,
+  );
+  assert.doesNotMatch(
+    analyticsWorkspaceSource,
+    /InstagramPerformancePeriodTotal/,
+  );
+});
+
+test("summarizes only content returned by ready Instagram accounts", () => {
+  const readyItems = [
+    createItem({
+      id: "visible-reel",
+      metrics: {
+        ...emptyMetrics(),
+        interactions: 2,
+        reach: 122,
+        views: 165,
+      },
+    }),
+    createItem({
+      id: "visible-new-reel",
+      metrics: {
+        ...emptyMetrics(),
+        interactions: 0,
+        reach: 1,
+        views: 3,
+      },
+    }),
+  ];
+  const accounts: InstagramContentAccount[] = [
+    {
+      ...account,
+      items: readyItems,
+      lastSyncedAt: "2026-08-09T00:00:00.000Z",
+      message: null,
+      status: "ready",
+    },
+    {
+      ...account,
+      connectionId: "unavailable-account",
+      items: [
+        createItem({
+          id: "must-not-count",
+          metrics: { ...emptyMetrics(), views: 999 },
+        }),
+      ],
+      lastSyncedAt: null,
+      message: "Unavailable",
+      status: "error",
+    },
+  ];
+
+  assert.deepEqual(summarizeInstagramContentPerformance(accounts), {
+    interactions: 2,
+    posts: 2,
+    reach: 123,
+    views: 168,
+  });
+});
+
+test("builds the visible-content graph using the viewer's publish date", () => {
+  const accounts: InstagramContentAccount[] = [
+    {
+      ...account,
+      items: [
+        createItem({
+          id: "after-local-midnight",
+          metrics: {
+            ...emptyMetrics(),
+            interactions: 0,
+            reach: 1,
+            views: 3,
+          },
+          publishedAt: "2026-08-08T19:57:20.000Z",
+        }),
+      ],
+      lastSyncedAt: "2026-08-09T00:00:00.000Z",
+      message: null,
+      status: "ready",
+    },
+  ];
+
+  assert.deepEqual(
+    buildInstagramContentPerformanceTrend({
+      accounts,
+      dateKeys: ["2026-08-08", "2026-08-09"],
+      getPublishedDateKey: () => "2026-08-09",
+    }),
+    [
+      {
+        date: "2026-08-08",
+        interactions: null,
+        reach: null,
+        views: null,
+      },
+      {
+        date: "2026-08-09",
+        interactions: 0,
+        reach: 1,
+        views: 3,
+      },
+    ],
   );
 });
 

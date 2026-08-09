@@ -150,6 +150,15 @@ export function clampHookTextPosition(
   };
 }
 
+export function getDefaultHookTextPosition(
+  bounds: HookTextPositionBounds,
+) {
+  return {
+    x: (bounds.minX + bounds.maxX) / 2,
+    y: bounds.minY,
+  };
+}
+
 export function estimateHookTextLineWidth(text: string, fontSize: number) {
   let emWidth = 0;
 

@@ -50,8 +50,10 @@ export type ResolvedHookVideoSource = {
   height: number | null;
   id: string;
   influencerId: string;
+  influencerKey: string | null;
   mimeType: string;
   ratio: MediaRatio;
+  reactionType: string | null;
   sourceKind: HookVideoSourceKind;
   storageKey: string;
   thumbnailUrl: string | null;
@@ -59,6 +61,7 @@ export type ResolvedHookVideoSource = {
   trimEnd: number | null;
   trimStart: number;
   url: string;
+  visualGroup: string | null;
   width: number | null;
 };
 
@@ -376,8 +379,10 @@ export async function resolveHookVideoSource(params: {
     height: asset.height,
     id: asset.id,
     influencerId: params.influencerId,
+    influencerKey: null,
     mimeType: asset.mime_type,
     ratio: asset.ratio,
+    reactionType: null,
     sourceKind: "user",
     storageKey: asset.storage_key,
     thumbnailUrl: asset.thumbnail_url,
@@ -385,6 +390,7 @@ export async function resolveHookVideoSource(params: {
     trimEnd: asset.duration_seconds,
     trimStart: 0,
     url: asset.url,
+    visualGroup: null,
     width: asset.width,
   };
 }
@@ -470,8 +476,13 @@ function mapCatalogSource(params: {
     height: params.asset.height,
     id: params.asset.id,
     influencerId: params.influencerId,
+    influencerKey: params.asset.influencer_key,
     mimeType: getVideoMimeType(params.asset.source_s3_key),
     ratio: params.asset.ratio,
+    reactionType: getAvatarMetadataString(
+      params.asset,
+      "reactionType",
+    ),
     sourceKind: "catalog",
     storageKey: params.asset.source_s3_key,
     thumbnailUrl: params.asset.thumbnail_url,
@@ -481,6 +492,7 @@ function mapCatalogSource(params: {
       : params.asset.duration_seconds,
     trimStart: hasSavedTrim ? params.preference?.trim_start ?? 0 : 0,
     url: params.asset.source_video_url,
+    visualGroup: params.asset.visual_group,
     width: params.asset.width,
   };
 }

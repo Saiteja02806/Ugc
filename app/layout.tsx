@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import Script from "next/script";
 
 import { GoogleAuthRedirectHandler } from "@/components/auth/google-auth-redirect-handler";
 import { AuthProvider } from "@/contexts/auth-context";
@@ -63,6 +64,20 @@ export const metadata: Metadata = {
 
 const forceDarkTheme = isProductionThemeLocked(process.env.VERCEL_ENV);
 
+const RETIRED_GLOBAL_CONTENT_STORAGE_KEYS = [
+  "ugc-studio.carousel-library.v1",
+  "ugc-studio.schedule-drafts.v1",
+  "ugc-studio.editable-videos.v1",
+] as const;
+
+const retiredContentStorageCleanupScript = `(() => {
+  try {
+    for (const key of ${JSON.stringify(RETIRED_GLOBAL_CONTENT_STORAGE_KEYS)}) {
+      window.localStorage.removeItem(key);
+    }
+  } catch {}
+})();`;
+
 const themeInitializationScript = `(() => {
   const forceDark = ${JSON.stringify(forceDarkTheme)};
   try {
@@ -93,15 +108,21 @@ export default function RootLayout({
       style={forceDarkTheme ? { colorScheme: "dark" } : undefined}
       suppressHydrationWarning
     >
-      <head>
-        <script
-          id="ugc-pilot-theme"
-          dangerouslySetInnerHTML={{ __html: themeInitializationScript }}
-        />
-      </head>
       <body
         className={`${geistSans.className} min-h-full bg-background text-foreground antialiased`}
       >
+        <Script
+          id="ugc-pilot-retired-content-storage-cleanup"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: retiredContentStorageCleanupScript,
+          }}
+        />
+        <Script
+          id="ugc-pilot-theme"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeInitializationScript }}
+        />
         <ThemeProvider forceDark={forceDarkTheme}>
           <AuthProvider>
             <GoogleAuthRedirectHandler />

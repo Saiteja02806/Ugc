@@ -4,7 +4,7 @@ import test from "node:test";
 import type { TrendingFeedProviderResult } from "./feed-items.ts";
 import {
   filterWallTextProvidersForRuntime,
-  isWallTextLocalDevelopmentEnabled,
+  isWallTextEnabled,
 } from "./wall-text-access.ts";
 
 const providers = [
@@ -20,32 +20,13 @@ const providers = [
   },
 ] satisfies TrendingFeedProviderResult[];
 
-test("enables Wall-of-text only in local development", () => {
-  assert.equal(isWallTextLocalDevelopmentEnabled("development"), true);
-  assert.equal(isWallTextLocalDevelopmentEnabled("production"), false);
-  assert.equal(isWallTextLocalDevelopmentEnabled("test"), false);
+test("enables Wall-of-text in every runtime", () => {
+  assert.equal(isWallTextEnabled(), true);
 });
 
-test("keeps Wall-of-text providers in local development", () => {
+test("keeps Wall-of-text providers in development, test, and production", () => {
   assert.deepEqual(
-    filterWallTextProvidersForRuntime(providers, "development").map(
-      (provider) => provider.format,
-    ),
+    filterWallTextProvidersForRuntime(providers).map((provider) => provider.format),
     ["carousel", "wall_text"],
-  );
-});
-
-test("removes Wall-of-text providers outside local development", () => {
-  assert.deepEqual(
-    filterWallTextProvidersForRuntime(providers, "production").map(
-      (provider) => provider.format,
-    ),
-    ["carousel"],
-  );
-  assert.deepEqual(
-    filterWallTextProvidersForRuntime(providers, "test").map(
-      (provider) => provider.format,
-    ),
-    ["carousel"],
   );
 });

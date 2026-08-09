@@ -28,12 +28,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  getCarouselLibraryItems,
-  listenToCarouselLibrary,
-  removeCarouselLibraryItem as removeBrowserCarouselLibraryItem,
-  type CarouselLibraryItem as BrowserCarouselLibraryItem,
-} from "@/lib/carousel/local-library";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   createAndPublishCarouselSchedule,
@@ -58,16 +52,13 @@ type LibraryCarouselItem = {
   slideCount: number;
   slides: LibraryCarouselSlide[];
   sourceId: string;
-  storageSource: "browser" | "server";
   title: string;
   updatedAt: string;
 };
 
-type ServerLibraryCarouselItem = Omit<LibraryCarouselItem, "storageSource">;
-
 type LibraryContentResponse =
   | {
-      items: ServerLibraryCarouselItem[];
+      items: LibraryCarouselItem[];
       ok: true;
     }
   | {
@@ -116,7 +107,6 @@ export function CarouselLibraryTab({
   onShowPosts?: () => void;
 } = {}) {
   const [serverItems, setServerItems] = useState<LibraryCarouselItem[]>([]);
-  const [browserItems, setBrowserItems] = useState<LibraryCarouselItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<LibraryCarouselItem | null>(
@@ -154,37 +144,15 @@ export function CarouselLibraryTab({
         );
       }
 
-      setServerItems(
-        data.items.map((item) => ({
-          ...item,
-          storageSource: "server",
-        })),
-      );
+      setServerItems(data.items);
     } catch {
       setServerItems([]);
       setErrorMessage(
-        browserItems.length > 0
-          ? "Server Library is unavailable, so saved carousels from this browser are shown."
-          : "Carousel Library sync is still connecting. Saved carousels from this browser will still appear here.",
+        "Could not load your saved carousels. Check your connection and try again.",
       );
     } finally {
       setIsLoading(false);
     }
-  }, [browserItems.length]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setBrowserItems(mapBrowserCarouselLibraryItems(getCarouselLibraryItems()));
-    }, 0);
-
-    const unsubscribe = listenToCarouselLibrary((nextItems) => {
-      setBrowserItems(mapBrowserCarouselLibraryItems(nextItems));
-    });
-
-    return () => {
-      window.clearTimeout(timer);
-      unsubscribe();
-    };
   }, []);
 
   useEffect(() => {
@@ -195,10 +163,7 @@ export function CarouselLibraryTab({
     return () => window.clearTimeout(timer);
   }, [loadItems]);
 
-  const items = useMemo(
-    () => mergeLibraryCarouselItems(serverItems, browserItems),
-    [browserItems, serverItems],
-  );
+  const items = serverItems;
 
   const totalSlides = useMemo(
     () => items.reduce((total, item) => total + item.slideCount, 0),
@@ -215,18 +180,6 @@ export function CarouselLibraryTab({
     setErrorMessage(null);
 
     try {
-      if (item.storageSource === "browser") {
-        const nextBrowserItems = removeBrowserCarouselLibraryItem(item.sourceId);
-
-        setBrowserItems(mapBrowserCarouselLibraryItems(nextBrowserItems));
-        setSelectedItem((currentItem) =>
-          currentItem?.id === item.id ? null : currentItem,
-        );
-        setPendingRemoveItem(null);
-        setNotice("Removed from this browser.");
-        return;
-      }
-
       const token = await getRequiredAuthToken();
       const response = await fetch(
         `/api/library/carousels/${encodeURIComponent(item.id)}`,
@@ -266,13 +219,6 @@ export function CarouselLibraryTab({
   }
 
   function scheduleItem(item: LibraryCarouselItem) {
-    if (item.storageSource !== "server") {
-      setErrorMessage(
-        "This carousel is saved only in this browser. Save it to your online Library before scheduling.",
-      );
-      return;
-    }
-
     setErrorMessage(null);
     setNotice(null);
     setScheduleContext({
@@ -385,7 +331,6 @@ export function CarouselLibraryTab({
                 key={item.id}
                 item={item}
                 removing={removingItemId === item.id}
-                scheduleBlocked={item.storageSource !== "server"}
                 onRemove={() => setPendingRemoveItem(item)}
                 onSchedule={() => scheduleItem(item)}
                 onView={() => setSelectedItem(item)}
@@ -526,17 +471,14 @@ function LibraryCarouselCard({
   onSchedule,
   onView,
   removing,
-  scheduleBlocked,
 }: {
   item: LibraryCarouselItem;
   onRemove: () => void;
   onSchedule: () => void;
   onView: () => void;
   removing: boolean;
-  scheduleBlocked: boolean;
 }) {
   const coverUrl = item.coverUrl ?? item.slides[0]?.renderedUrl;
-  const scheduleHelpId = `${item.id.replace(/[^a-zA-Z0-9_-]/g, "-")}-schedule-help`;
 
   return (
     <article className="group min-w-0 overflow-hidden rounded-panel border border-border bg-card transition-colors hover:border-border-strong">
@@ -567,11 +509,6 @@ function LibraryCarouselCard({
             {item.slideCount} slides
           </span>
         </div>
-        {item.storageSource === "browser" ? (
-          <span className="absolute bottom-3 left-3 rounded-full bg-card-muted px-2.5 py-1 text-[11px] font-bold text-muted ring-1 ring-inset ring-border">
-            Local only
-          </span>
-        ) : null}
       </button>
 
       <div className="flex flex-col gap-2.5 p-3">
@@ -596,23 +533,12 @@ function LibraryCarouselCard({
           <button
             type="button"
             onClick={onSchedule}
-            aria-disabled={scheduleBlocked}
-            aria-describedby={scheduleBlocked ? scheduleHelpId : undefined}
-            className={cn(
-              "inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-control border border-border bg-card px-2 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:min-h-9",
-              scheduleBlocked && "text-muted opacity-75",
-            )}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-control border border-border bg-card px-2 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:min-h-9"
           >
             <CalendarCheck className="size-3.5" aria-hidden="true" />
             Schedule
           </button>
         </div>
-
-        {scheduleBlocked ? (
-          <p id={scheduleHelpId} className="text-[11px] font-medium leading-4 text-muted">
-            Online Library save required before scheduling.
-          </p>
-        ) : null}
 
         <details className="group/actions">
           <summary className="flex min-h-9 list-none items-center justify-center gap-1.5 rounded-control text-xs font-semibold text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
@@ -707,11 +633,7 @@ function RemoveCarouselDialog({
           <DialogTitle>Remove carousel?</DialogTitle>
           <DialogDescription>
             {item
-              ? `This removes "${item.title}" from ${
-                  item.storageSource === "server"
-                    ? "your online Library"
-                    : "this browser"
-                }.`
+              ? `This removes "${item.title}" from your online Library.`
               : "This carousel will be removed."}
           </DialogDescription>
         </DialogHeader>
@@ -767,56 +689,6 @@ function LibraryContentSkeleton() {
   );
 }
 
-function mapBrowserCarouselLibraryItems(items: BrowserCarouselLibraryItem[]) {
-  return items.map((item): LibraryCarouselItem => {
-    const slideUrls = item.slideUrls.filter(Boolean);
-    const coverUrl = item.thumbnailUrl ?? slideUrls[0] ?? null;
-
-    return {
-      coverUrl,
-      id: `browser:${item.id}`,
-      savedAt: item.savedAt,
-      slideCount: slideUrls.length,
-      slides: slideUrls.map((renderedUrl, index) => ({
-        headline: null,
-        id: `${item.id}:slide:${index + 1}`,
-        renderedUrl,
-        slideNumber: index + 1,
-        slideType: null,
-        subtext: null,
-      })),
-      sourceId: item.carouselId,
-      storageSource: "browser",
-      title: item.title,
-      updatedAt: item.savedAt,
-    };
-  });
-}
-
-function mergeLibraryCarouselItems(
-  serverItems: LibraryCarouselItem[],
-  browserItems: LibraryCarouselItem[],
-) {
-  const seenSourceIds = new Set<string>();
-  const mergedItems: LibraryCarouselItem[] = [];
-
-  for (const item of serverItems) {
-    seenSourceIds.add(item.sourceId);
-    mergedItems.push(item);
-  }
-
-  for (const item of browserItems) {
-    if (!seenSourceIds.has(item.sourceId)) {
-      mergedItems.push(item);
-    }
-  }
-
-  return mergedItems.sort(
-    (first, second) =>
-      getSortableDate(second.updatedAt) - getSortableDate(first.updatedAt),
-  );
-}
-
 async function getRequiredAuthToken() {
   const token = await getCurrentUserIdToken();
 
@@ -842,10 +714,4 @@ function formatDate(value: string) {
     day: "numeric",
     month: "short",
   }).format(date);
-}
-
-function getSortableDate(value: string) {
-  const time = new Date(value).getTime();
-
-  return Number.isFinite(time) ? time : 0;
 }

@@ -178,7 +178,7 @@ export class SupabaseJobStore {
     userId: string;
   }) {
     const { data, error } = await this.client.rpc(
-      "persist_trending_hook_copy_generation_v4",
+      "persist_trending_hook_copy_generation_v5",
       {
         p_business_profile_id: params.businessProfileId,
         p_business_profile_version: params.businessProfileVersion,
@@ -198,6 +198,41 @@ export class SupabaseJobStore {
     }
 
     return data ?? 0;
+  }
+
+  async persistValidatedHookCompositionGeneration(params: {
+    businessProfileId: string;
+    businessProfileVersion: number;
+    candidates: Json;
+    demoAssetId: string;
+    generatorModel: string;
+    jobId: string;
+    promptVersion: string;
+    selectionVersion: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "persist_validated_hook_composition_generation",
+      {
+        p_business_profile_id: params.businessProfileId,
+        p_business_profile_version: params.businessProfileVersion,
+        p_candidates: params.candidates,
+        p_demo_asset_id: params.demoAssetId,
+        p_generator_model: params.generatorModel,
+        p_job_id: params.jobId,
+        p_prompt_version: params.promptVersion,
+        p_selection_version: params.selectionVersion,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not persist validated Hook compositions: ${error.message}`,
+      );
+    }
+
+    return data ?? [];
   }
 
   async markCompleted(params: {

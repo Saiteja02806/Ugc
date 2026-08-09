@@ -6,11 +6,14 @@ import {
   ChevronDown,
   Clock3,
   Loader2,
+  Pause,
+  Play,
   Sparkles,
   UserRound,
   Video,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
@@ -51,7 +54,6 @@ import {
   getAIStudioPromptLengthError,
   normalizeAIStudioPrompt,
 } from "@/lib/ai-studio/prompt-policy";
-import { getCreativeAssetEditorHref } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   persistJobIdInUrl,
@@ -209,7 +211,6 @@ export function VideoGenerationStudioPanel({
   accessState?: AIStudioAccessState;
   active?: boolean;
 }) {
-  const router = useRouter();
   const { loading: authLoading, user } = useAuth();
   const [prompt, setPrompt] = useState("");
   const [avatarLibrary, setAvatarLibrary] = useState<AvatarLibraryItem[]>([]);
@@ -425,22 +426,26 @@ export function VideoGenerationStudioPanel({
           // up or the media endpoint is temporarily unavailable.
         }
 
-        const nextVideo: GeneratedVideo =
-          persistedVideo ?? {
-            createdAt: completedJob.completedAt ?? completedJob.updatedAt,
-            durationSeconds: null,
-            id:
-              completedOutput.mediaAssetId ??
-              completedOutput.videoId ??
-              completedJob.id,
-            mediaAssetId: completedOutput.mediaAssetId,
-            ratio: "9:16",
-            status: "Ready",
-            title: getGeneratedVideoTitle(
-              metadata?.prompt || "Generated video",
-            ),
-            url: completedOutputUrl,
-          };
+        const completedPrompt = metadata?.prompt || "Generated video";
+        const nextVideo: GeneratedVideo = persistedVideo
+          ? {
+              ...persistedVideo,
+              prompt: metadata?.prompt || persistedVideo.prompt,
+            }
+          : {
+              createdAt: completedJob.completedAt ?? completedJob.updatedAt,
+              durationSeconds: null,
+              id:
+                completedOutput.mediaAssetId ??
+                completedOutput.videoId ??
+                completedJob.id,
+              mediaAssetId: completedOutput.mediaAssetId,
+              prompt: completedPrompt,
+              ratio: "9:16",
+              status: "Ready",
+              title: getGeneratedVideoTitle(completedPrompt),
+              url: completedOutputUrl,
+            };
 
         if (ignore) {
           return;
@@ -489,7 +494,7 @@ export function VideoGenerationStudioPanel({
         setPersonalAvatarAssets([]);
         setSelectedAvatarId(null);
         setAvatarLoading(false);
-        setAvatarErrorMessage("Sign in before choosing a presenter.");
+        setAvatarErrorMessage("Sign in before choosing a source video.");
         return;
       }
 
@@ -499,7 +504,7 @@ export function VideoGenerationStudioPanel({
         const token = await getCurrentUserIdToken();
 
         if (!token) {
-          throw new Error("Sign in before choosing a presenter.");
+          throw new Error("Sign in before choosing a source video.");
         }
 
         const [libraryResult, personalResult] = await Promise.allSettled([
@@ -521,7 +526,7 @@ export function VideoGenerationStudioPanel({
               result.status === "rejected",
           )
           .map((result) =>
-            getErrorMessage(result.reason, "Could not load presenters."),
+            getErrorMessage(result.reason, "Could not load source videos."),
           );
 
         setAvatarLibrary(nextAvatarLibrary);
@@ -545,7 +550,7 @@ export function VideoGenerationStudioPanel({
           setPersonalAvatarAssets([]);
           setSelectedAvatarId(null);
           setAvatarErrorMessage(
-            getErrorMessage(error, "Could not load presenters."),
+            getErrorMessage(error, "Could not load source videos."),
           );
         }
       } finally {
@@ -583,15 +588,15 @@ export function VideoGenerationStudioPanel({
     if (!selectedAvatar) {
       setActionError(
         avatarLoading
-          ? "Presenter library is still loading."
-          : "Choose a presenter before generating.",
+          ? "Source video library is still loading."
+          : "Choose a source video before generating.",
       );
       return;
     }
 
     if (!selectedAvatar.thumbnailUrl) {
       setActionError(
-        "Choose a presenter with a preview image before generating.",
+        "Choose a source video with a preview image before generating.",
       );
       return;
     }
@@ -640,7 +645,6 @@ export function VideoGenerationStudioPanel({
       setStoredJobId(data.jobId);
       setSubmittedJobId(data.jobId);
       submissionKeyRef.current = null;
-      setPrompt("");
     } catch (error) {
       console.error("Video generation failed:", error);
       setActionError(
@@ -719,17 +723,6 @@ export function VideoGenerationStudioPanel({
     setPrompt(enhancedPrompt);
   }
 
-  function handleEditVideo(video: GeneratedVideo) {
-    if (!video.mediaAssetId) {
-      setActionError(
-        "The generated video is still being added to Creative Assets.",
-      );
-      return;
-    }
-
-    router.push(getCreativeAssetEditorHref(video.mediaAssetId));
-  }
-
   const jobQueryError = activeJobQuery.isError
     ? getErrorMessage(
         activeJobQuery.error,
@@ -768,18 +761,14 @@ export function VideoGenerationStudioPanel({
     >
       <AiStudioResults
         ariaLabel="Generated videos"
-        emptyDescription="Describe the presenter video you want below. Finished generations are saved to your account."
-        gridClassName="sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+        emptyDescription="Describe the video you want below. Finished generations are saved to your account."
+        gridClassName="grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-1"
         hasResults={generatedVideos.length > 0}
         loading={resultsLoading}
         status={resultsStatus}
       >
         {generatedVideos.map((video) => (
-          <VideoResultCard
-            key={video.id}
-            video={video}
-            onEdit={() => handleEditVideo(video)}
-          />
+          <VideoResultCard key={video.id} video={video} />
         ))}
       </AiStudioResults>
 
@@ -796,6 +785,7 @@ export function VideoGenerationStudioPanel({
         generateLabel="Generate video"
         generationLocked={generationLocked}
         isGenerating={isGenerating}
+        layout="unified"
         maxLength={AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH}
         name="videoPrompt"
         placeholder="Describe the video you want to create…"
@@ -848,10 +838,11 @@ export function VideoGenerationStudioPanel({
               icon={<Video className="size-4" aria-hidden="true" />}
               label="1 video"
             />
-            <div className="w-full sm:w-auto sm:min-w-[180px]">
+            <div className="shrink-0">
               <AvatarPicker
                 avatarErrorMessage={avatarErrorMessage}
                 avatarLoading={avatarLoading}
+                compact
                 globalAvatars={globalAvatars}
                 personalAvatars={personalAvatars}
                 selectedAvatarId={selectedAvatarId}
@@ -902,7 +893,7 @@ async function fetchAvatarLibrary(token: string) {
   const data = (await response.json()) as AvatarListResponse;
 
   if (!response.ok || data.ok !== true) {
-    throw new Error(getApiErrorMessage(data, "Could not load the presenter library."));
+    throw new Error(getApiErrorMessage(data, "Could not load source videos."));
   }
 
   return data.avatars;
@@ -967,6 +958,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 function AvatarPicker({
   avatarErrorMessage,
   avatarLoading,
+  compact = false,
   globalAvatars,
   onChange,
   personalAvatars,
@@ -975,6 +967,7 @@ function AvatarPicker({
 }: {
   avatarErrorMessage: string | null;
   avatarLoading: boolean;
+  compact?: boolean;
   globalAvatars: AvatarOption[];
   onChange: (avatarId: string | null) => void;
   personalAvatars: AvatarOption[];
@@ -984,10 +977,10 @@ function AvatarPicker({
   const [open, setOpen] = useState(false);
   const hasOptions = personalAvatars.length > 0 || globalAvatars.length > 0;
   const triggerLabel = avatarLoading
-    ? "Loading presenters"
+    ? "Loading source videos"
     : selectedAvatar
-      ? `Choose presenter, currently ${selectedAvatar.label}`
-      : "Choose presenter";
+      ? `Choose source video, currently ${selectedAvatar.label}`
+      : "Choose source video";
 
   function selectAvatar(avatarId: string) {
     onChange(avatarId);
@@ -1001,38 +994,51 @@ function AvatarPicker({
           <Button
             type="button"
             variant="outline"
-            size="lg"
-            className="w-full max-w-none justify-between"
+            size={compact ? "icon-lg" : "lg"}
+            className={cn(
+              !compact && "w-full max-w-none justify-between",
+              compact && "overflow-hidden p-0",
+            )}
             aria-label={triggerLabel}
-            title={selectedAvatar?.label ?? "Choose presenter"}
+            title={selectedAvatar?.label ?? "Choose source video"}
           />
         }
       >
         {avatarLoading ? (
           <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
         ) : selectedAvatar ? (
-          <Avatar size="sm">
+          <Avatar
+            size="sm"
+            className={cn(
+              compact && "size-full rounded-[inherit] after:rounded-[inherit]",
+            )}
+          >
             {selectedAvatar.thumbnailUrl ? (
-              <AvatarImage src={selectedAvatar.thumbnailUrl} alt="" />
+              <AvatarImage
+                src={selectedAvatar.thumbnailUrl}
+                alt=""
+                className={cn(compact && "rounded-[inherit]")}
+              />
             ) : null}
-            <AvatarFallback>
+            <AvatarFallback className={cn(compact && "rounded-[inherit]")}>
               {getAvatarFallbackText(selectedAvatar.label)}
             </AvatarFallback>
           </Avatar>
         ) : (
           <UserRound aria-hidden="true" />
         )}
-        <span className="truncate">
+        <span className={cn("truncate", compact && "sr-only")}>
           {avatarLoading
             ? "Loading…"
             : selectedAvatar
               ? getAvatarDisplayName(selectedAvatar.label)
-              : "Presenter"}
+              : "Source video"}
         </span>
         <ChevronDown
           data-icon="inline-end"
           className={cn(
             "transition-transform duration-200 motion-reduce:transition-none",
+            compact && "hidden",
             open && "rotate-180",
           )}
           aria-hidden="true"
@@ -1046,9 +1052,9 @@ function AvatarPicker({
         className="w-[min(92vw,440px)] gap-0 p-0"
       >
         <PopoverHeader className="border-b border-border p-3">
-          <PopoverTitle>Choose a presenter</PopoverTitle>
+          <PopoverTitle>Choose a source video</PopoverTitle>
           <PopoverDescription>
-            Select by face so the on-camera style is easy to compare.
+            Select the on-camera source you want to use for this generation.
           </PopoverDescription>
         </PopoverHeader>
 
@@ -1059,8 +1065,8 @@ function AvatarPicker({
             <AlertCircle aria-hidden="true" />
             <AlertTitle>
               {hasOptions
-                ? "Some presenters unavailable"
-                : "Presenters unavailable"}
+                ? "Some sources unavailable"
+                : "Sources unavailable"}
             </AlertTitle>
             <AlertDescription>{avatarErrorMessage}</AlertDescription>
           </Alert>
@@ -1077,8 +1083,8 @@ function AvatarPicker({
                 onSelect={selectAvatar}
               />
               <AvatarGroup
-                emptyMessage="No library presenters are available yet."
-                label="Presenter library"
+                emptyMessage="No source videos are available yet."
+                label="Available source videos"
                 options={globalAvatars}
                 selectedAvatarId={selectedAvatarId}
                 onSelect={selectAvatar}
@@ -1089,7 +1095,7 @@ function AvatarPicker({
 
         {!avatarLoading && !avatarErrorMessage && !hasOptions ? (
           <div className="p-4 text-sm font-medium text-muted">
-            No presenters are available yet.
+            No source videos are available yet.
           </div>
         ) : null}
       </PopoverContent>
@@ -1182,7 +1188,7 @@ function AvatarGroup({
 
 function AvatarPickerSkeleton() {
   return (
-    <div className="p-3" role="status" aria-label="Loading presenter library">
+    <div className="p-3" role="status" aria-label="Loading source videos">
       <Skeleton className="mb-3 h-4 w-32" />
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {Array.from({ length: 8 }, (_, index) => (
@@ -1196,74 +1202,160 @@ function AvatarPickerSkeleton() {
   );
 }
 
-function VideoResultCard({
-  onEdit,
-  video,
-}: {
-  onEdit: () => void;
-  video: GeneratedVideo;
-}) {
+function VideoResultCard({ video }: { video: GeneratedVideo }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(video.durationSeconds ?? 0);
+  const displayDuration = duration || video.durationSeconds || 0;
+
+  useEffect(() => {
+    const player = videoRef.current;
+
+    return () => {
+      player?.pause();
+    };
+  }, [video.id, video.url]);
+
+  async function togglePlayback() {
+    const player = videoRef.current;
+
+    if (!player) {
+      return;
+    }
+
+    if (player.paused) {
+      try {
+        await player.play();
+      } catch {
+        setIsPlaying(false);
+      }
+      return;
+    }
+
+    player.pause();
+  }
+
+  function toggleMuted() {
+    const player = videoRef.current;
+    const nextMuted = !isMuted;
+
+    setIsMuted(nextMuted);
+
+    if (player) {
+      player.muted = nextMuted;
+    }
+  }
+
   return (
-    <article className="group min-w-0">
-      <div
-        className="w-full overflow-hidden rounded-[var(--radius-card)] bg-card-muted text-foreground ring-1 ring-border"
-        style={{ aspectRatio: video.ratio.replace(":", " / ") }}
-      >
-        <video
-          src={video.url}
-          aria-label={video.title}
-          className="size-full object-cover"
-          muted
-          playsInline
-          controls
-          preload="metadata"
-        />
+    <article className="grid min-w-0 gap-5 border-b border-border py-5 first:pt-1 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_216px] lg:items-center">
+      <div className="order-2 min-w-0 space-y-3 lg:order-1 lg:py-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xs font-medium tracking-[0.12em] text-muted uppercase">
+            Your prompt
+          </p>
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[11px] font-medium",
+              video.status === "Ready"
+                ? "bg-success/10 text-success"
+                : video.status === "Failed"
+                  ? "bg-error/10 text-error"
+                  : "bg-card-muted text-muted",
+            )}
+          >
+            {video.status}
+          </span>
+        </div>
+        <h3 className="max-w-3xl text-base font-medium leading-7 text-foreground sm:text-lg">
+          {video.prompt}
+        </h3>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted">
+          {displayDuration > 0 ? (
+            <span className="inline-flex items-center gap-1">
+              <Clock3 className="size-3" aria-hidden="true" />
+              {formatVideoDuration(displayDuration)}
+            </span>
+          ) : null}
+          <span>{formatGeneratedAt(video.createdAt)}</span>
+        </div>
       </div>
 
-      <div className="mt-3 flex flex-col gap-3 px-1">
-        <div>
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="truncate text-sm font-semibold text-foreground">
-              {video.title}
-            </h3>
-            <span
-              className={cn(
-                "shrink-0 rounded-full px-2 py-1 text-[11px] font-medium",
-                video.status === "Ready"
-                  ? "bg-success/10 text-success"
-                  : video.status === "Failed"
-                    ? "bg-error/10 text-error"
-                    : "bg-card-muted text-muted",
-              )}
-            >
-              {video.status}
-            </span>
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-medium text-muted">
-            {video.durationSeconds !== null ? (
-              <span className="inline-flex items-center gap-1">
-                <Clock3 className="size-3" aria-hidden="true" />
-                {formatVideoDuration(video.durationSeconds)}
-              </span>
-            ) : null}
-            <span>{formatGeneratedAt(video.createdAt)}</span>
+      <div className="order-1 w-full max-w-[216px] justify-self-start lg:order-2 lg:justify-self-end">
+        <div
+          className="relative overflow-hidden rounded-[20px] bg-black shadow-sm"
+          style={{ aspectRatio: video.ratio.replace(":", " / ") }}
+        >
+          <video
+            key={video.url}
+            ref={videoRef}
+            src={video.url}
+            aria-label={`${video.title} preview`}
+            className="size-full object-cover"
+            muted={isMuted}
+            playsInline
+            preload="metadata"
+            onEnded={() => {
+              setCurrentTime(displayDuration);
+              setIsPlaying(false);
+            }}
+            onLoadedMetadata={(event) => {
+              const nextDuration = event.currentTarget.duration;
+
+              setCurrentTime(0);
+              setIsPlaying(false);
+
+              if (Number.isFinite(nextDuration)) {
+                setDuration(nextDuration);
+              }
+            }}
+            onPause={() => setIsPlaying(false)}
+            onPlay={() => setIsPlaying(true)}
+            onTimeUpdate={(event) =>
+              setCurrentTime(event.currentTarget.currentTime)
+            }
+          />
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-2 pb-2 pt-9">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  className="bg-card/90 shadow-sm"
+                  aria-label={isPlaying ? "Pause video" : "Play video"}
+                  aria-pressed={isPlaying}
+                  onClick={() => void togglePlayback()}
+                >
+                  {isPlaying ? (
+                    <Pause aria-hidden="true" />
+                  ) : (
+                    <Play aria-hidden="true" />
+                  )}
+                </Button>
+                <span className="rounded-md bg-black/55 px-1.5 py-1 text-[11px] font-medium tabular-nums text-white">
+                  {formatVideoDuration(currentTime)} / {formatVideoDuration(displayDuration)}
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                className="bg-card/90 shadow-sm"
+                aria-label={isMuted ? "Unmute video" : "Mute video"}
+                aria-pressed={!isMuted}
+                onClick={toggleMuted}
+              >
+                {isMuted ? (
+                  <VolumeX aria-hidden="true" />
+                ) : (
+                  <Volume2 aria-hidden="true" />
+                )}
+              </Button>
+            </div>
           </div>
         </div>
-
-        <Button
-          type="button"
-          size="lg"
-          onClick={onEdit}
-          disabled={!video.mediaAssetId}
-          title={
-            video.mediaAssetId
-              ? "Edit this generated video"
-              : "Adding this video to Creative Assets"
-          }
-          className="w-full"
-        >
-          Edit
-        </Button>
       </div>
     </article>
   );

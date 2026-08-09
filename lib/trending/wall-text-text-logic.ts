@@ -14,11 +14,53 @@ export const WALL_TEXT_PREFERRED_MIN_WORDS = 18;
 export const WALL_TEXT_PREFERRED_MAX_WORDS = 21;
 export const MAX_WALL_TEXT_WORDS = 24;
 export const MAX_WALL_TEXT_RENDERED_LINES = 7;
-export const PREFERRED_WALL_TEXT_RENDERED_LINES = { maximum: 6, minimum: 6 };
+export const PREFERRED_WALL_TEXT_RENDERED_LINES = { maximum: 6, minimum: 5 };
 export const MIN_WALL_TEXT_WORDS = 16;
-export const MIN_WALL_TEXT_RENDERED_LINES = 5;
+export const MIN_SHORT_WALL_TEXT_WORDS = 8;
+export const MIN_WALL_TEXT_RENDERED_LINES = 4;
 export const MAX_WALL_TEXT_WORDS_PER_LINE = 6;
 export const MIN_WALL_TEXT_WORDS_PER_LINE = 2;
+export type WallTextLinePolicy = {
+  ideal: number;
+  maximum: number;
+  minimum: number;
+  preferredMaximum: number;
+  preferredMinimum: number;
+};
+export type WallTextWordPolicy = {
+  maximum: number;
+  minimum: number;
+  preferredMaximum: number;
+  preferredMinimum: number;
+};
+const DEFAULT_WALL_TEXT_LINE_POLICY: WallTextLinePolicy = {
+  ideal: 6,
+  maximum: MAX_WALL_TEXT_RENDERED_LINES,
+  minimum: MIN_WALL_TEXT_RENDERED_LINES,
+  preferredMaximum: PREFERRED_WALL_TEXT_RENDERED_LINES.maximum,
+  preferredMinimum: PREFERRED_WALL_TEXT_RENDERED_LINES.minimum,
+};
+const WALL_TEXT_PATTERN_LINE_POLICIES: Record<
+  WallTextPattern,
+  WallTextLinePolicy
+> = {
+  action_benefit: {
+    ...DEFAULT_WALL_TEXT_LINE_POLICY,
+    ideal: 5,
+    preferredMaximum: 5,
+    preferredMinimum: 4,
+  },
+  before_after: DEFAULT_WALL_TEXT_LINE_POLICY,
+  belief_reframe: DEFAULT_WALL_TEXT_LINE_POLICY,
+  mistake_correction: DEFAULT_WALL_TEXT_LINE_POLICY,
+  problem_change_result: DEFAULT_WALL_TEXT_LINE_POLICY,
+  situation_discovery: {
+    ...DEFAULT_WALL_TEXT_LINE_POLICY,
+    ideal: 5,
+    preferredMaximum: 5,
+    preferredMinimum: 4,
+  },
+};
 const MAX_EXCLAMATION_MARKS = 1;
 const SOCIAL_OVERLAY_READING_WORDS_PER_SECOND = 4.3;
 const SENTENCE_TRANSITION_SECONDS = 0.12;
@@ -115,6 +157,57 @@ export type WallTextBusinessContext = {
 
 export function getWallTextMaximumWords() {
   return MAX_WALL_TEXT_WORDS;
+}
+
+export function getWallTextLinePolicy(
+  pattern: WallTextPattern,
+  durationSeconds?: number,
+): WallTextLinePolicy {
+  if (
+    durationSeconds !== undefined &&
+    Number.isFinite(durationSeconds) &&
+    durationSeconds <= 4.5
+  ) {
+    return {
+      ...WALL_TEXT_PATTERN_LINE_POLICIES[pattern],
+      ideal: MIN_WALL_TEXT_RENDERED_LINES,
+      preferredMaximum: MIN_WALL_TEXT_RENDERED_LINES,
+      preferredMinimum: MIN_WALL_TEXT_RENDERED_LINES,
+    };
+  }
+
+  return WALL_TEXT_PATTERN_LINE_POLICIES[pattern];
+}
+
+export function getWallTextWordPolicy(
+  durationSeconds: number,
+): WallTextWordPolicy {
+  const durationLimitedMaximum = Math.floor(
+    (durationSeconds - 0.24) * SOCIAL_OVERLAY_READING_WORDS_PER_SECOND,
+  );
+  const maximum = Math.min(
+    MAX_WALL_TEXT_WORDS,
+    Math.max(MIN_SHORT_WALL_TEXT_WORDS, durationLimitedMaximum),
+  );
+  const minimum =
+    maximum >= MIN_WALL_TEXT_WORDS
+      ? MIN_WALL_TEXT_WORDS
+      : MIN_SHORT_WALL_TEXT_WORDS;
+  const preferredMaximum = Math.min(
+    WALL_TEXT_PREFERRED_MAX_WORDS,
+    maximum,
+  );
+  const preferredMinimum =
+    maximum >= WALL_TEXT_PREFERRED_MIN_WORDS
+      ? WALL_TEXT_PREFERRED_MIN_WORDS
+      : Math.max(minimum, maximum - 2);
+
+  return {
+    maximum,
+    minimum,
+    preferredMaximum,
+    preferredMinimum,
+  };
 }
 
 export function getWallTextPatternForCandidate(
@@ -245,14 +338,15 @@ export function validateWallTextContent(
   durationSeconds: number,
 ) {
   const wordCount = countWords(content.fullText);
+  const wordPolicy = getWallTextWordPolicy(durationSeconds);
   const lineCount = content.segments.reduce(
     (total, segment) => total + segment.lines.length,
     0,
   );
 
-  if (wordCount < MIN_WALL_TEXT_WORDS || wordCount > MAX_WALL_TEXT_WORDS) {
+  if (wordCount < wordPolicy.minimum || wordCount > wordPolicy.maximum) {
     throw new Error(
-      `Wall-of-text copy must contain ${MIN_WALL_TEXT_WORDS}–${MAX_WALL_TEXT_WORDS} words.`,
+      `Wall-of-text copy must contain ${wordPolicy.minimum}–${wordPolicy.maximum} words for a ${durationSeconds.toFixed(1)}-second clip.`,
     );
   }
 
@@ -364,7 +458,7 @@ function toWallTextContent(
 
 function normalizePattern(pattern: WallTextPattern) {
   if (!WALL_TEXT_PATTERNS.includes(pattern)) {
-    throw new Error("Wall-of-text copy uses an unsupported six-second pattern.");
+    throw new Error("Wall-of-text copy uses an unsupported message pattern.");
   }
 
   return pattern;

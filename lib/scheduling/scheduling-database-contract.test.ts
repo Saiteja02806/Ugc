@@ -622,6 +622,7 @@ test("Calendar starts at the fixed rollout boundary and hides historical posts",
       {
         createdAt: "2026-08-08T19:11:15.365Z",
         scheduledDate: "2026-08-09",
+        status: "scheduled",
       },
       calendarStartAt,
     ),
@@ -632,6 +633,7 @@ test("Calendar starts at the fixed rollout boundary and hides historical posts",
       {
         createdAt: "2026-08-08T19:11:15.366Z",
         scheduledDate: "2026-08-09",
+        status: "scheduled",
       },
       calendarStartAt,
     ),
@@ -641,6 +643,18 @@ test("Calendar starts at the fixed rollout boundary and hides historical posts",
     isScheduleDraftVisibleInCalendar(
       {
         createdAt: "2026-08-08T19:11:16.000Z",
+        status: "scheduled",
+      },
+      calendarStartAt,
+    ),
+    false,
+  );
+  assert.equal(
+    isScheduleDraftVisibleInCalendar(
+      {
+        createdAt: "2026-08-08T19:11:16.000Z",
+        scheduledDate: "2026-08-09",
+        status: "cancelled",
       },
       calendarStartAt,
     ),

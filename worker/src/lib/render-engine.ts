@@ -9,7 +9,10 @@ import {
   getStorageProviderName,
   uploadBufferToStorage,
 } from "./storage.js";
-import { downloadVideoToBuffer } from "./download-video.js";
+import {
+  downloadAudioToBuffer,
+  downloadVideoToBuffer,
+} from "./download-video.js";
 import {
   EDIT_OVERLAY_FONT_FAMILY,
   EDIT_OVERLAY_OUTPUT_DIMENSIONS,
@@ -127,6 +130,16 @@ export type RenderScheduleCombinationOutput = {
 
 export type RenderWallTextVideoPayload = {
   assignmentId: string;
+  audio: {
+    assetDurationSeconds: number;
+    assetId: string;
+    audioUrl: string;
+    cueStartSeconds: number;
+    fadeOutSeconds: number;
+    fitMode: "exact" | "trim" | "loop";
+    matchingVersion: string;
+    selectionId: string;
+  };
   creativeEditId: string | null;
   creativeEditRevision: number | null;
   creativeId: string;
@@ -261,7 +274,7 @@ export async function renderScheduleCombinationToStorage(
       fontSize: payload.hookTextFontSize,
       lines: payload.hookTextLines,
       normalizedPosition: payload.hookTextPosition,
-      position: "middle",
+      position: "top",
       style: "hook",
       text: payload.hookText,
       textColor: payload.hookTextColor,
@@ -373,12 +386,18 @@ export async function renderWallTextVideoToStorage(
   payload: RenderWallTextVideoPayload,
 ): Promise<RenderWallTextVideoOutput> {
   const workDir = await mkdtemp(join(tmpdir(), "ugc-wall-text-render-"));
+  const audioPath = join(workDir, "wall-audio");
   const inputPath = join(workDir, "source-video");
   const overlayPath = join(workDir, "wall-text-overlay.png");
   const outputPath = join(workDir, "wall-text-video.mp4");
 
   try {
-    const sourceBuffer = await downloadVideoToBuffer(payload.sourceVideoUrl);
+    const [sourceBuffer, audioBuffer] = await Promise.all([
+      downloadVideoToBuffer(payload.sourceVideoUrl),
+      downloadAudioToBuffer(payload.audio.audioUrl, {
+        maxBytes: 50 * 1024 * 1024,
+      }),
+    ]);
     await ensureWallTextFontsRegistered();
     await validateWallTextRenderedLineWidths(payload.text, payload.textBox);
     const overlaySvg = buildWallTextOverlaySvg({
@@ -390,17 +409,16 @@ export async function renderWallTextVideoToStorage(
     });
 
     await Promise.all([
+      writeFile(audioPath, audioBuffer),
       writeFile(inputPath, sourceBuffer),
       sharp(Buffer.from(overlaySvg))
         .png({ compressionLevel: 9 })
         .toFile(overlayPath),
     ]);
 
-    const hasAudio = await inputHasAudio(inputPath);
-
     await runFfmpegCommand({
       args: buildWallTextVideoArgs({
-        hasAudio,
+        audioPath,
         inputPath,
         outputPath,
         overlayPath,
@@ -408,6 +426,13 @@ export async function renderWallTextVideoToStorage(
       }),
       label: "wall-text video render",
       renderId: payload.renderId,
+    });
+
+    await validateRenderedVideoFile(outputPath, payload.renderId, {
+      expectedAudioCodecName: "aac",
+      expectedDurationSeconds: payload.durationSeconds,
+      logLabel: "Wall-text",
+      requireAudio: true,
     });
 
     const renderedBuffer = await readFile(outputPath);
@@ -446,17 +471,17 @@ export async function renderWallTextVideoToStorage(
 }
 
 export function buildWallTextVideoArgs({
-  hasAudio,
+  audioPath,
   inputPath,
   outputPath,
   overlayPath,
   payload,
 }: {
-  hasAudio: boolean;
+  audioPath: string;
   inputPath: string;
   outputPath: string;
   overlayPath: string;
-  payload: Pick<RenderWallTextVideoPayload, "durationSeconds">;
+  payload: Pick<RenderWallTextVideoPayload, "audio" | "durationSeconds">;
 }) {
   const args = [
     "-y",
@@ -468,16 +493,9 @@ export function buildWallTextVideoArgs({
     "30",
     "-i",
     overlayPath,
+    "-i",
+    audioPath,
   ];
-
-  if (!hasAudio) {
-    args.push(
-      "-f",
-      "lavfi",
-      "-i",
-      "anullsrc=channel_layout=stereo:sample_rate=48000",
-    );
-  }
 
   args.push(
     "-t",
@@ -487,11 +505,12 @@ export function buildWallTextVideoArgs({
       `[0:v]${buildVideoFilters({ ratio: "9:16" })},setpts=PTS-STARTPTS[video]`,
       "[1:v]format=rgba,setpts=PTS-STARTPTS[overlay]",
       "[video][overlay]overlay=x=0:y=0:shortest=1:format=auto[rendered]",
+      buildWallTextAudioFilter(payload),
     ].join(";"),
     "-map",
     "[rendered]",
     "-map",
-    hasAudio ? "0:a:0" : "2:a:0",
+    "[wall_audio]",
     "-c:v",
     "libx264",
     "-preset",
@@ -515,6 +534,49 @@ export function buildWallTextVideoArgs({
   );
 
   return args;
+}
+
+function buildWallTextAudioFilter(
+  payload: Pick<RenderWallTextVideoPayload, "audio" | "durationSeconds">,
+) {
+  const duration = formatSeconds(payload.durationSeconds);
+  const cueStart = formatSeconds(payload.audio.cueStartSeconds);
+  const assetEnd = formatSeconds(payload.audio.assetDurationSeconds);
+  const fadeDuration = Math.min(
+    payload.audio.fadeOutSeconds,
+    payload.durationSeconds / 2,
+  );
+  const fadeFilter =
+    fadeDuration > 0
+      ? `,afade=t=out:st=${formatSeconds(
+          payload.durationSeconds - fadeDuration,
+        )}:d=${formatSeconds(fadeDuration)}`
+      : "";
+  const loopFilter =
+    payload.audio.fitMode === "loop"
+      ? `,aloop=loop=-1:size=${Math.max(
+          1,
+          Math.ceil(
+            (payload.audio.assetDurationSeconds -
+              payload.audio.cueStartSeconds) *
+              48_000,
+          ),
+        )}:start=0`
+      : "";
+  const padFilter =
+    payload.audio.fitMode === "loop" ? "" : `apad=pad_dur=${duration}`;
+
+  return [
+    "[2:a:0]aresample=48000",
+    "aformat=channel_layouts=stereo",
+    `atrim=start=${cueStart}:end=${assetEnd}`,
+    "asetpts=PTS-STARTPTS",
+    ...(loopFilter ? [loopFilter.slice(1)] : []),
+    ...(padFilter ? [padFilter] : []),
+    `atrim=duration=${duration}`,
+    ...(fadeFilter ? [fadeFilter.slice(1)] : []),
+    "asetpts=PTS-STARTPTS[wall_audio]",
+  ].join(",");
 }
 
 async function runFfmpeg({
@@ -637,7 +699,17 @@ type RenderedVideoProbe = {
   }>;
 };
 
-export function validateRenderedVideoProbe(value: unknown) {
+type RenderedVideoValidationOptions = {
+  durationToleranceSeconds?: number;
+  expectedAudioCodecName?: string;
+  expectedDurationSeconds?: number;
+  requireAudio?: boolean;
+};
+
+export function validateRenderedVideoProbe(
+  value: unknown,
+  options: RenderedVideoValidationOptions = {},
+) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("ffprobe did not return video metadata.");
   }
@@ -645,6 +717,9 @@ export function validateRenderedVideoProbe(value: unknown) {
   const probe = value as RenderedVideoProbe;
   const videoStream = probe.streams?.find(
     (stream) => stream.codec_type === "video",
+  );
+  const audioStream = probe.streams?.find(
+    (stream) => stream.codec_type === "audio",
   );
   const duration = Number(probe.format?.duration);
 
@@ -660,6 +735,29 @@ export function validateRenderedVideoProbe(value: unknown) {
     );
   }
 
+  if (options.requireAudio && !audioStream?.codec_name) {
+    throw new Error("Rendered MP4 is missing a playable audio stream.");
+  }
+
+  if (
+    options.expectedAudioCodecName &&
+    audioStream?.codec_name !== options.expectedAudioCodecName
+  ) {
+    throw new Error(
+      `Rendered MP4 audio codec must be ${options.expectedAudioCodecName}.`,
+    );
+  }
+
+  if (options.expectedDurationSeconds !== undefined) {
+    const tolerance = options.durationToleranceSeconds ?? 0.15;
+
+    if (Math.abs(duration - options.expectedDurationSeconds) > tolerance) {
+      throw new Error(
+        `Rendered MP4 duration ${duration.toFixed(3)}s does not match the expected ${options.expectedDurationSeconds.toFixed(3)}s duration.`,
+      );
+    }
+  }
+
   return {
     codecName: videoStream.codec_name,
     durationSeconds: duration,
@@ -668,7 +766,11 @@ export function validateRenderedVideoProbe(value: unknown) {
   };
 }
 
-async function validateRenderedVideoFile(outputPath: string, renderId: string) {
+async function validateRenderedVideoFile(
+  outputPath: string,
+  renderId: string,
+  options: RenderedVideoValidationOptions & { logLabel?: string } = {},
+) {
   const ffprobePath = process.env.FFPROBE_PATH || "ffprobe";
   const args = [
     "-v",
@@ -712,9 +814,9 @@ async function validateRenderedVideoFile(outputPath: string, renderId: string) {
     throw new Error("ffprobe returned invalid JSON for the rendered MP4.");
   }
 
-  const metadata = validateRenderedVideoProbe(parsed);
+  const metadata = validateRenderedVideoProbe(parsed, options);
 
-  logger.info("Validated edited video MP4 before upload", {
+  logger.info(`Validated ${options.logLabel ?? "edited video"} MP4 before upload`, {
     ...metadata,
     renderId,
   });

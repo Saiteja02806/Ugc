@@ -36,6 +36,8 @@ test("stores one ready standalone Wall-text media asset", async () => {
       async renderWallTextVideoToStorage(payload) {
         events.push("render");
         assert.equal(payload.assignmentId, ASSIGNMENT_ID);
+        assert.equal(payload.audio.assetId, "audio_001_segment_01");
+        assert.equal(payload.audio.fitMode, "trim");
         assert.equal(
           payload.text.fullText,
           "I logged every meal but skipped drinks oil and small bites. Those missing details quietly changed the final total.",
@@ -89,6 +91,70 @@ test("records a standalone Wall-text render failure", async () => {
   assert.deepEqual(events, ["started", "render", "failed"]);
 });
 
+test("records a failure when render startup persistence fails", async () => {
+  const events: string[] = [];
+  const store = {
+    async markWallTextRenderStarted() {
+      events.push("started");
+      throw new Error("database unavailable");
+    },
+    async markWallTextRenderCompleted() {
+      events.push("completed");
+    },
+    async markWallTextRenderFailed() {
+      events.push("failed");
+    },
+  } as unknown as SupabaseJobStore;
+
+  await assert.rejects(
+    runRenderWallTextVideoJob(createJob(), {
+      dependencies: {
+        async renderWallTextVideoToStorage() {
+          events.push("render");
+          throw new Error("render should not start");
+        },
+      },
+      store,
+    }),
+    /database unavailable/,
+  );
+
+  assert.deepEqual(events, ["started", "failed"]);
+});
+
+test("records a failure when a payload is invalid but identifiers are recoverable", async () => {
+  const events: string[] = [];
+  const job = createJob();
+
+  (job.input_json as Record<string, unknown>).durationSeconds = 61;
+
+  const store = {
+    async markWallTextRenderStarted() {
+      events.push("started");
+    },
+    async markWallTextRenderCompleted() {
+      events.push("completed");
+    },
+    async markWallTextRenderFailed(params: {
+      assignmentId: string;
+      renderId: string;
+      userId: string;
+    }) {
+      events.push("failed");
+      assert.equal(params.assignmentId, ASSIGNMENT_ID);
+      assert.equal(params.renderId, RENDER_ID);
+      assert.equal(params.userId, "user-test");
+    },
+  } as unknown as SupabaseJobStore;
+
+  await assert.rejects(
+    runRenderWallTextVideoJob(job, { store }),
+    /between 0 and 60/,
+  );
+
+  assert.deepEqual(events, ["failed"]);
+});
+
 function createJob(): BackgroundJobRow {
   const now = "2026-07-29T10:00:00.000Z";
 
@@ -105,6 +171,16 @@ function createJob(): BackgroundJobRow {
     id: JOB_ID,
     input_json: {
       assignmentId: ASSIGNMENT_ID,
+      audio: {
+        assetDurationSeconds: 12.5,
+        assetId: "audio_001_segment_01",
+        audioUrl: "https://cdn.example.com/wall-audio.mp3",
+        cueStartSeconds: 0,
+        fadeOutSeconds: 0.2,
+        fitMode: "trim",
+        matchingVersion: "wall-audio-match-v1",
+        selectionId: "00000000-0000-4000-8000-000000000307",
+      },
       creativeId: CREATIVE_ID,
       durationSeconds: 5.056,
       layout: {

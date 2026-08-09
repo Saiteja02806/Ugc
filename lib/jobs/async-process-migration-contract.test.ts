@@ -79,6 +79,44 @@ test("the worker implements every newly migrated Slice 6 job type", () => {
   }
 });
 
+test("Hook text generation has one validated worker path", () => {
+  const handler = readFileSync(
+    "worker/src/jobs/generate-hook-suggestions.ts",
+    "utf8",
+  );
+  const databaseStore = readFileSync("worker/src/lib/supabase.ts", "utf8");
+
+  assert.equal(
+    existsSync("app/api/internal/jobs/generate-hook-suggestions/route.ts"),
+    false,
+  );
+  assert.equal(existsSync("lib/trending/generate-hook-suggestions.ts"), false);
+  assert.equal(existsSync("worker/src/lib/hook-suggestions.ts"), false);
+  assert.match(handler, /generateValidatedTrendingHookCopies/);
+  assert.match(handler, /persistValidatedHookCompositionGeneration/);
+  assert.match(databaseStore, /persist_validated_hook_composition_generation/);
+});
+
+test("validated demo Hook suggestions do not collide with Trending candidate slots", () => {
+  const migration = readFileSync(
+    "supabase/migrations/20260808114916_add_validated_hook_composition_v5.sql",
+    "utf8",
+  );
+
+  assert.match(
+    migration,
+    /drop constraint if exists hook_video_suggestions_trending_candidate_unique/,
+  );
+  assert.match(
+    migration,
+    /create unique index if not exists hook_video_suggestions_trending_candidate_unique_idx[\s\S]*where suggestion_context = 'trending'/,
+  );
+  assert.match(
+    migration,
+    /persist_validated_hook_composition_generation[\s\S]*suggestion_context = 'composition'/,
+  );
+});
+
 test("Cloud Tasks is the sole active queue transport", () => {
   const rootPackage = JSON.parse(readFileSync("package.json", "utf8")) as {
     dependencies?: Record<string, string>;

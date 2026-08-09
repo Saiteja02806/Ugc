@@ -4,6 +4,7 @@ import {
   getBusinessProfileForUser,
   getMissingBusinessProfileEnvVars,
 } from "@/lib/business-profiles/db";
+import { getBusinessProfileOnboardingGate } from "@/lib/business-profiles/onboarding-access";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
@@ -22,7 +23,7 @@ import { getTrendingHookFeedProvider } from "@/lib/trending/trending-hook-feed";
 import { getTrendingWallTextFeedProvider } from "@/lib/trending/trending-wall-text-feed";
 import {
   filterWallTextProvidersForRuntime,
-  isWallTextLocalDevelopmentEnabled,
+  isWallTextEnabled,
 } from "@/lib/trending/wall-text-access";
 
 export const runtime = "nodejs";
@@ -87,26 +88,19 @@ export async function GET(request: Request) {
 
   try {
     const profile = await getBusinessProfileForUser(userId);
+    const onboardingGate = getBusinessProfileOnboardingGate(profile);
 
-    if (!profile) {
-      const providers = filterWallTextProvidersForRuntime(
-        createCurrentTrendingFeedProviders(
-          [],
-          undefined,
-          undefined,
-          { includeHookVideos: hookVideosEnabled },
-        ),
+    if (onboardingGate || !profile) {
+      return jsonResponse(
+        {
+          code: onboardingGate?.code ?? "onboarding_required",
+          message:
+            onboardingGate?.message ??
+            "Complete the required business onboarding before using Trending.",
+          ok: false,
+        },
+        onboardingGate?.status ?? 409,
       );
-
-      return jsonResponse({
-        carousels: [],
-        entitlement: null,
-        feed: null,
-        formatAvailability: getTrendingFeedProviderAvailability(providers),
-        items: buildUnifiedTrendingFeed(providers),
-        ok: true,
-        profile: { state: "missing" },
-      });
     }
 
     const [dailyFeed, hookProvider, wallTextProvider] = await Promise.all([
@@ -118,7 +112,7 @@ export async function GET(request: Request) {
       hookVideosEnabled
         ? getTrendingHookFeedProvider(profile)
         : Promise.resolve(undefined),
-      isWallTextLocalDevelopmentEnabled()
+      isWallTextEnabled()
         ? getTrendingWallTextFeedProvider(profile)
         : Promise.resolve(undefined),
     ]);

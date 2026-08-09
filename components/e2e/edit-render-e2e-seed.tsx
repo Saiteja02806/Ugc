@@ -4,8 +4,6 @@ import { useEffect } from "react";
 
 import { EDIT_RENDER_E2E_TOKEN_STORAGE_KEY } from "@/lib/firebase/auth";
 
-const EDITABLE_VIDEO_LIBRARY_STORAGE_KEY = "ugc-studio.editable-videos.v1";
-
 export function EditRenderE2ESeed({
   token,
   videoPayload,
@@ -22,10 +20,6 @@ export function EditRenderE2ESeed({
       }
 
       window.localStorage.setItem(EDIT_RENDER_E2E_TOKEN_STORAGE_KEY, token);
-      window.localStorage.setItem(
-        EDITABLE_VIDEO_LIBRARY_STORAGE_KEY,
-        JSON.stringify([video]),
-      );
       window.location.replace(`/edit/${encodeURIComponent(video.id)}`);
     } catch (error) {
       console.error("Edit render E2E seed failed:", error);

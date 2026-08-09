@@ -1,6 +1,7 @@
 import {
   clampHookTextPosition,
   createHookTextLayout,
+  getDefaultHookTextPosition,
   type HookTextLayout,
 } from "@/lib/trending/hook-text-layout";
 import {
@@ -35,7 +36,7 @@ export function HookTextOverlay({
   }
 
   const resolvedPosition = clampHookTextPosition(
-    position ?? { x: 0.5, y: 0.5 },
+    position ?? getDefaultHookTextPosition(layout.positionBounds),
     layout.positionBounds,
   );
 

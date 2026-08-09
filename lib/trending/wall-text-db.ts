@@ -21,6 +21,11 @@ import {
   isEligibleWallTextVideo,
   type WallTextAssetSelectionInput,
 } from "@/lib/trending/wall-text-feed-logic";
+import {
+  ensureBaseWallTextAudioSelections,
+  listBaseWallTextAudioSelections,
+  type ResolvedWallTextAudioSelection,
+} from "@/lib/trending/wall-audio-db";
 
 type Json =
   | boolean
@@ -200,6 +205,7 @@ type WallTextDatabase = {
 
 export type TrendingWallTextIdeaRecord = {
   assignmentId: string;
+  audio: ResolvedWallTextAudioSelection;
   backgroundAssetId: string;
   candidateIndex: number;
   createdAt: string;
@@ -589,6 +595,25 @@ export async function ensureTrendingWallTextAssignments(params: {
   creatives: WallTextCreativeRow[];
   userId: string;
 }) {
+  const audioCreatives = params.creatives.map((creative) => {
+    const content = parseWallTextContent(creative.text_content);
+    if (!content) {
+      throw new Error(
+        `Wall audio cannot be selected for invalid creative ${creative.id}.`,
+      );
+    }
+    return {
+      content,
+      creativeId: creative.id,
+      durationSeconds: creative.duration_seconds,
+    };
+  });
+
+  await ensureBaseWallTextAudioSelections({
+    creatives: audioCreatives,
+    userId: params.userId,
+  });
+
   const rows = params.creatives.map((creative) => ({
     business_profile_id: params.businessProfileId,
     business_profile_version: params.businessProfileVersion,
@@ -677,15 +702,22 @@ export async function listActiveTrendingWallTextIdeas(params: {
   const assetIds = [
     ...new Set(creatives.map((creative) => creative.overlay_media_asset_id)),
   ];
-  const { data: assets, error: assetError } = await getClient()
-    .from("overlay_media_assets")
-    .select("*")
-    .in("id", assetIds)
-    .eq("asset_type", "video")
-    .eq("format_family", "wall_text_overlay")
-    .eq("aspect_ratio", "9:16")
-    .eq("status", "active")
-    .eq("analysis_status", "succeeded");
+  const [assetResult, audioByCreativeId] = await Promise.all([
+    getClient()
+      .from("overlay_media_assets")
+      .select("*")
+      .in("id", assetIds)
+      .eq("asset_type", "video")
+      .eq("format_family", "wall_text_overlay")
+      .eq("aspect_ratio", "9:16")
+      .eq("status", "active")
+      .eq("analysis_status", "succeeded"),
+    listBaseWallTextAudioSelections({
+      creativeIds,
+      userId: params.userId,
+    }),
+  ]);
+  const { data: assets, error: assetError } = assetResult;
 
   if (assetError) {
     throw new Error(
@@ -703,12 +735,14 @@ export async function listActiveTrendingWallTextIdeas(params: {
     const asset = creative
       ? assetById.get(creative.overlay_media_asset_id)
       : undefined;
+    const audio = creative ? audioByCreativeId.get(creative.id) : undefined;
 
     const selectionAsset = asset ? mapAssetForSelection(asset) : null;
 
     if (
       !creative ||
       !asset ||
+      !audio ||
       !asset.preview_url ||
       !selectionAsset ||
       !isEligibleWallTextVideo(selectionAsset)
@@ -726,6 +760,7 @@ export async function listActiveTrendingWallTextIdeas(params: {
     return [
       {
         assignmentId: assignment.id,
+        audio,
         backgroundAssetId: asset.id,
         candidateIndex: creative.candidate_index,
         createdAt: creative.created_at,
@@ -967,7 +1002,11 @@ async function hydrateSavedWallTextDrafts(
   const renderedMediaAssetIds = assignments
     .map((assignment) => assignment.rendered_media_asset_id)
     .filter((id): id is string => Boolean(id));
-  const [{ data: backgrounds, error: backgroundError }, renderedResult] =
+  const [
+    { data: backgrounds, error: backgroundError },
+    renderedResult,
+    audioByCreativeId,
+  ] =
     await Promise.all([
       getClient()
         .from("overlay_media_assets")
@@ -982,6 +1021,7 @@ async function hydrateSavedWallTextDrafts(
             data: [] as WallTextRenderedMediaAssetRow[],
             error: null,
           }),
+      listBaseWallTextAudioSelections({ creativeIds, userId }),
     ]);
 
   if (backgroundError) {
@@ -1013,8 +1053,9 @@ async function hydrateSavedWallTextDrafts(
       : null;
     const text = creative ? parseWallTextContent(creative.text_content) : null;
     const layout = creative ? parseWallTextLayout(creative.layout) : null;
+    const audio = creative ? audioByCreativeId.get(creative.id) : null;
 
-    if (!creative || !background?.preview_url || !text || !layout) {
+    if (!creative || !background?.preview_url || !text || !layout || !audio) {
       return [];
     }
 
@@ -1025,6 +1066,7 @@ async function hydrateSavedWallTextDrafts(
     return [
       {
         assignmentId: assignment.id,
+        audio,
         backgroundAssetId: background.id,
         candidateIndex: creative.candidate_index,
         createdAt: assignment.created_at,
@@ -1090,7 +1132,9 @@ function mapAssetForSelection(
   };
 }
 
-function parseWallTextContent(value: Json): TrendingWallTextContent | null {
+export function parseWallTextContent(
+  value: Json,
+): TrendingWallTextContent | null {
   if (
     isJsonObject(value) &&
     value.kind === "wall_text" &&

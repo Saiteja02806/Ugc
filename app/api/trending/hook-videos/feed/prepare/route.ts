@@ -1,4 +1,5 @@
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
+import { getBusinessProfileOnboardingGate } from "@/lib/business-profiles/onboarding-access";
 import {
   authenticateHookVideoRequest,
   hookVideoErrorResponse,
@@ -33,15 +34,18 @@ export async function POST(request: Request) {
 
   try {
     const profile = await getBusinessProfileForUser(auth.user.uid);
+    const onboardingGate = getBusinessProfileOnboardingGate(profile);
 
-    if (!profile) {
+    if (onboardingGate || !profile) {
       return hookVideoJson(
         {
-          code: "business_profile_required",
-          error: "Complete your business profile before preparing Hook ideas.",
+          code: onboardingGate?.code ?? "onboarding_required",
+          error:
+            onboardingGate?.message ??
+            "Complete the required business onboarding before using Trending.",
           ok: false,
         },
-        409,
+        onboardingGate?.status ?? 409,
       );
     }
 

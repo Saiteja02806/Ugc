@@ -23,6 +23,8 @@ import {
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { loadSavedTrendingCreativeEditForDownstream } from "@/lib/trending/creative-edit-service";
 import { TrendingCreativeEditAccessError } from "@/lib/trending/creative-edits";
+import { resolveWallTextAudioSelection } from "@/lib/trending/wall-audio-db";
+import { isRenderableWallTextDuration } from "@/lib/trending/wall-text-feed-logic";
 import {
   attachWallTextRenderJob,
   claimWallTextRender,
@@ -134,6 +136,45 @@ export async function POST(request: Request) {
       creativeEdit?.content.format === "wall_text"
         ? creativeEdit.content
         : null;
+    const sourceVideoUrl =
+      creativeEdit?.source?.resolvedAssetUrl ?? draft.previewUrl;
+    const durationSeconds =
+      creativeEdit?.source?.resolvedAssetDurationSeconds ??
+      draft.durationSeconds;
+
+    if (!isRenderableWallTextDuration(durationSeconds)) {
+      return json(
+        {
+          error: "Wall-of-text background videos must be 60 seconds or shorter.",
+          ok: false,
+        },
+        409,
+      );
+    }
+
+    if (!isTrustedStorageUrl(sourceVideoUrl)) {
+      return json(
+        { error: "This Wall-of-text background is not available for rendering.", ok: false },
+        409,
+      );
+    }
+
+    const audio = await resolveWallTextAudioSelection({
+      content: editedContent?.content ?? draft.text,
+      creativeId: draft.id,
+      editId: creativeEdit?.id,
+      editRevision: creativeEdit?.revision,
+      userId,
+      videoDurationSeconds: durationSeconds,
+    });
+
+    if (!isTrustedStorageUrl(audio.audioUrl)) {
+      return json(
+        { error: "The selected Wall audio is not available for rendering.", ok: false },
+        409,
+      );
+    }
+
     let claimed = await claimWallTextRender({
       assignmentId: parsed.data.assignmentId,
       editId: creativeEdit?.id,
@@ -141,7 +182,7 @@ export async function POST(request: Request) {
       userId,
     });
 
-  if (claimed.render_job_id) {
+    if (claimed.render_job_id) {
     const existingJob = await getBackgroundJobById(claimed.render_job_id);
 
     if (
@@ -174,32 +215,24 @@ export async function POST(request: Request) {
     );
   }
 
-  const sourceVideoUrl =
-    creativeEdit?.source?.resolvedAssetUrl ?? draft.previewUrl;
-
-  if (!isTrustedStorageUrl(sourceVideoUrl)) {
-    await markWallTextRenderQueueFailed({
-      assignmentId: claimed.id,
-      errorMessage: "The selected Wall-of-text background is not app-owned.",
-      renderId: claimed.render_id,
-      userId,
-    });
-    return json(
-      { error: "This Wall-of-text background is not available for rendering.", ok: false },
-      409,
-    );
-  }
-
   const creationResult = await createBackgroundJobWithCreationResult({
     idempotencyKey: `wall-text-render:${claimed.render_id}`,
     input: {
       assignmentId: claimed.id,
+      audio: {
+        assetDurationSeconds: audio.audioAssetDurationSeconds,
+        assetId: audio.audioAssetId,
+        audioUrl: audio.audioUrl,
+        cueStartSeconds: audio.cueStartSeconds,
+        fadeOutSeconds: audio.fadeOutSeconds,
+        fitMode: audio.fitMode,
+        matchingVersion: audio.matchingVersion,
+        selectionId: audio.selectionId,
+      },
       creativeEditId: creativeEdit?.id ?? null,
       creativeEditRevision: creativeEdit?.revision ?? null,
       creativeId: draft.id,
-      durationSeconds:
-        creativeEdit?.source?.resolvedAssetDurationSeconds ??
-        draft.durationSeconds,
+      durationSeconds,
       layout: {
         placement: editedContent?.layout.placement ?? draft.layout.placement,
         safeArea: {

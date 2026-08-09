@@ -10,6 +10,10 @@ import {
   type HookReview,
   type TrendingHookCopyCandidate,
 } from "./trending-hook-copy.js";
+import {
+  buildTrendingHookCampaignPurposeSequence,
+  type TrendingHookCampaignPurpose,
+} from "./trending-hook-patterns.js";
 
 const candidate = {
   candidateIndex: 0,
@@ -40,17 +44,48 @@ const passingScores = {
 
 const businessContext = {
   brandTone: "clear",
+  businessModel: "B2C",
   businessName: "Calorie Fit",
+  campaignPurposes: [
+    "product_discovery",
+    "education",
+    "conversion",
+  ] as TrendingHookCampaignPurpose[],
+  categories: ["nutrition", "mobile app"],
   category: "nutrition",
   claimsToAvoid: ["guaranteed weight loss"],
+  desiredOutcome: "Spend less attention logging meals",
+  differentiator: "quicker meal logging",
   differentiators: ["quicker meal logging"],
   mainProblem: "Meal logging interrupts the day",
   mainPromise: "Spend less attention logging meals",
   painPoints: ["repetitive meal entry"],
+  primaryAudience: "people who track meals",
   productSummary: "A meal logging application",
   targetAudience: ["people who track meals"],
   valueProps: ["quicker meal logging"],
 };
+
+test("campaign purpose follows the business choice and never adds an unselected goal", () => {
+  assert.deepEqual(
+    buildTrendingHookCampaignPurposeSequence({
+      count: 4,
+      performanceSignals: {
+        preferredPurposes: ["product_discovery", "education"],
+      },
+      requestedPurposes: ["conversion"],
+    }),
+    ["conversion", "conversion", "conversion", "conversion"],
+  );
+
+  assert.deepEqual(
+    buildTrendingHookCampaignPurposeSequence({
+      count: 3,
+      requestedPurposes: ["app_install"],
+    }),
+    ["app_install", "app_install", "app_install"],
+  );
+});
 
 test("uses semantic lines and the shared 9:16 renderer fit", () => {
   const fit = measureHookOverlayVisualFit([
@@ -244,10 +279,10 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
         },
         {
           candidateIndex: 0,
-          draftKey: "0:problem_observation",
+          draftKey: "0:problem_reversal",
           evidenceKeys: ["mainProblem"],
           lines: ["Meal logging keeps", "stealing your attention."],
-          patternId: "problem_observation",
+          patternId: "problem_reversal",
         },
       ],
     },
@@ -280,7 +315,7 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
         {
           candidateIndex: 0,
           claimSafe: true,
-          draftKey: "0:problem_observation",
+          draftKey: "0:problem_reversal",
           estimatedReadingSeconds: 2.5,
           humanVoice: true,
           openingOnly: true,

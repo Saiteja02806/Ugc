@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function OnboardingPage() {
   return (
-    <AuthGuard>
+    <AuthGuard requireBusinessProfile={false}>
       <BusinessProfileOnboarding />
     </AuthGuard>
   );

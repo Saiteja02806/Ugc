@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   aggregateInstagramInsightDaily,
+  buildInstagramAccountDailyTrend,
+  getInstagramPerformanceTrendMode,
   getUniqueInstagramConnections,
   normalizeInstagramAccountInsights,
   type InstagramInsightsAccount,
@@ -106,6 +108,26 @@ test("keeps unavailable Instagram metrics null instead of inventing zero", () =>
     views: null,
   });
   assert.deepEqual(result.daily, []);
+});
+
+test("requires two reporting days before rendering a performance trend", () => {
+  assert.equal(
+    getInstagramPerformanceTrendMode([null, null, null]),
+    "empty",
+  );
+  assert.equal(
+    getInstagramPerformanceTrendMode([null, 0, null]),
+    "insufficient-history",
+  );
+  assert.equal(
+    getInstagramPerformanceTrendMode([null, 24, null]),
+    "insufficient-history",
+  );
+  assert.equal(getInstagramPerformanceTrendMode([0, 0]), "ready");
+  assert.equal(
+    getInstagramPerformanceTrendMode([null, 24, null, 31]),
+    "ready",
+  );
 });
 
 test("combines Meta time-series points with authoritative period totals", () => {
@@ -265,4 +287,51 @@ test("aggregates daily values without inventing missing metrics", () => {
       views: null,
     },
   ]);
+});
+
+test("builds a daily trend only from Meta daily account values", () => {
+  const accounts: InstagramInsightsAccount[] = [
+    {
+      accountName: "North",
+      accountUsername: "north",
+      connectionId: "north",
+      daily: [
+        {
+          date: "2026-07-25",
+          interactions: null,
+          reach: 9,
+          views: null,
+        },
+      ],
+      lastSyncedAt: "2026-07-26T12:00:00.000Z",
+      message: null,
+      status: "ready",
+      totals: {
+        interactions: 12,
+        reach: 9,
+        views: 120,
+      },
+    },
+  ];
+
+  assert.deepEqual(
+    buildInstagramAccountDailyTrend({
+      accounts,
+      dateKeys: ["2026-07-25", "2026-07-26"],
+    }),
+    [
+      {
+        date: "2026-07-25",
+        interactions: null,
+        reach: 9,
+        views: null,
+      },
+      {
+        date: "2026-07-26",
+        interactions: null,
+        reach: null,
+        views: null,
+      },
+    ],
+  );
 });

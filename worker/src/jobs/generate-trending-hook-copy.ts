@@ -5,6 +5,12 @@ import {
   TRENDING_HOOK_SELECTION_VERSION,
   type TrendingHookCopyCandidate,
 } from "../lib/trending-hook-copy.js";
+import {
+  getTrendingHookPattern,
+  isTrendingHookCampaignPurpose,
+  type HookPerformanceSignals,
+  type TrendingHookPatternId,
+} from "../lib/trending-hook-patterns.js";
 import type {
   BackgroundJobRow,
   Json,
@@ -24,6 +30,7 @@ export async function runGenerateTrendingHookCopyJob(
     businessProfile: input.businessProfile,
     candidates: input.candidates,
     model,
+    performanceSignals: input.performanceSignals,
   });
   const persistedCount =
     await context.store.persistTrendingHookCopyGeneration({
@@ -94,9 +101,34 @@ function parseInput(job: BackgroundJobRow) {
     businessProfileId,
     businessProfileVersion,
     candidates: rawCandidates.map(parseCandidate),
+    performanceSignals: parsePerformanceSignals(input?.performanceSignals),
     promptVersion,
     selectionVersion,
     userId,
+  };
+}
+
+function parsePerformanceSignals(value: Json | undefined): HookPerformanceSignals {
+  const signals = getRecord(value);
+  const patternIds = Array.isArray(signals?.preferredPatternIds)
+    ? signals.preferredPatternIds.filter(
+        (patternId): patternId is TrendingHookPatternId =>
+          typeof patternId === "string" && Boolean(getTrendingHookPattern(patternId)),
+      )
+    : [];
+  const purposes = Array.isArray(signals?.preferredPurposes)
+    ? signals.preferredPurposes.filter(isTrendingHookCampaignPurpose)
+    : [];
+
+  if (patternIds.length > 3 || purposes.length > 3) {
+    throw new Error(
+      "generate_trending_hook_copy performance signals exceed the bounded contract.",
+    );
+  }
+
+  return {
+    preferredPatternIds: [...new Set(patternIds)],
+    preferredPurposes: [...new Set(purposes)],
   };
 }
 

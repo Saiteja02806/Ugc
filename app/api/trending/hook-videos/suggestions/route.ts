@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
+import { getBusinessProfileOnboardingGate } from "@/lib/business-profiles/onboarding-access";
 import { getPublicBackgroundJob } from "@/lib/jobs/background-job-contract";
 import { getMissingBackgroundJobStorageEnvVars } from "@/lib/jobs/background-jobs";
 import { getMissingBackgroundJobCloudTasksEnvVars } from "@/lib/jobs/gcp-cloud-tasks";
@@ -10,6 +11,12 @@ import {
   hookVideoJson,
 } from "@/lib/trending/hook-video-api";
 import { enqueueHookSuggestionJob } from "@/lib/trending/hook-suggestion-jobs";
+import { getHookPerformanceSignals } from "@/lib/trending/hook-performance";
+import {
+  getHookDemoAsset,
+  getHookInfluencerForUser,
+  resolveHookVideoSource,
+} from "@/lib/trending/hook-video-sources";
 import { HookSuggestionRequestSchema } from "@/lib/trending/hook-video-validation";
 
 export const runtime = "nodejs";
@@ -35,15 +42,18 @@ export async function POST(request: Request) {
 
   try {
     const profile = await getBusinessProfileForUser(auth.user.uid);
+    const onboardingGate = getBusinessProfileOnboardingGate(profile);
 
-    if (!profile) {
+    if (onboardingGate || !profile) {
       return hookVideoJson(
         {
-          code: "business_profile_required",
-          error: "Complete your business profile before generating hooks.",
+          code: onboardingGate?.code ?? "onboarding_required",
+          error:
+            onboardingGate?.message ??
+            "Complete the required business onboarding before using Trending.",
           ok: false,
         },
-        409,
+        onboardingGate?.status ?? 409,
       );
     }
 
@@ -67,9 +77,73 @@ export async function POST(request: Request) {
     const idempotencyKey =
       request.headers.get("Idempotency-Key")?.trim().slice(0, 200) ||
       randomUUID();
+    const [demo, influencer, performanceSignals, source] = await Promise.all([
+      getHookDemoAsset({
+        assetId: parsed.data.demoAssetId,
+        userId: auth.user.uid,
+      }),
+      getHookInfluencerForUser({
+        influencerId: parsed.data.influencerId,
+        sourceKind: parsed.data.sourceKind,
+        userId: auth.user.uid,
+      }),
+      getHookPerformanceSignals({
+        businessProfileId: profile.id,
+        userId: auth.user.uid,
+      }),
+      resolveHookVideoSource({
+        influencerId: parsed.data.influencerId,
+        sourceKind: parsed.data.sourceKind,
+        userId: auth.user.uid,
+        videoId: parsed.data.influencerVideoId,
+      }),
+    ]);
+    const sourceDurationSeconds = source.durationSeconds;
+    const trimEnd = source.trimEnd ?? sourceDurationSeconds;
+    const durationSeconds =
+      sourceDurationSeconds === null || trimEnd === null
+        ? null
+        : trimEnd - source.trimStart;
+
+    if (
+      sourceDurationSeconds === null ||
+      durationSeconds === null ||
+      !Number.isFinite(durationSeconds) ||
+      durationSeconds <= 0
+    ) {
+      return hookVideoJson(
+        {
+          error: "This influencer video is still missing its duration.",
+          ok: false,
+        },
+        409,
+      );
+    }
+
     const job = await enqueueHookSuggestionJob({
+      generationContext: {
+        businessProfile: profile.context,
+        businessProfileId: profile.id,
+        businessProfileVersion: profile.profileVersion,
+        candidate: {
+          durationSeconds,
+          influencerId: influencer.id,
+          influencerKey: source.influencerKey,
+          influencerName: influencer.name,
+          influencerVideoId: source.id,
+          influencerVideoTitle: source.title,
+          reactionType: source.reactionType,
+          sourceDurationSeconds,
+          sourceKind: source.sourceKind,
+          thumbnailUrl: source.thumbnailUrl,
+          trimEnd,
+          trimStart: source.trimStart,
+          visualGroup: source.visualGroup,
+        },
+        performanceSignals,
+      },
       idempotencyKey,
-      input: parsed.data,
+      input: { ...parsed.data, demoAssetId: demo.id },
       userId: auth.user.uid,
     });
 

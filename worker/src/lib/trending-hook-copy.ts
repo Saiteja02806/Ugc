@@ -7,10 +7,17 @@ import {
   estimateEditOverlayLineWidth,
 } from "./edit-overlay-render-spec.js";
 import {
+  buildTrendingHookCampaignPurposeSequence,
   getTrendingHookPattern,
+  getTrendingHookPurposeInstruction,
+  resolveTrendingHookIndustryContext,
   selectTrendingHookPatterns,
   TRENDING_HOOK_PATTERN_LIBRARY_VERSION,
   TRENDING_HOOK_PATTERNS,
+  type HookPerformanceSignals,
+  type TrendingHookCampaignPurpose,
+  type TrendingHookIndustryContext,
+  type TrendingHookIndustryPackId,
   type TrendingHookPatternDefinition,
   type TrendingHookPatternId,
 } from "./trending-hook-patterns.js";
@@ -29,13 +36,13 @@ const MIN_PASSING_SCORE = 80;
 const MAX_REPAIR_ROUNDS = 2;
 
 export const TRENDING_HOOK_PROMPT_VERSION =
-  "trending-hook-copy-v4";
+  "trending-hook-copy-v5";
 export const TRENDING_HOOK_SELECTION_VERSION =
-  "pattern-diversity-v4";
+  "purpose-industry-diversity-v5";
 export const TRENDING_HOOK_OVERLAY_VERSION =
   "hook-overlay-v3";
 export const TRENDING_HOOK_VALIDATOR_VERSION =
-  "trending-hook-validator-v2";
+  "trending-hook-validator-v3";
 
 const BANNED_MARKETING_PHRASES = [
   "ready to",
@@ -100,7 +107,7 @@ const UNSUPPORTED_CLAIM_TERMS = [
 ] as const;
 
 const UNSUPPORTED_TIME_OR_NUMBER_PATTERN =
-  /(?:[$€£¥]\s*\d|\d|%|\b(?:hundred|thousand|million|second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years|today|yesterday|tomorrow|daily|weekly|monthly|yearly|midweek|overnight|instantly|immediately)\b)/iu;
+  /(?:[$€£¥]\s*\d|\d|%|\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|first|second|third|fourth|fifth|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years|today|yesterday|tomorrow|daily|weekly|monthly|yearly|midweek|overnight|instantly|immediately)\b)/iu;
 const FIRST_PERSON_PATTERN =
   /\b(?:i|i'm|i’m|i've|i’ve|i'd|i’d|me|my|mine|myself|we|we're|we’re|we've|we’ve|our|ours|ourselves)\b/iu;
 const FAKE_QUOTE_PATTERN = /["“”]/u;
@@ -246,7 +253,9 @@ export type HookReviewScores = {
 };
 
 export type TrendingHookCopyResult = TrendingHookCopyCandidate & {
+  campaignPurpose: TrendingHookCampaignPurpose;
   hookText: string;
+  industryPackId: TrendingHookIndustryPackId;
   inputContextHash: string;
   openingLines: string[];
   patternId: TrendingHookPatternId;
@@ -273,8 +282,10 @@ export type TrendingHookCopyResult = TrendingHookCopyCandidate & {
 };
 
 type HookDraftSpec = {
+  campaignPurpose: TrendingHookCampaignPurpose;
   candidate: TrendingHookCopyCandidate;
   draftKey: string;
+  industryContext: TrendingHookIndustryContext;
   pattern: TrendingHookPatternDefinition;
 };
 
@@ -310,6 +321,7 @@ export async function generateValidatedTrendingHookCopies(params: {
   candidates: TrendingHookCopyCandidate[];
   client?: StructuredResponseClient;
   model?: string;
+  performanceSignals?: HookPerformanceSignals;
 }) {
   const candidates = normalizeCandidates(params.candidates);
   const businessContext = extractBusinessContext(
@@ -317,6 +329,12 @@ export async function generateValidatedTrendingHookCopies(params: {
   );
   const evidenceCatalog = buildBusinessEvidenceCatalog(
     businessContext,
+  );
+  const industryContext = resolveTrendingHookIndustryContext(
+    businessContext,
+  );
+  const performanceSignals = normalizePerformanceSignals(
+    params.performanceSignals,
   );
 
   if (evidenceCatalog.length === 0) {
@@ -329,13 +347,20 @@ export async function generateValidatedTrendingHookCopies(params: {
     businessContext,
     candidates,
     evidenceCatalog,
+    industryContext,
+    performanceSignals,
   });
   const model =
     params.model?.trim() ||
     process.env.OPENAI_TRENDING_HOOK_MODEL?.trim() ||
     DEFAULT_MODEL;
   const client = params.client ?? createOpenAIClient();
-  const specs = buildDraftSpecs(candidates);
+  const specs = buildDraftSpecs({
+    businessContext,
+    candidates,
+    industryContext,
+    performanceSignals,
+  });
   let finalDrafts = await writeHookDrafts({
     businessContext,
     client,
@@ -437,13 +462,23 @@ export async function generateValidatedTrendingHookCopies(params: {
   });
 
   return selected.map(
-    ({ candidate, draft, pattern, review, validation }) => {
+    ({
+      campaignPurpose,
+      candidate,
+      draft,
+      industryContext: selectedIndustryContext,
+      pattern,
+      review,
+      validation,
+    }) => {
       const hookText = draft.lines.join("\n");
       const visualFit = measureHookOverlayVisualFit(draft.lines);
 
       return {
         ...candidate,
+        campaignPurpose,
         hookText,
+        industryPackId: selectedIndustryContext.id,
         inputContextHash,
         openingLines: draft.lines,
         patternId: pattern.id,
@@ -692,19 +727,37 @@ export function isPassingHookReview(params: {
   );
 }
 
-function buildDraftSpecs(candidates: TrendingHookCopyCandidate[]) {
-  return candidates.flatMap((candidate) =>
-    selectTrendingHookPatterns({
+function buildDraftSpecs(params: {
+  businessContext: ReturnType<typeof extractBusinessContext>;
+  candidates: TrendingHookCopyCandidate[];
+  industryContext: TrendingHookIndustryContext;
+  performanceSignals: HookPerformanceSignals;
+}) {
+  const purposes = buildTrendingHookCampaignPurposeSequence({
+    count: params.candidates.length,
+    performanceSignals: params.performanceSignals,
+    requestedPurposes: params.businessContext.campaignPurposes,
+  });
+
+  return params.candidates.flatMap((candidate, index) => {
+    const campaignPurpose = purposes[index]!;
+
+    return selectTrendingHookPatterns({
+      campaignPurpose,
       candidateIndex: candidate.candidateIndex,
+      industryContext: params.industryContext,
+      performanceSignals: params.performanceSignals,
       reactionType: candidate.reactionType,
     }).map(
       (pattern): HookDraftSpec => ({
+        campaignPurpose,
         candidate,
         draftKey: `${candidate.candidateIndex}:${pattern.id}`,
+        industryContext: params.industryContext,
         pattern,
       }),
-    ),
-  );
+    );
+  });
 }
 
 async function writeHookDrafts(params: {
@@ -728,12 +781,13 @@ async function writeHookDrafts(params: {
       "Write only the opening reaction: one assigned pattern, one idea, and one honest information gap that makes the viewer want to see proof later.",
       "Do not explain a process, sequence, product demo, mechanism-and-benefit chain, or secondary benefit. Stop immediately after the opening idea.",
       "Write the supplied pattern as a natural human thought grounded only in evidenceCatalog.",
+      "Follow the assigned campaignPurposeInstruction and industry focus. Treat industry guidance as emphasis only; it is never evidence and cannot add a fact.",
       "Return one or two evidenceKeys that directly support every meaningful claim.",
       "The words must stop the right audience through recognition, tension, curiosity, or a useful contradiction—not generic advertising.",
       "Match reactionType emotionally.",
       "Return exactly one or two intentional semantic lines, never a paragraph. Across both lines use at most twelve words, with at most seven words on either line.",
       "Use semantic lines: each array item is one intentional line. A 2–3 second clip may use two short lines. Do not compress it to one line merely because the clip is short.",
-      "Never invent numbers, time periods, results, testimonials, personal experience, prices, comparisons, superlatives, urgency, or guarantees.",
+      "Never use digits or number words. Never invent numbers, time periods, results, testimonials, personal experience, prices, comparisons, superlatives, urgency, or guarantees.",
       "Never invent population claims such as most people, many people, everyone, or nobody.",
       "Do not invent a setting, physical object, metaphor, product mechanism, or feature that is absent from businessContext. Mystery must come from a true business idea, not fictional details.",
       "Do not use first person, emojis, quotations, slang, or banned phrases. Do not mention an influencer, clip, avatar, or future demo.",
@@ -741,7 +795,7 @@ async function writeHookDrafts(params: {
       "Return exactly one structurally distinct result for every draftKey, preserving draftKey, candidateIndex, and patternId.",
     ].join(" "),
     model: params.model,
-    responseFormatName: "trending_hook_v4_drafts",
+    responseFormatName: "trending_hook_v5_drafts",
     schema: buildHookDraftBatchSchema(params.evidenceCatalog),
   });
 
@@ -784,6 +838,7 @@ async function reviewHookDrafts(params: {
       "Do not penalize a Hook for being shorter than the clip. A sharp one- or two-line thought with a brief moment to react is desirable, especially at 2–3 seconds.",
       "Score businessRelevance 0–20, reactionMatch 0–20, humanVoice 0–15, scrollStop 0–15, readability 0–15, claimSafety 0–10, and originality 0–5.",
       "truthful and claimSafe require that every statement is grounded in businessContext. Numbers, time periods, results, testimonials, personal history, comparisons, prices, superlatives, and guarantees fail without verified evidence; this input intentionally supplies none.",
+      "The copy must serve its assigned campaign purpose and industry focus without treating those directions as evidence or adding an industry assumption.",
       "A candidate is not truthful when it invents a setting, object, metaphor, mechanism, or feature that businessContext never supplies.",
       "Every meaningful statement must be supported by proposedEvidenceKeys and the matching evidenceCatalog entries; an unrelated evidence key fails truthful and claimSafe.",
       "Set singleIdea true only when the copy expresses exactly one problem, capability, question, or reversal.",
@@ -797,7 +852,7 @@ async function reviewHookDrafts(params: {
       "Preserve draftKey and candidateIndex and review every request.",
     ].join(" "),
     model: params.model,
-    responseFormatName: "trending_hook_v4_reviews",
+    responseFormatName: "trending_hook_v5_reviews",
     schema: hookReviewBatchSchema,
   });
 
@@ -851,13 +906,14 @@ async function repairHookDrafts(params: {
     },
     instructions: [
       "Repair only the supplied Hook overlays. Keep the assigned pattern and the strongest true Business Profile idea.",
+      "Keep the assigned campaign purpose and industry focus, but never turn industry guidance into an unsupported fact.",
       "Return only an opening reaction: one pattern, one idea, one or two intentional lines, and at most twelve words total.",
       "Do not explain the process, demo steps, mechanism-and-benefit chain, or a secondary benefit. Preserve curiosity and stop after the opening.",
       "Return one or two valid evidenceKeys that directly support the repaired wording.",
       "Apply semantic line breaks and make the full thought comfortable in one pass of the exact duration without using a word-per-second formula.",
       "Fix every deterministicValidation reason. Each semantic line must stay on one rendered line, contain at most seven words, and not end with an article, conjunction, or preposition.",
       "Use visualFit.lineWidths and visualFit.maximumTextWidth: when a line is too wide, shorten that line decisively. Do not hide the overflow by adding another dense line.",
-      "For unsupported_time_or_number, remove every digit, currency, percentage, date, and time-unit word such as minute, hour, day, week, month, or year. Do not paraphrase it as another time claim.",
+      "For unsupported_time_or_number, remove every digit, number word, currency, percentage, date, and time-unit word. Do not paraphrase it as another numeric or time claim.",
       "For weak_business_grounding, remove invented settings, objects, metaphors, mechanisms, and features. Rebuild the Hook from the supplied audience problem, product summary, value props, or differentiators.",
       "Aim for a genuinely strong result that can earn at least 80/100, not merely a shorter version.",
       "Remove unsupported facts, personal history, numbers, time claims, quotations, emojis, and generic marketing language.",
@@ -865,7 +921,7 @@ async function repairHookDrafts(params: {
       "Return exactly one repaired result for every draftKey.",
     ].join(" "),
     model: params.model,
-    responseFormatName: "trending_hook_v4_repairs",
+    responseFormatName: "trending_hook_v5_repairs",
     schema: buildHookDraftBatchSchema(params.evidenceCatalog),
   });
 
@@ -1003,7 +1059,17 @@ function selectBestDraftPerCandidate(params: {
           review &&
           validation &&
           isPassingHookReview({ candidate, review, validation })
-          ? [{ candidate, draft, pattern: spec.pattern, review, validation }]
+          ? [
+              {
+                campaignPurpose: spec.campaignPurpose,
+                candidate,
+                draft,
+                industryContext: spec.industryContext,
+                pattern: spec.pattern,
+                review,
+                validation,
+              },
+            ]
           : [];
       })
       .sort((first, second) => {
@@ -1440,18 +1506,43 @@ function extractBusinessContext(value: unknown) {
           .filter(Boolean)
           .slice(0, 25)
       : [];
+  const categories = textList("categories");
+  const targetAudience = textList("targetAudience");
+  const differentiators = textList("differentiators");
+  const campaignPurposes = textList("campaignPurposes").filter(
+    (purpose): purpose is TrendingHookCampaignPurpose =>
+      [
+        "product_discovery",
+        "education",
+        "conversion",
+        "retargeting",
+        "app_install",
+      ].includes(purpose),
+  );
 
   return {
     brandTone: textField("brandTone"),
+    businessModel: textField("businessModel"),
     businessName: textField("businessName"),
-    category: textField("category"),
+    campaignPurposes,
+    categories:
+      categories.length > 0
+        ? categories
+        : [textField("category")].filter(Boolean),
+    category: categories[0] || textField("category"),
     claimsToAvoid: textList("claimsToAvoid"),
-    differentiators: textList("differentiators"),
+    desiredOutcome:
+      textField("desiredOutcome") || textField("mainPromise"),
+    differentiator:
+      textField("differentiator") || differentiators[0] || "",
+    differentiators,
     mainProblem: textField("mainProblem"),
     mainPromise: textField("mainPromise"),
     painPoints: textList("painPoints"),
+    primaryAudience:
+      textField("primaryAudience") || targetAudience[0] || "",
     productSummary: textField("productSummary"),
-    targetAudience: textList("targetAudience"),
+    targetAudience,
     valueProps: textList("valueProps"),
   };
 }
@@ -1471,10 +1562,15 @@ function buildBusinessEvidenceCatalog(
     );
   };
 
-  addText("category", businessContext.category);
+  addText("businessModel", businessContext.businessModel);
+  addList("categories", businessContext.categories);
+  addText("primaryAudience", businessContext.primaryAudience);
   addText("mainProblem", businessContext.mainProblem);
-  addText("mainPromise", businessContext.mainPromise);
+  addText("desiredOutcome", businessContext.desiredOutcome);
+  addText("differentiator", businessContext.differentiator);
   addText("productSummary", businessContext.productSummary);
+  addText("category", businessContext.category);
+  addText("mainPromise", businessContext.mainPromise);
   addList("painPoints", businessContext.painPoints);
   addList("valueProps", businessContext.valueProps);
   addList("differentiators", businessContext.differentiators);
@@ -1493,8 +1589,37 @@ function getGenerationPolicies() {
   } as const;
 }
 
+function normalizePerformanceSignals(
+  value: HookPerformanceSignals | undefined,
+): HookPerformanceSignals {
+  const preferredPatternIds = [
+    ...new Set(value?.preferredPatternIds ?? []),
+  ]
+    .filter((patternId) => Boolean(getTrendingHookPattern(patternId)))
+    .slice(0, 3);
+  const preferredPurposes = [
+    ...new Set(value?.preferredPurposes ?? []),
+  ]
+    .filter((purpose) =>
+      [
+        "product_discovery",
+        "education",
+        "conversion",
+        "retargeting",
+        "app_install",
+      ].includes(purpose),
+    )
+    .slice(0, 3);
+
+  return { preferredPatternIds, preferredPurposes };
+}
+
 function toPromptSpec(spec: HookDraftSpec) {
   return {
+    campaignPurpose: spec.campaignPurpose,
+    campaignPurposeInstruction: getTrendingHookPurposeInstruction(
+      spec.campaignPurpose,
+    ),
     candidateIndex: spec.candidate.candidateIndex,
     draftKey: spec.draftKey,
     durationSeconds: spec.candidate.durationSeconds,
@@ -1502,6 +1627,12 @@ function toPromptSpec(spec: HookDraftSpec) {
     maximumLines: MAX_HOOK_LINES,
     maximumWords: MAX_HOOK_WORDS,
     maximumWordsPerLine: MAX_HOOK_WORDS_PER_LINE,
+    industry: {
+      avoidAssumptions: spec.industryContext.avoidAssumptions,
+      focus: spec.industryContext.focus,
+      id: spec.industryContext.id,
+      label: spec.industryContext.label,
+    },
     pattern: {
       id: spec.pattern.id,
       instruction: spec.pattern.instruction,

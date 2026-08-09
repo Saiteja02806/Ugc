@@ -3,22 +3,41 @@
 import {
   AlertCircle,
   ArrowLeft,
+  ArrowRight,
+  BadgeDollarSign,
   Check,
-  CheckCircle2,
   Copy,
+  Download,
+  Eye,
   Globe2,
+  ImagePlus,
   Loader2,
+  Megaphone,
+  MessageCircleHeart,
+  MousePointerClick,
   PenLine,
   RefreshCw,
+  Rocket,
   Smartphone,
   Sparkles,
+  Trash2,
+  TrendingUp,
+  UserPlus,
+  UsersRound,
 } from "lucide-react";
-import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type RefObject,
+} from "react";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
-import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import {
   Alert,
   AlertAction,
@@ -26,10 +45,11 @@ import {
   AlertTitle,
 } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Field as FormField,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
   FieldLegend,
@@ -48,8 +68,23 @@ import { cn } from "@/lib/utils";
 
 const aiIdePrompt = `Analyze this mobile app codebase and return a concise business-context report for marketing creative generation. Do not include source code, secrets, or implementation details. Use the following headings:\n\n- App name\n- App category\n- One-sentence product summary\n- Target users\n- Main user problem\n- Core features\n- Key benefits\n- Differentiators\n- Brand tone\n- Claims to avoid\n- Suggested visual keywords\n\nOnly state facts supported by the codebase and product copy. Keep every item short.`;
 
+const BUSINESS_LOGO_MAX_BYTES = 2 * 1024 * 1024;
+const acceptedLogoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 type IntakeType = "manual" | "mobile_app_ai_prompt" | "website";
-type RequestStatus = "idle" | "loading" | "retrying" | "saving";
+type OnboardingStep = 1 | 2 | 3;
+type RequestStatus = "analyzing" | "idle" | "loading" | "saving";
+type PrimaryGoal =
+  | "increase_revenue"
+  | "generate_leads"
+  | "increase_signups"
+  | "increase_installs"
+  | "grow_views"
+  | "brand_awareness"
+  | "grow_following"
+  | "increase_engagement"
+  | "website_traffic"
+  | "product_launch";
 
 type ManualProfileDraft = {
   brandTone: string;
@@ -62,14 +97,25 @@ type ManualProfileDraft = {
 };
 
 type ProfileSummary = {
+  analysisConfidence: "high" | "low" | "medium";
+  analysisSummary: string | null;
+  businessName: string | null;
   id: string;
   intakeType: IntakeType;
+  logoStorageKey: string | null;
+  logoUrl: string | null;
+  onboardingComplete: boolean;
+  onboardingCompletedAt: string | null;
+  onboardingMissingFields: string[];
+  onboardingRequiredVersion: number;
+  onboardingStatus: "completed" | "incomplete";
+  onboardingVersion: number;
   preparationError: string | null;
   preparationStatus: "failed" | "preparing";
+  primaryGoal: PrimaryGoal | null;
+  primaryGoals: PrimaryGoal[];
   profileVersion: number;
 };
-
-type PipelineState = "failed" | "input" | "preparing";
 
 const intakeOptions = [
   {
@@ -92,6 +138,23 @@ const intakeOptions = [
   },
 ] as const;
 
+const goalOptions = [
+  { icon: BadgeDollarSign, label: "Increase Sales & Revenue", value: "increase_revenue" },
+  { icon: UserPlus, label: "Generate Leads", value: "generate_leads" },
+  { icon: TrendingUp, label: "Get More Sign-ups", value: "increase_signups" },
+  { icon: Download, label: "Increase App Installs", value: "increase_installs" },
+  { icon: Eye, label: "Grow Views & Reach", value: "grow_views" },
+  { icon: Megaphone, label: "Build Brand Awareness", value: "brand_awareness" },
+  { icon: UsersRound, label: "Grow Social Following", value: "grow_following" },
+  { icon: MessageCircleHeart, label: "Increase Engagement", value: "increase_engagement" },
+  { icon: MousePointerClick, label: "Drive Website Traffic", value: "website_traffic" },
+  { icon: Rocket, label: "Promote a Product Launch", value: "product_launch" },
+] as const satisfies ReadonlyArray<{
+  icon: typeof BadgeDollarSign;
+  label: string;
+  value: PrimaryGoal;
+}>;
+
 const initialManualDraft: ManualProfileDraft = {
   brandTone: "",
   businessName: "",
@@ -103,48 +166,58 @@ const initialManualDraft: ManualProfileDraft = {
 };
 
 const countFormatter = new Intl.NumberFormat("en");
-
 const profileControlClassName =
   "h-12 w-full rounded-lg border border-border bg-card-muted px-3 text-sm leading-6 text-foreground outline-none transition-[background-color,border-color,box-shadow] placeholder:text-muted-subtle hover:border-border-strong focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/20 disabled:cursor-not-allowed disabled:bg-card disabled:opacity-70";
 
 export function BusinessProfileOnboarding() {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
-  const [intakeType, setIntakeType] = useState<IntakeType>("website");
-  const [websiteUrl, setWebsiteUrl] = useState("");
-  const [aiIdeContext, setAiIdeContext] = useState("");
-  const [manual, setManual] = useState<ManualProfileDraft>(initialManualDraft);
-  const [existingProfile, setExistingProfile] = useState<ProfileSummary | null>(null);
-  const [status, setStatus] = useState<RequestStatus>("loading");
-  const [error, setError] = useState<string | null>(null);
-  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
-  const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
-  const [copied, setCopied] = useState(false);
   const persistedJobId = usePersistedJobIdFromUrl();
   const backgroundJobQuery = useBackgroundJob(persistedJobId);
-  const idempotencyKeyRef = useRef<string | null>(null);
-  const idempotencyPayloadRef = useRef<string | null>(null);
-  const websiteInputId = useId();
-  const websiteHintId = useId();
-  const aiContextInputId = useId();
-  const aiContextHintId = useId();
   const backgroundJob = backgroundJobQuery.data;
   const backgroundJobTerminal =
     backgroundJob?.status === "cancelled" ||
     backgroundJob?.status === "completed" ||
     backgroundJob?.status === "failed";
-  const isSaving =
-    Boolean(backgroundJob && !backgroundJobTerminal) ||
-    (status === "saving" && !backgroundJobTerminal);
-  const isRetrying = status === "retrying";
-  const backgroundJobError =
-    backgroundJob?.status === "failed" || backgroundJob?.status === "cancelled"
-      ? backgroundJob.error?.message ?? "Business profile setup did not complete."
-      : null;
+  const [step, setStep] = useState<OnboardingStep>(1);
+  const [intakeType, setIntakeType] = useState<IntakeType>("website");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [aiIdeContext, setAiIdeContext] = useState("");
+  const [manual, setManual] = useState<ManualProfileDraft>(initialManualDraft);
+  const [businessName, setBusinessName] = useState("");
+  const [primaryGoals, setPrimaryGoals] = useState<PrimaryGoal[]>([]);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  const [logoStorageKey, setLogoStorageKey] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [uploadedLogoKey, setUploadedLogoKey] = useState<string | null>(null);
+  const [identityDirty, setIdentityDirty] = useState(false);
+  const [goalDirty, setGoalDirty] = useState(false);
+  const [profile, setProfile] = useState<ProfileSummary | null>(null);
+  const [status, setStatus] = useState<RequestStatus>("loading");
+  const [error, setError] = useState<string | null>(null);
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
+  const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const idempotencyKeyRef = useRef<string | null>(null);
+  const idempotencyPayloadRef = useRef<string | null>(null);
+  const logoObjectUrlRef = useRef<string | null>(null);
+  const latestPrimaryGoalsRef = useRef(primaryGoals);
+  const verifiedJobRef = useRef<string | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const isAnalyzing =
+    status === "analyzing" || Boolean(persistedJobId && !backgroundJobTerminal);
+  const isBusy = status === "saving" || isAnalyzing;
   const hasUnsavedChanges =
     websiteUrl.trim().length > 0 ||
     aiIdeContext.trim().length > 0 ||
-    Object.values(manual).some((value) => value.trim().length > 0);
+    Object.values(manual).some((value) => value.trim().length > 0) ||
+    identityDirty ||
+    goalDirty;
+
+  useEffect(() => {
+    latestPrimaryGoalsRef.current = primaryGoals;
+  }, [primaryGoals]);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -155,32 +228,23 @@ export function BusinessProfileOnboarding() {
 
     async function loadProfile() {
       try {
-        const token = await getCurrentUserIdToken();
+        const loadedProfile = await fetchProfile(controller.signal);
+        hydrateProfile(loadedProfile);
 
-        if (!token) {
-          throw new Error("Could not verify your sign-in session.");
+        if (loadedProfile?.onboardingComplete) {
+          router.replace("/dashboard");
+          router.refresh();
+          return;
         }
 
-        const response = await fetch("/api/business-profile", {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
-        const data = (await response.json().catch(() => null)) as {
-          message?: string;
-          ok?: boolean;
-          profile?: ProfileSummary | null;
-        } | null;
-
-        if (!response.ok || !data?.ok) {
-          throw new Error(data?.message ?? "Could not load your business profile.");
+        if (loadedProfile && !persistedJobId) {
+          moveToStep(2);
         }
-
-        setExistingProfile(data.profile ?? null);
       } catch (loadError) {
         if (!controller.signal.aborted) {
           setProfileLoadFailed(true);
           setError(
-            getFriendlyProfileError(
+            getFriendlyError(
               loadError,
               "Could not load your business profile. Check your connection and try again.",
             ),
@@ -188,33 +252,78 @@ export function BusinessProfileOnboarding() {
         }
       } finally {
         if (!controller.signal.aborted) {
-          setStatus("idle");
+          setStatus(persistedJobId ? "analyzing" : "idle");
         }
       }
     }
 
     void loadProfile();
-
     return () => controller.abort();
-  }, [authLoading, profileLoadAttempt, user]);
+  }, [authLoading, persistedJobId, profileLoadAttempt, router, user]);
 
   useEffect(() => {
-    if (
-      backgroundJob?.status !== "completed" ||
-      !backgroundJob.output ||
-      typeof backgroundJob.output !== "object" ||
-      Array.isArray(backgroundJob.output) ||
-      backgroundJob.output.operation !== "business_profile_setup"
-    ) {
+    if (!backgroundJob || !backgroundJobTerminal) {
       return;
     }
 
-    persistJobIdInUrl(null);
-    router.replace("/dashboard");
-  }, [backgroundJob, router]);
+    const verificationKey = `${backgroundJob.id}:${backgroundJob.status}`;
+    if (verifiedJobRef.current === verificationKey) {
+      return;
+    }
+    verifiedJobRef.current = verificationKey;
+
+    if (backgroundJob.status !== "completed") {
+      persistJobIdInUrl(null);
+      idempotencyKeyRef.current = null;
+      idempotencyPayloadRef.current = null;
+      const failureUpdate = window.setTimeout(() => {
+        setStatus("idle");
+        setError(
+          backgroundJob.error?.message ??
+            "We could not analyze that source. Check it and try again.",
+        );
+      }, 0);
+      return () => window.clearTimeout(failureUpdate);
+    }
+
+    async function verifyCompletedProfile() {
+      try {
+        const loadedProfile = await fetchProfile();
+        if (!loadedProfile) {
+          throw new Error("Business analysis completed without a saved profile.");
+        }
+        hydrateProfile(loadedProfile);
+        persistJobIdInUrl(null);
+        idempotencyKeyRef.current = null;
+        idempotencyPayloadRef.current = null;
+        setStatus("idle");
+        setError(null);
+        moveToStep(2);
+      } catch (verificationError) {
+        setStatus("idle");
+        setError(
+          getFriendlyError(
+            verificationError,
+            "The analysis finished, but we could not load it. Try again.",
+          ),
+        );
+      }
+    }
+
+    void verifyCompletedProfile();
+  }, [backgroundJob, backgroundJobTerminal]);
+
+  useEffect(
+    () => () => {
+      if (logoObjectUrlRef.current) {
+        URL.revokeObjectURL(logoObjectUrlRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
-    if (!hasUnsavedChanges) {
+    if (!hasUnsavedChanges || persistedJobId) {
       return;
     }
 
@@ -225,36 +334,100 @@ export function BusinessProfileOnboarding() {
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [hasUnsavedChanges]);
+  }, [hasUnsavedChanges, persistedJobId]);
+
+  useEffect(() => {
+    if (
+      !user ||
+      !profile ||
+      step !== 3 ||
+      !goalDirty ||
+      status !== "idle"
+    ) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const goalsToSave = primaryGoals;
+    const goalsFingerprint = JSON.stringify(goalsToSave);
+    const timer = window.setTimeout(async () => {
+      try {
+        const token = await getCurrentUserIdToken();
+        if (!token) {
+          throw new Error("Sign in before saving your onboarding goals.");
+        }
+
+        const response = await fetch("/api/business-profile", {
+          body: JSON.stringify({
+            action: "save_goal_draft",
+            primaryGoals: goalsToSave,
+          }),
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          method: "PATCH",
+          signal: controller.signal,
+        });
+        const data = await readProfileResponse(response);
+
+        if (JSON.stringify(latestPrimaryGoalsRef.current) === goalsFingerprint) {
+          setProfile(data.profile);
+          setGoalDirty(false);
+          setError(null);
+        }
+      } catch (saveError) {
+        if (!controller.signal.aborted) {
+          setError(
+            getFriendlyError(
+              saveError,
+              "Could not save your goal choices. They will still be saved when you finish onboarding.",
+            ),
+          );
+        }
+      }
+    }, 700);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [goalDirty, primaryGoals, profile, status, step, user]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (step === 1) {
+      await startBusinessAnalysis();
+      return;
+    }
+
+    if (step === 2) {
+      await saveBusinessIdentity();
+      return;
+    }
+
+    await completeOnboarding();
+  }
+
+  async function startBusinessAnalysis() {
     setError(null);
     setProfileLoadFailed(false);
     setStatus("saving");
 
     try {
       const token = await getCurrentUserIdToken();
-
       if (!token) {
         throw new Error("Sign in before creating your business profile.");
       }
 
-      const payload = {
-        aiIdeContext,
-        intakeType,
-        manual,
-        websiteUrl,
-      };
+      const payload = { aiIdeContext, intakeType, manual, websiteUrl };
       const payloadFingerprint = JSON.stringify(payload);
-
       if (idempotencyPayloadRef.current !== payloadFingerprint) {
         idempotencyPayloadRef.current = payloadFingerprint;
         idempotencyKeyRef.current = crypto.randomUUID();
       }
-
-      const idempotencyKey =
-        idempotencyKeyRef.current ?? crypto.randomUUID();
+      const idempotencyKey = idempotencyKeyRef.current ?? crypto.randomUUID();
       idempotencyKeyRef.current = idempotencyKey;
 
       const response = await fetch("/api/business-profile", {
@@ -272,57 +445,109 @@ export function BusinessProfileOnboarding() {
         ok?: boolean;
       } | null;
 
-      if (!response.ok || !data?.ok) {
-        throw new Error(data?.message ?? "Could not create your business profile.");
+      if (!response.ok || !data?.ok || !data.jobId) {
+        throw new Error(data?.message ?? "Could not analyze your business information.");
       }
 
-      if (!data.jobId) {
-        throw new Error("Business profile setup returned no job ID.");
-      }
-
+      setStatus("analyzing");
       persistJobIdInUrl(data.jobId);
     } catch (submitError) {
       setError(
-        getFriendlyProfileError(
+        getFriendlyError(
           submitError,
-          "Could not create your business profile. Review the details and try again.",
+          "Could not analyze your business information. Review the details and try again.",
         ),
       );
       setStatus("idle");
     }
   }
 
-  async function retryPreparation() {
+  async function saveBusinessIdentity() {
+    const normalizedName = businessName.trim();
+    if (!normalizedName) {
+      setError("Enter the business name before continuing.");
+      return;
+    }
+
     setError(null);
-    setProfileLoadFailed(false);
-    setStatus("retrying");
+    setStatus("saving");
 
     try {
       const token = await getCurrentUserIdToken();
-
       if (!token) {
-        throw new Error("Sign in again before retrying Trending preparation.");
+        throw new Error("Sign in before saving your business identity.");
       }
 
-      const response = await fetch("/api/business-profile/retry", {
-        headers: { Authorization: `Bearer ${token}` },
-        method: "POST",
+      let nextLogoStorageKey = logoStorageKey;
+      if (logoFile) {
+        nextLogoStorageKey = uploadedLogoKey ?? (await uploadLogo(logoFile, token));
+        setUploadedLogoKey(nextLogoStorageKey);
+      }
+
+      const response = await fetch("/api/business-profile", {
+        body: JSON.stringify({
+          action: "save_identity",
+          businessName: normalizedName,
+          logoStorageKey: nextLogoStorageKey,
+        }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        method: "PATCH",
       });
-      const data = (await response.json().catch(() => null)) as {
-        message?: string;
-        ok?: boolean;
-      } | null;
-
-      if (!response.ok || !data?.ok) {
-        throw new Error(data?.message ?? "Could not retry Trending preparation.");
-      }
-
-      router.replace("/dashboard");
-    } catch (retryError) {
+      const data = await readProfileResponse(response);
+      hydrateProfile(data.profile);
+      setLogoFile(null);
+      clearLogoPreview();
+      setUploadedLogoKey(null);
+      setIdentityDirty(false);
+      setStatus("idle");
+      moveToStep(3);
+    } catch (saveError) {
       setError(
-        getFriendlyProfileError(
-          retryError,
-          "Could not retry Trending preparation. Check your connection and try again.",
+        getFriendlyError(
+          saveError,
+          "Could not save your business name and logo. Try again.",
+        ),
+      );
+      setStatus("idle");
+    }
+  }
+
+  async function completeOnboarding() {
+    if (primaryGoals.length === 0) {
+      setError("Choose at least one goal before continuing.");
+      return;
+    }
+
+    setError(null);
+    setStatus("saving");
+
+    try {
+      const token = await getCurrentUserIdToken();
+      if (!token) {
+        throw new Error("Sign in before completing onboarding.");
+      }
+      const response = await fetch("/api/business-profile", {
+        body: JSON.stringify({ action: "complete", primaryGoals }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        method: "PATCH",
+      });
+      const data = await readProfileResponse(response);
+      if (!data.profile.onboardingComplete) {
+        throw new Error("Onboarding was saved but is not complete yet.");
+      }
+      router.replace("/dashboard");
+      router.refresh();
+    } catch (completeError) {
+      setError(
+        getFriendlyError(
+          completeError,
+          "Could not finish onboarding. Try again.",
         ),
       );
       setStatus("idle");
@@ -335,7 +560,6 @@ export function BusinessProfileOnboarding() {
       setCopied(true);
       setError(null);
     } catch {
-      setProfileLoadFailed(false);
       setError("Could not copy the prompt. Select the prompt text and copy it manually.");
     }
   }
@@ -344,7 +568,73 @@ export function BusinessProfileOnboarding() {
     setIntakeType(value);
     setCopied(false);
     setError(null);
-    setProfileLoadFailed(false);
+  }
+
+  function selectLogo(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+    if (!acceptedLogoTypes.has(file.type)) {
+      setError("Upload a PNG, JPEG, or WebP logo.");
+      return;
+    }
+    if (file.size < 1 || file.size > BUSINESS_LOGO_MAX_BYTES) {
+      setError("Choose a logo smaller than 2 MB.");
+      return;
+    }
+    setLogoFile(file);
+    clearLogoPreview();
+    const objectUrl = URL.createObjectURL(file);
+    logoObjectUrlRef.current = objectUrl;
+    setLogoPreviewUrl(objectUrl);
+    setUploadedLogoKey(null);
+    setIdentityDirty(true);
+    setError(null);
+  }
+
+  function removeLogo() {
+    setLogoFile(null);
+    clearLogoPreview();
+    setLogoStorageKey(null);
+    setLogoUrl(null);
+    setUploadedLogoKey(null);
+    setIdentityDirty(true);
+    setError(null);
+  }
+
+  function clearLogoPreview() {
+    if (logoObjectUrlRef.current) {
+      URL.revokeObjectURL(logoObjectUrlRef.current);
+      logoObjectUrlRef.current = null;
+    }
+    setLogoPreviewUrl(null);
+  }
+
+  function hydrateProfile(nextProfile: ProfileSummary | null) {
+    setProfile(nextProfile);
+    if (!nextProfile) {
+      return;
+    }
+    setBusinessName(nextProfile.businessName?.trim() ?? "");
+    setLogoStorageKey(nextProfile.logoStorageKey);
+    setLogoUrl(nextProfile.logoUrl);
+    setPrimaryGoals(
+      nextProfile.primaryGoals?.length
+        ? nextProfile.primaryGoals
+        : nextProfile.primaryGoal
+          ? [nextProfile.primaryGoal]
+          : [],
+    );
+    setIdentityDirty(false);
+    setGoalDirty(false);
+  }
+
+  function moveToStep(nextStep: OnboardingStep) {
+    setStep(nextStep);
+    setError(null);
+    window.setTimeout(() => headingRef.current?.focus(), 0);
   }
 
   function retryProfileLoad() {
@@ -356,64 +646,145 @@ export function BusinessProfileOnboarding() {
 
   if (authLoading || (Boolean(user) && status === "loading")) {
     return (
-      <OnboardingFrame pipelineState="input">
-        <ProfileLoadingState />
+      <OnboardingFrame>
+        <LoadingState />
       </OnboardingFrame>
     );
   }
 
-  if (existingProfile) {
+  if (profileLoadFailed) {
     return (
-      <OnboardingFrame
-        pipelineState={
-          existingProfile.preparationStatus === "failed" ? "failed" : "preparing"
-        }
-      >
-        <ExistingProfileState
-          error={error}
-          isRetrying={isRetrying}
-          profile={existingProfile}
-          onRetry={() => void retryPreparation()}
+      <OnboardingFrame>
+        <LoadFailureState
+          message={error ?? "Could not load your business profile."}
+          onRetry={retryProfileLoad}
         />
       </OnboardingFrame>
     );
   }
 
   return (
-    <OnboardingFrame
-      pipelineState={isSaving ? "preparing" : "input"}
-      confirmNavigation={hasUnsavedChanges && !persistedJobId}
-    >
+    <OnboardingFrame>
       <form
         onSubmit={submit}
-        className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card"
+        className="overflow-hidden rounded-[var(--radius-modal)] border border-border/90 bg-card shadow-floating"
       >
         <div
           className="h-1 bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]"
           aria-hidden="true"
         />
 
-        <div className="px-5 py-6 sm:px-7 sm:py-7">
-          <header>
-            <Badge variant="secondary">Source details</Badge>
-            <h2 className="mt-4 max-w-2xl text-balance text-2xl font-bold tracking-[-0.025em] text-foreground-strong sm:text-[30px]">
-              Choose the source you trust most
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted sm:text-[15px]">
-              Start with the place that already explains your product clearly.
-              UGC Pilot turns it into one reusable creative brief.
-            </p>
-          </header>
+        {step === 1 ? (
+          <BusinessInformationStep
+            aiIdeContext={aiIdeContext}
+            copied={copied}
+            error={error}
+            intakeType={intakeType}
+            isSaving={isBusy}
+            manual={manual}
+            websiteUrl={websiteUrl}
+            onAiIdeContextChange={setAiIdeContext}
+            onCopyPrompt={() => void copyPrompt()}
+            onIntakeTypeChange={selectIntakeType}
+            onManualChange={setManual}
+            onWebsiteUrlChange={setWebsiteUrl}
+          />
+        ) : null}
 
-          <FieldSet className="mt-7">
-            <FieldLegend className="sr-only">
-              Business context source
-            </FieldLegend>
-            <div className="grid gap-3 sm:grid-cols-3">
+        {step === 2 ? (
+          <BusinessIdentityStep
+            businessName={businessName}
+            error={error}
+            headingRef={headingRef}
+            isSaving={status === "saving"}
+            logoPreviewUrl={logoPreviewUrl ?? logoUrl}
+            profile={profile}
+            onBack={() => moveToStep(1)}
+            onBusinessNameChange={(value) => {
+              setBusinessName(value);
+              setIdentityDirty(true);
+              setError(null);
+            }}
+            onLogoChange={selectLogo}
+            onRemoveLogo={removeLogo}
+          />
+        ) : null}
+
+        {step === 3 ? (
+          <PrimaryGoalStep
+            error={error}
+            headingRef={headingRef}
+            isSaving={status === "saving"}
+            primaryGoals={primaryGoals}
+            onBack={() => moveToStep(2)}
+            onPrimaryGoalToggle={(value) => {
+              setPrimaryGoals((currentGoals) =>
+                currentGoals.includes(value)
+                  ? currentGoals.filter((goal) => goal !== value)
+                  : [...currentGoals, value],
+              );
+              setGoalDirty(true);
+              setError(null);
+            }}
+          />
+        ) : null}
+      </form>
+    </OnboardingFrame>
+  );
+}
+
+function BusinessInformationStep({
+  aiIdeContext,
+  copied,
+  error,
+  intakeType,
+  isSaving,
+  manual,
+  onAiIdeContextChange,
+  onCopyPrompt,
+  onIntakeTypeChange,
+  onManualChange,
+  onWebsiteUrlChange,
+  websiteUrl,
+}: {
+  aiIdeContext: string;
+  copied: boolean;
+  error: string | null;
+  intakeType: IntakeType;
+  isSaving: boolean;
+  manual: ManualProfileDraft;
+  onAiIdeContextChange: (value: string) => void;
+  onCopyPrompt: () => void;
+  onIntakeTypeChange: (value: IntakeType) => void;
+  onManualChange: (value: ManualProfileDraft) => void;
+  onWebsiteUrlChange: (value: string) => void;
+  websiteUrl: string;
+}) {
+  const websiteInputId = useId();
+  const websiteHintId = useId();
+  const aiContextInputId = useId();
+  const aiContextHintId = useId();
+
+  return (
+    <>
+      <div className="px-5 py-6 sm:px-7 sm:py-7">
+        <header>
+          <Badge variant="secondary">Source details</Badge>
+          <h2 className="mt-4 max-w-2xl text-balance text-2xl font-bold tracking-[-0.025em] text-foreground-strong sm:text-[30px]">
+            Choose the source you trust most
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted sm:text-[15px]">
+            Start with the place that already explains your product clearly.
+            UGC Pilot turns it into one reusable creative brief.
+          </p>
+        </header>
+
+        <FieldSet className="mt-7">
+          <FieldLegend className="sr-only">Business context source</FieldLegend>
+          <div className="grid gap-3 sm:grid-cols-3">
             {intakeOptions.map((option) => {
               const Icon = option.icon;
               const selected = intakeType === option.value;
-
               return (
                 <label
                   key={option.value}
@@ -431,59 +802,44 @@ export function BusinessProfileOnboarding() {
                     value={option.value}
                     checked={selected}
                     disabled={isSaving}
-                    onChange={() => selectIntakeType(option.value)}
+                    onChange={() => onIntakeTypeChange(option.value)}
                     className="sr-only"
                   />
                   <span className="flex items-start justify-between gap-3">
-                    <span
-                      className={cn(
-                        "flex size-9 shrink-0 items-center justify-center rounded-lg border",
-                        selected
-                          ? "border-primary/25 bg-primary/10 text-primary"
-                          : "border-border bg-background text-muted",
-                      )}
-                    >
+                    <span className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-lg border",
+                      selected
+                        ? "border-primary/25 bg-primary/10 text-primary"
+                        : "border-border bg-background text-muted",
+                    )}>
                       <Icon className="size-4" aria-hidden="true" />
                     </span>
-                    <span
-                      className={cn(
-                        "flex size-5 items-center justify-center rounded-full border",
-                        selected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border text-transparent",
-                      )}
-                      aria-hidden="true"
-                    >
+                    <span className={cn(
+                      "flex size-5 items-center justify-center rounded-full border",
+                      selected
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border text-transparent",
+                    )} aria-hidden="true">
                       <Check className="size-3" />
                     </span>
                   </span>
-                  <span className="mt-4 text-sm font-bold text-foreground-strong">
-                    {option.label}
-                  </span>
-                  <span className="mt-1 text-xs leading-5 text-muted">
-                    {option.description}
-                  </span>
+                  <span className="mt-4 text-sm font-bold text-foreground-strong">{option.label}</span>
+                  <span className="mt-1 text-xs leading-5 text-muted">{option.description}</span>
                 </label>
               );
             })}
-            </div>
-          </FieldSet>
-        </div>
+          </div>
+        </FieldSet>
+      </div>
 
-        <Separator />
+      <Separator />
 
-        <div className="px-5 py-7 sm:px-7 sm:py-8">
+      <div className="px-5 py-7 sm:px-7 sm:py-8">
         {intakeType === "website" ? (
           <section aria-labelledby="website-source-title">
-            <h3
-              id="website-source-title"
-              className="text-lg font-bold text-foreground-strong"
-            >
-              Website details
-            </h3>
+            <h3 id="website-source-title" className="text-lg font-bold text-foreground-strong">Website details</h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              We only read public product pages and organize the facts needed
-              for Instagram creative.
+              We only read public product pages and organize the facts needed for Instagram creative.
             </p>
             <FormField className="mt-6">
               <FieldLabel htmlFor={websiteInputId}>Website URL</FieldLabel>
@@ -497,14 +853,13 @@ export function BusinessProfileOnboarding() {
                 required
                 disabled={isSaving}
                 value={websiteUrl}
-                onChange={(event) => setWebsiteUrl(event.target.value)}
+                onChange={(event) => onWebsiteUrlChange(event.target.value)}
                 placeholder="https://yourbusiness.com…"
                 aria-describedby={websiteHintId}
                 className={profileControlClassName}
               />
               <FieldDescription id={websiteHintId}>
-                Use the main public URL. Sign-in pages and private content are
-                not required.
+                Use the main public URL. Sign-in pages and private content are not required.
               </FieldDescription>
             </FormField>
           </section>
@@ -512,60 +867,31 @@ export function BusinessProfileOnboarding() {
 
         {intakeType === "mobile_app_ai_prompt" ? (
           <section aria-labelledby="mobile-source-title">
-            <h3
-              id="mobile-source-title"
-              className="text-lg font-bold text-foreground-strong"
-            >
-              Bring context from your app
-            </h3>
+            <h3 id="mobile-source-title" className="text-lg font-bold text-foreground-strong">Bring context from your app</h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              Run this prompt in the AI IDE that already understands the
-              codebase, then paste its factual report below.
+              Run this prompt in the AI IDE that already understands the codebase, then paste its factual report below.
             </p>
-
             <ol className="mt-7 flex flex-col gap-8">
               <li>
                 <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <StepNumber value="1" />
-                    <h4 className="text-sm font-bold text-foreground">
-                      Copy the analysis prompt
-                    </h4>
+                    <h4 className="text-sm font-bold text-foreground">Copy the analysis prompt</h4>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="lg"
-                    onClick={() => void copyPrompt()}
-                  >
-                    {copied ? (
-                      <Check
-                        data-icon="inline-start"
-                        className="text-success"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <Copy data-icon="inline-start" aria-hidden="true" />
-                    )}
+                  <Button type="button" variant="outline" size="lg" onClick={onCopyPrompt} disabled={isSaving}>
+                    {copied ? <Check data-icon="inline-start" className="text-success" aria-hidden="true" /> : <Copy data-icon="inline-start" aria-hidden="true" />}
                     <span aria-live="polite">{copied ? "Copied" : "Copy prompt"}</span>
                   </Button>
                 </div>
-                <pre className="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-background p-4 font-mono text-xs leading-5 text-muted sm:p-5">
-                  {aiIdePrompt}
-                </pre>
+                <pre className="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-background p-4 font-mono text-xs leading-5 text-muted sm:p-5">{aiIdePrompt}</pre>
               </li>
-
               <li>
                 <div className="flex items-center gap-3">
                   <StepNumber value="2" />
-                  <h4 className="text-sm font-bold text-foreground">
-                    Paste the AI IDE result
-                  </h4>
+                  <h4 className="text-sm font-bold text-foreground">Paste the AI IDE result</h4>
                 </div>
                 <FormField className="mt-4">
-                  <FieldLabel htmlFor={aiContextInputId} className="sr-only">
-                    AI IDE business context
-                  </FieldLabel>
+                  <FieldLabel htmlFor={aiContextInputId} className="sr-only">AI IDE business context</FieldLabel>
                   <textarea
                     id={aiContextInputId}
                     name="aiIdeContext"
@@ -575,23 +901,15 @@ export function BusinessProfileOnboarding() {
                     maxLength={24_000}
                     disabled={isSaving}
                     value={aiIdeContext}
-                    onChange={(event) => setAiIdeContext(event.target.value)}
+                    onChange={(event) => onAiIdeContextChange(event.target.value)}
                     rows={11}
                     placeholder="Paste the complete business-context report here…"
                     aria-describedby={aiContextHintId}
-                    className={cn(
-                      profileControlClassName,
-                      "min-h-56 resize-y py-3",
-                    )}
+                    className={cn(profileControlClassName, "min-h-56 resize-y py-3")}
                   />
-                  <div
-                    id={aiContextHintId}
-                    className="flex items-center justify-between gap-4 text-xs leading-5 text-muted-subtle"
-                  >
+                  <div id={aiContextHintId} className="flex items-center justify-between gap-4 text-xs leading-5 text-muted-subtle">
                     <span>Do not paste source code, secrets, or credentials.</span>
-                    <span className="shrink-0 font-mono tabular-nums">
-                      {formatCount(aiIdeContext.length)}/24,000
-                    </span>
+                    <span className="shrink-0 font-mono tabular-nums">{formatCount(aiIdeContext.length)}/24,000</span>
                   </div>
                 </FormField>
               </li>
@@ -601,437 +919,290 @@ export function BusinessProfileOnboarding() {
 
         {intakeType === "manual" ? (
           <section aria-labelledby="manual-source-title">
-            <h3
-              id="manual-source-title"
-              className="text-lg font-bold text-foreground-strong"
-            >
-              Enter the business facts
-            </h3>
+            <h3 id="manual-source-title" className="text-lg font-bold text-foreground-strong">Enter the business facts</h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              Keep each answer concise and factual. These details become the
-              source of truth for personalized recommendations in Trending.
+              Keep each answer concise and factual. These details become the source of truth for personalized recommendations in Trending.
             </p>
             <FieldGroup className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <ProfileField
-                label="Business name"
-                name="businessName"
-                autoComplete="organization"
-                value={manual.businessName}
-                required
-                maxLength={120}
-                disabled={isSaving}
-                placeholder="Enter your business name…"
-                onChange={(value) => setManual({ ...manual, businessName: value })}
-              />
-              <ProfileField
-                label="Category"
-                name="category"
-                value={manual.category}
-                required
-                maxLength={120}
-                disabled={isSaving}
-                placeholder="Enter your category or industry…"
-                onChange={(value) => setManual({ ...manual, category: value })}
-              />
-              <ProfileField
-                label="Target audience"
-                name="targetAudience"
-                value={manual.targetAudience}
-                required
-                minLength={3}
-                maxLength={600}
-                disabled={isSaving}
-                placeholder="Describe the people your business serves…"
-                className="sm:col-span-2"
-                onChange={(value) => setManual({ ...manual, targetAudience: value })}
-              />
-              <ProfileField
-                label="Main problem"
-                name="mainProblem"
-                value={manual.mainProblem}
-                required
-                maxLength={360}
-                disabled={isSaving}
-                placeholder="Describe the main problem they need solved…"
-                className="sm:col-span-2"
-                onChange={(value) => setManual({ ...manual, mainProblem: value })}
-              />
-              <ProfileField
-                label="Product summary"
-                name="productSummary"
-                value={manual.productSummary}
-                required
-                minLength={20}
-                maxLength={1_000}
-                disabled={isSaving}
-                placeholder="Explain what the product does in two or three sentences…"
-                multiline
-                className="sm:col-span-2"
-                onChange={(value) => setManual({ ...manual, productSummary: value })}
-              />
-              <ProfileField
-                label="Key benefits"
-                name="valueProps"
-                value={manual.valueProps}
-                required
-                minLength={3}
-                maxLength={1_000}
-                disabled={isSaving}
-                placeholder="List one benefit per line…"
-                hint="One benefit per line produces cleaner creative angles."
-                multiline
-                className="sm:col-span-2"
-                onChange={(value) => setManual({ ...manual, valueProps: value })}
-              />
-              <ProfileField
-                label="Brand tone"
-                name="brandTone"
-                value={manual.brandTone}
-                maxLength={160}
-                disabled={isSaving}
-                placeholder="Describe the voice you want to use…"
-                hint="Optional"
-                className="sm:col-span-2"
-                onChange={(value) => setManual({ ...manual, brandTone: value })}
-              />
+              <ProfileField label="Business name" name="businessName" autoComplete="organization" value={manual.businessName} required maxLength={120} disabled={isSaving} placeholder="Enter your business name…" onChange={(value) => onManualChange({ ...manual, businessName: value })} />
+              <ProfileField label="Category" name="category" value={manual.category} required maxLength={120} disabled={isSaving} placeholder="Enter your category or industry…" onChange={(value) => onManualChange({ ...manual, category: value })} />
+              <ProfileField label="Target audience" name="targetAudience" value={manual.targetAudience} required minLength={3} maxLength={600} disabled={isSaving} placeholder="Describe the people your business serves…" className="sm:col-span-2" onChange={(value) => onManualChange({ ...manual, targetAudience: value })} />
+              <ProfileField label="Main problem" name="mainProblem" value={manual.mainProblem} required maxLength={360} disabled={isSaving} placeholder="Describe the main problem they need solved…" className="sm:col-span-2" onChange={(value) => onManualChange({ ...manual, mainProblem: value })} />
+              <ProfileField label="Product summary" name="productSummary" value={manual.productSummary} required minLength={20} maxLength={1_000} disabled={isSaving} placeholder="Explain what the product does in two or three sentences…" multiline className="sm:col-span-2" onChange={(value) => onManualChange({ ...manual, productSummary: value })} />
+              <ProfileField label="Key benefits" name="valueProps" value={manual.valueProps} required minLength={3} maxLength={1_000} disabled={isSaving} placeholder="List one benefit per line…" hint="One benefit per line produces cleaner creative angles." multiline className="sm:col-span-2" onChange={(value) => onManualChange({ ...manual, valueProps: value })} />
+              <ProfileField label="Brand tone" name="brandTone" value={manual.brandTone} maxLength={160} disabled={isSaving} placeholder="Describe the voice you want to use…" hint="Optional" className="sm:col-span-2" onChange={(value) => onManualChange({ ...manual, brandTone: value })} />
             </FieldGroup>
           </section>
         ) : null}
 
-          {error || backgroundJobError ? (
-            <ErrorNotice
-              message={error ?? backgroundJobError ?? ""}
-              onRetry={profileLoadFailed ? retryProfileLoad : undefined}
-            />
-          ) : null}
+        {error ? <ErrorNotice message={error} /> : null}
+      </div>
+
+      <Separator />
+      <footer className="flex flex-col gap-5 bg-card-muted/35 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+        <div className="max-w-lg">
+          <p className="text-sm font-medium text-foreground">One profile grounds every personalized idea.</p>
+          <p className="mt-1 text-xs leading-5 text-muted-subtle">Nothing is published until you review and approve it.</p>
         </div>
-
-        <Separator />
-
-        <footer className="flex flex-col gap-5 bg-card-muted/35 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-          <div className="max-w-lg">
-            <p className="text-sm font-medium text-foreground">
-              One profile grounds every personalized idea.
-            </p>
-            <p className="mt-1 text-xs leading-5 text-muted-subtle">
-              Nothing is published until you review and approve it.
-            </p>
-          </div>
-          <Button
-            type="submit"
-            disabled={isSaving}
-            size="lg"
-            className="h-11 w-full px-4 sm:w-auto"
-          >
-            {isSaving ? (
-              <Loader2
-                data-icon="inline-start"
-                className="animate-spin motion-reduce:animate-none"
-                aria-hidden="true"
-              />
-            ) : (
-              <Sparkles data-icon="inline-start" aria-hidden="true" />
-            )}
-            <span aria-live="polite">
-              {isSaving ? getSavingLabel(intakeType) : "Save profile & prepare ideas"}
-            </span>
-          </Button>
-        </footer>
-      </form>
-    </OnboardingFrame>
+        <Button type="submit" disabled={isSaving} size="lg" className="h-11 w-full px-4 sm:w-auto">
+          {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Sparkles data-icon="inline-start" aria-hidden="true" />}
+          <span aria-live="polite">{isSaving ? getSavingLabel(intakeType) : "Save profile & prepare ideas"}</span>
+        </Button>
+      </footer>
+    </>
   );
 }
 
-function OnboardingFrame({
-  children,
-  confirmNavigation = false,
-  pipelineState,
+function BusinessIdentityStep({
+  businessName,
+  error,
+  headingRef,
+  isSaving,
+  logoPreviewUrl,
+  onBack,
+  onBusinessNameChange,
+  onLogoChange,
+  onRemoveLogo,
+  profile,
 }: {
-  children: React.ReactNode;
-  confirmNavigation?: boolean;
-  pipelineState: PipelineState;
+  businessName: string;
+  error: string | null;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+  isSaving: boolean;
+  logoPreviewUrl: string | null;
+  onBack: () => void;
+  onBusinessNameChange: (value: string) => void;
+  onLogoChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onRemoveLogo: () => void;
+  profile: ProfileSummary | null;
 }) {
-  function handleNavigation(event: React.MouseEvent<HTMLAnchorElement>) {
-    if (
-      confirmNavigation &&
-      !window.confirm("Leave business setup? Your unsaved details will be lost.")
-    ) {
-      event.preventDefault();
-    }
-  }
+  const logoInputId = useId();
 
   return (
-    <main className="instagram-theme min-h-dvh bg-background text-foreground">
-      <a
-        href="#business-profile-content"
-        className="sr-only z-50 rounded-lg bg-card px-3 py-2 text-sm font-semibold text-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus-visible:ring-2 focus-visible:ring-focus"
-      >
-        Skip to business profile
-      </a>
+    <div className="px-5 py-7 sm:px-8 sm:py-8">
+      <Badge variant="secondary">Step 2 of 3</Badge>
+      <h2 ref={headingRef} tabIndex={-1} className="mt-4 text-2xl font-bold tracking-[-0.03em] text-foreground-strong outline-none sm:text-[32px]">
+        Add your business name
+      </h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted sm:text-base">
+        Enter the name customers know. You can also add a logo now, or skip it and continue.
+      </p>
 
-      <header className="border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-[1080px] items-center justify-between gap-4 px-4 sm:px-6">
-          <Link
-            href="/dashboard"
-            onClick={handleNavigation}
-            className="flex min-h-11 touch-manipulation items-center gap-2.5 rounded-lg focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-          >
-            <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary p-1.5 shadow-sm">
-              <ProductLogoMark
-                className="size-full"
-                imageClassName="brightness-0 invert"
-                sizes="36px"
-              />
-            </span>
-            <span className="text-base font-bold text-foreground-strong">
-              UGC Pilot
-            </span>
-          </Link>
-          <Link
-            href="/dashboard"
-            onClick={handleNavigation}
-            className={cn(
-              buttonVariants({ size: "lg", variant: "ghost" }),
-              "h-10 px-3 text-muted",
+      {profile?.analysisSummary ? (
+        <div className="mt-6 rounded-xl border border-border bg-card-muted/45 p-4">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-success/10 text-success"><Check className="size-4" aria-hidden="true" /></span>
+            <div>
+              <p className="text-sm font-semibold text-foreground-strong">Business source analyzed</p>
+              <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted">{profile.analysisSummary}</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <FormField className="mt-7" data-invalid={Boolean(error)}>
+        <FieldLabel htmlFor="business-name">Business name</FieldLabel>
+        <input
+          id="business-name"
+          name="businessName"
+          autoComplete="organization"
+          autoFocus
+          required
+          maxLength={120}
+          disabled={isSaving}
+          placeholder="Your business or product name"
+          value={businessName}
+          onChange={(event) => onBusinessNameChange(event.target.value)}
+          aria-describedby="business-name-help"
+          aria-invalid={Boolean(error)}
+          className={profileControlClassName}
+        />
+        <FieldDescription id="business-name-help">Enter the name you want UGC Pilot to use in personalized content.</FieldDescription>
+      </FormField>
+
+      <FormField className="mt-6">
+        <FieldLabel htmlFor={logoInputId}>Business logo <span className="font-normal text-muted-subtle">(optional)</span></FieldLabel>
+        <div className="flex flex-col gap-4 rounded-xl border border-border bg-card-muted/45 p-4 sm:flex-row sm:items-center">
+          <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-background text-muted">
+            {logoPreviewUrl ? (
+              <Image src={logoPreviewUrl} alt="Business logo preview" width={80} height={80} unoptimized className="size-full object-contain p-1" />
+            ) : (
+              <ImagePlus className="size-6" aria-hidden="true" />
             )}
-          >
-            <ArrowLeft data-icon="inline-start" aria-hidden="true" />
-            <span className="hidden sm:inline">Back to Trending</span>
-            <span className="sm:hidden">Back</span>
-          </Link>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground-strong">{logoPreviewUrl ? "Logo ready" : "Add a logo if you have one"}</p>
+            <p className="mt-1 text-xs leading-5 text-muted">PNG, JPEG, or WebP. Maximum 2 MB.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <label htmlFor={logoInputId} className={cn(
+                "inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border-strong bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-card-muted focus-within:ring-2 focus-within:ring-focus",
+                isSaving && "pointer-events-none opacity-55",
+              )}>
+                <ImagePlus className="size-4" aria-hidden="true" />
+                {logoPreviewUrl ? "Replace logo" : "Upload logo"}
+              </label>
+              <input id={logoInputId} type="file" accept="image/png,image/jpeg,image/webp" disabled={isSaving} onChange={onLogoChange} className="sr-only" />
+              {logoPreviewUrl ? (
+                <Button type="button" variant="ghost" size="lg" disabled={isSaving} onClick={onRemoveLogo}>
+                  <Trash2 data-icon="inline-start" aria-hidden="true" />Remove
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </FormField>
+
+      {error ? <FieldError className="mt-4">{error}</FieldError> : null}
+
+      <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row">
+        <Button type="button" variant="outline" size="lg" className="h-12 sm:w-auto" onClick={onBack} disabled={isSaving}>
+          <ArrowLeft data-icon="inline-start" aria-hidden="true" />Back
+        </Button>
+        <Button type="submit" size="lg" className="h-12 flex-1" disabled={isSaving || !businessName.trim()}>
+          {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <ArrowRight data-icon="inline-end" aria-hidden="true" />}
+          {isSaving ? "Saving identity…" : "Continue"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function PrimaryGoalStep({
+  error,
+  headingRef,
+  isSaving,
+  onBack,
+  onPrimaryGoalToggle,
+  primaryGoals,
+}: {
+  error: string | null;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+  isSaving: boolean;
+  onBack: () => void;
+  onPrimaryGoalToggle: (value: PrimaryGoal) => void;
+  primaryGoals: PrimaryGoal[];
+}) {
+  return (
+    <div className="px-5 py-7 sm:px-8 sm:py-8">
+      <Badge variant="secondary">Step 3 of 3</Badge>
+      <h2 ref={headingRef} tabIndex={-1} className="mt-4 text-2xl font-bold tracking-[-0.03em] text-foreground-strong outline-none sm:text-[32px]">
+        What do you want to achieve?
+      </h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted sm:text-base">
+        Select every goal that matters. We will use the complete set to personalize your hooks.
+      </p>
+
+      <FieldSet className="mt-7">
+        <FieldLegend className="sr-only">Content goals</FieldLegend>
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <p className="text-sm font-semibold text-foreground-strong">Content goals</p>
+          <span className="text-xs font-medium text-muted" aria-live="polite">
+            {primaryGoals.length === 0
+              ? "Select at least one"
+              : `${primaryGoals.length} selected`}
+          </span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {goalOptions.map((option) => {
+            const Icon = option.icon;
+            const selected = primaryGoals.includes(option.value);
+            return (
+              <label key={option.value} className={cn(
+                "group relative flex min-h-[76px] cursor-pointer items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-[background-color,border-color,box-shadow,transform] focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-card",
+                selected
+                  ? "border-primary/55 bg-selected shadow-[0_8px_24px_rgb(225_101_64_/_0.08)]"
+                  : "border-border bg-card hover:-translate-y-0.5 hover:border-border-strong hover:bg-card-muted/55",
+                isSaving && "cursor-not-allowed opacity-60",
+              )}>
+                <input
+                  type="checkbox"
+                  name="primary-goals"
+                  value={option.value}
+                  checked={selected}
+                  disabled={isSaving}
+                  onChange={() => onPrimaryGoalToggle(option.value)}
+                  className="sr-only"
+                />
+                <span className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-lg border transition-colors",
+                  selected
+                    ? "border-primary/25 bg-primary/10 text-primary"
+                    : "border-border bg-card-muted text-muted group-hover:border-border-strong",
+                )}>
+                  <Icon className="size-[18px]" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1 text-sm font-semibold leading-5 text-foreground-strong">
+                  {option.label}
+                </span>
+                <span className={cn(
+                  "flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors",
+                  selected
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border-strong bg-card text-transparent",
+                )} aria-hidden="true">
+                  <Check className="size-3.5" />
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </FieldSet>
+
+      {error ? <FieldError className="mt-4">{error}</FieldError> : null}
+
+      <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Button type="button" variant="outline" size="lg" className="h-11 sm:min-w-28" onClick={onBack} disabled={isSaving}>
+          <ArrowLeft data-icon="inline-start" aria-hidden="true" />Back
+        </Button>
+        <Button type="submit" size="lg" className="h-11 sm:min-w-56" disabled={isSaving || primaryGoals.length === 0}>
+          {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Sparkles data-icon="inline-start" aria-hidden="true" />}
+          {isSaving ? "Personalizing Trending…" : "Enter Trending"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function OnboardingFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="instagram-theme relative min-h-dvh overflow-x-hidden bg-background text-foreground">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-[radial-gradient(circle_at_15%_0%,var(--instagram-orange),transparent_32%),radial-gradient(circle_at_85%_0%,var(--instagram-violet),transparent_30%)] opacity-[0.055]"
+        aria-hidden="true"
+      />
+      <a href="#business-profile-content" className="sr-only rounded-lg bg-card px-3 py-2 text-sm font-semibold text-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus-visible:ring-2 focus-visible:ring-focus">Skip to business setup</a>
+      <header className="relative border-b border-border/80 bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-[68px] w-full max-w-[960px] items-center justify-between gap-4 px-5 sm:px-6">
+          <div className="flex items-center gap-2.5" aria-label="UGC Pilot">
+            <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary p-1.5 shadow-sm">
+              <ProductLogoMark className="size-full" imageClassName="brightness-0 invert" sizes="36px" />
+            </span>
+            <span className="text-base font-bold text-foreground-strong">UGC Pilot</span>
+          </div>
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Business setup</span>
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[960px] px-4 py-8 sm:px-6 sm:py-11 lg:py-14">
-        <header className="max-w-3xl">
-          <div className="flex items-center gap-2">
-            <SocialPlatformIcon className="size-5" platform="instagram" />
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
-              Instagram business profile
-            </p>
-          </div>
-          <h1 className="mt-4 text-balance text-[34px] font-bold leading-[1.08] tracking-[-0.04em] text-foreground-strong sm:text-[44px]">
-            Give every Trending recommendation the right business context.
+      <div className="relative mx-auto w-full max-w-[820px] px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
+        <header className="max-w-[680px]">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Set up Trending</p>
+          <h1 className="mt-3 text-[32px] font-bold leading-[1.12] tracking-[-0.04em] text-foreground-strong sm:text-[40px]">
+            Help Trending understand your business
           </h1>
-          <p className="mt-4 max-w-2xl text-pretty text-sm leading-6 text-muted sm:text-base sm:leading-7">
-            Add one trusted source for your product, audience, and positioning.
-            UGC Pilot uses it to ground Reel hooks, text-led videos, and
-            carousel posts.
+          <p className="mt-3 max-w-xl text-sm leading-6 text-muted sm:text-base sm:leading-7">
+            Add the essential details once so every hook starts with the right business context.
           </p>
         </header>
-
-        <ContextPipeline state={pipelineState} />
-
-        <div
-          id="business-profile-content"
-          className="mt-8 min-w-0 scroll-mt-24 sm:mt-10"
-        >
-          {children}
-        </div>
+        <div id="business-profile-content" className="mt-7 scroll-mt-24 sm:mt-8">{children}</div>
       </div>
     </main>
   );
 }
 
-function ContextPipeline({ state }: { state: PipelineState }) {
-  const steps = [
-    {
-      description: "Website, app brief, or manual facts",
-      label: "Source",
-    },
-    {
-      description: "Product, audience, and positioning",
-      label: "Creative brief",
-    },
-    {
-      description: "Reels, text-led videos, and carousels",
-      label: "Trending",
-    },
-  ];
-
-  return (
-    <nav className="mt-8 border-y border-border" aria-label="Business profile progress">
-      <ol className="grid grid-cols-3">
-        {steps.map((step, index) => {
-          const stepNumber = index + 1;
-          const complete = state !== "input" && stepNumber < 3;
-          const active =
-            (state === "input" && stepNumber === 1) ||
-            (state === "preparing" && stepNumber === 3);
-          const failed = state === "failed" && stepNumber === 3;
-
-          return (
-            <li
-              key={step.label}
-              aria-current={active ? "step" : undefined}
-              className="relative flex min-w-0 flex-col gap-2 px-2 py-4 text-center sm:flex-row sm:items-center sm:gap-3 sm:px-5 sm:text-left [&+li]:border-l [&+li]:border-border"
-            >
-              <span
-                className={cn(
-                  "mx-auto flex size-8 shrink-0 items-center justify-center rounded-lg border text-xs font-bold sm:mx-0",
-                  complete && "border-success/25 bg-success/10 text-success",
-                  active &&
-                    "border-transparent bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))] text-white",
-                  failed && "border-error/30 bg-error/10 text-error",
-                  !complete && !active && !failed &&
-                    "border-border bg-card-muted text-muted",
-                )}
-              >
-                {complete ? (
-                  <Check className="size-4" aria-hidden="true" />
-                ) : failed ? (
-                  <AlertCircle className="size-4" aria-hidden="true" />
-                ) : (
-                  stepNumber
-                )}
-              </span>
-              <div className="min-w-0">
-                <p
-                  className={cn(
-                    "truncate text-xs font-bold sm:text-sm",
-                    active || complete || failed ? "text-foreground-strong" : "text-muted",
-                  )}
-                >
-                  {step.label}
-                </p>
-                <p className="mt-0.5 hidden text-xs leading-5 text-muted md:block">
-                  {step.description}
-                </p>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-}
-
-function ExistingProfileState({
-  error,
-  isRetrying,
-  onRetry,
-  profile,
-}: {
-  error: string | null;
-  isRetrying: boolean;
-  onRetry: () => void;
-  profile: ProfileSummary;
-}) {
-  const failed = profile.preparationStatus === "failed";
-
-  return (
-    <section className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
-      <div
-        className="h-1 bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]"
-        aria-hidden="true"
-      />
-      <div className="px-5 py-7 sm:px-8 sm:py-8">
-        <Badge variant={failed ? "destructive" : "outline"}>
-          {failed ? (
-            <AlertCircle data-icon="inline-start" aria-hidden="true" />
-          ) : (
-            <CheckCircle2 data-icon="inline-start" aria-hidden="true" />
-          )}
-          {failed ? "Needs attention" : "Profile active"}
-        </Badge>
-
-        <div className="mt-5 flex items-start gap-4">
-          <span
-            className={cn(
-              "flex size-11 shrink-0 items-center justify-center rounded-xl",
-              failed ? "bg-error/10 text-error" : "bg-success/10 text-success",
-            )}
-          >
-            {failed ? (
-              <AlertCircle className="size-5" aria-hidden="true" />
-            ) : (
-              <CheckCircle2 className="size-5" aria-hidden="true" />
-            )}
-          </span>
-          <div className="min-w-0">
-            <h2 className="max-w-xl text-balance text-2xl font-bold tracking-[-0.025em] text-foreground-strong sm:text-[30px]">
-              {failed
-                ? "Trending preparation needs attention"
-                : "Your Instagram creative brief is active"}
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              {failed
-                ? "Your business profile is saved, but the first personalized ideas did not start preparing."
-                : "Your saved profile now grounds Reel hooks, text-led videos, and carousel posts across the workspace."}
-            </p>
-          </div>
-        </div>
-
-        <dl className="mt-7 grid overflow-hidden rounded-xl border border-border bg-card-muted/45 sm:grid-cols-2">
-          <div className="px-4 py-4 sm:border-r sm:border-border">
-            <dt className="text-xs font-medium text-muted-subtle">
-              Context source
-            </dt>
-            <dd className="mt-1 text-sm font-bold text-foreground">
-              {getIntakeLabel(profile.intakeType)}
-            </dd>
-          </div>
-          <div className="border-t border-border px-4 py-4 sm:border-t-0">
-            <dt className="text-xs font-medium text-muted-subtle">
-              Profile version
-            </dt>
-            <dd className="mt-1 font-mono text-sm font-bold tabular-nums text-foreground">
-              {formatCount(profile.profileVersion)}
-            </dd>
-          </div>
-        </dl>
-
-        {failed && profile.preparationError ? (
-          <ErrorNotice message={profile.preparationError} />
-        ) : null}
-        {error ? <ErrorNotice message={error} /> : null}
-
-        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-          {failed ? (
-            <Button
-              type="button"
-              onClick={onRetry}
-              disabled={isRetrying}
-              size="lg"
-              className="h-11"
-            >
-              {isRetrying ? (
-                <Loader2
-                  data-icon="inline-start"
-                  className="animate-spin motion-reduce:animate-none"
-                  aria-hidden="true"
-                />
-              ) : (
-                <RefreshCw data-icon="inline-start" aria-hidden="true" />
-              )}
-              <span aria-live="polite">
-                {isRetrying ? "Retrying preparation…" : "Retry preparation"}
-              </span>
-            </Button>
-          ) : null}
-          <Link
-            href="/dashboard"
-            className={cn(
-              buttonVariants({
-                size: "lg",
-                variant: failed ? "outline" : "default",
-              }),
-              "h-11",
-            )}
-          >
-            <Sparkles data-icon="inline-start" aria-hidden="true" />
-            Open Trending
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function ProfileField({
-  autoComplete = "off",
+  autoComplete,
   className,
-  disabled = false,
+  disabled,
   hint,
   label,
   maxLength,
@@ -1045,7 +1216,7 @@ function ProfileField({
 }: {
   autoComplete?: string;
   className?: string;
-  disabled?: boolean;
+  disabled: boolean;
   hint?: string;
   label: string;
   maxLength?: number;
@@ -1053,7 +1224,7 @@ function ProfileField({
   multiline?: boolean;
   name: string;
   onChange: (value: string) => void;
-  placeholder?: string;
+  placeholder: string;
   required?: boolean;
   value: string;
 }) {
@@ -1063,60 +1234,16 @@ function ProfileField({
 
   return (
     <FormField className={className}>
-      <div className="flex items-center justify-between gap-3">
-        <FieldLabel htmlFor={inputId} className="font-medium">
-          {label}
-        </FieldLabel>
-        {hint === "Optional" ? (
-          <span className="text-xs text-muted-subtle">Optional</span>
-        ) : null}
-      </div>
+      <FieldLabel htmlFor={inputId}>{label}{!required ? <span className="font-normal text-muted-subtle"> (optional)</span> : null}</FieldLabel>
       {multiline ? (
-        <textarea
-          id={inputId}
-          name={name}
-          autoComplete={autoComplete}
-          value={value}
-          required={required}
-          minLength={minLength}
-          maxLength={maxLength}
-          disabled={disabled}
-          placeholder={placeholder}
-          rows={4}
-          aria-describedby={describedBy}
-          onChange={(event) => onChange(event.target.value)}
-          className={cn(
-            profileControlClassName,
-            "min-h-28 resize-y py-2.5",
-          )}
-        />
+        <textarea id={inputId} name={name} autoComplete={autoComplete} value={value} required={required} minLength={minLength} maxLength={maxLength} disabled={disabled} placeholder={placeholder} rows={4} aria-describedby={describedBy} onChange={(event) => onChange(event.target.value)} className={cn(profileControlClassName, "min-h-28 resize-y py-3")} />
       ) : (
-        <input
-          id={inputId}
-          name={name}
-          autoComplete={autoComplete}
-          value={value}
-          required={required}
-          minLength={minLength}
-          maxLength={maxLength}
-          disabled={disabled}
-          placeholder={placeholder}
-          aria-describedby={describedBy}
-          onChange={(event) => onChange(event.target.value)}
-          className={profileControlClassName}
-        />
+        <input id={inputId} name={name} autoComplete={autoComplete} value={value} required={required} minLength={minLength} maxLength={maxLength} disabled={disabled} placeholder={placeholder} aria-describedby={describedBy} onChange={(event) => onChange(event.target.value)} className={profileControlClassName} />
       )}
       {hint || maxLength ? (
-        <div
-          id={hintId}
-          className="flex items-start justify-between gap-3 text-xs leading-5 text-muted-subtle"
-        >
+        <div id={hintId} className="flex items-start justify-between gap-3 text-xs leading-5 text-muted-subtle">
           <span>{hint !== "Optional" ? hint : null}</span>
-          {maxLength ? (
-            <span className="shrink-0 font-mono tabular-nums">
-              {formatCount(value.length)}/{formatCount(maxLength)}
-            </span>
-          ) : null}
+          {maxLength ? <span className="shrink-0 font-mono tabular-nums">{formatCount(value.length)}/{formatCount(maxLength)}</span> : null}
         </div>
       ) : null}
     </FormField>
@@ -1124,109 +1251,116 @@ function ProfileField({
 }
 
 function StepNumber({ value }: { value: string }) {
-  return (
-    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-selected text-xs font-bold text-primary">
-      {value}
-    </span>
-  );
+  return <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-selected text-xs font-bold text-primary">{value}</span>;
 }
 
-function ErrorNotice({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry?: () => void;
-}) {
+function ErrorNotice({ message }: { message: string }) {
   return (
     <Alert variant="destructive" className="mt-6" aria-live="polite">
       <AlertCircle aria-hidden="true" />
       <AlertTitle>Business profile needs attention</AlertTitle>
       <AlertDescription className="break-words">{message}</AlertDescription>
-      {onRetry ? (
-        <AlertAction>
-          <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-            <RefreshCw data-icon="inline-start" aria-hidden="true" />
-            Retry
-          </Button>
-        </AlertAction>
-      ) : null}
     </Alert>
   );
 }
 
-function ProfileLoadingState() {
+function LoadingState() {
   return (
-    <section
-      role="status"
-      aria-busy="true"
-      aria-live="polite"
-      className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card"
-    >
-      <span className="sr-only">Checking your business profile…</span>
-      <div
-        className="h-1 bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]"
-        aria-hidden="true"
-      />
-      <div className="flex flex-col gap-6 px-5 py-7 sm:px-7">
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-5 w-28" />
-          <Skeleton className="h-8 w-80 max-w-full" />
-          <Skeleton className="h-4 w-[520px] max-w-full" />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Skeleton className="h-32 rounded-xl" />
-          <Skeleton className="h-32 rounded-xl" />
-          <Skeleton className="h-32 rounded-xl" />
-        </div>
-        <Separator />
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-12 w-full rounded-lg" />
-        </div>
+    <section role="status" aria-busy="true" className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
+      <span className="sr-only">Checking your business profile...</span>
+      <div className="flex flex-col gap-6 px-5 py-7 sm:px-8">
+        <Skeleton className="h-5 w-24" /><Skeleton className="h-9 w-96 max-w-full" /><Skeleton className="h-4 w-[520px] max-w-full" />
+        <div className="grid gap-3 sm:grid-cols-3"><Skeleton className="h-28 rounded-xl" /><Skeleton className="h-28 rounded-xl" /><Skeleton className="h-28 rounded-xl" /></div>
+        <Skeleton className="h-12 w-full rounded-lg" />
       </div>
     </section>
   );
+}
+
+function LoadFailureState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <section className="rounded-[var(--radius-panel)] border border-border bg-card p-5 shadow-card sm:p-8">
+      <Alert variant="destructive">
+        <AlertCircle aria-hidden="true" /><AlertTitle>We could not check your setup</AlertTitle><AlertDescription>{message}</AlertDescription>
+        <AlertAction><Button type="button" variant="outline" size="sm" onClick={onRetry}><RefreshCw data-icon="inline-start" aria-hidden="true" />Try again</Button></AlertAction>
+      </Alert>
+    </section>
+  );
+}
+
+async function fetchProfile(signal?: AbortSignal) {
+  const token = await getCurrentUserIdToken();
+  if (!token) {
+    throw new Error("Could not verify your sign-in session.");
+  }
+  const response = await fetch("/api/business-profile", {
+    headers: { Authorization: `Bearer ${token}` },
+    signal,
+  });
+  const data = (await response.json().catch(() => null)) as {
+    message?: string;
+    ok?: boolean;
+    profile?: ProfileSummary | null;
+  } | null;
+  if (!response.ok || !data?.ok) {
+    throw new Error(data?.message ?? "Could not load your business profile.");
+  }
+  return data.profile ?? null;
+}
+
+async function readProfileResponse(response: Response) {
+  const data = (await response.json().catch(() => null)) as {
+    message?: string;
+    ok?: boolean;
+    profile?: ProfileSummary;
+  } | null;
+  if (!response.ok || !data?.ok || !data.profile) {
+    throw new Error(data?.message ?? "Could not save this onboarding step.");
+  }
+  return { profile: data.profile };
+}
+
+async function uploadLogo(file: File, token: string) {
+  const preparedResponse = await fetch("/api/business-profile/logo/upload-url", {
+    body: JSON.stringify({ contentType: file.type, fileSize: file.size }),
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    method: "POST",
+  });
+  const prepared = (await preparedResponse.json().catch(() => null)) as {
+    key?: string;
+    message?: string;
+    ok?: boolean;
+    requiredHeaders?: Record<string, string>;
+    uploadUrl?: string;
+  } | null;
+  if (!preparedResponse.ok || !prepared?.ok || !prepared.key || !prepared.uploadUrl) {
+    throw new Error(prepared?.message ?? "Could not prepare the logo upload.");
+  }
+  const uploadResponse = await fetch(prepared.uploadUrl, {
+    body: file,
+    headers: prepared.requiredHeaders,
+    method: "PUT",
+  });
+  if (!uploadResponse.ok) {
+    throw new Error("The logo upload did not finish. Try again.");
+  }
+  return prepared.key;
 }
 
 function formatCount(value: number) {
   return countFormatter.format(value);
 }
 
-function getFriendlyProfileError(error: unknown, fallback: string) {
+function getFriendlyError(error: unknown, fallback: string) {
   if (!(error instanceof Error)) {
     return fallback;
   }
-
   const message = error.message.trim();
-
-  if (!message || /(?:typeerror|fetch failed)/i.test(message)) {
-    return fallback;
-  }
-
-  return message;
+  return !message || /(?:typeerror|fetch failed)/i.test(message) ? fallback : message;
 }
 
 function getSavingLabel(intakeType: IntakeType) {
-  if (intakeType === "website") {
-    return "Analyzing website…";
-  }
-
-  if (intakeType === "mobile_app_ai_prompt") {
-    return "Structuring app context…";
-  }
-
+  if (intakeType === "website") return "Analyzing website…";
+  if (intakeType === "mobile_app_ai_prompt") return "Structuring app context…";
   return "Preparing creative brief…";
-}
-
-function getIntakeLabel(intakeType: IntakeType) {
-  if (intakeType === "mobile_app_ai_prompt") {
-    return "Mobile app context";
-  }
-
-  if (intakeType === "manual") {
-    return "Manual details";
-  }
-
-  return "Website";
 }

@@ -17,6 +17,8 @@ import {
   TRENDING_HOOK_COPY_JOB_TYPE,
   TRENDING_HOOK_PROMPT_VERSION,
   TRENDING_HOOK_SELECTION_VERSION,
+  getTrendingHookPerformanceSignalKey,
+  type TrendingHookPerformanceSignals,
 } from "@/lib/trending/trending-hook-copy-contract";
 
 export async function enqueueTrendingHookCopyJob(params: {
@@ -24,6 +26,7 @@ export async function enqueueTrendingHookCopyJob(params: {
   businessProfileId: string;
   businessProfileVersion: number;
   candidates: Array<Record<string, Json>>;
+  performanceSignals?: TrendingHookPerformanceSignals;
   sourceSelectionKey?: string | null;
   userId: string;
 }) {
@@ -33,6 +36,7 @@ export async function enqueueTrendingHookCopyJob(params: {
     `v${params.businessProfileVersion}`,
     TRENDING_HOOK_PROMPT_VERSION,
     TRENDING_HOOK_SELECTION_VERSION,
+    getTrendingHookPerformanceSignalKey(params.performanceSignals),
     ...(params.sourceSelectionKey
       ? [`source-${params.sourceSelectionKey}`]
       : []),
@@ -45,6 +49,7 @@ export async function enqueueTrendingHookCopyJob(params: {
         businessProfileId: params.businessProfileId,
         businessProfileVersion: params.businessProfileVersion,
         candidates: params.candidates,
+        performanceSignals: toJson(params.performanceSignals ?? {}),
         promptVersion: TRENDING_HOOK_PROMPT_VERSION,
         selectionVersion: TRENDING_HOOK_SELECTION_VERSION,
         userId: params.userId,

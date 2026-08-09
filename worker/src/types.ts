@@ -707,6 +707,33 @@ export type BackgroundJobsDatabase = {
         };
         Returns: number;
       };
+      persist_trending_hook_copy_generation_v5: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_candidates: Json;
+          p_generator_model: string;
+          p_job_id: string;
+          p_prompt_version: string;
+          p_selection_version: string;
+          p_user_id: string;
+        };
+        Returns: number;
+      };
+      persist_validated_hook_composition_generation: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_candidates: Json;
+          p_demo_asset_id: string;
+          p_generator_model: string;
+          p_job_id: string;
+          p_prompt_version: string;
+          p_selection_version: string;
+          p_user_id: string;
+        };
+        Returns: Array<{ id: string; text: string }>;
+      };
     };
     Tables: {
       background_jobs: {

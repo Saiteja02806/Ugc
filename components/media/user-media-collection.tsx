@@ -1469,7 +1469,7 @@ function MediaAssetCard({
           {!isImage ? (
             <Link
               href={getCreativeAssetEditorHref(asset.id)}
-              className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-[var(--radius-control)] border border-border bg-card-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-border-strong hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-card-muted px-3 text-xs font-semibold text-foreground-strong shadow-sm transition-colors hover:border-primary/50 hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               Edit video
             </Link>

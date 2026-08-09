@@ -6,6 +6,7 @@ import {
   hasRenderingEditProjects,
   indexLatestEditProjectsByAssetId,
 } from "./creative-asset-display.ts";
+import { normalizeEditableVideoDraftForDuration } from "./editor-draft.ts";
 import type { EditableVideo } from "./video-library.ts";
 
 test("uses the latest persisted edit output on the original Creative Asset card", () => {
@@ -58,6 +59,36 @@ test("keeps the newest edit project when a source has legacy duplicates", () => 
   const indexed = indexLatestEditProjectsByAssetId([newest, older]);
 
   assert.equal(indexed.get("asset-1"), newest);
+});
+
+test("treats a full-duration trim as an unchanged open-ended clip", () => {
+  const draft = normalizeEditableVideoDraftForDuration(
+    {
+      textOverlays: [],
+      trimEndSeconds: 4,
+      trimStartSeconds: 0,
+    },
+    4,
+  );
+
+  assert.equal(draft.trimEndSeconds, null);
+});
+
+test("keeps a real partial trim when normalizing editor state", () => {
+  const draft = normalizeEditableVideoDraftForDuration(
+    {
+      textOverlays: [],
+      trimEndSeconds: 3.5,
+      trimStartSeconds: 0.5,
+    },
+    4,
+  );
+
+  assert.deepEqual(draft, {
+    textOverlays: [],
+    trimEndSeconds: 3.5,
+    trimStartSeconds: 0.5,
+  });
 });
 
 function createProject(

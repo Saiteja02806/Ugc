@@ -48,9 +48,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  aggregateInstagramContentPerformanceByPublishedDate,
   filterAndSortInstagramContent,
   flattenReadyInstagramContentAccounts,
   groupInstagramContentByPublishedDate,
@@ -64,7 +71,8 @@ import {
 } from "@/lib/analytics/instagram-content-insights";
 import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
 import {
-  aggregateInstagramInsightDaily,
+  buildInstagramAccountDailyTrend,
+  getInstagramPerformanceTrendMode,
   getUniqueInstagramConnections,
   type InstagramInsightPoint,
   type InstagramInsightsAccount,
@@ -619,20 +627,9 @@ function AnalyticsReadyState({
     () =>
       buildInstagramPerformanceTrend(
         insightAccounts,
-        contentAccounts,
         dateRangeDays,
       ),
-    [contentAccounts, dateRangeDays, insightAccounts],
-  );
-  const performanceTrendUsesContent = useMemo(
-    () =>
-      !aggregateInstagramInsightDaily(insightAccounts).some(
-        (point) => point[performanceMetric] !== null,
-      ) &&
-      performanceTrend.some(
-        (point) => point[performanceMetric] !== null,
-      ),
-    [insightAccounts, performanceMetric, performanceTrend],
+    [dateRangeDays, insightAccounts],
   );
 
   return (
@@ -661,15 +658,16 @@ function AnalyticsReadyState({
             Your performance at a glance
           </h2>
           <p className="max-w-2xl text-sm leading-6 text-muted">
-            Performance values come from Meta Insights. Publishing totals come
-            from your workspace, and unavailable metrics remain empty.
+            Account views and interactions come from Meta Insights for this
+            period. Publishing totals come from your workspace. Per-post views
+            below are separate current post totals.
           </p>
         </header>
 
         <div className="grid grid-cols-2 border-t border-border lg:grid-cols-4">
           <SnapshotMetric
             icon={<Eye aria-hidden="true" />}
-            label="Views"
+            label="Account views"
             source={viewsSource}
             value={formatOptionalNumber(displayedViews)}
           />
@@ -703,9 +701,7 @@ function AnalyticsReadyState({
             />
           }
           description={
-            performanceTrendUsesContent
-              ? "Current Meta content metrics grouped by each post's publish date."
-              : "Daily account values returned by Meta for the selected date range."
+            "Daily account values returned by Meta for the selected date range."
           }
           eyebrow="Performance trend"
           title={`${performanceMetricLabels[performanceMetric]} over time`}
@@ -718,7 +714,7 @@ function AnalyticsReadyState({
             insightSnapshot={insightSnapshot}
             metric={performanceMetric}
             points={performanceTrend}
-            groupedByPublishDate={performanceTrendUsesContent}
+            groupedByPublishDate={false}
           />
         </AnalyticsSurface>
 
@@ -941,7 +937,10 @@ function InstagramPerformanceTrendChart({
     .map((point) => point[metric])
     .filter((value): value is number => value !== null);
   const maxValue = Math.max(...availableValues, 1);
-  const hasData = availableValues.length > 0;
+  const trendMode = getInstagramPerformanceTrendMode(
+    points.map((point) => point[metric]),
+  );
+  const hasData = trendMode !== "empty";
   const drawableWidth = chartWidth - paddingX * 2;
   const drawableHeight = chartHeight - paddingTop - paddingBottom;
   const baselineY = chartHeight - paddingBottom;
@@ -1022,6 +1021,33 @@ function InstagramPerformanceTrendChart({
           item.connectionId === selectedItem.connectionId,
       ) ?? null
     : null;
+  const firstPoint = availablePoints[0] ?? null;
+  const firstPointItems = firstPoint
+    ? sortContentForPerformanceMarker(
+        contentByDate.get(firstPoint.date) ?? [],
+        metric,
+      )
+    : [];
+
+  const openContentItems = (
+    date: string,
+    items: InstagramContentItem[],
+  ) => {
+    if (items.length === 0) {
+      return;
+    }
+
+    setActiveDate(date);
+
+    if (items.length === 1) {
+      setSelectedContentDate(null);
+      setSelectedItem(items[0]);
+      return;
+    }
+
+    setSelectedItem(null);
+    setSelectedContentDate(date);
+  };
 
   const activateNearestPoint = (
     event: ReactPointerEvent<SVGSVGElement>,
@@ -1045,6 +1071,45 @@ function InstagramPerformanceTrendChart({
 
   if (insightsLoading) {
     return <PerformanceTrendLoadingState />;
+  }
+
+  if (trendMode === "insufficient-history" && firstPoint) {
+    return (
+      <div className="mt-6">
+        <PerformanceTrendInsufficientState
+          items={firstPointItems}
+          metric={metric}
+          onViewContent={() =>
+            openContentItems(firstPoint.date, firstPointItems)
+          }
+          point={firstPoint}
+        />
+        <ContentDayPickerDialog
+          date={selectedContentDate}
+          items={selectedDateItems}
+          metric={metric}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedContentDate(null);
+            }
+          }}
+          onSelect={(item) => {
+            setSelectedContentDate(null);
+            setSelectedItem(item);
+          }}
+          showAccountName={connectionCount > 1}
+        />
+        <ContentPerformanceDrawer
+          item={activeSelectedItem}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedItem(null);
+            }
+          }}
+          showAccountName={connectionCount > 1}
+        />
+      </div>
+    );
   }
 
   return (
@@ -1207,18 +1272,9 @@ function InstagramPerformanceTrendChart({
             metric={metric}
             metricColor={metricColor}
             onActivate={setActiveDate}
-            onSelect={() => {
-              setActiveDate(marker.point.date);
-
-              if (marker.items.length === 1) {
-                setSelectedContentDate(null);
-                setSelectedItem(marker.items[0]);
-                return;
-              }
-
-              setSelectedItem(null);
-              setSelectedContentDate(marker.point.date);
-            }}
+            onSelect={() =>
+              openContentItems(marker.point.date, marker.items)
+            }
             peak={peakPoint?.date === marker.point.date}
             point={marker.point}
             previewItem={marker.previewItem}
@@ -1314,6 +1370,57 @@ function InstagramPerformanceTrendChart({
         }}
         showAccountName={connectionCount > 1}
       />
+    </div>
+  );
+}
+
+function PerformanceTrendInsufficientState({
+  items,
+  metric,
+  onViewContent,
+  point,
+}: {
+  items: InstagramContentItem[];
+  metric: PerformanceMetric;
+  onViewContent: () => void;
+  point: AvailablePerformanceTrendPoint;
+}) {
+  const metricLabel = performanceMetricLabels[metric].toLowerCase();
+
+  return (
+    <div className="min-h-[280px] overflow-hidden rounded-[var(--radius-control)] border border-border bg-card-muted/35">
+      <Empty className="min-h-[280px] px-6 py-10">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <ChartNoAxesCombined aria-hidden="true" />
+          </EmptyMedia>
+          <EmptyTitle>Not enough history to show a trend</EmptyTitle>
+          <EmptyDescription>
+            We recorded your first reporting day on {formatShortDate(point.date)}.
+            The chart will appear after another day reports performance.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Badge variant="outline">
+            {formatShortDate(point.date)}
+            <span aria-hidden="true">·</span>
+            {formatNumber(point.value)} {metricLabel}
+          </Badge>
+          {items.length > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onViewContent}
+            >
+              {items.length === 1
+                ? "View post"
+                : `View ${formatNumber(items.length)} posts`}
+              <ArrowRight data-icon="inline-end" aria-hidden="true" />
+            </Button>
+          ) : null}
+        </EmptyContent>
+      </Empty>
     </div>
   );
 }
@@ -1790,7 +1897,8 @@ function InstagramContentPerformance({
                 Content performance
               </h2>
               <p className="mt-1 text-sm leading-6 text-muted">
-                See which posts are earning attention.
+                Current views for each post. These are separate from the
+                account-view total above.
               </p>
             </div>
 
@@ -2793,37 +2901,12 @@ function AnalyticsErrorState({
 
 function buildInstagramPerformanceTrend(
   accounts: InstagramInsightsAccount[],
-  contentAccounts: InstagramContentAccount[],
   dateRangeDays: DateRangeDays,
 ): PerformanceTrendPoint[] {
-  const aggregatedByDate = new Map(
-    aggregateInstagramInsightDaily(accounts).map((point) => [
-      point.date,
-      point,
-    ]),
-  );
-  const contentByDate = new Map(
-    aggregateInstagramContentPerformanceByPublishedDate(
-      contentAccounts,
-    ).map((point) => [point.date, point]),
-  );
-
-  return getUtcDateRangeKeys(dateRangeDays).map(
-    (date): PerformanceTrendPoint => {
-      const accountPoint = aggregatedByDate.get(date);
-      const contentPoint = contentByDate.get(date);
-
-      return {
-        date,
-        interactions:
-          accountPoint?.interactions ??
-          contentPoint?.interactions ??
-          null,
-        reach: accountPoint?.reach ?? contentPoint?.reach ?? null,
-        views: accountPoint?.views ?? contentPoint?.views ?? null,
-      };
-    },
-  );
+  return buildInstagramAccountDailyTrend({
+    accounts,
+    dateKeys: getUtcDateRangeKeys(dateRangeDays),
+  });
 }
 
 function splitPerformanceTrendSegments(

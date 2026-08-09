@@ -55,6 +55,14 @@ test("accepts reviewed vertical Wall-of-text videos at their native duration", (
     true,
   );
   assert.equal(
+    isEligibleWallTextVideo(asset({ durationSeconds: 60 })),
+    true,
+  );
+  assert.equal(
+    isEligibleWallTextVideo(asset({ durationSeconds: 60.001 })),
+    false,
+  );
+  assert.equal(
     isEligibleWallTextVideo(asset({ sourceFileSha256: null })),
     false,
   );

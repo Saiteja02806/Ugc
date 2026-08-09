@@ -8,14 +8,15 @@ import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
 import { validateWallTextRenderFit } from "@/lib/trending/wall-text-render-validation";
 import {
   buildWallTextBusinessContext,
+  getWallTextLinePolicy,
   getWallTextMaximumWords,
   getWallTextPatternForCandidate,
+  getWallTextWordPolicy,
   normalizeWallTextGenerationCandidates,
   validateWallTextContent,
   validateGeneratedWallTextIdeas,
   MAX_WALL_TEXT_RENDERED_LINES,
   MIN_WALL_TEXT_RENDERED_LINES,
-  MIN_WALL_TEXT_WORDS,
   WALL_TEXT_PREFERRED_MAX_WORDS,
   WALL_TEXT_PREFERRED_MIN_WORDS,
   type GeneratedWallTextIdea,
@@ -27,7 +28,6 @@ const DEFAULT_MODEL = "gpt-5-mini";
 const MAX_WALL_TEXT_IDEA_COUNT = 6;
 const MAX_WALL_TEXT_GENERATION_ATTEMPTS = 4;
 const MAX_WALL_TEXT_REVIEW_ATTEMPTS = 3;
-const READING_WORDS_PER_SECOND = 4.3;
 
 const WALL_TEXT_PATTERN_GUIDANCE: Record<WallTextPattern, string> = {
   action_benefit:
@@ -185,12 +185,13 @@ async function generateBusinessTrendingWallTextIdeasAttempt(
       {
         role: "system",
         content: [
-          "Write one compact Wall-of-Text message for each six-second vertical social video.",
+          "Write one compact Wall-of-Text message for each vertical social video, using that candidate's native durationSeconds.",
           "Wall-of-Text is not Hook copy and must never use a two-line Hook rule.",
           "Write exactly one distinct idea for every supplied candidate.",
-          `Target ${WALL_TEXT_PREFERRED_MIN_WORDS}–${WALL_TEXT_PREFERRED_MAX_WORDS} words. Allow ${MIN_WALL_TEXT_WORDS}–${getWallTextMaximumWords()} words and never exceed ${getWallTextMaximumWords()}.`,
-          `The validator supports ${MIN_WALL_TEXT_RENDERED_LINES}–${MAX_WALL_TEXT_RENDERED_LINES} short lines, but this generator must return exactly six lines.`,
-          "Distribute those six lines as either two semantic segments with three lines each or three semantic segments with two lines each.",
+          `For standard clips, target ${WALL_TEXT_PREFERRED_MIN_WORDS}–${WALL_TEXT_PREFERRED_MAX_WORDS} words and never exceed ${getWallTextMaximumWords()}. For short clips, follow the candidate-specific minimumWords, maximumComfortableWords, and preferredWordRange instead of padding to the standard target.`,
+          `Return ${MIN_WALL_TEXT_RENDERED_LINES}–${MAX_WALL_TEXT_RENDERED_LINES} short semantic lines. Use each candidate's preferredRenderedLineRange and idealRenderedLines. Never return one, two, or three Hook-style lines.`,
+          "Prefer five to six lines for most ideas. Use four lines only when the assigned pattern is naturally compact. Use seven lines only when the idea is dense and still comfortable to read.",
+          "Do not pad weak copy just to reach six lines, and do not compress deeper reframe copy into four lines.",
           "Prefer two to five words per line. Six words are allowed only when a natural phrase cannot be split cleanly.",
           "Write two or three short grammatical sentences. Use sentence punctuation; do not return one unpunctuated run-on block.",
           "Every sentence needs an explicit grammatical subject and a finite verb. Reject bare gerund fragments such as 'Thinking one plan fits', comma-linked noun fragments such as 'Clear context, simpler logging', and subject-verb disagreement.",
@@ -238,6 +239,16 @@ async function generateBusinessTrendingWallTextIdeasAttempt(
           businessProfile,
           revisionFeedback: validationFailure,
           candidates: candidates.map((candidate) => {
+            const requiredPattern = getWallTextPatternForCandidate(
+              candidate.candidateIndex,
+            );
+            const linePolicy = getWallTextLinePolicy(
+              requiredPattern,
+              candidate.durationSeconds,
+            );
+            const wordPolicy = getWallTextWordPolicy(
+              candidate.durationSeconds,
+            );
             const requiredFocus = getWallTextCandidateFocus(
               businessProfile,
               candidate.candidateIndex,
@@ -246,29 +257,24 @@ async function generateBusinessTrendingWallTextIdeasAttempt(
             return {
               candidateIndex: candidate.candidateIndex,
               durationSeconds: candidate.durationSeconds,
-              requiredPattern: getWallTextPatternForCandidate(
-                candidate.candidateIndex,
-              ),
-              requiredPatternStructure:
-                WALL_TEXT_PATTERN_GUIDANCE[
-                  getWallTextPatternForCandidate(candidate.candidateIndex)
-                ],
+              requiredPattern,
+              requiredPatternStructure: WALL_TEXT_PATTERN_GUIDANCE[requiredPattern],
               requiredFocus,
               requiredFocusGuard: getWallTextFocusGuard(requiredFocus),
               forbiddenWords: WALL_TEXT_FORBIDDEN_UNSUPPORTED_WORDS,
-              maximumComfortableWords: Math.min(
-                getWallTextMaximumWords(),
-                Math.max(
-                  MIN_WALL_TEXT_WORDS,
-                  Math.floor(
-                    (candidate.durationSeconds - 0.24) *
-                      READING_WORDS_PER_SECOND,
-                  ),
-                ),
-              ),
+              minimumWords: wordPolicy.minimum,
+              maximumComfortableWords: wordPolicy.maximum,
+              preferredWordRange: {
+                maximum: wordPolicy.preferredMaximum,
+                minimum: wordPolicy.preferredMinimum,
+              },
               maximumRenderedLines: MAX_WALL_TEXT_RENDERED_LINES,
               minimumRenderedLines: MIN_WALL_TEXT_RENDERED_LINES,
-              preferredRenderedLines: 6,
+              idealRenderedLines: linePolicy.ideal,
+              preferredRenderedLineRange: {
+                maximum: linePolicy.preferredMaximum,
+                minimum: linePolicy.preferredMinimum,
+              },
             };
           }),
         }),
@@ -349,7 +355,7 @@ async function generateBusinessTrendingWallTextIdeasAttempt(
               "A single direct, supported result of requiredFocus is its payoff, not a second product feature. For progress insights, easier visibility or understanding is the same central idea.",
               "In action_benefit, a neutral gerund such as 'Reviewing progress insights' is descriptive; an imperative such as 'See your progress' is a call to action and must be rejected.",
               "Phrases like take control, reclaim time, log smarter, track confidently, felt guesswork, or fixes blind spots are not natural Wall-of-Text copy.",
-              "Confirm that each idea follows its assigned six-second pattern.",
+              "Confirm that each idea follows its assigned message pattern and remains readable within its supplied durationSeconds.",
               "Wall-of-Text is not Hook copy; do not apply a two-line Hook rule.",
               "Keep every boolean consistent with the written feedback. If the feedback says a check passes, its rejection boolean must not contradict that statement.",
               reviewFailure
@@ -522,7 +528,7 @@ function getWallTextRepairInstruction(validationFailure: string) {
   }
 
   if (normalizedFailure.includes("semantic lines")) {
-    return "Return exactly six semantic lines: either two segments with three lines each or three segments with two lines each. Count all lines before returning.";
+    return "Return a valid 4–7 line Wall block. Use the assigned pattern's preferred line range, never return one to three Hook-style lines, and count all lines before returning.";
   }
 
   if (normalizedFailure.includes("does not fit")) {

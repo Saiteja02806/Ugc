@@ -1,6 +1,6 @@
 # Wall-of-text Context
 
-Last updated: 2026-08-02
+Last updated: 2026-08-09
 
 ## Product Definition
 
@@ -13,8 +13,14 @@ Last updated: 2026-08-02
   message beats and small visual gaps; they are not Carousel
   headline/body/CTA fields and do not receive different font treatments.
 - The six-second default targets 18-21 words. The hard range is 16-24 words,
-  with 5-7 rendered lines and six lines preferred. Lines normally contain 2-5
-  words; six words are allowed only when a natural phrase cannot be split.
+  with 4-7 rendered lines, 5-6 lines preferred, and six lines best when
+  natural. One-to-three-line Hook-style copy is rejected. Lines normally
+  contain 2-5 words; six words are allowed only when a natural phrase cannot be
+  split.
+- Word and preferred-line limits are native-duration aware. Clips at or below
+  4.5 seconds prefer exactly four semantic lines. A three-second clip allows
+  8-11 words and prefers 9-11; longer clips grow into the standard 16-24-word
+  range. The four-line minimum and measured reading-time check always remain.
 - The copy contains two or three short grammatical sentences with visible
   sentence punctuation. Semantic segments may group those sentences, but the
   rendered result must not be one unpunctuated paragraph.
@@ -120,7 +126,8 @@ future renderer with additional text zones or different composition rules.
 3. The backend selects reviewed, placement-validated, group-diverse videos.
 4. The dedicated Wall v5 prompt assigns one of the six universal patterns and
    generates semantic segments plus `fullText` using `gpt-5-mini`.
-5. Deterministic validation checks the 16-24 word and 5-7 line limits, CTA and
+5. Deterministic validation checks native-duration word limits and the 4-7
+   line limits, CTA and
    generic-language rejection, two-to-three-sentence structure, common grammar
    failures, unsupported mechanisms and outcomes, semantic line breaks,
    clip-duration reading comfort, and real Inter Bold measurements at the
@@ -141,7 +148,7 @@ future renderer with additional text zones or different composition rules.
     demo video.
 11. Save to Content claims the already-selected assignment and queues one
     idempotent standalone `render_wall_text_video` job.
-12. The worker applies the analyzed placement and the exact six-second
+12. The worker applies the analyzed placement and the duration-aware
     typography for the source video's native duration, then stores a ready
     9:16 `wall_text_render` media asset.
 13. Schedule uses that ready standalone media asset as a single Reel. It does
@@ -169,10 +176,12 @@ assignments are preserved.
   layout contract; the editor may change the full copy and normalized
   `layout.textBox` without flattening the render payload into generic text.
 - Every manual Wall save reflows the edited copy at word boundaries, targets
-  six lines, and enforces the same 16-24-word, 5-7-line, two-or-three-sentence,
-  source-duration reading-time, semantic-break, and measured Inter fit checks
-  used by generated Wall copy. The measured 44/46/48/52px font size is stored
-  with the edit instead of retaining the pre-edit font size.
+  the pattern's duration-aware preferred line range, and enforces the same
+  native-duration word limits,
+  4-7-line, two-or-three-sentence, source-duration reading-time,
+  semantic-break, and measured Inter fit checks used by generated Wall copy.
+  The measured 44/46/48/52px font size is stored with the edit instead of
+  retaining the pre-edit font size.
 - The Wall edit preview uses the export renderer's Inter Bold face, 620px text
   width, 52/48 line-height ratio, 18px segment gap, 4px outline, shadow, and
   persisted safe area. Pointer, touch, and keyboard dragging clamp the whole
@@ -267,3 +276,87 @@ are not sent to an external face-analysis service.
   `profilePictureUrl`, with the platform icon used only as a fallback.
 - This UI is production-build validated locally but is not deployed or
   authenticated-production verified yet.
+
+## 2026-08-09 Wall Audio V1 Runtime
+
+- Wall audio is a global, server-managed library. It is not attached permanently
+  to a background video. The runtime selection belongs to a Wall creative or to
+  one exact saved edit revision.
+- The local V2 preparation library is
+  `D:\walloftext_sound\wall_audio_library_v2`. It contains 66 unique protected
+  sources and remains the non-destructively preserved 76-asset preparation
+  baseline. The completed reviewed library is
+  `D:\walloftext_sound\wall_audio_library_v2_reviewed`: 28 retained approved
+  assets plus 50 newly human-reviewed usable segments, for 78 approved and
+  active assets with zero pending. All 78 files are 48 kHz stereo 192 kbps
+  MP3s normalized to the -14 LUFS target with a maximum accepted measured true
+  peak of -1.5 dBTP.
+- The owner confirmed listening to every supplied usable segment. Review
+  covered 48 new source files. Sources 019 and 051 each produce two segments;
+  source 041 is included as one approved segment. Review-folder `hookTypes`
+  values are message-purpose tags, so preparation renames that field to the
+  production `messageTypes` field without changing its values.
+- Library tags use controlled vocabulary. Runtime text intent is derived from
+  the persisted Wall pattern, not free-form prompt text. Matching first applies
+  the hard duration gate, then scores mood at 45%, message type at 40%, and
+  energy at 15%, then prefers direct fits and avoids recent user reuse inside
+  the top semantic band. Exact and longer trimmable assets form the first
+  selection pool; shorter loopable assets are considered only when that direct
+  pool is empty.
+- Duration is not a subjective tag. A track is `exact` within 0.08 seconds,
+  `trim` when it is longer, `loop` only as a last fallback when it is shorter
+  and explicitly approved as loopable, or rejected otherwise. A long asset can
+  therefore be trimmed to any shorter eligible video duration. Exact MP3 tails are padded only
+  when needed and every path is trimmed to the precise final video duration
+  with a 0.2-second fade-out. Wall source videos must be longer than zero and
+  no longer than 60 seconds; this is enforced both during source eligibility
+  and again before a render is claimed.
+- `wall_audio_assets` stores normalized file, technical, review, and semantic
+  metadata. `wall_text_audio_selections` stores the creative/edit scope,
+  content fingerprint, final duration, selected asset, cue, fit mode, score,
+  and matching version. Both tables are RLS-enabled, client privileges are
+  revoked, and only the service role can use them.
+- Layout-only edits reuse the existing selection while its content fingerprint
+  and new duration remain eligible. Meaning changes rematch. Duration changes
+  revalidate the preferred asset and rematch only when it can no longer cover
+  the video.
+- The feed exposes the saved base selection to the frontend. Preview videos are
+  always muted and a user-controlled sound button synchronizes the selected
+  Wall track, avoiding browser autoplay failures and accidental background
+  audio. The preview also follows the render fade-out. Once text or source is
+  edited, the base-audio control is hidden so stale audio is never presented as
+  the edited result; the exact edit revision receives its rematch at render
+  time.
+- Final rendering downloads the selected app-owned audio separately, ignores
+  any source-video audio stream, applies exact/trim/loop processing, and maps
+  only the processed Wall audio to the output AAC stream. Before upload,
+  `ffprobe` must confirm a playable video stream, the expected duration within
+  0.15 seconds, and an AAC audio stream. Recoverable payload-validation and
+  render-start failures also persist the Wall render as failed.
+- Preparation, import, matcher, database, frontend, and FFmpeg contracts are
+  implemented locally. Current validation passes 53 Wall/audio tests, all 20
+  preparation/review/import contract tests, 15 targeted worker render tests,
+  the worker TypeScript build, and the Next production build. The reviewed
+  library dry-run import accepts all 78 assets. Real proof renders cover exact,
+  trim, fallback loop, and a 135.024-second asset trimmed and stitched into a
+  12-second video. The new migration has not been applied, approved
+  audio has not been uploaded to production GCP, and the code has not been
+  deployed; production remains blocked until those rollout steps and
+  authenticated production-domain acceptance are complete.
+
+Audio operational commands:
+
+```text
+npm run wall-audio:prepare:test
+npm run wall-audio:prepare-reviewed:test
+npm run wall-audio:prepare-reviewed
+npm run wall-audio:review:test
+npm run wall-audio:review
+npm run wall-audio:review -- --execute --yes
+npm run wall-audio:import:test
+npm run wall-audio:import
+npm run wall-audio:import -- --canary 3 --execute --yes
+npm run wall-audio:import -- --verify
+npm run wall-audio:simulate -- --library D:\walloftext_sound\wall_audio_library_v2_reviewed
+npm run wall-audio:poc -- --library D:\walloftext_sound\wall_audio_library_v2_reviewed
+```

@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-08-03
+Last updated: 2026-08-08
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -48,6 +48,18 @@ silently replaced with a video media asset. The Scheduling editor preserves the
 Library item, collects an exact connected account plus wall-clock date/time,
 and only then creates Cloud Tasks. Undated drafts remain visible in the
 Drafts list and do not appear as timed calendar entries.
+
+Social scheduling uses one server-owned five-minute minimum lead for ready
+media, including ready Library carousels. Date/time controls use one-minute
+steps and must not round choices or defaults to quarter-hour boundaries. The
+lead check aligns `now` to the current minute so a whole-minute selection such
+as 15:05 remains valid when the request reaches the server a few seconds after
+15:00. The API exposes the configured minimum to all scheduling clients, while
+the server remains authoritative. A combined-video render may reuse the
+originally validated publish time only when enough time remains to create its
+exact-time Cloud Task; otherwise finalization fails clearly and requires a new
+future time. The delayed GCP Cloud Task architecture and atomic publish claim
+remain unchanged.
 
 The visible Scheduling workspace and inline Carousel scheduling modal are
 Instagram-only for new posts and Carousel recovery edits. Their account pickers
@@ -1095,11 +1107,11 @@ from feed preview.
   account, optional-caption, provider-setting, and time flow inside the modal
   on Trending. Only the final successful scheduling call advances the deck.
   Browser-local scheduling drafts are no longer the intended persistence path.
-- The Library content tab lists server-backed carousel Library items first. As
-  a transition path for older sessions, it may also display legacy
-  browser-local entries from `ugc-studio.carousel-library.v1` when the same
-  carousel is not already present on the server. This compatibility display
-  must not replace the server-backed save API for new saves.
+- The Carousel Library lists only owner-scoped server Library items. The legacy
+  global browser key `ugc-studio.carousel-library.v1` is not read, merged,
+  scheduled, deleted, or automatically imported. Those old records have no
+  trustworthy owner identity, so attaching them to whichever account is
+  currently signed in would risk cross-account data exposure.
 - Trending is the only visible Carousel product surface in the app. Clicking an
   image, slide, dots, or slide arrows must never open a separate Carousel Ads
   workspace.
@@ -1228,6 +1240,29 @@ Generate-button-driven.
 7. Legacy `test-user-001` rows are development data until audited. Do not
    migrate or delete them blindly. Any cleanup must first confirm they are not
    demo or seed content and must remove dependent rows/assets deliberately.
+
+### 2026-08-03 Required Onboarding Context v1
+
+- A saved business-profile row is no longer sufficient proof that onboarding is
+  complete. Generation access requires persisted `onboarding_status =
+  completed`, onboarding version 1 or newer, and a runtime completeness check
+  against the stored context.
+- Onboarding v1 collects only generation-critical context: B2B/B2C model,
+  category or product type, primary audience, current problem, desired outcome,
+  differentiator or mechanism, brand tone, and one or more campaign purposes.
+  Team size, revenue, and user role are not part of this gate.
+- Website, AI-IDE, and manual intake remain supported. Their normalized facts
+  are merged with the owner's required onboarding answers before a new profile
+  version starts automatic preparation. Existing `claimsToAvoid` are retained;
+  onboarding does not create an approved numeric-claims system.
+- Legacy profiles default to incomplete. Their existing category, audience,
+  problem, promise, differentiator, and tone may prefill the form, but they are
+  never marked complete unless every v1 area, including business model and
+  campaign purpose, is present. Daily replenishment excludes incomplete
+  profiles and also rechecks context completeness in application code.
+- The primary Trending feed and format-preparation routes enforce the same
+  server-side check and return HTTP 409 with `code = onboarding_required`.
+  Client redirects improve navigation but are not the authorization boundary.
 
 ## Current Implementation Status
 
@@ -1878,6 +1913,28 @@ Name: **Run a profile-scoped GCP broad-matcher live canary**
 - Keep the production Carousel worker font files in sync with the font family
   used for text measurement and SVG rendering.
 - Update this file whenever a product rule or architecture decision changes.
+
+## 2026-08-08 Shared-Browser Account Isolation
+
+- Owner-created Carousel, schedule, and editable-video records must never use a
+  global browser-storage collection as a source of truth or fallback.
+- Carousel Library reads only the authenticated owner's server Library.
+  Scheduling reads only owner-scoped `scheduled_posts`, and video editing reads
+  and writes only through the authenticated edit APIs.
+- Legacy global browser records are never read, imported, or automatically
+  migrated. Their records do not contain a trustworthy owner ID, so automatic
+  migration could copy User A's data into User B's account on a shared browser.
+  On app load, an exact cleanup removes only the retired Carousel Library,
+  schedule-draft, and editable-video keys. Owner-scoped server records and
+  unrelated browser preferences are untouched.
+- The application query provider is keyed by the current Firebase UID. A user
+  change remounts the authenticated application subtree and creates a fresh
+  query cache, preventing one account's in-memory page state from carrying into
+  the next account.
+- Onboarding goal selections autosave to the incomplete owner-scoped business
+  profile without marking onboarding complete or changing the profile version.
+  Final completion still validates at least one goal and applies the selected
+  goals to generation context in one explicit action.
 
 ## 2026-08-02 Creative Assets Saved Collection and Scheduling UI
 

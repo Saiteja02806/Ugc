@@ -34,6 +34,7 @@ import { getEditableTrendingHookIdea } from "@/lib/trending/hook-video-db";
 import {
   clampHookTextPosition,
   createHookTextLayout,
+  getDefaultHookTextPosition,
   HookTextLayoutError,
 } from "@/lib/trending/hook-text-layout";
 import {
@@ -254,12 +255,17 @@ async function buildDefaultContent(params: {
       );
     }
 
+    const layout = createHookTextLayout(idea.hookText, {
+      fontSize: idea.overlayFontSize,
+      lines: idea.openingLines,
+    });
+
     return {
       fontSize: idea.overlayFontSize,
       format: "hook_video",
       hookText: idea.hookText,
       lines: idea.openingLines,
-      position: { x: 0.5, y: 0.5 },
+      position: getDefaultHookTextPosition(layout.positionBounds),
       textColor: DEFAULT_TRENDING_TEXT_COLOR,
       version: TRENDING_CREATIVE_EDIT_VERSION,
     };

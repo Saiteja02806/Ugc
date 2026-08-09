@@ -19,6 +19,11 @@ export type InstagramInsightPoint = InstagramInsightTotals & {
   date: string;
 };
 
+export type InstagramPerformanceTrendMode =
+  | "empty"
+  | "insufficient-history"
+  | "ready";
+
 export type InstagramInsightsAccountStatus =
   | "error"
   | "permission_missing"
@@ -95,6 +100,49 @@ export function aggregateInstagramInsightDaily(
     date,
     ...totals,
   })).sort((left, right) => left.date.localeCompare(right.date));
+}
+
+/**
+ * Builds a chart series from Meta's daily account data only. A period total or
+ * a current per-post total must never be placed on a calendar day, because it
+ * describes a different thing from views earned on that day.
+ */
+export function buildInstagramAccountDailyTrend(params: {
+  accounts: InstagramInsightsAccount[];
+  dateKeys: readonly string[];
+}): InstagramInsightPoint[] {
+  const dailyByDate = new Map(
+    aggregateInstagramInsightDaily(params.accounts).map((point) => [
+      point.date,
+      point,
+    ]),
+  );
+
+  return params.dateKeys.map((date) => {
+    const point = dailyByDate.get(date);
+
+    return point
+      ? { ...point }
+      : {
+          date,
+          ...emptyInsightTotals(),
+        };
+  });
+}
+
+export function getInstagramPerformanceTrendMode(
+  values: readonly (number | null)[],
+): InstagramPerformanceTrendMode {
+  const reportingDayCount = values.reduce<number>(
+    (count, value) => count + (value === null ? 0 : 1),
+    0,
+  );
+
+  if (reportingDayCount === 0) {
+    return "empty";
+  }
+
+  return reportingDayCount === 1 ? "insufficient-history" : "ready";
 }
 
 type InstagramInsightValue = {

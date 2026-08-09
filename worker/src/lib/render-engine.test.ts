@@ -206,16 +206,28 @@ test("renders six-second Wall copy with Inter Bold and no background box", () =>
   assert.equal(svg.match(/<text /g)?.length, 6);
 });
 
-test("renders Wall text as one standalone video with no demo input", () => {
+test("renders Wall text with the selected library audio and ignores source audio", () => {
   const args = buildWallTextVideoArgs({
-    hasAudio: false,
+    audioPath: "wall-audio.mp3",
     inputPath: "wall-background.mp4",
     outputPath: "wall-output.mp4",
     overlayPath: "wall-overlay.png",
-    payload: { durationSeconds: 5.056 },
+    payload: {
+      audio: {
+        assetDurationSeconds: 12.5,
+        assetId: "audio_001_segment_01",
+        audioUrl: "https://cdn.example.com/wall-audio.mp3",
+        cueStartSeconds: 0.25,
+        fadeOutSeconds: 0.2,
+        fitMode: "trim",
+        matchingVersion: "wall-audio-match-v1",
+        selectionId: "selection-1",
+      },
+      durationSeconds: 5.056,
+    },
   });
 
-  assert.deepEqual(args.slice(0, 9), [
+  assert.deepEqual(args.slice(0, 11), [
     "-y",
     "-i",
     "wall-background.mp4",
@@ -225,12 +237,73 @@ test("renders Wall text as one standalone video with no demo input", () => {
     "30",
     "-i",
     "wall-overlay.png",
+    "-i",
+    "wall-audio.mp3",
   ]);
   assert.ok(args.includes("5.056"));
-  assert.ok(args.includes("2:a:0"));
+  assert.ok(args.includes("[wall_audio]"));
   assert.equal(args.filter((value) => value === "-i").length, 3);
   assert.equal(args.filter((value) => value.endsWith(".mp4")).length, 2);
   assert.equal(args.some((value) => /demo/i.test(value)), false);
+  assert.equal(args.some((value) => value === "0:a:0"), false);
+  assert.match(
+    args[args.indexOf("-filter_complex") + 1] ?? "",
+    /atrim=start=0\.250:end=12\.500[\s\S]+apad=pad_dur=5\.056[\s\S]+atrim=duration=5\.056[\s\S]+afade=t=out:st=4\.856:d=0\.200/,
+  );
+});
+
+test("loops only an audio selection explicitly marked with loop fit", () => {
+  const args = buildWallTextVideoArgs({
+    audioPath: "short-loop.mp3",
+    inputPath: "wall-background.mp4",
+    outputPath: "wall-output.mp4",
+    overlayPath: "wall-overlay.png",
+    payload: {
+      audio: {
+        assetDurationSeconds: 5,
+        assetId: "audio_002",
+        audioUrl: "https://cdn.example.com/short-loop.mp3",
+        cueStartSeconds: 0,
+        fadeOutSeconds: 0.2,
+        fitMode: "loop",
+        matchingVersion: "wall-audio-match-v1",
+        selectionId: "selection-2",
+      },
+      durationSeconds: 10,
+    },
+  });
+
+  assert.match(
+    args[args.indexOf("-filter_complex") + 1] ?? "",
+    /aloop=loop=-1:size=240000:start=0[\s\S]+atrim=duration=10\.000/,
+  );
+});
+
+test("does not loop an exact seven-second audio selection", () => {
+  const args = buildWallTextVideoArgs({
+    audioPath: "exact.mp3",
+    inputPath: "wall-background.mp4",
+    outputPath: "wall-output.mp4",
+    overlayPath: "wall-overlay.png",
+    payload: {
+      audio: {
+        assetDurationSeconds: 7.02,
+        assetId: "audio_003",
+        audioUrl: "https://cdn.example.com/exact.mp3",
+        cueStartSeconds: 0,
+        fadeOutSeconds: 0.2,
+        fitMode: "exact",
+        matchingVersion: "wall-audio-match-v1",
+        selectionId: "selection-3",
+      },
+      durationSeconds: 7,
+    },
+  });
+
+  const filter = args[args.indexOf("-filter_complex") + 1] ?? "";
+  assert.doesNotMatch(filter, /aloop=/);
+  assert.match(filter, /apad=pad_dur=7\.000/);
+  assert.match(filter, /atrim=duration=7\.000/);
 });
 
 test("accepts only rendered MP4 probes with a playable video stream", () => {
@@ -261,5 +334,51 @@ test("accepts only rendered MP4 probes with a playable video stream", () => {
         streams: [],
       }),
     /missing a playable video stream/i,
+  );
+});
+
+test("requires Wall renders to keep the expected duration and AAC audio", () => {
+  const validWallProbe = {
+    format: { duration: "7.000", format_name: "mov,mp4,m4a,3gp,3g2,mj2" },
+    streams: [
+      {
+        codec_name: "h264",
+        codec_type: "video",
+        height: 1920,
+        width: 1080,
+      },
+      {
+        codec_name: "aac",
+        codec_type: "audio",
+      },
+    ],
+  };
+
+  assert.doesNotThrow(() =>
+    validateRenderedVideoProbe(validWallProbe, {
+      expectedAudioCodecName: "aac",
+      expectedDurationSeconds: 7,
+      requireAudio: true,
+    }),
+  );
+  assert.throws(
+    () =>
+      validateRenderedVideoProbe(
+        { ...validWallProbe, streams: [validWallProbe.streams[0]] },
+        { expectedDurationSeconds: 7, requireAudio: true },
+      ),
+    /missing a playable audio stream/i,
+  );
+  assert.throws(
+    () =>
+      validateRenderedVideoProbe(
+        { ...validWallProbe, format: { duration: "6.7" } },
+        {
+          expectedAudioCodecName: "aac",
+          expectedDurationSeconds: 7,
+          requireAudio: true,
+        },
+      ),
+    /does not match the expected/i,
   );
 });

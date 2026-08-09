@@ -47,6 +47,7 @@ import {
   type WallTextDetailActionState,
 } from "@/components/trending/wall-text-detail-view";
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
+import { WallTextAudioPreview } from "@/components/trending/wall-text-audio-preview";
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -1645,6 +1646,7 @@ function TrendingDeck({
       >
         <WallTextDetailView
           actionState={wallTextActionState}
+          audioPreviewEnabled={!wallTextEdit}
           content={wallTextEditContent?.content}
           item={wallTextCandidate.item}
           layout={wallTextEditContent?.layout}
@@ -2457,6 +2459,13 @@ function TrendingWallTextDeckCard({
             layout={editedContent?.layout ?? creative.layout}
             textColor={editedContent?.textColor}
           />
+          {!edit ? (
+            <WallTextAudioPreview
+              active={isActive}
+              audio={creative.audio}
+              videoRef={videoRef}
+            />
+          ) : null}
           {isActive ? (
             <button
               type="button"

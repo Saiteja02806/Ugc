@@ -24,6 +24,20 @@ const content = {
     },
   ],
 };
+const fourLineContent = {
+  fullText:
+    "Reviewing weekly progress shows where effort actually went. The next choice feels less like a guess.",
+  segments: [
+    {
+      lines: ["Reviewing weekly progress shows", "where effort actually went."],
+      role: "lead" as const,
+    },
+    {
+      lines: ["The next choice feels", "less like a guess."],
+      role: "closing" as const,
+    },
+  ],
+};
 
 test("uses Inter Bold, center alignment, outline, and compact section rhythm", () => {
   const layout = buildWallTextRenderLayout({
@@ -59,6 +73,31 @@ test("uses Inter Bold, center alignment, outline, and compact section rhythm", (
   assert.doesNotMatch(svg, /wallTextScrim|radialGradient/);
 });
 
+test("accepts four-line compact Wall blocks", () => {
+  const layout = buildWallTextRenderLayout({
+    content: fourLineContent,
+    textBox: {
+      height: 480 / 1920,
+      width: 620 / 1080,
+      x: 230 / 1080,
+      y: 660 / 1920,
+    },
+  });
+  const svg = buildWallTextOverlaySvg({
+    content: fourLineContent,
+    placement: "middle",
+    textBox: {
+      height: 480 / 1920,
+      width: 620 / 1080,
+      x: 230 / 1080,
+      y: 660 / 1920,
+    },
+  });
+
+  assert.equal(layout.segments[0]?.fontSize, 52);
+  assert.equal(svg.match(/<text /g)?.length, 4);
+});
+
 test("never truncates and rejects more than seven semantic lines", () => {
   assert.throws(
     () =>
@@ -84,6 +123,6 @@ test("never truncates and rejects more than seven semantic lines", () => {
           y: 660 / 1920,
         },
       }),
-    /must contain 5–7 rendered lines/,
+    /must contain 4–7 rendered lines/,
   );
 });

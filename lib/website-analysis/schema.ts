@@ -5,10 +5,22 @@ const nullableCompactString = compactString.nullable();
 const stringList = (maxItems: number) =>
   z.array(compactString).max(maxItems);
 
+export const BusinessModelSchema = z.enum(["b2b", "b2c", "both"]);
+
+export const CampaignPurposeSchema = z.enum([
+  "product_discovery",
+  "education",
+  "conversion",
+  "retargeting",
+  "app_install",
+]);
+
 export const WebsiteBusinessAnalysisSchema = z
   .object({
     businessName: nullableCompactString,
+    businessModel: BusinessModelSchema.nullable(),
     category: nullableCompactString,
+    categories: stringList(3),
     productSummary: z.string().trim().min(1).max(500).nullable(),
 
     targetAudience: stringList(5),
@@ -19,6 +31,7 @@ export const WebsiteBusinessAnalysisSchema = z
     differentiators: stringList(6),
 
     brandTone: nullableCompactString,
+    campaignPurposes: z.array(CampaignPurposeSchema).max(5),
 
     carouselAngles: stringList(6),
     pexelsImageQueries: stringList(8),
@@ -34,9 +47,22 @@ export const WebsiteBusinessAnalysisSchema = z
   })
   .strict();
 
-export type WebsiteBusinessAnalysis = z.infer<
+type CurrentWebsiteBusinessAnalysis = z.infer<
   typeof WebsiteBusinessAnalysisSchema
 >;
+
+// Rows written before onboarding v1 do not contain these properties. Keep the
+// read type compatible while requiring all three in newly parsed AI output.
+export type WebsiteBusinessAnalysis = Omit<
+  CurrentWebsiteBusinessAnalysis,
+  "businessModel" | "campaignPurposes" | "categories"
+> &
+  Partial<
+    Pick<
+      CurrentWebsiteBusinessAnalysis,
+      "businessModel" | "campaignPurposes" | "categories"
+    >
+  >;
 
 export type WebsiteAnalysisApiResponse =
   | {

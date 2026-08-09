@@ -54,7 +54,7 @@ export type WallTextRenderLayout = {
 export const WALL_TEXT_RENDER_WIDTH = 1080;
 export const WALL_TEXT_RENDER_HEIGHT = 1920;
 export const WALL_TEXT_RENDER_MAX_CHARACTERS = 300;
-export const WALL_TEXT_RENDER_MIN_LINES = 5;
+export const WALL_TEXT_RENDER_MIN_LINES = 4;
 export const WALL_TEXT_RENDER_MAX_LINES = 7;
 export const WALL_TEXT_DEFAULT_FONT_SIZE = 48;
 export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
@@ -101,7 +101,7 @@ export function buildWallTextRenderLayout(params: {
     totalLineCount < WALL_TEXT_RENDER_MIN_LINES ||
     totalLineCount > WALL_TEXT_RENDER_MAX_LINES
   ) {
-    throw new Error("Wall-of-text must contain 5–7 rendered lines.");
+    throw new Error("Wall-of-text must contain 4–7 rendered lines.");
   }
 
   const fontSize = getWallTextFontSize(content, totalLineCount);

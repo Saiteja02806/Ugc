@@ -64,6 +64,11 @@ import {
 import { getScheduleEditBlockReason } from "@/lib/scheduling/schedule-action-policy";
 import { getConnectionPublishingBlock } from "@/lib/scheduling/social-connection-policy";
 import {
+  hasScheduleTargetSelection,
+  SCHEDULE_TARGET_REQUIRED_CODE,
+  SCHEDULE_TARGET_REQUIRED_MESSAGE,
+} from "@/lib/scheduling/schedule-target-requirement";
+import {
   canRetrySchedulerCreateFailure,
   getRenderFinalizationDecision,
 } from "@/lib/scheduling/render-finalization-policy";
@@ -151,6 +156,7 @@ export async function createUserSchedule(params: {
   userId: string;
 }) {
   const normalized = await normalizeScheduleCreateInput(params.input);
+  assertScheduleTargetSelection(normalized);
 
   if (normalized.idempotencyKey) {
     const existing = await getScheduledPostByIdempotency({
@@ -805,6 +811,7 @@ export async function updateUserSchedule(params: {
   }
 
   const normalized = await normalizeScheduleCreateInput(params.input);
+  assertScheduleTargetSelection(normalized);
 
   if (normalized.targets.length > 0) {
     throw new SchedulingRequestError(
@@ -1219,6 +1226,21 @@ export async function cancelUserSchedule(params: {
     postId: params.postId,
     userId: params.userId,
   });
+}
+
+function assertScheduleTargetSelection(input: {
+  plannedTargets: ScheduleCreateTargetInput[];
+  targets: ScheduleCreateTargetInput[];
+}) {
+  if (hasScheduleTargetSelection(input)) {
+    return;
+  }
+
+  throw new SchedulingRequestError(
+    SCHEDULE_TARGET_REQUIRED_MESSAGE,
+    409,
+    SCHEDULE_TARGET_REQUIRED_CODE,
+  );
 }
 
 async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {

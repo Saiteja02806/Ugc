@@ -1,5 +1,5 @@
 export const TRENDING_HOOK_PROMPT_VERSION =
-  "trending-hook-copy-v5";
+  "trending-hook-copy-v6";
 export const TRENDING_HOOK_SELECTION_VERSION =
   "purpose-industry-diversity-v5";
 export const TRENDING_HOOK_COPY_JOB_TYPE =

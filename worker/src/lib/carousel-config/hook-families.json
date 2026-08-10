@@ -1,0 +1,85 @@
+{
+  "version": "carousel-hook-families-v1",
+  "hookFamilies": [
+    {
+      "id": "curiosity",
+      "name": "Curiosity",
+      "purpose": "Create a clear information gap that the carousel genuinely resolves.",
+      "useWhen": ["The topic has a useful answer or distinction worth revealing."],
+      "rules": ["Keep the hook short and specific.", "Deliver the promised answer inside the carousel."],
+      "avoid": ["Vague clickbait", "Withholding the answer after promising it"]
+    },
+    {
+      "id": "surprise",
+      "name": "Surprise",
+      "purpose": "Reveal a truthful and meaningful contrast the audience may not expect.",
+      "useWhen": ["The context supports a real contrast, misconception, or unexpected consequence."],
+      "rules": ["The surprise must be supported.", "Use natural wording without fake shock."],
+      "avoid": ["Invented statistics", "Exaggeration", "Sensational language"]
+    },
+    {
+      "id": "comparison",
+      "name": "Comparison",
+      "purpose": "Make two choices interesting by focusing on the difference that affects the audience.",
+      "useWhen": ["Two meaningful options, states, or approaches can be compared fairly."],
+      "rules": ["Name the decision clearly.", "Do not force one universal winner."],
+      "avoid": ["Artificial comparisons", "Unsupported numerical contrasts"]
+    },
+    {
+      "id": "problem_recognition",
+      "name": "Problem Recognition",
+      "purpose": "Help the audience recognize a real problem or frustrating situation they experience.",
+      "useWhen": ["The saved business context contains a clear audience problem."],
+      "rules": ["Describe the problem concretely.", "Do not shame the audience."],
+      "avoid": ["Fearmongering", "Generic frustration", "Diagnosing the reader"]
+    },
+    {
+      "id": "mistake",
+      "name": "Mistake",
+      "purpose": "Show a possible behavior that leads to an avoidable problem.",
+      "useWhen": ["The carousel can explain both the mistake and a practical correction."],
+      "rules": ["Use may or might when appropriate.", "Make the correction more useful than the criticism."],
+      "avoid": ["You are doing everything wrong", "Blame", "Unsupported certainty"]
+    },
+    {
+      "id": "specific_outcome",
+      "name": "Specific Outcome",
+      "purpose": "Promise a useful, supported result the carousel can help the audience work toward.",
+      "useWhen": ["The saved customer goals or product evidence supports the outcome."],
+      "rules": ["Name a concrete outcome.", "Frame it as help or guidance rather than a guarantee."],
+      "avoid": ["Guaranteed results", "Unsupported financial or health outcomes"]
+    },
+    {
+      "id": "question",
+      "name": "Question",
+      "purpose": "Open with a relevant question that the following slides answer directly.",
+      "useWhen": ["The audience is likely to ask or debate the question."],
+      "rules": ["Ask one clear question.", "Answer it directly in the carousel."],
+      "avoid": ["Several questions at once", "Questions with no useful answer"]
+    },
+    {
+      "id": "contrarian",
+      "name": "Contrarian",
+      "purpose": "Challenge a common assumption using a supported, nuanced alternative.",
+      "useWhen": ["The context supports correcting a recognizable assumption."],
+      "rules": ["Challenge the idea, not the reader.", "Explain the nuance after the hook."],
+      "avoid": ["Being provocative without evidence", "Absolute claims"]
+    },
+    {
+      "id": "utility",
+      "name": "Utility",
+      "purpose": "Make the content immediately useful, scannable, and worth saving.",
+      "useWhen": ["The format provides a checklist, reference, resources, or practical items."],
+      "rules": ["State what the reader can use the content for.", "Keep it concrete."],
+      "avoid": ["Empty save-bait", "Calling content useful without showing why"]
+    },
+    {
+      "id": "beginner",
+      "name": "Beginner",
+      "purpose": "Speak directly to someone starting with the topic and make the first step feel clear.",
+      "useWhen": ["The selected audience or angle genuinely concerns beginners."],
+      "rules": ["Use plain language.", "Prioritize the first useful action over advanced detail."],
+      "avoid": ["Condescension", "Unexplained jargon", "Too many steps"]
+    }
+  ]
+}

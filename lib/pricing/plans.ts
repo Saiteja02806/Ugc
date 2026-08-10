@@ -1,19 +1,22 @@
-export type PlanSlug = "creator" | "pro";
+export type BillingInterval = "monthly" | "yearly";
 
 export type PricingPlan = {
   badgeLabel?: string;
   bestFor: string;
-  billingText: string;
-  buttonLabel: string;
   capacityLabel: string;
   description: string;
-  features: string[];
   highlighted?: boolean;
-  imageCredits: number;
-  monthlyPrice: number;
   name: string;
-  slug: PlanSlug;
-  videoCredits: number;
+  prices: Record<BillingInterval, number>;
+  sharedMonthlyCredits: number;
+  slug: "creator" | "pro";
+};
+
+export type PlanPricing = {
+  billedAmount: number;
+  billingSummary: string;
+  monthlyEquivalent: number;
+  savings: number;
 };
 
 const usdPriceFormatter = new Intl.NumberFormat("en-US", {
@@ -26,41 +29,64 @@ export function formatPricingAmount(amount: number) {
   return usdPriceFormatter.format(amount);
 }
 
+export function parseBillingInterval(
+  value: string | string[] | null | undefined,
+): BillingInterval {
+  const candidate = Array.isArray(value) ? value[0] : value;
+
+  return candidate === "yearly" ? "yearly" : "monthly";
+}
+
+export function getPlanPricing(
+  plan: PricingPlan,
+  interval: BillingInterval,
+): PlanPricing {
+  if (interval === "monthly") {
+    return {
+      billedAmount: plan.prices.monthly,
+      billingSummary: `Billed ${formatPricingAmount(plan.prices.monthly)} monthly`,
+      monthlyEquivalent: plan.prices.monthly,
+      savings: 0,
+    };
+  }
+
+  const savings = plan.prices.monthly * 12 - plan.prices.yearly;
+
+  return {
+    billedAmount: plan.prices.yearly,
+    billingSummary: `Billed ${formatPricingAmount(plan.prices.yearly)} yearly`,
+    monthlyEquivalent: plan.prices.yearly / 12,
+    savings,
+  };
+}
+
 export const pricingPlans: PricingPlan[] = [
   {
     slug: "creator",
     name: "Creator",
-    bestFor: "Solo creators",
-    description: "For creators publishing on a consistent weekly schedule.",
-    monthlyPrice: 19,
-    billingText: "per month",
-    imageCredits: 200,
-    videoCredits: 200,
+    bestFor: "Consistent creators",
+    description:
+      "For creators building a dependable weekly content workflow.",
+    prices: {
+      monthly: 19,
+      yearly: 190,
+    },
+    sharedMonthlyCredits: 200,
     highlighted: true,
     badgeLabel: "Most popular",
-    buttonLabel: "Start with Creator",
-    capacityLabel: "Steady weekly output",
-    features: [
-      "Watermark-free exports",
-      "Commercial usage",
-      "Credits renew every month",
-    ],
+    capacityLabel: "A focused monthly generation budget",
   },
   {
     slug: "pro",
     name: "Pro",
-    bestFor: "Teams & studios",
-    description: "For higher-volume campaigns, testing, and creative variants.",
-    monthlyPrice: 49,
-    billingText: "per month",
-    imageCredits: 600,
-    videoCredits: 600,
-    buttonLabel: "Start with Pro",
-    capacityLabel: "3x Creator capacity",
-    features: [
-      "Watermark-free exports",
-      "Commercial usage",
-      "Credits renew every month",
-    ],
+    bestFor: "High-volume creators",
+    description:
+      "For brands and creators producing more campaigns and variations.",
+    prices: {
+      monthly: 49,
+      yearly: 490,
+    },
+    sharedMonthlyCredits: 600,
+    capacityLabel: "3x the Creator generation budget",
   },
 ];

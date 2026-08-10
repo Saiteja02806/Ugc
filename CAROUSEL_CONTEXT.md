@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-08-08
+Last updated: 2026-08-10
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -386,18 +386,35 @@ slide foreign keys are deliberately migrated together.
 Local source folder categories are not always runtime categories. The current
 runtime mapping is:
 
+- `beauty_skincare` -> `beauty-skincare`
 - `calorie_tracking` -> `fitness-health`
 - `gym` -> `fitness-health`
+- `marketing` -> `marketing-saas`
+- `outdoor_lifestyle` -> `shared`
 - `personal_finance` -> `personal-finance`
 - `productivity` -> `productivity-saas`
 
 Keep the original local category in source metadata for provenance and review
 debugging.
 
-The local tag-manifest command is:
+For a multi-folder pack, first create compact review sheets directly from the
+audit report. `--category` can limit a sheet run to one source category:
 
 ```text
-npm run carousel:local-images:tag -- --manual-review-approved
+npm run carousel:local-images:review-sheets -- --audit-report <report.json> --category <source-category>
+```
+
+After full-resolution safety decisions are recorded, build a fail-closed
+per-file review map:
+
+```text
+npm run carousel:local-images:review-map -- --audit-report <report.json> --tag-manifest <unreviewed-tag-manifest.json> --safety-review <review.json> --out-file <review-map.json>
+```
+
+The preferred reviewed tag-manifest command is:
+
+```text
+npm run carousel:local-images:tag -- --audit-report <report.json> --review-map <review-map.json>
 ```
 
 It reads the latest audit report and writes a structured manifest under
@@ -405,6 +422,15 @@ It reads the latest audit report and writes a structured manifest under
 visual family, inferred category tags, object tags, broad runtime bucket,
 caption, quality score, duplicate-family ID, text-safe areas, and source-file
 links. It does not upload files and does not write to Supabase.
+
+`local-curated-image-tags-v2` uses whole normalized terms rather than unsafe
+substring matches, keeps category defaults narrow, and adds literal
+content/object tags that the current runtime matcher can actually score.
+Per-file overrides are required when an opaque generated filename contains no
+semantic information. Review-map tags augment inferred tags; they do not erase
+specific object terms inferred from the file path. Broad category mapping,
+semantic tagging, duplicate decisions, and strict object-only safety decisions
+remain separate concerns.
 
 The local prepare command is:
 
@@ -879,10 +905,11 @@ Balanced carousel copy rules:
   characters, normally render as no more than three visual lines, explain one
   specific idea, and avoid repeating the heading. List modes may use four total
   visual lines.
-- The five-slide default story is Hook, Problem, Consequence, Solution, and
-  Result/CTA. Because the current slide schema does not have a separate
-  `consequence` slide type, consequence remains problem-style copy internally
-  until the schema is deliberately expanded.
+- Legacy rows without a reserved content format keep the five-slide Hook,
+  Problem, Consequence, Solution, and Result/CTA story. New automatic Trending
+  rows use the exact five roles defined by their reserved V1 content format.
+  Both paths retain the existing coarse slide types for renderer and matcher
+  compatibility.
 - The renderer is the final source of truth for line limits. It must wrap using
   the production font stack, actual font size, available width, padding, and
   card dimensions, then keep headings to at most two rendered lines and body
@@ -921,6 +948,73 @@ Balanced carousel copy rules:
 - Every generation stores raw initial/repair LLM responses, the normalized
   plan, planner version/model/source/fallback reason, validation result, and
   renderer version on `carousel_generations`.
+
+### 2026-08-10 Automatic Content Grammar V1
+
+- This architecture reuses the one onboarding `business_profiles` row. The
+  authoritative automatic-generation input is that row's current
+  `context_json`, loaded by exact profile ID, Firebase owner, and
+  `profile_version`; the linked `website_analyses` row remains provenance and
+  a legacy/manual fallback. It does not create a second business profile, a
+  parallel analysis table, a copied profile snapshot, or another onboarding
+  flow. A stale profile-version job stops before completion instead of silently
+  generating from old context.
+- The current profile analysis is converted deterministically into controlled
+  audience, customer-problem, customer-goal, and topic options. Stable option
+  IDs let the model choose among supplied facts without inventing a new profile
+  or starting another analysis request.
+- Versioned JSON is the source of truth for 15 five-slide content formats and
+  10 hook families in `worker/src/lib/carousel-config/formats.json` and
+  `worker/src/lib/carousel-config/hook-families.json`. The configuration is
+  validated at worker startup and fails closed on unknown IDs, invalid modes,
+  incompatible hooks, or a format that is not exactly five slides.
+- Before an automatic generation job is dispatched, the backend reserves one
+  content-format ID and one compatible hook-family ID on the existing
+  `carousel_generations` row. Selection is deterministic for a profile batch,
+  preserves an existing reservation on retry, and scores recent usage to avoid
+  immediate repetition across the ten candidates.
+- `carousel_generations.format` continues to mean the canvas ratio such as
+  `4:5`. Content structure is stored separately in `content_format_id`; do not
+  overload or rename the ratio field.
+- A compact snapshot of at most ten prior content summaries is stored with the
+  reservation. It contains only format, hook family, hook, topic label/stable
+  topic ID, and angle summary fields needed for retry-stable repetition checks;
+  it never copies complete prior slide plans.
+- Immediately before planning, the worker combines that reserved history with
+  already-planned siblings from the same generation batch and persists the
+  resulting compact ten-item snapshot. The current dedicated GCP Carousel
+  worker remains limited to one instance with request concurrency one, so
+  sibling planning is serialized and each later candidate can see earlier
+  planned ideas. Do not increase either limit until same-batch idea reservation
+  is made atomic in Postgres.
+- The planner receives exactly one reserved format, one compatible hook family,
+  the controlled profile options, and the compact recent-history snapshot. One
+  normal LLM request creates one complete carousel. A single repair request is
+  allowed only when the first result fails validation; otherwise the validated
+  deterministic fallback is used.
+- Automatic V1 output is always exactly five slides. Each slide stores its
+  format-specific role while retaining the existing coarse `slideType` and
+  `textMode`, so current image matching and rendering remain compatible.
+- The final slide is a practical takeaway. A soft CTA is optional and must not
+  be forced when it would weaken the content.
+- Precise nutrition, calorie, protein, percentage, currency, time, audience,
+  or performance numbers must be present in the saved analysis evidence. The
+  planner rejects invented exact numbers; a calorie-tracking business may use
+  formats such as Checklist, How-To, Swap, Comparison, or Myth vs Fact without
+  fabricating nutritional values.
+- Recent-topic validation uses the stable controlled topic ID as well as the
+  compact topic label. A repeated topic is rejected while another saved topic
+  option remains unused. Once every saved topic has appeared, controlled topic
+  reuse is allowed so a small profile cannot deadlock generation; hook and
+  angle freshness checks still apply. The deterministic fallback follows the
+  same unused-topic-first selection rule.
+- Object-only image safety, manual-review authority, matching policy, rendering,
+  and scheduling boundaries are unchanged by the content-grammar slice.
+- The V1 schema, selector, planner, app, worker, tests, and this architecture
+  record are local worktree changes as of 2026-08-10. They are not deployed or
+  production-verified until the additive migration is applied, app and worker
+  revisions are released, and the authenticated production Trending flow is
+  checked on `https://www.getugcpilot.com`.
 
 The renderer must avoid fake app UI:
 
@@ -1774,6 +1868,76 @@ Do not describe planned behavior as deployed behavior.
   still authoritative for the user-facing feed. Do not describe the new local
   assets as live feed selections until a separately deployed, profile-scoped
   broad-matcher canary is verified.
+
+## 2026-08-10 Power Folder Tagging Checkpoint
+
+- The seven source folders under
+  `C:/Users/chund/OneDrive/Desktop/slideshows/power` contain 594 readable
+  images: finance 26, food 356, gym 33, marketing 9, outdoor/lifestyle 40,
+  productivity 71, and beauty/skincare 59. The audit found 14 exact-duplicate
+  groups, 19 perceptual near-duplicate groups, and an estimated 553 visual
+  families.
+- Folder names map to source slugs and runtime categories as follows:
+  `finance` -> `personal_finance` -> Personal Finance; `food` ->
+  `calorie_tracking` -> Fitness Health; `gym` -> Fitness Health; `marketing`
+  -> Marketing SaaS; `outdoor_freedom_nature_walking` -> `outdoor_lifestyle`
+  -> Shared; the misspelled `producitivity` folder -> `productivity` ->
+  Productivity SaaS; and `skin` -> `beauty_skincare` -> Beauty Skincare.
+- Compact contact sheets plus targeted full-resolution checks produced the
+  durable rejection source
+  `scripts/data/power-carousel-safety-review-2026-08-10.json`. The review
+  rejected 87 supported candidates for visible or ambiguous human presence,
+  including hands, arms, cropped bodies, background people, and people on
+  printed material/screens. The audit rejected another 17 exact-duplicate
+  files. All 594 audited files therefore have an explicit decision: 490
+  approved and 104 rejected/skipped.
+- Approved runtime inventory is local-only at this checkpoint: Beauty Skincare
+  50 (8 clean texture, 16 home lifestyle, 26 product still life); Fitness
+  Health 350 (321 food/table and 29 fitness objects); Marketing SaaS 7 (3
+  data/screens and 4 phone/devices); Shared 18 (13 abstract/nature and 5 home
+  lifestyle/cafe); Personal Finance 19 (11 notes/planning, 1 phone/device, 7
+  workspace/shipping); and Productivity SaaS 46 (7 notes/planning and 39
+  workspace objects).
+- The approved manifest uses `local-curated-image-tags-v2`. Category defaults
+  are intentionally narrow so, for example, shipping boxes do not inherit a
+  generic `budgeting` match and outdoor cafes do not inherit `nature`.
+  Whole-term rules attach literal objects and concepts such as `receipt`,
+  `credit-card`, `grocery-budget`, `whiteboard`, `bench-press`, `serum`,
+  `popcorn`, and specific social platforms. Per-file overrides cover opaque
+  generated finance filenames and visually verified device types. A tag audit
+  found no approved asset with fewer than four content tags or fewer than two
+  object tags; repeated signatures inside homogeneous dish/vegetable packs are
+  expected because the filenames contain only the dish/object family plus a
+  sequence number.
+- The final approved tag manifest is
+  `.tmp/power-carousel-image-tags-approved-v2-final/2026-08-10T16-34-40-116Z/tag-manifest.json`.
+  Its 490 approved assets were prepared locally in
+  `.tmp/power-carousel-image-import-upscaled/2026-08-10T17-11-03-503Z` as one
+  canonical asset each: preserved original, 1080x1350 WebP runtime rendition,
+  and 320x400 WebP thumbnail. The package stores the source hash and a
+  `source_metadata.rendition` record; its 99 lower-resolution sources retain
+  their 0.64 quality score, original dimensions, and an
+  `approved_with_low_resolution_source` rendition-review status. Upscaling does
+  not reclassify these sources as natively high resolution.
+- The local checkpoint passed for all 490 records: strict object-only safety,
+  tags, runtime categories, hashes, object keys, and prepared image dimensions
+  are valid. Remote structure preflight found four exact source hashes already
+  present in `fitness-health` (two treadmills, spin bikes, and a plyo box), with
+  no prepared base-key or perceptual-hash conflict. The importer treats those
+  exact sources as idempotent skips, leaving 486 new canonical asset records to
+  upload. Originals must never be deleted for this reason.
+- The first explicit production import attempt reached the desktop command's
+  ten-minute limit before returning and did not create `import-result.json`.
+  Some deterministic GCP object keys may therefore already contain uploaded
+  files, but the number of inserted Supabase rows is not verified; the recovery
+  read was blocked by the Codex usage limit. Do not describe this batch as
+  backend/library inventory until a fresh remote preflight and production
+  verification succeed.
+- The importer now checkpoints every ten assets: it uploads the original,
+  1080x1350 base, and thumbnail concurrently for each asset, inserts that
+  checkpoint's rows, and writes resumable progress. A retry first skips any
+  source hashes already inserted, while deterministic object keys safely reuse
+  any files uploaded by the interrupted attempt.
 
 ## 2026-07-28 Unified Trending Wall-of-text Decision
 

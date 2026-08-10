@@ -61,6 +61,7 @@ test("silent Hook importer persists all Slice 2 catalog fields", () => {
     "source_batch",
     "influencer_key",
     "visual_group",
+    "hook_format_id",
     "has_audio",
   ]) {
     assert.match(importer, new RegExp(`${field}:`, "u"));
@@ -69,6 +70,7 @@ test("silent Hook importer persists all Slice 2 catalog fields", () => {
   assert.match(importer, /has_audio: false/u);
   assert.match(importer, /reactionType: asset\.reactionType/u);
   assert.match(importer, /thumbnailStorageKey: thumbnailKey/u);
+  assert.match(importer, /const sortOrder = asset\.sortOrder \?\? manifestIndex/u);
 });
 
 test("silent Hook importer supports a diverse canary and guarded rollback", () => {

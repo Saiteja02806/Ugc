@@ -16,6 +16,7 @@ type Json =
   | Json[];
 
 type HookVideoSuggestionRow = {
+  audio_intent: Json | null;
   business_profile_id: string;
   business_profile_version: number | null;
   campaign_purpose:

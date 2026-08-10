@@ -1,0 +1,136 @@
+{
+  "reviewStatus": "final_full_resolution_review",
+  "reviewedAt": "2026-08-10",
+  "policy": "object-only-no-human-v1",
+  "rejectionGroups": [
+    {
+      "categorySlug": "marketing",
+      "reason": "ambiguous_or_visible_human_presence",
+      "files": [
+        "social_media_pexels_pack/07_phone_showing_social_feed.png",
+        "social_media_pexels_pack/08_social_media_analytics.png"
+      ]
+    },
+    {
+      "categorySlug": "personal_finance",
+      "reason": "visible_human_hand_arm_or_body",
+      "files": [
+        "cards_unsplash_10/card_02.jpg",
+        "cards_unsplash_10/card_06.jpg",
+        "cards_unsplash_10/card_08.jpg",
+        "cards_unsplash_10/card_09.jpg",
+        "ChatGPT Image Aug 10, 2026, 06_14_01 PM (7).png",
+        "ChatGPT Image Aug 10, 2026, 06_14_02 PM (9).png",
+        "shipping_boxes_pexels_10/shipping_boxes_pexels/shipping_boxes_08.png"
+      ]
+    },
+    {
+      "categorySlug": "outdoor_lifestyle",
+      "reason": "visible_person_or_human_body",
+      "files": [
+        "nature_outdoor_lifestyle_library_updated/nature_outdoor_lifestyle_library/walking/01_woman_walking_away_sunset_road.jpg",
+        "nature_outdoor_lifestyle_library_updated/nature_outdoor_lifestyle_library/walking/02_man_walking_forest_path.jpg",
+        "nature_outdoor_lifestyle_library_updated/nature_outdoor_lifestyle_library/walking/03_man_walking_garden_archway.jpg",
+        "nature_outdoor_lifestyle_library_updated/nature_outdoor_lifestyle_library/walking/04_person_walking_mountain_landscape.jpg",
+        "nature_outdoor_lifestyle_library_updated/nature_outdoor_lifestyle_library/walking/05_woman_walking_rural_mountain_road.jpg",
+        "nature_outdoor_lifestyle_library_updated/nature_outdoor_lifestyle_library/walking/06_person_walking_deserted_mountain_road.jpg",
+        "nature_outdoor_lifestyle_library_updated/nature_outdoor_lifestyle_library/walking/09_woman_walking_mountain_road.jpg",
+        "nature_outdoor_lifestyle_library_updated/nature_outdoor_lifestyle_library/walking/10_person_walking_cloudy_open_road.jpg",
+        "outdoor_cafe_carousel_pack_10_images/outdoor_cafe_carousel_pack_10_images/01_alley_outdoor_cafe.jpg",
+        "outdoor_cafe_carousel_pack_10_images/outdoor_cafe_carousel_pack_10_images/03_tree_shaded_outdoor_cafe.jpg",
+        "outdoor_cafe_carousel_pack_10_images/outdoor_cafe_carousel_pack_10_images/06_colorful_street_cafe.jpg",
+        "outdoor_cafe_carousel_pack_10_images/outdoor_cafe_carousel_pack_10_images/07_modern_city_outdoor_cafe.jpg",
+        "outdoor_cafe_carousel_pack_10_images/outdoor_cafe_carousel_pack_10_images/09_green_street_cafe.jpg",
+        "sunlight_carousel_pack_10_images/sunlight_carousel_pack/06_relaxing_in_sunlit_field.jpg",
+        "sunlight_carousel_pack_10_images/sunlight_carousel_pack/07_man_golden_hour_park.jpg",
+        "sunlight_carousel_pack_10_images/sunlight_carousel_pack/08_woman_golden_hour_portrait.jpg",
+        "sunlight_carousel_pack_10_images/sunlight_carousel_pack/10_couple_golden_hour_nature.jpg"
+      ]
+    },
+    {
+      "categorySlug": "beauty_skincare",
+      "reason": "visible_human_hand_arm_skin_or_body",
+      "files": [
+        "cleanser_category_pexels/cleanser_category_pexels/03_cleansing_oil_bottle_hand.jpg",
+        "cleanser_category_pexels/cleanser_category_pexels/04_washing_face_water_splash.jpg",
+        "makeup_category_pexels/makeup_category_pexels/makeup_4.png",
+        "moisturizer_category_pexels/moisturizer_category_pexels/moisturizer_2.jpg",
+        "moisturizer_category_pexels/moisturizer_category_pexels/moisturizer_7.jpg",
+        "product_textures_category_pexels/product_textures_category_pexels/product_texture_06_cream_on_skin.jpg",
+        "serum_carousel_images/serum_carousel_images/serum_07_pexels_hand_dropper_blue.jpg",
+        "serum_carousel_images/serum_carousel_images/serum_08_pexels_hands_applying_serum.jpg",
+        "sunscreen_category_pexels/sunscreen_category_pexels/sunscreen_4.png"
+      ]
+    },
+    {
+      "categorySlug": "gym",
+      "reason": "visible_human_hand_leg_or_body",
+      "files": [
+        "cardio_and_functional_training_pexels/cardio_equipment_pexels/05_elliptical.jpg",
+        "cardio_and_functional_training_pexels/cardio_equipment_pexels/06_stair_climber.jpg",
+        "strength_equipment_pexels/strength_equipment_pexels/08_lat_pulldown_machine.jpg",
+        "strength_equipment_pexels/strength_equipment_pexels/09_seated_row_machine.jpg"
+      ]
+    },
+    {
+      "categorySlug": "productivity",
+      "reason": "visible_human_hand_arm_body_or_background_person",
+      "files": [
+        "office_carousel_10_images/office_carousel_images/office_03_cubicles.jpg",
+        "office.jpg",
+        "officenight _effect.jpg",
+        "pexels_books_10/pexels_books_10/03_books_in_hands.jpg",
+        "pexels_books_10/pexels_books_10/04_annotating_books.jpg",
+        "pexels_books_10/pexels_books_10/06_textbook_studying.jpg",
+        "pexels_books_10/pexels_books_10/07_books_notebook_desk.jpg",
+        "pexels_books_10/pexels_books_10/08_reading_flatlay.jpg",
+        "pexels_coding_setups_10/01_laptop_code_glasses_hand.png",
+        "pexels_coding_setups_10/02_hands_coding_dark_laptop.png",
+        "pexels_coding_setups_10/03_closeup_hand_coding_laptop.png",
+        "pexels_coding_setups_10/05_topdown_hands_laptop_code.png",
+        "pexels_coding_setups_10/06_coding_setup_pointing_hand.png",
+        "pexels_coding_setups_10/07_desktop_monitor_code_hands.png",
+        "pexels_laptop_learning_10/pexels_laptop_learning_10/02_sunny_classroom_laptop.jpg",
+        "pexels_laptop_learning_10/pexels_laptop_learning_10/03_home_study_laptop.jpg",
+        "pexels_laptop_learning_10/pexels_laptop_learning_10/09_coding_on_laptop.jpg",
+        "pexels_whiteboards_10/04_crypto_topic_whiteboard_hand.png",
+        "pexels_whiteboards_10/05_sticky_note_on_glass_whiteboard_hand.png",
+        "pexels_whiteboards_10/06_climate_graph_whiteboard_hand.png",
+        "pexels_whiteboards_10/07_erasing_whiteboard_hands.png",
+        "pexels_whiteboards_10/08_flowchart_whiteboard_hand.png",
+        "pexels_whiteboards_10/09_budget_mindmap_whiteboard_hand.png",
+        "pexels_whiteboards_10/10_written_whiteboard_closeup_hand.png",
+        "study.jpg"
+      ]
+    },
+    {
+      "categorySlug": "calorie_tracking",
+      "reason": "visible_human_hand_arm_body_or_background_person",
+      "files": [
+        "calorie_dense_healthy_foods_pexels/cashews.png",
+        "common_western_global_meals_pexels/global_meals_pexels/burger/burger_05.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/burger/burger_06.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/burger/burger_07.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/burger/burger_08.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/burrito_bowl/burrito_bowl_10.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/chicken_bowl/chicken_bowl_10.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/pasta/pasta_03.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/pizza/pizza_05.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/pizza/pizza_08.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/pizza/pizza_10.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/rice_bowl/rice_bowl_02.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/salad/salad_03.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/soup/soup_02.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/soup/soup_04.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/soup/soup_07.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/soup/soup_09.jpg",
+        "common_western_global_meals_pexels/global_meals_pexels/wrap/wrap_04.jpg",
+        "drinks_pexels_categories/drinks_pexels_categories/black_coffee.png",
+        "drinks_pexels_categories/drinks_pexels_categories/coconut_water.png",
+        "grocery_store_pexels_10_images/grocery_store_pexels_10/grocery_03_bright_supermarket_aisle.jpg",
+        "grocery_store_pexels_10_images/grocery_store_pexels_10/grocery_08_modern_supermarket_hall.jpg",
+        "pexels_vegetables_carousel_pack/pexels_vegetables_carousel_pack/sweet_potato/07.jpg"
+      ]
+    }
+  ]
+}

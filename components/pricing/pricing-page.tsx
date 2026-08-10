@@ -1,42 +1,44 @@
 import {
-  CalendarSync,
-  Check,
-  ImageIcon,
-  ShieldCheck,
-  Video,
+  BarChart3,
+  Layers3,
+  RefreshCw,
+  SlidersHorizontal,
 } from "lucide-react";
 import Link from "next/link";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
-import { PricingCard } from "@/components/pricing/pricing-card";
+import { PricingCatalog } from "@/components/pricing/pricing-catalog";
 import { PricingComparison } from "@/components/pricing/pricing-comparison";
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { pricingPlans } from "@/lib/pricing/plans";
+import {
+  pricingPlans,
+  type BillingInterval,
+} from "@/lib/pricing/plans";
 
-const creditGuideItems = [
+const workflowItems = [
   {
-    icon: ImageIcon,
-    title: "Image credits",
-    description: "Used only when an image variation is created.",
-    iconClassName: "bg-brand-soft text-primary",
+    icon: Layers3,
+    label: "Discover formats",
   },
   {
-    icon: Video,
-    title: "Video credits",
-    description: "Used only when a video output is created.",
-    iconClassName: "bg-card-muted text-muted",
+    icon: SlidersHorizontal,
+    label: "Create and edit",
   },
   {
-    icon: CalendarSync,
-    title: "Monthly renewal",
-    description: "The plan allowance refreshes on each billing date.",
-    iconClassName: "bg-success/10 text-success",
+    icon: RefreshCw,
+    label: "Schedule content",
+  },
+  {
+    icon: BarChart3,
+    label: "Review performance",
   },
 ];
 
-export function PricingPage() {
+type PricingPageProps = {
+  initialBillingInterval: BillingInterval;
+};
+
+export function PricingPage({ initialBillingInterval }: PricingPageProps) {
   return (
     <div className="instagram-theme min-h-screen bg-background text-foreground">
       <Link
@@ -45,8 +47,8 @@ export function PricingPage() {
       >
         Skip to pricing
       </Link>
-      <main className="min-h-screen">
-        <header className="border-b border-border bg-background/95 px-5 py-3.5 backdrop-blur sm:px-8 lg:px-10">
+
+      <header className="border-b border-border bg-background/95 px-5 py-3.5 backdrop-blur sm:px-8 lg:px-10">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-5">
           <Link
             href="/"
@@ -63,159 +65,118 @@ export function PricingPage() {
             </span>
           </Link>
 
-          <nav
-            aria-label="Pricing navigation"
-            className="flex items-center gap-2"
-          >
+          <nav aria-label="Pricing navigation" className="flex items-center gap-2">
             <span className="hidden text-sm font-medium text-muted sm:inline">
               Already have an account?
             </span>
             <Link
               href="/sign-in"
-              className={buttonVariants({
-                variant: "outline",
-                size: "lg",
-              })}
+              className={buttonVariants({ variant: "outline", size: "lg" })}
             >
               Sign in
             </Link>
           </nav>
         </div>
-        </header>
+      </header>
 
+      <main>
         <section
           id="pricing-content"
           aria-labelledby="pricing-title"
-          className="px-5 pb-16 pt-9 sm:px-8 sm:pt-11 lg:px-10"
+          className="px-5 pb-14 pt-9 sm:px-8 sm:pt-11 lg:px-10"
           tabIndex={-1}
         >
-        <div className="mx-auto max-w-5xl">
-          <div className="mx-auto max-w-2xl text-center">
-            <Badge variant="secondary">Monthly plans</Badge>
-            <h1
-              id="pricing-title"
-              className="mt-4 text-balance text-3xl font-bold leading-tight tracking-normal text-foreground-strong sm:text-4xl"
-            >
-              Choose the right plan for your workflow
-            </h1>
-            <p className="mx-auto mt-3 max-w-xl text-pretty text-sm font-medium leading-6 text-muted sm:text-base">
-              Generate more images and videos each month with a plan built for
-              your publishing cadence.
-            </p>
-            <div className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-semibold text-foreground">
-              {[
-                "Credits refresh monthly",
-                "Commercial usage",
-                "Watermark-free exports",
-              ].map((item) => (
-                <span key={item} className="inline-flex items-center gap-2">
-                  <Check className="size-4 text-success" aria-hidden="true" />
-                  {item}
-                </span>
-              ))}
+          <div className="mx-auto max-w-5xl">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-xs font-bold uppercase text-foreground">
+                Simple pricing
+              </p>
+              <h1
+                id="pricing-title"
+                className="mt-3 text-balance text-3xl font-bold leading-tight tracking-normal text-foreground-strong sm:text-4xl"
+              >
+                Turn content ideas into published posts
+              </h1>
+              <p className="mx-auto mt-3 max-w-xl text-pretty text-sm font-medium leading-6 text-muted sm:text-base">
+                Every plan includes UGCPilot&apos;s complete workflow. Choose
+                how much monthly generation capacity you need and how often
+                you want to pay.
+              </p>
             </div>
-          </div>
 
-          <div
-            aria-label="Pricing plans"
-            className="mt-8 grid items-stretch gap-5 md:grid-cols-2"
-          >
-            {pricingPlans.map((plan) => (
-              <PricingCard key={plan.slug} plan={plan} />
-            ))}
+            <div className="mx-auto mt-6 grid max-w-3xl grid-cols-2 gap-x-4 gap-y-3 border-y border-border py-4 sm:grid-cols-4">
+              {workflowItems.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <div
+                    key={item.label}
+                    className="flex items-center justify-center gap-2 text-xs font-semibold text-foreground sm:text-sm"
+                  >
+                    <Icon className="size-4 text-primary" aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <PricingCatalog initialBillingInterval={initialBillingInterval} />
           </div>
-        </div>
         </section>
 
         <PricingComparison plans={pricingPlans} />
 
         <section
           aria-labelledby="credits-title"
-          className="px-5 py-12 sm:px-8 lg:px-10"
+          className="px-5 py-10 sm:px-8 lg:px-10 lg:py-12"
         >
-        <div className="mx-auto max-w-5xl">
-          <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:gap-12">
+          <div className="mx-auto grid max-w-5xl gap-7 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14">
             <div className="max-w-md">
-              <p className="text-xs font-bold uppercase text-primary">
-                Credit guide
+              <p className="text-xs font-bold uppercase text-foreground">
+                Usage model
               </p>
               <h2
                 id="credits-title"
-                className="mt-3 text-2xl font-bold leading-tight tracking-normal text-foreground-strong sm:text-3xl"
+                className="mt-2 text-2xl font-bold leading-tight tracking-normal text-foreground-strong sm:text-3xl"
               >
-                How credits work
+                One balance for generation
               </h2>
               <p className="mt-3 text-sm font-medium leading-6 text-muted">
-                Credits stay tied to their generation type. Unused credits
-                expire when the billing period ends.
+                Image and short-video generation draw from the same monthly
+                credit balance, so you can use the plan around your actual
+                content mix.
               </p>
             </div>
 
-            <div className="grid border-y border-border sm:grid-cols-3">
-              {creditGuideItems.map((item) => {
-                const Icon = item.icon;
-
-                return (
-                  <article
-                    key={item.title}
-                    className="border-b border-border py-5 last:border-b-0 sm:border-b-0 sm:border-r sm:px-5 sm:first:pl-0 sm:last:border-r-0 sm:last:pr-0"
-                  >
-                    <span
-                      className={cn(
-                        "flex size-9 items-center justify-center rounded-small",
-                        item.iconClassName,
-                      )}
-                    >
-                      <Icon className="size-4" aria-hidden="true" />
-                    </span>
-                    <h3 className="mt-4 text-sm font-bold text-foreground-strong">
-                      {item.title}
-                    </h3>
-                    <p className="mt-1.5 text-sm font-medium leading-6 text-muted">
-                      {item.description}
-                    </p>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-10 flex flex-col gap-5 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <ShieldCheck
-                className="mt-0.5 size-5 shrink-0 text-success"
-                aria-hidden="true"
-              />
-              <div>
-                <p className="text-sm font-bold text-foreground-strong">
-                  Need help choosing?
-                </p>
-                <p className="mt-1 text-sm font-medium text-muted">
-                  Tell us your publishing cadence and we will recommend a plan.
-                </p>
+            <dl className="divide-y divide-border border-y border-border">
+              <div className="grid gap-1 py-4 sm:grid-cols-[0.55fr_1fr] sm:gap-6">
+                <dt className="text-sm font-bold text-foreground-strong">
+                  Monthly refresh
+                </dt>
+                <dd className="text-sm font-medium leading-6 text-muted">
+                  Credits refresh every month, including on annual plans.
+                </dd>
               </div>
-            </div>
-            <Link
-              href="/contact"
-              className={buttonVariants({
-                variant: "outline",
-                size: "lg",
-                className: "w-full sm:w-auto",
-              })}
-            >
-              Contact support
-            </Link>
+              <div className="grid gap-1 py-4 sm:grid-cols-[0.55fr_1fr] sm:gap-6">
+                <dt className="text-sm font-bold text-foreground-strong">
+                  Usage by output
+                </dt>
+                <dd className="text-sm font-medium leading-6 text-muted">
+                  Credit cost varies by generation type and model. Video uses
+                  more credits than an image.
+                </dd>
+              </div>
+            </dl>
           </div>
-        </div>
         </section>
+      </main>
 
-        <footer className="border-t border-border px-5 py-6 sm:px-8 lg:px-10">
+      <footer className="border-t border-border px-5 py-6 sm:px-8 lg:px-10">
         <div className="mx-auto flex max-w-5xl flex-col gap-2 text-xs font-medium text-muted sm:flex-row sm:items-center sm:justify-between">
-          <span>UGCPilot monthly plans</span>
+          <span>UGCPilot Creator and Pro plans</span>
           <span>Prices shown in USD. Taxes may apply.</span>
         </div>
-        </footer>
-      </main>
+      </footer>
     </div>
   );
 }

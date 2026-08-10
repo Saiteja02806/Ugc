@@ -1,7 +1,9 @@
 import type {
+  CarouselGenerationRow,
   CarouselSlideInsert,
   CategoryImageAssetRow,
   Json,
+  WebsiteBusinessAnalysis,
 } from "../types.js";
 import { logger } from "../logger.js";
 import type { SupabaseJobStore } from "./supabase.js";
@@ -21,7 +23,11 @@ import {
   DEFAULT_CAROUSEL_RENDER_STYLE,
   type CarouselRenderStyle,
 } from "./carousel-render-style.js";
-import { buildCarouselContentPlan } from "./carousel-llm-slide-plan.js";
+import {
+  buildCarouselContentPlan,
+  mergeCarouselRecentContentHistory,
+  type CarouselRecentContentSummaryInput,
+} from "./carousel-llm-slide-plan.js";
 import type { PlannedCarouselSlide } from "./carousel-slide-plan.js";
 import { uploadRenderedCarouselSlide } from "./carousel-storage.js";
 
@@ -161,6 +167,145 @@ function getLegacySlideHeadline(slide: PlannedCarouselSlide) {
   );
 }
 
+function parseContentHistorySnapshot(
+  value: Json,
+): CarouselRecentContentSummaryInput[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.slice(0, 10).flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return [];
+    }
+
+    const record = item as Record<string, Json | undefined>;
+    return [
+      {
+        angle: getOptionalString(record.angle),
+        contentFormatId: getOptionalString(record.contentFormatId),
+        hook: getOptionalString(record.hook),
+        hookFamilyId: getOptionalString(record.hookFamilyId),
+        topic: getOptionalString(record.topic),
+        topicId: getOptionalString(record.topicId),
+      },
+    ];
+  });
+}
+
+function getGenerationContentHistory(
+  generations: readonly CarouselGenerationRow[],
+): CarouselRecentContentSummaryInput[] {
+  return generations.flatMap((generation) => {
+    const normalizedPlan = getJsonRecord(generation.content_plan_normalized);
+    const strategy = getJsonRecord(normalizedPlan?.contentStrategy);
+    const slides = Array.isArray(normalizedPlan?.slides)
+      ? normalizedPlan.slides
+      : [];
+    const firstSlide = getJsonRecord(slides[0]);
+    const firstListItem = Array.isArray(firstSlide?.listItems)
+      ? firstSlide.listItems.find(
+          (item): item is string => typeof item === "string" && Boolean(item.trim()),
+        )
+      : null;
+    const hook = [
+      getOptionalString(firstSlide?.headline),
+      getOptionalString(firstSlide?.body),
+      firstListItem?.trim() ?? null,
+      getOptionalString(firstSlide?.ctaText),
+    ].find((item): item is string => Boolean(item));
+    const summary = {
+      angle:
+        generation.content_angle ??
+        getOptionalString(strategy?.angle) ??
+        getOptionalString(normalizedPlan?.concept),
+      contentFormatId:
+        generation.content_format_id ??
+        getOptionalString(strategy?.contentFormatId),
+      hook: hook ?? null,
+      hookFamilyId:
+        generation.hook_family_id ??
+        getOptionalString(strategy?.hookFamilyId),
+      topic:
+        generation.content_topic ??
+        getOptionalString(strategy?.topic) ??
+        getOptionalString(strategy?.topicLabel),
+      topicId:
+        generation.content_topic_id ??
+        getOptionalString(strategy?.topicId),
+    } satisfies CarouselRecentContentSummaryInput;
+
+    return summary.angle || summary.hook || summary.topic ? [summary] : [];
+  });
+}
+
+function getJsonRecord(value: Json | undefined) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, Json | undefined>)
+    : null;
+}
+
+async function getBusinessAnalysisForGeneration(params: {
+  generation: CarouselGenerationRow;
+  store: SupabaseJobStore;
+  websiteAnalysis: { analysis_json: WebsiteBusinessAnalysis };
+}) {
+  if (!params.generation.business_profile_id) {
+    return params.websiteAnalysis.analysis_json;
+  }
+
+  if (params.generation.business_profile_version === null) {
+    throw new Error(
+      "Carousel generation is missing its business profile version.",
+    );
+  }
+
+  const profile = await params.store.getBusinessProfileForCarousel({
+    businessProfileId: params.generation.business_profile_id,
+    businessProfileVersion: params.generation.business_profile_version,
+    userId: params.generation.user_id,
+  });
+
+  if (!profile) {
+    throw new Error(
+      "Carousel generation belongs to a stale or unavailable business profile version.",
+    );
+  }
+
+  return profile.context_json;
+}
+
+async function assertBusinessProfileVersionIsCurrent(params: {
+  generation: CarouselGenerationRow;
+  store: SupabaseJobStore;
+}) {
+  if (!params.generation.business_profile_id) {
+    return;
+  }
+
+  if (params.generation.business_profile_version === null) {
+    throw new Error(
+      "Carousel generation is missing its business profile version.",
+    );
+  }
+
+  const profile = await params.store.getBusinessProfileForCarousel({
+    businessProfileId: params.generation.business_profile_id,
+    businessProfileVersion: params.generation.business_profile_version,
+    userId: params.generation.user_id,
+  });
+
+  if (!profile) {
+    throw new Error(
+      "Business profile changed before Carousel generation completed.",
+    );
+  }
+}
+
+function getOptionalString(value: Json | undefined) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 function selectCandidateAssets(params: {
   assets: CategoryImageAssetRow[];
   candidateIndex: number;
@@ -242,22 +387,28 @@ export async function generateCarousel({
       throw new Error("Website analysis was not found for this carousel.");
     }
 
+    const businessAnalysis = await getBusinessAnalysisForGeneration({
+      generation,
+      store,
+      websiteAnalysis,
+    });
+
     if (!generation.category_slug) {
       throw new Error("Carousel generation is missing a category slug.");
     }
 
     const businessVisualProfile = resolveCarouselBusinessVisualProfile({
-      category: websiteAnalysis.analysis_json.category ?? websiteAnalysis.category,
+      category: businessAnalysis.category ?? websiteAnalysis.category,
       pexelsImageQueries:
-        websiteAnalysis.analysis_json.pexelsImageQueries ??
+        businessAnalysis.pexelsImageQueries ??
         websiteAnalysis.pexels_image_queries,
       productSummary:
-        websiteAnalysis.analysis_json.productSummary ??
+        businessAnalysis.productSummary ??
         websiteAnalysis.product_summary,
       valueProps:
-        websiteAnalysis.analysis_json.valueProps ?? websiteAnalysis.value_props,
+        businessAnalysis.valueProps ?? websiteAnalysis.value_props,
       visualKeywords:
-        websiteAnalysis.analysis_json.visualKeywords ??
+        businessAnalysis.visualKeywords ??
         websiteAnalysis.visual_keywords,
     });
     const assets = await store.listReadyCategoryImageAssets({
@@ -271,10 +422,32 @@ export async function generateCarousel({
       );
     }
 
+    const batchHistory = generation.business_profile_id
+      ? getGenerationContentHistory(
+          await store.listCarouselBatchContentHistory({
+            businessProfileId: generation.business_profile_id,
+            excludeCarouselId: generation.id,
+            generationBatchId: generation.generation_batch_id,
+            limit: 10,
+          }),
+        )
+      : [];
+    const recentHistory = mergeCarouselRecentContentHistory(
+      batchHistory,
+      parseContentHistorySnapshot(generation.content_history_snapshot),
+    );
+
+    await store.updateCarouselGeneration(carouselId, {
+      content_history_snapshot: recentHistory as unknown as Json,
+    });
+
     const contentPlan = await buildCarouselContentPlan({
-      analysis: websiteAnalysis.analysis_json,
+      analysis: businessAnalysis,
       candidateIndex,
+      contentFormatId: generation.content_format_id,
       goal: generation.goal,
+      hookFamilyId: generation.hook_family_id,
+      recentHistory,
       selectedAngle: generation.selected_angle,
       slideCount: generation.slide_count,
     });
@@ -284,6 +457,7 @@ export async function generateCarousel({
       broadSituations: contentPlan.broadSituations,
       carouselId,
       concept: contentPlan.concept,
+      contentStrategy: contentPlan.contentStrategy,
       fallbackReason: contentPlan.fallbackReason,
       model: contentPlan.model,
       plannerVersion: contentPlan.plannerVersion,
@@ -292,14 +466,21 @@ export async function generateCarousel({
     });
     await store.updateCarouselGeneration(carouselId, {
       content_plan_fallback_reason: contentPlan.fallbackReason,
+      content_angle: contentPlan.contentStrategy?.angle ?? null,
+      content_audience_id: contentPlan.contentStrategy?.audienceId ?? null,
+      content_goal_id: contentPlan.contentStrategy?.customerGoalId ?? null,
       content_plan_normalized: contentPlan.normalizedPlan as unknown as Json,
       content_plan_raw_response: contentPlan.rawLlmResponse as unknown as Json,
       content_plan_source: contentPlan.source,
       content_plan_validation: contentPlan.validationResult as unknown as Json,
       content_planner_model: contentPlan.model,
       content_planner_version: contentPlan.plannerVersion,
+      content_problem_id: contentPlan.contentStrategy?.problemId ?? null,
+      content_topic: contentPlan.contentStrategy?.topic ?? null,
+      content_topic_id: contentPlan.contentStrategy?.topicId ?? null,
       renderer_version: CAROUSEL_RENDERER_VERSION,
     });
+    await assertBusinessProfileVersionIsCurrent({ generation, store });
     const selectionSeed = [
       generation.category_slug,
       generation.generation_batch_id,
@@ -401,7 +582,7 @@ export async function generateCarousel({
       const renderedSlide = await renderCarouselSlideWithDiagnostics({
         assetUrl: asset.base_url,
         businessName:
-          websiteAnalysis.analysis_json.businessName ??
+          businessAnalysis.businessName ??
           websiteAnalysis.business_name,
         format: generation.format,
         slide,
@@ -440,6 +621,7 @@ export async function generateCarousel({
       });
     }
 
+    await assertBusinessProfileVersionIsCurrent({ generation, store });
     await store.upsertCarouselSlides(slideRows);
     await store.incrementCategoryImageAssetUsage(
       slideRows

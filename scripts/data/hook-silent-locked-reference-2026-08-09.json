@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "hook-silent-video-manifest-v1",
+  "sourceBatch": "hook-silent-locked-reference-2026-08-09",
+  "reviewedAt": "2026-08-09",
+  "sourceFolders": {
+    "videos_real": "C:\\Users\\chund\\OneDrive\\Desktop\\videos_real"
+  },
+  "influencers": {
+    "creator_022": {
+      "displayName": "Creator 022",
+      "identityConfidence": "medium"
+    }
+  },
+  "visualGroups": {
+    "desk_laptop_reaction": "Influencer reacting while a laptop or desk setup is visually prominent."
+  },
+  "reactionTypes": {
+    "confusion_skepticism": "Confusion, doubt, skepticism, or questioning disbelief."
+  },
+  "assets": [
+    {
+      "assetKey": "hook-silent:7851a78d9eac288c787792907f7ec29749e08b4cb83aaacaaa7084739956d702",
+      "catalogName": "creator-022-confusion-skepticism-7851a78d9e",
+      "durationSeconds": 3.792,
+      "fileSizeBytes": 527705,
+      "hasAudio": false,
+      "height": 1280,
+      "influencerKey": "creator_022",
+      "originalFileName": "0313-2065-4d4d-9069-3c70167134d2.mp4",
+      "ratio": "9:16",
+      "reactionType": "confusion_skepticism",
+      "reviewReason": "Approved as the supplied reference for a skeptical desk-and-laptop Hook reaction and a future explicit EWW audio lock.",
+      "reviewStatus": "approved",
+      "sha256": "7851a78d9eac288c787792907f7ec29749e08b4cb83aaacaaa7084739956d702",
+      "sortOrder": 78,
+      "sourceFolderKey": "videos_real",
+      "videoCodec": "h264",
+      "visualGroup": "desk_laptop_reaction",
+      "width": 720
+    }
+  ],
+  "summary": {
+    "approvedCount": 1,
+    "rejectedCount": 0,
+    "silentCount": 1,
+    "sourceFolderCounts": {
+      "videos_real": 1
+    },
+    "visualGroupCounts": {
+      "desk_laptop_reaction": 1
+    },
+    "reactionTypeCounts": {
+      "confusion_skepticism": 1
+    }
+  }
+}

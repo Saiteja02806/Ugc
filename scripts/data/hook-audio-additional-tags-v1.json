@@ -1,0 +1,226 @@
+{
+  "schemaVersion": "hook-audio-additional-tags-v1",
+  "policy": {
+    "reviewStatus": "pending",
+    "taggingMethod": "ai-assisted-acoustic-profile-v1",
+    "approvalRequirement": "listening-review-required"
+  },
+  "assets": [
+    {
+      "id": "hook_audio_029",
+      "sourceFileName": "EWW.mp3",
+      "sha256": "953b4099b78f642acc02092a9b487ae5b826de302c5aa14f86e4876adbb7f5d8",
+      "moods": ["playful", "curious"],
+      "hookTypes": ["curiosity", "transformation", "story"],
+      "energy": "low",
+      "impactAtSeconds": 1.974
+    },
+    {
+      "id": "hook_audio_030",
+      "sourceFileName": "ReelAudio-12874.mp3",
+      "sha256": "f2104a234b7fb5563dcc3b07d8fd771dd1721f31ccae72cab695b6ff2d8d18c7",
+      "moods": ["playful", "uplifting"],
+      "hookTypes": ["benefit", "transformation", "curiosity", "story"],
+      "energy": "medium",
+      "impactAtSeconds": 4.969
+    },
+    {
+      "id": "hook_audio_031",
+      "sourceFileName": "ReelAudio-17100.mp3",
+      "sha256": "67f2e61a6f30ceec9daa064b3dffde13fed7fd0b5c6796b30273cd48d4879f1f",
+      "moods": ["urgent", "curious"],
+      "hookTypes": ["warning", "problem", "curiosity", "transformation"],
+      "energy": "high",
+      "impactAtSeconds": null
+    },
+    {
+      "id": "hook_audio_032",
+      "sourceFileName": "ReelAudio-17663.mp3",
+      "sha256": "324a3efa438f69624bd386d4894f4be73751680d0f704631195192b9e8a0656c",
+      "moods": ["urgent", "playful"],
+      "hookTypes": ["warning", "curiosity", "transformation", "benefit"],
+      "energy": "high",
+      "impactAtSeconds": 2.043
+    },
+    {
+      "id": "hook_audio_033",
+      "sourceFileName": "ReelAudio-18504.mp3",
+      "sha256": "14757d78ee0041bec27cfb56acc962ae3e4b0da93b486a87e902f6c37f55c0d0",
+      "moods": ["serious", "curious"],
+      "hookTypes": ["problem", "story", "authority"],
+      "energy": "medium",
+      "impactAtSeconds": 4.319
+    },
+    {
+      "id": "hook_audio_034",
+      "sourceFileName": "ReelAudio-22116.mp3",
+      "sha256": "c01b11aa6d8d928d55fe7932f67fb5ce9b5581d46434a1f6f1fa7d45317bc352",
+      "moods": ["curious", "uplifting"],
+      "hookTypes": ["curiosity", "benefit", "story"],
+      "energy": "medium",
+      "impactAtSeconds": null
+    },
+    {
+      "id": "hook_audio_035",
+      "sourceFileName": "ReelAudio-29804.mp3",
+      "sha256": "2863cac1f871fabc5f7b708781897412b2a4aa4328a70bd040cf4273a5ca22a7",
+      "moods": ["serious", "curious"],
+      "hookTypes": ["problem", "curiosity", "story", "authority"],
+      "energy": "medium",
+      "impactAtSeconds": null
+    },
+    {
+      "id": "hook_audio_036",
+      "sourceFileName": "ReelAudio-30159.mp3",
+      "sha256": "6013fd3d0f6e9658988898e17334f61088d3d5f84206d269618c81b9105b0ea0",
+      "moods": ["calm", "serious"],
+      "hookTypes": ["story", "authority", "problem"],
+      "energy": "low",
+      "impactAtSeconds": null
+    },
+    {
+      "id": "hook_audio_037",
+      "sourceFileName": "ReelAudio-31840.mp3",
+      "sha256": "7731f26538bb9ca8531dfc4fa5a66d9c9fc752db0af80fa29399ce7cd014db3f",
+      "moods": ["calm", "curious"],
+      "hookTypes": ["story", "curiosity", "benefit"],
+      "energy": "low",
+      "impactAtSeconds": null
+    },
+    {
+      "id": "hook_audio_038",
+      "sourceFileName": "ReelAudio-31847.mp3",
+      "sha256": "af0ea531db7191822336387218b6c1c4fcb750a3029fc000bf40a1762df495ac",
+      "moods": ["urgent", "curious"],
+      "hookTypes": ["warning", "problem", "transformation", "curiosity"],
+      "energy": "high",
+      "impactAtSeconds": 4.319
+    },
+    {
+      "id": "hook_audio_039",
+      "sourceFileName": "ReelAudio-36499.mp3",
+      "sha256": "b320c59f4f343a909e5018a1c29b34b54050d478e6b3d47dabff1e014cf32906",
+      "moods": ["serious", "curious"],
+      "hookTypes": ["problem", "story", "authority"],
+      "energy": "medium",
+      "impactAtSeconds": null
+    },
+    {
+      "id": "hook_audio_040",
+      "sourceFileName": "ReelAudio-46721.mp3",
+      "sha256": "f986601efa5e62dc387d240c02732776be94eb46b3566a757109058e9b0f90a8",
+      "moods": ["curious", "uplifting"],
+      "hookTypes": ["curiosity", "benefit", "story", "transformation"],
+      "energy": "medium",
+      "impactAtSeconds": null
+    },
+    {
+      "id": "hook_audio_041",
+      "sourceFileName": "ReelAudio-49255.mp3",
+      "sha256": "d38848baca1d053b8d381bd7da975116640c461ca509f9b20c1b9cf3422c2537",
+      "moods": ["playful", "curious"],
+      "hookTypes": ["curiosity", "story", "transformation"],
+      "energy": "low",
+      "impactAtSeconds": 3.019
+    },
+    {
+      "id": "hook_audio_042",
+      "sourceFileName": "ReelAudio-49728.mp3",
+      "sha256": "4891d1552117f2d0695885436506b27453665ed662c0d1f6e37b5b3cd2ec49d4",
+      "moods": ["calm", "curious"],
+      "hookTypes": ["story", "benefit", "curiosity"],
+      "energy": "low",
+      "impactAtSeconds": 2.392
+    },
+    {
+      "id": "hook_audio_043",
+      "sourceFileName": "ReelAudio-49971.mp3",
+      "sha256": "eb4c2b75b041cdfd5abfb9841e93acc0ebaa4f2efd915abaa7118689202a57c4",
+      "moods": ["playful", "curious"],
+      "hookTypes": ["curiosity", "story", "benefit"],
+      "energy": "low",
+      "impactAtSeconds": null
+    },
+    {
+      "id": "hook_audio_044",
+      "sourceFileName": "ReelAudio-59959.mp3",
+      "sha256": "3c3eb4b814f2bc9fcf781c5895886ff05aa2c7ef0575c99bae3e8ca3918f1dde",
+      "moods": ["serious", "urgent"],
+      "hookTypes": ["warning", "problem", "authority", "transformation"],
+      "energy": "high",
+      "impactAtSeconds": 4.714
+    },
+    {
+      "id": "hook_audio_045",
+      "sourceFileName": "ReelAudio-61556.mp3",
+      "sha256": "590fe94b2deeb1b3ee472e51772e2519cd0c7971ec421485439324c888be6942",
+      "moods": ["serious", "urgent"],
+      "hookTypes": ["warning", "problem", "authority", "transformation"],
+      "energy": "high",
+      "impactAtSeconds": 2.183
+    },
+    {
+      "id": "hook_audio_046",
+      "sourceFileName": "ReelAudio-81162.mp3",
+      "sha256": "bf9830ee35f8528e2376c521cb6c34748ea058455527a9eebaeb3ed4935d1a67",
+      "moods": ["playful", "uplifting"],
+      "hookTypes": ["benefit", "transformation", "curiosity", "story"],
+      "energy": "medium",
+      "impactAtSeconds": null
+    },
+    {
+      "id": "hook_audio_047",
+      "sourceFileName": "ReelAudio-81594.mp3",
+      "sha256": "924f4ea55b620aa880cee30e98d616ed9da86f5734bddf05339f72bd0f9a2d0a",
+      "moods": ["serious", "curious"],
+      "hookTypes": ["problem", "story", "authority"],
+      "energy": "medium",
+      "impactAtSeconds": null
+    },
+    {
+      "id": "hook_audio_048",
+      "sourceFileName": "ReelAudio-82170.mp3",
+      "sha256": "480fa3d3383c3000ee859c5e3e0e1a1cd1448533e18bce0e6c6c28e63a0b47dd",
+      "moods": ["playful", "urgent"],
+      "hookTypes": ["warning", "transformation", "benefit", "curiosity"],
+      "energy": "high",
+      "impactAtSeconds": null
+    },
+    {
+      "id": "hook_audio_049",
+      "sourceFileName": "ReelAudio-91785.mp3",
+      "sha256": "1ced45ae2ceaf13a4952c5e3f2e85c28acacf24ad3e6a432d90ace25f1c07ca5",
+      "moods": ["calm", "serious"],
+      "hookTypes": ["story", "authority", "problem"],
+      "energy": "low",
+      "impactAtSeconds": null
+    },
+    {
+      "id": "hook_audio_050",
+      "sourceFileName": "ReelAudio-92525.mp3",
+      "sha256": "a54ae73de6dae5864a53c1806b9ae1a28a0224db72d5a122bb46051014aebcb3",
+      "moods": ["serious", "urgent"],
+      "hookTypes": ["warning", "problem", "authority", "transformation"],
+      "energy": "high",
+      "impactAtSeconds": 2.902
+    },
+    {
+      "id": "hook_audio_051",
+      "sourceFileName": "ReelAudio-97315.mp3",
+      "sha256": "aa0057379cfadfe7d6df232d01bc585e9032edac62e3f9ff5f734beeab8f731e",
+      "moods": ["serious", "curious"],
+      "hookTypes": ["problem", "story", "authority"],
+      "energy": "medium",
+      "impactAtSeconds": 1.3
+    },
+    {
+      "id": "hook_audio_052",
+      "sourceFileName": "ReelAudio-99585.mp3",
+      "sha256": "fd25c4819266cad9379eafd94c779272cdd85f019db5ad9b6c710e5abb918eb2",
+      "moods": ["calm", "serious"],
+      "hookTypes": ["story", "authority", "problem"],
+      "energy": "low",
+      "impactAtSeconds": 1.37
+    }
+  ]
+}

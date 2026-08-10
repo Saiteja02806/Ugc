@@ -1,0 +1,248 @@
+{
+  "version": "carousel-formats-v1",
+  "formats": [
+    {
+      "id": "list",
+      "name": "List / Roundup",
+      "purpose": "Give several useful items without overcrowding any slide.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["curiosity", "specific_outcome", "surprise", "utility"],
+      "generationRules": [
+        "Use exactly six concise items across the three middle slides.",
+        "Each item must be useful and grounded in the supplied business context."
+      ],
+      "slides": [
+        { "role": "hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Introduce the useful list and why it matters." },
+        { "role": "items_1_2", "slideType": "benefit", "preferredTextModes": ["checklist", "question_list"], "instruction": "Present items one and two as two short list items.", "listItemCount": 2 },
+        { "role": "items_3_4", "slideType": "benefit", "preferredTextModes": ["checklist", "question_list"], "instruction": "Present items three and four as two short list items.", "listItemCount": 2 },
+        { "role": "items_5_6", "slideType": "benefit", "preferredTextModes": ["checklist", "question_list"], "instruction": "Present items five and six as two short list items.", "listItemCount": 2 },
+        { "role": "takeaway_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "State the practical takeaway and add a soft CTA only when useful." }
+      ]
+    },
+    {
+      "id": "mistakes",
+      "name": "Mistakes",
+      "purpose": "Show three recognizable mistakes and what to do instead.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["mistake", "problem_recognition", "curiosity"],
+      "generationRules": ["Use exactly three mistakes.", "Do not blame or shame the audience."],
+      "slides": [
+        { "role": "hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Introduce the three mistakes and their consequence." },
+        { "role": "mistake_1", "slideType": "problem", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the first specific mistake." },
+        { "role": "mistake_2", "slideType": "problem", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the second distinct mistake." },
+        { "role": "mistake_3", "slideType": "problem", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the third distinct mistake." },
+        { "role": "solution_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "Explain what to do instead and add a soft CTA only when useful." }
+      ]
+    },
+    {
+      "id": "how_to",
+      "name": "How-To / Steps",
+      "purpose": "Teach a useful result through three ordered steps.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["specific_outcome", "curiosity", "problem_recognition", "beginner"],
+      "generationRules": ["The three steps must be ordered and actionable.", "Do not skip the connection between steps."],
+      "slides": [
+        { "role": "hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Promise a supported result or introduce the process." },
+        { "role": "step_1", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Give the first actionable step." },
+        { "role": "step_2", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Give the second actionable step." },
+        { "role": "step_3", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Give the third actionable step." },
+        { "role": "result_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "State the useful result and add a soft CTA only when useful." }
+      ]
+    },
+    {
+      "id": "comparison",
+      "name": "Comparison",
+      "purpose": "Compare two meaningful choices and explain the important difference.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["comparison", "curiosity", "surprise", "question"],
+      "generationRules": ["Compare choices with a real difference.", "Do not invent numerical values or force an artificial winner."],
+      "slides": [
+        { "role": "hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Introduce the two choices and the decision that matters." },
+        { "role": "option_a", "slideType": "benefit", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain option A fairly." },
+        { "role": "option_b", "slideType": "benefit", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain option B fairly." },
+        { "role": "key_comparison", "slideType": "differentiator", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the most useful difference between the options." },
+        { "role": "recommendation_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "Give a conditional recommendation or takeaway and add a soft CTA only when useful." }
+      ]
+    },
+    {
+      "id": "swap",
+      "name": "Swap / Do This Instead",
+      "purpose": "Offer three simple replacements for a weaker habit or choice.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["specific_outcome", "problem_recognition", "utility"],
+      "generationRules": ["Every replacement must be practical.", "Do not imply that one choice is universally correct."],
+      "slides": [
+        { "role": "hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Introduce the benefit of making these swaps." },
+        { "role": "swap_1", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Give the first replacement and why it helps." },
+        { "role": "swap_2", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Give the second replacement and why it helps." },
+        { "role": "swap_3", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Give the third replacement and why it helps." },
+        { "role": "takeaway_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "Summarize how to choose a useful swap and add a soft CTA only when useful." }
+      ]
+    },
+    {
+      "id": "myth_fact",
+      "name": "Myth vs Fact",
+      "purpose": "Correct three common misunderstandings with careful explanations.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["question", "contrarian", "surprise", "curiosity"],
+      "generationRules": ["Use exactly three myths.", "Correct only claims supported by the supplied context or safe general knowledge without precise invented numbers."],
+      "slides": [
+        { "role": "hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Introduce the misconception worth correcting." },
+        { "role": "myth_fact_1", "slideType": "problem", "preferredTextModes": ["headline_body", "body_only"], "instruction": "State the first myth and its correction." },
+        { "role": "myth_fact_2", "slideType": "problem", "preferredTextModes": ["headline_body", "body_only"], "instruction": "State the second myth and its correction." },
+        { "role": "myth_fact_3", "slideType": "problem", "preferredTextModes": ["headline_body", "body_only"], "instruction": "State the third myth and its correction." },
+        { "role": "takeaway_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "State the careful takeaway and add a soft CTA only when useful." }
+      ]
+    },
+    {
+      "id": "cheat_sheet",
+      "name": "Cheat Sheet",
+      "purpose": "Create a compact reference people can save and revisit.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["utility", "specific_outcome", "curiosity"],
+      "generationRules": ["Keep every reference item concise.", "Prefer scannable list modes on the middle slides."],
+      "slides": [
+        { "role": "hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Name the reference and its practical use." },
+        { "role": "reference_1", "slideType": "benefit", "preferredTextModes": ["checklist", "question_list"], "instruction": "Give the first reference section as two or three short items.", "listItemCount": 2 },
+        { "role": "reference_2", "slideType": "benefit", "preferredTextModes": ["checklist", "question_list"], "instruction": "Give the second reference section as two or three short items.", "listItemCount": 2 },
+        { "role": "reference_3", "slideType": "benefit", "preferredTextModes": ["checklist", "question_list"], "instruction": "Give the third reference section as two or three short items.", "listItemCount": 2 },
+        { "role": "summary_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "Explain how to use the reference and add a save CTA only when useful." }
+      ]
+    },
+    {
+      "id": "checklist",
+      "name": "Checklist",
+      "purpose": "Help the audience check six important things before acting.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["utility", "problem_recognition", "specific_outcome"],
+      "generationRules": ["Use exactly six checks across the three middle slides.", "Each check must be short and testable."],
+      "slides": [
+        { "role": "hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Explain what the checklist helps the reader verify." },
+        { "role": "checks_1_2", "slideType": "solution", "preferredTextModes": ["checklist"], "instruction": "Present checks one and two.", "listItemCount": 2 },
+        { "role": "checks_3_4", "slideType": "solution", "preferredTextModes": ["checklist"], "instruction": "Present checks three and four.", "listItemCount": 2 },
+        { "role": "checks_5_6", "slideType": "solution", "preferredTextModes": ["checklist"], "instruction": "Present checks five and six.", "listItemCount": 2 },
+        { "role": "reminder_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "State the final reminder and add a save CTA only when useful." }
+      ]
+    },
+    {
+      "id": "framework",
+      "name": "Framework / Formula",
+      "purpose": "Teach a reusable three-part system.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["specific_outcome", "utility", "curiosity"],
+      "generationRules": ["The three parts must form one coherent system.", "Do not invent a branded framework name that implies external authority."],
+      "slides": [
+        { "role": "hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Introduce the framework and the problem it organizes." },
+        { "role": "part_1", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the first part." },
+        { "role": "part_2", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the second part." },
+        { "role": "part_3", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the third part." },
+        { "role": "integration_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "Explain how the three parts work together and add a soft CTA only when useful." }
+      ]
+    },
+    {
+      "id": "breakdown",
+      "name": "Breakdown / Anatomy",
+      "purpose": "Explain three components of an idea or process.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["curiosity", "utility", "surprise"],
+      "generationRules": ["Each component must be distinct.", "The final slide must explain what the breakdown means in practice."],
+      "slides": [
+        { "role": "hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Introduce what is being broken down and why it matters." },
+        { "role": "component_1", "slideType": "differentiator", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the first component." },
+        { "role": "component_2", "slideType": "differentiator", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the second component." },
+        { "role": "component_3", "slideType": "differentiator", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the third component." },
+        { "role": "meaning_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "Explain the practical meaning and add a soft CTA only when useful." }
+      ]
+    },
+    {
+      "id": "problem_solution",
+      "name": "Problem to Cause to Solution",
+      "purpose": "Explain one recognizable problem, its cause, and what to change.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["problem_recognition", "question", "curiosity"],
+      "generationRules": ["Keep the story focused on one problem.", "The solution must address the stated cause."],
+      "slides": [
+        { "role": "problem_hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "State the recognizable problem as the hook." },
+        { "role": "why_it_happens", "slideType": "problem", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain why the problem happens." },
+        { "role": "main_causes", "slideType": "problem", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Clarify the most important cause or consequence." },
+        { "role": "what_to_change", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the supported change or mechanism." },
+        { "role": "action_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "State the next action or takeaway and add a soft CTA only when useful." }
+      ]
+    },
+    {
+      "id": "beginner_roadmap",
+      "name": "Beginner Roadmap",
+      "purpose": "Show a beginner the correct order for getting started.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["beginner", "specific_outcome", "problem_recognition"],
+      "generationRules": ["Use beginner-friendly language.", "The order must be meaningful rather than arbitrary."],
+      "slides": [
+        { "role": "beginner_hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Address the beginner and name the useful outcome." },
+        { "role": "start_here", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the first thing to focus on." },
+        { "role": "do_next", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the next step." },
+        { "role": "then_do_this", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the third step." },
+        { "role": "ongoing_focus_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "Explain what to focus on going forward and add a soft CTA only when useful." }
+      ]
+    },
+    {
+      "id": "resources",
+      "name": "Resource Collection",
+      "purpose": "Give six useful resources, tools, foods, exercises, templates, or references.",
+      "selectionWeight": 0.9,
+      "minimumTopicOptions": 2,
+      "compatibleHookFamilies": ["utility", "curiosity", "specific_outcome"],
+      "generationRules": ["Use exactly six resources across the middle slides.", "Do not invent current product features, rankings, links, or numerical claims."],
+      "slides": [
+        { "role": "hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Introduce the collection and its practical use." },
+        { "role": "resources_1_2", "slideType": "benefit", "preferredTextModes": ["checklist", "question_list"], "instruction": "Present resources one and two.", "listItemCount": 2 },
+        { "role": "resources_3_4", "slideType": "benefit", "preferredTextModes": ["checklist", "question_list"], "instruction": "Present resources three and four.", "listItemCount": 2 },
+        { "role": "resources_5_6", "slideType": "benefit", "preferredTextModes": ["checklist", "question_list"], "instruction": "Present resources five and six.", "listItemCount": 2 },
+        { "role": "best_use_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "Explain how to use the collection and add a save CTA only when useful." }
+      ]
+    },
+    {
+      "id": "examples",
+      "name": "Examples / Inspiration",
+      "purpose": "Teach through three concrete examples and the pattern connecting them.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["curiosity", "utility", "specific_outcome"],
+      "generationRules": ["Use exactly three examples.", "Do not present invented brands or customers as real evidence."],
+      "slides": [
+        { "role": "hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Introduce what the examples help the reader understand." },
+        { "role": "example_1", "slideType": "benefit", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Give the first concrete example." },
+        { "role": "example_2", "slideType": "benefit", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Give the second concrete example." },
+        { "role": "example_3", "slideType": "benefit", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Give the third concrete example." },
+        { "role": "pattern_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "Explain the pattern connecting the examples and add a soft CTA only when useful." }
+      ]
+    },
+    {
+      "id": "before_after",
+      "name": "Before to After / Transformation",
+      "purpose": "Show the improvement created by one meaningful change.",
+      "selectionWeight": 1,
+      "minimumTopicOptions": 1,
+      "compatibleHookFamilies": ["comparison", "surprise", "specific_outcome", "curiosity"],
+      "generationRules": ["The transformation may be conceptual rather than physical.", "Do not guarantee results or invent unsupported before-and-after metrics."],
+      "slides": [
+        { "role": "hook", "slideType": "hook", "preferredTextModes": ["single_statement", "headline_body"], "instruction": "Introduce the meaningful transformation." },
+        { "role": "before", "slideType": "problem", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Describe the original situation." },
+        { "role": "the_change", "slideType": "solution", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Explain the one meaningful change." },
+        { "role": "after", "slideType": "benefit", "preferredTextModes": ["headline_body", "body_only"], "instruction": "Describe the supported improvement without guaranteeing results." },
+        { "role": "lesson_cta", "slideType": "cta", "preferredTextModes": ["cta_takeaway"], "instruction": "State the lesson and add a soft CTA only when useful." }
+      ]
+    }
+  ]
+}

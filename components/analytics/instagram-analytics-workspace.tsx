@@ -16,7 +16,6 @@ import {
   Heart,
   ImageIcon,
   Images,
-  ListChecks,
   MessageCircle,
   RefreshCw,
   Share2,
@@ -133,24 +132,7 @@ type InstagramContentResult = {
   state: "loading" | "ready";
 };
 
-type ActivityBucket = {
-  dateKey: string;
-  published: number;
-  scheduled: number;
-};
-
-type InstagramActivityRow = {
-  accountName: string | null;
-  date: string;
-  id: string;
-  platformPostUrl: string | null;
-  status: InstagramActivityStatus;
-  title: string;
-};
-
 type InstagramAnalyticsSummary = {
-  activityRows: InstagramActivityRow[];
-  buckets: ActivityBucket[];
   needsAttention: number;
   published: number;
   rangeLabel: string;
@@ -457,11 +439,10 @@ export function InstagramAnalyticsWorkspace() {
   const analytics = useMemo(
     () =>
       buildInstagramAnalyticsSummary({
-        connections,
         dateRangeDays,
         schedules,
       }),
-    [connections, dateRangeDays, schedules],
+    [dateRangeDays, schedules],
   );
   const primaryConnection = useMemo(
     () => getPrimaryInstagramConnection(connections),
@@ -505,8 +486,8 @@ export function InstagramAnalyticsWorkspace() {
               Analytics
             </h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-muted sm:text-base">
-              Review views, interactions, account readiness, and publishing
-              activity in one focused workspace.
+              Review views, interactions, content performance, and account
+              readiness in one focused workspace.
             </p>
           </div>
 
@@ -733,11 +714,6 @@ function AnalyticsReadyState({
         connectionCount={connectionCount}
         loading={contentLoading}
         message={contentMessage}
-      />
-
-      <RecentInstagramActivity
-        rows={analytics.activityRows}
-        showAccountName={connectionCount > 1}
       />
 
       <div className="flex items-start gap-2.5 px-1 text-xs leading-5 text-muted">
@@ -2673,159 +2649,6 @@ function DrawerMetric({
   );
 }
 
-function RecentInstagramActivity({
-  rows,
-  showAccountName,
-}: {
-  rows: InstagramActivityRow[];
-  showAccountName: boolean;
-}) {
-  return (
-    <section className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
-      <header className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
-            Recent activity
-          </p>
-          <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-foreground-strong">
-            Publishing history
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            Your latest schedule and publishing records in this date range.
-          </p>
-        </div>
-        <Link
-          href="/scheduling"
-          className={cn(
-            buttonVariants({ size: "lg", variant: "outline" }),
-            "w-full sm:w-auto",
-          )}
-        >
-          Open scheduling
-          <ArrowRight data-icon="inline-end" aria-hidden="true" />
-        </Link>
-      </header>
-
-      {rows.length > 0 ? (
-        <div className="border-t border-border">
-          {rows.map((row, index) => (
-            <article
-              key={row.id}
-              className={cn(
-                "flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6",
-                index > 0 && "border-t border-border",
-              )}
-            >
-              <div className="flex min-w-0 items-start gap-3">
-                <ActivityStatusIcon status={row.status} />
-                <div className="min-w-0">
-                  <h3 className="line-clamp-1 text-sm font-semibold text-foreground-strong">
-                    {row.title}
-                  </h3>
-                  <p className="mt-1 text-xs leading-5 text-muted">
-                    {formatDateTime(row.date)}
-                    {showAccountName && row.accountName
-                      ? ` · ${row.accountName}`
-                      : ""}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-3 sm:justify-end">
-                <ActivityStatusBadge status={row.status} />
-                {row.platformPostUrl ? (
-                  <a
-                    href={row.platformPostUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={buttonVariants({ size: "sm", variant: "ghost" })}
-                  >
-                    View post
-                    <ExternalLink data-icon="inline-end" aria-hidden="true" />
-                  </a>
-                ) : null}
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="border-t border-border px-5 py-10 text-center sm:px-6">
-          <span className="mx-auto flex size-11 items-center justify-center rounded-[var(--radius-control)] bg-card-muted text-muted">
-            <ListChecks className="size-5" aria-hidden="true" />
-          </span>
-          <h3 className="mt-4 text-sm font-semibold text-foreground-strong">
-            No publishing activity in this period
-          </h3>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">
-            Change the date range or schedule your next post to start building
-            your publishing history.
-          </p>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function ActivityStatusIcon({
-  status,
-}: {
-  status: InstagramActivityStatus;
-}) {
-  const className =
-    status === "published"
-      ? "bg-success/10 text-success"
-      : status === "attention"
-        ? "bg-destructive/10 text-destructive"
-        : status === "scheduled"
-          ? "bg-info/10 text-info"
-          : "bg-card-muted text-muted";
-  const icon =
-    status === "published" ? (
-      <CheckCircle2 className="size-5" aria-hidden="true" />
-    ) : status === "attention" ? (
-      <TriangleAlert className="size-5" aria-hidden="true" />
-    ) : status === "scheduled" ? (
-      <CalendarClock className="size-5" aria-hidden="true" />
-    ) : (
-      <ListChecks className="size-5" aria-hidden="true" />
-    );
-
-  return (
-    <span
-      className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-control)]",
-        className,
-      )}
-    >
-      {icon}
-    </span>
-  );
-}
-
-function ActivityStatusBadge({
-  status,
-}: {
-  status: InstagramActivityStatus;
-}) {
-  if (status === "published") {
-    return (
-      <Badge variant="published">
-        Published
-      </Badge>
-    );
-  }
-
-  if (status === "attention") {
-    return <Badge variant="destructive">Needs attention</Badge>;
-  }
-
-  if (status === "scheduled") {
-    return <Badge variant="scheduled">Scheduled</Badge>;
-  }
-
-  return <Badge variant="draft">Draft</Badge>;
-}
-
 function AnalyticsLoadingState() {
   return (
     <div
@@ -2995,29 +2818,14 @@ function getPerformanceTrendEmptyState({
 }
 
 function buildInstagramAnalyticsSummary({
-  connections,
   dateRangeDays,
   schedules,
 }: {
-  connections: SocialConnection[];
   dateRangeDays: DateRangeDays;
   schedules: ScheduledPost[];
 }): InstagramAnalyticsSummary {
   const rangeKeys = getDateRangeKeys(dateRangeDays);
   const rangeSet = new Set(rangeKeys);
-  const bucketMap = new Map(
-    rangeKeys.map((dateKey) => [
-      dateKey,
-      { dateKey, published: 0, scheduled: 0 } satisfies ActivityBucket,
-    ]),
-  );
-  const connectionNames = new Map(
-    connections.map((connection) => [
-      connection.id,
-      getInstagramAccountName(connection),
-    ]),
-  );
-  const activityRows: InstagramActivityRow[] = [];
   let published = 0;
   let scheduled = 0;
   let needsAttention = 0;
@@ -3036,42 +2844,17 @@ function buildInstagramAnalyticsSummary({
         continue;
       }
 
-      const bucket = bucketMap.get(dateKey);
-
       if (status === "published") {
         published += 1;
-
-        if (bucket) {
-          bucket.published += 1;
-        }
       } else if (status === "scheduled") {
         scheduled += 1;
-
-        if (bucket) {
-          bucket.scheduled += 1;
-        }
       } else if (status === "attention") {
         needsAttention += 1;
       }
-
-      activityRows.push({
-        accountName: connectionNames.get(target.socialConnectionId) ?? null,
-        date,
-        id: `${schedule.id}:${target.id}`,
-        platformPostUrl: target.platformPostUrl,
-        status,
-        title: schedule.title?.trim() || "Scheduled post",
-      });
     }
   }
 
-  activityRows.sort(
-    (left, right) => Date.parse(right.date) - Date.parse(left.date),
-  );
-
   return {
-    activityRows: activityRows.slice(0, 6),
-    buckets: Array.from(bucketMap.values()),
     needsAttention,
     published,
     rangeLabel: getRangeLabel(rangeKeys),

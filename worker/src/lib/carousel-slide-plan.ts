@@ -11,6 +11,7 @@ export type CarouselTextMode =
 export type PlannedCarouselSlide = {
   body: string | null;
   ctaText: string | null;
+  formatRole?: string | null;
   headline: string | null;
   imageDirection: string;
   layoutPreset:

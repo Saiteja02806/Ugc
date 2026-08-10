@@ -70,7 +70,8 @@ const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
 if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
-  fallbackPlan.plannerVersion !== "llm-carousel-planner-v16-solution-story-guard" ||
+  fallbackPlan.plannerVersion !==
+    "llm-carousel-planner-v18-profile-context-topic-rotation" ||
   !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");

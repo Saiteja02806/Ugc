@@ -10,14 +10,24 @@ const THUMB_WIDTH = 320;
 const THUMB_HEIGHT = 400;
 
 const SOURCE_CATEGORY_RUNTIME_MAP = {
+  beauty_skincare: "beauty-skincare",
   calorie_tracking: "fitness-health",
   gym: "fitness-health",
+  marketing: "marketing-saas",
+  outdoor_lifestyle: "shared",
   personal_finance: "personal-finance",
   productivity: "productivity-saas",
 };
 const FINAL_REVIEW_STATUS = "final_full_resolution_review";
 
 const ALLOWED_BUCKETS_BY_RUNTIME_CATEGORY = {
+  "beauty-skincare": new Set([
+    "abstract-backgrounds",
+    "clean-texture-backgrounds",
+    "fitness-wellness-objects",
+    "home-lifestyle",
+    "product-still-life",
+  ]),
   "fitness-health": new Set([
     "abstract-backgrounds",
     "fitness-wellness-objects",
@@ -31,6 +41,14 @@ const ALLOWED_BUCKETS_BY_RUNTIME_CATEGORY = {
     "clean-texture-backgrounds",
     "data-and-screens",
     "home-lifestyle",
+    "notes-and-planning",
+    "phone-and-devices",
+    "workspace-objects",
+  ]),
+  "marketing-saas": new Set([
+    "abstract-backgrounds",
+    "clean-texture-backgrounds",
+    "data-and-screens",
     "notes-and-planning",
     "phone-and-devices",
     "workspace-objects",

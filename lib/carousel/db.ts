@@ -2,6 +2,16 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import type { CarouselBusinessVisualProfileId } from "@/lib/carousel/business-visual-profile";
 import {
+  isCarouselContentFormatId,
+  isCarouselHookFamilyId,
+  type CarouselContentFormatId,
+  type CarouselHookFamilyId,
+} from "@/lib/carousel/content-grammar";
+import type {
+  CarouselContentAssignment,
+  CarouselRecentContentSummary,
+} from "@/lib/carousel/content-selector";
+import {
   getBroadAssetSourceCategorySlugsForProfile,
   isBroadAssetSourceAllowedForProfile,
   isBroadVisualBucketId,
@@ -120,6 +130,12 @@ type CarouselGenerationRow = {
   candidate_count: number;
   candidate_index: number;
   category_slug: string | null;
+  content_angle: string | null;
+  content_audience_id: string | null;
+  content_format_id: string | null;
+  content_goal_id: string | null;
+  content_grammar_version: string | null;
+  content_history_snapshot: Json;
   content_plan_fallback_reason: string | null;
   content_plan_normalized: Json | null;
   content_plan_raw_response: Json | null;
@@ -127,12 +143,17 @@ type CarouselGenerationRow = {
   content_plan_validation: Json | null;
   content_planner_model: string | null;
   content_planner_version: string | null;
+  content_problem_id: string | null;
+  content_selector_version: string | null;
+  content_topic: string | null;
+  content_topic_id: string | null;
   created_at: string;
   error_message: string | null;
   format: CarouselFormat;
   generation_batch_id: string;
   generation_source: "auto_generated" | "manual";
   goal: string | null;
+  hook_family_id: string | null;
   id: string;
   origin_daily_feed_id: string | null;
   project_id: string;
@@ -153,6 +174,12 @@ type CarouselGenerationInsert = {
   candidate_count?: number;
   candidate_index?: number;
   category_slug?: string | null;
+  content_angle?: string | null;
+  content_audience_id?: string | null;
+  content_format_id?: string | null;
+  content_goal_id?: string | null;
+  content_grammar_version?: string | null;
+  content_history_snapshot?: Json;
   content_plan_fallback_reason?: string | null;
   content_plan_normalized?: Json | null;
   content_plan_raw_response?: Json | null;
@@ -160,11 +187,16 @@ type CarouselGenerationInsert = {
   content_plan_validation?: Json | null;
   content_planner_model?: string | null;
   content_planner_version?: string | null;
+  content_problem_id?: string | null;
+  content_selector_version?: string | null;
+  content_topic?: string | null;
+  content_topic_id?: string | null;
   error_message?: string | null;
   format?: CarouselFormat;
   generation_batch_id?: string;
   generation_source?: "auto_generated" | "manual";
   goal?: string | null;
+  hook_family_id?: string | null;
   origin_daily_feed_id?: string | null;
   project_id: string;
   renderer_version?: string | null;
@@ -317,13 +349,24 @@ export type CarouselGenerationRecord = {
   candidateCount: number;
   candidateIndex: number;
   categorySlug: string | null;
+  contentAngle: string | null;
+  contentAudienceId: string | null;
+  contentFormatId: CarouselContentFormatId | null;
+  contentGoalId: string | null;
+  contentGrammarVersion: string | null;
+  contentHistorySnapshot: Json;
   contentPlanNormalized: Json | null;
+  contentProblemId: string | null;
+  contentSelectorVersion: string | null;
+  contentTopic: string | null;
+  contentTopicId: string | null;
   createdAt: string;
   errorMessage: string | null;
   format: CarouselFormat;
   generationBatchId: string;
   generationSource: "auto_generated" | "manual";
   goal: string | null;
+  hookFamilyId: CarouselHookFamilyId | null;
   id: string;
   originDailyFeedId: string | null;
   projectId: string;
@@ -419,13 +462,28 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     candidateCount: row.candidate_count,
     candidateIndex: row.candidate_index,
     categorySlug: row.category_slug,
+    contentAngle: row.content_angle,
+    contentAudienceId: row.content_audience_id,
+    contentFormatId: isCarouselContentFormatId(row.content_format_id)
+      ? row.content_format_id
+      : null,
+    contentGoalId: row.content_goal_id,
+    contentGrammarVersion: row.content_grammar_version,
+    contentHistorySnapshot: row.content_history_snapshot,
     contentPlanNormalized: row.content_plan_normalized,
+    contentProblemId: row.content_problem_id,
+    contentSelectorVersion: row.content_selector_version,
+    contentTopic: row.content_topic,
+    contentTopicId: row.content_topic_id,
     createdAt: row.created_at,
     errorMessage: row.error_message,
     format: row.format,
     generationBatchId: row.generation_batch_id,
     generationSource: row.generation_source,
     goal: row.goal,
+    hookFamilyId: isCarouselHookFamilyId(row.hook_family_id)
+      ? row.hook_family_id
+      : null,
     id: row.id,
     originDailyFeedId: row.origin_daily_feed_id,
     projectId: row.project_id,
@@ -781,6 +839,7 @@ export async function createCarouselGeneration(input: {
   candidateCount: number;
   candidateIndex: number;
   categorySlug: string;
+  contentAssignment?: CarouselContentAssignment | null;
   format: CarouselFormat;
   generationBatchId: string;
   generationSource?: "auto_generated" | "manual";
@@ -801,10 +860,16 @@ export async function createCarouselGeneration(input: {
       candidate_count: input.candidateCount,
       candidate_index: input.candidateIndex,
       category_slug: input.categorySlug,
+      content_format_id: input.contentAssignment?.contentFormatId ?? null,
+      content_grammar_version: input.contentAssignment?.grammarVersion ?? null,
+      content_history_snapshot:
+        (input.contentAssignment?.historySnapshot as unknown as Json) ?? [],
+      content_selector_version: input.contentAssignment?.selectorVersion ?? null,
       format: input.format,
       generation_batch_id: input.generationBatchId,
       generation_source: input.generationSource ?? "manual",
       goal: input.goal ?? null,
+      hook_family_id: input.contentAssignment?.hookFamilyId ?? null,
       origin_daily_feed_id: input.originDailyFeedId ?? null,
       project_id: input.projectId,
       selected_angle: input.selectedAngle ?? null,
@@ -914,6 +979,30 @@ export async function getCarouselGenerationStatus(carouselId: string) {
     generation,
     slides: await mapRuntimeSafeSlides(data ?? []),
   };
+}
+
+export async function reserveCarouselContentAssignment(params: {
+  assignment: CarouselContentAssignment;
+  carouselId: string;
+}) {
+  const { error } = await getSupabaseServerClient()
+    .from(CAROUSEL_GENERATIONS_TABLE)
+    .update({
+      content_format_id: params.assignment.contentFormatId,
+      content_grammar_version: params.assignment.grammarVersion,
+      content_history_snapshot:
+        params.assignment.historySnapshot as unknown as Json,
+      content_selector_version: params.assignment.selectorVersion,
+      hook_family_id: params.assignment.hookFamilyId,
+      updated_at: getNowIso(),
+    })
+    .eq("id", params.carouselId)
+    .is("content_format_id", null)
+    .is("hook_family_id", null);
+
+  if (error) {
+    throw new Error(`Could not reserve Carousel content grammar: ${error.message}`);
+  }
 }
 
 export async function getCarouselEditBackgrounds(assetIds: string[]) {
@@ -1209,4 +1298,125 @@ export async function listAutoCarouselGenerationsForBusinessProfile(params: {
   }
 
   return (data ?? []).map(mapGeneration);
+}
+
+export async function listRecentCarouselContentHistory(params: {
+  businessProfileId: string;
+  excludeGenerationBatchId?: string | null;
+  limit?: number;
+}) {
+  const limit = Math.min(Math.max(Math.trunc(params.limit ?? 10), 1), 10);
+  let query = getSupabaseServerClient()
+    .from(CAROUSEL_GENERATIONS_TABLE)
+    .select("*")
+    .eq("business_profile_id", params.businessProfileId)
+    .eq("generation_source", "auto_generated")
+    .in("status", ["processing", "completed"]);
+
+  if (params.excludeGenerationBatchId) {
+    query = query.neq(
+      "generation_batch_id",
+      params.excludeGenerationBatchId,
+    );
+  }
+
+  const { data, error } = await query
+    .order("created_at", { ascending: false })
+    .order("candidate_index", { ascending: false })
+    .limit(limit * 4);
+
+  if (error) {
+    throw new Error(`Could not load recent Carousel content history: ${error.message}`);
+  }
+
+  return (data ?? [])
+    .map(mapRecentContentSummary)
+    .filter((summary) =>
+      Boolean(
+        summary.hook ||
+          summary.topic ||
+          summary.angle ||
+          summary.contentFormatId ||
+          summary.hookFamilyId,
+      ),
+    )
+    .slice(0, limit);
+}
+
+export async function listCarouselBatchContentHistory(params: {
+  businessProfileId: string;
+  excludeCarouselId: string;
+  generationBatchId: string;
+  limit?: number;
+}) {
+  const limit = Math.min(Math.max(Math.trunc(params.limit ?? 10), 1), 10);
+  const { data, error } = await getSupabaseServerClient()
+    .from(CAROUSEL_GENERATIONS_TABLE)
+    .select("*")
+    .eq("business_profile_id", params.businessProfileId)
+    .eq("generation_batch_id", params.generationBatchId)
+    .neq("id", params.excludeCarouselId)
+    .in("status", ["processing", "completed"])
+    .not("content_topic_id", "is", null)
+    .order("updated_at", { ascending: false })
+    .order("candidate_index", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(
+      `Could not load current Carousel batch content history: ${error.message}`,
+    );
+  }
+
+  return (data ?? []).map(mapRecentContentSummary).slice(0, limit);
+}
+
+function mapRecentContentSummary(
+  row: CarouselGenerationRow,
+): CarouselRecentContentSummary {
+  const normalizedPlan = getJsonRecord(row.content_plan_normalized);
+  const strategy = getJsonRecord(normalizedPlan?.contentStrategy);
+  const slides = Array.isArray(normalizedPlan?.slides)
+    ? normalizedPlan.slides
+    : [];
+  const firstSlide = getJsonRecord(slides[0]);
+
+  return {
+    angle:
+      getJsonString(row.content_angle) ??
+      getJsonString(strategy?.angle) ??
+      getJsonString(normalizedPlan?.concept) ??
+      row.selected_angle,
+    contentFormatId: isCarouselContentFormatId(row.content_format_id)
+      ? row.content_format_id
+      : isCarouselContentFormatId(strategy?.contentFormatId)
+        ? strategy.contentFormatId
+        : null,
+    hook:
+      getJsonString(firstSlide?.headline) ??
+      getJsonString(firstSlide?.body) ??
+      getJsonString(firstSlide?.ctaText),
+    hookFamilyId: isCarouselHookFamilyId(row.hook_family_id)
+      ? row.hook_family_id
+      : isCarouselHookFamilyId(strategy?.hookFamilyId)
+        ? strategy.hookFamilyId
+        : null,
+    topic:
+      row.content_topic ??
+      getJsonString(strategy?.topic) ??
+      getJsonString(strategy?.topicLabel),
+    topicId:
+      row.content_topic_id ??
+      getJsonString(strategy?.topicId),
+  };
+}
+
+function getJsonRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function getJsonString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }

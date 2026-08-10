@@ -340,8 +340,17 @@ export type CategoryImageAssetVariant =
 export type WebsiteBusinessAnalysis = {
   brandTone?: string | null;
   businessName?: string | null;
+  businessModel?: "b2b" | "b2c" | "both" | null;
+  campaignPurposes?: Array<
+    | "app_install"
+    | "conversion"
+    | "education"
+    | "product_discovery"
+    | "retargeting"
+  >;
   carouselAngles?: string[];
   category?: string | null;
+  categories?: string[];
   claimsToAvoid?: string[];
   confidence?: "high" | "low" | "medium";
   confidenceReason?: string | null;
@@ -435,9 +444,17 @@ export type CategoryImageAssetRow = {
 };
 
 export type CarouselGenerationRow = {
+  business_profile_id: string | null;
+  business_profile_version: number | null;
   candidate_count: number;
   candidate_index: number;
   category_slug: string | null;
+  content_angle: string | null;
+  content_audience_id: string | null;
+  content_format_id: string | null;
+  content_goal_id: string | null;
+  content_grammar_version: string | null;
+  content_history_snapshot: Json;
   content_plan_fallback_reason: string | null;
   content_plan_normalized: Json | null;
   content_plan_raw_response: Json | null;
@@ -445,11 +462,17 @@ export type CarouselGenerationRow = {
   content_plan_validation: Json | null;
   content_planner_model: string | null;
   content_planner_version: string | null;
+  content_problem_id: string | null;
+  content_selector_version: string | null;
+  content_topic: string | null;
+  content_topic_id: string | null;
   created_at: string;
   error_message: string | null;
   format: CarouselFormat;
   generation_batch_id: string;
+  generation_source: "auto_generated" | "manual";
   goal: string | null;
+  hook_family_id: string | null;
   id: string;
   project_id: string;
   renderer_version: string | null;
@@ -462,7 +485,17 @@ export type CarouselGenerationRow = {
   website_analysis_id: string | null;
 };
 
+export type BusinessProfileCarouselRow = {
+  context_json: WebsiteBusinessAnalysis;
+  id: string;
+  profile_version: number;
+  user_id: string;
+};
+
 export type CarouselGenerationUpdate = Partial<{
+  content_angle: string | null;
+  content_audience_id: string | null;
+  content_format_id: string | null;
   content_plan_fallback_reason: string | null;
   content_plan_normalized: Json | null;
   content_plan_raw_response: Json | null;
@@ -470,8 +503,16 @@ export type CarouselGenerationUpdate = Partial<{
   content_plan_validation: Json | null;
   content_planner_model: string | null;
   content_planner_version: string | null;
+  content_goal_id: string | null;
+  content_grammar_version: string | null;
+  content_history_snapshot: Json;
+  content_problem_id: string | null;
+  content_selector_version: string | null;
+  content_topic: string | null;
+  content_topic_id: string | null;
   error_message: string | null;
   renderer_version: string | null;
+  hook_family_id: string | null;
   status: CarouselGenerationStatus;
   updated_at: string;
 }>;
@@ -720,7 +761,34 @@ export type BackgroundJobsDatabase = {
         };
         Returns: number;
       };
+      persist_trending_hook_copy_generation_v6: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_candidates: Json;
+          p_generator_model: string;
+          p_job_id: string;
+          p_prompt_version: string;
+          p_selection_version: string;
+          p_user_id: string;
+        };
+        Returns: number;
+      };
       persist_validated_hook_composition_generation: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_candidates: Json;
+          p_demo_asset_id: string;
+          p_generator_model: string;
+          p_job_id: string;
+          p_prompt_version: string;
+          p_selection_version: string;
+          p_user_id: string;
+        };
+        Returns: Array<{ id: string; text: string }>;
+      };
+      persist_validated_hook_composition_generation_v6: {
         Args: {
           p_business_profile_id: string;
           p_business_profile_version: number;
@@ -741,6 +809,12 @@ export type BackgroundJobsDatabase = {
         Relationships: [];
         Row: BackgroundJobRow;
         Update: BackgroundJobUpdate;
+      };
+      business_profiles: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: BusinessProfileCarouselRow;
+        Update: Record<string, never>;
       };
       carousel_generations: {
         Insert: Record<string, never>;

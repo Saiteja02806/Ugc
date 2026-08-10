@@ -36,13 +36,88 @@ const MIN_PASSING_SCORE = 80;
 const MAX_REPAIR_ROUNDS = 2;
 
 export const TRENDING_HOOK_PROMPT_VERSION =
-  "trending-hook-copy-v5";
+  "trending-hook-copy-v6";
 export const TRENDING_HOOK_SELECTION_VERSION =
   "purpose-industry-diversity-v5";
 export const TRENDING_HOOK_OVERLAY_VERSION =
   "hook-overlay-v3";
 export const TRENDING_HOOK_VALIDATOR_VERSION =
   "trending-hook-validator-v3";
+
+export const HOOK_AUDIO_MOODS = [
+  "curious",
+  "uplifting",
+  "serious",
+  "calm",
+  "urgent",
+  "playful",
+] as const;
+export const HOOK_AUDIO_TYPES = [
+  "curiosity",
+  "problem",
+  "warning",
+  "transformation",
+  "benefit",
+  "story",
+  "authority",
+] as const;
+export const HOOK_AUDIO_ENERGIES = [
+  "low",
+  "medium",
+  "high",
+] as const;
+
+export type HookAudioIntent = {
+  energy: (typeof HOOK_AUDIO_ENERGIES)[number];
+  hookType: (typeof HOOK_AUDIO_TYPES)[number];
+  mood: (typeof HOOK_AUDIO_MOODS)[number];
+};
+
+const DEFAULT_HOOK_AUDIO_INTENT_BY_PATTERN: Record<
+  TrendingHookPatternId,
+  HookAudioIntent
+> = {
+  direct_capability: {
+    energy: "medium",
+    hookType: "benefit",
+    mood: "uplifting",
+  },
+  mystery_discovery: {
+    energy: "medium",
+    hookType: "curiosity",
+    mood: "curious",
+  },
+  outcome_without_friction: {
+    energy: "medium",
+    hookType: "benefit",
+    mood: "uplifting",
+  },
+  problem_observation: {
+    energy: "medium",
+    hookType: "problem",
+    mood: "serious",
+  },
+  problem_reversal: {
+    energy: "medium",
+    hookType: "transformation",
+    mood: "curious",
+  },
+  professional_transformation: {
+    energy: "medium",
+    hookType: "transformation",
+    mood: "uplifting",
+  },
+  skeptical_challenge: {
+    energy: "medium",
+    hookType: "warning",
+    mood: "serious",
+  },
+  workflow_exposed: {
+    energy: "medium",
+    hookType: "story",
+    mood: "curious",
+  },
+};
 
 const BANNED_MARKETING_PHRASES = [
   "ready to",
@@ -253,6 +328,7 @@ export type HookReviewScores = {
 };
 
 export type TrendingHookCopyResult = TrendingHookCopyCandidate & {
+  audioIntent: HookAudioIntent;
   campaignPurpose: TrendingHookCampaignPurpose;
   hookText: string;
   industryPackId: TrendingHookIndustryPackId;
@@ -290,6 +366,7 @@ type HookDraftSpec = {
 };
 
 export type HookDraft = {
+  audioIntent: HookAudioIntent;
   candidateIndex: number;
   draftKey: string;
   evidenceKeys: string[];
@@ -476,6 +553,7 @@ export async function generateValidatedTrendingHookCopies(params: {
 
       return {
         ...candidate,
+        audioIntent: draft.audioIntent,
         campaignPurpose,
         hookText,
         industryPackId: selectedIndustryContext.id,
@@ -785,6 +863,7 @@ async function writeHookDrafts(params: {
       "Return one or two evidenceKeys that directly support every meaningful claim.",
       "The words must stop the right audience through recognition, tension, curiosity, or a useful contradiction—not generic advertising.",
       "Match reactionType emotionally.",
+      "For each Hook, also classify its audioIntent using only the supplied controlled mood, hookType, and energy values. Describe the sound the words need; never return an audio filename, asset ID, URL, storage key, or library choice.",
       "Return exactly one or two intentional semantic lines, never a paragraph. Across both lines use at most twelve words, with at most seven words on either line.",
       "Use semantic lines: each array item is one intentional line. A 2–3 second clip may use two short lines. Do not compress it to one line merely because the clip is short.",
       "Never use digits or number words. Never invent numbers, time periods, results, testimonials, personal experience, prices, comparisons, superlatives, urgency, or guarantees.",
@@ -795,7 +874,7 @@ async function writeHookDrafts(params: {
       "Return exactly one structurally distinct result for every draftKey, preserving draftKey, candidateIndex, and patternId.",
     ].join(" "),
     model: params.model,
-    responseFormatName: "trending_hook_v5_drafts",
+    responseFormatName: "trending_hook_v6_drafts",
     schema: buildHookDraftBatchSchema(params.evidenceCatalog),
   });
 
@@ -852,7 +931,7 @@ async function reviewHookDrafts(params: {
       "Preserve draftKey and candidateIndex and review every request.",
     ].join(" "),
     model: params.model,
-    responseFormatName: "trending_hook_v5_reviews",
+    responseFormatName: "trending_hook_v6_reviews",
     schema: hookReviewBatchSchema,
   });
 
@@ -910,6 +989,7 @@ async function repairHookDrafts(params: {
       "Return only an opening reaction: one pattern, one idea, one or two intentional lines, and at most twelve words total.",
       "Do not explain the process, demo steps, mechanism-and-benefit chain, or a secondary benefit. Preserve curiosity and stop after the opening.",
       "Return one or two valid evidenceKeys that directly support the repaired wording.",
+      "Reclassify audioIntent for the repaired words using only the controlled values. Never return an audio filename, asset ID, URL, storage key, or library choice.",
       "Apply semantic line breaks and make the full thought comfortable in one pass of the exact duration without using a word-per-second formula.",
       "Fix every deterministicValidation reason. Each semantic line must stay on one rendered line, contain at most seven words, and not end with an article, conjunction, or preposition.",
       "Use visualFit.lineWidths and visualFit.maximumTextWidth: when a line is too wide, shorten that line decisively. Do not hide the overflow by adding another dense line.",
@@ -921,7 +1001,7 @@ async function repairHookDrafts(params: {
       "Return exactly one repaired result for every draftKey.",
     ].join(" "),
     model: params.model,
-    responseFormatName: "trending_hook_v5_repairs",
+    responseFormatName: "trending_hook_v6_repairs",
     schema: buildHookDraftBatchSchema(params.evidenceCatalog),
   });
 
@@ -1156,6 +1236,10 @@ function parseHookDrafts(
       getTrendingHookPattern(hook.patternId)
         ? (hook.patternId as TrendingHookPatternId)
         : null;
+    const audioIntent = patternId
+      ? parseHookAudioIntent(hook?.audioIntent) ??
+        DEFAULT_HOOK_AUDIO_INTENT_BY_PATTERN[patternId]
+      : null;
     const evidenceKeys = Array.isArray(hook?.evidenceKeys)
       ? hook.evidenceKeys
           .filter(
@@ -1176,6 +1260,7 @@ function parseHookDrafts(
       !draftKey ||
       candidateIndex === null ||
       !patternId ||
+      !audioIntent ||
       evidenceKeys.length < 1 ||
       evidenceKeys.length > MAX_EVIDENCE_BINDINGS ||
       new Set(evidenceKeys).size !== evidenceKeys.length ||
@@ -1191,6 +1276,7 @@ function parseHookDrafts(
     }
 
     return {
+      audioIntent,
       candidateIndex,
       draftKey,
       evidenceKeys,
@@ -1823,6 +1909,37 @@ function getInteger(value: unknown) {
     : null;
 }
 
+function parseHookAudioIntent(value: unknown): HookAudioIntent | null {
+  const intent = getRecord(value);
+
+  if (!intent) {
+    return null;
+  }
+
+  const keys = Object.keys(intent).sort();
+
+  if (
+    keys.length !== 3 ||
+    keys[0] !== "energy" ||
+    keys[1] !== "hookType" ||
+    keys[2] !== "mood" ||
+    typeof intent.mood !== "string" ||
+    typeof intent.hookType !== "string" ||
+    typeof intent.energy !== "string" ||
+    !(HOOK_AUDIO_MOODS as readonly string[]).includes(intent.mood) ||
+    !(HOOK_AUDIO_TYPES as readonly string[]).includes(intent.hookType) ||
+    !(HOOK_AUDIO_ENERGIES as readonly string[]).includes(intent.energy)
+  ) {
+    return null;
+  }
+
+  return {
+    energy: intent.energy as HookAudioIntent["energy"],
+    hookType: intent.hookType as HookAudioIntent["hookType"],
+    mood: intent.mood as HookAudioIntent["mood"],
+  };
+}
+
 function getPositiveNumber(value: unknown) {
   return typeof value === "number" &&
     Number.isFinite(value) &&
@@ -1861,6 +1978,22 @@ function buildHookDraftBatchSchema(
         items: {
           additionalProperties: false,
           properties: {
+            audioIntent: {
+              additionalProperties: false,
+              properties: {
+                energy: {
+                  enum: HOOK_AUDIO_ENERGIES,
+                  type: "string",
+                },
+                hookType: {
+                  enum: HOOK_AUDIO_TYPES,
+                  type: "string",
+                },
+                mood: { enum: HOOK_AUDIO_MOODS, type: "string" },
+              },
+              required: ["mood", "hookType", "energy"],
+              type: "object",
+            },
             candidateIndex: { minimum: 0, type: "integer" },
             draftKey: {
               maxLength: 140,
@@ -1891,6 +2024,7 @@ function buildHookDraftBatchSchema(
             patternId: { enum: patternIds, type: "string" },
           },
           required: [
+            "audioIntent",
             "candidateIndex",
             "draftKey",
             "evidenceKeys",

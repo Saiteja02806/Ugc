@@ -22,6 +22,8 @@ const IMAGE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const REQUIRED_ENV_VARS = ["SUPABASE_SERVICE_ROLE_KEY"];
 const INSERT_BATCH_SIZE = 25;
 const QUERY_BATCH_SIZE = 100;
+const IMPORT_CHECKPOINT_SIZE = 10;
+const REMOTE_REQUEST_TIMEOUT_MS = 20_000;
 
 loadEnvFile(path.resolve(".env.local"));
 
@@ -66,10 +68,14 @@ const supabase = createClient(
       autoRefreshToken: false,
       persistSession: false,
     },
+    global: {
+      fetch: fetchWithTimeout,
+    },
   },
 );
 const result = {
   completedAt: null,
+  completedCheckpoints: 0,
   inserted: [],
   manifestPath,
   skippedExisting: [],
@@ -81,8 +87,7 @@ const result = {
 try {
   await assertRemoteImportReady();
   const pendingItems = await filterExistingAssets(importPlan.items);
-  const preparedRows = await uploadPreparedAssets(pendingItems);
-  await insertPreparedRows(preparedRows);
+  await importPendingItems(pendingItems);
 
   result.completedAt = new Date().toISOString();
   writeResult(result);
@@ -97,6 +102,29 @@ try {
     failure: error instanceof Error ? error.message : String(error),
   });
   throw error;
+}
+
+async function importPendingItems(items) {
+  const checkpoints = chunkValues(items, IMPORT_CHECKPOINT_SIZE);
+
+  for (let index = 0; index < checkpoints.length; index += 1) {
+    const checkpoint = checkpoints[index];
+    const preparedRows = await uploadPreparedAssets(checkpoint);
+    await insertPreparedRows(preparedRows);
+
+    result.completedCheckpoints += 1;
+    writeResult({
+      ...result,
+      checkpointedAt: new Date().toISOString(),
+      pendingAssets: Math.max(
+        items.length - (index + 1) * IMPORT_CHECKPOINT_SIZE,
+        0,
+      ),
+    });
+    console.log(
+      `Checkpoint ${index + 1}/${checkpoints.length}: ${result.inserted.length} inserted so far.`,
+    );
+  }
 }
 
 async function assertRemoteImportReady() {
@@ -206,21 +234,23 @@ async function uploadPreparedAssets(items) {
 
   for (const item of items) {
     console.log(`Uploading ${item.asset.assetKey} to GCP object storage`);
-    await putImageObject({
-      contentType: "image/webp",
-      filePath: item.files.basePath,
-      key: item.asset.storage.baseKey,
-    });
-    await putImageObject({
-      contentType: "image/webp",
-      filePath: item.files.thumbPath,
-      key: item.asset.storage.thumbKey,
-    });
-    await putImageObject({
-      contentType: getImageContentType(item.files.originalPath),
-      filePath: item.files.originalPath,
-      key: item.asset.storage.originalKey,
-    });
+    await Promise.all([
+      putImageObject({
+        contentType: "image/webp",
+        filePath: item.files.basePath,
+        key: item.asset.storage.baseKey,
+      }),
+      putImageObject({
+        contentType: "image/webp",
+        filePath: item.files.thumbPath,
+        key: item.asset.storage.thumbKey,
+      }),
+      putImageObject({
+        contentType: getImageContentType(item.files.originalPath),
+        filePath: item.files.originalPath,
+        key: item.asset.storage.originalKey,
+      }),
+    ]);
 
     result.uploadedOnlyBeforeFailure.push(item.asset.assetKey);
     preparedRows.push({
@@ -615,4 +645,14 @@ function formatObject(value) {
   return Object.entries(value)
     .map(([key, count]) => `${key}: ${count}`)
     .join(", ");
+}
+
+function fetchWithTimeout(input, init = {}) {
+  const timeoutSignal = AbortSignal.timeout(REMOTE_REQUEST_TIMEOUT_MS);
+  const signal =
+    init.signal && typeof AbortSignal.any === "function"
+      ? AbortSignal.any([init.signal, timeoutSignal])
+      : init.signal || timeoutSignal;
+
+  return fetch(input, { ...init, signal });
 }

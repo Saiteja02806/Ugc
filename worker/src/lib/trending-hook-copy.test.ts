@@ -105,6 +105,11 @@ test("uses semantic lines and the shared 9:16 renderer fit", () => {
 
 test("hard validation blocks fabricated history, numbers, and ad phrases", () => {
   const draft = {
+    audioIntent: {
+      energy: "medium",
+      hookType: "curiosity",
+      mood: "curious",
+    },
     candidateIndex: 0,
     draftKey: "0:mystery_discovery",
     evidenceKeys: ["mainProblem"],
@@ -182,6 +187,11 @@ test("rejects a Wall-of-text paragraph used as a Hook opening", () => {
     businessContext,
     candidate,
     draft: {
+      audioIntent: {
+        energy: "medium",
+        hookType: "problem",
+        mood: "serious",
+      },
       candidateIndex: 0,
       draftKey: "0:problem_observation",
       evidenceKeys: ["mainProblem", "productSummary"],
@@ -271,6 +281,11 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
     {
       hooks: [
         {
+          audioIntent: {
+            energy: "high",
+            hookType: "curiosity",
+            mood: "urgent",
+          },
           candidateIndex: 0,
           draftKey: "0:mystery_discovery",
           evidenceKeys: ["mainProblem"],
@@ -278,6 +293,11 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
           patternId: "mystery_discovery",
         },
         {
+          audioIntent: {
+            energy: "medium",
+            hookType: "problem",
+            mood: "serious",
+          },
           candidateIndex: 0,
           draftKey: "0:problem_reversal",
           evidenceKeys: ["mainProblem"],
@@ -336,6 +356,12 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
     {
       hooks: [
         {
+          audioIntent: {
+            energy: "medium",
+            fileName: "model-must-not-select-this.mp3",
+            hookType: "curiosity",
+            mood: "curious",
+          },
           candidateIndex: 0,
           draftKey: "0:mystery_discovery",
           evidenceKeys: ["mainProblem"],
@@ -393,6 +419,11 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
   ]);
   assert.equal(result[0]?.hookText.includes("\n"), true);
   assert.equal(result[0]?.patternId, "mystery_discovery");
+  assert.deepEqual(result[0]?.audioIntent, {
+    energy: "medium",
+    hookType: "curiosity",
+    mood: "curious",
+  });
   assert.equal(result[0]?.readabilityReview.repairApplied, true);
   assert.equal(result[0]?.readabilityReview.scores.total, 94);
   assert.equal(result[0]?.validation.passed, true);

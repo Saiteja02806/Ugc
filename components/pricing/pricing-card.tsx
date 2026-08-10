@@ -1,38 +1,41 @@
 import {
   ArrowRight,
   BadgeCheck,
-  CheckCircle2,
   Gauge,
 } from "lucide-react";
 import Link from "next/link";
 
-import { PricingCreditSummary } from "@/components/pricing/pricing-credit-summary";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
   formatPricingAmount,
+  getPlanPricing,
+  type BillingInterval,
   type PricingPlan,
 } from "@/lib/pricing/plans";
 
 type PricingCardProps = {
+  billingInterval: BillingInterval;
   plan: PricingPlan;
 };
 
-export function PricingCard({ plan }: PricingCardProps) {
+export function PricingCard({ billingInterval, plan }: PricingCardProps) {
+  const pricing = getPlanPricing(plan, billingInterval);
+  const intervalLabel = billingInterval === "monthly" ? "monthly" : "yearly";
+
   return (
     <article
       className={cn(
         "relative flex h-full flex-col rounded-card border bg-card shadow-card",
         plan.highlighted
-          ? "border-primary/55 shadow-[0_18px_48px_rgb(0_0_0_/_0.24)]"
+          ? "border-primary/55 ring-1 ring-primary/10"
           : "border-border",
       )}
     >
       <div className="flex h-full flex-col p-5 sm:p-6">
         <div className="flex min-h-6 items-start justify-between gap-3">
-          <p className="text-xs font-bold uppercase text-muted">
+          <p className="text-xs font-bold uppercase text-foreground">
             {plan.bestFor}
           </p>
           {plan.badgeLabel ? (
@@ -43,7 +46,7 @@ export function PricingCard({ plan }: PricingCardProps) {
           ) : null}
         </div>
 
-        <div className="mt-5">
+        <div className="mt-4 min-h-24">
           <h2 className="text-2xl font-bold leading-none tracking-normal text-foreground-strong">
             {plan.name}
           </h2>
@@ -52,75 +55,70 @@ export function PricingCard({ plan }: PricingCardProps) {
           </p>
         </div>
 
-        <div className="mt-6 flex items-end gap-2">
-          <span className="text-4xl font-bold leading-none tracking-normal text-foreground-strong sm:text-5xl">
-            {formatPricingAmount(plan.monthlyPrice)}
-          </span>
-          <span className="pb-1.5 text-sm font-semibold text-muted">
-            {plan.billingText}
-          </span>
-        </div>
-
-        <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-          <Gauge className="size-4 text-primary" aria-hidden="true" />
-          <span>{plan.capacityLabel}</span>
-        </div>
-
-        <div className="mt-6">
-          <p className="text-xs font-bold uppercase text-muted">
-            Monthly production allowance
-          </p>
-          <div className="mt-2 border-y border-border">
-            <PricingCreditSummary
-              amount={plan.imageCredits}
-              kind="image"
-            />
-            <Separator />
-            <PricingCreditSummary
-              amount={plan.videoCredits}
-              kind="video"
-            />
+        <div className="mt-5 min-h-20">
+          <div className="flex items-end gap-2">
+            <span className="text-4xl font-bold leading-none tracking-normal text-foreground-strong sm:text-5xl">
+              {formatPricingAmount(pricing.monthlyEquivalent)}
+            </span>
+            <span className="pb-1 text-sm font-semibold text-muted">
+              / month
+            </span>
           </div>
+          <p className="mt-2 text-xs font-semibold text-muted">
+            {pricing.billingSummary}
+            {pricing.savings > 0
+              ? ` - save ${formatPricingAmount(pricing.savings)} per year`
+              : null}
+          </p>
         </div>
 
-        <div className="mt-6">
+        <div className="mt-5 rounded-small border border-border bg-card-muted p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-small bg-brand-soft text-primary">
+                <Gauge className="size-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-foreground-strong">
+                  Shared generation credits
+                </p>
+                <p className="mt-1 text-xs font-medium leading-5 text-muted">
+                  Use one balance across image and short-video generation.
+                </p>
+              </div>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="font-mono text-xl font-semibold tabular-nums text-foreground-strong">
+                {plan.sharedMonthlyCredits}
+              </p>
+              <p className="text-xs font-semibold text-muted">per month</p>
+            </div>
+          </div>
+          <p className="mt-3 border-t border-border pt-3 text-xs font-semibold text-foreground">
+            {plan.capacityLabel}
+          </p>
+        </div>
+
+        <div className="mt-auto pt-5">
           <Link
             href="/sign-in"
-            aria-label={`${plan.buttonLabel}, ${formatPricingAmount(plan.monthlyPrice)} per month`}
+            aria-label={`Sign in to choose ${plan.name}, ${pricing.billingSummary.toLowerCase()}`}
             className={buttonVariants({
               variant: plan.highlighted ? "default" : "outline",
               size: "lg",
               className: "h-11 w-full text-sm font-semibold",
             })}
           >
-            {plan.buttonLabel}
+            Choose {plan.name}
             <ArrowRight data-icon="inline-end" aria-hidden="true" />
           </Link>
-          <p className="mt-2.5 text-center text-xs font-medium text-muted-subtle">
-            Sign in to continue to checkout
+          <p className="mt-2.5 text-center text-xs font-medium text-muted">
+            Sign in is required before plan activation.
+          </p>
+          <p className="mt-3 text-center text-xs font-medium leading-5 text-muted-subtle">
+            Prices are in USD. Taxes may apply to the {intervalLabel} charge.
           </p>
         </div>
-
-        <Separator className="my-6" />
-
-        <ul className="grid gap-3">
-          {plan.features.map((feature) => (
-            <li
-              key={feature}
-              className="flex gap-3 text-sm font-semibold leading-6 text-foreground"
-            >
-              <CheckCircle2
-                className="mt-0.5 size-4 shrink-0 text-success"
-                aria-hidden="true"
-              />
-              <span>{feature}</span>
-            </li>
-          ))}
-        </ul>
-
-        <p className="mt-auto pt-6 text-xs font-medium leading-5 text-muted-subtle">
-          Billed monthly. Applicable taxes may be added at checkout.
-        </p>
       </div>
     </article>
   );

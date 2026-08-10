@@ -4,7 +4,42 @@ import test from "node:test";
 import {
   getConnectionPublishingBlock,
   getConnectionPublishingBlockMessage,
+  getInstagramSchedulingAccessState,
 } from "./social-connection-policy.ts";
+
+test("requires a ready Instagram connection before opening scheduling", () => {
+  assert.equal(getInstagramSchedulingAccessState([]), "connect");
+  assert.equal(
+    getInstagramSchedulingAccessState([
+      {
+        platform: "tiktok",
+        scopes: ["video.publish"],
+        status: "connected",
+      },
+    ]),
+    "connect",
+  );
+  assert.equal(
+    getInstagramSchedulingAccessState([
+      {
+        platform: "instagram",
+        scopes: ["instagram_content_publish"],
+        status: "expired",
+      },
+    ]),
+    "reconnect",
+  );
+  assert.equal(
+    getInstagramSchedulingAccessState([
+      {
+        platform: "instagram",
+        scopes: ["instagram_content_publish"],
+        status: "connected",
+      },
+    ]),
+    "ready",
+  );
+});
 
 test("explains expired TikTok access without exposing OAuth scope names", () => {
   const message = getConnectionPublishingBlockMessage({

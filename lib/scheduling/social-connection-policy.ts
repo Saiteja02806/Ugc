@@ -19,6 +19,29 @@ type PublishingConnection = Pick<
   supportsBackgroundRefresh?: boolean;
 };
 
+export type InstagramSchedulingAccessState =
+  | "connect"
+  | "ready"
+  | "reconnect";
+
+export function getInstagramSchedulingAccessState(
+  connections: readonly PublishingConnection[],
+): InstagramSchedulingAccessState {
+  const instagramConnections = connections.filter(
+    (connection) => connection.platform === "instagram",
+  );
+
+  if (
+    instagramConnections.some(
+      (connection) => getConnectionPublishingBlock(connection) === null,
+    )
+  ) {
+    return "ready";
+  }
+
+  return instagramConnections.length > 0 ? "reconnect" : "connect";
+}
+
 export function getConnectionPublishingBlock(
   connection: PublishingConnection,
 ) {

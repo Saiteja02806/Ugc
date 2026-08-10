@@ -20,6 +20,7 @@ import {
 } from "./carousel-broad-visual-bucket-taxonomy.js";
 
 const BACKGROUND_JOBS_TABLE = "background_jobs";
+const BUSINESS_PROFILES_TABLE = "business_profiles";
 const CAROUSEL_GENERATIONS_TABLE = "carousel_generations";
 const CAROUSEL_SLIDES_TABLE = "carousel_slides";
 const CATEGORY_IMAGE_ASSETS_TABLE = "category_image_assets";
@@ -178,7 +179,7 @@ export class SupabaseJobStore {
     userId: string;
   }) {
     const { data, error } = await this.client.rpc(
-      "persist_trending_hook_copy_generation_v5",
+      "persist_trending_hook_copy_generation_v6",
       {
         p_business_profile_id: params.businessProfileId,
         p_business_profile_version: params.businessProfileVersion,
@@ -212,7 +213,7 @@ export class SupabaseJobStore {
     userId: string;
   }) {
     const { data, error } = await this.client.rpc(
-      "persist_validated_hook_composition_generation",
+      "persist_validated_hook_composition_generation_v6",
       {
         p_business_profile_id: params.businessProfileId,
         p_business_profile_version: params.businessProfileVersion,
@@ -1629,6 +1630,56 @@ export class SupabaseJobStore {
     }
 
     return data;
+  }
+
+  async getBusinessProfileForCarousel(params: {
+    businessProfileId: string;
+    businessProfileVersion: number;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(BUSINESS_PROFILES_TABLE)
+      .select("*")
+      .eq("id", params.businessProfileId)
+      .eq("user_id", params.userId)
+      .eq("profile_version", params.businessProfileVersion)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        `Could not load the current business profile for Carousel generation: ${error.message}`,
+      );
+    }
+
+    return data;
+  }
+
+  async listCarouselBatchContentHistory(params: {
+    businessProfileId: string;
+    excludeCarouselId: string;
+    generationBatchId: string;
+    limit?: number;
+  }) {
+    const limit = Math.min(Math.max(Math.trunc(params.limit ?? 10), 1), 10);
+    const { data, error } = await this.client
+      .from(CAROUSEL_GENERATIONS_TABLE)
+      .select("*")
+      .eq("business_profile_id", params.businessProfileId)
+      .eq("generation_batch_id", params.generationBatchId)
+      .neq("id", params.excludeCarouselId)
+      .in("status", ["processing", "completed"])
+      .not("content_topic_id", "is", null)
+      .order("updated_at", { ascending: false })
+      .order("candidate_index", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      throw new Error(
+        `Could not load current Carousel batch content history: ${error.message}`,
+      );
+    }
+
+    return data ?? [];
   }
 
   async getTrendingCarouselEdit(params: {

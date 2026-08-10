@@ -9,27 +9,11 @@ type PricingComparisonProps = {
   plans: PricingPlan[];
 };
 
-const comparisonRows = [
-  {
-    label: "Monthly price",
-    value: (plan: PricingPlan) => formatPricingAmount(plan.monthlyPrice),
-  },
-  {
-    label: "Image credits",
-    value: (plan: PricingPlan) => String(plan.imageCredits),
-  },
-  {
-    label: "Video credits",
-    value: (plan: PricingPlan) => String(plan.videoCredits),
-  },
-  {
-    label: "Watermark-free exports",
-    value: () => "Included",
-  },
-  {
-    label: "Commercial usage",
-    value: () => "Included",
-  },
+const includedRows = [
+  "Trending format discovery",
+  "AI image and short-video creation",
+  "Creative editor and asset library",
+  "Scheduling and performance analytics",
 ];
 
 export function PricingComparison({ plans }: PricingComparisonProps) {
@@ -39,64 +23,120 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
       className="border-y border-border bg-card-muted text-foreground"
     >
       <div className="mx-auto max-w-5xl px-5 py-10 sm:px-8 lg:px-10 lg:py-12">
-        <div className="grid gap-8 lg:grid-cols-[0.75fr_1.25fr] lg:gap-14">
-          <div className="max-w-md">
-            <p className="text-xs font-bold uppercase text-primary">
-              Plan comparison
-            </p>
-            <h2
-              id="plan-comparison-title"
-              className="mt-3 text-2xl font-bold leading-tight tracking-normal text-foreground-strong sm:text-3xl"
-            >
-              Compare monthly capacity.
-            </h2>
-            <p className="mt-3 text-sm font-medium leading-6 text-muted">
-              Both plans include the same core workflow. Pro increases the
-              monthly room for campaigns and creative variations.
-            </p>
-          </div>
+        <div className="max-w-2xl">
+          <p className="text-xs font-bold uppercase text-foreground">
+            Plan comparison
+          </p>
+          <h2
+            id="plan-comparison-title"
+            className="mt-2 text-2xl font-bold leading-tight tracking-normal text-foreground-strong sm:text-3xl"
+          >
+            Same workflow, different generation capacity
+          </h2>
+          <p className="mt-3 text-sm font-medium leading-6 text-muted">
+            Both plans cover the full content workflow. Choose Pro when you
+            need more room for campaign volume and creative variations.
+          </p>
+        </div>
 
-          <div className="min-w-0 border-t border-border">
-            <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(72px,0.6fr)_minmax(72px,0.6fr)] border-b border-border py-3 text-xs font-semibold uppercase text-muted">
-              <span>Included</span>
-              {plans.map((plan) => (
-                <span key={plan.slug} className="text-right">
-                  {plan.name}
-                </span>
-              ))}
-            </div>
-            {comparisonRows.map((row) => (
-              <div
-                key={row.label}
-                className="grid grid-cols-[minmax(0,1.4fr)_minmax(72px,0.6fr)_minmax(72px,0.6fr)] items-center border-b border-border py-3.5 text-sm"
-              >
-                <span className="pr-3 font-medium text-muted">
-                  {row.label}
-                </span>
-                {plans.map((plan) => {
-                  const value = row.value(plan);
-
-                  return (
-                    <span
-                      key={plan.slug}
-                      className="flex items-center justify-end gap-1.5 font-mono font-semibold tabular-nums text-foreground-strong"
-                    >
-                      {value === "Included" ? (
-                        <Check className="size-4 text-success" aria-hidden="true" />
-                      ) : null}
-                      <span
-                        className={
-                          value === "Included" ? "sr-only sm:not-sr-only" : undefined
-                        }
-                      >
-                        {value}
+        <div className="mt-7 overflow-hidden rounded-card border border-border bg-card">
+          <table className="w-full table-fixed border-collapse text-left">
+            <caption className="sr-only">
+              Creator and Pro price, credit, and feature comparison
+            </caption>
+            <colgroup>
+              <col className="w-1/2" />
+              <col className="w-1/4" />
+              <col className="w-1/4" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-border bg-card-muted text-xs font-bold uppercase text-foreground">
+                <th scope="col" className="px-3 py-3.5 sm:px-5">
+                  Plan detail
+                </th>
+                {plans.map((plan) => (
+                  <th
+                    key={plan.slug}
+                    scope="col"
+                    className="px-2 py-3.5 text-right sm:px-5"
+                  >
+                    {plan.name}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border text-sm">
+              <tr>
+                <th
+                  scope="row"
+                  className="px-3 py-3.5 font-medium text-muted sm:px-5"
+                >
+                  Monthly subscription
+                </th>
+                {plans.map((plan) => (
+                  <td
+                    key={plan.slug}
+                    className="px-2 py-3.5 text-right font-mono font-semibold tabular-nums text-foreground-strong sm:px-5"
+                  >
+                    {formatPricingAmount(plan.prices.monthly)}/mo
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <th
+                  scope="row"
+                  className="px-3 py-3.5 font-medium text-muted sm:px-5"
+                >
+                  Annual subscription
+                </th>
+                {plans.map((plan) => (
+                  <td
+                    key={plan.slug}
+                    className="px-2 py-3.5 text-right font-mono font-semibold tabular-nums text-foreground-strong sm:px-5"
+                  >
+                    {formatPricingAmount(plan.prices.yearly)}/yr
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <th
+                  scope="row"
+                  className="px-3 py-3.5 font-medium text-muted sm:px-5"
+                >
+                  Shared credits refreshed monthly
+                </th>
+                {plans.map((plan) => (
+                  <td
+                    key={plan.slug}
+                    className="px-2 py-3.5 text-right font-mono font-semibold tabular-nums text-foreground-strong sm:px-5"
+                  >
+                    {plan.sharedMonthlyCredits}
+                  </td>
+                ))}
+              </tr>
+              {includedRows.map((label) => (
+                <tr key={label}>
+                  <th
+                    scope="row"
+                    className="px-3 py-3.5 font-medium leading-5 text-muted sm:px-5"
+                  >
+                    {label}
+                  </th>
+                  {plans.map((plan) => (
+                    <td key={plan.slug} className="px-2 py-3.5 sm:px-5">
+                      <span className="flex justify-end">
+                        <Check
+                          className="size-4 text-success"
+                          aria-hidden="true"
+                        />
+                        <span className="sr-only">Included</span>
                       </span>
-                    </span>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </section>

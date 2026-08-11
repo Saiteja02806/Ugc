@@ -9,8 +9,10 @@ import {
   HOOK_VIDEO_PREVIEW_COOKIE,
   HOOK_VIDEO_PREVIEW_TTL_SECONDS,
 } from "@/lib/trending/hook-video-preview-session";
+import { getLockedHookAudioForVideo } from "@/lib/trending/hook-audio-db";
 import { resolveHookVideoSource } from "@/lib/trending/hook-video-sources";
 import { isHookVideoSourceKind } from "@/lib/trending/hook-video-types";
+import { isTrustedStorageUrl } from "@/lib/storage/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,6 +59,21 @@ export async function POST(
       userId: auth.user.uid,
       videoId,
     });
+    const hookAudio =
+      body.sourceKind === "catalog"
+        ? await getLockedHookAudioForVideo({ hookVideoId: videoId })
+        : null;
+
+    if (hookAudio && !isTrustedStorageUrl(hookAudio.audioUrl)) {
+      return hookVideoJson(
+        {
+          error: "The approved Hook sound is not available for preview.",
+          ok: false,
+        },
+        409,
+      );
+    }
+
     const session = createHookVideoPreviewSession({
       influencerId,
       sourceKind: body.sourceKind,
@@ -65,6 +82,7 @@ export async function POST(
     });
     const response = hookVideoJson({
       expiresAt: session.expiresAt,
+      hookAudio,
       ok: true,
       previewUrl: `/api/trending/hook-videos/preview/${encodeURIComponent(videoId)}`,
     });

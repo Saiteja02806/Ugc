@@ -24,16 +24,14 @@ import {
 
 const DEFAULT_MODEL = "gpt-5.6-terra";
 const MAX_CANDIDATE_COUNT = 12;
-const PATTERNS_PER_CLIP = 2;
-const MAX_RAW_DRAFT_COUNT =
-  MAX_CANDIDATE_COUNT * PATTERNS_PER_CLIP;
-const MAX_HOOK_LINES = 2;
+const MAX_HOOK_LINES = 3;
 const MAX_HOOK_WORDS = 12;
 const MAX_HOOK_WORDS_PER_LINE = 7;
 const MAX_HOOK_CHARACTERS = 78;
+const MAX_HOOK_EMOJIS = 2;
 const MAX_EVIDENCE_BINDINGS = 2;
 const MIN_PASSING_SCORE = 80;
-const MAX_REPAIR_ROUNDS = 2;
+const MAX_REPAIR_ROUNDS = 3;
 
 export const TRENDING_HOOK_PROMPT_VERSION =
   "trending-hook-copy-v6";
@@ -186,7 +184,7 @@ const UNSUPPORTED_TIME_OR_NUMBER_PATTERN =
 const FIRST_PERSON_PATTERN =
   /\b(?:i|i'm|i’m|i've|i’ve|i'd|i’d|me|my|mine|myself|we|we're|we’re|we've|we’ve|our|ours|ourselves)\b/iu;
 const FAKE_QUOTE_PATTERN = /["“”]/u;
-const EMOJI_PATTERN = /\p{Extended_Pictographic}/u;
+const EMOJI_PATTERN = /\p{Extended_Pictographic}/gu;
 const BAD_LINE_END_PATTERN =
   /\b(?:a|an|the|to|and|or|of|for|with|in|on|at|from|by)$/iu;
 const ALLOWED_ONE_WORD_LINES = new Set([
@@ -487,6 +485,8 @@ export async function generateValidatedTrendingHookCopies(params: {
       ),
       evidenceCatalog,
       model,
+      finalEvidenceRecovery:
+        repairRound === MAX_REPAIR_ROUNDS - 1,
       reviews: finalReviews.filter((review) =>
         failedKeys.includes(review.draftKey),
       ),
@@ -597,6 +597,7 @@ export function measureHookOverlayVisualFit(
   value: string | readonly string[],
 ): HookOverlayVisualFit {
   const semanticLines = normalizeHookLines(value);
+  const normalizedText = semanticLines.join(" ");
   const text = semanticLines.join("\n");
   const layout = buildEditOverlayTextLayout(text, "hook", "9:16");
   const renderedLines = layout.lines.filter((line) => line.trim());
@@ -612,7 +613,7 @@ export function measureHookOverlayVisualFit(
     semanticLines.every(Boolean) &&
     semanticLines.length <= MAX_HOOK_LINES &&
     wordCount <= MAX_HOOK_WORDS &&
-    semanticLines.join(" ").length <= MAX_HOOK_CHARACTERS &&
+    Array.from(normalizedText).length <= MAX_HOOK_CHARACTERS &&
     !layout.isTruncated &&
     renderedLines.length === semanticLines.length &&
     renderedLines.every(
@@ -628,7 +629,7 @@ export function measureHookOverlayVisualFit(
   return {
     canvasHeight: layout.bounds.canvasHeight,
     canvasWidth: layout.bounds.canvasWidth,
-    characterCount: semanticLines.join(" ").length,
+    characterCount: Array.from(normalizedText).length,
     fits,
     fontSize: layout.fontSize,
     isTruncated: layout.isTruncated,
@@ -704,13 +705,14 @@ export function validateHookDraft(params: {
     fakeQuotePassed;
   const firstPersonValidationPassed =
     !FIRST_PERSON_PATTERN.test(text);
-  const emojiValidationPassed = !EMOJI_PATTERN.test(text);
+  const emojiCount = Array.from(text.matchAll(EMOJI_PATTERN)).length;
+  const emojiValidationPassed = emojiCount <= MAX_HOOK_EMOJIS;
   const businessGroundingPassed =
     evidenceBindingPassed &&
     hasSufficientBusinessGrounding(text, evidenceBindings);
-  const lineValidationPassed = validateSemanticLines(
-    lines,
-  );
+  const lineValidationPassed =
+    validateSemanticLines(lines) &&
+    !hasDanglingContrastFragment(lines);
   const visualFit = measureHookOverlayVisualFit(lines);
   const intentionalLineBreaksPassed =
     !visualFit.isTruncated &&
@@ -746,9 +748,9 @@ export function validateHookDraft(params: {
     ...(!firstPersonValidationPassed
       ? ["unverified_first_person"]
       : []),
-    ...(!emojiValidationPassed ? ["emoji_not_allowed"] : []),
+    ...(!emojiValidationPassed ? ["too_many_emojis"] : []),
     ...(wordCount > MAX_HOOK_WORDS ||
-    text.length > MAX_HOOK_CHARACTERS
+    Array.from(text).length > MAX_HOOK_CHARACTERS
       ? ["hook_too_long"]
       : []),
     ...(lines.length > MAX_HOOK_LINES ? ["too_many_lines"] : []),
@@ -839,6 +841,7 @@ function buildDraftSpecs(params: {
 }
 
 async function writeHookDrafts(params: {
+  allowMappingRetry?: boolean;
   businessContext: ReturnType<typeof extractBusinessContext>;
   client: StructuredResponseClient;
   evidenceCatalog: HookEvidenceBinding[];
@@ -864,28 +867,61 @@ async function writeHookDrafts(params: {
       "The words must stop the right audience through recognition, tension, curiosity, or a useful contradiction—not generic advertising.",
       "Match reactionType emotionally.",
       "For each Hook, also classify its audioIntent using only the supplied controlled mood, hookType, and energy values. Describe the sound the words need; never return an audio filename, asset ID, URL, storage key, or library choice.",
-      "Return exactly one or two intentional semantic lines, never a paragraph. Across both lines use at most twelve words, with at most seven words on either line.",
-      "Use semantic lines: each array item is one intentional line. A 2–3 second clip may use two short lines. Do not compress it to one line merely because the clip is short.",
+      "Return exactly one, two, or three intentional semantic lines, never a paragraph. Across all lines use at most twelve words, with at most seven words on any line.",
+      "If you use multiple lines, they must be visual parts of the same single sentence or thought. Never put a separate message, question, or claim on each line.",
+      "Use complete, natural grammar. Do not write a clipped contrast such as 'Not X' followed by an unrelated fragment; complete the contrast clearly in the same thought.",
+      "Use semantic lines: each array item is one intentional line. Prefer one or two lines, but use three short lines when that makes the thought easier to read. Do not compress it merely because the clip is short.",
       "Never use digits or number words. Never invent numbers, time periods, results, testimonials, personal experience, prices, comparisons, superlatives, urgency, or guarantees.",
       "Never invent population claims such as most people, many people, everyone, or nobody.",
       "Do not invent a setting, physical object, metaphor, product mechanism, or feature that is absent from businessContext. Mystery must come from a true business idea, not fictional details.",
-      "Do not use first person, emojis, quotations, slang, or banned phrases. Do not mention an influencer, clip, avatar, or future demo.",
+      "Do not use first person, quotations, slang, or banned phrases. You may use zero to two emotionally relevant emojis, usually at the end of the final line. Emojis may reinforce the reaction but must never act as evidence for a claim. Do not mention an influencer, clip, avatar, or future demo.",
       "There is no words-per-second formula. A reviewer will judge whether a normal viewer can comfortably read and understand the complete thought during the exact duration.",
       "Return exactly one structurally distinct result for every draftKey, preserving draftKey, candidateIndex, and patternId.",
     ].join(" "),
     model: params.model,
     responseFormatName: "trending_hook_v6_drafts",
-    schema: buildHookDraftBatchSchema(params.evidenceCatalog),
+    schema: buildHookDraftBatchSchema(
+      params.evidenceCatalog,
+      params.specs,
+    ),
   });
 
-  return parseHookDrafts(
-    result,
-    params.specs,
-    params.evidenceCatalog,
-  );
+  try {
+    return parseHookDrafts(
+      result,
+      params.specs,
+      params.evidenceCatalog,
+    );
+  } catch (error) {
+    if (
+      !isExactHookMappingError(error, "writer") ||
+      params.allowMappingRetry === false
+    ) {
+      throw error;
+    }
+
+    if (params.specs.length === 1) {
+      return writeHookDrafts({
+        ...params,
+        allowMappingRetry: false,
+      });
+    }
+
+    const drafts: HookDraft[] = [];
+    for (const spec of params.specs) {
+      drafts.push(
+        ...(await writeHookDrafts({
+          ...params,
+          specs: [spec],
+        })),
+      );
+    }
+    return drafts;
+  }
 }
 
 async function reviewHookDrafts(params: {
+  allowMappingRetry?: boolean;
   businessContext: ReturnType<typeof extractBusinessContext>;
   client: StructuredResponseClient;
   drafts: HookDraft[];
@@ -914,13 +950,15 @@ async function reviewHookDrafts(params: {
     instructions: [
       "You are the independent Hook-overlay reviewer. Judge each result as a normal mobile-feed viewer seeing the text for one pass of the exact clip duration.",
       "Do not use a fixed word-per-second formula. Decide whether the viewer can notice, read, and understand the complete thought comfortably without replaying.",
-      "Do not penalize a Hook for being shorter than the clip. A sharp one- or two-line thought with a brief moment to react is desirable, especially at 2–3 seconds.",
+      "Do not penalize a Hook for being shorter than the clip. A sharp one- to three-line thought with a brief moment to react is desirable, especially at 2–3 seconds.",
       "Score businessRelevance 0–20, reactionMatch 0–20, humanVoice 0–15, scrollStop 0–15, readability 0–15, claimSafety 0–10, and originality 0–5.",
       "truthful and claimSafe require that every statement is grounded in businessContext. Numbers, time periods, results, testimonials, personal history, comparisons, prices, superlatives, and guarantees fail without verified evidence; this input intentionally supplies none.",
       "The copy must serve its assigned campaign purpose and industry focus without treating those directions as evidence or adding an industry assumption.",
       "A candidate is not truthful when it invents a setting, object, metaphor, mechanism, or feature that businessContext never supplies.",
       "Every meaningful statement must be supported by proposedEvidenceKeys and the matching evidenceCatalog entries; an unrelated evidence key fails truthful and claimSafe.",
       "Set singleIdea true only when the copy expresses exactly one problem, capability, question, or reversal.",
+      "Multiple semantic display lines do not automatically mean multiple ideas. Judge the combined overlay as one thought; fail singleIdea only when it contains a second message, explanation, answer, benefit, or claim.",
+      "Set humanVoice and readable false for clipped or awkward grammar, including a dangling 'Not X' contrast that does not complete naturally across the lines.",
       "Set openingOnly true only when it stops before any process explanation, product-demo instruction, outcome chain, CTA, or secondary benefit.",
       "Set humanVoice true only when it sounds like an immediate natural reaction, not polished website copy or AI-written prose.",
       "Generic marketing language fails human voice and scroll-stop. The emotional direction must fit reactionType.",
@@ -932,17 +970,46 @@ async function reviewHookDrafts(params: {
     ].join(" "),
     model: params.model,
     responseFormatName: "trending_hook_v6_reviews",
-    schema: hookReviewBatchSchema,
+    schema: buildHookReviewBatchSchema(params.specs),
   });
 
-  return parseHookReviews(result, params.specs);
+  try {
+    return parseHookReviews(result, params.specs);
+  } catch (error) {
+    if (
+      !isExactHookMappingError(error, "reviewer") ||
+      params.allowMappingRetry === false
+    ) {
+      throw error;
+    }
+
+    if (params.specs.length === 1) {
+      return reviewHookDrafts({
+        ...params,
+        allowMappingRetry: false,
+      });
+    }
+
+    const reviews: HookReview[] = [];
+    for (const spec of params.specs) {
+      reviews.push(
+        ...(await reviewHookDrafts({
+          ...params,
+          specs: [spec],
+        })),
+      );
+    }
+    return reviews;
+  }
 }
 
 async function repairHookDrafts(params: {
+  allowMappingRetry?: boolean;
   businessContext: ReturnType<typeof extractBusinessContext>;
   client: StructuredResponseClient;
   drafts: HookDraft[];
   evidenceCatalog: HookEvidenceBinding[];
+  finalEvidenceRecovery: boolean;
   model: string;
   reviews: HookReview[];
   specs: HookDraftSpec[];
@@ -956,6 +1023,9 @@ async function repairHookDrafts(params: {
     input: {
       businessContext: params.businessContext,
       evidenceCatalog: params.evidenceCatalog,
+      repairMode: params.finalEvidenceRecovery
+        ? "final_evidence_recovery"
+        : "standard",
       policies: getGenerationPolicies(),
       requests: params.specs.map((spec) => ({
         ...toPromptSpec(spec),
@@ -986,30 +1056,68 @@ async function repairHookDrafts(params: {
     instructions: [
       "Repair only the supplied Hook overlays. Keep the assigned pattern and the strongest true Business Profile idea.",
       "Keep the assigned campaign purpose and industry focus, but never turn industry guidance into an unsupported fact.",
-      "Return only an opening reaction: one pattern, one idea, one or two intentional lines, and at most twelve words total.",
+      "Return only an opening reaction: one pattern, one idea, one to three intentional lines, and at most twelve words total.",
+      "If the reviewer marked singleIdea false, reduce the copy to one short question or statement. Multiple visual lines may split that one thought, but must not carry separate messages.",
       "Do not explain the process, demo steps, mechanism-and-benefit chain, or a secondary benefit. Preserve curiosity and stop after the opening.",
       "Return one or two valid evidenceKeys that directly support the repaired wording.",
       "Reclassify audioIntent for the repaired words using only the controlled values. Never return an audio filename, asset ID, URL, storage key, or library choice.",
       "Apply semantic line breaks and make the full thought comfortable in one pass of the exact duration without using a word-per-second formula.",
       "Fix every deterministicValidation reason. Each semantic line must stay on one rendered line, contain at most seven words, and not end with an article, conjunction, or preposition.",
+      "For invalid_semantic_lines, restore complete natural grammar as well as clean line breaks. Never leave a dangling 'Not X' contrast or two fragments that do not form one clear thought.",
       "Use visualFit.lineWidths and visualFit.maximumTextWidth: when a line is too wide, shorten that line decisively. Do not hide the overflow by adding another dense line.",
       "For unsupported_time_or_number, remove every digit, number word, currency, percentage, date, and time-unit word. Do not paraphrase it as another numeric or time claim.",
       "For weak_business_grounding, remove invented settings, objects, metaphors, mechanisms, and features. Rebuild the Hook from the supplied audience problem, product summary, value props, or differentiators.",
+      ...(params.finalEvidenceRecovery
+        ? [
+            "This is the final evidence-recovery pass. Use exactly one evidenceKey and keep every meaningful noun, action, problem, and capability close to that evidence text. Do not infer a new setting, behavior, result, comparison, or benefit.",
+            "Prefer one short, natural question or statement over cleverness. It must still fit the assigned pattern and earn the publishable score without weakening any safety rule.",
+          ]
+        : []),
       "Aim for a genuinely strong result that can earn at least 80/100, not merely a shorter version.",
-      "Remove unsupported facts, personal history, numbers, time claims, quotations, emojis, and generic marketing language.",
+      "Remove unsupported facts, personal history, numbers, time claims, quotations, and generic marketing language. Keep at most two emotionally relevant emojis; remove any emoji that substitutes for evidence or does not match the reaction.",
       "Do not add a demo, CTA, headline/body structure, or any new fact.",
       "Return exactly one repaired result for every draftKey.",
     ].join(" "),
     model: params.model,
     responseFormatName: "trending_hook_v6_repairs",
-    schema: buildHookDraftBatchSchema(params.evidenceCatalog),
+    schema: buildHookDraftBatchSchema(
+      params.evidenceCatalog,
+      params.specs,
+    ),
   });
 
-  return parseHookDrafts(
-    result,
-    params.specs,
-    params.evidenceCatalog,
-  );
+  try {
+    return parseHookDrafts(
+      result,
+      params.specs,
+      params.evidenceCatalog,
+    );
+  } catch (error) {
+    if (
+      !isExactHookMappingError(error, "writer") ||
+      params.allowMappingRetry === false
+    ) {
+      throw error;
+    }
+
+    if (params.specs.length === 1) {
+      return repairHookDrafts({
+        ...params,
+        allowMappingRetry: false,
+      });
+    }
+
+    const drafts: HookDraft[] = [];
+    for (const spec of params.specs) {
+      drafts.push(
+        ...(await repairHookDrafts({
+          ...params,
+          specs: [spec],
+        })),
+      );
+    }
+    return drafts;
+  }
 }
 
 async function requestStructuredJson(params: {
@@ -1397,6 +1505,22 @@ function assertExactDraftMapping(
   }
 }
 
+function isExactHookMappingError(error: unknown, source: string) {
+  return (
+    error instanceof Error &&
+    error.message ===
+      `The Hook ${source} did not return one result for every requested pattern.`
+  );
+}
+
+function extractHookWords(text: string) {
+  return (
+    text.match(
+      /[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu,
+    ) ?? []
+  );
+}
+
 function validateSemanticLines(lines: string[]) {
   const words = lines.join(" ").split(/\s+/u).filter(Boolean);
   const uppercaseTokens = words.filter(
@@ -1411,21 +1535,40 @@ function validateSemanticLines(lines: string[]) {
     lines.length <= MAX_HOOK_LINES &&
     words.length >= 2 &&
     words.length <= MAX_HOOK_WORDS &&
-    lines.join(" ").length <= MAX_HOOK_CHARACTERS &&
+    Array.from(lines.join(" ")).length <= MAX_HOOK_CHARACTERS &&
     uppercaseTokens.length <= 1 &&
     lines.every((line) => {
-      const lineWords = line.split(/\s+/u).filter(Boolean);
-      const finalWord = lineWords.at(-1)?.replace(/[^\p{L}]+$/gu, "") ?? "";
+      const lineTokens = line.split(/\s+/u).filter(Boolean);
+      const lexicalWords = extractHookWords(line);
+      const finalWord = lexicalWords.at(-1) ?? "";
       return (
-        lineWords.length >= 1 &&
-        lineWords.length <= MAX_HOOK_WORDS_PER_LINE &&
+        lineTokens.length >= 1 &&
+        lineTokens.length <= MAX_HOOK_WORDS_PER_LINE &&
         !BAD_LINE_END_PATTERN.test(finalWord) &&
-        (lineWords.length > 1 ||
+        (lexicalWords.length > 1 ||
           ALLOWED_ONE_WORD_LINES.has(
             finalWord.toLowerCase(),
           ))
       );
     })
+  );
+}
+
+function hasDanglingContrastFragment(lines: string[]) {
+  if (lines.length !== 2) {
+    return false;
+  }
+
+  const firstLine = lines[0]?.trim() ?? "";
+  const secondLine = lines[1]?.trim() ?? "";
+
+  return (
+    /^not\s+[\p{L}'-]+(?:\s+[\p{L}'-]+){0,2}[.!?]?$/iu.test(
+      firstLine,
+    ) &&
+    !/^(?:[-\u2014:]|a\b|an\b|but\b|instead\b|it(?:')s\b|rather\b|the\b)/iu.test(
+      secondLine,
+    )
   );
 }
 
@@ -1667,7 +1810,11 @@ function buildBusinessEvidenceCatalog(
 
 function getGenerationPolicies() {
   return {
-    emojiPolicy: "none",
+    emojiPolicy: {
+      allowed: true,
+      maximum: MAX_HOOK_EMOJIS,
+      preferredPlacement: "end_of_final_line",
+    },
     firstPersonAllowed: false,
     humorAllowed: false,
     numericClaimsAllowed: false,
@@ -1970,6 +2117,7 @@ const patternIds = TRENDING_HOOK_PATTERNS.map(
 
 function buildHookDraftBatchSchema(
   evidenceCatalog: HookEvidenceBinding[],
+  specs: HookDraftSpec[],
 ) {
   return {
     additionalProperties: false,
@@ -1996,6 +2144,7 @@ function buildHookDraftBatchSchema(
             },
             candidateIndex: { minimum: 0, type: "integer" },
             draftKey: {
+              enum: specs.map((spec) => spec.draftKey),
               maxLength: 140,
               minLength: 3,
               type: "string",
@@ -2033,8 +2182,8 @@ function buildHookDraftBatchSchema(
           ],
           type: "object",
         },
-        maxItems: MAX_RAW_DRAFT_COUNT,
-        minItems: 1,
+        maxItems: specs.length,
+        minItems: specs.length,
         type: "array",
       },
     },
@@ -2043,7 +2192,8 @@ function buildHookDraftBatchSchema(
   } as const;
 }
 
-const hookReviewBatchSchema = {
+function buildHookReviewBatchSchema(specs: HookDraftSpec[]) {
+  return {
   additionalProperties: false,
   properties: {
     reviews: {
@@ -2052,7 +2202,12 @@ const hookReviewBatchSchema = {
         properties: {
           candidateIndex: { minimum: 0, type: "integer" },
           claimSafe: { type: "boolean" },
-          draftKey: { maxLength: 140, minLength: 3, type: "string" },
+          draftKey: {
+            enum: specs.map((spec) => spec.draftKey),
+            maxLength: 140,
+            minLength: 3,
+            type: "string",
+          },
           estimatedReadingSeconds: {
             exclusiveMinimum: 0,
             type: "number",
@@ -2147,11 +2302,12 @@ const hookReviewBatchSchema = {
         ],
         type: "object",
       },
-      maxItems: MAX_RAW_DRAFT_COUNT,
-      minItems: 1,
+      maxItems: specs.length,
+      minItems: specs.length,
       type: "array",
     },
   },
   required: ["reviews"],
   type: "object",
-} as const;
+  } as const;
+}

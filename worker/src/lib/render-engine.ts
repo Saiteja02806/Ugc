@@ -106,6 +106,12 @@ export type RenderScheduleCombinationPayload = {
   hookTextLines?: string[] | null;
   hookTextPosition?: NormalizedTextPosition | null;
   hookTextColor: string;
+  hookAudio?: {
+    audioAssetId: string;
+    audioUrl: string;
+    durationSeconds: number;
+    selectionSource: "video_locked";
+  } | null;
   hookTrimEnd: number | null;
   hookTrimStart: number;
   hookVideoId: string;
@@ -260,8 +266,43 @@ export async function renderEditedVideoToStorage(
 export async function renderScheduleCombinationToStorage(
   payload: RenderScheduleCombinationPayload,
 ): Promise<RenderScheduleCombinationOutput> {
+  const renderedBuffer = await renderScheduleCombinationToBuffer(payload);
+  const key = buildScheduleCombinationVideoKey(payload);
+  const result = await uploadBufferToStorage({
+    key,
+    buffer: renderedBuffer,
+    contentType: OUTPUT_CONTENT_TYPE,
+    cacheControl: "public, max-age=31536000, immutable",
+  });
+
+  logger.info("Schedule combination render uploaded to object storage", {
+    key: result.key,
+    renderId: payload.renderId,
+    renderedSize: renderedBuffer.length,
+    scheduleId: payload.scheduleId,
+    storageProvider: getStorageProviderName(),
+    url: result.url,
+  });
+
+  return {
+    ok: true,
+    demoVideoId: payload.demoVideoId,
+    hookVideoId: payload.hookVideoId,
+    renderId: payload.renderId,
+    scheduleId: payload.scheduleId,
+    key: result.key,
+    url: result.url,
+  };
+}
+
+export async function renderScheduleCombinationToBuffer(
+  payload: RenderScheduleCombinationPayload,
+) {
   const workDir = await mkdtemp(join(tmpdir(), "ugc-combine-render-"));
   const hookInputPath = join(workDir, "hook-source-video");
+  const hookAudioPath = payload.hookAudio
+    ? join(workDir, "hook-locked-audio")
+    : null;
   const demoInputPath = join(workDir, "demo-source-video");
   const hookSegmentPath = join(workDir, "hook-normalized.mp4");
   const demoSegmentPath = join(workDir, "demo-normalized.mp4");
@@ -283,14 +324,22 @@ export async function renderScheduleCombinationToStorage(
   });
 
   try {
-    const [hookBuffer, demoBuffer] = await Promise.all([
+    const [hookBuffer, demoBuffer, hookAudioBuffer] = await Promise.all([
       downloadVideoToBuffer(payload.hookVideoUrl),
       downloadVideoToBuffer(payload.demoVideoUrl),
+      payload.hookAudio
+        ? downloadAudioToBuffer(payload.hookAudio.audioUrl, {
+            maxBytes: 50 * 1024 * 1024,
+          })
+        : Promise.resolve(null),
     ]);
 
     await Promise.all([
       writeFile(hookInputPath, hookBuffer),
       writeFile(demoInputPath, demoBuffer),
+      ...(hookAudioPath && hookAudioBuffer
+        ? [writeFile(hookAudioPath, hookAudioBuffer)]
+        : []),
       ...(hookOverlay ? [renderPreparedTextOverlayImage(hookOverlay)] : []),
     ]);
 
@@ -298,6 +347,8 @@ export async function renderScheduleCombinationToStorage(
       demoSize: demoBuffer.length,
       demoVideoId: payload.demoVideoId,
       hookSize: hookBuffer.length,
+      hookAudioAssetId: payload.hookAudio?.audioAssetId ?? null,
+      hookAudioSize: hookAudioBuffer?.length ?? 0,
       hookVideoId: payload.hookVideoId,
       renderId: payload.renderId,
       scheduleId: payload.scheduleId,
@@ -305,6 +356,7 @@ export async function renderScheduleCombinationToStorage(
 
     await normalizeCombinationSegment({
       inputPath: hookInputPath,
+      hookAudioPath,
       outputPath: hookSegmentPath,
       payload,
       preparedTextOverlay: hookOverlay,
@@ -312,6 +364,7 @@ export async function renderScheduleCombinationToStorage(
     });
     await normalizeCombinationSegment({
       inputPath: demoInputPath,
+      hookAudioPath: null,
       outputPath: demoSegmentPath,
       payload,
       preparedTextOverlay: null,
@@ -347,33 +400,7 @@ export async function renderScheduleCombinationToStorage(
       renderId: payload.renderId,
     });
 
-    const renderedBuffer = await readFile(outputPath);
-    const key = buildScheduleCombinationVideoKey(payload);
-    const result = await uploadBufferToStorage({
-      key,
-      buffer: renderedBuffer,
-      contentType: OUTPUT_CONTENT_TYPE,
-      cacheControl: "public, max-age=31536000, immutable",
-    });
-
-    logger.info("Schedule combination render uploaded to object storage", {
-      key: result.key,
-      renderId: payload.renderId,
-      renderedSize: renderedBuffer.length,
-      scheduleId: payload.scheduleId,
-      storageProvider: getStorageProviderName(),
-      url: result.url,
-    });
-
-    return {
-      ok: true,
-      demoVideoId: payload.demoVideoId,
-      hookVideoId: payload.hookVideoId,
-      renderId: payload.renderId,
-      scheduleId: payload.scheduleId,
-      key: result.key,
-      url: result.url,
-    };
+    return await readFile(outputPath);
   } finally {
     await rm(workDir, {
       force: true,
@@ -657,12 +684,14 @@ async function runFfmpegCommand({
 }
 
 async function normalizeCombinationSegment({
+  hookAudioPath,
   inputPath,
   outputPath,
   payload,
   preparedTextOverlay,
   segmentLabel,
 }: {
+  hookAudioPath: string | null;
   inputPath: string;
   outputPath: string;
   payload: RenderScheduleCombinationPayload;
@@ -672,6 +701,7 @@ async function normalizeCombinationSegment({
   const hasAudio = await inputHasAudio(inputPath);
   const args = buildScheduleCombinationSegmentArgs({
     hasAudio,
+    hookAudioPath,
     inputPath,
     outputPath,
     payload,
@@ -824,6 +854,7 @@ async function validateRenderedVideoFile(
 
 export function buildScheduleCombinationSegmentArgs({
   hasAudio,
+  hookAudioPath = null,
   inputPath,
   outputPath,
   payload,
@@ -831,6 +862,7 @@ export function buildScheduleCombinationSegmentArgs({
   segmentLabel,
 }: {
   hasAudio: boolean;
+  hookAudioPath?: string | null;
   inputPath: string;
   outputPath: string;
   payload: RenderScheduleCombinationPayload;
@@ -861,9 +893,12 @@ export function buildScheduleCombinationSegmentArgs({
     );
   }
 
-  const silentAudioInputIndex = preparedTextOverlay ? 2 : 1;
+  const auxiliaryAudioInputIndex = preparedTextOverlay ? 2 : 1;
+  const useLockedHookAudio = isHook && Boolean(hookAudioPath);
 
-  if (!hasAudio) {
+  if (useLockedHookAudio) {
+    args.push("-i", hookAudioPath as string);
+  } else if (!hasAudio) {
     args.push(
       "-f",
       "lavfi",
@@ -889,7 +924,11 @@ export function buildScheduleCombinationSegmentArgs({
 
   args.push(
     "-map",
-    hasAudio ? "0:a:0" : `${silentAudioInputIndex}:a:0`,
+    useLockedHookAudio
+      ? `${auxiliaryAudioInputIndex}:a:0`
+      : hasAudio
+        ? "0:a:0"
+        : `${auxiliaryAudioInputIndex}:a:0`,
     "-c:v",
     "libx264",
     "-preset",
@@ -1046,6 +1085,9 @@ function buildPreparedTextOverlay(params: {
   ratio: RenderRatio;
 }): PreparedTextOverlay | null {
   const text = params.overlay.text.trim();
+  const savedLines = params.overlay.lines
+    ?.map((line) => line.replace(/\s+/gu, " ").trim())
+    .filter(Boolean);
 
   if (!text) {
     return null;
@@ -1054,17 +1096,19 @@ function buildPreparedTextOverlay(params: {
   const layout =
     params.overlay.fontSize !== null &&
     params.overlay.fontSize !== undefined &&
-    params.overlay.lines &&
-    params.overlay.lines.length > 0
+    savedLines &&
+    savedLines.length > 0
       ? buildResolvedEditOverlayTextLayout({
           fontSize: params.overlay.fontSize,
-          lines: params.overlay.lines,
+          lines: savedLines,
           ratio: params.ratio,
           style: params.overlay.style,
           textColor: params.overlay.textColor,
         })
       : buildEditOverlayTextLayout(
-          text,
+          savedLines && savedLines.length > 0
+            ? savedLines.join("\n")
+            : text,
           params.overlay.style,
           params.ratio,
           params.overlay.textColor,
@@ -1114,7 +1158,7 @@ export function buildPreparedTextOverlaySvg(
   const textTop = containerY + layout.padding;
   const centerX = containerX + containerWidth / 2;
   const fontFamily = escapeXml(
-    `${EDIT_OVERLAY_FONT_FAMILY}, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif`,
+    `${EDIT_OVERLAY_FONT_FAMILY}, Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif`,
   );
   const background =
     layout.backgroundOpacity === null
@@ -1144,8 +1188,13 @@ export function buildPreparedTextOverlaySvg(
       .filter(Boolean)
       .join(" ");
 
+    const separationLayer =
+      style === "hook"
+        ? `<text x="${centerX}" y="${baselineY}" ${commonAttributes} fill="#000000" fill-opacity="0.82" stroke="#000000" stroke-opacity="0.82" stroke-width="5" stroke-linejoin="round" paint-order="stroke fill">${escapedLine}</text>`
+        : `<text x="${centerX + EDIT_OVERLAY_SHADOW_OFFSET_PX}" y="${baselineY + EDIT_OVERLAY_SHADOW_OFFSET_PX}" ${commonAttributes} fill="${escapeXml(EDIT_OVERLAY_SHADOW_COLOR)}">${escapedLine}</text>`;
+
     return [
-      `<text x="${centerX + EDIT_OVERLAY_SHADOW_OFFSET_PX}" y="${baselineY + EDIT_OVERLAY_SHADOW_OFFSET_PX}" ${commonAttributes} fill="${escapeXml(EDIT_OVERLAY_SHADOW_COLOR)}">${escapedLine}</text>`,
+      separationLayer,
       `<text x="${centerX}" y="${baselineY}" ${commonAttributes} fill="${layout.textColor}">${escapedLine}</text>`,
     ];
   });

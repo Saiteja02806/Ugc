@@ -147,7 +147,7 @@ export function createHookEditLines(value: string) {
       .split("\n")
       .map((line) => line.replace(/\s+/gu, " ").trim())
       .filter(Boolean)
-      .slice(0, 2);
+      .slice(0, 3);
   }
 }
 

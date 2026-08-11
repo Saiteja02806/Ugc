@@ -1928,16 +1928,23 @@ Do not describe planned behavior as deployed behavior.
   upload. Originals must never be deleted for this reason.
 - The first explicit production import attempt reached the desktop command's
   ten-minute limit before returning and did not create `import-result.json`.
-  Some deterministic GCP object keys may therefore already contain uploaded
-  files, but the number of inserted Supabase rows is not verified; the recovery
-  read was blocked by the Codex usage limit. Do not describe this batch as
-  backend/library inventory until a fresh remote preflight and production
-  verification succeed.
+  A later recovery preflight confirmed that it inserted no new database rows.
+  The resumed checkpointed import then inserted 486 new canonical asset rows
+  and skipped the four exact existing source hashes, completing all 490
+  manifest assets without duplicate rows.
 - The importer now checkpoints every ten assets: it uploads the original,
   1080x1350 base, and thumbnail concurrently for each asset, inserts that
   checkpoint's rows, and writes resumable progress. A retry first skips any
   source hashes already inserted, while deterministic object keys safely reuse
   any files uploaded by the interrupted attempt.
+- Production verification found 490/490 matching `category_image_assets` rows:
+  Beauty Skincare 50, Fitness Health 350, Marketing SaaS 7, Shared 18,
+  Personal Finance 19, and Productivity SaaS 46. It successfully checked all
+  1,470 trusted GCP URLs (original, 1080x1350 base, and thumbnail) with zero
+  missing or mismatched rows, safety fields, tags, storage keys, or objects.
+  Reports are `import-result.json` and `post-import-verification.json` in the
+  prepared package directory above. This Power-folder batch is now verified
+  backend Carousel library inventory.
 
 ## 2026-07-28 Unified Trending Wall-of-text Decision
 

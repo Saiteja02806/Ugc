@@ -52,15 +52,17 @@ export function HookTextOverlay({
         style={{
           color,
           fontFamily:
-            'var(--font-edit-overlay), "Noto Sans CJK SC", "Noto Sans CJK JP", sans-serif',
+            'var(--font-edit-overlay), Inter, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Noto Sans CJK SC", "Noto Sans CJK JP", sans-serif',
           fontSize: `${layout.fontSize / 10.8}cqw`,
           left: `${resolvedPosition.x * 100}%`,
           lineHeight: 1,
-          textShadow: "0.185185cqw 0.185185cqw 0 rgba(0, 0, 0, 0.45)",
+          paintOrder: "stroke fill",
+          textShadow: "0 0 0.185185cqw rgba(0, 0, 0, 0.55)",
           top: `${resolvedPosition.y * 100}%`,
+          WebkitTextStroke: "0.462963cqw rgba(0, 0, 0, 0.82)",
           width: `${layout.containerWidth / 10.8}cqw`,
         }}
-        className="absolute -translate-x-1/2 -translate-y-1/2 text-center font-semibold tracking-normal"
+        className="absolute -translate-x-1/2 -translate-y-1/2 text-center font-bold tracking-normal"
       >
         {layout.lines.map((line, index) => (
           <span

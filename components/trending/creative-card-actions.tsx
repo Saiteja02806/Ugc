@@ -5,13 +5,17 @@ import { Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function CreativeDecisionActions({
+  acceptDisabled = false,
   disabled = false,
   onAccept,
   onReject,
+  rejectDisabled = false,
 }: {
+  acceptDisabled?: boolean;
   disabled?: boolean;
   onAccept: () => void;
   onReject: () => void;
+  rejectDisabled?: boolean;
 }) {
   return (
     <div
@@ -26,7 +30,7 @@ export function CreativeDecisionActions({
         size="creative-icon"
         aria-label="Reject this creative"
         title="Reject"
-        disabled={disabled}
+        disabled={disabled || rejectDisabled}
         onClick={onReject}
       >
         <X data-icon="inline-start" aria-hidden="true" />
@@ -37,7 +41,7 @@ export function CreativeDecisionActions({
         size="creative-icon"
         aria-label="Accept this creative"
         title="Accept"
-        disabled={disabled}
+        disabled={disabled || acceptDisabled}
         onClick={onAccept}
       >
         <Check data-icon="inline-start" aria-hidden="true" />

@@ -118,6 +118,28 @@ Synced local frame analysis found:
 The 12 placement-rejected videos were not deleted. They remain available for a
 future renderer with additional text zones or different composition rules.
 
+## Reviewed 2026-08-11 Batch
+
+Source: `C:/Users/chund/OneDrive/Desktop/videos_real/sound`
+
+Manifest:
+`scripts/data/wall-text-videos-real-2026-08-11.json`
+
+- 84 source files reviewed across the nested source folders
+- 20 exact duplicate copies moved to the local `Duplicate` folder
+- 64 unique videos imported under `wall-text-real-2026-08-11`
+- all 64 videos: 720x1280, silent MP4, native duration 5.056-8 seconds
+- visual groups: 12 car selfie, 14 indoor close-up, 31 indoor medium,
+  5 outdoor static selfie, and 2 outdoor walking selfie
+- 56 videos have validated v2 placement metadata: 45 lower-middle and
+  11 middle
+- 8 videos have no safe candidate in the current three-zone analyzer and
+  remain stored but ineligible for selection
+
+The production Wall catalog now contains 115 rows with 115 unique source
+hashes. The importer replay verified all new GCP video and thumbnail objects
+and skipped all 64 existing rows without creating duplicates.
+
 ## Trending Flow
 
 1. The unified feed reports Wall as unavailable when the current Business

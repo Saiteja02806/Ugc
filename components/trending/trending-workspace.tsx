@@ -22,7 +22,14 @@ import type {
   ReactNode,
   TransitionEvent as ReactTransitionEvent,
 } from "react";
-import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
@@ -37,6 +44,7 @@ import {
   type SchedulePlatformContext,
 } from "@/components/social/platform-selection-modal";
 import { HookVideoCard } from "@/components/trending/hook-video-card";
+import type { HookPreviewAudio } from "@/components/trending/hook-audio-preview";
 import { HookVideoComposer } from "@/components/trending/hook-video-composer";
 import {
   HookVideoScheduleDrawer,
@@ -121,6 +129,7 @@ type TrendingHookComposition = {
 };
 
 type DeckDepth = 0 | 1 | 2;
+type HookPreviewStatus = "error" | "loading" | "ready";
 
 type TrendingDeckSlot = {
   candidate: TrendingCandidate;
@@ -1075,17 +1084,34 @@ function TrendingDeck({
   const [pendingDecisionItemId, setPendingDecisionItemId] = useState<
     string | null
   >(null);
+  const [hookPreviewStatusByCreativeId, setHookPreviewStatusByCreativeId] =
+    useState<Record<string, HookPreviewStatus>>({});
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(
     null,
   );
   const safeActiveItemIndex = Math.max(activeItemIndex, 0);
   const activeCandidate = candidates[safeActiveItemIndex] ?? null;
+  const activeHookPreviewStatus =
+    activeCandidate?.format === "hook_video"
+      ? hookPreviewStatusByCreativeId[activeCandidate.item.creativeId] ??
+        "loading"
+      : null;
   const title = activeCandidate
     ? getTrendingCandidateTitle(activeCandidate)
     : null;
   const deckSlots = getTrendingDeckSlots(
     candidates,
     safeActiveItemIndex,
+  );
+  const handleHookPreviewStatusChange = useCallback(
+    (creativeId: string, status: HookPreviewStatus) => {
+      setHookPreviewStatusByCreativeId((current) =>
+        current[creativeId] === status
+          ? current
+          : { ...current, [creativeId]: status },
+      );
+    },
+    [],
   );
   useEffect(() => {
     if (!activeCandidate) {
@@ -1292,9 +1318,13 @@ function TrendingDeck({
   }
 
   function completeCandidateSwipe(direction: "left" | "right") {
-    requestCreativeDecision(
+    const started = requestCreativeDecision(
       direction === "left" ? "rejected" : "accepted",
     );
+
+    if (!started) {
+      resetDrag();
+    }
   }
 
   function requestCreativeDecision(
@@ -1305,7 +1335,7 @@ function TrendingDeck({
       decisionLockRef.current ||
       exitDirection
     ) {
-      return;
+      return false;
     }
 
     const activeEdit = editByCreativeId[activeCandidate.item.creativeId];
@@ -1320,7 +1350,7 @@ function TrendingDeck({
       showActionNotice({
         message: "Your edited Carousel is still rendering. It will be ready shortly.",
       });
-      return;
+      return false;
     }
 
     if (
@@ -1333,7 +1363,21 @@ function TrendingDeck({
           activeEdit.renderError ||
           "This edited Carousel could not render. Open Edit and save it again.",
       });
-      return;
+      return false;
+    }
+
+    if (
+      decision === "accepted" &&
+      activeCandidate.format === "hook_video" &&
+      activeHookPreviewStatus !== "ready"
+    ) {
+      showActionNotice({
+        message:
+          activeHookPreviewStatus === "error"
+            ? "Reload this Hook preview before accepting it."
+            : "Wait for the Hook preview to finish loading before accepting it.",
+      });
+      return false;
     }
 
     const candidate = activeCandidate;
@@ -1346,6 +1390,7 @@ function TrendingDeck({
       setActiveItemIndex(candidateIndex + 1);
       void commitCreativeDecision(candidate, candidateIndex, decision);
     });
+    return true;
   }
 
   async function commitCreativeDecision(
@@ -1700,10 +1745,11 @@ function TrendingDeck({
           <div
             role="group"
             aria-roledescription="Trending content deck"
+            aria-busy={Boolean(pendingDecisionItemId)}
             tabIndex={0}
             aria-label={`Trending content deck. Showing idea ${safeActiveItemIndex + 1} of ${candidates.length}. Press left arrow to reject or right arrow to accept this creative.`}
             onKeyDown={handleDeckKeyDown}
-            className="relative isolate mx-auto mt-3 h-[410px] w-full max-w-xl overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-7"
+            className="relative isolate mx-auto mt-3 h-[442px] w-full max-w-xl overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-7"
           >
             {[...deckSlots].reverse().map((slot) => (
               <TrendingDeckCard
@@ -1718,6 +1764,7 @@ function TrendingDeck({
                 itemCount={candidates.length}
                 itemIndex={slot.itemIndex}
                 onActiveSlideChange={onActiveSlideChange}
+                onHookPreviewStatusChange={handleHookPreviewStatusChange}
                 onPointerCancel={cancelPointerInteraction}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
@@ -1743,8 +1790,22 @@ function TrendingDeck({
             >
               Reject
             </div>
+            {pendingDecisionItemId ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="pointer-events-none absolute bottom-3 left-1/2 z-30 inline-flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-black/78 px-3 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-sm"
+              >
+                <Loader2
+                  className="size-3.5 animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+                Saving choice…
+              </div>
+            ) : null}
           </div>
           <CreativeDecisionActions
+            acceptDisabled={activeHookPreviewStatus !== null && activeHookPreviewStatus !== "ready"}
             disabled={Boolean(exitDirection || pendingDecisionItemId)}
             onAccept={() => requestCreativeDecision("accepted")}
             onReject={() => requestCreativeDecision("rejected")}
@@ -2089,6 +2150,10 @@ type TrendingDeckCardProps = {
   itemCount: number;
   itemIndex: number;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
+  onHookPreviewStatusChange: (
+    creativeId: string,
+    status: HookPreviewStatus,
+  ) => void;
   onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void;
   onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
   onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
@@ -2101,6 +2166,7 @@ function TrendingDeckCard({
   edit,
   itemCount,
   itemIndex,
+  onHookPreviewStatusChange,
   ...props
 }: TrendingDeckCardProps) {
   switch (candidate.format) {
@@ -2125,6 +2191,7 @@ function TrendingDeckCard({
           itemCount={itemCount}
           itemIndex={itemIndex}
           edit={edit}
+          onPreviewStatusChange={onHookPreviewStatusChange}
           onPointerCancel={props.onPointerCancel}
           onPointerDown={props.onPointerDown}
           onPointerMove={props.onPointerMove}
@@ -2167,6 +2234,7 @@ function TrendingHookDeckCard({
   onPointerMove,
   onPointerUp,
   onExitTransitionEnd,
+  onPreviewStatusChange,
 }: {
   candidate: CompleteHookVideo;
   depth: DeckDepth;
@@ -2181,12 +2249,18 @@ function TrendingHookDeckCard({
   onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
   onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
   onExitTransitionEnd: (event: ReactTransitionEvent<HTMLElement>) => void;
+  onPreviewStatusChange: (
+    creativeId: string,
+    status: HookPreviewStatus,
+  ) => void;
 }) {
   const isActive = depth === 0;
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewAudio, setPreviewAudio] = useState<HookPreviewAudio | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const creativeId = candidate.item.creativeId;
   const creative = candidate.item.creative;
   const editedContent =
     edit?.content.format === "hook_video" ? edit.content : null;
@@ -2216,15 +2290,15 @@ function TrendingHookDeckCard({
     const controller = new AbortController();
 
     async function loadPreview() {
-      if (editedSource) {
-        setPreviewUrl(editedSource.resolvedAssetUrl);
-        setPreviewError(null);
-        setPreviewLoading(false);
-        return;
-      }
-
+      setPreviewAudio(null);
       setPreviewLoading(true);
       setPreviewError(null);
+      onPreviewStatusChange(creativeId, "loading");
+
+      if (editedSource) {
+        setPreviewUrl(editedSource.resolvedAssetUrl);
+        return;
+      }
 
       try {
         const token = await getCurrentUserIdToken();
@@ -2247,7 +2321,11 @@ function TrendingHookDeckCard({
           signal: controller.signal,
         });
         const data = (await response.json().catch(() => null)) as
-          | { ok: true; previewUrl: string }
+          | {
+              hookAudio?: HookPreviewAudio | null;
+              ok: true;
+              previewUrl: string;
+            }
           | { error?: string; ok?: false }
           | null;
 
@@ -2260,18 +2338,18 @@ function TrendingHookDeckCard({
         }
 
         if (!controller.signal.aborted) {
+          setPreviewAudio(data.hookAudio ?? null);
           setPreviewUrl(`${data.previewUrl}?session=${Date.now()}`);
         }
       } catch (error) {
         if (!controller.signal.aborted) {
           setPreviewUrl(null);
+          setPreviewAudio(null);
+          setPreviewLoading(false);
           setPreviewError(
             getErrorMessage(error, "Could not load this Hook preview."),
           );
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setPreviewLoading(false);
+          onPreviewStatusChange(creativeId, "error");
         }
       }
     }
@@ -2279,7 +2357,14 @@ function TrendingHookDeckCard({
     void loadPreview();
 
     return () => controller.abort();
-  }, [creative, editedSource, isActive, previewRetryKey]);
+  }, [
+    creative,
+    creativeId,
+    editedSource,
+    isActive,
+    onPreviewStatusChange,
+    previewRetryKey,
+  ]);
 
   return (
     <div
@@ -2290,7 +2375,7 @@ function TrendingHookDeckCard({
         aria-label={`${creative.text.value}, Hook idea ${itemIndex + 1} of ${itemCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
-          "w-[min(72vw,230px)] origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
+          "w-[min(76vw,248px)] origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
             : "pointer-events-none",
@@ -2304,6 +2389,7 @@ function TrendingHookDeckCard({
       >
         <HookVideoCard
           dragOffset={0}
+          hookAudio={isActive ? previewAudio : null}
           hookFontSize={editedContent?.fontSize ?? creative.text.fontSize}
           hookLines={editedContent?.lines ?? creative.text.lines}
           hookPosition={editedContent?.position}
@@ -2335,8 +2421,15 @@ function TrendingHookDeckCard({
           }}
           onPreviewError={() => {
             setPreviewUrl(null);
+            setPreviewAudio(null);
             setPreviewLoading(false);
             setPreviewError("Could not load this Hook preview.");
+            onPreviewStatusChange(creativeId, "error");
+          }}
+          onPreviewReady={() => {
+            setPreviewLoading(false);
+            setPreviewError(null);
+            onPreviewStatusChange(creativeId, "ready");
           }}
           onRetryPreview={() => setPreviewRetryKey((current) => current + 1)}
         />
@@ -2423,7 +2516,7 @@ function TrendingWallTextDeckCard({
         aria-label={`${creative.title}, Wall-of-text idea ${itemIndex + 1} of ${itemCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
-          "w-[min(72vw,230px)] origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
+          "w-[min(76vw,248px)] origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
             : "pointer-events-none",

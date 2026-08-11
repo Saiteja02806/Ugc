@@ -26,6 +26,8 @@ test("silent Hook importer is GCP-only and dry-run by default", () => {
 });
 
 test("silent Hook importer validates the reviewed source bytes and media", () => {
+  assert.match(importer, /import ffprobeStatic from "ffprobe-static"/u);
+  assert.match(importer, /execFileSync\(\s*ffprobeStatic\.path/u);
   assert.match(importer, /getFileSha256\(filePath\)/u);
   assert.match(importer, /actualHash !== asset\.sha256/u);
   assert.match(importer, /metadata\.audioStreamCount !== 0/u);

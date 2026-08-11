@@ -38,6 +38,7 @@ const {
 } = await jiti.import("../lib/carousel/runtime-visual-bucket-matcher.ts");
 
 const profileId = args.profile || args.profileId || "marketing-saas";
+const scenario = args.scenario || "default";
 const profile = getCarouselBusinessVisualProfile(profileId);
 
 if (!profile) {
@@ -49,8 +50,8 @@ const assets = await listReadyCategoryImageAssets({
   categorySlug,
   profileId: profile.id,
 });
-const slides = getAuditSlides(profile.id);
-const seed = `${profile.id}:broad-matcher:live-audit-v1`;
+const slides = getAuditSlides(profile.id, scenario);
+const seed = `${profile.id}:${scenario}:broad-matcher:live-audit-v1`;
 const legacySelections = selectRuntimeVisualBucketAssets({
   assets,
   candidateIndex: 0,
@@ -103,6 +104,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   legacyMatcherVersion: CAROUSEL_RUNTIME_MATCHER_VERSION,
   profileId: profile.id,
+  scenario,
   requiredBuckets: getBroadBucketRequirementsForProfile(profile.id),
   selections: broadSelections.map((selection) => ({
     assetId: selection.asset.id,
@@ -147,7 +149,10 @@ const outputDirectory = path.resolve(
   ".tmp",
   "carousel-broad-matcher",
 );
-const outputPath = path.join(outputDirectory, `${profile.id}-dry-run.json`);
+const outputPath = path.join(
+  outputDirectory,
+  `${profile.id}${scenario === "default" ? "" : `-${scenario}`}-dry-run.json`,
+);
 
 mkdirSync(outputDirectory, { recursive: true });
 writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
@@ -275,7 +280,15 @@ function parseArgs(values) {
   return parsed;
 }
 
-function getAuditSlides(selectedProfileId) {
+function getAuditSlides(selectedProfileId, selectedScenario) {
+  if (selectedScenario === "social-platforms") {
+    return getSocialPlatformAuditSlides();
+  }
+
+  if (selectedScenario === "physical-productivity") {
+    return getPhysicalProductivityAuditSlides();
+  }
+
   switch (selectedProfileId) {
     case "fitness-health":
       return getFitnessHealthAuditSlides();
@@ -284,6 +297,28 @@ function getAuditSlides(selectedProfileId) {
     default:
       return getMarketingSaasAuditSlides();
   }
+}
+
+function getSocialPlatformAuditSlides() {
+  return [
+    mockSlide(1, "hook", "Your YouTube content should drive measurable growth", "Review video marketing performance on the YouTube screen."),
+    mockSlide(2, "problem", "TikTok ideas disappear without a repeatable system", "Keep the next short-form video visible on your phone."),
+    mockSlide(3, "problem", "Instagram engagement drops when posting gets inconsistent", "Plan social media content around the Instagram screen."),
+    mockSlide(4, "solution", "Build one workflow for every social platform", "Coordinate YouTube, TikTok, and Instagram content."),
+    mockSlide(5, "benefit", "See which video content earns attention", "Use social media screens to review content performance."),
+    mockSlide(6, "cta", "Start your next video marketing campaign", "Create a clear social media publishing routine."),
+  ];
+}
+
+function getPhysicalProductivityAuditSlides() {
+  return [
+    mockSlide(1, "hook", "A focused desk makes the next task easier", "Keep the laptop, notebook, and plan in one workspace."),
+    mockSlide(2, "problem", "Notes get lost when project planning stays scattered", "Bring the notebook, calendar, and deadlines together."),
+    mockSlide(3, "problem", "Coding work slows down in a cluttered workspace", "Use one laptop and notebook for the next development task."),
+    mockSlide(4, "solution", "Make the project plan visible on the whiteboard", "Keep every task and deadline easy to review."),
+    mockSlide(5, "benefit", "A clean creator desk keeps the workflow moving", "Use the monitor and workspace to focus on the next action."),
+    mockSlide(6, "cta", "Build a calmer productivity workspace", "Start with one clear desk, plan, and task list."),
+  ];
 }
 
 function getMarketingSaasAuditSlides() {

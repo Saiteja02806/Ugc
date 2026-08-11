@@ -101,6 +101,10 @@ export async function POST(request: Request) {
           demoMediaTitle: composition.demo.title,
           hookMediaId: ownedHook.id,
           hookMediaTitle: composition.source.title,
+          hookCatalogVideoId:
+            composition.source.sourceKind === "catalog"
+              ? composition.source.id
+              : null,
           hookText: composition.draft.hookText,
           hookTextFontSize: composition.hookRenderSpec.fontSize,
           hookTextLines: composition.hookRenderSpec.lines,

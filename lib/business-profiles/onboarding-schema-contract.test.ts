@@ -73,9 +73,27 @@ test("incomplete goal choices are saved without completing onboarding", () => {
     storage.indexOf("export async function saveBusinessProfileOnboardingGoalDraft"),
     storage.indexOf("export async function saveBusinessProfileOnboardingIdentity"),
   );
-  assert.match(goalDraftFunction, /\.eq\("onboarding_status", "incomplete"\)/);
+  assert.match(goalDraftFunction, /\.or\(MUTABLE_ONBOARDING_STATUS_FILTER\)/);
+  assert.match(
+    storage,
+    /onboarding_status\.eq\.completed,onboarding_version\.lt\.\$\{BUSINESS_PROFILE_ONBOARDING_VERSION\}/,
+  );
   assert.match(goalDraftFunction, /\.eq\("profile_version", params\.profile\.profileVersion\)/);
   assert.doesNotMatch(goalDraftFunction, /onboarding_status:|profile_version:/);
+});
+
+test("a concurrent goal autosave retries once with the latest onboarding record", () => {
+  assert.match(
+    storage,
+    /return saveBusinessProfileOnboardingGoalDraftAttempt\(params, true\)/,
+  );
+  assert.match(
+    storage,
+    /return completeBusinessProfileOnboardingAttempt\(params, true\)/,
+  );
+  assert.match(storage, /getLatestOnboardingProfileAfterConflict/);
+  assert.match(storage, /error\.code === "PGRST116"/);
+  assert.match(storage, /retryOnConflict[\s\S]*false/);
 });
 
 test("logo uploads are tenant-owned and verified before persistence", () => {

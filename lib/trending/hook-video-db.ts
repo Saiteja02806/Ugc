@@ -700,7 +700,7 @@ function parseOverlayFontSize(value: Json | null) {
   return typeof fontSize === "number" &&
     Number.isFinite(fontSize) &&
     fontSize >= 34 &&
-    fontSize <= 52
+    fontSize <= 60
     ? fontSize
     : null;
 }

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import ffmpegPath from "ffmpeg-static";
+import ffprobeStatic from "ffprobe-static";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -526,7 +527,7 @@ function probeVideo(filePath) {
 
   try {
     output = execFileSync(
-      "ffprobe",
+      ffprobeStatic.path,
       [
         "-v",
         "error",

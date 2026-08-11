@@ -802,6 +802,7 @@ export class SupabaseJobStore {
     autoFinalize: boolean;
     compositionFingerprint: string;
     demoVideoId: string;
+    hookAudioAssetId: string | null;
     hookVideoId: string;
     key: string;
     mediaAssetId: string;
@@ -825,6 +826,7 @@ export class SupabaseJobStore {
       metadata: {
         compositionFingerprint: params.compositionFingerprint,
         demoVideoId: params.demoVideoId,
+        hookAudioAssetId: params.hookAudioAssetId,
         hookVideoId: params.hookVideoId,
         renderId: params.renderId,
         scheduleId: params.scheduleId,
@@ -850,6 +852,7 @@ export class SupabaseJobStore {
       metadataPatch: {
         combinedCompositionFingerprint: params.compositionFingerprint,
         combinedDemoMediaId: params.demoVideoId,
+        combinedHookAudioAssetId: params.hookAudioAssetId,
         combinedHookMediaId: params.hookVideoId,
         combinedMediaAssetId: params.mediaAssetId,
         combinedRenderError: null,

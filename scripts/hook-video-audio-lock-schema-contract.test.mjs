@@ -17,6 +17,21 @@ const command = readFileSync(
   new URL("./configure-hook-video-audio-lock.mjs", import.meta.url),
   "utf8",
 );
+const scheduleRoute = readFileSync(
+  new URL("../app/api/schedules/[scheduleId]/render/route.ts", import.meta.url),
+  "utf8",
+);
+const scheduleDraftRoute = readFileSync(
+  new URL(
+    "../app/api/trending/hook-videos/drafts/schedule/route.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const workerRender = readFileSync(
+  new URL("../worker/src/lib/render-engine.ts", import.meta.url),
+  "utf8",
+);
 
 test("stores Locked audio at the individual Hook-video level", () => {
   assert.match(migration, /create table public\.hook_video_audio_locks/u);
@@ -101,4 +116,13 @@ test("provides guarded lookup and dry-run-first configuration", () => {
   assert.match(command, /Dry run complete\. No Hook audio lock was changed\./u);
   assert.match(command, /execute && !args\.yes/u);
   assert.match(command, /assertRemoteAssetAvailable/u);
+});
+
+test("carries per-video Locked audio into the Hook render only", () => {
+  assert.match(scheduleDraftRoute, /hookCatalogVideoId/u);
+  assert.match(scheduleRoute, /getLockedHookAudioForVideo/u);
+  assert.match(scheduleRoute, /hookAudioAssetId: hookAudio\?\.audioAssetId/u);
+  assert.match(workerRender, /downloadAudioToBuffer\(payload\.hookAudio\.audioUrl/u);
+  assert.match(workerRender, /useLockedHookAudio/u);
+  assert.match(workerRender, /segmentLabel === "hook"/u);
 });

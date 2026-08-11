@@ -35,6 +35,7 @@ import {
 } from "@/lib/scheduling/render-asset-resolution";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { resolveTrendingTextColor } from "@/lib/trending/text-color";
+import { getLockedHookAudioForVideo } from "@/lib/trending/hook-audio-db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -233,6 +234,10 @@ export async function POST(
   const hookTextColor = resolveTrendingTextColor(metadata.hookTextColor);
   const hookTrimStart = getNonNegativeNumber(metadata.hookTrimStart) ?? 0;
   const hookTrimEnd = getPositiveNumber(metadata.hookTrimEnd);
+  const hookCatalogVideoId =
+    getString(metadata.hookCatalogVideoId) ??
+    getStringFromValue(getObjectValue(hookAsset.metadata, "avatarAssetId"));
+  let hookAudio = null;
 
   if (hookTrimEnd !== null && hookTrimEnd <= hookTrimStart) {
     return jsonResponse(
@@ -241,6 +246,36 @@ export async function POST(
         message: "Review the opening clip trim before preparing this video.",
       },
       409,
+    );
+  }
+
+  if (hookCatalogVideoId) {
+    try {
+      hookAudio = await getLockedHookAudioForVideo({
+        hookVideoId: hookCatalogVideoId,
+      });
+    } catch (error) {
+      console.error("Could not resolve Locked Hook audio:", error);
+      return jsonResponse(
+        {
+          code: "locked_hook_audio_unavailable",
+          message:
+            "The approved sound for this opening clip is unavailable. Review its Locked audio before rendering.",
+          ok: false,
+        },
+        409,
+      );
+    }
+  }
+
+  if (hookAudio && !isTrustedStorageUrl(hookAudio.audioUrl)) {
+    return jsonResponse(
+      {
+        code: "locked_hook_audio_untrusted",
+        message: "The approved Hook sound must use supported app storage.",
+        ok: false,
+      },
+      400,
     );
   }
 
@@ -256,6 +291,8 @@ export async function POST(
     hookTextLines,
     hookTextPosition,
     hookTextColor,
+    hookAudioAssetId: hookAudio?.audioAssetId ?? null,
+    hookAudioUrl: hookAudio?.audioUrl ?? null,
     hookTrimEnd,
     hookTrimStart,
     hookUpdatedAt: resolvedHookAsset.asset.updated_at,
@@ -302,6 +339,7 @@ export async function POST(
     hookTextLines,
     hookTextPosition,
     hookTextColor,
+    hookAudio,
     hookTrimEnd,
     hookTrimStart,
     hookVideoId: resolvedHookAsset.asset.id,
@@ -560,7 +598,7 @@ function getHookTextFontSize(value: unknown) {
   return typeof value === "number" &&
     Number.isInteger(value) &&
     value >= 34 &&
-    value <= 52 &&
+    value <= 60 &&
     value % 2 === 0
     ? value
     : null;
@@ -570,7 +608,7 @@ function getHookTextLines(value: unknown) {
   if (
     !Array.isArray(value) ||
     value.length < 1 ||
-    value.length > 2 ||
+    value.length > 3 ||
     value.some(
       (line) =>
         typeof line !== "string" ||
@@ -592,6 +630,8 @@ function createCompositionFingerprint(value: {
   hookTextLines: string[] | null;
   hookTextPosition: { x: number; y: number } | null;
   hookTextColor: string;
+  hookAudioAssetId: string | null;
+  hookAudioUrl: string | null;
   hookTrimEnd: number | null;
   hookTrimStart: number;
   hookUpdatedAt: string;

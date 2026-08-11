@@ -23,6 +23,8 @@ import {
 
 const BUSINESS_PROFILES_TABLE = "business_profiles";
 export const DEFAULT_BUSINESS_PROFILE_PROJECT_ID = "default-project";
+const MUTABLE_ONBOARDING_STATUS_FILTER =
+  `onboarding_status.eq.incomplete,and(onboarding_status.eq.completed,onboarding_version.lt.${BUSINESS_PROFILE_ONBOARDING_VERSION})`;
 
 type BusinessProfileStatus = "failed" | "preparing";
 type BusinessProfileOnboardingStatus = "completed" | "incomplete";
@@ -230,6 +232,16 @@ export async function completeBusinessProfileOnboarding(params: {
   primaryGoals: PrimaryGoals;
   profile: BusinessProfileRecord;
 }) {
+  return completeBusinessProfileOnboardingAttempt(params, true);
+}
+
+async function completeBusinessProfileOnboardingAttempt(
+  params: {
+    primaryGoals: PrimaryGoals;
+    profile: BusinessProfileRecord;
+  },
+  retryOnConflict: boolean,
+) {
   const primaryGoals = PrimaryGoalsSchema.parse(params.primaryGoals);
   const analysis = applyPrimaryGoals(
     params.profile.context,
@@ -260,12 +272,27 @@ export async function completeBusinessProfileOnboarding(params: {
     })
     .eq("id", params.profile.id)
     .eq("user_id", params.profile.userId)
-    .eq("onboarding_status", "incomplete")
+    .or(MUTABLE_ONBOARDING_STATUS_FILTER)
     .eq("profile_version", params.profile.profileVersion)
     .select("*")
     .single();
 
   if (error) {
+    const latestProfile = retryOnConflict
+      ? await getLatestOnboardingProfileAfterConflict(params.profile, error)
+      : null;
+
+    if (latestProfile) {
+      if (isBusinessProfileOnboardingComplete(latestProfile)) {
+        return latestProfile;
+      }
+
+      return completeBusinessProfileOnboardingAttempt(
+        { ...params, profile: latestProfile },
+        false,
+      );
+    }
+
     throw new Error(`Could not complete business profile onboarding: ${error.message}`);
   }
 
@@ -276,6 +303,16 @@ export async function saveBusinessProfileOnboardingGoalDraft(params: {
   primaryGoals: PrimaryGoalsDraft;
   profile: BusinessProfileRecord;
 }) {
+  return saveBusinessProfileOnboardingGoalDraftAttempt(params, true);
+}
+
+async function saveBusinessProfileOnboardingGoalDraftAttempt(
+  params: {
+    primaryGoals: PrimaryGoalsDraft;
+    profile: BusinessProfileRecord;
+  },
+  retryOnConflict: boolean,
+) {
   const primaryGoals = PrimaryGoalsDraftSchema.parse(params.primaryGoals);
   const updatedAt = new Date().toISOString();
   const { data, error } = await getClient()
@@ -287,16 +324,50 @@ export async function saveBusinessProfileOnboardingGoalDraft(params: {
     })
     .eq("id", params.profile.id)
     .eq("user_id", params.profile.userId)
-    .eq("onboarding_status", "incomplete")
+    .or(MUTABLE_ONBOARDING_STATUS_FILTER)
     .eq("profile_version", params.profile.profileVersion)
     .select("*")
     .single();
 
   if (error) {
+    const latestProfile = retryOnConflict
+      ? await getLatestOnboardingProfileAfterConflict(params.profile, error)
+      : null;
+
+    if (latestProfile) {
+      if (isBusinessProfileOnboardingComplete(latestProfile)) {
+        return latestProfile;
+      }
+
+      return saveBusinessProfileOnboardingGoalDraftAttempt(
+        { ...params, profile: latestProfile },
+        false,
+      );
+    }
+
     throw new Error(`Could not save onboarding goals: ${error.message}`);
   }
 
   return mapProfile(data);
+}
+
+async function getLatestOnboardingProfileAfterConflict(
+  profile: BusinessProfileRecord,
+  error: { code?: string; message: string },
+) {
+  if (!isOnboardingWriteConflict(error)) {
+    return null;
+  }
+
+  const latestProfile = await getBusinessProfileForUser(profile.userId);
+  return latestProfile?.id === profile.id ? latestProfile : null;
+}
+
+function isOnboardingWriteConflict(error: { code?: string; message: string }) {
+  return (
+    error.code === "PGRST116" ||
+    error.message.includes("Cannot coerce the result to a single JSON object")
+  );
 }
 
 export async function saveBusinessProfileOnboardingIdentity(params: {

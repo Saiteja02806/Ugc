@@ -135,7 +135,7 @@ test("Hook edits recalculate their final lines, font, and safe position", () => 
     lines: edited.lines,
   });
 
-  assert.equal(edited.lines.length, 2);
+  assert.equal(edited.lines.length, 3);
   assert.equal(edited.fontSize, layout.fontSize);
   assert.equal(edited.textColor, "#ffffff");
   assert.ok(edited.position.x >= layout.positionBounds.minX);
@@ -151,6 +151,20 @@ test("new Hook text starts in the upper safe band instead of over the face", () 
   assert.equal(position.x, 0.5);
   assert.equal(position.y, layout.positionBounds.minY);
   assert.ok(position.y < 0.25);
+});
+
+test("Hook edits preserve three intentional lines and a trailing emoji", () => {
+  const layout = createHookTextLayout(
+    "Meal logging\nshouldn't interrupt\nyour whole day 😩",
+  );
+
+  assert.deepEqual(layout.lines, [
+    "Meal logging",
+    "shouldn't interrupt",
+    "your whole day 😩",
+  ]);
+  assert.equal(layout.fontSize, 60);
+  assert.equal(layout.wordCount, 8);
 });
 
 test("Hook save validation rejects word and character limit violations", () => {

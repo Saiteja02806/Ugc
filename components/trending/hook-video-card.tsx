@@ -6,13 +6,18 @@ import { useRef, type CSSProperties } from "react";
 import type { HookInfluencerVideoSummary } from "@/lib/trending/hook-video-types";
 import type { TrendingTextColor } from "@/lib/trending/text-color";
 import { cn } from "@/lib/utils";
+import {
+  HookAudioPreview,
+  type HookPreviewAudio,
+} from "@/components/trending/hook-audio-preview";
 import { HookTextOverlay } from "@/components/trending/hook-text-overlay";
 
 export function HookVideoCard({
   className,
   dragOffset,
   exitingDirection = null,
-  hookFontSize = 52,
+  hookAudio = null,
+  hookFontSize = 60,
   hookLines = null,
   hookPosition = null,
   hookTextColor,
@@ -25,11 +30,13 @@ export function HookVideoCard({
   trimStart = 0,
   video,
   onPreviewError,
+  onPreviewReady,
   onRetryPreview,
 }: {
   className?: string;
   dragOffset: number;
   exitingDirection?: "left" | "right" | null;
+  hookAudio?: HookPreviewAudio | null;
   hookFontSize?: number;
   hookLines?: readonly string[] | null;
   hookPosition?: { x: number; y: number } | null;
@@ -43,6 +50,7 @@ export function HookVideoCard({
   trimStart?: number;
   video: HookInfluencerVideoSummary;
   onPreviewError: () => void;
+  onPreviewReady?: () => void;
   onRetryPreview: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -99,7 +107,10 @@ export function HookVideoCard({
           className="absolute inset-0 size-full bg-black object-cover"
           onEnded={() => restartPreview(videoRef.current, trimStart)}
           onError={onPreviewError}
-          onLoadedMetadata={() => restartPreview(videoRef.current, trimStart)}
+          onLoadedMetadata={() => {
+            restartPreview(videoRef.current, trimStart);
+            onPreviewReady?.();
+          }}
           onTimeUpdate={() => {
             const element = videoRef.current;
 
@@ -111,6 +122,14 @@ export function HookVideoCard({
               restartPreview(element, trimStart);
             }
           }}
+        />
+      ) : null}
+
+      {hookAudio && previewUrl && !previewLoading && !previewError ? (
+        <HookAudioPreview
+          audio={hookAudio}
+          trimStart={trimStart}
+          videoRef={videoRef}
         />
       ) : null}
 

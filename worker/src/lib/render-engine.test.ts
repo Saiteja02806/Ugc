@@ -35,6 +35,12 @@ test("applies Hook trim and text only to the opening segment", () => {
     demoVideoUrl: "https://cdn.example.com/demo.mp4",
     hookText: "The old way takes twice the effort.",
     hookTextColor: "#ffffff",
+    hookAudio: {
+      audioAssetId: "hook_audio_029",
+      audioUrl: "https://cdn.example.com/EWW.mp3",
+      durationSeconds: 14.08,
+      selectionSource: "video_locked" as const,
+    },
     hookTrimEnd: 4.5,
     hookTrimStart: 1.25,
     hookVideoId: "hook-1",
@@ -48,6 +54,7 @@ test("applies Hook trim and text only to the opening segment", () => {
   };
   const hookArgs = buildScheduleCombinationSegmentArgs({
     hasAudio: false,
+    hookAudioPath: "EWW.mp3",
     inputPath: "hook.mp4",
     outputPath: "hook-normalized.mp4",
     payload,
@@ -73,6 +80,7 @@ test("applies Hook trim and text only to the opening segment", () => {
   assert.ok(hookArgs.includes("hook-overlay.png"));
   assert.ok(hookArgs.includes("-filter_complex"));
   assert.ok(hookArgs.includes("3.250"));
+  assert.ok(hookArgs.includes("EWW.mp3"));
   assert.ok(hookArgs.includes("2:a:0"));
   assert.equal(demoArgs.includes("-ss"), false);
   assert.equal(demoArgs.includes("-t"), false);
@@ -95,7 +103,10 @@ test("rasterizes the shared overlay plan without distorting the font", async () 
   });
 
   assert.match(svg, /viewBox="0 0 1080 1920"/);
-  assert.match(svg, /font-family="Geist, Noto Sans CJK SC/);
+  assert.match(
+    svg,
+    /font-family="Geist, Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, Noto Sans CJK SC/,
+  );
   assert.match(svg, /fill="#f472b6"/);
   assert.doesNotMatch(svg, /@font-face|data:font\/ttf;base64,/);
   assert.doesNotMatch(svg, /textLength=|lengthAdjust=/);
@@ -149,6 +160,33 @@ test("rasterizes the shared overlay plan without distorting the font", async () 
   assert.ok(alpha);
   assert.equal(alpha.min, 0);
   assert.equal(alpha.max, 255);
+});
+
+test("rasterizes a reference-style three-line Hook with an emoji", async () => {
+  const layout = buildEditOverlayTextLayout(
+    "Meal logging\ninterrupts the day\nagain 😩",
+    "hook",
+    "9:16",
+  );
+  const svg = buildPreparedTextOverlaySvg({
+    imagePath: "unused-hook-emoji-test.png",
+    layout,
+    position: "middle",
+    style: "hook",
+  });
+
+  assert.equal(layout.fontSize, 60);
+  assert.equal(layout.lines.length, 3);
+  assert.match(svg, /Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji/);
+  assert.match(svg, /stroke-width="5"/);
+  assert.match(svg, /again 😩/);
+
+  const png = await sharp(Buffer.from(svg)).png().toBuffer();
+  const metadata = await sharp(png).metadata();
+
+  assert.equal(metadata.width, 1080);
+  assert.equal(metadata.height, 1920);
+  assert.ok(png.length > 1_000);
 });
 
 test("renders six-second Wall copy with Inter Bold and no background box", () => {

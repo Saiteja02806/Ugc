@@ -25,6 +25,8 @@
     "hook-audio:catalog:check": "node scripts/prepare-hook-audio-catalog.mjs --check",
     "hook-audio:test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test scripts/hook-audio-catalog-contract.test.mjs scripts/hook-audio-import-contract.test.mjs scripts/hook-audio-schema-contract.test.mjs scripts/hook-audio-format-schema-contract.test.mjs scripts/hook-audio-generation-intent-contract.test.mjs scripts/hook-video-audio-lock-schema-contract.test.mjs lib/trending/hook-video-audio-lock-logic.test.ts",
     "hook-audio:lock": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/configure-hook-video-audio-lock.mjs",
+    "hook:locked:v6-canary": "npm run worker:build && node scripts/test-locked-hook-v6-canary.mjs",
+    "hook:locked:render-canary": "npm run worker:build && node scripts/render-locked-hook-audio-canary.mjs",
     "hook-audio:import": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/import-hook-audio-assets.mjs",
     "hook:silent:manifest:prepare": "node scripts/prepare-silent-hook-video-manifest.mjs",
     "hook:silent:manifest:test": "node --test scripts/hook-silent-video-manifest-contract.test.mjs",

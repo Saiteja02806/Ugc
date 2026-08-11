@@ -26,6 +26,9 @@ const generatedAt = new Date().toISOString();
 const outputDir = path.join(outputRoot, generatedAt.replace(/[:.]/g, "-"));
 const manifest = JSON.parse(readFileSync(tagManifestPath, "utf8"));
 const assets = Array.isArray(manifest.assets) ? manifest.assets : [];
+const lowResolutionRenditionsReviewed = Boolean(
+  args["low-resolution-renditions-reviewed"],
+);
 
 mkdirSync(outputDir, { recursive: true });
 
@@ -34,7 +37,9 @@ const errors = [];
 
 for (const asset of assets) {
   try {
-    const prepared = await prepareAsset(asset, outputDir);
+    const prepared = await prepareAsset(asset, outputDir, {
+      lowResolutionRenditionsReviewed,
+    });
     preparedAssets.push(prepared);
   } catch (error) {
     errors.push({
@@ -52,6 +57,8 @@ const importManifest = {
   },
   policy: {
     baseRendition: `${BASE_WIDTH}x${BASE_HEIGHT} webp, fit cover, center crop`,
+    lowResolutionRenditions:
+      "Low-resolution sources retain their source quality score and original dimensions. They are only marked rendition-reviewed when --low-resolution-renditions-reviewed is supplied after visual review.",
     thumbnailRendition: `${THUMB_WIDTH}x${THUMB_HEIGHT} webp, fit cover, center crop`,
     uploadCheckpoint:
       "This package is local-only. The import uploader should upload original, base, and thumbnail files through the configured object-storage provider, then insert category_image_assets rows.",
@@ -86,7 +93,7 @@ if (errors.length > 0) {
   process.exitCode = 1;
 }
 
-async function prepareAsset(asset, outputDir) {
+async function prepareAsset(asset, outputDir, { lowResolutionRenditionsReviewed }) {
   const assetId = asset.assetKey.split("/").at(-1);
   const assetDir = path.join(outputDir, "assets", asset.categorySlug, assetId);
   const originalFile = resolveSourceFile(asset.sourceFiles.canonical);
@@ -96,6 +103,9 @@ async function prepareAsset(asset, outputDir) {
   const originalOutputPath = path.join(assetDir, `original${originalExtension}`);
   const baseOutputPath = path.join(assetDir, "base-1080x1350.webp");
   const thumbOutputPath = path.join(assetDir, "thumb-320x400.webp");
+  const rendition = buildRenditionMetadata(asset, {
+    lowResolutionRenditionsReviewed,
+  });
 
   mkdirSync(assetDir, { recursive: true });
   copyFileSync(originalFile, originalOutputPath);
@@ -132,6 +142,7 @@ async function prepareAsset(asset, outputDir) {
       asset,
       baseObjectKey: `${storagePrefix}/base-1080x1350.webp`,
       originalObjectKey: `${storagePrefix}/original${originalExtension}`,
+      rendition,
       thumbObjectKey: `${storagePrefix}/thumb-320x400.webp`,
     }),
     files: {
@@ -141,6 +152,7 @@ async function prepareAsset(asset, outputDir) {
     },
     generatedCrop,
     importAssetId: assetId,
+    rendition,
     storage: {
       baseKey: `${storagePrefix}/base-1080x1350.webp`,
       originalKey: `${storagePrefix}/original${originalExtension}`,
@@ -153,6 +165,7 @@ function buildDbRow({
   asset,
   baseObjectKey,
   originalObjectKey,
+  rendition,
   thumbObjectKey,
 }) {
   return {
@@ -192,8 +205,10 @@ function buildDbRow({
       sourcePreferredRenderRelativePath:
         asset.sourceFiles.preferredRender.relativePath,
       subcategories: asset.subcategories,
+      taggingVersion: asset.taggingVersion,
       textSafeAreas: asset.textSafeAreas,
       review: asset.review,
+      rendition,
       warnings: asset.warnings,
     },
     source_original_s3_key: originalObjectKey,
@@ -218,6 +233,35 @@ function buildDbRow({
     visual_style: asset.visualStyle,
     visual_keywords: asset.contentTags,
     width: BASE_WIDTH,
+  };
+}
+
+function buildRenditionMetadata(asset, { lowResolutionRenditionsReviewed }) {
+  const source = asset.sourceFiles.preferredRender;
+  const scaleFactor = Math.max(
+    BASE_WIDTH / source.width,
+    BASE_HEIGHT / source.height,
+  );
+  const lowResolutionSource = asset.qualityScore <= 0.64;
+
+  return {
+    cropPosition: "center",
+    fit: "cover",
+    format: "webp",
+    generatedFrom: "preferred_render",
+    lowResolutionSource,
+    outputHeight: BASE_HEIGHT,
+    outputWidth: BASE_WIDTH,
+    qualityReviewStatus: lowResolutionSource
+      ? lowResolutionRenditionsReviewed
+        ? "approved_with_low_resolution_source"
+        : "pending_rendition_review"
+      : "not_required",
+    sourceHeight: source.height,
+    sourceQualityScore: asset.qualityScore,
+    sourceWidth: source.width,
+    upscaleApplied: scaleFactor > 1.005,
+    upscaleFactor: Number(scaleFactor.toFixed(3)),
   };
 }
 

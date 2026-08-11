@@ -8,6 +8,7 @@ import {
   createHookTextLayout,
 } from "./hook-text-layout.ts";
 import type { TrendingTextColor } from "./text-color.ts";
+import { getWallTextLinePolicy } from "./wall-text-text-logic.ts";
 
 export const TRENDING_CREATIVE_EDIT_VERSION = "trending-creative-edit-v1" as const;
 
@@ -146,7 +147,7 @@ export function createHookEditLines(value: string) {
       .split("\n")
       .map((line) => line.replace(/\s+/gu, " ").trim())
       .filter(Boolean)
-      .slice(0, 2);
+      .slice(0, 3);
   }
 }
 
@@ -200,15 +201,16 @@ export function createWallTextEditContent(
             Math.min(3, Math.max(2, current.segments.length)),
           );
   const segmentCount = Math.min(3, Math.max(2, sourceGroups.length));
+  const linePolicy = getWallTextLinePolicy(current.pattern);
   let groupedText = distributeTextGroups(sourceGroups, segmentCount);
-  let lineCounts = findWallTextLineCounts(groupedText);
+  let lineCounts = findWallTextLineCounts(groupedText, linePolicy);
 
   if (!lineCounts) {
     groupedText = splitWordsIntoGroups(
       normalized.replace(/\s+/gu, " "),
       segmentCount,
     );
-    lineCounts = findWallTextLineCounts(groupedText);
+    lineCounts = findWallTextLineCounts(groupedText, linePolicy);
   }
 
   const segments = buildWallTextSegments(groupedText, lineCounts);
@@ -253,7 +255,10 @@ const WALL_TEXT_UNSAFE_LINE_END_WORDS = new Set([
   "yet",
 ]);
 
-function findWallTextLineCounts(groups: string[]) {
+function findWallTextLineCounts(
+  groups: string[],
+  linePolicy: ReturnType<typeof getWallTextLinePolicy>,
+) {
   const wordCounts = groups.map(
     (group) => group.split(/\s+/u).filter(Boolean).length,
   );
@@ -264,7 +269,7 @@ function findWallTextLineCounts(groups: string[]) {
     if (index === wordCounts.length) {
       const total = counts.reduce((sum, count) => sum + count, 0);
 
-      if (total < 5 || total > 7) {
+      if (total < linePolicy.minimum || total > linePolicy.maximum) {
         return;
       }
 
@@ -275,7 +280,7 @@ function findWallTextLineCounts(groups: string[]) {
         densities.reduce((sum, density) => sum + density, 0) /
         densities.length;
       const score =
-        Math.abs(total - 6) * 100 +
+        Math.abs(total - linePolicy.ideal) * 100 +
         densities.reduce(
           (sum, density) => sum + Math.abs(density - average),
           0,

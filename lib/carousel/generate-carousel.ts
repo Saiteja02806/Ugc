@@ -1,7 +1,9 @@
+import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
 import {
   getCarouselGeneration,
   getWebsiteAnalysisForCarousel,
   incrementCategoryImageAssetUsage,
+  listCarouselBatchContentHistory,
   listReadyCategoryImageAssets,
   updateCarouselGeneration,
   upsertCarouselSlides,
@@ -24,7 +26,11 @@ import {
   DEFAULT_CAROUSEL_RENDER_STYLE,
   type CarouselRenderStyle,
 } from "@/lib/carousel/render-style";
-import { buildCarouselContentPlan } from "@/lib/carousel/llm-slide-plan";
+import {
+  buildCarouselContentPlan,
+  mergeCarouselRecentContentHistory,
+  type CarouselRecentContentSummaryInput,
+} from "@/lib/carousel/llm-slide-plan";
 import type { PlannedCarouselSlide } from "@/lib/carousel/slide-plan";
 import { uploadRenderedCarouselSlide } from "@/lib/carousel/storage";
 
@@ -166,6 +172,88 @@ function getLegacySlideHeadline(slide: PlannedCarouselSlide) {
   );
 }
 
+function parseContentHistorySnapshot(
+  value: Json,
+): CarouselRecentContentSummaryInput[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.slice(0, 10).flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return [];
+    }
+
+    const record = item as Record<string, Json | undefined>;
+    return [
+      {
+        angle: getOptionalString(record.angle),
+        contentFormatId: getOptionalString(record.contentFormatId),
+        hook: getOptionalString(record.hook),
+        hookFamilyId: getOptionalString(record.hookFamilyId),
+        topic: getOptionalString(record.topic),
+        topicId: getOptionalString(record.topicId),
+      },
+    ];
+  });
+}
+
+async function getBusinessAnalysisForGeneration(params: {
+  generation: NonNullable<Awaited<ReturnType<typeof getCarouselGeneration>>>;
+  websiteAnalysis: NonNullable<
+    Awaited<ReturnType<typeof getWebsiteAnalysisForCarousel>>
+  >;
+}) {
+  if (!params.generation.businessProfileId) {
+    return params.websiteAnalysis.analysis;
+  }
+
+  if (params.generation.businessProfileVersion === null) {
+    throw new Error(
+      "Carousel generation is missing its business profile version.",
+    );
+  }
+
+  const profile = await getBusinessProfileForUser(params.generation.userId);
+
+  if (
+    !profile ||
+    profile.id !== params.generation.businessProfileId ||
+    profile.profileVersion !== params.generation.businessProfileVersion
+  ) {
+    throw new Error(
+      "Carousel generation belongs to a stale or unavailable business profile version.",
+    );
+  }
+
+  return profile.context;
+}
+
+async function assertBusinessProfileVersionIsCurrent(
+  generation: NonNullable<Awaited<ReturnType<typeof getCarouselGeneration>>>,
+) {
+  if (!generation.businessProfileId) {
+    return;
+  }
+
+  const profile = await getBusinessProfileForUser(generation.userId);
+
+  if (
+    generation.businessProfileVersion === null ||
+    !profile ||
+    profile.id !== generation.businessProfileId ||
+    profile.profileVersion !== generation.businessProfileVersion
+  ) {
+    throw new Error(
+      "Business profile changed before Carousel generation completed.",
+    );
+  }
+}
+
+function getOptionalString(value: Json | undefined) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 function selectCandidateAssets(params: {
   assets: ReadyAsset[];
   candidateIndex: number;
@@ -246,20 +334,25 @@ export async function generateCarousel({
       throw new Error("Website analysis was not found for this carousel.");
     }
 
+    const businessAnalysis = await getBusinessAnalysisForGeneration({
+      generation,
+      websiteAnalysis,
+    });
+
     if (!generation.categorySlug) {
       throw new Error("Carousel generation is missing a category slug.");
     }
 
     const businessVisualProfile = resolveCarouselBusinessVisualProfile({
-      category: websiteAnalysis.analysis.category ?? websiteAnalysis.category,
+      category: businessAnalysis.category ?? websiteAnalysis.category,
       pexelsImageQueries:
-        websiteAnalysis.analysis.pexelsImageQueries ??
+        businessAnalysis.pexelsImageQueries ??
         websiteAnalysis.pexelsImageQueries,
       productSummary:
-        websiteAnalysis.analysis.productSummary ?? websiteAnalysis.productSummary,
-      valueProps: websiteAnalysis.analysis.valueProps,
+        businessAnalysis.productSummary ?? websiteAnalysis.productSummary,
+      valueProps: businessAnalysis.valueProps,
       visualKeywords:
-        websiteAnalysis.analysis.visualKeywords ?? websiteAnalysis.visualKeywords,
+        businessAnalysis.visualKeywords ?? websiteAnalysis.visualKeywords,
     });
     const assets = await listReadyCategoryImageAssets({
       categorySlug: generation.categorySlug,
@@ -272,10 +365,30 @@ export async function generateCarousel({
       );
     }
 
+    const batchHistory = generation.businessProfileId
+      ? await listCarouselBatchContentHistory({
+          businessProfileId: generation.businessProfileId,
+          excludeCarouselId: generation.id,
+          generationBatchId: generation.generationBatchId,
+          limit: 10,
+        })
+      : [];
+    const recentHistory = mergeCarouselRecentContentHistory(
+      batchHistory,
+      parseContentHistorySnapshot(generation.contentHistorySnapshot),
+    );
+
+    await updateCarouselGeneration(carouselId, {
+      content_history_snapshot: recentHistory as unknown as Json,
+    });
+
     const contentPlan = await buildCarouselContentPlan({
-      analysis: websiteAnalysis.analysis,
+      analysis: businessAnalysis,
       goal: generation.goal,
       candidateIndex,
+      contentFormatId: generation.contentFormatId,
+      hookFamilyId: generation.hookFamilyId,
+      recentHistory,
       selectedAngle: generation.selectedAngle,
       slideCount: generation.slideCount,
     });
@@ -285,6 +398,7 @@ export async function generateCarousel({
       broadSituations: contentPlan.broadSituations,
       carouselId,
       concept: contentPlan.concept,
+      contentStrategy: contentPlan.contentStrategy,
       fallbackReason: contentPlan.fallbackReason,
       model: contentPlan.model,
       plannerVersion: contentPlan.plannerVersion,
@@ -293,14 +407,21 @@ export async function generateCarousel({
     });
     await updateCarouselGeneration(carouselId, {
       content_plan_fallback_reason: contentPlan.fallbackReason,
+      content_angle: contentPlan.contentStrategy?.angle ?? null,
+      content_audience_id: contentPlan.contentStrategy?.audienceId ?? null,
+      content_goal_id: contentPlan.contentStrategy?.customerGoalId ?? null,
       content_plan_normalized: contentPlan.normalizedPlan as unknown as Json,
       content_plan_raw_response: contentPlan.rawLlmResponse as unknown as Json,
       content_plan_source: contentPlan.source,
       content_plan_validation: contentPlan.validationResult as unknown as Json,
       content_planner_model: contentPlan.model,
       content_planner_version: contentPlan.plannerVersion,
+      content_problem_id: contentPlan.contentStrategy?.problemId ?? null,
+      content_topic: contentPlan.contentStrategy?.topic ?? null,
+      content_topic_id: contentPlan.contentStrategy?.topicId ?? null,
       renderer_version: CAROUSEL_RENDERER_VERSION,
     });
+    await assertBusinessProfileVersionIsCurrent(generation);
     const selectionSeed = [
       generation.categorySlug,
       generation.generationBatchId,
@@ -383,7 +504,7 @@ export async function generateCarousel({
       const renderedSlide = await renderCarouselSlideWithDiagnostics({
         assetUrl: asset.baseUrl,
         businessName:
-          websiteAnalysis.analysis.businessName ?? websiteAnalysis.businessName,
+          businessAnalysis.businessName ?? websiteAnalysis.businessName,
         format: generation.format,
         slide,
         textStyle,
@@ -421,6 +542,7 @@ export async function generateCarousel({
       });
     }
 
+    await assertBusinessProfileVersionIsCurrent(generation);
     await upsertCarouselSlides(slideRows);
     await incrementCategoryImageAssetUsage(
       slideRows

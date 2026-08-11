@@ -3,15 +3,11 @@ import "server-only";
 import { z } from "zod";
 
 import { parseAiIdeBusinessContext } from "./ai-context";
-import {
-  saveBusinessProfile,
-  updateBusinessProfilePreparation,
-} from "./db";
+import { saveBusinessProfile } from "./db";
 import {
   ManualBusinessProfileSchema,
   buildManualBusinessAnalysis,
 } from "./schema";
-import { prepareBusinessProfileCarousels } from "@/lib/carousel/prepare-business-profile";
 import { analyzeWebsiteInput } from "@/lib/website-analysis/process";
 import {
   getWebsiteAnalysisBySourceJobId,
@@ -57,28 +53,11 @@ export async function processBusinessProfileSetupJob(params: {
     userId: params.userId,
   });
 
-  try {
-    const preparation = await prepareBusinessProfileCarousels(saved.profile);
-
-    return {
-      generationBatchId: preparation.generationBatchId,
-      operation: "business_profile_setup" as const,
-      profileId: saved.profile.id,
-      profileVersion: saved.profile.profileVersion,
-    };
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Could not start carousel preparation.";
-
-    await updateBusinessProfilePreparation({
-      error: message,
-      profileId: saved.profile.id,
-      status: "failed",
-    });
-    throw error;
-  }
+  return {
+    operation: "business_profile_setup" as const,
+    profileId: saved.profile.id,
+    profileVersion: saved.profile.profileVersion,
+  };
 }
 
 async function getOrCreateAnalysis(params: {

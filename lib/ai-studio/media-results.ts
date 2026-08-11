@@ -13,6 +13,7 @@ export type AIStudioVideoResult = {
   durationSeconds: number | null;
   id: string;
   mediaAssetId: string | null;
+  prompt: string;
   ratio: "1:1" | "4:5" | "9:16" | "16:9";
   status: "Ready";
   title: string;
@@ -61,6 +62,7 @@ export function getAIStudioVideoResults(
       durationSeconds: asset.durationSeconds,
       id: asset.id,
       mediaAssetId: asset.id,
+      prompt: asset.title || "Generated video",
       ratio: toSupportedRatio(asset.ratio, "9:16"),
       status: "Ready",
       title: asset.title || "Generated video",

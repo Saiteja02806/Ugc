@@ -149,10 +149,26 @@ test("renders Hook copy as restrained text without a background plate", () => {
 
   assert.equal(layout.backgroundColor, undefined);
   assert.equal(layout.backgroundOpacity, null);
-  assert.equal(layout.fontSize, 52);
+  assert.equal(layout.fontSize, 60);
   assert.equal(layout.fontWeight, 600);
   assert.equal(layout.padding, 0);
-  assert.equal(layout.lineHeight, 66);
+  assert.equal(layout.lineHeight, 74);
+  assert.equal(layout.isTruncated, false);
+});
+
+test("preserves three intentional Hook lines with an emoji", () => {
+  const layout = buildEditOverlayTextLayout(
+    "Meal logging\ninterrupts the day\nagain 😩",
+    "hook",
+    "9:16",
+  );
+
+  assert.deepEqual(layout.lines, [
+    "Meal logging",
+    "interrupts the day",
+    "again 😩",
+  ]);
+  assert.equal(layout.fontSize, 60);
   assert.equal(layout.isTruncated, false);
 });
 
@@ -190,6 +206,22 @@ test("uses saved Hook lines and font size without recalculating", () => {
   ]);
   assert.equal(layout.isTruncated, false);
   assert.equal(layout.textColor, "#f472b6");
+});
+
+test("accepts a saved three-line Hook layout", () => {
+  const layout = buildResolvedEditOverlayTextLayout({
+    fontSize: 60,
+    lines: ["Meal logging", "interrupts the day", "again 😩"],
+    ratio: "9:16",
+    style: "hook",
+  });
+
+  assert.deepEqual(layout.lines, [
+    "Meal logging",
+    "interrupts the day",
+    "again 😩",
+  ]);
+  assert.equal(layout.isTruncated, false);
 });
 
 test("rejects a saved Hook layout that would wrap differently", () => {

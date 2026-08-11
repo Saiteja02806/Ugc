@@ -4,6 +4,7 @@ import path from "node:path";
 
 const DEFAULT_IMPORT_ROOT = ".tmp/local-carousel-image-import";
 const RESULT_FILE_NAME = "remote-structure-check.json";
+const REMOTE_REQUEST_TIMEOUT_MS = 20_000;
 const REQUIRED_RUNTIME_CATEGORIES = [
   "fitness-health",
   "personal-finance",
@@ -82,6 +83,9 @@ const supabase = createClient(
       autoRefreshToken: false,
       persistSession: false,
     },
+    global: {
+      fetch: fetchWithTimeout,
+    },
   },
 );
 
@@ -99,9 +103,11 @@ const report = {
 const errors = [];
 
 await checkRemoteSchema();
-await checkExistingStructure();
-await checkPotentialDuplicates();
-await checkStrictCounts();
+await Promise.all([
+  checkExistingStructure(),
+  checkPotentialDuplicates(),
+  checkStrictCounts(),
+]);
 
 report.ok = errors.length === 0;
 report.errors = errors;
@@ -132,6 +138,13 @@ for (const item of report.strictExistingCounts) {
 }
 
 console.log("");
+
+if (report.duplicateChecks?.existingSourcesToSkip) {
+  console.log(
+    `Existing exact sources: ${report.duplicateChecks.existingSourcesToSkip}; the idempotent importer will skip them.`,
+  );
+  console.log("");
+}
 
 if (errors.length > 0) {
   console.log(`FAILED: ${errors.length} issue(s) found.`);
@@ -240,7 +253,7 @@ async function checkPotentialDuplicates() {
   }
 
   if (existingHashRows.length > 0) {
-    errors.push(`${existingHashRows.length} prepared source hashes already exist remotely.`);
+    report.duplicateChecks.existingSourcesToSkip = existingHashRows.length;
   }
 
   if (existingPerceptualHashRows.length > 0) {
@@ -285,25 +298,40 @@ async function checkStrictCounts() {
 }
 
 async function queryExistingValues({ column, values }) {
-  const rows = [];
   const uniqueValues = Array.from(new Set(values.filter(Boolean)));
+  const chunks = [];
 
   for (let index = 0; index < uniqueValues.length; index += 100) {
-    const chunk = uniqueValues.slice(index, index + 100);
-    const { data, error } = await supabase
-      .from("category_image_assets")
-      .select(`id,category_slug,${column}`)
-      .in(column, chunk);
-
-    if (error) {
-      errors.push(`Could not check existing ${column}: ${error.message}`);
-      continue;
-    }
-
-    rows.push(...(data ?? []));
+    chunks.push(uniqueValues.slice(index, index + 100));
   }
 
-  return rows;
+  const results = await Promise.all(
+    chunks.map(async (chunk) => {
+      const { data, error } = await supabase
+        .from("category_image_assets")
+        .select(`id,category_slug,${column}`)
+        .in(column, chunk);
+
+      if (error) {
+        errors.push(`Could not check existing ${column}: ${error.message}`);
+        return [];
+      }
+
+      return data ?? [];
+    }),
+  );
+
+  return results.flat();
+}
+
+function fetchWithTimeout(input, init = {}) {
+  const timeoutSignal = AbortSignal.timeout(REMOTE_REQUEST_TIMEOUT_MS);
+  const signal =
+    init.signal && typeof AbortSignal.any === "function"
+      ? AbortSignal.any([init.signal, timeoutSignal])
+      : init.signal || timeoutSignal;
+
+  return fetch(input, { ...init, signal });
 }
 
 function summarizeAssets(assets) {

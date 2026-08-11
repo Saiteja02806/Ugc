@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import ffmpegPath from "ffmpeg-static";
+import ffprobeStatic from "ffprobe-static";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -194,7 +195,7 @@ try {
       .eq("id", rowId)
       .eq("source_file_sha256", item.asset.sha256)
       .select(
-        "id,source_file_sha256,source_batch,status,influencer_key,visual_group,has_audio",
+        "id,source_file_sha256,source_batch,status,influencer_key,visual_group,hook_format_id,has_audio",
       )
       .single();
 
@@ -239,6 +240,7 @@ async function assertRemoteSchemaReady() {
         "source_batch",
         "influencer_key",
         "visual_group",
+        "hook_format_id",
         "has_audio",
         "source_s3_key",
         "source_video_url",
@@ -264,7 +266,7 @@ async function loadExistingRows(items) {
     const { data, error } = await supabase
       .from("avatar_assets")
       .select(
-        "id,name,duration_seconds,width,height,ratio,status,source_s3_key,source_video_url,thumbnail_url,source_file_sha256,source_batch,influencer_key,visual_group,has_audio,sort_order,metadata,deleted_at",
+        "id,name,duration_seconds,width,height,ratio,status,source_s3_key,source_video_url,thumbnail_url,source_file_sha256,source_batch,influencer_key,visual_group,hook_format_id,has_audio,sort_order,metadata,deleted_at",
       )
       .in("source_file_sha256", hashes)
       .is("deleted_at", null);
@@ -292,6 +294,7 @@ async function createProcessingAssetRow(item) {
       duration_seconds: item.metadata.durationSeconds,
       has_audio: false,
       height: item.metadata.height,
+      hook_format_id: item.asset.visualGroup,
       influencer_key: item.asset.influencerKey,
       metadata: item.catalogMetadata,
       name: item.name,
@@ -327,7 +330,7 @@ function buildImportPlan({ manifest }) {
     (asset) => `${asset.influencerKey}:${asset.reactionType}`,
   );
   const reactionOrdinals = {};
-  const items = manifest.assets.map((asset, sortOrder) => {
+  const items = manifest.assets.map((asset, manifestIndex) => {
     const sourceFolder = manifest.sourceFolders[asset.sourceFolderKey];
     const filePath = path.join(sourceFolder, asset.originalFileName);
 
@@ -398,6 +401,7 @@ function buildImportPlan({ manifest }) {
     const nameSuffix =
       reactionTotals[reactionKey] > 1 ? ` ${reactionOrdinal}` : "";
     const name = `${influencer.displayName} - ${reactionLabel}${nameSuffix}`;
+    const sortOrder = asset.sortOrder ?? manifestIndex;
 
     return {
       asset,
@@ -453,7 +457,8 @@ function assertManifest(manifest) {
     !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(manifest.sourceBatch ?? "") ||
     !Array.isArray(manifest.assets) ||
     manifest.assets.length !== manifest.summary?.approvedCount ||
-    manifest.summary?.approvedCount !== 78 ||
+    !Number.isInteger(manifest.summary?.approvedCount) ||
+    manifest.summary.approvedCount < 1 ||
     manifest.summary?.rejectedCount !== 0
   ) {
     throw new Error("The reviewed silent Hook manifest is invalid.");
@@ -487,6 +492,8 @@ function assertManifest(manifest) {
       !/^hook-silent:[0-9a-f]{64}$/u.test(asset.assetKey ?? "") ||
       !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(asset.catalogName ?? "") ||
       !/^[0-9a-f]{64}$/u.test(asset.sha256 ?? "") ||
+      (asset.sortOrder !== undefined &&
+        (!Number.isInteger(asset.sortOrder) || asset.sortOrder < 0)) ||
       !sourceFolderKeys.has(asset.sourceFolderKey) ||
       !influencerKeys.has(asset.influencerKey) ||
       !visualGroups.has(asset.visualGroup) ||
@@ -520,7 +527,7 @@ function probeVideo(filePath) {
 
   try {
     output = execFileSync(
-      "ffprobe",
+      ffprobeStatic.path,
       [
         "-v",
         "error",
@@ -715,6 +722,7 @@ function assertExistingRowMatches(row, item) {
     row.source_batch !== manifest.sourceBatch ||
     row.influencer_key !== item.asset.influencerKey ||
     row.visual_group !== item.asset.visualGroup ||
+    row.hook_format_id !== item.asset.visualGroup ||
     row.has_audio !== false ||
     row.ratio !== "9:16" ||
     row.width !== item.metadata.width ||

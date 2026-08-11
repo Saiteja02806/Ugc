@@ -15,6 +15,7 @@ import {
 } from "./creative-edit-source-selection.ts";
 import {
   createHookTextLayout,
+  getDefaultHookTextPosition,
   HOOK_TEXT_MAXIMUM_CHARACTERS,
 } from "./hook-text-layout.ts";
 import { validateWallTextContent } from "./wall-text-text-logic.ts";
@@ -77,13 +78,11 @@ test("wall edits remain a renderable two-to-three segment payload", () => {
   assert.equal(content.segments[0]?.role, "lead");
   assert.equal(content.segments.at(-1)?.role, "closing");
   assert.equal("renderFontSize" in content, false);
-  assert.equal(
-    content.segments.reduce(
-      (total, segment) => total + segment.lines.length,
-      0,
-    ),
-    6,
+  const lineCount = content.segments.reduce(
+    (total, segment) => total + segment.lines.length,
+    0,
   );
+  assert.equal(lineCount >= 4 && lineCount <= 7, true);
   assert.equal(
     content.segments.every((segment) =>
       segment.lines.every((line) => {
@@ -96,8 +95,25 @@ test("wall edits remain a renderable two-to-three segment payload", () => {
   assert.doesNotThrow(() => validateWallTextContent(content, 6));
   assert.throws(
     () => validateWallTextContent(content, 4),
-    /longer than the 4\.0-second clip/,
+    /16–16 words for a 4\.0-second clip/,
   );
+});
+
+test("compact Wall edit patterns prefer four or five lines", () => {
+  const content = createWallTextEditContent(
+    "Reviewing weekly progress shows where effort actually went. The next choice feels less like a guess.",
+    {
+      ...currentContent,
+      pattern: "action_benefit",
+    },
+  );
+  const lineCount = content.segments.reduce(
+    (total, segment) => total + segment.lines.length,
+    0,
+  );
+
+  assert.equal(lineCount >= 4 && lineCount <= 5, true);
+  assert.doesNotThrow(() => validateWallTextContent(content, 6));
 });
 
 test("Hook edits recalculate their final lines, font, and safe position", () => {
@@ -119,11 +135,36 @@ test("Hook edits recalculate their final lines, font, and safe position", () => 
     lines: edited.lines,
   });
 
-  assert.equal(edited.lines.length, 2);
+  assert.equal(edited.lines.length, 3);
   assert.equal(edited.fontSize, layout.fontSize);
   assert.equal(edited.textColor, "#ffffff");
   assert.ok(edited.position.x >= layout.positionBounds.minX);
   assert.ok(edited.position.y >= layout.positionBounds.minY);
+});
+
+test("new Hook text starts in the upper safe band instead of over the face", () => {
+  const layout = createHookTextLayout(
+    "A clearer way to plan content",
+  );
+  const position = getDefaultHookTextPosition(layout.positionBounds);
+
+  assert.equal(position.x, 0.5);
+  assert.equal(position.y, layout.positionBounds.minY);
+  assert.ok(position.y < 0.25);
+});
+
+test("Hook edits preserve three intentional lines and a trailing emoji", () => {
+  const layout = createHookTextLayout(
+    "Meal logging\nshouldn't interrupt\nyour whole day 😩",
+  );
+
+  assert.deepEqual(layout.lines, [
+    "Meal logging",
+    "shouldn't interrupt",
+    "your whole day 😩",
+  ]);
+  assert.equal(layout.fontSize, 60);
+  assert.equal(layout.wordCount, 8);
 });
 
 test("Hook save validation rejects word and character limit violations", () => {

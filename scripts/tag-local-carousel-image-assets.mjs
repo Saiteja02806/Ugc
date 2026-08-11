@@ -5,12 +5,20 @@ import path from "node:path";
 const DEFAULT_AUDIT_ROOT = ".tmp/local-carousel-image-pack-audit";
 const DEFAULT_OUTPUT_ROOT = ".tmp/local-carousel-image-tags";
 const FINAL_REVIEW_STATUS = "final_full_resolution_review";
+const TAGGING_VERSION = "local-curated-image-tags-v2";
 const SUPPORTED_RECOMMENDATIONS = new Set([
   "canonical_original",
   "cropped_only_candidate",
   "flat_candidate",
 ]);
 const ALLOWED_BUCKETS_BY_RUNTIME_CATEGORY = {
+  "beauty-skincare": new Set([
+    "abstract-backgrounds",
+    "clean-texture-backgrounds",
+    "fitness-wellness-objects",
+    "home-lifestyle",
+    "product-still-life",
+  ]),
   "fitness-health": new Set([
     "abstract-backgrounds",
     "fitness-wellness-objects",
@@ -18,6 +26,23 @@ const ALLOWED_BUCKETS_BY_RUNTIME_CATEGORY = {
     "home-lifestyle",
     "phone-and-devices",
     "product-still-life",
+  ]),
+  "marketing-saas": new Set([
+    "abstract-backgrounds",
+    "clean-texture-backgrounds",
+    "data-and-screens",
+    "notes-and-planning",
+    "phone-and-devices",
+    "workspace-objects",
+  ]),
+  "personal-finance": new Set([
+    "abstract-backgrounds",
+    "clean-texture-backgrounds",
+    "data-and-screens",
+    "home-lifestyle",
+    "notes-and-planning",
+    "phone-and-devices",
+    "workspace-objects",
   ]),
   "productivity-saas": new Set([
     "abstract-backgrounds",
@@ -41,6 +66,15 @@ const ALLOWED_BUCKETS_BY_RUNTIME_CATEGORY = {
 };
 
 const CATEGORY_CONFIG = {
+  beauty_skincare: {
+    captionNoun: "beauty and skincare visual",
+    defaultBroadBucket: "product-still-life",
+    defaultContentTags: ["beauty", "skincare"],
+    defaultObjects: ["beauty-object"],
+    defaultProfiles: ["beauty-skincare", "wellness"],
+    defaultScene: "product-still-life",
+    runtimeCategorySlug: "beauty-skincare",
+  },
   calorie_tracking: {
     captionNoun: "calorie tracking visual",
     defaultBroadBucket: "food-and-table",
@@ -59,11 +93,34 @@ const CATEGORY_CONFIG = {
     defaultScene: "gym",
     runtimeCategorySlug: "fitness-health",
   },
+  marketing: {
+    captionNoun: "marketing visual",
+    defaultBroadBucket: "data-and-screens",
+    defaultContentTags: ["marketing", "social-media", "content", "engagement"],
+    defaultObjects: ["digital-screen"],
+    defaultProfiles: ["marketing-saas", "generic-business"],
+    defaultScene: "digital-screen",
+    runtimeCategorySlug: "marketing-saas",
+  },
+  outdoor_lifestyle: {
+    captionNoun: "outdoor lifestyle visual",
+    defaultBroadBucket: "abstract-backgrounds",
+    defaultContentTags: ["outdoors", "wellness", "lifestyle"],
+    defaultObjects: ["outdoor-scene"],
+    defaultProfiles: [
+      "fitness-health",
+      "wellness",
+      "beauty-skincare",
+      "generic-business",
+    ],
+    defaultScene: "outdoors",
+    runtimeCategorySlug: "shared",
+  },
   personal_finance: {
     captionNoun: "personal finance visual",
     defaultBroadBucket: "notes-and-planning",
-    defaultContentTags: ["finance", "budgeting", "planning"],
-    defaultObjects: ["documents"],
+    defaultContentTags: ["finance"],
+    defaultObjects: ["finance-object"],
     defaultProfiles: ["generic-business"],
     defaultScene: "desk",
     runtimeCategorySlug: "personal-finance",
@@ -71,11 +128,118 @@ const CATEGORY_CONFIG = {
   productivity: {
     captionNoun: "productivity visual",
     defaultBroadBucket: "workspace-objects",
-    defaultContentTags: ["productivity", "workspace", "planning"],
-    defaultObjects: ["desk"],
+    defaultContentTags: ["productivity"],
+    defaultObjects: ["workspace-object"],
     defaultProfiles: ["productivity-saas", "generic-business"],
     defaultScene: "workspace",
     runtimeCategorySlug: "productivity-saas",
+  },
+};
+
+const FILE_TAG_OVERRIDES = {
+  "marketing:social media pexels pack 01 instagram screen": {
+    broadVisualBucket: "phone-and-devices",
+    contentTags: ["instagram", "mobile-marketing", "social-media-engagement"],
+    objectTags: ["smartphone", "instagram-app"],
+    scene: "mobile-social-media",
+    subcategories: ["social_media", "mobile_marketing"],
+  },
+  "marketing:social media pexels pack 02 tiktok screen": {
+    broadVisualBucket: "phone-and-devices",
+    contentTags: ["tiktok", "mobile-marketing", "social-media-engagement"],
+    objectTags: ["smartphone", "tiktok-app"],
+    scene: "mobile-social-media",
+    subcategories: ["social_media", "mobile_marketing"],
+  },
+  "marketing:social media pexels pack 03 linkedin screen": {
+    broadVisualBucket: "phone-and-devices",
+    contentTags: ["linkedin", "b2b-marketing", "social-media-engagement"],
+    objectTags: ["smartphone", "linkedin-app"],
+    scene: "mobile-social-media",
+    subcategories: ["social_media", "mobile_marketing", "b2b_marketing"],
+  },
+  "marketing:social media pexels pack 04 facebook screen": {
+    broadVisualBucket: "phone-and-devices",
+    contentTags: ["facebook", "mobile-marketing", "social-media-engagement"],
+    objectTags: ["smartphone", "facebook-app"],
+    scene: "mobile-social-media",
+    subcategories: ["social_media", "mobile_marketing"],
+  },
+  "marketing:social media pexels pack 05 youtube screen": {
+    contentTags: ["youtube", "video-marketing", "content-performance"],
+    objectTags: ["laptop", "youtube-screen"],
+    subcategories: ["social_media", "video_marketing"],
+  },
+  "marketing:social media pexels pack 06 social media icons": {
+    contentTags: ["social-media-apps", "content-distribution", "platforms"],
+    objectTags: ["app-icons", "digital-screen"],
+    subcategories: ["social_media", "content_distribution"],
+  },
+  "marketing:social media pexels pack 09 comments likes shares": {
+    contentTags: ["comments", "likes", "shares", "social-proof"],
+    objectTags: ["tablet", "social-media-screen"],
+    subcategories: ["social_media", "engagement"],
+  },
+  "personal_finance:chatgpt image aug 10 2026 06 13 56 pm 1": {
+    contentTags: ["payment", "expense", "spending", "retail", "receipt"],
+    objectTags: ["payment-terminal", "receipt"],
+    scene: "retail-payment",
+    subcategories: ["payment", "expense_tracking", "retail_spending"],
+  },
+  "personal_finance:chatgpt image aug 10 2026 06 13 57 pm 2": {
+    contentTags: ["wallet", "credit-card", "receipt", "payment", "spending"],
+    objectTags: ["wallet", "credit-card", "receipt", "coins"],
+    scene: "finance-still-life",
+    subcategories: ["payment", "expense_tracking"],
+  },
+  "personal_finance:chatgpt image aug 10 2026 06 13 58 pm 3": {
+    contentTags: ["dining", "receipt", "expense", "spending"],
+    objectTags: ["coffee", "receipt"],
+    scene: "dining-expense",
+    subcategories: ["expense_tracking", "dining_spend"],
+  },
+  "personal_finance:chatgpt image aug 10 2026 06 13 59 pm 4": {
+    contentTags: ["receipts", "expense-tracking", "spending"],
+    objectTags: ["receipts"],
+    scene: "finance-planning",
+    subcategories: ["expense_tracking"],
+  },
+  "personal_finance:chatgpt image aug 10 2026 06 14 00 pm 5": {
+    contentTags: ["budget", "monthly-budget", "expense", "planning"],
+    objectTags: ["budget-notebook", "calculator", "receipts"],
+    scene: "finance-planning",
+    subcategories: ["budgeting", "expense_tracking", "financial_planning"],
+  },
+  "personal_finance:chatgpt image aug 10 2026 06 14 00 pm 6": {
+    broadVisualBucket: "phone-and-devices",
+    contentTags: ["mobile-calculator", "expense-tracking", "receipts"],
+    objectTags: ["phone", "calculator", "receipts"],
+    scene: "mobile-finance",
+    subcategories: ["expense_tracking", "financial_planning"],
+  },
+  "personal_finance:chatgpt image aug 10 2026 06 14 01 pm 7": {
+    contentTags: ["receipt", "expense", "laptop"],
+    objectTags: ["receipt", "laptop"],
+    scene: "finance-planning",
+    subcategories: ["expense_tracking"],
+  },
+  "personal_finance:chatgpt image aug 10 2026 06 14 01 pm 8": {
+    contentTags: ["grocery-budget", "receipt", "expense", "spending"],
+    objectTags: ["grocery-receipt", "produce"],
+    scene: "grocery-expense",
+    subcategories: ["budgeting", "expense_tracking", "grocery_spend"],
+  },
+  "personal_finance:chatgpt image aug 10 2026 06 14 02 pm 9": {
+    contentTags: ["receipt", "expense", "spending"],
+    objectTags: ["receipt"],
+    scene: "finance-planning",
+    subcategories: ["expense_tracking"],
+  },
+  "personal_finance:chatgpt image aug 10 2026 06 14 02 pm 10": {
+    contentTags: ["receipt", "expense", "notes", "planning"],
+    objectTags: ["receipt", "notebook"],
+    scene: "finance-planning",
+    subcategories: ["expense_tracking", "financial_planning"],
   },
 };
 
@@ -92,6 +256,8 @@ const TERM_RULES = [
     broadBucket: "food-and-table",
     categories: ["calorie_tracking"],
     contentTags: ["breakfast", "meal", "food"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
     objects: ["breakfast", "food"],
     subcategories: ["breakfast"],
     terms: ["avena", "breakfast", "oat", "oatmeal", "poha"],
@@ -100,38 +266,175 @@ const TERM_RULES = [
     broadBucket: "food-and-table",
     categories: ["calorie_tracking"],
     contentTags: ["meal", "lunch", "dinner", "nutrition"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
     objects: ["meal", "plate"],
     subcategories: ["mixed_meal"],
-    terms: ["bowl", "chicken", "dinner", "lunch", "meal", "paneer", "pasta", "plate", "salad"],
+    terms: [
+      "bowl",
+      "burger",
+      "burrito bowl",
+      "chicken",
+      "chicken bowl",
+      "dinner",
+      "french fries",
+      "lunch",
+      "meal",
+      "omelette",
+      "pancakes",
+      "paneer",
+      "pasta",
+      "pizza",
+      "plate",
+      "rice bowl",
+      "salad",
+      "sandwich",
+      "soup",
+      "toast",
+      "waffles",
+      "wrap",
+    ],
   },
   {
     broadBucket: "food-and-table",
     categories: ["calorie_tracking"],
-    contentTags: ["grocery", "vegetables", "fresh-food"],
-    objects: ["groceries", "vegetables"],
-    subcategories: ["grocery_shopping", "vegetables"],
-    terms: ["broccoli", "carrot", "grocery", "vegetable", "veggie"],
+    contentTags: ["grocery", "shopping", "retail-food"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["groceries", "shopping-cart", "store-shelves"],
+    subcategories: ["grocery_shopping"],
+    terms: [
+      "grocery",
+      "shopping cart",
+    ],
+  },
+  {
+    broadBucket: "food-and-table",
+    categories: ["calorie_tracking"],
+    contentTags: ["vegetables", "fresh-food", "produce"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["vegetables", "produce"],
+    subcategories: ["vegetables", "fresh_food"],
+    terms: [
+      "bell pepper",
+      "broccoli",
+      "carrot",
+      "cauliflower",
+      "corn",
+      "cucumber",
+      "green beans",
+      "lettuce",
+      "mixed vegetables",
+      "mushroom",
+      "onion",
+      "potato",
+      "spinach",
+      "sweet potato",
+      "tomato",
+      "vegetable",
+      "veggie",
+    ],
   },
   {
     broadBucket: "food-and-table",
     categories: ["calorie_tracking"],
     contentTags: ["protein", "shake", "nutrition"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
     objects: ["protein-shake"],
     subcategories: ["protein_snack"],
     terms: ["protein", "shake", "smoothie"],
   },
   {
+    broadBucket: "food-and-table",
+    categories: ["calorie_tracking"],
+    contentTags: ["snack", "nutrition", "food"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["snack-food"],
+    subcategories: ["snack"],
+    terms: [
+      "almond butter",
+      "almonds",
+      "avocado",
+      "cappuccino",
+      "cashews",
+      "candy",
+      "cheese",
+      "chocolate",
+      "cookies",
+      "crackers",
+      "dark chocolate",
+      "dried fruit",
+      "biscuits",
+      "granola",
+      "granola bar",
+      "hummus",
+      "mixed nuts",
+      "nuts",
+      "olive oil",
+      "peanut butter",
+      "popcorn",
+      "seeds",
+      "snack",
+      "trail mix",
+    ],
+  },
+  {
+    broadBucket: "food-and-table",
+    categories: ["calorie_tracking"],
+    contentTags: ["drink", "beverage", "hydration", "nutrition"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["drink", "beverage"],
+    subcategories: ["drink", "hydration"],
+    terms: [
+      "cappuccino",
+      "coffee",
+      "coconut water",
+      "juice",
+      "latte",
+      "milk",
+      "soft drink",
+      "smoothie",
+      "tea",
+      "water",
+    ],
+  },
+  {
     broadBucket: "fitness-wellness-objects",
     categories: ["gym"],
     contentTags: ["gym", "strength-training", "equipment"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
     objects: ["gym-equipment"],
     subcategories: ["gym_equipment", "strength_training"],
-    terms: ["barbell", "crossfit", "dumbbell", "functional", "gym", "kettlebell", "plate", "rack", "rope", "weight", "weights"],
+    terms: [
+      "barbell",
+      "bench",
+      "bench press",
+      "crossfit",
+      "dumbbell",
+      "functional",
+      "gym",
+      "kettlebell",
+      "lat pulldown",
+      "machine",
+      "plate",
+      "rack",
+      "rope",
+      "seated row",
+      "weight",
+      "weights",
+    ],
   },
   {
     broadBucket: "fitness-wellness-objects",
     categories: ["gym"],
     contentTags: ["cardio", "workout", "fitness"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
     objects: ["cardio-equipment"],
     subcategories: ["cardio"],
     terms: ["cardio", "treadmill", "bike", "cycle", "elliptical"],
@@ -140,6 +443,8 @@ const TERM_RULES = [
     broadBucket: "fitness-wellness-objects",
     categories: ["gym"],
     contentTags: ["recovery", "wellness", "fitness"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
     objects: ["yoga-mat", "water-bottle"],
     subcategories: ["recovery", "hydration"],
     terms: ["bottle", "mat", "pilates", "reformer", "recovery", "towel", "water", "yoga"],
@@ -158,7 +463,7 @@ const TERM_RULES = [
     contentTags: ["banking", "dashboard", "finance"],
     objects: ["laptop", "screen"],
     subcategories: ["banking_app", "financial_planning"],
-    terms: ["app", "banking", "chart", "dashboard", "investment", "laptop", "screen", "spreadsheet"],
+    terms: ["app", "banking", "chart", "dashboard", "investment", "screen", "spreadsheet"],
   },
   {
     broadBucket: "notes-and-planning",
@@ -203,10 +508,205 @@ const TERM_RULES = [
   {
     broadBucket: "notes-and-planning",
     categories: ["personal_finance"],
-    contentTags: ["money", "finance", "still-life"],
-    objects: ["cash", "card", "coins"],
-    subcategories: ["saving", "payment"],
-    terms: ["card", "cash", "coin", "credit", "money", "wallet"],
+    contentTags: ["cash", "money", "saving"],
+    objects: ["cash", "money"],
+    subcategories: ["saving"],
+    terms: ["cash", "money"],
+  },
+  {
+    broadBucket: "notes-and-planning",
+    categories: ["personal_finance"],
+    contentTags: ["credit-card", "payment", "spending"],
+    objects: ["credit-card", "payment-card"],
+    subcategories: ["payment", "spending"],
+    terms: ["card", "credit"],
+  },
+  {
+    broadBucket: "notes-and-planning",
+    categories: ["personal_finance"],
+    contentTags: ["coins", "saving", "money"],
+    objects: ["coins"],
+    subcategories: ["saving"],
+    terms: ["coin", "coins"],
+  },
+  {
+    broadBucket: "notes-and-planning",
+    categories: ["personal_finance"],
+    contentTags: ["wallet", "payment", "spending"],
+    objects: ["wallet"],
+    subcategories: ["payment", "spending"],
+    terms: ["wallet"],
+  },
+  {
+    broadBucket: "workspace-objects",
+    categories: ["personal_finance"],
+    contentTags: ["business", "shipping", "ecommerce", "logistics", "inventory"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["shipping-box", "package"],
+    subcategories: ["business_operations", "expense_tracking"],
+    terms: ["box", "boxes", "package", "packaging", "shipping"],
+  },
+  {
+    broadBucket: "data-and-screens",
+    categories: ["marketing"],
+    contentTags: ["marketing", "social-media", "engagement", "content"],
+    includeMatchedTermsAsContentTags: true,
+    objects: ["social-media-screen"],
+    subcategories: ["social_media"],
+    terms: [
+      "analytics",
+      "comments",
+      "icons",
+      "facebook",
+      "feed",
+      "instagram",
+      "likes",
+      "linkedin",
+      "screen",
+      "shares",
+      "tiktok",
+      "youtube",
+    ],
+  },
+  {
+    broadBucket: "data-and-screens",
+    categories: ["marketing"],
+    contentTags: ["analytics", "content-performance", "reporting"],
+    objects: ["analytics-dashboard"],
+    subcategories: ["content_performance", "analytics"],
+    terms: ["analytics", "dashboard", "reporting"],
+  },
+  {
+    broadBucket: "phone-and-devices",
+    categories: ["marketing"],
+    contentTags: ["marketing", "social-media", "mobile", "engagement"],
+    objects: ["phone", "social-media-app"],
+    subcategories: ["social_media", "mobile_marketing"],
+    terms: ["phone", "mobile"],
+  },
+  {
+    broadBucket: "notes-and-planning",
+    categories: ["productivity"],
+    contentTags: ["learning", "study", "notes", "knowledge", "planning"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["book", "notebook"],
+    subcategories: ["learning", "study", "planning"],
+    terms: ["book", "books", "notebook", "reading", "study", "textbook"],
+  },
+  {
+    broadBucket: "data-and-screens",
+    categories: ["productivity"],
+    contentTags: ["software", "coding", "development", "technology", "focus"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["code-screen", "laptop", "monitor"],
+    subcategories: ["software_development", "focused_work"],
+    terms: ["code", "coding", "computer", "monitor", "programmer"],
+  },
+  {
+    broadBucket: "notes-and-planning",
+    categories: ["productivity"],
+    contentTags: ["planning", "workflow", "project", "task", "collaboration"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["whiteboard", "sticky-notes"],
+    subcategories: ["project_planning", "task_management", "collaboration"],
+    terms: ["flowchart", "kanban", "sticky", "timeline", "whiteboard"],
+  },
+  {
+    broadBucket: "workspace-objects",
+    categories: ["productivity"],
+    contentTags: ["work", "productivity", "collaboration", "learning"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["workspace", "desk", "chair"],
+    subcategories: ["workspace", "meeting", "learning_environment"],
+    terms: ["boardroom", "chair", "classroom", "conference", "desk", "meeting", "office"],
+  },
+  {
+    broadBucket: "workspace-objects",
+    categories: ["productivity"],
+    contentTags: ["office", "workspace", "desk", "learning-environment"],
+    objects: ["desk", "chair"],
+    subcategories: ["workspace", "meeting", "learning_environment"],
+    terms: ["desks", "officeimage", "ofice", "student desks"],
+  },
+  {
+    broadBucket: "product-still-life",
+    categories: ["beauty_skincare"],
+    contentTags: ["beauty", "skincare", "product", "routine"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["skincare-product"],
+    subcategories: ["skincare_product", "beauty_routine"],
+    terms: [
+      "cleanser",
+      "dropper",
+      "makeup",
+      "moisturizer",
+      "serum",
+      "serumbottle",
+      "serumontable",
+      "sunscreen",
+    ],
+  },
+  {
+    broadBucket: "clean-texture-backgrounds",
+    categories: ["beauty_skincare"],
+    contentTags: ["beauty", "skincare", "texture", "ingredient", "product"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["product-texture", "skincare-swatch"],
+    subcategories: ["product_texture", "ingredient_texture"],
+    terms: ["cream", "gel", "gloss", "lotion", "smear", "swatch", "texture"],
+  },
+  {
+    broadBucket: "home-lifestyle",
+    categories: ["beauty_skincare"],
+    contentTags: ["beauty", "skincare", "bathroom", "routine", "self-care"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["bathroom-vanity", "towel"],
+    subcategories: ["bathroom_routine", "self_care"],
+    terms: ["bathroom", "counter", "faucet", "sink", "towel", "vanity"],
+  },
+  {
+    broadBucket: "home-lifestyle",
+    categories: ["outdoor_lifestyle"],
+    contentTags: ["outdoors", "cafe", "hospitality", "city-lifestyle", "routine"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["outdoor-cafe", "street-cafe"],
+    subcategories: ["outdoor_cafe", "city_lifestyle"],
+    terms: ["bistro", "cafe", "sidewalk", "street", "terrace"],
+  },
+  {
+    broadBucket: "abstract-backgrounds",
+    categories: ["outdoor_lifestyle"],
+    contentTags: ["nature", "outdoors", "wellness", "calm", "freedom"],
+    includeMatchedTermsAsContentTags: true,
+    includeMatchedTermsAsObjectTags: true,
+    objects: ["natural-landscape", "sunlight"],
+    subcategories: ["nature", "outdoor_wellness", "calm_background"],
+    terms: [
+      "field",
+      "foliage",
+      "forest",
+      "grass",
+      "leaves",
+      "misty",
+      "mountain",
+      "nature",
+      "ocean",
+      "park",
+      "path",
+      "sunlight",
+      "sunrays",
+      "trail",
+      "tree",
+    ],
   },
 ];
 
@@ -360,6 +860,7 @@ function buildTaggedAsset({
     preferredRenderFile.relativePath,
   ]);
   const inferred = inferTags({
+    canonicalFile,
     categoryConfig,
     categorySlug: canonicalFile.categorySlug,
     text,
@@ -383,19 +884,13 @@ function buildTaggedAsset({
   const broadVisualBucket =
     reviewDecision?.broadVisualBucket ?? inferred.broadVisualBucket;
   const contentTags = unique(
-    reviewDecision?.contentTags?.length
-      ? reviewDecision.contentTags
-      : inferred.contentTags,
+    [...inferred.contentTags, ...(reviewDecision?.contentTags ?? [])],
   );
   const objectTags = unique(
-    reviewDecision?.objectTags?.length
-      ? reviewDecision.objectTags
-      : inferred.objectTags,
+    [...inferred.objectTags, ...(reviewDecision?.objectTags ?? [])],
   );
   const moodTags = unique(
-    reviewDecision?.moodTags?.length
-      ? reviewDecision.moodTags
-      : inferred.moodTags,
+    [...inferred.moodTags, ...(reviewDecision?.moodTags ?? [])],
   );
   const usableProfiles = unique(
     reviewDecision?.usableProfiles?.length
@@ -476,6 +971,7 @@ function buildTaggedAsset({
       ? asArray(preferredRenderFile.textSafeAreaHint)
       : inferTextSafeAreas(dimensions.orientation),
     usableProfiles,
+    taggingVersion: TAGGING_VERSION,
     visualSetting: inferred.scene,
     visualStyle: "object-only",
     warnings: getImportWarnings({
@@ -487,35 +983,58 @@ function buildTaggedAsset({
   };
 }
 
-function inferTags({ categoryConfig, categorySlug, text }) {
-  const matches = TERM_RULES.filter((rule) =>
-    (!rule.categories || rule.categories.includes(categorySlug)) &&
-    rule.terms.some((term) => text.includes(term)),
+function inferTags({ canonicalFile, categoryConfig, categorySlug, text }) {
+  const fileOverride = getFileTagOverride(canonicalFile);
+  const matches = TERM_RULES.map((rule) => ({
+    ...rule,
+    matchedTerms: rule.terms.filter((term) => hasSearchTerm(text, term)),
+  })).filter(
+    (rule) =>
+      (!rule.categories || rule.categories.includes(categorySlug)) &&
+      rule.matchedTerms.length > 0,
   );
   const contentTags = unique([
     ...categoryConfig.defaultContentTags,
     ...matches.flatMap((match) => match.contentTags),
+    ...matches.flatMap((match) =>
+      match.includeMatchedTermsAsContentTags ? match.matchedTerms : [],
+    ),
+    ...asArray(fileOverride?.contentTags),
   ]);
   const objectTags = unique([
     ...categoryConfig.defaultObjects,
     ...matches.flatMap((match) => match.objects),
+    ...matches.flatMap((match) =>
+      match.includeMatchedTermsAsObjectTags ? match.matchedTerms : [],
+    ),
+    ...asArray(fileOverride?.objectTags),
   ]);
   const subcategories = unique([
     ...matches.flatMap((match) => match.subcategories),
+    ...asArray(fileOverride?.subcategories),
     ...fallbackSubcategories(categorySlug),
   ]).slice(0, 8);
   const broadVisualBucket =
+    fileOverride?.broadVisualBucket ||
     chooseCategoryAwareBroadBucket(categorySlug, matches) ||
     categoryConfig.defaultBroadBucket;
 
   return {
     broadVisualBucket,
     contentTags,
-    moodTags: inferMoodTags(text),
+    moodTags: inferMoodTags(text, categorySlug),
     objectTags,
-    scene: inferScene(categoryConfig.defaultScene, text),
+    scene: fileOverride?.scene || inferScene(categoryConfig.defaultScene, text),
     subcategories,
   };
+}
+
+function getFileTagOverride(canonicalFile) {
+  const key = `${canonicalFile.categorySlug}:${normalizeText([
+    canonicalFile.relativePath,
+  ])}`;
+
+  return FILE_TAG_OVERRIDES[key] ?? null;
 }
 
 function chooseCategoryAwareBroadBucket(categorySlug, matches) {
@@ -542,10 +1061,13 @@ function chooseCategoryAwareBroadBucket(categorySlug, matches) {
 
 function getBucketPreference(categorySlug, bucket) {
   const preferences = {
+    beauty_skincare: ["product-still-life", "clean-texture-backgrounds", "home-lifestyle", "abstract-backgrounds"],
     calorie_tracking: ["food-and-table", "phone-and-devices", "home-lifestyle"],
     gym: ["fitness-wellness-objects", "phone-and-devices", "home-lifestyle"],
+    marketing: ["phone-and-devices", "data-and-screens", "workspace-objects", "notes-and-planning", "clean-texture-backgrounds"],
+    outdoor_lifestyle: ["home-lifestyle", "abstract-backgrounds"],
     personal_finance: ["notes-and-planning", "data-and-screens", "workspace-objects", "phone-and-devices", "home-lifestyle"],
-    productivity: ["workspace-objects", "notes-and-planning", "phone-and-devices", "home-lifestyle"],
+    productivity: ["data-and-screens", "notes-and-planning", "workspace-objects", "phone-and-devices", "home-lifestyle"],
   };
 
   const index = (preferences[categorySlug] ?? []).indexOf(bucket);
@@ -561,6 +1083,59 @@ function createCaption({ categoryConfig, contentTags, objectTags, scene }) {
 }
 
 function inferScene(defaultScene, text) {
+  if (hasSearchTerm(text, "bathroom") || hasSearchTerm(text, "vanity")) {
+    return "bathroom";
+  }
+
+  if (hasSearchTerm(text, "cafe") || hasSearchTerm(text, "bistro")) {
+    return "outdoor-cafe";
+  }
+
+  if (
+    hasSearchTerm(text, "forest") ||
+    hasSearchTerm(text, "nature") ||
+    hasSearchTerm(text, "park") ||
+    hasSearchTerm(text, "sunlight")
+  ) {
+    return "outdoors";
+  }
+
+  if (
+    hasSearchTerm(text, "serum") ||
+    hasSearchTerm(text, "skincare") ||
+    hasSearchTerm(text, "sunscreen")
+  ) {
+    return "product-still-life";
+  }
+
+  if (
+    hasSearchTerm(text, "box") ||
+    hasSearchTerm(text, "boxes") ||
+    hasSearchTerm(text, "package") ||
+    hasSearchTerm(text, "shipping")
+  ) {
+    return "shipping-workspace";
+  }
+
+  if (
+    hasSearchTerm(text, "bill") ||
+    hasSearchTerm(text, "budget") ||
+    hasSearchTerm(text, "calculator") ||
+    hasSearchTerm(text, "invoice") ||
+    hasSearchTerm(text, "receipt")
+  ) {
+    return "finance-planning";
+  }
+
+  if (
+    hasSearchTerm(text, "card") ||
+    hasSearchTerm(text, "cash") ||
+    hasSearchTerm(text, "coin") ||
+    hasSearchTerm(text, "wallet")
+  ) {
+    return "finance-still-life";
+  }
+
   if (text.includes("desk") || text.includes("office") || text.includes("workspace")) {
     return "workspace";
   }
@@ -580,7 +1155,7 @@ function inferScene(defaultScene, text) {
   return defaultScene;
 }
 
-function inferMoodTags(text) {
+function inferMoodTags(text, categorySlug) {
   const tags = [];
 
   if (text.includes("clean") || text.includes("minimal") || text.includes("empty")) {
@@ -595,7 +1170,38 @@ function inferMoodTags(text) {
     tags.push("focused");
   }
 
-  return tags.length ? tags : ["practical"];
+  if (
+    text.includes("nature") ||
+    text.includes("park") ||
+    text.includes("sunlight") ||
+    text.includes("serene")
+  ) {
+    tags.push("calm");
+  }
+
+  if (text.includes("bright") || text.includes("colorful") || text.includes("sunlit")) {
+    tags.push("bright");
+  }
+
+  if (text.includes("dark") || text.includes("night")) {
+    tags.push("moody");
+  }
+
+  if (text.includes("gold") || text.includes("luxury") || text.includes("marble")) {
+    tags.push("premium");
+  }
+
+  const categoryMood = {
+    beauty_skincare: "clean",
+    calorie_tracking: "appetizing",
+    gym: "active",
+    marketing: "modern",
+    outdoor_lifestyle: "calm",
+    personal_finance: "practical",
+    productivity: "focused",
+  }[categorySlug];
+
+  return unique([...tags, categoryMood ?? "practical"]);
 }
 
 function fallbackSubcategories(categorySlug) {
@@ -604,10 +1210,16 @@ function fallbackSubcategories(categorySlug) {
       return ["meal_logging"];
     case "gym":
       return ["workout_tracking"];
+    case "marketing":
+      return ["social_media_marketing"];
+    case "outdoor_lifestyle":
+      return ["outdoor_wellness"];
     case "personal_finance":
       return ["budgeting"];
     case "productivity":
       return ["task_management"];
+    case "beauty_skincare":
+      return ["beauty_routine"];
     default:
       return [];
   }
@@ -1096,6 +1708,12 @@ function normalizeText(parts) {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function hasSearchTerm(text, term) {
+  const normalizedTerm = normalizeText([term]);
+
+  return Boolean(normalizedTerm) && ` ${text} `.includes(` ${normalizedTerm} `);
 }
 
 function getOrientation(width, height) {

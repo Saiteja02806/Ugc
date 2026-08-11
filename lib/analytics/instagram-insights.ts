@@ -32,6 +32,11 @@ export type InstagramInsightPoint = InstagramInsightTotals & {
   date: string;
 };
 
+export type InstagramPerformanceTrendMode =
+  | "empty"
+  | "insufficient-history"
+  | "ready";
+
 export type InstagramInsightsAccountStatus =
   | "error"
   | "permission_missing"
@@ -136,6 +141,21 @@ export function buildInstagramAccountDailyTrend(params: {
           ...emptyInsightTotals(),
         };
   });
+}
+
+export function getInstagramPerformanceTrendMode(
+  values: readonly (number | null)[],
+): InstagramPerformanceTrendMode {
+  const reportingDayCount = values.reduce<number>(
+    (count, value) => count + (value === null ? 0 : 1),
+    0,
+  );
+
+  if (reportingDayCount === 0) {
+    return "empty";
+  }
+
+  return reportingDayCount === 1 ? "insufficient-history" : "ready";
 }
 
 type InstagramInsightValue = {

@@ -86,7 +86,7 @@ export const EDIT_OVERLAY_OUTPUT_DIMENSIONS: Record<
 const styleFontSizes: Record<EditOverlayStyle, number> = {
   bubble: 62,
   clean: 68,
-  hook: 52,
+  hook: 60,
   minimal: 64,
 };
 
@@ -277,7 +277,7 @@ export function buildResolvedEditOverlayTextLayout(params: {
 
   if (
     normalizedLines.length < 1 ||
-    (params.style === "hook" && normalizedLines.length > 2) ||
+    (params.style === "hook" && normalizedLines.length > 3) ||
     !Number.isInteger(params.fontSize) ||
     params.fontSize < metrics.minFontSize ||
     params.fontSize > metrics.fontSize ||

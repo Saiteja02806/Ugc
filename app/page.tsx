@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import {
-  ArrowRight,
   CalendarClock,
   Check,
   ChevronRight,
@@ -15,6 +14,7 @@ import {
 import Link from "next/link";
 
 import { ProductLogoMark } from "@/components/brand/product-logo";
+import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
 import { LandingHeader } from "@/components/marketing/landing-header";
 import { cn } from "@/lib/utils";
 
@@ -162,16 +162,9 @@ export default function Home() {
             </p>
 
             <div className="mt-8 flex justify-center">
-              <Link
-                href={authHref}
+              <LandingAuthCta
                 className="group inline-flex h-12 items-center justify-center rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              >
-                Start creating
-                <ArrowRight
-                  className="ml-2 size-4 transition-transform group-hover:translate-x-0.5"
-                  aria-hidden="true"
-                />
-              </Link>
+              />
             </div>
 
             <p className="mt-5 flex items-center justify-center gap-2 text-sm leading-6 text-muted">
@@ -353,16 +346,9 @@ export default function Home() {
                 from the creative idea to a reviewed schedule without changing
                 tools.
               </p>
-              <Link
-                href={authHref}
-                className="group mt-8 inline-flex h-12 items-center justify-center rounded-control bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                Start creating
-                <ArrowRight
-                  className="ml-2 size-4 transition-transform group-hover:translate-x-0.5"
-                  aria-hidden="true"
-                />
-              </Link>
+              <LandingAuthCta
+                className="group mt-8 inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              />
             </div>
 
             <div className="relative min-h-[320px] overflow-hidden border-t border-border bg-card-muted lg:border-l lg:border-t-0">

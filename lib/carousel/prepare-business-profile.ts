@@ -12,7 +12,11 @@ import {
   AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
   AUTOMATIC_CAROUSEL_SLIDE_COUNT,
 } from "@/lib/carousel/automatic-candidate-count";
-import { getCarouselCandidateAngles } from "@/lib/carousel/candidate-angles";
+import { buildCarouselBusinessContentContext } from "@/lib/carousel/business-content-context";
+import {
+  selectCarouselContentAssignments,
+  type CarouselContentAssignment,
+} from "@/lib/carousel/content-selector";
 import { resolveCarouselCategoryProfile } from "@/lib/carousel/category-profile-resolver";
 import {
   countReadyCategoryImageAssetsForCarousel,
@@ -20,24 +24,17 @@ import {
   getCarouselGenerationsByBatchId,
   getWebsiteAnalysisForCarousel,
   listAutoCarouselGenerationsForBusinessProfile,
+  listRecentCarouselContentHistory,
+  reserveCarouselContentAssignment,
   updateCarouselGeneration,
   updateCarouselGenerationBatchCandidateCount,
 } from "@/lib/carousel/db";
 import { DEFAULT_CAROUSEL_RENDER_STYLE } from "@/lib/carousel/render-style";
-import {
-  getMissingDailyCarouselCandidateIndexes,
-  rotateDailyCarouselAngles,
-} from "@/lib/trending/daily-replenishment-logic";
-
-const DAILY_ANGLE_POOL_SIZE = 20;
+import { getMissingDailyCarouselCandidateIndexes } from "@/lib/trending/daily-replenishment-logic";
 
 export async function prepareBusinessProfileCarousels(profile: BusinessProfileRecord) {
-  const { analysis, resolvedCategory } = await getPreparationContext(profile);
-
-  const candidateAngles = getCarouselCandidateAngles({
-    candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
-    websiteAnalysis: analysis,
-  });
+  const { analysis, businessContext, resolvedCategory } =
+    await getPreparationContext(profile);
   let existing = (
     await listAutoCarouselGenerationsForBusinessProfile({
       businessProfileId: profile.id,
@@ -45,8 +42,19 @@ export async function prepareBusinessProfileCarousels(profile: BusinessProfileRe
     })
   ).filter((generation) => generation.originDailyFeedId === null);
   let generationBatchId = existing[0]?.generationBatchId ?? randomUUID();
+  let contentAssignments = await buildContentAssignments({
+    businessContext,
+    businessProfileId: profile.id,
+    candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
+    existing,
+    generationBatchId,
+  });
 
-  for (const [candidateIndex, angle] of candidateAngles.entries()) {
+  for (
+    let candidateIndex = 0;
+    candidateIndex < AUTOMATIC_CAROUSEL_CANDIDATE_COUNT;
+    candidateIndex += 1
+  ) {
     if (existing.some((generation) => generation.candidateIndex === candidateIndex)) {
       continue;
     }
@@ -58,11 +66,12 @@ export async function prepareBusinessProfileCarousels(profile: BusinessProfileRe
         candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
         candidateIndex,
         categorySlug: resolvedCategory.categorySlug,
+        contentAssignment: contentAssignments[candidateIndex],
         format: "4:5",
         generationBatchId,
         generationSource: "auto_generated",
         projectId: profile.projectId,
-        selectedAngle: angle,
+        selectedAngle: null,
         slideCount: AUTOMATIC_CAROUSEL_SLIDE_COUNT,
         userId: profile.userId,
         websiteAnalysisId: analysis.id,
@@ -78,7 +87,18 @@ export async function prepareBusinessProfileCarousels(profile: BusinessProfileRe
       if (!existing.some((generation) => generation.candidateIndex === candidateIndex)) {
         throw error;
       }
-      generationBatchId = existing[0]?.generationBatchId ?? generationBatchId;
+      const concurrentBatchId = existing[0]?.generationBatchId;
+
+      if (concurrentBatchId && concurrentBatchId !== generationBatchId) {
+        generationBatchId = concurrentBatchId;
+        contentAssignments = await buildContentAssignments({
+          businessContext,
+          businessProfileId: profile.id,
+          candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
+          existing,
+          generationBatchId,
+        });
+      }
     }
   }
 
@@ -88,6 +108,8 @@ export async function prepareBusinessProfileCarousels(profile: BusinessProfileRe
       profileVersion: profile.profileVersion,
     })
   ).filter((generation) => generation.originDailyFeedId === null);
+
+  await reserveMissingContentAssignments(existing, contentAssignments);
 
   await updateCarouselGenerationBatchCandidateCount({
     candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
@@ -131,19 +153,8 @@ export async function prepareDailyBusinessProfileCarousels(params: {
     };
   }
 
-  const { analysis, resolvedCategory } = await getPreparationContext(
-    params.profile,
-  );
-  const anglePool = getCarouselCandidateAngles({
-    candidateCount: Math.max(DAILY_ANGLE_POOL_SIZE, targetCandidateCount),
-    websiteAnalysis: analysis,
-  });
-  const candidateAngles = rotateDailyCarouselAngles({
-    angles: anglePool,
-    candidateCount: targetCandidateCount,
-    localDate: params.localDate,
-    profileId: params.profile.id,
-  });
+  const { analysis, businessContext, resolvedCategory } =
+    await getPreparationContext(params.profile);
   let existingBatch = await getCarouselGenerationsByBatchId(
     params.generationBatchId,
   );
@@ -152,6 +163,13 @@ export async function prepareDailyBusinessProfileCarousels(params: {
     existingBatch,
     originDailyFeedId: params.originDailyFeedId,
     profile: params.profile,
+  });
+  const contentAssignments = await buildContentAssignments({
+    businessContext,
+    businessProfileId: params.profile.id,
+    candidateCount: targetCandidateCount,
+    existing: existingBatch,
+    generationBatchId: params.generationBatchId,
   });
 
   const missingCandidateIndexes = getMissingDailyCarouselCandidateIndexes({
@@ -170,12 +188,13 @@ export async function prepareDailyBusinessProfileCarousels(params: {
         candidateCount: targetCandidateCount,
         candidateIndex,
         categorySlug: resolvedCategory.categorySlug,
+        contentAssignment: contentAssignments[candidateIndex],
         format: "4:5",
         generationBatchId: params.generationBatchId,
         generationSource: "auto_generated",
         originDailyFeedId: params.originDailyFeedId,
         projectId: params.profile.projectId,
-        selectedAngle: candidateAngles[candidateIndex] ?? null,
+        selectedAngle: null,
         slideCount: AUTOMATIC_CAROUSEL_SLIDE_COUNT,
         userId: params.profile.userId,
         websiteAnalysisId: analysis.id,
@@ -201,6 +220,8 @@ export async function prepareDailyBusinessProfileCarousels(params: {
     profile: params.profile,
   });
 
+  await reserveMissingContentAssignments(existingBatch, contentAssignments);
+
   await updateCarouselGenerationBatchCandidateCount({
     candidateCount: targetCandidateCount,
     generationBatchId: params.generationBatchId,
@@ -215,6 +236,68 @@ export async function prepareDailyBusinessProfileCarousels(params: {
   };
 }
 
+async function buildContentAssignments(params: {
+  businessContext: BusinessProfileRecord["context"];
+  businessProfileId: string;
+  candidateCount: number;
+  existing: Awaited<ReturnType<typeof getCarouselGenerationsByBatchId>>;
+  generationBatchId: string;
+}) {
+  const history = await listRecentCarouselContentHistory({
+    businessProfileId: params.businessProfileId,
+    excludeGenerationBatchId: params.generationBatchId,
+    limit: 10,
+  });
+  const reserved = new Map<number, Partial<CarouselContentAssignment>>();
+
+  for (const generation of params.existing) {
+    if (generation.contentFormatId && generation.hookFamilyId) {
+      reserved.set(generation.candidateIndex, {
+        contentFormatId: generation.contentFormatId,
+        hookFamilyId: generation.hookFamilyId,
+      });
+    }
+  }
+
+  const contentContext = buildCarouselBusinessContentContext(
+    params.businessContext,
+  );
+
+  return selectCarouselContentAssignments({
+    candidateCount: params.candidateCount,
+    history,
+    reserved,
+    seed: `${params.businessProfileId}:${params.generationBatchId}`,
+    topicOptionCount: contentContext.topics.length,
+  });
+}
+
+async function reserveMissingContentAssignments(
+  generations: Awaited<ReturnType<typeof getCarouselGenerationsByBatchId>>,
+  assignments: readonly CarouselContentAssignment[],
+) {
+  await Promise.all(
+    generations.map(async (generation) => {
+      if (generation.contentFormatId && generation.hookFamilyId) {
+        return;
+      }
+
+      const assignment = assignments[generation.candidateIndex];
+
+      if (!assignment) {
+        throw new Error(
+          `Carousel candidate ${generation.candidateIndex} is missing a content assignment.`,
+        );
+      }
+
+      await reserveCarouselContentAssignment({
+        assignment,
+        carouselId: generation.id,
+      });
+    }),
+  );
+}
+
 async function getPreparationContext(profile: BusinessProfileRecord) {
   if (!profile.analysisId) {
     throw new Error("Business profile is missing its normalized analysis.");
@@ -227,14 +310,14 @@ async function getPreparationContext(profile: BusinessProfileRecord) {
   }
 
   const resolvedCategory = resolveCarouselCategoryProfile({
-    category: analysis.analysis.category ?? analysis.category,
+    category: profile.context.category ?? analysis.category,
     pexelsImageQueries:
-      analysis.analysis.pexelsImageQueries ?? analysis.pexelsImageQueries,
+      profile.context.pexelsImageQueries ?? analysis.pexelsImageQueries,
     productSummary:
-      analysis.analysis.productSummary ?? analysis.productSummary,
-    valueProps: analysis.analysis.valueProps,
+      profile.context.productSummary ?? analysis.productSummary,
+    valueProps: profile.context.valueProps,
     visualKeywords:
-      analysis.analysis.visualKeywords ?? analysis.visualKeywords,
+      profile.context.visualKeywords ?? analysis.visualKeywords,
   });
   const safeAssetCount = await countReadyCategoryImageAssetsForCarousel(
     resolvedCategory.categorySlug,
@@ -247,7 +330,11 @@ async function getPreparationContext(profile: BusinessProfileRecord) {
     );
   }
 
-  return { analysis, resolvedCategory };
+  return {
+    analysis,
+    businessContext: profile.context,
+    resolvedCategory,
+  };
 }
 
 export async function enqueueProcessingCarouselCandidates(

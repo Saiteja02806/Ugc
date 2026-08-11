@@ -16,7 +16,6 @@ import {
   Heart,
   ImageIcon,
   Images,
-  ListChecks,
   MessageCircle,
   RefreshCw,
   Share2,
@@ -48,11 +47,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   buildInstagramActivitySummary,
-  type InstagramActivityRow,
-  type InstagramActivityStatus,
   type InstagramAnalyticsSummary,
 } from "@/lib/analytics/instagram-activity";
 import {
@@ -71,6 +76,7 @@ import {
 } from "@/lib/analytics/instagram-content-insights";
 import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
 import {
+  getInstagramPerformanceTrendMode,
   getUniqueInstagramConnections,
   type InstagramInsightPoint,
   type InstagramInsightsAccount,
@@ -498,8 +504,8 @@ export function InstagramAnalyticsWorkspace() {
               Analytics
             </h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-muted sm:text-base">
-              Review views, interactions, account readiness, and publishing
-              activity in one focused workspace.
+              Review views, interactions, content performance, and account
+              readiness in one focused workspace.
             </p>
           </div>
 
@@ -727,11 +733,6 @@ function AnalyticsReadyState({
         message={contentMessage}
       />
 
-      <RecentInstagramActivity
-        rows={analytics.activityRows}
-        showAccountName={connectionCount > 1}
-      />
-
       <div className="flex items-start gap-2.5 px-1 text-xs leading-5 text-muted">
         <ShieldCheck
           className="mt-0.5 size-4 shrink-0 text-muted-subtle"
@@ -929,7 +930,10 @@ function InstagramPerformanceTrendChart({
     .map((point) => point[metric])
     .filter((value): value is number => value !== null);
   const maxValue = Math.max(...availableValues, 1);
-  const hasData = availableValues.length > 0;
+  const trendMode = getInstagramPerformanceTrendMode(
+    points.map((point) => point[metric]),
+  );
+  const hasData = trendMode !== "empty";
   const drawableWidth = chartWidth - paddingX * 2;
   const drawableHeight = chartHeight - paddingTop - paddingBottom;
   const baselineY = chartHeight - paddingBottom;
@@ -1008,6 +1012,33 @@ function InstagramPerformanceTrendChart({
           item.connectionId === selectedItem.connectionId,
       ) ?? null
     : null;
+  const firstPoint = availablePoints[0] ?? null;
+  const firstPointItems = firstPoint
+    ? sortContentForPerformanceMarker(
+        contentByDate.get(firstPoint.date) ?? [],
+        metric,
+      )
+    : [];
+
+  const openContentItems = (
+    date: string,
+    items: InstagramContentItem[],
+  ) => {
+    if (items.length === 0) {
+      return;
+    }
+
+    setActiveDate(date);
+
+    if (items.length === 1) {
+      setSelectedContentDate(null);
+      setSelectedItem(items[0]);
+      return;
+    }
+
+    setSelectedItem(null);
+    setSelectedContentDate(date);
+  };
 
   const activateNearestPoint = (
     event: ReactPointerEvent<SVGSVGElement>,
@@ -1031,6 +1062,45 @@ function InstagramPerformanceTrendChart({
 
   if (insightsLoading) {
     return <PerformanceTrendLoadingState />;
+  }
+
+  if (trendMode === "insufficient-history" && firstPoint) {
+    return (
+      <div className="mt-6">
+        <PerformanceTrendInsufficientState
+          items={firstPointItems}
+          metric={metric}
+          onViewContent={() =>
+            openContentItems(firstPoint.date, firstPointItems)
+          }
+          point={firstPoint}
+        />
+        <ContentDayPickerDialog
+          date={selectedContentDate}
+          items={selectedDateItems}
+          metric={metric}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedContentDate(null);
+            }
+          }}
+          onSelect={(item) => {
+            setSelectedContentDate(null);
+            setSelectedItem(item);
+          }}
+          showAccountName={connectionCount > 1}
+        />
+        <ContentPerformanceDrawer
+          item={activeSelectedItem}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedItem(null);
+            }
+          }}
+          showAccountName={connectionCount > 1}
+        />
+      </div>
+    );
   }
 
   return (
@@ -1193,18 +1263,9 @@ function InstagramPerformanceTrendChart({
             metric={metric}
             metricColor={metricColor}
             onActivate={setActiveDate}
-            onSelect={() => {
-              setActiveDate(marker.point.date);
-
-              if (marker.items.length === 1) {
-                setSelectedContentDate(null);
-                setSelectedItem(marker.items[0]);
-                return;
-              }
-
-              setSelectedItem(null);
-              setSelectedContentDate(marker.point.date);
-            }}
+            onSelect={() =>
+              openContentItems(marker.point.date, marker.items)
+            }
             peak={peakPoint?.date === marker.point.date}
             point={marker.point}
             previewItem={marker.previewItem}
@@ -1300,6 +1361,57 @@ function InstagramPerformanceTrendChart({
         }}
         showAccountName={connectionCount > 1}
       />
+    </div>
+  );
+}
+
+function PerformanceTrendInsufficientState({
+  items,
+  metric,
+  onViewContent,
+  point,
+}: {
+  items: InstagramContentItem[];
+  metric: PerformanceMetric;
+  onViewContent: () => void;
+  point: AvailablePerformanceTrendPoint;
+}) {
+  const metricLabel = performanceMetricLabels[metric].toLowerCase();
+
+  return (
+    <div className="min-h-[280px] overflow-hidden rounded-[var(--radius-control)] border border-border bg-card-muted/35">
+      <Empty className="min-h-[280px] px-6 py-10">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <ChartNoAxesCombined aria-hidden="true" />
+          </EmptyMedia>
+          <EmptyTitle>Not enough history to show a trend</EmptyTitle>
+          <EmptyDescription>
+            We recorded your first reporting day on {formatShortDate(point.date)}.
+            The chart will appear after another day reports performance.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Badge variant="outline">
+            {formatShortDate(point.date)}
+            <span aria-hidden="true">·</span>
+            {formatNumber(point.value)} {metricLabel}
+          </Badge>
+          {items.length > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onViewContent}
+            >
+              {items.length === 1
+                ? "View post"
+                : `View ${formatNumber(items.length)} posts`}
+              <ArrowRight data-icon="inline-end" aria-hidden="true" />
+            </Button>
+          ) : null}
+        </EmptyContent>
+      </Empty>
     </div>
   );
 }
@@ -2550,159 +2662,6 @@ function DrawerMetric({
       </dd>
     </div>
   );
-}
-
-function RecentInstagramActivity({
-  rows,
-  showAccountName,
-}: {
-  rows: InstagramActivityRow[];
-  showAccountName: boolean;
-}) {
-  return (
-    <section className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
-      <header className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
-            Recent activity
-          </p>
-          <h2 className="mt-2 text-lg font-bold tracking-[-0.02em] text-foreground-strong">
-            Publishing history
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            Your latest schedule and publishing records in this date range.
-          </p>
-        </div>
-        <Link
-          href="/scheduling"
-          className={cn(
-            buttonVariants({ size: "lg", variant: "outline" }),
-            "w-full sm:w-auto",
-          )}
-        >
-          Open scheduling
-          <ArrowRight data-icon="inline-end" aria-hidden="true" />
-        </Link>
-      </header>
-
-      {rows.length > 0 ? (
-        <div className="border-t border-border">
-          {rows.map((row, index) => (
-            <article
-              key={row.id}
-              className={cn(
-                "flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6",
-                index > 0 && "border-t border-border",
-              )}
-            >
-              <div className="flex min-w-0 items-start gap-3">
-                <ActivityStatusIcon status={row.status} />
-                <div className="min-w-0">
-                  <h3 className="line-clamp-1 text-sm font-semibold text-foreground-strong">
-                    {row.title}
-                  </h3>
-                  <p className="mt-1 text-xs leading-5 text-muted">
-                    {formatDateTime(row.date)}
-                    {showAccountName && row.accountName
-                      ? ` · ${row.accountName}`
-                      : ""}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-3 sm:justify-end">
-                <ActivityStatusBadge status={row.status} />
-                {row.platformPostUrl ? (
-                  <a
-                    href={row.platformPostUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={buttonVariants({ size: "sm", variant: "ghost" })}
-                  >
-                    View post
-                    <ExternalLink data-icon="inline-end" aria-hidden="true" />
-                  </a>
-                ) : null}
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="border-t border-border px-5 py-10 text-center sm:px-6">
-          <span className="mx-auto flex size-11 items-center justify-center rounded-[var(--radius-control)] bg-card-muted text-muted">
-            <ListChecks className="size-5" aria-hidden="true" />
-          </span>
-          <h3 className="mt-4 text-sm font-semibold text-foreground-strong">
-            No publishing activity in this period
-          </h3>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">
-            Change the date range or schedule your next post to start building
-            your publishing history.
-          </p>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function ActivityStatusIcon({
-  status,
-}: {
-  status: InstagramActivityStatus;
-}) {
-  const className =
-    status === "published"
-      ? "bg-success/10 text-success"
-      : status === "attention"
-        ? "bg-destructive/10 text-destructive"
-        : status === "scheduled"
-          ? "bg-info/10 text-info"
-          : "bg-card-muted text-muted";
-  const icon =
-    status === "published" ? (
-      <CheckCircle2 className="size-5" aria-hidden="true" />
-    ) : status === "attention" ? (
-      <TriangleAlert className="size-5" aria-hidden="true" />
-    ) : status === "scheduled" ? (
-      <CalendarClock className="size-5" aria-hidden="true" />
-    ) : (
-      <ListChecks className="size-5" aria-hidden="true" />
-    );
-
-  return (
-    <span
-      className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-control)]",
-        className,
-      )}
-    >
-      {icon}
-    </span>
-  );
-}
-
-function ActivityStatusBadge({
-  status,
-}: {
-  status: InstagramActivityStatus;
-}) {
-  if (status === "published") {
-    return (
-      <Badge variant="published">
-        Published
-      </Badge>
-    );
-  }
-
-  if (status === "attention") {
-    return <Badge variant="destructive">Needs attention</Badge>;
-  }
-
-  if (status === "scheduled") {
-    return <Badge variant="scheduled">Scheduled</Badge>;
-  }
-
-  return <Badge variant="draft">Draft</Badge>;
 }
 
 function AnalyticsLoadingState() {

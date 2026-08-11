@@ -94,6 +94,17 @@ export type TrendingHookVideoSourceRecord = TrendingHookVideoCreative & {
 
 export type TrendingWallTextCreative = {
   aspectRatio: "9:16";
+  audio: {
+    assetDurationSeconds: number;
+    assetId: string;
+    audioUrl: string;
+    cueStartSeconds: number;
+    fadeOutSeconds: number;
+    fitMode: "exact" | "trim" | "loop";
+    matchingVersion: string;
+    outputDurationSeconds: number;
+    selectionId: string;
+  };
   durationSeconds: number;
   layout: TrendingWallTextLayout;
   previewUrl: string;

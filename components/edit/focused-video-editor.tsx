@@ -32,6 +32,7 @@ import {
   type TextOverlay,
   type TextOverlayPosition,
 } from "@/lib/edit/video-library";
+import { normalizeEditableVideoDraftForDuration } from "@/lib/edit/editor-draft";
 import {
   EDIT_OVERLAY_HORIZONTAL_INSET_PERCENT,
   EDIT_OVERLAY_SHADOW_OFFSET_PX,
@@ -110,14 +111,6 @@ export function FocusedVideoEditor({
       .map((overlay) => overlay.id),
   );
   const hasTruncatedOverlay = truncatedOverlayIds.size > 0;
-
-  useEffect(() => {
-    onDraftChange?.({
-      textOverlays,
-      trimEndSeconds: trimEnd > 0 ? trimEnd : null,
-      trimStartSeconds: trimStart,
-    });
-  }, [onDraftChange, textOverlays, trimEnd, trimStart]);
 
   useEffect(() => {
     onDraftValidityChange?.(!hasTruncatedOverlay);
@@ -213,6 +206,27 @@ export function FocusedVideoEditor({
     setCurrentTime(nextTime);
   }
 
+  function emitDraftChange({
+    nextTextOverlays = textOverlays,
+    nextTrimEnd = trimEnd,
+    nextTrimStart = trimStart,
+  }: {
+    nextTextOverlays?: TextOverlay[];
+    nextTrimEnd?: number;
+    nextTrimStart?: number;
+  }) {
+    onDraftChange?.(
+      normalizeEditableVideoDraftForDuration(
+        {
+          textOverlays: nextTextOverlays,
+          trimEndSeconds: nextTrimEnd > 0 ? nextTrimEnd : null,
+          trimStartSeconds: nextTrimStart,
+        },
+        effectiveDuration,
+      ),
+    );
+  }
+
   function updateTrimStart(nextStart: number) {
     if (effectiveDuration <= 0) {
       return;
@@ -229,6 +243,7 @@ export function FocusedVideoEditor({
     setTrimStart(safeStart);
     setTrimMessage(null);
     seekPreview(safeStart);
+    emitDraftChange({ nextTrimStart: safeStart });
   }
 
   function updateTrimEnd(nextEnd: number) {
@@ -247,6 +262,7 @@ export function FocusedVideoEditor({
     setTrimEnd(safeEnd);
     setTrimMessage(null);
     seekPreview(safeEnd);
+    emitDraftChange({ nextTrimEnd: safeEnd });
   }
 
   function resetTrimRange() {
@@ -258,6 +274,10 @@ export function FocusedVideoEditor({
     setTrimEnd(effectiveDuration);
     setTrimMessage(null);
     seekPreview(0);
+    emitDraftChange({
+      nextTrimEnd: effectiveDuration,
+      nextTrimStart: 0,
+    });
   }
 
   function switchPreviewMode(nextMode: "draft" | "rendered") {
@@ -303,47 +323,53 @@ export function FocusedVideoEditor({
     }
 
     const nextOverlay = createTextOverlay(position);
+    const nextTextOverlays = [...textOverlays, nextOverlay];
 
-    setTextOverlays((currentOverlays) => [...currentOverlays, nextOverlay]);
+    setTextOverlays(nextTextOverlays);
     setSelectedOverlayId(nextOverlay.id);
+    emitDraftChange({ nextTextOverlays });
   }
 
   function updateTextOverlay(
     overlayId: string,
     patch: Partial<Pick<TextOverlay, "position" | "style" | "text">>,
   ) {
-    setTextOverlays((currentOverlays) => {
-      if (
-        patch.position &&
-        currentOverlays.some(
-          (overlay) =>
-            overlay.id !== overlayId && overlay.position === patch.position,
-        )
-      ) {
-        return currentOverlays;
-      }
+    if (
+      patch.position &&
+      textOverlays.some(
+        (overlay) =>
+          overlay.id !== overlayId && overlay.position === patch.position,
+      )
+    ) {
+      return;
+    }
 
-      return currentOverlays
-        .map((overlay) =>
-          overlay.id === overlayId
-            ? {
-                ...overlay,
-                ...patch,
-                text:
-                  patch.text === undefined
-                    ? overlay.text
-                    : patch.text.slice(0, TEXT_OVERLAY_MAX_LENGTH),
-              }
-            : overlay,
-        )
-        .sort(sortTextOverlaysByPosition);
-    });
+    const nextTextOverlays = textOverlays
+      .map((overlay) =>
+        overlay.id === overlayId
+          ? {
+              ...overlay,
+              ...patch,
+              text:
+                patch.text === undefined
+                  ? overlay.text
+                  : patch.text.slice(0, TEXT_OVERLAY_MAX_LENGTH),
+            }
+          : overlay,
+      )
+      .sort(sortTextOverlaysByPosition);
+
+    setTextOverlays(nextTextOverlays);
+    emitDraftChange({ nextTextOverlays });
   }
 
   function deleteTextOverlay(overlayId: string) {
-    setTextOverlays((currentOverlays) => {
-      return currentOverlays.filter((overlay) => overlay.id !== overlayId);
-    });
+    const nextTextOverlays = textOverlays.filter(
+      (overlay) => overlay.id !== overlayId,
+    );
+
+    setTextOverlays(nextTextOverlays);
+    emitDraftChange({ nextTextOverlays });
 
     if (selectedOverlayId === overlayId) {
       setSelectedOverlayId(
@@ -872,9 +898,7 @@ function TrimControls({
           <div
             className="pointer-events-none absolute bottom-1 top-1 z-10 w-px -translate-x-1/2 bg-foreground shadow-[0_0_0_1px_rgb(255_255_255_/_0.65)]"
             style={{ left: `${currentPercent}%` }}
-          >
-            <span className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rotate-45 bg-foreground" />
-          </div>
+          />
 
           <button
             type="button"
@@ -996,7 +1020,7 @@ function TextOverlayControls({
               onClick={onAddOverlay}
               disabled={!canAddOverlay}
               title={canAddOverlay ? "Add text layer" : "All three text positions are in use"}
-              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-semibold text-deep-contrast transition hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control border border-primary bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:border-primary-hover hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="size-3.5" aria-hidden="true" />
               Add text

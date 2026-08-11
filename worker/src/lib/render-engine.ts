@@ -9,7 +9,10 @@ import {
   getStorageProviderName,
   uploadBufferToStorage,
 } from "./storage.js";
-import { downloadVideoToBuffer } from "./download-video.js";
+import {
+  downloadAudioToBuffer,
+  downloadVideoToBuffer,
+} from "./download-video.js";
 import {
   EDIT_OVERLAY_FONT_FAMILY,
   EDIT_OVERLAY_OUTPUT_DIMENSIONS,
@@ -103,6 +106,12 @@ export type RenderScheduleCombinationPayload = {
   hookTextLines?: string[] | null;
   hookTextPosition?: NormalizedTextPosition | null;
   hookTextColor: string;
+  hookAudio?: {
+    audioAssetId: string;
+    audioUrl: string;
+    durationSeconds: number;
+    selectionSource: "video_locked";
+  } | null;
   hookTrimEnd: number | null;
   hookTrimStart: number;
   hookVideoId: string;
@@ -127,6 +136,16 @@ export type RenderScheduleCombinationOutput = {
 
 export type RenderWallTextVideoPayload = {
   assignmentId: string;
+  audio: {
+    assetDurationSeconds: number;
+    assetId: string;
+    audioUrl: string;
+    cueStartSeconds: number;
+    fadeOutSeconds: number;
+    fitMode: "exact" | "trim" | "loop";
+    matchingVersion: string;
+    selectionId: string;
+  };
   creativeEditId: string | null;
   creativeEditRevision: number | null;
   creativeId: string;
@@ -247,8 +266,43 @@ export async function renderEditedVideoToStorage(
 export async function renderScheduleCombinationToStorage(
   payload: RenderScheduleCombinationPayload,
 ): Promise<RenderScheduleCombinationOutput> {
+  const renderedBuffer = await renderScheduleCombinationToBuffer(payload);
+  const key = buildScheduleCombinationVideoKey(payload);
+  const result = await uploadBufferToStorage({
+    key,
+    buffer: renderedBuffer,
+    contentType: OUTPUT_CONTENT_TYPE,
+    cacheControl: "public, max-age=31536000, immutable",
+  });
+
+  logger.info("Schedule combination render uploaded to object storage", {
+    key: result.key,
+    renderId: payload.renderId,
+    renderedSize: renderedBuffer.length,
+    scheduleId: payload.scheduleId,
+    storageProvider: getStorageProviderName(),
+    url: result.url,
+  });
+
+  return {
+    ok: true,
+    demoVideoId: payload.demoVideoId,
+    hookVideoId: payload.hookVideoId,
+    renderId: payload.renderId,
+    scheduleId: payload.scheduleId,
+    key: result.key,
+    url: result.url,
+  };
+}
+
+export async function renderScheduleCombinationToBuffer(
+  payload: RenderScheduleCombinationPayload,
+) {
   const workDir = await mkdtemp(join(tmpdir(), "ugc-combine-render-"));
   const hookInputPath = join(workDir, "hook-source-video");
+  const hookAudioPath = payload.hookAudio
+    ? join(workDir, "hook-locked-audio")
+    : null;
   const demoInputPath = join(workDir, "demo-source-video");
   const hookSegmentPath = join(workDir, "hook-normalized.mp4");
   const demoSegmentPath = join(workDir, "demo-normalized.mp4");
@@ -261,7 +315,7 @@ export async function renderScheduleCombinationToStorage(
       fontSize: payload.hookTextFontSize,
       lines: payload.hookTextLines,
       normalizedPosition: payload.hookTextPosition,
-      position: "middle",
+      position: "top",
       style: "hook",
       text: payload.hookText,
       textColor: payload.hookTextColor,
@@ -270,14 +324,22 @@ export async function renderScheduleCombinationToStorage(
   });
 
   try {
-    const [hookBuffer, demoBuffer] = await Promise.all([
+    const [hookBuffer, demoBuffer, hookAudioBuffer] = await Promise.all([
       downloadVideoToBuffer(payload.hookVideoUrl),
       downloadVideoToBuffer(payload.demoVideoUrl),
+      payload.hookAudio
+        ? downloadAudioToBuffer(payload.hookAudio.audioUrl, {
+            maxBytes: 50 * 1024 * 1024,
+          })
+        : Promise.resolve(null),
     ]);
 
     await Promise.all([
       writeFile(hookInputPath, hookBuffer),
       writeFile(demoInputPath, demoBuffer),
+      ...(hookAudioPath && hookAudioBuffer
+        ? [writeFile(hookAudioPath, hookAudioBuffer)]
+        : []),
       ...(hookOverlay ? [renderPreparedTextOverlayImage(hookOverlay)] : []),
     ]);
 
@@ -285,6 +347,8 @@ export async function renderScheduleCombinationToStorage(
       demoSize: demoBuffer.length,
       demoVideoId: payload.demoVideoId,
       hookSize: hookBuffer.length,
+      hookAudioAssetId: payload.hookAudio?.audioAssetId ?? null,
+      hookAudioSize: hookAudioBuffer?.length ?? 0,
       hookVideoId: payload.hookVideoId,
       renderId: payload.renderId,
       scheduleId: payload.scheduleId,
@@ -292,6 +356,7 @@ export async function renderScheduleCombinationToStorage(
 
     await normalizeCombinationSegment({
       inputPath: hookInputPath,
+      hookAudioPath,
       outputPath: hookSegmentPath,
       payload,
       preparedTextOverlay: hookOverlay,
@@ -299,6 +364,7 @@ export async function renderScheduleCombinationToStorage(
     });
     await normalizeCombinationSegment({
       inputPath: demoInputPath,
+      hookAudioPath: null,
       outputPath: demoSegmentPath,
       payload,
       preparedTextOverlay: null,
@@ -334,33 +400,7 @@ export async function renderScheduleCombinationToStorage(
       renderId: payload.renderId,
     });
 
-    const renderedBuffer = await readFile(outputPath);
-    const key = buildScheduleCombinationVideoKey(payload);
-    const result = await uploadBufferToStorage({
-      key,
-      buffer: renderedBuffer,
-      contentType: OUTPUT_CONTENT_TYPE,
-      cacheControl: "public, max-age=31536000, immutable",
-    });
-
-    logger.info("Schedule combination render uploaded to object storage", {
-      key: result.key,
-      renderId: payload.renderId,
-      renderedSize: renderedBuffer.length,
-      scheduleId: payload.scheduleId,
-      storageProvider: getStorageProviderName(),
-      url: result.url,
-    });
-
-    return {
-      ok: true,
-      demoVideoId: payload.demoVideoId,
-      hookVideoId: payload.hookVideoId,
-      renderId: payload.renderId,
-      scheduleId: payload.scheduleId,
-      key: result.key,
-      url: result.url,
-    };
+    return await readFile(outputPath);
   } finally {
     await rm(workDir, {
       force: true,
@@ -373,12 +413,18 @@ export async function renderWallTextVideoToStorage(
   payload: RenderWallTextVideoPayload,
 ): Promise<RenderWallTextVideoOutput> {
   const workDir = await mkdtemp(join(tmpdir(), "ugc-wall-text-render-"));
+  const audioPath = join(workDir, "wall-audio");
   const inputPath = join(workDir, "source-video");
   const overlayPath = join(workDir, "wall-text-overlay.png");
   const outputPath = join(workDir, "wall-text-video.mp4");
 
   try {
-    const sourceBuffer = await downloadVideoToBuffer(payload.sourceVideoUrl);
+    const [sourceBuffer, audioBuffer] = await Promise.all([
+      downloadVideoToBuffer(payload.sourceVideoUrl),
+      downloadAudioToBuffer(payload.audio.audioUrl, {
+        maxBytes: 50 * 1024 * 1024,
+      }),
+    ]);
     await ensureWallTextFontsRegistered();
     await validateWallTextRenderedLineWidths(payload.text, payload.textBox);
     const overlaySvg = buildWallTextOverlaySvg({
@@ -390,17 +436,16 @@ export async function renderWallTextVideoToStorage(
     });
 
     await Promise.all([
+      writeFile(audioPath, audioBuffer),
       writeFile(inputPath, sourceBuffer),
       sharp(Buffer.from(overlaySvg))
         .png({ compressionLevel: 9 })
         .toFile(overlayPath),
     ]);
 
-    const hasAudio = await inputHasAudio(inputPath);
-
     await runFfmpegCommand({
       args: buildWallTextVideoArgs({
-        hasAudio,
+        audioPath,
         inputPath,
         outputPath,
         overlayPath,
@@ -408,6 +453,13 @@ export async function renderWallTextVideoToStorage(
       }),
       label: "wall-text video render",
       renderId: payload.renderId,
+    });
+
+    await validateRenderedVideoFile(outputPath, payload.renderId, {
+      expectedAudioCodecName: "aac",
+      expectedDurationSeconds: payload.durationSeconds,
+      logLabel: "Wall-text",
+      requireAudio: true,
     });
 
     const renderedBuffer = await readFile(outputPath);
@@ -446,17 +498,17 @@ export async function renderWallTextVideoToStorage(
 }
 
 export function buildWallTextVideoArgs({
-  hasAudio,
+  audioPath,
   inputPath,
   outputPath,
   overlayPath,
   payload,
 }: {
-  hasAudio: boolean;
+  audioPath: string;
   inputPath: string;
   outputPath: string;
   overlayPath: string;
-  payload: Pick<RenderWallTextVideoPayload, "durationSeconds">;
+  payload: Pick<RenderWallTextVideoPayload, "audio" | "durationSeconds">;
 }) {
   const args = [
     "-y",
@@ -468,16 +520,9 @@ export function buildWallTextVideoArgs({
     "30",
     "-i",
     overlayPath,
+    "-i",
+    audioPath,
   ];
-
-  if (!hasAudio) {
-    args.push(
-      "-f",
-      "lavfi",
-      "-i",
-      "anullsrc=channel_layout=stereo:sample_rate=48000",
-    );
-  }
 
   args.push(
     "-t",
@@ -487,11 +532,12 @@ export function buildWallTextVideoArgs({
       `[0:v]${buildVideoFilters({ ratio: "9:16" })},setpts=PTS-STARTPTS[video]`,
       "[1:v]format=rgba,setpts=PTS-STARTPTS[overlay]",
       "[video][overlay]overlay=x=0:y=0:shortest=1:format=auto[rendered]",
+      buildWallTextAudioFilter(payload),
     ].join(";"),
     "-map",
     "[rendered]",
     "-map",
-    hasAudio ? "0:a:0" : "2:a:0",
+    "[wall_audio]",
     "-c:v",
     "libx264",
     "-preset",
@@ -515,6 +561,49 @@ export function buildWallTextVideoArgs({
   );
 
   return args;
+}
+
+function buildWallTextAudioFilter(
+  payload: Pick<RenderWallTextVideoPayload, "audio" | "durationSeconds">,
+) {
+  const duration = formatSeconds(payload.durationSeconds);
+  const cueStart = formatSeconds(payload.audio.cueStartSeconds);
+  const assetEnd = formatSeconds(payload.audio.assetDurationSeconds);
+  const fadeDuration = Math.min(
+    payload.audio.fadeOutSeconds,
+    payload.durationSeconds / 2,
+  );
+  const fadeFilter =
+    fadeDuration > 0
+      ? `,afade=t=out:st=${formatSeconds(
+          payload.durationSeconds - fadeDuration,
+        )}:d=${formatSeconds(fadeDuration)}`
+      : "";
+  const loopFilter =
+    payload.audio.fitMode === "loop"
+      ? `,aloop=loop=-1:size=${Math.max(
+          1,
+          Math.ceil(
+            (payload.audio.assetDurationSeconds -
+              payload.audio.cueStartSeconds) *
+              48_000,
+          ),
+        )}:start=0`
+      : "";
+  const padFilter =
+    payload.audio.fitMode === "loop" ? "" : `apad=pad_dur=${duration}`;
+
+  return [
+    "[2:a:0]aresample=48000",
+    "aformat=channel_layouts=stereo",
+    `atrim=start=${cueStart}:end=${assetEnd}`,
+    "asetpts=PTS-STARTPTS",
+    ...(loopFilter ? [loopFilter.slice(1)] : []),
+    ...(padFilter ? [padFilter] : []),
+    `atrim=duration=${duration}`,
+    ...(fadeFilter ? [fadeFilter.slice(1)] : []),
+    "asetpts=PTS-STARTPTS[wall_audio]",
+  ].join(",");
 }
 
 async function runFfmpeg({
@@ -595,12 +684,14 @@ async function runFfmpegCommand({
 }
 
 async function normalizeCombinationSegment({
+  hookAudioPath,
   inputPath,
   outputPath,
   payload,
   preparedTextOverlay,
   segmentLabel,
 }: {
+  hookAudioPath: string | null;
   inputPath: string;
   outputPath: string;
   payload: RenderScheduleCombinationPayload;
@@ -610,6 +701,7 @@ async function normalizeCombinationSegment({
   const hasAudio = await inputHasAudio(inputPath);
   const args = buildScheduleCombinationSegmentArgs({
     hasAudio,
+    hookAudioPath,
     inputPath,
     outputPath,
     payload,
@@ -637,7 +729,17 @@ type RenderedVideoProbe = {
   }>;
 };
 
-export function validateRenderedVideoProbe(value: unknown) {
+type RenderedVideoValidationOptions = {
+  durationToleranceSeconds?: number;
+  expectedAudioCodecName?: string;
+  expectedDurationSeconds?: number;
+  requireAudio?: boolean;
+};
+
+export function validateRenderedVideoProbe(
+  value: unknown,
+  options: RenderedVideoValidationOptions = {},
+) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("ffprobe did not return video metadata.");
   }
@@ -645,6 +747,9 @@ export function validateRenderedVideoProbe(value: unknown) {
   const probe = value as RenderedVideoProbe;
   const videoStream = probe.streams?.find(
     (stream) => stream.codec_type === "video",
+  );
+  const audioStream = probe.streams?.find(
+    (stream) => stream.codec_type === "audio",
   );
   const duration = Number(probe.format?.duration);
 
@@ -660,6 +765,29 @@ export function validateRenderedVideoProbe(value: unknown) {
     );
   }
 
+  if (options.requireAudio && !audioStream?.codec_name) {
+    throw new Error("Rendered MP4 is missing a playable audio stream.");
+  }
+
+  if (
+    options.expectedAudioCodecName &&
+    audioStream?.codec_name !== options.expectedAudioCodecName
+  ) {
+    throw new Error(
+      `Rendered MP4 audio codec must be ${options.expectedAudioCodecName}.`,
+    );
+  }
+
+  if (options.expectedDurationSeconds !== undefined) {
+    const tolerance = options.durationToleranceSeconds ?? 0.15;
+
+    if (Math.abs(duration - options.expectedDurationSeconds) > tolerance) {
+      throw new Error(
+        `Rendered MP4 duration ${duration.toFixed(3)}s does not match the expected ${options.expectedDurationSeconds.toFixed(3)}s duration.`,
+      );
+    }
+  }
+
   return {
     codecName: videoStream.codec_name,
     durationSeconds: duration,
@@ -668,7 +796,11 @@ export function validateRenderedVideoProbe(value: unknown) {
   };
 }
 
-async function validateRenderedVideoFile(outputPath: string, renderId: string) {
+async function validateRenderedVideoFile(
+  outputPath: string,
+  renderId: string,
+  options: RenderedVideoValidationOptions & { logLabel?: string } = {},
+) {
   const ffprobePath = process.env.FFPROBE_PATH || "ffprobe";
   const args = [
     "-v",
@@ -712,9 +844,9 @@ async function validateRenderedVideoFile(outputPath: string, renderId: string) {
     throw new Error("ffprobe returned invalid JSON for the rendered MP4.");
   }
 
-  const metadata = validateRenderedVideoProbe(parsed);
+  const metadata = validateRenderedVideoProbe(parsed, options);
 
-  logger.info("Validated edited video MP4 before upload", {
+  logger.info(`Validated ${options.logLabel ?? "edited video"} MP4 before upload`, {
     ...metadata,
     renderId,
   });
@@ -722,6 +854,7 @@ async function validateRenderedVideoFile(outputPath: string, renderId: string) {
 
 export function buildScheduleCombinationSegmentArgs({
   hasAudio,
+  hookAudioPath = null,
   inputPath,
   outputPath,
   payload,
@@ -729,6 +862,7 @@ export function buildScheduleCombinationSegmentArgs({
   segmentLabel,
 }: {
   hasAudio: boolean;
+  hookAudioPath?: string | null;
   inputPath: string;
   outputPath: string;
   payload: RenderScheduleCombinationPayload;
@@ -759,9 +893,12 @@ export function buildScheduleCombinationSegmentArgs({
     );
   }
 
-  const silentAudioInputIndex = preparedTextOverlay ? 2 : 1;
+  const auxiliaryAudioInputIndex = preparedTextOverlay ? 2 : 1;
+  const useLockedHookAudio = isHook && Boolean(hookAudioPath);
 
-  if (!hasAudio) {
+  if (useLockedHookAudio) {
+    args.push("-i", hookAudioPath as string);
+  } else if (!hasAudio) {
     args.push(
       "-f",
       "lavfi",
@@ -787,7 +924,11 @@ export function buildScheduleCombinationSegmentArgs({
 
   args.push(
     "-map",
-    hasAudio ? "0:a:0" : `${silentAudioInputIndex}:a:0`,
+    useLockedHookAudio
+      ? `${auxiliaryAudioInputIndex}:a:0`
+      : hasAudio
+        ? "0:a:0"
+        : `${auxiliaryAudioInputIndex}:a:0`,
     "-c:v",
     "libx264",
     "-preset",
@@ -944,6 +1085,9 @@ function buildPreparedTextOverlay(params: {
   ratio: RenderRatio;
 }): PreparedTextOverlay | null {
   const text = params.overlay.text.trim();
+  const savedLines = params.overlay.lines
+    ?.map((line) => line.replace(/\s+/gu, " ").trim())
+    .filter(Boolean);
 
   if (!text) {
     return null;
@@ -952,17 +1096,19 @@ function buildPreparedTextOverlay(params: {
   const layout =
     params.overlay.fontSize !== null &&
     params.overlay.fontSize !== undefined &&
-    params.overlay.lines &&
-    params.overlay.lines.length > 0
+    savedLines &&
+    savedLines.length > 0
       ? buildResolvedEditOverlayTextLayout({
           fontSize: params.overlay.fontSize,
-          lines: params.overlay.lines,
+          lines: savedLines,
           ratio: params.ratio,
           style: params.overlay.style,
           textColor: params.overlay.textColor,
         })
       : buildEditOverlayTextLayout(
-          text,
+          savedLines && savedLines.length > 0
+            ? savedLines.join("\n")
+            : text,
           params.overlay.style,
           params.ratio,
           params.overlay.textColor,
@@ -1012,7 +1158,7 @@ export function buildPreparedTextOverlaySvg(
   const textTop = containerY + layout.padding;
   const centerX = containerX + containerWidth / 2;
   const fontFamily = escapeXml(
-    `${EDIT_OVERLAY_FONT_FAMILY}, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif`,
+    `${EDIT_OVERLAY_FONT_FAMILY}, Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif`,
   );
   const background =
     layout.backgroundOpacity === null
@@ -1042,8 +1188,13 @@ export function buildPreparedTextOverlaySvg(
       .filter(Boolean)
       .join(" ");
 
+    const separationLayer =
+      style === "hook"
+        ? `<text x="${centerX}" y="${baselineY}" ${commonAttributes} fill="#000000" fill-opacity="0.82" stroke="#000000" stroke-opacity="0.82" stroke-width="5" stroke-linejoin="round" paint-order="stroke fill">${escapedLine}</text>`
+        : `<text x="${centerX + EDIT_OVERLAY_SHADOW_OFFSET_PX}" y="${baselineY + EDIT_OVERLAY_SHADOW_OFFSET_PX}" ${commonAttributes} fill="${escapeXml(EDIT_OVERLAY_SHADOW_COLOR)}">${escapedLine}</text>`;
+
     return [
-      `<text x="${centerX + EDIT_OVERLAY_SHADOW_OFFSET_PX}" y="${baselineY + EDIT_OVERLAY_SHADOW_OFFSET_PX}" ${commonAttributes} fill="${escapeXml(EDIT_OVERLAY_SHADOW_COLOR)}">${escapedLine}</text>`,
+      separationLayer,
       `<text x="${centerX}" y="${baselineY}" ${commonAttributes} fill="${layout.textColor}">${escapedLine}</text>`,
     ];
   });

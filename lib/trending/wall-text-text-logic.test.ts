@@ -4,8 +4,10 @@ import test from "node:test";
 import {
   buildWallTextBusinessContext,
   estimateWallTextReadingSeconds,
+  getWallTextLinePolicy,
   getWallTextMaximumWords,
   getWallTextPreviewTitle,
+  getWallTextWordPolicy,
   validateGeneratedWallTextIdeas,
 } from "./wall-text-text-logic.ts";
 
@@ -30,8 +32,156 @@ const CURRENT_EXAMPLE = {
   ],
 };
 
-test("uses the six-second Wall 24-word hard limit", () => {
+test("uses the Wall 24-word global hard limit", () => {
   assert.equal(getWallTextMaximumWords(), 24);
+});
+
+test("uses a shorter 4-line policy for a 3-second Wall video", () => {
+  assert.deepEqual(getWallTextWordPolicy(3), {
+    maximum: 11,
+    minimum: 8,
+    preferredMaximum: 11,
+    preferredMinimum: 9,
+  });
+  assert.deepEqual(getWallTextLinePolicy("action_benefit", 3), {
+    ideal: 4,
+    maximum: 7,
+    minimum: 4,
+    preferredMaximum: 4,
+    preferredMinimum: 4,
+  });
+
+  const shortIdea = {
+    candidateIndex: 5,
+    fullText:
+      "Reviewing weekly progress reveals patterns. Better choices feel much clearer.",
+    pattern: "action_benefit" as const,
+    segments: [
+      {
+        lines: ["Reviewing weekly progress", "reveals patterns."],
+        role: "lead" as const,
+      },
+      {
+        lines: ["Better choices feel", "much clearer."],
+        role: "closing" as const,
+      },
+    ],
+  };
+
+  assert.doesNotThrow(() =>
+    validateGeneratedWallTextIdeas({
+      candidates: [{ candidateIndex: 5, durationSeconds: 3 }],
+      generated: [shortIdea],
+    }),
+  );
+  assert.throws(
+    () =>
+      validateGeneratedWallTextIdeas({
+        candidates: [{ candidateIndex: 5, durationSeconds: 3 }],
+        generated: [
+          {
+            ...shortIdea,
+            fullText:
+              "Reviewing weekly progress reveals useful patterns. Better daily choices now feel much clearer.",
+            segments: [
+              {
+                lines: [
+                  "Reviewing weekly progress",
+                  "reveals useful patterns.",
+                ],
+                role: "lead",
+              },
+              {
+                lines: ["Better daily choices", "now feel much clearer."],
+                role: "closing",
+              },
+            ],
+          },
+        ],
+      }),
+    /8–11 words for a 3.0-second clip/,
+  );
+});
+
+test("accepts four-line Wall copy and rejects Hook-sized or oversized blocks", () => {
+  const compactText =
+    "Reviewing weekly progress shows where effort actually went. The next choice feels less like a guess.";
+  const compactIdea = {
+    candidateIndex: 5,
+    fullText: compactText,
+    pattern: "action_benefit" as const,
+    segments: [
+      {
+        lines: ["Reviewing weekly progress shows", "where effort actually went."],
+        role: "lead" as const,
+      },
+      {
+        lines: ["The next choice feels", "less like a guess."],
+        role: "closing" as const,
+      },
+    ],
+  };
+
+  assert.doesNotThrow(() =>
+    validateGeneratedWallTextIdeas({
+      candidates: [{ candidateIndex: 5, durationSeconds: 6 }],
+      generated: [compactIdea],
+    }),
+  );
+
+  assert.throws(
+    () =>
+      validateGeneratedWallTextIdeas({
+        candidates: [{ candidateIndex: 5, durationSeconds: 6 }],
+        generated: [
+          {
+            ...compactIdea,
+            segments: [
+              {
+                lines: ["Reviewing weekly progress shows where effort"],
+                role: "lead",
+              },
+              {
+                lines: [
+                  "actually went. The next choice feels",
+                  "less like a guess.",
+                ],
+                role: "closing",
+              },
+            ],
+          },
+        ],
+      }),
+    /4–7 semantic lines/,
+  );
+
+  assert.throws(
+    () =>
+      validateGeneratedWallTextIdeas({
+        candidates: [{ candidateIndex: 5, durationSeconds: 6 }],
+        generated: [
+          {
+            ...compactIdea,
+            segments: [
+              {
+                lines: [
+                  "Reviewing weekly",
+                  "progress shows",
+                  "where effort",
+                  "actually went.",
+                ],
+                role: "lead",
+              },
+              {
+                lines: ["The next", "choice feels", "less like", "a guess."],
+                role: "closing",
+              },
+            ],
+          },
+        ],
+      }),
+    /4–7 semantic lines/,
+  );
 });
 
 test("maps the assigned pattern and semantic segments into the Wall v4 payload", () => {
@@ -62,7 +212,7 @@ test("estimates comfort from the native clip duration", () => {
         candidates: [{ candidateIndex: 2, durationSeconds: 4.5 }],
         generated: [CURRENT_EXAMPLE],
       }),
-    /longer than the 4.5-second clip/,
+    /16–18 words for a 4.5-second clip/,
   );
 });
 

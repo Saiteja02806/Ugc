@@ -30,6 +30,20 @@ const renderingMigration = readFileSync(
   ),
   "utf8",
 );
+const renderSchemaRepairMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260808072043_repair_wall_text_render_schema.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const renderEditIndexMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260808072642_index_wall_text_render_edit.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const semanticOverlayMigration = readFileSync(
   new URL(
     "../../supabase/migrations/20260730061012_wall_text_semantic_overlay_v3.sql",
@@ -61,6 +75,10 @@ const feedSource = readFileSync(
 );
 const databaseSource = readFileSync(
   new URL("./wall-text-db.ts", import.meta.url),
+  "utf8",
+);
+const jobsSource = readFileSync(
+  new URL("./wall-text-jobs.ts", import.meta.url),
   "utf8",
 );
 const migration =
@@ -163,7 +181,7 @@ test("uses the dedicated GPT-5 mini Wall generator contract", () => {
   );
   assert.match(
     generatorSource,
-    /Target \$\{WALL_TEXT_PREFERRED_MIN_WORDS\}–\$\{WALL_TEXT_PREFERRED_MAX_WORDS\} words[\s\S]+must return exactly six lines/i,
+    /Target \$\{WALL_TEXT_PREFERRED_MIN_WORDS\}–\$\{WALL_TEXT_PREFERRED_MAX_WORDS\} words[\s\S]+Return \$\{MIN_WALL_TEXT_RENDERED_LINES\}–\$\{MAX_WALL_TEXT_RENDERED_LINES\} short semantic lines[\s\S]+Never return one, two, or three Hook-style lines/i,
   );
   assert.match(
     generatorSource,
@@ -318,5 +336,42 @@ test("claims one standalone Wall render without entering the Hook demo renderer"
   assert.match(
     renderingMigration,
     /state = 'selected'/i,
+  );
+});
+
+test("repairs the deployed Wall renderer schema without reverting current job types", () => {
+  assert.match(
+    renderSchemaRepairMigration,
+    /add column if not exists render_id uuid[\s\S]+render_status text not null/i,
+  );
+  assert.match(
+    renderSchemaRepairMigration,
+    /source_type in \([\s\S]+wall_text_render/i,
+  );
+  assert.doesNotMatch(
+    renderSchemaRepairMigration,
+    /alter table public\.background_jobs/i,
+  );
+});
+
+test("indexes the Wall render edit foreign key", () => {
+  assert.match(
+    renderEditIndexMigration,
+    /create index if not exists user_wall_text_assignments_render_edit_idx[\s\S]+\(render_edit_id\)/i,
+  );
+});
+
+test("uses the content generator version and recovers failed preparation jobs", () => {
+  assert.match(
+    jobsSource,
+    /WALL_TEXT_GENERATOR_VERSION[\s\S]+trending-wall-text/i,
+  );
+  assert.match(
+    jobsSource,
+    /job\.status === "failed"[\s\S]+retryAndDispatchBackgroundJob/i,
+  );
+  assert.match(
+    jobsSource,
+    /replacement:\$\{job\.id\}/,
   );
 });

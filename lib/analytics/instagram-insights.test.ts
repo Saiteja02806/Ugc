@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   aggregateInstagramInsightDaily,
   buildInstagramAccountDailyTrend,
+  getInstagramPerformanceTrendMode,
   getUniqueInstagramConnections,
   hasInstagramAccountDailyTrend,
   normalizeInstagramAccountInsights,
@@ -114,6 +115,26 @@ test("keeps unavailable Instagram metrics null instead of inventing zero", () =>
     views: null,
   });
   assert.deepEqual(result.daily, []);
+});
+
+test("requires two reporting days before rendering a performance trend", () => {
+  assert.equal(
+    getInstagramPerformanceTrendMode([null, null, null]),
+    "empty",
+  );
+  assert.equal(
+    getInstagramPerformanceTrendMode([null, 0, null]),
+    "insufficient-history",
+  );
+  assert.equal(
+    getInstagramPerformanceTrendMode([null, 24, null]),
+    "insufficient-history",
+  );
+  assert.equal(getInstagramPerformanceTrendMode([0, 0]), "ready");
+  assert.equal(
+    getInstagramPerformanceTrendMode([null, 24, null, 31]),
+    "ready",
+  );
 });
 
 test("combines Meta time-series points with authoritative period totals", () => {

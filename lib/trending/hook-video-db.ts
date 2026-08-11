@@ -3,7 +3,6 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import type {
-  HookSuggestion,
   HookVideoDraftStatus,
   HookVideoSourceKind,
 } from "@/lib/trending/hook-video-types";
@@ -17,8 +16,16 @@ type Json =
   | Json[];
 
 type HookVideoSuggestionRow = {
+  audio_intent: Json | null;
   business_profile_id: string;
   business_profile_version: number | null;
+  campaign_purpose:
+    | "app_install"
+    | "conversion"
+    | "education"
+    | "product_discovery"
+    | "retargeting"
+    | null;
   candidate_index: number | null;
   created_at: string;
   demo_asset_id: string | null;
@@ -34,6 +41,7 @@ type HookVideoSuggestionRow = {
   influencer_video_id: string;
   influencer_video_title: string | null;
   input_context_hash: string | null;
+  industry_pack_id: string | null;
   opening_lines: Json | null;
   pattern_id: string | null;
   pattern_library_version: string | null;
@@ -214,60 +222,6 @@ export function getMissingHookVideoDbEnvVars() {
   }
 
   return missing;
-}
-
-export async function createHookVideoSuggestions(params: {
-  businessProfileId: string;
-  demoAssetId: string;
-  generationJobId: string;
-  influencerId: string;
-  influencerVideoId: string;
-  sourceKind: HookVideoSourceKind;
-  texts: string[];
-  userId: string;
-}): Promise<HookSuggestion[]> {
-  const generationId = crypto.randomUUID();
-  const rows = params.texts.map((text) => ({
-    business_profile_id: params.businessProfileId,
-    demo_asset_id: params.demoAssetId,
-    generation_id: generationId,
-    generation_job_id: params.generationJobId,
-    id: crypto.randomUUID(),
-    influencer_id: params.influencerId,
-    influencer_source: params.sourceKind,
-    influencer_video_id: params.influencerVideoId,
-    text: text.trim().slice(0, 220),
-    user_id: params.userId,
-  }));
-  const { data, error } = await getClient()
-    .from("hook_video_suggestions")
-    .insert(rows)
-    .select("*");
-
-  if (error) {
-    throw new Error(`Could not save hook suggestions: ${error.message}`);
-  }
-
-  return data.map((row) => ({ id: row.id, text: row.text }));
-}
-
-export async function listHookVideoSuggestionsForJob(params: {
-  generationJobId: string;
-  userId: string;
-}): Promise<HookSuggestion[]> {
-  const { data, error } = await getClient()
-    .from("hook_video_suggestions")
-    .select("*")
-    .eq("generation_job_id", params.generationJobId)
-    .eq("user_id", params.userId)
-    .eq("suggestion_context", "composition")
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    throw new Error(`Could not restore hook suggestions: ${error.message}`);
-  }
-
-  return data.map((row) => ({ id: row.id, text: row.text }));
 }
 
 export async function listTrendingHookVideoSuggestions(params: {
@@ -746,7 +700,7 @@ function parseOverlayFontSize(value: Json | null) {
   return typeof fontSize === "number" &&
     Number.isFinite(fontSize) &&
     fontSize >= 34 &&
-    fontSize <= 52
+    fontSize <= 60
     ? fontSize
     : null;
 }

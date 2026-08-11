@@ -14,14 +14,6 @@ import { renderCarouselSlide } from "../lib/carousel/render-slide.ts";
 
 const DEFAULT_IMPORT_ROOT = ".tmp/local-carousel-image-import";
 const OUTPUT_ROOT = ".tmp/local-carousel-render-canary";
-const TARGET_GROUPS = [
-  ["productivity-saas", "notes-and-planning"],
-  ["productivity-saas", "workspace-objects"],
-  ["productivity-saas", "phone-and-devices"],
-  ["fitness-health", "food-and-table"],
-  ["fitness-health", "fitness-wellness-objects"],
-  ["shared", "home-lifestyle"],
-];
 
 loadEnvFile(path.resolve(".env.local"));
 
@@ -32,6 +24,13 @@ const manifestPath = path.resolve(
 );
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 const assets = Array.isArray(manifest.assets) ? manifest.assets : [];
+const importResultPath = path.join(path.dirname(manifestPath), "import-result.json");
+const importResult = existsSync(importResultPath)
+  ? JSON.parse(readFileSync(importResultPath, "utf8"))
+  : null;
+const skippedAssetKeys = new Set(
+  (importResult?.skippedExisting ?? []).map((item) => item.assetKey),
+);
 const outputDir = path.join(
   path.resolve(args["out-dir"] ?? OUTPUT_ROOT),
   new Date().toISOString().replace(/[:.]/g, "-"),
@@ -41,21 +40,10 @@ assertOneRequiredEnvVar(["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"]);
 assertRequiredEnvVars(["SUPABASE_SERVICE_ROLE_KEY"]);
 mkdirSync(outputDir, { recursive: true });
 
-const selectedAssets = TARGET_GROUPS.map(([categorySlug, broadVisualBucket]) => {
-  const asset = assets.find(
-    (candidate) =>
-      candidate.categorySlug === categorySlug &&
-      candidate.broadVisualBucket === broadVisualBucket,
-  );
-
-  if (!asset) {
-    throw new Error(
-      `Manifest has no canary asset for ${categorySlug}/${broadVisualBucket}.`,
-    );
-  }
-
-  return asset;
-});
+const selectedAssets = selectOneImportedAssetPerGroup(
+  assets,
+  skippedAssetKeys,
+);
 const supabase = createClient(
   getRequiredEnv("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"),
   getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
@@ -169,8 +157,27 @@ function buildCanarySlide(asset, slideNumber) {
       body: "Create a calmer rhythm for work, wellness, and the time between.",
       headline: "make space for the routine",
     },
+    "clean-texture-backgrounds": {
+      body: "Use a clean visual foundation that keeps the message easy to read.",
+      headline: "clarity starts here",
+    },
+    "product-still-life": {
+      body: "Show the product clearly while keeping the main message in focus.",
+      headline: "the routine, simplified",
+    },
+    "data-and-screens": {
+      body: "Turn a busy dashboard into one clear next step for the audience.",
+      headline: "see what matters",
+    },
+    "abstract-backgrounds": {
+      body: "Give the message room to stand out on a simple visual backdrop.",
+      headline: "one idea at a time",
+    },
   };
-  const copy = copyByBucket[asset.broadVisualBucket];
+  const copy = copyByBucket[asset.broadVisualBucket] ?? {
+    body: `Use this ${asset.broadVisualBucket.replaceAll("-", " ")} visual only when it supports the slide message.`,
+    headline: "the visual supports the point",
+  };
 
   return {
     body: copy.body,
@@ -185,6 +192,31 @@ function buildCanarySlide(asset, slideNumber) {
     textMode: "headline_body",
     textPosition: "center",
   };
+}
+
+function selectOneImportedAssetPerGroup(allAssets, skippedKeys) {
+  const selectedByGroup = new Map();
+  const candidates = [...allAssets]
+    .filter((asset) => !skippedKeys.has(asset.assetKey))
+    .sort((left, right) =>
+      `${left.categorySlug}/${left.broadVisualBucket}/${left.assetKey}`.localeCompare(
+        `${right.categorySlug}/${right.broadVisualBucket}/${right.assetKey}`,
+      ),
+    );
+
+  for (const asset of candidates) {
+    const groupKey = `${asset.categorySlug}/${asset.broadVisualBucket}`;
+
+    if (!selectedByGroup.has(groupKey)) {
+      selectedByGroup.set(groupKey, asset);
+    }
+  }
+
+  if (selectedByGroup.size === 0) {
+    throw new Error("Manifest has no imported assets available for render canaries.");
+  }
+
+  return [...selectedByGroup.values()];
 }
 
 async function writeContactSheet(outputs, outputPath) {

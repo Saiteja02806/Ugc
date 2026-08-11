@@ -26,6 +26,8 @@ test("silent Hook importer is GCP-only and dry-run by default", () => {
 });
 
 test("silent Hook importer validates the reviewed source bytes and media", () => {
+  assert.match(importer, /import ffprobeStatic from "ffprobe-static"/u);
+  assert.match(importer, /execFileSync\(\s*ffprobeStatic\.path/u);
   assert.match(importer, /getFileSha256\(filePath\)/u);
   assert.match(importer, /actualHash !== asset\.sha256/u);
   assert.match(importer, /metadata\.audioStreamCount !== 0/u);
@@ -42,10 +44,12 @@ test("silent Hook importer activates rows only after exact stored verification",
     "await verifyStoredObjects(item)",
     uploadIndex,
   );
-  const readyIndex = importer.indexOf(
-    '.update({\n        status: "ready"',
-    verifyIndex,
-  );
+  const readyMatch = importer
+    .slice(verifyIndex)
+    .match(/\.update\(\{\r?\n\s+status: "ready"/u);
+  const readyIndex = readyMatch?.index == null
+    ? -1
+    : verifyIndex + readyMatch.index;
 
   assert.ok(processingIndex >= 0);
   assert.ok(uploadIndex > processingIndex);
@@ -61,6 +65,7 @@ test("silent Hook importer persists all Slice 2 catalog fields", () => {
     "source_batch",
     "influencer_key",
     "visual_group",
+    "hook_format_id",
     "has_audio",
   ]) {
     assert.match(importer, new RegExp(`${field}:`, "u"));
@@ -69,6 +74,7 @@ test("silent Hook importer persists all Slice 2 catalog fields", () => {
   assert.match(importer, /has_audio: false/u);
   assert.match(importer, /reactionType: asset\.reactionType/u);
   assert.match(importer, /thumbnailStorageKey: thumbnailKey/u);
+  assert.match(importer, /const sortOrder = asset\.sortOrder \?\? manifestIndex/u);
 });
 
 test("silent Hook importer supports a diverse canary and guarded rollback", () => {

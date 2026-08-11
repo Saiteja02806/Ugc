@@ -15,6 +15,10 @@ import {
   getMissingInternalFinalizationEnvVars,
   verifyInternalFinalizationRequest,
 } from "@/lib/scheduling/internal-finalization-auth";
+import {
+  recordInstagramHookPerformance,
+  recordTikTokHookPerformance,
+} from "@/lib/trending/hook-performance";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,16 +62,24 @@ export async function POST(request: Request) {
       return json({ error: "Analytics job is not executable.", ok: false }, 409);
     }
 
+    // Keep the authenticated owner in a local constant. TypeScript cannot carry
+    // the earlier null check through the async callbacks used for attribution.
+    const userId = job.userId;
+
     const input = getRecord(job.input);
 
-    if (!input || input.userId !== job.userId) {
+    if (!input || input.userId !== userId) {
       return json({ error: "Analytics job ownership does not match.", ok: false }, 409);
     }
 
     if (input.operation === "tiktok_videos") {
       const accounts = await listTikTokPublicVideoAnalyticsForOwner({
-        userId: job.userId,
+        userId,
       });
+
+      await recordHookPerformanceSafely(() =>
+        recordTikTokHookPerformance({ accounts, userId }),
+      );
 
       return json({ accounts, ok: true, operation: input.operation });
     }
@@ -81,7 +93,7 @@ export async function POST(request: Request) {
     if (input.operation === "instagram_insights") {
       const accounts = await listInstagramAccountInsightsForOwner({
         days: days as InstagramInsightsRangeDays,
-        userId: job.userId,
+        userId,
       });
 
       return json({ accounts, days, ok: true, operation: input.operation });
@@ -90,8 +102,12 @@ export async function POST(request: Request) {
     if (input.operation === "instagram_content") {
       const accounts = await listInstagramContentInsightsForOwner({
         days: days as InstagramInsightsRangeDays,
-        userId: job.userId,
+        userId,
       });
+
+      await recordHookPerformanceSafely(() =>
+        recordInstagramHookPerformance({ accounts, userId }),
+      );
 
       return json({ accounts, days, ok: true, operation: input.operation });
     }
@@ -100,6 +116,19 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Background analytics synchronization failed:", error);
     return json({ error: "Analytics synchronization failed.", ok: false }, 500);
+  }
+}
+
+async function recordHookPerformanceSafely(
+  record: () => Promise<unknown>,
+) {
+  try {
+    await record();
+  } catch (error) {
+    console.error(
+      "Published analytics loaded, but Hook attribution could not be stored:",
+      error,
+    );
   }
 }
 

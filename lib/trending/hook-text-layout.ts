@@ -2,9 +2,9 @@ export const HOOK_TEXT_MINIMUM_CHARACTERS = 8;
 export const HOOK_TEXT_MAXIMUM_CHARACTERS = 78;
 export const HOOK_TEXT_MINIMUM_WORDS = 2;
 export const HOOK_TEXT_MAXIMUM_WORDS = 12;
-export const HOOK_TEXT_MAXIMUM_LINES = 2;
+export const HOOK_TEXT_MAXIMUM_LINES = 3;
 export const HOOK_TEXT_MAXIMUM_WORDS_PER_LINE = 7;
-export const HOOK_TEXT_MAXIMUM_FONT_SIZE = 52;
+export const HOOK_TEXT_MAXIMUM_FONT_SIZE = 60;
 export const HOOK_TEXT_MINIMUM_FONT_SIZE = 34;
 export const HOOK_TEXT_CANVAS_WIDTH = 1080;
 export const HOOK_TEXT_CANVAS_HEIGHT = 1920;
@@ -136,7 +136,7 @@ export function createHookTextLayout(
   }
 
   throw new HookTextLayoutError(
-    "Hook text cannot fit in two readable lines. Shorten the wording.",
+    "Hook text cannot fit in three readable lines. Shorten the wording.",
   );
 }
 
@@ -147,6 +147,15 @@ export function clampHookTextPosition(
   return {
     x: clamp(position.x, bounds.minX, bounds.maxX),
     y: clamp(position.y, bounds.minY, bounds.maxY),
+  };
+}
+
+export function getDefaultHookTextPosition(
+  bounds: HookTextPositionBounds,
+) {
+  return {
+    x: (bounds.minX + bounds.maxX) / 2,
+    y: bounds.minY,
   };
 }
 
@@ -185,6 +194,18 @@ function createAutomaticLineCandidates(words: string[]) {
       words.slice(0, splitIndex).join(" "),
       words.slice(splitIndex).join(" "),
     ]);
+
+    for (
+      let secondSplitIndex = splitIndex + 1;
+      secondSplitIndex < words.length;
+      secondSplitIndex += 1
+    ) {
+      candidates.push([
+        words.slice(0, splitIndex).join(" "),
+        words.slice(splitIndex, secondSplitIndex).join(" "),
+        words.slice(secondSplitIndex).join(" "),
+      ]);
+    }
   }
 
   return candidates;

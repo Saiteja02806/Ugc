@@ -57,6 +57,11 @@ test("persists provider initialization before completing a publish", async () =>
       "target-published",
     ]);
     assert.equal(output.platformPostId, "instagram-media-1");
+    assert.equal(typeof output.executionDelaySeconds, "number");
+    assert.equal(typeof output.executionStartedAt, "string");
+    assert.equal(typeof output.instagramRequestStartedAt, "string");
+    assert.equal(typeof output.publishedAt, "string");
+    assert.equal(typeof output.scheduledAt, "string");
     assert.equal(fixture.operation.provider_operation_id, "instagram-container-1");
     assert.equal(fixture.operation.status, "published");
   });
@@ -858,6 +863,7 @@ function createPublishStore(
       operation.active_job_id = null;
       operation.platform_post_id = params.platformPostId;
       operation.platform_post_url = params.platformPostUrl;
+      operation.published_at = new Date().toISOString();
       operation.status = "published";
       return { ...operation };
     },
@@ -1089,6 +1095,7 @@ function createPublishContext(
       platform,
       platform_post_id: null,
       platform_post_url: null,
+      scheduled_for: new Date(Date.now() - 5_000).toISOString(),
       settings: isTikTok
         ? { containsSyntheticMedia: true, privacyLevel: "SELF_ONLY" }
         : isYouTube

@@ -44,6 +44,13 @@ const tightenedHookMigration = readFileSync(
   ),
   "utf8",
 );
+const threeLineOverlayMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260811120000_expand_hook_overlay_to_three_lines.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 test("stores pre-demo Hook text separately from demo-based composition text", () => {
   assert.match(
@@ -194,4 +201,23 @@ test("persists v4 Hooks only after opening, evidence, and human-voice gates pass
     /from public, anon, authenticated/i,
   );
   assert.match(tightenedHookMigration, /to service_role/i);
+});
+
+test("the current Hook persistence contract accepts up to three semantic lines", () => {
+  assert.match(
+    threeLineOverlayMigration,
+    /jsonb_array_length\(opening_lines\) between 1 and 3/i,
+  );
+  assert.match(
+    threeLineOverlayMigration,
+    /jsonb_array_length\(v_lines\) not between 1 and 3/i,
+  );
+  assert.match(
+    threeLineOverlayMigration,
+    /visualFit,semanticLineCount[\s\S]*between 1 and 3/i,
+  );
+  assert.match(
+    threeLineOverlayMigration,
+    /visualFit,renderedLineCount[\s\S]*between 1 and 3/i,
+  );
 });

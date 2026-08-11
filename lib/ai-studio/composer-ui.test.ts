@@ -11,6 +11,9 @@ const imageWorkspace = readProjectFile(
 const studioWorkspace = readProjectFile(
   "components/generation/ai-studio-workspace.tsx",
 );
+const resultSurface = readProjectFile(
+  "components/generation/ai-studio-results.tsx",
+);
 const videoWorkspace = readProjectFile(
   "components/video/video-generation-workspace.tsx",
 );
@@ -71,7 +74,42 @@ test("the unified toolbar keeps settings and Generate inside the same form", () 
   assert.match(imageWorkspace, /label="1 image"/);
   assert.match(imageWorkspace, />\s*Enhance\s*</);
   assert.match(imageWorkspace, /generateLabel="Generate image"/);
-  assert.doesNotMatch(videoWorkspace, /layout="unified"/);
+  assert.match(videoWorkspace, /layout="unified"/);
+});
+
+test("the unified composer does not add an accent glow when the prompt is focused", () => {
+  assert.doesNotMatch(composer, /focus-within:ring-3/);
+  assert.doesNotMatch(composer, /focus-within:ring-ring/);
+});
+
+test("video results keep the prompt visible with custom playback controls", () => {
+  const videoResultCard = videoWorkspace.slice(
+    videoWorkspace.indexOf("function VideoResultCard"),
+    videoWorkspace.indexOf("function formatVideoDuration"),
+  );
+
+  assert.match(
+    videoWorkspace,
+    /gridClassName="grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-1"/,
+  );
+  assert.doesNotMatch(videoWorkspace, /getCreativeAssetEditorHref|handleEditVideo/);
+  assert.doesNotMatch(videoWorkspace, /setPrompt\(""\);/);
+  assert.match(videoResultCard, /video\.prompt/);
+  assert.doesNotMatch(videoResultCard, /\bcontrols\b/);
+  assert.match(
+    videoResultCard,
+    /aria-label=\{isPlaying \? "Pause video" : "Play video"\}/,
+  );
+  assert.match(
+    videoResultCard,
+    /aria-label=\{isMuted \? "Unmute video" : "Mute video"\}/,
+  );
+});
+
+test("generation progress has a visible in-place loading state", () => {
+  assert.match(resultSurface, /status\?\.tone === "progress"/);
+  assert.match(resultSurface, /<EmptyMedia variant="icon"/);
+  assert.match(resultSurface, /animate-spin/);
 });
 
 test("access guidance appears once inside the composer", () => {

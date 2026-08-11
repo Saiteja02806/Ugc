@@ -39,6 +39,12 @@ test("renders and asks the server to finalize a planned schedule", async () => {
           "twice the effort.",
         ]);
         assert.equal(payload.hookTextColor, "#fde047");
+        assert.deepEqual(payload.hookAudio, {
+          audioAssetId: "hook_audio_029",
+          audioUrl: "https://cdn.example.com/EWW.mp3",
+          durationSeconds: 14.08,
+          selectionSource: "video_locked",
+        });
         assert.equal(payload.hookTrimStart, 0.5);
         assert.equal(payload.hookTrimEnd, 4.5);
         assert.equal(payload.compositionFingerprint, "fingerprint-1");
@@ -107,6 +113,36 @@ test("defaults legacy schedule payloads without a text color to white", async ()
   });
 });
 
+test("accepts a three-line Hook at the reference font size", async () => {
+  const fixture = createStore();
+  const job = createJob(false);
+  (job.input_json as Record<string, unknown>).hookText =
+    "Meal logging shouldn't interrupt your whole day 😩";
+  (job.input_json as Record<string, unknown>).hookTextFontSize = 60;
+  (job.input_json as Record<string, unknown>).hookTextLines = [
+    "Meal logging",
+    "shouldn't interrupt",
+    "your whole day 😩",
+  ];
+
+  await runRenderScheduleCombinationJob(job, {
+    dependencies: {
+      createMediaAssetId: () => MEDIA_ASSET_ID,
+      async renderScheduleCombinationToStorage(payload) {
+        fixture.events.push("render");
+        assert.equal(payload.hookTextFontSize, 60);
+        assert.deepEqual(payload.hookTextLines, [
+          "Meal logging",
+          "shouldn't interrupt",
+          "your whole day 😩",
+        ]);
+        return createRenderOutput(payload);
+      },
+    },
+    store: fixture.store,
+  });
+});
+
 test("rejects unsupported Hook text colors before rendering", async () => {
   const fixture = createStore();
   const job = createJob(false);
@@ -115,6 +151,23 @@ test("rejects unsupported Hook text colors before rendering", async () => {
   await assert.rejects(
     runRenderScheduleCombinationJob(job, { store: fixture.store }),
     /hookTextColor is not a supported text color/,
+  );
+  assert.deepEqual(fixture.events, []);
+});
+
+test("rejects an invalid Locked Hook audio contract before rendering", async () => {
+  const fixture = createStore();
+  const job = createJob(false);
+  (job.input_json as Record<string, unknown>).hookAudio = {
+    audioAssetId: "hook_audio_029",
+    audioUrl: "https://cdn.example.com/EWW.mp3",
+    durationSeconds: 14.08,
+    selectionSource: "preferred",
+  };
+
+  await assert.rejects(
+    runRenderScheduleCombinationJob(job, { store: fixture.store }),
+    /hookAudio.selectionSource must be video_locked/,
   );
   assert.deepEqual(fixture.events, []);
 });
@@ -189,10 +242,12 @@ function createStore() {
       events.push("finalization-failed");
     },
     async markScheduleCombinationRenderCompleted(params: {
+      hookAudioAssetId: string | null;
       mediaAssetId: string;
       renderId: string;
     }) {
       events.push("render-completed");
+      assert.equal(params.hookAudioAssetId, "hook_audio_029");
       assert.equal(params.mediaAssetId, MEDIA_ASSET_ID);
       assert.equal(params.renderId, RENDER_ID);
     },
@@ -250,6 +305,12 @@ function createJob(autoFinalize: boolean): BackgroundJobRow {
       hookTextFontSize: 44,
       hookTextLines: ["The old way takes", "twice the effort."],
       hookTextColor: "#fde047",
+      hookAudio: {
+        audioAssetId: "hook_audio_029",
+        audioUrl: "https://cdn.example.com/EWW.mp3",
+        durationSeconds: 14.08,
+        selectionSource: "video_locked",
+      },
       hookTrimEnd: 4.5,
       hookTrimStart: 0.5,
       hookVideoId: "00000000-0000-4000-8000-000000000207",

@@ -6,6 +6,7 @@ import {
 } from "./wall-text-types.ts";
 
 export const MAX_TRENDING_WALL_TEXT_CANDIDATES = 6;
+export const MAX_WALL_TEXT_VIDEO_DURATION_SECONDS = 60;
 
 export type WallTextAssetSelectionInput = {
   analysisStatus: string;
@@ -99,14 +100,23 @@ export function isEligibleWallTextVideo(
     asset.aspectRatio === "9:16" &&
     asset.status === "active" &&
     asset.analysisStatus === "succeeded" &&
-    asset.durationSeconds !== null &&
-    Number.isFinite(asset.durationSeconds) &&
-    asset.durationSeconds > 0 &&
+    isRenderableWallTextDuration(asset.durationSeconds) &&
     isHttpUrl(asset.previewUrl) &&
     isSha256(asset.sourceFileSha256) &&
     Boolean(asset.sourceBatch?.trim()) &&
     Boolean(asset.visualGroup?.trim()) &&
     asset.placementAnalysis !== null
+  );
+}
+
+export function isRenderableWallTextDuration(
+  durationSeconds: number | null | undefined,
+): durationSeconds is number {
+  return (
+    typeof durationSeconds === "number" &&
+    Number.isFinite(durationSeconds) &&
+    durationSeconds > 0 &&
+    durationSeconds <= MAX_WALL_TEXT_VIDEO_DURATION_SECONDS
   );
 }
 

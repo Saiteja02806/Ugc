@@ -12,6 +12,7 @@ import {
   TRENDING_HOOK_PROMPT_VERSION,
   type TrendingHookPreparationStatus,
 } from "@/lib/trending/trending-hook-copy-contract";
+import { getHookPerformanceSignals } from "@/lib/trending/hook-performance";
 import { enqueueTrendingHookCopyJob } from "@/lib/trending/trending-hook-copy-jobs";
 import { listHookVideoBrowseInventory } from "@/lib/trending/hook-video-sources";
 import { selectTrendingHookCandidates } from "@/lib/trending/trending-hook-feed-logic";
@@ -80,11 +81,16 @@ export async function prepareTrendingHookIdeas(
     );
   }
 
+  const performanceSignals = await getHookPerformanceSignals({
+    businessProfileId: profile.id,
+    userId: profile.userId,
+  });
   const job = await enqueueTrendingHookCopyJob({
     businessProfile: profile.context,
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,
     candidates: candidates.map(toHookCopyJobCandidate),
+    performanceSignals,
     sourceSelectionKey: source.selection
       ? createSourceSelectionKey(
           source.selection.selectionKind,

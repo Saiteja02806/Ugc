@@ -6,6 +6,7 @@ import {
   Empty,
   EmptyDescription,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,13 +36,17 @@ export function AiStudioResults({
   loading?: boolean;
   status?: AiStudioResultsStatus | null;
 }) {
+  const showStatusBadge =
+    Boolean(status) &&
+    !(status?.tone === "progress" && !loading && !hasResults);
+
   return (
     <section
       aria-label={ariaLabel}
-      aria-busy={loading}
+      aria-busy={loading || status?.tone === "progress"}
       className="relative flex min-h-[420px] min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain md:min-h-0"
     >
-      {status ? (
+      {showStatusBadge && status ? (
         <div className="sticky top-0 z-10 flex shrink-0 justify-start px-1 pb-2 pt-1">
           <Badge
             variant={status.tone === "error" ? "destructive" : "secondary"}
@@ -87,6 +92,26 @@ export function AiStudioResults({
         >
           {children}
         </div>
+      ) : status?.tone === "progress" ? (
+        <Empty
+          className="min-h-[360px] flex-1 px-5 pb-28 pt-16 sm:pb-32 md:min-h-0"
+          role="status"
+          aria-live="polite"
+        >
+          <EmptyMedia variant="icon" className="size-11 rounded-xl">
+            <Loader2
+              className="size-5 animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+          </EmptyMedia>
+          <EmptyHeader>
+            <EmptyTitle>{status.label}</EmptyTitle>
+            <EmptyDescription>
+              Your result is being prepared. You can keep this page open while
+              it finishes.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <Empty className="min-h-[360px] flex-1 px-5 pb-28 pt-16 sm:pb-32 md:min-h-0">
           <EmptyHeader>

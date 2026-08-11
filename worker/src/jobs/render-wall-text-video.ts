@@ -31,28 +31,30 @@ export async function runRenderWallTextVideoJob(
     store: SupabaseJobStore;
   },
 ) {
-  const payload = parseRenderWallTextVideoPayload(job.input_json);
   const dependencies = {
     ...defaultDependencies,
     ...context.dependencies,
   };
-
-  logger.info("Wall-text render worker started", {
-    assignmentId: payload.assignmentId,
-    creativeId: payload.creativeId,
-    jobId: job.id,
-    renderId: payload.renderId,
-    userId: payload.userId,
-  });
-
-  await context.store.markWallTextRenderStarted({
-    assignmentId: payload.assignmentId,
-    jobId: job.id,
-    renderId: payload.renderId,
-    userId: payload.userId,
-  });
+  let payload: RenderWallTextVideoPayload | null = null;
 
   try {
+    payload = parseRenderWallTextVideoPayload(job.input_json);
+
+    logger.info("Wall-text render worker started", {
+      assignmentId: payload.assignmentId,
+      creativeId: payload.creativeId,
+      jobId: job.id,
+      renderId: payload.renderId,
+      userId: payload.userId,
+    });
+
+    await context.store.markWallTextRenderStarted({
+      assignmentId: payload.assignmentId,
+      jobId: job.id,
+      renderId: payload.renderId,
+      userId: payload.userId,
+    });
+
     const result = await dependencies.renderWallTextVideoToStorage(payload);
     const mediaAssetId = dependencies.createMediaAssetId();
 
@@ -77,25 +79,61 @@ export async function runRenderWallTextVideoJob(
     } satisfies Record<string, Json>;
   } catch (error) {
     const errorMessage = getErrorMessage(error);
+    const failureIdentity = payload ?? getWallTextRenderFailureIdentity(job.input_json);
 
-    try {
-      await context.store.markWallTextRenderFailed({
-        assignmentId: payload.assignmentId,
-        errorMessage,
-        renderId: payload.renderId,
-        userId: payload.userId,
-      });
-    } catch (persistenceError) {
-      logger.error("Could not persist Wall-text render failure", {
-        assignmentId: payload.assignmentId,
-        error: getErrorMessage(persistenceError),
+    if (failureIdentity) {
+      try {
+        await context.store.markWallTextRenderFailed({
+          assignmentId: failureIdentity.assignmentId,
+          errorMessage,
+          renderId: failureIdentity.renderId,
+          userId: failureIdentity.userId,
+        });
+      } catch (persistenceError) {
+        logger.error("Could not persist Wall-text render failure", {
+          assignmentId: failureIdentity.assignmentId,
+          error: getErrorMessage(persistenceError),
+          jobId: job.id,
+          renderId: failureIdentity.renderId,
+        });
+      }
+    } else {
+      logger.error("Could not identify the Wall-text render after payload validation failed", {
+        error: errorMessage,
         jobId: job.id,
-        renderId: payload.renderId,
       });
     }
 
     throw error;
   }
+}
+
+function getWallTextRenderFailureIdentity(value: Json) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const input = value as Record<string, Json | undefined>;
+  const assignmentId = input.assignmentId;
+  const renderId = input.renderId;
+  const userId = input.userId;
+
+  if (
+    typeof assignmentId !== "string" ||
+    !assignmentId.trim() ||
+    typeof renderId !== "string" ||
+    !renderId.trim() ||
+    typeof userId !== "string" ||
+    !userId.trim()
+  ) {
+    return null;
+  }
+
+  return {
+    assignmentId: assignmentId.trim(),
+    renderId: renderId.trim(),
+    userId: userId.trim(),
+  };
 }
 
 function parseRenderWallTextVideoPayload(
@@ -109,6 +147,11 @@ function parseRenderWallTextVideoPayload(
     input.creativeEditRevision,
     "creativeEditRevision",
   );
+  const durationSeconds = getPositiveNumber(
+    input.durationSeconds,
+    "durationSeconds",
+    60,
+  );
 
   if ((creativeEditId === null) !== (creativeEditRevision === null)) {
     throw new Error(
@@ -118,14 +161,11 @@ function parseRenderWallTextVideoPayload(
 
   return {
     assignmentId: getRequiredString(input.assignmentId, "assignmentId", 64),
+    audio: getWallTextAudio(input.audio, durationSeconds),
     creativeEditId,
     creativeEditRevision,
     creativeId: getRequiredString(input.creativeId, "creativeId", 64),
-    durationSeconds: getPositiveNumber(
-      input.durationSeconds,
-      "durationSeconds",
-      60,
-    ),
+    durationSeconds,
     placement: getPlacement(layout.placement),
     projectId: getRequiredString(input.projectId, "projectId", 120),
     renderId: getRequiredString(input.renderId, "renderId", 64),
@@ -141,6 +181,65 @@ function parseRenderWallTextVideoPayload(
     textBox: getTextBox(layout.textBox),
     title: getRequiredString(input.title, "title", 140),
     userId: getRequiredString(input.userId, "userId", 200),
+  };
+}
+
+function getWallTextAudio(
+  value: Json | undefined,
+  videoDurationSeconds: number,
+): RenderWallTextVideoPayload["audio"] {
+  const audio = getRecord(value, "audio");
+  const assetDurationSeconds = getPositiveNumber(
+    audio.assetDurationSeconds,
+    "audio.assetDurationSeconds",
+    600,
+  );
+  const cueStartSeconds = getBoundedNumber(
+    audio.cueStartSeconds,
+    "audio.cueStartSeconds",
+    0,
+    assetDurationSeconds,
+    true,
+  );
+  const fadeOutSeconds = getBoundedNumber(
+    audio.fadeOutSeconds,
+    "audio.fadeOutSeconds",
+    0,
+    1,
+  );
+  const fitMode = String(audio.fitMode);
+
+  if (!["exact", "trim", "loop"].includes(fitMode)) {
+    throw new Error("audio.fitMode is invalid.");
+  }
+
+  const playableDuration = assetDurationSeconds - cueStartSeconds;
+  const difference = playableDuration - videoDurationSeconds;
+  if (
+    (fitMode === "exact" && Math.abs(difference) > 0.08) ||
+    (fitMode === "trim" && difference <= 0.08) ||
+    (fitMode === "loop" && difference + 0.08 >= 0)
+  ) {
+    throw new Error("Wall audio duration fit is invalid.");
+  }
+
+  return {
+    assetDurationSeconds,
+    assetId: getRequiredString(audio.assetId, "audio.assetId", 64),
+    audioUrl: getHttpUrl(audio.audioUrl, "audio.audioUrl"),
+    cueStartSeconds,
+    fadeOutSeconds,
+    fitMode: fitMode as "exact" | "trim" | "loop",
+    matchingVersion: getRequiredString(
+      audio.matchingVersion,
+      "audio.matchingVersion",
+      80,
+    ),
+    selectionId: getRequiredString(
+      audio.selectionId,
+      "audio.selectionId",
+      64,
+    ),
   };
 }
 
@@ -258,6 +357,29 @@ function getPositiveNumber(
     value > maximum
   ) {
     throw new Error(`${fieldName} must be between 0 and ${maximum}.`);
+  }
+
+  return value;
+}
+
+function getBoundedNumber(
+  value: Json | undefined,
+  fieldName: string,
+  minimum: number,
+  maximum: number,
+  maximumExclusive = false,
+) {
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value < minimum ||
+    (maximumExclusive ? value >= maximum : value > maximum)
+  ) {
+    throw new Error(
+      `${fieldName} must be between ${minimum} and ${
+        maximumExclusive ? "less than " : ""
+      }${maximum}.`,
+    );
   }
 
   return value;

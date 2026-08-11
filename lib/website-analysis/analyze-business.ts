@@ -12,6 +12,7 @@ import {
 
 const MAX_PAGE_CHARS = 7_000;
 const MAX_TOTAL_CHARS = 24_000;
+const MAX_DESCRIPTION_CHARS = 4_000;
 const DEFAULT_MODEL = "gpt-4o-mini";
 
 let openaiClient: OpenAI | null = null;
@@ -114,6 +115,9 @@ export async function analyzeWebsiteBusiness({
           "- carouselAngles should be distinct hook-ready concepts, not repeated value props.",
           "- recommendedCarouselStructure should include compact role notes such as Hook: ..., Problem: ..., Solution: ..., Benefit: ..., CTA: ...",
           "- valueProps, painPoints, and differentiators must be specific enough to become slide copy.",
+          "- businessModel must be b2b, b2c, or both only when the website supports that classification; otherwise use null.",
+          "- categories should contain up to three evidence-based industry, subcategory, or product-type labels, with the primary category first.",
+          "- campaignPurposes must stay empty because a website cannot prove the owner's current campaign objective.",
           "- ctaIdeas should be short action phrases, not full sentences.",
           "- Pexels image queries should be short search phrases for stock-style product/lifestyle visuals.",
           "- Claims to avoid should identify risky or unsupported promises.",
@@ -135,6 +139,62 @@ export async function analyzeWebsiteBusiness({
 
   if (!parsed) {
     throw new WebsiteAnalysisError("Could not structure the website analysis.", 502);
+  }
+
+  return WebsiteBusinessAnalysisSchema.parse(parsed);
+}
+
+export async function analyzeBusinessDescription(
+  rawDescription: string,
+): Promise<WebsiteBusinessAnalysis> {
+  const description = rawDescription.trim().slice(0, MAX_DESCRIPTION_CHARS);
+
+  if (description.length < 20) {
+    throw new WebsiteAnalysisError(
+      "Describe what the business offers using at least one factual sentence.",
+      422,
+    );
+  }
+
+  const completion = await getOpenAIClient().chat.completions.parse({
+    model: process.env.OPENAI_WEBSITE_ANALYSIS_MODEL ?? DEFAULT_MODEL,
+    temperature: 0.2,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You turn a business owner's description into compact context for marketing creative. Use only facts explicitly supported by the description. Never invent a feature, audience, result, metric, testimonial, guarantee, or business name. Use null or an empty array for anything unsupported.",
+      },
+      {
+        role: "user",
+        content: [
+          "Analyze the description below for UGC hook and carousel generation.",
+          "Keep every field concise and source-grounded.",
+          "Business model and category labels may be inferred only when the description clearly supports them.",
+          "campaignPurposes must be an empty array because the owner did not choose a campaign goal.",
+          "Claims to avoid should identify risky promises that the description does not verify.",
+          "If the business name is not explicitly written, return null; the owner will enter it next.",
+          "Create creative angles only from the described product, audience, pain, and benefit.",
+          "Do not convert a vague marketing phrase into a factual product claim.",
+          "",
+          "Business description:",
+          description,
+        ].join("\n"),
+      },
+    ],
+    response_format: zodResponseFormat(
+      WebsiteBusinessAnalysisSchema,
+      "business_description_analysis",
+    ),
+  });
+
+  const parsed = completion.choices[0]?.message.parsed;
+
+  if (!parsed) {
+    throw new WebsiteAnalysisError(
+      "Could not structure the business description.",
+      502,
+    );
   }
 
   return WebsiteBusinessAnalysisSchema.parse(parsed);

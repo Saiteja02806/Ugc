@@ -114,7 +114,9 @@ export async function runPublishSocialPostJob(
     ...defaultSocialPublishers,
     ...context.publishers,
   };
+  const executionStartedAt = new Date().toISOString();
   let operation: SocialPublishOperationRow | null = null;
+  let instagramRequestStartedAt: string | null = null;
   let targetMetadata: Json = {};
 
   logger.info("Social publish worker started", {
@@ -129,6 +131,19 @@ export async function runPublishSocialPostJob(
       userId: job.user_id,
     });
     targetMetadata = publishContext.target.metadata;
+    const scheduledAt = publishContext.target.scheduled_for;
+    const executionDelaySeconds = getExecutionDelaySeconds({
+      executionStartedAt,
+      scheduledAt,
+    });
+
+    logger.info("Social publish timing recorded", {
+      executionDelaySeconds,
+      executionStartedAt,
+      jobId: job.id,
+      scheduledAt,
+      targetId: payload.targetId,
+    });
 
     if (
       publishContext.post.status === "cancelled" ||
@@ -312,6 +327,12 @@ export async function runPublishSocialPostJob(
       let result: Awaited<ReturnType<typeof publishInstagramReel>>;
 
       try {
+        instagramRequestStartedAt = new Date().toISOString();
+        logger.info("Instagram publish request started", {
+          instagramRequestStartedAt,
+          jobId: job.id,
+          targetId: payload.targetId,
+        });
         result = await publishToInstagram(accessToken);
       } catch (error) {
         if (
@@ -509,6 +530,8 @@ export async function runPublishSocialPostJob(
     }
 
     operation = completedOperation;
+    const publishedAt =
+      completedOperation.published_at ?? new Date().toISOString();
 
     await context.store.markSocialPublishTargetPublished({
       platformPostId: publishedResult.platformPostId,
@@ -517,7 +540,24 @@ export async function runPublishSocialPostJob(
       userId: job.user_id,
     });
 
-    return publishedResult.output;
+    logger.info("Social publish timing completed", {
+      executionDelaySeconds,
+      executionStartedAt,
+      instagramRequestStartedAt,
+      jobId: job.id,
+      publishedAt,
+      scheduledAt,
+      targetId: payload.targetId,
+    });
+
+    return {
+      ...publishedResult.output,
+      executionDelaySeconds,
+      executionStartedAt,
+      instagramRequestStartedAt,
+      publishedAt,
+      scheduledAt,
+    };
   } catch (error) {
     const errorMessage =
       error instanceof Error && error.message
@@ -1636,6 +1676,23 @@ export function isTransientSocialPublishError(errorMessage: string) {
   }
 
   return true;
+}
+
+function getExecutionDelaySeconds(params: {
+  executionStartedAt: string;
+  scheduledAt: string;
+}) {
+  const executionTimestamp = Date.parse(params.executionStartedAt);
+  const scheduledTimestamp = Date.parse(params.scheduledAt);
+
+  if (
+    !Number.isFinite(executionTimestamp) ||
+    !Number.isFinite(scheduledTimestamp)
+  ) {
+    return 0;
+  }
+
+  return Math.round((executionTimestamp - scheduledTimestamp) / 1_000);
 }
 
 function getIntegerEnv(

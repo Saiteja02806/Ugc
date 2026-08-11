@@ -56,6 +56,7 @@ test("maps backend video metadata and media asset identity", () => {
   assert.equal(result?.mediaAssetId, "video-1");
   assert.equal(result?.durationSeconds, 4);
   assert.equal(result?.createdAt, videoAsset.createdAt);
+  assert.equal(result?.prompt, videoAsset.title);
 });
 
 test("upserts a reconciled result without duplicates", () => {

@@ -346,7 +346,7 @@ test("flattens only ready accounts for multi-account workspaces", () => {
   );
 });
 
-test("groups real content performance by publish date for trend fallback", () => {
+test("groups real content performance by publish date", () => {
   const accounts: InstagramContentAccount[] = [
     {
       ...account,

@@ -4,8 +4,8 @@ import { Menu } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { ProductLogoMark } from "@/components/brand/product-logo";
+import { LandingAuthAction } from "@/components/marketing/landing-auth-actions";
 
 const navItems = [{ label: "Pricing", href: "/pricing" }];
 const topOnlyNavItems = [{ label: "How it works", href: "#workflow" }];
@@ -85,10 +85,7 @@ export function LandingHeader() {
               {item.label}
             </Link>
           ))}
-          <GoogleSignInButton
-            appearance="header"
-            label="Sign in with Google"
-          />
+          <LandingAuthAction appearance="header" />
         </nav>
 
         <details className="group relative md:hidden">
@@ -115,10 +112,7 @@ export function LandingHeader() {
                 </Link>
               ),
             )}
-            <GoogleSignInButton
-              appearance="menu"
-              label="Sign in with Google"
-            />
+            <LandingAuthAction appearance="menu" />
           </div>
         </details>
       </div>

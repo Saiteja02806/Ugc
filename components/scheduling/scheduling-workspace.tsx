@@ -25,6 +25,7 @@ import {
   X,
   Video,
 } from "lucide-react";
+import Link from "next/link";
 import type {
   KeyboardEvent as ReactKeyboardEvent,
   ReactNode,
@@ -35,6 +36,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -54,7 +74,11 @@ import {
   getScheduleTargetSettingsError,
   type ScheduleTargetSettings,
 } from "@/lib/scheduling/platform-settings";
-import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
+import {
+  getConnectionPublishingBlockMessage,
+  getInstagramSchedulingAccessState,
+  type InstagramSchedulingAccessState,
+} from "@/lib/scheduling/social-connection-policy";
 import {
   getSchedulePlatformLabel,
   getScheduleStatusLabel,
@@ -331,6 +355,10 @@ export function SchedulingWorkspace() {
   const [dayPlannerOpen, setDayPlannerOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [requireScheduleTarget, setRequireScheduleTarget] = useState(false);
+  const [scheduleAccessPrompt, setScheduleAccessPrompt] = useState<
+    Exclude<InstagramSchedulingAccessState, "ready"> | null
+  >(null);
+  const [checkingScheduleAccess, setCheckingScheduleAccess] = useState(false);
   const [drawerError, setDrawerError] = useState<string | null>(null);
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [schedulePendingCancellation, setSchedulePendingCancellation] =
@@ -485,7 +513,7 @@ export function SchedulingWorkspace() {
   const loadSocialConnections = useCallback(async () => {
     try {
       const token = await getCurrentUserIdToken();
-      if (!token) return;
+      if (!token) return null;
 
       const response = await fetch("/api/social/connections", {
         cache: "no-store",
@@ -500,8 +528,10 @@ export function SchedulingWorkspace() {
       }
 
       setSocialConnections(data.connections);
+      return data.connections;
     } catch {
       setActionNotice("Could not load connected Instagram accounts.");
+      return null;
     }
   }, []);
 
@@ -574,6 +604,14 @@ export function SchedulingWorkspace() {
     setVisibleCalendarMonth(toMonthKey(parseDateKey(dateKey)));
   }
 
+  function handleChangeViewMode(mode: ScheduleViewMode) {
+    if (mode === "list" && viewMode !== "list") {
+      handleSelectCalendarDate(toDateKey(new Date()));
+    }
+
+    setViewMode(mode);
+  }
+
   function handleOpenDayPlanner(dateKey: string) {
     handleSelectCalendarDate(dateKey);
     setDayPlannerOpen(true);
@@ -590,18 +628,41 @@ export function SchedulingWorkspace() {
     dateKey = selectedCalendarDate,
     options: { keepDayOpen?: boolean } = {},
   ) {
-    setActionNotice(null);
-    setDrawerError(null);
-    setEditingScheduleId(null);
-    setRequireScheduleTarget(false);
-    handleSelectCalendarDate(dateKey);
-    setNewScheduleInitialDate(dateKey);
-    setViewMode("calendar");
-    if (!options.keepDayOpen) {
-      setDayPlannerOpen(false);
+    if (checkingScheduleAccess) {
+      return;
     }
-    await Promise.all([loadScheduleMedia(), loadSocialConnections()]);
-    setDrawerOpen(true);
+
+    setCheckingScheduleAccess(true);
+    setActionNotice(null);
+
+    try {
+      const connections = await loadSocialConnections();
+
+      if (!connections) {
+        return;
+      }
+
+      const accessState = getInstagramSchedulingAccessState(connections);
+
+      if (accessState !== "ready") {
+        setScheduleAccessPrompt(accessState);
+        return;
+      }
+
+      setDrawerError(null);
+      setEditingScheduleId(null);
+      setRequireScheduleTarget(true);
+      handleSelectCalendarDate(dateKey);
+      setNewScheduleInitialDate(dateKey);
+      setViewMode("calendar");
+      if (!options.keepDayOpen) {
+        setDayPlannerOpen(false);
+      }
+      await loadScheduleMedia();
+      setDrawerOpen(true);
+    } finally {
+      setCheckingScheduleAccess(false);
+    }
   }
 
   async function handleEditSchedule(draft: ScheduleDraft) {
@@ -622,7 +683,7 @@ export function SchedulingWorkspace() {
     setActionNotice(null);
     setDrawerError(null);
     setEditingScheduleId(schedule.id);
-    setRequireScheduleTarget(false);
+    setRequireScheduleTarget(true);
     setNewScheduleInitialDate(draft.scheduledDate ?? selectedCalendarDate);
     await Promise.all([loadScheduleMedia(), loadSocialConnections()]);
     setDrawerOpen(true);
@@ -722,6 +783,15 @@ export function SchedulingWorkspace() {
   ]);
 
   async function handleSaveScheduleDraft(submission: ScheduleFormSubmission) {
+    if (
+      !submission.targets.some((target) => target.platform === "instagram")
+    ) {
+      setDrawerError(
+        "Connect and select an Instagram account before scheduling.",
+      );
+      return;
+    }
+
     setSavingSchedule(true);
     setActionNotice(null);
     setDrawerError(null);
@@ -1101,10 +1171,21 @@ export function SchedulingWorkspace() {
               keepDayOpen: dayPlannerOpen,
             })
           }
-          className="inline-flex h-11 w-fit items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          disabled={checkingScheduleAccess}
+          aria-busy={checkingScheduleAccess}
+          className="inline-flex h-11 w-fit items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-wait disabled:opacity-70"
         >
-          <Plus className="size-4" aria-hidden="true" />
-          Schedule Instagram post
+          {checkingScheduleAccess ? (
+            <Loader2
+              className="size-4 animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+          ) : (
+            <Plus className="size-4" aria-hidden="true" />
+          )}
+          {checkingScheduleAccess
+            ? "Checking Instagram…"
+            : "Schedule Instagram post"}
         </button>
       </header>
 
@@ -1144,7 +1225,15 @@ export function SchedulingWorkspace() {
                 counts={counts}
                 onChange={setActiveTab}
               />
-              <ViewToggle value={viewMode} onChange={setViewMode} />
+              <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                {viewMode === "list" ? (
+                  <ScheduleListDatePicker
+                    selectedDate={selectedCalendarDate}
+                    onSelectDate={handleSelectCalendarDate}
+                  />
+                ) : null}
+                <ViewToggle value={viewMode} onChange={handleChangeViewMode} />
+              </div>
             </div>
 
             <ScheduleContent
@@ -1152,23 +1241,13 @@ export function SchedulingWorkspace() {
               calendarMonth={visibleCalendarMonth}
               calendarDrafts={calendarDrafts}
               drafts={visibleDrafts}
-              hasAnyDrafts={drafts.length > 0}
-              renderingScheduleId={renderingScheduleId}
-              retryingPublishTargetId={retryingPublishTargetId}
-              schedulingFinalDraftId={schedulingFinalDraftId}
               selectedDate={selectedCalendarDate}
               viewMode={viewMode}
-              onCreateDraft={() => void handleNewSchedulePost()}
               onCreateDraftForDate={(dateKey) =>
                 void handleNewSchedulePost(dateKey)
               }
-              onCancelDraft={setSchedulePendingCancellation}
-              onEditDraft={(draft) => void handleEditSchedule(draft)}
               onMonthChange={setVisibleCalendarMonth}
               onOpenDate={handleOpenDayPlanner}
-              onRenderDraft={handleStartCombinationRender}
-              onRetryPublishing={handleRetryPublishing}
-              onScheduleDraft={handleScheduleFinalPost}
               onSelectDate={handleSelectCalendarDate}
             />
           </>
@@ -1194,6 +1273,11 @@ export function SchedulingWorkspace() {
         />
       ) : null}
 
+      <InstagramScheduleAccessDialog
+        accessState={scheduleAccessPrompt}
+        onClose={() => setScheduleAccessPrompt(null)}
+      />
+
       {schedulePendingCancellation ? (
         <CancelScheduleDialog
           draft={schedulePendingCancellation}
@@ -1203,6 +1287,64 @@ export function SchedulingWorkspace() {
         />
       ) : null}
     </section>
+  );
+}
+
+function InstagramScheduleAccessDialog({
+  accessState,
+  onClose,
+}: {
+  accessState: Exclude<InstagramSchedulingAccessState, "ready"> | null;
+  onClose: () => void;
+}) {
+  const reconnecting = accessState === "reconnect";
+
+  return (
+    <Dialog
+      open={accessState !== null}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader className="pr-8">
+          <span className="mb-2 inline-flex size-11 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] text-white shadow-[0_10px_24px_rgb(214_41_118_/_0.18)]">
+            <SocialPlatformIcon className="size-5" platform="instagram" />
+          </span>
+          <DialogTitle className="text-lg font-bold tracking-[-0.02em] text-foreground-strong">
+            {reconnecting
+              ? "Reconnect Instagram to schedule"
+              : "Connect Instagram first"}
+          </DialogTitle>
+          <DialogDescription className="leading-6">
+            {reconnecting
+              ? "Your Instagram connection cannot publish right now. Reconnect it before choosing media, date, and time."
+              : "Scheduling requires a connected Instagram professional account. Connect one before choosing media, date, and time."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={onClose}
+          >
+            Not now
+          </Button>
+          <Link
+            href="/settings#instagram-publishing"
+            onClick={onClose}
+            className={buttonVariants({ size: "lg" })}
+          >
+            <Plus data-icon="inline-start" aria-hidden="true" />
+            {reconnecting ? "Reconnect Instagram" : "Connect Instagram"}
+          </Link>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1315,20 +1457,10 @@ function ScheduleContent({
   calendarMonth,
   calendarDrafts,
   drafts,
-  hasAnyDrafts,
-  onCancelDraft,
-  onCreateDraft,
   onCreateDraftForDate,
-  onEditDraft,
   onMonthChange,
   onOpenDate,
-  onRenderDraft,
-  onRetryPublishing,
-  onScheduleDraft,
   onSelectDate,
-  renderingScheduleId,
-  retryingPublishTargetId,
-  schedulingFinalDraftId,
   selectedDate,
   viewMode,
 }: {
@@ -1336,23 +1468,10 @@ function ScheduleContent({
   calendarMonth: string;
   calendarDrafts: ScheduleDraft[];
   drafts: ScheduleDraft[];
-  hasAnyDrafts: boolean;
-  onCancelDraft: (draft: ScheduleDraft) => void;
-  onCreateDraft: () => void;
   onCreateDraftForDate: (dateKey: string) => void;
-  onEditDraft: (draft: ScheduleDraft) => void;
   onMonthChange: (monthKey: string) => void;
   onOpenDate: (dateKey: string) => void;
-  onRenderDraft: (draftId: string) => void;
-  onRetryPublishing: (
-    draft: ScheduleDraft,
-    target: ScheduledPostTarget,
-  ) => void;
-  onScheduleDraft: (draft: ScheduleDraft) => void;
   onSelectDate: (dateKey: string) => void;
-  renderingScheduleId: string | null;
-  retryingPublishTargetId: string | null;
-  schedulingFinalDraftId: string | null;
   selectedDate: string;
   viewMode: ScheduleViewMode;
 }) {
@@ -1370,48 +1489,13 @@ function ScheduleContent({
         onSelectDate={onSelectDate}
       />
     );
-  } else if (drafts.length === 0) {
-    content = (
-      <ScheduleEmptyState
-        activeTab={activeTab}
-        hasAnyDrafts={hasAnyDrafts}
-        onCreateDraft={onCreateDraft}
-      />
-    );
   } else {
     content = (
-      <div className="flex w-full flex-col rounded-[var(--radius-panel)] border border-border bg-card p-4 shadow-card sm:p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold text-foreground">
-              {tabLabels[activeTab]}
-            </h2>
-            <p className="mt-1 text-xs font-semibold text-muted">
-              {getTabDescription(activeTab)}
-            </p>
-          </div>
-          <span className="rounded-full bg-card-muted px-2.5 py-1 text-xs font-bold text-muted ring-1 ring-inset ring-border">
-            {drafts.length} {getTabItemName(activeTab, drafts.length)}
-          </span>
-        </div>
-
-        <div className="grid auto-rows-min grid-cols-1 gap-3 pb-1">
-          {drafts.map((draft) => (
-            <ScheduleDraftPreview
-              key={draft.id}
-              draft={draft}
-              isRendering={renderingScheduleId === draft.id}
-              isSchedulingFinal={schedulingFinalDraftId === draft.id}
-              onCancelDraft={onCancelDraft}
-              onEditDraft={onEditDraft}
-              onRenderDraft={onRenderDraft}
-              onRetryPublishing={onRetryPublishing}
-              onScheduleDraft={onScheduleDraft}
-              retryingPublishTargetId={retryingPublishTargetId}
-            />
-          ))}
-        </div>
-      </div>
+      <ScheduleDayList
+        activeTab={activeTab}
+        drafts={drafts}
+        selectedDate={selectedDate}
+      />
     );
   }
 
@@ -1427,109 +1511,168 @@ function ScheduleContent({
   );
 }
 
-function ScheduleDraftPreview({
-  draft,
-  isRendering,
-  isSchedulingFinal,
-  onCancelDraft,
-  onEditDraft,
-  onRenderDraft,
-  onRetryPublishing,
-  onScheduleDraft,
-  retryingPublishTargetId,
+function ScheduleListDatePicker({
+  onSelectDate,
+  selectedDate,
 }: {
-  draft: ScheduleDraft;
-  isRendering: boolean;
-  isSchedulingFinal: boolean;
-  onCancelDraft: (draft: ScheduleDraft) => void;
-  onEditDraft: (draft: ScheduleDraft) => void;
-  onRenderDraft: (draftId: string) => void;
-  onRetryPublishing: (
-    draft: ScheduleDraft,
-    target: ScheduledPostTarget,
-  ) => void;
-  onScheduleDraft: (draft: ScheduleDraft) => void;
-  retryingPublishTargetId: string | null;
+  onSelectDate: (dateKey: string) => void;
+  selectedDate: string;
 }) {
-  const { combinedMedia, demoMedia, hookMedia } = getDraftMediaParts(draft);
-  const combinedDraft = isCombinedVideoDraft(draft);
-  const primaryMediaLabel = isCarouselDraft(draft)
-    ? "Carousel"
-    : "Scheduled video";
+  const [open, setOpen] = useState(false);
+  const inputId = "schedule-list-date";
+
+  function handleDateChange(dateKey: string) {
+    if (!dateKey) {
+      return;
+    }
+
+    onSelectDate(dateKey);
+    setOpen(false);
+  }
+
+  function handleSelectToday() {
+    handleDateChange(toDateKey(new Date()));
+  }
 
   return (
-    <article className="grid gap-3 rounded-[var(--radius-card)] border border-border bg-card p-3 transition-colors hover:border-border-strong">
-      {combinedDraft ? (
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-2">
-          <ScheduleDraftMediaThumb label="Opening clip" media={hookMedia} />
-          <span className="flex items-center text-xs font-bold text-muted">+</span>
-          <ScheduleDraftMediaThumb label="Scheduled video" media={demoMedia} />
-        </div>
-      ) : (
-        <ScheduleDraftMediaThumb label={primaryMediaLabel} media={demoMedia} />
-      )}
-
-      <div className="min-w-0">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-sm font-bold text-foreground">
-              {draft.mediaTitle || "Combination draft"}
-            </h3>
-            <p className="mt-1 line-clamp-2 text-sm font-medium leading-5 text-muted">
-              {draft.caption ||
-                (isCarouselDraft(draft)
-                  ? "Caption optional."
-                  : "No caption written yet.")}
-            </p>
-          </div>
-          <span
-            className={cn(
-              "shrink-0 rounded-full border px-2 py-1 text-[11px] font-bold",
-              getDraftStatusBadgeClass(draft.status),
-            )}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            aria-label={`Choose list date, currently ${getReadableDateLabel(selectedDate)}`}
           >
-            {getScheduleStatusLabel(draft.status)}
-          </span>
-        </div>
+            <CalendarDays data-icon="inline-start" aria-hidden="true" />
+            {getReadableDateLabel(selectedDate)}
+          </Button>
+        }
+      />
 
-        <ScheduleTargetStatusList
-          draft={draft}
-          onRetryPublishing={onRetryPublishing}
-          retryingPublishTargetId={retryingPublishTargetId}
-        />
+      <PopoverContent align="end" className="w-72 p-4">
+        <PopoverHeader>
+          <PopoverTitle>Choose a day</PopoverTitle>
+          <PopoverDescription>
+            Show the posts scheduled for any date.
+          </PopoverDescription>
+        </PopoverHeader>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
-          <Clock3 className="size-3.5" aria-hidden="true" />
-          <span>{getDraftTimeLabel(draft)}</span>
-        </div>
+        <FieldGroup className="mt-2 gap-3">
+          <Field>
+            <FieldLabel htmlFor={inputId}>Date</FieldLabel>
+            <Input
+              id={inputId}
+              type="date"
+              value={selectedDate}
+              onChange={(event) => handleDateChange(event.target.value)}
+            />
+          </Field>
+          <Button type="button" variant="ghost" size="sm" onClick={handleSelectToday}>
+            Today
+          </Button>
+        </FieldGroup>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
-        <div className="mt-3 rounded-xl border border-border bg-card-muted px-3 py-2">
-          <p className="text-xs font-bold text-foreground">
-            {getDraftRenderMessage(draft)}
+function ScheduleDayList({
+  activeTab,
+  drafts,
+  selectedDate,
+}: {
+  activeTab: ScheduleTab;
+  drafts: ScheduleDraft[];
+  selectedDate: string;
+}) {
+  const dayDrafts = useMemo(
+    () => getScheduleDayListDrafts(drafts, selectedDate),
+    [drafts, selectedDate],
+  );
+  const itemLabel = getTabItemName(activeTab, dayDrafts.length);
+
+  return (
+    <section
+      aria-labelledby="schedule-day-list-title"
+      className="flex w-full flex-col rounded-[var(--radius-panel)] border border-border bg-card p-4 shadow-card sm:p-5"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+            Daily list
           </p>
-          {combinedMedia?.mediaUrl ? (
-            <a
-              href={combinedMedia.mediaUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 inline-flex h-8 items-center justify-center rounded-control border border-border bg-card px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card-muted"
-            >
-              Open combined MP4
-            </a>
-          ) : null}
+          <h2
+            id="schedule-day-list-title"
+            className="mt-1 text-lg font-bold tracking-[-0.02em] text-foreground"
+          >
+            {getReadableDateLabel(selectedDate)}
+          </h2>
+          <p className="mt-1 text-sm font-medium leading-5 text-muted">
+            {tabLabels[activeTab]} posts scheduled for this day.
+          </p>
         </div>
-
-        <ScheduleDraftActions
-          draft={draft}
-          isRendering={isRendering}
-          isSchedulingFinal={isSchedulingFinal}
-          onCancelDraft={onCancelDraft}
-          onEditDraft={onEditDraft}
-          onRenderDraft={onRenderDraft}
-          onScheduleDraft={onScheduleDraft}
-        />
+        <Badge variant="outline">
+          {dayDrafts.length} {itemLabel}
+        </Badge>
       </div>
-    </article>
+
+      {dayDrafts.length > 0 ? (
+        <ol
+          aria-label={`${tabLabels[activeTab]} posts on ${getReadableDateLabel(selectedDate)}`}
+          className="mt-5 overflow-hidden rounded-[var(--radius-card)] border border-border bg-card"
+        >
+          {dayDrafts.map((draft) => (
+            <ScheduleDayListItem key={draft.id} draft={draft} />
+          ))}
+        </ol>
+      ) : (
+        <Empty className="mt-5 min-h-40 border border-dashed border-border bg-card-muted p-6">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <CalendarDays aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle>No {tabLabels[activeTab].toLowerCase()} posts</EmptyTitle>
+            <EmptyDescription>
+              Choose another date to see posts scheduled on that day.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+    </section>
+  );
+}
+
+function ScheduleDayListItem({ draft }: { draft: ScheduleDraft }) {
+  const isCarousel = isCarouselDraft(draft);
+  const PostFormatIcon = isCarousel ? Images : FileVideo;
+
+  return (
+    <li className="grid gap-3 border-b border-border px-4 py-4 last:border-b-0 sm:grid-cols-[minmax(120px,0.3fr)_minmax(0,1fr)_auto] sm:items-center">
+      <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+        <Clock3 className="size-4 text-muted" aria-hidden="true" />
+        <span>{draft.scheduledTime ?? "Time pending"}</span>
+        <span className="text-xs font-semibold text-muted">{draft.timezone}</span>
+      </div>
+
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
+          <PostFormatIcon className="size-4" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-foreground">
+            {draft.mediaTitle || "Untitled post"}
+          </p>
+          <p className="mt-0.5 text-xs font-semibold text-muted">
+            {getScheduleDayListFormatLabel(draft)}
+          </p>
+        </div>
+      </div>
+
+      <Badge variant={getScheduleDayListStatusVariant(draft.status)}>
+        {getScheduleStatusLabel(draft.status)}
+      </Badge>
+    </li>
   );
 }
 
@@ -1894,44 +2037,6 @@ function ScheduleTargetStatusList({
   );
 }
 
-function ScheduleDraftMediaThumb({
-  label,
-  media,
-}: {
-  label: string;
-  media: ScheduleMediaOption | null;
-}) {
-  const FallbackIcon = media?.sourceType === "generated_carousel" ? Images : Video;
-
-  return (
-    <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-card-muted">
-      <div className="relative aspect-video overflow-hidden bg-card-muted text-muted">
-        {media?.thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={media.thumbnailUrl}
-            alt=""
-            width={320}
-            height={180}
-            loading="lazy"
-            className="size-full object-cover"
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center">
-            <FallbackIcon className="size-5 text-muted" aria-hidden="true" />
-          </div>
-        )}
-      </div>
-      <div className="px-2 py-1.5">
-        <p className="text-[11px] font-bold text-muted">{label}</p>
-        <p className="truncate text-xs font-bold text-foreground">
-          {media?.title ?? "Missing"}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function ScheduledCarouselSourceCard({ schedule }: { schedule: ScheduledPost }) {
   return (
     <section className="rounded-[var(--radius-card)] border border-border bg-card p-4">
@@ -1969,46 +2074,6 @@ function CarouselSchedulePreview({ schedule }: { schedule: ScheduledPost }) {
             Carousel slides publish in saved order
           </p>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ScheduleEmptyState({
-  activeTab,
-  hasAnyDrafts,
-  onCreateDraft,
-}: {
-  activeTab: ScheduleTab;
-  hasAnyDrafts: boolean;
-  onCreateDraft: () => void;
-}) {
-  const isPrimaryEmpty = activeTab === "upcoming" && !hasAnyDrafts;
-
-  return (
-    <div className="flex min-h-[360px] flex-1 items-center justify-center rounded-[var(--radius-panel)] border border-border bg-card px-6 py-12 text-center">
-      <div className="max-w-md">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
-          <CalendarDays className="size-6" aria-hidden="true" />
-        </div>
-        <p className="mt-4 text-base font-bold text-foreground">
-          {isPrimaryEmpty
-            ? "No scheduled posts yet."
-            : `No ${tabLabels[activeTab].toLowerCase()} posts yet.`}
-        </p>
-        <p className="mt-2 text-sm font-medium leading-6 text-muted">
-          {isPrimaryEmpty
-            ? "Your scheduled posts will appear here after you choose connected accounts, date, and time."
-            : "This filter shows server-backed schedule records for the selected status."}
-        </p>
-        <button
-          type="button"
-          onClick={onCreateDraft}
-          className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover"
-        >
-          <Plus className="size-4" aria-hidden="true" />
-          Create schedule draft
-        </button>
       </div>
     </div>
   );
@@ -2672,6 +2737,58 @@ type CalendarDay = {
 };
 
 const calendarWeekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function getScheduleDayListDrafts(drafts: ScheduleDraft[], selectedDate: string) {
+  return drafts
+    .filter((draft) => draft.scheduledDate === selectedDate)
+    .sort((first, second) => {
+      const timeDifference = (first.scheduledTime ?? "").localeCompare(
+        second.scheduledTime ?? "",
+      );
+
+      return timeDifference !== 0
+        ? timeDifference
+        : first.createdAt.localeCompare(second.createdAt);
+    });
+}
+
+function getScheduleDayListFormatLabel(draft: ScheduleDraft) {
+  if (isCarouselDraft(draft)) {
+    return "Carousel";
+  }
+
+  return isCombinedVideoDraft(draft) ? "Combined video" : "Video";
+}
+
+function getScheduleDayListStatusVariant(status: ScheduleDraftStatus) {
+  if (status === "published") {
+    return "published";
+  }
+
+  if (status === "scheduled" || status === "scheduled_preview") {
+    return "scheduled";
+  }
+
+  if (
+    status === "failed" ||
+    status === "partially_failed" ||
+    status === "cancelled" ||
+    status === "render_failed" ||
+    status === "publishing_unavailable"
+  ) {
+    return "failed";
+  }
+
+  if (status === "ready") {
+    return "ready";
+  }
+
+  if (status === "rendering" || status === "scheduling" || status === "publishing") {
+    return "rendering";
+  }
+
+  return "draft";
+}
 
 function groupDraftsByDate(drafts: ScheduleDraft[]) {
   const grouped = new Map<string, ScheduleDraft[]>();
@@ -3939,6 +4056,11 @@ function NewScheduleDrawer({
                       }
                       className="mt-2 min-h-32 w-full resize-none rounded-control border border-border bg-card-muted px-4 py-3 text-sm font-medium leading-6 text-foreground outline-none transition placeholder:text-muted-subtle hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
                     />
+                    {isCarouselSchedule ? (
+                      <span className="mt-2 block text-xs font-semibold text-muted">
+                        Caption optional.
+                      </span>
+                    ) : null}
                     {captionValidationError ? (
                       <span className="mt-2 block text-xs font-semibold text-error">
                         {captionValidationError}
@@ -4157,11 +4279,7 @@ function NewScheduleDrawer({
                       : "This selected video will be scheduled directly without extra preparation."
                   : requireScheduleTarget
                     ? "Choose a connected account before scheduling this post."
-                    : editingSchedule
-                      ? "Saved changes replace this draft. Active platform jobs cannot be edited."
-                      : isCarouselSchedule
-                        ? "Choose an account to schedule automatically, or keep this as a carousel draft."
-                        : "Choose an account to schedule automatically, or save a video draft without publishing."}
+                    : "Choose a connected Instagram account before scheduling this post."}
             </p>
             <button
               type="button"
@@ -4171,19 +4289,11 @@ function NewScheduleDrawer({
             >
               <CheckCircle2 className="size-4" aria-hidden="true" />
               {saving
-                ? hasSelectedConnections
-                  ? "Scheduling…"
-                  : editingSchedule
-                    ? "Saving changes…"
-                    : "Saving…"
+                ? "Scheduling…"
                 : canSaveDraft
-                  ? hasSelectedConnections
-                    ? "Schedule post"
-                    : editingSchedule
-                      ? "Save changes"
-                      : isCarouselSchedule
-                        ? "Save carousel draft"
-                        : "Save video draft"
+                  ? editingSchedule
+                    ? "Save and schedule"
+                    : "Schedule post"
                   : unavailableSavedTargetError
                     ? "Review saved account"
                     : captionValidationError
@@ -5259,10 +5369,7 @@ function ConnectedAccountSelector({
         </div>
       ) : (
         <div className="mt-2 rounded-control border border-dashed border-border bg-card-muted px-4 py-4 text-sm font-semibold leading-6 text-muted">
-          <p>
-            Connect Instagram to schedule this post. You can still save the
-            video draft now.
-          </p>
+          <p>Connect Instagram before scheduling this post.</p>
           <a
             href="/settings#instagram-publishing"
             target="_blank"
@@ -5698,17 +5805,6 @@ function StatusPreview({
   );
 }
 
-function getTabDescription(tab: ScheduleTab) {
-  const descriptions: Record<ScheduleTab, string> = {
-    drafts: "Saved posts that still need a date, video preparation, or final schedule.",
-    failed: "Posts that need attention before they can publish successfully.",
-    published: "Completed posts with platform results and links.",
-    upcoming: "Planned posts moving from preparation to scheduling to publishing.",
-  };
-
-  return descriptions[tab];
-}
-
 function getTabItemName(tab: ScheduleTab, count: number) {
   const singular: Record<ScheduleTab, string> = {
     drafts: "draft",
@@ -5787,112 +5883,6 @@ function getDraftTimeLabel(draft: ScheduleDraft) {
   }
 
   return `${draft.scheduledDate}, ${draft.scheduledTime} ${draft.timezone}`;
-}
-
-function getDraftRenderMessage(draft: ScheduleDraft) {
-  if (draft.status === "published") {
-    return "Published successfully. Platform links appear below when available.";
-  }
-
-  if (draft.status === "publishing") {
-    return "Publishing is in progress on the selected platform accounts.";
-  }
-
-  if (draft.status === "scheduled") {
-    if (isCarouselDraft(draft)) {
-      return "Carousel is queued for publishing at the planned time.";
-    }
-
-    return isSingleVideoDraft(draft)
-      ? "Scheduled video is queued for publishing at the planned time."
-      : "Final combined video is scheduled. Publishing will run at the planned time.";
-  }
-
-  if (draft.status === "scheduling") {
-    return isCarouselDraft(draft)
-      ? "Creating platform schedules for this carousel."
-      : "Creating platform schedules for this final video.";
-  }
-
-  if (draft.status === "partially_failed") {
-    return "Some platforms failed. Check the platform status rows below.";
-  }
-
-  if (draft.status === "failed" || draft.status === "publishing_unavailable") {
-    if (draft.status === "publishing_unavailable") {
-      if (isCarouselDraft(draft)) {
-        return (
-          draft.finalScheduleError ??
-          "The carousel is ready, but platform scheduling did not complete. Retry scheduling below."
-        );
-      }
-
-      return (
-        draft.finalScheduleError ??
-        "The final video is ready, but platform scheduling did not complete. Retry scheduling below."
-      );
-    }
-
-    return "Publishing failed. Check the platform status rows below.";
-  }
-
-  if (draft.status === "cancelled") {
-    return "This scheduled post was cancelled.";
-  }
-
-  if (draft.status === "ready") {
-    if (isCarouselDraft(draft)) {
-      return "Choose an account, date, and time to schedule this carousel.";
-    }
-
-    return hasPlannedFinalSchedule(draft)
-      ? "Combined MP4 is ready. Creating the final platform schedule automatically."
-      : "Combined MP4 is ready for final scheduling.";
-  }
-
-  if (draft.status === "render_failed") {
-    return "We could not prepare the combined video. Try again before scheduling.";
-  }
-
-  if (draft.status === "rendering") {
-    return hasPlannedFinalSchedule(draft)
-      ? "We are combining the opening clip and scheduled video. Scheduling starts automatically when the video is ready."
-      : "Opening clip and scheduled video are being combined into one MP4.";
-  }
-
-  if (draft.status === "render_required") {
-    return "Prepare the opening clip and scheduled video as one video before publishing.";
-  }
-
-  if (draft.status === "media_required") {
-    if (isCarouselDraft(draft)) {
-      return "This saved carousel is unavailable. Return to Content and choose it again.";
-    }
-
-    if (draft.mediaIssue === "demo") {
-      return "The selected scheduled video was removed. Edit this draft and choose another video.";
-    }
-
-    if (draft.mediaIssue === "opening") {
-      return "The selected opening clip was removed. Edit this draft and choose an available clip.";
-    }
-
-    if (draft.mediaIssue === "both") {
-      return "The selected videos are no longer available. Edit this draft and choose new media.";
-    }
-
-    return isSingleVideoDraft(draft)
-      ? "Select a video to schedule."
-      : "Choose an opening clip and scheduled video before preparing the post.";
-  }
-
-  if (isCarouselDraft(draft)) {
-    return "Choose an account, date, and time to schedule this carousel.";
-  }
-
-  return isSingleVideoDraft(draft)
-    ? "Save a scheduled video before publishing."
-    : "Save an opening clip and scheduled video before preparing the post.";
 }
 
 function canScheduleFinalDraft(draft: ScheduleDraft) {

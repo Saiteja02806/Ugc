@@ -72,6 +72,7 @@ export async function runRenderScheduleCombinationJob(
       autoFinalize: payload.autoFinalize,
       compositionFingerprint: payload.compositionFingerprint,
       demoVideoId: payload.demoVideoId,
+      hookAudioAssetId: payload.hookAudio?.audioAssetId ?? null,
       hookVideoId: payload.hookVideoId,
       key: result.key,
       mediaAssetId,
@@ -203,6 +204,7 @@ function parseRenderScheduleCombinationPayload(
       getOptionalString(input.compositionFingerprint, 128) || "legacy",
     demoVideoId: getRequiredString(input.demoVideoId, "demoVideoId"),
     demoVideoUrl: getHttpUrl(input.demoVideoUrl, "demoVideoUrl"),
+    hookAudio: getOptionalHookAudio(input.hookAudio),
     hookText: getOptionalString(input.hookText, 220),
     hookTextFontSize: getOptionalHookTextFontSize(input.hookTextFontSize),
     hookTextLines: getOptionalHookTextLines(input.hookTextLines),
@@ -265,6 +267,41 @@ function getOptionalString(value: Json | undefined, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
+function getOptionalHookAudio(value: Json | undefined) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const audio = getJsonRecord(value, "hookAudio");
+  const selectionSource = getRequiredString(
+    audio.selectionSource,
+    "hookAudio.selectionSource",
+  );
+
+  if (selectionSource !== "video_locked") {
+    throw new Error("hookAudio.selectionSource must be video_locked.");
+  }
+
+  const durationSeconds = getOptionalNullablePositiveNumber(
+    audio.durationSeconds,
+    "hookAudio.durationSeconds",
+  );
+
+  if (durationSeconds === null) {
+    throw new Error("hookAudio.durationSeconds must be a positive number.");
+  }
+
+  return {
+    audioAssetId: getRequiredString(
+      audio.audioAssetId,
+      "hookAudio.audioAssetId",
+    ),
+    audioUrl: getHttpUrl(audio.audioUrl, "hookAudio.audioUrl"),
+    durationSeconds,
+    selectionSource: "video_locked" as const,
+  };
+}
+
 function getOptionalHookTextFontSize(value: Json | undefined) {
   if (value === undefined || value === null) {
     return null;
@@ -274,13 +311,13 @@ function getOptionalHookTextFontSize(value: Json | undefined) {
     typeof value === "number" &&
     Number.isInteger(value) &&
     value >= 34 &&
-    value <= 52 &&
+    value <= 60 &&
     value % 2 === 0
   ) {
     return value;
   }
 
-  throw new Error("hookTextFontSize must be an even number from 34 to 52.");
+  throw new Error("hookTextFontSize must be an even number from 34 to 60.");
 }
 
 function getOptionalHookTextLines(value: Json | undefined) {
@@ -291,7 +328,7 @@ function getOptionalHookTextLines(value: Json | undefined) {
   if (
     !Array.isArray(value) ||
     value.length < 1 ||
-    value.length > 2 ||
+    value.length > 3 ||
     value.some(
       (line) =>
         typeof line !== "string" ||
@@ -299,7 +336,7 @@ function getOptionalHookTextLines(value: Json | undefined) {
         Array.from(line.trim()).length > 78,
     )
   ) {
-    throw new Error("hookTextLines must contain one or two text lines.");
+    throw new Error("hookTextLines must contain one to three text lines.");
   }
 
   return value.map((line) => String(line).trim().replace(/\s+/gu, " "));

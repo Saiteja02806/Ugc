@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
+import { getBusinessProfileOnboardingGate } from "@/lib/business-profiles/onboarding-access";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
@@ -8,17 +9,12 @@ import {
 import {
   getPublicBackgroundJob,
 } from "@/lib/jobs/background-job-contract";
-import { isWallTextLocalDevelopmentEnabled } from "@/lib/trending/wall-text-access";
 import { enqueueTrendingWallTextJob } from "@/lib/trending/wall-text-jobs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  if (!isWallTextLocalDevelopmentEnabled()) {
-    return json({ error: "Not found.", ok: false }, 404);
-  }
-
   let userId: string;
 
   try {
@@ -46,16 +42,18 @@ export async function POST(request: Request) {
 
   try {
     const profile = await getBusinessProfileForUser(userId);
+    const onboardingGate = getBusinessProfileOnboardingGate(profile);
 
-    if (!profile) {
+    if (onboardingGate || !profile) {
       return json(
         {
-          code: "business_profile_required",
+          code: onboardingGate?.code ?? "onboarding_required",
           error:
-            "Complete your business profile before preparing Wall-of-text ideas.",
+            onboardingGate?.message ??
+            "Complete the required business onboarding before using Trending.",
           ok: false,
         },
-        409,
+        onboardingGate?.status ?? 409,
       );
     }
 

@@ -61,84 +61,14 @@ export type EditableVideoInput = {
   videoUrl: string | null;
 };
 
-const EDITABLE_VIDEO_LIBRARY_STORAGE_KEY = "ugc-studio.editable-videos.v1";
-const EDITABLE_VIDEO_LIBRARY_CHANGED_EVENT =
-  "ugc-studio:editable-video-library-changed";
-const MAX_EDITABLE_VIDEO_LIBRARY_ITEMS = 80;
-const EMPTY_EDITABLE_VIDEOS: EditableVideo[] = [];
 export const MAX_TEXT_OVERLAYS = 3;
 
-const editableVideoRatios: EditableVideoRatio[] = ["9:16", "1:1", "4:5", "16:9"];
-const editableVideoSources: EditableVideoSource[] = [
-  "hook",
-  "demo",
-  "draft",
-  "final",
-];
-const editableVideoStatuses: EditableVideoStatus[] = [
-  "ready",
-  "draft",
-  "rendering",
-  "rendered",
-  "failed",
-];
 export const textOverlayPositions: TextOverlayPosition[] = [
   "top",
   "middle",
   "bottom",
 ];
 export const textOverlayStyles: TextOverlayStyle[] = ["clean", "minimal", "bubble"];
-
-let cachedEditableVideoRawValue: string | null = null;
-let cachedEditableVideos: EditableVideo[] = EMPTY_EDITABLE_VIDEOS;
-
-export function getEditableVideos(): EditableVideo[] {
-  if (!canUseBrowserStorage()) {
-    return EMPTY_EDITABLE_VIDEOS;
-  }
-
-  try {
-    const rawValue = window.localStorage.getItem(
-      EDITABLE_VIDEO_LIBRARY_STORAGE_KEY,
-    );
-
-    if (rawValue === cachedEditableVideoRawValue) {
-      return cachedEditableVideos;
-    }
-
-    if (!rawValue) {
-      cachedEditableVideoRawValue = rawValue;
-      cachedEditableVideos = EMPTY_EDITABLE_VIDEOS;
-
-      return cachedEditableVideos;
-    }
-
-    const parsedValue: unknown = JSON.parse(rawValue);
-
-    if (!Array.isArray(parsedValue)) {
-      cachedEditableVideoRawValue = rawValue;
-      cachedEditableVideos = EMPTY_EDITABLE_VIDEOS;
-
-      return cachedEditableVideos;
-    }
-
-    cachedEditableVideoRawValue = rawValue;
-    cachedEditableVideos = parsedValue
-      .map((video) => normalizeEditableVideo(video))
-      .filter((video): video is EditableVideo => Boolean(video));
-
-    return cachedEditableVideos;
-  } catch {
-    cachedEditableVideoRawValue = null;
-    cachedEditableVideos = EMPTY_EDITABLE_VIDEOS;
-
-    return cachedEditableVideos;
-  }
-}
-
-export function getEditableVideoById(videoId: string) {
-  return getEditableVideos().find((video) => video.id === videoId) ?? null;
-}
 
 export function getEditableVideoHref(video: EditableVideo) {
   return getCreativeAssetEditorHref(video.id);
@@ -158,124 +88,6 @@ export function createEditableVideo(input: EditableVideoInput): EditableVideo {
     thumbnailUrl: input.thumbnailUrl ?? null,
     title: input.title,
     videoUrl: input.videoUrl,
-  };
-}
-
-export function saveEditableVideo(video: EditableVideo) {
-  const normalizedVideo = normalizeEditableVideo(video);
-
-  if (!normalizedVideo || !canUseBrowserStorage()) {
-    return getEditableVideos();
-  }
-
-  const currentVideos = getEditableVideos();
-  const nextVideos = [
-    normalizedVideo,
-    ...currentVideos.filter((currentVideo) => currentVideo.id !== video.id),
-  ].slice(0, MAX_EDITABLE_VIDEO_LIBRARY_ITEMS);
-
-  writeEditableVideos(nextVideos);
-
-  return nextVideos;
-}
-
-export function saveEditableVideoDraft(
-  videoId: string,
-  draft: EditableVideoDraftInput,
-) {
-  if (!canUseBrowserStorage()) {
-    return null;
-  }
-
-  const currentVideos = getEditableVideos();
-  const videoIndex = currentVideos.findIndex((video) => video.id === videoId);
-
-  if (videoIndex === -1) {
-    return null;
-  }
-
-  const normalizedDraft = normalizeEditableVideoDraftInput(draft) ?? {
-    textOverlays: [],
-    trimEndSeconds: null,
-    trimStartSeconds: 0,
-  };
-  const updatedVideo: EditableVideo = {
-    ...currentVideos[videoIndex],
-    draft: {
-      ...normalizedDraft,
-      updatedAt: new Date().toISOString(),
-    },
-    status: "draft",
-  };
-
-  const nextVideos = [
-    updatedVideo,
-    ...currentVideos.filter((video) => video.id !== videoId),
-  ];
-
-  writeEditableVideos(nextVideos);
-
-  return updatedVideo;
-}
-
-export function saveRenderedEditableVideo(
-  videoId: string,
-  renderedVideoUrl: string,
-) {
-  if (!canUseBrowserStorage()) {
-    return null;
-  }
-
-  const currentVideos = getEditableVideos();
-  const videoIndex = currentVideos.findIndex((video) => video.id === videoId);
-  const normalizedUrl = normalizeString(renderedVideoUrl);
-
-  if (videoIndex === -1 || !normalizedUrl) {
-    return null;
-  }
-
-  const updatedVideo: EditableVideo = {
-    ...currentVideos[videoIndex],
-    renderedVideoUrl: normalizedUrl,
-    status: "rendered",
-  };
-
-  const nextVideos = [
-    updatedVideo,
-    ...currentVideos.filter((video) => video.id !== videoId),
-  ];
-
-  writeEditableVideos(nextVideos);
-
-  return updatedVideo;
-}
-
-export function listenToEditableVideoLibrary(
-  onChange: (videos: EditableVideo[]) => void,
-) {
-  if (!canUseBrowserStorage()) {
-    return () => {};
-  }
-
-  function handleChange() {
-    onChange(getEditableVideos());
-  }
-
-  function handleStorageChange(event: StorageEvent) {
-    if (event.key === EDITABLE_VIDEO_LIBRARY_STORAGE_KEY) {
-      handleChange();
-    }
-  }
-
-  window.addEventListener(EDITABLE_VIDEO_LIBRARY_CHANGED_EVENT, handleChange);
-  window.addEventListener("storage", handleStorageChange);
-
-  return () => {
-    window.removeEventListener(
-      EDITABLE_VIDEO_LIBRARY_CHANGED_EVENT,
-      handleChange,
-    );
-    window.removeEventListener("storage", handleStorageChange);
   };
 }
 
@@ -374,71 +186,6 @@ export function normalizeTextOverlays(
   );
 }
 
-function writeEditableVideos(videos: EditableVideo[]) {
-  if (!canUseBrowserStorage()) {
-    return;
-  }
-
-  const rawValue = JSON.stringify(videos);
-
-  cachedEditableVideoRawValue = rawValue;
-  cachedEditableVideos = videos;
-
-  window.localStorage.setItem(EDITABLE_VIDEO_LIBRARY_STORAGE_KEY, rawValue);
-  window.dispatchEvent(new Event(EDITABLE_VIDEO_LIBRARY_CHANGED_EVENT));
-}
-
-function canUseBrowserStorage() {
-  return typeof window !== "undefined" && Boolean(window.localStorage);
-}
-
-function normalizeEditableVideo(value: unknown): EditableVideo | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const record = value as Record<string, unknown>;
-  const id = normalizeString(record.id);
-  const title = normalizeString(record.title);
-  const projectId = normalizeStringOrNull(record.projectId);
-  const source = normalizeSource(record.source);
-  const videoUrl = normalizeStringOrNull(record.videoUrl);
-
-  if (!id || !title || !source) {
-    return null;
-  }
-
-  return {
-    createdAt: normalizeStringOrNull(record.createdAt),
-    draft: normalizeDraft(record.draft),
-    durationSeconds: normalizeNullableNumber(record.durationSeconds),
-    id,
-    projectId,
-    ratio: normalizeRatio(record.ratio) ?? "9:16",
-    renderedVideoUrl: normalizeStringOrNull(record.renderedVideoUrl),
-    source,
-    status: normalizeStatus(record.status) ?? "ready",
-    thumbnailUrl: normalizeStringOrNull(record.thumbnailUrl),
-    title,
-    videoUrl,
-  };
-}
-
-function normalizeDraft(value: unknown): EditableVideoDraft | null {
-  const draft = normalizeEditableVideoDraftInput(value);
-
-  if (!draft || !value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
-  const record = value as Record<string, unknown>;
-
-  return {
-    ...draft,
-    updatedAt: normalizeStringOrNull(record.updatedAt) ?? new Date().toISOString(),
-  };
-}
-
 function normalizeTextOverlay(value: unknown): TextOverlay | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -453,24 +200,6 @@ function normalizeTextOverlay(value: unknown): TextOverlay | null {
     style: normalizeTextOverlayStyle(record.style) ?? "bubble",
     text: normalizeStringPreserveEmpty(record.text)?.slice(0, 100) ?? "",
   };
-}
-
-function normalizeRatio(value: unknown): EditableVideoRatio | null {
-  return editableVideoRatios.includes(value as EditableVideoRatio)
-    ? (value as EditableVideoRatio)
-    : null;
-}
-
-function normalizeSource(value: unknown): EditableVideoSource | null {
-  return editableVideoSources.includes(value as EditableVideoSource)
-    ? (value as EditableVideoSource)
-    : null;
-}
-
-function normalizeStatus(value: unknown): EditableVideoStatus | null {
-  return editableVideoStatuses.includes(value as EditableVideoStatus)
-    ? (value as EditableVideoStatus)
-    : null;
 }
 
 function normalizeTextOverlayPosition(
@@ -499,10 +228,6 @@ function normalizeString(value: unknown) {
 
 function normalizeStringPreserveEmpty(value: unknown) {
   return typeof value === "string" ? value.trim() : null;
-}
-
-function normalizeStringOrNull(value: unknown) {
-  return normalizeString(value);
 }
 
 function normalizeNumber(value: unknown) {

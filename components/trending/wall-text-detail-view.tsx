@@ -10,6 +10,7 @@ import {
 import { useEffect, useRef } from "react";
 
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
+import { WallTextAudioPreview } from "@/components/trending/wall-text-audio-preview";
 import type {
   TrendingWallTextContent,
   TrendingWallTextFeedItem,
@@ -24,6 +25,7 @@ export type WallTextDetailActionState =
 
 export function WallTextDetailView({
   actionState,
+  audioPreviewEnabled = true,
   content,
   item,
   layout,
@@ -35,6 +37,7 @@ export function WallTextDetailView({
   textColor,
 }: {
   actionState: WallTextDetailActionState;
+  audioPreviewEnabled?: boolean;
   content?: TrendingWallTextContent;
   item: TrendingWallTextFeedItem;
   layout?: TrendingWallTextLayout;
@@ -113,6 +116,12 @@ export function WallTextDetailView({
               layout={visibleLayout}
               textColor={textColor}
             />
+            {audioPreviewEnabled && !previewUrl ? (
+              <WallTextAudioPreview
+                audio={creative.audio}
+                videoRef={videoRef}
+              />
+            ) : null}
           </div>
           <button
             type="button"

@@ -18,6 +18,7 @@ import {
   type FocusedVideoEditorDraftState,
 } from "@/components/edit/focused-video-editor";
 import { buttonClassName } from "@/components/ui/button";
+import { normalizeEditableVideoDraftForDuration } from "@/lib/edit/editor-draft";
 import { CREATIVE_ASSETS_VIDEOS_HREF } from "@/lib/edit/routes";
 import type { EditableVideo } from "@/lib/edit/video-library";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -227,6 +228,15 @@ export function FocusedVideoEditorShell({
           "Could not save your latest changes before leaving.",
         ),
       );
+
+      if (
+        window.confirm(
+          "Your latest changes could not be saved. Return to Creative Assets anyway and discard them?",
+        )
+      ) {
+        allowUnloadRef.current = true;
+        router.push(returnHref);
+      }
     }
   }
 
@@ -602,7 +612,8 @@ function EditorTopBar({
           onClick={onReturn}
           disabled={isReturning}
           aria-label={returnLabel}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-border text-muted transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+          title={returnLabel}
+          className="inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-border-strong bg-card-muted text-foreground-strong shadow-sm transition-colors hover:border-primary/50 hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
         >
           {isReturning ? (
             <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
@@ -741,9 +752,14 @@ function VideoNotFound({
 }
 
 function getDraftForRender(video: EditableVideo, draft: FocusedVideoEditorDraftState | null): FocusedVideoEditorDraftState {
-  if (draft) return draft;
-  if (video.draft) return { textOverlays: video.draft.textOverlays, trimEndSeconds: video.draft.trimEndSeconds, trimStartSeconds: video.draft.trimStartSeconds };
-  return { textOverlays: [], trimEndSeconds: null, trimStartSeconds: 0 };
+  return normalizeEditableVideoDraftForDuration(
+    draft ?? video.draft ?? {
+      textOverlays: [],
+      trimEndSeconds: null,
+      trimStartSeconds: 0,
+    },
+    video.durationSeconds,
+  );
 }
 
 function serializeDraft(draft: FocusedVideoEditorDraftState) {

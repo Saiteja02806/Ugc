@@ -224,6 +224,17 @@ test("groups preview-ready items by Wall, Hook, then Carousel without duplicates
     assignmentId: "assignment-wall",
     creative: {
       aspectRatio: "9:16",
+      audio: {
+        assetDurationSeconds: 12.5,
+        assetId: "audio_001_segment_01",
+        audioUrl: "https://cdn.example.com/wall-audio.mp3",
+        cueStartSeconds: 0,
+        fadeOutSeconds: 0.2,
+        fitMode: "trim",
+        matchingVersion: "wall-audio-match-v1",
+        outputDurationSeconds: 6.016,
+        selectionId: "selection-wall-1",
+      },
       durationSeconds: 6.016,
       layout: {
         alignment: "center",

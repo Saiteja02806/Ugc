@@ -280,6 +280,17 @@ function toWallTextSourceRecord(
   return {
     aspectRatio: "9:16",
     assignmentId: idea.assignmentId,
+    audio: {
+      assetDurationSeconds: idea.audio.audioAssetDurationSeconds,
+      assetId: idea.audio.audioAssetId,
+      audioUrl: idea.audio.audioUrl,
+      cueStartSeconds: idea.audio.cueStartSeconds,
+      fadeOutSeconds: idea.audio.fadeOutSeconds,
+      fitMode: idea.audio.fitMode,
+      matchingVersion: idea.audio.matchingVersion,
+      outputDurationSeconds: idea.audio.outputDurationSeconds,
+      selectionId: idea.audio.selectionId,
+    },
     creativeId: idea.id,
     durationSeconds: idea.durationSeconds,
     feedItemId: idea.assignmentId,

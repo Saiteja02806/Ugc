@@ -45,7 +45,83 @@ test("review map approves and maps only the explicitly accepted file", () => {
   assert.equal(manifest.assets[0].review.reviewStatus, "final_full_resolution_review");
   assert.equal(manifest.assets[0].review.decision, "approved");
   assert.equal(manifest.assets[0].sourcePerceptualHash, "0123456789abcdef");
+  assert.ok(manifest.assets[0].contentTags.includes("kanban"));
+  assert.ok(manifest.assets[0].objectTags.includes("whiteboard"));
+  assert.ok(manifest.assets[0].objectTags.includes("planner"));
   assert.match(manifest.skippedFiles[0].reason, /visible_person/);
+});
+
+test("v2 tagging maps new source categories and preserves literal retrieval tags", () => {
+  const fixtureRoot = mkdtempSync(path.join(tmpdir(), "ugc-carousel-tags-v2-"));
+  const auditPath = path.join(fixtureRoot, "audit.json");
+  const outputRoot = path.join(fixtureRoot, "tags");
+  const sourceRoot = path.join(fixtureRoot, "source");
+  mkdirSync(sourceRoot, { recursive: true });
+
+  const recommendations = [
+    createRecommendation({
+      categorySlug: "marketing",
+      fileName: "social_media_pexels_pack/01_instagram_screen.png",
+      perceptualHash: "1111111111111111",
+      rootPath: sourceRoot,
+      sha256Hash: "1".repeat(64),
+    }),
+    createRecommendation({
+      categorySlug: "beauty_skincare",
+      fileName: "serum_carousel_images/serumbottle_drop.jpg",
+      perceptualHash: "2222222222222222",
+      rootPath: sourceRoot,
+      sha256Hash: "2".repeat(64),
+    }),
+    createRecommendation({
+      categorySlug: "personal_finance",
+      fileName: "ChatGPT Image Aug 10, 2026, 06_14_00 PM (6).png",
+      perceptualHash: "3333333333333333",
+      rootPath: sourceRoot,
+      sha256Hash: "3".repeat(64),
+    }),
+  ];
+  writeFileSync(
+    auditPath,
+    `${JSON.stringify(
+      { nearDuplicateGroups: [], originalCropPairs: [], recommendations },
+      null,
+      2,
+    )}\n`,
+  );
+
+  const result = runNode([
+    TAG_SCRIPT,
+    "--audit-report",
+    auditPath,
+    "--manual-review-approved",
+    "--out-dir",
+    outputRoot,
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const manifest = readLatestJson(outputRoot, "tag-manifest.json");
+  const marketing = manifest.assets.find(
+    (asset) => asset.sourceLocalCategorySlug === "marketing",
+  );
+  const beauty = manifest.assets.find(
+    (asset) => asset.sourceLocalCategorySlug === "beauty_skincare",
+  );
+  const finance = manifest.assets.find(
+    (asset) => asset.sourceLocalCategorySlug === "personal_finance",
+  );
+
+  assert.equal(marketing.categorySlug, "marketing-saas");
+  assert.equal(marketing.broadVisualBucket, "phone-and-devices");
+  assert.ok(marketing.contentTags.includes("instagram"));
+  assert.ok(marketing.objectTags.includes("smartphone"));
+  assert.equal(beauty.categorySlug, "beauty-skincare");
+  assert.ok(beauty.contentTags.includes("serum"));
+  assert.ok(beauty.objectTags.includes("serumbottle"));
+  assert.equal(finance.categorySlug, "personal-finance");
+  assert.equal(finance.broadVisualBucket, "phone-and-devices");
+  assert.ok(finance.contentTags.includes("expense-tracking"));
+  assert.ok(finance.objectTags.includes("calculator"));
 });
 
 test("review map fails closed when an audited file has no decision", () => {
@@ -142,7 +218,7 @@ function createTagFixture() {
 
   const recommendations = [
     createRecommendation({
-      fileName: "approved.jpg",
+      fileName: "pexels_whiteboards_10/01_kanban_whiteboard.jpg",
       perceptualHash: "0123456789abcdef",
       rootPath: sourceRoot,
       sha256Hash: "a".repeat(64),
@@ -174,7 +250,7 @@ function createTagFixture() {
           {
             broadVisualBucket: "notes-and-planning",
             contentTags: ["productivity", "planning"],
-            files: ["approved.jpg"],
+            files: ["pexels_whiteboards_10/01_kanban_whiteboard.jpg"],
             moodTags: ["focused"],
             objectTags: ["planner"],
             runtimeCategory: "productivity-saas",
@@ -202,6 +278,7 @@ function createTagFixture() {
 }
 
 function createRecommendation({
+  categorySlug = "productivity",
   fileName,
   perceptualHash,
   rootPath,
@@ -209,7 +286,7 @@ function createRecommendation({
 }) {
   return {
     averageHash: perceptualHash,
-    categorySlug: "slideshows_review",
+    categorySlug,
     fileName,
     fileSizeBytes: 1024,
     height: 1350,

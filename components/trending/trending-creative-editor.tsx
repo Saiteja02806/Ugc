@@ -1383,8 +1383,9 @@ function EditorFields({
         />
         <FieldDescription>
           Use {MIN_WALL_TEXT_WORDS}–{MAX_WALL_TEXT_WORDS} words in two or three
-          short sentences. The editor recalculates the final 5–7 lines, then you
-          can drag the full block inside the export-safe area.
+          short sentences. The editor recalculates the final 4–7 lines, with
+          5–6 preferred, then you can drag the full block inside the
+          export-safe area.
         </FieldDescription>
       </Field>
       <TextColorPicker

@@ -9,6 +9,8 @@ import {
 
 const DEFAULT_IMPORT_ROOT = ".tmp/local-carousel-image-import";
 const RESULT_FILE_NAME = "post-import-verification.json";
+const REMOTE_REQUEST_TIMEOUT_MS = 20_000;
+const URL_CHECK_CONCURRENCY = 15;
 
 loadEnvFile(path.resolve(".env.local"));
 
@@ -47,11 +49,18 @@ const supabase = createClient(
       autoRefreshToken: false,
       persistSession: false,
     },
+    global: {
+      fetch: fetchWithTimeout,
+    },
   },
 );
 const errors = [];
 const rows = await fetchImportedRows(assets);
 const rowsByBaseKey = new Map(rows.map((row) => [row.base_s3_key, row]));
+const rowsById = new Map(rows.map((row) => [row.id, row]));
+const skippedByAssetKey = new Map(
+  (importResult?.skippedExisting ?? []).map((item) => [item.assetKey, item]),
+);
 
 verifyImportResult();
 verifyRows();
@@ -160,6 +169,61 @@ async function fetchImportedRows(assets) {
     rows.push(...(data ?? []));
   }
 
+  const existingIds = (importResult?.skippedExisting ?? [])
+    .map((item) => item.existingId)
+    .filter(Boolean);
+
+  for (let index = 0; index < existingIds.length; index += 100) {
+    const chunk = existingIds.slice(index, index + 100);
+    const { data, error } = await supabase
+      .from("category_image_assets")
+      .select(
+        [
+          "id",
+          "asset_scope",
+          "asset_variant",
+          "base_s3_key",
+          "base_url",
+          "broad_visual_bucket",
+          "bucket_taxonomy_version",
+          "category_slug",
+          "content_tags",
+          "face_count",
+          "has_human",
+          "image_subject_class",
+          "max_face_area_ratio",
+          "mood_tags",
+          "near_duplicate_group",
+          "object_tags",
+          "person_count",
+          "runtime_exclusion_reason",
+          "source_file_sha256",
+          "source_original_s3_key",
+          "source_original_url",
+          "source_perceptual_hash",
+          "source_provider",
+          "status",
+          "subject_review_status",
+          "thumb_s3_key",
+          "thumb_url",
+          "usable_profiles",
+          "visual_keywords",
+        ].join(","),
+      )
+      .in("id", chunk);
+
+    if (error) {
+      errors.push(`Could not fetch skipped existing rows: ${error.message}`);
+      continue;
+    }
+
+    for (const row of data ?? []) {
+      if (!rows.some((existingRow) => existingRow.id === row.id)) {
+        rows.push(row);
+      }
+    }
+  }
+
   return rows;
 }
 
@@ -205,10 +269,18 @@ function verifyRows() {
   }
 
   for (const asset of assets) {
-    const row = rowsByBaseKey.get(asset.storage.baseKey);
+    const skipped = skippedByAssetKey.get(asset.assetKey);
+    const row =
+      rowsByBaseKey.get(asset.storage.baseKey) ??
+      (skipped ? rowsById.get(skipped.existingId) : null);
 
     if (!row) {
       errors.push(`${asset.assetKey}: missing production row.`);
+      continue;
+    }
+
+    if (skipped) {
+      verifySkippedExistingRow(asset, row);
       continue;
     }
 
@@ -286,6 +358,40 @@ function verifyRows() {
   }
 }
 
+function verifySkippedExistingRow(asset, row) {
+  const checks = {
+    category_slug: asset.categorySlug,
+    face_count: 0,
+    has_human: false,
+    image_subject_class: "object-only",
+    person_count: 0,
+    runtime_exclusion_reason: null,
+    source_file_sha256: asset.dbRow.source_file_sha256,
+    status: "ready",
+    subject_review_status: "approved",
+  };
+
+  for (const [field, expected] of Object.entries(checks)) {
+    if (row[field] !== expected) {
+      errors.push(
+        `${asset.assetKey}: skipped existing row expected ${field}=${String(expected)}, got ${String(row[field])}`,
+      );
+    }
+  }
+
+  for (const [field, url] of [
+    ["base_url", row.base_url],
+    ["thumb_url", row.thumb_url],
+    ["source_original_url", row.source_original_url],
+  ]) {
+    if (!url || !isTrustedStorageUrl(url)) {
+      errors.push(
+        `${asset.assetKey}: skipped existing ${field} is not a trusted GCP storage URL.`,
+      );
+    }
+  }
+}
+
 function sameStringArray(first, second) {
   const normalize = (value) =>
     Array.isArray(value)
@@ -297,10 +403,14 @@ function sameStringArray(first, second) {
 
 async function verifyUrlSamples(sampleCount) {
   const samples = assets.slice(0, Math.min(sampleCount, assets.length));
+  const jobs = [];
   const checks = [];
 
   for (const asset of samples) {
-    const row = rowsByBaseKey.get(asset.storage.baseKey);
+    const skipped = skippedByAssetKey.get(asset.assetKey);
+    const row =
+      rowsByBaseKey.get(asset.storage.baseKey) ??
+      (skipped ? rowsById.get(skipped.existingId) : null);
 
     if (!row) {
       continue;
@@ -316,12 +426,26 @@ async function verifyUrlSamples(sampleCount) {
         continue;
       }
 
-      const check = await checkUrl(url, `${asset.assetKey}:${role}`);
-      checks.push(check);
+      jobs.push({ asset, role, url });
+    }
+  }
+
+  for (let index = 0; index < jobs.length; index += URL_CHECK_CONCURRENCY) {
+    const chunk = jobs.slice(index, index + URL_CHECK_CONCURRENCY);
+    const chunkChecks = await Promise.all(
+      chunk.map(({ asset, role, url }) =>
+        checkUrl(url, `${asset.assetKey}:${role}`),
+      ),
+    );
+    checks.push(...chunkChecks);
+
+    for (let offset = 0; offset < chunkChecks.length; offset += 1) {
+      const check = chunkChecks[offset];
+      const job = chunk[offset];
 
       if (!check.ok) {
         errors.push(
-          `${asset.assetKey}: ${role} URL check failed with status ${check.status}`,
+          `${job.asset.assetKey}: ${job.role} URL check failed with status ${check.status}`,
         );
       }
     }
@@ -332,7 +456,7 @@ async function verifyUrlSamples(sampleCount) {
 
 async function checkUrl(url, assetKey) {
   try {
-    const response = await fetch(url, { method: "HEAD" });
+    const response = await fetchWithTimeout(url, { method: "HEAD" });
 
     return {
       assetKey,
@@ -349,6 +473,16 @@ async function checkUrl(url, assetKey) {
       url,
     };
   }
+}
+
+function fetchWithTimeout(input, init = {}) {
+  const timeoutSignal = AbortSignal.timeout(REMOTE_REQUEST_TIMEOUT_MS);
+  const signal =
+    init.signal && typeof AbortSignal.any === "function"
+      ? AbortSignal.any([init.signal, timeoutSignal])
+      : init.signal || timeoutSignal;
+
+  return fetch(input, { ...init, signal });
 }
 
 function summarizeRows(rows) {

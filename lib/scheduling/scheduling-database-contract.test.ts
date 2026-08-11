@@ -410,7 +410,7 @@ test("carousel captions remain optional and are never replaced with the carousel
   assert.match(schedulingWorkspace, /Caption optional\./);
   assert.match(
     schedulingWorkspace,
-    /Choose an account, date, and time to schedule this carousel\./,
+    /Confirm the carousel, choose your Instagram account, and set the publish time\./,
   );
 });
 
@@ -494,6 +494,35 @@ test("inline carousel submission persists a recoverable draft before publishing"
   );
 });
 
+test("scheduling requires a selected account before any draft is stored", () => {
+  const createSchedule = getSection(
+    schedulingService,
+    "export async function createUserSchedule",
+    "export async function retryUserScheduleTargetPublishing",
+  );
+  const updateSchedule = getSection(
+    schedulingService,
+    "export async function updateUserSchedule",
+    "export async function finalizeRenderedScheduleFromWorker",
+  );
+
+  assert.match(createSchedule, /assertScheduleTargetSelection\(normalized\)/);
+  assert.ok(
+    createSchedule.indexOf("assertScheduleTargetSelection(normalized)") <
+      createSchedule.indexOf("insertScheduledPost"),
+  );
+  assert.match(updateSchedule, /assertScheduleTargetSelection\(normalized\)/);
+  assert.match(
+    schedulingWorkspace,
+    /getInstagramSchedulingAccessState\(connections\)/,
+  );
+  assert.match(schedulingWorkspace, /Connect Instagram first/);
+  assert.match(schedulingWorkspace, /target\.platform === "instagram"/);
+  assert.doesNotMatch(
+    schedulingWorkspace,
+    /save a video draft without publishing/i,
+  );
+});
 test("social scheduling uses one five-minute rule without quarter-hour rounding", () => {
   assert.match(
     scheduleTime,
@@ -591,6 +620,25 @@ test("every calendar date opens the dedicated day view", () => {
   assert.match(schedulingWorkspace, /<DayScheduleWorkspace/);
 });
 
+test("List view opens a compact, date-selectable daily agenda", () => {
+  const listExperience = getSection(
+    schedulingWorkspace,
+    "function ScheduleListDatePicker({",
+    "function ScheduleDraftActions({",
+  );
+
+  assert.match(
+    schedulingWorkspace,
+    /function handleChangeViewMode[\s\S]*mode === "list"[\s\S]*handleSelectCalendarDate\(toDateKey\(new Date\(\)\)\)/,
+  );
+  assert.match(listExperience, /type="date"/);
+  assert.match(listExperience, /<ScheduleDayListItem/);
+  assert.match(listExperience, /getScheduleDayListDrafts\(drafts, selectedDate\)/);
+  assert.match(listExperience, /draft\.scheduledTime/);
+  assert.match(listExperience, /getScheduleDayListFormatLabel\(draft\)/);
+  assert.match(listExperience, /getScheduleDayListStatusVariant\(draft\.status\)/);
+  assert.doesNotMatch(listExperience, /ScheduleDraftMediaThumb/);
+});
 test("calendar and Day view include all posts, with upcoming posts first", () => {
   const calendarSelection = getSection(
     schedulingWorkspace,
@@ -600,7 +648,7 @@ test("calendar and Day view include all posts, with upcoming posts first", () =>
   const scheduleContent = getSection(
     schedulingWorkspace,
     "function ScheduleContent({",
-    "function ScheduleDraftPreview({",
+    "function ScheduleListDatePicker({",
   );
   const dateGrouping = getSection(
     schedulingWorkspace,
@@ -612,6 +660,7 @@ test("calendar and Day view include all posts, with upcoming posts first", () =>
   assert.doesNotMatch(calendarSelection, /groupDraftsByDate\(visibleDrafts\)/);
   assert.match(scheduleContent, /calendarDrafts: ScheduleDraft\[\]/);
   assert.match(scheduleContent, /drafts=\{calendarDrafts\}/);
+  assert.match(scheduleContent, /<ScheduleDayList/);
   assert.match(dateGrouping, /function getCalendarDayDraftSortRank/);
   assert.match(
     dateGrouping,

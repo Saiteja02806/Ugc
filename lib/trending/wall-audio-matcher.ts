@@ -103,6 +103,66 @@ const INTENT_BY_PATTERN: Record<WallTextPattern, WallAudioIntent> = {
     messageTypes: ["benefit", "authority", "transformation"],
     moods: ["uplifting", "calm"],
   },
+  identity_mirror: {
+    energy: "medium",
+    messageTypes: ["curiosity", "problem", "authority"],
+    moods: ["curious", "serious"],
+  },
+  recognizable_moment: {
+    energy: "low",
+    messageTypes: ["story", "curiosity"],
+    moods: ["curious", "calm"],
+  },
+  hidden_truth: {
+    energy: "medium",
+    messageTypes: ["curiosity", "authority", "transformation"],
+    moods: ["serious", "curious"],
+  },
+  contrarian_reframe: {
+    energy: "medium",
+    messageTypes: ["warning", "authority", "curiosity"],
+    moods: ["serious", "curious"],
+  },
+  personal_confession: {
+    energy: "low",
+    messageTypes: ["story", "curiosity"],
+    moods: ["calm", "serious"],
+  },
+  aspiration_redefinition: {
+    energy: "medium",
+    messageTypes: ["transformation", "benefit", "story"],
+    moods: ["uplifting", "calm"],
+  },
+  pain_beneath_the_pain: {
+    energy: "medium",
+    messageTypes: ["problem", "curiosity", "warning"],
+    moods: ["serious", "curious"],
+  },
+  niche_insight: {
+    energy: "low",
+    messageTypes: ["authority", "curiosity", "benefit"],
+    moods: ["calm", "curious"],
+  },
+  list_rules: {
+    energy: "medium",
+    messageTypes: ["authority", "benefit"],
+    moods: ["uplifting", "calm"],
+  },
+  community_prompt: {
+    energy: "medium",
+    messageTypes: ["curiosity", "story"],
+    moods: ["curious", "uplifting"],
+  },
+  analogy_reframe: {
+    energy: "medium",
+    messageTypes: ["authority", "curiosity", "transformation"],
+    moods: ["curious", "calm"],
+  },
+  progression_sequence: {
+    energy: "medium",
+    messageTypes: ["transformation", "story", "benefit"],
+    moods: ["uplifting", "serious"],
+  },
 };
 
 export function buildWallAudioIntent(

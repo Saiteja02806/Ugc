@@ -43,6 +43,7 @@ import {
 } from "@/lib/trending/text-color";
 import { isTrendingSourceVideoAsset } from "@/lib/trending/video-source-selection";
 import { getEditableWallTextDraft } from "@/lib/trending/wall-text-db";
+import { createAuthoritativeWallTextContent } from "@/lib/trending/wall-layout-engine";
 import {
   WALL_TEXT_RENDER_HEIGHT,
   WALL_TEXT_RENDER_WIDTH,
@@ -411,22 +412,33 @@ async function validateAndNormalizeSubmittedContent(params: {
   try {
     const durationSeconds =
       params.source?.resolvedAssetDurationSeconds ?? draft.durationSeconds;
-    const contentWithoutFont = {
-      ...params.content.content,
-      renderFontSize: undefined,
-    };
+    const currentContent = params.content.content;
+    const sourceContent =
+      currentContent.sourceContent?.kind === "list" &&
+      currentContent.fullText === draft.text.fullText
+        ? currentContent.sourceContent
+        : { kind: "prose" as const, text: currentContent.fullText };
+    const relaid = await createAuthoritativeWallTextContent({
+      content: sourceContent,
+      formatId:
+        currentContent.formatId ??
+        (draft.text.formatId ?? "niche_insight"),
+      layout: params.content.layout,
+    });
+    const contentWithoutFont = relaid.content;
     validateWallTextContent(contentWithoutFont, durationSeconds);
     const render = await validateWallTextRenderFit(contentWithoutFont);
     validateWallTextPlacement({
       height: render.height,
-      layout: params.content.layout,
+      layout: relaid.layout,
     });
 
     return {
       ...params.content,
+      layout: relaid.layout,
       content: {
         ...contentWithoutFont,
-        renderFontSize: render.fontSize as 44 | 46 | 48 | 52,
+        renderFontSize: render.fontSize as 44 | 46 | 48 | 50 | 52,
       },
     };
   } catch (error) {

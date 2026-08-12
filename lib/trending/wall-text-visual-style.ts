@@ -12,13 +12,14 @@ export function getWallTextFontSize(content: TrendingWallTextContent) {
     content.renderFontSize === 44 ||
     content.renderFontSize === 46 ||
     content.renderFontSize === 48 ||
+    content.renderFontSize === 50 ||
     content.renderFontSize === 52
   ) {
     return content.renderFontSize;
   }
 
   const wordCount = content.fullText.split(/\s+/u).filter(Boolean).length;
-  const lineCount = content.segments.reduce(
+  const lineCount = (content.finalLayout?.blocks ?? content.segments).reduce(
     (total, segment) => total + segment.lines.length,
     0,
   );

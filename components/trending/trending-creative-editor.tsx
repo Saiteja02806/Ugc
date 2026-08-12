@@ -84,15 +84,11 @@ import {
   type TrendingTextColor,
 } from "@/lib/trending/text-color";
 import {
-  MAX_WALL_TEXT_WORDS,
-  MIN_WALL_TEXT_WORDS,
-  validateWallTextContent,
-} from "@/lib/trending/wall-text-text-logic";
-import {
   getWallTextFontSize,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_OUTLINE_WIDTH,
 } from "@/lib/trending/wall-text-visual-style";
+import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import { cn } from "@/lib/utils";
 
 type CreativeAssetGroup = {
@@ -980,6 +976,8 @@ function WallTextOverlayText({
 }: {
   content: TrendingWallTextEditContent;
 }) {
+  const isPendingAuthoritativeLayout = !content.content.finalLayout;
+
   return (
     <div
       className="flex flex-col justify-center text-center font-bold [paint-order:stroke_fill]"
@@ -994,7 +992,11 @@ function WallTextOverlayText({
         width: `${content.layout.textBox.width * 100}cqw`,
       }}
     >
-      {content.content.segments.map((segment, segmentIndex) => (
+      {isPendingAuthoritativeLayout ? (
+        <p className="m-0 whitespace-normal" style={{ lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR }}>
+          {content.content.fullText}
+        </p>
+      ) : getWallTextRenderBlocks(content.content).map((segment, segmentIndex) => (
         <p
           key={`${segment.role}-${segmentIndex}`}
           className="m-0"
@@ -1003,7 +1005,7 @@ function WallTextOverlayText({
           }}
         >
           {segment.lines.map((line, lineIndex) => (
-            <span key={`${lineIndex}:${line}`} className="block">
+            <span key={`${lineIndex}:${line}`} className="block whitespace-nowrap">
               {line}
             </span>
           ))}
@@ -1359,7 +1361,7 @@ function EditorFields({
         <textarea
           id="trending-wall-text"
           value={content.content.fullText}
-          maxLength={300}
+          maxLength={600}
           rows={7}
           onChange={(event) =>
             onContentChange({
@@ -1378,9 +1380,8 @@ function EditorFields({
           className="min-h-32 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
         />
         <FieldDescription>
-          Use {MIN_WALL_TEXT_WORDS}–{MAX_WALL_TEXT_WORDS} words in two or three
-          short sentences. The editor recalculates the final 4–7 lines, with
-          5–6 preferred, then you can drag the full block inside the
+          Use 12–50 words depending on the selected clip. Saving measures the
+          exact Inter text and recalculates the final lines inside the
           export-safe area.
         </FieldDescription>
       </Field>
@@ -1973,12 +1974,10 @@ function validateContent(content: TrendingCreativeEditContent) {
   }
 
   if (content.format === "wall_text") {
-    try {
-      validateWallTextContent(content.content, Number.POSITIVE_INFINITY);
-    } catch (error) {
-      return error instanceof Error
-        ? error.message
-        : "Review the Wall-of-text copy before saving.";
+    const normalized = content.content.fullText.replace(/\s+/gu, " ").trim();
+    const wordCount = normalized.split(/\s+/u).filter(Boolean).length;
+    if (!normalized || wordCount < 12 || wordCount > 50) {
+      return "Wall-of-text copy must contain 12–50 words. The exact limit is checked against the selected clip when you save.";
     }
   }
 

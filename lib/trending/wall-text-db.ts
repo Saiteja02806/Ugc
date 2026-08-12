@@ -12,6 +12,8 @@ import type {
 } from "@/lib/trending/wall-text-types";
 import {
   WALL_TEXT_GENERATOR_VERSION,
+  LEGACY_WALL_TEXT_GENERATOR_VERSION,
+  WALL_TEXT_FORMAT_IDS,
   WALL_TEXT_PATTERNS,
   WALL_TEXT_PLACEMENT_ZONES,
 } from "@/lib/trending/wall-text-types";
@@ -133,6 +135,16 @@ type WallTextDatabase = {
   public: {
     Functions: {
       replace_wall_text_creative_copy_v5: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_generator_model: string;
+          p_updates: Json;
+          p_user_id: string;
+        };
+        Returns: WallTextCreativeRow[];
+      };
+      replace_wall_text_creative_copy_v6: {
         Args: {
           p_business_profile_id: string;
           p_business_profile_version: number;
@@ -504,7 +516,7 @@ export function isTrendingWallTextCreativeCurrent(
 ) {
   return (
     creative.generator_version === WALL_TEXT_GENERATOR_VERSION &&
-    parseWallTextContent(creative.text_content) !== null &&
+    parseWallTextContent(creative.text_content)?.finalLayout !== undefined &&
     parseWallTextLayout(creative.layout) !== null
   );
 }
@@ -528,7 +540,7 @@ export async function replaceTrendingWallTextCreativeCopy(params: {
     text_content: creative.text,
   }));
   const { error } = await getClient().rpc(
-    "replace_wall_text_creative_copy_v5",
+    "replace_wall_text_creative_copy_v6",
     {
       p_business_profile_id: params.businessProfileId,
       p_business_profile_version: params.businessProfileVersion,
@@ -682,7 +694,10 @@ export async function listActiveTrendingWallTextIdeas(params: {
     .eq("business_profile_id", params.businessProfileId)
     .eq("business_profile_version", params.businessProfileVersion)
     .eq("status", "preview_ready")
-    .eq("generator_version", WALL_TEXT_GENERATOR_VERSION);
+    .in("generator_version", [
+      LEGACY_WALL_TEXT_GENERATOR_VERSION,
+      WALL_TEXT_GENERATOR_VERSION,
+    ]);
 
   if (params.backgroundAssetIds) {
     creativeQuery = creativeQuery.in(
@@ -1146,6 +1161,14 @@ export function parseWallTextContent(
   }
 
   if (
+    isJsonObject(value) &&
+    value.kind === "wall_text" &&
+    value.layoutVersion === "wall-text-overlay-v5"
+  ) {
+    return parseCurrentWallTextContent(value);
+  }
+
+  if (
     !isJsonObject(value) ||
     value.kind !== "wall_text" ||
     !["wall-text-overlay-v3", "wall-text-overlay-v4"].includes(
@@ -1212,6 +1235,128 @@ export function parseWallTextContent(
       : {}),
     segments,
   };
+}
+
+function parseCurrentWallTextContent(
+  value: { [key: string]: Json | undefined },
+): TrendingWallTextContent | null {
+  if (
+    typeof value.fullText !== "string" ||
+    !value.fullText.trim() ||
+    !WALL_TEXT_FORMAT_IDS.includes(
+      value.formatId as (typeof WALL_TEXT_FORMAT_IDS)[number],
+    ) ||
+    !isJsonObject(value.sourceContent) ||
+    !isJsonObject(value.finalLayout)
+  ) {
+    return null;
+  }
+
+  const sourceContent = value.sourceContent;
+  const parsedSource =
+    sourceContent.kind === "prose" &&
+    typeof sourceContent.text === "string" &&
+    sourceContent.text.trim()
+      ? ({ kind: "prose", text: sourceContent.text.replace(/\s+/gu, " ").trim() } as const)
+      : sourceContent.kind === "list" &&
+          typeof sourceContent.title === "string" &&
+          sourceContent.title.trim() &&
+          Array.isArray(sourceContent.items) &&
+          sourceContent.items.length >= 3 &&
+          sourceContent.items.length <= 5 &&
+          sourceContent.items.every(
+            (item) => typeof item === "string" && item.trim(),
+          )
+        ? ({
+            items: (sourceContent.items as string[]).map((item) =>
+              item.replace(/\s+/gu, " ").trim(),
+            ),
+            kind: "list",
+            title: sourceContent.title.replace(/\s+/gu, " ").trim(),
+          } as const)
+        : null;
+  const finalLayout = value.finalLayout;
+  const textBox = parseNormalizedBox(finalLayout.textBox);
+
+  if (
+    !parsedSource ||
+    finalLayout.version !== "wall-text-final-layout-v1" ||
+    finalLayout.fontFamily !== "Inter" ||
+    finalLayout.fontWeight !== 700 ||
+    ![44, 46, 48, 50, 52].includes(Number(finalLayout.fontSizePx)) ||
+    typeof finalLayout.lineHeightPx !== "number" ||
+    finalLayout.lineHeightPx <= 0 ||
+    !textBox ||
+    !Array.isArray(finalLayout.blocks) ||
+    finalLayout.blocks.length < 1 ||
+    finalLayout.blocks.length > 6
+  ) {
+    return null;
+  }
+
+  const blocks = finalLayout.blocks.flatMap((entry) => {
+    if (
+      !isJsonObject(entry) ||
+      !["prose", "title", "item"].includes(String(entry.role)) ||
+      !Array.isArray(entry.lines) ||
+      entry.lines.length < 1 ||
+      entry.lines.some((line) => typeof line !== "string" || !line.trim())
+    ) {
+      return [];
+    }
+    return [{
+      lines: (entry.lines as string[]).map((line) =>
+        line.replace(/\s+/gu, " ").trim(),
+      ),
+      role: entry.role as "prose" | "title" | "item",
+    }];
+  });
+
+  if (blocks.length !== finalLayout.blocks.length) {
+    return null;
+  }
+
+  const lines = blocks.flatMap((block) => block.lines);
+  const segments = toCompatibilitySegments(lines);
+  const formatId = value.formatId as (typeof WALL_TEXT_FORMAT_IDS)[number];
+
+  return {
+    finalLayout: {
+      blocks,
+      fontFamily: "Inter",
+      fontSizePx: Number(finalLayout.fontSizePx) as 44 | 46 | 48 | 50 | 52,
+      fontWeight: 700,
+      lineHeightPx: finalLayout.lineHeightPx,
+      textBox,
+      version: "wall-text-final-layout-v1",
+    },
+    formatId,
+    fullText: value.fullText.replace(/\s+/gu, " ").trim(),
+    kind: "wall_text",
+    layoutVersion: "wall-text-overlay-v5",
+    pattern: formatId,
+    renderFontSize: Number(finalLayout.fontSizePx) as 44 | 46 | 48 | 50 | 52,
+    segments,
+    sourceContent: parsedSource,
+  };
+}
+
+function toCompatibilitySegments(lines: string[]) {
+  if (lines.length <= 1) {
+    return [{ lines, role: "lead" as const }];
+  }
+  if (lines.length === 2) {
+    return [
+      { lines: [lines[0]!], role: "lead" as const },
+      { lines: [lines[1]!], role: "closing" as const },
+    ];
+  }
+  const supportEnd = Math.ceil((lines.length + 1) / 2);
+  return [
+    { lines: [lines[0]!], role: "lead" as const },
+    { lines: lines.slice(1, supportEnd), role: "support" as const },
+    { lines: lines.slice(supportEnd), role: "closing" as const },
+  ];
 }
 
 function parseWallTextLayout(value: Json): TrendingWallTextLayout | null {

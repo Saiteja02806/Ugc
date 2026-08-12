@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
@@ -65,8 +66,27 @@ const qualityMigration = readFileSync(
   ),
   "utf8",
 );
+const oneCallFormatsMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260812135048_wall_text_one_call_formats_v6.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const generatorSource = readFileSync(
   new URL("./generate-trending-wall-text-ideas.ts", import.meta.url),
+  "utf8",
+);
+const formatsSource = readFileSync(
+  new URL("./wall-formats.ts", import.meta.url),
+  "utf8",
+);
+const promptSource = readFileSync(
+  new URL("./wall-prompt.ts", import.meta.url),
+  "utf8",
+);
+const layoutEngineSource = readFileSync(
+  new URL("./wall-layout-engine.ts", import.meta.url),
   "utf8",
 );
 const feedSource = readFileSync(
@@ -178,7 +198,13 @@ test("supports one unified v2 text value and refreshes v1 rows in place", () => 
   );
 });
 
-test("uses the dedicated GPT-5 mini Wall generator contract", () => {
+test("does not retain the superseded multi-pass Wall generator", () => {
+  assert.doesNotMatch(
+    generatorSource,
+    /MAX_WALL_TEXT_GENERATION_ATTEMPTS|MAX_WALL_TEXT_REVIEW_ATTEMPTS/,
+  );
+  /* Historical assertions retained here only as documentation of the removed
+     contract. They are intentionally not executed.
   assert.match(generatorSource, /const DEFAULT_MODEL = "gpt-5-mini"/);
   assert.match(generatorSource, /reasoning_effort: "low"/);
   assert.match(
@@ -225,7 +251,145 @@ test("uses the dedicated GPT-5 mini Wall generator contract", () => {
     generatorSource,
     /MAX_WALL_TEXT_REVIEW_ATTEMPTS = 3[\s\S]+internally inconsistent[\s\S]+previousReviewFailure/i,
   );
-  assert.match(generatorSource, /must never use a two-line Hook rule/i);
+  assert.match(generatorSource, /must never use a two-line Hook rule/i); */
+});
+
+test("uses one GPT-5 mini call for the complete Wall candidate batch", () => {
+  assert.match(generatorSource, /const DEFAULT_MODEL = "gpt-5-mini"/);
+  assert.match(generatorSource, /reasoning_effort: "low"/);
+  assert.match(
+    generatorSource,
+    /const business = buildWallTextBusinessContext\(params\.business\)/,
+  );
+  assert.equal(
+    generatorSource.match(/chat\.completions\.parse/g)?.length,
+    1,
+    "the batch generator must make exactly one AI request",
+  );
+  assert.match(
+    generatorSource,
+    /const WallTextSourceContentSchema = z\.discriminatedUnion\("kind"/,
+  );
+  assert.match(
+    generatorSource,
+    /const EligibleWallTextFormatIdSchema = z\.enum\([\s\S]+getEligibleWallTextFormatIds\(\)[\s\S]+formatId: EligibleWallTextFormatIdSchema/,
+  );
+  assert.match(
+    generatorSource,
+    /buildWallTextGenerationPrompt\(\{ business, candidates \}\)/,
+  );
+  assert.match(
+    generatorSource,
+    /return Promise\.all\([\s\S]+createAuthoritativeWallTextContent/,
+  );
+  assert.doesNotMatch(
+    generatorSource,
+    /retry|repair|reviewer|revisionFeedback/i,
+  );
+  assert.match(
+    promptSource,
+    /natural continuous Wall-of-Text language[\s\S]+do not insert newline characters/i,
+  );
+  assert.match(
+    promptSource,
+    /Return exactly one result for every candidate\. Do not return final visual lines\./,
+  );
+});
+
+test("keeps the approved twelve Wall formats in one controlled registry", () => {
+  const expectedFormatIds = [
+    "identity_mirror",
+    "recognizable_moment",
+    "hidden_truth",
+    "contrarian_reframe",
+    "personal_confession",
+    "aspiration_redefinition",
+    "pain_beneath_the_pain",
+    "niche_insight",
+    "list_rules",
+    "community_prompt",
+    "analogy_reframe",
+    "progression_sequence",
+  ];
+
+  assert.equal(formatsSource.match(/\n    id: "/g)?.length, 12);
+  for (const formatId of expectedFormatIds) {
+    assert.match(formatsSource, new RegExp(`id: "${formatId}"`));
+  }
+  assert.match(
+    formatsSource,
+    /requiresFirstPersonEvidence: true[\s\S]+getEligibleWallTextFormats/,
+  );
+});
+
+test("measures final Wall lines with Inter before saving authoritative layout", () => {
+  assert.match(layoutEngineSource, /fontFamily: "Inter"/);
+  assert.match(layoutEngineSource, /sharp\([\s\S]+\.metadata\(\)/);
+  assert.match(layoutEngineSource, /finalLayout,/);
+  assert.match(layoutEngineSource, /blocks,/);
+  assert.match(layoutEngineSource, /fontSizePx: fontSize/);
+  assert.match(layoutEngineSource, /lineHeightPx,/);
+  assert.match(layoutEngineSource, /textBox: \{/);
+  assert.match(
+    layoutEngineSource,
+    /rebalanceInternalLines[\s\S]+measureLines[\s\S]+getLineBalanceScore/,
+  );
+  assert.match(
+    layoutEngineSource,
+    /widths\.some\(\(width\) => width > maximumWidth\)/,
+  );
+});
+
+test("balances the reported Wall example into readable measured lines", () => {
+  const loaderPath = new URL(
+    "../../scripts/next-server-only-test-loader.mjs",
+    import.meta.url,
+  ).href;
+  const engineUrl = new URL("wall-layout-engine.ts", import.meta.url).href;
+  const feedLogicUrl = new URL("wall-text-feed-logic.ts", import.meta.url).href;
+  const script = `
+    const [engine, feed] = await Promise.all([
+      import(${JSON.stringify(engineUrl)}),
+      import(${JSON.stringify(feedLogicUrl)}),
+    ]);
+    const layout = await engine.createWallTextFinalLayout({
+      content: {
+        kind: "prose",
+        text: "People assume one program fits every meal. But personalized guidance connects choices to goals. Relevance matters more than rigid rules.",
+      },
+      layout: feed.createWallTextLayout(),
+    });
+    process.stdout.write(JSON.stringify(layout));
+  `;
+  const output = execFileSync(
+    process.execPath,
+    [
+      "--import",
+      loaderPath,
+      "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+      "--experimental-strip-types",
+      "--input-type=module",
+      "--eval",
+      script,
+    ],
+    { encoding: "utf8" },
+  );
+  const layout = JSON.parse(output) as {
+    blocks: Array<{ lines: string[] }>;
+    fontFamily: string;
+    lineHeightPx: number;
+  };
+
+  assert.equal(layout.fontFamily, "Inter");
+  assert.equal(layout.lineHeightPx, 56.33);
+  assert.deepEqual(layout.blocks[0]?.lines, [
+    "People assume one program",
+    "fits every meal. But",
+    "personalized guidance",
+    "connects choices to goals.",
+    "Relevance matters more than",
+    "rigid rules.",
+  ]);
 });
 
 test("stores semantic Wall v3 content and face-aware placement metadata", () => {
@@ -270,29 +434,47 @@ test("versions the six-second Wall v4 content, layout, and replacement function"
   );
 });
 
-test("versions stricter evidence-controlled Wall copy as generator v5", () => {
+test("preserves evidence-controlled v5 copy and adds the v6 one-call layout contract", () => {
   assert.match(
     qualityMigration,
     /replace_wall_text_creative_copy_v5[\s\S]+business-profile-wall-text-v5/i,
   );
   assert.match(
-    generatorSource,
-    /requiredFocus[\s\S]+unsupported specific claim/i,
+    oneCallFormatsMigration,
+    /wall-text-overlay-v5[\s\S]+wall-text-final-layout-v1[\s\S]+fontFamily'[\s\S]+Inter/i,
+  );
+  assert.match(
+    oneCallFormatsMigration,
+    /replace_wall_text_creative_copy_v6[\s\S]+security invoker[\s\S]+business-profile-wall-text-v6/i,
+  );
+  assert.match(
+    oneCallFormatsMigration,
+    /revoke all on function public\.replace_wall_text_creative_copy_v6[\s\S]+grant execute[\s\S]+to service_role/i,
   );
 });
 
-test("refreshes legacy Wall copy without replacing already-valid v4 ideas", () => {
+test("upgrades stale Wall layout without sending existing copy back to AI", () => {
   assert.match(
     feedSource,
     /const staleCreatives = existing\.filter\([\s\S]+!isTrendingWallTextCreativeCurrent\(creative\)/,
   );
   assert.match(
     feedSource,
-    /candidates: staleCreatives\.map[\s\S]+creatives: staleCreatives\.map/,
+    /parseWallTextContent\(creative\.text_content\)/,
   );
   assert.match(
     feedSource,
-    /createWallTextLayout\(background\)/,
+    /content: \{ kind: "prose", text: existingContent\.fullText \}[\s\S]+formatId: getBackfillWallTextFormatId\(existingContent\.pattern\)/,
+  );
+  assert.match(
+    feedSource,
+    /generatorModel: "wall-layout-engine-v1"/,
+  );
+  assert.doesNotMatch(
+    feedSource.match(
+      /async function backfillExistingTrendingWallTextIdeas[\s\S]+$/,
+    )?.[0] ?? "",
+    /generateBusinessTrendingWallTextIdeas/,
   );
   assert.match(
     feedSource,
@@ -300,7 +482,11 @@ test("refreshes legacy Wall copy without replacing already-valid v4 ideas", () =
   );
   assert.match(
     databaseSource,
-    /\.eq\("generator_version", WALL_TEXT_GENERATOR_VERSION\)/,
+    /\.in\("generator_version", \[[\s\S]+LEGACY_WALL_TEXT_GENERATOR_VERSION[\s\S]+WALL_TEXT_GENERATOR_VERSION/,
+  );
+  assert.match(
+    databaseSource,
+    /creative\.generator_version === WALL_TEXT_GENERATOR_VERSION[\s\S]+finalLayout !== undefined/,
   );
 });
 

@@ -26,8 +26,20 @@ export type WallTextSegment = {
 };
 
 export type WallTextRenderContent = {
+  finalLayout?: {
+    blocks: Array<{
+      lines: string[];
+      role: "prose" | "title" | "item";
+    }>;
+    fontFamily: "Inter";
+    fontSizePx: 44 | 46 | 48 | 50 | 52;
+    fontWeight: 700;
+    lineHeightPx: number;
+    textBox: WallTextNormalizedBox;
+    version: "wall-text-final-layout-v1";
+  };
   fullText: string;
-  renderFontSize?: 44 | 46 | 48 | 52;
+  renderFontSize?: 44 | 46 | 48 | 50 | 52;
   segments: WallTextSegment[];
 };
 
@@ -53,7 +65,7 @@ export type WallTextRenderLayout = {
 
 export const WALL_TEXT_RENDER_WIDTH = 1080;
 export const WALL_TEXT_RENDER_HEIGHT = 1920;
-export const WALL_TEXT_RENDER_MAX_CHARACTERS = 300;
+export const WALL_TEXT_RENDER_MAX_CHARACTERS = 600;
 export const WALL_TEXT_RENDER_MIN_LINES = 4;
 export const WALL_TEXT_RENDER_MAX_LINES = 7;
 export const WALL_TEXT_DEFAULT_FONT_SIZE = 48;
@@ -82,7 +94,7 @@ export function buildWallTextRenderLayout(params: {
   const content = normalizeWallTextContent(params.content);
   const safeArea = normalizeSafeArea(params.safeArea);
   const textBox = normalizeTextBox(
-    params.textBox ?? WALL_TEXT_DEFAULT_TEXT_BOX,
+    content.finalLayout?.textBox ?? params.textBox ?? WALL_TEXT_DEFAULT_TEXT_BOX,
     safeArea,
   );
   const pixelTextBox = {
@@ -91,24 +103,29 @@ export function buildWallTextRenderLayout(params: {
     top: Math.round(textBox.y * WALL_TEXT_RENDER_HEIGHT),
     width: Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH),
   };
-  const totalLineCount = content.segments.reduce(
+  const renderBlocks = content.finalLayout?.blocks ?? content.segments;
+  const totalLineCount = renderBlocks.reduce(
     (total, segment) => total + segment.lines.length,
     0,
   );
 
   if (
-    totalLineCount < WALL_TEXT_RENDER_MIN_LINES ||
-    totalLineCount > WALL_TEXT_RENDER_MAX_LINES
+    !content.finalLayout &&
+    (totalLineCount < WALL_TEXT_RENDER_MIN_LINES ||
+      totalLineCount > WALL_TEXT_RENDER_MAX_LINES)
   ) {
     throw new Error("Wall-of-text must contain 4–7 rendered lines.");
   }
 
-  const fontSize = getWallTextFontSize(content, totalLineCount);
-  const segmentMetrics = content.segments.map((segment) => {
+  const fontSize = content.finalLayout?.fontSizePx ??
+    getWallTextFontSize(content, totalLineCount);
+  const segmentMetrics = renderBlocks.map((segment) => {
     return {
       fontSize,
       fontWeight: 700 as const,
-      lineHeight: fontSize * WALL_TEXT_LINE_HEIGHT_FACTOR,
+      lineHeight:
+        content.finalLayout?.lineHeightPx ??
+        fontSize * WALL_TEXT_LINE_HEIGHT_FACTOR,
       lines: segment.lines,
     };
   });
@@ -220,8 +237,8 @@ function normalizeWallTextContent(
   if (
     !fullText ||
     fullText.length > WALL_TEXT_RENDER_MAX_CHARACTERS ||
-    content.segments.length < 2 ||
-    content.segments.length > 3
+    (!content.finalLayout &&
+      (content.segments.length < 2 || content.segments.length > 3))
   ) {
     throw new Error("Wall-of-text content is outside the supported limits.");
   }
@@ -246,7 +263,7 @@ function normalizeWallTextContent(
 
     return { lines, role: segment.role };
   });
-  const reconstructed = segments
+  const reconstructed = (content.finalLayout?.blocks ?? segments)
     .map((segment) => segment.lines.join(" "))
     .join(" ");
 
@@ -254,7 +271,46 @@ function normalizeWallTextContent(
     throw new Error("Wall-of-text lines do not match fullText.");
   }
 
+  if (content.finalLayout) {
+    const finalLayout = normalizeFinalLayout(content.finalLayout);
+    return { fullText, finalLayout, segments };
+  }
+
   return { fullText, segments };
+}
+
+function normalizeFinalLayout(
+  value: NonNullable<WallTextRenderContent["finalLayout"]>,
+) {
+  if (
+    value.version !== "wall-text-final-layout-v1" ||
+    value.fontFamily !== "Inter" ||
+    value.fontWeight !== 700 ||
+    ![44, 46, 48, 50, 52].includes(value.fontSizePx) ||
+    !Number.isFinite(value.lineHeightPx) ||
+    value.lineHeightPx <= 0 ||
+    value.blocks.length < 1 ||
+    value.blocks.length > 6
+  ) {
+    throw new Error("Wall-of-text final layout is invalid.");
+  }
+
+  return {
+    ...value,
+    blocks: value.blocks.map((block) => {
+      if (
+        !["prose", "title", "item"].includes(block.role) ||
+        block.lines.length < 1 ||
+        block.lines.some((line) => !line.trim())
+      ) {
+        throw new Error("Wall-of-text final layout contains an invalid block.");
+      }
+      return {
+        lines: block.lines.map((line) => line.replace(/\s+/gu, " ").trim()),
+        role: block.role,
+      };
+    }),
+  };
 }
 
 function normalizeTextBox(
@@ -298,6 +354,7 @@ function getWallTextFontSize(
     content.renderFontSize === 44 ||
     content.renderFontSize === 46 ||
     content.renderFontSize === 48 ||
+    content.renderFontSize === 50 ||
     content.renderFontSize === 52
   ) {
     return content.renderFontSize;

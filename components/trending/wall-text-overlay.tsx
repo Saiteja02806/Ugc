@@ -4,6 +4,7 @@ import type {
   TrendingWallTextContent,
   TrendingWallTextLayout,
 } from "@/lib/trending/wall-text-types";
+import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import {
   getWallTextFontSize,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
@@ -52,7 +53,7 @@ export function WallTextOverlay({
           WebkitTextStroke: `${WALL_TEXT_OUTLINE_WIDTH / 10.8}cqw #000000`,
         }}
       >
-        {content.segments.map((segment, segmentIndex) => (
+        {getWallTextRenderBlocks(content).map((segment, segmentIndex) => (
           <p
             key={`${segment.role}-${segmentIndex}`}
             className="m-0 whitespace-nowrap"

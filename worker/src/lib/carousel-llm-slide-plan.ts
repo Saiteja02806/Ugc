@@ -24,7 +24,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v20-compact-token-validation";
+  "llm-carousel-planner-v21-semantic-resource-fallback";
 
 const DEFAULT_MODEL = "gpt-4.1-mini";
 const MAX_BODY_LENGTH = 120;
@@ -2355,11 +2355,38 @@ function applyGrammarToFallbackSlides(
 function buildFallbackListItemPool(
   businessContext: CarouselBusinessContentContext,
 ) {
-  const evidenceLabels = [
-    ...businessContext.topics,
-    ...businessContext.customerGoals,
-    ...businessContext.problems,
-  ].map((option) => option.label);
+  const evidenceGroups = [
+    businessContext.topics.map((option) =>
+      formatFallbackResourceLabel({
+        label: option.label,
+        suffix: "reference guide",
+      }),
+    ),
+    businessContext.customerGoals.map((option) =>
+      formatFallbackResourceLabel({
+        label: option.label,
+        prefix: "Progress checklist for",
+      }),
+    ),
+    businessContext.problems.map((option) =>
+      formatFallbackResourceLabel({
+        label: option.label,
+        prefix: "Review prompt for",
+      }),
+    ),
+  ];
+  const evidenceLabels: string[] = [];
+  const largestGroup = Math.max(...evidenceGroups.map((group) => group.length));
+
+  for (let index = 0; index < largestGroup; index += 1) {
+    for (const group of evidenceGroups) {
+      const label = group[index];
+
+      if (label) {
+        evidenceLabels.push(label);
+      }
+    }
+  }
   const genericReferences = [
     "A reusable reference checklist",
     "A practical review prompt",
@@ -2382,6 +2409,28 @@ function buildFallbackListItemPool(
     seen.add(key);
     return true;
   });
+}
+
+function formatFallbackResourceLabel(params: {
+  label: string;
+  prefix?: string;
+  suffix?: string;
+}) {
+  const prefix = params.prefix?.trim() ?? "";
+  const suffix = params.suffix?.trim() ?? "";
+  const fixedTextLength = prefix.length + suffix.length + (prefix ? 1 : 0) +
+    (suffix ? 1 : 0);
+  const maxLabelLength = Math.max(12, 72 - fixedTextLength);
+  const normalizedLabel = params.label
+    .trim()
+    .replace(/[.!?]+$/g, "")
+    .replace(/\s+/g, " ");
+  const slicedLabel = normalizedLabel.slice(0, maxLabelLength + 1);
+  const label = normalizedLabel.length <= maxLabelLength
+    ? normalizedLabel
+    : slicedLabel.slice(0, Math.max(1, slicedLabel.lastIndexOf(" "))).trim();
+
+  return [prefix, label, suffix].filter(Boolean).join(" ").slice(0, 72);
 }
 
 function buildFallbackHookHeadline(

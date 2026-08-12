@@ -71,7 +71,7 @@ if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
   fallbackPlan.plannerVersion !==
-    "llm-carousel-planner-v20-compact-token-validation" ||
+    "llm-carousel-planner-v21-semantic-resource-fallback" ||
   !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");

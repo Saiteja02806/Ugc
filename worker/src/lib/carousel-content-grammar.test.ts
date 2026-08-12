@@ -176,8 +176,33 @@ test("resources fallback treats AI as meaningful copy in repetition checks", asy
     });
 
     assert.equal(plan.validationResult.ok, true);
-    assert.deepEqual(plan.slides[1]?.listItems, ["Nutrition Tracking", "AI"]);
+    const resourceItems = plan.slides.slice(1, 4).flatMap((slide) => slide.listItems);
+    assert.equal(resourceItems.length, 6);
+    assert.equal(new Set(resourceItems).size, 6);
+    assert.ok(
+      resourceItems.every((item) =>
+        /\b(checklist|guide|prompt)\b/i.test(item),
+      ),
+    );
+    assert.equal(resourceItems[0], "Nutrition Tracking reference guide");
+    assert.match(resourceItems[1] ?? "", /^Progress checklist for Fast meal/);
     assert.equal(plan.slides.length, 5);
+
+    const compactTermIssues = validateCarouselContentPlan(
+      {
+        ...plan,
+        slides: plan.slides.map((slide, index) =>
+          index === 1
+            ? { ...slide, listItems: ["Nutrition Tracking", "AI"] }
+            : slide,
+        ),
+      },
+      compactTopicAnalysis,
+    );
+    assert.equal(
+      compactTermIssues.some((issue) => issue.code === "story_repetition"),
+      false,
+    );
   } finally {
     if (previousMode === undefined) {
       delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;

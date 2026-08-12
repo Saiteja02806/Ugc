@@ -98,6 +98,58 @@ test("accepts four-line compact Wall blocks", () => {
   assert.equal(svg.match(/<text /g)?.length, 4);
 });
 
+test("renders the saved v6 final layout without reflowing its lines", () => {
+  const finalLayoutContent = {
+    finalLayout: {
+      blocks: [
+        {
+          lines: [
+            "A useful routine works",
+            "on ordinary days too.",
+            "That is what makes it repeatable.",
+          ],
+          role: "prose" as const,
+        },
+      ],
+      fontFamily: "Inter" as const,
+      fontSizePx: 50 as const,
+      fontWeight: 700 as const,
+      lineHeightPx: 54.17,
+      textBox: {
+        height: 480 / 1920,
+        width: 640 / 1080,
+        x: 220 / 1080,
+        y: 660 / 1920,
+      },
+      version: "wall-text-final-layout-v1" as const,
+    },
+    fullText:
+      "A useful routine works on ordinary days too. That is what makes it repeatable.",
+    segments: [
+      { lines: ["A useful routine works"], role: "lead" as const },
+      {
+        lines: ["on ordinary days too."],
+        role: "support" as const,
+      },
+      {
+        lines: ["That is what makes it repeatable."],
+        role: "closing" as const,
+      },
+    ],
+  };
+  const layout = buildWallTextRenderLayout({ content: finalLayoutContent });
+  const svg = buildWallTextOverlaySvg({
+    content: finalLayoutContent,
+    placement: "middle",
+  });
+
+  assert.equal(layout.segments[0]?.fontSize, 50);
+  assert.equal(layout.segments[0]?.lineHeight, 54.17);
+  assert.deepEqual(layout.segments[0]?.lines, finalLayoutContent.finalLayout.blocks[0]?.lines);
+  assert.equal(layout.textBox.width, 640);
+  assert.equal(svg.match(/<text /g)?.length, 3);
+});
+
 test("never truncates and rejects more than seven semantic lines", () => {
   assert.throws(
     () =>

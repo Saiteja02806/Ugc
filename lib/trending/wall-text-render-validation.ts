@@ -5,6 +5,7 @@ import { join } from "node:path";
 import sharp from "sharp";
 
 import type { TrendingWallTextContent } from "./wall-text-types";
+import { getWallTextRenderBlocks } from "./wall-text-types";
 import {
   getWallTextFontSize,
   WALL_TEXT_FONT_WEIGHT,
@@ -43,11 +44,18 @@ export async function validateWallTextRenderFit(
   content: TrendingWallTextContent,
 ): Promise<WallTextRenderValidation> {
   const preferredFontSize = getWallTextFontSize(content);
-  const fontSizes = [preferredFontSize, 48, 46, 44].filter(
+  const fontSizes = [preferredFontSize, 50, 48, 46, 44].filter(
     (fontSize, index, values) =>
       fontSize <= preferredFontSize && values.indexOf(fontSize) === index,
   );
   const fontPath = getInterFontPath();
+  const maximumTextWidth =
+    (content.finalLayout?.textBox.width ?? WALL_TEXT_TEXT_WIDTH / WALL_TEXT_RENDER_WIDTH) *
+    WALL_TEXT_RENDER_WIDTH;
+  const maximumBlockHeight =
+    (content.finalLayout?.textBox.height ??
+      WALL_TEXT_MAXIMUM_BLOCK_HEIGHT / WALL_TEXT_RENDER_HEIGHT) *
+    WALL_TEXT_RENDER_HEIGHT;
   let widestFailure: { line: string; width: number } | null = null;
 
   for (const fontSize of fontSizes) {
@@ -56,7 +64,8 @@ export async function validateWallTextRenderFit(
     let height = 0;
     let failedLine: { line: string; width: number } | null = null;
 
-    for (const [segmentIndex, segment] of content.segments.entries()) {
+    const blocks = getWallTextRenderBlocks(content);
+    for (const [segmentIndex, segment] of blocks.entries()) {
       for (const line of segment.lines) {
         const metadata = await sharp({
           text: {
@@ -72,7 +81,7 @@ export async function validateWallTextRenderFit(
 
         if (
           !width ||
-          width + WALL_TEXT_OUTLINE_WIDTH * 2 > WALL_TEXT_TEXT_WIDTH
+          width + WALL_TEXT_OUTLINE_WIDTH * 2 > maximumTextWidth
         ) {
           failedLine = { line, width };
           break;
@@ -86,7 +95,7 @@ export async function validateWallTextRenderFit(
         break;
       }
 
-      if (segmentIndex < content.segments.length - 1) {
+      if (segmentIndex < blocks.length - 1) {
         height += WALL_TEXT_SECTION_GAP;
       }
     }
@@ -98,7 +107,7 @@ export async function validateWallTextRenderFit(
       continue;
     }
 
-    if (height <= WALL_TEXT_MAXIMUM_BLOCK_HEIGHT) {
+    if (height <= maximumBlockHeight) {
       return {
         fontSize,
         height: Math.round(height * 100) / 100,
@@ -112,7 +121,7 @@ export async function validateWallTextRenderFit(
 
   if (widestFailure) {
     throw new Error(
-      `Wall-of-text line does not fit the ${WALL_TEXT_TEXT_WIDTH}px Inter text area at the ${WALL_TEXT_MINIMUM_FONT_SIZE}px minimum: "${widestFailure.line}"`,
+      `Wall-of-text line does not fit the ${maximumTextWidth}px Inter text area at the ${WALL_TEXT_MINIMUM_FONT_SIZE}px minimum: "${widestFailure.line}"`,
     );
   }
 

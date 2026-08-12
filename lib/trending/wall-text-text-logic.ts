@@ -1,5 +1,6 @@
 import {
-  WALL_TEXT_CONTENT_LAYOUT_VERSION,
+  LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION,
+  LEGACY_WALL_TEXT_PATTERNS,
   WALL_TEXT_PATTERNS,
   WALL_TEXT_SEGMENT_ROLES,
   type TrendingWallTextContent,
@@ -40,10 +41,10 @@ const DEFAULT_WALL_TEXT_LINE_POLICY: WallTextLinePolicy = {
   preferredMaximum: PREFERRED_WALL_TEXT_RENDERED_LINES.maximum,
   preferredMinimum: PREFERRED_WALL_TEXT_RENDERED_LINES.minimum,
 };
-const WALL_TEXT_PATTERN_LINE_POLICIES: Record<
+const WALL_TEXT_PATTERN_LINE_POLICIES: Partial<Record<
   WallTextPattern,
   WallTextLinePolicy
-> = {
+>> = {
   action_benefit: {
     ...DEFAULT_WALL_TEXT_LINE_POLICY,
     ideal: 5,
@@ -169,14 +170,17 @@ export function getWallTextLinePolicy(
     durationSeconds <= 4.5
   ) {
     return {
-      ...WALL_TEXT_PATTERN_LINE_POLICIES[pattern],
+      ...(WALL_TEXT_PATTERN_LINE_POLICIES[pattern] ??
+        DEFAULT_WALL_TEXT_LINE_POLICY),
       ideal: MIN_WALL_TEXT_RENDERED_LINES,
       preferredMaximum: MIN_WALL_TEXT_RENDERED_LINES,
       preferredMinimum: MIN_WALL_TEXT_RENDERED_LINES,
     };
   }
 
-  return WALL_TEXT_PATTERN_LINE_POLICIES[pattern];
+  return (
+    WALL_TEXT_PATTERN_LINE_POLICIES[pattern] ?? DEFAULT_WALL_TEXT_LINE_POLICY
+  );
 }
 
 export function getWallTextWordPolicy(
@@ -213,8 +217,8 @@ export function getWallTextWordPolicy(
 export function getWallTextPatternForCandidate(
   candidateIndex: number,
 ): WallTextPattern {
-  return WALL_TEXT_PATTERNS[
-    Math.abs(Math.trunc(candidateIndex)) % WALL_TEXT_PATTERNS.length
+  return LEGACY_WALL_TEXT_PATTERNS[
+    Math.abs(Math.trunc(candidateIndex)) % LEGACY_WALL_TEXT_PATTERNS.length
   ]!;
 }
 
@@ -338,6 +342,39 @@ export function validateWallTextContent(
   durationSeconds: number,
 ) {
   const wordCount = countWords(content.fullText);
+  if (content.layoutVersion === "wall-text-overlay-v5") {
+    const maximum = Math.min(50, Math.max(16, Math.round(durationSeconds * 4)));
+    const minimum = Math.max(12, maximum - 8);
+    const blocks = content.finalLayout?.blocks;
+
+    if (wordCount < minimum || wordCount > maximum) {
+      throw new Error(
+        `Wall-of-text copy must contain ${minimum}-${maximum} words for a ${durationSeconds.toFixed(1)}-second clip.`,
+      );
+    }
+    if (!content.formatId || !content.sourceContent || !blocks?.length) {
+      throw new Error("Wall-of-text copy is missing its authoritative layout.");
+    }
+    if (PROMOTIONAL_CLICHES.some((pattern) => pattern.test(content.fullText))) {
+      throw new Error(
+        "The AI returned generic promotional copy instead of Wall-of-text copy.",
+      );
+    }
+    if (CTA_PATTERNS.some((pattern) => pattern.test(content.fullText))) {
+      throw new Error("Wall-of-text copy must not contain a call to action.");
+    }
+    const readingSeconds = estimateWallTextReadingSeconds(
+      content.fullText,
+      blocks.length,
+    );
+    if (readingSeconds > durationSeconds + 0.15) {
+      throw new Error(
+        `Wall-of-text copy needs about ${readingSeconds.toFixed(1)} seconds to read, longer than the ${durationSeconds.toFixed(1)}-second clip.`,
+      );
+    }
+    return;
+  }
+
   const wordPolicy = getWallTextWordPolicy(durationSeconds);
   const lineCount = content.segments.reduce(
     (total, segment) => total + segment.lines.length,
@@ -450,7 +487,7 @@ function toWallTextContent(
   return {
     fullText,
     kind: "wall_text",
-    layoutVersion: WALL_TEXT_CONTENT_LAYOUT_VERSION,
+    layoutVersion: LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION,
     pattern: normalizePattern(idea.pattern),
     segments,
   };

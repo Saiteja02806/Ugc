@@ -280,8 +280,73 @@ function getWallTextContent(value: Json | undefined): WallTextRenderContent {
       role,
     } satisfies WallTextSegment;
   });
+  const finalLayout = content.finalLayout
+    ? getFinalLayout(content.finalLayout)
+    : undefined;
 
-  return { fullText, segments };
+  return {
+    ...(finalLayout ? { finalLayout } : {}),
+    fullText,
+    ...([44, 46, 48, 50, 52].includes(Number(content.renderFontSize))
+      ? { renderFontSize: Number(content.renderFontSize) as 44 | 46 | 48 | 50 | 52 }
+      : {}),
+    segments,
+  };
+}
+
+function getFinalLayout(value: Json) {
+  const layout = getRecord(value, "text.finalLayout");
+  if (
+    layout.version !== "wall-text-final-layout-v1" ||
+    layout.fontFamily !== "Inter" ||
+    layout.fontWeight !== 700 ||
+    ![44, 46, 48, 50, 52].includes(Number(layout.fontSizePx)) ||
+    typeof layout.lineHeightPx !== "number" ||
+    !Array.isArray(layout.blocks) ||
+    layout.blocks.length < 1 ||
+    layout.blocks.length > 6
+  ) {
+    throw new Error("text.finalLayout is invalid.");
+  }
+  const blocks = layout.blocks.map((entry, blockIndex) => {
+    const block = getRecord(entry, `text.finalLayout.blocks[${blockIndex}]`);
+    if (
+      !["prose", "title", "item"].includes(String(block.role)) ||
+      !Array.isArray(block.lines) ||
+      block.lines.length < 1
+    ) {
+      throw new Error(`text.finalLayout.blocks[${blockIndex}] is invalid.`);
+    }
+    return {
+      lines: block.lines.map((line, lineIndex) =>
+        getRequiredString(
+          line,
+          `text.finalLayout.blocks[${blockIndex}].lines[${lineIndex}]`,
+          160,
+        ),
+      ),
+      role: block.role as "prose" | "title" | "item",
+    };
+  });
+  return {
+    blocks,
+    fontFamily: "Inter" as const,
+    fontSizePx: Number(layout.fontSizePx) as 44 | 46 | 48 | 50 | 52,
+    fontWeight: 700 as const,
+    lineHeightPx: layout.lineHeightPx,
+    textBox: getTextBoxFromRecord(layout.textBox, "text.finalLayout.textBox"),
+    version: "wall-text-final-layout-v1" as const,
+  };
+}
+
+function getTextBoxFromRecord(value: Json | undefined, fieldName: string) {
+  const box = getRecord(value, fieldName);
+  return {
+    height: getUnitNumber(box.height, `${fieldName}.height`),
+    width: getUnitNumber(box.width, `${fieldName}.width`),
+    x: getUnitNumber(box.x, `${fieldName}.x`),
+    y: getUnitNumber(box.y, `${fieldName}.y`),
+  };
 }
 
 function getSegmentRole(

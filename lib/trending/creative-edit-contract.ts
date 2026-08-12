@@ -216,6 +216,8 @@ export function createWallTextEditContent(
   const segments = buildWallTextSegments(groupedText, lineCounts);
   const currentWithoutFontSize = { ...current };
   delete currentWithoutFontSize.renderFontSize;
+  delete currentWithoutFontSize.finalLayout;
+  delete currentWithoutFontSize.sourceContent;
 
   return {
     ...currentWithoutFontSize,

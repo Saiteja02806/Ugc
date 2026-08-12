@@ -1,6 +1,8 @@
 import "server-only";
 
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
+import { createAuthoritativeWallTextContent } from "@/lib/trending/wall-layout-engine";
+import { getBackfillWallTextFormatId } from "@/lib/trending/wall-formats";
 import {
   generateBusinessTrendingWallTextIdeas,
   getTrendingWallTextModelName,
@@ -17,6 +19,7 @@ import {
   listTrendingWallTextCreatives,
   listWallTextOverlayAssetsForMediaAssetIds,
   listWallTextVideoAssetInventory,
+  parseWallTextContent,
   replaceTrendingWallTextCreativeCopy,
   type WallTextCreativeRow,
 } from "@/lib/trending/wall-text-db";
@@ -70,7 +73,7 @@ export async function prepareTrendingWallTextIdeas(
     const inventory =
       selectedInventory ?? (await listWallTextVideoAssetInventory());
 
-    return regenerateExistingTrendingWallTextIdeas(
+    return backfillExistingTrendingWallTextIdeas(
       profile,
       existing,
       inventory,
@@ -112,10 +115,11 @@ export async function prepareTrendingWallTextIdeas(
     candidates: candidates.map((candidate) => ({
       candidateIndex: candidate.candidateIndex,
       durationSeconds: candidate.durationSeconds,
+      layout: candidate.layout,
     })),
   });
   const generatedByIndex = new Map(
-    generated.map((idea) => [idea.candidateIndex, idea.content]),
+    generated.map((idea) => [idea.candidateIndex, idea]),
   );
   let creatives: Awaited<
     ReturnType<typeof createTrendingWallTextCreatives>
@@ -137,11 +141,14 @@ export async function prepareTrendingWallTextIdeas(
         backgroundAssetId: candidate.entry.id,
         candidateIndex: candidate.candidateIndex,
         durationSeconds: candidate.durationSeconds,
-        layout: candidate.layout,
+        layout: getGeneratedWallText(
+          generatedByIndex,
+          candidate.candidateIndex,
+        ).layout,
         text: getGeneratedWallText(
           generatedByIndex,
           candidate.candidateIndex,
-        ),
+        ).content,
       })),
       generatorModel: getTrendingWallTextModelName(),
       userId: profile.userId,
@@ -261,7 +268,7 @@ function getGeneratedWallText(
     number,
     Awaited<
       ReturnType<typeof generateBusinessTrendingWallTextIdeas>
-    >[number]["content"]
+    >[number]
   >,
   candidateIndex: number,
 ) {
@@ -304,7 +311,7 @@ function toWallTextSourceRecord(
   };
 }
 
-async function regenerateExistingTrendingWallTextIdeas(
+async function backfillExistingTrendingWallTextIdeas(
   profile: BusinessProfileRecord,
   existing: WallTextCreativeRow[],
   inventory: Awaited<ReturnType<typeof listWallTextVideoAssetInventory>>,
@@ -322,23 +329,12 @@ async function regenerateExistingTrendingWallTextIdeas(
     });
   }
 
-  const generated = await generateBusinessTrendingWallTextIdeas({
-    business: profile.context,
-    candidates: staleCreatives.map((creative) => ({
-      candidateIndex: creative.candidate_index,
-      durationSeconds: creative.duration_seconds,
-    })),
-  });
-  const generatedByIndex = new Map(
-    generated.map((idea) => [idea.candidateIndex, idea.content]),
-  );
-  const creatives = await replaceTrendingWallTextCreativeCopy({
-    businessProfileId: profile.id,
-    businessProfileVersion: profile.profileVersion,
-    creatives: staleCreatives.map((creative) => {
+  const upgrades = await Promise.all(
+    staleCreatives.map(async (creative) => {
       const background = inventory.find(
         (asset) => asset.id === creative.overlay_media_asset_id,
       );
+      const existingContent = parseWallTextContent(creative.text_content);
 
       if (!background) {
         throw new TrendingWallTextPreparationError(
@@ -347,17 +343,32 @@ async function regenerateExistingTrendingWallTextIdeas(
         );
       }
 
+      if (!existingContent) {
+        throw new TrendingWallTextPreparationError(
+          "An existing Wall-of-text idea cannot be upgraded safely.",
+          409,
+        );
+      }
+
+      const upgraded = await createAuthoritativeWallTextContent({
+        content: { kind: "prose", text: existingContent.fullText },
+        formatId: getBackfillWallTextFormatId(existingContent.pattern),
+        layout: createWallTextLayout(background),
+      });
+
       return {
         candidateIndex: creative.candidate_index,
         id: creative.id,
-        layout: createWallTextLayout(background),
-        text: getGeneratedWallText(
-          generatedByIndex,
-          creative.candidate_index,
-        ),
+        layout: upgraded.layout,
+        text: upgraded.content,
       };
     }),
-    generatorModel: getTrendingWallTextModelName(),
+  );
+  const creatives = await replaceTrendingWallTextCreativeCopy({
+    businessProfileId: profile.id,
+    businessProfileVersion: profile.profileVersion,
+    creatives: upgrades,
+    generatorModel: "wall-layout-engine-v1",
     userId: profile.userId,
   });
 

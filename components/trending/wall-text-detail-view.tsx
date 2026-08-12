@@ -17,6 +17,7 @@ import type {
   TrendingWallTextLayout,
 } from "@/lib/trending/feed-items";
 import type { TrendingTextColor } from "@/lib/trending/text-color";
+import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 
 export type WallTextDetailActionState =
   | { status: "idle" }
@@ -151,7 +152,7 @@ export function WallTextDetailView({
           <div className="mt-6 border-l-2 border-primary/60 pl-4">
             <p className="text-xs font-semibold text-muted">Overlay copy</p>
             <div className="mt-2 max-w-2xl space-y-3 text-[15px] font-medium leading-7 text-foreground-strong">
-              {visibleContent.segments.map((segment, index) => (
+              {getWallTextRenderBlocks(visibleContent).map((segment, index) => (
                 <p key={`${segment.role}-${index}`}>
                   {segment.lines.join(" ")}
                 </p>

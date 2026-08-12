@@ -2058,17 +2058,18 @@ Do not describe planned behavior as deployed behavior.
   create a second background worker or a parallel text-generation pipeline.
 - Production canary validation exposed and corrected a sparse-profile
   deterministic-fallback defect in the Resource Collection format. Planner
-  `llm-carousel-planner-v22-render-safe-resources` now builds a
+  `llm-carousel-planner-v23-semantic-resource-copy` now builds a
   de-duplicated evidence-backed resource pool and fills any remaining slots
   with generic reference types, so the three middle slides always contain six
   distinct resources even when onboarding provides only a few unique options.
   Its repetition validator also retains meaningful compact terms such as
   `AI`, `UI`, and `UX`; this prevents a short resource list from being falsely
   classified as a duplicate after its distinguishing acronym is discarded.
-  Evidence labels are converted into explicit reference guides, progress
-  checklists, and review prompts instead of rendering raw topic tags as though
-  they were resources. Planner parsing and strict JSON schemas cap list items
-  at 44 characters to match the renderer's one-line checklist contract.
+  Evidence labels are converted into explicit topic guides and goal checklists
+  instead of rendering raw tags or clipped problem sentences as though they
+  were resources. Near-duplicate fallback labels are removed. Planner parsing
+  and strict JSON schemas cap list items at 44 characters to match the
+  renderer's one-line checklist contract.
 - Broad matcher `broad-runtime-matcher-v3` normalizes hyphens and underscores
   before whole-term tag comparison, supports simple singular/plural matches,
   and considers the best reviewed asset-tag match while selecting the target

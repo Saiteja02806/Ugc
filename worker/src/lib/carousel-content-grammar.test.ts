@@ -187,6 +187,9 @@ test("resources fallback treats AI as meaningful copy in repetition checks", asy
     assert.ok(resourceItems.every((item) => item.length <= 44));
     assert.equal(resourceItems[0], "Guide: Nutrition Tracking");
     assert.equal(resourceItems[1], "Checklist: Fast meal tracking");
+    assert.equal(resourceItems[2], "Guide: AI");
+    assert.equal(resourceItems[3], "Checklist: AI-assisted meal logging");
+    assert.ok(resourceItems.every((item) => !/users struggle/i.test(item)));
     assert.equal(plan.slides.length, 5);
 
     const compactTermIssues = validateCarouselContentPlan(

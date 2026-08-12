@@ -24,7 +24,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v22-render-safe-resources";
+  "llm-carousel-planner-v23-semantic-resource-copy";
 
 const DEFAULT_MODEL = "gpt-4.1-mini";
 const MAX_BODY_LENGTH = 120;
@@ -2376,12 +2376,6 @@ function buildFallbackListItemPool(
         type: "checklist",
       }),
     ),
-    businessContext.problems.map((option) =>
-      formatFallbackResourceLabel({
-        label: option.label,
-        type: "review",
-      }),
-    ),
   ];
   const evidenceLabels: string[] = [];
   const largestGroup = Math.max(...evidenceGroups.map((group) => group.length));
@@ -2406,28 +2400,32 @@ function buildFallbackListItemPool(
     "A decision note for review",
   ];
   const seen = new Set<string>();
+  const selectedLabels: string[] = [];
 
   return [...evidenceLabels, ...genericReferences].filter((label) => {
     const key = normalizeValidationText(label);
 
-    if (!key || seen.has(key)) {
+    if (
+      !key ||
+      seen.has(key) ||
+      selectedLabels.some((selected) => getTokenOverlap(label, selected) >= 0.6)
+    ) {
       return false;
     }
 
     seen.add(key);
+    selectedLabels.push(label);
     return true;
   });
 }
 
 function formatFallbackResourceLabel(params: {
   label: string;
-  type: "checklist" | "guide" | "review";
+  type: "checklist" | "guide";
 }) {
   const prefix = params.type === "guide"
     ? "Guide"
-    : params.type === "checklist"
-      ? "Checklist"
-      : "Review prompt";
+    : "Checklist";
   const danglingWords = new Set([
     "a",
     "an",

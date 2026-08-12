@@ -71,7 +71,7 @@ if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
   fallbackPlan.plannerVersion !==
-    "llm-carousel-planner-v22-render-safe-resources" ||
+    "llm-carousel-planner-v23-semantic-resource-copy" ||
   !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");

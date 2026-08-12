@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-08-10
+Last updated: 2026-08-12
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -2051,21 +2051,45 @@ Do not describe planned behavior as deployed behavior.
   them deployed or production-verified until the migration and worker/app
   revisions are deployed and the authenticated production flow is checked.
 
+## 2026-08-12 Staged Carousel Architecture Rollout
+
+- The Carousel content planner and renderer continue to run inside the existing
+  authenticated `ugc-carousel-worker` Cloud Run service. This rollout does not
+  create a second background worker or a parallel text-generation pipeline.
+- Broad matcher `broad-runtime-matcher-v3` normalizes hyphens and underscores
+  before whole-term tag comparison, supports simple singular/plural matches,
+  and considers the best reviewed asset-tag match while selecting the target
+  broad bucket. This is required for literal tags such as `social-media`,
+  `video-marketing`, `youtube`, `tiktok`, and `instagram` to influence runtime
+  selection instead of merely being stored as metadata.
+- `CAROUSEL_BROAD_MATCHER_MODE=dry-run` remains the global production default.
+  Exact comma-separated IDs in
+  `CAROUSEL_BROAD_MATCHER_CANARY_BUSINESS_PROFILE_IDS` or
+  `CAROUSEL_BROAD_MATCHER_CANARY_USER_IDS` may promote only matching dry-run
+  generations to effective `enabled` behavior. An explicit global `off` mode
+  cannot be overridden by either allowlist.
+- The worker logs configured mode, effective mode, canary match source, matcher
+  version, and the broad-versus-legacy comparison. This makes a profile-scoped
+  canary auditable without changing every Carousel generation.
+- Pre-deployment production-catalog simulations passed for Marketing SaaS,
+  Productivity SaaS, and Fitness Health. The Marketing social-platform sample
+  selected four reviewed Power-folder assets, Productivity selected four, and
+  Fitness selected five, with zero missing selections or unsafe duplicate
+  reuse. These results validate the catalog and matcher but do not by
+  themselves constitute a deployed worker canary.
+
 ## Next Implementation Slice
 
 Name: **Run a profile-scoped GCP broad-matcher live canary**
 
 1. Keep `CAROUSEL_BROAD_MATCHER_MODE=dry-run` and
    `CAROUSEL_DISABLE_CATEGORY_FALLBACK=true`.
-2. Run controlled production GCP worker shadow samples for Productivity SaaS
-   and Fitness Health and confirm the selected asset IDs include this reviewed
-   local batch with zero safety or render failures.
-3. Add an explicit profile/user allowlist mechanism so `enabled` behavior can
-   be tested without changing every Carousel generation.
-4. Deploy one Productivity SaaS canary profile/user, generate complete
+2. Deploy the existing worker with planner v18, broad matcher v3, and the
+   profile/user canary gate; verify the exact revision and startup versions.
+3. Deploy one Productivity SaaS canary profile/user, generate complete
    Carousels, and visually inspect the rendered outputs from the real
    production domain.
-5. Keep the global mode in `dry-run` until that canary is accepted. Global
+4. Keep the global mode in `dry-run` until that canary is accepted. Global
    enablement is a separate product rollout decision.
 
 ## Working Rules

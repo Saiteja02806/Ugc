@@ -124,6 +124,18 @@ variable "carousel_broad_matcher_mode" {
   default     = "dry-run"
 }
 
+variable "carousel_broad_matcher_canary_business_profile_ids" {
+  description = "Comma-separated business profile IDs allowed to use the broad matcher while the global mode is dry-run."
+  type        = string
+  default     = ""
+}
+
+variable "carousel_broad_matcher_canary_user_ids" {
+  description = "Comma-separated user IDs allowed to use the broad matcher while the global mode is dry-run."
+  type        = string
+  default     = ""
+}
+
 variable "carousel_disable_category_fallback" {
   description = "Disables unrelated Carousel category fallback."
   type        = bool

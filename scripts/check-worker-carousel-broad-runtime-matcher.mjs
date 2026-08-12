@@ -4,6 +4,7 @@ const { getCarouselBusinessVisualProfile, resolveCarouselBusinessVisualProfile }
 const {
   CAROUSEL_BROAD_RUNTIME_MATCHER_VERSION,
   getCarouselBroadMatcherMode,
+  resolveCarouselBroadMatcherMode,
   selectBroadRuntimeVisualAssets,
 } = await import(
   "../worker/dist/lib/carousel-broad-runtime-visual-matcher.js"
@@ -145,6 +146,113 @@ assertEqual(
   selections[1]?.fallbackReason,
   "profile_fallback",
   "worker profile fallback reason",
+);
+
+const socialPlatformSelections = selectBroadRuntimeVisualAssets({
+  assets: [
+    mockAsset({
+      broadBucketId: "data-and-screens",
+      contentTags: ["social-media", "content", "youtube", "video-marketing"],
+      id: "worker-local-youtube-screen",
+      objectTags: ["digital-screen", "youtube-screen", "laptop"],
+    }),
+    mockAsset({
+      broadBucketId: "phone-and-devices",
+      contentTags: ["social-media", "content", "tiktok", "mobile-marketing"],
+      id: "worker-local-tiktok-screen",
+      objectTags: ["social-media-screen", "tiktok-app", "smartphone"],
+    }),
+    mockAsset({
+      broadBucketId: "abstract-backgrounds",
+      contentTags: ["growth"],
+      id: "worker-generic-growth-background",
+    }),
+    mockAsset({
+      broadBucketId: "phone-and-devices",
+      contentTags: ["phone"],
+      id: "worker-generic-phone",
+      objectTags: ["smartphone"],
+    }),
+  ],
+  candidateIndex: 0,
+  categorySlug: "marketing-saas",
+  profile,
+  seed: "broad-matcher-worker-social-platform-regression",
+  slides: [
+    mockSlide({
+      body: "Review video marketing performance on the YouTube screen.",
+      headline: "Your YouTube content should drive measurable growth",
+      slideNumber: 1,
+      slideType: "hook",
+    }),
+    mockSlide({
+      body: "Keep short-form social media content visible on your phone.",
+      headline: "TikTok ideas need a repeatable mobile marketing system",
+      slideNumber: 2,
+      slideType: "solution",
+    }),
+  ],
+});
+assertEqual(
+  socialPlatformSelections[0]?.asset.id,
+  "worker-local-youtube-screen",
+  "worker hyphenated YouTube tags route to the reviewed data-and-screens asset",
+);
+assertEqual(
+  socialPlatformSelections[1]?.asset.id,
+  "worker-local-tiktok-screen",
+  "worker hyphenated TikTok tags route to the reviewed phone-and-devices asset",
+);
+if (!socialPlatformSelections[1]?.matchedTags.includes("social-media")) {
+  failures.push({
+    error:
+      "Worker normalized matching did not retain the social-media diagnostic tag.",
+  });
+}
+
+assertEqual(
+  resolveCarouselBroadMatcherMode({
+    businessProfileAllowlist: "profile-canary, profile-other",
+    businessProfileId: "profile-canary",
+    configuredMode: "dry-run",
+    userAllowlist: "user-other",
+    userId: "user-ordinary",
+  }).effectiveMode,
+  "enabled",
+  "worker business-profile allowlist enables only the dry-run canary",
+);
+assertEqual(
+  resolveCarouselBroadMatcherMode({
+    businessProfileAllowlist: "profile-other",
+    businessProfileId: "profile-ordinary",
+    configuredMode: "dry-run",
+    userAllowlist: "user-canary",
+    userId: "user-canary",
+  }).effectiveMode,
+  "enabled",
+  "worker user allowlist enables only the dry-run canary",
+);
+assertEqual(
+  resolveCarouselBroadMatcherMode({
+    businessProfileAllowlist: "profile-canary",
+    businessProfileId: "profile-ordinary",
+    configuredMode: "dry-run",
+    userAllowlist: "user-canary",
+    userId: "user-ordinary",
+  }).effectiveMode,
+  "dry-run",
+  "worker non-canary traffic remains in dry-run",
+);
+assertEqual(
+  resolveCarouselBroadMatcherMode({
+    businessProfileAllowlist: "profile-canary",
+    businessProfileId: "profile-canary",
+    configuredMode: "off",
+    userAllowlist: "user-canary",
+    userId: "user-canary",
+  }).effectiveMode,
+  "off",
+  "worker off mode cannot be overridden by a canary allowlist",
 );
 
 const productivitySharedSelections = selectBroadRuntimeVisualAssets({

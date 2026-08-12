@@ -12,6 +12,7 @@ import {
   CAROUSEL_BROAD_RUNTIME_MATCHER_VERSION,
   compareBroadAndLegacySelections,
   getCarouselBroadMatcherMode,
+  resolveCarouselBroadMatcherMode,
   selectBroadRuntimeVisualAssets,
 } from "./carousel-broad-runtime-visual-matcher.js";
 import {
@@ -503,7 +504,12 @@ export async function generateCarousel({
       seed: selectionSeed,
       slides: plannedSlides,
     });
-    const broadMatcherMode = getCarouselBroadMatcherMode();
+    const broadMatcherModeResolution = resolveCarouselBroadMatcherMode({
+      businessProfileId: generation.business_profile_id,
+      configuredMode: getCarouselBroadMatcherMode(),
+      userId: generation.user_id,
+    });
+    const broadMatcherMode = broadMatcherModeResolution.effectiveMode;
     const broadVisualAssetSelections =
       broadMatcherMode === "off"
         ? []
@@ -526,6 +532,10 @@ export async function generateCarousel({
     if (broadMatcherMode !== "off") {
       logger.info("Carousel broad matcher comparison completed", {
         broadMatcherMode,
+        broadMatcherCanaryMatchedBy:
+          broadMatcherModeResolution.canaryMatchedBy,
+        broadMatcherConfiguredMode:
+          broadMatcherModeResolution.configuredMode,
         broadMatcherVersion: CAROUSEL_BROAD_RUNTIME_MATCHER_VERSION,
         carouselId,
         categorySlug: generation.category_slug,
@@ -546,6 +556,8 @@ export async function generateCarousel({
 
     logger.info("Carousel image matching completed", {
       broadMatcherMode,
+      broadMatcherCanaryMatchedBy: broadMatcherModeResolution.canaryMatchedBy,
+      broadMatcherConfiguredMode: broadMatcherModeResolution.configuredMode,
       carouselId,
       categorySlug: generation.category_slug,
       profileId: businessVisualProfile.id,

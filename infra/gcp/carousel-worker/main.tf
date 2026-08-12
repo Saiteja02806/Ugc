@@ -127,6 +127,16 @@ resource "google_cloud_run_v2_service" "carousel_worker" {
       }
 
       env {
+        name  = "CAROUSEL_BROAD_MATCHER_CANARY_BUSINESS_PROFILE_IDS"
+        value = var.carousel_broad_matcher_canary_business_profile_ids
+      }
+
+      env {
+        name  = "CAROUSEL_BROAD_MATCHER_CANARY_USER_IDS"
+        value = var.carousel_broad_matcher_canary_user_ids
+      }
+
+      env {
         name  = "CAROUSEL_DISABLE_CATEGORY_FALLBACK"
         value = tostring(var.carousel_disable_category_fallback)
       }

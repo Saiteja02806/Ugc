@@ -16,7 +16,7 @@ import {
 } from "./carousel-runtime-visual-bucket-matcher.js";
 
 export const CAROUSEL_BROAD_RUNTIME_MATCHER_VERSION =
-  "broad-runtime-matcher-v2";
+  "broad-runtime-matcher-v3";
 
 export const CAROUSEL_BROAD_MATCHER_MODES = [
   "off",
@@ -26,6 +26,12 @@ export const CAROUSEL_BROAD_MATCHER_MODES = [
 
 export type CarouselBroadMatcherMode =
   (typeof CAROUSEL_BROAD_MATCHER_MODES)[number];
+
+export type CarouselBroadMatcherModeResolution = {
+  canaryMatchedBy: "business-profile" | "user" | null;
+  configuredMode: CarouselBroadMatcherMode;
+  effectiveMode: CarouselBroadMatcherMode;
+};
 
 export type BroadMatchFallbackReason =
   | "broad_bucket_fallback"
@@ -261,6 +267,58 @@ function cleanStringArray(value: unknown) {
   );
 }
 
+function normalizeMatchText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[-_]+/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function slideTextContainsTerm(slideText: string, term: string) {
+  const normalizedText = ` ${normalizeMatchText(slideText)} `;
+  const normalizedTerm = normalizeMatchText(term);
+
+  if (!normalizedTerm) {
+    return false;
+  }
+
+  return (
+    normalizedText.includes(` ${normalizedTerm} `) ||
+    normalizedText.includes(` ${normalizedTerm}s `) ||
+    (normalizedTerm.endsWith("s") &&
+      normalizedText.includes(` ${normalizedTerm.slice(0, -1)} `))
+  );
+}
+
+function getAssetTagMatches(asset: CategoryImageAssetRow, slideText: string) {
+  return {
+    contentMatches: cleanStringArray(asset.content_tags).filter((tag) =>
+      slideTextContainsTerm(slideText, tag),
+    ),
+    moodMatches: cleanStringArray(asset.mood_tags).filter((tag) =>
+      slideTextContainsTerm(slideText, tag),
+    ),
+    objectMatches: cleanStringArray(asset.object_tags).filter((tag) =>
+      slideTextContainsTerm(slideText, tag),
+    ),
+  };
+}
+
+function scoreAssetTagMatches(asset: CategoryImageAssetRow, slideText: string) {
+  const { contentMatches, moodMatches, objectMatches } = getAssetTagMatches(
+    asset,
+    slideText,
+  );
+
+  return (
+    contentMatches.length * 18 +
+    objectMatches.length * 14 +
+    moodMatches.length * 8
+  );
+}
+
 function isStrictSafeBroadAsset(
   asset: CategoryImageAssetRow,
   categorySlug: string,
@@ -353,13 +411,14 @@ function hasNearDuplicateConflict(params: {
 }
 
 function getMatchedTags(asset: CategoryImageAssetRow, slideText: string) {
-  const tags = cleanStringArray([
-    ...cleanStringArray(asset.content_tags),
-    ...cleanStringArray(asset.object_tags),
-    ...cleanStringArray(asset.mood_tags),
-  ]);
+  const { contentMatches, moodMatches, objectMatches } = getAssetTagMatches(
+    asset,
+    slideText,
+  );
 
-  return tags.filter((tag) => slideText.includes(tag));
+  return Array.from(
+    new Set([...contentMatches, ...objectMatches, ...moodMatches]),
+  );
 }
 
 function scoreBucket(slideText: string, bucketId: BroadVisualBucketId) {
@@ -383,7 +442,7 @@ function scoreBucket(slideText: string, bucketId: BroadVisualBucketId) {
   }
 
   for (const hint of BROAD_BUCKET_KEYWORD_HINTS[bucketId]) {
-    if (slideText.includes(hint)) {
+    if (slideTextContainsTerm(slideText, hint)) {
       score += hint.includes(" ") ? 24 : 14;
     }
   }
@@ -392,6 +451,7 @@ function scoreBucket(slideText: string, bucketId: BroadVisualBucketId) {
 }
 
 function getTargetBroadBucket(params: {
+  assets: CategoryImageAssetRow[];
   profile: CarouselBusinessVisualProfile;
   slide: PlannedCarouselSlide;
 }) {
@@ -404,7 +464,14 @@ function getTargetBroadBucket(params: {
     .map((bucketId, index) => ({
       bucketId,
       index,
-      score: scoreBucket(slideText, bucketId),
+      score:
+        scoreBucket(slideText, bucketId) +
+        Math.max(
+          0,
+          ...params.assets
+            .filter((asset) => asset.broad_visual_bucket === bucketId)
+            .map((asset) => scoreAssetTagMatches(asset, slideText)),
+        ),
     }))
     .sort((left, right) => right.score - left.score || left.index - right.index)[0]
     .bucketId;
@@ -423,14 +490,9 @@ function rankAssets(params: {
   return params.assets
     .filter((asset) => asset.broad_visual_bucket === params.bucketId)
     .map((asset) => {
-      const contentMatches = cleanStringArray(asset.content_tags).filter((tag) =>
-        slideText.includes(tag),
-      );
-      const objectMatches = cleanStringArray(asset.object_tags).filter((tag) =>
-        slideText.includes(tag),
-      );
-      const moodMatches = cleanStringArray(asset.mood_tags).filter((tag) =>
-        slideText.includes(tag),
+      const { contentMatches, moodMatches, objectMatches } = getAssetTagMatches(
+        asset,
+        slideText,
       );
       const matchedTags = getMatchedTags(asset, slideText);
       const relevanceScore =
@@ -550,6 +612,55 @@ export function getCarouselBroadMatcherMode(
     : "off";
 }
 
+function parseIdAllowlist(value: string | undefined) {
+  return new Set(
+    (value ?? "")
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean),
+  );
+}
+
+export function resolveCarouselBroadMatcherMode(params: {
+  businessProfileAllowlist?: string;
+  businessProfileId?: string | null;
+  configuredMode?: CarouselBroadMatcherMode;
+  userAllowlist?: string;
+  userId?: string | null;
+}): CarouselBroadMatcherModeResolution {
+  const configuredMode =
+    params.configuredMode ?? getCarouselBroadMatcherMode();
+
+  if (configuredMode !== "dry-run") {
+    return {
+      canaryMatchedBy: null,
+      configuredMode,
+      effectiveMode: configuredMode,
+    };
+  }
+
+  const businessProfileAllowlist = parseIdAllowlist(
+    params.businessProfileAllowlist ??
+      process.env.CAROUSEL_BROAD_MATCHER_CANARY_BUSINESS_PROFILE_IDS,
+  );
+  const userAllowlist = parseIdAllowlist(
+    params.userAllowlist ?? process.env.CAROUSEL_BROAD_MATCHER_CANARY_USER_IDS,
+  );
+  const canaryMatchedBy =
+    params.businessProfileId &&
+    businessProfileAllowlist.has(params.businessProfileId)
+      ? "business-profile"
+      : params.userId && userAllowlist.has(params.userId)
+        ? "user"
+        : null;
+
+  return {
+    canaryMatchedBy,
+    configuredMode,
+    effectiveMode: canaryMatchedBy ? "enabled" : "dry-run",
+  };
+}
+
 export function selectBroadRuntimeVisualAssets({
   assets,
   candidateIndex,
@@ -567,7 +678,11 @@ export function selectBroadRuntimeVisualAssets({
   const selections: BroadRuntimeVisualAssetSelection[] = [];
 
   for (const slide of slides) {
-    const targetBroadBucketId = getTargetBroadBucket({ profile, slide });
+    const targetBroadBucketId = getTargetBroadBucket({
+      assets: safeAssets,
+      profile,
+      slide,
+    });
     const targetNearDuplicateAvoided = hasNearDuplicateConflict({
       assets: safeAssets,
       bucketId: targetBroadBucketId,

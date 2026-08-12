@@ -20,7 +20,6 @@ import {
   WALL_TEXT_FONT_WEIGHT,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_OUTLINE_WIDTH,
-  WALL_TEXT_SECTION_GAP,
 } from "./wall-text-visual-style";
 
 const VIDEO_WIDTH = 1080;
@@ -91,9 +90,7 @@ export async function createWallTextFinalLayout(params: {
 
       const lineHeightPx = Math.round(fontSize * WALL_TEXT_LINE_HEIGHT_FACTOR * 100) / 100;
       const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
-      const blockHeight =
-        lineCount * lineHeightPx +
-        Math.max(0, blocks.length - 1) * WALL_TEXT_SECTION_GAP;
+      const blockHeight = lineCount * lineHeightPx;
 
       if (blockHeight <= maximumHeight) {
         return {

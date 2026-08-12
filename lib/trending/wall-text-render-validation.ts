@@ -13,7 +13,6 @@ import {
   WALL_TEXT_MAXIMUM_FONT_SIZE,
   WALL_TEXT_MINIMUM_FONT_SIZE,
   WALL_TEXT_OUTLINE_WIDTH,
-  WALL_TEXT_SECTION_GAP,
   WALL_TEXT_TEXT_WIDTH,
 } from "./wall-text-visual-style";
 
@@ -27,7 +26,6 @@ export {
   WALL_TEXT_MAXIMUM_FONT_SIZE,
   WALL_TEXT_MINIMUM_FONT_SIZE,
   WALL_TEXT_OUTLINE_WIDTH,
-  WALL_TEXT_SECTION_GAP,
   WALL_TEXT_TEXT_WIDTH,
 };
 
@@ -65,7 +63,7 @@ export async function validateWallTextRenderFit(
     let failedLine: { line: string; width: number } | null = null;
 
     const blocks = getWallTextRenderBlocks(content);
-    for (const [segmentIndex, segment] of blocks.entries()) {
+    for (const segment of blocks) {
       for (const line of segment.lines) {
         const metadata = await sharp({
           text: {
@@ -95,9 +93,6 @@ export async function validateWallTextRenderFit(
         break;
       }
 
-      if (segmentIndex < blocks.length - 1) {
-        height += WALL_TEXT_SECTION_GAP;
-      }
     }
 
     if (failedLine) {

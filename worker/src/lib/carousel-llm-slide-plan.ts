@@ -24,13 +24,14 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v21-semantic-resource-fallback";
+  "llm-carousel-planner-v22-render-safe-resources";
 
 const DEFAULT_MODEL = "gpt-4.1-mini";
 const MAX_BODY_LENGTH = 120;
 const MAX_HEADLINE_LENGTH = 50;
 const MAX_CTA_LENGTH = 34;
 const MAX_IMAGE_DIRECTION_LENGTH = 180;
+const MAX_LIST_ITEM_LENGTH = 44;
 const TARGET_BODY_MIN_WORDS = 8;
 const TARGET_BODY_MAX_WORDS = 20;
 const MIN_REQUIRED_BODY_WORDS = 8;
@@ -416,7 +417,7 @@ function parseCarouselContentPlanShape(
     const listItems = getOptionalStringList(
       slide.listItems,
       4,
-      72,
+      MAX_LIST_ITEM_LENGTH,
       `slide ${index + 1} list items`,
     );
     const ctaText = getNullableString(
@@ -1824,7 +1825,11 @@ function buildCarouselContentPlanSchema(
               type: "string",
             },
             listItems: {
-              items: { maxLength: 72, minLength: 1, type: "string" },
+              items: {
+                maxLength: MAX_LIST_ITEM_LENGTH,
+                minLength: 1,
+                type: "string",
+              },
               maxItems: 4,
               type: "array",
             },
@@ -2319,7 +2324,10 @@ function applyGrammarToFallbackSlides(
                 total + (priorDefinition.listItemCount ?? 0),
               0,
             );
-          return listSource[priorItemCount + itemIndex]!.slice(0, 72);
+          return listSource[priorItemCount + itemIndex]!.slice(
+            0,
+            MAX_LIST_ITEM_LENGTH,
+          );
         })
       : [];
     const textMode = definition.listItemCount
@@ -2359,19 +2367,19 @@ function buildFallbackListItemPool(
     businessContext.topics.map((option) =>
       formatFallbackResourceLabel({
         label: option.label,
-        suffix: "reference guide",
+        type: "guide",
       }),
     ),
     businessContext.customerGoals.map((option) =>
       formatFallbackResourceLabel({
         label: option.label,
-        prefix: "Progress checklist for",
+        type: "checklist",
       }),
     ),
     businessContext.problems.map((option) =>
       formatFallbackResourceLabel({
         label: option.label,
-        prefix: "Review prompt for",
+        type: "review",
       }),
     ),
   ];
@@ -2413,24 +2421,52 @@ function buildFallbackListItemPool(
 
 function formatFallbackResourceLabel(params: {
   label: string;
-  prefix?: string;
-  suffix?: string;
+  type: "checklist" | "guide" | "review";
 }) {
-  const prefix = params.prefix?.trim() ?? "";
-  const suffix = params.suffix?.trim() ?? "";
-  const fixedTextLength = prefix.length + suffix.length + (prefix ? 1 : 0) +
-    (suffix ? 1 : 0);
-  const maxLabelLength = Math.max(12, 72 - fixedTextLength);
-  const normalizedLabel = params.label
+  const prefix = params.type === "guide"
+    ? "Guide"
+    : params.type === "checklist"
+      ? "Checklist"
+      : "Review prompt";
+  const danglingWords = new Set([
+    "a",
+    "an",
+    "and",
+    "are",
+    "at",
+    "by",
+    "for",
+    "from",
+    "in",
+    "is",
+    "of",
+    "on",
+    "or",
+    "the",
+    "to",
+    "was",
+    "were",
+    "with",
+  ]);
+  const maxEvidenceWords = params.type === "checklist" ? 3 : 4;
+  const words = params.label
     .trim()
     .replace(/[.!?]+$/g, "")
-    .replace(/\s+/g, " ");
-  const slicedLabel = normalizedLabel.slice(0, maxLabelLength + 1);
-  const label = normalizedLabel.length <= maxLabelLength
-    ? normalizedLabel
-    : slicedLabel.slice(0, Math.max(1, slicedLabel.lastIndexOf(" "))).trim();
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, maxEvidenceWords);
 
-  return [prefix, label, suffix].filter(Boolean).join(" ").slice(0, 72);
+  while (
+    words.length > 1 &&
+    (`${prefix}: ${words.join(" ")}`.length > MAX_LIST_ITEM_LENGTH ||
+      danglingWords.has(words.at(-1)!.toLowerCase()))
+  ) {
+    words.pop();
+  }
+
+  const label = words.join(" ") || "saved reference";
+
+  return `${prefix}: ${label}`.slice(0, MAX_LIST_ITEM_LENGTH);
 }
 
 function buildFallbackHookHeadline(

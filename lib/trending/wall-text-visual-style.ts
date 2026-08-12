@@ -5,7 +5,6 @@ export const WALL_TEXT_LINE_HEIGHT_FACTOR = 52 / 48;
 export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
 export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
 export const WALL_TEXT_OUTLINE_WIDTH = 4;
-export const WALL_TEXT_SECTION_GAP = 18;
 export const WALL_TEXT_TEXT_WIDTH = 620;
 
 export function getWallTextFontSize(content: TrendingWallTextContent) {

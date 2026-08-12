@@ -39,7 +39,7 @@ const fourLineContent = {
   ],
 };
 
-test("uses Inter Bold, center alignment, outline, and compact section rhythm", () => {
+test("uses Inter Bold, center alignment, outline, and one consistent line rhythm", () => {
   const layout = buildWallTextRenderLayout({
     content,
     textBox: {
@@ -65,6 +65,15 @@ test("uses Inter Bold, center alignment, outline, and compact section rhythm", (
   assert.equal(layout.segments[0]?.fontWeight, 700);
   assert.equal(layout.segments[1]?.fontSize, 48);
   assert.equal(layout.segments[1]?.fontWeight, 700);
+  assert.equal(
+    (layout.segments[1]?.top ?? 0) - (layout.segments[0]?.top ?? 0),
+    layout.segments[0]?.lineHeight,
+  );
+  assert.equal(
+    (layout.segments[2]?.top ?? 0) - (layout.segments[1]?.top ?? 0),
+    (layout.segments[1]?.lineHeight ?? 0) *
+      (layout.segments[1]?.lines.length ?? 0),
+  );
   assert.match(svg, /font-family="Inter, Arial/);
   assert.match(svg, /letter-spacing="-0\.2"/);
   assert.match(svg, /text-anchor="middle"/);

@@ -81,8 +81,34 @@ const jobsSource = readFileSync(
   new URL("./wall-text-jobs.ts", import.meta.url),
   "utf8",
 );
+const overlaySource = readFileSync(
+  new URL(
+    "../../components/trending/wall-text-overlay.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const editorSource = readFileSync(
+  new URL(
+    "../../components/trending/trending-creative-editor.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const visualStyleSource = readFileSync(
+  new URL("./wall-text-visual-style.ts", import.meta.url),
+  "utf8",
+);
 const migration =
   `${creativeMigration}\n${catalogMigration}\n${unifiedCopyMigration}\n${renderingMigration}\n${semanticOverlayMigration}\n${sixSecondMigration}\n${qualityMigration}`;
+
+test("uses one consistent line rhythm across Wall preview and editor", () => {
+  assert.match(overlaySource, /lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR/);
+  assert.match(editorSource, /lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR/);
+  assert.doesNotMatch(overlaySource, /marginTop|WALL_TEXT_SECTION_GAP/);
+  assert.doesNotMatch(editorSource, /WALL_TEXT_SECTION_GAP/);
+  assert.doesNotMatch(visualStyleSource, /WALL_TEXT_SECTION_GAP/);
+});
 
 test("stores user-specific Wall ideas without duplicating source videos", () => {
   assert.match(

@@ -60,7 +60,6 @@ export const WALL_TEXT_DEFAULT_FONT_SIZE = 48;
 export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
 export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
 export const WALL_TEXT_LINE_HEIGHT_FACTOR = 52 / 48;
-export const WALL_TEXT_SECTION_GAP = 18;
 export const WALL_TEXT_OUTLINE_WIDTH = 4;
 export const WALL_TEXT_DEFAULT_SAFE_AREA: WallTextSafeArea = {
   bottom: 460 / 1920,
@@ -114,10 +113,8 @@ export function buildWallTextRenderLayout(params: {
     };
   });
   const blockHeight = segmentMetrics.reduce(
-    (height, segment, index) =>
-      height +
-      segment.lines.length * segment.lineHeight +
-      (index < segmentMetrics.length - 1 ? WALL_TEXT_SECTION_GAP : 0),
+    (height, segment) =>
+      height + segment.lines.length * segment.lineHeight,
     0,
   );
 
@@ -129,17 +126,13 @@ export function buildWallTextRenderLayout(params: {
 
   let segmentTop =
     pixelTextBox.top + Math.max(0, (pixelTextBox.height - blockHeight) / 2);
-  const segments = segmentMetrics.map((segment, index) => {
+  const segments = segmentMetrics.map((segment) => {
     const layoutSegment = {
       ...segment,
       centerX: pixelTextBox.left + pixelTextBox.width / 2,
       top: segmentTop,
     };
     segmentTop += segment.lines.length * segment.lineHeight;
-
-    if (index < segmentMetrics.length - 1) {
-      segmentTop += WALL_TEXT_SECTION_GAP;
-    }
 
     return layoutSegment;
   });

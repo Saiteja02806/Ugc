@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   CalendarClock,
   Loader2,
-  RotateCcw,
   Save,
 } from "lucide-react";
 import { useEffect, useRef } from "react";
@@ -70,17 +69,6 @@ export function WallTextDetailView({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [busy, onBack]);
 
-  function replay() {
-    const video = videoRef.current;
-
-    if (!video) {
-      return;
-    }
-
-    video.currentTime = 0;
-    void video.play().catch(() => undefined);
-  }
-
   return (
     <section
       aria-labelledby="wall-text-detail-heading"
@@ -123,14 +111,6 @@ export function WallTextDetailView({
               />
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={replay}
-            className="absolute bottom-3 right-3 inline-flex min-h-10 items-center gap-2 rounded-full border border-white/15 bg-black/72 px-3 text-xs font-semibold text-white backdrop-blur-sm transition-colors hover:bg-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-          >
-            <RotateCcw className="size-3.5" aria-hidden="true" />
-            Replay
-          </button>
         </div>
 
         <div className="min-w-0">

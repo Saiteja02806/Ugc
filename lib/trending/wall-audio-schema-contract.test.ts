@@ -204,6 +204,7 @@ test("resolves exact edit audio before claiming and queuing a render", () => {
 test("final rendering maps selected Wall audio and never source-video audio", () => {
   assert.match(workerRenderSource, /downloadAudioToBuffer\(payload\.audio\.audioUrl/);
   assert.match(workerRenderSource, /buildWallTextAudioFilter\(payload\)/);
+  assert.match(workerRenderSource, /volume=\$\{TRENDING_LIBRARY_AUDIO_RENDER_GAIN\}/);
   assert.match(workerRenderSource, /"\[wall_audio\]"/);
   assert.doesNotMatch(
     workerRenderSource.slice(
@@ -224,6 +225,13 @@ test("frontend preview remains muted until the user plays synchronized Wall audi
   assert.match(frontendAudioSource, /audio\.fitMode === "loop"/);
   assert.match(frontendAudioSource, /await audioElement\.play\(\)/);
   assert.match(frontendAudioSource, /remainingVideoSeconds \/ audio\.fadeOutSeconds/);
+  assert.match(frontendAudioSource, /TRENDING_LIBRARY_AUDIO_PLAYBACK_VOLUME \* fadeMultiplier/);
+  assert.match(frontendAudioSource, /size-9/);
+});
+
+test("removes Wall replay controls so the media controls stay quiet", () => {
+  assert.doesNotMatch(trendingWorkspaceSource, /Replay Wall-text preview/);
+  assert.doesNotMatch(wallTextDetailSource, /\bReplay\b/);
 });
 
 test("does not preview stale base audio after a Wall creative is edited", () => {

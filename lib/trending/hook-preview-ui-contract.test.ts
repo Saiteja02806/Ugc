@@ -48,6 +48,9 @@ test("previews approved Hook audio without exposing it to deck swipe gestures", 
   assert.match(card, /<HookAudioPreview/);
   assert.match(audioPreview, /data-deck-control/);
   assert.match(audioPreview, /video\.currentTime - trimStart/);
+  assert.match(audioPreview, /TRENDING_LIBRARY_AUDIO_PLAYBACK_VOLUME/);
+  assert.match(audioPreview, /audioElement\.volume = TRENDING_LIBRARY_AUDIO_PLAYBACK_VOLUME/);
+  assert.match(audioPreview, /size-9/);
   assert.match(audioPreview, /aria-label=\{soundEnabled \? "Mute Hook audio" : "Play Hook audio"\}/);
 });
 

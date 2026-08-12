@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import type { TrendingWallTextCreative } from "@/lib/trending/feed-items";
+import { TRENDING_LIBRARY_AUDIO_PLAYBACK_VOLUME } from "@/lib/trending/audio-level";
 
 export function WallTextAudioPreview({
   active = true,
@@ -46,10 +47,12 @@ export function WallTextAudioPreview({
         ? Math.max(0, video.duration - video.currentTime)
         : Number.POSITIVE_INFINITY;
 
-      audioElement.volume =
+      const fadeMultiplier =
         audio.fadeOutSeconds > 0 && remainingVideoSeconds < audio.fadeOutSeconds
           ? Math.max(0, remainingVideoSeconds / audio.fadeOutSeconds)
           : 1;
+      audioElement.volume =
+        TRENDING_LIBRARY_AUDIO_PLAYBACK_VOLUME * fadeMultiplier;
 
       if (force || Math.abs(audioElement.currentTime - expectedTime) > 0.25) {
         audioElement.currentTime = expectedTime;
@@ -143,12 +146,12 @@ export function WallTextAudioPreview({
           event.stopPropagation();
           void toggleSound();
         }}
-        className="absolute bottom-3 left-3 z-30 inline-flex size-10 items-center justify-center rounded-full border border-white/15 bg-black/72 text-white backdrop-blur-sm transition-colors hover:bg-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        className="absolute bottom-2 left-2 z-30 inline-flex size-9 items-center justify-center rounded-full border border-white/15 bg-black/72 text-white backdrop-blur-sm transition-colors hover:bg-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
       >
         {soundEnabled ? (
-          <Volume2 className="size-4" aria-hidden="true" />
+          <Volume2 className="size-3.5" aria-hidden="true" />
         ) : (
-          <VolumeX className="size-4" aria-hidden="true" />
+          <VolumeX className="size-3.5" aria-hidden="true" />
         )}
       </button>
     </>

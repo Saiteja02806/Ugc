@@ -2085,26 +2085,54 @@ Do not describe planned behavior as deployed behavior.
 - The worker logs configured mode, effective mode, canary match source, matcher
   version, and the broad-versus-legacy comparison. This makes a profile-scoped
   canary auditable without changing every Carousel generation.
-- Pre-deployment production-catalog simulations passed for Marketing SaaS,
-  Productivity SaaS, and Fitness Health. The Marketing social-platform sample
-  selected four reviewed Power-folder assets, Productivity selected four, and
-  Fitness selected five, with zero missing selections or unsafe duplicate
-  reuse. These results validate the catalog and matcher but do not by
-  themselves constitute a deployed worker canary.
+- Production-catalog simulations passed for Marketing SaaS, Productivity SaaS,
+  and Fitness Health. The Marketing social-platform sample selected four
+  reviewed Power-folder assets, Productivity selected four, and Fitness
+  selected five, with zero missing selections or unsafe duplicate reuse.
+- The staged production canary completed successfully as background job
+  `6a38b5a2-82e4-4169-9ce2-cacb2b153933` and generation
+  `873f4005-5813-4774-a036-1cba6805e11d`. The existing worker generated and
+  persisted five 1080x1350 slides. Visual containment checks reported zero
+  escaped text pixels, all rendered URLs returned HTTP 200, no human imagery
+  was selected, and no image was reused. Three slides used reviewed local
+  assets, including `power/food/toast_03.jpg`; the remaining two used eligible
+  Pexels object imagery.
+- The production LLM planner attempted its normal generation and repair path.
+  Because that response failed strict content validation, the same worker used
+  the v23 deterministic fallback. The rendered fallback remained semantic,
+  de-duplicated, and within the renderer's one-line resource limits. This is
+  the intended fail-safe behavior, not a separate text-generation flow.
+- Final production revision
+  `ugc-carousel-worker-carousel-v23-final-653843d` receives 100% of Carousel
+  worker traffic. It uses image digest
+  `sha256:7af8dec75bac452a9617a96a4d7c49591d35e14e55477e8806ed3d8f93f95ca2`
+  from commit `653843d0c75556df7264142e456df1b55974b8bd`. Startup logs verify planner
+  `llm-carousel-planner-v23-semantic-resource-copy`, broad matcher
+  `broad-runtime-matcher-v3`, renderer
+  `social-bubble-renderer-v11-hybrid-soft-union`, object-only/no-human safety,
+  OpenAI configuration, Cloud Tasks transport, and the exact commit.
+- The temporary canary business-profile and user allowlists were removed after
+  acceptance. Global `CAROUSEL_BROAD_MATCHER_MODE=dry-run` and
+  `CAROUSEL_DISABLE_CATEGORY_FALLBACK=true` remain in production. Enabling the
+  broad matcher globally remains a separate product rollout decision.
+- The production web environment points `GCP_CAROUSEL_TASK_URL` at the internal
+  `ugc-carousel-worker` Cloud Run service and uses the `ugc-carousel` queue in
+  `us-central1` with `QUEUE_PROVIDER=gcp`. The public production root and
+  `/status` route both returned HTTP 200 after their canonical-domain redirect.
 
 ## Next Implementation Slice
 
-Name: **Run a profile-scoped GCP broad-matcher live canary**
+Name: **Decide the broad-matcher rollout cohort**
 
 1. Keep `CAROUSEL_BROAD_MATCHER_MODE=dry-run` and
-   `CAROUSEL_DISABLE_CATEGORY_FALLBACK=true`.
-2. Deploy the existing worker with planner v18, broad matcher v3, and the
-   profile/user canary gate; verify the exact revision and startup versions.
-3. Deploy one Productivity SaaS canary profile/user, generate complete
-   Carousels, and visually inspect the rendered outputs from the real
-   production domain.
-4. Keep the global mode in `dry-run` until that canary is accepted. Global
-   enablement is a separate product rollout decision.
+   `CAROUSEL_DISABLE_CATEGORY_FALLBACK=true` until a rollout cohort is
+   explicitly approved.
+2. Review broad-versus-legacy shadow telemetry across representative business
+   profiles and content grammars, not only the completed Fitness Health canary.
+3. If a beta is approved, use an explicit profile/user allowlist first and
+   verify complete production outputs before expanding it.
+4. Treat global `enabled` mode as a separate product and deployment decision;
+   do not infer it from the successful scoped canary.
 
 ## Working Rules
 

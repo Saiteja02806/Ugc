@@ -2056,6 +2056,12 @@ Do not describe planned behavior as deployed behavior.
 - The Carousel content planner and renderer continue to run inside the existing
   authenticated `ugc-carousel-worker` Cloud Run service. This rollout does not
   create a second background worker or a parallel text-generation pipeline.
+- Production canary validation exposed and corrected a sparse-profile
+  deterministic-fallback defect in the Resource Collection format. Planner
+  `llm-carousel-planner-v19-profile-context-fallback-diversity` now builds a
+  de-duplicated evidence-backed resource pool and fills any remaining slots
+  with generic reference types, so the three middle slides always contain six
+  distinct resources even when onboarding provides only a few unique options.
 - Broad matcher `broad-runtime-matcher-v3` normalizes hyphens and underscores
   before whole-term tag comparison, supports simple singular/plural matches,
   and considers the best reviewed asset-tag match while selecting the target

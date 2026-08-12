@@ -106,6 +106,49 @@ test("every V1 content format produces its exact five-slide grammar", async () =
   }
 });
 
+test("resources fallback stays valid with only four saved content options", async () => {
+  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
+
+  try {
+    const sparseAnalysis: WebsiteBusinessAnalysis = {
+      ...analysis,
+      carouselAngles: [],
+      categories: ["meal planning"],
+      category: "fitness",
+      mainProblem: "Meal logging feels inconsistent",
+      mainPromise: "Keep meal logging clearer",
+      painPoints: [],
+      valueProps: [],
+      visualKeywords: [],
+    };
+    const plan = await buildCarouselContentPlan({
+      analysis: sparseAnalysis,
+      candidateIndex: 0,
+      contentFormatId: "resources",
+      hookFamilyId: "specific_outcome",
+      recentHistory: [],
+      slideCount: 5,
+    });
+    const resourceSlides = plan.slides.slice(1, 4);
+    const resourceItems = resourceSlides.flatMap((slide) => slide.listItems);
+
+    assert.equal(plan.validationResult.ok, true);
+    assert.equal(resourceItems.length, 6);
+    assert.equal(new Set(resourceItems).size, 6);
+    assert.equal(
+      new Set(resourceSlides.map((slide) => slide.listItems.join(" "))).size,
+      3,
+    );
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+    } else {
+      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
+    }
+  }
+});
+
 test("V1 repair keeps a completed takeaway CTA-free", async () => {
   const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
   process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";

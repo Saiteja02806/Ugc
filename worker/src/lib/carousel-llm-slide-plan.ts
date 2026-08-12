@@ -24,7 +24,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v18-profile-context-topic-rotation";
+  "llm-carousel-planner-v19-profile-context-fallback-diversity";
 
 const DEFAULT_MODEL = "gpt-4.1-mini";
 const MAX_BODY_LENGTH = 120;
@@ -2291,11 +2291,7 @@ function applyGrammarToFallbackSlides(
   grammarContext: CarouselGrammarGenerationContext,
   contentStrategy: ResolvedCarouselContentStrategy,
 ) {
-  const listSource = [
-    ...grammarContext.businessContext.topics,
-    ...grammarContext.businessContext.customerGoals,
-    ...grammarContext.businessContext.problems,
-  ];
+  const listSource = buildFallbackListItemPool(grammarContext.businessContext);
 
   return slides.map((slide, index) => {
     const definition = grammarContext.format.slides[index]!;
@@ -2304,8 +2300,14 @@ function applyGrammarToFallbackSlides(
       : definition.preferredTextModes[0]!;
     const listItems = definition.listItemCount
       ? Array.from({ length: definition.listItemCount }, (_, itemIndex) => {
-          const source = listSource[(index * 2 + itemIndex) % listSource.length];
-          return (source?.label ?? `Useful point ${itemIndex + 1}`).slice(0, 72);
+          const priorItemCount = grammarContext.format.slides
+            .slice(0, index)
+            .reduce(
+              (total, priorDefinition) =>
+                total + (priorDefinition.listItemCount ?? 0),
+              0,
+            );
+          return listSource[priorItemCount + itemIndex]!.slice(0, 72);
         })
       : [];
     const textMode = definition.listItemCount
@@ -2335,6 +2337,38 @@ function applyGrammarToFallbackSlides(
       subtext: body,
       textMode,
     } satisfies PlannedCarouselSlide;
+  });
+}
+
+function buildFallbackListItemPool(
+  businessContext: CarouselBusinessContentContext,
+) {
+  const evidenceLabels = [
+    ...businessContext.topics,
+    ...businessContext.customerGoals,
+    ...businessContext.problems,
+  ].map((option) => option.label);
+  const genericReferences = [
+    "A reusable reference checklist",
+    "A practical review prompt",
+    "A simple comparison note",
+    "A saved example to revisit",
+    "A clear next-step reminder",
+    "A progress check-in",
+    "A useful question for later",
+    "A decision note for review",
+  ];
+  const seen = new Set<string>();
+
+  return [...evidenceLabels, ...genericReferences].filter((label) => {
+    const key = normalizeValidationText(label);
+
+    if (!key || seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
   });
 }
 

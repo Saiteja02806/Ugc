@@ -24,7 +24,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v19-profile-context-fallback-diversity";
+  "llm-carousel-planner-v20-compact-token-validation";
 
 const DEFAULT_MODEL = "gpt-4.1-mini";
 const MAX_BODY_LENGTH = 120;
@@ -61,6 +61,16 @@ const TEXT_MODES = new Set<CarouselTextMode>([
   "headline_body",
   "question_list",
   "single_statement",
+]);
+const MEANINGFUL_COMPACT_COPY_TOKENS = new Set([
+  "3d",
+  "ai",
+  "ar",
+  "hr",
+  "pr",
+  "ui",
+  "ux",
+  "vr",
 ]);
 
 let openaiClient: OpenAI | null = null;
@@ -654,7 +664,9 @@ function getNormalizedTokens(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
-    .filter((token) => token.length > 2);
+    .filter(
+      (token) => token.length > 2 || MEANINGFUL_COMPACT_COPY_TOKENS.has(token),
+    );
 }
 
 function shouldDropHeadline(params: {

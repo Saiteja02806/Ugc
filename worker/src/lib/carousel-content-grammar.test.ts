@@ -149,6 +149,44 @@ test("resources fallback stays valid with only four saved content options", asyn
   }
 });
 
+test("resources fallback treats AI as meaningful copy in repetition checks", async () => {
+  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
+
+  try {
+    const compactTopicAnalysis: WebsiteBusinessAnalysis = {
+      ...analysis,
+      carouselAngles: ["Speed up meal logging"],
+      categories: ["Nutrition Tracking"],
+      category: "Nutrition Tracking",
+      mainProblem:
+        "Users struggle with meal logging and need personalized guidance.",
+      mainPromise: "Fast meal tracking with access to nutrition experts.",
+      painPoints: ["Logging meals is time-consuming"],
+      valueProps: ["AI-assisted meal logging"],
+      visualKeywords: ["AI", "nutrition", "meal logging", "support", "progress"],
+    };
+    const plan = await buildCarouselContentPlan({
+      analysis: compactTopicAnalysis,
+      candidateIndex: 0,
+      contentFormatId: "resources",
+      hookFamilyId: "specific_outcome",
+      recentHistory: [],
+      slideCount: 5,
+    });
+
+    assert.equal(plan.validationResult.ok, true);
+    assert.deepEqual(plan.slides[1]?.listItems, ["Nutrition Tracking", "AI"]);
+    assert.equal(plan.slides.length, 5);
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+    } else {
+      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
+    }
+  }
+});
+
 test("V1 repair keeps a completed takeaway CTA-free", async () => {
   const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
   process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";

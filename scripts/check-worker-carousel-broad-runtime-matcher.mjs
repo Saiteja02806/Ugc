@@ -398,6 +398,47 @@ assertEqual(
   "worker Wellness can reuse Fitness Health and Marketing SaaS assets",
 );
 
+const fitnessProfile = sharedHomeProfiles.find(
+  (item) => item.id === "fitness-health",
+);
+const nutritionDirectionSelections = selectBroadRuntimeVisualAssets({
+  assets: [
+    mockAsset({
+      broadBucketId: "food-and-table",
+      categorySlug: "fitness-health",
+      contentTags: ["meal", "nutrition", "tracking"],
+      id: "worker-nutrition-food",
+      objectTags: ["meal", "table"],
+    }),
+    mockAsset({
+      broadBucketId: "product-still-life",
+      categorySlug: "shared",
+      contentTags: ["clean", "premium", "product"],
+      id: "worker-skincare-product",
+      objectTags: ["bottle", "skincare"],
+    }),
+  ],
+  candidateIndex: 0,
+  categorySlug: "fitness-health",
+  profile: fitnessProfile,
+  seed: "worker-nutrition-generic-image-direction-regression",
+  slides: [
+    mockSlide({
+      headline: "Six meal logging resources to save",
+      imageDirection:
+        "Use a clean premium image with open space for a strong hook.",
+      listItems: ["Guide: Nutrition Tracking", "Checklist: Meal logging"],
+      slideNumber: 1,
+      slideType: "hook",
+    }),
+  ],
+});
+assertEqual(
+  nutritionDirectionSelections[0]?.asset.id,
+  "worker-nutrition-food",
+  "worker generic image direction cannot override nutrition copy with skincare imagery",
+);
+
 const duplicateSlides = [
   mockSlide({
     headline: "Analytics dashboard overview",
@@ -587,14 +628,21 @@ function mockAsset({
   };
 }
 
-function mockSlide({ body = null, headline, slideNumber, slideType }) {
+function mockSlide({
+  body = null,
+  headline,
+  imageDirection = null,
+  listItems = [],
+  slideNumber,
+  slideType,
+}) {
   return {
     body,
     ctaText: null,
     headline,
-    imageDirection: null,
+    imageDirection,
     layoutPreset: slideType === "hook" ? "top-hook" : "bottom-message",
-    listItems: [],
+    listItems,
     slideNumber,
     slideType,
     subtext: null,

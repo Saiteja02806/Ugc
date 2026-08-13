@@ -189,8 +189,35 @@ test("resources fallback treats AI as meaningful copy in repetition checks", asy
     assert.equal(resourceItems[1], "Checklist: Fast meal tracking");
     assert.equal(resourceItems[2], "Guide: AI");
     assert.equal(resourceItems[3], "Checklist: AI-assisted meal logging");
+    assert.equal(
+      plan.slides[0]?.headline,
+      "Six Nutrition Tracking resources to save",
+    );
+    assert.equal(
+      plan.slides[0]?.subtext,
+      "Keep this collection nearby when the current routine needs supporting context.",
+    );
     assert.ok(resourceItems.every((item) => !/users struggle/i.test(item)));
     assert.equal(plan.slides.length, 5);
+
+    const actionTopicPlan = await buildCarouselContentPlan({
+      analysis: {
+        ...compactTopicAnalysis,
+        carouselAngles: [],
+        categories: [],
+        category: "Speed up meal logging",
+        visualKeywords: [],
+      },
+      candidateIndex: 0,
+      contentFormatId: "resources",
+      hookFamilyId: "specific_outcome",
+      recentHistory: [],
+      slideCount: 5,
+    });
+    assert.equal(
+      actionTopicPlan.slides[0]?.headline,
+      "Six meal logging resources to save",
+    );
 
     const compactTermIssues = validateCarouselContentPlan(
       {

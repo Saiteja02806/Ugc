@@ -16,7 +16,7 @@ import {
 } from "@/lib/carousel/runtime-visual-bucket-matcher";
 
 export const CAROUSEL_BROAD_RUNTIME_MATCHER_VERSION =
-  "broad-runtime-matcher-v3";
+  "broad-runtime-matcher-v4";
 
 export const CAROUSEL_BROAD_MATCHER_MODES = [
   "off",
@@ -213,6 +213,14 @@ const BROAD_BUCKET_KEYWORD_HINTS: Record<
 const CANDIDATE_SPREAD_SLOT_COUNT = 20;
 const CANDIDATE_SPREAD_PENALTY_STEP = 5;
 const CANDIDATE_SPREAD_RELEVANCE_BAND_SIZE = 24;
+const GENERIC_IMAGE_DIRECTIONS = new Set([
+  "end with a clear product-forward visual and simple next step.",
+  "show a polished detail that makes the product feel distinct.",
+  "show a simpler organized result after using the product.",
+  "show the everyday friction before the product helps.",
+  "use a clean premium image with open space for a strong hook.",
+  "use a confident visual with room for one benefit statement.",
+]);
 
 function hashString(value: string) {
   let hash = 2166136261;
@@ -231,18 +239,22 @@ function cleanText(value: string | null | undefined) {
 
 function getSlideText(slide: PlannedCarouselSlide) {
   return [
-    slide.slideType,
-    cleanText(slide.textMode),
     cleanText(slide.headline),
     cleanText(slide.body),
     cleanText(slide.subtext),
     cleanText(slide.ctaText),
-    cleanText(slide.imageDirection),
+    getRoutingImageDirection(slide.imageDirection),
     ...(slide.listItems ?? []).map(cleanText),
   ]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
+}
+
+function getRoutingImageDirection(value: string | null | undefined) {
+  const direction = cleanText(value).toLowerCase();
+
+  return GENERIC_IMAGE_DIRECTIONS.has(direction) ? "" : direction;
 }
 
 function getTokens(value: string) {

@@ -2129,7 +2129,7 @@ Do not describe planned behavior as deployed behavior.
   rejected the repair and restored the older generic deterministic copy. At
   the same time, the broad matcher ran only in `dry-run`, so the renderer used
   the legacy image selection even though v3 proposed reviewed local assets.
-- Planner `llm-carousel-planner-v24-format-aware-fallback` supplies normalized
+- Planner `llm-carousel-planner-v25-format-aware-fallback` supplies normalized
   recent history to the repair request, permits a repair to select a different
   saved audience/problem/goal/topic combination when repetition caused the
   failure, and requires all five slides to be rebuilt rather than paraphrasing
@@ -2143,6 +2143,20 @@ Do not describe planned behavior as deployed behavior.
   Object-only/no-human review, approved-asset status, per-generation duplicate
   prevention, and disabled category fallback remain mandatory. The canary
   allowlists stay empty because global enabled mode does not need them.
+- The first v24 production canary exposed two release blockers and traffic was
+  returned to the verified v23 revision before changing any customer
+  assignment. An action-led topic was shortened into the awkward phrase
+  `Speed up meal`, and generic fallback image directions such as `clean
+  premium` and `product-forward` outweighed the nutrition copy and routed
+  three slides to shared skincare/product-still-life assets.
+- v25 converts action-led topics into complete headline noun phrases (for
+  example, `Speed up meal logging` becomes `meal logging`). Broad matcher
+  `broad-runtime-matcher-v4` excludes the six exact generic slide-plan image
+  directions from semantic routing while retaining specific LLM image
+  directions. Visible headline/body/list/CTA copy remains authoritative, so a
+  nutrition Resource Collection routes to food-and-table assets instead of
+  unrelated skincare packaging. Matching app and worker regression checks
+  enforce that boundary.
 - This change continues to use the existing authenticated
   `ugc-carousel-worker` Cloud Run service. It does not create a new Carousel AI
   worker or a parallel text-generation pipeline.

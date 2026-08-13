@@ -24,7 +24,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v24-format-aware-fallback";
+  "llm-carousel-planner-v25-format-aware-fallback";
 
 const DEFAULT_MODEL = "gpt-4.1-mini";
 const MAX_BODY_LENGTH = 120;
@@ -2487,7 +2487,7 @@ function buildFormatAwareFallbackHeadline(
   slideIndex: number,
   contentStrategy: ResolvedCarouselContentStrategy,
 ) {
-  const topic = compactFallbackPhrase(contentStrategy.topic, 3, 24);
+  const topic = formatFallbackHeadlineTopic(contentStrategy.topic);
   const headlines: Record<CarouselContentFormatId, string[]> = {
     before_after: [
       "Before and after",
@@ -2711,7 +2711,7 @@ function buildFormatAwareFallbackBody(
       `Start with the smallest change that makes the next review clearer.`,
     ],
     resources: [
-      `Keep this collection nearby when a business question needs supporting context.`,
+      `Keep this collection nearby when the current routine needs supporting context.`,
       `Start with the references that match the current question or routine.`,
       `Use the middle references to connect details with the next review.`,
       `Keep the final references available for later decisions and adjustments.`,
@@ -2781,6 +2781,18 @@ function formatFallbackProblemPhrase(value: string) {
   }
 
   return normalized;
+}
+
+function formatFallbackHeadlineTopic(value: string) {
+  const nounPhrase = value
+    .trim()
+    .replace(
+      /^(?:how to|ways to|tips for|speed up|build|create|improve|keep|make|organize|reduce|simplify|track|understand|use)\s+/i,
+      "",
+    )
+    .replace(/^(?:the|your)\s+/i, "");
+
+  return compactFallbackPhrase(nounPhrase || value, 4, 34);
 }
 
 function buildFallbackListItemPool(
@@ -2919,7 +2931,7 @@ function buildFallbackHookHeadline(
   hookFamilyId: CarouselHookFamilyId,
   formatId: CarouselContentFormatId,
 ) {
-  const topic = compactFallbackPhrase(contentStrategy.topic, 3, 26);
+  const topic = formatFallbackHeadlineTopic(contentStrategy.topic);
   const problem = compactFallbackPhrase(contentStrategy.problem, 3, 26);
   const formatCandidates: Record<CarouselContentFormatId, string> = {
     before_after: `Before and after ${topic}`,

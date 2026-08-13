@@ -2181,21 +2181,45 @@ Do not describe planned behavior as deployed behavior.
   Once v26 is deployed and a replacement has completed production validation,
   retire the stale assignment and expose the new generation through the
   existing assignment/feed records.
+- v26 production validation completed from Cloud Build
+  `7a5b6a13-a895-40a8-a4ab-a4220022f834`. Image
+  `carousel-v26-65ab455` has digest
+  `sha256:62da0d886a051f5bde8713e628b237a006537cfd6eebfe427cf83a0579c05215`
+  and source commit `65ab455ad75848d370718c0a382b04018467da86`.
+  The isolated deterministic canary generated customer replacement
+  `5505987f-735f-4b95-a562-8e6272baa00a` through background job
+  `cc233321-76a1-4a19-ae58-ebd426979a2a`.
+- That replacement contains five distinct approved object-only assets, all
+  five immutable WebP URLs returned HTTP 200 at 1080x1350, the v4 broad
+  matcher selected `food-and-table` on every slide, and the renderer reported
+  zero escaped text pixels on all five slides. Manual contact-sheet review
+  confirmed coherent nutrition imagery, specific six-resource copy, and no
+  duplicated persisted headline/subtext on its body-only takeaway.
+- Final production revision `ugc-carousel-worker-carousel-v26-65ab455` now
+  receives 100% of Carousel worker traffic. Temporary v25 replacement and v26
+  canary tags were removed. Startup logs verify normal `llm` planner mode,
+  planner `llm-carousel-planner-v26-specific-fallback-copy`, global broad
+  matcher `enabled` with `broad-runtime-matcher-v4`, and the exact source
+  commit above.
+- The final feed-assignment redirect was not performed in this release step:
+  the managed approval service timed out on the guarded Supabase mutation and
+  its permitted retry. The customer feed therefore remains on assignment
+  `9d8d9d58-9317-49d0-85d3-1f6e889dec3b`; no original generation or rendered
+  asset was deleted or overwritten. Re-audit edits, Library saves, and
+  Trending decisions before retrying the idempotent redirect.
 
 ## Next Implementation Slice
 
 Name: **Verify v26 and replace the stale production assignment**
 
-1. Deploy the v26 worker image with global broad matcher `enabled`, empty
-   canary allowlists, and category fallback disabled.
-2. Verify startup metadata, effective matcher mode, planner provenance, safe
-   image selection, five rendered 1080x1350 outputs, and authenticated
-   production presentation.
-3. Create a new immutable generation for the affected profile. Only after it
-   passes those checks, retire the stale assignment and expose the replacement
-   through the existing feed flow.
-4. Record the final worker revision, image digest, job/generation IDs, and
-   production evidence in this document.
+1. Obtain explicit approval for the guarded Supabase assignment mutation.
+2. Re-audit the stale assignment for intervening edits, saves, or Trending
+   decisions. If still untouched, point only feed item
+   `5b63f84e-a33a-48a3-9b70-6dfef658be38` at a new pending assignment for
+   generation `5505987f-735f-4b95-a562-8e6272baa00a` and mark the old
+   assignment `completed_skipped`.
+3. Verify the authenticated production Trending card after refresh while
+   retaining all original generations and rendered assets.
 
 ## Working Rules
 

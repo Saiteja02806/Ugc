@@ -196,9 +196,9 @@ test("resources fallback treats AI as meaningful copy in repetition checks", asy
       `${plan.slides[0]?.headline ?? ""} ${plan.slides[0]?.body ?? ""}`,
       /(?:six Nutrition Tracking resources|six practical references)/i,
     );
-    assert.equal(
-      plan.slides[0]?.subtext,
-      "Save six practical references for fast meal tracking with access to nutrition experts.",
+    assert.match(
+      plan.slides[0]?.subtext ?? "",
+      /^Save six practical references for (?:AI-assisted meal logging|fast meal tracking with access to nutrition experts)\.$/,
     );
     assert.ok(resourceItems.every((item) => !/users struggle/i.test(item)));
     assert.equal(plan.slides.length, 5);

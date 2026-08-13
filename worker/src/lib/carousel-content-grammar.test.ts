@@ -187,15 +187,18 @@ test("resources fallback treats AI as meaningful copy in repetition checks", asy
     assert.ok(resourceItems.every((item) => item.length <= 44));
     assert.equal(resourceItems[0], "Guide: Nutrition Tracking");
     assert.equal(resourceItems[1], "Checklist: Fast meal tracking");
-    assert.equal(resourceItems[2], "Guide: AI");
-    assert.equal(resourceItems[3], "Checklist: AI-assisted meal logging");
-    assert.equal(
-      plan.slides[0]?.headline,
-      "Six Nutrition Tracking resources to save",
+    assert.equal(resourceItems[2], "Guide: meal logging");
+    assert.ok(resourceItems.includes("Checklist: AI-assisted meal logging"));
+    assert.ok(
+      resourceItems.every((item) => !/^(?:Guide|Checklist): (?:AI|support)$/i.test(item)),
+    );
+    assert.match(
+      `${plan.slides[0]?.headline ?? ""} ${plan.slides[0]?.body ?? ""}`,
+      /(?:six Nutrition Tracking resources|six practical references)/i,
     );
     assert.equal(
       plan.slides[0]?.subtext,
-      "Keep this collection nearby when the current routine needs supporting context.",
+      "Save six practical references for fast meal tracking with access to nutrition experts.",
     );
     assert.ok(resourceItems.every((item) => !/users struggle/i.test(item)));
     assert.equal(plan.slides.length, 5);
@@ -214,9 +217,9 @@ test("resources fallback treats AI as meaningful copy in repetition checks", asy
       recentHistory: [],
       slideCount: 5,
     });
-    assert.equal(
-      actionTopicPlan.slides[0]?.headline,
-      "Six meal logging resources to save",
+    assert.match(
+      `${actionTopicPlan.slides[0]?.headline ?? ""} ${actionTopicPlan.slides[0]?.body ?? ""}`,
+      /(?:meal logging resources|practical references)/i,
     );
 
     const compactTermIssues = validateCarouselContentPlan(
@@ -314,7 +317,15 @@ test("examples fallback replaces repeated AI copy with a fresh format-aware stor
       ),
       false,
     );
-    assert.match(plan.slides[0]?.headline ?? "", /examples/i);
+    assert.match(
+      `${plan.slides[0]?.headline ?? ""} ${plan.slides[0]?.body ?? ""}`,
+      /examples/i,
+    );
+    assert.ok(
+      plan.slides.every(
+        (slide) => !/current routine|supporting context/i.test(slide.body ?? ""),
+      ),
+    );
     assert.deepEqual(
       validateCarouselRecentContentRepetition(
         plan,

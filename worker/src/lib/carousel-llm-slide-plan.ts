@@ -24,7 +24,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v25-format-aware-fallback";
+  "llm-carousel-planner-v26-specific-fallback-copy";
 
 const DEFAULT_MODEL = "gpt-4.1-mini";
 const MAX_BODY_LENGTH = 120;
@@ -2618,6 +2618,9 @@ function buildFormatAwareFallbackBody(
   const audience = lowerFirst(
     compactFallbackPhrase(contentStrategy.audience, 4, 34),
   );
+  const customerGoal = lowerFirst(
+    compactFallbackPhrase(contentStrategy.customerGoal, 8, 56),
+  );
   const bodies: Record<CarouselContentFormatId, string[]> = {
     before_after: [
       `Follow how ${topic} can connect a recurring problem with the selected goal.`,
@@ -2662,11 +2665,11 @@ function buildFormatAwareFallbackBody(
       `Choose the approach that fits ${audience} and the current routine.`,
     ],
     examples: [
-      `Review three practical situations before choosing the next adjustment.`,
-      `First, notice where the routine is affected by ${problem}.`,
-      `Next, keep useful ${topic} context beside the detail being reviewed.`,
-      `Finally, compare each saved detail with the selected goal before adjusting the routine.`,
-      `Choose the example that supports the selected goal within the current routine.`,
+      `See three practical ${topic} examples connected to ${customerGoal}.`,
+      `${buildFallbackWhenClause(problem)}, start with one ${topic} detail worth reviewing.`,
+      `Keep that ${topic} detail beside the entry or decision it explains.`,
+      `Compare the saved detail with ${customerGoal} before making another adjustment.`,
+      `Choose the example connected to ${customerGoal}.`,
     ],
     framework: [
       `Use this framework to organize current friction around a practical ${topic} review.`,
@@ -2711,11 +2714,11 @@ function buildFormatAwareFallbackBody(
       `Start with the smallest change that makes the next review clearer.`,
     ],
     resources: [
-      `Keep this collection nearby when the current routine needs supporting context.`,
-      `Start with the references that match the current question or routine.`,
-      `Use the middle references to connect details with the next review.`,
-      `Keep the final references available for later decisions and adjustments.`,
-      `Choose the reference that matches the current question before continuing.`,
+      `Save six practical references for ${customerGoal}.`,
+      `Start with the two references most useful for ${topic}.`,
+      `Use the next pair to connect saved details with ${customerGoal}.`,
+      `Keep the final pair ready for later questions and progress reviews.`,
+      `Choose the reference connected to ${customerGoal}.`,
     ],
     swap: [
       `Try three practical swaps when the routine is slowed by ${problem}.`,
@@ -2783,6 +2786,14 @@ function formatFallbackProblemPhrase(value: string) {
   return normalized;
 }
 
+function buildFallbackWhenClause(problem: string) {
+  if (/^(?:the )?(?:absence|challenge|difficulty|lack|need)\b/i.test(problem)) {
+    return `When ${problem} affects the decision`;
+  }
+
+  return `When ${problem}`;
+}
+
 function formatFallbackHeadlineTopic(value: string) {
   const nounPhrase = value
     .trim()
@@ -2816,13 +2827,13 @@ function buildFallbackListItemPool(
           ? "prompt"
           : "action";
   const evidenceGroups = [
-    businessContext.topics.map((option) =>
+    prioritizeSpecificFallbackOptions(businessContext.topics).map((option) =>
       formatFallbackResourceLabel({
         label: option.label,
         type: guideLabel,
       }),
     ),
-    businessContext.customerGoals.map((option) =>
+    prioritizeSpecificFallbackOptions(businessContext.customerGoals).map((option) =>
       formatFallbackResourceLabel({
         label: option.label,
         type: goalLabel,
@@ -2842,14 +2853,14 @@ function buildFallbackListItemPool(
     }
   }
   const genericReferences = [
-    "A reusable reference checklist",
-    "A practical review prompt",
-    "A simple comparison note",
-    "A saved example to revisit",
-    "A clear next-step reminder",
-    "A progress check-in",
-    "A useful question for later",
-    "A decision note for review",
+    "Checklist: Reusable reference",
+    "Review prompt: Practical question",
+    "Guide: Simple comparison note",
+    "Guide: Saved example",
+    "Checklist: Next-step reminder",
+    "Review prompt: Progress check-in",
+    "Review prompt: Useful question",
+    "Guide: Decision note",
   ];
   const seen = new Set<string>();
   const selectedLabels: string[] = [];
@@ -2859,8 +2870,11 @@ function buildFallbackListItemPool(
 
     if (
       !key ||
+      isWeakStandaloneResourceLabel(label) ||
       seen.has(key) ||
-      selectedLabels.some((selected) => getTokenOverlap(label, selected) >= 0.6)
+      selectedLabels.some(
+        (selected) => getFallbackResourceLabelSimilarity(label, selected) >= 0.6,
+      )
     ) {
       return false;
     }
@@ -2869,6 +2883,47 @@ function buildFallbackListItemPool(
     selectedLabels.push(label);
     return true;
   });
+}
+
+function prioritizeSpecificFallbackOptions(
+  options: readonly CarouselBusinessContentOption[],
+) {
+  const specific: CarouselBusinessContentOption[] = [];
+  const compact: CarouselBusinessContentOption[] = [];
+
+  for (const option of options) {
+    const wordCount = option.label.trim().split(/\s+/).filter(Boolean).length;
+    (wordCount >= 2 ? specific : compact).push(option);
+  }
+
+  return [...specific, ...compact];
+}
+
+function isWeakStandaloneResourceLabel(value: string) {
+  const label = value.split(":").slice(1).join(":").trim().toLowerCase();
+
+  return new Set(["ai", "nutrition", "progress", "support"]).has(label);
+}
+
+function getFallbackResourceLabelSimilarity(left: string, right: string) {
+  const leftLabel = left.split(":").slice(1).join(":") || left;
+  const rightLabel = right.split(":").slice(1).join(":") || right;
+  const leftTokens = new Set(getNormalizedTokens(leftLabel));
+  const rightTokens = new Set(getNormalizedTokens(rightLabel));
+
+  if (leftTokens.size === 0 || rightTokens.size === 0) {
+    return 0;
+  }
+
+  let overlap = 0;
+
+  for (const token of leftTokens) {
+    if (rightTokens.has(token)) {
+      overlap += 1;
+    }
+  }
+
+  return overlap / Math.max(leftTokens.size, rightTokens.size);
 }
 
 function formatFallbackResourceLabel(params: {

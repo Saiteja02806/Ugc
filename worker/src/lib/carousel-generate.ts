@@ -29,7 +29,7 @@ import {
   mergeCarouselRecentContentHistory,
   type CarouselRecentContentSummaryInput,
 } from "./carousel-llm-slide-plan.js";
-import type { PlannedCarouselSlide } from "./carousel-slide-plan.js";
+import { getPersistedCarouselSlideCopy } from "./carousel-slide-persistence.js";
 import { uploadRenderedCarouselSlide } from "./carousel-storage.js";
 
 type GenerateCarouselInput = {
@@ -156,16 +156,6 @@ function uniqueByAssetIdentity(items: CategoryImageAssetRow[]) {
   }
 
   return uniqueItems;
-}
-
-function getLegacySlideHeadline(slide: PlannedCarouselSlide) {
-  return (
-    slide.headline ??
-    slide.body ??
-    slide.listItems[0] ??
-    slide.ctaText ??
-    `Slide ${slide.slideNumber}`
-  );
 }
 
 function parseContentHistorySnapshot(
@@ -615,12 +605,13 @@ export async function generateCarousel({
         slideNumber: slide.slideNumber,
         userId: generation.user_id,
       });
+      const persistedCopy = getPersistedCarouselSlideCopy(slide);
 
       slideRows.push({
         carousel_generation_id: carouselId,
         category_image_asset_id: asset.id,
         cta_text: slide.ctaText,
-        headline: getLegacySlideHeadline(slide),
+        headline: persistedCopy.headline,
         image_direction: slide.imageDirection,
         layout_preset: slide.layoutPreset,
         rendered_s3_key: uploadedSlide.key,
@@ -628,7 +619,7 @@ export async function generateCarousel({
         slide_number: slide.slideNumber,
         slide_type: slide.slideType,
         status: "ready",
-        subtext: slide.subtext,
+        subtext: persistedCopy.subtext,
         text_position: slide.textPosition,
       });
     }

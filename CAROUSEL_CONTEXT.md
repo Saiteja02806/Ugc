@@ -2160,16 +2160,33 @@ Do not describe planned behavior as deployed behavior.
 - This change continues to use the existing authenticated
   `ugc-carousel-worker` Cloud Run service. It does not create a new Carousel AI
   worker or a parallel text-generation pipeline.
+- Replacement visual QA then exposed a separate compatibility defect before
+  the customer feed was changed. V1 body-only and takeaway slides intentionally
+  have no headline, but `carousel_slides.headline` is a legacy non-null column.
+  The worker promoted the body into that column and also persisted the same
+  body as `subtext`, so downstream edit/read flows could receive duplicate
+  visible copy even though the flattened renderer drew the sentence once.
+- Planner `llm-carousel-planner-v26-specific-fallback-copy` and the matching
+  persistence adapter are the corrective architecture. The adapter promotes
+  body-only copy into the legacy headline column but clears a normalized-equal
+  subtext. The deterministic Examples and Resources safety paths now describe
+  the saved topic and customer goal directly instead of repeating abstract
+  phrases such as `current routine` and `supporting context`. Resource evidence
+  prioritizes specific multi-word profile facts, rejects weak standalone labels
+  such as `AI` or `support`, and uses semantic similarity that permits a
+  distinct guide and checklist without admitting near-duplicate resources.
+  Regression tests cover all 15 V1 grammars, compact resource evidence,
+  repetition avoidance, and persistence-level copy deduplication.
 - Do not mutate or overwrite the rendered URLs of the affected assignment.
-  Once v24 is deployed and a replacement has completed production validation,
+  Once v26 is deployed and a replacement has completed production validation,
   retire the stale assignment and expose the new generation through the
   existing assignment/feed records.
 
 ## Next Implementation Slice
 
-Name: **Verify v24 and replace the stale production assignment**
+Name: **Verify v26 and replace the stale production assignment**
 
-1. Deploy the v24 worker image with global broad matcher `enabled`, empty
+1. Deploy the v26 worker image with global broad matcher `enabled`, empty
    canary allowlists, and category fallback disabled.
 2. Verify startup metadata, effective matcher mode, planner provenance, safe
    image selection, five rendered 1080x1350 outputs, and authenticated

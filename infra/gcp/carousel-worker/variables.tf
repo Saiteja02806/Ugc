@@ -121,7 +121,7 @@ variable "gcp_storage_public_base_url" {
 variable "carousel_broad_matcher_mode" {
   description = "Carousel broad matcher mode used by the GCP worker."
   type        = string
-  default     = "dry-run"
+  default     = "enabled"
 }
 
 variable "carousel_broad_matcher_canary_business_profile_ids" {

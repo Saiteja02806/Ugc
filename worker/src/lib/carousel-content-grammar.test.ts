@@ -216,6 +216,95 @@ test("resources fallback treats AI as meaningful copy in repetition checks", asy
   }
 });
 
+test("examples fallback replaces repeated AI copy with a fresh format-aware story", async () => {
+  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
+
+  try {
+    const nutritionAnalysis: WebsiteBusinessAnalysis = {
+      brandTone: "supportive and practical",
+      businessName: "Calorie Fit",
+      carouselAngles: ["Speed up meal logging", "Understand your nutrition"],
+      categories: ["Nutrition Tracking"],
+      category: "fitness health",
+      ctaIdeas: ["Join the waitlist"],
+      mainProblem: "Logging meals can be tedious",
+      mainPromise: "Fast meal logging with access to nutrition experts",
+      painPoints: [
+        "Logging meals can be tedious",
+        "Traditional calorie tracking lacks personalized guidance",
+        "Need for context in tracking",
+      ],
+      targetAudience: ["People seeking weight management"],
+      valueProps: [
+        "AI-assisted meal logging",
+        "Personalized nutrition guidance",
+        "Clear progress insights",
+      ],
+      visualKeywords: ["AI", "nutrition", "meal logging", "support", "progress"],
+    };
+    const recentHistory = [
+      {
+        angle:
+          "Speed up meal logging with expert support for health-conscious individuals",
+        contentFormatId: "framework",
+        hook:
+          "Use this simple system to log meals faster and get expert nutrition help.",
+        hookFamilyId: "utility",
+        topic: "Speed up meal logging",
+        topicId: "topic_speed_up_meal_logging_95vb7h",
+      },
+      {
+        angle: "AI: Need for context in tracking toward Clear progress insights",
+        contentFormatId: "list",
+        hook: "AI has a less obvious pattern",
+        hookFamilyId: "surprise",
+        topic: "AI",
+        topicId: "topic_ai_9xx36n",
+      },
+    ];
+    const plan = await buildCarouselContentPlan({
+      analysis: nutritionAnalysis,
+      candidateIndex: 1,
+      contentFormatId: "examples",
+      hookFamilyId: "utility",
+      recentHistory,
+      slideCount: 5,
+    });
+
+    assert.equal(plan.source, "deterministic-fallback");
+    assert.equal(plan.contentStrategy?.contentFormatId, "examples");
+    assert.equal(plan.contentStrategy?.hookFamilyId, "utility");
+    assert.deepEqual(
+      plan.slides.map((slide) => slide.formatRole),
+      ["hook", "example_1", "example_2", "example_3", "pattern_cta"],
+    );
+    assert.equal(
+      plan.slides.some((slide) =>
+        slide.body?.includes(
+          "Busy meals make detailed logging easy to postpone until the day is already over.",
+        ),
+      ),
+      false,
+    );
+    assert.match(plan.slides[0]?.headline ?? "", /examples/i);
+    assert.deepEqual(
+      validateCarouselRecentContentRepetition(
+        plan,
+        recentHistory,
+        buildCarouselBusinessContentContext(nutritionAnalysis).topics,
+      ),
+      [],
+    );
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+    } else {
+      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
+    }
+  }
+});
+
 test("V1 repair keeps a completed takeaway CTA-free", async () => {
   const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
   process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";

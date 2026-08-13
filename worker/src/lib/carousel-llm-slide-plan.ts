@@ -24,7 +24,7 @@ import type {
 } from "./carousel-slide-plan.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v23-semantic-resource-copy";
+  "llm-carousel-planner-v24-format-aware-fallback";
 
 const DEFAULT_MODEL = "gpt-4.1-mini";
 const MAX_BODY_LENGTH = 120;
@@ -279,6 +279,7 @@ export async function buildCarouselContentPlan(
         grammarContext,
         issues: initialIssues,
         rawResponse: initialRawResponse,
+        recentHistory: input.recentHistory,
         slideCount,
       }),
       model,
@@ -1511,13 +1512,19 @@ function buildRepairMessages(params: {
   grammarContext: CarouselGrammarGenerationContext | null;
   issues: CarouselPlanValidationIssue[];
   rawResponse: string;
+  recentHistory: readonly CarouselRecentContentSummaryInput[] | undefined;
   slideCount: number;
 }) {
+  const hasRecentRepetition = params.issues.some(
+    (issue) => issue.code === "recent_repetition",
+  );
+  const recentHistory = normalizeRecentHistory(params.recentHistory);
+
   return [
     {
       role: "system" as const,
       content:
-        "You repair social carousel JSON. Preserve the supported story and schema, but rewrite weak copy. Return only repaired JSON and never invent claims.",
+        "You repair social carousel JSON. Preserve the schema, selected content format, selected hook family, and supported business evidence. When recent repetition is reported, choose a genuinely different supplied topic, problem, goal, or audience and rebuild the angle and every slide around it. Return only repaired JSON and never invent claims.",
     },
     {
       role: "user" as const,
@@ -1538,11 +1545,16 @@ function buildRepairMessages(params: {
           ? "The final slide must use slideType cta; ctaText may be null when the takeaway is complete without it."
           : "The final slide must use slideType cta and include a non-null ctaText.",
         params.grammarContext
-          ? "Preserve the exact contentStrategy IDs, contentFormatId, hookFamilyId, formatRole, slideType, configured text modes, and list-item counts. The final ctaText may be null when the takeaway is complete without it."
+          ? hasRecentRepetition
+            ? "Preserve contentFormatId, hookFamilyId, formatRole, slideType, configured text modes, and list-item counts. Change audienceId, problemId, customerGoalId, or topicId only by choosing another exact ID from businessContext. The final ctaText may be null when the takeaway is complete without it."
+            : "Preserve the exact contentStrategy IDs, contentFormatId, hookFamilyId, formatRole, slideType, configured text modes, and list-item counts. The final ctaText may be null when the takeaway is complete without it."
           : null,
         params.grammarContext
           ? "Keep one coherent progression that follows the selected format definition."
           : "Keep one clear story: hook, friction, consequence, solution, useful result or CTA.",
+        hasRecentRepetition
+          ? "The repaired hook and angle must not paraphrase any hook or angle in recentHistory. Select a different evidence combination and rewrite all five slides."
+          : null,
         "A slide describing scattered work, missed steps, delays, or other consequences must use slideType problem, never solution.",
         "Validation failures:",
         JSON.stringify(params.issues),
@@ -1560,6 +1572,8 @@ function buildRepairMessages(params: {
         params.grammarContext
           ? JSON.stringify(params.grammarContext.hookFamily)
           : null,
+        hasRecentRepetition ? "Recent Carousel history to avoid:" : null,
+        hasRecentRepetition ? JSON.stringify(recentHistory) : null,
         "Original JSON response:",
         params.rawResponse,
       ].filter((line): line is string => line !== null).join("\n"),
@@ -1906,23 +1920,82 @@ function buildFallbackPlan(
     analysis.carouselAngles?.[Math.max(0, input.candidateIndex ?? 0)]?.trim() ||
     analysis.mainPromise?.trim() ||
     "A clearer path from everyday friction to the next action";
-  const contentStrategy = grammarContext
-    ? buildFallbackContentStrategy(grammarContext, input, baseConcept)
-    : null;
-  const concept = contentStrategy?.angle ?? baseConcept;
-  const legacyFallbackSlides = buildValidatedFallbackSlides(
-    buildCarouselSlidePlan(input),
-    analysis,
-  );
-  const slides = grammarContext
-    ? applyGrammarToFallbackSlides(
-        legacyFallbackSlides,
+  let contentStrategy: ResolvedCarouselContentStrategy | null = null;
+  let concept = baseConcept;
+  let slides: PlannedCarouselSlide[];
+  let finalIssues: CarouselPlanValidationIssue[];
+
+  if (grammarContext) {
+    const slideSkeleton = buildCarouselSlidePlan(input);
+    let selectedPlan:
+      | {
+          contentStrategy: ResolvedCarouselContentStrategy;
+          issues: CarouselPlanValidationIssue[];
+          slides: PlannedCarouselSlide[];
+        }
+      | undefined;
+
+    for (const candidateStrategy of buildFallbackContentStrategies(
+      grammarContext,
+      input,
+      baseConcept,
+    )) {
+      const candidateSlides = applyGrammarToFallbackSlides(
+        slideSkeleton,
         grammarContext,
-        contentStrategy!,
-      )
-    : legacyFallbackSlides;
-  const normalizedPlan = { broadSituations, concept, contentStrategy, slides };
-  const finalIssues = validateCarouselContentPlan(normalizedPlan, analysis);
+        candidateStrategy,
+      );
+      const candidatePlan = {
+        broadSituations,
+        concept: candidateStrategy.angle,
+        contentStrategy: candidateStrategy,
+        slides: candidateSlides,
+      };
+      const issues = [
+        ...validateCarouselContentPlan(candidatePlan, analysis),
+        ...validateCarouselRecentContentRepetition(
+          candidatePlan,
+          input.recentHistory,
+          grammarContext.businessContext.topics,
+        ),
+      ];
+
+      if (issues.length === 0) {
+        selectedPlan = {
+          contentStrategy: candidateStrategy,
+          issues,
+          slides: candidateSlides,
+        };
+        break;
+      }
+
+      if (!selectedPlan || issues.length < selectedPlan.issues.length) {
+        selectedPlan = {
+          contentStrategy: candidateStrategy,
+          issues,
+          slides: candidateSlides,
+        };
+      }
+    }
+
+    if (!selectedPlan) {
+      throw new Error("Deterministic carousel fallback could not select a content strategy.");
+    }
+
+    contentStrategy = selectedPlan.contentStrategy;
+    concept = contentStrategy.angle;
+    slides = selectedPlan.slides;
+    finalIssues = selectedPlan.issues;
+  } else {
+    slides = buildValidatedFallbackSlides(
+      buildCarouselSlidePlan(input),
+      analysis,
+    );
+    finalIssues = validateCarouselContentPlan(
+      { broadSituations, concept, slides },
+      analysis,
+    );
+  }
 
   if (finalIssues.length > 0) {
     throw new Error(
@@ -2225,24 +2298,12 @@ function clampSlideCount(value: number) {
   return Math.min(Math.max(Math.trunc(value), 1), 10);
 }
 
-function buildFallbackContentStrategy(
+function buildFallbackContentStrategies(
   grammarContext: CarouselGrammarGenerationContext,
   input: CarouselContentPlanInput,
   baseConcept: string,
-): ResolvedCarouselContentStrategy {
+): ResolvedCarouselContentStrategy[] {
   const candidateIndex = Math.max(0, input.candidateIndex ?? 0);
-  const audience = selectFallbackOption(
-    grammarContext.businessContext.audiences,
-    candidateIndex,
-  );
-  const problem = selectFallbackOption(
-    grammarContext.businessContext.problems,
-    candidateIndex,
-  );
-  const customerGoal = selectFallbackOption(
-    grammarContext.businessContext.customerGoals,
-    candidateIndex,
-  );
   const recentHistory = normalizeRecentHistory(input.recentHistory);
   const unusedTopics = grammarContext.businessContext.topics.filter(
     (option) =>
@@ -2255,48 +2316,76 @@ function buildFallbackContentStrategy(
         }),
       ),
   );
-  const topic = selectFallbackOption(
+  const topics = rotateFallbackOptions(
     unusedTopics.length > 0
       ? unusedTopics
       : grammarContext.businessContext.topics,
     candidateIndex,
   );
-  const angle = buildFallbackAngle({
-    baseConcept,
-    customerGoal: customerGoal.label,
-    problem: problem.label,
-    topic: topic.label,
-  });
+  const problems = rotateFallbackOptions(
+    grammarContext.businessContext.problems,
+    candidateIndex,
+  );
+  const customerGoals = rotateFallbackOptions(
+    grammarContext.businessContext.customerGoals,
+    candidateIndex,
+  );
+  const audiences = rotateFallbackOptions(
+    grammarContext.businessContext.audiences,
+    candidateIndex,
+  );
+  const strategies: ResolvedCarouselContentStrategy[] = [];
 
-  return {
-    angle,
-    audience: audience.label,
-    audienceId: audience.id,
-    contentFormatId: grammarContext.format.id,
-    customerGoal: customerGoal.label,
-    customerGoalId: customerGoal.id,
-    hookFamilyId: grammarContext.hookFamily.id,
-    problem: problem.label,
-    problemId: problem.id,
-    topic: topic.label,
-    topicId: topic.id,
-  };
+  for (const topic of topics) {
+    for (const problem of problems) {
+      for (const customerGoal of customerGoals) {
+        for (const audience of audiences) {
+          strategies.push({
+            angle: buildFallbackAngle({
+              audience: audience.label,
+              baseConcept,
+              customerGoal: customerGoal.label,
+              formatName: grammarContext.format.name,
+              problem: problem.label,
+              topic: topic.label,
+            }),
+            audience: audience.label,
+            audienceId: audience.id,
+            contentFormatId: grammarContext.format.id,
+            customerGoal: customerGoal.label,
+            customerGoalId: customerGoal.id,
+            hookFamilyId: grammarContext.hookFamily.id,
+            problem: problem.label,
+            problemId: problem.id,
+            topic: topic.label,
+            topicId: topic.id,
+          });
+        }
+      }
+    }
+  }
+
+  return strategies;
 }
 
-function selectFallbackOption(
+function rotateFallbackOptions(
   options: readonly CarouselBusinessContentOption[],
   candidateIndex: number,
 ) {
-  return options[candidateIndex % options.length]!;
+  const offset = candidateIndex % options.length;
+
+  return [...options.slice(offset), ...options.slice(0, offset)];
 }
 
 function buildFallbackAngle(params: {
+  audience: string;
   baseConcept: string;
   customerGoal: string;
+  formatName: string;
   problem: string;
   topic: string;
 }) {
-  const specificAngle = `${params.topic}: ${params.problem} toward ${params.customerGoal}`
+  const specificAngle = `${params.formatName} about ${params.topic} for ${params.audience}: ${params.problem} toward ${params.customerGoal}`
     .replace(/\s+/g, " ")
     .trim();
 
@@ -2308,7 +2397,10 @@ function applyGrammarToFallbackSlides(
   grammarContext: CarouselGrammarGenerationContext,
   contentStrategy: ResolvedCarouselContentStrategy,
 ) {
-  const listSource = buildFallbackListItemPool(grammarContext.businessContext);
+  const listSource = buildFallbackListItemPool(
+    grammarContext.businessContext,
+    grammarContext.format.id,
+  );
 
   return slides.map((slide, index) => {
     const definition = grammarContext.format.slides[index]!;
@@ -2330,26 +2422,56 @@ function applyGrammarToFallbackSlides(
           );
         })
       : [];
-    const textMode = definition.listItemCount
+    let textMode = definition.listItemCount
       ? requestedTextMode
       : requestedTextMode === "single_statement"
         ? "single_statement"
         : requestedTextMode === "body_only"
           ? "body_only"
           : requestedTextMode;
-    const headline =
+    let headline =
       textMode === "body_only" || textMode === "single_statement"
         ? null
         : index === 0
-          ? buildFallbackHookHeadline(contentStrategy, grammarContext.hookFamily.id)
-          : slide.headline;
-    const body = definition.listItemCount ? null : slide.body;
+          ? buildFallbackHookHeadline(
+              contentStrategy,
+              grammarContext.hookFamily.id,
+              grammarContext.format.id,
+            )
+          : buildFormatAwareFallbackHeadline(
+              grammarContext.format.id,
+              index,
+              contentStrategy,
+            );
+    const body = definition.listItemCount
+      ? null
+      : buildFormatAwareFallbackBody(
+          grammarContext.format.id,
+          index,
+          contentStrategy,
+        );
+
+    if (definition.slideType === "cta") {
+      headline = null;
+    } else if (
+      headline &&
+      body &&
+      getTokenOverlap(headline, body) >= 0.6
+    ) {
+      if (definition.preferredTextModes.includes("body_only")) {
+        headline = null;
+        textMode = "body_only";
+      } else if (definition.preferredTextModes.includes("single_statement")) {
+        headline = null;
+        textMode = "single_statement";
+      }
+    }
 
     return {
       ...slide,
       ...getLayoutPreset(definition.slideType, textMode),
       body,
-      ctaText: definition.slideType === "cta" ? slide.ctaText : null,
+      ctaText: null,
       formatRole: definition.role,
       headline,
       listItems,
@@ -2360,20 +2482,338 @@ function applyGrammarToFallbackSlides(
   });
 }
 
+function buildFormatAwareFallbackHeadline(
+  formatId: CarouselContentFormatId,
+  slideIndex: number,
+  contentStrategy: ResolvedCarouselContentStrategy,
+) {
+  const topic = compactFallbackPhrase(contentStrategy.topic, 3, 24);
+  const headlines: Record<CarouselContentFormatId, string[]> = {
+    before_after: [
+      "Before and after",
+      "Before: context stays scattered",
+      "The change: connect one detail",
+      "After: review becomes simpler",
+      "Keep the useful lesson",
+    ],
+    beginner_roadmap: [
+      "A beginner roadmap",
+      "Start with one clear signal",
+      "Build the next small habit",
+      "Review before adding complexity",
+      "Keep the routine practical",
+    ],
+    breakdown: [
+      "A practical breakdown",
+      "Component one: the friction",
+      "Component two: the context",
+      "Component three: the goal",
+      "Use the full picture",
+    ],
+    cheat_sheet: [
+      "A quick reference",
+      "Reference section one",
+      "Reference section two",
+      "Reference section three",
+      "Keep this guide nearby",
+    ],
+    checklist: [
+      "A practical checklist",
+      "Checks one and two",
+      "Checks three and four",
+      "Checks five and six",
+      "Review before moving forward",
+    ],
+    comparison: [
+      "Compare two approaches",
+      "Option one: separate details",
+      "Option two: connected context",
+      "Focus on the difference",
+      "Choose for the routine",
+    ],
+    examples: [
+      "Three useful examples",
+      "Example one: find the friction",
+      "Example two: preserve context",
+      "Example three: review progress",
+      "Use the clearest example",
+    ],
+    framework: [
+      "A simple framework",
+      "Part one: name the friction",
+      "Part two: preserve context",
+      "Part three: check progress",
+      "Bring the parts together",
+    ],
+    how_to: [
+      "A practical process",
+      "Step one: mark the friction",
+      "Step two: organize context",
+      "Step three: compare progress",
+      "Repeat the useful steps",
+    ],
+    list: [
+      "Six useful ideas",
+      "Ideas one and two",
+      "Ideas three and four",
+      "Ideas five and six",
+      "Put one idea into practice",
+    ],
+    mistakes: [
+      "Three mistakes to avoid",
+      "Mistake one: changing too early",
+      "Mistake two: losing context",
+      "Mistake three: skipping review",
+      "Replace mistakes with checks",
+    ],
+    myth_fact: [
+      "Three myths worth checking",
+      "Myth one: more always helps",
+      "Myth two: routines stay fixed",
+      "Myth three: review can wait",
+      "Keep the careful takeaway",
+    ],
+    problem_solution: [
+      "A problem worth solving",
+      "Why the friction appears",
+      "What makes it continue",
+      "Change one useful mechanism",
+      "Take one practical action",
+    ],
+    resources: [
+      "Six useful resources",
+      "Resources one and two",
+      "Resources three and four",
+      "Resources five and six",
+      "Use the right reference",
+    ],
+    swap: [
+      "Three practical swaps",
+      "Swap one: capture sooner",
+      "Swap two: connect context",
+      "Swap three: review one change",
+      "Keep the useful swap",
+    ],
+  };
+  const headline = headlines[formatId][slideIndex] ?? `A useful ${topic} note`;
+
+  return headline
+    .split(/\s+/)
+    .slice(0, MAX_HEADLINE_WORDS)
+    .join(" ")
+    .slice(0, MAX_HEADLINE_LENGTH);
+}
+
+function buildFormatAwareFallbackBody(
+  formatId: CarouselContentFormatId,
+  slideIndex: number,
+  contentStrategy: ResolvedCarouselContentStrategy,
+) {
+  const topic = lowerFirst(
+    compactFallbackPhrase(contentStrategy.topic, 3, 28),
+  );
+  const problem = formatFallbackProblemPhrase(
+    compactFallbackPhrase(contentStrategy.problem, 4, 34),
+  );
+  const audience = lowerFirst(
+    compactFallbackPhrase(contentStrategy.audience, 4, 34),
+  );
+  const bodies: Record<CarouselContentFormatId, string[]> = {
+    before_after: [
+      `Follow how ${topic} can connect a recurring problem with the selected goal.`,
+      `Before the change, the routine contains ${problem} and leaves useful context scattered.`,
+      `The meaningful change connects one ${topic} detail with the next review.`,
+      `Afterward, the routine supports the selected goal with fewer disconnected details.`,
+      `Keep the change that makes the next review easier to understand.`,
+    ],
+    beginner_roadmap: [
+      `Use this beginner roadmap to move from current friction toward the selected goal.`,
+      `Start by marking where the routine reflects ${problem}.`,
+      `Next, keep one useful ${topic} detail beside the related entry.`,
+      `Then, compare the updated routine with the selected goal before adding more steps.`,
+      `Continue with the smallest habit that keeps the review practical.`,
+    ],
+    breakdown: [
+      `Break down ${topic} into the parts connecting current friction with the selected goal.`,
+      `The first component is the routine point connected to ${problem}.`,
+      `The second component keeps relevant ${topic} context available for review.`,
+      `The third component compares current details with the selected goal before adjustment.`,
+      `Use all three components together when reviewing the next routine.`,
+    ],
+    cheat_sheet: [
+      `Use this quick reference to review ${topic} while working toward the selected goal.`,
+      `The first section keeps the most useful ${topic} references together.`,
+      `The second section links current context with the selected goal for later review.`,
+      `The third section records one decision before the routine changes again.`,
+      `Keep the reference nearby and use only the section you need.`,
+    ],
+    checklist: [
+      `Verify six practical details before the routine moves to another decision.`,
+      `Review the first two checks before changing any part of the routine.`,
+      `Use the middle checks to connect current context with the selected goal.`,
+      `Finish with the final checks before choosing the next adjustment.`,
+      `Repeat the checklist whenever the current context becomes difficult to review.`,
+    ],
+    comparison: [
+      `Use the differences to choose a suitable approach for the current context.`,
+      `A separate approach keeps each detail isolated until a later review.`,
+      `A connected approach keeps related ${topic} context in the same review.`,
+      `The useful difference is how each approach responds when the routine reflects ${problem}.`,
+      `Choose the approach that fits ${audience} and the current routine.`,
+    ],
+    examples: [
+      `Review three practical situations before choosing the next adjustment.`,
+      `First, notice where the routine is affected by ${problem}.`,
+      `Next, keep useful ${topic} context beside the detail being reviewed.`,
+      `Finally, compare each saved detail with the selected goal before adjusting the routine.`,
+      `Choose the example that supports the selected goal within the current routine.`,
+    ],
+    framework: [
+      `Use this framework to organize current friction around a practical ${topic} review.`,
+      `Part one names where the routine begins to reflect ${problem}.`,
+      `Part two keeps the relevant ${topic} context beside each decision.`,
+      `Part three compares the current result with the selected goal before adjustment.`,
+      `Use the three parts together whenever the routine needs another review.`,
+    ],
+    how_to: [
+      `Use this short process to move from current friction toward the selected goal.`,
+      `Start by marking where the routine reflects ${problem}.`,
+      `Next, organize the details that matter most for ${topic}.`,
+      `Then, compare the updated routine with the selected goal before continuing.`,
+      `Repeat these steps whenever the routine becomes difficult to review.`,
+    ],
+    list: [
+      `Each idea links a saved business detail with one practical next action.`,
+      `The first ideas identify useful context before the routine changes again.`,
+      `The middle ideas connect current details with the next review.`,
+      `The final ideas keep one practical adjustment visible for later.`,
+      `Choose one idea that fits ${audience} and review it next.`,
+    ],
+    mistakes: [
+      `Avoid three patterns that allow ${problem} to remain in the routine.`,
+      `Changing the routine before naming the friction can hide useful context.`,
+      `Collecting details without connecting them to ${topic} makes review harder.`,
+      `Measuring progress without checking the selected goal can weaken the next decision.`,
+      `Replace each mistake with one small check before the next action.`,
+    ],
+    myth_fact: [
+      `Question three assumptions about ${topic} before changing the current routine.`,
+      `Relevant context matters more than collecting extra detail without a purpose.`,
+      `Changing circumstances can affect how the routine reflects ${problem} each day.`,
+      `A timely review can connect current details with the selected goal before adjustment.`,
+      `Keep the explanation that matches the current evidence and routine.`,
+    ],
+    problem_solution: [
+      `The current friction can make the next ${topic} decision difficult to review.`,
+      `The problem grows when useful context remains separate from each decision.`,
+      `Disconnected details make it harder to compare the routine with the selected goal.`,
+      `Connect one relevant ${topic} detail with the decision it affects.`,
+      `Start with the smallest change that makes the next review clearer.`,
+    ],
+    resources: [
+      `Keep this collection nearby when a business question needs supporting context.`,
+      `Start with the references that match the current question or routine.`,
+      `Use the middle references to connect details with the next review.`,
+      `Keep the final references available for later decisions and adjustments.`,
+      `Choose the reference that matches the current question before continuing.`,
+    ],
+    swap: [
+      `Try three practical swaps when the routine is slowed by ${problem}.`,
+      `Swap delayed notes for one immediate detail connected to ${topic}.`,
+      `Swap separate reminders for one review tied directly to the selected goal.`,
+      `Swap broad changes for one adjustment that can be inspected later.`,
+      `Keep the swap that makes the next review easier to understand.`,
+    ],
+  };
+
+  return bodies[formatId][slideIndex] ??
+    `Use ${topic} to connect the current context with the selected goal before continuing.`;
+}
+
+function compactFallbackPhrase(value: string, maxWords: number, maxLength: number) {
+  const danglingWords = new Set([
+    "a",
+    "an",
+    "and",
+    "at",
+    "by",
+    "for",
+    "from",
+    "in",
+    "of",
+    "on",
+    "or",
+    "the",
+    "to",
+    "with",
+  ]);
+  const words = value
+    .trim()
+    .replace(/[.!?,;:]+$/g, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, maxWords);
+
+  while (
+    words.length > 1 &&
+    (words.join(" ").length > maxLength ||
+      danglingWords.has(words.at(-1)!.replace(/[,;:]+$/g, "").toLowerCase()))
+  ) {
+    words.pop();
+  }
+
+  return words.join(" ").replace(/[,;:]+$/g, "") || "the current topic";
+}
+
+function lowerFirst(value: string) {
+  if (/^[A-Z]{2,}(?:\b|-)/.test(value)) {
+    return value;
+  }
+
+  return value.charAt(0).toLowerCase() + value.slice(1);
+}
+
+function formatFallbackProblemPhrase(value: string) {
+  const normalized = lowerFirst(value);
+
+  if (/^(?:absence|challenge|difficulty|lack|need)\b/i.test(normalized)) {
+    return `the ${normalized}`;
+  }
+
+  return normalized;
+}
+
 function buildFallbackListItemPool(
   businessContext: CarouselBusinessContentContext,
+  formatId: CarouselContentFormatId,
 ) {
+  const guideLabel =
+    formatId === "resources"
+      ? "guide"
+      : formatId === "checklist"
+        ? "check"
+        : formatId === "cheat_sheet"
+          ? "reference"
+          : "idea";
+  const goalLabel =
+    formatId === "resources"
+      ? "checklist"
+      : formatId === "checklist"
+        ? "check"
+        : formatId === "cheat_sheet"
+          ? "prompt"
+          : "action";
   const evidenceGroups = [
     businessContext.topics.map((option) =>
       formatFallbackResourceLabel({
         label: option.label,
-        type: "guide",
+        type: guideLabel,
       }),
     ),
     businessContext.customerGoals.map((option) =>
       formatFallbackResourceLabel({
         label: option.label,
-        type: "checklist",
+        type: goalLabel,
       }),
     ),
   ];
@@ -2421,11 +2861,17 @@ function buildFallbackListItemPool(
 
 function formatFallbackResourceLabel(params: {
   label: string;
-  type: "checklist" | "guide";
+  type: "action" | "check" | "checklist" | "guide" | "idea" | "prompt" | "reference";
 }) {
-  const prefix = params.type === "guide"
-    ? "Guide"
-    : "Checklist";
+  const prefix = {
+    action: "Action",
+    check: "Check",
+    checklist: "Checklist",
+    guide: "Guide",
+    idea: "Idea",
+    prompt: "Review prompt",
+    reference: "Reference",
+  }[params.type];
   const danglingWords = new Set([
     "a",
     "an",
@@ -2446,7 +2892,8 @@ function formatFallbackResourceLabel(params: {
     "were",
     "with",
   ]);
-  const maxEvidenceWords = params.type === "checklist" ? 3 : 4;
+  const maxEvidenceWords =
+    params.type === "checklist" || params.type === "check" ? 3 : 4;
   const words = params.label
     .trim()
     .replace(/[.!?]+$/g, "")
@@ -2470,22 +2917,31 @@ function formatFallbackResourceLabel(params: {
 function buildFallbackHookHeadline(
   contentStrategy: ResolvedCarouselContentStrategy,
   hookFamilyId: CarouselHookFamilyId,
+  formatId: CarouselContentFormatId,
 ) {
-  const topic = contentStrategy.topic
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 4)
-    .join(" ");
-  const candidate =
-    hookFamilyId === "question" || hookFamilyId === "comparison"
+  const topic = compactFallbackPhrase(contentStrategy.topic, 3, 26);
+  const problem = compactFallbackPhrase(contentStrategy.problem, 3, 26);
+  const formatCandidates: Record<CarouselContentFormatId, string> = {
+    before_after: `Before and after ${topic}`,
+    beginner_roadmap: `A beginner roadmap for ${topic}`,
+    breakdown: `A practical ${topic} breakdown`,
+    cheat_sheet: `${topic} quick reference guide`,
+    checklist: `${topic} review checklist`,
+    comparison: `Compare two ${topic} approaches`,
+    examples: `Three ${topic} examples to review`,
+    framework: `A simple ${topic} framework`,
+    how_to: `How to approach ${topic} clearly`,
+    list: `Six useful ${topic} ideas`,
+    mistakes: `Three ${topic} mistakes to avoid`,
+    myth_fact: `${topic}: three myths worth checking`,
+    problem_solution: `Understanding ${problem}`,
+    resources: `Six ${topic} resources to save`,
+    swap: `Three practical ${topic} swaps`,
+  };
+  const candidate = formatCandidates[formatId] ||
+    (hookFamilyId === "question" || hookFamilyId === "comparison"
       ? `What makes ${topic} work better?`
-      : hookFamilyId === "beginner"
-        ? `Start with these ${topic} basics`
-        : hookFamilyId === "mistake"
-          ? `Avoid these common ${topic} mistakes`
-          : hookFamilyId === "surprise" || hookFamilyId === "contrarian"
-            ? `${topic} has a less obvious pattern`
-            : `A practical guide to ${topic}`;
+      : `A useful ${topic} starting point`);
 
   return candidate.split(/\s+/).slice(0, MAX_HEADLINE_WORDS).join(" ").slice(0, MAX_HEADLINE_LENGTH);
 }

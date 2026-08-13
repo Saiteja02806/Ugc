@@ -2120,19 +2120,51 @@ Do not describe planned behavior as deployed behavior.
   `us-central1` with `QUEUE_PROVIDER=gcp`. The public production root and
   `/status` route both returned HTTP 200 after their canonical-domain redirect.
 
+## 2026-08-13 Repetition Repair and Broad-Matcher Release
+
+- A production assignment created after the v23 rollout proved that the new
+  selector and renderer were live, but its visible result still resembled the
+  old architecture. The LLM repair repeated a recent angle and the repair
+  prompt did not include the recent-history evidence. Strict validation then
+  rejected the repair and restored the older generic deterministic copy. At
+  the same time, the broad matcher ran only in `dry-run`, so the renderer used
+  the legacy image selection even though v3 proposed reviewed local assets.
+- Planner `llm-carousel-planner-v24-format-aware-fallback` supplies normalized
+  recent history to the repair request, permits a repair to select a different
+  saved audience/problem/goal/topic combination when repetition caused the
+  failure, and requires all five slides to be rebuilt rather than paraphrasing
+  the rejected story.
+- The grammar-aware deterministic safety path now rotates through saved,
+  evidence-backed strategy combinations, rejects recent topic/hook/angle
+  repetition, and writes distinct five-slide copy for the reserved content
+  format. The July generic copy remains only for legacy/manual inputs that do
+  not carry a reserved V1 format and compatible hook family.
+- Global `CAROUSEL_BROAD_MATCHER_MODE=enabled` is now the release decision.
+  Object-only/no-human review, approved-asset status, per-generation duplicate
+  prevention, and disabled category fallback remain mandatory. The canary
+  allowlists stay empty because global enabled mode does not need them.
+- This change continues to use the existing authenticated
+  `ugc-carousel-worker` Cloud Run service. It does not create a new Carousel AI
+  worker or a parallel text-generation pipeline.
+- Do not mutate or overwrite the rendered URLs of the affected assignment.
+  Once v24 is deployed and a replacement has completed production validation,
+  retire the stale assignment and expose the new generation through the
+  existing assignment/feed records.
+
 ## Next Implementation Slice
 
-Name: **Decide the broad-matcher rollout cohort**
+Name: **Verify v24 and replace the stale production assignment**
 
-1. Keep `CAROUSEL_BROAD_MATCHER_MODE=dry-run` and
-   `CAROUSEL_DISABLE_CATEGORY_FALLBACK=true` until a rollout cohort is
-   explicitly approved.
-2. Review broad-versus-legacy shadow telemetry across representative business
-   profiles and content grammars, not only the completed Fitness Health canary.
-3. If a beta is approved, use an explicit profile/user allowlist first and
-   verify complete production outputs before expanding it.
-4. Treat global `enabled` mode as a separate product and deployment decision;
-   do not infer it from the successful scoped canary.
+1. Deploy the v24 worker image with global broad matcher `enabled`, empty
+   canary allowlists, and category fallback disabled.
+2. Verify startup metadata, effective matcher mode, planner provenance, safe
+   image selection, five rendered 1080x1350 outputs, and authenticated
+   production presentation.
+3. Create a new immutable generation for the affected profile. Only after it
+   passes those checks, retire the stale assignment and expose the replacement
+   through the existing feed flow.
+4. Record the final worker revision, image digest, job/generation IDs, and
+   production evidence in this document.
 
 ## Working Rules
 

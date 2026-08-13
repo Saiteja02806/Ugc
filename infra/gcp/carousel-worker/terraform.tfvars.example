@@ -30,7 +30,7 @@ storage_provider            = "gcp"
 gcp_storage_bucket          = "ugcsaas-media"
 gcp_storage_public_base_url = "https://storage.googleapis.com/ugcsaas-media"
 
-carousel_broad_matcher_mode         = "dry-run"
+carousel_broad_matcher_mode         = "enabled"
 carousel_disable_category_fallback  = true
 worker_version                      = "worker-gcp"
 worker_git_commit                   = "unknown"

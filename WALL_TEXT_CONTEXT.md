@@ -1,6 +1,6 @@
 # Wall-of-text Context
 
-Last updated: 2026-08-09
+Last updated: 2026-08-12
 
 ## Product Definition
 
@@ -10,7 +10,8 @@ Last updated: 2026-08-09
   be applied to Wall content.
 - Wall copy is stored as 2-3 semantic segments (`lead`, optional `support`, and
   `closing`) plus one derived `fullText` value. These roles preserve the
-  message beats and small visual gaps; they are not Carousel
+  message beats in the backend, while every visible line uses one consistent
+  baseline rhythm with no extra gap between segments. They are not Carousel
   headline/body/CTA fields and do not receive different font treatments.
 - The six-second default targets 18-21 words. The hard range is 16-24 words,
   with 4-7 rendered lines, 5-6 lines preferred, and six lines best when
@@ -165,9 +166,8 @@ and skipped all 64 existing rows without creating duplicates.
    persistence fails. Decisions are immutable, so the old customer Undo action
    is no longer part of this flow.
 10. An accepted Wall assignment is marked `selected`, then the focused view
-    shows the native background, the complete overlay copy,
-    Replay, Back, Save to Content, and Schedule. It never shows or requests a
-    demo video.
+    shows the native background, the complete overlay copy, Back, Save to
+    Content, and Schedule. It never shows or requests a demo video.
 11. Save to Content claims the already-selected assignment and queues one
     idempotent standalone `render_wall_text_video` job.
 12. The worker applies the analyzed placement and the duration-aware
@@ -180,12 +180,12 @@ The Wall card uses the public GCP video URL and renders the exact semantic
 lines without truncating or browser rewrapping. Preview and export use pinned
 Inter Bold 700 at 52px for up to 18 words/5 lines, 48px for 19-21 words/6
 lines, 46px for 22-23 words, and 44px for 24 words. The line-height ratio is
-1.08, tracking is -0.2px, section gaps are 18px, alignment is centered, and
+1.08 for every line, tracking is -0.2px, there is no additional segment gap,
+alignment is centered, and
 the 620px text block is horizontally centered. Generated copy defaults to white
 text with a 4px black outline and a subtle shadow; there is no scrim,
 background box, gradient, highlighted word, or mixed font weight. The active
-card starts from time zero and has no loop behavior. Replay is an explicit
-user action; it does not change the no-loop product rule.
+card starts from time zero and has no loop behavior.
 
 Existing v1-v4 payloads and v1 placement metadata can still be read for
 migration compatibility, but stale copy is regenerated in place as
@@ -205,7 +205,8 @@ assignments are preserved.
   The measured 44/46/48/52px font size is stored with the edit instead of
   retaining the pre-edit font size.
 - The Wall edit preview uses the export renderer's Inter Bold face, 620px text
-  width, 52/48 line-height ratio, 18px segment gap, 4px outline, shadow, and
+  width, 52/48 line-height ratio on every line with no extra segment gap, 4px
+  outline, shadow, and
   persisted safe area. Pointer, touch, and keyboard dragging clamp the whole
   text box to that safe area.
 - Manual Hook and Wall edits may select one color from the shared, renderer-safe

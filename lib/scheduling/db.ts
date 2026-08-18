@@ -21,6 +21,18 @@ const LIBRARY_ITEMS_TABLE = "library_items";
 
 export type ScheduleCancelOutcome = "cancelled" | "not_found" | "too_late";
 
+/**
+ * A published Instagram media reference saved by the scheduling pipeline.
+ * This is deliberately limited to non-sensitive identifiers that can be used
+ * to reconcile the Analytics media list with posts UGC Pilot actually made.
+ */
+export type PublishedInstagramPostReference = {
+  connectionId: string;
+  platformPostId: string;
+  platformPostUrl: string | null;
+  publishedAt: string;
+};
+
 type Json =
   | boolean
   | null
@@ -262,6 +274,47 @@ export async function listScheduledPostsForUser(params: {
   }
 
   return attachTargets(data ?? []);
+}
+
+export async function listPublishedInstagramPostReferencesForUser(params: {
+  from: string;
+  to: string;
+  userId: string;
+}): Promise<PublishedInstagramPostReference[]> {
+  const { data, error } = await getSchedulingSupabaseClient()
+    .from(SCHEDULED_POST_TARGETS_TABLE)
+    .select(
+      "social_connection_id,platform_post_id,platform_post_url,published_at",
+    )
+    .eq("user_id", params.userId)
+    .eq("platform", "instagram")
+    .eq("status", "published")
+    .not("platform_post_id", "is", null)
+    .gte("published_at", params.from)
+    .lte("published_at", params.to)
+    .order("published_at", { ascending: false })
+    .limit(500);
+
+  if (error) {
+    throw new Error(
+      `Could not load published Instagram post references: ${error.message}`,
+    );
+  }
+
+  return (data ?? []).flatMap((target) => {
+    const platformPostId = target.platform_post_id?.trim();
+
+    if (!platformPostId || !target.published_at) {
+      return [];
+    }
+
+    return [{
+      connectionId: target.social_connection_id,
+      platformPostId,
+      platformPostUrl: target.platform_post_url,
+      publishedAt: target.published_at,
+    }];
+  });
 }
 
 export async function getScheduledPostForUser(params: {

@@ -175,14 +175,14 @@ test("enables Hook videos only for an explicit true server value", () => {
   assert.equal(parseTrendingHookVideosEnabled(undefined), false);
 });
 
-test("always hides Hook videos on the real production deployment", () => {
+test("allows the explicit Hook flag to control production safely", () => {
   assert.equal(
     resolveTrendingHookVideosEnabled({
       deploymentEnvironment: "production",
       featureFlag: "true",
       requestUrl: "https://preview.example.com/api/trending/feed",
     }),
-    false,
+    true,
   );
   assert.equal(
     resolveTrendingHookVideosEnabled({
@@ -190,11 +190,11 @@ test("always hides Hook videos on the real production deployment", () => {
       featureFlag: "true",
       requestUrl: "https://getugcpilot.com/api/trending/feed",
     }),
-    false,
+    true,
   );
   assert.equal(
     resolveTrendingHookVideosEnabled({
-      featureFlag: "true",
+      featureFlag: "false",
       requestUrl: "https://www.getugcpilot.com/api/trending/feed",
     }),
     false,

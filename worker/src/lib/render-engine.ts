@@ -185,6 +185,7 @@ export type RenderWallTextVideoOutput = {
 
 const OUTPUT_CONTENT_TYPE = "video/mp4";
 const MAX_FFMPEG_LOG_LENGTH = 8_000;
+const TRENDING_LIBRARY_AUDIO_RENDER_GAIN = 0.45;
 const renderDimensions = EDIT_OVERLAY_OUTPUT_DIMENSIONS;
 
 export async function renderEditedVideoToStorage(
@@ -614,6 +615,7 @@ function buildWallTextAudioFilter(
     ...(padFilter ? [padFilter] : []),
     `atrim=duration=${duration}`,
     ...(fadeFilter ? [fadeFilter.slice(1)] : []),
+    `volume=${TRENDING_LIBRARY_AUDIO_RENDER_GAIN}`,
     "asetpts=PTS-STARTPTS[wall_audio]",
   ].join(",");
 }
@@ -941,6 +943,9 @@ export function buildScheduleCombinationSegmentArgs({
       : hasAudio
         ? "0:a:0"
         : `${auxiliaryAudioInputIndex}:a:0`,
+    ...(useLockedHookAudio
+      ? ["-filter:a", `volume=${TRENDING_LIBRARY_AUDIO_RENDER_GAIN}`]
+      : []),
     "-c:v",
     "libx264",
     "-preset",

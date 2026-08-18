@@ -122,6 +122,21 @@ test("published target reconciliation does not reference an undefined post alias
   assert.doesNotMatch(publishedTargetUpdate, /\bpost\./);
 });
 
+test("analytics reconciliation only reads the owner's published Instagram posts", () => {
+  const publishedReferences = getSection(
+    schedulingDb,
+    "export async function listPublishedInstagramPostReferencesForUser",
+    "export async function getScheduledPostForUser",
+  );
+
+  assert.match(publishedReferences, /\.eq\("user_id", params\.userId\)/);
+  assert.match(publishedReferences, /\.eq\("platform", "instagram"\)/);
+  assert.match(publishedReferences, /\.eq\("status", "published"\)/);
+  assert.match(publishedReferences, /\.not\("platform_post_id", "is", null\)/);
+  assert.match(publishedReferences, /\.gte\("published_at", params\.from\)/);
+  assert.match(publishedReferences, /\.lte\("published_at", params\.to\)/);
+});
+
 test("TikTok refresh is leased and atomically rotates every token field", () => {
   const claimFunction = getSection(
     tiktokHardeningMigration,
@@ -508,7 +523,6 @@ test("scheduling requires a selected account before any draft is stored", () => 
     /save a video draft without publishing/i,
   );
 });
-
 test("social scheduling uses one five-minute rule without quarter-hour rounding", () => {
   assert.match(
     scheduleTime,
@@ -625,7 +639,6 @@ test("List view opens a compact, date-selectable daily agenda", () => {
   assert.match(listExperience, /getScheduleDayListStatusVariant\(draft\.status\)/);
   assert.doesNotMatch(listExperience, /ScheduleDraftMediaThumb/);
 });
-
 test("calendar and Day view include all posts, with upcoming posts first", () => {
   const calendarSelection = getSection(
     schedulingWorkspace,

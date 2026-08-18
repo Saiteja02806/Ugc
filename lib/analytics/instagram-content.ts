@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   instagramMediaInsightMetrics,
+  mergeInstagramContentItems,
   mergeInstagramContentMetrics,
   normalizeInstagramMedia,
   normalizeInstagramMediaInsights,
@@ -11,6 +12,10 @@ import {
 } from "@/lib/analytics/instagram-content-insights";
 import type { InstagramInsightsRangeDays } from "@/lib/analytics/instagram";
 import { getUniqueInstagramConnections } from "@/lib/analytics/instagram-insights";
+import {
+  listPublishedInstagramPostReferencesForUser,
+  type PublishedInstagramPostReference,
+} from "@/lib/scheduling/db";
 import { hasInstagramAnalyticsScope } from "@/lib/social/instagram-oauth-config";
 import {
   getSocialConnectionCredentialForOwner,
@@ -42,6 +47,10 @@ export async function listInstagramContentInsightsForOwner(params: {
 }): Promise<InstagramContentAccount[]> {
   const connections = await listSocialConnections(params.userId);
   const instagramConnections = getUniqueInstagramConnections(connections);
+  const publishedPostReferences = await getPublishedInstagramPostReferences({
+    days: params.days,
+    userId: params.userId,
+  });
   const accounts: InstagramContentAccount[] = [];
 
   for (const connection of instagramConnections) {
@@ -49,6 +58,9 @@ export async function listInstagramContentInsightsForOwner(params: {
       await loadInstagramContentAccount({
         connection,
         days: params.days,
+        publishedPostReferences: publishedPostReferences.filter(
+          (reference) => reference.connectionId === connection.id,
+        ),
         userId: params.userId,
       }),
     );
@@ -60,6 +72,7 @@ export async function listInstagramContentInsightsForOwner(params: {
 async function loadInstagramContentAccount(params: {
   connection: SocialConnection;
   days: InstagramInsightsRangeDays;
+  publishedPostReferences: PublishedInstagramPostReference[];
   userId: string;
 }): Promise<InstagramContentAccount> {
   const baseAccount = {
@@ -123,7 +136,7 @@ async function loadInstagramContentAccount(params: {
   }
 
   try {
-    const items = await requestInstagramMedia({
+    const feedItems = await requestInstagramMedia({
       accessToken: credential.accessToken,
       accountId: credential.connection.platformAccountId,
       accountName: credential.connection.platformAccountName,
@@ -131,8 +144,16 @@ async function loadInstagramContentAccount(params: {
       connectionId: credential.connection.id,
       days: params.days,
     });
+    const reconciledMedia = await reconcilePublishedInstagramMedia({
+      accessToken: credential.accessToken,
+      accountName: credential.connection.platformAccountName,
+      accountUsername: credential.connection.platformAccountUsername,
+      connectionId: credential.connection.id,
+      feedItems,
+      publishedPostReferences: params.publishedPostReferences,
+    });
     const itemsWithInsights = await mapWithConcurrency(
-      items,
+      reconciledMedia,
       mediaInsightConcurrency,
       async (item) => {
         try {
@@ -236,6 +257,88 @@ async function requestInstagramMedia(params: {
   return items.sort(
     (left, right) =>
       Date.parse(right.publishedAt) - Date.parse(left.publishedAt),
+  );
+}
+
+/**
+ * Meta's account media feed can lag behind a post that was published through
+ * UGC Pilot. Read the saved, non-sensitive media IDs and ask Meta for only the
+ * missing posts. A saved database reference is not enough proof that a post is
+ * still live: if Meta cannot return it, Analytics must not invent an empty row.
+ */
+async function reconcilePublishedInstagramMedia(params: {
+  accessToken: string;
+  accountName: string | null;
+  accountUsername: string | null;
+  connectionId: string;
+  feedItems: InstagramContentItem[];
+  publishedPostReferences: PublishedInstagramPostReference[];
+}): Promise<InstagramContentItem[]> {
+  const feedIds = new Set(params.feedItems.map((item) => item.id));
+  const missingReferences = Array.from(
+    new Map(
+      params.publishedPostReferences
+        .filter((reference) => !feedIds.has(reference.platformPostId))
+        .map((reference) => [reference.platformPostId, reference]),
+    ).values(),
+  );
+
+  if (missingReferences.length === 0) {
+    return params.feedItems;
+  }
+
+  const lookups = await mapWithConcurrency(
+    missingReferences,
+    mediaInsightConcurrency,
+    async (reference) => {
+      try {
+        return await requestInstagramMediaById({
+          accessToken: params.accessToken,
+          accountName: params.accountName,
+          accountUsername: params.accountUsername,
+          connectionId: params.connectionId,
+          mediaId: reference.platformPostId,
+        });
+      } catch {
+        return null;
+      }
+    },
+  );
+  const availableItems = lookups.filter(
+    (item): item is InstagramContentItem => item !== null,
+  );
+
+  return mergeInstagramContentItems(params.feedItems, availableItems);
+}
+
+async function requestInstagramMediaById(params: {
+  accessToken: string;
+  accountName: string | null;
+  accountUsername: string | null;
+  connectionId: string;
+  mediaId: string;
+}) {
+  const url = buildInstagramGraphUrl(
+    `/${encodeURIComponent(params.mediaId)}`,
+  );
+
+  url.searchParams.set("fields", instagramMediaFields.join(","));
+
+  const payload = await requestInstagramGraph({
+    accessToken: params.accessToken,
+    url,
+    userMessage: "Instagram post details could not load right now.",
+  });
+
+  return (
+    normalizeInstagramMedia(
+      { data: [payload] },
+      {
+        accountName: params.accountName,
+        accountUsername: params.accountUsername,
+        connectionId: params.connectionId,
+      },
+    )[0] ?? null
   );
 }
 
@@ -415,6 +518,25 @@ function buildInstagramGraphUrl(path: string) {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
 
   return new URL(`${version ? `/${version}` : ""}${normalizedPath}`, baseUrl);
+}
+
+async function getPublishedInstagramPostReferences(params: {
+  days: InstagramInsightsRangeDays;
+  userId: string;
+}) {
+  const since = getInstagramContentSince(params.days);
+
+  try {
+    return await listPublishedInstagramPostReferencesForUser({
+      from: since.toISOString(),
+      to: new Date().toISOString(),
+      userId: params.userId,
+    });
+  } catch {
+    // The normal Meta feed remains useful if this optional reconciliation
+    // lookup is temporarily unavailable.
+    return [];
+  }
 }
 
 function getInstagramContentSince(days: InstagramInsightsRangeDays) {

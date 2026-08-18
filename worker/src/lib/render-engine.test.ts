@@ -82,6 +82,7 @@ test("applies Hook trim and text only to the opening segment", () => {
   assert.ok(hookArgs.includes("3.250"));
   assert.ok(hookArgs.includes("EWW.mp3"));
   assert.ok(hookArgs.includes("2:a:0"));
+  assert.ok(hookArgs.includes("volume=0.45"));
   assert.equal(demoArgs.includes("-ss"), false);
   assert.equal(demoArgs.includes("-t"), false);
   assert.equal(demoArgs.includes("-filter_complex"), false);
@@ -280,6 +281,7 @@ test("renders Wall text with the selected library audio and ignores source audio
   ]);
   assert.ok(args.includes("5.056"));
   assert.ok(args.includes("[wall_audio]"));
+  assert.ok(args.some((value) => value.includes("volume=0.45")));
   assert.equal(args.filter((value) => value === "-i").length, 3);
   assert.equal(args.filter((value) => value.endsWith(".mp4")).length, 2);
   assert.equal(args.some((value) => /demo/i.test(value)), false);

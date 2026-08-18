@@ -91,7 +91,6 @@ import {
   getWallTextFontSize,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_OUTLINE_WIDTH,
-  WALL_TEXT_SECTION_GAP,
 } from "@/lib/trending/wall-text-visual-style";
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import { cn } from "@/lib/utils";
@@ -1341,9 +1340,6 @@ function WallTextOverlayText({
           className="m-0"
           style={{
             lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR,
-            ...(segmentIndex > 0
-              ? { marginTop: `${WALL_TEXT_SECTION_GAP / 10.8}cqw` }
-              : {}),
           }}
         >
           {segment.lines.map((line, lineIndex) => (

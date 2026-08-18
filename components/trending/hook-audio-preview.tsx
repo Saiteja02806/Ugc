@@ -9,6 +9,8 @@ import {
   type RefObject,
 } from "react";
 
+import { TRENDING_LIBRARY_AUDIO_PLAYBACK_VOLUME } from "@/lib/trending/audio-level";
+
 export type HookPreviewAudio = {
   audioAssetId: string;
   audioUrl: string;
@@ -38,6 +40,8 @@ export function HookAudioPreview({
       const audioElement = audioRef.current;
       const video = videoRef.current;
       if (!audioElement || !video) return;
+
+      audioElement.volume = TRENDING_LIBRARY_AUDIO_PLAYBACK_VOLUME;
 
       const expectedTime = Math.min(
         Math.max(audio.durationSeconds - 0.001, 0),
@@ -129,12 +133,12 @@ export function HookAudioPreview({
           event.stopPropagation();
           void toggleSound();
         }}
-        className="absolute bottom-3 left-3 z-30 inline-flex size-10 items-center justify-center rounded-full border border-white/15 bg-black/72 text-white backdrop-blur-sm transition-colors hover:bg-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        className="absolute bottom-2 left-2 z-30 inline-flex size-9 items-center justify-center rounded-full border border-white/15 bg-black/72 text-white backdrop-blur-sm transition-colors hover:bg-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
       >
         {soundEnabled ? (
-          <Volume2 className="size-4" aria-hidden="true" />
+          <Volume2 className="size-3.5" aria-hidden="true" />
         ) : (
-          <VolumeX className="size-4" aria-hidden="true" />
+          <VolumeX className="size-3.5" aria-hidden="true" />
         )}
       </button>
     </>

@@ -192,10 +192,18 @@ try {
     sourceEnvelope,
   );
   const renderedRms = totalRms(renderedPcm);
+  const sourceRms = totalRms(sourcePcm);
+  const outputToSourceRmsRatio =
+    sourceRms > 0 ? renderedRms / sourceRms : Number.POSITIVE_INFINITY;
 
-  if (renderedRms < 0.0001 || waveformCorrelation < 0.55) {
+  if (
+    renderedRms < 0.0001 ||
+    waveformCorrelation < 0.55 ||
+    outputToSourceRmsRatio < 0.35 ||
+    outputToSourceRmsRatio > 0.55
+  ) {
     throw new Error(
-      `Rendered Hook audio did not match EWW strongly enough (RMS ${renderedRms.toFixed(6)}, correlation ${waveformCorrelation.toFixed(3)}).`,
+      `Rendered Hook audio did not keep the expected restrained EWW level (output RMS ${renderedRms.toFixed(6)}, source RMS ${sourceRms.toFixed(6)}, ratio ${outputToSourceRmsRatio.toFixed(3)}, correlation ${waveformCorrelation.toFixed(3)}).`,
     );
   }
 
@@ -207,7 +215,9 @@ try {
         audioFile: audio.source_file_name,
         hookTextLines: lines,
         outputPath,
+        outputToSourceRmsRatio: Number(outputToSourceRmsRatio.toFixed(3)),
         renderedRms: Number(renderedRms.toFixed(6)),
+        sourceRms: Number(sourceRms.toFixed(6)),
         testedVideoId: video.id,
         threeLineLimitSatisfied: lines.length <= 3,
         waveformCorrelation: Number(waveformCorrelation.toFixed(3)),

@@ -44,10 +44,12 @@ test("silent Hook importer activates rows only after exact stored verification",
     "await verifyStoredObjects(item)",
     uploadIndex,
   );
-  const readyIndex = importer.indexOf(
-    '.update({\n        status: "ready"',
-    verifyIndex,
-  );
+  const readyMatch = importer
+    .slice(verifyIndex)
+    .match(/\.update\(\{\r?\n\s+status: "ready"/u);
+  const readyIndex = readyMatch?.index == null
+    ? -1
+    : verifyIndex + readyMatch.index;
 
   assert.ok(processingIndex >= 0);
   assert.ok(uploadIndex > processingIndex);

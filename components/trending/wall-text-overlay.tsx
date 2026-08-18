@@ -9,7 +9,6 @@ import {
   getWallTextFontSize,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_OUTLINE_WIDTH,
-  WALL_TEXT_SECTION_GAP,
 } from "@/lib/trending/wall-text-visual-style";
 import {
   DEFAULT_TRENDING_TEXT_COLOR,
@@ -60,10 +59,6 @@ export function WallTextOverlay({
             className="m-0 whitespace-nowrap"
             style={{
               lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR,
-              marginTop:
-                segmentIndex === 0
-                  ? 0
-                  : `${WALL_TEXT_SECTION_GAP / 10.8}cqw`,
             }}
           >
             {segment.lines.map((line, lineIndex) => (

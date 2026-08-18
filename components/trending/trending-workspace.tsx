@@ -8,7 +8,6 @@ import {
   CircleAlert,
   Loader2,
   RefreshCw,
-  RotateCcw,
   Save,
   Sparkles,
   X,
@@ -2628,29 +2627,6 @@ function TrendingWallTextDeckCard({
               audio={creative.audio}
               videoRef={videoRef}
             />
-          ) : null}
-          {isActive ? (
-            <button
-              type="button"
-              data-deck-control
-              aria-label="Replay Wall-text preview"
-              title="Replay"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                event.stopPropagation();
-                const video = videoRef.current;
-
-                if (!video) {
-                  return;
-                }
-
-                video.currentTime = 0;
-                void video.play().catch(() => undefined);
-              }}
-              className="absolute bottom-2 right-2 z-10 inline-flex size-9 items-center justify-center rounded-full border border-white/15 bg-black/72 text-white transition-colors hover:bg-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
-              <RotateCcw className="size-3.5" aria-hidden="true" />
-            </button>
           ) : null}
         </div>
       </article>

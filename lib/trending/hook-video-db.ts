@@ -42,6 +42,9 @@ type HookVideoSuggestionRow = {
   influencer_video_title: string | null;
   input_context_hash: string | null;
   industry_pack_id: string | null;
+  hook_text_format_id: string | null;
+  hook_text_format_library_version: string | null;
+  hook_text_variant_id: string | null;
   opening_lines: Json | null;
   pattern_id: string | null;
   pattern_library_version: string | null;
@@ -196,7 +199,9 @@ export type TrendingHookIdeaRecord = {
   influencerVideoTitle: string;
   openingLines: string[];
   overlayFontSize: number;
-  patternId: string;
+  hookTextFormatId: string | null;
+  patternId: string | null;
+  writingFormatId: string;
   position: number;
   sourceKind: HookVideoSourceKind;
   sourceDurationSeconds: number;
@@ -327,7 +332,7 @@ export async function listActiveTrendingHookIdeas(params: {
       !isCompleteTrendingHookSuggestion(suggestion) ||
       !openingLines ||
       !overlayFontSize ||
-      !suggestion.pattern_id
+      !(suggestion.hook_text_format_id || suggestion.pattern_id)
     ) {
       return [];
     }
@@ -339,6 +344,7 @@ export async function listActiveTrendingHookIdeas(params: {
         createdAt: suggestion.created_at,
         durationSeconds: suggestion.duration_seconds,
         hookText: suggestion.text,
+        hookTextFormatId: suggestion.hook_text_format_id,
         id: suggestion.id,
         influencerId: suggestion.influencer_id,
         influencerName: suggestion.influencer_name,
@@ -347,6 +353,8 @@ export async function listActiveTrendingHookIdeas(params: {
         openingLines,
         overlayFontSize,
         patternId: suggestion.pattern_id,
+        writingFormatId:
+          suggestion.hook_text_format_id ?? suggestion.pattern_id!,
         position: assignment.position,
         sourceKind: suggestion.influencer_source,
         sourceDurationSeconds: suggestion.source_duration_seconds,
@@ -449,7 +457,11 @@ export async function getEditableTrendingHookIdea(params: {
   const openingLines = parseOpeningLines(suggestion.opening_lines);
   const overlayFontSize = parseOverlayFontSize(suggestion.visual_fit);
 
-  if (!openingLines || !overlayFontSize || !suggestion.pattern_id) {
+  if (
+    !openingLines ||
+    !overlayFontSize ||
+    !(suggestion.hook_text_format_id || suggestion.pattern_id)
+  ) {
     return null;
   }
 
@@ -459,6 +471,7 @@ export async function getEditableTrendingHookIdea(params: {
     createdAt: suggestion.created_at,
     durationSeconds: suggestion.duration_seconds,
     hookText: suggestion.text,
+    hookTextFormatId: suggestion.hook_text_format_id,
     id: suggestion.id,
     influencerId: suggestion.influencer_id,
     influencerName: suggestion.influencer_name,
@@ -467,6 +480,8 @@ export async function getEditableTrendingHookIdea(params: {
     openingLines,
     overlayFontSize,
     patternId: suggestion.pattern_id,
+    writingFormatId:
+      suggestion.hook_text_format_id ?? suggestion.pattern_id!,
     position: assignment.position,
     sourceKind: suggestion.influencer_source,
     sourceDurationSeconds: suggestion.source_duration_seconds,

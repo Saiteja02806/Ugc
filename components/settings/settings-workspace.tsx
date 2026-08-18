@@ -28,6 +28,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { InstagramAccountManager } from "@/components/settings/instagram-account-manager";
+import { CarouselAdminSettings } from "@/components/settings/carousel-admin-settings";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
@@ -234,6 +235,8 @@ export function SettingsWorkspace() {
           >
             <InstagramAccountManager />
           </SettingsSection>
+
+          <CarouselAdminSettings />
 
           <SettingsSection
             description="Review privacy information and request changes to your data."

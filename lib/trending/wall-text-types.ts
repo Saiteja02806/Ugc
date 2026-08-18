@@ -1,13 +1,24 @@
 export const WALL_TEXT_CONTENT_LAYOUT_VERSION =
+  "wall-text-overlay-v6" as const;
+export const PREVIOUS_WALL_TEXT_CONTENT_LAYOUT_VERSION =
   "wall-text-overlay-v5" as const;
 export const LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION =
   "wall-text-overlay-v4" as const;
 export const WALL_TEXT_LAYOUT_VERSION = "wall-text-layout-v4" as const;
-export const WALL_TEXT_FINAL_LAYOUT_VERSION = "wall-text-final-layout-v1" as const;
+export const WALL_TEXT_FINAL_LAYOUT_VERSION = "wall-text-final-layout-v2" as const;
+export const LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION =
+  "wall-text-final-layout-v1" as const;
 export const WALL_TEXT_GENERATOR_VERSION =
-  "business-profile-wall-text-v6" as const;
+  "business-profile-wall-text-v7" as const;
 export const LEGACY_WALL_TEXT_GENERATOR_VERSION =
+  "business-profile-wall-text-v6" as const;
+export const OLDER_WALL_TEXT_GENERATOR_VERSION =
   "business-profile-wall-text-v5" as const;
+export const WALL_TEXT_READABLE_GENERATOR_VERSIONS = [
+  OLDER_WALL_TEXT_GENERATOR_VERSION,
+  LEGACY_WALL_TEXT_GENERATOR_VERSION,
+  WALL_TEXT_GENERATOR_VERSION,
+] as const;
 
 export const LEGACY_WALL_TEXT_PATTERNS = [
   "problem_change_result",
@@ -18,7 +29,7 @@ export const LEGACY_WALL_TEXT_PATTERNS = [
   "action_benefit",
 ] as const;
 
-export const WALL_TEXT_FORMAT_IDS = [
+export const LEGACY_WALL_TEXT_FORMAT_IDS = [
   "identity_mirror",
   "recognizable_moment",
   "hidden_truth",
@@ -33,9 +44,43 @@ export const WALL_TEXT_FORMAT_IDS = [
   "progression_sequence",
 ] as const;
 
+export const WALL_TEXT_FORMAT_IDS = [
+  "hidden_alternative",
+  "manual_automatic",
+  "secret_advantage",
+  "outcome_mystery",
+  "authority_reaction",
+  "personal_obsession",
+  "numbered_curiosity",
+  "rule_checklist",
+  "hidden_cause",
+  "contrarian_opinion",
+  "niche_pov",
+  "community_question",
+  "transformation_timeframe",
+  "method_framework",
+  "emotional_reframe",
+  "personal_manifesto",
+  "relatable_situation",
+  "desire_identity_stack",
+  "old_way_regret",
+  "retrospective_lesson",
+  "self_audit",
+  "warning_alert",
+  "personal_stance",
+  "future_snapshot",
+  "metaphor_reframe",
+  "swap_upgrade_stack",
+  "niche_milestones",
+  "insider_truths",
+  "aspirational_archetype",
+  "internal_conflict",
+] as const;
+
 // Kept as a compatibility export for consumers that read legacy saved Walls.
 export const WALL_TEXT_PATTERNS = [
   ...LEGACY_WALL_TEXT_PATTERNS,
+  ...LEGACY_WALL_TEXT_FORMAT_IDS,
   ...WALL_TEXT_FORMAT_IDS,
 ] as const;
 
@@ -53,6 +98,8 @@ export const WALL_TEXT_PLACEMENT_ZONES = [
 export type LegacyWallTextPattern =
   (typeof LEGACY_WALL_TEXT_PATTERNS)[number];
 export type WallTextFormatId = (typeof WALL_TEXT_FORMAT_IDS)[number];
+export type LegacyWallTextFormatId =
+  (typeof LEGACY_WALL_TEXT_FORMAT_IDS)[number];
 export type WallTextPattern = (typeof WALL_TEXT_PATTERNS)[number];
 export type WallTextSegmentRole = (typeof WALL_TEXT_SEGMENT_ROLES)[number];
 export type WallTextPlacementZone = (typeof WALL_TEXT_PLACEMENT_ZONES)[number];
@@ -76,12 +123,17 @@ export type WallTextListContent = {
   kind: "list";
   title: string;
 };
+export type WallTextPlainContent = {
+  kind: "text";
+  text: string;
+};
 export type WallTextSourceContent =
+  | WallTextPlainContent
   | WallTextProseContent
   | WallTextListContent;
 export type WallTextLayoutBlock = {
   lines: string[];
-  role: "prose" | "title" | "item";
+  role: "item" | "prose" | "text" | "title";
 };
 export type WallTextFinalLayout = {
   blocks: WallTextLayoutBlock[];
@@ -90,7 +142,9 @@ export type WallTextFinalLayout = {
   fontWeight: 700;
   lineHeightPx: number;
   textBox: WallTextNormalizedBox;
-  version: typeof WALL_TEXT_FINAL_LAYOUT_VERSION;
+  version:
+    | typeof WALL_TEXT_FINAL_LAYOUT_VERSION
+    | typeof LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION;
 };
 export type WallTextPlacementAnalysis = {
   contrastScore: number;
@@ -103,11 +157,12 @@ export type WallTextPlacementAnalysis = {
 
 export type TrendingWallTextContent = {
   finalLayout?: WallTextFinalLayout;
-  formatId?: WallTextFormatId;
+  formatId?: WallTextPattern;
   fullText: string;
   kind: "wall_text";
   layoutVersion:
     | typeof WALL_TEXT_CONTENT_LAYOUT_VERSION
+    | typeof PREVIOUS_WALL_TEXT_CONTENT_LAYOUT_VERSION
     | typeof LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION;
   pattern: WallTextPattern;
   renderFontSize?: WallTextFontSize;

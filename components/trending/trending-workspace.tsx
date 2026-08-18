@@ -67,6 +67,8 @@ import {
 import {
   compareTrendingFeedItems,
   createCarouselTrendingFeedProvider,
+  excludeDismissedTrendingFeedItems,
+  getTrendingFeedActiveItemIndex,
   type TrendingCarouselCreative,
   type TrendingCarouselFeedItem,
   type TrendingCarouselSlide,
@@ -1053,7 +1055,9 @@ function TrendingDeck({
   const decisionLockRef = useRef(false);
   const dragStartXRef = useRef<number | null>(null);
   const dragXRef = useRef(0);
-  const [activeItemIndex, setActiveItemIndex] = useState(0);
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [optimisticallyDismissedItemIds, setOptimisticallyDismissedItemIds] =
+    useState<Set<string>>(() => new Set());
   const [actionCandidate, setActionCandidate] =
     useState<CompleteCarousel | null>(null);
   const [wallTextCandidate, setWallTextCandidate] =
@@ -1089,8 +1093,22 @@ function TrendingDeck({
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(
     null,
   );
-  const safeActiveItemIndex = Math.max(activeItemIndex, 0);
-  const activeCandidate = candidates[safeActiveItemIndex] ?? null;
+  const visibleCandidates = useMemo(
+    () =>
+      excludeDismissedTrendingFeedItems(
+        candidates,
+        optimisticallyDismissedItemIds,
+        (candidate) => candidate.item.id,
+      ),
+    [candidates, optimisticallyDismissedItemIds],
+  );
+  const activeItemIndex = getTrendingFeedActiveItemIndex(
+    visibleCandidates,
+    activeItemId,
+    (candidate) => candidate.item.id,
+  );
+  const activeCandidate = visibleCandidates[activeItemIndex] ?? null;
+
   const activeHookPreviewStatus =
     activeCandidate?.format === "hook_video"
       ? hookPreviewStatusByCreativeId[activeCandidate.item.creativeId] ??
@@ -1100,8 +1118,8 @@ function TrendingDeck({
     ? getTrendingCandidateTitle(activeCandidate)
     : null;
   const deckSlots = getTrendingDeckSlots(
-    candidates,
-    safeActiveItemIndex,
+    visibleCandidates,
+    activeItemIndex,
   );
   const handleHookPreviewStatusChange = useCallback(
     (creativeId: string, status: HookPreviewStatus) => {
@@ -1118,7 +1136,7 @@ function TrendingDeck({
       return;
     }
 
-    const nextCandidate = candidates[safeActiveItemIndex + 1];
+    const nextCandidate = visibleCandidates[activeItemIndex + 1];
     const nextSlideIndex =
       nextCandidate?.format === "carousel"
       ? Math.min(
@@ -1144,8 +1162,8 @@ function TrendingDeck({
   }, [
     activeCandidate,
     activeSlideByCarouselId,
-    candidates,
-    safeActiveItemIndex,
+    visibleCandidates,
+    activeItemIndex,
   ]);
 
   useEffect(() => {
@@ -1267,6 +1285,30 @@ function TrendingDeck({
     setExitDirection(null);
   }
 
+  function dismissCandidate(candidate: TrendingCandidate) {
+    setOptimisticallyDismissedItemIds((current) => {
+      if (current.has(candidate.item.id)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.add(candidate.item.id);
+      return next;
+    });
+  }
+
+  function restoreCandidate(candidate: TrendingCandidate) {
+    setOptimisticallyDismissedItemIds((current) => {
+      if (!current.has(candidate.item.id)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.delete(candidate.item.id);
+      return next;
+    });
+  }
+
   function advancePastActiveItem(
     direction: "left" | "right",
     onTransitionComplete: () => void,
@@ -1381,27 +1423,29 @@ function TrendingDeck({
     }
 
     const candidate = activeCandidate;
-    const candidateIndex = safeActiveItemIndex;
+    const nextCandidateId =
+      visibleCandidates[activeItemIndex + 1]?.item.id ?? null;
     const direction = decision === "accepted" ? "right" : "left";
 
     decisionLockRef.current = true;
     setPendingDecisionItemId(candidate.item.id);
     advancePastActiveItem(direction, () => {
-      setActiveItemIndex(candidateIndex + 1);
-      void commitCreativeDecision(candidate, candidateIndex, decision);
+      dismissCandidate(candidate);
+      setActiveItemId(nextCandidateId);
+      void commitCreativeDecision(candidate, decision);
     });
     return true;
   }
 
   async function commitCreativeDecision(
     candidate: TrendingCandidate,
-    candidateIndex: number,
     decision: "accepted" | "rejected",
   ) {
     try {
       await persistTrendingCreativeDecision(candidate.item, decision);
     } catch (error) {
-      setActiveItemIndex(candidateIndex);
+      restoreCandidate(candidate);
+      setActiveItemId(candidate.item.id);
       showActionNotice({
         message: getErrorMessage(
           error,
@@ -1747,10 +1791,11 @@ function TrendingDeck({
             aria-roledescription="Trending content deck"
             aria-busy={Boolean(pendingDecisionItemId)}
             tabIndex={0}
-            aria-label={`Trending content deck. Showing idea ${safeActiveItemIndex + 1} of ${candidates.length}. Press left arrow to reject or right arrow to accept this creative.`}
+            aria-label={`Trending content deck. Showing idea ${activeItemIndex + 1} of ${visibleCandidates.length}. Press left arrow to reject or right arrow to accept this creative.`}
             onKeyDown={handleDeckKeyDown}
-            className="relative isolate mx-auto mt-3 h-[442px] w-full max-w-xl overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-7"
+            className="relative isolate mx-auto mt-3 h-[482px] w-full max-w-xl overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-7"
           >
+            <TrendingFormatPill format={activeCandidate.format} />
             {[...deckSlots].reverse().map((slot) => (
               <TrendingDeckCard
                 key={slot.candidate.item.id}
@@ -1761,7 +1806,7 @@ function TrendingDeck({
                 dragX={slot.depth === 0 ? dragX : 0}
                 exitDirection={slot.depth === 0 ? exitDirection : null}
                 isDragging={slot.depth === 0 && isDragging}
-                itemCount={candidates.length}
+                itemCount={visibleCandidates.length}
                 itemIndex={slot.itemIndex}
                 onActiveSlideChange={onActiveSlideChange}
                 onHookPreviewStatusChange={handleHookPreviewStatusChange}
@@ -1811,7 +1856,7 @@ function TrendingDeck({
             onReject={() => requestCreativeDecision("rejected")}
           />
           <span className="sr-only" aria-live="polite">
-            Showing {title}, idea {safeActiveItemIndex + 1} of {candidates.length}
+            Showing {title}, idea {activeItemIndex + 1} of {visibleCandidates.length}
           </span>
         </>
       ) : (
@@ -2139,6 +2184,31 @@ function CarouselActionToast({ notice }: { notice: CarouselActionNotice }) {
   );
 }
 
+function TrendingFormatPill({
+  format,
+}: {
+  format: TrendingCandidate["format"];
+}) {
+  const label =
+    format === "hook_video"
+      ? "Hook video"
+      : format === "wall_text"
+        ? "Wall-of-text video"
+        : "Carousel";
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex h-8 items-center justify-center">
+      <span
+        data-trending-format-pill
+        className="inline-flex h-7 items-center gap-2 rounded-full border border-border-strong bg-card px-3 text-xs font-semibold text-foreground-strong shadow-sm"
+      >
+        <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+        {label}
+      </span>
+    </div>
+  );
+}
+
 type TrendingDeckCardProps = {
   activeSlideByCarouselId: Record<string, number>;
   candidate: TrendingCandidate;
@@ -2368,7 +2438,7 @@ function TrendingHookDeckCard({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-1"
+      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-10"
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
@@ -2509,7 +2579,7 @@ function TrendingWallTextDeckCard({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-1"
+      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-10"
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
@@ -2669,7 +2739,7 @@ function CarouselDeckCard({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-1"
+      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-10"
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article

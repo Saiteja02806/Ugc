@@ -141,6 +141,82 @@ export async function enqueueCarouselGenerationJob(params: {
   }
 }
 
+export async function enqueueCarouselExperimentBatchJob(params: {
+  carouselIds: readonly string[];
+  existingJobId?: string | null;
+  experimentBatchId: string;
+  projectId: string;
+  textStyle: CarouselRenderStyle;
+  userId: string;
+}) {
+  if (params.carouselIds.length !== 5 || new Set(params.carouselIds).size !== 5) {
+    throw new Error("A Carousel experiment job requires exactly five unique Carousel IDs.");
+  }
+
+  const existingJob = params.existingJobId
+    ? await getBackgroundJobById(params.existingJobId)
+    : null;
+  const creationResult = existingJob
+    ? { created: false as const, job: existingJob }
+    : await createBackgroundJobWithCreationResult({
+        idempotencyKey: `carousel-experiment-batch:${params.experimentBatchId}`,
+        input: {
+          carouselIds: [...params.carouselIds],
+          experimentBatchId: params.experimentBatchId,
+          textStyle: params.textStyle,
+        },
+        jobType: CAROUSEL_JOB_TYPE,
+        projectId: params.projectId,
+        queueName: getQueueNameForJobType(CAROUSEL_JOB_TYPE),
+        userId: params.userId,
+      });
+  const job = creationResult.job;
+
+  if (existingJob && !isMatchingCarouselExperimentBatchJob(existingJob, params)) {
+    throw new Error("Existing Carousel experiment job ownership does not match.");
+  }
+
+  if (job.status === "completed") return job.id;
+
+  if (!shouldDeliverCarouselJobMessage({ job, wasJustCreated: creationResult.created })) {
+    if (job.status === "queued" || job.status === "processing") return job.id;
+    throw new Error(`Carousel experiment job ${job.id} is already ${job.status}.`);
+  }
+
+  const claimedJob = await claimBackgroundJobDelivery(job);
+  if (!claimedJob) return job.id;
+
+  try {
+    return await sendBackgroundJobMessageWithBestEffortAttachment({
+      attachMessage: (queueMessageId) =>
+        attachQueueMessageToBackgroundJob({ queueMessageId, jobId: job.id }),
+      jobId: job.id,
+      onAttachmentError: (persistenceError) => {
+        console.error(
+          "Carousel experiment job was sent but its queue message id could not be persisted:",
+          persistenceError,
+        );
+      },
+      sendMessage: () => sendJobMessage({ jobId: job.id, jobType: CAROUSEL_JOB_TYPE }),
+    });
+  } catch (error) {
+    if (creationResult.created) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to queue Carousel experiment.";
+      await markBackgroundJobFailed({ errorMessage, jobId: job.id }).catch(() => undefined);
+      await Promise.all(
+        params.carouselIds.map((carouselId) =>
+          updateCarouselGeneration(carouselId, {
+            error_message: "Could not start the Carousel experiment worker.",
+            status: "failed",
+          }).catch(() => undefined),
+        ),
+      );
+    }
+    throw error;
+  }
+}
+
 function isMatchingCarouselGenerationJob(
   job: NonNullable<Awaited<ReturnType<typeof getBackgroundJobById>>>,
   params: {
@@ -161,5 +237,34 @@ function isMatchingCarouselGenerationJob(
         !Array.isArray(input) &&
         input.carouselId === params.carouselId,
     )
+  );
+}
+
+function isMatchingCarouselExperimentBatchJob(
+  job: NonNullable<Awaited<ReturnType<typeof getBackgroundJobById>>>,
+  params: {
+    carouselIds: readonly string[];
+    experimentBatchId: string;
+    projectId: string;
+    userId: string;
+  },
+) {
+  const input = job.input;
+  const storedCarouselIds =
+    input && typeof input === "object" && !Array.isArray(input)
+      ? input.carouselIds
+      : null;
+
+  return (
+    job.jobType === CAROUSEL_JOB_TYPE &&
+    job.projectId === params.projectId &&
+    job.userId === params.userId &&
+    input &&
+    typeof input === "object" &&
+    !Array.isArray(input) &&
+    input.experimentBatchId === params.experimentBatchId &&
+    Array.isArray(storedCarouselIds) &&
+    storedCarouselIds.length === params.carouselIds.length &&
+    storedCarouselIds.every((id, index) => id === params.carouselIds[index])
   );
 }

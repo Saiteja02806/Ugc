@@ -61,7 +61,10 @@ test("the original three business-information routes keep their payloads", () =>
 test("identity saves before the required primary goal completes onboarding", () => {
   assert.match(onboarding, /action: \"save_identity\"/);
   assert.match(onboarding, /logoStorageKey: nextLogoStorageKey/);
-  assert.match(onboarding, /action: \"complete\", primaryGoals/);
+  assert.match(
+    onboarding,
+    /action: \"complete\"[\s\S]+primaryGoals[\s\S]+Intl\.DateTimeFormat\(\)\.resolvedOptions\(\)\.timeZone/,
+  );
   assert.match(onboarding, /type=\"checkbox\"/);
   assert.match(onboarding, /primaryGoals\.includes\(option\.value\)/);
   assert.match(onboarding, /disabled=\{isSaving \|\| primaryGoals\.length === 0\}/);

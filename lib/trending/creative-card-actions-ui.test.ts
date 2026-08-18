@@ -63,6 +63,15 @@ test("button, keyboard, and physical swipe decisions converge on one handler", (
   assert.match(workspace, /event\.key === "ArrowRight"[\s\S]*completeCandidateSwipe\("right"\)/);
 });
 
+test("labels every Trending card with its content format above the creative", () => {
+  assert.match(workspace, /function TrendingFormatPill/);
+  assert.match(workspace, /<TrendingFormatPill format=\{activeCandidate\.format\} \/>/);
+  assert.match(workspace, /data-trending-format-pill/);
+  assert.match(workspace, /\? "Hook video"/);
+  assert.match(workspace, /\? "Wall-of-text video"/);
+  assert.match(workspace, /: "Carousel"/);
+});
+
 test("keeps the outgoing card mounted until its transform transition finishes", () => {
   assert.match(workspace, /onTransitionEnd=\{isActive \? onExitTransitionEnd/);
   assert.match(
@@ -79,16 +88,25 @@ test("keeps the outgoing card mounted until its transform transition finishes", 
   );
 });
 
-test("optimistically advances, blocks duplicate decisions, and restores on save failure", () => {
+test("follows the next creative ID across refreshes, blocks duplicates, and restores on save failure", () => {
   assert.match(workspace, /decisionLockRef\.current = true/);
   assert.match(
     workspace,
-    /setActiveItemIndex\(candidateIndex \+ 1\);[\s\S]*commitCreativeDecision/,
+    /visibleCandidates\[activeItemIndex \+ 1\]\?\.item\.id \?\? null/,
   );
   assert.match(
     workspace,
-    /await persistTrendingCreativeDecision[\s\S]*catch \(error\)[\s\S]*setActiveItemIndex\(candidateIndex\)/,
+    /dismissCandidate\(candidate\);[\s\S]*setActiveItemId\(nextCandidateId\);[\s\S]*commitCreativeDecision/,
   );
+  assert.match(
+    workspace,
+    /getTrendingFeedActiveItemIndex\(\s*visibleCandidates,\s*activeItemId,\s*\(candidate\) => candidate\.item\.id,/,
+  );
+  assert.match(
+    workspace,
+    /await persistTrendingCreativeDecision[\s\S]*catch \(error\)[\s\S]*restoreCandidate\(candidate\)[\s\S]*setActiveItemId\(candidate\.item\.id\)/,
+  );
+  assert.doesNotMatch(workspace, /setActiveItemIndex\(/);
   assert.match(workspace, /disabled=\{Boolean\(exitDirection \|\| pendingDecisionItemId\)\}/);
 });
 

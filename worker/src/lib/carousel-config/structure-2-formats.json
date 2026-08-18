@@ -1,0 +1,534 @@
+{
+  "version": "carousel-structure-2-formats-v1",
+  "backboneVersion": "carousel-structure-2-story-backbone-v1",
+  "formats": [
+    {
+      "id": "wrong_belief",
+      "aliases": [],
+      "rotationOrder": 1,
+      "version": 1,
+      "name": "Wrong Belief",
+      "purpose": "Reveal how a reasonable-sounding belief caused a recognizable behavior and made the problem worse.",
+      "selectionWeight": 1,
+      "generationRules": [
+        "Open with a believable first-person false belief, not a generic lesson.",
+        "Show the behavior caused by that belief before correcting it.",
+        "The final lesson must directly correct the opening belief."
+      ],
+      "slides": [
+        {
+          "slideNumber": 1,
+          "storyRole": "recognition",
+          "instruction": "State the reasonable-sounding false belief as a short first-person recognition hook.",
+          "minimumWords": 6,
+          "maximumWords": 14,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 2,
+          "storyRole": "failure_scene",
+          "instruction": "Show the specific repeated behavior that belief caused and one visible consequence.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 3,
+          "storyRole": "reframe",
+          "instruction": "Explain why the belief kept failing and reveal the corrected understanding without selling the product.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 4,
+          "storyRole": "product_turning_point",
+          "instruction": "Introduce the product naturally, show one understandable interaction, and state the immediate behavior change.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "required",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 5,
+          "storyRole": "proof_reflection_cta",
+          "instruction": "Give modest proof, correct the opening belief, and invite the viewer to test the same mechanism.",
+          "minimumWords": 18,
+          "maximumWords": 32,
+          "perspective": "first_person_then_viewer",
+          "productMention": "optional",
+          "ctaPolicy": "native_experiment"
+        }
+      ]
+    },
+    {
+      "id": "perfect_plan_breaks",
+      "aliases": [],
+      "rotationOrder": 2,
+      "version": 1,
+      "name": "Perfect Plan Breaks",
+      "purpose": "Show an ideal plan colliding with ordinary life before the product adapts the plan to reality.",
+      "selectionWeight": 1,
+      "generationRules": [
+        "Use at least one ordinary time or routine marker in the failure scene.",
+        "Do not blame the narrator for lacking discipline.",
+        "The product must adapt to real constraints rather than promise a perfect life."
+      ],
+      "slides": [
+        {
+          "slideNumber": 1,
+          "storyRole": "recognition",
+          "instruction": "Open with the first-person ritual of building the perfect day, week, plan, or routine.",
+          "minimumWords": 6,
+          "maximumWords": 14,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 2,
+          "storyRole": "failure_scene",
+          "instruction": "Show the specific planning ritual and the ordinary moment when real life broke it.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 3,
+          "storyRole": "reframe",
+          "instruction": "Reveal that the problem was the rigid plan rather than the narrator, job, schedule, or life.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 4,
+          "storyRole": "product_turning_point",
+          "instruction": "Show one product interaction that adapts the plan to the narrator's actual constraints.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "required",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 5,
+          "storyRole": "proof_reflection_cta",
+          "instruction": "Show that real life stayed imperfect while the result became easier, then offer a matching experiment CTA.",
+          "minimumWords": 18,
+          "maximumWords": 32,
+          "perspective": "first_person_then_viewer",
+          "productMention": "optional",
+          "ctaPolicy": "native_experiment"
+        }
+      ]
+    },
+    {
+      "id": "stopped_behavior",
+      "aliases": [],
+      "rotationOrder": 3,
+      "version": 1,
+      "name": "I Stopped",
+      "purpose": "Lead with an ordinary behavior the narrator stopped and replace it with a smaller, concrete rule.",
+      "selectionWeight": 1,
+      "generationRules": [
+        "The stopped behavior must be ordinary and recognizable.",
+        "The replacement must be a specific behavior, not an abstract benefit.",
+        "The product supports the new rule without becoming the protagonist."
+      ],
+      "slides": [
+        {
+          "slideNumber": 1,
+          "storyRole": "recognition",
+          "instruction": "Open with 'i stopped' or an equivalent first-person behavior-change confession.",
+          "minimumWords": 6,
+          "maximumWords": 14,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 2,
+          "storyRole": "failure_scene",
+          "instruction": "Explain why the narrator used to do it and show the concrete friction or cost it created.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 3,
+          "storyRole": "reframe",
+          "instruction": "State the small replacement rule and why it addresses the actual problem.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 4,
+          "storyRole": "product_turning_point",
+          "instruction": "Show how one product interaction makes the replacement rule easier or automatic.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "required",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 5,
+          "storyRole": "proof_reflection_cta",
+          "instruction": "Describe the modest behavior change and invite viewers with the same habit to try the rule.",
+          "minimumWords": 18,
+          "maximumWords": 32,
+          "perspective": "first_person_then_viewer",
+          "productMention": "optional",
+          "ctaPolicy": "native_experiment"
+        }
+      ]
+    },
+    {
+      "id": "terrible_at",
+      "aliases": [],
+      "rotationOrder": 4,
+      "version": 1,
+      "name": "I Was Terrible At",
+      "purpose": "Use mild vulnerability to make a normal problem visible without turning the narrator into a spokesperson.",
+      "selectionWeight": 1,
+      "generationRules": [
+        "Keep the vulnerability ordinary and believable rather than dramatic.",
+        "Show what being terrible at the task looked like in real behavior.",
+        "Let the product take over one difficult decision, not the narrator's entire life."
+      ],
+      "slides": [
+        {
+          "slideNumber": 1,
+          "storyRole": "recognition",
+          "instruction": "Open with a first-person admission about being terrible at one specific normal task.",
+          "minimumWords": 6,
+          "maximumWords": 14,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 2,
+          "storyRole": "failure_scene",
+          "instruction": "Show exactly what the difficulty looked like in an ordinary moment and its consequence.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 3,
+          "storyRole": "reframe",
+          "instruction": "Reveal the mistaken assumption or repeated decision underneath that behavior.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 4,
+          "storyRole": "product_turning_point",
+          "instruction": "Show the product handling one difficult decision and the immediate relief that followed.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "required",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 5,
+          "storyRole": "proof_reflection_cta",
+          "instruction": "Underclaim the improvement, reflect on the simpler decision, and offer a matching experiment CTA.",
+          "minimumWords": 18,
+          "maximumWords": 32,
+          "perspective": "first_person_then_viewer",
+          "productMention": "optional",
+          "ctaPolicy": "native_experiment"
+        }
+      ]
+    },
+    {
+      "id": "result_without_sacrifice",
+      "aliases": [],
+      "rotationOrder": 5,
+      "version": 1,
+      "name": "Result Without the Expected Sacrifice",
+      "purpose": "Lead with a desired result achieved without the method or sacrifice people normally expect.",
+      "selectionWeight": 1,
+      "generationRules": [
+        "The opening result must be supportable and modest.",
+        "The expected sacrifice must be plausible for the stated audience.",
+        "Do not turn the result into a guarantee or unsupported numerical claim."
+      ],
+      "slides": [
+        {
+          "slideNumber": 1,
+          "storyRole": "recognition",
+          "instruction": "Open with 'how i' achieved a supported result without the expected method or sacrifice.",
+          "minimumWords": 6,
+          "maximumWords": 14,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 2,
+          "storyRole": "failure_scene",
+          "instruction": "Show the old method the narrator kept trying and the specific friction it created.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 3,
+          "storyRole": "reframe",
+          "instruction": "Explain why the expected method was not the real requirement and identify the smaller mechanism that mattered.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 4,
+          "storyRole": "product_turning_point",
+          "instruction": "Show the product enabling the alternative through one concrete interaction.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "required",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 5,
+          "storyRole": "proof_reflection_cta",
+          "instruction": "Restate the restrained result without the sacrifice and invite the viewer to test the alternative.",
+          "minimumWords": 18,
+          "maximumWords": 32,
+          "perspective": "first_person_then_viewer",
+          "productMention": "optional",
+          "ctaPolicy": "native_experiment"
+        }
+      ]
+    },
+    {
+      "id": "identity_transformation",
+      "aliases": [],
+      "rotationOrder": 6,
+      "version": 1,
+      "name": "Identity Transformation",
+      "purpose": "Contrast an undesirable old identity with a concrete new behavior without exaggerating the transformation.",
+      "selectionWeight": 1,
+      "generationRules": [
+        "Anchor both identities in observable behavior rather than labels alone.",
+        "Do not pretend the product transformed the narrator instantly.",
+        "The closing identity must follow from a modest repeated behavior."
+      ],
+      "slides": [
+        {
+          "slideNumber": 1,
+          "storyRole": "recognition",
+          "instruction": "Open with the old identity or a first-person statement about stopping being that kind of person.",
+          "minimumWords": 6,
+          "maximumWords": 14,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 2,
+          "storyRole": "failure_scene",
+          "instruction": "Show the most recognizable repeated behavior that made the old identity feel true.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 3,
+          "storyRole": "reframe",
+          "instruction": "Reveal the practical realization that made a different behavior possible.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 4,
+          "storyRole": "product_turning_point",
+          "instruction": "Show one product-assisted change that supports the new behavior without claiming instant transformation.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "required",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 5,
+          "storyRole": "proof_reflection_cta",
+          "instruction": "Describe the observable new behavior or identity and invite viewers to try the same small change.",
+          "minimumWords": 18,
+          "maximumWords": 32,
+          "perspective": "first_person_then_viewer",
+          "productMention": "optional",
+          "ctaPolicy": "native_experiment"
+        }
+      ]
+    },
+    {
+      "id": "new_rule",
+      "aliases": [],
+      "rotationOrder": 7,
+      "version": 1,
+      "name": "New Rule",
+      "purpose": "Build the story around one exact behavioral rule that replaces recurring friction.",
+      "selectionWeight": 1,
+      "generationRules": [
+        "The new rule must be simple enough to repeat in one sentence.",
+        "Show the old behavior before explaining why the rule works.",
+        "The product should support the rule instead of replacing personal agency."
+      ],
+      "slides": [
+        {
+          "slideNumber": 1,
+          "storyRole": "recognition",
+          "instruction": "Open with the exact new first-person rule or behavior change.",
+          "minimumWords": 6,
+          "maximumWords": 14,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 2,
+          "storyRole": "failure_scene",
+          "instruction": "Show what the narrator used to do and the concrete disruption it repeatedly caused.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 3,
+          "storyRole": "reframe",
+          "instruction": "Explain the exact rule, why it addresses the real friction, and what decision it changes.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 4,
+          "storyRole": "product_turning_point",
+          "instruction": "Show how one product interaction helps the narrator follow the rule in ordinary life.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "required",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 5,
+          "storyRole": "proof_reflection_cta",
+          "instruction": "Show the modest result of following the rule and invite the viewer to test it with their own inputs.",
+          "minimumWords": 18,
+          "maximumWords": 32,
+          "perspective": "first_person_then_viewer",
+          "productMention": "optional",
+          "ctaPolicy": "native_experiment"
+        }
+      ]
+    },
+    {
+      "id": "wrong_villain",
+      "aliases": ["turns_out"],
+      "rotationOrder": 8,
+      "version": 1,
+      "name": "Wrong Villain / Turns Out",
+      "purpose": "Show why the obvious thing the narrator blamed was not the actual cause of the problem.",
+      "selectionWeight": 1,
+      "generationRules": [
+        "Name one plausible surface problem the narrator blamed.",
+        "The reframe must identify a different, specific underlying cause.",
+        "Earn the 'turns out' lesson through the preceding scene instead of using it as empty motivation."
+      ],
+      "slides": [
+        {
+          "slideNumber": 1,
+          "storyRole": "recognition",
+          "instruction": "Open with the first-person thing the narrator kept blaming.",
+          "minimumWords": 6,
+          "maximumWords": 14,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 2,
+          "storyRole": "failure_scene",
+          "instruction": "Show the ordinary evidence that made the blamed surface problem look like the obvious cause.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 3,
+          "storyRole": "reframe",
+          "instruction": "Reveal that the blamed thing was not the real problem and identify the actual mechanism underneath it.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "forbidden",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 4,
+          "storyRole": "product_turning_point",
+          "instruction": "Show the product removing or improving the actual underlying problem through one concrete interaction.",
+          "minimumWords": 18,
+          "maximumWords": 30,
+          "perspective": "first_person",
+          "productMention": "required",
+          "ctaPolicy": "none"
+        },
+        {
+          "slideNumber": 5,
+          "storyRole": "proof_reflection_cta",
+          "instruction": "Close with an earned 'turns out' lesson, a restrained result, and a CTA that mirrors the opening blame.",
+          "minimumWords": 18,
+          "maximumWords": 32,
+          "perspective": "first_person_then_viewer",
+          "productMention": "optional",
+          "ctaPolicy": "native_experiment"
+        }
+      ]
+    }
+  ]
+}

@@ -18,20 +18,20 @@ const ANALYZER_VERSION = "wall-text-placement-v2";
 const ZONES = {
   "upper-middle": {
     height: 480 / 1920,
-    width: 620 / 1080,
-    x: 230 / 1080,
+    width: 660 / 1080,
+    x: 210 / 1080,
     y: 560 / 1920,
   },
   middle: {
     height: 480 / 1920,
-    width: 620 / 1080,
-    x: 230 / 1080,
+    width: 660 / 1080,
+    x: 210 / 1080,
     y: 660 / 1920,
   },
   "lower-middle": {
     height: 480 / 1920,
-    width: 620 / 1080,
-    x: 230 / 1080,
+    width: 660 / 1080,
+    x: 210 / 1080,
     y: 800 / 1920,
   },
 };

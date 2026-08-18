@@ -29,14 +29,14 @@ export type WallTextRenderContent = {
   finalLayout?: {
     blocks: Array<{
       lines: string[];
-      role: "prose" | "title" | "item";
+      role: "prose" | "text" | "title" | "item";
     }>;
     fontFamily: "Inter";
     fontSizePx: 44 | 46 | 48 | 50 | 52;
     fontWeight: 700;
     lineHeightPx: number;
     textBox: WallTextNormalizedBox;
-    version: "wall-text-final-layout-v1";
+    version: "wall-text-final-layout-v1" | "wall-text-final-layout-v2";
   };
   fullText: string;
   renderFontSize?: 44 | 46 | 48 | 50 | 52;
@@ -82,8 +82,8 @@ export const WALL_TEXT_DEFAULT_SAFE_AREA: WallTextSafeArea = {
 };
 export const WALL_TEXT_DEFAULT_TEXT_BOX: WallTextNormalizedBox = {
   height: 480 / 1920,
-  width: 620 / 1080,
-  x: 230 / 1080,
+  width: 660 / 1080,
+  x: 210 / 1080,
   y: 660 / 1920,
 };
 
@@ -290,7 +290,9 @@ function normalizeFinalLayout(
   value: NonNullable<WallTextRenderContent["finalLayout"]>,
 ) {
   if (
-    value.version !== "wall-text-final-layout-v1" ||
+    !["wall-text-final-layout-v1", "wall-text-final-layout-v2"].includes(
+      value.version,
+    ) ||
     value.fontFamily !== "Inter" ||
     value.fontWeight !== 700 ||
     ![44, 46, 48, 50, 52].includes(value.fontSizePx) ||
@@ -302,11 +304,11 @@ function normalizeFinalLayout(
     throw new Error("Wall-of-text final layout is invalid.");
   }
 
-  return {
+  const normalized = {
     ...value,
     blocks: value.blocks.map((block) => {
       if (
-        !["prose", "title", "item"].includes(block.role) ||
+        !["prose", "text", "title", "item"].includes(block.role) ||
         block.lines.length < 1 ||
         block.lines.some((line) => !line.trim())
       ) {
@@ -318,6 +320,20 @@ function normalizeFinalLayout(
       };
     }),
   };
+  const lineCount = normalized.blocks.reduce(
+    (total, block) => total + block.lines.length,
+    0,
+  );
+  if (
+    normalized.version === "wall-text-final-layout-v2" &&
+    (normalized.blocks.length !== 1 ||
+      normalized.blocks[0]?.role !== "text" ||
+      lineCount < WALL_TEXT_RENDER_MIN_LINES ||
+      lineCount > WALL_TEXT_RENDER_MAX_LINES)
+  ) {
+    throw new Error("Wall-of-text V2 must contain one 4-7 line text block.");
+  }
+  return normalized;
 }
 
 function normalizeTextBox(

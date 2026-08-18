@@ -112,103 +112,111 @@ test("unavailable accounts are not treated as performance evidence", () => {
   );
 });
 
-test("learning waits for enough attributed posts and never turns missing data into a preference", () => {
+test("one strong Instagram-view result gets only a modest temporary validation boost", () => {
+  const signals = deriveHookPerformanceSignals([
+    {
+      campaignPurpose: "product_discovery",
+      hookTextFormatId: "GF_001",
+      lastGeneratedAt: "2026-08-12T00:00:00.000Z",
+      medianViews: 2_000,
+      publishedResultCount: 1,
+      recentViewCounts: [2_000],
+      timesGenerated: 1,
+    },
+    {
+      campaignPurpose: "education",
+      hookTextFormatId: "GF_002",
+      lastGeneratedAt: "2026-08-11T00:00:00.000Z",
+      medianViews: 1_000,
+      publishedResultCount: 1,
+      recentViewCounts: [1_000],
+      timesGenerated: 1,
+    },
+  ]);
+  const strong = signals.formatSignals?.find(
+    (signal) => signal.formatId === "GF_001",
+  );
+
+  assert.equal(strong?.temporaryBoost, 0.08);
+  assert.equal(strong?.selectionWeight, 1);
+});
+
+test("repeated results create a gradual durable weight and use the median over one spike", () => {
+  const signals = deriveHookPerformanceSignals([
+    {
+      campaignPurpose: "product_discovery",
+      hookTextFormatId: "GF_001",
+      lastGeneratedAt: null,
+      medianViews: 3_000,
+      publishedResultCount: 5,
+      recentViewCounts: [2_800, 3_000, 3_100, 2_950, 3_200],
+      timesGenerated: 6,
+    },
+    {
+      campaignPurpose: "education",
+      hookTextFormatId: "GF_003",
+      lastGeneratedAt: null,
+      medianViews: 1_050,
+      publishedResultCount: 4,
+      recentViewCounts: [900, 1_000, 1_100, 3_000],
+      timesGenerated: 4,
+    },
+  ]);
+  const consistent = signals.formatSignals?.find(
+    (signal) => signal.formatId === "GF_001",
+  );
+  const spike = signals.formatSignals?.find(
+    (signal) => signal.formatId === "GF_003",
+  );
+
+  assert.ok((consistent?.selectionWeight ?? 0) > 1);
+  assert.equal(consistent?.temporaryBoost, 0);
+  assert.ok(
+    (consistent?.selectionWeight ?? 0) >
+      (spike?.selectionWeight ?? 0),
+  );
+  assert.ok((consistent?.selectionWeight ?? 0) <= 1.3);
+  assert.ok((spike?.selectionWeight ?? 0) >= 0.8);
+});
+
+test("uses the bounded database learning scores when the RPC returns them", () => {
+  const signals = deriveHookPerformanceSignals([
+    {
+      campaignPurpose: "product_discovery",
+      hookTextFormatId: "GF_006",
+      lastGeneratedAt: null,
+      medianViews: 2_000,
+      publishedResultCount: 1,
+      recentViewCounts: [2_000],
+      selectionWeight: 1.04,
+      temporaryBoost: 0.08,
+      timesGenerated: 2,
+    },
+  ]);
+
+  assert.deepEqual(signals.formatSignals?.[0], {
+    formatId: "GF_006",
+    lastGeneratedAt: null,
+    publishedResultCount: 1,
+    selectionWeight: 1.04,
+    temporaryBoost: 0.08,
+    timesGenerated: 2,
+  });
+});
+
+test("invalid and historical pattern IDs do not enter Global-format learning", () => {
   assert.deepEqual(
     deriveHookPerformanceSignals([
       {
-        attributedSalesAmount: null,
-        attributedSalesCurrency: null,
-        averageWatchTimeSeconds: null,
         campaignPurpose: "product_discovery",
-        completionRate: null,
-        conversionCount: null,
-        observedPostCount: 2,
-        patternId: "direct_capability",
-        saveCount: null,
-        shareCount: null,
-        viewCount: null,
-      },
-      {
-        attributedSalesAmount: null,
-        attributedSalesCurrency: null,
-        averageWatchTimeSeconds: null,
-        campaignPurpose: "education",
-        completionRate: null,
-        conversionCount: null,
-        observedPostCount: 4,
-        patternId: "problem_observation",
-        saveCount: null,
-        shareCount: null,
-        viewCount: null,
+        hookTextFormatId: "direct_capability",
+        lastGeneratedAt: null,
+        medianViews: 99_999,
+        publishedResultCount: 10,
+        recentViewCounts: [99_999],
+        timesGenerated: 10,
       },
     ]),
-    {},
+    { formatSignals: [] },
   );
-});
-
-test("learning prefers only patterns supported by real comparable outcomes", () => {
-  const signals = deriveHookPerformanceSignals([
-    {
-      attributedSalesAmount: 120,
-      attributedSalesCurrency: "USD",
-      averageWatchTimeSeconds: 2.7,
-      campaignPurpose: "product_discovery",
-      completionRate: 0.8,
-      conversionCount: 5,
-      observedPostCount: 3,
-      patternId: "direct_capability",
-      saveCount: 12,
-      shareCount: 20,
-      viewCount: 100,
-    },
-    {
-      attributedSalesAmount: 10,
-      attributedSalesCurrency: "USD",
-      averageWatchTimeSeconds: 1.1,
-      campaignPurpose: "education",
-      completionRate: 0.2,
-      conversionCount: 0,
-      observedPostCount: 3,
-      patternId: "problem_observation",
-      saveCount: 1,
-      shareCount: 2,
-      viewCount: 100,
-    },
-  ]);
-
-  assert.deepEqual(signals.preferredPatternIds, ["direct_capability"]);
-  assert.deepEqual(signals.preferredPurposes, ["product_discovery"]);
-});
-
-test("learning ignores sales amounts when attribution uses different currencies", () => {
-  const signals = deriveHookPerformanceSignals([
-    {
-      attributedSalesAmount: 1000,
-      attributedSalesCurrency: "USD",
-      averageWatchTimeSeconds: null,
-      campaignPurpose: "product_discovery",
-      completionRate: null,
-      conversionCount: null,
-      observedPostCount: 3,
-      patternId: "direct_capability",
-      saveCount: null,
-      shareCount: null,
-      viewCount: 100,
-    },
-    {
-      attributedSalesAmount: 1,
-      attributedSalesCurrency: "EUR",
-      averageWatchTimeSeconds: null,
-      campaignPurpose: "education",
-      completionRate: null,
-      conversionCount: null,
-      observedPostCount: 3,
-      patternId: "problem_observation",
-      saveCount: null,
-      shareCount: null,
-      viewCount: 100,
-    },
-  ]);
-
-  assert.deepEqual(signals, {});
 });

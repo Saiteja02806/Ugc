@@ -59,8 +59,10 @@ export type CarouselContentFormatDefinition = {
   minimumTopicOptions: number;
   name: string;
   purpose: string;
+  rotationOrder: number;
   selectionWeight: number;
   slides: CarouselFormatSlideDefinition[];
+  version: number;
 };
 
 export type CarouselHookFamilyDefinition = {
@@ -191,6 +193,7 @@ function parseCarouselContentGrammar(input: {
     CAROUSEL_CONTENT_FORMAT_IDS,
     "content format",
   );
+  assertExactRotationOrder(formats);
 
   for (const format of formats) {
     if (format.slides[0]?.slideType !== "hook") {
@@ -258,6 +261,12 @@ function parseContentFormat(
     ),
     name: getRequiredString(record.name, `${id} name`),
     purpose: getRequiredString(record.purpose, `${id} purpose`),
+    rotationOrder: getInteger(
+      record.rotationOrder,
+      `${id} rotationOrder`,
+      1,
+      CAROUSEL_CONTENT_FORMAT_IDS.length,
+    ),
     selectionWeight: getNumber(
       record.selectionWeight,
       `${id} selectionWeight`,
@@ -267,7 +276,26 @@ function parseContentFormat(
     slides: record.slides.map((slide, slideIndex) =>
       parseFormatSlide(slide, id, slideIndex),
     ),
+    version: getInteger(record.version, `${id} version`, 1, 10_000),
   };
+}
+
+function assertExactRotationOrder(
+  formats: readonly CarouselContentFormatDefinition[],
+) {
+  const actual = formats
+    .map((format) => format.rotationOrder)
+    .sort((left, right) => left - right);
+  const expected = Array.from(
+    { length: CAROUSEL_CONTENT_FORMAT_IDS.length },
+    (_, index) => index + 1,
+  );
+
+  if (actual.some((value, index) => value !== expected[index])) {
+    throw new Error(
+      "Carousel content formats must define every rotationOrder from 1 to 15 exactly once.",
+    );
+  }
 }
 
 function parseFormatSlide(

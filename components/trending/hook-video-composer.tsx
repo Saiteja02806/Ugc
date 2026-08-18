@@ -8,12 +8,16 @@ import {
   Film,
   Library,
   Loader2,
+  Pause,
+  Play,
   RefreshCw,
   Scissors,
   Sparkles,
   Upload,
   UserRound,
   Video,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -1029,7 +1033,7 @@ function SuggestionDrawer({
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card-muted text-xs font-bold text-muted group-hover:bg-primary group-hover:text-white">
                     {index + 1}
                   </span>
-                  <span className="min-w-0 flex-1 text-sm font-semibold leading-5 text-foreground-strong">
+                  <span className="min-w-0 flex-1 whitespace-pre-line text-sm font-semibold leading-5 text-foreground-strong">
                     {suggestion.text}
                   </span>
                   <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted group-hover:text-primary" aria-hidden="true" />
@@ -1298,6 +1302,7 @@ function ReviewComposition({
   onPreviewModeChange: (mode: "demo" | "opening") => void;
 }) {
   const effectiveEnd = trimEnd ?? duration;
+  const [trimOpen, setTrimOpen] = useState(false);
 
   return (
     <div className="mx-auto grid max-w-[980px] items-start gap-7 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
@@ -1335,37 +1340,24 @@ function ReviewComposition({
 
         <div className="relative mx-auto mt-3 aspect-[9/16] w-full max-w-[240px] overflow-hidden rounded-[10px] border border-border bg-[#17171a]">
           {previewMode === "opening" && openingPreviewUrl ? (
-            <video
-              ref={openingVideoRef}
+            <ProtectedReviewVideo
+              videoRef={openingVideoRef}
               key={openingPreviewUrl}
               src={openingPreviewUrl}
-              controls
-              playsInline
-              preload="metadata"
-              className="size-full object-contain"
+              trimEnd={effectiveEnd}
+              trimStart={trimStart}
               onLoadedMetadata={(event) => {
                 event.currentTarget.currentTime = trimStart;
-              }}
-              onTimeUpdate={(event) => {
-                if (
-                  effectiveEnd !== null &&
-                  event.currentTarget.currentTime >= effectiveEnd
-                ) {
-                  event.currentTarget.pause();
-                  event.currentTarget.currentTime = trimStart;
-                }
               }}
             />
           ) : null}
 
           {previewMode === "demo" && demoMediaUrl ? (
-            <video
+            <ProtectedReviewVideo
               key={demoMediaUrl}
               src={demoMediaUrl}
-              controls
-              playsInline
-              preload="metadata"
-              className="size-full object-contain"
+              trimEnd={null}
+              trimStart={0}
             />
           ) : null}
 
@@ -1402,71 +1394,208 @@ function ReviewComposition({
           <ReviewAsset icon={Film} label="Product demo" title={demo.title} />
         </div>
 
-        <section aria-labelledby="trim-heading" className="pt-5">
-          <div className="flex items-center gap-2">
-            <Scissors className="size-4 text-primary" aria-hidden="true" />
-            <h3 id="trim-heading" className="text-sm font-semibold text-foreground-strong">
-              Opening clip trim
-            </h3>
-          </div>
-          {duration !== null ? (
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <label className="text-xs font-semibold text-muted">
-                Start
-                <span className="mt-1.5 flex h-10 items-center rounded-control border border-border bg-card px-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
-                  <input
-                    type="number"
-                    name="opening-trim-start"
-                    autoComplete="off"
-                    inputMode="decimal"
-                    min={0}
-                    max={Math.max(0, (effectiveEnd ?? duration) - 0.1)}
-                    step={0.1}
-                    value={trimStart.toFixed(1)}
-                    onChange={(event) => {
-                      const value = Number(event.target.value);
-                      const max = Math.max(0, (effectiveEnd ?? duration) - 0.1);
-                      onChangeTrim({
-                        trimEnd: effectiveEnd,
-                        trimStart: clamp(value, 0, max),
-                      });
-                    }}
-                    className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-foreground-strong outline-none"
-                  />
-                  <span className="text-xs font-medium text-muted">sec</span>
-                </span>
-              </label>
-              <label className="text-xs font-semibold text-muted">
-                End
-                <span className="mt-1.5 flex h-10 items-center rounded-control border border-border bg-card px-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
-                  <input
-                    type="number"
-                    name="opening-trim-end"
-                    autoComplete="off"
-                    inputMode="decimal"
-                    min={trimStart + 0.1}
-                    max={duration}
-                    step={0.1}
-                    value={(effectiveEnd ?? duration).toFixed(1)}
-                    onChange={(event) => {
-                      const value = Number(event.target.value);
-                      onChangeTrim({
-                        trimEnd: clamp(value, trimStart + 0.1, duration),
-                        trimStart,
-                      });
-                    }}
-                    className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-foreground-strong outline-none"
-                  />
-                  <span className="text-xs font-medium text-muted">sec</span>
-                </span>
-              </label>
-            </div>
-          ) : (
-            <p className="mt-3 text-sm font-medium text-muted">
-              Clip duration is unavailable, so the full opening will be used.
+        <div className="pt-5">
+          <button
+            type="button"
+            aria-controls="opening-trim-controls"
+            aria-expanded={trimOpen}
+            disabled={duration === null}
+            onClick={() => setTrimOpen((current) => !current)}
+            className="inline-flex h-9 items-center gap-2 rounded-control border border-border bg-card px-3 text-xs font-semibold text-foreground-strong transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Scissors className="size-3.5 text-primary" aria-hidden="true" />
+            Trim opening
+            <ChevronRight
+              className={cn(
+                "size-3.5 text-muted transition-transform",
+                trimOpen && "rotate-90",
+              )}
+              aria-hidden="true"
+            />
+          </button>
+
+          {trimOpen && duration !== null ? (
+            <section
+              id="opening-trim-controls"
+              aria-labelledby="trim-heading"
+              className="mt-3 rounded-[10px] border border-border bg-card-muted p-4"
+            >
+              <h3 id="trim-heading" className="text-sm font-semibold text-foreground-strong">
+                Adjust opening clip
+              </h3>
+              <p className="mt-1 text-xs font-medium leading-5 text-muted">
+                Keep the recommended timing, or fine-tune this opening.
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <label className="text-xs font-semibold text-muted">
+                  Start
+                  <span className="mt-1.5 flex h-10 items-center rounded-control border border-border bg-card px-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                    <input
+                      type="number"
+                      name="opening-trim-start"
+                      autoComplete="off"
+                      inputMode="decimal"
+                      min={0}
+                      max={Math.max(0, (effectiveEnd ?? duration) - 0.1)}
+                      step={0.1}
+                      value={trimStart.toFixed(1)}
+                      onChange={(event) => {
+                        const value = Number(event.target.value);
+                        const max = Math.max(
+                          0,
+                          (effectiveEnd ?? duration) - 0.1,
+                        );
+                        onChangeTrim({
+                          trimEnd: effectiveEnd,
+                          trimStart: clamp(value, 0, max),
+                        });
+                      }}
+                      className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-foreground-strong outline-none"
+                    />
+                    <span className="text-xs font-medium text-muted">sec</span>
+                  </span>
+                </label>
+                <label className="text-xs font-semibold text-muted">
+                  End
+                  <span className="mt-1.5 flex h-10 items-center rounded-control border border-border bg-card px-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                    <input
+                      type="number"
+                      name="opening-trim-end"
+                      autoComplete="off"
+                      inputMode="decimal"
+                      min={trimStart + 0.1}
+                      max={duration}
+                      step={0.1}
+                      value={(effectiveEnd ?? duration).toFixed(1)}
+                      onChange={(event) => {
+                        const value = Number(event.target.value);
+                        onChangeTrim({
+                          trimEnd: clamp(value, trimStart + 0.1, duration),
+                          trimStart,
+                        });
+                      }}
+                      className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-foreground-strong outline-none"
+                    />
+                    <span className="text-xs font-medium text-muted">sec</span>
+                  </span>
+                </label>
+              </div>
+            </section>
+          ) : null}
+          {duration === null ? (
+            <p className="mt-2 text-xs font-medium text-muted">
+              The full opening will be used because clip timing is unavailable.
             </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProtectedReviewVideo({
+  onLoadedMetadata,
+  src,
+  trimEnd,
+  trimStart,
+  videoRef,
+}: {
+  onLoadedMetadata?: React.ReactEventHandler<HTMLVideoElement>;
+  src: string;
+  trimEnd: number | null;
+  trimStart: number;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
+}) {
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const resolvedVideoRef = videoRef ?? localVideoRef;
+  const [playing, setPlaying] = useState(false);
+  const [muted, setMuted] = useState(false);
+
+  function togglePlayback() {
+    const element = resolvedVideoRef.current;
+    if (!element) return;
+
+    if (element.paused) {
+      if (trimEnd !== null && element.currentTime >= trimEnd) {
+        element.currentTime = trimStart;
+      }
+      void element.play().catch(() => setPlaying(false));
+      return;
+    }
+
+    element.pause();
+  }
+
+  function toggleMuted() {
+    const element = resolvedVideoRef.current;
+    if (!element) return;
+    element.muted = !element.muted;
+    setMuted(element.muted);
+  }
+
+  return (
+    <div className="absolute inset-0">
+      <video
+        ref={resolvedVideoRef}
+        src={src}
+        controlsList="nodownload noremoteplayback"
+        disablePictureInPicture
+        disableRemotePlayback
+        playsInline
+        preload="metadata"
+        draggable={false}
+        className="size-full select-none object-contain [-webkit-touch-callout:none]"
+        onContextMenu={(event) => event.preventDefault()}
+        onDragStart={(event) => event.preventDefault()}
+        onEnded={(event) => {
+          event.currentTarget.currentTime = trimStart;
+          setPlaying(false);
+        }}
+        onLoadedMetadata={(event) => {
+          event.currentTarget.muted = muted;
+          onLoadedMetadata?.(event);
+        }}
+        onPause={() => setPlaying(false)}
+        onPlay={() => setPlaying(true)}
+        onTimeUpdate={(event) => {
+          if (
+            trimEnd !== null &&
+            event.currentTarget.currentTime >= trimEnd
+          ) {
+            event.currentTarget.pause();
+            event.currentTarget.currentTime = trimStart;
+          }
+        }}
+      />
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-black/55" />
+      <div className="absolute inset-x-0 bottom-2.5 z-20 flex items-center justify-between px-3">
+        <button
+          type="button"
+          onClick={togglePlayback}
+          className="inline-flex size-9 items-center justify-center rounded-full border border-white/15 bg-black/72 text-white shadow-sm transition-colors hover:bg-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          aria-label={playing ? "Pause preview" : "Play preview"}
+          title={playing ? "Pause" : "Play"}
+        >
+          {playing ? (
+            <Pause className="size-3.5" fill="currentColor" aria-hidden="true" />
+          ) : (
+            <Play className="ml-0.5 size-3.5" fill="currentColor" aria-hidden="true" />
           )}
-        </section>
+        </button>
+        <button
+          type="button"
+          onClick={toggleMuted}
+          className="inline-flex size-9 items-center justify-center rounded-full border border-white/15 bg-black/72 text-white shadow-sm transition-colors hover:bg-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          aria-label={muted ? "Turn preview sound on" : "Mute preview"}
+          title={muted ? "Sound on" : "Mute"}
+        >
+          {muted ? (
+            <VolumeX className="size-3.5" aria-hidden="true" />
+          ) : (
+            <Volume2 className="size-3.5" aria-hidden="true" />
+          )}
+        </button>
       </div>
     </div>
   );

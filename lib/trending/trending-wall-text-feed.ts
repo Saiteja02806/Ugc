@@ -1,28 +1,54 @@
 import "server-only";
 
+import { createHash, randomUUID } from "node:crypto";
+
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
-import { createAuthoritativeWallTextContent } from "@/lib/trending/wall-layout-engine";
-import { getBackfillWallTextFormatId } from "@/lib/trending/wall-formats";
+import {
+  createAuthoritativeWallTextContent,
+  deriveWallTextReadabilityBudget,
+} from "@/lib/trending/wall-layout-engine";
+import {
+  getBackfillWallTextFormatId,
+  WALL_TEXT_FORMAT_REGISTRY_VERSION,
+} from "@/lib/trending/wall-formats";
+import {
+  selectWallTextFormatAssignments,
+  WALL_TEXT_FORMAT_SELECTOR_VERSION,
+} from "@/lib/trending/wall-format-selector";
 import {
   generateBusinessTrendingWallTextIdeas,
   getTrendingWallTextModelName,
+  WallTextCandidateRepairExhaustedError,
 } from "@/lib/trending/generate-trending-wall-text-ideas";
 import {
   areTrendingWallTextCreativesCurrent,
-  createTrendingWallTextCreatives,
+  claimWallTextGenerationChunk,
   ensureWallTextOverlayAssetsForMediaAssets,
   ensureTrendingWallTextAssignments,
-  getNextWallTextCandidateIndex,
+  getWallTextPerformanceSignals,
+  getWallTextGenerationReservation,
   isTrendingWallTextCreativeCurrent,
+  listActiveWallTextInstagramReelTemplates,
   listActiveTrendingWallTextIdeas,
   listRecentWallTextBackgroundAssetIds,
   listTrendingWallTextCreatives,
+  listWallTextDuplicateSignatures,
+  listWallTextOverlayAssetsByIds,
   listWallTextOverlayAssetsForMediaAssetIds,
   listWallTextVideoAssetInventory,
   parseWallTextContent,
+  parseWallTextLayout,
+  recordWallTextGenerationChunkFailure,
   replaceTrendingWallTextCreativeCopy,
+  reserveWallTextGenerationBatch,
+  saveWallTextGenerationCandidate,
   type WallTextCreativeRow,
 } from "@/lib/trending/wall-text-db";
+import {
+  WALL_TEXT_FORMAT_IDS,
+  WALL_TEXT_GENERATOR_VERSION,
+  type WallTextFormatId,
+} from "@/lib/trending/wall-text-types";
 import {
   createUnavailableTrendingFeedProvider,
   createWallTextTrendingFeedProvider,
@@ -36,10 +62,129 @@ import {
 } from "@/lib/trending/wall-text-feed-logic";
 import { getWallTextPreviewTitle } from "@/lib/trending/wall-text-text-logic";
 import { resolveTrendingVideoSource } from "@/lib/trending/video-source-selection";
+import { enqueueTrendingWallTextJob } from "@/lib/trending/wall-text-jobs";
+import { selectWallTextGenerationSources } from "@/lib/trending/wall-text-source-selector";
+
+const DEFAULT_WALL_TEXT_ACTIVE_TARGET = 6;
+
+export async function enqueueTrendingWallTextRefill(
+  profile: BusinessProfileRecord,
+  options: { targetActive?: number } = {},
+) {
+  const targetActive = Math.max(
+    Math.trunc(options.targetActive ?? DEFAULT_WALL_TEXT_ACTIVE_TARGET),
+    1,
+  );
+  const source = await resolveTrendingVideoSource({
+    format: "wall_text",
+    userId: profile.userId,
+  });
+  const selectedInventory = source.selection
+    ? await listWallTextOverlayAssetsForMediaAssetIds({
+        mediaAssetIds: source.assets.map((asset) => asset.id),
+        userId: profile.userId,
+      })
+    : null;
+  const backgroundAssetIds = selectedInventory?.map((asset) => asset.id);
+  const [active, existing, fullInventory, instagramTemplates] = await Promise.all([
+    listActiveTrendingWallTextIdeas({
+      backgroundAssetIds,
+      businessProfileId: profile.id,
+      businessProfileVersion: profile.profileVersion,
+      userId: profile.userId,
+    }),
+    listTrendingWallTextCreatives({
+      backgroundAssetIds,
+      businessProfileId: profile.id,
+      businessProfileVersion: profile.profileVersion,
+      userId: profile.userId,
+    }),
+    selectedInventory
+      ? Promise.resolve(selectedInventory)
+      : listWallTextVideoAssetInventory(),
+    source.selection
+      ? Promise.resolve([])
+      : listActiveWallTextInstagramReelTemplates(),
+  ]);
+
+  if (active.length >= targetActive) {
+    return {
+      activeCount: active.length,
+      status: "ready" as const,
+    };
+  }
+
+  const usedBackgroundAssetIds = new Set(
+    existing.map((creative) => creative.overlay_media_asset_id),
+  );
+  const hasUnusedBackground =
+    fullInventory.some((asset) => !usedBackgroundAssetIds.has(asset.id)) ||
+    instagramTemplates.some(
+      (template) => !usedBackgroundAssetIds.has(template.asset.id),
+    );
+
+  if (!hasUnusedBackground) {
+    return {
+      activeCount: active.length,
+      status: "exhausted" as const,
+    };
+  }
+
+  const job = await enqueueTrendingWallTextJob({
+    businessProfileId: profile.id,
+    businessProfileVersion: profile.profileVersion,
+    refillKey: String(existing.length),
+    userId: profile.userId,
+  });
+
+  return {
+    activeCount: active.length,
+    jobId: job.id,
+    status: job.status === "completed" ? ("ready" as const) : ("scheduled" as const),
+  };
+}
 
 export async function prepareTrendingWallTextIdeas(
   profile: BusinessProfileRecord,
+  options: {
+    mode?: "initial" | "refill";
+    requestedCount?: number;
+    requestKey?: string;
+  } = {},
 ) {
+  let mode = options.mode ?? "initial";
+  const requestedCount = Math.min(
+    Math.max(Math.trunc(options.requestedCount ?? DEFAULT_WALL_TEXT_ACTIVE_TARGET), 1),
+    50,
+  );
+  const existingReservation = options.requestKey
+    ? await getWallTextGenerationReservation({
+        requestKey: options.requestKey,
+        userId: profile.userId,
+      })
+    : null;
+  if (existingReservation) {
+    if (
+      existingReservation.batch.business_profile_id !== profile.id ||
+      existingReservation.batch.business_profile_version !== profile.profileVersion ||
+      existingReservation.batch.requested_count !== requestedCount
+    ) {
+      throw new TrendingWallTextPreparationError(
+        "This Wall-of-text request no longer matches the current Business Profile.",
+        409,
+      );
+    }
+    const historicalSignatures = await listWallTextDuplicateSignatures({
+      businessProfileId: profile.id,
+      userId: profile.userId,
+    });
+    return completeReservedWallTextGeneration({
+      historicalSignatures,
+      profile,
+      requestKey: options.requestKey!,
+      reservation: existingReservation,
+    });
+  }
   const source = await resolveTrendingVideoSource({
     format: "wall_text",
     userId: profile.userId,
@@ -60,7 +205,26 @@ export async function prepareTrendingWallTextIdeas(
     userId: profile.userId,
   });
 
-  if (areTrendingWallTextCreativesCurrent(existing)) {
+  if (mode === "initial" && existing.length > 0) {
+    const active = await listActiveTrendingWallTextIdeas({
+      backgroundAssetIds: selectedBackgroundAssetIds,
+      businessProfileId: profile.id,
+      businessProfileVersion: profile.profileVersion,
+      userId: profile.userId,
+    });
+
+    if (active.length === 0) {
+      // Assignment upserts intentionally never reactivate rejected creatives.
+      // Existing accounts that consumed their first batch therefore need a
+      // new batch from unused backgrounds.
+      mode = "refill";
+    }
+  }
+
+  if (
+    mode === "initial" &&
+    areTrendingWallTextCreativesCurrent(existing)
+  ) {
     return ensureTrendingWallTextAssignments({
       businessProfileId: profile.id,
       businessProfileVersion: profile.profileVersion,
@@ -69,7 +233,10 @@ export async function prepareTrendingWallTextIdeas(
     });
   }
 
-  if (existing.length > 0) {
+  if (
+    mode === "initial" &&
+    existing.length > 0
+  ) {
     const inventory =
       selectedInventory ?? (await listWallTextVideoAssetInventory());
 
@@ -80,10 +247,22 @@ export async function prepareTrendingWallTextIdeas(
     );
   }
 
-  const [inventory, recentBackgrounds] = await Promise.all([
+  const [fullInventory, recentBackgrounds, activeInstagramTemplates] = await Promise.all([
     selectedInventory ?? listWallTextVideoAssetInventory(),
     listRecentWallTextBackgroundAssetIds({ userId: profile.userId }),
+    source.selection
+      ? Promise.resolve([])
+      : listActiveWallTextInstagramReelTemplates(),
   ]);
+  const existingBackgroundAssetIds = new Set(
+    existing.map((creative) => creative.overlay_media_asset_id),
+  );
+  const inventory =
+    mode === "refill"
+      ? fullInventory.filter(
+          (asset) => !existingBackgroundAssetIds.has(asset.id),
+        )
+      : fullInventory;
   const groupFreshInventory = inventory.filter(
     (asset) =>
       !recentBackgrounds.assetIds.has(asset.id) &&
@@ -93,65 +272,201 @@ export async function prepareTrendingWallTextIdeas(
     (asset) => !recentBackgrounds.assetIds.has(asset.id),
   );
   const groupFreshCandidates =
-    selectTrendingWallTextCandidates(groupFreshInventory);
+    selectTrendingWallTextCandidates(groupFreshInventory, requestedCount);
   const assetFreshCandidates =
-    selectTrendingWallTextCandidates(assetFreshInventory);
-  const candidates =
-    groupFreshCandidates.length >= 6
+    selectTrendingWallTextCandidates(assetFreshInventory, requestedCount);
+  const ugcpilotCandidates =
+    groupFreshCandidates.length >= requestedCount
       ? groupFreshCandidates
       : assetFreshCandidates.length > 0
         ? assetFreshCandidates
-      : selectTrendingWallTextCandidates(inventory);
+        : selectTrendingWallTextCandidates(inventory, requestedCount);
+  const availableInstagramTemplates = activeInstagramTemplates.filter(
+    (template) =>
+      mode !== "refill" || !existingBackgroundAssetIds.has(template.asset.id),
+  );
+  const freshInstagramTemplates = availableInstagramTemplates.filter(
+    (template) => !recentBackgrounds.assetIds.has(template.asset.id),
+  );
+  const instagramTemplatePool = rotateEntries(
+    freshInstagramTemplates.length > 0
+      ? [
+          ...freshInstagramTemplates,
+          ...availableInstagramTemplates.filter(
+            (template) => recentBackgrounds.assetIds.has(template.asset.id),
+          ),
+        ]
+      : availableInstagramTemplates,
+    existing.filter((creative) => creative.source_kind === "instagram_reel").length,
+  );
+  const selectedSources = source.selection
+    ? ugcpilotCandidates.map((candidate) => ({
+        kind: "creative_asset" as const,
+        value: candidate,
+      }))
+    : selectWallTextGenerationSources({
+        instagramTemplates: instagramTemplatePool,
+        requestedCount,
+        ugcpilotCandidates,
+      });
+  const generationSources = selectedSources.map((selected, candidateIndex) =>
+    selected.kind === "instagram_reel"
+      ? {
+          candidateIndex,
+          durationSeconds: selected.value.asset.durationSeconds!,
+          entry: selected.value.asset,
+          instagramAudioFitMode: selected.value.audioFitMode,
+          instagramLockedAudioAssetId: selected.value.lockedAudioAssetId,
+          instagramReelTemplateId: selected.value.id,
+          instagramReelTemplateVersion: selected.value.templateVersion,
+          instagramReferenceText: selected.value.referenceText,
+          instagramReferenceTextHash: selected.value.referenceTextHash,
+          layout: selected.value.layout,
+          sourceKind: "instagram_reel" as const,
+          writerFormatId: selected.value.writerFormatId,
+        }
+      : {
+          candidateIndex,
+          durationSeconds: selected.value.durationSeconds,
+          entry: selected.value.entry,
+          layout: selected.value.layout,
+          sourceKind:
+            selected.kind === "creative_asset"
+              ? ("creative_asset" as const)
+              : ("ugcpilot" as const),
+        },
+  );
 
-  if (candidates.length === 0) {
+  if (generationSources.length === 0) {
     throw new TrendingWallTextPreparationError(
       "No active 9:16 Wall-of-text background videos are available yet.",
       409,
     );
   }
 
-  const generated = await generateBusinessTrendingWallTextIdeas({
-    business: profile.context,
-    candidates: candidates.map((candidate) => ({
-      candidateIndex: candidate.candidateIndex,
-      durationSeconds: candidate.durationSeconds,
-      layout: candidate.layout,
-    })),
-  });
-  const generatedByIndex = new Map(
-    generated.map((idea) => [idea.candidateIndex, idea]),
-  );
-  let creatives: Awaited<
-    ReturnType<typeof createTrendingWallTextCreatives>
-  >;
-  const candidateIndexOffset = source.selection
-    ? await getNextWallTextCandidateIndex({
-        businessProfileId: profile.id,
-        businessProfileVersion: profile.profileVersion,
-        userId: profile.userId,
-      })
-    : 0;
-
-  try {
-    creatives = await createTrendingWallTextCreatives({
+  const [performanceSignals, historicalSignatures] = await Promise.all([
+    getWallTextPerformanceSignals({
       businessProfileId: profile.id,
-      businessProfileVersion: profile.profileVersion,
-      candidateIndexOffset,
-      candidates: candidates.map((candidate) => ({
-        backgroundAssetId: candidate.entry.id,
-        candidateIndex: candidate.candidateIndex,
-        durationSeconds: candidate.durationSeconds,
-        layout: getGeneratedWallText(
-          generatedByIndex,
-          candidate.candidateIndex,
-        ).layout,
-        text: getGeneratedWallText(
-          generatedByIndex,
-          candidate.candidateIndex,
-        ).content,
-      })),
-      generatorModel: getTrendingWallTextModelName(),
       userId: profile.userId,
+    }),
+    listWallTextDuplicateSignatures({
+      businessProfileId: profile.id,
+      userId: profile.userId,
+    }),
+  ]);
+  const ordinarySources = generationSources.filter(
+    (candidate) => candidate.sourceKind !== "instagram_reel",
+  );
+  const ordinaryFormatAssignments = selectWallTextFormatAssignments({
+    batchSequence: Math.floor(
+      existing.length / Math.max(generationSources.length, 1),
+    ),
+    candidateCount: ordinarySources.length,
+    performanceSignals,
+    selectionKey: `${profile.id}:${profile.profileVersion}:${mode}:${existing.length}`,
+  }).map((assignment, index) => ({
+    ...assignment,
+    candidateIndex: ordinarySources[index]!.candidateIndex,
+  }));
+  const ordinaryAssignmentByIndex = new Map(
+    ordinaryFormatAssignments.map((assignment) => [
+      assignment.candidateIndex,
+      assignment,
+    ]),
+  );
+  const candidateBudgets = await Promise.all(
+    generationSources.map(async (candidate) => {
+      const assignment =
+        candidate.sourceKind === "instagram_reel"
+          ? {
+              assignedFormatId: candidate.writerFormatId,
+              candidateIndex: candidate.candidateIndex,
+              formatRegistryVersion: WALL_TEXT_FORMAT_REGISTRY_VERSION,
+              formatVersion: 1 as const,
+              rotationCandidateFormatId: candidate.writerFormatId,
+              selectionMode: "instagram_template" as const,
+              selectionWeight: 1,
+              selectorVersion: WALL_TEXT_FORMAT_SELECTOR_VERSION,
+            }
+          : ordinaryAssignmentByIndex.get(candidate.candidateIndex)!;
+      const budget = await deriveWallTextReadabilityBudget({
+        durationSeconds: candidate.durationSeconds,
+        formatId: assignment.assignedFormatId,
+        layout: candidate.layout,
+      });
+      return { assignment, budget, candidate };
+    }),
+  );
+  const requestDescriptor = candidateBudgets.map(({ assignment, budget, candidate }) => ({
+    assetId: candidate.entry.id,
+    formatId: assignment.assignedFormatId,
+    instagramReelTemplateId:
+      "instagramReelTemplateId" in candidate
+        ? candidate.instagramReelTemplateId
+        : null,
+    instagramReferenceTextHash:
+      "instagramReferenceTextHash" in candidate
+        ? candidate.instagramReferenceTextHash
+        : null,
+    instagramReelTemplateVersion:
+      "instagramReelTemplateVersion" in candidate
+        ? candidate.instagramReelTemplateVersion
+        : null,
+    maxWords: budget.maxWords,
+    sourceKind: candidate.sourceKind,
+    targetWords: budget.targetWords,
+  }));
+  const requestHash = createHash("sha256")
+    .update(JSON.stringify(requestDescriptor), "utf8")
+    .digest("hex");
+  const requestKey =
+    options.requestKey ??
+    [
+      "wall-v7",
+      profile.profileVersion,
+      mode,
+      existing.length,
+      requestHash.slice(0, 16),
+    ].join(":");
+  const reservation = await reserveWallTextGenerationBatch({
+    assignments: candidateBudgets.map(({ assignment, budget, candidate }) => ({
+      assignment,
+      durationSeconds: candidate.durationSeconds,
+      ...(candidate.sourceKind === "instagram_reel"
+        ? {
+            instagramAudioFitMode: candidate.instagramAudioFitMode,
+            instagramLockedAudioAssetId:
+              candidate.instagramLockedAudioAssetId,
+            instagramReelTemplateId: candidate.instagramReelTemplateId,
+            instagramReelTemplateVersion:
+              candidate.instagramReelTemplateVersion,
+            instagramReferenceText: candidate.instagramReferenceText,
+            instagramReferenceTextHash:
+              candidate.instagramReferenceTextHash,
+          }
+        : {}),
+      layout: candidate.layout,
+      maxWords: budget.maxWords,
+      overlayMediaAssetId: candidate.entry.id,
+      sourceKind: candidate.sourceKind,
+      targetWords: budget.targetWords,
+    })),
+    businessProfileId: profile.id,
+    businessProfileVersion: profile.profileVersion,
+    formatLibraryVersion: WALL_TEXT_FORMAT_REGISTRY_VERSION,
+    generatorVersion: WALL_TEXT_GENERATOR_VERSION,
+    promptVersion: "wall-text-writer-prompt-v7",
+    requestHash,
+    requestKey,
+    selectorVersion: WALL_TEXT_FORMAT_SELECTOR_VERSION,
+    userId: profile.userId,
+  });
+  try {
+    return await completeReservedWallTextGeneration({
+      historicalSignatures,
+      profile,
+      requestKey,
+      reservation,
     });
   } catch (error) {
     if (
@@ -177,12 +492,212 @@ export async function prepareTrendingWallTextIdeas(
     throw error;
   }
 
-  return ensureTrendingWallTextAssignments({
-    businessProfileId: profile.id,
-    businessProfileVersion: profile.profileVersion,
-    creatives,
-    userId: profile.userId,
+}
+
+async function completeReservedWallTextGeneration(params: {
+  historicalSignatures: Awaited<ReturnType<typeof listWallTextDuplicateSignatures>>;
+  profile: BusinessProfileRecord;
+  requestKey: string;
+  reservation: NonNullable<
+    Awaited<ReturnType<typeof getWallTextGenerationReservation>>
+  >;
+}) {
+  const unfinished = params.reservation.assignments.filter(
+    (assignment) => assignment.status !== "completed",
+  );
+
+  if (unfinished.length > 0) {
+    const assets = await listWallTextOverlayAssetsByIds(
+      unfinished.map((assignment) => assignment.overlay_media_asset_id),
+    );
+    const availableAssetIds = new Set(assets.map((asset) => asset.id));
+    if (
+      unfinished.some(
+        (assignment) =>
+          !availableAssetIds.has(assignment.overlay_media_asset_id) ||
+           (assignment.source_kind === "instagram_reel" &&
+             (!assignment.instagram_reel_template_id ||
+               !assignment.instagram_reel_template_version ||
+               !assignment.instagram_reference_text ||
+              !assignment.instagram_reference_text_hash ||
+              !assignment.instagram_locked_audio_asset_id ||
+              !assignment.instagram_audio_fit_mode)),
+      )
+    ) {
+      throw new TrendingWallTextPreparationError(
+        "A reserved Wall-of-text background is no longer available.",
+        409,
+      );
+    }
+
+    const reservedByLocalIndex = new Map(
+      unfinished.map((assignment) => [assignment.batch_candidate_index, assignment]),
+    );
+    const runtimeSignatures = [...params.historicalSignatures];
+    const chunks = groupReservedAssignmentsByChunk(unfinished);
+
+    for (const chunk of chunks) {
+      const chunkId = chunk[0]!.chunk_id;
+      if (chunk.some((assignment) => assignment.status === "failed")) {
+        throw new WallTextCandidateRepairExhaustedError(
+          "A Wall-of-text chunk exhausted its single content-repair attempt.",
+        );
+      }
+      const claimToken = await claimWallTextGenerationChunk({
+        chunkId,
+        userId: params.profile.userId,
+      });
+      if (!claimToken) continue;
+
+      try {
+        await generateBusinessTrendingWallTextIdeas({
+          assignments: chunk.map(toReservedFormatAssignment),
+          business: params.profile.context,
+          candidates: chunk.map((assignment) => {
+            const layout = parseWallTextLayout(assignment.layout_json);
+            if (!layout) {
+              throw new Error("Reserved Wall-of-text placement is invalid.");
+            }
+            return {
+              candidateIndex: assignment.batch_candidate_index,
+              durationSeconds: Number(assignment.duration_seconds),
+              layout,
+              maxWords: assignment.max_words,
+              ...(assignment.instagram_reel_template_id
+                ? {
+                    referenceText: assignment.instagram_reference_text!,
+                  }
+                : {}),
+              targetWords: assignment.target_words,
+            };
+          }),
+          historicalSignatures: runtimeSignatures,
+          onChunkAccepted: async (ideas) => {
+            await Promise.all(
+              ideas.map((idea) => {
+                const reserved = reservedByLocalIndex.get(idea.candidateIndex);
+                if (!reserved) {
+                  throw new Error("Reserved Wall-of-text candidate is missing.");
+                }
+                return saveWallTextGenerationCandidate({
+                  assignmentId: reserved.id,
+                  claimToken,
+                  contentHash: idea.duplicateSignature.contentHash,
+                  creativeId: randomUUID(),
+                  generatorModel: getTrendingWallTextModelName(),
+                  layout: idea.layout,
+                  normalizedText: idea.duplicateSignature.normalizedText,
+                  similaritySignature: idea.duplicateSignature,
+                  text: idea.content,
+                  userId: params.profile.userId,
+                });
+              }),
+            );
+            runtimeSignatures.push(
+              ...ideas.map((idea) => idea.duplicateSignature),
+            );
+          },
+          selectionKey: `${params.requestKey}:${chunkId}`,
+        });
+      } catch (error) {
+        const retryable = !(error instanceof WallTextCandidateRepairExhaustedError);
+        try {
+          await recordWallTextGenerationChunkFailure({
+            claimToken,
+            chunkId,
+            errorCode: retryable ? "infrastructure_error" : "content_retry_exhausted",
+            errorMessage: error instanceof Error ? error.message : String(error),
+            retryable,
+            userId: params.profile.userId,
+          });
+        } catch (recordError) {
+          console.error("Could not persist Wall-of-text chunk failure:", recordError);
+        }
+        throw error;
+      }
+    }
+  }
+
+  const creatives = await listTrendingWallTextCreatives({
+    businessProfileId: params.profile.id,
+    businessProfileVersion: params.profile.profileVersion,
+    userId: params.profile.userId,
   });
+  return ensureTrendingWallTextAssignments({
+    businessProfileId: params.profile.id,
+    businessProfileVersion: params.profile.profileVersion,
+    creatives,
+    userId: params.profile.userId,
+  });
+}
+
+function groupReservedAssignmentsByChunk<
+  T extends { batch_candidate_index: number; chunk_id: string },
+>(assignments: readonly T[]) {
+  const chunks = new Map<string, T[]>();
+  for (const assignment of assignments) {
+    const entries = chunks.get(assignment.chunk_id) ?? [];
+    entries.push(assignment);
+    chunks.set(assignment.chunk_id, entries);
+  }
+  return [...chunks.values()]
+    .map((entries) =>
+      entries.sort(
+        (left, right) => left.batch_candidate_index - right.batch_candidate_index,
+      ),
+    )
+    .sort(
+      (left, right) =>
+        left[0]!.batch_candidate_index - right[0]!.batch_candidate_index,
+    );
+}
+
+function rotateEntries<T>(entries: readonly T[], offset: number) {
+  if (entries.length === 0) return [];
+  const normalizedOffset = Math.max(Math.trunc(offset), 0) % entries.length;
+  return [
+    ...entries.slice(normalizedOffset),
+    ...entries.slice(0, normalizedOffset),
+  ];
+}
+
+function toReservedFormatAssignment(
+  assignment: NonNullable<
+    Awaited<ReturnType<typeof getWallTextGenerationReservation>>
+  >["assignments"][number],
+) {
+  if (
+    !isWallTextFormatId(assignment.assigned_format_id) ||
+    assignment.format_version !== 1 ||
+    (assignment.source_kind === "instagram_reel") !==
+      (assignment.selection_mode === "instagram_template")
+  ) {
+    throw new Error("Reserved Wall-of-text format is not supported by this generator.");
+  }
+  const selectionMode =
+    assignment.source_kind === "instagram_reel"
+      ? ("controlled_rotation" as const)
+      : assignment.selection_mode;
+  if (selectionMode === "instagram_template") {
+    throw new Error("Reserved Wall-of-text selection mode is invalid.");
+  }
+  return {
+    assignedFormatId: assignment.assigned_format_id,
+    candidateIndex: assignment.batch_candidate_index,
+    formatRegistryVersion: WALL_TEXT_FORMAT_REGISTRY_VERSION,
+    formatVersion: 1 as const,
+    rotationCandidateFormatId: assignment.assigned_format_id,
+    selectionMode,
+    selectionWeight: Number(assignment.selection_weight_snapshot),
+    selectorVersion: WALL_TEXT_FORMAT_SELECTOR_VERSION,
+  };
+}
+
+function isWallTextFormatId(value: string | null): value is WallTextFormatId {
+  return (
+    typeof value === "string" &&
+    (WALL_TEXT_FORMAT_IDS as readonly string[]).includes(value)
+  );
 }
 
 export async function getTrendingWallTextFeedProvider(
@@ -261,24 +776,6 @@ export class TrendingWallTextPreparationError extends Error {
     super(message);
     this.name = "TrendingWallTextPreparationError";
   }
-}
-
-function getGeneratedWallText(
-  generatedByIndex: Map<
-    number,
-    Awaited<
-      ReturnType<typeof generateBusinessTrendingWallTextIdeas>
-    >[number]
-  >,
-  candidateIndex: number,
-) {
-  const generated = generatedByIndex.get(candidateIndex);
-
-  if (!generated) {
-    throw new Error("A generated Trending Wall-of-text idea is missing.");
-  }
-
-  return generated;
 }
 
 function toWallTextSourceRecord(

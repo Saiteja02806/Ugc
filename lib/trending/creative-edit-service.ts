@@ -3,7 +3,9 @@ import "server-only";
 import {
   getCarouselEditBackgrounds,
   getCarouselGenerationStatus,
+  getCarouselProductAssetsByIds,
 } from "@/lib/carousel/db";
+import { resolveCarouselImageLibraryCategory } from "@/lib/carousel/image-library-category";
 import { listCreativeAssetGroupAssets } from "@/lib/media/creative-asset-groups";
 import {
   getMediaAssetForOwner,
@@ -44,6 +46,8 @@ import {
 import { isTrendingSourceVideoAsset } from "@/lib/trending/video-source-selection";
 import { getEditableWallTextDraft } from "@/lib/trending/wall-text-db";
 import { createAuthoritativeWallTextContent } from "@/lib/trending/wall-layout-engine";
+import { getBackfillWallTextFormatId } from "@/lib/trending/wall-formats";
+import { classifyWallTextEdit } from "@/lib/trending/wall-text-edit-attribution";
 import {
   WALL_TEXT_RENDER_HEIGHT,
   WALL_TEXT_RENDER_WIDTH,
@@ -168,6 +172,15 @@ export async function saveTrendingCreativeEditor(params: {
     source,
     userId: params.userId,
   });
+  const wallTextAttribution =
+    params.format === "wall_text" &&
+    defaultContent.format === "wall_text" &&
+    content.format === "wall_text"
+      ? classifyWallTextEdit({
+          editedText: content.content.fullText,
+          originalText: defaultContent.content.fullText,
+        })
+      : undefined;
 
   const row = await upsertTrendingCreativeEdit({
     assignmentId: params.input.assignmentId,
@@ -180,6 +193,7 @@ export async function saveTrendingCreativeEditor(params: {
     sourceMediaAssetId: source?.mediaAssetId ?? null,
     sourceSelectionKind: source?.selectionKind ?? null,
     userId: params.userId,
+    wallTextAttribution,
   });
 
   return serializeRecord({
@@ -223,21 +237,32 @@ async function buildDefaultContent(params: {
 
     return {
       format: "carousel",
-      slides: status.slides.map((slide) => ({
-        backgroundUrl:
+      slides: status.slides.map((slide) => {
+        const backgroundUrl =
           (slide.categoryImageAssetId
             ? backgroundById.get(slide.categoryImageAssetId)
             : null) ??
           slide.renderedUrl ??
-          "",
-        ctaText: slide.ctaText ?? "",
-        headline: slide.headline,
-        renderedUrl: slide.renderedUrl ?? "",
-        slideId: slide.id,
-        slideNumber: slide.slideNumber,
-        subtext: slide.subtext ?? "",
-        textPosition: getDefaultCarouselTextPosition(slide.textPosition),
-      })),
+          "";
+
+        return {
+          backgroundAssetId: slide.categoryImageAssetId,
+          backgroundUrl,
+          ctaText: slide.ctaText ?? "",
+          headline: slide.headline,
+          originalBackgroundAssetId: slide.categoryImageAssetId,
+          originalBackgroundUrl: backgroundUrl,
+          originalVisualRole: slide.visualRole,
+          productVisualEligibility: slide.productVisualEligibility,
+          renderedUrl: slide.renderedUrl ?? "",
+          slideId: slide.id,
+          slideNumber: slide.slideNumber,
+          structureId: slide.structureId,
+          subtext: slide.subtext ?? "",
+          textPosition: getDefaultCarouselTextPosition(slide.textPosition),
+          visualRole: slide.visualRole,
+        };
+      }),
       version: TRENDING_CREATIVE_EDIT_VERSION,
     };
   }
@@ -323,6 +348,7 @@ function mergeSubmittedContent(
 
         return {
           ...slide,
+          backgroundAssetId: edited.backgroundAssetId,
           ctaText: edited.ctaText.trim(),
           headline: edited.headline.trim(),
           subtext: edited.subtext.trim(),
@@ -369,7 +395,130 @@ async function validateAndNormalizeSubmittedContent(params: {
   userId: string;
 }): Promise<TrendingCreativeEditContent> {
   if (params.content.format === "carousel") {
-    return params.content;
+    const status = await getCarouselGenerationStatus(params.creativeId);
+
+    if (
+      !status ||
+      status.generation.userId !== params.userId ||
+      status.generation.status !== "completed"
+    ) {
+      throw new TrendingCreativeEditAccessError(
+        "This Carousel is no longer available to edit.",
+        404,
+      );
+    }
+
+    const sourceSlideById = new Map(
+      status.slides.map((slide) => [slide.id, slide]),
+    );
+    const changedProductAssetIds = params.content.slides.flatMap((slide) => {
+      const sourceSlide = sourceSlideById.get(slide.slideId);
+      return sourceSlide &&
+        slide.backgroundAssetId &&
+        slide.backgroundAssetId !== sourceSlide.categoryImageAssetId
+        ? [slide.backgroundAssetId]
+        : [];
+    });
+    let productAssetsById = new Map<
+      string,
+      Awaited<ReturnType<typeof getCarouselProductAssetsByIds>>[number]
+    >();
+
+    if (changedProductAssetIds.length > 0) {
+      if (
+        status.generation.structureId !== "structure_2" ||
+        !status.generation.businessProfileId
+      ) {
+        throw new TrendingCreativeEditAccessError(
+          "App screenshots can replace an image only on an eligible Structure 2 slide.",
+          400,
+        );
+      }
+
+      let categorySlug: ReturnType<typeof resolveCarouselImageLibraryCategory>;
+      try {
+        categorySlug = resolveCarouselImageLibraryCategory({
+          categorySlug: status.generation.categorySlug,
+        });
+      } catch {
+        throw new TrendingCreativeEditAccessError(
+          "This Carousel does not use an active app screenshot category.",
+          409,
+        );
+      }
+
+      const productAssets = await getCarouselProductAssetsByIds({
+        assetIds: changedProductAssetIds,
+        businessProfileId: status.generation.businessProfileId,
+        categorySlug,
+      });
+      productAssetsById = new Map(
+        productAssets.map((asset) => [asset.id, asset]),
+      );
+
+      if (productAssetsById.size !== new Set(changedProductAssetIds).size) {
+        throw new TrendingCreativeEditAccessError(
+          "One of the selected app screenshots is no longer available.",
+          409,
+        );
+      }
+    }
+
+    const slides = params.content.slides.map((slide) => {
+      const sourceSlide = sourceSlideById.get(slide.slideId);
+
+      if (!sourceSlide || sourceSlide.slideNumber !== slide.slideNumber) {
+        throw new TrendingCreativeEditAccessError(
+          "Reload this Carousel before saving the edit.",
+          409,
+        );
+      }
+
+      if (slide.backgroundAssetId === sourceSlide.categoryImageAssetId) {
+        return {
+          ...slide,
+          backgroundAssetId: sourceSlide.categoryImageAssetId,
+          backgroundUrl: slide.originalBackgroundUrl,
+          visualRole: slide.originalVisualRole,
+        };
+      }
+
+      if (
+        !slide.backgroundAssetId ||
+        sourceSlide.structureId !== "structure_2" ||
+        !["allowed", "preferred"].includes(
+          sourceSlide.productVisualEligibility ?? "forbidden",
+        )
+      ) {
+        throw new TrendingCreativeEditAccessError(
+          `Slide ${slide.slideNumber} cannot use an app screenshot.`,
+          400,
+        );
+      }
+
+      const productAsset = productAssetsById.get(slide.backgroundAssetId);
+      if (!productAsset) {
+        throw new TrendingCreativeEditAccessError(
+          "The selected app screenshot is no longer available.",
+          409,
+        );
+      }
+
+      return {
+        ...slide,
+        backgroundUrl: productAsset.url,
+        visualRole: "product_asset" as const,
+      };
+    });
+
+    if (slides.filter((slide) => slide.visualRole === "product_asset").length > 1) {
+      throw new TrendingCreativeEditAccessError(
+        "Use one app screenshot per Carousel so the 1:2:2 visual ratio stays intact.",
+        400,
+      );
+    }
+
+    return { ...params.content, slides };
   }
 
   if (params.content.format === "hook_video") {
@@ -379,7 +528,7 @@ async function validateAndNormalizeSubmittedContent(params: {
       return {
         ...params.content,
         fontSize: layout.fontSize,
-        hookText: layout.hookText,
+        hookText: layout.lines.join("\n"),
         lines: layout.lines,
         position: clampHookTextPosition(
           params.content.position,
@@ -413,16 +562,15 @@ async function validateAndNormalizeSubmittedContent(params: {
     const durationSeconds =
       params.source?.resolvedAssetDurationSeconds ?? draft.durationSeconds;
     const currentContent = params.content.content;
-    const sourceContent =
-      currentContent.sourceContent?.kind === "list" &&
-      currentContent.fullText === draft.text.fullText
-        ? currentContent.sourceContent
-        : { kind: "prose" as const, text: currentContent.fullText };
+    const sourceContent = {
+      kind: "text" as const,
+      text: currentContent.fullText,
+    };
     const relaid = await createAuthoritativeWallTextContent({
       content: sourceContent,
-      formatId:
-        currentContent.formatId ??
-        (draft.text.formatId ?? "niche_insight"),
+      formatId: getBackfillWallTextFormatId(
+        currentContent.formatId ?? draft.text.formatId ?? "niche_insight",
+      ),
       layout: params.content.layout,
     });
     const contentWithoutFont = relaid.content;
@@ -506,10 +654,22 @@ function mergeStoredContentWithOwnerDefaults(
         return edited
           ? {
               ...slide,
+              backgroundAssetId:
+                typeof edited.backgroundAssetId === "string"
+                  ? edited.backgroundAssetId
+                  : slide.backgroundAssetId,
+              backgroundUrl:
+                typeof edited.backgroundUrl === "string"
+                  ? edited.backgroundUrl
+                  : slide.backgroundUrl,
               ctaText: edited.ctaText,
               headline: edited.headline,
               subtext: edited.subtext,
               textPosition: clampNormalizedTextPosition(edited.textPosition),
+              visualRole:
+                edited.visualRole === "product_asset"
+                  ? "product_asset"
+                  : slide.visualRole,
             }
           : slide;
       }),
@@ -517,8 +677,19 @@ function mergeStoredContentWithOwnerDefaults(
   }
 
   if (defaults.format === "hook_video" && stored?.format === "hook_video") {
+    const storedLines = Array.isArray(stored.lines)
+      ? stored.lines
+          .filter((line): line is string => typeof line === "string")
+          .map((line) => line.replace(/\s+/gu, " ").trim())
+          .filter(Boolean)
+          .slice(0, 3)
+      : [];
+    const lines = storedLines.length > 0 ? storedLines : defaults.lines;
+
     return {
       ...stored,
+      hookText: lines.join("\n"),
+      lines,
       position: clampNormalizedTextPosition(stored.position),
       textColor: resolveTrendingTextColor(stored.textColor),
     } satisfies TrendingHookEditContent;

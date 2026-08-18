@@ -29,6 +29,8 @@ import { getPublicBackgroundJob } from "@/lib/jobs/background-job-contract";
 import { getMissingBackgroundJobStorageEnvVars } from "@/lib/jobs/background-jobs";
 import { getMissingBackgroundJobCloudTasksEnvVars } from "@/lib/jobs/gcp-cloud-tasks";
 import { deleteStorageObject } from "@/lib/storage/storage";
+import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
+import { prebuildTrendingAfterOnboarding } from "@/lib/trending/onboarding-prebuild";
 
 export const runtime = "nodejs";
 
@@ -50,6 +52,13 @@ const onboardingPatchSchema = z.discriminatedUnion("action", [
     .object({
       action: z.literal("complete"),
       primaryGoals: PrimaryGoalsSchema,
+      timezone: z
+        .string()
+        .trim()
+        .min(1)
+        .max(80)
+        .refine(isValidTimezone)
+        .optional(),
     })
     .strict(),
 ]);
@@ -302,8 +311,22 @@ export async function PATCH(request: Request) {
       primaryGoals: parsed.data.primaryGoals,
       profile: existing,
     });
+    const prebuild = await prebuildTrendingAfterOnboarding({
+      includeHookVideos: areTrendingHookVideosEnabled(request),
+      profile,
+      timezone:
+        parsed.data.timezone ?? profile.trendingTimezone ?? "UTC",
+    });
 
-    return json({ ok: true, profile: toClientProfile(profile) });
+    for (const result of prebuild) {
+      if (result.status === "failed") {
+        console.error(
+          `Could not prebuild ${result.format} after onboarding completion.`,
+        );
+      }
+    }
+
+    return json({ ok: true, prebuild, profile: toClientProfile(profile) });
   } catch (error) {
     console.error("Could not update business profile onboarding:", error);
     return json(
@@ -315,6 +338,15 @@ export async function PATCH(request: Request) {
 
 function getString(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function isValidTimezone(value: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -200,8 +200,8 @@ for (const scenario of scenarios) {
   );
   const textBox = {
     height: 480 / 1920,
-    width: 620 / 1080,
-    x: 230 / 1080,
+    width: 660 / 1080,
+    x: 210 / 1080,
     y: 660 / 1920,
   };
   const overlaySvg = buildWallTextOverlaySvg({

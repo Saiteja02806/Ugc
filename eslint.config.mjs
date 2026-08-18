@@ -18,6 +18,8 @@ const eslintConfig = defineConfig([
     "tmp/**",
     "local-run-logs/**",
     ".playwright-mcp/**",
+    ".release-db-*/**",
+    ".release-worktrees/**",
     "hatch-pet-runs/**",
     "worker/dist/**",
     "worker/node_modules/**",

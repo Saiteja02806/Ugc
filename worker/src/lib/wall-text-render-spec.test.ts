@@ -73,6 +73,13 @@ test("uses Inter Bold, center alignment, outline, and compact section rhythm", (
   assert.doesNotMatch(svg, /wallTextScrim|radialGradient/);
 });
 
+test("uses the widened centered 660px production text box by default", () => {
+  const layout = buildWallTextRenderLayout({ content });
+
+  assert.equal(layout.textBox.left, 210);
+  assert.equal(layout.textBox.width, 660);
+});
+
 test("accepts four-line compact Wall blocks", () => {
   const layout = buildWallTextRenderLayout({
     content: fourLineContent,
@@ -148,6 +155,54 @@ test("renders the saved v6 final layout without reflowing its lines", () => {
   assert.deepEqual(layout.segments[0]?.lines, finalLayoutContent.finalLayout.blocks[0]?.lines);
   assert.equal(layout.textBox.width, 640);
   assert.equal(svg.match(/<text /g)?.length, 3);
+});
+
+test("renders V7 as one centered block with equal line rhythm and a short final line", () => {
+  const v7 = {
+    finalLayout: {
+      blocks: [{
+        lines: [
+          "I tracked the obvious steps",
+          "but missed the quiet habits.",
+          "Those small details explained",
+          "why the result changed",
+          "at once.",
+        ],
+        role: "text" as const,
+      }],
+      fontFamily: "Inter" as const,
+      fontSizePx: 48 as const,
+      fontWeight: 700 as const,
+      lineHeightPx: 52,
+      textBox: {
+        height: 480 / 1920,
+        width: 660 / 1080,
+        x: 210 / 1080,
+        y: 660 / 1920,
+      },
+      version: "wall-text-final-layout-v2" as const,
+    },
+    fullText:
+      "I tracked the obvious steps but missed the quiet habits. Those small details explained why the result changed at once.",
+    segments: [
+      { lines: ["I tracked the obvious steps"], role: "lead" as const },
+      {
+        lines: ["but missed the quiet habits.", "Those small details explained"],
+        role: "support" as const,
+      },
+      {
+        lines: ["why the result changed", "at once."],
+        role: "closing" as const,
+      },
+    ],
+  };
+  const layout = buildWallTextRenderLayout({ content: v7 });
+  const svg = buildWallTextOverlaySvg({ content: v7, placement: "middle" });
+  assert.equal(layout.segments.length, 1);
+  assert.equal(layout.segments[0]?.lineHeight, 52);
+  assert.equal(layout.textBox.width, 660);
+  assert.equal(svg.match(/text-anchor="middle"/g)?.length, 5);
+  assert.match(svg, />at once\.<\/text>/);
 });
 
 test("never truncates and rejects more than seven semantic lines", () => {

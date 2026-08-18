@@ -14,6 +14,7 @@ import {
   buildTrendingHookCampaignPurposeSequence,
   type TrendingHookCampaignPurpose,
 } from "./trending-hook-patterns.js";
+import { HOOK_TEXT_FORMAT_IDS } from "./trending-hook-text-formats.js";
 
 const candidate = {
   candidateIndex: 0,
@@ -123,10 +124,11 @@ test("allows up to two relevant emojis and rejects a third", () => {
       mood: "serious",
     },
     candidateIndex: 0,
-    draftKey: "0:problem_observation",
+    draftKey: "0:GF_002",
     evidenceKeys: ["mainProblem"],
     lines: ["Meal logging interrupts the day 😩"],
-    patternId: "problem_observation",
+    hookTextFormatId: "GF_002",
+    hookTextVariantId: "GF_002_A",
   } satisfies HookDraft;
 
   const oneEmoji = validateHookDraft({
@@ -168,10 +170,11 @@ test("hard validation blocks fabricated history, numbers, and ad phrases", () =>
       mood: "curious",
     },
     candidateIndex: 0,
-    draftKey: "0:mystery_discovery",
+    draftKey: "0:GF_015",
     evidenceKeys: ["mainProblem"],
     lines: ["Ready to unlock", "results in 3 days?"],
-    patternId: "mystery_discovery",
+    hookTextFormatId: "GF_015",
+    hookTextVariantId: "GF_015_A",
   } satisfies HookDraft;
   const validation = validateHookDraft({
     businessContext,
@@ -269,13 +272,14 @@ test("rejects a Wall-of-text paragraph used as a Hook opening", () => {
         mood: "serious",
       },
       candidateIndex: 0,
-      draftKey: "0:problem_observation",
+      draftKey: "0:GF_002",
       evidenceKeys: ["mainProblem", "productSummary"],
       lines: [
         "Logging dinner should not feel like homework — snap a photo,",
         "let the app draft details and spend that saved time elsewhere.",
       ],
-      patternId: "problem_observation",
+      hookTextFormatId: "GF_002",
+      hookTextVariantId: "GF_002_A",
     },
     duplicate: false,
   });
@@ -300,7 +304,7 @@ test("the AI reading judgment has no duration-to-word formula", () => {
   const review = {
     candidateIndex: 0,
     claimSafe: true,
-    draftKey: "0:mystery_discovery",
+    draftKey: "0:GF_015",
     estimatedReadingSeconds: 2.9,
     humanVoice: true,
     openingOnly: true,
@@ -352,7 +356,7 @@ test("the AI reading judgment has no duration-to-word formula", () => {
   );
 });
 
-test("generates two patterns, repairs failures, and selects the best safe draft", async () => {
+test("keeps the preselected Global format while repairing an unsafe draft", async () => {
   const outputs = [
     {
       hooks: [
@@ -363,22 +367,11 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
             mood: "urgent",
           },
           candidateIndex: 0,
-          draftKey: "0:mystery_discovery",
+          draftKey: "0:GF_015",
           evidenceKeys: ["mainProblem"],
           lines: ["Ready to unlock", "a better day?"],
-          patternId: "mystery_discovery",
-        },
-        {
-          audioIntent: {
-            energy: "medium",
-            hookType: "problem",
-            mood: "serious",
-          },
-          candidateIndex: 0,
-          draftKey: "0:problem_reversal",
-          evidenceKeys: ["mainProblem"],
-          lines: ["Meal logging keeps", "stealing your attention."],
-          patternId: "problem_reversal",
+          hookTextFormatId: "GF_015",
+          hookTextVariantId: "GF_015_A",
         },
       ],
     },
@@ -387,7 +380,7 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
         {
           candidateIndex: 0,
           claimSafe: true,
-          draftKey: "0:mystery_discovery",
+          draftKey: "0:GF_015",
           estimatedReadingSeconds: 2.5,
           humanVoice: false,
           openingOnly: true,
@@ -408,25 +401,6 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
           singleIdea: true,
           truthful: true,
         },
-        {
-          candidateIndex: 0,
-          claimSafe: true,
-          draftKey: "0:problem_reversal",
-          estimatedReadingSeconds: 2.5,
-          humanVoice: true,
-          openingOnly: true,
-          readable: true,
-          reactionMatch: true,
-          reason: "Specific and readable.",
-          revisedLines: [],
-          scores: {
-            ...passingScores,
-            originality: 3,
-          },
-          scrollStopping: true,
-          singleIdea: true,
-          truthful: true,
-        },
       ],
     },
     {
@@ -439,13 +413,14 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
             mood: "curious",
           },
           candidateIndex: 0,
-          draftKey: "0:mystery_discovery",
+          draftKey: "0:GF_015",
           evidenceKeys: ["mainProblem"],
           lines: [
             "Why does meal logging",
             "interrupt everything?",
           ],
-          patternId: "mystery_discovery",
+          hookTextFormatId: "GF_015",
+          hookTextVariantId: "GF_015_A",
         },
       ],
     },
@@ -454,7 +429,7 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
         {
           candidateIndex: 0,
           claimSafe: true,
-          draftKey: "0:mystery_discovery",
+          draftKey: "0:GF_015",
           estimatedReadingSeconds: 2.4,
           humanVoice: true,
           openingOnly: true,
@@ -487,6 +462,15 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
     candidates: [candidate],
     client: client as never,
     model: "test-model",
+    performanceSignals: {
+      formatSignals: HOOK_TEXT_FORMAT_IDS.map((formatId) => ({
+        formatId,
+        publishedResultCount: formatId === "GF_015" ? 1 : 0,
+        selectionWeight: formatId === "GF_015" ? 1.3 : 1,
+        temporaryBoost: formatId === "GF_015" ? 0.12 : 0,
+        timesGenerated: formatId === "GF_015" ? 0 : 100,
+      })),
+    },
   });
 
   assert.deepEqual(result[0]?.openingLines, [
@@ -494,7 +478,7 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
     "interrupt everything?",
   ]);
   assert.equal(result[0]?.hookText.includes("\n"), true);
-  assert.equal(result[0]?.patternId, "mystery_discovery");
+  assert.equal(result[0]?.hookTextFormatId, "GF_015");
   assert.deepEqual(result[0]?.audioIntent, {
     energy: "medium",
     hookType: "curiosity",
@@ -508,30 +492,19 @@ test("generates two patterns, repairs failures, and selects the best safe draft"
   assert.equal(outputs.length, 0);
 });
 
-test("falls back to one-pattern repairs when a repair batch is incomplete", async () => {
-  const mysteryDraft = {
+test("repairs one assigned format without switching to another format", async () => {
+  const discoveryDraft = {
     audioIntent: {
       energy: "medium",
       hookType: "curiosity",
       mood: "curious",
     },
     candidateIndex: 0,
-    draftKey: "0:mystery_discovery",
+    draftKey: "0:GF_015",
     evidenceKeys: ["mainProblem"],
     lines: ["Why does meal logging", "interrupt everything?"],
-    patternId: "mystery_discovery",
-  };
-  const problemDraft = {
-    audioIntent: {
-      energy: "medium",
-      hookType: "problem",
-      mood: "serious",
-    },
-    candidateIndex: 0,
-    draftKey: "0:problem_reversal",
-    evidenceKeys: ["mainProblem"],
-    lines: ["Meal logging keeps", "stealing your attention."],
-    patternId: "problem_reversal",
+    hookTextFormatId: "GF_015",
+    hookTextVariantId: "GF_015_A",
   };
   const failingReview = (draftKey: string) => ({
     candidateIndex: 0,
@@ -574,25 +547,20 @@ test("falls back to one-pattern repairs when a repair batch is incomplete", asyn
     {
       hooks: [
         {
-          ...mysteryDraft,
+          ...discoveryDraft,
           lines: ["Ready to unlock", "a better day?"],
         },
-        problemDraft,
       ],
     },
     {
       reviews: [
-        failingReview(mysteryDraft.draftKey),
-        failingReview(problemDraft.draftKey),
+        failingReview(discoveryDraft.draftKey),
       ],
     },
-    { hooks: [mysteryDraft] },
-    { hooks: [mysteryDraft] },
-    { hooks: [problemDraft] },
+    { hooks: [discoveryDraft] },
     {
       reviews: [
-        passingReview(mysteryDraft.draftKey),
-        passingReview(problemDraft.draftKey),
+        passingReview(discoveryDraft.draftKey),
       ],
     },
   ];
@@ -617,12 +585,22 @@ test("falls back to one-pattern repairs when a repair batch is incomplete", asyn
     candidates: [candidate],
     client: client as never,
     model: "test-model",
+    performanceSignals: {
+      formatSignals: HOOK_TEXT_FORMAT_IDS.map((formatId) => ({
+        formatId,
+        publishedResultCount: formatId === "GF_015" ? 1 : 0,
+        selectionWeight: formatId === "GF_015" ? 1.3 : 1,
+        temporaryBoost: formatId === "GF_015" ? 0.12 : 0,
+        timesGenerated: formatId === "GF_015" ? 0 : 100,
+      })),
+    },
   });
 
-  assert.equal(requestCount, 6);
+  assert.equal(requestCount, 4);
   assert.equal(outputs.length, 0);
   assert.equal(result.length, 1);
   assert.equal(result[0]?.openingLines.length, 2);
+  assert.equal(result[0]?.hookTextFormatId, "GF_015");
   assert.equal(result[0]?.readabilityReview.repairApplied, true);
   assert.equal(result[0]?.validation.passed, true);
 });

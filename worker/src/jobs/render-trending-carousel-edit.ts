@@ -5,6 +5,12 @@ import {
   type CarouselNormalizedTextPosition,
 } from "../lib/carousel-render-slide.js";
 import { getCarouselRenderStyle } from "../lib/carousel-render-style.js";
+import {
+  CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
+  renderCarouselStructure2SlideWithDiagnostics as defaultRenderCarouselStructure2Slide,
+} from "../lib/carousel-structure-2-render-slide.js";
+import type { CarouselStructure2RenderSpec } from "../lib/carousel-structure-2-render-spec.js";
+import { isCarouselStructure2FormatId } from "../lib/carousel-structure-2-formats.js";
 import { uploadRenderedCarouselSlide as defaultUploadRenderedCarouselSlide } from "../lib/carousel-storage.js";
 import type { PlannedCarouselSlide } from "../lib/carousel-slide-plan.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
@@ -18,6 +24,8 @@ import type { WorkerJobOutput } from "./index.js";
 
 const TRENDING_CAROUSEL_EDIT_RENDERER_VERSION =
   `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v1`;
+const TRENDING_CAROUSEL_STRUCTURE_2_EDIT_RENDERER_VERSION =
+  `${CAROUSEL_STRUCTURE_2_RENDERER_VERSION}-normalized-edit-v1`;
 
 type TrendingCarouselEditJobInput = {
   carouselId: string;
@@ -27,6 +35,7 @@ type TrendingCarouselEditJobInput = {
 };
 
 type EditableCarouselSlide = {
+  backgroundAssetId: string | null;
   backgroundUrl: string;
   ctaText: string;
   headline: string;
@@ -34,15 +43,18 @@ type EditableCarouselSlide = {
   slideNumber: number;
   subtext: string;
   textPosition: CarouselNormalizedTextPosition;
+  visualRole: "hook" | "human" | "product_asset" | "static" | null;
 };
 
 type RenderTrendingCarouselEditDependencies = {
   renderCarouselSlide: typeof defaultRenderCarouselSlide;
+  renderCarouselStructure2Slide: typeof defaultRenderCarouselStructure2Slide;
   uploadRenderedCarouselSlide: typeof defaultUploadRenderedCarouselSlide;
 };
 
 const defaultDependencies: RenderTrendingCarouselEditDependencies = {
   renderCarouselSlide: defaultRenderCarouselSlide,
+  renderCarouselStructure2Slide: defaultRenderCarouselStructure2Slide,
   uploadRenderedCarouselSlide: defaultUploadRenderedCarouselSlide,
 };
 
@@ -155,18 +167,24 @@ export async function runRenderTrendingCarouselEditJob(
         );
       }
 
-      const slide = applyEditToPlannedSlide(
-        plannedSlideByNumber.get(editedSlide.slideNumber) ??
-          createFallbackPlannedSlide(originalSlide),
-        editedSlide,
-      );
-      const rendered = await dependencies.renderCarouselSlide({
-        assetUrl: editedSlide.backgroundUrl,
-        format: generation.format,
-        normalizedTextPosition: editedSlide.textPosition,
-        slide,
-        textStyle: originalTextStyle,
-      });
+      const rendered =
+        generation.structure_id === "structure_2"
+          ? await dependencies.renderCarouselStructure2Slide({
+              assetUrl: editedSlide.backgroundUrl,
+              format: generation.format,
+              spec: createStructure2EditRenderSpec(originalSlide, editedSlide),
+            })
+          : await dependencies.renderCarouselSlide({
+              assetUrl: editedSlide.backgroundUrl,
+              format: generation.format,
+              normalizedTextPosition: editedSlide.textPosition,
+              slide: applyEditToPlannedSlide(
+                plannedSlideByNumber.get(editedSlide.slideNumber) ??
+                  createFallbackPlannedSlide(originalSlide),
+                editedSlide,
+              ),
+              textStyle: originalTextStyle,
+            });
       const progressAfterRender = 10 + Math.round(((index + 1) / editedSlides.length) * 70);
 
       await context.checkpoint({
@@ -180,7 +198,10 @@ export async function runRenderTrendingCarouselEditJob(
         carouselId: `${input.editId}-revision-${input.revision}`,
         format: generation.format,
         projectId: "trending-carousel-edit",
-        rendererVersion: TRENDING_CAROUSEL_EDIT_RENDERER_VERSION,
+        rendererVersion:
+          generation.structure_id === "structure_2"
+            ? TRENDING_CAROUSEL_STRUCTURE_2_EDIT_RENDERER_VERSION
+            : TRENDING_CAROUSEL_EDIT_RENDERER_VERSION,
         slideNumber: editedSlide.slideNumber,
         userId: input.userId,
       });
@@ -206,7 +227,10 @@ export async function runRenderTrendingCarouselEditJob(
     });
 
     const renderOutput = {
-      rendererVersion: TRENDING_CAROUSEL_EDIT_RENDERER_VERSION,
+      rendererVersion:
+        generation.structure_id === "structure_2"
+          ? TRENDING_CAROUSEL_STRUCTURE_2_EDIT_RENDERER_VERSION
+          : TRENDING_CAROUSEL_EDIT_RENDERER_VERSION,
       slides: renderedSlides,
     } satisfies Record<string, Json>;
 
@@ -316,6 +340,11 @@ function parseEditedSlides(edit: TrendingCreativeEditRow): EditableCarouselSlide
       );
 
       return {
+        backgroundAssetId:
+          typeof slide.backgroundAssetId === "string" &&
+          slide.backgroundAssetId.trim()
+            ? slide.backgroundAssetId.trim()
+            : null,
         backgroundUrl: getHttpUrl(slide.backgroundUrl, "backgroundUrl"),
         ctaText: getOptionalString(slide.ctaText, 120),
         headline: getRequiredString(slide.headline, "headline").slice(0, 180),
@@ -326,6 +355,10 @@ function parseEditedSlides(edit: TrendingCreativeEditRow): EditableCarouselSlide
           x: getUnitNumber(textPosition.x, "textPosition.x"),
           y: getUnitNumber(textPosition.y, "textPosition.y"),
         },
+        visualRole: getNullableChoice(
+          slide.visualRole,
+          ["hook", "human", "product_asset", "static"] as const,
+        ),
       };
     })
     .sort((first, second) => first.slideNumber - second.slideNumber);
@@ -473,6 +506,82 @@ function applyEditToPlannedSlide(
   };
 }
 
+function createStructure2EditRenderSpec(
+  original: CarouselSlideRow,
+  edited: EditableCarouselSlide,
+): CarouselStructure2RenderSpec {
+  if (!isCarouselStructure2FormatId(original.story_format_id)) {
+    throw new Error(
+      `Structure 2 slide ${original.slide_number} has no canonical story format id.`,
+    );
+  }
+
+  const storyRole = getChoice(
+    original.story_role,
+    [
+      "failure_scene",
+      "product_turning_point",
+      "proof_reflection_cta",
+      "recognition",
+      "reframe",
+    ] as const,
+    "recognition",
+  );
+  const visualRole =
+    edited.visualRole ??
+    getChoice(
+      original.visual_role,
+      ["hook", "human", "product_asset", "static"] as const,
+      "static",
+    );
+  const isProduct = visualRole === "product_asset";
+
+  return {
+    assetId:
+      edited.backgroundAssetId ??
+      getRequiredString(original.category_image_asset_id, "category_image_asset_id"),
+    assetUrl: edited.backgroundUrl,
+    ctaText: edited.ctaText || null,
+    layoutVariant: isProduct
+      ? "story_product_reveal"
+      : getChoice(
+          original.story_layout_variant,
+          [
+            "story_overlay_only",
+            "story_pill_overlay",
+            "story_product_reveal",
+          ] as const,
+          "story_overlay_only",
+        ),
+    productVisualEligibility: getChoice(
+      original.product_visual_eligibility,
+      ["allowed", "forbidden", "preferred"] as const,
+      "forbidden",
+    ),
+    slideNumber: edited.slideNumber,
+    storyFormatId: original.story_format_id,
+    storyRole,
+    storyText: edited.subtext
+      ? `${edited.headline} ${edited.subtext}`
+      : edited.headline,
+    textPosition:
+      edited.textPosition.y < 0.42
+        ? "upper"
+        : edited.textPosition.y > 0.58
+          ? "lower"
+          : "center",
+    textTreatment: isProduct
+      ? "overlay"
+      : getChoice(
+          original.story_text_treatment,
+          ["outlined_overlay", "overlay", "pill"] as const,
+          "overlay",
+        ),
+    visualContext: original.image_direction ?? "",
+    visualRole,
+  };
+}
+
 function getCompletedOutput(edit: TrendingCreativeEditRow): WorkerJobOutput | null {
   if (edit.render_status !== "ready") {
     return null;
@@ -591,4 +700,13 @@ function getChoice<const TValue extends readonly string[]>(
   return typeof value === "string" && choices.includes(value)
     ? (value as TValue[number])
     : fallback;
+}
+
+function getNullableChoice<const TValue extends readonly string[]>(
+  value: Json | undefined,
+  choices: TValue,
+): TValue[number] | null {
+  return typeof value === "string" && choices.includes(value)
+    ? (value as TValue[number])
+    : null;
 }

@@ -73,6 +73,13 @@ const oneCallFormatsMigration = readFileSync(
   ),
   "utf8",
 );
+const generationV7Migration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260814141455_add_wall_text_generation_v7_architecture.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const generatorSource = readFileSync(
   new URL("./generate-trending-wall-text-ideas.ts", import.meta.url),
   "utf8",
@@ -228,7 +235,7 @@ test("does not retain the superseded multi-pass Wall generator", () => {
   assert.match(generatorSource, /must never use a two-line Hook rule/i); */
 });
 
-test("uses one GPT-5 mini call for the complete Wall candidate batch", () => {
+test("uses one batched GPT-5 mini Writer request per normal ten-candidate chunk", () => {
   assert.match(generatorSource, /const DEFAULT_MODEL = "gpt-5-mini"/);
   assert.match(generatorSource, /reasoning_effort: "low"/);
   assert.match(
@@ -240,55 +247,157 @@ test("uses one GPT-5 mini call for the complete Wall candidate batch", () => {
     1,
     "the batch generator must make exactly one AI request",
   );
+  assert.match(generatorSource, /candidateIndex:[\s\S]+text: z\.string/);
+  assert.doesNotMatch(generatorSource, /formatId: EligibleWallTextFormatIdSchema/);
   assert.match(
     generatorSource,
-    /const WallTextSourceContentSchema = z\.discriminatedUnion\("kind"/,
+    /buildWallTextGenerationPrompt\([\s\S]+business: params\.business[\s\S]+candidates: params\.candidates/,
   );
-  assert.match(
-    generatorSource,
-    /const EligibleWallTextFormatIdSchema = z\.enum\([\s\S]+getEligibleWallTextFormatIds\(\)[\s\S]+formatId: EligibleWallTextFormatIdSchema/,
+  assert.match(generatorSource, /MAX_WRITER_RETRIES = 1/);
+  assert.match(generatorSource, /pending = failures\.map/);
+  assert.ok(
+    generatorSource.indexOf("if (params.onChunkAccepted") <
+      generatorSource.indexOf("if (attempt === MAX_WRITER_RETRIES)"),
+    "valid candidates must be persisted before a failed candidate exhausts repair",
   );
-  assert.match(
-    generatorSource,
-    /buildWallTextGenerationPrompt\(\{ business, candidates \}\)/,
-  );
-  assert.match(
-    generatorSource,
-    /return Promise\.all\([\s\S]+createAuthoritativeWallTextContent/,
-  );
-  assert.doesNotMatch(
-    generatorSource,
-    /retry|repair|reviewer|revisionFeedback/i,
-  );
+  assert.doesNotMatch(generatorSource, /reviewer|embeddings?/i);
   assert.match(
     promptSource,
     /natural continuous Wall-of-Text language[\s\S]+do not insert newline characters/i,
   );
   assert.match(
     promptSource,
-    /Return exactly one result for every candidate\. Do not return final visual lines\./,
+    /Return exactly one result for every candidate\. Do not return formatId, duration, coordinates, or final visual lines\./,
   );
 });
 
-test("keeps the approved twelve Wall formats in one controlled registry", () => {
+test("persists stable batches, original chunks, assignments, budgets, and placement", () => {
+  assert.match(
+    generationV7Migration,
+    /create table if not exists public\.wall_text_generation_batches[\s\S]+requested_count integer not null check \(requested_count between 1 and 50\)/i,
+  );
+  assert.match(
+    generationV7Migration,
+    /create table if not exists public\.wall_text_generation_chunks[\s\S]+candidate_count integer not null check \(candidate_count between 1 and 10\)[\s\S]+idempotency_key text not null unique/i,
+  );
+  assert.match(
+    generationV7Migration,
+    /create table if not exists public\.wall_text_generation_assignments[\s\S]+duration_seconds numeric\(8, 3\) not null[\s\S]+layout_json jsonb not null[\s\S]+target_words integer not null[\s\S]+max_words integer not null/i,
+  );
+  assert.match(
+    generationV7Migration,
+    /create or replace function public\.claim_wall_text_generation_chunk_v1[\s\S]+returns uuid[\s\S]+claim_token = next_claim_token[\s\S]+status = 'processing'/i,
+  );
+  assert.match(
+    generationV7Migration,
+    /save_wall_text_generation_candidate_v1[\s\S]+chunk\.claim_token = p_claim_token[\s\S]+wall_text_generation_candidate_stale_claim/i,
+  );
+  assert.match(
+    generationV7Migration,
+    /record_wall_text_generation_chunk_failure_v1[\s\S]+case when p_retryable then 'retry_pending' else 'failed' end/i,
+  );
+  const prepareSource = feedSource.match(
+    /export async function prepareTrendingWallTextIdeas[\s\S]+?export async function getTrendingWallTextFeedProvider/,
+  )?.[0] ?? "";
+  assert.ok(
+    prepareSource.indexOf("getWallTextGenerationReservation") <
+      prepareSource.indexOf("resolveTrendingVideoSource"),
+    "a retry must load its saved reservation before selecting fresh videos",
+  );
+  assert.match(
+    feedSource,
+    /groupReservedAssignmentsByChunk[\s\S]+claimWallTextGenerationChunk[\s\S]+onChunkAccepted[\s\S]+saveWallTextGenerationCandidate/,
+  );
+});
+
+test("keeps each Instagram Reel video, reference, safe box, and locked audio together", () => {
+  assert.match(
+    generationV7Migration,
+    /create table if not exists public\.wall_text_instagram_reel_templates[\s\S]+overlay_media_asset_id uuid not null unique[\s\S]+locked_audio_asset_id text not null unique[\s\S]+reference_text text not null[\s\S]+safe_text_box jsonb not null/i,
+  );
+  assert.match(
+    generationV7Migration,
+    /wall_text_generation_assignments_source_chk[\s\S]+source_kind = 'instagram_reel'[\s\S]+instagram_reel_template_id is not null/i,
+  );
+  assert.match(
+    feedSource,
+    /listActiveWallTextInstagramReelTemplates[\s\S]+instagramReferenceText:[\s\S]+instagramReferenceTextHash:/,
+  );
+  assert.match(
+    feedSource,
+    /assignment\.instagram_reference_text[\s\S]+referenceText: assignment\.instagram_reference_text/,
+  );
+  assert.match(
+    feedSource,
+    /source\.selection[\s\S]+Promise\.resolve\(\[\]\)[\s\S]+listActiveWallTextInstagramReelTemplates/,
+  );
+  assert.match(
+    promptSource,
+    /Reference text is not evidence[\s\S]+Never repeat its numbers, psychology statements, factual claims, product names, or promises/i,
+  );
+});
+
+test("keeps historical duplicate protection outside the Writer prompt", () => {
+  assert.match(
+    generationV7Migration,
+    /wall_text_content_history_exact_duplicate_key[\s\S]+unique \(user_id, business_profile_id, content_hash\)/i,
+  );
+  assert.match(
+    databaseSource,
+    /listWallTextDuplicateSignatures[\s\S]+wall_text_content_history/,
+  );
+  assert.match(
+    generatorSource,
+    /createWallTextDuplicateSignature[\s\S]+findWallTextDuplicate/,
+  );
+  assert.doesNotMatch(promptSource, /historicalSignatures|previous Wall texts/i);
+});
+
+test("learns from views only after the fixed 72-96 hour observation window", () => {
+  assert.match(
+    generationV7Migration,
+    /create table if not exists public\.wall_text_performance_observations[\s\S]+view_count bigint/i,
+  );
+  assert.doesNotMatch(
+    generationV7Migration.match(
+      /create table if not exists public\.wall_text_performance_observations[\s\S]+?\);/i,
+    )?.[0] ?? "",
+    /like_count|comment_count|share_count|save_count/i,
+  );
+  assert.match(
+    generationV7Migration,
+    /p_observed_at < v_published_at \+ interval '72 hours'[\s\S]+p_observed_at > v_published_at \+ interval '96 hours'/i,
+  );
+});
+
+test("stores every manual Wall edit for duplicates but excludes major edits from learning", () => {
+  assert.match(
+    generationV7Migration,
+    /save_wall_text_edit_with_history_v1[\s\S]+p_edit_classification not in \('none', 'minor', 'major'\)[\s\S]+learning_eligible :=[\s\S]+p_edit_classification in \('none', 'minor'\)/i,
+  );
+  assert.match(
+    generationV7Migration,
+    /insert into public\.wall_text_content_history[\s\S]+on conflict \(user_id, business_profile_id, content_hash\) do nothing/i,
+  );
+  assert.match(
+    generationV7Migration,
+    /coalesce\(\(media\.metadata ->> 'formatLearningEligible'\)::boolean, false\)[\s\S]+history\.performance_eligible/i,
+  );
+});
+
+test("keeps the approved thirty Wall formats in one controlled registry", () => {
   const expectedFormatIds = [
-    "identity_mirror",
-    "recognizable_moment",
-    "hidden_truth",
-    "contrarian_reframe",
-    "personal_confession",
-    "aspiration_redefinition",
-    "pain_beneath_the_pain",
-    "niche_insight",
-    "list_rules",
-    "community_prompt",
-    "analogy_reframe",
-    "progression_sequence",
+    "hidden_alternative",
+    "manual_automatic",
+    "secret_advantage",
+    "outcome_mystery",
+    "community_question",
+    "internal_conflict",
   ];
 
-  assert.equal(formatsSource.match(/\n    id: "/g)?.length, 12);
+  assert.equal(formatsSource.match(/\n  format\(/g)?.length, 30);
   for (const formatId of expectedFormatIds) {
-    assert.match(formatsSource, new RegExp(`id: "${formatId}"`));
+    assert.match(formatsSource, new RegExp(`"${formatId}"`));
   }
   assert.match(
     formatsSource,
@@ -364,6 +473,62 @@ test("balances the reported Wall example into readable measured lines", () => {
     "Relevance matters more than",
     "rigid rules.",
   ]);
+});
+
+test("V7 keeps every word in one measured 4-7 line block", () => {
+  const loaderPath = new URL(
+    "../../scripts/next-server-only-test-loader.mjs",
+    import.meta.url,
+  ).href;
+  const engineUrl = new URL("wall-layout-engine.ts", import.meta.url).href;
+  const feedLogicUrl = new URL("wall-text-feed-logic.ts", import.meta.url).href;
+  const original =
+    "I tracked the obvious steps but missed the quiet habits. Those small details explained why the result kept changing at once.";
+  const script = `
+    const [engine, feed] = await Promise.all([
+      import(${JSON.stringify(engineUrl)}),
+      import(${JSON.stringify(feedLogicUrl)}),
+    ]);
+    const result = await engine.createAuthoritativeWallTextContent({
+      content: { kind: "text", text: ${JSON.stringify(original)} },
+      formatId: "retrospective_lesson",
+      layout: feed.createWallTextLayout(),
+    });
+    process.stdout.write(JSON.stringify(result));
+  `;
+  const output = execFileSync(
+    process.execPath,
+    [
+      "--import",
+      loaderPath,
+      "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+      "--experimental-strip-types",
+      "--input-type=module",
+      "--eval",
+      script,
+    ],
+    { encoding: "utf8" },
+  );
+  const result = JSON.parse(output) as {
+    content: {
+      finalLayout: {
+        blocks: Array<{ lines: string[]; role: string }>;
+        textBox: { width: number };
+        version: string;
+      };
+      fullText: string;
+      sourceContent: { kind: string; text: string };
+    };
+  };
+  const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
+  assert.equal(result.content.fullText, original);
+  assert.equal(result.content.sourceContent.kind, "text");
+  assert.equal(result.content.finalLayout.version, "wall-text-final-layout-v2");
+  assert.equal(result.content.finalLayout.blocks.length, 1);
+  assert.equal(result.content.finalLayout.blocks[0]?.role, "text");
+  assert.ok(lines.length >= 4 && lines.length <= 7);
+  assert.equal(lines.join(" "), original);
+  assert.equal(Math.round(result.content.finalLayout.textBox.width * 1080), 660);
 });
 
 test("stores semantic Wall v3 content and face-aware placement metadata", () => {
@@ -559,5 +724,28 @@ test("uses the content generator version and recovers failed preparation jobs", 
   assert.match(
     jobsSource,
     /replacement:\$\{job\.id\}/,
+  );
+});
+
+test("refills Wall ideas from unused backgrounds with one deduplicated batch", () => {
+  assert.match(
+    feedSource,
+    /enqueueTrendingWallTextRefill[\s\S]+active\.length >= targetActive/,
+  );
+  assert.match(
+    feedSource,
+    /mode === "initial" && existing\.length > 0[\s\S]+active\.length === 0[\s\S]+mode = "refill"/,
+  );
+  assert.match(
+    feedSource,
+    /usedBackgroundAssetIds[\s\S]+!usedBackgroundAssetIds\.has\(asset\.id\)/,
+  );
+  assert.match(
+    feedSource,
+    /refillKey: String\(existing\.length\)/,
+  );
+  assert.match(
+    jobsSource,
+    /refillKey\?: string \| null[\s\S]+refill-\$\{params\.refillKey\}/,
   );
 });

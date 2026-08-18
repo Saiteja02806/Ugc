@@ -8,7 +8,7 @@ import {
   deriveHookPerformanceSignals,
   getInstagramHookPerformanceObservations,
   getTikTokHookPerformanceObservations,
-  type HookPerformancePatternAggregate,
+  type HookTextFormatPerformanceAggregate,
   type HookPerformanceObservationInput,
 } from "@/lib/trending/hook-performance-logic";
 import type { TrendingHookPerformanceSignals } from "@/lib/trending/trending-hook-copy-contract";
@@ -27,23 +27,21 @@ type HookPerformanceDatabase = {
         };
         Returns: { recorded: boolean }[];
       };
-      get_hook_performance_pattern_aggregates: {
+      get_hook_text_format_performance_profiles: {
         Args: {
           p_business_profile_id: string;
           p_user_id: string;
         };
         Returns: Array<{
-          attributed_sales_amount: number | string | null;
-          attributed_sales_currency: string | null;
-          average_watch_time_seconds: number | string | null;
           campaign_purpose: string | null;
-          completion_rate: number | string | null;
-          conversion_count: number | string | null;
-          observed_post_count: number | string;
-          pattern_id: string | null;
-          save_count: number | string | null;
-          share_count: number | string | null;
-          view_count: number | string | null;
+          hook_text_format_id: string | null;
+          last_generated_at: string | null;
+          median_views: number | string | null;
+          published_result_count: number | string;
+          recent_view_counts: Array<number | string> | null;
+          selection_weight: number | string;
+          temporary_boost: number | string;
+          times_generated: number | string;
         }>;
       };
     };
@@ -85,7 +83,7 @@ export async function getHookPerformanceSignals(params: {
 }): Promise<TrendingHookPerformanceSignals> {
   try {
     const { data, error } = await getHookPerformanceClient().rpc(
-      "get_hook_performance_pattern_aggregates",
+      "get_hook_text_format_performance_profiles",
       {
         p_business_profile_id: params.businessProfileId,
         p_user_id: params.userId,
@@ -97,7 +95,7 @@ export async function getHookPerformanceSignals(params: {
     }
 
     return deriveHookPerformanceSignals(
-      (data ?? []).map(mapPatternAggregate),
+      (data ?? []).map(mapFormatAggregate),
     );
   } catch (error) {
     console.warn(
@@ -159,21 +157,23 @@ async function recordHookPerformanceObservations(params: {
   };
 }
 
-function mapPatternAggregate(
-  row: HookPerformanceDatabase["public"]["Functions"]["get_hook_performance_pattern_aggregates"]["Returns"][number],
-): HookPerformancePatternAggregate {
+function mapFormatAggregate(
+  row: HookPerformanceDatabase["public"]["Functions"]["get_hook_text_format_performance_profiles"]["Returns"][number],
+): HookTextFormatPerformanceAggregate {
   return {
-    attributedSalesAmount: toFiniteNumber(row.attributed_sales_amount),
-    attributedSalesCurrency: row.attributed_sales_currency,
-    averageWatchTimeSeconds: toFiniteNumber(row.average_watch_time_seconds),
     campaignPurpose: row.campaign_purpose,
-    completionRate: toFiniteNumber(row.completion_rate),
-    conversionCount: toFiniteNumber(row.conversion_count),
-    observedPostCount: toFiniteNumber(row.observed_post_count) ?? -1,
-    patternId: row.pattern_id,
-    saveCount: toFiniteNumber(row.save_count),
-    shareCount: toFiniteNumber(row.share_count),
-    viewCount: toFiniteNumber(row.view_count),
+    hookTextFormatId: row.hook_text_format_id,
+    lastGeneratedAt: row.last_generated_at,
+    medianViews: toFiniteNumber(row.median_views),
+    publishedResultCount:
+      toFiniteNumber(row.published_result_count) ?? -1,
+    recentViewCounts: (row.recent_view_counts ?? []).flatMap((value) => {
+      const parsed = toFiniteNumber(value);
+      return parsed === null ? [] : [parsed];
+    }),
+    selectionWeight: toFiniteNumber(row.selection_weight),
+    temporaryBoost: toFiniteNumber(row.temporary_boost),
+    timesGenerated: toFiniteNumber(row.times_generated) ?? -1,
   };
 }
 

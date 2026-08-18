@@ -10,10 +10,11 @@ import {
 } from "./wall-text-types.ts";
 import type { WebsiteBusinessAnalysis } from "../website-analysis/schema.ts";
 
-const MAX_WALL_TEXT_IDEA_COUNT = 6;
+const MAX_WALL_TEXT_IDEA_COUNT = 50;
 export const WALL_TEXT_PREFERRED_MIN_WORDS = 18;
 export const WALL_TEXT_PREFERRED_MAX_WORDS = 21;
 export const MAX_WALL_TEXT_WORDS = 24;
+export const MAX_CURRENT_WALL_TEXT_WORDS = 50;
 export const MAX_WALL_TEXT_RENDERED_LINES = 7;
 export const PREFERRED_WALL_TEXT_RENDERED_LINES = { maximum: 6, minimum: 5 };
 export const MIN_WALL_TEXT_WORDS = 16;
@@ -247,7 +248,7 @@ export function normalizeWallTextGenerationCandidates(
     candidates.length === 0 ||
     candidates.length > MAX_WALL_TEXT_IDEA_COUNT
   ) {
-    throw new Error("Choose between one and six Wall-of-text candidates.");
+    throw new Error("Choose between one and fifty Wall-of-text candidates.");
   }
 
   const normalized = candidates.map((candidate) => ({
@@ -342,6 +343,54 @@ export function validateWallTextContent(
   durationSeconds: number,
 ) {
   const wordCount = countWords(content.fullText);
+  if (content.layoutVersion === "wall-text-overlay-v6") {
+    const maximum = Math.min(
+      MAX_CURRENT_WALL_TEXT_WORDS,
+      Math.max(MIN_SHORT_WALL_TEXT_WORDS, Math.floor(durationSeconds * 4.3)),
+    );
+    const blocks = content.finalLayout?.blocks;
+    const lines = blocks?.flatMap((block) => block.lines) ?? [];
+
+    if (wordCount < MIN_SHORT_WALL_TEXT_WORDS || wordCount > maximum) {
+      throw new Error(
+        `Wall-of-text copy must contain ${MIN_SHORT_WALL_TEXT_WORDS}-${maximum} words for a ${durationSeconds.toFixed(1)}-second clip.`,
+      );
+    }
+    if (
+      content.sourceContent?.kind !== "text" ||
+      content.finalLayout?.version !== "wall-text-final-layout-v2" ||
+      blocks?.length !== 1 ||
+      blocks[0]?.role !== "text"
+    ) {
+      throw new Error("Wall-of-text copy is missing its plain-text authoritative layout.");
+    }
+    if (
+      lines.length < MIN_WALL_TEXT_RENDERED_LINES ||
+      lines.length > MAX_WALL_TEXT_RENDERED_LINES
+    ) {
+      throw new Error(
+        `Wall-of-text copy must render in ${MIN_WALL_TEXT_RENDERED_LINES}-${MAX_WALL_TEXT_RENDERED_LINES} lines.`,
+      );
+    }
+    if (PROMOTIONAL_CLICHES.some((pattern) => pattern.test(content.fullText))) {
+      throw new Error(
+        "The AI returned generic promotional copy instead of Wall-of-text copy.",
+      );
+    }
+    if (CTA_PATTERNS.some((pattern) => pattern.test(content.fullText))) {
+      throw new Error("Wall-of-text copy must not contain a call to action.");
+    }
+    if (!/[.!?]["')]?$/u.test(content.fullText)) {
+      throw new Error("Wall-of-text copy must end as a complete sentence.");
+    }
+    const readingSeconds = estimateWallTextReadingSeconds(content.fullText, 1);
+    if (readingSeconds > durationSeconds + 0.15) {
+      throw new Error(
+        `Wall-of-text copy needs about ${readingSeconds.toFixed(1)} seconds to read, longer than the ${durationSeconds.toFixed(1)}-second clip.`,
+      );
+    }
+    return;
+  }
   if (content.layoutVersion === "wall-text-overlay-v5") {
     const maximum = Math.min(50, Math.max(16, Math.round(durationSeconds * 4)));
     const minimum = Math.max(12, maximum - 8);

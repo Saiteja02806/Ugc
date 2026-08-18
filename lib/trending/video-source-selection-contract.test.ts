@@ -107,7 +107,7 @@ test("Trending Edit offers a swipeable library or one exact video", () => {
   );
   assert.match(editor, /selectEntireLibrary/);
   assert.match(editor, /selectExactVideo/);
-  assert.match(editor, /Use entire library/);
+  assert.match(editor, /Use entire group/);
   assert.match(editor, /Use this video/);
   assert.match(editor, /CreativeAssetDeck/);
   assert.match(editor, /StaticCreativeTextOverlay/);

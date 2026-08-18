@@ -12,6 +12,9 @@ const audioPreview = readProjectFile(
 const textOverlay = readProjectFile(
   "components/trending/hook-text-overlay.tsx",
 );
+const composer = readProjectFile(
+  "components/trending/hook-video-composer.tsx",
+);
 const previewSession = readProjectFile(
   "app/api/trending/hook-videos/videos/[videoId]/preview-session/route.ts",
 );
@@ -57,6 +60,26 @@ test("keeps the Hook feed typography aligned with the final bold outlined render
   assert.match(textOverlay, /WebkitTextStroke/);
   assert.match(textOverlay, /"Segoe UI Emoji"/);
   assert.match(textOverlay, /"Noto Color Emoji"/);
+});
+
+test("uses protected custom controls in the Hook review instead of browser video controls", () => {
+  assert.match(composer, /function ProtectedReviewVideo/);
+  assert.match(composer, /controlsList="nodownload noremoteplayback"/);
+  assert.match(composer, /disablePictureInPicture/);
+  assert.match(composer, /onContextMenu=\{\(event\) => event\.preventDefault\(\)\}/);
+  assert.doesNotMatch(
+    composer.match(/function ReviewComposition[\s\S]+?function ReviewAsset/)?.[0] ?? "",
+    /<video[\s\S]+?\scontrols(?:\s|>)/,
+  );
+});
+
+test("keeps recommended Hook timing hidden until the user opens Trim", () => {
+  assert.match(composer, /aria-controls="opening-trim-controls"/);
+  assert.match(composer, /aria-expanded=\{trimOpen\}/);
+  assert.match(
+    composer,
+    /\{trimOpen && duration !== null \? \([\s\S]+name="opening-trim-start"[\s\S]+name="opening-trim-end"/,
+  );
 });
 
 function readProjectFile(relativePath: string) {

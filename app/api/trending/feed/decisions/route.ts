@@ -9,6 +9,7 @@ import {
   getMissingTrendingDecisionEnvVars,
   recordTrendingCreativeDecision,
 } from "@/lib/trending/creative-decisions";
+import { replenishTrendingFormatAfterDecision } from "@/lib/trending/feed-replenishment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,8 +72,25 @@ export async function POST(request: Request) {
       ...parsed.data,
       userId,
     });
+    let replenishment: Awaited<
+      ReturnType<typeof replenishTrendingFormatAfterDecision>
+    > | null = null;
 
-    return json({ decision, ok: true });
+    try {
+      replenishment = await replenishTrendingFormatAfterDecision({
+        format: parsed.data.format,
+        userId,
+      });
+    } catch (error) {
+      // The user's decision is already durable. A temporary queue or inventory
+      // failure must not make the client retry and accidentally double-submit it.
+      console.error(
+        "Could not schedule Trending feed replenishment after a saved decision:",
+        error,
+      );
+    }
+
+    return json({ decision, ok: true, replenishment });
   } catch (error) {
     console.error("Could not save Trending creative decision:", error);
     return json(

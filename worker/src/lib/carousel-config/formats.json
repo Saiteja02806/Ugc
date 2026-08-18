@@ -3,6 +3,8 @@
   "formats": [
     {
       "id": "list",
+      "rotationOrder": 1,
+      "version": 1,
       "name": "List / Roundup",
       "purpose": "Give several useful items without overcrowding any slide.",
       "selectionWeight": 1,
@@ -22,6 +24,8 @@
     },
     {
       "id": "mistakes",
+      "rotationOrder": 2,
+      "version": 1,
       "name": "Mistakes",
       "purpose": "Show three recognizable mistakes and what to do instead.",
       "selectionWeight": 1,
@@ -38,6 +42,8 @@
     },
     {
       "id": "how_to",
+      "rotationOrder": 3,
+      "version": 1,
       "name": "How-To / Steps",
       "purpose": "Teach a useful result through three ordered steps.",
       "selectionWeight": 1,
@@ -54,6 +60,8 @@
     },
     {
       "id": "comparison",
+      "rotationOrder": 4,
+      "version": 1,
       "name": "Comparison",
       "purpose": "Compare two meaningful choices and explain the important difference.",
       "selectionWeight": 1,
@@ -70,6 +78,8 @@
     },
     {
       "id": "swap",
+      "rotationOrder": 5,
+      "version": 1,
       "name": "Swap / Do This Instead",
       "purpose": "Offer three simple replacements for a weaker habit or choice.",
       "selectionWeight": 1,
@@ -86,6 +96,8 @@
     },
     {
       "id": "myth_fact",
+      "rotationOrder": 6,
+      "version": 1,
       "name": "Myth vs Fact",
       "purpose": "Correct three common misunderstandings with careful explanations.",
       "selectionWeight": 1,
@@ -102,6 +114,8 @@
     },
     {
       "id": "cheat_sheet",
+      "rotationOrder": 7,
+      "version": 1,
       "name": "Cheat Sheet",
       "purpose": "Create a compact reference people can save and revisit.",
       "selectionWeight": 1,
@@ -118,6 +132,8 @@
     },
     {
       "id": "checklist",
+      "rotationOrder": 8,
+      "version": 1,
       "name": "Checklist",
       "purpose": "Help the audience check six important things before acting.",
       "selectionWeight": 1,
@@ -134,6 +150,8 @@
     },
     {
       "id": "framework",
+      "rotationOrder": 9,
+      "version": 1,
       "name": "Framework / Formula",
       "purpose": "Teach a reusable three-part system.",
       "selectionWeight": 1,
@@ -150,6 +168,8 @@
     },
     {
       "id": "breakdown",
+      "rotationOrder": 10,
+      "version": 1,
       "name": "Breakdown / Anatomy",
       "purpose": "Explain three components of an idea or process.",
       "selectionWeight": 1,
@@ -166,6 +186,8 @@
     },
     {
       "id": "problem_solution",
+      "rotationOrder": 11,
+      "version": 1,
       "name": "Problem to Cause to Solution",
       "purpose": "Explain one recognizable problem, its cause, and what to change.",
       "selectionWeight": 1,
@@ -182,6 +204,8 @@
     },
     {
       "id": "beginner_roadmap",
+      "rotationOrder": 12,
+      "version": 1,
       "name": "Beginner Roadmap",
       "purpose": "Show a beginner the correct order for getting started.",
       "selectionWeight": 1,
@@ -198,6 +222,8 @@
     },
     {
       "id": "resources",
+      "rotationOrder": 13,
+      "version": 1,
       "name": "Resource Collection",
       "purpose": "Give six useful resources, tools, foods, exercises, templates, or references.",
       "selectionWeight": 0.9,
@@ -214,6 +240,8 @@
     },
     {
       "id": "examples",
+      "rotationOrder": 14,
+      "version": 1,
       "name": "Examples / Inspiration",
       "purpose": "Teach through three concrete examples and the pattern connecting them.",
       "selectionWeight": 1,
@@ -230,6 +258,8 @@
     },
     {
       "id": "before_after",
+      "rotationOrder": 15,
+      "version": 1,
       "name": "Before to After / Transformation",
       "purpose": "Show the improvement created by one meaningful change.",
       "selectionWeight": 1,

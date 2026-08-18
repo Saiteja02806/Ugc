@@ -7,6 +7,7 @@ import type {
   TrendingCreativeEditFormat,
   TrendingCreativeEditRenderState,
 } from "@/lib/trending/creative-edit-contract";
+import type { classifyWallTextEdit } from "@/lib/trending/wall-text-edit-attribution";
 
 const TRENDING_CREATIVE_EDITS_TABLE = "trending_creative_edits";
 
@@ -37,6 +38,9 @@ export type TrendingCreativeEditRow = {
   source_selection_kind: "asset" | "group" | null;
   updated_at: string;
   user_id: string;
+  wall_text_content_hash: string | null;
+  wall_text_edit_classification: "none" | "minor" | "major" | null;
+  wall_text_format_learning_eligible: boolean | null;
 };
 
 type TrendingCreativeDecisionRow = {
@@ -206,9 +210,50 @@ export async function upsertTrendingCreativeEdit(params: {
   sourceMediaAssetId?: string | null;
   sourceSelectionKind?: "asset" | "group" | null;
   userId: string;
+  wallTextAttribution?: ReturnType<typeof classifyWallTextEdit>;
 }) {
   const existing = await getTrendingCreativeEdit(params);
   const now = new Date().toISOString();
+  if (params.format === "wall_text") {
+    if (!params.wallTextAttribution) {
+      throw new Error("Wall-of-text edit attribution is required.");
+    }
+    const { data, error } = await (getClient() as SupabaseClient).rpc(
+      "save_wall_text_edit_with_history_v1",
+      {
+        p_assignment_id: params.assignmentId,
+        p_content_hash: params.wallTextAttribution.duplicateSignature.contentHash,
+        p_content_json: params.content,
+        p_creative_id: params.creativeId,
+        p_edit_classification: params.wallTextAttribution.classification,
+        p_expected_revision: existing?.revision ?? 0,
+        p_normalized_text:
+          params.wallTextAttribution.duplicateSignature.normalizedText,
+        p_position_json: params.positions,
+        p_resolved_media_asset_id: params.resolvedMediaAssetId ?? null,
+        p_similarity_signature: params.wallTextAttribution.duplicateSignature,
+        p_source_group_id: params.sourceGroupId ?? null,
+        p_source_media_asset_id: params.sourceMediaAssetId ?? null,
+        p_source_selection_kind: params.sourceSelectionKind ?? null,
+        p_user_id: params.userId,
+      },
+    );
+    if (error) {
+      if (
+        error.code === "23505" ||
+        error.message.includes("wall_text_edit_revision_conflict")
+      ) {
+        throw new TrendingCreativeEditAccessError(
+          "This Trending edit changed in another tab. Reload it and try again.",
+          409,
+        );
+      }
+      throw new Error(`Could not save this Wall-of-text edit: ${error.message}`);
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) throw new Error("Wall-of-text edit storage returned no row.");
+    return row as TrendingCreativeEditRow;
+  }
   const values = {
     assignment_id: params.assignmentId,
     content_json: params.content as unknown as Json,
@@ -226,6 +271,9 @@ export async function upsertTrendingCreativeEdit(params: {
     source_selection_kind: params.sourceSelectionKind ?? null,
     updated_at: now,
     user_id: params.userId,
+    wall_text_content_hash: null,
+    wall_text_edit_classification: null,
+    wall_text_format_learning_eligible: null,
   };
   const result = existing
     ? await getClient()

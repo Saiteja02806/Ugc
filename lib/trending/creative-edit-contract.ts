@@ -34,14 +34,21 @@ export type TrendingCreativeEditSource = {
 };
 
 export type TrendingCarouselEditSlide = {
+  backgroundAssetId: string | null;
   backgroundUrl: string;
   ctaText: string;
   headline: string;
+  originalBackgroundAssetId: string | null;
+  originalBackgroundUrl: string;
+  originalVisualRole: "hook" | "human" | "product_asset" | "static" | null;
+  productVisualEligibility: "allowed" | "forbidden" | "preferred" | null;
   renderedUrl: string;
   slideId: string;
   slideNumber: number;
+  structureId: "structure_1" | "structure_2";
   subtext: string;
   textPosition: NormalizedTextPosition;
+  visualRole: "hook" | "human" | "product_asset" | "static" | null;
 };
 
 export type TrendingCarouselEditContent = {
@@ -107,7 +114,18 @@ export type TrendingCreativeEditSaveInput = {
   content:
     | {
         format: "carousel";
-        slides: Array<Omit<TrendingCarouselEditSlide, "backgroundUrl" | "renderedUrl">>;
+        slides: Array<
+          Pick<
+            TrendingCarouselEditSlide,
+            | "backgroundAssetId"
+            | "ctaText"
+            | "headline"
+            | "slideId"
+            | "slideNumber"
+            | "subtext"
+            | "textPosition"
+          >
+        >;
         version: typeof TRENDING_CREATIVE_EDIT_VERSION;
       }
     | TrendingHookEditContent

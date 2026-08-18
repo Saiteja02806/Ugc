@@ -9,6 +9,13 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const generationV7Migration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260814141455_add_wall_text_generation_v7_architecture.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const matcherSource = readFileSync(
   new URL("./wall-audio-matcher.ts", import.meta.url),
   "utf8",
@@ -104,6 +111,24 @@ test("enforces exact, trim, loop, and rejection duration rules in the database",
   assert.match(
     matcherSource,
     /return asset\.loopable \? "loop" : null/,
+  );
+});
+
+test("locks Instagram Reel audio to its paired template and never loops it", () => {
+  assert.match(
+    generationV7Migration,
+    /selection_scope = 'instagram_reel_locked'[\s\S]+loopable = false/i,
+  );
+  assert.match(
+    generationV7Migration,
+    /selected_asset\.id <> expected_locked_audio_id[\s\S]+new\.fit_mode = 'loop'[\s\S]+wall_text_instagram_locked_audio_mismatch/i,
+  );
+  assert.match(databaseSource, /selectLockedWallAudio/);
+  assert.match(databaseSource, /\.eq\("selection_scope", "instagram_reel_locked"\)/);
+  assert.match(databaseSource, /\.eq\("selection_scope", "matcher_pool"\)/);
+  assert.match(
+    renderRouteSource,
+    /creativeEdit\?\.source[\s\S]+generationAttribution\?\.lockedAudioAssetId[\s\S]+lockedAudioAssetId,/,
   );
 });
 

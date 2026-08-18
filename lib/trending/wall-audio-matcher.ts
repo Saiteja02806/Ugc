@@ -2,10 +2,14 @@ import { createHash } from "node:crypto";
 
 import type {
   TrendingWallTextContent,
+  WallTextFormatId,
   WallTextPattern,
 } from "./wall-text-types.ts";
+import { getBackfillWallTextFormatId } from "./wall-formats.ts";
 
 export const WALL_AUDIO_MATCHING_VERSION = "wall-audio-match-v1" as const;
+export const WALL_AUDIO_LOCKED_MATCHING_VERSION =
+  "wall-instagram-reel-locked-v1" as const;
 export const WALL_AUDIO_DURATION_TOLERANCE_SECONDS = 0.08;
 export const WALL_AUDIO_FADE_OUT_SECONDS = 0.2;
 
@@ -33,6 +37,9 @@ export type WallAudioMessageType =
   (typeof WALL_AUDIO_MESSAGE_TYPES)[number];
 export type WallAudioEnergy = (typeof WALL_AUDIO_ENERGY_LEVELS)[number];
 export type WallAudioFitMode = "exact" | "trim" | "loop";
+export type WallAudioMatchingVersion =
+  | typeof WALL_AUDIO_MATCHING_VERSION
+  | typeof WALL_AUDIO_LOCKED_MATCHING_VERSION;
 
 export type WallAudioIntent = {
   energy: WallAudioEnergy;
@@ -62,7 +69,7 @@ export type WallAudioSelection = {
   fitMode: WallAudioFitMode;
   intent: WallAudioIntent;
   matchScore: number;
-  matchingVersion: typeof WALL_AUDIO_MATCHING_VERSION;
+  matchingVersion: WallAudioMatchingVersion;
   outputDurationSeconds: number;
 };
 
@@ -72,7 +79,10 @@ type ScoredCandidate = {
   matchScore: number;
 };
 
-const INTENT_BY_PATTERN: Record<WallTextPattern, WallAudioIntent> = {
+const LEGACY_INTENT_BY_PATTERN: Record<
+  Exclude<WallTextPattern, WallTextFormatId>,
+  WallAudioIntent
+> = {
   problem_change_result: {
     energy: "medium",
     messageTypes: ["problem", "transformation", "benefit"],
@@ -165,15 +175,61 @@ const INTENT_BY_PATTERN: Record<WallTextPattern, WallAudioIntent> = {
   },
 };
 
+const CURRENT_INTENT_BY_FORMAT: Record<WallTextFormatId, WallAudioIntent> = {
+  hidden_alternative: intent("medium", ["curiosity", "benefit"], ["curious", "uplifting"]),
+  manual_automatic: intent("medium", ["transformation", "benefit"], ["curious", "uplifting"]),
+  secret_advantage: intent("medium", ["curiosity", "authority"], ["curious", "serious"]),
+  outcome_mystery: intent("medium", ["curiosity", "benefit"], ["curious", "uplifting"]),
+  authority_reaction: intent("medium", ["authority", "story"], ["serious", "curious"]),
+  personal_obsession: intent("low", ["story", "curiosity"], ["calm", "curious"]),
+  numbered_curiosity: intent("medium", ["curiosity", "benefit"], ["curious", "uplifting"]),
+  rule_checklist: intent("medium", ["authority", "benefit"], ["calm", "uplifting"]),
+  hidden_cause: intent("medium", ["problem", "curiosity"], ["serious", "curious"]),
+  contrarian_opinion: intent("medium", ["warning", "authority"], ["serious", "curious"]),
+  niche_pov: intent("low", ["story", "curiosity"], ["calm", "curious"]),
+  community_question: intent("medium", ["curiosity", "story"], ["curious", "uplifting"]),
+  transformation_timeframe: intent("medium", ["transformation", "benefit"], ["uplifting", "calm"]),
+  method_framework: intent("medium", ["authority", "benefit"], ["calm", "uplifting"]),
+  emotional_reframe: intent("medium", ["transformation", "story"], ["calm", "uplifting"]),
+  personal_manifesto: intent("low", ["story", "authority"], ["calm", "serious"]),
+  relatable_situation: intent("low", ["story", "curiosity"], ["calm", "curious"]),
+  desire_identity_stack: intent("medium", ["benefit", "transformation"], ["uplifting", "calm"]),
+  old_way_regret: intent("medium", ["problem", "story"], ["serious", "curious"]),
+  retrospective_lesson: intent("medium", ["story", "authority"], ["calm", "serious"]),
+  self_audit: intent("medium", ["curiosity", "problem"], ["curious", "serious"]),
+  warning_alert: intent("high", ["warning", "problem"], ["urgent", "serious"]),
+  personal_stance: intent("medium", ["authority", "story"], ["serious", "calm"]),
+  future_snapshot: intent("medium", ["transformation", "benefit"], ["uplifting", "calm"]),
+  metaphor_reframe: intent("medium", ["curiosity", "transformation"], ["curious", "calm"]),
+  swap_upgrade_stack: intent("medium", ["transformation", "benefit"], ["uplifting", "calm"]),
+  niche_milestones: intent("medium", ["story", "curiosity"], ["curious", "uplifting"]),
+  insider_truths: intent("low", ["authority", "curiosity"], ["calm", "curious"]),
+  aspirational_archetype: intent("medium", ["benefit", "transformation"], ["uplifting", "calm"]),
+  internal_conflict: intent("medium", ["problem", "story"], ["serious", "curious"]),
+};
+
 export function buildWallAudioIntent(
   content: Pick<TrendingWallTextContent, "pattern">,
 ): WallAudioIntent {
-  const intent = INTENT_BY_PATTERN[content.pattern];
+  const intent =
+    content.pattern in CURRENT_INTENT_BY_FORMAT
+      ? CURRENT_INTENT_BY_FORMAT[content.pattern as WallTextFormatId]
+      : LEGACY_INTENT_BY_PATTERN[
+          content.pattern as Exclude<WallTextPattern, WallTextFormatId>
+        ] ?? CURRENT_INTENT_BY_FORMAT[getBackfillWallTextFormatId(content.pattern)];
   return {
     energy: intent.energy,
     messageTypes: [...intent.messageTypes],
     moods: [...intent.moods],
   };
+}
+
+function intent(
+  energy: WallAudioEnergy,
+  messageTypes: WallAudioMessageType[],
+  moods: WallAudioMood[],
+): WallAudioIntent {
+  return { energy, messageTypes, moods };
 }
 
 export function createWallTextContentFingerprint(
@@ -308,6 +364,47 @@ export function selectWallAudio(params: {
     params.intent,
     params.videoDurationSeconds,
   );
+}
+
+export function selectLockedWallAudio(params: {
+  asset: Pick<
+    WallAudioAsset,
+    | "audioUrl"
+    | "cueStartSeconds"
+    | "durationSeconds"
+    | "id"
+    | "loopable"
+    | "reviewStatus"
+    | "status"
+  >;
+  intent: WallAudioIntent;
+  videoDurationSeconds: number;
+}): WallAudioSelection | null {
+  const fitMode = getWallAudioFitMode(
+    params.asset,
+    params.videoDurationSeconds,
+  );
+  if (fitMode !== "exact" && fitMode !== "trim") return null;
+
+  return {
+    audioAssetDurationSeconds: params.asset.durationSeconds,
+    audioAssetId: params.asset.id,
+    audioUrl: params.asset.audioUrl,
+    cueStartSeconds: params.asset.cueStartSeconds,
+    fadeOutSeconds: Math.min(
+      WALL_AUDIO_FADE_OUT_SECONDS,
+      params.videoDurationSeconds / 4,
+    ),
+    fitMode,
+    intent: {
+      energy: params.intent.energy,
+      messageTypes: [...params.intent.messageTypes],
+      moods: [...params.intent.moods],
+    },
+    matchScore: 1,
+    matchingVersion: WALL_AUDIO_LOCKED_MATCHING_VERSION,
+    outputDurationSeconds: params.videoDurationSeconds,
+  };
 }
 
 function toSelection(

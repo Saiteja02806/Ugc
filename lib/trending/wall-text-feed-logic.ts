@@ -5,7 +5,8 @@ import {
   type TrendingWallTextLayout,
 } from "./wall-text-types.ts";
 
-export const MAX_TRENDING_WALL_TEXT_CANDIDATES = 6;
+export const DEFAULT_TRENDING_WALL_TEXT_CANDIDATES = 6;
+export const MAX_TRENDING_WALL_TEXT_CANDIDATES = 50;
 export const MAX_WALL_TEXT_VIDEO_DURATION_SECONDS = 60;
 
 export type WallTextAssetSelectionInput = {
@@ -36,7 +37,7 @@ export type TrendingWallTextCandidate = {
 
 export function selectTrendingWallTextCandidates(
   inventory: readonly WallTextAssetSelectionInput[],
-  limit = MAX_TRENDING_WALL_TEXT_CANDIDATES,
+  limit = DEFAULT_TRENDING_WALL_TEXT_CANDIDATES,
 ): TrendingWallTextCandidate[] {
   const normalizedLimit = Math.min(
     Math.max(Math.trunc(limit), 0),
@@ -151,7 +152,8 @@ export function getWallTextZoneBox(
   placement: WallTextPlacementZone,
 ): TrendingWallTextLayout["textBox"] {
   const height = 480 / 1920;
-  const width = 620 / 1080;
+  const textBoxWidth = 660;
+  const width = textBoxWidth / 1080;
   const centerY =
     placement === "upper-middle"
       ? 800
@@ -162,7 +164,7 @@ export function getWallTextZoneBox(
   return {
     height,
     width,
-    x: (540 - 620 / 2) / 1080,
+    x: (540 - textBoxWidth / 2) / 1080,
     y: (centerY - 480 / 2) / 1920,
   };
 }

@@ -28,6 +28,8 @@ function parseInput(job: BackgroundJobRow) {
   const userId = getString(input?.userId);
   const businessProfileId = getString(input?.businessProfileId);
   const businessProfileVersion = input?.businessProfileVersion;
+  const refillKey = getOptionalString(input?.refillKey);
+  const requestedCount = input?.requestedCount ?? 6;
 
   if (
     !job.user_id ||
@@ -35,12 +37,31 @@ function parseInput(job: BackgroundJobRow) {
     !businessProfileId ||
     typeof businessProfileVersion !== "number" ||
     !Number.isInteger(businessProfileVersion) ||
-    businessProfileVersion <= 0
+    businessProfileVersion <= 0 ||
+    typeof requestedCount !== "number" ||
+    !Number.isInteger(requestedCount) ||
+    requestedCount < 1 ||
+    requestedCount > 50
   ) {
     throw new Error("wall_text_generation input is invalid.");
   }
+  const requestKey =
+    getString(input?.requestKey) ||
+    [
+      "legacy-wall-job",
+      businessProfileId,
+      `v${businessProfileVersion}`,
+      ...(refillKey ? [`refill-${refillKey}`] : []),
+    ].join(":");
 
-  return { businessProfileId, businessProfileVersion, userId };
+  return {
+    businessProfileId,
+    businessProfileVersion,
+    refillKey,
+    requestedCount,
+    requestKey,
+    userId,
+  };
 }
 
 function getRecord(value: Json | undefined) {
@@ -51,4 +72,10 @@ function getRecord(value: Json | undefined) {
 
 function getString(value: Json | undefined) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function getOptionalString(value: Json | undefined) {
+  return typeof value === "string" && value.trim()
+    ? value.trim().slice(0, 200)
+    : null;
 }

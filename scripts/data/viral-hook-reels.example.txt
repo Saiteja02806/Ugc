@@ -1,0 +1,5 @@
+# Copy this file to viral-hook-reels.txt.
+# Add one direct, public Instagram Reel URL per line.
+# Blank lines and lines beginning with # are ignored.
+#
+# https://www.instagram.com/reel/SHORTCODE/

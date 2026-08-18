@@ -7,10 +7,12 @@ import {
   CAROUSEL_CONTENT_GRAMMAR_VERSION,
 } from "./carousel-content-grammar.js";
 import {
+  buildCarouselContentPlanBatch,
   buildCarouselContentPlan,
   CAROUSEL_CONTENT_PLANNER_VERSION,
   mergeCarouselRecentContentHistory,
   normalizeRepairedCarouselCopy,
+  selectCarouselBatchReplacement,
   validateCarouselRecentContentRepetition,
   validateCarouselContentPlan,
 } from "./carousel-llm-slide-plan.js";
@@ -53,6 +55,15 @@ test("every V1 content format produces its exact five-slide grammar", async () =
   try {
     assert.equal(CAROUSEL_CONTENT_GRAMMAR.formats.length, 15);
     assert.equal(CAROUSEL_CONTENT_GRAMMAR.hookFamilies.length, 10);
+    assert.deepEqual(
+      CAROUSEL_CONTENT_GRAMMAR.formats
+        .map((format) => format.rotationOrder)
+        .sort((left, right) => left - right),
+      Array.from({ length: 15 }, (_, index) => index + 1),
+    );
+    assert.ok(
+      CAROUSEL_CONTENT_GRAMMAR.formats.every((format) => format.version === 1),
+    );
 
     for (const [candidateIndex, format] of
       CAROUSEL_CONTENT_GRAMMAR.formats.entries()) {
@@ -72,6 +83,8 @@ test("every V1 content format produces its exact five-slide grammar", async () =
       assert.equal(plan.contentStrategy?.hookFamilyId, hookFamilyId);
       assert.equal(plan.slides.length, 5, format.id);
       assert.equal(plan.validationResult.ok, true, format.id);
+      assert.equal(plan.validationResult.fallbackUsed, true, format.id);
+      assert.equal(plan.validationResult.repaired, false, format.id);
 
       for (const [slideIndex, definition] of format.slides.entries()) {
         const slide = plan.slides[slideIndex]!;
@@ -97,6 +110,144 @@ test("every V1 content format produces its exact five-slide grammar", async () =
       CAROUSEL_CONTENT_GRAMMAR_VERSION,
       "carousel-formats-v1+carousel-hook-families-v1",
     );
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+    } else {
+      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
+    }
+  }
+});
+
+test("plans exactly five controlled Carousels through the batch planner contract", async () => {
+  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
+
+  try {
+    const formats = CAROUSEL_CONTENT_GRAMMAR.formats.slice(0, 5);
+    const plans = await buildCarouselContentPlanBatch({
+      analysis,
+      items: formats.map((format, slotIndex) => ({
+        candidateIndex: slotIndex,
+        contentFormatId: format.id,
+        hookFamilyId: format.compatibleHookFamilies[0]!,
+        slotIndex,
+      })),
+      recentHistory: [],
+    });
+
+    assert.equal(plans.length, 5);
+    assert.deepEqual(
+      plans.map((item) => item.actualContentFormatId),
+      formats.map((format) => format.id),
+    );
+    assert.ok(plans.every((item) => item.plan.slides.length === 5));
+    assert.ok(plans.every((item) => item.plan.validationResult.fallbackUsed));
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+    } else {
+      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
+    }
+  }
+});
+
+test("reuses an applicable same-batch format for a not-applicable slot", async () => {
+  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
+
+  try {
+    const formats = CAROUSEL_CONTENT_GRAMMAR.formats.slice(0, 4);
+    const completed = await buildCarouselContentPlanBatch({
+      analysis,
+      items: [
+        ...formats.map((format, slotIndex) => ({
+          candidateIndex: slotIndex,
+          contentFormatId: format.id,
+          hookFamilyId: format.compatibleHookFamilies[0]!,
+          slotIndex,
+        })),
+        {
+          candidateIndex: 4,
+          contentFormatId: "swap",
+          hookFamilyId: "utility",
+          slotIndex: 4,
+        },
+      ],
+      recentHistory: [],
+    });
+    const replacement = selectCarouselBatchReplacement(
+      completed.slice(0, 4),
+      4,
+    );
+
+    assert.equal(replacement?.slotIndex, 3);
+    assert.equal(replacement?.actualContentFormatId, "comparison");
+  } finally {
+    if (previousMode === undefined) {
+      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+    } else {
+      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
+    }
+  }
+});
+
+test("fails closed before planning when a V1 assignment is missing or incomplete", async () => {
+  await assert.rejects(
+    buildCarouselContentPlan({
+      analysis,
+      candidateIndex: 0,
+      recentHistory: [],
+      slideCount: 5,
+    }),
+    /Carousel V1 requires exactly five slides plus a backend-selected content format and compatible hook family/,
+  );
+
+  await assert.rejects(
+    buildCarouselContentPlan({
+      analysis,
+      candidateIndex: 0,
+      contentFormatId: "comparison",
+      hookFamilyId: "question",
+      recentHistory: [],
+      slideCount: 4,
+    }),
+    /Carousel V1 requires exactly five slides plus a backend-selected content format and compatible hook family/,
+  );
+});
+
+test("deterministic hooks visibly follow the backend-selected hook family", async () => {
+  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
+
+  try {
+    const hookByFamily = new Map<string, string>();
+
+    for (const hookFamilyId of [
+      "comparison",
+      "curiosity",
+      "question",
+      "surprise",
+    ] as const) {
+      const plan = await buildCarouselContentPlan({
+        analysis,
+        candidateIndex: 0,
+        contentFormatId: "comparison",
+        hookFamilyId,
+        recentHistory: [],
+        slideCount: 5,
+      });
+      hookByFamily.set(
+        hookFamilyId,
+        plan.slides[0]?.headline ?? plan.slides[0]?.body ?? "",
+      );
+    }
+
+    assert.equal(new Set(hookByFamily.values()).size, 4);
+    assert.match(hookByFamily.get("comparison") ?? "", /^Compare\b/i);
+    assert.match(hookByFamily.get("curiosity") ?? "", /\breveal\b/i);
+    assert.match(hookByFamily.get("question") ?? "", /\?$/);
+    assert.match(hookByFamily.get("surprise") ?? "", /\boverlooked\b/i);
   } finally {
     if (previousMode === undefined) {
       delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
@@ -432,6 +583,7 @@ test("uses saved business model and campaign purposes in controlled context", ()
 test("merges same-batch ideas ahead of reserved history without exceeding ten", () => {
   const sibling = {
     angle: "A fresh sibling angle",
+    audienceId: null,
     contentFormatId: "comparison",
     hook: "Which campaign view is clearer?",
     hookFamilyId: "question",

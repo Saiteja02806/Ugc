@@ -9,8 +9,25 @@ import {
 } from "@/lib/carousel/content-grammar";
 import type {
   CarouselContentAssignment,
+  CarouselPerformanceSelectionMode,
   CarouselRecentContentSummary,
 } from "@/lib/carousel/content-selector";
+import {
+  isCarouselStructure2FormatId,
+  type CarouselStructure2FormatId,
+} from "@/lib/carousel/structure-2-formats";
+import type {
+  CarouselStructure2FormatAssignment,
+  CarouselStructure2RecentHistory,
+} from "@/lib/carousel/structure-2-selector";
+import {
+  isCarouselStructureId,
+  isCarouselStructureMode,
+  isCarouselStructureSelectionMode,
+  type CarouselStructureId,
+  type CarouselStructureMode,
+  type CarouselStructureSelectionMode,
+} from "@/lib/carousel/structure";
 import {
   getBroadAssetSourceCategorySlugsForProfile,
   isBroadAssetSourceAllowedForProfile,
@@ -18,9 +35,19 @@ import {
 } from "@/lib/carousel/broad-visual-bucket-taxonomy";
 import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
 
+export type CarouselStructureFormatId =
+  | CarouselContentFormatId
+  | CarouselStructure2FormatId;
+export type CarouselStructureContentAssignment =
+  | CarouselContentAssignment
+  | CarouselStructure2FormatAssignment;
+
 const CATEGORY_IMAGE_ASSETS_TABLE = "category_image_assets";
 const CATEGORY_IMAGE_ASSET_PAGE_SIZE = 1000;
 const CAROUSEL_GENERATIONS_TABLE = "carousel_generations";
+const CAROUSEL_EXPERIMENT_ASSIGNMENTS_TABLE =
+  "carousel_experiment_assignments";
+const CAROUSEL_EXPERIMENT_BATCHES_TABLE = "carousel_experiment_batches";
 const CAROUSEL_SLIDES_TABLE = "carousel_slides";
 const INCREMENT_CATEGORY_IMAGE_USAGE_FUNCTION =
   "increment_category_image_asset_usage";
@@ -67,6 +94,7 @@ type WebsiteAnalysisRow = {
 };
 
 type CategoryImageAssetRow = {
+  asset_role: "hook" | "human" | "product_asset" | "static" | null;
   asset_scope: CategoryImageAssetScope;
   asset_variant: CategoryImageAssetVariant;
   avg_color: string | null;
@@ -85,6 +113,8 @@ type CategoryImageAssetRow = {
   height: number | null;
   id: string;
   image_query: string | null;
+  is_active: boolean;
+  library_asset_id: string | null;
   orientation: "landscape" | "portrait" | "square";
   pexels_photo_id: string | null;
   pexels_photo_url: string | null;
@@ -93,6 +123,7 @@ type CategoryImageAssetRow = {
   mood_tags: Json;
   near_duplicate_group: string | null;
   object_tags: Json;
+  owner_business_profile_id: string | null;
   person_count: number | null;
   primary_vertical: string | null;
   quality_score: number | null;
@@ -123,16 +154,54 @@ type CategoryImageAssetRow = {
   width: number | null;
 };
 
+type CategoryImageAssetInsert = Pick<
+  CategoryImageAssetRow,
+  | "asset_role"
+  | "asset_scope"
+  | "base_s3_key"
+  | "base_url"
+  | "category_slug"
+  | "id"
+  | "is_active"
+  | "library_asset_id"
+  | "orientation"
+  | "owner_business_profile_id"
+  | "source_filename"
+  | "source_folder"
+  | "source_metadata"
+  | "source_original_s3_key"
+  | "source_original_url"
+  | "source_provider"
+  | "status"
+  | "subject_review_status"
+> &
+  Partial<
+    Pick<
+      CategoryImageAssetRow,
+      | "height"
+      | "runtime_exclusion_reason"
+      | "source_file_sha256"
+      | "thumb_s3_key"
+      | "thumb_url"
+      | "updated_at"
+      | "width"
+    >
+  >;
+
 type CarouselGenerationRow = {
   available_on_local_date: string | null;
   business_profile_id: string | null;
   business_profile_version: number | null;
   candidate_count: number;
   candidate_index: number;
+  carousel_experiment_assignment_id: string | null;
+  carousel_experiment_batch_id: string | null;
   category_slug: string | null;
   content_angle: string | null;
+  content_assigned_format_id: string | null;
   content_audience_id: string | null;
   content_format_id: string | null;
+  content_format_version: number | null;
   content_goal_id: string | null;
   content_grammar_version: string | null;
   content_history_snapshot: Json;
@@ -161,6 +230,8 @@ type CarouselGenerationRow = {
   selected_angle: string | null;
   slide_count: number;
   status: CarouselGenerationStatus;
+  structure_id: CarouselStructureId;
+  structure_version: number;
   trigger_run_id: string | null;
   updated_at: string;
   user_id: string;
@@ -173,10 +244,14 @@ type CarouselGenerationInsert = {
   business_profile_version?: number | null;
   candidate_count?: number;
   candidate_index?: number;
+  carousel_experiment_assignment_id?: string | null;
+  carousel_experiment_batch_id?: string | null;
   category_slug?: string | null;
   content_angle?: string | null;
+  content_assigned_format_id?: string | null;
   content_audience_id?: string | null;
   content_format_id?: string | null;
+  content_format_version?: number | null;
   content_goal_id?: string | null;
   content_grammar_version?: string | null;
   content_history_snapshot?: Json;
@@ -203,6 +278,8 @@ type CarouselGenerationInsert = {
   selected_angle?: string | null;
   slide_count?: number;
   status?: CarouselGenerationStatus;
+  structure_id?: CarouselStructureId;
+  structure_version?: number;
   trigger_run_id?: string | null;
   user_id: string;
   website_analysis_id?: string | null;
@@ -221,14 +298,32 @@ type CarouselSlideRow = {
   id: string;
   image_direction: string | null;
   layout_preset: string | null;
+  product_visual_eligibility: "allowed" | "forbidden" | "preferred" | null;
   rendered_s3_key: string | null;
   rendered_url: string | null;
   slide_number: number;
   slide_type: string | null;
   status: CarouselSlideStatus;
+  story_format_id: string | null;
+  story_layout_variant:
+    | "story_overlay_only"
+    | "story_pill_overlay"
+    | "story_product_reveal"
+    | null;
+  story_role:
+    | "failure_scene"
+    | "product_turning_point"
+    | "proof_reflection_cta"
+    | "recognition"
+    | "reframe"
+    | null;
+  story_text_treatment: "outlined_overlay" | "overlay" | "pill" | null;
+  structure_id: CarouselStructureId;
+  structure_version: number;
   subtext: string | null;
   text_position: string | null;
   updated_at: string;
+  visual_role: "hook" | "human" | "product_asset" | "static" | null;
 };
 
 export type CarouselSlideInsert = {
@@ -238,14 +333,116 @@ export type CarouselSlideInsert = {
   headline: string;
   image_direction?: string | null;
   layout_preset?: string | null;
+  product_visual_eligibility?: "allowed" | "forbidden" | "preferred" | null;
   rendered_s3_key?: string | null;
   rendered_url?: string | null;
   slide_number: number;
   slide_type?: string | null;
   status?: CarouselSlideStatus;
+  story_format_id?: string | null;
+  story_layout_variant?:
+    | "story_overlay_only"
+    | "story_pill_overlay"
+    | "story_product_reveal"
+    | null;
+  story_role?:
+    | "failure_scene"
+    | "product_turning_point"
+    | "proof_reflection_cta"
+    | "recognition"
+    | "reframe"
+    | null;
+  story_text_treatment?: "outlined_overlay" | "overlay" | "pill" | null;
+  structure_id?: CarouselStructureId;
+  structure_version?: number;
   subtext?: string | null;
   text_position?: string | null;
+  visual_role?: "hook" | "human" | "product_asset" | "static" | null;
 };
+
+type CarouselExperimentBatchRow = {
+  batch_sequence: number;
+  business_profile_id: string;
+  business_profile_version: number;
+  created_at: string;
+  cycle_batch_position: number | null;
+  cycle_number: number | null;
+  generation_batch_id: string;
+  id: string;
+  planner_job_id: string | null;
+  requested_structure_batch_sequence: number;
+  requested_structure_id: CarouselStructureId;
+  requested_structure_version: number;
+  requested_carousel_count: number;
+  status: "completed" | "failed" | "partial" | "processing" | "queued" | "reserved";
+  structure_batch_sequence: number;
+  structure_id: CarouselStructureId;
+  structure_fallback_reason: string | null;
+  structure_mode_snapshot: CarouselStructureMode;
+  structure_planning_attempt_count: number;
+  structure_resolution_mode: "planning_fallback" | "requested";
+  structure_resolved_at: string | null;
+  structure_rotation_sequence: number | null;
+  structure_selection_mode: CarouselStructureSelectionMode;
+  structure_version: number;
+  updated_at: string;
+};
+
+type CarouselExperimentAssignmentRow = {
+  actual_format_id: string | null;
+  assigned_format_id: string;
+  carousel_generation_id: string | null;
+  created_at: string;
+  experiment_batch_id: string;
+  format_selection_mode: CarouselPerformanceSelectionMode;
+  format_selection_multiplier: number;
+  format_version: number;
+  hook_family_id: string | null;
+  hook_selection_mode: CarouselPerformanceSelectionMode | null;
+  hook_selection_multiplier: number | null;
+  id: string;
+  replacement_for_format_id: string | null;
+  rotation_candidate_format_id: string;
+  slot_index: number;
+  status: "completed" | "failed" | "not_applicable" | "processing" | "queued" | "reserved";
+  structure_id: CarouselStructureId;
+  structure_version: number;
+  updated_at: string;
+};
+
+type CarouselGlobalSettingsRow = {
+  created_at: string;
+  singleton: true;
+  structure_config_version: number;
+  structure_mode: CarouselStructureMode;
+  updated_at: string;
+  updated_by_user_id: string | null;
+};
+
+type CarouselExperimentAssignmentInsert = Partial<
+  Pick<
+    CarouselExperimentAssignmentRow,
+    | "actual_format_id"
+    | "carousel_generation_id"
+    | "replacement_for_format_id"
+    | "status"
+    | "structure_id"
+    | "structure_version"
+  >
+> &
+  Pick<
+    CarouselExperimentAssignmentRow,
+    | "assigned_format_id"
+    | "experiment_batch_id"
+    | "format_selection_mode"
+    | "format_selection_multiplier"
+    | "format_version"
+    | "hook_family_id"
+    | "hook_selection_mode"
+    | "hook_selection_multiplier"
+    | "rotation_candidate_format_id"
+    | "slot_index"
+  >;
 
 type CarouselDatabase = {
   public: {
@@ -254,8 +451,66 @@ type CarouselDatabase = {
         Args: { asset_ids: string[] };
         Returns: null;
       };
+      reserve_carousel_experiment_batches: {
+        Args: {
+          p_batch_count: number;
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_generation_batch_id: string;
+        };
+        Returns: CarouselExperimentBatchRow[];
+      };
+      take_over_carousel_experiment_batch_with_structure_2: {
+        Args: {
+          p_experiment_batch_id: string;
+          p_failure_reason: string;
+          p_planning_attempt_count: number;
+        };
+        Returns: CarouselExperimentBatchRow[];
+      };
+      reserve_carousel_role_assets_v1: {
+        Args: {
+          p_business_profile_id: string;
+          p_carousel_id: string;
+          p_category_slug: string;
+          p_use_product_asset: boolean;
+        };
+        Returns: ReservedCarouselRoleAssetRow[];
+      };
     };
     Tables: {
+      carousel_global_settings: {
+        Insert: {
+          singleton?: true;
+          structure_config_version?: number;
+          structure_mode?: CarouselStructureMode;
+          updated_by_user_id?: string | null;
+        };
+        Relationships: [];
+        Row: CarouselGlobalSettingsRow;
+        Update: Partial<
+          Pick<
+            CarouselGlobalSettingsRow,
+            | "structure_config_version"
+            | "structure_mode"
+            | "updated_by_user_id"
+          >
+        > & { updated_at?: string };
+      };
+      carousel_experiment_assignments: {
+        Insert: CarouselExperimentAssignmentInsert;
+        Relationships: [];
+        Row: CarouselExperimentAssignmentRow;
+        Update: Partial<CarouselExperimentAssignmentInsert> & {
+          updated_at?: string;
+        };
+      };
+      carousel_experiment_batches: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: CarouselExperimentBatchRow;
+        Update: Partial<CarouselExperimentBatchRow>;
+      };
       carousel_generations: {
         Insert: CarouselGenerationInsert;
         Relationships: [];
@@ -269,7 +524,7 @@ type CarouselDatabase = {
         Update: Partial<CarouselSlideInsert>;
       };
       category_image_assets: {
-        Insert: Record<string, never>;
+        Insert: CategoryImageAssetInsert;
         Relationships: [];
         Row: CategoryImageAssetRow;
         Update: Partial<CategoryImageAssetRow>;
@@ -300,6 +555,7 @@ export type WebsiteAnalysisForCarousel = {
 };
 
 export type ReadyCategoryImageAsset = {
+  assetRole: "hook" | "human" | "product_asset" | "static" | null;
   assetScope: CategoryImageAssetScope;
   assetVariant: CategoryImageAssetVariant;
   baseObjectKey: string;
@@ -320,6 +576,8 @@ export type ReadyCategoryImageAsset = {
     | "object-only"
     | null;
   imageQuery: string | null;
+  isActive: boolean;
+  libraryAssetId: string | null;
   moodTags: Json;
   nearDuplicateGroup: string | null;
   objectTags: Json;
@@ -342,16 +600,44 @@ export type ReadyCategoryImageAsset = {
   visualStyle: string | null;
 };
 
+type ReservedCarouselRoleAssetRow = {
+  asset_id: string;
+  asset_role: "hook" | "human" | "product_asset" | "static";
+  base_s3_key: string;
+  base_url: string;
+  category_slug: string;
+  cycle_number: number;
+  library_asset_id: string;
+  slide_number: number;
+  source_file_sha256: string;
+};
+
+export type ReservedCarouselRoleAsset = {
+  assetRole: ReservedCarouselRoleAssetRow["asset_role"];
+  baseObjectKey: string;
+  baseUrl: string;
+  categorySlug: string;
+  cycleNumber: number;
+  id: string;
+  libraryAssetId: string;
+  slideNumber: number;
+  sourceFileSha256: string;
+};
+
 export type CarouselGenerationRecord = {
   availableOnLocalDate: string | null;
   businessProfileId: string | null;
   businessProfileVersion: number | null;
   candidateCount: number;
   candidateIndex: number;
+  carouselExperimentAssignmentId: string | null;
+  carouselExperimentBatchId: string | null;
   categorySlug: string | null;
   contentAngle: string | null;
+  contentAssignedFormatId: CarouselStructureFormatId | null;
   contentAudienceId: string | null;
-  contentFormatId: CarouselContentFormatId | null;
+  contentFormatId: CarouselStructureFormatId | null;
+  contentFormatVersion: number | null;
   contentGoalId: string | null;
   contentGrammarVersion: string | null;
   contentHistorySnapshot: Json;
@@ -374,6 +660,8 @@ export type CarouselGenerationRecord = {
   selectedAngle: string | null;
   slideCount: number;
   status: CarouselGenerationStatus;
+  structureId: CarouselStructureId;
+  structureVersion: number;
   triggerRunId: string | null;
   updatedAt: string;
   userId: string;
@@ -388,13 +676,31 @@ export type CarouselSlideRecord = {
   id: string;
   imageDirection: string | null;
   layoutPreset: string | null;
+  productVisualEligibility: "allowed" | "forbidden" | "preferred" | null;
   renderedS3Key: string | null;
   renderedUrl: string | null;
   slideNumber: number;
   slideType: string | null;
   status: CarouselSlideStatus;
+  storyFormatId: string | null;
+  storyLayoutVariant:
+    | "story_overlay_only"
+    | "story_pill_overlay"
+    | "story_product_reveal"
+    | null;
+  storyRole:
+    | "failure_scene"
+    | "product_turning_point"
+    | "proof_reflection_cta"
+    | "recognition"
+    | "reframe"
+    | null;
+  storyTextTreatment: "outlined_overlay" | "overlay" | "pill" | null;
+  structureId: CarouselStructureId;
+  structureVersion: number;
   subtext: string | null;
   textPosition: string | null;
+  visualRole: "hook" | "human" | "product_asset" | "static" | null;
 };
 
 export type CarouselEditBackground = {
@@ -402,16 +708,43 @@ export type CarouselEditBackground = {
   url: string;
 };
 
+export type CarouselProductAsset = {
+  businessProfileId: string;
+  categorySlug: string;
+  createdAt: string;
+  fileName: string;
+  height: number;
+  id: string;
+  libraryAssetId: string;
+  storageKey: string;
+  url: string;
+  width: number;
+};
+
+export type CarouselProductAssetUpload = {
+  businessProfileId: string;
+  categorySlug: string;
+  id: string;
+  status: CategoryImageAssetRow["status"];
+  storageKey: string;
+};
+
+export class CarouselProductAssetConflictError extends Error {
+  constructor(message = "This app screenshot is already saved.") {
+    super(message);
+    this.name = "CarouselProductAssetConflictError";
+  }
+}
+
 function isRuntimeSafeCategoryImageAsset(
   asset: CategoryImageAssetRow,
 ): asset is CategoryImageAssetRow {
   return (
     asset.status === "ready" &&
     asset.subject_review_status === "approved" &&
-    asset.image_subject_class === "object-only" &&
-    asset.has_human === false &&
-    asset.face_count === 0 &&
-    asset.person_count === 0 &&
+    asset.is_active === true &&
+    asset.library_asset_id !== null &&
+    asset.asset_role !== null &&
     asset.runtime_exclusion_reason === null
   );
 }
@@ -455,18 +788,30 @@ function getSupabaseServerClient() {
 }
 
 function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
+  if (!isCarouselStructureId(row.structure_id)) {
+    throw new Error("Carousel generation has an invalid structure id.");
+  }
+
   return {
     availableOnLocalDate: row.available_on_local_date,
     businessProfileId: row.business_profile_id,
     businessProfileVersion: row.business_profile_version,
     candidateCount: row.candidate_count,
     candidateIndex: row.candidate_index,
+    carouselExperimentAssignmentId: row.carousel_experiment_assignment_id,
+    carouselExperimentBatchId: row.carousel_experiment_batch_id,
     categorySlug: row.category_slug,
     contentAngle: row.content_angle,
+    contentAssignedFormatId: parseStructureFormatId(
+      row.structure_id,
+      row.content_assigned_format_id,
+    ),
     contentAudienceId: row.content_audience_id,
-    contentFormatId: isCarouselContentFormatId(row.content_format_id)
-      ? row.content_format_id
-      : null,
+    contentFormatId: parseStructureFormatId(
+      row.structure_id,
+      row.content_format_id,
+    ),
+    contentFormatVersion: row.content_format_version,
     contentGoalId: row.content_goal_id,
     contentGrammarVersion: row.content_grammar_version,
     contentHistorySnapshot: row.content_history_snapshot,
@@ -481,7 +826,9 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     generationBatchId: row.generation_batch_id,
     generationSource: row.generation_source,
     goal: row.goal,
-    hookFamilyId: isCarouselHookFamilyId(row.hook_family_id)
+    hookFamilyId:
+      row.structure_id === "structure_1" &&
+      isCarouselHookFamilyId(row.hook_family_id)
       ? row.hook_family_id
       : null,
     id: row.id,
@@ -491,6 +838,8 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     selectedAngle: row.selected_angle,
     slideCount: row.slide_count,
     status: row.status,
+    structureId: row.structure_id,
+    structureVersion: row.structure_version,
     triggerRunId: row.trigger_run_id,
     updatedAt: row.updated_at,
     userId: row.user_id,
@@ -507,13 +856,21 @@ function mapSlide(row: CarouselSlideRow): CarouselSlideRecord {
     id: row.id,
     imageDirection: row.image_direction,
     layoutPreset: row.layout_preset,
+    productVisualEligibility: row.product_visual_eligibility,
     renderedS3Key: row.rendered_s3_key,
     renderedUrl: row.rendered_url,
     slideNumber: row.slide_number,
     slideType: row.slide_type,
     status: row.status,
+    storyFormatId: row.story_format_id,
+    storyLayoutVariant: row.story_layout_variant,
+    storyRole: row.story_role,
+    storyTextTreatment: row.story_text_treatment,
+    structureId: row.structure_id,
+    structureVersion: row.structure_version,
     subtext: row.subtext,
     textPosition: row.text_position,
+    visualRole: row.visual_role,
   };
 }
 
@@ -793,6 +1150,7 @@ export async function listReadyCategoryImageAssets(params: {
       );
     })
     .map((asset) => ({
+      assetRole: asset.asset_role,
       assetScope: asset.asset_scope,
       assetVariant: asset.asset_variant,
       baseObjectKey: asset.base_s3_key,
@@ -809,6 +1167,8 @@ export async function listReadyCategoryImageAssets(params: {
       id: asset.id,
       imageSubjectClass: asset.image_subject_class,
       imageQuery: asset.image_query,
+      isActive: asset.is_active,
+      libraryAssetId: asset.library_asset_id,
       moodTags: asset.mood_tags,
       nearDuplicateGroup: asset.near_duplicate_group,
       objectTags: asset.object_tags,
@@ -834,47 +1194,61 @@ export async function listReadyCategoryImageAssets(params: {
 
 export async function createCarouselGeneration(input: {
   availableOnLocalDate?: string | null;
-  businessProfileId?: string | null;
-  businessProfileVersion?: number | null;
+  businessProfileId: string;
+  businessProfileVersion: number;
   candidateCount: number;
   candidateIndex: number;
   categorySlug: string;
-  contentAssignment?: CarouselContentAssignment | null;
+  contentAssignment: CarouselStructureContentAssignment;
+  experimentAssignmentId: string;
+  experimentBatchId: string;
   format: CarouselFormat;
   generationBatchId: string;
-  generationSource?: "auto_generated" | "manual";
+  generationSource: "auto_generated";
   goal?: string | null;
   originDailyFeedId?: string | null;
   projectId: string;
   selectedAngle?: string | null;
   slideCount: number;
+  structureId: CarouselStructureId;
+  structureVersion: number;
   userId: string;
   websiteAnalysisId: string;
 }) {
+  const assignment = normalizeStructureContentAssignment({
+    assignment: input.contentAssignment,
+    structureId: input.structureId,
+  });
   const { data, error } = await getSupabaseServerClient()
     .from(CAROUSEL_GENERATIONS_TABLE)
     .insert({
       available_on_local_date: input.availableOnLocalDate ?? null,
-      business_profile_id: input.businessProfileId ?? null,
-      business_profile_version: input.businessProfileVersion ?? null,
+      business_profile_id: input.businessProfileId,
+      business_profile_version: input.businessProfileVersion,
       candidate_count: input.candidateCount,
       candidate_index: input.candidateIndex,
+      carousel_experiment_assignment_id: input.experimentAssignmentId,
+      carousel_experiment_batch_id: input.experimentBatchId,
       category_slug: input.categorySlug,
-      content_format_id: input.contentAssignment?.contentFormatId ?? null,
-      content_grammar_version: input.contentAssignment?.grammarVersion ?? null,
+      content_assigned_format_id: assignment.assignedFormatId,
+      content_format_id: assignment.actualFormatId,
+      content_format_version: assignment.formatVersion,
+      content_grammar_version: assignment.grammarVersion,
       content_history_snapshot:
-        (input.contentAssignment?.historySnapshot as unknown as Json) ?? [],
-      content_selector_version: input.contentAssignment?.selectorVersion ?? null,
+        assignment.historySnapshot as unknown as Json,
+      content_selector_version: assignment.selectorVersion,
       format: input.format,
       generation_batch_id: input.generationBatchId,
-      generation_source: input.generationSource ?? "manual",
+      generation_source: input.generationSource,
       goal: input.goal ?? null,
-      hook_family_id: input.contentAssignment?.hookFamilyId ?? null,
+      hook_family_id: assignment.hookFamilyId,
       origin_daily_feed_id: input.originDailyFeedId ?? null,
       project_id: input.projectId,
       selected_angle: input.selectedAngle ?? null,
       slide_count: input.slideCount,
       status: "processing",
+      structure_id: input.structureId,
+      structure_version: input.structureVersion,
       user_id: input.userId,
       website_analysis_id: input.websiteAnalysisId,
     })
@@ -890,6 +1264,416 @@ export async function createCarouselGeneration(input: {
   }
 
   return data.id;
+}
+
+export async function countActiveCarouselRoleAssets(categorySlug: string) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(CATEGORY_IMAGE_ASSETS_TABLE)
+    .select("asset_role")
+    .eq("category_slug", categorySlug)
+    .eq("is_active", true)
+    .eq("status", "ready")
+    .eq("subject_review_status", "approved")
+    .is("runtime_exclusion_reason", null)
+    .in("asset_role", ["hook", "human", "static"]);
+
+  if (error) {
+    throw new Error(`Could not count active Carousel role assets: ${error.message}`);
+  }
+
+  const counts = { hook: 0, human: 0, static: 0 };
+
+  for (const row of data ?? []) {
+    if (row.asset_role === "hook") counts.hook += 1;
+    if (row.asset_role === "human") counts.human += 1;
+    if (row.asset_role === "static") counts.static += 1;
+  }
+
+  return counts;
+}
+
+export async function reserveCarouselRoleAssets(params: {
+  businessProfileId: string;
+  carouselId: string;
+  categorySlug: string;
+  useProductAsset?: boolean;
+}) {
+  const { data, error } = await getSupabaseServerClient().rpc(
+    "reserve_carousel_role_assets_v1",
+    {
+      p_business_profile_id: params.businessProfileId,
+      p_carousel_id: params.carouselId,
+      p_category_slug: params.categorySlug,
+      p_use_product_asset: Boolean(params.useProductAsset),
+    },
+  );
+
+  if (error) {
+    throw new Error(`Could not reserve Carousel role images: ${error.message}`);
+  }
+
+  return (data ?? []).map(
+    (row): ReservedCarouselRoleAsset => ({
+      assetRole: row.asset_role,
+      baseObjectKey: row.base_s3_key,
+      baseUrl: row.base_url,
+      categorySlug: row.category_slug,
+      cycleNumber: row.cycle_number,
+      id: row.asset_id,
+      libraryAssetId: row.library_asset_id,
+      slideNumber: row.slide_number,
+      sourceFileSha256: row.source_file_sha256,
+    }),
+  );
+}
+
+export type CarouselExperimentBatchRecord = {
+  batchSequence: number;
+  businessProfileId: string;
+  businessProfileVersion: number;
+  cycleBatchPosition: number | null;
+  cycleNumber: number | null;
+  generationBatchId: string;
+  id: string;
+  plannerJobId: string | null;
+  requestedStructureBatchSequence: number;
+  requestedStructureId: CarouselStructureId;
+  requestedStructureVersion: number;
+  status: CarouselExperimentBatchRow["status"];
+  structureBatchSequence: number;
+  structureId: CarouselStructureId;
+  structureFallbackReason: string | null;
+  structureModeSnapshot: CarouselStructureMode;
+  structurePlanningAttemptCount: number;
+  structureResolutionMode: CarouselExperimentBatchRow["structure_resolution_mode"];
+  structureResolvedAt: string | null;
+  structureRotationSequence: number | null;
+  structureSelectionMode: CarouselStructureSelectionMode;
+  structureVersion: number;
+};
+
+export type CarouselExperimentAssignmentRecord = {
+  actualFormatId: CarouselStructureFormatId | null;
+  assignedFormatId: CarouselStructureFormatId;
+  carouselGenerationId: string | null;
+  experimentBatchId: string;
+  formatSelectionMode: CarouselPerformanceSelectionMode;
+  formatSelectionMultiplier: number;
+  formatVersion: number;
+  hookFamilyId: CarouselHookFamilyId | null;
+  hookSelectionMode: CarouselPerformanceSelectionMode | null;
+  hookSelectionMultiplier: number | null;
+  id: string;
+  rotationCandidateFormatId: CarouselStructureFormatId;
+  slotIndex: number;
+  status: CarouselExperimentAssignmentRow["status"];
+  structureId: CarouselStructureId;
+  structureVersion: number;
+};
+
+export async function reserveCarouselExperimentBatches(params: {
+  batchCount: number;
+  businessProfileId: string;
+  businessProfileVersion: number;
+  generationBatchId: string;
+}) {
+  const { data, error } = await getSupabaseServerClient().rpc(
+    "reserve_carousel_experiment_batches",
+    {
+      p_batch_count: params.batchCount,
+      p_business_profile_id: params.businessProfileId,
+      p_business_profile_version: params.businessProfileVersion,
+      p_generation_batch_id: params.generationBatchId,
+    },
+  );
+
+  if (error) {
+    throw new Error(`Could not reserve Carousel experiment batches: ${error.message}`);
+  }
+
+  return (data ?? []).map(mapExperimentBatch);
+}
+
+export async function upsertCarouselExperimentAssignments(params: {
+  assignments: readonly CarouselStructureContentAssignment[];
+  experimentBatchId: string;
+  structureId: CarouselStructureId;
+  structureVersion: number;
+}) {
+  if (params.assignments.length !== 5) {
+    throw new Error("A Carousel experiment batch must reserve exactly five assignments.");
+  }
+
+  const rows = params.assignments.map((assignment, slotIndex) => {
+    const normalized = normalizeStructureContentAssignment({
+      assignment,
+      structureId: params.structureId,
+    });
+
+    return {
+      assigned_format_id: normalized.assignedFormatId,
+      experiment_batch_id: params.experimentBatchId,
+      format_selection_mode: normalized.formatSelectionMode,
+      format_selection_multiplier: normalized.formatSelectionMultiplier,
+      format_version: normalized.formatVersion,
+      hook_family_id: normalized.hookFamilyId,
+      hook_selection_mode: normalized.hookSelectionMode,
+      hook_selection_multiplier: normalized.hookSelectionMultiplier,
+      rotation_candidate_format_id: normalized.rotationCandidateFormatId,
+      slot_index: slotIndex,
+      status: "reserved" as const,
+      structure_id: params.structureId,
+      structure_version: params.structureVersion,
+    };
+  });
+  const { data, error } = await getSupabaseServerClient()
+    .from(CAROUSEL_EXPERIMENT_ASSIGNMENTS_TABLE)
+    .upsert(rows, {
+      ignoreDuplicates: true,
+      onConflict: "experiment_batch_id,slot_index",
+    })
+    .select("*")
+    .order("slot_index", { ascending: true });
+
+  if (error) {
+    throw new Error(`Could not reserve Carousel experiment assignments: ${error.message}`);
+  }
+
+  if ((data ?? []).length === 5) {
+    return (data ?? []).map(mapExperimentAssignment);
+  }
+
+  const { data: existing, error: existingError } = await getSupabaseServerClient()
+    .from(CAROUSEL_EXPERIMENT_ASSIGNMENTS_TABLE)
+    .select("*")
+    .eq("experiment_batch_id", params.experimentBatchId)
+    .order("slot_index", { ascending: true });
+
+  if (existingError) {
+    throw new Error(
+      `Could not load Carousel experiment assignments: ${existingError.message}`,
+    );
+  }
+
+  if ((existing ?? []).length !== 5) {
+    throw new Error("Carousel experiment batch does not contain five assignments.");
+  }
+
+  return (existing ?? []).map(mapExperimentAssignment);
+}
+
+export async function linkCarouselExperimentAssignment(params: {
+  assignmentId: string;
+  carouselId: string;
+}) {
+  const { error } = await getSupabaseServerClient()
+    .from(CAROUSEL_EXPERIMENT_ASSIGNMENTS_TABLE)
+    .update({
+      carousel_generation_id: params.carouselId,
+      status: "queued",
+      updated_at: getNowIso(),
+    })
+    .eq("id", params.assignmentId)
+    .or(`carousel_generation_id.is.null,carousel_generation_id.eq.${params.carouselId}`);
+
+  if (error) {
+    throw new Error(`Could not link Carousel experiment assignment: ${error.message}`);
+  }
+}
+
+export async function updateCarouselExperimentBatch(params: {
+  experimentBatchId: string;
+  patch: Partial<Pick<CarouselExperimentBatchRow, "planner_job_id" | "status">>;
+}) {
+  const { error } = await getSupabaseServerClient()
+    .from(CAROUSEL_EXPERIMENT_BATCHES_TABLE)
+    .update({ ...params.patch, updated_at: getNowIso() })
+    .eq("id", params.experimentBatchId);
+
+  if (error) {
+    throw new Error(`Could not update Carousel experiment batch: ${error.message}`);
+  }
+}
+
+function mapExperimentBatch(
+  row: CarouselExperimentBatchRow,
+): CarouselExperimentBatchRecord {
+  if (
+    !isCarouselStructureId(row.structure_id) ||
+    !isCarouselStructureId(row.requested_structure_id) ||
+    !isCarouselStructureMode(row.structure_mode_snapshot) ||
+    !isCarouselStructureSelectionMode(row.structure_selection_mode) ||
+    !["planning_fallback", "requested"].includes(
+      row.structure_resolution_mode,
+    )
+  ) {
+    throw new Error("Carousel experiment batch has invalid structure metadata.");
+  }
+
+  return {
+    batchSequence: row.batch_sequence,
+    businessProfileId: row.business_profile_id,
+    businessProfileVersion: row.business_profile_version,
+    cycleBatchPosition: row.cycle_batch_position,
+    cycleNumber: row.cycle_number,
+    generationBatchId: row.generation_batch_id,
+    id: row.id,
+    plannerJobId: row.planner_job_id,
+    requestedStructureBatchSequence: row.requested_structure_batch_sequence,
+    requestedStructureId: row.requested_structure_id,
+    requestedStructureVersion: row.requested_structure_version,
+    status: row.status,
+    structureBatchSequence: row.structure_batch_sequence,
+    structureId: row.structure_id,
+    structureFallbackReason: row.structure_fallback_reason,
+    structureModeSnapshot: row.structure_mode_snapshot,
+    structurePlanningAttemptCount: row.structure_planning_attempt_count,
+    structureResolutionMode: row.structure_resolution_mode,
+    structureResolvedAt: row.structure_resolved_at,
+    structureRotationSequence: row.structure_rotation_sequence,
+    structureSelectionMode: row.structure_selection_mode,
+    structureVersion: row.structure_version,
+  };
+}
+
+function mapExperimentAssignment(
+  row: CarouselExperimentAssignmentRow,
+): CarouselExperimentAssignmentRecord {
+  const assignedFormatId = parseStructureFormatId(
+    row.structure_id,
+    row.assigned_format_id,
+  );
+  const actualFormatId = parseStructureFormatId(
+    row.structure_id,
+    row.actual_format_id,
+  );
+  const rotationCandidateFormatId = parseStructureFormatId(
+    row.structure_id,
+    row.rotation_candidate_format_id,
+  );
+  const hookFieldsAreValid =
+    row.structure_id === "structure_1"
+      ? isCarouselHookFamilyId(row.hook_family_id) &&
+        isCarouselPerformanceSelectionMode(row.hook_selection_mode) &&
+        row.hook_selection_multiplier !== null
+      : row.hook_family_id === null &&
+        row.hook_selection_mode === null &&
+        row.hook_selection_multiplier === null;
+
+  if (
+    assignedFormatId === null ||
+    (row.actual_format_id !== null && actualFormatId === null) ||
+    rotationCandidateFormatId === null ||
+    !isCarouselPerformanceSelectionMode(row.format_selection_mode) ||
+    !isCarouselStructureId(row.structure_id) ||
+    !hookFieldsAreValid
+  ) {
+    throw new Error("Carousel experiment assignment has an invalid grammar id.");
+  }
+
+  return {
+    actualFormatId,
+    assignedFormatId,
+    carouselGenerationId: row.carousel_generation_id,
+    experimentBatchId: row.experiment_batch_id,
+    formatSelectionMode: row.format_selection_mode,
+    formatSelectionMultiplier: row.format_selection_multiplier,
+    formatVersion: row.format_version,
+    hookFamilyId: isCarouselHookFamilyId(row.hook_family_id)
+      ? row.hook_family_id
+      : null,
+    hookSelectionMode: row.hook_selection_mode,
+    hookSelectionMultiplier: row.hook_selection_multiplier,
+    id: row.id,
+    rotationCandidateFormatId,
+    slotIndex: row.slot_index,
+    status: row.status,
+    structureId: row.structure_id,
+    structureVersion: row.structure_version,
+  };
+}
+
+function isCarouselPerformanceSelectionMode(
+  value: unknown,
+): value is CarouselPerformanceSelectionMode {
+  return [
+    "controlled_rotation",
+    "performance_exploration",
+    "performance_weighted",
+  ].includes(value as string);
+}
+
+type NormalizedStructureContentAssignment = {
+  actualFormatId: CarouselStructureFormatId;
+  assignedFormatId: CarouselStructureFormatId;
+  formatSelectionMode: CarouselPerformanceSelectionMode;
+  formatSelectionMultiplier: number;
+  formatVersion: number;
+  grammarVersion: string;
+  historySnapshot: readonly unknown[];
+  hookFamilyId: CarouselHookFamilyId | null;
+  hookSelectionMode: CarouselPerformanceSelectionMode | null;
+  hookSelectionMultiplier: number | null;
+  rotationCandidateFormatId: CarouselStructureFormatId;
+  selectorVersion: string;
+};
+
+function normalizeStructureContentAssignment(params: {
+  assignment: CarouselStructureContentAssignment;
+  structureId: CarouselStructureId;
+}): NormalizedStructureContentAssignment {
+  if (params.structureId === "structure_1") {
+    if (!("contentFormatId" in params.assignment)) {
+      throw new Error("Structure 1 requires a Structure 1 content assignment.");
+    }
+
+    return {
+      actualFormatId: params.assignment.contentFormatId,
+      assignedFormatId: params.assignment.assignedContentFormatId,
+      formatSelectionMode: params.assignment.formatSelectionMode,
+      formatSelectionMultiplier: params.assignment.formatSelectionMultiplier,
+      formatVersion: params.assignment.formatVersion,
+      grammarVersion: params.assignment.grammarVersion,
+      historySnapshot: params.assignment.historySnapshot,
+      hookFamilyId: params.assignment.hookFamilyId,
+      hookSelectionMode: params.assignment.hookSelectionMode,
+      hookSelectionMultiplier: params.assignment.hookSelectionMultiplier,
+      rotationCandidateFormatId:
+        params.assignment.rotationCandidateContentFormatId,
+      selectorVersion: params.assignment.selectorVersion,
+    };
+  }
+
+  if (!("storyFormatId" in params.assignment)) {
+    throw new Error("Structure 2 requires a Structure 2 format assignment.");
+  }
+
+  return {
+    actualFormatId: params.assignment.storyFormatId,
+    assignedFormatId: params.assignment.assignedStoryFormatId,
+    formatSelectionMode: params.assignment.formatSelectionMode,
+    formatSelectionMultiplier: params.assignment.formatSelectionMultiplier,
+    formatVersion: params.assignment.formatVersion,
+    grammarVersion: params.assignment.grammarVersion,
+    historySnapshot: params.assignment.historySnapshot,
+    hookFamilyId: null,
+    hookSelectionMode: null,
+    hookSelectionMultiplier: null,
+    rotationCandidateFormatId:
+      params.assignment.rotationCandidateStoryFormatId,
+    selectorVersion: params.assignment.selectorVersion,
+  };
+}
+
+function parseStructureFormatId(
+  structureId: CarouselStructureId,
+  value: string | null,
+): CarouselStructureFormatId | null {
+  if (structureId === "structure_1") {
+    return isCarouselContentFormatId(value) ? value : null;
+  }
+
+  return isCarouselStructure2FormatId(value) ? value : null;
 }
 
 export async function updateCarouselGeneration(
@@ -988,7 +1772,10 @@ export async function reserveCarouselContentAssignment(params: {
   const { error } = await getSupabaseServerClient()
     .from(CAROUSEL_GENERATIONS_TABLE)
     .update({
+      content_assigned_format_id:
+        params.assignment.assignedContentFormatId,
       content_format_id: params.assignment.contentFormatId,
+      content_format_version: params.assignment.formatVersion,
       content_grammar_version: params.assignment.grammarVersion,
       content_history_snapshot:
         params.assignment.historySnapshot as unknown as Json,
@@ -1014,7 +1801,7 @@ export async function getCarouselEditBackgrounds(assetIds: string[]) {
 
   const { data, error } = await getSupabaseServerClient()
     .from(CATEGORY_IMAGE_ASSETS_TABLE)
-    .select("id,base_url,status,subject_review_status")
+    .select("id,base_url,is_active,runtime_exclusion_reason,status,subject_review_status")
     .in("id", ids);
 
   if (error) {
@@ -1022,10 +1809,275 @@ export async function getCarouselEditBackgrounds(assetIds: string[]) {
   }
 
   return (data ?? []).flatMap((asset) =>
-    asset.status === "ready" && asset.subject_review_status === "approved"
+    asset.is_active &&
+    asset.status === "ready" &&
+    asset.subject_review_status === "approved" &&
+    asset.runtime_exclusion_reason === null
       ? [{ id: asset.id, url: asset.base_url }]
       : [],
   ) satisfies CarouselEditBackground[];
+}
+
+export async function createCarouselProductAssetUpload(input: {
+  assetId: string;
+  businessProfileId: string;
+  categorySlug: string;
+  fileName: string;
+  libraryAssetId: string;
+  mimeType: string;
+  publicUrl: string;
+  storageKey: string;
+}) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(CATEGORY_IMAGE_ASSETS_TABLE)
+    .insert({
+      asset_role: "product_asset",
+      asset_scope: "category",
+      base_s3_key: input.storageKey,
+      base_url: input.publicUrl,
+      category_slug: input.categorySlug,
+      id: input.assetId,
+      is_active: false,
+      library_asset_id: input.libraryAssetId,
+      orientation: "portrait",
+      owner_business_profile_id: input.businessProfileId,
+      source_filename: input.fileName,
+      source_folder: "carousel-product-assets",
+      source_metadata: {
+        mimeType: input.mimeType,
+        uploadKind: "trending_carousel_editor",
+      },
+      source_original_s3_key: input.storageKey,
+      source_original_url: input.publicUrl,
+      source_provider: "local",
+      status: "processing",
+      subject_review_status: "unreviewed",
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(`Could not create Carousel app screenshot upload: ${error.message}`);
+  }
+
+  return mapCarouselProductAssetUpload(data);
+}
+
+export async function getCarouselProductAssetUpload(input: {
+  assetId: string;
+  businessProfileId: string;
+  categorySlug: string;
+}) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(CATEGORY_IMAGE_ASSETS_TABLE)
+    .select("*")
+    .eq("id", input.assetId)
+    .eq("asset_role", "product_asset")
+    .eq("owner_business_profile_id", input.businessProfileId)
+    .eq("category_slug", input.categorySlug)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load Carousel app screenshot upload: ${error.message}`);
+  }
+
+  return data ? mapCarouselProductAssetUpload(data) : null;
+}
+
+export async function completeCarouselProductAssetUpload(input: {
+  assetId: string;
+  businessProfileId: string;
+  categorySlug: string;
+  fileSize: number;
+  height: number;
+  mimeType: string;
+  orientation: CategoryImageAssetRow["orientation"];
+  sha256: string;
+  width: number;
+}) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(CATEGORY_IMAGE_ASSETS_TABLE)
+    .update({
+      height: input.height,
+      is_active: true,
+      orientation: input.orientation,
+      runtime_exclusion_reason: null,
+      source_file_sha256: input.sha256,
+      source_metadata: {
+        fileSize: input.fileSize,
+        mimeType: input.mimeType,
+        uploadKind: "trending_carousel_editor",
+      },
+      status: "ready",
+      subject_review_status: "approved",
+      updated_at: getNowIso(),
+      width: input.width,
+    })
+    .eq("id", input.assetId)
+    .eq("asset_role", "product_asset")
+    .eq("owner_business_profile_id", input.businessProfileId)
+    .eq("category_slug", input.categorySlug)
+    .eq("status", "processing")
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === "23505") {
+      throw new CarouselProductAssetConflictError();
+    }
+    throw new Error(`Could not finish Carousel app screenshot upload: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error("Carousel app screenshot upload is no longer pending.");
+  }
+
+  return mapCarouselProductAsset(data);
+}
+
+export async function findCarouselProductAssetByHash(input: {
+  businessProfileId: string;
+  categorySlug: string;
+  sha256: string;
+}) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(CATEGORY_IMAGE_ASSETS_TABLE)
+    .select("*")
+    .eq("asset_role", "product_asset")
+    .eq("owner_business_profile_id", input.businessProfileId)
+    .eq("category_slug", input.categorySlug)
+    .eq("source_file_sha256", input.sha256)
+    .eq("is_active", true)
+    .eq("status", "ready")
+    .eq("subject_review_status", "approved")
+    .is("runtime_exclusion_reason", null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not check existing Carousel app screenshots: ${error.message}`);
+  }
+
+  return data ? mapCarouselProductAsset(data) : null;
+}
+
+export async function listCarouselProductAssets(input: {
+  businessProfileId: string;
+  categorySlug: string;
+}) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(CATEGORY_IMAGE_ASSETS_TABLE)
+    .select("*")
+    .eq("asset_role", "product_asset")
+    .eq("owner_business_profile_id", input.businessProfileId)
+    .eq("category_slug", input.categorySlug)
+    .eq("is_active", true)
+    .eq("status", "ready")
+    .eq("subject_review_status", "approved")
+    .is("runtime_exclusion_reason", null)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Could not list Carousel app screenshots: ${error.message}`);
+  }
+
+  return (data ?? []).map(mapCarouselProductAsset);
+}
+
+export async function getCarouselProductAssetsByIds(input: {
+  assetIds: string[];
+  businessProfileId: string;
+  categorySlug: string;
+}) {
+  const assetIds = Array.from(new Set(input.assetIds.filter(Boolean)));
+
+  if (assetIds.length === 0) {
+    return [] satisfies CarouselProductAsset[];
+  }
+
+  const { data, error } = await getSupabaseServerClient()
+    .from(CATEGORY_IMAGE_ASSETS_TABLE)
+    .select("*")
+    .in("id", assetIds)
+    .eq("asset_role", "product_asset")
+    .eq("owner_business_profile_id", input.businessProfileId)
+    .eq("category_slug", input.categorySlug)
+    .eq("is_active", true)
+    .eq("status", "ready")
+    .eq("subject_review_status", "approved")
+    .is("runtime_exclusion_reason", null);
+
+  if (error) {
+    throw new Error(`Could not verify Carousel app screenshots: ${error.message}`);
+  }
+
+  return (data ?? []).map(mapCarouselProductAsset);
+}
+
+export async function archiveCarouselProductAsset(input: {
+  assetId: string;
+  businessProfileId: string;
+  categorySlug: string;
+}) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(CATEGORY_IMAGE_ASSETS_TABLE)
+    .update({
+      is_active: false,
+      status: "archived",
+      updated_at: getNowIso(),
+    })
+    .eq("id", input.assetId)
+    .eq("asset_role", "product_asset")
+    .eq("owner_business_profile_id", input.businessProfileId)
+    .eq("category_slug", input.categorySlug)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not remove Carousel app screenshot: ${error.message}`);
+  }
+
+  return Boolean(data);
+}
+
+function mapCarouselProductAssetUpload(
+  row: CategoryImageAssetRow,
+): CarouselProductAssetUpload {
+  if (!row.owner_business_profile_id || !row.asset_role || row.asset_role !== "product_asset") {
+    throw new Error("Carousel app screenshot upload has invalid ownership metadata.");
+  }
+
+  return {
+    businessProfileId: row.owner_business_profile_id,
+    categorySlug: row.category_slug,
+    id: row.id,
+    status: row.status,
+    storageKey: row.base_s3_key,
+  };
+}
+
+function mapCarouselProductAsset(row: CategoryImageAssetRow): CarouselProductAsset {
+  if (
+    row.asset_role !== "product_asset" ||
+    !row.owner_business_profile_id ||
+    !row.library_asset_id ||
+    !row.source_filename ||
+    !row.width ||
+    !row.height
+  ) {
+    throw new Error("Carousel app screenshot is missing required metadata.");
+  }
+
+  return {
+    businessProfileId: row.owner_business_profile_id,
+    categorySlug: row.category_slug,
+    createdAt: row.created_at,
+    fileName: row.source_filename,
+    height: row.height,
+    id: row.id,
+    libraryAssetId: row.library_asset_id,
+    storageKey: row.base_s3_key,
+    url: row.base_url,
+    width: row.width,
+  };
 }
 
 async function getCarouselGenerationStatusesForRows(
@@ -1304,6 +2356,7 @@ export async function listRecentCarouselContentHistory(params: {
   businessProfileId: string;
   excludeGenerationBatchId?: string | null;
   limit?: number;
+  structureId: CarouselStructureId;
 }) {
   const limit = Math.min(Math.max(Math.trunc(params.limit ?? 10), 1), 10);
   let query = getSupabaseServerClient()
@@ -1311,6 +2364,7 @@ export async function listRecentCarouselContentHistory(params: {
     .select("*")
     .eq("business_profile_id", params.businessProfileId)
     .eq("generation_source", "auto_generated")
+    .eq("structure_id", params.structureId)
     .in("status", ["processing", "completed"]);
 
   if (params.excludeGenerationBatchId) {
@@ -1343,11 +2397,54 @@ export async function listRecentCarouselContentHistory(params: {
     .slice(0, limit);
 }
 
+export async function listRecentCarouselStructure2History(params: {
+  businessProfileId: string;
+  excludeGenerationBatchId?: string | null;
+  limit?: number;
+}) {
+  const limit = Math.min(Math.max(Math.trunc(params.limit ?? 10), 1), 10);
+  let query = getSupabaseServerClient()
+    .from(CAROUSEL_GENERATIONS_TABLE)
+    .select("*")
+    .eq("business_profile_id", params.businessProfileId)
+    .eq("generation_source", "auto_generated")
+    .eq("structure_id", "structure_2")
+    .in("status", ["processing", "completed"]);
+
+  if (params.excludeGenerationBatchId) {
+    query = query.neq("generation_batch_id", params.excludeGenerationBatchId);
+  }
+
+  const { data, error } = await query
+    .order("created_at", { ascending: false })
+    .order("candidate_index", { ascending: false })
+    .limit(limit * 4);
+
+  if (error) {
+    throw new Error(
+      `Could not load recent Carousel Structure 2 history: ${error.message}`,
+    );
+  }
+
+  return (data ?? [])
+    .map(mapRecentCarouselStructure2History)
+    .filter((item) =>
+      Boolean(
+        item.storyFormatId ||
+          item.hookIdea ||
+          item.storyAngle ||
+          item.summary,
+      ),
+    )
+    .slice(0, limit);
+}
+
 export async function listCarouselBatchContentHistory(params: {
   businessProfileId: string;
   excludeCarouselId: string;
   generationBatchId: string;
   limit?: number;
+  structureId: CarouselStructureId;
 }) {
   const limit = Math.min(Math.max(Math.trunc(params.limit ?? 10), 1), 10);
   const { data, error } = await getSupabaseServerClient()
@@ -1355,6 +2452,7 @@ export async function listCarouselBatchContentHistory(params: {
     .select("*")
     .eq("business_profile_id", params.businessProfileId)
     .eq("generation_batch_id", params.generationBatchId)
+    .eq("structure_id", params.structureId)
     .neq("id", params.excludeCarouselId)
     .in("status", ["processing", "completed"])
     .not("content_topic_id", "is", null)
@@ -1387,6 +2485,8 @@ function mapRecentContentSummary(
       getJsonString(strategy?.angle) ??
       getJsonString(normalizedPlan?.concept) ??
       row.selected_angle,
+    audienceId:
+      row.content_audience_id ?? getJsonString(strategy?.audienceId),
     contentFormatId: isCarouselContentFormatId(row.content_format_id)
       ? row.content_format_id
       : isCarouselContentFormatId(strategy?.contentFormatId)
@@ -1408,6 +2508,41 @@ function mapRecentContentSummary(
     topicId:
       row.content_topic_id ??
       getJsonString(strategy?.topicId),
+  };
+}
+
+function mapRecentCarouselStructure2History(
+  row: CarouselGenerationRow,
+): CarouselStructure2RecentHistory {
+  const plan = getJsonRecord(row.content_plan_normalized);
+  const historySummary = getJsonRecord(plan?.historySummary);
+  const strategy = getJsonRecord(plan?.strategy);
+  const slides = Array.isArray(plan?.slides) ? plan.slides : [];
+  const firstSlide = getJsonRecord(slides[0]);
+  const storyFormatId = [
+    row.content_format_id,
+    historySummary?.storyFormatId,
+    strategy?.storyFormatId,
+  ].find(isCarouselStructure2FormatId);
+
+  return {
+    centralProblem:
+      getJsonString(historySummary?.centralProblem) ??
+      getJsonString(strategy?.centralProblem),
+    ctaAngle:
+      getJsonString(historySummary?.ctaAngle) ??
+      getJsonString(strategy?.ctaAngle),
+    hookIdea:
+      getJsonString(historySummary?.hookIdea) ??
+      getJsonString(firstSlide?.storyText),
+    productMechanism:
+      getJsonString(historySummary?.productMechanism) ??
+      getJsonString(strategy?.productMechanism),
+    storyAngle:
+      getJsonString(historySummary?.storyAngle) ??
+      getJsonString(strategy?.angle),
+    storyFormatId: storyFormatId ?? null,
+    summary: getJsonString(historySummary?.summary),
   };
 }
 

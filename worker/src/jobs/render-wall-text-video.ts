@@ -60,6 +60,7 @@ export async function runRenderWallTextVideoJob(
 
     await context.store.markWallTextRenderCompleted({
       assignmentId: payload.assignmentId,
+      attribution: payload.attribution,
       creativeEditId: payload.creativeEditId,
       creativeEditRevision: payload.creativeEditRevision,
       creativeId: payload.creativeId,
@@ -158,10 +159,14 @@ function parseRenderWallTextVideoPayload(
       "creativeEditId and creativeEditRevision must be provided together.",
     );
   }
+  const attribution = getWallTextAttribution(input.attribution);
+  const audio = getWallTextAudio(input.audio, durationSeconds);
+  validateWallTextAudioAttribution({ attribution, audio });
 
   return {
     assignmentId: getRequiredString(input.assignmentId, "assignmentId", 64),
-    audio: getWallTextAudio(input.audio, durationSeconds),
+    attribution,
+    audio,
     creativeEditId,
     creativeEditRevision,
     creativeId: getRequiredString(input.creativeId, "creativeId", 64),
@@ -181,6 +186,107 @@ function parseRenderWallTextVideoPayload(
     textBox: getTextBox(layout.textBox),
     title: getRequiredString(input.title, "title", 140),
     userId: getRequiredString(input.userId, "userId", 200),
+  };
+}
+
+function validateWallTextAudioAttribution(params: {
+  attribution: RenderWallTextVideoPayload["attribution"];
+  audio: RenderWallTextVideoPayload["audio"];
+}) {
+  const isLockedAudio =
+    params.audio.matchingVersion === "wall-instagram-reel-locked-v1";
+
+  if (
+    params.attribution.sourceKind === "instagram_reel" &&
+    (!params.attribution.instagramReelTemplateId ||
+      !isLockedAudio ||
+      params.audio.fitMode === "loop")
+  ) {
+    throw new Error("Instagram Reel Wall audio attribution is invalid.");
+  }
+
+  if (params.attribution.sourceKind !== "instagram_reel" && isLockedAudio) {
+    throw new Error("Locked Instagram Reel audio cannot be used by this source.");
+  }
+}
+
+function getWallTextAttribution(value: Json | undefined) {
+  if (value === undefined || value === null) {
+    return {
+      contentHash: "0".repeat(64),
+      editClassification: "none" as const,
+      formatId: null,
+      formatLearningEligible: false,
+      formatVersion: 1,
+      instagramReelTemplateId: null,
+      selectionMode: "legacy_unknown",
+      selectionWeight: 1,
+      selectorVersion: "legacy_unknown",
+      sourceKind: "ugcpilot" as const,
+    };
+  }
+  const attribution = getRecord(value, "attribution");
+  const editClassification = getRequiredString(
+    attribution.editClassification,
+    "attribution.editClassification",
+    10,
+  );
+  const sourceKind = getRequiredString(
+    attribution.sourceKind,
+    "attribution.sourceKind",
+    20,
+  );
+  if (!['none', 'minor', 'major'].includes(editClassification)) {
+    throw new Error("attribution.editClassification is invalid.");
+  }
+  if (!['ugcpilot', 'creative_asset', 'instagram_reel'].includes(sourceKind)) {
+    throw new Error("attribution.sourceKind is invalid.");
+  }
+  const contentHash = getRequiredString(
+    attribution.contentHash,
+    "attribution.contentHash",
+    64,
+  );
+  if (!/^[a-f0-9]{64}$/u.test(contentHash)) {
+    throw new Error("attribution.contentHash is invalid.");
+  }
+  if (
+    typeof attribution.formatLearningEligible !== "boolean" ||
+    typeof attribution.selectionWeight !== "number" ||
+    !Number.isFinite(attribution.selectionWeight) ||
+    attribution.selectionWeight <= 0
+  ) {
+    throw new Error("Wall-of-text render attribution is invalid.");
+  }
+  const formatVersion = getOptionalNullablePositiveInteger(
+    attribution.formatVersion,
+    "attribution.formatVersion",
+  );
+  if (formatVersion === null) {
+    throw new Error("attribution.formatVersion is invalid.");
+  }
+  return {
+    contentHash,
+    editClassification: editClassification as "major" | "minor" | "none",
+    formatId: getOptionalNullableString(attribution.formatId, 80),
+    formatLearningEligible: attribution.formatLearningEligible,
+    formatVersion,
+    instagramReelTemplateId: getOptionalNullableString(
+      attribution.instagramReelTemplateId,
+      64,
+    ),
+    selectionMode: getRequiredString(
+      attribution.selectionMode,
+      "attribution.selectionMode",
+      80,
+    ),
+    selectionWeight: attribution.selectionWeight,
+    selectorVersion: getRequiredString(
+      attribution.selectorVersion,
+      "attribution.selectorVersion",
+      120,
+    ),
+    sourceKind: sourceKind as "creative_asset" | "instagram_reel" | "ugcpilot",
   };
 }
 
@@ -297,7 +403,9 @@ function getWallTextContent(value: Json | undefined): WallTextRenderContent {
 function getFinalLayout(value: Json) {
   const layout = getRecord(value, "text.finalLayout");
   if (
-    layout.version !== "wall-text-final-layout-v1" ||
+    !["wall-text-final-layout-v1", "wall-text-final-layout-v2"].includes(
+      String(layout.version),
+    ) ||
     layout.fontFamily !== "Inter" ||
     layout.fontWeight !== 700 ||
     ![44, 46, 48, 50, 52].includes(Number(layout.fontSizePx)) ||
@@ -311,7 +419,7 @@ function getFinalLayout(value: Json) {
   const blocks = layout.blocks.map((entry, blockIndex) => {
     const block = getRecord(entry, `text.finalLayout.blocks[${blockIndex}]`);
     if (
-      !["prose", "title", "item"].includes(String(block.role)) ||
+      !["prose", "text", "title", "item"].includes(String(block.role)) ||
       !Array.isArray(block.lines) ||
       block.lines.length < 1
     ) {
@@ -325,9 +433,20 @@ function getFinalLayout(value: Json) {
           160,
         ),
       ),
-      role: block.role as "prose" | "title" | "item",
+      role: block.role as "prose" | "text" | "title" | "item",
     };
   });
+  const isV2 = layout.version === "wall-text-final-layout-v2";
+  const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
+  if (
+    isV2 &&
+    (blocks.length !== 1 ||
+      blocks[0]?.role !== "text" ||
+      lineCount < 4 ||
+      lineCount > 7)
+  ) {
+    throw new Error("text.finalLayout V2 must contain one 4-7 line text block.");
+  }
   return {
     blocks,
     fontFamily: "Inter" as const,
@@ -335,7 +454,9 @@ function getFinalLayout(value: Json) {
     fontWeight: 700 as const,
     lineHeightPx: layout.lineHeightPx,
     textBox: getTextBoxFromRecord(layout.textBox, "text.finalLayout.textBox"),
-    version: "wall-text-final-layout-v1" as const,
+    version: isV2
+      ? ("wall-text-final-layout-v2" as const)
+      : ("wall-text-final-layout-v1" as const),
   };
 }
 

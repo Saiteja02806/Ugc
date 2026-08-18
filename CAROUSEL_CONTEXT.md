@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-08-12
+Last updated: 2026-08-13
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -905,11 +905,12 @@ Balanced carousel copy rules:
   characters, normally render as no more than three visual lines, explain one
   specific idea, and avoid repeating the heading. List modes may use four total
   visual lines.
-- Legacy rows without a reserved content format keep the five-slide Hook,
-  Problem, Consequence, Solution, and Result/CTA story. New automatic Trending
-  rows use the exact five roles defined by their reserved V1 content format.
-  Both paths retain the existing coarse slide types for renderer and matcher
-  compatibility.
+- Previously generated legacy rows without a reserved content format retain
+  their stored five-slide Hook, Problem, Consequence, Solution, and Result/CTA
+  story for read/edit compatibility. The planner no longer creates that legacy
+  story. New automatic Trending rows use the exact five roles defined by their
+  reserved V1 content format, while retaining the existing coarse slide types
+  for renderer and matcher compatibility.
 - The renderer is the final source of truth for line limits. It must wrap using
   the production font stack, actual font size, available width, padding, and
   card dimensions, then keep headings to at most two rendered lines and body
@@ -2207,6 +2208,201 @@ Do not describe planned behavior as deployed behavior.
   `9d8d9d58-9317-49d0-85d3-1f6e889dec3b`; no original generation or rendered
   asset was deleted or overwritten. Re-audit edits, Library saves, and
   Trending decisions before retrying the idempotent redirect.
+
+## 2026-08-13 Carousel V1-Only Generation Guard
+
+- The supplied Carousel architecture remains the product contract: one current
+  Business Profile, backend selection of one of 15 five-slide formats and one
+  compatible hook family, one compact history snapshot of at most ten prior
+  Carousels, strict validation, and a validated deterministic safety fallback.
+  The per-Carousel request boundary described in this original guard was
+  superseded by the controlled five-Carousel batch decision below.
+- Every Carousel still begins with one hook. Diversity means rotating the
+  backend-selected hook family and writing fresh wording; it does not mean
+  producing a Carousel without a hook.
+- New Carousel rows may now be created through the automatic Business Profile
+  and daily-inventory preparation path only. The old authenticated
+  `POST /api/carousel/generate` and `POST /api/carousel/generate-more` routes
+  return HTTP 410 with `carousel_manual_generation_retired`; they no longer
+  create rows or enqueue jobs. This enforces the earlier product decision that
+  Trending is automatic and has no manual Generate workflow.
+- The application database creation boundary now requires a Business Profile
+  ID, exact profile version, V1 content assignment, and
+  `generation_source = auto_generated`. A TypeScript caller cannot create an
+  unassigned legacy generation through that function.
+- Planner `llm-carousel-planner-v28-controlled-five-carousel-batch` fails before any LLM
+  or deterministic writing when a request is not exactly five slides or lacks
+  a valid compatible format/hook-family assignment. The legacy generic planner
+  prompt and the generic fitness/business fallback are no longer part of the
+  active writer. Existing stored legacy Carousels remain readable and are not
+  deleted, rewritten, or re-rendered.
+- Compact recent history is present in the initial prompt and is now also
+  present in every repair prompt when history exists, even when the first
+  validation failure was not itself classified as repetition. Post-repair and
+  deterministic-fallback repetition validation remain mandatory.
+- The deterministic V1 fallback now makes the selected hook family visible in
+  its hook wording while preserving the selected format. Cross-profile repair
+  substitutions no longer inject campaign-specific language into unrelated
+  businesses.
+- Validation telemetry now distinguishes `fallbackUsed` from `repaired`. A
+  deterministic fallback records `fallbackUsed = true` and `repaired = false`;
+  a successful LLM repair records the inverse. This prevents quality reports
+  from presenting fallback output as a successful AI repair.
+- These V1-only route, application, planner, test, and documentation changes
+  are local source changes. They require the database migration, normal
+  application and Carousel worker release, plus an authenticated production
+  canary before being called live.
+
+## 2026-08-13 Controlled Five-Carousel Format Testing
+
+- The existing stable format IDs remain canonical. They are not renamed to
+  numbered IDs. Every format definition now stores an integer `rotationOrder`
+  from 1 through 15 and an integer `version` (currently 1).
+- A controlled experiment batch always contains exactly five Carousel slots.
+  Batch sequence 0 attempts rotation positions 1-5, sequence 1 attempts 6-10,
+  and sequence 2 attempts 11-15. Later cycles rotate both the first group and
+  the positions inside each group to reduce timing and position bias.
+- Rotation state is durable per Business Profile. The application reserves
+  `carousel_experiment_batches` through one advisory-lock-protected database
+  transaction before creating generation rows or asking AI for text. Failed,
+  deleted, or skipped output never rewinds the monotonically increasing batch
+  sequence.
+- Each reserved batch persists five normalized
+  `carousel_experiment_assignments`. It records the originally assigned
+  format, format version, selected compatible hook family, actual generated
+  format, replacement origin, linked generation, and lifecycle status.
+- New generation rows link to their experiment batch and assignment and store
+  both `content_assigned_format_id` and the actual `content_format_id`, plus
+  `content_format_version`. The actual ID is authoritative for rendering,
+  history, and later performance evaluation.
+- Hook families rotate deterministically within each format's compatible
+  family list. The selector uses persisted/recent attempts for that format; it
+  does not choose families or formats using a pseudo-random seed score.
+- One `generate_carousel` background job now owns one experiment batch and one
+  initial structured AI request returns all five Carousel plans. The request
+  receives only the five required format definitions, their assigned hook
+  families, saved business context, compact recent history, and normalized
+  saved analysis for evidence validation.
+- Every returned Carousel is parsed and validated independently. A broken item
+  receives one small isolated repair request; the other four accepted items
+  are never regenerated by that repair.
+- The AI may return `not_applicable` for a slot only when the saved context
+  cannot honestly support that format. The worker deterministically reuses an
+  already applicable format and hook family from the same batch, asks only for
+  that one replacement Carousel, still returns five outputs, and persists the
+  repeated format as the normal actual `content_format_id`. It never mutates
+  the saved Business Profile to make a format fit.
+- Recent history remains compact and capped at ten. It now includes the stable
+  audience ID alongside hook, topic, angle, format, and hook-family fields;
+  full prior slide copy is not sent.
+- Daily inventory deficits are rounded up to a whole five-item experiment
+  batch, capped at 50, so an initial text request is never split into fewer
+  than five Carousel outputs.
+- Experiment tables enable RLS, expose no `anon` or `authenticated` access,
+  and explicitly grant only the server `service_role` the required Data API
+  privileges. This accounts for Supabase's 2026 explicit-grant behavior for
+  new public tables.
+- Performance weighting now extends this controlled rotation through the
+  bounded learning decision below. Generated, accepted, saved, scheduled,
+  published, and evaluated remain separate concepts; only a comparable
+  evaluated publisher snapshot may change a later selection multiplier.
+- This architecture is implemented and production-build validated locally.
+  Migration `20260813110309_add_controlled_carousel_experiment_batches.sql`,
+  the application, and the worker must all deploy together before the feature
+  can be called live. Existing completed legacy Carousels remain readable and
+  are not deleted or rewritten.
+
+## 2026-08-13 Bounded Carousel Performance Learning
+
+- Performance learning extends the controlled five-Carousel selector; it does
+  not replace the V1 architecture, delete the rotation, or create another
+  background worker. The existing Instagram content-analytics sync performs
+  best-effort Carousel attribution after it loads real platform results.
+- Evidence must trace through an owner-scoped `published`
+  `scheduled_post_target`, its server Library item, and the original completed
+  `carousel_generations` row. The platform post ID, social connection, owner,
+  actual `content_format_id`, hook family, and Business Profile must all agree.
+  Generated, accepted, saved, or merely scheduled Carousels never count.
+- A Library Carousel with a `trendingCreativeEdit` is excluded. Its visible
+  text may no longer faithfully represent the originally assigned hook family,
+  so attributing its outcome to that assignment would contaminate learning.
+- Evaluation policy `carousel-performance-seven-day-v1` freezes one publisher
+  view snapshot around seven days after publication. A snapshot is comparable
+  only within 24 hours before or after the seven-day due time. Once frozen,
+  later lifetime views never replace it. Missing or late analytics remain
+  unevaluated rather than being treated as zero or compared unfairly.
+- Views are the only Carousel learning metric. The Carousel observation and
+  ranking path does not collect, store, or score reach, likes, comments,
+  shares, saves, or total interactions. Those values may remain available to
+  the separate general Analytics and Hook-video systems, but they cannot
+  influence Carousel format or hook-family selection.
+- Format ranking starts only after at least two formats each have four
+  evaluated posts. Median views are the primary result, variation relative to
+  average views penalizes inconsistency, and confidence grows gradually after
+  the fourth result. Only the latest 20 evaluated posts per format from the
+  last 180 days participate, preventing old history from locking selection.
+- Learning is multi-winner, not winner-takes-all. Every consistently successful
+  format may receive a higher multiplier at the same time. One viral spike is
+  limited by the median, consistency penalty, minimum sample size, and a hard
+  format multiplier range of `0.85` to `1.25`.
+- When comparable format evidence exists, four of five batch slots use
+  retry-stable weighted selection without same-batch format duplication. One
+  of five slots always remains controlled exploration, and the exploration
+  sequence still covers all 15 stable formats. Without enough evidence, all
+  five slots keep the existing deterministic rotation.
+- Hook-family learning is separate and is compared only inside the same
+  content format. It also requires at least two compatible hook families with
+  four evaluated posts each, uses the same robust consistency rule, caps its
+  multiplier from `0.90` to `1.20`, and preserves 25% controlled hook-family
+  exploration. Performance selects a family; the writer must still create
+  fresh hook wording and pass recent-history validation.
+- Every experiment assignment persists its controlled-rotation candidate,
+  actual assigned format, format and hook selection modes, and the capped
+  multiplier snapshots used at reservation time. Retried or concurrent
+  preparation therefore reuses the original persisted assignment even if
+  analytics changes later.
+- Migration `20260813122724_add_carousel_performance_learning.sql`, the
+  analytics attribution module, bounded selector, preparation integration,
+  and regression tests are implemented and production-build validated
+  locally. The database migration must deploy before the application code;
+  this behavior is not live or production-verified yet.
+
+## 2026-08-13 Trending Onboarding Prebuild
+
+- Final onboarding completion now supplies the browser's validated IANA
+  timezone to the server. The completed Business Profile starts today's
+  Carousel feed preparation with `markItemsShown = false` before the client
+  redirects to Trending.
+- Carousel prebuild failures do not roll back a successfully completed
+  onboarding profile. The existing authenticated Trending feed endpoint
+  remains the idempotent recovery path.
+- Wall-of-text preparation is scheduled in the same prebuild orchestration.
+  Hook preparation is included only where the existing Hook feature gate is
+  already enabled; production Hook behavior is not widened by this change.
+- These changes are locally build- and contract-tested. They require the normal
+  application and worker release, working Cloud Tasks configuration, and an
+  authenticated production canary before being called live.
+
+## 2026-08-17 Carousel Source-Library Reset
+
+- The testing-phase legacy Carousel source library is intentionally being
+  retired before a replacement library and tagging model are introduced. This
+  is an explicit exception to the normal rule to retain approved surplus
+  assets.
+- Reset scope is limited to `category_image_assets`, its
+  `category-library/` GCS source objects, `carousel_image_usage`, and the
+  source-asset foreign keys on `carousel_slides`. It does not delete immutable
+  rendered Carousel output, Library child-slide records, scheduled posts, or
+  any avatar, overlay, Hook, Wall-of-text, or unrelated media catalog.
+- Before deleting source assets, the reset retires active Carousel assignments
+  and requires both `generate_carousel` and
+  `render_trending_carousel_edit` jobs to be terminal. Stored legacy
+  Carousels consequently remain historical rendered artifacts only; they are
+  not editable or eligible for a new Trending assignment after the reset.
+- The reset deletes the physical source objects and the old asset rows rather
+  than retaining archived metadata. The next library must be imported under
+  the existing `category_image_assets` contract with its new, reviewed tagging
+  structure before Carousel generation resumes.
 
 ## Next Implementation Slice
 

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import type { MediaAssetRow } from "@/lib/media/media-storage";
@@ -28,6 +30,12 @@ import {
   listBaseWallTextAudioSelections,
   type ResolvedWallTextAudioSelection,
 } from "@/lib/trending/wall-audio-db";
+import type { WallTextDuplicateSignature } from "@/lib/trending/wall-text-duplicate-logic";
+import {
+  deriveWallTextPerformanceSignals,
+  type WallTextPerformanceSignals,
+} from "@/lib/trending/wall-format-performance-logic";
+import type { WallTextFormatAssignment } from "@/lib/trending/wall-format-selector";
 
 type Json =
   | boolean
@@ -69,6 +77,7 @@ type OverlayMediaAssetRow = {
   updated_at: string;
   usage_count: number;
   visual_group: string | null;
+  wall_text_source_kind: "creative_asset" | "instagram_reel" | "ugcpilot" | null;
   width: number | null;
 };
 
@@ -94,11 +103,97 @@ export type WallTextCreativeRow = {
   generator_version: string;
   id: string;
   layout: Json;
+  instagram_reel_template_id: string | null;
   overlay_media_asset_id: string;
   status: "archived" | "failed" | "preview_ready";
+  source_kind: "creative_asset" | "instagram_reel" | "ugcpilot";
   text_content: Json;
   updated_at: string;
   user_id: string;
+};
+
+type WallTextGenerationBatchRow = {
+  business_profile_id: string;
+  business_profile_version: number;
+  candidate_index_start: number;
+  chunk_count: number;
+  format_library_version: string;
+  generator_version: string;
+  id: string;
+  requested_count: number;
+  request_hash: string;
+  request_key: string;
+  prompt_version: string;
+  selector_version: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  user_id: string;
+};
+
+type WallTextGenerationAssignmentRow = {
+  assigned_format_id: string | null;
+  batch_candidate_index: number;
+  batch_id: string;
+  chunk_id: string;
+  creative_candidate_index: number;
+  duration_seconds: number;
+  format_version: number;
+  id: string;
+  instagram_reel_template_id: string | null;
+  instagram_reel_template_version: number | null;
+  instagram_reference_text: string | null;
+  instagram_reference_text_hash: string | null;
+  instagram_locked_audio_asset_id: string | null;
+  instagram_audio_fit_mode: "exact" | "trim" | null;
+  layout_json: Json;
+  max_words: number;
+  overlay_media_asset_id: string;
+  selection_mode: WallTextFormatAssignment["selectionMode"] | "instagram_template";
+  selection_weight_snapshot: number;
+  source_kind: "creative_asset" | "instagram_reel" | "ugcpilot";
+  status: "pending" | "processing" | "retry_pending" | "completed" | "failed";
+  target_words: number;
+  wall_text_creative_id: string | null;
+};
+
+type WallTextPersistedFormatAssignment = Omit<
+  WallTextFormatAssignment,
+  "selectionMode"
+> & {
+  selectionMode: WallTextFormatAssignment["selectionMode"] | "instagram_template";
+};
+
+type WallTextContentHistoryRow = {
+  business_profile_id: string;
+  content_hash: string;
+  created_at: string;
+  normalized_text: string;
+  similarity_signature: Json;
+  user_id: string;
+};
+
+type WallTextInstagramReelTemplateRow = {
+  audio_fit_mode: "exact" | "trim";
+  canonical_reference_url: string;
+  id: string;
+  instagram_reference_url: string;
+  locked_audio_asset_id: string;
+  overlay_media_asset_id: string;
+  reference_text: string;
+  reference_text_hash: string;
+  safe_text_box: Json;
+  status: "active" | "inactive" | "pending" | "rejected";
+  template_key: string;
+  template_version: number;
+  writer_format_id: string;
+};
+
+type WallTextGenerationChunkRow = {
+  attempt_count: number;
+  batch_id: string;
+  claim_token: string | null;
+  chunk_index: number;
+  id: string;
+  status: "pending" | "processing" | "retry_pending" | "completed" | "failed";
 };
 
 export type WallTextRenderStatus =
@@ -163,6 +258,61 @@ type WallTextDatabase = {
         };
         Returns: UserWallTextAssignmentRow[];
       };
+      get_wall_text_format_performance_v1: {
+        Args: { p_business_profile_id: string; p_user_id: string };
+        Returns: Array<{
+          format_id: string;
+          last_generated_at: string | null;
+          published_result_count: number;
+          recent_view_counts: number[];
+          times_generated: number;
+        }>;
+      };
+      claim_wall_text_generation_chunk_v1: {
+        Args: { p_chunk_id: string; p_user_id: string };
+        Returns: string | null;
+      };
+      record_wall_text_generation_chunk_failure_v1: {
+        Args: {
+          p_chunk_id: string;
+          p_claim_token: string;
+          p_error_code: string;
+          p_error_message: string;
+          p_retryable: boolean;
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
+      reserve_wall_text_generation_batch_v1: {
+        Args: {
+          p_assignments: Json;
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_format_library_version: string;
+          p_generator_version: string;
+          p_prompt_version: string;
+          p_request_hash: string;
+          p_request_key: string;
+          p_selector_version: string;
+          p_user_id: string;
+        };
+        Returns: WallTextGenerationBatchRow[];
+      };
+      save_wall_text_generation_candidate_v1: {
+        Args: {
+          p_assignment_id: string;
+          p_claim_token: string;
+          p_content_hash: string;
+          p_creative_id: string;
+          p_generator_model: string;
+          p_layout: Json;
+          p_normalized_text: string;
+          p_similarity_signature: Json;
+          p_text_content: Json;
+          p_user_id: string;
+        };
+        Returns: WallTextCreativeRow[];
+      };
     };
     Tables: {
       media_assets: {
@@ -209,6 +359,36 @@ type WallTextDatabase = {
         Relationships: [];
         Row: WallTextCreativeRow;
         Update: Partial<WallTextCreativeRow>;
+      };
+      wall_text_content_history: {
+        Insert: never;
+        Relationships: [];
+        Row: WallTextContentHistoryRow;
+        Update: never;
+      };
+      wall_text_generation_assignments: {
+        Insert: never;
+        Relationships: [];
+        Row: WallTextGenerationAssignmentRow;
+        Update: never;
+      };
+      wall_text_generation_chunks: {
+        Insert: never;
+        Relationships: [];
+        Row: WallTextGenerationChunkRow;
+        Update: never;
+      };
+      wall_text_instagram_reel_templates: {
+        Insert: Partial<WallTextInstagramReelTemplateRow>;
+        Relationships: [];
+        Row: WallTextInstagramReelTemplateRow;
+        Update: Partial<WallTextInstagramReelTemplateRow>;
+      };
+      wall_text_generation_batches: {
+        Insert: never;
+        Relationships: [];
+        Row: WallTextGenerationBatchRow;
+        Update: never;
       };
     };
     Views: Record<string, never>;
@@ -316,6 +496,7 @@ export async function listWallTextVideoAssetInventory(
     .eq("aspect_ratio", "9:16")
     .eq("status", "active")
     .eq("analysis_status", "succeeded")
+    .eq("wall_text_source_kind", "ugcpilot")
     .not("duration_seconds", "is", null)
     .not("preview_url", "is", null)
     .order("usage_count", { ascending: true })
@@ -330,6 +511,69 @@ export async function listWallTextVideoAssetInventory(
   }
 
   return data.map(mapAssetForSelection);
+}
+
+export async function listActiveWallTextInstagramReelTemplates(params: {
+  templateIds?: string[];
+} = {}) {
+  if (params.templateIds && params.templateIds.length === 0) return [];
+  let query = getClient()
+    .from("wall_text_instagram_reel_templates")
+    .select("*")
+    .eq("status", "active");
+  if (params.templateIds) {
+    query = query.in("id", [...new Set(params.templateIds)]);
+  }
+  const { data: templates, error } = await query.order("template_key", {
+    ascending: true,
+  });
+  if (error) {
+    throw new Error(`Could not load Instagram Reel Wall templates: ${error.message}`);
+  }
+  if (templates.length === 0) return [];
+
+  const assets = await listWallTextOverlayAssetsByIds(
+    templates.map((template) => template.overlay_media_asset_id),
+  );
+  const assetById = new Map(assets.map((asset) => [asset.id, asset]));
+  return templates.map((template) => {
+    const asset = assetById.get(template.overlay_media_asset_id);
+    const textBox = parseNormalizedBox(template.safe_text_box);
+    if (
+      !asset ||
+      !textBox ||
+      !isCurrentWallTextFormatId(template.writer_format_id)
+    ) {
+      throw new Error(
+        `Active Instagram Reel Wall template ${template.template_key} is invalid.`,
+      );
+    }
+    const centerY = textBox.y + textBox.height / 2;
+    const placement: WallTextPlacementZone =
+      centerY < 0.46
+        ? "upper-middle"
+        : centerY > 0.52
+          ? "lower-middle"
+          : "middle";
+    const layout = {
+      ...createWallTextLayout(asset),
+      placement,
+      placementSource: "visual-group-fallback" as const,
+      textBox,
+    };
+    return {
+      asset,
+      audioFitMode: template.audio_fit_mode,
+      id: template.id,
+      layout,
+      lockedAudioAssetId: template.locked_audio_asset_id,
+      referenceText: template.reference_text.replace(/\s+/gu, " ").trim(),
+      referenceTextHash: template.reference_text_hash,
+      templateKey: template.template_key,
+      templateVersion: template.template_version,
+      writerFormatId: template.writer_format_id,
+    };
+  });
 }
 
 export async function ensureWallTextOverlayAssetsForMediaAssets(params: {
@@ -367,6 +611,9 @@ export async function ensureWallTextOverlayAssetsForMediaAssets(params: {
     recommended_position: "center",
     s3_key: asset.storage_key,
     source_batch: `creative-assets:${params.userId}`,
+    source_file_sha256: createHash("sha256")
+      .update(`${params.userId}:${asset.id}:${asset.storage_key}`, "utf8")
+      .digest("hex"),
     source_file_name: asset.file_name,
     source_media_asset_id: asset.id,
     source_type: "owned",
@@ -375,6 +622,7 @@ export async function ensureWallTextOverlayAssetsForMediaAssets(params: {
     thumbnail_url: asset.thumbnail_url,
     usage_count: 0,
     visual_group: `creative-asset:${asset.id}`,
+    wall_text_source_kind: "creative_asset" as const,
     width: asset.width,
   }));
   const { data, error } = await getClient()
@@ -407,7 +655,8 @@ export async function listWallTextOverlayAssetsForMediaAssetIds(params: {
     .eq("owner_user_id", params.userId)
     .in("source_media_asset_id", params.mediaAssetIds)
     .eq("status", "active")
-    .eq("analysis_status", "succeeded");
+    .eq("analysis_status", "succeeded")
+    .eq("wall_text_source_kind", "creative_asset");
 
   if (error) {
     throw new Error(
@@ -476,6 +725,309 @@ export async function createTrendingWallTextCreatives(params: {
     businessProfileVersion: params.businessProfileVersion,
     userId: params.userId,
   });
+}
+
+export async function reserveWallTextGenerationBatch(params: {
+  assignments: Array<{
+    assignment: WallTextPersistedFormatAssignment;
+    focus?: Json;
+    durationSeconds: number;
+    instagramReelTemplateId?: string;
+    instagramReelTemplateVersion?: number;
+    instagramReferenceText?: string;
+    instagramReferenceTextHash?: string;
+    instagramLockedAudioAssetId?: string;
+    instagramAudioFitMode?: "exact" | "trim";
+    layout: TrendingWallTextLayout;
+    maxWords: number;
+    overlayMediaAssetId: string;
+    sourceKind: "creative_asset" | "instagram_reel" | "ugcpilot";
+    targetWords: number;
+  }>;
+  businessProfileId: string;
+  businessProfileVersion: number;
+  formatLibraryVersion: string;
+  generatorVersion: string;
+  promptVersion: string;
+  requestHash: string;
+  requestKey: string;
+  selectorVersion: string;
+  userId: string;
+}) {
+  const { data: batches, error: batchError } = await getClient().rpc(
+    "reserve_wall_text_generation_batch_v1",
+    {
+      p_assignments: toJson(
+        params.assignments.map((entry) => ({
+          assignedFormatId: entry.assignment.assignedFormatId,
+          durationSeconds: entry.durationSeconds,
+          focus: entry.focus ?? {},
+          instagramReelTemplateId: entry.instagramReelTemplateId ?? null,
+          instagramReelTemplateVersion:
+            entry.instagramReelTemplateVersion ?? null,
+          instagramReferenceText: entry.instagramReferenceText ?? null,
+          instagramReferenceTextHash:
+            entry.instagramReferenceTextHash ?? null,
+          instagramLockedAudioAssetId:
+            entry.instagramLockedAudioAssetId ?? null,
+          instagramAudioFitMode: entry.instagramAudioFitMode ?? null,
+          layout: entry.layout,
+          maxWords: entry.maxWords,
+          overlayMediaAssetId: entry.overlayMediaAssetId,
+          selectionMode: entry.assignment.selectionMode,
+          selectionWeight: entry.assignment.selectionWeight,
+          sourceKind: entry.sourceKind,
+          targetWords: entry.targetWords,
+        })),
+      ),
+      p_business_profile_id: params.businessProfileId,
+      p_business_profile_version: params.businessProfileVersion,
+      p_format_library_version: params.formatLibraryVersion,
+      p_generator_version: params.generatorVersion,
+      p_prompt_version: params.promptVersion,
+      p_request_hash: params.requestHash,
+      p_request_key: params.requestKey,
+      p_selector_version: params.selectorVersion,
+      p_user_id: params.userId,
+    },
+  );
+  if (batchError) {
+    throw new Error(`Could not reserve Wall-of-text generation: ${batchError.message}`);
+  }
+  const batch = batches?.[0];
+  if (!batch) throw new Error("Wall-of-text generation reservation returned no batch.");
+
+  const { data: assignments, error: assignmentError } = await getClient()
+    .from("wall_text_generation_assignments")
+    .select("*")
+    .eq("batch_id", batch.id)
+    .order("batch_candidate_index", { ascending: true });
+  if (assignmentError) {
+    throw new Error(
+      `Could not load Wall-of-text generation assignments: ${assignmentError.message}`,
+    );
+  }
+  if (assignments.length !== params.assignments.length) {
+    throw new Error("Wall-of-text generation reservation is incomplete.");
+  }
+  return { assignments, batch };
+}
+
+export async function getWallTextGenerationReservation(params: {
+  requestKey: string;
+  userId: string;
+}) {
+  const { data: batch, error } = await getClient()
+    .from("wall_text_generation_batches")
+    .select("*")
+    .eq("user_id", params.userId)
+    .eq("request_key", params.requestKey)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`Could not resume Wall-of-text generation: ${error.message}`);
+  }
+  if (!batch) return null;
+  const { data: assignments, error: assignmentError } = await getClient()
+    .from("wall_text_generation_assignments")
+    .select("*")
+    .eq("batch_id", batch.id)
+    .order("batch_candidate_index", { ascending: true });
+  if (assignmentError) {
+    throw new Error(`Could not resume Wall-of-text assignments: ${assignmentError.message}`);
+  }
+  return { assignments, batch };
+}
+
+export async function claimWallTextGenerationChunk(params: {
+  chunkId: string;
+  userId: string;
+}) {
+  const { data, error } = await getClient().rpc(
+    "claim_wall_text_generation_chunk_v1",
+    { p_chunk_id: params.chunkId, p_user_id: params.userId },
+  );
+  if (error) {
+    throw new Error(`Could not claim Wall-of-text generation chunk: ${error.message}`);
+  }
+  return data;
+}
+
+export async function recordWallTextGenerationChunkFailure(params: {
+  claimToken: string;
+  chunkId: string;
+  errorCode: string;
+  errorMessage: string;
+  retryable: boolean;
+  userId: string;
+}) {
+  const { error } = await getClient().rpc(
+    "record_wall_text_generation_chunk_failure_v1",
+    {
+      p_chunk_id: params.chunkId,
+      p_claim_token: params.claimToken,
+      p_error_code: params.errorCode.slice(0, 120),
+      p_error_message: params.errorMessage.slice(0, 1_000),
+      p_retryable: params.retryable,
+      p_user_id: params.userId,
+    },
+  );
+  if (error) {
+    throw new Error(`Could not record Wall-of-text chunk failure: ${error.message}`);
+  }
+}
+
+export async function listWallTextOverlayAssetsByIds(assetIds: string[]) {
+  if (assetIds.length === 0) return [];
+  const { data, error } = await getClient()
+    .from("overlay_media_assets")
+    .select("*")
+    .in("id", [...new Set(assetIds)])
+    .eq("asset_type", "video")
+    .eq("format_family", "wall_text_overlay")
+    .eq("status", "active")
+    .eq("analysis_status", "succeeded");
+  if (error) {
+    throw new Error(`Could not resume Wall-of-text backgrounds: ${error.message}`);
+  }
+  return data.map(mapAssetForSelection);
+}
+
+export async function listWallTextDuplicateSignatures(params: {
+  businessProfileId: string;
+  limit?: number;
+  userId: string;
+}) {
+  const { data, error } = await getClient()
+    .from("wall_text_content_history")
+    .select("content_hash, normalized_text, similarity_signature")
+    .eq("user_id", params.userId)
+    .eq("business_profile_id", params.businessProfileId)
+    .order("created_at", { ascending: false })
+    .limit(Math.min(Math.max(params.limit ?? 120, 1), 500));
+  if (error) {
+    console.warn(
+      "Wall-of-text duplicate history is unavailable; continuing with batch-only checks:",
+      error,
+    );
+    return [];
+  }
+  return data.flatMap((row) => {
+    if (!isJsonObject(row.similarity_signature)) return [];
+    const signature = row.similarity_signature;
+    if (
+      typeof signature.opening !== "string" ||
+      !Array.isArray(signature.shingles) ||
+      signature.shingles.some((value) => typeof value !== "string")
+    ) {
+      return [];
+    }
+    return [{
+      contentHash: row.content_hash,
+      normalizedText: row.normalized_text,
+      opening: signature.opening,
+      shingles: signature.shingles as string[],
+      version: "wall-text-duplicate-signature-v1" as const,
+    } satisfies WallTextDuplicateSignature];
+  });
+}
+
+export async function getWallTextPerformanceSignals(params: {
+  businessProfileId: string;
+  userId: string;
+}): Promise<WallTextPerformanceSignals> {
+  const { data, error } = await getClient().rpc(
+    "get_wall_text_format_performance_v1",
+    {
+      p_business_profile_id: params.businessProfileId,
+      p_user_id: params.userId,
+    },
+  );
+  if (error) {
+    console.warn(
+      "Wall-of-text performance is unavailable; using controlled rotation:",
+      error,
+    );
+    return { formats: [], version: "wall-text-views-v1-72h-median" };
+  }
+  return deriveWallTextPerformanceSignals(
+    (data ?? []).map((row) => ({
+      formatId: row.format_id,
+      lastGeneratedAt: row.last_generated_at,
+      publishedResultCount: Number(row.published_result_count),
+      recentViewCounts: row.recent_view_counts.map(Number),
+      timesGenerated: Number(row.times_generated),
+    })),
+  );
+}
+
+export async function saveWallTextGenerationCandidate(params: {
+  assignmentId: string;
+  claimToken: string;
+  contentHash: string;
+  creativeId: string;
+  generatorModel: string;
+  layout: TrendingWallTextLayout;
+  normalizedText: string;
+  similaritySignature: WallTextDuplicateSignature;
+  text: TrendingWallTextContent;
+  userId: string;
+}) {
+  const { data, error } = await getClient().rpc(
+    "save_wall_text_generation_candidate_v1",
+    {
+      p_assignment_id: params.assignmentId,
+      p_claim_token: params.claimToken,
+      p_content_hash: params.contentHash,
+      p_creative_id: params.creativeId,
+      p_generator_model: params.generatorModel,
+      p_layout: toJson(params.layout),
+      p_normalized_text: params.normalizedText,
+      p_similarity_signature: toJson(params.similaritySignature),
+      p_text_content: toJson(params.text),
+      p_user_id: params.userId,
+    },
+  );
+  if (error) {
+    throw new Error(`Could not save Wall-of-text generation candidate: ${error.message}`);
+  }
+  const creative = data?.[0];
+  if (!creative) throw new Error("Wall-of-text candidate storage returned no row.");
+  return creative;
+}
+
+export async function getWallTextGenerationAttribution(params: {
+  creativeId: string;
+  userId: string;
+}) {
+  const { data: assignment, error } = await getClient()
+    .from("wall_text_generation_assignments")
+    .select("*")
+    .eq("wall_text_creative_id", params.creativeId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`Could not load Wall-of-text attribution: ${error.message}`);
+  }
+  if (!assignment) return null;
+  const { data: batch, error: batchError } = await getClient()
+    .from("wall_text_generation_batches")
+    .select("*")
+    .eq("id", assignment.batch_id)
+    .eq("user_id", params.userId)
+    .maybeSingle();
+  if (batchError) {
+    throw new Error(`Could not load Wall-of-text attribution batch: ${batchError.message}`);
+  }
+  if (!batch) return null;
+  return {
+    formatId: assignment.assigned_format_id,
+    formatVersion: assignment.format_version,
+    instagramReelTemplateId: assignment.instagram_reel_template_id,
+    lockedAudioAssetId: assignment.instagram_locked_audio_asset_id,
+    selectionMode: assignment.selection_mode,
+    selectionWeight: Number(assignment.selection_weight_snapshot),
+    selectorVersion: batch.selector_version,
+    sourceKind: assignment.source_kind,
+  };
 }
 
 export async function getNextWallTextCandidateIndex(params: {
@@ -607,6 +1159,17 @@ export async function ensureTrendingWallTextAssignments(params: {
   creatives: WallTextCreativeRow[];
   userId: string;
 }) {
+  const instagramTemplateIds = params.creatives.flatMap((creative) =>
+    creative.instagram_reel_template_id
+      ? [creative.instagram_reel_template_id]
+      : [],
+  );
+  const instagramTemplates = await listActiveWallTextInstagramReelTemplates({
+    templateIds: instagramTemplateIds,
+  });
+  const templateById = new Map(
+    instagramTemplates.map((template) => [template.id, template]),
+  );
   const audioCreatives = params.creatives.map((creative) => {
     const content = parseWallTextContent(creative.text_content);
     if (!content) {
@@ -614,10 +1177,19 @@ export async function ensureTrendingWallTextAssignments(params: {
         `Wall audio cannot be selected for invalid creative ${creative.id}.`,
       );
     }
+    const template = creative.instagram_reel_template_id
+      ? templateById.get(creative.instagram_reel_template_id)
+      : null;
+    if (creative.source_kind === "instagram_reel" && !template) {
+      throw new Error(
+        `Instagram Reel template audio is unavailable for creative ${creative.id}.`,
+      );
+    }
     return {
       content,
       creativeId: creative.id,
       durationSeconds: creative.duration_seconds,
+      ...(template ? { lockedAudioAssetId: template.lockedAudioAssetId } : {}),
     };
   });
 
@@ -1163,7 +1735,9 @@ export function parseWallTextContent(
   if (
     isJsonObject(value) &&
     value.kind === "wall_text" &&
-    value.layoutVersion === "wall-text-overlay-v5"
+    ["wall-text-overlay-v5", "wall-text-overlay-v6"].includes(
+      String(value.layoutVersion),
+    )
   ) {
     return parseCurrentWallTextContent(value);
   }
@@ -1243,8 +1817,8 @@ function parseCurrentWallTextContent(
   if (
     typeof value.fullText !== "string" ||
     !value.fullText.trim() ||
-    !WALL_TEXT_FORMAT_IDS.includes(
-      value.formatId as (typeof WALL_TEXT_FORMAT_IDS)[number],
+    !WALL_TEXT_PATTERNS.includes(
+      value.formatId as (typeof WALL_TEXT_PATTERNS)[number],
     ) ||
     !isJsonObject(value.sourceContent) ||
     !isJsonObject(value.finalLayout)
@@ -1254,7 +1828,11 @@ function parseCurrentWallTextContent(
 
   const sourceContent = value.sourceContent;
   const parsedSource =
-    sourceContent.kind === "prose" &&
+    sourceContent.kind === "text" &&
+    typeof sourceContent.text === "string" &&
+    sourceContent.text.trim()
+      ? ({ kind: "text", text: sourceContent.text.replace(/\s+/gu, " ").trim() } as const)
+      : sourceContent.kind === "prose" &&
     typeof sourceContent.text === "string" &&
     sourceContent.text.trim()
       ? ({ kind: "prose", text: sourceContent.text.replace(/\s+/gu, " ").trim() } as const)
@@ -1277,10 +1855,12 @@ function parseCurrentWallTextContent(
         : null;
   const finalLayout = value.finalLayout;
   const textBox = parseNormalizedBox(finalLayout.textBox);
+  const isV7 = value.layoutVersion === "wall-text-overlay-v6";
 
   if (
     !parsedSource ||
-    finalLayout.version !== "wall-text-final-layout-v1" ||
+    finalLayout.version !==
+      (isV7 ? "wall-text-final-layout-v2" : "wall-text-final-layout-v1") ||
     finalLayout.fontFamily !== "Inter" ||
     finalLayout.fontWeight !== 700 ||
     ![44, 46, 48, 50, 52].includes(Number(finalLayout.fontSizePx)) ||
@@ -1289,7 +1869,7 @@ function parseCurrentWallTextContent(
     !textBox ||
     !Array.isArray(finalLayout.blocks) ||
     finalLayout.blocks.length < 1 ||
-    finalLayout.blocks.length > 6
+    finalLayout.blocks.length > (isV7 ? 1 : 6)
   ) {
     return null;
   }
@@ -1297,7 +1877,7 @@ function parseCurrentWallTextContent(
   const blocks = finalLayout.blocks.flatMap((entry) => {
     if (
       !isJsonObject(entry) ||
-      !["prose", "title", "item"].includes(String(entry.role)) ||
+      !["prose", "text", "title", "item"].includes(String(entry.role)) ||
       !Array.isArray(entry.lines) ||
       entry.lines.length < 1 ||
       entry.lines.some((line) => typeof line !== "string" || !line.trim())
@@ -1308,17 +1888,24 @@ function parseCurrentWallTextContent(
       lines: (entry.lines as string[]).map((line) =>
         line.replace(/\s+/gu, " ").trim(),
       ),
-      role: entry.role as "prose" | "title" | "item",
+      role: entry.role as "prose" | "text" | "title" | "item",
     }];
   });
 
-  if (blocks.length !== finalLayout.blocks.length) {
+  const lines = blocks.flatMap((block) => block.lines);
+  if (
+    blocks.length !== finalLayout.blocks.length ||
+    (isV7 &&
+      (blocks.length !== 1 ||
+        blocks[0]?.role !== "text" ||
+        lines.length < 4 ||
+        lines.length > 7))
+  ) {
     return null;
   }
 
-  const lines = blocks.flatMap((block) => block.lines);
   const segments = toCompatibilitySegments(lines);
-  const formatId = value.formatId as (typeof WALL_TEXT_FORMAT_IDS)[number];
+  const formatId = value.formatId as (typeof WALL_TEXT_PATTERNS)[number];
 
   return {
     finalLayout: {
@@ -1328,12 +1915,14 @@ function parseCurrentWallTextContent(
       fontWeight: 700,
       lineHeightPx: finalLayout.lineHeightPx,
       textBox,
-      version: "wall-text-final-layout-v1",
+      version: isV7
+        ? "wall-text-final-layout-v2"
+        : "wall-text-final-layout-v1",
     },
     formatId,
     fullText: value.fullText.replace(/\s+/gu, " ").trim(),
     kind: "wall_text",
-    layoutVersion: "wall-text-overlay-v5",
+    layoutVersion: isV7 ? "wall-text-overlay-v6" : "wall-text-overlay-v5",
     pattern: formatId,
     renderFontSize: Number(finalLayout.fontSizePx) as 44 | 46 | 48 | 50 | 52,
     segments,
@@ -1359,7 +1948,7 @@ function toCompatibilitySegments(lines: string[]) {
   ];
 }
 
-function parseWallTextLayout(value: Json): TrendingWallTextLayout | null {
+export function parseWallTextLayout(value: Json): TrendingWallTextLayout | null {
   if (
     isJsonObject(value) &&
     value.version === "wall-text-layout-v2" &&
@@ -1589,6 +2178,12 @@ function isJsonObject(
   value: Json | undefined,
 ): value is Record<string, Json | undefined> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function isCurrentWallTextFormatId(
+  value: string,
+): value is (typeof WALL_TEXT_FORMAT_IDS)[number] {
+  return (WALL_TEXT_FORMAT_IDS as readonly string[]).includes(value);
 }
 
 function toJson(value: unknown): Json {

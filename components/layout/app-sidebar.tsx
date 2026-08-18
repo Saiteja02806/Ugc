@@ -22,10 +22,12 @@ import {
 } from "@/components/icons/sidebar-icon";
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
+import { useViralReviewerAccess } from "@/components/viral/use-viral-reviewer-access";
 import { cn } from "@/lib/utils";
 
 export type AppSidebarActiveKey =
   | "trending"
+  | "viral"
   | "ai-studio"
   | "library"
   | "avatars"
@@ -38,6 +40,7 @@ type SidebarItem = {
   icon: SidebarIconName;
   key: AppSidebarActiveKey;
   label: string;
+  reviewerOnly?: boolean;
 };
 
 const primaryNavigationItems: SidebarItem[] = [
@@ -46,6 +49,13 @@ const primaryNavigationItems: SidebarItem[] = [
     label: "Trending",
     href: "/dashboard",
     icon: "trending",
+  },
+  {
+    key: "viral",
+    label: "Explore",
+    href: "/viral",
+    icon: "viral",
+    reviewerOnly: true,
   },
   {
     key: "ai-studio",
@@ -93,6 +103,9 @@ export function AppSidebar({
   defaultCollapsed?: boolean;
 }) {
   const { user } = useAuth();
+  const viralReviewerAccessState = useViralReviewerAccess({
+    authorizedByParent: activeKey === "viral",
+  });
   const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
   const mobileNavigationId = useId();
   const mobileNavigationRef = useRef<HTMLElement>(null);
@@ -203,7 +216,11 @@ export function AppSidebar({
           )}
         </div>
 
-        <SidebarNavigation activeKey={activeKey} collapsed={collapsed} />
+        <SidebarNavigation
+          activeKey={activeKey}
+          collapsed={collapsed}
+          showReviewerOnlyItems={viralReviewerAccessState === "reviewer"}
+        />
 
         <AccountSection
           active={activeKey === "settings"}
@@ -250,6 +267,7 @@ export function AppSidebar({
             <SidebarNavigation
               activeKey={activeKey}
               onNavigate={() => setIsMobileNavigationOpen(false)}
+              showReviewerOnlyItems={viralReviewerAccessState === "reviewer"}
             />
 
             <AccountSection
@@ -336,10 +354,12 @@ function SidebarNavigation({
   activeKey,
   collapsed = false,
   onNavigate,
+  showReviewerOnlyItems = false,
 }: {
   activeKey: AppSidebarActiveKey;
   collapsed?: boolean;
   onNavigate?: () => void;
+  showReviewerOnlyItems?: boolean;
 }) {
   return (
     <nav
@@ -351,15 +371,17 @@ function SidebarNavigation({
       )}
     >
       <div className="flex flex-col gap-1">
-        {primaryNavigationItems.map((item) => (
-          <SidebarLink
-            key={item.key}
-            active={item.key === activeKey}
-            collapsed={collapsed}
-            item={item}
-            onNavigate={onNavigate}
-          />
-        ))}
+        {primaryNavigationItems
+          .filter((item) => !item.reviewerOnly || showReviewerOnlyItems)
+          .map((item) => (
+            <SidebarLink
+              key={item.key}
+              active={item.key === activeKey}
+              collapsed={collapsed}
+              item={item}
+              onNavigate={onNavigate}
+            />
+          ))}
       </div>
 
       <div className={cn(collapsed ? "mt-3.5" : "mt-5")}>

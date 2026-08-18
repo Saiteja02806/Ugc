@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 export type SidebarIconName =
   | "trending"
+  | "viral"
   | "image-gen"
   | "video-gen"
   | "demos"
@@ -20,6 +21,7 @@ export type SidebarIconName =
 
 const sidebarIconPaths: Record<SidebarIconName, string> = {
   trending: "/icons/sidebar/trending.svg",
+  viral: "/icons/sidebar/viral.svg",
   "image-gen": "/icons/sidebar/image-gen.svg",
   "video-gen": "/icons/sidebar/video-gen.svg",
   demos: "/icons/sidebar/demos.svg",

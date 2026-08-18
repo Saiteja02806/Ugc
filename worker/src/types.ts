@@ -1,3 +1,9 @@
+import type {
+  CarouselStructureId,
+  CarouselStructureMode,
+  CarouselStructureSelectionMode,
+} from "./lib/carousel-structure.js";
+
 export type Json =
   | boolean
   | null
@@ -387,6 +393,7 @@ export type WebsiteAnalysisRow = {
 };
 
 export type CategoryImageAssetRow = {
+  asset_role: "hook" | "human" | "product_asset" | "static" | null;
   asset_scope: CategoryImageAssetScope;
   asset_variant: CategoryImageAssetVariant;
   avg_color: string | null;
@@ -405,6 +412,8 @@ export type CategoryImageAssetRow = {
   id: string;
   image_subject_class: "clear-face" | "faceless-human" | "object-only" | null;
   image_query: string | null;
+  is_active: boolean;
+  library_asset_id: string | null;
   orientation: "landscape" | "portrait" | "square";
   pexels_photo_id: string | null;
   pexels_photo_url: string | null;
@@ -413,6 +422,7 @@ export type CategoryImageAssetRow = {
   mood_tags: Json;
   near_duplicate_group: string | null;
   object_tags: Json;
+  owner_business_profile_id: string | null;
   person_count: number | null;
   primary_vertical: string | null;
   quality_score: number | null;
@@ -443,15 +453,31 @@ export type CategoryImageAssetRow = {
   width: number | null;
 };
 
+export type ReservedCarouselRoleAssetRow = {
+  asset_id: string;
+  asset_role: "hook" | "human" | "product_asset" | "static";
+  base_s3_key: string;
+  base_url: string;
+  category_slug: string;
+  cycle_number: number;
+  library_asset_id: string;
+  slide_number: number;
+  source_file_sha256: string;
+};
+
 export type CarouselGenerationRow = {
   business_profile_id: string | null;
   business_profile_version: number | null;
   candidate_count: number;
   candidate_index: number;
+  carousel_experiment_assignment_id: string | null;
+  carousel_experiment_batch_id: string | null;
   category_slug: string | null;
   content_angle: string | null;
+  content_assigned_format_id: string | null;
   content_audience_id: string | null;
   content_format_id: string | null;
+  content_format_version: number | null;
   content_goal_id: string | null;
   content_grammar_version: string | null;
   content_history_snapshot: Json;
@@ -479,6 +505,8 @@ export type CarouselGenerationRow = {
   selected_angle: string | null;
   slide_count: number;
   status: CarouselGenerationStatus;
+  structure_id: CarouselStructureId;
+  structure_version: number;
   trigger_run_id: string | null;
   updated_at: string;
   user_id: string;
@@ -494,8 +522,10 @@ export type BusinessProfileCarouselRow = {
 
 export type CarouselGenerationUpdate = Partial<{
   content_angle: string | null;
+  content_assigned_format_id: string | null;
   content_audience_id: string | null;
   content_format_id: string | null;
+  content_format_version: number | null;
   content_plan_fallback_reason: string | null;
   content_plan_normalized: Json | null;
   content_plan_raw_response: Json | null;
@@ -517,6 +547,60 @@ export type CarouselGenerationUpdate = Partial<{
   updated_at: string;
 }>;
 
+export type CarouselExperimentBatchRow = {
+  batch_sequence: number;
+  business_profile_id: string;
+  business_profile_version: number;
+  created_at: string;
+  cycle_batch_position: number | null;
+  cycle_number: number | null;
+  generation_batch_id: string;
+  id: string;
+  planner_job_id: string | null;
+  requested_structure_batch_sequence: number;
+  requested_structure_id: CarouselStructureId;
+  requested_structure_version: number;
+  requested_carousel_count: number;
+  status: "completed" | "failed" | "partial" | "processing" | "queued" | "reserved";
+  structure_batch_sequence: number;
+  structure_id: CarouselStructureId;
+  structure_fallback_reason: string | null;
+  structure_mode_snapshot: CarouselStructureMode;
+  structure_planning_attempt_count: number;
+  structure_resolution_mode: "planning_fallback" | "requested";
+  structure_resolved_at: string | null;
+  structure_rotation_sequence: number | null;
+  structure_selection_mode: CarouselStructureSelectionMode;
+  structure_version: number;
+  updated_at: string;
+};
+
+export type CarouselExperimentAssignmentRow = {
+  actual_format_id: string | null;
+  assigned_format_id: string;
+  carousel_generation_id: string | null;
+  created_at: string;
+  experiment_batch_id: string;
+  format_version: number;
+  hook_family_id: string | null;
+  id: string;
+  replacement_for_format_id: string | null;
+  slot_index: number;
+  status: "completed" | "failed" | "not_applicable" | "processing" | "queued" | "reserved";
+  structure_id: CarouselStructureId;
+  structure_version: number;
+  updated_at: string;
+};
+
+export type CarouselGlobalSettingsRow = {
+  created_at: string;
+  singleton: true;
+  structure_config_version: number;
+  structure_mode: CarouselStructureMode;
+  updated_at: string;
+  updated_by_user_id: string | null;
+};
+
 export type CarouselSlideRow = {
   carousel_generation_id: string;
   category_image_asset_id: string | null;
@@ -526,14 +610,32 @@ export type CarouselSlideRow = {
   id: string;
   image_direction: string | null;
   layout_preset: string | null;
+  product_visual_eligibility: "allowed" | "forbidden" | "preferred" | null;
   rendered_s3_key: string | null;
   rendered_url: string | null;
   slide_number: number;
   slide_type: string | null;
   status: CarouselSlideStatus;
+  story_format_id: string | null;
+  story_layout_variant:
+    | "story_overlay_only"
+    | "story_pill_overlay"
+    | "story_product_reveal"
+    | null;
+  story_role:
+    | "failure_scene"
+    | "product_turning_point"
+    | "proof_reflection_cta"
+    | "recognition"
+    | "reframe"
+    | null;
+  story_text_treatment: "outlined_overlay" | "overlay" | "pill" | null;
+  structure_id: "structure_1" | "structure_2";
+  structure_version: number;
   subtext: string | null;
   text_position: string | null;
   updated_at: string;
+  visual_role: "hook" | "human" | "product_asset" | "static" | null;
 };
 
 export type TrendingCreativeEditRow = {
@@ -564,13 +666,31 @@ export type CarouselSlideInsert = {
   headline: string;
   image_direction?: string | null;
   layout_preset?: string | null;
+  product_visual_eligibility?: "allowed" | "forbidden" | "preferred" | null;
   rendered_s3_key?: string | null;
   rendered_url?: string | null;
   slide_number: number;
   slide_type?: string | null;
   status?: CarouselSlideStatus;
+  story_format_id?: string | null;
+  story_layout_variant?:
+    | "story_overlay_only"
+    | "story_pill_overlay"
+    | "story_product_reveal"
+    | null;
+  story_role?:
+    | "failure_scene"
+    | "product_turning_point"
+    | "proof_reflection_cta"
+    | "recognition"
+    | "reframe"
+    | null;
+  story_text_treatment?: "outlined_overlay" | "overlay" | "pill" | null;
+  structure_id?: "structure_1" | "structure_2";
+  structure_version?: number;
   subtext?: string | null;
   text_position?: string | null;
+  visual_role?: "hook" | "human" | "product_asset" | "static" | null;
 };
 
 export type LibraryItemRow = {
@@ -722,6 +842,23 @@ export type BackgroundJobsDatabase = {
         Args: { asset_ids: string[] };
         Returns: null;
       };
+      reserve_carousel_role_assets_v1: {
+        Args: {
+          p_business_profile_id: string;
+          p_carousel_id: string;
+          p_category_slug: string;
+          p_use_product_asset: boolean;
+        };
+        Returns: ReservedCarouselRoleAssetRow[];
+      };
+      take_over_carousel_experiment_batch_with_structure_2: {
+        Args: {
+          p_experiment_batch_id: string;
+          p_failure_reason: string;
+          p_planning_attempt_count: number;
+        };
+        Returns: CarouselExperimentBatchRow[];
+      };
       persist_trending_hook_copy_generation: {
         Args: {
           p_business_profile_id: string;
@@ -774,6 +911,19 @@ export type BackgroundJobsDatabase = {
         };
         Returns: number;
       };
+      persist_trending_hook_copy_generation_v7: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_candidates: Json;
+          p_generator_model: string;
+          p_job_id: string;
+          p_prompt_version: string;
+          p_selection_version: string;
+          p_user_id: string;
+        };
+        Returns: number;
+      };
       persist_validated_hook_composition_generation: {
         Args: {
           p_business_profile_id: string;
@@ -802,6 +952,20 @@ export type BackgroundJobsDatabase = {
         };
         Returns: Array<{ id: string; text: string }>;
       };
+      persist_validated_hook_composition_generation_v7: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_candidates: Json;
+          p_demo_asset_id: string;
+          p_generator_model: string;
+          p_job_id: string;
+          p_prompt_version: string;
+          p_selection_version: string;
+          p_user_id: string;
+        };
+        Returns: Array<{ id: string; text: string }>;
+      };
     };
     Tables: {
       background_jobs: {
@@ -815,6 +979,31 @@ export type BackgroundJobsDatabase = {
         Relationships: [];
         Row: BusinessProfileCarouselRow;
         Update: Record<string, never>;
+      };
+      carousel_global_settings: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: CarouselGlobalSettingsRow;
+        Update: Partial<
+          Pick<
+            CarouselGlobalSettingsRow,
+            | "structure_config_version"
+            | "structure_mode"
+            | "updated_by_user_id"
+          >
+        > & { updated_at?: string };
+      };
+      carousel_experiment_assignments: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: CarouselExperimentAssignmentRow;
+        Update: Partial<CarouselExperimentAssignmentRow>;
+      };
+      carousel_experiment_batches: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: CarouselExperimentBatchRow;
+        Update: Partial<CarouselExperimentBatchRow>;
       };
       carousel_generations: {
         Insert: Record<string, never>;

@@ -30,8 +30,8 @@ import {
   TrendingCreativeEditAccessError,
 } from "@/lib/trending/creative-edits";
 import {
-  MAX_WALL_TEXT_WORDS,
-  MIN_WALL_TEXT_WORDS,
+  MAX_CURRENT_WALL_TEXT_WORDS,
+  MIN_SHORT_WALL_TEXT_WORDS,
 } from "@/lib/trending/wall-text-text-logic";
 import {
   DEFAULT_TRENDING_TEXT_COLOR,
@@ -67,6 +67,7 @@ const CAROUSEL_PATCH_SCHEMA = z
       .array(
         z
           .object({
+            backgroundAssetId: z.string().uuid().nullable(),
             ctaText: z.string().max(120),
             headline: z.string().trim().min(1).max(180),
             slideId: z.string().uuid(),
@@ -108,10 +109,13 @@ const WALL_PATCH_SCHEMA = z
     fullText: z
       .string()
       .trim()
-      .max(300)
+      .max(600)
       .refine((value) => {
         const wordCount = value.split(/\s+/u).filter(Boolean).length;
-        return wordCount >= MIN_WALL_TEXT_WORDS && wordCount <= MAX_WALL_TEXT_WORDS;
+        return (
+          wordCount >= MIN_SHORT_WALL_TEXT_WORDS &&
+          wordCount <= MAX_CURRENT_WALL_TEXT_WORDS
+        );
       }),
     source: SOURCE_SCHEMA.nullable().optional(),
     textColor: TEXT_COLOR_SCHEMA,

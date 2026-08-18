@@ -63,6 +63,9 @@ const analysis = createAnalysisFixture();
 const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
   analysis,
   candidateIndex: 0,
+  contentFormatId: "problem_solution",
+  hookFamilyId: "problem_recognition",
+  recentHistory: [],
   selectedAngle: "Why campaign work keeps leaking into the evening",
   slideCount: 5,
 });
@@ -71,7 +74,9 @@ if (
   fallbackPlan.source !== "deterministic-fallback" ||
   fallbackPlan.slides.length !== 5 ||
   fallbackPlan.plannerVersion !==
-    "llm-carousel-planner-v23-semantic-resource-copy" ||
+    workerPlanner.CAROUSEL_CONTENT_PLANNER_VERSION ||
+  !fallbackPlan.validationResult.fallbackUsed ||
+  fallbackPlan.validationResult.repaired ||
   !fallbackPlan.validationResult.ok
 ) {
   failures.push("Deterministic planner fallback contract is invalid.");
@@ -83,6 +88,9 @@ const contaminatedFallbackPlan = await workerPlanner.buildCarouselContentPlan({
     ctaIdeas: ["Get Notion free", "Join millions of users"],
   },
   candidateIndex: 0,
+  contentFormatId: "problem_solution",
+  hookFamilyId: "problem_recognition",
+  recentHistory: [],
   selectedAngle: "Why campaign work keeps leaking into the evening",
   slideCount: 5,
 });
@@ -278,7 +286,7 @@ if (
   normalizedCanaryRepair.slides[2]?.body !==
     "Scattered tools cause missed follow-ups and delayed responses." ||
   normalizedCanaryRepair.slides[3]?.body !==
-    "Automate workflows with CampaignFlow to keep campaign handoffs connected." ||
+    "Automate workflows with CampaignFlow to keep related steps connected." ||
   workerPlanner.validateCarouselContentPlan(normalizedCanaryRepair, analysis)
     .length > 0
 ) {
@@ -345,13 +353,13 @@ const normalizedContextualRepair =
 
 if (
   normalizedContextualRepair.slides[1]?.body !==
-    "Manual reporting wastes time and increases errors during active campaign work." ||
+    "Manual reporting wastes time and increases errors in the current routine." ||
   normalizedContextualRepair.slides[2]?.body !==
-    "Missed leads create frustration and lost opportunities during active campaign work." ||
+    "Missed leads create frustration and lost opportunities in the current routine." ||
   normalizedContextualRepair.slides[3]?.body !==
-    "Automate workflows and consolidate your marketing analytics inside one organized workspace." ||
+    "Automate workflows and consolidate your marketing analytics with the relevant details kept together." ||
   normalizedContextualRepair.slides[4]?.body !==
-    "Try CampaignFlow today and organize your next campaign handoff." ||
+    "Try CampaignFlow today and organize the next related handoff." ||
   workerPlanner.validateCarouselContentPlan(normalizedContextualRepair, analysis)
     .length > 0
 ) {
@@ -387,9 +395,9 @@ const normalizedSpecificCopy =
 
 if (
   normalizedSpecificCopy.slides[2]?.body !==
-    "Missed leads and delayed decisions create gaps in campaign follow-ups." ||
+    "Missed leads and delayed decisions create gaps in the next follow-up." ||
   normalizedSpecificCopy.slides[3]?.headline !==
-    "connect planning and reporting" ||
+    "connect the relevant work" ||
   normalizedSpecificCopy.slides[4]?.body !==
     "Start planning campaigns in one workflow with CampaignFlow today!" ||
   workerPlanner.validateCarouselContentPlan(normalizedSpecificCopy, analysis)
@@ -417,7 +425,7 @@ const normalizedVagueOutcome =
 if (
   !vagueOutcomeIssues.some((issue) => issue.code === "generic_copy") ||
   normalizedVagueOutcome.slides[3]?.body !==
-    "Centralize your campaigns with CampaignFlow to keep planning and reporting connected." ||
+    "Centralize your campaigns with CampaignFlow to keep related details connected." ||
   workerPlanner.validateCarouselContentPlan(normalizedVagueOutcome, analysis)
     .length > 0
 ) {
@@ -441,7 +449,7 @@ const normalizedVagueCta =
 if (
   !vagueCtaIssues.some((issue) => issue.code === "generic_copy") ||
   normalizedVagueCta.slides[4]?.body !==
-    "Begin with CampaignFlow and keep planning and reporting in one workflow." ||
+    "Begin with CampaignFlow and keep related details in one clear flow." ||
   workerPlanner.validateCarouselContentPlan(normalizedVagueCta, analysis)
     .length > 0
 ) {
@@ -471,7 +479,7 @@ const repeatedHookIssues =
 
 if (
   normalizedShortHook.slides[0]?.body !==
-    "Campaign work shouldn't spill into your evenings when deadlines start moving." ||
+    "Campaign work shouldn't spill into your evenings when the current routine gets harder." ||
   !repeatedHookIssues.some((issue) => issue.code === "grammar") ||
   workerPlanner.validateCarouselContentPlan(normalizedShortHook, analysis)
     .length > 0
@@ -603,6 +611,9 @@ if (process.argv.includes("--live")) {
   livePlan = await workerPlanner.buildCarouselContentPlan({
     analysis,
     candidateIndex: 1,
+    contentFormatId: "problem_solution",
+    hookFamilyId: "problem_recognition",
+    recentHistory: [],
     selectedAngle: "The hidden cost of scattered campaign work",
     slideCount: 5,
   });

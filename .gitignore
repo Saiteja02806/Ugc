@@ -31,6 +31,8 @@
 /.codex/
 /.chrome-carousel-upgrade-check/
 /.playwright-mcp/
+/.release-db-*/
+/.release-worktrees/
 /.tmp/
 /hatch-pet-runs/
 /tmp/
@@ -68,6 +70,7 @@ crash.*.log
 
 # supabase local state
 /supabase/.temp/
+/supabase/supabase/
 
 # typescript
 *.tsbuildinfo

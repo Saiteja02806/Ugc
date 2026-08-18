@@ -22,6 +22,9 @@ const MAX_BODY_LENGTH = 4_096;
 type PrepareWallTextInput = {
   businessProfileId?: unknown;
   businessProfileVersion?: unknown;
+  refillKey?: unknown;
+  requestedCount?: unknown;
+  requestKey?: unknown;
   userId?: unknown;
 };
 
@@ -63,7 +66,11 @@ export async function POST(request: Request) {
       return json({ ok: false, error: "Business Profile changed." }, 409);
     }
 
-    const ideas = await prepareTrendingWallTextIdeas(profile);
+    const ideas = await prepareTrendingWallTextIdeas(profile, {
+      mode: input.refillKey ? "refill" : "initial",
+      requestedCount: input.requestedCount,
+      requestKey: input.requestKey,
+    });
 
     return json({ ideaCount: ideas.length, ok: true });
   } catch (error) {
@@ -80,6 +87,9 @@ function parseInput(rawBody: string) {
   try {
     const input = JSON.parse(rawBody) as PrepareWallTextInput;
     const businessProfileId = getString(input.businessProfileId);
+    const refillKey = getOptionalString(input.refillKey);
+    const requestKey = getString(input.requestKey);
+    const requestedCount = input.requestedCount;
     const userId = getString(input.userId);
     const businessProfileVersion = input.businessProfileVersion;
 
@@ -87,8 +97,20 @@ function parseInput(rawBody: string) {
       userId &&
       typeof businessProfileVersion === "number" &&
       Number.isInteger(businessProfileVersion) &&
-      businessProfileVersion > 0
-      ? { businessProfileId, businessProfileVersion, userId }
+      businessProfileVersion > 0 &&
+      typeof requestedCount === "number" &&
+      Number.isInteger(requestedCount) &&
+      requestedCount >= 1 &&
+      requestedCount <= 50 &&
+      requestKey
+      ? {
+          businessProfileId,
+          businessProfileVersion,
+          refillKey,
+          requestedCount,
+          requestKey,
+          userId,
+        }
       : null;
   } catch {
     return null;
@@ -99,6 +121,12 @@ function getString(value: unknown) {
   return typeof value === "string" && value.trim()
     ? value.trim().slice(0, 200)
     : "";
+}
+
+function getOptionalString(value: unknown) {
+  return typeof value === "string" && value.trim()
+    ? value.trim().slice(0, 200)
+    : null;
 }
 
 function json(body: unknown, status = 200) {

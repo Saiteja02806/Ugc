@@ -5,6 +5,8 @@ import {
   buildUnifiedTrendingFeed,
   createCarouselTrendingFeedProvider,
   createCurrentTrendingFeedProviders,
+  excludeDismissedTrendingFeedItems,
+  getTrendingFeedActiveItemIndex,
   getTrendingFeedProviderAvailability,
   isPreviewReadyCarousel,
   type TrendingCarouselSourceRecord,
@@ -16,6 +18,38 @@ import {
   parseTrendingHookVideosEnabled,
   resolveTrendingHookVideosEnabled,
 } from "./hook-video-feature.ts";
+
+test("keeps the next active creative stable when a decided item disappears during refresh", () => {
+  const beforeDecision = [{ id: "a" }, { id: "b" }, { id: "c" }];
+  const refreshedAfterDecidingA = [{ id: "b" }, { id: "c" }];
+  const optimisticallyVisible = excludeDismissedTrendingFeedItems(
+    beforeDecision,
+    new Set(["a"]),
+    (item) => item.id,
+  );
+
+  assert.deepEqual(optimisticallyVisible, refreshedAfterDecidingA);
+  assert.equal(
+    getTrendingFeedActiveItemIndex(beforeDecision, "b", (item) => item.id),
+    1,
+  );
+  assert.equal(
+    getTrendingFeedActiveItemIndex(
+      refreshedAfterDecidingA,
+      "b",
+      (item) => item.id,
+    ),
+    0,
+  );
+  assert.equal(
+    getTrendingFeedActiveItemIndex(
+      refreshedAfterDecidingA,
+      "missing",
+      (item) => item.id,
+    ),
+    0,
+  );
+});
 
 const carouselSource = {
   assignmentId: "assignment-1",
@@ -199,12 +233,14 @@ test("groups preview-ready items by Wall, Hook, then Carousel without duplicates
       sourceKind: "catalog",
       text: {
         fontSize: 52,
+        hookTextFormatId: null,
         kind: "hook",
         lines: ["A business-profile Hook"],
         patternId: "direct_capability",
         placement: "center",
         styleVersion: "hook-overlay-v1",
         value: "A business-profile Hook",
+        writingFormatId: "direct_capability",
       },
       thumbnailUrl: null,
       title: "Hook creative",

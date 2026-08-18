@@ -136,6 +136,18 @@ export type RenderScheduleCombinationOutput = {
 
 export type RenderWallTextVideoPayload = {
   assignmentId: string;
+  attribution: {
+    contentHash: string;
+    editClassification: "major" | "minor" | "none";
+    formatId: string | null;
+    formatLearningEligible: boolean;
+    formatVersion: number;
+    instagramReelTemplateId: string | null;
+    selectionMode: string;
+    selectionWeight: number;
+    selectorVersion: string;
+    sourceKind: "creative_asset" | "instagram_reel" | "ugcpilot";
+  };
   audio: {
     assetDurationSeconds: number;
     assetId: string;

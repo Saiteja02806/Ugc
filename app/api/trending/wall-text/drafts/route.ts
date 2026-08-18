@@ -30,9 +30,12 @@ import {
   claimWallTextRender,
   getMissingWallTextDbEnvVars,
   getSavedWallTextDraft,
+  getWallTextGenerationAttribution,
   listSavedWallTextDrafts,
   markWallTextRenderQueueFailed,
 } from "@/lib/trending/wall-text-db";
+import { createWallTextDuplicateSignature } from "@/lib/trending/wall-text-duplicate-logic";
+import { classifyWallTextEdit } from "@/lib/trending/wall-text-edit-attribution";
 import { getWallTextPreviewTitle } from "@/lib/trending/wall-text-text-logic";
 import { DEFAULT_TRENDING_TEXT_COLOR } from "@/lib/trending/text-color";
 
@@ -159,11 +162,19 @@ export async function POST(request: Request) {
       );
     }
 
+    const generationAttribution = await getWallTextGenerationAttribution({
+      creativeId: draft.id,
+      userId,
+    });
+    const lockedAudioAssetId = creativeEdit?.source
+      ? null
+      : generationAttribution?.lockedAudioAssetId ?? null;
     const audio = await resolveWallTextAudioSelection({
       content: editedContent?.content ?? draft.text,
       creativeId: draft.id,
       editId: creativeEdit?.id,
       editRevision: creativeEdit?.revision,
+      lockedAudioAssetId,
       userId,
       videoDurationSeconds: durationSeconds,
     });
@@ -174,6 +185,15 @@ export async function POST(request: Request) {
         409,
       );
     }
+    const editAttribution = editedContent
+      ? classifyWallTextEdit({
+          editedText: editedContent.content.fullText,
+          originalText: draft.text.fullText,
+        })
+      : null;
+    const contentSignature =
+      editAttribution?.duplicateSignature ??
+      createWallTextDuplicateSignature(draft.text.fullText);
 
     let claimed = await claimWallTextRender({
       assignmentId: parsed.data.assignmentId,
@@ -219,6 +239,31 @@ export async function POST(request: Request) {
     idempotencyKey: `wall-text-render:${claimed.render_id}`,
     input: {
       assignmentId: claimed.id,
+      attribution: {
+        contentHash: contentSignature.contentHash,
+        editClassification: editAttribution?.classification ?? "none",
+        formatId:
+          generationAttribution?.formatId ?? draft.text.formatId ?? null,
+        formatLearningEligible:
+          Boolean(
+            generationAttribution?.formatId ?? draft.text.formatId ?? null,
+          ) &&
+          generationAttribution?.sourceKind !== "instagram_reel" &&
+          (editAttribution?.formatLearningEligible ?? true),
+        formatVersion: generationAttribution?.formatVersion ?? 1,
+        instagramReelTemplateId:
+          creativeEdit?.source
+            ? null
+            : generationAttribution?.instagramReelTemplateId ?? null,
+        selectionMode:
+          generationAttribution?.selectionMode ?? "legacy_unknown",
+        selectionWeight: generationAttribution?.selectionWeight ?? 1,
+        selectorVersion:
+          generationAttribution?.selectorVersion ?? "legacy_unknown",
+        sourceKind: creativeEdit?.source
+          ? "creative_asset"
+          : generationAttribution?.sourceKind ?? "ugcpilot",
+      },
       audio: {
         assetDurationSeconds: audio.audioAssetDurationSeconds,
         assetId: audio.audioAssetId,

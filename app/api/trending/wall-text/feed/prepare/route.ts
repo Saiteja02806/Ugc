@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
 import { getBusinessProfileOnboardingGate } from "@/lib/business-profiles/onboarding-access";
@@ -13,6 +14,9 @@ import { enqueueTrendingWallTextJob } from "@/lib/trending/wall-text-jobs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const PrepareWallTextSchema = z
+  .object({ requestedCount: z.number().int().min(1).max(50).optional() })
+  .strict();
 
 export async function POST(request: Request) {
   let userId: string;
@@ -41,6 +45,12 @@ export async function POST(request: Request) {
   }
 
   try {
+    const body = PrepareWallTextSchema.safeParse(
+      await request.json().catch(() => ({})),
+    );
+    if (!body.success) {
+      return json({ error: "Choose between 1 and 50 Wall videos.", ok: false }, 400);
+    }
     const profile = await getBusinessProfileForUser(userId);
     const onboardingGate = getBusinessProfileOnboardingGate(profile);
 
@@ -60,6 +70,7 @@ export async function POST(request: Request) {
     const job = await enqueueTrendingWallTextJob({
       businessProfileId: profile.id,
       businessProfileVersion: profile.profileVersion,
+      requestedCount: body.data.requestedCount,
       userId,
     });
 

@@ -8,19 +8,19 @@ import {
 } from "./edit-overlay-render-spec.js";
 import {
   buildTrendingHookCampaignPurposeSequence,
-  getTrendingHookPattern,
   getTrendingHookPurposeInstruction,
-  resolveTrendingHookIndustryContext,
-  selectTrendingHookPatterns,
-  TRENDING_HOOK_PATTERN_LIBRARY_VERSION,
-  TRENDING_HOOK_PATTERNS,
-  type HookPerformanceSignals,
   type TrendingHookCampaignPurpose,
-  type TrendingHookIndustryContext,
-  type TrendingHookIndustryPackId,
-  type TrendingHookPatternDefinition,
-  type TrendingHookPatternId,
 } from "./trending-hook-patterns.js";
+import {
+  getHookTextFormat,
+  getHookTextVariant,
+  HOOK_TEXT_FORMAT_LIBRARY_VERSION,
+  HOOK_TEXT_FORMATS,
+  selectHookTextFormats,
+  type HookTextFormatDefinition,
+  type HookTextFormatId,
+  type HookTextPerformanceSignals,
+} from "./trending-hook-text-formats.js";
 
 const DEFAULT_MODEL = "gpt-5.6-terra";
 const MAX_CANDIDATE_COUNT = 12;
@@ -34,9 +34,9 @@ const MIN_PASSING_SCORE = 80;
 const MAX_REPAIR_ROUNDS = 3;
 
 export const TRENDING_HOOK_PROMPT_VERSION =
-  "trending-hook-copy-v6";
+  "trending-hook-copy-v7";
 export const TRENDING_HOOK_SELECTION_VERSION =
-  "purpose-industry-diversity-v5";
+  "global-format-rotation-v1";
 export const TRENDING_HOOK_OVERLAY_VERSION =
   "hook-overlay-v3";
 export const TRENDING_HOOK_VALIDATOR_VERSION =
@@ -71,50 +71,28 @@ export type HookAudioIntent = {
   mood: (typeof HOOK_AUDIO_MOODS)[number];
 };
 
-const DEFAULT_HOOK_AUDIO_INTENT_BY_PATTERN: Record<
-  TrendingHookPatternId,
+const DEFAULT_HOOK_AUDIO_INTENT_BY_FORMAT: Record<
+  HookTextFormatId,
   HookAudioIntent
 > = {
-  direct_capability: {
-    energy: "medium",
-    hookType: "benefit",
-    mood: "uplifting",
-  },
-  mystery_discovery: {
-    energy: "medium",
-    hookType: "curiosity",
-    mood: "curious",
-  },
-  outcome_without_friction: {
-    energy: "medium",
-    hookType: "benefit",
-    mood: "uplifting",
-  },
-  problem_observation: {
-    energy: "medium",
-    hookType: "problem",
-    mood: "serious",
-  },
-  problem_reversal: {
-    energy: "medium",
-    hookType: "transformation",
-    mood: "curious",
-  },
-  professional_transformation: {
-    energy: "medium",
-    hookType: "transformation",
-    mood: "uplifting",
-  },
-  skeptical_challenge: {
-    energy: "medium",
-    hookType: "warning",
-    mood: "serious",
-  },
-  workflow_exposed: {
-    energy: "medium",
-    hookType: "story",
-    mood: "curious",
-  },
+  GF_001: { energy: "high", hookType: "story", mood: "playful" },
+  GF_002: { energy: "medium", hookType: "problem", mood: "serious" },
+  GF_003: { energy: "high", hookType: "story", mood: "urgent" },
+  GF_004: { energy: "high", hookType: "warning", mood: "urgent" },
+  GF_005: { energy: "medium", hookType: "curiosity", mood: "curious" },
+  GF_006: { energy: "medium", hookType: "story", mood: "curious" },
+  GF_007: { energy: "high", hookType: "story", mood: "playful" },
+  GF_008: { energy: "medium", hookType: "problem", mood: "serious" },
+  GF_009: { energy: "medium", hookType: "transformation", mood: "uplifting" },
+  GF_010: { energy: "medium", hookType: "benefit", mood: "uplifting" },
+  GF_011: { energy: "high", hookType: "transformation", mood: "urgent" },
+  GF_012: { energy: "high", hookType: "curiosity", mood: "urgent" },
+  GF_013: { energy: "high", hookType: "curiosity", mood: "playful" },
+  GF_014: { energy: "medium", hookType: "story", mood: "uplifting" },
+  GF_015: { energy: "medium", hookType: "curiosity", mood: "curious" },
+  GF_016: { energy: "high", hookType: "warning", mood: "urgent" },
+  GF_017: { energy: "high", hookType: "warning", mood: "playful" },
+  GF_018: { energy: "high", hookType: "transformation", mood: "urgent" },
 };
 
 const BANNED_MARKETING_PHRASES = [
@@ -241,17 +219,41 @@ const HOOK_GROUNDING_STOPWORDS = new Set([
 const HOOK_GROUNDING_RHETORICAL_WORDS = new Set([
   "actually",
   "again",
+  "about",
+  "after",
+  "are",
   "become",
+  "cooked",
+  "could",
+  "exists",
   "feel",
+  "finally",
+  "found",
   "get",
+  "gatekeep",
+  "gatekeeps",
+  "imagine",
+  "kiss",
   "keep",
+  "know",
+  "love",
+  "marry",
   "make",
+  "owe",
+  "possible",
+  "pov",
   "prove",
   "really",
+  "seeing",
+  "showed",
+  "sorry",
   "sound",
   "stay",
   "stop",
+  "tell",
   "turn",
+  "wdym",
+  "whoever",
 ]);
 
 export type TrendingHookCopyCandidate = {
@@ -329,12 +331,12 @@ export type TrendingHookCopyResult = TrendingHookCopyCandidate & {
   audioIntent: HookAudioIntent;
   campaignPurpose: TrendingHookCampaignPurpose;
   hookText: string;
-  industryPackId: TrendingHookIndustryPackId;
+  hookTextFormatId: HookTextFormatId;
+  hookTextFormatLibraryVersion: typeof HOOK_TEXT_FORMAT_LIBRARY_VERSION;
+  hookTextFormatName: string;
+  hookTextVariantId: string;
   inputContextHash: string;
   openingLines: string[];
-  patternId: TrendingHookPatternId;
-  patternLibraryVersion: typeof TRENDING_HOOK_PATTERN_LIBRARY_VERSION;
-  patternName: string;
   readabilityReview: {
     claimSafe: true;
     durationSeconds: number;
@@ -359,8 +361,7 @@ type HookDraftSpec = {
   campaignPurpose: TrendingHookCampaignPurpose;
   candidate: TrendingHookCopyCandidate;
   draftKey: string;
-  industryContext: TrendingHookIndustryContext;
-  pattern: TrendingHookPatternDefinition;
+  format: HookTextFormatDefinition;
 };
 
 export type HookDraft = {
@@ -369,7 +370,8 @@ export type HookDraft = {
   draftKey: string;
   evidenceKeys: string[];
   lines: string[];
-  patternId: TrendingHookPatternId;
+  hookTextFormatId: HookTextFormatId;
+  hookTextVariantId: string;
 };
 
 export type HookReview = {
@@ -396,16 +398,13 @@ export async function generateValidatedTrendingHookCopies(params: {
   candidates: TrendingHookCopyCandidate[];
   client?: StructuredResponseClient;
   model?: string;
-  performanceSignals?: HookPerformanceSignals;
+  performanceSignals?: HookTextPerformanceSignals;
 }) {
   const candidates = normalizeCandidates(params.candidates);
   const businessContext = extractBusinessContext(
     params.businessProfile,
   );
   const evidenceCatalog = buildBusinessEvidenceCatalog(
-    businessContext,
-  );
-  const industryContext = resolveTrendingHookIndustryContext(
     businessContext,
   );
   const performanceSignals = normalizePerformanceSignals(
@@ -422,7 +421,6 @@ export async function generateValidatedTrendingHookCopies(params: {
     businessContext,
     candidates,
     evidenceCatalog,
-    industryContext,
     performanceSignals,
   });
   const model =
@@ -433,7 +431,6 @@ export async function generateValidatedTrendingHookCopies(params: {
   const specs = buildDraftSpecs({
     businessContext,
     candidates,
-    industryContext,
     performanceSignals,
   });
   let finalDrafts = await writeHookDrafts({
@@ -543,8 +540,7 @@ export async function generateValidatedTrendingHookCopies(params: {
       campaignPurpose,
       candidate,
       draft,
-      industryContext: selectedIndustryContext,
-      pattern,
+      format,
       review,
       validation,
     }) => {
@@ -555,14 +551,14 @@ export async function generateValidatedTrendingHookCopies(params: {
         ...candidate,
         audioIntent: draft.audioIntent,
         campaignPurpose,
+        hookTextFormatId: format.id,
+        hookTextFormatLibraryVersion:
+          HOOK_TEXT_FORMAT_LIBRARY_VERSION,
+        hookTextFormatName: format.name,
+        hookTextVariantId: draft.hookTextVariantId,
         hookText,
-        industryPackId: selectedIndustryContext.id,
         inputContextHash,
         openingLines: draft.lines,
-        patternId: pattern.id,
-        patternLibraryVersion:
-          TRENDING_HOOK_PATTERN_LIBRARY_VERSION,
-        patternName: pattern.name,
         readabilityReview: {
           claimSafe: true,
           durationSeconds: candidate.durationSeconds,
@@ -692,19 +688,31 @@ export function validateHookDraft(params: {
       normalizedText.includes(normalizeForComparison(claim)),
   );
   const timeOrNumberPassed =
-    !UNSUPPORTED_TIME_OR_NUMBER_PATTERN.test(text);
-  const unsupportedClaimTermPassed =
-    !UNSUPPORTED_CLAIM_TERMS.some((term) =>
-      new RegExp(`\\b${escapeRegExp(term)}\\b`, "iu").test(text),
+    !UNSUPPORTED_TIME_OR_NUMBER_PATTERN.test(text) ||
+    evidenceBindings.some((evidence) =>
+      containsOnlySuppliedTimeOrNumberClaims(text, evidence.text),
     );
+  const unsupportedClaimTermPassed = UNSUPPORTED_CLAIM_TERMS.every(
+    (term) =>
+      !new RegExp(`\\b${escapeRegExp(term)}\\b`, "iu").test(text) ||
+      evidenceBindings.some((evidence) =>
+        normalizeForComparison(evidence.text).includes(
+          normalizeForComparison(term),
+        ),
+      ),
+  );
   const fakeQuotePassed = !FAKE_QUOTE_PATTERN.test(text);
   const claimValidationPassed =
     forbiddenClaimPassed &&
     timeOrNumberPassed &&
     unsupportedClaimTermPassed &&
     fakeQuotePassed;
+  const assignedFormat = getHookTextFormat(
+    params.draft.hookTextFormatId,
+  );
   const firstPersonValidationPassed =
-    !FIRST_PERSON_PATTERN.test(text);
+    !FIRST_PERSON_PATTERN.test(text) ||
+    assignedFormat?.rhetoricalFirstPersonAllowed === true;
   const emojiCount = Array.from(text.matchAll(EMOJI_PATTERN)).length;
   const emojiValidationPassed = emojiCount <= MAX_HOOK_EMOJIS;
   const businessGroundingPassed =
@@ -810,8 +818,7 @@ export function isPassingHookReview(params: {
 function buildDraftSpecs(params: {
   businessContext: ReturnType<typeof extractBusinessContext>;
   candidates: TrendingHookCopyCandidate[];
-  industryContext: TrendingHookIndustryContext;
-  performanceSignals: HookPerformanceSignals;
+  performanceSignals: HookTextPerformanceSignals;
 }) {
   const purposes = buildTrendingHookCampaignPurposeSequence({
     count: params.candidates.length,
@@ -819,22 +826,31 @@ function buildDraftSpecs(params: {
     requestedPurposes: params.businessContext.campaignPurposes,
   });
 
+  const selectedInBatch = new Set<HookTextFormatId>();
+
   return params.candidates.flatMap((candidate, index) => {
     const campaignPurpose = purposes[index]!;
-
-    return selectTrendingHookPatterns({
+    const formats = selectHookTextFormats({
       campaignPurpose,
       candidateIndex: candidate.candidateIndex,
-      industryContext: params.industryContext,
+      count: 1,
+      eligibility: {
+        businessContext: params.businessContext,
+        evidence: buildBusinessEvidenceCatalog(params.businessContext),
+      },
+      excludedFormatIds: selectedInBatch,
       performanceSignals: params.performanceSignals,
       reactionType: candidate.reactionType,
-    }).map(
-      (pattern): HookDraftSpec => ({
+    });
+
+    formats.forEach((format) => selectedInBatch.add(format.id));
+
+    return formats.map(
+      (format): HookDraftSpec => ({
         campaignPurpose,
         candidate,
-        draftKey: `${candidate.candidateIndex}:${pattern.id}`,
-        industryContext: params.industryContext,
-        pattern,
+        draftKey: `${candidate.candidateIndex}:${format.id}`,
+        format,
       }),
     );
   });
@@ -859,10 +875,10 @@ async function writeHookDrafts(params: {
     instructions: [
       "You write opening text for short influencer-reaction Hook videos in a social feed.",
       "The video contains only the reaction clip and this text. No product demo, demo caption, CTA, headline/body structure, or closing line belongs here.",
-      "Write only the opening reaction: one assigned pattern, one idea, and one honest information gap that makes the viewer want to see proof later.",
+      "Write only the opening reaction: one assigned Global Hook text format, one idea, and one honest information gap that makes the viewer want to see proof later.",
       "Do not explain a process, sequence, product demo, mechanism-and-benefit chain, or secondary benefit. Stop immediately after the opening idea.",
-      "Write the supplied pattern as a natural human thought grounded only in evidenceCatalog.",
-      "Follow the assigned campaignPurposeInstruction and industry focus. Treat industry guidance as emphasis only; it is never evidence and cannot add a fact.",
+      "Write the supplied Hook text format as a natural human thought grounded only in evidenceCatalog. Keep the assigned hookTextFormatId and choose exactly one supplied surface variant from that same format.",
+      "Follow the assigned campaignPurposeInstruction. Treat the business category as context only; it is never a preset industry pack and cannot add a fact.",
       "Return one or two evidenceKeys that directly support every meaningful claim.",
       "The words must stop the right audience through recognition, tension, curiosity, or a useful contradiction—not generic advertising.",
       "Match reactionType emotionally.",
@@ -871,15 +887,15 @@ async function writeHookDrafts(params: {
       "If you use multiple lines, they must be visual parts of the same single sentence or thought. Never put a separate message, question, or claim on each line.",
       "Use complete, natural grammar. Do not write a clipped contrast such as 'Not X' followed by an unrelated fragment; complete the contrast clearly in the same thought.",
       "Use semantic lines: each array item is one intentional line. Prefer one or two lines, but use three short lines when that makes the thought easier to read. Do not compress it merely because the clip is short.",
-      "Never use digits or number words. Never invent numbers, time periods, results, testimonials, personal experience, prices, comparisons, superlatives, urgency, or guarantees.",
+      "Never invent numbers, time periods, results, testimonials, personal experience, prices, comparisons, superlatives, urgency, or guarantees. A number or time phrase is allowed only when it appears verbatim in the selected evidenceCatalog entry and the assigned format requires it.",
       "Never invent population claims such as most people, many people, everyone, or nobody.",
       "Do not invent a setting, physical object, metaphor, product mechanism, or feature that is absent from businessContext. Mystery must come from a true business idea, not fictional details.",
-      "Do not use first person, quotations, slang, or banned phrases. You may use zero to two emotionally relevant emojis, usually at the end of the final line. Emojis may reinforce the reaction but must never act as evidence for a claim. Do not mention an influencer, clip, avatar, or future demo.",
+      "Do not use quotations or banned phrases. First person and casual language are allowed only when the assigned format explicitly marks rhetoricalFirstPersonAllowed; emotional wording such as 'I could literally kiss whoever showed me this' is rhetorical and must not introduce personal history. You may use zero to two emotionally relevant emojis, usually at the end of the final line. Emojis may reinforce the reaction but must never act as evidence for a claim. Do not mention an influencer, clip, avatar, or future demo.",
       "There is no words-per-second formula. A reviewer will judge whether a normal viewer can comfortably read and understand the complete thought during the exact duration.",
-      "Return exactly one structurally distinct result for every draftKey, preserving draftKey, candidateIndex, and patternId.",
+      "Return exactly one result for every draftKey, preserving draftKey, candidateIndex, and hookTextFormatId. Never switch to a different format.",
     ].join(" "),
     model: params.model,
-    responseFormatName: "trending_hook_v6_drafts",
+    responseFormatName: "trending_hook_v7_drafts",
     schema: buildHookDraftBatchSchema(
       params.evidenceCatalog,
       params.specs,
@@ -952,7 +968,7 @@ async function reviewHookDrafts(params: {
       "Do not use a fixed word-per-second formula. Decide whether the viewer can notice, read, and understand the complete thought comfortably without replaying.",
       "Do not penalize a Hook for being shorter than the clip. A sharp one- to three-line thought with a brief moment to react is desirable, especially at 2–3 seconds.",
       "Score businessRelevance 0–20, reactionMatch 0–20, humanVoice 0–15, scrollStop 0–15, readability 0–15, claimSafety 0–10, and originality 0–5.",
-      "truthful and claimSafe require that every statement is grounded in businessContext. Numbers, time periods, results, testimonials, personal history, comparisons, prices, superlatives, and guarantees fail without verified evidence; this input intentionally supplies none.",
+      "truthful and claimSafe require that every factual statement is grounded in businessContext and the selected evidenceCatalog entries. Numbers, time periods, results, testimonials, personal history, comparisons, prices, superlatives, and guarantees fail unless the exact fact is supplied in selected evidence.",
       "The copy must serve its assigned campaign purpose and industry focus without treating those directions as evidence or adding an industry assumption.",
       "A candidate is not truthful when it invents a setting, object, metaphor, mechanism, or feature that businessContext never supplies.",
       "Every meaningful statement must be supported by proposedEvidenceKeys and the matching evidenceCatalog entries; an unrelated evidence key fails truthful and claimSafe.",
@@ -969,7 +985,7 @@ async function reviewHookDrafts(params: {
       "Preserve draftKey and candidateIndex and review every request.",
     ].join(" "),
     model: params.model,
-    responseFormatName: "trending_hook_v6_reviews",
+    responseFormatName: "trending_hook_v7_reviews",
     schema: buildHookReviewBatchSchema(params.specs),
   });
 
@@ -1054,9 +1070,9 @@ async function repairHookDrafts(params: {
       })),
     },
     instructions: [
-      "Repair only the supplied Hook overlays. Keep the assigned pattern and the strongest true Business Profile idea.",
+      "Repair only the supplied Hook overlays. Keep the assigned Global Hook text format, surface variant family, and strongest true Business Profile idea.",
       "Keep the assigned campaign purpose and industry focus, but never turn industry guidance into an unsupported fact.",
-      "Return only an opening reaction: one pattern, one idea, one to three intentional lines, and at most twelve words total.",
+      "Return only an opening reaction: one assigned format, one idea, one to three intentional lines, and at most twelve words total.",
       "If the reviewer marked singleIdea false, reduce the copy to one short question or statement. Multiple visual lines may split that one thought, but must not carry separate messages.",
       "Do not explain the process, demo steps, mechanism-and-benefit chain, or a secondary benefit. Preserve curiosity and stop after the opening.",
       "Return one or two valid evidenceKeys that directly support the repaired wording.",
@@ -1065,21 +1081,21 @@ async function repairHookDrafts(params: {
       "Fix every deterministicValidation reason. Each semantic line must stay on one rendered line, contain at most seven words, and not end with an article, conjunction, or preposition.",
       "For invalid_semantic_lines, restore complete natural grammar as well as clean line breaks. Never leave a dangling 'Not X' contrast or two fragments that do not form one clear thought.",
       "Use visualFit.lineWidths and visualFit.maximumTextWidth: when a line is too wide, shorten that line decisively. Do not hide the overflow by adding another dense line.",
-      "For unsupported_time_or_number, remove every digit, number word, currency, percentage, date, and time-unit word. Do not paraphrase it as another numeric or time claim.",
+      "For unsupported_time_or_number, remove every digit, number word, currency, percentage, date, and time-unit word unless it occurs verbatim in the selected evidence and the assigned format requires that evidence. Do not paraphrase it as another numeric or time claim.",
       "For weak_business_grounding, remove invented settings, objects, metaphors, mechanisms, and features. Rebuild the Hook from the supplied audience problem, product summary, value props, or differentiators.",
       ...(params.finalEvidenceRecovery
         ? [
             "This is the final evidence-recovery pass. Use exactly one evidenceKey and keep every meaningful noun, action, problem, and capability close to that evidence text. Do not infer a new setting, behavior, result, comparison, or benefit.",
-            "Prefer one short, natural question or statement over cleverness. It must still fit the assigned pattern and earn the publishable score without weakening any safety rule.",
+            "Prefer one short, natural question or statement over cleverness. It must still fit the assigned format and earn the publishable score without weakening any safety rule.",
           ]
         : []),
       "Aim for a genuinely strong result that can earn at least 80/100, not merely a shorter version.",
-      "Remove unsupported facts, personal history, numbers, time claims, quotations, and generic marketing language. Keep at most two emotionally relevant emojis; remove any emoji that substitutes for evidence or does not match the reaction.",
+      "Remove unsupported facts, personal history, numbers, time claims, quotations, and generic marketing language. Preserve permitted rhetorical first-person emotion only when the assigned format allows it. Keep at most two emotionally relevant emojis; remove any emoji that substitutes for evidence or does not match the reaction.",
       "Do not add a demo, CTA, headline/body structure, or any new fact.",
       "Return exactly one repaired result for every draftKey.",
     ].join(" "),
     model: params.model,
-    responseFormatName: "trending_hook_v6_repairs",
+    responseFormatName: "trending_hook_v7_repairs",
     schema: buildHookDraftBatchSchema(
       params.evidenceCatalog,
       params.specs,
@@ -1230,8 +1246,6 @@ function selectBestDraftPerCandidate(params: {
   specs: HookDraftSpec[];
   validationByKey: Map<string, HookDeterministicValidation>;
 }) {
-  const patternUse = new Map<TrendingHookPatternId, number>();
-
   return params.candidates.map((candidate) => {
     const eligible = params.specs
       .filter(
@@ -1252,27 +1266,19 @@ function selectBestDraftPerCandidate(params: {
                 campaignPurpose: spec.campaignPurpose,
                 candidate,
                 draft,
-                industryContext: spec.industryContext,
-                pattern: spec.pattern,
+                format: spec.format,
                 review,
                 validation,
               },
             ]
           : [];
       })
-      .sort((first, second) => {
-        const firstScore =
-          getHookReviewScores(first.review).total -
-          (patternUse.get(first.pattern.id) ?? 0) * 4;
-        const secondScore =
+      .sort(
+        (first, second) =>
           getHookReviewScores(second.review).total -
-          (patternUse.get(second.pattern.id) ?? 0) * 4;
-
-        return (
-          secondScore - firstScore ||
-          first.pattern.id.localeCompare(second.pattern.id)
-        );
-      });
+            getHookReviewScores(first.review).total ||
+          first.format.id.localeCompare(second.format.id),
+      );
     const chosen = eligible[0];
 
     if (!chosen) {
@@ -1314,10 +1320,6 @@ function selectBestDraftPerCandidate(params: {
       );
     }
 
-    patternUse.set(
-      chosen.pattern.id,
-      (patternUse.get(chosen.pattern.id) ?? 0) + 1,
-    );
     return chosen;
   });
 }
@@ -1339,14 +1341,22 @@ function parseHookDrafts(
     const draftKey =
       typeof hook?.draftKey === "string" ? hook.draftKey.trim() : "";
     const candidateIndex = getInteger(hook?.candidateIndex);
-    const patternId =
-      typeof hook?.patternId === "string" &&
-      getTrendingHookPattern(hook.patternId)
-        ? (hook.patternId as TrendingHookPatternId)
+    const hookTextFormatId =
+      typeof hook?.hookTextFormatId === "string" &&
+      getHookTextFormat(hook.hookTextFormatId)
+        ? (hook.hookTextFormatId as HookTextFormatId)
         : null;
-    const audioIntent = patternId
+    const format = hookTextFormatId
+      ? getHookTextFormat(hookTextFormatId)
+      : null;
+    const hookTextVariantId =
+      format && typeof hook?.hookTextVariantId === "string" &&
+      getHookTextVariant(format, hook.hookTextVariantId)
+        ? hook.hookTextVariantId
+        : null;
+    const audioIntent = hookTextFormatId
       ? parseHookAudioIntent(hook?.audioIntent) ??
-        DEFAULT_HOOK_AUDIO_INTENT_BY_PATTERN[patternId]
+        DEFAULT_HOOK_AUDIO_INTENT_BY_FORMAT[hookTextFormatId]
       : null;
     const evidenceKeys = Array.isArray(hook?.evidenceKeys)
       ? hook.evidenceKeys
@@ -1367,7 +1377,8 @@ function parseHookDrafts(
     if (
       !draftKey ||
       candidateIndex === null ||
-      !patternId ||
+      !hookTextFormatId ||
+      !hookTextVariantId ||
       !audioIntent ||
       evidenceKeys.length < 1 ||
       evidenceKeys.length > MAX_EVIDENCE_BINDINGS ||
@@ -1388,8 +1399,9 @@ function parseHookDrafts(
       candidateIndex,
       draftKey,
       evidenceKeys,
+      hookTextFormatId,
+      hookTextVariantId,
       lines,
-      patternId,
     };
   });
 
@@ -1478,7 +1490,7 @@ function assertExactDraftMapping(
   values: Array<{
     candidateIndex: number;
     draftKey: string;
-    patternId?: TrendingHookPatternId;
+    hookTextFormatId?: HookTextFormatId;
   }>,
   specs: HookDraftSpec[],
   source: string,
@@ -1494,13 +1506,13 @@ function assertExactDraftMapping(
       return (
         !spec ||
         value.candidateIndex !== spec.candidate.candidateIndex ||
-        (value.patternId !== undefined &&
-          value.patternId !== spec.pattern.id)
+        (value.hookTextFormatId !== undefined &&
+          value.hookTextFormatId !== spec.format.id)
       );
     })
   ) {
     throw new Error(
-      `The Hook ${source} did not return one result for every requested pattern.`,
+      `The Hook ${source} did not return one result for every requested format.`,
     );
   }
 }
@@ -1509,7 +1521,7 @@ function isExactHookMappingError(error: unknown, source: string) {
   return (
     error instanceof Error &&
     error.message ===
-      `The Hook ${source} did not return one result for every requested pattern.`
+      `The Hook ${source} did not return one result for every requested format.`
   );
 }
 
@@ -1665,6 +1677,31 @@ function tokenizeGroundingText(value: string) {
     .map(stemGroundingToken);
 }
 
+function containsOnlySuppliedTimeOrNumberClaims(
+  hookText: string,
+  evidenceText: string,
+) {
+  const hookClaims = extractTimeOrNumberClaims(hookText);
+  const evidenceClaims = new Set(extractTimeOrNumberClaims(evidenceText));
+
+  return (
+    hookClaims.length > 0 &&
+    hookClaims.every((claim) => evidenceClaims.has(claim))
+  );
+}
+
+function extractTimeOrNumberClaims(value: string) {
+  return [
+    ...new Set(
+      (
+        value.match(
+          /(?:[$€£¥]\s*\d[\d,.]*|\d[\d,.]*\s*%?|\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|first|second|third|fourth|fifth|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years|today|yesterday|tomorrow|daily|weekly|monthly|yearly|midweek|overnight|instantly|immediately)\b)/giu,
+        ) ?? []
+      ).map(normalizeForComparison),
+    ),
+  ];
+}
+
 function stemGroundingToken(value: string) {
   if (value.length > 5 && value.endsWith("ing")) {
     return value.slice(0, -3).replace(/(.)\1$/u, "$1");
@@ -1815,21 +1852,40 @@ function getGenerationPolicies() {
       maximum: MAX_HOOK_EMOJIS,
       preferredPlacement: "end_of_final_line",
     },
-    firstPersonAllowed: false,
-    humorAllowed: false,
-    numericClaimsAllowed: false,
-    verifiedClaims: [],
+    firstPersonPolicy:
+      "Rhetorical first-person emotion is allowed only for the assigned format. Personal history and testimonials still require supplied evidence.",
+    humorAllowed: true,
+    numericClaimsPolicy:
+      "Only exact numbers or durations present in selected evidence may be used, and only in a format that requires them.",
   } as const;
 }
 
 function normalizePerformanceSignals(
-  value: HookPerformanceSignals | undefined,
-): HookPerformanceSignals {
-  const preferredPatternIds = [
-    ...new Set(value?.preferredPatternIds ?? []),
-  ]
-    .filter((patternId) => Boolean(getTrendingHookPattern(patternId)))
-    .slice(0, 3);
+  value: HookTextPerformanceSignals | undefined,
+): HookTextPerformanceSignals {
+  const formatSignals = (value?.formatSignals ?? [])
+    .filter((signal) => Boolean(getHookTextFormat(signal.formatId)))
+    .map((signal) => ({
+      formatId: signal.formatId,
+      lastGeneratedAt:
+        typeof signal.lastGeneratedAt === "string"
+          ? signal.lastGeneratedAt
+          : null,
+      publishedResultCount: Math.max(
+        0,
+        Math.trunc(signal.publishedResultCount),
+      ),
+      selectionWeight: Math.min(
+        1.3,
+        Math.max(0.8, signal.selectionWeight),
+      ),
+      temporaryBoost: Math.min(
+        0.12,
+        Math.max(0, signal.temporaryBoost),
+      ),
+      timesGenerated: Math.max(0, Math.trunc(signal.timesGenerated)),
+    }))
+    .slice(0, 18);
   const preferredPurposes = [
     ...new Set(value?.preferredPurposes ?? []),
   ]
@@ -1844,7 +1900,7 @@ function normalizePerformanceSignals(
     )
     .slice(0, 3);
 
-  return { preferredPatternIds, preferredPurposes };
+  return { formatSignals, preferredPurposes };
 }
 
 function toPromptSpec(spec: HookDraftSpec) {
@@ -1860,16 +1916,16 @@ function toPromptSpec(spec: HookDraftSpec) {
     maximumLines: MAX_HOOK_LINES,
     maximumWords: MAX_HOOK_WORDS,
     maximumWordsPerLine: MAX_HOOK_WORDS_PER_LINE,
-    industry: {
-      avoidAssumptions: spec.industryContext.avoidAssumptions,
-      focus: spec.industryContext.focus,
-      id: spec.industryContext.id,
-      label: spec.industryContext.label,
-    },
-    pattern: {
-      id: spec.pattern.id,
-      instruction: spec.pattern.instruction,
-      name: spec.pattern.name,
+    hookTextFormat: {
+      allowedTones: spec.format.allowedTones,
+      canonicalTemplate: spec.format.canonicalTemplate,
+      id: spec.format.id,
+      instruction: spec.format.instruction,
+      name: spec.format.name,
+      requiredEvidence: spec.format.requiredEvidence,
+      rhetoricalFirstPersonAllowed:
+        spec.format.rhetoricalFirstPersonAllowed,
+      surfaceVariants: spec.format.variants,
     },
     reactionType: spec.candidate.reactionType || "unspecified",
     visualGroup: spec.candidate.visualGroup || "unspecified",
@@ -2111,8 +2167,11 @@ function createOpenAIClient() {
   });
 }
 
-const patternIds = TRENDING_HOOK_PATTERNS.map(
-  (pattern) => pattern.id,
+const hookTextFormatIds = HOOK_TEXT_FORMATS.map(
+  (format) => format.id,
+);
+const hookTextVariantIds = HOOK_TEXT_FORMATS.flatMap((format) =>
+  format.variants.map((variant) => variant.id),
 );
 
 function buildHookDraftBatchSchema(
@@ -2170,7 +2229,14 @@ function buildHookDraftBatchSchema(
               minItems: 1,
               type: "array",
             },
-            patternId: { enum: patternIds, type: "string" },
+            hookTextFormatId: {
+              enum: hookTextFormatIds,
+              type: "string",
+            },
+            hookTextVariantId: {
+              enum: hookTextVariantIds,
+              type: "string",
+            },
           },
           required: [
             "audioIntent",
@@ -2178,7 +2244,8 @@ function buildHookDraftBatchSchema(
             "draftKey",
             "evidenceKeys",
             "lines",
-            "patternId",
+            "hookTextFormatId",
+            "hookTextVariantId",
           ],
           type: "object",
         },

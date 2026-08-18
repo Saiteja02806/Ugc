@@ -57,9 +57,11 @@ export type TrendingCarouselSourceRecord = TrendingCarouselCreative & {
 
 export type TrendingHookTextContent = {
   fontSize: number;
+  hookTextFormatId: string | null;
   kind: "hook";
   lines: string[];
-  patternId: string;
+  patternId: string | null;
+  writingFormatId: string;
   placement: "center";
   styleVersion:
     | "hook-overlay-v1"
@@ -178,6 +180,35 @@ export function compareTrendingFeedItems(
     first.position - second.position ||
     first.id.localeCompare(second.id)
   );
+}
+
+/**
+ * Finds the active creative again after the feed has been refreshed.
+ *
+ * Feed decisions remove the decided item on the server, so an array position
+ * is not stable across refreshes. The deck must follow the next item's stable
+ * ID instead of reusing its old numeric offset.
+ */
+export function getTrendingFeedActiveItemIndex<Item>(
+  items: readonly Item[],
+  activeItemId: string | null,
+  getItemId: (item: Item) => string,
+) {
+  if (!activeItemId) {
+    return 0;
+  }
+
+  const index = items.findIndex((item) => getItemId(item) === activeItemId);
+
+  return index >= 0 ? index : 0;
+}
+
+export function excludeDismissedTrendingFeedItems<Item>(
+  items: readonly Item[],
+  dismissedItemIds: ReadonlySet<string>,
+  getItemId: (item: Item) => string,
+) {
+  return items.filter((item) => !dismissedItemIds.has(getItemId(item)));
 }
 
 export function createCarouselTrendingFeedProvider(

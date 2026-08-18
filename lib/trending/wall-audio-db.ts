@@ -6,6 +6,7 @@ import {
   buildWallAudioIntent,
   createWallTextContentFingerprint,
   selectWallAudio,
+  selectLockedWallAudio,
   type WallAudioAsset,
   type WallAudioEnergy,
   type WallAudioFitMode,
@@ -33,6 +34,7 @@ type WallAudioAssetRow = {
   message_types: string[];
   moods: string[];
   review_status: "approved" | "pending" | "rejected";
+  selection_scope: "instagram_reel_locked" | "matcher_pool";
   status: "active" | "inactive" | "pending_review";
 };
 
@@ -111,6 +113,7 @@ export async function ensureBaseWallTextAudioSelections(params: {
     content: TrendingWallTextContent;
     creativeId: string;
     durationSeconds: number;
+    lockedAudioAssetId?: string;
   }>;
   userId: string;
 }) {
@@ -123,6 +126,7 @@ export async function ensureBaseWallTextAudioSelections(params: {
         creativeId: creative.creativeId,
         editId: null,
         editRevision: null,
+        lockedAudioAssetId: creative.lockedAudioAssetId,
         userId: params.userId,
         videoDurationSeconds: creative.durationSeconds,
       }),
@@ -138,6 +142,7 @@ export async function resolveWallTextAudioSelection(params: {
   editId?: string | null;
   editRevision?: number | null;
   excludeAssetIds?: string[];
+  lockedAudioAssetId?: string | null;
   userId: string;
   videoDurationSeconds: number;
 }): Promise<ResolvedWallTextAudioSelection> {
@@ -148,37 +153,54 @@ export async function resolveWallTextAudioSelection(params: {
   }
 
   const contentFingerprint = createWallTextContentFingerprint(params.content);
-  const exactSelection = await getSelectionForScope({
-    creativeId: params.creativeId,
-    editId,
-    editRevision,
-    userId: params.userId,
-  });
-  const reusableSelection =
-    exactSelection?.content_fingerprint === contentFingerprint
-      ? exactSelection
-      : await getLatestReusableSelection({
-          contentFingerprint,
-          creativeId: params.creativeId,
-          userId: params.userId,
-        });
-  const [assets, recentAssetIds] = await Promise.all([
-    listActiveWallAudioAssets(),
-    listRecentWallAudioAssetIds({ userId: params.userId }),
-  ]);
   const intent = buildWallAudioIntent(params.content);
-  const selection = selectWallAudio({
-    assets,
-    excludeAssetIds: params.excludeAssetIds,
-    intent,
-    preferredAssetId: reusableSelection?.audio_asset_id,
-    recentAssetIds,
-    videoDurationSeconds: params.videoDurationSeconds,
-  });
+  let selection: WallAudioSelection | null;
+
+  if (params.lockedAudioAssetId) {
+    const lockedAsset = await getActiveLockedWallAudioAsset(
+      params.lockedAudioAssetId,
+    );
+    selection = lockedAsset
+      ? selectLockedWallAudio({
+          asset: lockedAsset,
+          intent,
+          videoDurationSeconds: params.videoDurationSeconds,
+        })
+      : null;
+  } else {
+    const exactSelection = await getSelectionForScope({
+      creativeId: params.creativeId,
+      editId,
+      editRevision,
+      userId: params.userId,
+    });
+    const reusableSelection =
+      exactSelection?.content_fingerprint === contentFingerprint
+        ? exactSelection
+        : await getLatestReusableSelection({
+            contentFingerprint,
+            creativeId: params.creativeId,
+            userId: params.userId,
+          });
+    const [assets, recentAssetIds] = await Promise.all([
+      listActiveWallAudioAssets(),
+      listRecentWallAudioAssetIds({ userId: params.userId }),
+    ]);
+    selection = selectWallAudio({
+      assets,
+      excludeAssetIds: params.excludeAssetIds,
+      intent,
+      preferredAssetId: reusableSelection?.audio_asset_id,
+      recentAssetIds,
+      videoDurationSeconds: params.videoDurationSeconds,
+    });
+  }
 
   if (!selection) {
     throw new Error(
-      "No approved Wall audio can cover this video's duration.",
+      params.lockedAudioAssetId
+        ? "The Instagram Reel template audio cannot cover this video's duration without looping."
+        : "No approved Wall audio can cover this video's duration.",
     );
   }
 
@@ -259,6 +281,7 @@ async function listActiveWallAudioAssets(): Promise<WallAudioAsset[]> {
     .select("*")
     .eq("status", "active")
     .eq("review_status", "approved")
+    .eq("selection_scope", "matcher_pool")
     .order("id", { ascending: true });
 
   if (error) {
@@ -269,6 +292,21 @@ async function listActiveWallAudioAssets(): Promise<WallAudioAsset[]> {
     const asset = parseActiveAsset(row);
     return asset ? [asset] : [];
   });
+}
+
+async function getActiveLockedWallAudioAsset(audioAssetId: string) {
+  const { data, error } = await getClient()
+    .from("wall_audio_assets")
+    .select("*")
+    .eq("id", audioAssetId)
+    .eq("status", "active")
+    .eq("review_status", "approved")
+    .eq("selection_scope", "instagram_reel_locked")
+    .maybeSingle();
+  if (error) {
+    throw new Error(`Could not load locked Wall audio: ${error.message}`);
+  }
+  return data ? parseActiveLockedAsset(data) : null;
 }
 
 async function listRecentWallAudioAssetIds(params: {
@@ -384,6 +422,31 @@ function parseActiveAsset(row: WallAudioAssetRow): WallAudioAsset | null {
   };
 }
 
+function parseActiveLockedAsset(row: WallAudioAssetRow) {
+  if (
+    row.status !== "active" ||
+    row.review_status !== "approved" ||
+    row.selection_scope !== "instagram_reel_locked" ||
+    row.loopable !== false ||
+    !row.audio_url.startsWith("https://") ||
+    !Number.isFinite(Number(row.cue_start_seconds)) ||
+    !Number.isFinite(Number(row.duration_seconds)) ||
+    Number(row.cue_start_seconds) < 0 ||
+    Number(row.duration_seconds) <= Number(row.cue_start_seconds)
+  ) {
+    return null;
+  }
+  return {
+    audioUrl: row.audio_url,
+    cueStartSeconds: Number(row.cue_start_seconds),
+    durationSeconds: Number(row.duration_seconds),
+    id: row.id,
+    loopable: false,
+    reviewStatus: "approved" as const,
+    status: "active" as const,
+  };
+}
+
 function resolveStoredSelection(
   selection: WallTextAudioSelectionRow,
   asset: WallAudioAsset,
@@ -400,7 +463,10 @@ function resolveStoredSelection(
     fitMode: selection.fit_mode,
     intent: parseIntent(selection.audio_intent),
     matchScore: selection.match_score,
-    matchingVersion: "wall-audio-match-v1",
+    matchingVersion:
+      selection.matching_version === "wall-instagram-reel-locked-v1"
+        ? "wall-instagram-reel-locked-v1"
+        : "wall-audio-match-v1",
     outputDurationSeconds: selection.output_duration_seconds,
     selectionId: selection.id,
   };

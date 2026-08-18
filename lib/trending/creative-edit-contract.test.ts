@@ -167,6 +167,27 @@ test("Hook edits preserve three intentional lines and a trailing emoji", () => {
   assert.equal(layout.wordCount, 8);
 });
 
+test("Hook editor changes preserve user-controlled line breaks", () => {
+  const current = {
+    fontSize: 52,
+    format: "hook_video" as const,
+    hookText: "Old Hook copy",
+    lines: ["Old Hook copy"],
+    position: { x: 0.5, y: 0.15 },
+    textColor: "#ffffff" as const,
+    version: "trending-creative-edit-v1" as const,
+  };
+  const hookText = "Meal logging\nshouldn't interrupt\nyour whole day";
+  const edited = createHookEditContent(hookText, current);
+
+  assert.equal(edited.hookText, hookText);
+  assert.deepEqual(edited.lines, [
+    "Meal logging",
+    "shouldn't interrupt",
+    "your whole day",
+  ]);
+});
+
 test("Hook save validation rejects word and character limit violations", () => {
   assert.throws(
     () => createHookTextLayout("one two three four five six seven eight nine ten eleven twelve thirteen"),

@@ -27,10 +27,11 @@ export async function enqueueTrendingHookCopyJob(params: {
   businessProfileVersion: number;
   candidates: Array<Record<string, Json>>;
   performanceSignals?: TrendingHookPerformanceSignals;
+  refillKey?: string | null;
   sourceSelectionKey?: string | null;
   userId: string;
 }) {
-  const idempotencyKey = [
+  const baseIdempotencyKey = [
     "trending-hook-copy",
     params.businessProfileId,
     `v${params.businessProfileVersion}`,
@@ -40,8 +41,10 @@ export async function enqueueTrendingHookCopyJob(params: {
     ...(params.sourceSelectionKey
       ? [`source-${params.sourceSelectionKey}`]
       : []),
+    ...(params.refillKey ? [`refill-${params.refillKey}`] : []),
   ].join(":");
-  const creationResult =
+  let idempotencyKey = baseIdempotencyKey;
+  let creationResult =
     await createBackgroundJobWithCreationResult({
       idempotencyKey,
       input: {
@@ -60,7 +63,35 @@ export async function enqueueTrendingHookCopyJob(params: {
       ),
       userId: params.userId,
     });
-  const job = creationResult.job;
+  let job = creationResult.job;
+
+  for (
+    let recoveryDepth = 0;
+    (job.status === "failed" || job.status === "cancelled") &&
+    recoveryDepth < 3;
+    recoveryDepth += 1
+  ) {
+    idempotencyKey = `${baseIdempotencyKey}:replacement:${job.id}`;
+    creationResult = await createBackgroundJobWithCreationResult({
+      idempotencyKey,
+      input: {
+        businessProfile: toJson(params.businessProfile),
+        businessProfileId: params.businessProfileId,
+        businessProfileVersion: params.businessProfileVersion,
+        candidates: params.candidates,
+        performanceSignals: toJson(params.performanceSignals ?? {}),
+        promptVersion: TRENDING_HOOK_PROMPT_VERSION,
+        selectionVersion: TRENDING_HOOK_SELECTION_VERSION,
+        userId: params.userId,
+      },
+      jobType: TRENDING_HOOK_COPY_JOB_TYPE,
+      queueName: getQueueNameForJobType(
+        TRENDING_HOOK_COPY_JOB_TYPE,
+      ),
+      userId: params.userId,
+    });
+    job = creationResult.job;
+  }
 
   if (job.status === "completed") {
     return job;

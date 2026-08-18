@@ -6,6 +6,7 @@ import {
 } from "@/lib/analytics/instagram";
 import { listInstagramContentInsightsForOwner } from "@/lib/analytics/instagram-content";
 import { listTikTokPublicVideoAnalyticsForOwner } from "@/lib/analytics/tiktok";
+import { recordInstagramCarouselPerformance } from "@/lib/carousel/performance";
 import { getBackgroundJobById, type Json } from "@/lib/jobs/background-jobs";
 import {
   INTERNAL_FINALIZATION_SIGNATURE_HEADER,
@@ -19,6 +20,7 @@ import {
   recordInstagramHookPerformance,
   recordTikTokHookPerformance,
 } from "@/lib/trending/hook-performance";
+import { recordInstagramWallTextPerformance } from "@/lib/trending/wall-format-performance";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
         userId,
       });
 
-      await recordHookPerformanceSafely(() =>
+      await recordPerformanceSafely("Hook", () =>
         recordTikTokHookPerformance({ accounts, userId }),
       );
 
@@ -105,9 +107,17 @@ export async function POST(request: Request) {
         userId,
       });
 
-      await recordHookPerformanceSafely(() =>
-        recordInstagramHookPerformance({ accounts, userId }),
-      );
+      await Promise.all([
+        recordPerformanceSafely("Hook", () =>
+          recordInstagramHookPerformance({ accounts, userId }),
+        ),
+        recordPerformanceSafely("Carousel", () =>
+          recordInstagramCarouselPerformance({ accounts, userId }),
+        ),
+        recordPerformanceSafely("Wall", () =>
+          recordInstagramWallTextPerformance({ accounts, userId }),
+        ),
+      ]);
 
       return json({ accounts, days, ok: true, operation: input.operation });
     }
@@ -119,14 +129,15 @@ export async function POST(request: Request) {
   }
 }
 
-async function recordHookPerformanceSafely(
+async function recordPerformanceSafely(
+  creativeType: "Carousel" | "Hook" | "Wall",
   record: () => Promise<unknown>,
 ) {
   try {
     await record();
   } catch (error) {
     console.error(
-      "Published analytics loaded, but Hook attribution could not be stored:",
+      `Published analytics loaded, but ${creativeType} attribution could not be stored:`,
       error,
     );
   }

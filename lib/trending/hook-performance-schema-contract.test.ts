@@ -9,9 +9,9 @@ const migration = readFileSync(
   ),
   "utf8",
 );
-const learningMigration = readFileSync(
+const globalFormatsMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260808114920_add_hook_performance_learning_signals.sql",
+    "../../supabase/migrations/20260813150000_add_global_hook_text_formats_v1.sql",
     import.meta.url,
   ),
   "utf8",
@@ -62,15 +62,21 @@ test("analytics sync records performance without making analytics unavailable on
   assert.match(analyticsWorker, /recordTikTokHookPerformance/);
   assert.match(
     analyticsWorker,
-    /recordHookPerformanceSafely[\s\S]*try[\s\S]*catch/,
+    /recordPerformanceSafely[\s\S]*try[\s\S]*catch/,
   );
 });
 
-test("performance learning uses only published, user-scoped Hook observations", () => {
-  assert.match(learningMigration, /hook_performance_observations as observation/);
-  assert.match(learningMigration, /suggestion\.id = observation\.hook_video_suggestion_id/);
-  assert.match(learningMigration, /observation\.user_id = p_user_id/);
-  assert.match(learningMigration, /suggestion\.business_profile_id = p_business_profile_id/);
-  assert.match(learningMigration, /suggestion\.campaign_purpose/);
-  assert.match(learningMigration, /attributed_sales_currency/);
+test("Global-format learning uses user-scoped attributed Instagram views only", () => {
+  assert.match(globalFormatsMigration, /user_hook_text_format_performance/);
+  assert.match(globalFormatsMigration, /hook_performance_observations as observation/);
+  assert.match(globalFormatsMigration, /suggestion\.id = observation\.hook_video_suggestion_id/);
+  assert.match(globalFormatsMigration, /observation\.user_id = p_user_id/);
+  assert.match(globalFormatsMigration, /observation\.platform = 'instagram'/);
+  assert.match(globalFormatsMigration, /observation\.view_count is not null/);
+  assert.match(globalFormatsMigration, /percentile_cont\(0\.5\)/);
+  assert.match(globalFormatsMigration, /temporary_boost[\s\S]*0\.08/);
+  assert.doesNotMatch(
+    globalFormatsMigration,
+    /sum\(observation\.(?:share_count|save_count|conversion_count|attributed_sales_amount)\)/,
+  );
 });

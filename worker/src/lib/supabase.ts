@@ -6,13 +6,18 @@ import type {
   BackgroundJobUpdate,
   CategoryImageAssetRow,
   CarouselGenerationUpdate,
+  CarouselExperimentAssignmentRow,
+  CarouselExperimentBatchRow,
   CarouselSlideInsert,
   GenerationProvider,
+  ReservedCarouselRoleAssetRow,
   GenerationProviderOperationRow,
   Json,
   SocialPublishProviderOperationKind,
 } from "../types.js";
 import type { CarouselBusinessVisualProfileId } from "./carousel-business-visual-profile.js";
+import type { CarouselStructureId } from "./carousel-structure.js";
+import type { RenderWallTextVideoPayload } from "./render-engine.js";
 import {
   getBroadAssetSourceCategorySlugsForProfile,
   isBroadAssetSourceAllowedForProfile,
@@ -22,6 +27,9 @@ import {
 const BACKGROUND_JOBS_TABLE = "background_jobs";
 const BUSINESS_PROFILES_TABLE = "business_profiles";
 const CAROUSEL_GENERATIONS_TABLE = "carousel_generations";
+const CAROUSEL_EXPERIMENT_ASSIGNMENTS_TABLE =
+  "carousel_experiment_assignments";
+const CAROUSEL_EXPERIMENT_BATCHES_TABLE = "carousel_experiment_batches";
 const CAROUSEL_SLIDES_TABLE = "carousel_slides";
 const CATEGORY_IMAGE_ASSETS_TABLE = "category_image_assets";
 const CATEGORY_IMAGE_ASSET_PAGE_SIZE = 1000;
@@ -179,7 +187,7 @@ export class SupabaseJobStore {
     userId: string;
   }) {
     const { data, error } = await this.client.rpc(
-      "persist_trending_hook_copy_generation_v6",
+      "persist_trending_hook_copy_generation_v7",
       {
         p_business_profile_id: params.businessProfileId,
         p_business_profile_version: params.businessProfileVersion,
@@ -213,7 +221,7 @@ export class SupabaseJobStore {
     userId: string;
   }) {
     const { data, error } = await this.client.rpc(
-      "persist_validated_hook_composition_generation_v6",
+      "persist_validated_hook_composition_generation_v7",
       {
         p_business_profile_id: params.businessProfileId,
         p_business_profile_version: params.businessProfileVersion,
@@ -904,6 +912,7 @@ export class SupabaseJobStore {
 
   async markWallTextRenderCompleted(params: {
     assignmentId: string;
+    attribution: RenderWallTextVideoPayload["attribution"];
     creativeEditId: string | null;
     creativeEditRevision: number | null;
     creativeId: string;
@@ -927,10 +936,20 @@ export class SupabaseJobStore {
       id: params.mediaAssetId,
       metadata: {
         assignmentId: params.assignmentId,
+        contentHash: params.attribution.contentHash,
         creativeEditId: params.creativeEditId,
         creativeEditRevision: params.creativeEditRevision,
         creativeId: params.creativeId,
+        editClassification: params.attribution.editClassification,
+        formatId: params.attribution.formatId,
+        formatLearningEligible: params.attribution.formatLearningEligible,
+        formatVersion: params.attribution.formatVersion,
+        instagramReelTemplateId: params.attribution.instagramReelTemplateId,
         renderId: params.renderId,
+        selectionMode: params.attribution.selectionMode,
+        selectionWeight: params.attribution.selectionWeight,
+        selectorVersion: params.attribution.selectorVersion,
+        sourceKind: params.attribution.sourceKind,
       },
       mime_type: "video/mp4",
       parent_asset_id: null,
@@ -1635,6 +1654,22 @@ export class SupabaseJobStore {
     return data;
   }
 
+  async getCarouselExperimentBatch(experimentBatchId: string) {
+    const { data, error } = await this.client
+      .from(CAROUSEL_EXPERIMENT_BATCHES_TABLE)
+      .select("*")
+      .eq("id", experimentBatchId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        `Could not load Carousel experiment batch: ${error.message}`,
+      );
+    }
+
+    return data;
+  }
+
   async getBusinessProfileForCarousel(params: {
     businessProfileId: string;
     businessProfileVersion: number;
@@ -1662,6 +1697,7 @@ export class SupabaseJobStore {
     excludeCarouselId: string;
     generationBatchId: string;
     limit?: number;
+    structureId: CarouselStructureId;
   }) {
     const limit = Math.min(Math.max(Math.trunc(params.limit ?? 10), 1), 10);
     const { data, error } = await this.client
@@ -1669,6 +1705,7 @@ export class SupabaseJobStore {
       .select("*")
       .eq("business_profile_id", params.businessProfileId)
       .eq("generation_batch_id", params.generationBatchId)
+      .eq("structure_id", params.structureId)
       .neq("id", params.excludeCarouselId)
       .in("status", ["processing", "completed"])
       .not("content_topic_id", "is", null)
@@ -1830,6 +1867,70 @@ export class SupabaseJobStore {
     }
   }
 
+  async updateCarouselExperimentAssignment(
+    assignmentId: string,
+    patch: Partial<CarouselExperimentAssignmentRow>,
+  ) {
+    const { error } = await this.client
+      .from(CAROUSEL_EXPERIMENT_ASSIGNMENTS_TABLE)
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq("id", assignmentId);
+
+    if (error) {
+      throw new Error(`Could not update Carousel experiment assignment: ${error.message}`);
+    }
+  }
+
+  async updateCarouselExperimentBatch(
+    experimentBatchId: string,
+    patch: Partial<CarouselExperimentBatchRow>,
+  ) {
+    const { error } = await this.client
+      .from(CAROUSEL_EXPERIMENT_BATCHES_TABLE)
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq("id", experimentBatchId);
+
+    if (error) {
+      throw new Error(`Could not update Carousel experiment batch: ${error.message}`);
+    }
+  }
+
+  async takeOverCarouselExperimentBatchWithStructure2(params: {
+    experimentBatchId: string;
+    failureReason: string;
+    planningAttemptCount: 2;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "take_over_carousel_experiment_batch_with_structure_2",
+      {
+        p_experiment_batch_id: params.experimentBatchId,
+        p_failure_reason: params.failureReason,
+        p_planning_attempt_count: params.planningAttemptCount,
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not resolve the Carousel batch to Structure 2: ${error.message}`,
+      );
+    }
+
+    const batch = data?.[0] ?? null;
+    if (
+      !batch ||
+      batch.requested_structure_id !== "structure_1" ||
+      batch.structure_id !== "structure_2" ||
+      batch.structure_resolution_mode !== "planning_fallback" ||
+      batch.structure_planning_attempt_count !== 2
+    ) {
+      throw new Error(
+        "Carousel Structure 2 takeover returned an invalid batch resolution.",
+      );
+    }
+
+    return batch;
+  }
+
   async getWebsiteAnalysisForCarousel(analysisId: string) {
     const { data, error } = await this.client
       .from(WEBSITE_ANALYSES_TABLE)
@@ -1923,6 +2024,29 @@ export class SupabaseJobStore {
           }),
       );
     });
+  }
+
+  async reserveCarouselRoleAssets(params: {
+    businessProfileId: string;
+    carouselId: string;
+    categorySlug: string;
+    useProductAsset?: boolean;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "reserve_carousel_role_assets_v1",
+      {
+        p_business_profile_id: params.businessProfileId,
+        p_carousel_id: params.carouselId,
+        p_category_slug: params.categorySlug,
+        p_use_product_asset: Boolean(params.useProductAsset),
+      },
+    );
+
+    if (error) {
+      throw new Error(`Could not reserve Carousel role images: ${error.message}`);
+    }
+
+    return (data ?? []) as ReservedCarouselRoleAssetRow[];
   }
 
   async upsertCarouselSlides(rows: CarouselSlideInsert[]) {

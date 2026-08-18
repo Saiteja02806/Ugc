@@ -51,6 +51,28 @@ const threeLineOverlayMigration = readFileSync(
   ),
   "utf8",
 );
+const globalFormatsMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260813150000_add_global_hook_text_formats_v1.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const globalFormatsRegistry = readFileSync(
+  new URL(
+    "../../worker/src/lib/trending-hook-text-formats.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const hookFeedSource = readFileSync(
+  new URL("./trending-hook-feed.ts", import.meta.url),
+  "utf8",
+);
+const hookJobsSource = readFileSync(
+  new URL("./trending-hook-copy-jobs.ts", import.meta.url),
+  "utf8",
+);
 
 test("stores pre-demo Hook text separately from demo-based composition text", () => {
   assert.match(
@@ -219,5 +241,58 @@ test("the current Hook persistence contract accepts up to three semantic lines",
   assert.match(
     threeLineOverlayMigration,
     /visualFit,renderedLineCount[\s\S]*between 1 and 3/i,
+  );
+});
+
+test("V7 stores Global writing formats without changing visual or audio format records", () => {
+  assert.match(globalFormatsMigration, /create table if not exists public\.hook_text_formats/);
+  assert.match(globalFormatsMigration, /create table if not exists public\.hook_text_format_variants/);
+  assert.match(globalFormatsMigration, /create table if not exists public\.hook_text_format_evidence/);
+  assert.match(globalFormatsMigration, /add column if not exists hook_text_format_id/);
+  assert.match(globalFormatsMigration, /persist_trending_hook_copy_generation_v7/);
+  assert.match(globalFormatsMigration, /global-format-rotation-v1/);
+  assert.match(globalFormatsMigration, /pattern_id = null/);
+  assert.equal(
+    new Set(globalFormatsMigration.match(/GF_\d{3}/g) ?? []).size,
+    18,
+  );
+  assert.equal(
+    new Set(globalFormatsMigration.match(/GF_\d{3}_[A-Z]/g) ?? []).size,
+    31,
+  );
+  assert.deepEqual(
+    [...new Set(globalFormatsMigration.match(/GF_\d{3}_[A-Z]/g) ?? [])]
+      .sort(),
+    [...new Set(globalFormatsRegistry.match(/GF_\d{3}_[A-Z]/g) ?? [])]
+      .sort(),
+  );
+  assert.doesNotMatch(globalFormatsMigration, /alter table public\.hook_formats/);
+  assert.doesNotMatch(globalFormatsMigration, /update public\.hook_audio_assets/);
+});
+
+test("refills Hook ideas from unused videos with one deduplicated batch", () => {
+  assert.match(
+    hookFeedSource,
+    /mode\?: "initial" \| "refill"[\s\S]+active\.length >= targetActive/,
+  );
+  assert.match(
+    hookFeedSource,
+    /mode === "initial" && active\.length === 0[\s\S]+mode = "refill"/,
+  );
+  assert.match(
+    hookFeedSource,
+    /usedVideoIds[\s\S]+!usedVideoIds\.has\(entry\.video\.id\)/,
+  );
+  assert.match(
+    hookFeedSource,
+    /refillKey: mode === "refill" \? String\(existing\.length\) : null/,
+  );
+  assert.match(
+    hookJobsSource,
+    /refillKey\?: string \| null[\s\S]+refill-\$\{params\.refillKey\}/,
+  );
+  assert.match(
+    hookJobsSource,
+    /job\.status === "failed" \|\| job\.status === "cancelled"[\s\S]+replacement:\$\{job\.id\}/,
   );
 });

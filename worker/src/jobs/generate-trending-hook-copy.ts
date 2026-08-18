@@ -6,11 +6,13 @@ import {
   type TrendingHookCopyCandidate,
 } from "../lib/trending-hook-copy.js";
 import {
-  getTrendingHookPattern,
   isTrendingHookCampaignPurpose,
-  type HookPerformanceSignals,
-  type TrendingHookPatternId,
 } from "../lib/trending-hook-patterns.js";
+import {
+  getHookTextFormat,
+  type HookTextFormatId,
+  type HookTextPerformanceSignals,
+} from "../lib/trending-hook-text-formats.js";
 import type {
   BackgroundJobRow,
   Json,
@@ -108,27 +110,74 @@ function parseInput(job: BackgroundJobRow) {
   };
 }
 
-function parsePerformanceSignals(value: Json | undefined): HookPerformanceSignals {
+function parsePerformanceSignals(
+  value: Json | undefined,
+): HookTextPerformanceSignals {
   const signals = getRecord(value);
-  const patternIds = Array.isArray(signals?.preferredPatternIds)
-    ? signals.preferredPatternIds.filter(
-        (patternId): patternId is TrendingHookPatternId =>
-          typeof patternId === "string" && Boolean(getTrendingHookPattern(patternId)),
-      )
+  const formatSignals = Array.isArray(signals?.formatSignals)
+    ? signals.formatSignals.map(parseFormatPerformanceSignal)
     : [];
   const purposes = Array.isArray(signals?.preferredPurposes)
     ? signals.preferredPurposes.filter(isTrendingHookCampaignPurpose)
     : [];
 
-  if (patternIds.length > 3 || purposes.length > 3) {
+  if (formatSignals.length > 18 || purposes.length > 3) {
     throw new Error(
       "generate_trending_hook_copy performance signals exceed the bounded contract.",
     );
   }
 
   return {
-    preferredPatternIds: [...new Set(patternIds)],
+    formatSignals: [
+      ...new Map(
+        formatSignals.map((signal) => [signal.formatId, signal]),
+      ).values(),
+    ],
     preferredPurposes: [...new Set(purposes)],
+  };
+}
+
+function parseFormatPerformanceSignal(value: Json) {
+  const signal = getRecord(value);
+  const formatId = getRequiredString(
+    signal?.formatId,
+    "performanceSignals.formatSignals.formatId",
+  );
+
+  if (!getHookTextFormat(formatId)) {
+    throw new Error(
+      "generate_trending_hook_copy has an invalid Hook text format signal.",
+    );
+  }
+
+  const selectionWeight = getNonNegativeNumber(
+    signal?.selectionWeight,
+    "performanceSignals.formatSignals.selectionWeight",
+  );
+  const temporaryBoost = getNonNegativeNumber(
+    signal?.temporaryBoost,
+    "performanceSignals.formatSignals.temporaryBoost",
+  );
+
+  if (selectionWeight > 1.3 || temporaryBoost > 0.12) {
+    throw new Error(
+      "generate_trending_hook_copy has an out-of-range Hook text format signal.",
+    );
+  }
+
+  return {
+    formatId: formatId as HookTextFormatId,
+    lastGeneratedAt: getOptionalString(signal?.lastGeneratedAt),
+    publishedResultCount: getNonNegativeInteger(
+      signal?.publishedResultCount,
+      "performanceSignals.formatSignals.publishedResultCount",
+    ),
+    selectionWeight,
+    temporaryBoost,
+    timesGenerated: getNonNegativeInteger(
+      signal?.timesGenerated,
+      "performanceSignals.formatSignals.timesGenerated",
+    ),
   };
 }
 

@@ -27,7 +27,13 @@ import {
 
 export async function prepareTrendingHookIdeas(
   profile: BusinessProfileRecord,
+  options: {
+    mode?: "initial" | "refill";
+    targetActive?: number;
+  } = {},
 ) {
+  let mode = options.mode ?? "initial";
+  const targetActive = Math.max(Math.trunc(options.targetActive ?? 6), 1);
   const source = await resolveTrendingVideoSource({
     format: "hook_video",
     userId: profile.userId,
@@ -59,22 +65,58 @@ export async function prepareTrendingHookIdeas(
       selectedAssetIds,
     );
 
-    return {
-      ideaCount: active.length,
-      jobId: existing[0]?.generation_job_id ?? null,
-      status: "ready" as const,
-    };
+    if (mode === "initial" && active.length === 0) {
+      // Older accounts may have valid historical suggestions but no active
+      // assignments left. Treat that as a refill instead of falsely reporting
+      // that their feed is ready.
+      mode = "refill";
+    } else if (mode === "initial" || active.length >= targetActive) {
+      return {
+        exhausted: false,
+        ideaCount: active.length,
+        jobId: existing[0]?.generation_job_id ?? null,
+        status: "ready" as const,
+      };
+    }
   }
 
-  const inventory = await listHookVideoBrowseInventory(
+  const fullInventory = await listHookVideoBrowseInventory(
     profile.userId,
     selectedAssetIds
       ? { mediaAssetIds: [...selectedAssetIds] }
       : undefined,
   );
+  const usedVideoIds = new Set(
+    existing.map((idea) => idea.influencer_video_id),
+  );
+  const inventory =
+    mode === "refill"
+      ? fullInventory.filter(
+          (entry) => !usedVideoIds.has(entry.video.id),
+        )
+      : fullInventory;
   const candidates = selectTrendingHookCandidates(inventory);
 
   if (candidates.length === 0) {
+    if (mode === "refill") {
+      const active = await listActiveTrendingHookIdeas({
+        businessProfileId: profile.id,
+        businessProfileVersion: profile.profileVersion,
+        promptVersion: TRENDING_HOOK_PROMPT_VERSION,
+        userId: profile.userId,
+      });
+
+      return {
+        exhausted: true,
+        ideaCount: filterHookIdeasBySelectedAssets(
+          active,
+          selectedAssetIds,
+        ).length,
+        jobId: null,
+        status: "ready" as const,
+      };
+    }
+
     throw new TrendingHookPreparationError(
       "No vertical Hook videos with valid duration metadata are available.",
       409,
@@ -97,6 +139,7 @@ export async function prepareTrendingHookIdeas(
           source.assets.map((asset) => asset.id),
         )
       : null,
+    refillKey: mode === "refill" ? String(existing.length) : null,
     userId: profile.userId,
   });
 
@@ -116,6 +159,7 @@ export async function prepareTrendingHookIdeas(
   }
 
   return {
+    exhausted: false,
     ideaCount: 0,
     jobId: job.id,
     status: (
@@ -246,12 +290,14 @@ function toHookSourceRecord(
     sourceDurationSeconds: idea.sourceDurationSeconds,
     text: {
       fontSize: idea.overlayFontSize,
+      hookTextFormatId: idea.hookTextFormatId,
       kind: "hook",
       lines: idea.openingLines,
       patternId: idea.patternId,
       placement: "center",
       styleVersion: "hook-overlay-v3",
       value: idea.hookText,
+      writingFormatId: idea.writingFormatId,
     },
     thumbnailUrl: idea.thumbnailUrl,
     title: idea.influencerVideoTitle,

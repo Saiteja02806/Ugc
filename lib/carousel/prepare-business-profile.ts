@@ -7,118 +7,71 @@ import {
   updateBusinessProfilePreparation,
   type BusinessProfileRecord,
 } from "@/lib/business-profiles/db";
-import { enqueueCarouselGenerationJob } from "@/lib/carousel/generation-jobs";
+import { enqueueCarouselExperimentBatchJob } from "@/lib/carousel/generation-jobs";
 import {
   AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
   AUTOMATIC_CAROUSEL_SLIDE_COUNT,
 } from "@/lib/carousel/automatic-candidate-count";
 import { buildCarouselBusinessContentContext } from "@/lib/carousel/business-content-context";
 import {
-  selectCarouselContentAssignments,
+  CAROUSEL_EXPERIMENT_BATCH_SIZE,
+  selectCarouselExperimentBatch,
   type CarouselContentAssignment,
 } from "@/lib/carousel/content-selector";
+import {
+  getCarouselPerformanceSignals,
+  getCarouselStructure2PerformanceSignals,
+} from "@/lib/carousel/performance";
 import { resolveCarouselCategoryProfile } from "@/lib/carousel/category-profile-resolver";
 import {
-  countReadyCategoryImageAssetsForCarousel,
+  countActiveCarouselRoleAssets,
   createCarouselGeneration,
   getCarouselGenerationsByBatchId,
   getWebsiteAnalysisForCarousel,
+  linkCarouselExperimentAssignment,
   listAutoCarouselGenerationsForBusinessProfile,
   listRecentCarouselContentHistory,
-  reserveCarouselContentAssignment,
+  listRecentCarouselStructure2History,
+  reserveCarouselExperimentBatches,
+  upsertCarouselExperimentAssignments,
   updateCarouselGeneration,
   updateCarouselGenerationBatchCandidateCount,
+  updateCarouselExperimentBatch,
+  type CarouselExperimentAssignmentRecord,
 } from "@/lib/carousel/db";
+import { resolveCarouselImageLibraryCategory } from "@/lib/carousel/image-library-category";
 import { DEFAULT_CAROUSEL_RENDER_STYLE } from "@/lib/carousel/render-style";
-import { getMissingDailyCarouselCandidateIndexes } from "@/lib/trending/daily-replenishment-logic";
+import { assertCarouselStructureRuntimeReady } from "@/lib/carousel/structure";
+import { isCarouselContentFormatId } from "@/lib/carousel/content-grammar";
+import { isCarouselStructure2FormatId } from "@/lib/carousel/structure-2-formats";
+import {
+  selectCarouselStructure2ExperimentBatch,
+  type CarouselStructure2FormatAssignment,
+} from "@/lib/carousel/structure-2-selector";
 
 export async function prepareBusinessProfileCarousels(profile: BusinessProfileRecord) {
   const { analysis, businessContext, resolvedCategory } =
     await getPreparationContext(profile);
-  let existing = (
+  const existing = (
     await listAutoCarouselGenerationsForBusinessProfile({
       businessProfileId: profile.id,
       profileVersion: profile.profileVersion,
     })
   ).filter((generation) => generation.originDailyFeedId === null);
-  let generationBatchId = existing[0]?.generationBatchId ?? randomUUID();
-  let contentAssignments = await buildContentAssignments({
+  const generationBatchId = existing[0]?.generationBatchId ?? randomUUID();
+  const prepared = await prepareControlledGenerationBatch({
+    analysisId: analysis.id,
     businessContext,
-    businessProfileId: profile.id,
     candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
-    existing,
+    categorySlug: resolvedCategory.categorySlug,
     generationBatchId,
+    profile,
   });
 
-  for (
-    let candidateIndex = 0;
-    candidateIndex < AUTOMATIC_CAROUSEL_CANDIDATE_COUNT;
-    candidateIndex += 1
+  if (
+    prepared.activeCandidates === 0 &&
+    !prepared.generations.some((generation) => generation.status === "completed")
   ) {
-    if (existing.some((generation) => generation.candidateIndex === candidateIndex)) {
-      continue;
-    }
-
-    try {
-      await createCarouselGeneration({
-        businessProfileId: profile.id,
-        businessProfileVersion: profile.profileVersion,
-        candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
-        candidateIndex,
-        categorySlug: resolvedCategory.categorySlug,
-        contentAssignment: contentAssignments[candidateIndex],
-        format: "4:5",
-        generationBatchId,
-        generationSource: "auto_generated",
-        projectId: profile.projectId,
-        selectedAngle: null,
-        slideCount: AUTOMATIC_CAROUSEL_SLIDE_COUNT,
-        userId: profile.userId,
-        websiteAnalysisId: analysis.id,
-      });
-    } catch (error) {
-      // A concurrent onboarding submission may have inserted this candidate first.
-      existing = (
-        await listAutoCarouselGenerationsForBusinessProfile({
-          businessProfileId: profile.id,
-          profileVersion: profile.profileVersion,
-        })
-      ).filter((generation) => generation.originDailyFeedId === null);
-      if (!existing.some((generation) => generation.candidateIndex === candidateIndex)) {
-        throw error;
-      }
-      const concurrentBatchId = existing[0]?.generationBatchId;
-
-      if (concurrentBatchId && concurrentBatchId !== generationBatchId) {
-        generationBatchId = concurrentBatchId;
-        contentAssignments = await buildContentAssignments({
-          businessContext,
-          businessProfileId: profile.id,
-          candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
-          existing,
-          generationBatchId,
-        });
-      }
-    }
-  }
-
-  existing = (
-    await listAutoCarouselGenerationsForBusinessProfile({
-      businessProfileId: profile.id,
-      profileVersion: profile.profileVersion,
-    })
-  ).filter((generation) => generation.originDailyFeedId === null);
-
-  await reserveMissingContentAssignments(existing, contentAssignments);
-
-  await updateCarouselGenerationBatchCandidateCount({
-    candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
-    generationBatchId,
-  });
-
-  const activeCandidates = await enqueueProcessingCarouselCandidates(existing, profile);
-
-  if (activeCandidates === 0 && !existing.some((generation) => generation.status === "completed")) {
     throw new Error("Could not start carousel preparation workers.");
   }
 
@@ -129,7 +82,7 @@ export async function prepareBusinessProfileCarousels(profile: BusinessProfileRe
   });
 
   return {
-    candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
+    candidateCount: prepared.candidateCount,
     generationBatchId,
   };
 }
@@ -141,12 +94,12 @@ export async function prepareDailyBusinessProfileCarousels(params: {
   profile: BusinessProfileRecord;
   targetCandidateCount: number;
 }) {
-  const targetCandidateCount = Math.min(
+  const requestedCandidateCount = Math.min(
     Math.max(Math.trunc(params.targetCandidateCount), 0),
     50,
   );
 
-  if (targetCandidateCount === 0) {
+  if (requestedCandidateCount === 0) {
     return {
       candidateCount: 0,
       generationBatchId: params.generationBatchId,
@@ -155,7 +108,7 @@ export async function prepareDailyBusinessProfileCarousels(params: {
 
   const { analysis, businessContext, resolvedCategory } =
     await getPreparationContext(params.profile);
-  let existingBatch = await getCarouselGenerationsByBatchId(
+  const existingBatch = await getCarouselGenerationsByBatchId(
     params.generationBatchId,
   );
 
@@ -164,138 +117,281 @@ export async function prepareDailyBusinessProfileCarousels(params: {
     originDailyFeedId: params.originDailyFeedId,
     profile: params.profile,
   });
-  const contentAssignments = await buildContentAssignments({
+  const prepared = await prepareControlledGenerationBatch({
+    analysisId: analysis.id,
+    availableOnLocalDate: params.localDate,
     businessContext,
-    businessProfileId: params.profile.id,
-    candidateCount: targetCandidateCount,
-    existing: existingBatch,
+    candidateCount: requestedCandidateCount,
+    categorySlug: resolvedCategory.categorySlug,
     generationBatchId: params.generationBatchId,
-  });
-
-  const missingCandidateIndexes = getMissingDailyCarouselCandidateIndexes({
-    existingCandidateIndexes: existingBatch.map(
-      (generation) => generation.candidateIndex,
-    ),
-    targetCandidateCount,
-  });
-
-  for (const candidateIndex of missingCandidateIndexes) {
-    try {
-      await createCarouselGeneration({
-        availableOnLocalDate: params.localDate,
-        businessProfileId: params.profile.id,
-        businessProfileVersion: params.profile.profileVersion,
-        candidateCount: targetCandidateCount,
-        candidateIndex,
-        categorySlug: resolvedCategory.categorySlug,
-        contentAssignment: contentAssignments[candidateIndex],
-        format: "4:5",
-        generationBatchId: params.generationBatchId,
-        generationSource: "auto_generated",
-        originDailyFeedId: params.originDailyFeedId,
-        projectId: params.profile.projectId,
-        selectedAngle: null,
-        slideCount: AUTOMATIC_CAROUSEL_SLIDE_COUNT,
-        userId: params.profile.userId,
-        websiteAnalysisId: analysis.id,
-      });
-    } catch (error) {
-      existingBatch = await getCarouselGenerationsByBatchId(
-        params.generationBatchId,
-      );
-
-      if (!existingBatch.some((generation) => generation.candidateIndex === candidateIndex)) {
-        throw error;
-      }
-    }
-
-    existingBatch = await getCarouselGenerationsByBatchId(
-      params.generationBatchId,
-    );
-  }
-
-  assertDailyBatchOwnership({
-    existingBatch,
     originDailyFeedId: params.originDailyFeedId,
     profile: params.profile,
   });
 
-  await reserveMissingContentAssignments(existingBatch, contentAssignments);
-
-  await updateCarouselGenerationBatchCandidateCount({
-    candidateCount: targetCandidateCount,
-    generationBatchId: params.generationBatchId,
-  });
-  await enqueueProcessingCarouselCandidates(existingBatch, params.profile, {
-    throwOnFailure: true,
+  assertDailyBatchOwnership({
+    existingBatch: prepared.generations,
+    originDailyFeedId: params.originDailyFeedId,
+    profile: params.profile,
   });
 
   return {
-    candidateCount: targetCandidateCount,
+    candidateCount: prepared.candidateCount,
     generationBatchId: params.generationBatchId,
   };
 }
 
-async function buildContentAssignments(params: {
+async function prepareControlledGenerationBatch(params: {
+  analysisId: string;
+  availableOnLocalDate?: string | null;
   businessContext: BusinessProfileRecord["context"];
-  businessProfileId: string;
   candidateCount: number;
-  existing: Awaited<ReturnType<typeof getCarouselGenerationsByBatchId>>;
+  categorySlug: string;
   generationBatchId: string;
+  originDailyFeedId?: string | null;
+  profile: BusinessProfileRecord;
 }) {
-  const history = await listRecentCarouselContentHistory({
-    businessProfileId: params.businessProfileId,
-    excludeGenerationBatchId: params.generationBatchId,
-    limit: 10,
+  const candidateCount = Math.min(
+    Math.ceil(params.candidateCount / CAROUSEL_EXPERIMENT_BATCH_SIZE) *
+      CAROUSEL_EXPERIMENT_BATCH_SIZE,
+    50,
+  );
+  const experimentBatches = await reserveCarouselExperimentBatches({
+    batchCount: candidateCount / CAROUSEL_EXPERIMENT_BATCH_SIZE,
+    businessProfileId: params.profile.id,
+    businessProfileVersion: params.profile.profileVersion,
+    generationBatchId: params.generationBatchId,
   });
-  const reserved = new Map<number, Partial<CarouselContentAssignment>>();
 
-  for (const generation of params.existing) {
-    if (generation.contentFormatId && generation.hookFamilyId) {
-      reserved.set(generation.candidateIndex, {
-        contentFormatId: generation.contentFormatId,
-        hookFamilyId: generation.hookFamilyId,
-      });
+  for (const experimentBatch of experimentBatches) {
+    assertCarouselStructureRuntimeReady(experimentBatch.structureId);
+  }
+
+  const structureIds = Array.from(
+    new Set(experimentBatches.map((batch) => batch.structureId)),
+  );
+  const hasStructure1 = structureIds.includes("structure_1");
+  const hasStructure2 = structureIds.includes("structure_2");
+  const [structure1History, structure2History] = await Promise.all([
+    hasStructure1
+      ? listRecentCarouselContentHistory({
+          businessProfileId: params.profile.id,
+          excludeGenerationBatchId: params.generationBatchId,
+          limit: 10,
+          structureId: "structure_1",
+        })
+      : Promise.resolve([]),
+    hasStructure2
+      ? listRecentCarouselStructure2History({
+          businessProfileId: params.profile.id,
+          excludeGenerationBatchId: params.generationBatchId,
+          limit: 10,
+        })
+      : Promise.resolve([]),
+  ]);
+  const topicOptionCount = buildCarouselBusinessContentContext(
+    params.businessContext,
+  ).topics.length;
+  const [structure1Performance, structure2Performance] = await Promise.all([
+    hasStructure1
+      ? getCarouselPerformanceSignals({
+          businessProfileId: params.profile.id,
+          structureId: "structure_1",
+          userId: params.profile.userId,
+        })
+      : Promise.resolve({}),
+    hasStructure2
+      ? getCarouselStructure2PerformanceSignals({
+          businessProfileId: params.profile.id,
+          userId: params.profile.userId,
+        })
+      : Promise.resolve({}),
+  ]);
+
+  for (const [batchOffset, experimentBatch] of experimentBatches.entries()) {
+    const assignments =
+      experimentBatch.structureId === "structure_2"
+        ? selectCarouselStructure2ExperimentBatch({
+            batchSequence: experimentBatch.structureBatchSequence,
+            history: structure2History,
+            performanceSignals: structure2Performance,
+            selectionKey: params.profile.id,
+          })
+        : selectCarouselExperimentBatch({
+            batchSequence: experimentBatch.structureBatchSequence,
+            history: structure1History,
+            performanceSignals: structure1Performance,
+            selectionKey: params.profile.id,
+            topicOptionCount,
+          });
+    const persistedAssignments = await upsertCarouselExperimentAssignments({
+      assignments,
+      experimentBatchId: experimentBatch.id,
+      structureId: experimentBatch.structureId,
+      structureVersion: experimentBatch.structureVersion,
+    });
+
+    for (const [slotIndex, assignment] of assignments.entries()) {
+      const candidateIndex =
+        batchOffset * CAROUSEL_EXPERIMENT_BATCH_SIZE + slotIndex;
+      let generations = await getCarouselGenerationsByBatchId(
+        params.generationBatchId,
+      );
+      let generation = generations.find(
+        (candidate) => candidate.candidateIndex === candidateIndex,
+      );
+
+      if (!generation) {
+        const persistedAssignment = persistedAssignments[slotIndex];
+        if (!persistedAssignment) {
+          throw new Error(`Carousel experiment slot ${slotIndex} was not persisted.`);
+        }
+        if (
+          persistedAssignment.structureId !== experimentBatch.structureId ||
+          persistedAssignment.structureVersion !== experimentBatch.structureVersion
+        ) {
+          throw new Error(
+            `Carousel experiment slot ${slotIndex} has mismatched structure metadata.`,
+          );
+        }
+
+        try {
+          const persistedContentAssignment =
+            experimentBatch.structureId === "structure_2"
+              ? buildPersistedStructure2Assignment({
+                  assignment,
+                  persistedAssignment,
+                })
+              : buildPersistedStructure1Assignment({
+                  assignment,
+                  persistedAssignment,
+                });
+          const carouselId = await createCarouselGeneration({
+            availableOnLocalDate: params.availableOnLocalDate ?? null,
+            businessProfileId: params.profile.id,
+            businessProfileVersion: params.profile.profileVersion,
+            candidateCount,
+            candidateIndex,
+            categorySlug: params.categorySlug,
+            contentAssignment: persistedContentAssignment,
+            experimentAssignmentId: persistedAssignment.id,
+            experimentBatchId: experimentBatch.id,
+            format: "4:5",
+            generationBatchId: params.generationBatchId,
+            generationSource: "auto_generated",
+            originDailyFeedId: params.originDailyFeedId ?? null,
+            projectId: params.profile.projectId,
+            selectedAngle: null,
+            slideCount: AUTOMATIC_CAROUSEL_SLIDE_COUNT,
+            structureId: experimentBatch.structureId,
+            structureVersion: experimentBatch.structureVersion,
+            userId: params.profile.userId,
+            websiteAnalysisId: params.analysisId,
+          });
+          await linkCarouselExperimentAssignment({
+            assignmentId: persistedAssignment.id,
+            carouselId,
+          });
+        } catch (error) {
+          generations = await getCarouselGenerationsByBatchId(
+            params.generationBatchId,
+          );
+          generation = generations.find(
+            (candidate) => candidate.candidateIndex === candidateIndex,
+          );
+          if (!generation) throw error;
+        }
+      }
     }
   }
 
-  const contentContext = buildCarouselBusinessContentContext(
-    params.businessContext,
+  const generations = await getCarouselGenerationsByBatchId(
+    params.generationBatchId,
+  );
+  await updateCarouselGenerationBatchCandidateCount({
+    candidateCount,
+    generationBatchId: params.generationBatchId,
+  });
+  const activeCandidates = await enqueueProcessingCarouselCandidates(
+    generations,
+    params.profile,
+    { throwOnFailure: Boolean(params.originDailyFeedId) },
   );
 
-  return selectCarouselContentAssignments({
-    candidateCount: params.candidateCount,
-    history,
-    reserved,
-    seed: `${params.businessProfileId}:${params.generationBatchId}`,
-    topicOptionCount: contentContext.topics.length,
-  });
+  return { activeCandidates, candidateCount, generations };
 }
 
-async function reserveMissingContentAssignments(
-  generations: Awaited<ReturnType<typeof getCarouselGenerationsByBatchId>>,
-  assignments: readonly CarouselContentAssignment[],
-) {
-  await Promise.all(
-    generations.map(async (generation) => {
-      if (generation.contentFormatId && generation.hookFamilyId) {
-        return;
-      }
+function buildPersistedStructure1Assignment(params: {
+  assignment: CarouselContentAssignment | CarouselStructure2FormatAssignment;
+  persistedAssignment: CarouselExperimentAssignmentRecord;
+}): CarouselContentAssignment {
+  const assignedFormatId = params.persistedAssignment.assignedFormatId;
+  const actualFormatId =
+    params.persistedAssignment.actualFormatId ?? assignedFormatId;
+  const rotationCandidateFormatId =
+    params.persistedAssignment.rotationCandidateFormatId;
 
-      const assignment = assignments[generation.candidateIndex];
+  if (
+    !("contentFormatId" in params.assignment) ||
+    !isCarouselContentFormatId(assignedFormatId) ||
+    !isCarouselContentFormatId(actualFormatId) ||
+    !isCarouselContentFormatId(rotationCandidateFormatId) ||
+    !params.persistedAssignment.hookFamilyId ||
+    !params.persistedAssignment.hookSelectionMode ||
+    params.persistedAssignment.hookSelectionMultiplier === null
+  ) {
+    throw new Error("Persisted Structure 1 assignment is invalid.");
+  }
 
-      if (!assignment) {
-        throw new Error(
-          `Carousel candidate ${generation.candidateIndex} is missing a content assignment.`,
-        );
-      }
+  return {
+    ...params.assignment,
+    assignedContentFormatId: assignedFormatId,
+    contentFormatId: actualFormatId,
+    formatSelectionMode: params.persistedAssignment.formatSelectionMode,
+    formatSelectionMultiplier:
+      params.persistedAssignment.formatSelectionMultiplier,
+    formatVersion: params.persistedAssignment.formatVersion,
+    hookFamilyId: params.persistedAssignment.hookFamilyId,
+    hookSelectionMode: params.persistedAssignment.hookSelectionMode,
+    hookSelectionMultiplier:
+      params.persistedAssignment.hookSelectionMultiplier,
+    rotationCandidateContentFormatId:
+      rotationCandidateFormatId,
+  };
+}
 
-      await reserveCarouselContentAssignment({
-        assignment,
-        carouselId: generation.id,
-      });
-    }),
-  );
+function buildPersistedStructure2Assignment(params: {
+  assignment: CarouselContentAssignment | CarouselStructure2FormatAssignment;
+  persistedAssignment: CarouselExperimentAssignmentRecord;
+}): CarouselStructure2FormatAssignment {
+  const actualFormatId =
+    params.persistedAssignment.actualFormatId ??
+    params.persistedAssignment.assignedFormatId;
+
+  if (
+    !("storyFormatId" in params.assignment) ||
+    !isCarouselStructure2FormatId(params.persistedAssignment.assignedFormatId) ||
+    !isCarouselStructure2FormatId(actualFormatId) ||
+    !isCarouselStructure2FormatId(
+      params.persistedAssignment.rotationCandidateFormatId,
+    ) ||
+    params.persistedAssignment.hookFamilyId !== null ||
+    params.persistedAssignment.hookSelectionMode !== null ||
+    params.persistedAssignment.hookSelectionMultiplier !== null
+  ) {
+    throw new Error("Persisted Structure 2 assignment is invalid.");
+  }
+
+  return {
+    ...params.assignment,
+    assignedStoryFormatId: params.persistedAssignment.assignedFormatId,
+    formatSelectionMode: params.persistedAssignment.formatSelectionMode,
+    formatSelectionMultiplier:
+      params.persistedAssignment.formatSelectionMultiplier,
+    formatVersion: params.persistedAssignment.formatVersion,
+    rotationCandidateStoryFormatId:
+      params.persistedAssignment.rotationCandidateFormatId,
+    storyFormatId: actualFormatId,
+  };
 }
 
 async function getPreparationContext(profile: BusinessProfileRecord) {
@@ -319,14 +415,20 @@ async function getPreparationContext(profile: BusinessProfileRecord) {
     visualKeywords:
       profile.context.visualKeywords ?? analysis.visualKeywords,
   });
-  const safeAssetCount = await countReadyCategoryImageAssetsForCarousel(
-    resolvedCategory.categorySlug,
-    resolvedCategory.businessVisualProfile.id,
-  );
+  const imageLibraryCategory = resolveCarouselImageLibraryCategory({
+    category: profile.context.category ?? analysis.category,
+    categorySlug: resolvedCategory.categorySlug,
+    productSummary:
+      profile.context.productSummary ?? analysis.productSummary,
+    valueProps: profile.context.valueProps,
+    visualKeywords:
+      profile.context.visualKeywords ?? analysis.visualKeywords,
+  });
+  const roleCounts = await countActiveCarouselRoleAssets(imageLibraryCategory);
 
-  if (safeAssetCount === 0) {
+  if (roleCounts.hook < 1 || roleCounts.human < 2 || roleCounts.static < 2) {
     throw new Error(
-      "No approved safe carousel assets are available for this business profile.",
+      `Carousel image library "${imageLibraryCategory}" is not ready (hook=${roleCounts.hook}, human=${roleCounts.human}, static=${roleCounts.static}).`,
     );
   }
 
@@ -344,28 +446,72 @@ export async function enqueueProcessingCarouselCandidates(
 ) {
   let activeCandidates = 0;
   let firstFailure: unknown = null;
+  const generationsByExperimentBatch = new Map<
+    string,
+    typeof generations
+  >();
 
   for (const generation of generations) {
-    if (generation.status !== "processing") {
+    if (!generation.carouselExperimentBatchId) {
+      if (generation.status === "processing") {
+        firstFailure ??= new Error(
+          `Carousel ${generation.id} is missing its controlled experiment batch.`,
+        );
+      }
+      continue;
+    }
+
+    const batch =
+      generationsByExperimentBatch.get(generation.carouselExperimentBatchId) ?? [];
+    batch.push(generation);
+    generationsByExperimentBatch.set(generation.carouselExperimentBatchId, batch);
+  }
+
+  for (const [experimentBatchId, batch] of generationsByExperimentBatch) {
+    const orderedBatch = [...batch].sort(
+      (left, right) => left.candidateIndex - right.candidateIndex,
+    );
+    const processing = orderedBatch.filter(
+      (generation) => generation.status === "processing",
+    );
+
+    if (processing.length === 0) continue;
+
+    if (orderedBatch.length !== CAROUSEL_EXPERIMENT_BATCH_SIZE) {
+      firstFailure ??= new Error(
+        `Carousel experiment ${experimentBatchId} does not contain exactly five candidates.`,
+      );
       continue;
     }
 
     try {
-      const jobId = await enqueueCarouselGenerationJob({
-        candidateCount: generation.candidateCount,
-        candidateIndex: generation.candidateIndex,
-        carouselId: generation.id,
-        existingJobId: generation.triggerRunId,
+      const existingJobIds = Array.from(
+        new Set(orderedBatch.map((generation) => generation.triggerRunId).filter(Boolean)),
+      );
+      if (existingJobIds.length > 1) {
+        throw new Error(`Carousel experiment ${experimentBatchId} has conflicting jobs.`);
+      }
+      const jobId = await enqueueCarouselExperimentBatchJob({
+        carouselIds: orderedBatch.map((generation) => generation.id),
+        existingJobId: existingJobIds[0] ?? null,
+        experimentBatchId,
         projectId: profile.projectId,
         textStyle: DEFAULT_CAROUSEL_RENDER_STYLE,
         userId: profile.userId,
       });
-      if (generation.triggerRunId !== jobId) {
-        await updateCarouselGeneration(generation.id, { trigger_run_id: jobId });
-      }
-      activeCandidates += 1;
+      await Promise.all(
+        orderedBatch.map((generation) =>
+          generation.triggerRunId === jobId
+            ? Promise.resolve()
+            : updateCarouselGeneration(generation.id, { trigger_run_id: jobId }),
+        ),
+      );
+      await updateCarouselExperimentBatch({
+        experimentBatchId,
+        patch: { planner_job_id: jobId, status: "queued" },
+      });
+      activeCandidates += processing.length;
     } catch (error) {
-      // enqueueCarouselGenerationJob persists the candidate failure before it throws.
       firstFailure ??= error;
     }
   }

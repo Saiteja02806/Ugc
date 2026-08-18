@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  WALL_AUDIO_LOCKED_MATCHING_VERSION,
   WALL_AUDIO_MATCHING_VERSION,
   buildWallAudioIntent,
   createWallTextContentFingerprint,
   getWallAudioFitMode,
   scoreWallAudioMatch,
+  selectLockedWallAudio,
   selectWallAudio,
   type WallAudioAsset,
   type WallAudioIntent,
@@ -164,6 +166,35 @@ test("loop is used only when no exact or longer approved soundtrack exists", () 
 
   assert.equal(result?.audioAssetId, "audio_006s_loopable");
   assert.equal(result?.fitMode, "loop");
+});
+
+test("an Instagram template keeps its locked audio and trims it to the video", () => {
+  const result = selectLockedWallAudio({
+    asset: asset("instagram-locked", {
+      durationSeconds: 60,
+      loopable: false,
+    }),
+    intent,
+    videoDurationSeconds: 12,
+  });
+
+  assert.equal(result?.audioAssetId, "instagram-locked");
+  assert.equal(result?.fitMode, "trim");
+  assert.equal(result?.outputDurationSeconds, 12);
+  assert.equal(result?.matchingVersion, WALL_AUDIO_LOCKED_MATCHING_VERSION);
+});
+
+test("an Instagram template never loops a short locked track", () => {
+  const result = selectLockedWallAudio({
+    asset: asset("instagram-locked", {
+      durationSeconds: 6,
+      loopable: true,
+    }),
+    intent,
+    videoDurationSeconds: 12,
+  });
+
+  assert.equal(result, null);
 });
 
 test("recent-use avoidance chooses a fresh candidate inside the top semantic band", () => {

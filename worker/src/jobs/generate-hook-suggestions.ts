@@ -5,11 +5,13 @@ import {
   type TrendingHookCopyCandidate,
 } from "../lib/trending-hook-copy.js";
 import {
-  getTrendingHookPattern,
   isTrendingHookCampaignPurpose,
-  type HookPerformanceSignals,
-  type TrendingHookPatternId,
 } from "../lib/trending-hook-patterns.js";
+import {
+  getHookTextFormat,
+  type HookTextFormatId,
+  type HookTextPerformanceSignals,
+} from "../lib/trending-hook-text-formats.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext } from "./index.js";
 
@@ -174,27 +176,74 @@ function parseCandidate(value: Json | undefined) {
   } satisfies Omit<TrendingHookCopyCandidate, "candidateIndex">;
 }
 
-function parsePerformanceSignals(value: Json | undefined): HookPerformanceSignals {
+function parsePerformanceSignals(
+  value: Json | undefined,
+): HookTextPerformanceSignals {
   const signals = getRecord(value);
-  const preferredPatternIds = Array.isArray(signals?.preferredPatternIds)
-    ? signals.preferredPatternIds.filter(
-        (patternId): patternId is TrendingHookPatternId =>
-          typeof patternId === "string" && Boolean(getTrendingHookPattern(patternId)),
-      )
+  const formatSignals = Array.isArray(signals?.formatSignals)
+    ? signals.formatSignals.map(parseFormatPerformanceSignal)
     : [];
   const preferredPurposes = Array.isArray(signals?.preferredPurposes)
     ? signals.preferredPurposes.filter(isTrendingHookCampaignPurpose)
     : [];
 
-  if (preferredPatternIds.length > 3 || preferredPurposes.length > 3) {
+  if (formatSignals.length > 18 || preferredPurposes.length > 3) {
     throw new Error(
       "hook_text_generation performance signals exceed the bounded contract.",
     );
   }
 
   return {
-    preferredPatternIds: [...new Set(preferredPatternIds)],
+    formatSignals: [
+      ...new Map(
+        formatSignals.map((signal) => [signal.formatId, signal]),
+      ).values(),
+    ],
     preferredPurposes: [...new Set(preferredPurposes)],
+  };
+}
+
+function parseFormatPerformanceSignal(value: Json) {
+  const signal = getRecord(value);
+  const formatId = getRequiredString(
+    signal?.formatId,
+    "performanceSignals.formatSignals.formatId",
+  );
+
+  if (!getHookTextFormat(formatId)) {
+    throw new Error(
+      "hook_text_generation has an invalid Hook text format signal.",
+    );
+  }
+
+  const selectionWeight = getNonNegativeNumber(
+    signal?.selectionWeight,
+    "performanceSignals.formatSignals.selectionWeight",
+  );
+  const temporaryBoost = getNonNegativeNumber(
+    signal?.temporaryBoost,
+    "performanceSignals.formatSignals.temporaryBoost",
+  );
+
+  if (selectionWeight > 1.3 || temporaryBoost > 0.12) {
+    throw new Error(
+      "hook_text_generation has an out-of-range Hook text format signal.",
+    );
+  }
+
+  return {
+    formatId: formatId as HookTextFormatId,
+    lastGeneratedAt: getOptionalString(signal?.lastGeneratedAt),
+    publishedResultCount: getNonNegativeInteger(
+      signal?.publishedResultCount,
+      "performanceSignals.formatSignals.publishedResultCount",
+    ),
+    selectionWeight,
+    temporaryBoost,
+    timesGenerated: getNonNegativeInteger(
+      signal?.timesGenerated,
+      "performanceSignals.formatSignals.timesGenerated",
+    ),
   };
 }
 
@@ -226,6 +275,18 @@ function getPositiveInteger(value: Json | undefined, field: string) {
   if (parsed === null || parsed <= 0) {
     throw new Error(
       `hook_text_generation requires positive input.${field}.`,
+    );
+  }
+
+  return parsed;
+}
+
+function getNonNegativeInteger(value: Json | undefined, field: string) {
+  const parsed = getInteger(value);
+
+  if (parsed === null || parsed < 0) {
+    throw new Error(
+      `hook_text_generation requires non-negative input.${field}.`,
     );
   }
 

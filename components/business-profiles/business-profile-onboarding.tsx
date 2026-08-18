@@ -530,7 +530,12 @@ export function BusinessProfileOnboarding() {
         throw new Error("Sign in before completing onboarding.");
       }
       const response = await fetch("/api/business-profile", {
-        body: JSON.stringify({ action: "complete", primaryGoals }),
+        body: JSON.stringify({
+          action: "complete",
+          primaryGoals,
+          timezone:
+            Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        }),
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",

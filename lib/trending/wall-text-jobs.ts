@@ -9,6 +9,8 @@ import { WALL_TEXT_GENERATOR_VERSION } from "@/lib/trending/wall-text-types";
 export async function enqueueTrendingWallTextJob(params: {
   businessProfileId: string;
   businessProfileVersion: number;
+  refillKey?: string | null;
+  requestedCount?: number;
   userId: string;
 }) {
   const idempotencyKey = [
@@ -16,6 +18,8 @@ export async function enqueueTrendingWallTextJob(params: {
     params.businessProfileId,
     `v${params.businessProfileVersion}`,
     WALL_TEXT_GENERATOR_VERSION,
+    ...(params.refillKey ? [`refill-${params.refillKey}`] : []),
+    `count-${Math.min(Math.max(Math.trunc(params.requestedCount ?? 6), 1), 50)}`,
   ].join(":");
 
   let job = await createWallTextBackgroundJob({
@@ -50,6 +54,8 @@ function createWallTextBackgroundJob(params: {
   businessProfileId: string;
   businessProfileVersion: number;
   idempotencyKey: string;
+  refillKey?: string | null;
+  requestedCount?: number;
   userId: string;
 }) {
   return createAndDispatchBackgroundJob({
@@ -57,6 +63,12 @@ function createWallTextBackgroundJob(params: {
     input: {
       businessProfileId: params.businessProfileId,
       businessProfileVersion: params.businessProfileVersion,
+      refillKey: params.refillKey ?? null,
+      requestedCount: Math.min(
+        Math.max(Math.trunc(params.requestedCount ?? 6), 1),
+        50,
+      ),
+      requestKey: params.idempotencyKey,
       userId: params.userId,
     },
     inputReference: `business_profile:${params.businessProfileId}:v${params.businessProfileVersion}`,

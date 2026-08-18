@@ -50,21 +50,35 @@ test("wall claims and Library refreshes are edit aware", () => {
 test("manual Hook and Wall saves use their publishing limits", () => {
   assert.match(editRoute, /HOOK_TEXT_MAXIMUM_CHARACTERS/);
   assert.match(editRoute, /HOOK_TEXT_MAXIMUM_WORDS/);
-  assert.match(editRoute, /\.max\(300\)/);
-  assert.match(editRoute, /MIN_WALL_TEXT_WORDS/);
-  assert.match(editRoute, /MAX_WALL_TEXT_WORDS/);
+  assert.match(editRoute, /\.max\(600\)/);
+  assert.match(editRoute, /MIN_SHORT_WALL_TEXT_WORDS/);
+  assert.match(editRoute, /MAX_CURRENT_WALL_TEXT_WORDS/);
   assert.match(editRoute, /TEXT_COLOR_SCHEMA/);
   assert.match(editRoute, /textColor: data\.textColor/);
   assert.match(editor, /TextColorPicker/);
   assert.match(editor, /textColor: content\.textColor/);
+  assert.match(editor, /<textarea\s+id="trending-hook-text"/);
+  assert.match(editor, /HOOK_TEXT_MAXIMUM_LINES/);
+  assert.doesNotMatch(editor, /final two-line layout/);
 });
 
 test("Hook and Wall edits support an entire library or one exact video", () => {
-  assert.match(editor, /Use entire library/);
+  const openGroupFlow = editor.slice(
+    editor.indexOf("async function openGroup"),
+    editor.indexOf("function openCreativeAssets"),
+  );
+
+  assert.match(editor, /Choose a video folder/);
+  assert.match(editor, /name="Creative Assets"/);
+  assert.match(editor, /groups\.map\(\(group\)/);
+  assert.match(editor, /Back to folders/);
+  assert.match(editor, /Use entire group/);
   assert.match(editor, /Use this video/);
   assert.match(editor, /CreativeAssetDeck/);
   assert.match(editor, /StaticCreativeTextOverlay/);
   assert.match(editor, /Swipe to audition/);
+  assert.doesNotMatch(editor, />\s*All videos\s*</);
+  assert.doesNotMatch(openGroupFlow, /setSourceChoice/);
   assert.match(editService, /allowGroupFallback/);
   assert.match(editService, /chooseLibraryAsset/);
   assert.match(

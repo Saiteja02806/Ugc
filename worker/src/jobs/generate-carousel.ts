@@ -1,12 +1,17 @@
 import type { SupabaseJobStore } from "../lib/supabase.js";
-import { generateCarousel } from "../lib/carousel-generate.js";
+import {
+  generateCarousel,
+  generateCarouselBatch,
+} from "../lib/carousel-generate.js";
 import { getCarouselRenderStyle } from "../lib/carousel-render-style.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobOutput } from "./index.js";
 
 type GenerateCarouselInput = {
-  candidateIndex: number;
-  carouselId: string;
+  candidateIndex?: number;
+  carouselId?: string;
+  carouselIds?: string[];
+  experimentBatchId?: string;
   textStyle: Json | undefined;
 };
 
@@ -17,7 +22,30 @@ function getInput(job: BackgroundJobRow): GenerateCarouselInput {
 
   const input = job.input_json;
   const carouselId = input.carouselId;
+  const carouselIds = input.carouselIds;
+  const experimentBatchId = input.experimentBatchId;
   const candidateIndex = input.candidateIndex;
+
+  if (Array.isArray(carouselIds) || experimentBatchId !== undefined) {
+    if (
+      !Array.isArray(carouselIds) ||
+      carouselIds.length !== 5 ||
+      carouselIds.some((id) => typeof id !== "string" || !id.trim()) ||
+      new Set(carouselIds).size !== 5 ||
+      typeof experimentBatchId !== "string" ||
+      !experimentBatchId.trim()
+    ) {
+      throw new Error(
+        "generate_carousel batch input requires five unique carouselIds and experimentBatchId.",
+      );
+    }
+
+    return {
+      carouselIds: carouselIds as string[],
+      experimentBatchId,
+      textStyle: input.textStyle,
+    };
+  }
 
   if (typeof carouselId !== "string" || !carouselId.trim()) {
     throw new Error("generate_carousel requires input.carouselId.");
@@ -45,9 +73,48 @@ export async function runGenerateCarouselJob(
   },
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
+  if (input.carouselIds && input.experimentBatchId) {
+    try {
+      return await generateCarouselBatch({
+        carouselIds: input.carouselIds,
+        experimentBatchId: input.experimentBatchId,
+        store: context.store,
+        textStyle: getCarouselRenderStyle(input.textStyle),
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Carousel batch generation failed.";
+      const generations = await Promise.all(
+        input.carouselIds.map((carouselId) =>
+          context.store.getCarouselGeneration(carouselId),
+        ),
+      );
+      await Promise.all(
+        generations.flatMap((generation) =>
+          generation?.status === "processing"
+            ? [
+                context.store.updateCarouselGeneration(generation.id, {
+                  error_message: message.slice(0, 900),
+                  status: "failed",
+                }),
+              ]
+            : [],
+        ),
+      );
+      const completedCount = generations.filter(
+        (generation) => generation?.status === "completed",
+      ).length;
+      await context.store.updateCarouselExperimentBatch(
+        input.experimentBatchId,
+        { status: completedCount > 0 ? "partial" : "failed" },
+      );
+      throw error;
+    }
+  }
+
   const result = await generateCarousel({
-    candidateIndex: input.candidateIndex,
-    carouselId: input.carouselId,
+    candidateIndex: input.candidateIndex!,
+    carouselId: input.carouselId!,
     store: context.store,
     textStyle: getCarouselRenderStyle(input.textStyle),
   });

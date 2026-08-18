@@ -5,9 +5,14 @@ import test from "node:test";
 
 const workspaceRoot = process.cwd();
 const migration = read("supabase/migrations/20260810174540_add_carousel_content_grammar.sql");
+const experimentMigration = read("supabase/migrations/20260813110309_add_controlled_carousel_experiment_batches.sql");
 const preparation = read("lib/carousel/prepare-business-profile.ts");
 const appGenerator = read("lib/carousel/generate-carousel.ts");
+const generationDb = read("lib/carousel/db.ts");
+const legacyGenerateRoute = read("app/api/carousel/generate/route.ts");
+const legacyGenerateMoreRoute = read("app/api/carousel/generate-more/route.ts");
 const workerGenerator = read("worker/src/lib/carousel-generate.ts");
+const workerPlanner = read("worker/src/lib/carousel-llm-slide-plan.ts");
 const workerStore = read("worker/src/lib/supabase.ts");
 
 test("adds content grammar state only to existing carousel generations", () => {
@@ -42,15 +47,59 @@ test("adds content grammar state only to existing carousel generations", () => {
   );
 });
 
-test("automatic generation derives and reserves grammar from the current onboarding profile", () => {
+test("all new generation entry points require structure-owned assignments", () => {
+  for (const route of [legacyGenerateRoute, legacyGenerateMoreRoute]) {
+    assert.match(route, /carousel_manual_generation_retired/);
+    assert.match(route, /\b410\b/);
+    assert.doesNotMatch(route, /createCarouselGeneration/);
+    assert.doesNotMatch(route, /enqueueCarouselGenerationJob/);
+  }
+
+  assert.match(generationDb, /businessProfileId: string;/);
+  assert.match(generationDb, /businessProfileVersion: number;/);
+  assert.match(
+    generationDb,
+    /contentAssignment: CarouselStructureContentAssignment;/,
+  );
+  assert.match(
+    generationDb,
+    /CarouselContentAssignment[\s\S]*CarouselStructure2FormatAssignment/,
+  );
+  assert.match(generationDb, /generationSource: "auto_generated";/);
+  assert.match(
+    workerPlanner,
+    /throw new Error\(CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR\)/,
+  );
+});
+
+test("automatic generation persists controlled five-item batches before one batch job", () => {
   assert.match(preparation, /getBusinessProfileForUser/);
   assert.match(
     preparation,
     /buildCarouselBusinessContentContext\(\s*params\.businessContext/,
   );
   assert.match(preparation, /businessContext:\s*profile\.context/);
-  assert.match(preparation, /selectCarouselContentAssignments/);
-  assert.match(preparation, /reserveCarouselContentAssignment/);
+  assert.match(preparation, /selectCarouselExperimentBatch/);
+  assert.match(preparation, /reserveCarouselExperimentBatches/);
+  assert.match(preparation, /upsertCarouselExperimentAssignments/);
+  assert.match(preparation, /enqueueCarouselExperimentBatchJob/);
+  assert.match(experimentMigration, /create table if not exists public\.carousel_experiment_batches/);
+  assert.match(experimentMigration, /create table if not exists public\.carousel_experiment_assignments/);
+  assert.match(experimentMigration, /requested_carousel_count = 5/);
+  assert.match(experimentMigration, /pg_advisory_xact_lock/);
+  assert.match(experimentMigration, /grant select, insert, update on table public\.carousel_experiment_batches\s+to service_role/i);
+  assert.match(experimentMigration, /alter table public\.carousel_experiment_batches enable row level security/i);
+  assert.match(experimentMigration, /assigned_format_id text not null/i);
+  assert.match(experimentMigration, /actual_format_id text/i);
+  assert.match(experimentMigration, /replacement_for_format_id text/i);
+  assert.match(
+    workerGenerator,
+    /content_format_id:\s*params\.plannedItem\.actualContentFormatId/,
+  );
+  assert.match(
+    workerGenerator,
+    /replacement_for_format_id:\s*params\.plannedItem\.replacementForFormatId/,
+  );
   assert.doesNotMatch(preparation, /createBusinessProfile/);
 
   assert.match(appGenerator, /contentFormatId: generation\.contentFormatId/);

@@ -155,6 +155,84 @@ test("records a failure when a payload is invalid but identifiers are recoverabl
   assert.deepEqual(events, ["failed"]);
 });
 
+test("accepts trimmed locked audio for an Instagram Reel template", async () => {
+  const job = createJob();
+  const input = job.input_json as Record<string, unknown>;
+  input.attribution = instagramAttribution();
+  input.audio = {
+    ...(input.audio as Record<string, unknown>),
+    matchingVersion: "wall-instagram-reel-locked-v1",
+  };
+  const store = successfulStore();
+
+  await runRenderWallTextVideoJob(job, {
+    dependencies: {
+      createMediaAssetId: () => MEDIA_ASSET_ID,
+      async renderWallTextVideoToStorage(payload) {
+        assert.equal(payload.audio.fitMode, "trim");
+        assert.equal(payload.attribution.sourceKind, "instagram_reel");
+        return {
+          assignmentId: payload.assignmentId,
+          creativeId: payload.creativeId,
+          key: "videos/rendered/instagram-wall.mp4",
+          ok: true,
+          renderId: payload.renderId,
+          url: "https://cdn.example.com/instagram-wall.mp4",
+        };
+      },
+    },
+    store,
+  });
+});
+
+test("rejects looping audio for an Instagram Reel template", async () => {
+  const job = createJob();
+  const input = job.input_json as Record<string, unknown>;
+  input.attribution = instagramAttribution();
+  input.audio = {
+    ...(input.audio as Record<string, unknown>),
+    assetDurationSeconds: 4,
+    fitMode: "loop",
+    matchingVersion: "wall-instagram-reel-locked-v1",
+  };
+
+  await assert.rejects(
+    runRenderWallTextVideoJob(job, { store: failedStore() }),
+    /Instagram Reel Wall audio attribution is invalid/,
+  );
+});
+
+function instagramAttribution() {
+  return {
+    contentHash: "a".repeat(64),
+    editClassification: "none",
+    formatId: "relatable_situation",
+    formatLearningEligible: false,
+    formatVersion: 1,
+    instagramReelTemplateId: "00000000-0000-4000-8000-000000000308",
+    selectionMode: "instagram_template",
+    selectionWeight: 1,
+    selectorVersion: "wall-text-format-selector-v1-bounded-views",
+    sourceKind: "instagram_reel",
+  };
+}
+
+function successfulStore() {
+  return {
+    async markWallTextRenderStarted() {},
+    async markWallTextRenderCompleted() {},
+    async markWallTextRenderFailed() {},
+  } as unknown as SupabaseJobStore;
+}
+
+function failedStore() {
+  return {
+    async markWallTextRenderStarted() {},
+    async markWallTextRenderCompleted() {},
+    async markWallTextRenderFailed() {},
+  } as unknown as SupabaseJobStore;
+}
+
 function createJob(): BackgroundJobRow {
   const now = "2026-07-29T10:00:00.000Z";
 

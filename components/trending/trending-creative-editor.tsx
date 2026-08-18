@@ -7,9 +7,12 @@ import {
   Film,
   Folder,
   FolderOpen,
+  ImagePlus,
   Loader2,
   Move,
   RefreshCw,
+  Trash2,
+  Upload,
 } from "lucide-react";
 import {
   useCallback,
@@ -74,6 +77,7 @@ import type { TrendingFeedItem } from "@/lib/trending/feed-items";
 import {
   createHookTextLayout,
   HOOK_TEXT_MAXIMUM_CHARACTERS,
+  HOOK_TEXT_MAXIMUM_LINES,
   HOOK_TEXT_MAXIMUM_WORDS,
   HOOK_TEXT_MINIMUM_CHARACTERS,
   HOOK_TEXT_MINIMUM_WORDS,
@@ -117,6 +121,37 @@ type EditResponse =
   | { edit: TrendingCreativeEditRecord; ok: true }
   | { error?: string; ok?: false };
 
+type CarouselProductAsset = {
+  businessProfileId: string;
+  categorySlug: string;
+  createdAt: string;
+  fileName: string;
+  height: number;
+  id: string;
+  libraryAssetId: string;
+  storageKey: string;
+  url: string;
+  width: number;
+};
+
+type CarouselProductAssetsResponse =
+  | { assets: CarouselProductAsset[]; ok: true }
+  | { error?: string; ok?: false };
+
+type CarouselProductAssetUploadResponse =
+  | {
+      assetId: string;
+      ok: true;
+      requiredHeaders: Record<string, string>;
+      storageKey: string;
+      uploadUrl: string;
+    }
+  | { error?: string; ok?: false };
+
+type CarouselProductAssetCompleteResponse =
+  | { asset: CarouselProductAsset; deduplicated: boolean; ok: true }
+  | { error?: string; ok?: false };
+
 export function TrendingCreativeEditor({
   item,
   onClose,
@@ -141,6 +176,15 @@ export function TrendingCreativeEditor({
   );
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [assetsError, setAssetsError] = useState<string | null>(null);
+  const [productAssets, setProductAssets] = useState<CarouselProductAsset[]>([]);
+  const [productAssetsLoading, setProductAssetsLoading] = useState(false);
+  const [productAssetsUploading, setProductAssetsUploading] = useState(false);
+  const [productAssetsError, setProductAssetsError] = useState<string | null>(
+    null,
+  );
+  const [folderView, setFolderView] = useState<
+    "folders" | "creative-assets" | "group"
+  >("folders");
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [loadingGroupId, setLoadingGroupId] = useState<string | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<MediaAsset | null>(null);
@@ -151,6 +195,7 @@ export function TrendingCreativeEditor({
     string | null
   >(null);
   const groupRequestRef = useRef(0);
+  const productAssetInputRef = useRef<HTMLInputElement>(null);
 
   const loadEditor = useCallback(async () => {
     if (!item) {
@@ -162,6 +207,8 @@ export function TrendingCreativeEditor({
     groupRequestRef.current += 1;
     setActiveSlideIndex(0);
     setProtectedHookPreviewUrl(null);
+    setProductAssets([]);
+    setProductAssetsError(null);
 
     try {
       const token = await requireToken();
@@ -179,7 +226,8 @@ export function TrendingCreativeEditor({
 
       setEdit(data.edit);
       setContent(data.edit.content);
-      setActiveGroupId(data.edit.source?.groupId ?? null);
+      setFolderView("folders");
+      setActiveGroupId(null);
       setSourceChoice(toSourceChoice(data.edit));
       setSelectedAsset(null);
     } catch (loadError) {
@@ -286,6 +334,41 @@ export function TrendingCreativeEditor({
     }
   }, [edit, item, loadGroup]);
 
+  const loadCarouselProductAssets = useCallback(async () => {
+    if (!item || item.format !== "carousel") {
+      return;
+    }
+
+    setProductAssetsLoading(true);
+    setProductAssetsError(null);
+
+    try {
+      const token = await requireToken();
+      const response = await fetch(
+        `/api/trending/carousel-product-assets?carouselId=${encodeURIComponent(item.creativeId)}`,
+        {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = (await response.json().catch(() => null)) as
+        | CarouselProductAssetsResponse
+        | null;
+
+      if (!response.ok || data?.ok !== true) {
+        throw new Error(getApiError(data, "Could not load app screenshots."));
+      }
+
+      setProductAssets(data.assets);
+    } catch (loadError) {
+      setProductAssetsError(
+        getErrorMessage(loadError, "Could not load app screenshots."),
+      );
+    } finally {
+      setProductAssetsLoading(false);
+    }
+  }, [item]);
+
   useEffect(() => {
     if (!item) {
       return;
@@ -303,6 +386,18 @@ export function TrendingCreativeEditor({
     const timer = window.setTimeout(() => void loadCreativeAssets(), 0);
     return () => window.clearTimeout(timer);
   }, [edit, loadCreativeAssets]);
+
+  useEffect(() => {
+    if (!edit || edit.format !== "carousel") {
+      return;
+    }
+
+    const timer = window.setTimeout(
+      () => void loadCarouselProductAssets(),
+      0,
+    );
+    return () => window.clearTimeout(timer);
+  }, [edit, loadCarouselProductAssets]);
 
   useEffect(() => {
     if (!item || item.format !== "hook_video" || edit?.source) {
@@ -371,6 +466,7 @@ export function TrendingCreativeEditor({
   async function openGroup(groupId: string) {
     const requestId = groupRequestRef.current + 1;
     groupRequestRef.current = requestId;
+    setFolderView("group");
     setActiveGroupId(groupId);
 
     try {
@@ -389,11 +485,6 @@ export function TrendingCreativeEditor({
         null;
 
       setSelectedAsset(nextAsset);
-      setSourceChoice(
-        nextAsset
-          ? selectEntireLibrary(groupId, nextAsset.id)
-          : null,
-      );
     } catch (groupError) {
       if (groupRequestRef.current === requestId) {
         setAssetsError(
@@ -403,6 +494,21 @@ export function TrendingCreativeEditor({
     }
   }
 
+  function openCreativeAssets() {
+    groupRequestRef.current += 1;
+    setFolderView("creative-assets");
+    setActiveGroupId(null);
+    setSelectedAsset((current) => {
+      if (!current) return assets[0] ?? null;
+      return assets.find((asset) => asset.id === current.id) ?? assets[0] ?? null;
+    });
+  }
+
+  function showFolders() {
+    groupRequestRef.current += 1;
+    setFolderView("folders");
+  }
+
   function chooseAsset(asset: MediaAsset) {
     setSelectedAsset(asset);
     setSourceChoice(selectExactVideo(asset.id));
@@ -410,9 +516,17 @@ export function TrendingCreativeEditor({
 
   function previewAsset(asset: MediaAsset) {
     setSelectedAsset(asset);
-    setSourceChoice((current) =>
-      updateSourceChoiceForPreview(current, activeGroupId, asset.id),
-    );
+    setSourceChoice((current) => {
+      if (
+        !activeGroupId ||
+        current?.selectionKind !== "group" ||
+        current.groupId !== activeGroupId
+      ) {
+        return current;
+      }
+
+      return updateSourceChoiceForPreview(current, activeGroupId, asset.id);
+    });
   }
 
   function chooseLibrary() {
@@ -423,6 +537,207 @@ export function TrendingCreativeEditor({
     setSourceChoice(selectEntireLibrary(activeGroupId, selectedAsset.id));
   }
 
+  async function uploadProductAsset(file: File) {
+    if (!item || item.format !== "carousel" || productAssetsUploading) {
+      return;
+    }
+
+    setProductAssetsUploading(true);
+    setProductAssetsError(null);
+    let pendingAssetId: string | null = null;
+    let uploadCompleted = false;
+
+    try {
+      const token = await requireToken();
+      const endpoint = "/api/trending/carousel-product-assets";
+      const prepareResponse = await fetch(endpoint, {
+        body: JSON.stringify({
+          carouselId: item.creativeId,
+          contentType: file.type,
+          fileName: file.name,
+          fileSize: file.size,
+        }),
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      const prepared = (await prepareResponse.json().catch(() => null)) as
+        | CarouselProductAssetUploadResponse
+        | null;
+
+      if (!prepareResponse.ok || prepared?.ok !== true) {
+        throw new Error(
+          getApiError(prepared, "Could not prepare this app screenshot."),
+        );
+      }
+
+      pendingAssetId = prepared.assetId;
+      const uploadResponse = await fetch(prepared.uploadUrl, {
+        body: file,
+        headers: prepared.requiredHeaders,
+        method: "PUT",
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("The app screenshot could not be uploaded.");
+      }
+
+      uploadCompleted = true;
+      const completeResponse = await fetch(endpoint, {
+        body: JSON.stringify({
+          assetId: prepared.assetId,
+          carouselId: item.creativeId,
+          storageKey: prepared.storageKey,
+        }),
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        method: "PATCH",
+      });
+      const completed = (await completeResponse.json().catch(() => null)) as
+        | CarouselProductAssetCompleteResponse
+        | null;
+
+      if (!completeResponse.ok || completed?.ok !== true) {
+        throw new Error(
+          getApiError(completed, "Could not verify this app screenshot."),
+        );
+      }
+
+      setProductAssets((current) => [
+        completed.asset,
+        ...current.filter((asset) => asset.id !== completed.asset.id),
+      ]);
+    } catch (uploadError) {
+      if (pendingAssetId && !uploadCompleted) {
+        const token = await getCurrentUserIdToken().catch(() => null);
+        if (token) {
+          await fetch("/api/trending/carousel-product-assets", {
+            body: JSON.stringify({
+              assetId: pendingAssetId,
+              carouselId: item.creativeId,
+            }),
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            method: "DELETE",
+          }).catch(() => undefined);
+        }
+      }
+      setProductAssetsError(
+        getErrorMessage(uploadError, "Could not upload this app screenshot."),
+      );
+    } finally {
+      setProductAssetsUploading(false);
+      if (productAssetInputRef.current) {
+        productAssetInputRef.current.value = "";
+      }
+    }
+  }
+
+  function assignProductAsset(asset: CarouselProductAsset) {
+    if (!content || content.format !== "carousel") {
+      return;
+    }
+
+    const activeSlide = content.slides[activeSlideIndex];
+    if (
+      !activeSlide ||
+      !getProductAssetEligibleSlideIndexes(content).includes(activeSlideIndex)
+    ) {
+      setProductAssetsError(
+        "Choose an eligible Structure 2 product slide before using a screenshot.",
+      );
+      return;
+    }
+
+    setProductAssetsError(null);
+    setContent({
+      ...content,
+      slides: content.slides.map((slide, index) => {
+        if (index === activeSlideIndex) {
+          return {
+            ...slide,
+            backgroundAssetId: asset.id,
+            backgroundUrl: asset.url,
+            visualRole: "product_asset",
+          };
+        }
+
+        return slide.visualRole === "product_asset" &&
+          slide.backgroundAssetId !== slide.originalBackgroundAssetId
+          ? restoreOriginalCarouselBackground(slide)
+          : slide;
+      }),
+    });
+  }
+
+  function restoreActiveCarouselBackground() {
+    if (!content || content.format !== "carousel") {
+      return;
+    }
+
+    setContent({
+      ...content,
+      slides: content.slides.map((slide, index) =>
+        index === activeSlideIndex
+          ? restoreOriginalCarouselBackground(slide)
+          : slide,
+      ),
+    });
+  }
+
+  async function removeProductAsset(assetId: string) {
+    if (!item || item.format !== "carousel") return;
+
+    setProductAssetsError(null);
+    try {
+      const token = await requireToken();
+      const response = await fetch("/api/trending/carousel-product-assets", {
+        body: JSON.stringify({ assetId, carouselId: item.creativeId }),
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        method: "DELETE",
+      });
+      const data = (await response.json().catch(() => null)) as
+        | { error?: string; ok?: boolean }
+        | null;
+
+      if (!response.ok || data?.ok !== true) {
+        throw new Error(getApiError(data, "Could not remove app screenshot."));
+      }
+
+      setProductAssets((current) =>
+        current.filter((asset) => asset.id !== assetId),
+      );
+      setContent((current) =>
+        current?.format === "carousel"
+          ? {
+              ...current,
+              slides: current.slides.map((slide) =>
+                slide.backgroundAssetId === assetId
+                  ? restoreOriginalCarouselBackground(slide)
+                  : slide,
+              ),
+            }
+          : current,
+      );
+    } catch (removeError) {
+      setProductAssetsError(
+        getErrorMessage(removeError, "Could not remove app screenshot."),
+      );
+    }
+  }
+
   async function saveEdit() {
     if (!item || !content || !edit || saving) {
       return;
@@ -430,6 +745,8 @@ export function TrendingCreativeEditor({
 
     if (
       activeGroupId &&
+      sourceChoice?.selectionKind === "group" &&
+      sourceChoice.groupId === activeGroupId &&
       loadingGroupId !== activeGroupId &&
       visibleAssets.length === 0
     ) {
@@ -507,7 +824,7 @@ export function TrendingCreativeEditor({
           <DialogTitle>Edit creative</DialogTitle>
           <DialogDescription>
             Your current design and media stay unchanged unless you choose a
-            different Creative Assets video.
+            different app screenshot or Creative Assets video.
           </DialogDescription>
         </DialogHeader>
 
@@ -541,13 +858,42 @@ export function TrendingCreativeEditor({
                   onContentChange={setContent}
                 />
 
-                {content.format !== "carousel" ? (
+                {content.format === "carousel" ? (
+                  <>
+                    <AppScreenshotsSection
+                      activeSlideIndex={activeSlideIndex}
+                      assets={productAssets}
+                      content={content}
+                      error={productAssetsError}
+                      loading={productAssetsLoading}
+                      uploading={productAssetsUploading}
+                      onActiveSlideIndexChange={setActiveSlideIndex}
+                      onAssign={assignProductAsset}
+                      onRemove={(assetId) => void removeProductAsset(assetId)}
+                      onRestore={restoreActiveCarouselBackground}
+                      onRetry={() => void loadCarouselProductAssets()}
+                      onUpload={() => productAssetInputRef.current?.click()}
+                    />
+                    <input
+                      ref={productAssetInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      aria-label="Upload app screenshot"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) void uploadProductAsset(file);
+                      }}
+                    />
+                  </>
+                ) : (
                   <CreativeAssetsSection
                     activeGroup={activeGroup}
                     activeGroupId={activeGroupId}
                     assets={assets}
                     error={assetsError}
                     groups={groups}
+                    folderView={folderView}
                     content={content}
                     loading={assetsLoading}
                     loadingGroupId={loadingGroupId}
@@ -557,28 +903,14 @@ export function TrendingCreativeEditor({
                     }
                     visibleAssets={visibleAssets}
                     onAssetPreview={previewAsset}
+                    onBackToFolders={showFolders}
+                    onCreativeAssetsOpen={openCreativeAssets}
                     onGroupOpen={(groupId) => void openGroup(groupId)}
                     onRetry={() => void loadCreativeAssets()}
                     onUseAsset={chooseAsset}
                     onUseLibrary={chooseLibrary}
-                    onShowAll={() => {
-                      groupRequestRef.current += 1;
-                      const nextAsset =
-                        (selectedAsset
-                          ? assets.find((asset) => asset.id === selectedAsset.id)
-                          : null) ??
-                        assets[0] ??
-                        null;
-                      setActiveGroupId(null);
-                      setSelectedAsset(nextAsset);
-                      setSourceChoice(
-                        nextAsset
-                          ? selectExactVideo(nextAsset.id)
-                          : null,
-                      );
-                    }}
                   />
-                ) : null}
+                )}
 
                 {error ? (
                   <FieldError className="mt-5">{error}</FieldError>
@@ -600,7 +932,13 @@ export function TrendingCreativeEditor({
           <Button
             type="button"
             aria-label="Confirm and save creative edit"
-            disabled={!content || loading || saving || Boolean(loadingGroupId)}
+            disabled={
+              !content ||
+              loading ||
+              saving ||
+              productAssetsUploading ||
+              Boolean(loadingGroupId)
+            }
             onClick={() => void saveEdit()}
           >
             {saving ? (
@@ -1335,19 +1673,23 @@ function EditorFields({
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="trending-hook-text">Hook text</FieldLabel>
-          <Input
+          <textarea
             id="trending-hook-text"
             value={content.hookText}
             maxLength={HOOK_TEXT_MAXIMUM_CHARACTERS}
+            rows={HOOK_TEXT_MAXIMUM_LINES}
+            wrap="off"
             onChange={(event) => {
               const hookText = event.target.value;
               onContentChange(createHookEditContent(hookText, content));
             }}
+            className="min-h-24 w-full resize-y overflow-x-auto whitespace-pre rounded-lg border border-input bg-card px-3 py-2 text-sm font-medium leading-6 text-foreground shadow-xs outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30"
           />
           <FieldDescription>
             Use {HOOK_TEXT_MINIMUM_WORDS}–{HOOK_TEXT_MAXIMUM_WORDS} words and no
-            more than {HOOK_TEXT_MAXIMUM_CHARACTERS} characters. The preview
-            recalculates the final two-line layout as you type.
+            more than {HOOK_TEXT_MAXIMUM_CHARACTERS} characters, with up to{" "}
+            {HOOK_TEXT_MAXIMUM_LINES} lines. Press Enter where you want a line
+            to end; the preview keeps those breaks.
           </FieldDescription>
         </Field>
         <TextColorPicker
@@ -1451,19 +1793,223 @@ function TextColorPicker({
   );
 }
 
+function AppScreenshotsSection({
+  activeSlideIndex,
+  assets,
+  content,
+  error,
+  loading,
+  onActiveSlideIndexChange,
+  onAssign,
+  onRemove,
+  onRestore,
+  onRetry,
+  onUpload,
+  uploading,
+}: {
+  activeSlideIndex: number;
+  assets: CarouselProductAsset[];
+  content: TrendingCarouselEditContent;
+  error: string | null;
+  loading: boolean;
+  onActiveSlideIndexChange: (index: number) => void;
+  onAssign: (asset: CarouselProductAsset) => void;
+  onRemove: (assetId: string) => void;
+  onRestore: () => void;
+  onRetry: () => void;
+  onUpload: () => void;
+  uploading: boolean;
+}) {
+  const activeSlide = content.slides[activeSlideIndex] ?? null;
+  const eligibleSlideIndexes = getProductAssetEligibleSlideIndexes(content);
+  const eligibleSlides = eligibleSlideIndexes.map((index) => ({
+    index,
+    slide: content.slides[index]!,
+  }));
+  const activeEligible = eligibleSlideIndexes.includes(activeSlideIndex);
+  const hasCustomBackground = Boolean(
+    activeSlide &&
+      activeSlide.backgroundAssetId !== activeSlide.originalBackgroundAssetId,
+  );
+
+  return (
+    <section
+      aria-labelledby="carousel-app-screenshots-heading"
+      className="mt-7 border-t pt-6"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3
+            id="carousel-app-screenshots-heading"
+            className="text-sm font-semibold text-foreground"
+          >
+            App Screenshots
+          </h3>
+          <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">
+            Save product screens once, then reuse one in an eligible Structure 2
+            product slot. Your 1:2:2 image balance stays unchanged.
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={uploading}
+          onClick={onUpload}
+        >
+          {uploading ? (
+            <Loader2 className="animate-spin motion-reduce:animate-none" />
+          ) : (
+            <Upload />
+          )}
+          {uploading ? "Uploading…" : "Upload"}
+        </Button>
+      </div>
+
+      {eligibleSlides.length > 0 ? (
+        <div className="mt-4 rounded-xl border bg-muted/30 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs font-medium text-muted-foreground">
+              Product reveal lane
+            </span>
+            {eligibleSlides.map(({ index, slide }) => (
+              <Button
+                key={slide.slideId}
+                type="button"
+                size="sm"
+                variant={index === activeSlideIndex ? "default" : "outline"}
+                onClick={() => onActiveSlideIndexChange(index)}
+              >
+                Slide {slide.slideNumber}
+                {slide.productVisualEligibility === "preferred" ? (
+                  <span className="opacity-70">Preferred</span>
+                ) : null}
+              </Button>
+            ))}
+            {hasCustomBackground ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={onRestore}
+              >
+                Use original image
+              </Button>
+            ) : null}
+          </div>
+          {!activeEligible ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Choose one of these slides before assigning a screenshot.
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-xl border border-dashed p-3 text-xs leading-5 text-muted-foreground">
+          This Structure 1 carousel keeps its original visuals. Screenshots saved
+          here remain available for future Structure 2 carousels.
+        </div>
+      )}
+
+      {error ? (
+        <div className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+          <p role="alert" className="text-xs leading-5 text-destructive">
+            {error}
+          </p>
+          <Button type="button" size="sm" variant="ghost" onClick={onRetry}>
+            Retry
+          </Button>
+        </div>
+      ) : null}
+
+      {loading && assets.length === 0 ? (
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="aspect-[4/5] rounded-lg" />
+          ))}
+        </div>
+      ) : assets.length === 0 ? (
+        <div className="mt-4 flex items-center gap-3 rounded-xl border border-dashed p-4">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            <ImagePlus className="size-5" aria-hidden="true" />
+          </span>
+          <div>
+            <p className="text-sm font-medium">No app screenshots saved yet</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              JPG, PNG, or WebP up to 25 MB.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {assets.map((asset) => {
+            const selected = activeSlide?.backgroundAssetId === asset.id;
+
+            return (
+              <div
+                key={asset.id}
+                className={cn(
+                  "group relative overflow-hidden rounded-lg border bg-card shadow-xs",
+                  selected ? "border-foreground ring-2 ring-foreground/15" : "border-border",
+                )}
+              >
+                <button
+                  type="button"
+                  disabled={!activeEligible}
+                  aria-label={`Use ${asset.fileName} on the selected slide`}
+                  aria-pressed={selected}
+                  onClick={() => onAssign(asset)}
+                  className="relative block aspect-[4/5] w-full overflow-hidden bg-muted text-left disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={asset.url}
+                    alt=""
+                    className="size-full object-cover transition-transform group-hover:scale-[1.02] motion-reduce:transition-none"
+                  />
+                  {selected ? (
+                    <span className="absolute left-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-foreground text-background shadow-sm">
+                      <Check className="size-3.5" aria-hidden="true" />
+                    </span>
+                  ) : null}
+                </button>
+                <div className="flex items-center gap-1 border-t px-2 py-1.5">
+                  <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+                    {asset.fileName}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${asset.fileName} from App Screenshots`}
+                    title="Remove from App Screenshots"
+                    onClick={() => onRemove(asset.id)}
+                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Trash2 className="size-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function CreativeAssetsSection({
   activeGroup,
   activeGroupId,
   assets,
   content,
   error,
+  folderView,
   groups,
   loading,
   loadingGroupId,
   onAssetPreview,
+  onBackToFolders,
+  onCreativeAssetsOpen,
   onGroupOpen,
   onRetry,
-  onShowAll,
   onUseAsset,
   onUseLibrary,
   selectedAssetId,
@@ -1475,13 +2021,15 @@ function CreativeAssetsSection({
   assets: MediaAsset[];
   content: TrendingHookEditContent | TrendingWallTextEditContent;
   error: string | null;
+  folderView: "folders" | "creative-assets" | "group";
   groups: CreativeAssetGroup[];
   loading: boolean;
   loadingGroupId: string | null;
   onAssetPreview: (asset: MediaAsset) => void;
+  onBackToFolders: () => void;
+  onCreativeAssetsOpen: () => void;
   onGroupOpen: (groupId: string) => void;
   onRetry: () => void;
-  onShowAll: () => void;
   onUseAsset: (asset: MediaAsset) => void;
   onUseLibrary: () => void;
   selectedAssetId: string | null;
@@ -1511,11 +2059,11 @@ function CreativeAssetsSection({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 id="editor-assets-heading" className="text-sm font-semibold">
-            Creative Assets
+            Choose a video folder
           </h3>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Select a whole library, or choose one exact video. Swipe the deck
-            to see your current text on every background.
+            Open Creative Assets or one of your groups, then choose the video
+            you want to use.
           </p>
         </div>
         {loading ? (
@@ -1532,7 +2080,7 @@ function CreativeAssetsSection({
             <Skeleton key={index} className="aspect-[9/12] rounded-lg" />
           ))}
         </div>
-      ) : error && assets.length === 0 ? (
+      ) : error && assets.length === 0 && groups.length === 0 ? (
         <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
           <p role="alert" className="text-sm font-medium text-destructive">
             {error}
@@ -1548,7 +2096,7 @@ function CreativeAssetsSection({
             Try again
           </Button>
         </div>
-      ) : assets.length === 0 ? (
+      ) : assets.length === 0 && groups.length === 0 ? (
         <Empty className="mt-4 min-h-48">
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -1580,121 +2128,162 @@ function CreativeAssetsSection({
             </div>
           ) : null}
 
-          <ScrollArea className="mt-4 w-full">
-            <div className="flex gap-2 pb-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={activeGroupId ? "outline" : "secondary"}
-                onClick={onShowAll}
-              >
-                <Film data-icon="inline-start" />
-                All videos
-              </Button>
-              {groups.map((group) => (
-                <Button
-                  key={group.id}
-                  type="button"
-                  size="sm"
-                  variant={group.id === activeGroupId ? "secondary" : "outline"}
-                  aria-pressed={group.id === activeGroupId}
-                  onClick={() => onGroupOpen(group.id)}
-                >
-                  {group.id === activeGroupId ? (
-                    <FolderOpen data-icon="inline-start" />
-                  ) : (
-                    <Folder data-icon="inline-start" />
-                  )}
-                  {group.name}
-                </Button>
-              ))}
-            </div>
-          </ScrollArea>
-
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate text-xs font-semibold text-foreground">
-                {activeGroup?.name ?? "All videos"}
+          {folderView === "folders" ? (
+            <div className="mt-4">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Video folders
               </p>
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                {librarySelected
-                  ? "Entire library selected"
-                  : activeVideoSelected
-                    ? "This video is selected"
-                    : "Browse, then choose how to use it"}
-              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <VideoFolderCard
+                  description={`${assets.length} ready ${assets.length === 1 ? "video" : "videos"}`}
+                  icon={<Film aria-hidden="true" />}
+                  name="Creative Assets"
+                  onOpen={onCreativeAssetsOpen}
+                />
+                {groups.map((group) => (
+                  <VideoFolderCard
+                    key={group.id}
+                    description="Your video group"
+                    icon={<Folder aria-hidden="true" />}
+                    name={group.name}
+                    onOpen={() => onGroupOpen(group.id)}
+                  />
+                ))}
+              </div>
             </div>
-            {loadingGroupId === activeGroupId ? (
-              <Loader2
-                className="size-3.5 animate-spin text-muted-foreground motion-reduce:animate-none"
-                aria-label="Loading group videos"
-              />
-            ) : null}
-          </div>
-
-          {loadingGroupId === activeGroupId && activeGroupId ? (
-            <Skeleton className="mx-auto mt-4 aspect-[9/16] w-full max-w-[218px] rounded-2xl" />
-          ) : activeGroupId && visibleAssets.length === 0 ? (
-            <p className="mt-3 rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
-              This group has no ready videos.
-            </p>
-          ) : activeAsset ? (
+          ) : (
             <>
-              <CreativeAssetDeck
-                activeAssetId={activeAsset.id}
-                assets={visibleAssets}
-                content={content}
-                onActiveAssetChange={onAssetPreview}
-              />
-
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {activeGroup ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={librarySelected ? "default" : "outline"}
-                    aria-pressed={librarySelected}
-                    onClick={onUseLibrary}
-                  >
-                    {librarySelected ? (
-                      <Check data-icon="inline-start" />
-                    ) : (
-                      <FolderOpen data-icon="inline-start" />
-                    )}
-                    Use entire library
-                  </Button>
-                ) : null}
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border bg-muted/25 px-3 py-2.5">
                 <Button
                   type="button"
                   size="sm"
-                  variant={activeVideoSelected ? "default" : "outline"}
-                  aria-pressed={activeVideoSelected}
-                  className={activeGroup ? undefined : "sm:col-span-2"}
-                  onClick={() => onUseAsset(activeAsset)}
+                  variant="ghost"
+                  onClick={onBackToFolders}
                 >
-                  {activeVideoSelected ? (
-                    <Check data-icon="inline-start" />
-                  ) : (
-                    <Film data-icon="inline-start" />
-                  )}
-                  Use this video
+                  <ChevronLeft data-icon="inline-start" />
+                  Back to folders
                 </Button>
+                <div className="min-w-0 text-right">
+                  <p className="truncate text-xs font-semibold text-foreground">
+                    {activeGroup?.name ?? "Creative Assets"}
+                  </p>
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                    {librarySelected
+                      ? "Entire group selected"
+                      : activeVideoSelected
+                        ? "This video is selected"
+                        : "Browse, then choose how to use it"}
+                  </p>
+                </div>
+                {loadingGroupId === activeGroupId && activeGroupId ? (
+                  <Loader2
+                    className="size-3.5 animate-spin text-muted-foreground motion-reduce:animate-none"
+                    aria-label="Loading group videos"
+                  />
+                ) : null}
               </div>
 
-              <p className="mt-2 text-center text-[11px] leading-4 text-muted-foreground">
-                {librarySelected
-                  ? "The library stays linked. This visible video is the stable export choice."
-                  : "A single-video choice stays fixed even if the library changes."}
-              </p>
+              {loadingGroupId === activeGroupId && activeGroupId ? (
+                <Skeleton className="mx-auto mt-4 aspect-[9/16] w-full max-w-[218px] rounded-2xl" />
+              ) : activeGroupId && visibleAssets.length === 0 ? (
+                <p className="mt-3 rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+                  This group has no ready videos.
+                </p>
+              ) : activeAsset ? (
+                <>
+                  <CreativeAssetDeck
+                    activeAssetId={activeAsset.id}
+                    assets={visibleAssets}
+                    content={content}
+                    onActiveAssetChange={onAssetPreview}
+                  />
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {activeGroup ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={librarySelected ? "default" : "outline"}
+                        aria-pressed={librarySelected}
+                        onClick={onUseLibrary}
+                      >
+                        {librarySelected ? (
+                          <Check data-icon="inline-start" />
+                        ) : (
+                          <FolderOpen data-icon="inline-start" />
+                        )}
+                        Use entire group
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={activeVideoSelected ? "default" : "outline"}
+                      aria-pressed={activeVideoSelected}
+                      className={activeGroup ? undefined : "sm:col-span-2"}
+                      onClick={() => onUseAsset(activeAsset)}
+                    >
+                      {activeVideoSelected ? (
+                        <Check data-icon="inline-start" />
+                      ) : (
+                        <Film data-icon="inline-start" />
+                      )}
+                      Use this video
+                    </Button>
+                  </div>
+
+                  <p className="mt-2 text-center text-[11px] leading-4 text-muted-foreground">
+                    {librarySelected
+                      ? "The group stays linked. This visible video is the stable export choice."
+                      : "A single-video choice stays fixed even if the folder changes."}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-3 rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+                  No ready videos are available in this folder.
+                </p>
+              )}
             </>
-          ) : (
-            <p className="mt-3 rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
-              No ready videos are available here.
-            </p>
           )}
         </>
       )}
     </section>
+  );
+}
+
+function VideoFolderCard({
+  description,
+  icon,
+  name,
+  onOpen,
+}: {
+  description: string;
+  icon: ReactNode;
+  name: string;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="group flex min-h-24 items-center gap-3 rounded-xl border bg-card p-4 text-left shadow-xs transition-[border-color,background-color,transform] hover:-translate-y-0.5 hover:border-primary/45 hover:bg-accent/35 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35 motion-reduce:transform-none"
+      onClick={onOpen}
+    >
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border bg-muted text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary [&_svg]:size-5">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold text-foreground">
+          {name}
+        </span>
+        <span className="mt-1 block text-xs text-muted-foreground">
+          {description}
+        </span>
+      </span>
+      <ChevronRight
+        aria-hidden="true"
+        className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground motion-reduce:transform-none"
+      />
+    </button>
   );
 }
 
@@ -1928,6 +2517,7 @@ function toPatchPayload(
       assignmentId: edit.assignmentId,
       expectedRevision: edit.revision,
       slides: content.slides.map((slide) => ({
+        backgroundAssetId: slide.backgroundAssetId,
         ctaText: slide.ctaText,
         headline: slide.headline,
         slideId: slide.slideId,
@@ -1986,6 +2576,46 @@ function validateContent(content: TrendingCreativeEditContent) {
   }
 
   return null;
+}
+
+function isProductAssetEligibleSlide(
+  slide: TrendingCarouselEditContent["slides"][number],
+) {
+  return (
+    slide.structureId === "structure_2" &&
+    (slide.productVisualEligibility === "allowed" ||
+      slide.productVisualEligibility === "preferred")
+  );
+}
+
+function getProductAssetEligibleSlideIndexes(
+  content: TrendingCarouselEditContent,
+) {
+  const originallyAssignedProductIndex = content.slides.findIndex(
+    (slide) => slide.originalVisualRole === "product_asset",
+  );
+
+  if (
+    originallyAssignedProductIndex >= 0 &&
+    isProductAssetEligibleSlide(content.slides[originallyAssignedProductIndex]!)
+  ) {
+    return [originallyAssignedProductIndex];
+  }
+
+  return content.slides.flatMap((slide, index) =>
+    isProductAssetEligibleSlide(slide) ? [index] : [],
+  );
+}
+
+function restoreOriginalCarouselBackground(
+  slide: TrendingCarouselEditContent["slides"][number],
+) {
+  return {
+    ...slide,
+    backgroundAssetId: slide.originalBackgroundAssetId,
+    backgroundUrl: slide.originalBackgroundUrl,
+    visualRole: slide.originalVisualRole,
+  };
 }
 
 function isReadyVideoAsset(asset: MediaAsset) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, ImageIcon, Sparkles } from "lucide-react";
+import { ExternalLink, ImageIcon, Loader2, Sparkles } from "lucide-react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -119,6 +119,8 @@ export function ImageGenerationStudioPanel({
 }) {
   const { loading: authLoading, user } = useAuth();
   const [prompt, setPrompt] = useState("");
+  const [activePrompt, setActivePrompt] = useState("");
+  const [latestCompletedId, setLatestCompletedId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generatedAssets, setGeneratedAssets] = useState<
     AIStudioImageResult[]
@@ -299,6 +301,9 @@ export function ImageGenerationStudioPanel({
           setGeneratedAssets((current) =>
             upsertAIStudioResult(current, nextResult),
           );
+          setLatestCompletedId(nextResult.id);
+          window.setTimeout(() => setLatestCompletedId(null), 3_500);
+          setActivePrompt("");
           setActionError(null);
         }
       } catch (error) {
@@ -334,6 +339,7 @@ export function ImageGenerationStudioPanel({
     }
 
     setIsSubmitting(true);
+    setActivePrompt(trimmedPrompt);
     setActionError(null);
 
     try {
@@ -444,12 +450,17 @@ export function ImageGenerationStudioPanel({
       <AiStudioResults
         ariaLabel="Generated images"
         emptyDescription="Describe the image you want below. Finished generations are saved to your account."
-        hasResults={generatedAssets.length > 0}
+        hasResults={generatedAssets.length > 0 || isGenerating}
         loading={resultsLoading}
         status={resultsStatus}
       >
+        {isGenerating ? <OptimisticImageCard prompt={activePrompt} /> : null}
         {generatedAssets.map((asset) => (
-          <GeneratedAssetCard key={asset.id} asset={asset} />
+          <GeneratedAssetCard
+            key={asset.id}
+            asset={asset}
+            isNew={asset.id === latestCompletedId}
+          />
         ))}
       </AiStudioResults>
 
@@ -510,9 +521,56 @@ export function ImageGenerationStudioPanel({
   );
 }
 
-function GeneratedAssetCard({ asset }: { asset: AIStudioImageResult }) {
+function OptimisticImageCard({ prompt }: { prompt?: string }) {
   return (
-    <article className="group min-w-0">
+    <article className="group min-w-0 animate-in fade-in-0 duration-300">
+      <div
+        className="relative overflow-hidden rounded-[var(--radius-card)] bg-card-muted/70 ring-1 ring-primary/30"
+        style={{ aspectRatio: "4 / 5" }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-tr from-primary/[0.04] via-transparent to-primary/[0.08]" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 p-4 text-center">
+          <span className="inline-flex size-10 items-center justify-center rounded-full border border-primary/30 bg-card/90 shadow-sm backdrop-blur-md">
+            <Loader2
+              className="size-4 animate-spin text-primary"
+              aria-hidden="true"
+            />
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-card/85 px-2.5 py-1 text-[11px] font-semibold text-foreground-strong shadow-xs backdrop-blur-md">
+            <Sparkles className="size-3 text-primary" aria-hidden="true" />
+            Generating image…
+          </span>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-2 px-1">
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-xs font-semibold text-foreground/85">
+            {prompt || "Creating image…"}
+          </h3>
+          <p className="mt-0.5 animate-pulse text-xs text-muted-subtle">
+            Polishing details…
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function GeneratedAssetCard({
+  asset,
+  isNew = false,
+}: {
+  asset: AIStudioImageResult;
+  isNew?: boolean;
+}) {
+  return (
+    <article
+      className={cn(
+        "group min-w-0 transition-[transform,box-shadow] duration-300",
+        isNew &&
+          "animate-in fade-in-50 zoom-in-[0.98] rounded-[var(--radius-card)] duration-500 ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background",
+      )}
+    >
       <div
         className="overflow-hidden rounded-[var(--radius-card)] bg-card-muted ring-1 ring-border"
         style={{ aspectRatio: asset.aspectRatio.replace(":", " / ") }}
@@ -524,7 +582,7 @@ function GeneratedAssetCard({ asset }: { asset: AIStudioImageResult }) {
           width={1200}
           height={getGeneratedImageHeight(asset.aspectRatio)}
           loading="lazy"
-          className="size-full object-cover"
+          className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
         />
       </div>
       <div className="mt-2 flex items-center justify-between gap-2 px-1">

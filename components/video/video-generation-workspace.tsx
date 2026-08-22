@@ -220,6 +220,10 @@ export function VideoGenerationStudioPanel({
     null,
   );
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
+  const [activeVideoPrompt, setActiveVideoPrompt] = useState("");
+  const [latestCompletedVideoId, setLatestCompletedVideoId] = useState<string | null>(
+    null,
+  );
   const [generationState, setGenerationState] =
     useState<GenerationState>("empty");
   const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
@@ -455,6 +459,9 @@ export function VideoGenerationStudioPanel({
         setGeneratedVideos((currentVideos) =>
           upsertAIStudioResult(currentVideos, nextVideo),
         );
+        setLatestCompletedVideoId(nextVideo.id);
+        window.setTimeout(() => setLatestCompletedVideoId(null), 3_500);
+        setActiveVideoPrompt("");
         setGenerationState("completed");
         setActionNotice(null);
         setActionError(null);
@@ -603,6 +610,7 @@ export function VideoGenerationStudioPanel({
 
     setActionNotice(null);
     setActionError(null);
+    setActiveVideoPrompt(trimmedPrompt);
     setGenerationState("generating");
 
     try {
@@ -763,12 +771,23 @@ export function VideoGenerationStudioPanel({
         ariaLabel="Generated videos"
         emptyDescription="Describe the video you want below. Finished generations are saved to your account."
         gridClassName="grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 2xl:grid-cols-1"
-        hasResults={generatedVideos.length > 0}
+        hasResults={generatedVideos.length > 0 || isGenerating}
         loading={resultsLoading}
         status={resultsStatus}
       >
+        {isGenerating ? (
+          <OptimisticVideoCard
+            avatarThumbnail={selectedAvatar?.thumbnailUrl ?? null}
+            avatarLabel={selectedAvatar?.label ?? null}
+            prompt={activeVideoPrompt}
+          />
+        ) : null}
         {generatedVideos.map((video) => (
-          <VideoResultCard key={video.id} video={video} />
+          <VideoResultCard
+            key={video.id}
+            video={video}
+            isNew={video.id === latestCompletedVideoId}
+          />
         ))}
       </AiStudioResults>
 
@@ -1202,7 +1221,86 @@ function AvatarPickerSkeleton() {
   );
 }
 
-function VideoResultCard({ video }: { video: GeneratedVideo }) {
+function OptimisticVideoCard({
+  avatarThumbnail,
+  avatarLabel,
+  prompt,
+}: {
+  avatarThumbnail?: string | null;
+  avatarLabel?: string | null;
+  prompt?: string;
+}) {
+  return (
+    <article className="grid min-w-0 animate-in fade-in-0 gap-5 border-b border-border py-5 duration-300 first:pt-1 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_216px] lg:items-center">
+      <div className="order-2 min-w-0 space-y-3 lg:order-1 lg:py-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xs font-medium tracking-[0.12em] text-muted uppercase">
+            Your prompt
+          </p>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary shadow-xs backdrop-blur-md">
+            <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+            Rendering…
+          </span>
+        </div>
+        <h3 className="max-w-3xl text-base font-medium leading-7 text-foreground/85 sm:text-lg">
+          {prompt || "Creating presenter video…"}
+        </h3>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted">
+          <span className="inline-flex animate-pulse items-center gap-1.5 text-primary">
+            <Sparkles className="size-3" aria-hidden="true" />
+            Synthesizing avatar &amp; audio…
+          </span>
+        </div>
+      </div>
+
+      <div className="order-1 w-full max-w-[216px] justify-self-start lg:order-2 lg:justify-self-end">
+        <div
+          className="relative overflow-hidden rounded-[20px] bg-card-muted ring-1 ring-primary/30 shadow-sm"
+          style={{ aspectRatio: "9 / 16" }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-tr from-primary/[0.04] via-transparent to-primary/[0.08]" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 p-4 text-center">
+            {avatarThumbnail ? (
+              <div className="relative size-12 overflow-hidden rounded-full border-2 border-primary/40 shadow-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={avatarThumbnail}
+                  alt={avatarLabel ?? "Avatar"}
+                  className="size-full object-cover"
+                />
+                <span className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
+                  <Loader2
+                    className="size-5 animate-spin text-white"
+                    aria-hidden="true"
+                  />
+                </span>
+              </div>
+            ) : (
+              <span className="inline-flex size-11 items-center justify-center rounded-full border border-primary/30 bg-card/90 shadow-sm backdrop-blur-md">
+                <Loader2
+                  className="size-5 animate-spin text-primary"
+                  aria-hidden="true"
+                />
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card/85 px-2.5 py-0.5 text-[10px] font-semibold text-foreground-strong backdrop-blur-md">
+              <Sparkles className="size-2.5 text-primary" aria-hidden="true" />
+              Rendering video
+            </span>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function VideoResultCard({
+  video,
+  isNew = false,
+}: {
+  video: GeneratedVideo;
+  isNew?: boolean;
+}) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1249,7 +1347,13 @@ function VideoResultCard({ video }: { video: GeneratedVideo }) {
   }
 
   return (
-    <article className="grid min-w-0 gap-5 border-b border-border py-5 first:pt-1 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_216px] lg:items-center">
+    <article
+      className={cn(
+        "grid min-w-0 gap-5 border-b border-border py-5 transition-[transform,box-shadow] duration-300 first:pt-1 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_216px] lg:items-center",
+        isNew &&
+          "animate-in fade-in-50 zoom-in-[0.98] rounded-[var(--radius-card)] px-3 duration-500 ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background",
+      )}
+    >
       <div className="order-2 min-w-0 space-y-3 lg:order-1 lg:py-3">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-xs font-medium tracking-[0.12em] text-muted uppercase">

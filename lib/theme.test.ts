@@ -21,12 +21,13 @@ test("theme honors an explicit saved light or dark preference", () => {
   assert.equal(isThemePreference("dark"), true);
 });
 
-test("production locks the product to dark regardless of saved preference", () => {
-  assert.equal(isProductionThemeLocked("production"), true);
+test("production allows theme selection and defaults to light", () => {
+  assert.equal(isProductionThemeLocked("production"), false);
   assert.equal(isProductionThemeLocked("preview"), false);
   assert.equal(isProductionThemeLocked(undefined), false);
-  assert.equal(resolveInitialTheme("light", true), "dark");
-  assert.equal(resolveInitialTheme(null, true), "dark");
+  assert.equal(resolveInitialTheme("light", false), "light");
+  assert.equal(resolveInitialTheme("dark", false), "dark");
+  assert.equal(resolveInitialTheme(null, false), "light");
 });
 
 test("dialog footers and destructive actions use semantic colors in both themes", () => {

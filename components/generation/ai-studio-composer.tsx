@@ -215,7 +215,8 @@ export function AiStudioComposer({
                   disabled={generateDisabled || promptTooLong}
                   title={generationLocked ? accessMessage ?? undefined : undefined}
                   className={cn(
-                    "min-w-0 flex-1 sm:min-w-[168px]",
+                    "min-w-0 flex-1 transition-[transform,box-shadow,background-color] duration-150 active:scale-[0.98] sm:min-w-[168px]",
+                    isGenerating && "ring-2 ring-primary/35 shadow-xs shadow-primary/20",
                     layout === "unified" && "w-full",
                   )}
                 >

@@ -21,6 +21,10 @@ const promptHelper = composer.slice(
   composer.indexOf("<FieldDescription"),
   composer.indexOf("</FieldDescription>") + "</FieldDescription>".length,
 );
+const accessHook = readProjectFile(
+  "components/generation/use-ai-studio-access.ts",
+);
+const routeLoading = readProjectFile("app/ai-studio/loading.tsx");
 
 test("the image prompt uses one unified composer surface", () => {
   assert.match(imageWorkspace, /layout="unified"/);
@@ -110,6 +114,37 @@ test("generation progress has a visible in-place loading state", () => {
   assert.match(resultSurface, /status\?\.tone === "progress"/);
   assert.match(resultSurface, /<EmptyMedia variant="icon"/);
   assert.match(resultSurface, /animate-spin/);
+});
+
+test("image and video generation stay visible while a job is running", () => {
+  assert.match(imageWorkspace, /<OptimisticImageCard prompt=\{activePrompt\}/);
+  assert.match(videoWorkspace, /<OptimisticVideoCard/);
+  assert.match(
+    imageWorkspace,
+    /hasResults=\{generatedAssets\.length > 0 \|\| isGenerating\}/,
+  );
+  assert.match(
+    videoWorkspace,
+    /hasResults=\{generatedVideos\.length > 0 \|\| isGenerating\}/,
+  );
+  assert.match(imageWorkspace, /isNew=\{asset\.id === latestCompletedId\}/);
+  assert.match(videoWorkspace, /isNew=\{video\.id === latestCompletedVideoId\}/);
+});
+
+test("AI Studio access is cached per account without window-focus flicker", () => {
+  assert.match(accessHook, /useQuery\(\{/);
+  assert.match(
+    accessHook,
+    /queryKey: \["ai-studio-access", user\?\.uid \?\? "signed-out"\]/,
+  );
+  assert.match(accessHook, /refetchOnWindowFocus: false/);
+  assert.match(accessHook, /signal,/);
+});
+
+test("the route has a screen-shaped loading fallback", () => {
+  assert.match(routeLoading, /aria-label="Loading AI Studio"/);
+  assert.match(routeLoading, /max-w-\[1560px\]/);
+  assert.match(routeLoading, /aspect-\[4\/5\]/);
 });
 
 test("access guidance appears once inside the composer", () => {

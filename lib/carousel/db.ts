@@ -447,6 +447,17 @@ type CarouselExperimentAssignmentInsert = Partial<
 type CarouselDatabase = {
   public: {
     Functions: {
+      fail_unqueued_carousel_preparation: {
+        Args: {
+          p_error_message: string;
+          p_generation_batch_id: string;
+        };
+        Returns: {
+          failed_assignment_count: number;
+          failed_batch_count: number;
+          failed_generation_count: number;
+        }[];
+      };
       increment_category_image_asset_usage: {
         Args: { asset_ids: string[] };
         Returns: null;
@@ -1264,6 +1275,31 @@ export async function createCarouselGeneration(input: {
   }
 
   return data.id;
+}
+
+export async function failUnqueuedCarouselPreparation(params: {
+  errorMessage: string;
+  generationBatchId: string;
+}) {
+  const { data, error } = await getSupabaseServerClient().rpc(
+    "fail_unqueued_carousel_preparation",
+    {
+      p_error_message: params.errorMessage,
+      p_generation_batch_id: params.generationBatchId,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `Could not fail unqueued Carousel preparation: ${error.message}`,
+    );
+  }
+
+  return data?.[0] ?? {
+    failed_assignment_count: 0,
+    failed_batch_count: 0,
+    failed_generation_count: 0,
+  };
 }
 
 export async function countActiveCarouselRoleAssets(categorySlug: string) {

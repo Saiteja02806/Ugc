@@ -5,7 +5,11 @@ import test from "node:test";
 const activationMigration = read(
   "supabase/migrations/20260817193000_activate_carousel_structure_2_runtime.sql",
 );
+const constraintRepairMigration = read(
+  "supabase/migrations/20260822032756_repair_carousel_structure_2_generation_constraint.sql",
+);
 const appPreparation = read("lib/carousel/prepare-business-profile.ts");
+const appDatabase = read("lib/carousel/db.ts");
 const appGeneration = read("lib/carousel/generate-carousel.ts");
 const structure2Runtime = read(
   "worker/src/lib/carousel-structure-2-generate.ts",
@@ -33,6 +37,46 @@ test("activation preserves exact Structure 2 formats and null Structure 1 hooks"
   assert.doesNotMatch(
     activationMigration,
     /^\s*(?:delete\s+from|truncate(?:\s+table)?|drop\s+table)\b/im,
+  );
+});
+
+test("Structure 2 generation metadata no longer conflicts with the legacy hook pair check", () => {
+  assert.match(
+    constraintRepairMigration,
+    /drop constraint if exists carousel_generations_content_selection_pair_check/i,
+  );
+  assert.match(
+    constraintRepairMigration,
+    /structure_id = 'structure_1'[\s\S]*content_format_id is not null[\s\S]*hook_family_id is not null/i,
+  );
+  assert.match(
+    constraintRepairMigration,
+    /structure_id = 'structure_2'[\s\S]*content_format_id is not null[\s\S]*hook_family_id is null[\s\S]*content_grammar_version is not null[\s\S]*content_selector_version is not null/i,
+  );
+  assert.match(
+    constraintRepairMigration,
+    /validate constraint carousel_generations_content_selection_pair_check/i,
+  );
+});
+
+test("failed preparation cleans up only work that was never queued", () => {
+  assert.match(
+    constraintRepairMigration,
+    /generation\.trigger_run_id is null/i,
+  );
+  assert.match(
+    constraintRepairMigration,
+    /batch\.planner_job_id is null/i,
+  );
+  assert.match(constraintRepairMigration, /security invoker/i);
+  assert.match(
+    constraintRepairMigration,
+    /revoke all on function public\.fail_unqueued_carousel_preparation\(uuid, text\)[\s\S]*from public, anon, authenticated/i,
+  );
+  assert.match(appDatabase, /failUnqueuedCarouselPreparation/);
+  assert.match(
+    appPreparation,
+    /catch \(error\)[\s\S]*failUnqueuedCarouselPreparation[\s\S]*status: "failed"/i,
   );
 });
 

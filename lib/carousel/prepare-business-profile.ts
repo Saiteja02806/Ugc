@@ -26,6 +26,7 @@ import { resolveCarouselCategoryProfile } from "@/lib/carousel/category-profile-
 import {
   countActiveCarouselRoleAssets,
   createCarouselGeneration,
+  failUnqueuedCarouselPreparation,
   getCarouselGenerationsByBatchId,
   getWebsiteAnalysisForCarousel,
   linkCarouselExperimentAssignment,
@@ -59,32 +60,51 @@ export async function prepareBusinessProfileCarousels(profile: BusinessProfileRe
     })
   ).filter((generation) => generation.originDailyFeedId === null);
   const generationBatchId = existing[0]?.generationBatchId ?? randomUUID();
-  const prepared = await prepareControlledGenerationBatch({
-    analysisId: analysis.id,
-    businessContext,
-    candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
-    categorySlug: resolvedCategory.categorySlug,
-    generationBatchId,
-    profile,
-  });
+  try {
+    const prepared = await prepareControlledGenerationBatch({
+      analysisId: analysis.id,
+      businessContext,
+      candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
+      categorySlug: resolvedCategory.categorySlug,
+      generationBatchId,
+      profile,
+    });
 
-  if (
-    prepared.activeCandidates === 0 &&
-    !prepared.generations.some((generation) => generation.status === "completed")
-  ) {
-    throw new Error("Could not start carousel preparation workers.");
+    if (
+      prepared.activeCandidates === 0 &&
+      !prepared.generations.some((generation) => generation.status === "completed")
+    ) {
+      throw new Error("Could not start carousel preparation workers.");
+    }
+
+    await updateBusinessProfilePreparation({
+      generationBatchId,
+      profileId: profile.id,
+      status: "preparing",
+    });
+
+    return {
+      candidateCount: prepared.candidateCount,
+      generationBatchId,
+    };
+  } catch (error) {
+    const message = getPreparationErrorMessage(error);
+
+    await Promise.allSettled([
+      failUnqueuedCarouselPreparation({
+        errorMessage: message,
+        generationBatchId,
+      }),
+      updateBusinessProfilePreparation({
+        error: message,
+        generationBatchId,
+        profileId: profile.id,
+        status: "failed",
+      }),
+    ]);
+
+    throw error;
   }
-
-  await updateBusinessProfilePreparation({
-    generationBatchId,
-    profileId: profile.id,
-    status: "preparing",
-  });
-
-  return {
-    candidateCount: prepared.candidateCount,
-    generationBatchId,
-  };
 }
 
 export async function prepareDailyBusinessProfileCarousels(params: {
@@ -437,6 +457,12 @@ async function getPreparationContext(profile: BusinessProfileRecord) {
     businessContext: profile.context,
     resolvedCategory,
   };
+}
+
+function getPreparationErrorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message.slice(0, 1_000)
+    : "Carousel preparation failed before queue dispatch.";
 }
 
 export async function enqueueProcessingCarouselCandidates(

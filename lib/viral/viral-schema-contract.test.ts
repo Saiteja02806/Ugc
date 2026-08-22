@@ -10,6 +10,19 @@ const migration = readFileSync(
   "utf8",
 );
 
+const viewCountMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260822152648_add_viral_references_view_count.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
+const reviewStore = readFileSync(
+  new URL("./review-store.ts", import.meta.url),
+  "utf8",
+);
+
 test("stores Instagram references without storing original media", () => {
   assert.match(migration, /create table if not exists public\.viral_references/i);
   assert.match(migration, /source_url text not null unique/i);
@@ -98,4 +111,21 @@ test("defers reports, usage tracking, and replication tables", () => {
   assert.doesNotMatch(migration, /create table[^;]*viral_reports/i);
   assert.doesNotMatch(migration, /create table[^;]*viral_reference_usage/i);
   assert.doesNotMatch(migration, /replication_blueprint|generation_ready/i);
+});
+
+test("keeps the Explore review query and database view count schema aligned", () => {
+  assert.match(
+    viewCountMigration,
+    /alter table public\.viral_references[\s\S]*add column if not exists view_count bigint/i,
+  );
+  assert.match(
+    viewCountMigration,
+    /constraint viral_references_view_count_nonnegative[\s\S]*check \(view_count is null or view_count >= 0\)/i,
+  );
+  assert.doesNotMatch(viewCountMigration, /view_count bigint not null/i);
+  assert.match(viewCountMigration, /notify pgrst, 'reload schema'/i);
+  assert.match(
+    reviewStore,
+    /id,section,platform,source_url,embed_html,embed_status,publish_status,created_at,view_count/i,
+  );
 });

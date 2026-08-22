@@ -12,6 +12,10 @@ import {
   getAIStudioPromptLengthError,
   normalizeAIStudioPrompt,
 } from "@/lib/ai-studio/prompt-policy";
+import {
+  parseAIStudioGenerationQuantity,
+  parseAIStudioImageAspectRatio,
+} from "@/lib/ai-studio/generation-settings";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
   getBackgroundJobById,
@@ -27,8 +31,10 @@ import {
 } from "@/lib/billing/subscription-db";
 
 type GenerateRequest = {
+  aspectRatio?: unknown;
   idempotencyKey?: unknown;
   prompt?: unknown;
+  quantity?: unknown;
 };
 
 type ImageJobOutput = {
@@ -107,6 +113,8 @@ export async function handleAIStudioImageGeneration(request: Request) {
     | GenerateRequest
     | null;
   const prompt = normalizeAIStudioPrompt(body?.prompt);
+  const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio);
+  const quantity = parseAIStudioGenerationQuantity(body?.quantity);
 
   if (!prompt) {
     return NextResponse.json(
@@ -144,51 +152,89 @@ export async function handleAIStudioImageGeneration(request: Request) {
     );
   }
 
-  const generationId = crypto.randomUUID();
-  const idempotencyKey = cleanIdempotencyKey(
+  const baseIdempotencyKey = cleanIdempotencyKey(
     request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
   );
-  let creditsReserved = false;
+  const queuedJobs: { generationId: string; jobId: string }[] = [];
+  let queueError: unknown = null;
 
-  try {
-    if (!isAIStudioBillingExemptUser(user)) {
-      await reserveBillingCredits({
-        amount: getGenerationCreditCost("image"),
+  for (let index = 0; index < quantity; index += 1) {
+    const generationId = crypto.randomUUID();
+    const idempotencyKey = getChildIdempotencyKey(
+      baseIdempotencyKey,
+      index,
+      quantity,
+    );
+    let creditsReserved = false;
+
+    try {
+      if (!isAIStudioBillingExemptUser(user)) {
+        await reserveBillingCredits({
+          amount: getGenerationCreditCost("image"),
+          idempotencyKey,
+          jobType: IMAGE_JOB_TYPE,
+          userId: user.uid,
+        });
+        creditsReserved = true;
+      }
+      const backgroundJob = await createAndDispatchBackgroundJob({
         idempotencyKey,
+        input: {
+          aspectRatio,
+          batchIndex: index + 1,
+          batchSize: quantity,
+          generationId,
+          prompt,
+        },
         jobType: IMAGE_JOB_TYPE,
+        projectId: "ai-studio",
         userId: user.uid,
       });
-      creditsReserved = true;
+
+      queuedJobs.push({
+        generationId:
+          getJobInputString(backgroundJob.input, "generationId") ||
+          generationId,
+        jobId: backgroundJob.id,
+      });
+    } catch (error) {
+      queueError = error;
+
+      if (creditsReserved) {
+        await releaseBillingCredits({ idempotencyKey, userId: user.uid }).catch(
+          (releaseError) =>
+            console.error(
+              "Could not release image generation credits:",
+              releaseError,
+            ),
+        );
+      }
+
+      break;
     }
-    const backgroundJob = await createAndDispatchBackgroundJob({
-      idempotencyKey,
-      input: {
-        aspectRatio: "4:5",
-        generationId,
-        prompt,
-      },
-      jobType: IMAGE_JOB_TYPE,
-      projectId: "ai-studio",
-      userId: user.uid,
-    });
+  }
+
+  if (queuedJobs.length > 0) {
+    const firstJob = queuedJobs[0];
+    const partial = queuedJobs.length < quantity;
 
     return NextResponse.json(
       {
-        generationId:
-          getJobInputString(backgroundJob.input, "generationId") || generationId,
-        jobId: backgroundJob.id,
-        message: "Image generation started.",
+        generationId: firstJob.generationId,
+        jobId: firstJob.jobId,
+        jobs: queuedJobs,
+        message: partial
+          ? `${queuedJobs.length} of ${quantity} image generations started.`
+          : `${quantity} image generation${quantity === 1 ? "" : "s"} started.`,
         ok: true,
+        partial,
       },
       { status: 202 },
     );
-  } catch (error) {
-    if (creditsReserved) {
-      await releaseBillingCredits({ idempotencyKey, userId: user.uid }).catch(
-        (releaseError) =>
-          console.error("Could not release image generation credits:", releaseError),
-      );
-    }
+  }
+
+  {
+    const error = queueError;
 
     if (error instanceof BillingAccessError) {
       return NextResponse.json(
@@ -207,6 +253,12 @@ export async function handleAIStudioImageGeneration(request: Request) {
       { status: 502 },
     );
   }
+}
+
+function getChildIdempotencyKey(baseKey: string, index: number, quantity: number) {
+  return quantity === 1
+    ? baseKey
+    : `${baseKey.slice(0, 190)}:${index + 1}`;
 }
 
 function cleanIdempotencyKey(value: unknown) {

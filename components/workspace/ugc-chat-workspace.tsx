@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   AiStudioComposer,
-  AiStudioSetting,
+  AiStudioSettingSelect,
 } from "@/components/generation/ai-studio-composer";
 import {
   AiStudioResults,
@@ -15,6 +15,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
+import {
+  AI_STUDIO_GENERATION_QUANTITIES,
+  AI_STUDIO_IMAGE_ASPECT_RATIOS,
+  getAIStudioRatioLabel,
+  type AIStudioGenerationQuantity,
+  type AIStudioImageAspectRatio,
+} from "@/lib/ai-studio/generation-settings";
 import {
   fetchAIStudioMediaAsset,
   fetchAIStudioMediaAssets,
@@ -32,7 +39,7 @@ import {
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   persistJobIdInUrl,
-  useBackgroundJob,
+  useBackgroundJobs,
   usePersistedJobIdFromUrl,
 } from "@/lib/jobs/background-job-client";
 import type { Json } from "@/lib/jobs/background-jobs";
@@ -42,8 +49,10 @@ type GenerateResponse =
   | {
       generationId: string;
       jobId: string;
+      jobs: { generationId: string; jobId: string }[];
       message: string;
       ok: true;
+      partial: boolean;
     }
   | {
       message: string;
@@ -74,19 +83,60 @@ function getImageJobOutput(output: Json | null) {
       typeof output.generationId === "string" ? output.generationId : null,
     mediaAssetId:
       typeof output.mediaAssetId === "string" ? output.mediaAssetId : null,
+    ratio:
+      typeof output.ratio === "string" &&
+      AI_STUDIO_IMAGE_ASPECT_RATIOS.includes(
+        output.ratio as AIStudioImageAspectRatio,
+      )
+        ? (output.ratio as AIStudioImageAspectRatio)
+        : null,
     url: typeof output.url === "string" ? output.url : null,
   };
 }
 
-function persistImageJob(userId: string, jobId: string, prompt: string) {
+function persistImageJobs(
+  userId: string,
+  jobs: readonly { jobId: string }[],
+  metadata: { aspectRatio: AIStudioImageAspectRatio; prompt: string },
+) {
   try {
-    window.localStorage.setItem(`${IMAGE_JOB_STORAGE_PREFIX}${userId}`, jobId);
+    const jobIds = jobs.map((job) => job.jobId);
     window.localStorage.setItem(
-      `${IMAGE_JOB_METADATA_PREFIX}${userId}.${jobId}`,
-      JSON.stringify({ prompt }),
+      `${IMAGE_JOB_STORAGE_PREFIX}${userId}`,
+      JSON.stringify(jobIds),
     );
+    for (const jobId of jobIds) {
+      window.localStorage.setItem(
+        `${IMAGE_JOB_METADATA_PREFIX}${userId}.${jobId}`,
+        JSON.stringify(metadata),
+      );
+    }
   } catch {
     // The owner-scoped URL remains the resume fallback when storage is blocked.
+  }
+}
+
+function getStoredImageJobIds(userId: string) {
+  try {
+    const rawValue = window.localStorage.getItem(
+      `${IMAGE_JOB_STORAGE_PREFIX}${userId}`,
+    );
+
+    if (!rawValue) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(rawValue) as unknown;
+
+      return Array.isArray(parsed)
+        ? parsed.filter((value): value is string => typeof value === "string")
+        : [];
+    } catch {
+      return [rawValue];
+    }
+  } catch {
+    return [];
   }
 }
 
@@ -108,6 +158,29 @@ function getImageJobPrompt(userId: string, jobId: string) {
   }
 }
 
+function getImageJobAspectRatio(
+  userId: string,
+  jobId: string,
+): AIStudioImageAspectRatio {
+  try {
+    const rawValue = window.localStorage.getItem(
+      `${IMAGE_JOB_METADATA_PREFIX}${userId}.${jobId}`,
+    );
+    const value = rawValue ? (JSON.parse(rawValue) as unknown) : null;
+
+    return value &&
+      typeof value === "object" &&
+      "aspectRatio" in value &&
+      AI_STUDIO_IMAGE_ASPECT_RATIOS.includes(
+        value.aspectRatio as AIStudioImageAspectRatio,
+      )
+      ? (value.aspectRatio as AIStudioImageAspectRatio)
+      : "4:5";
+  } catch {
+    return "4:5";
+  }
+}
+
 export function ImageGenerationStudioPanel({
   accessMessage,
   accessState = "locked",
@@ -119,6 +192,10 @@ export function ImageGenerationStudioPanel({
 }) {
   const { loading: authLoading, user } = useAuth();
   const [prompt, setPrompt] = useState("");
+  const [aspectRatio, setAspectRatio] =
+    useState<AIStudioImageAspectRatio>("4:5");
+  const [quantity, setQuantity] =
+    useState<AIStudioGenerationQuantity>(1);
   const [activePrompt, setActivePrompt] = useState("");
   const [latestCompletedId, setLatestCompletedId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -128,27 +205,58 @@ export function ImageGenerationStudioPanel({
   const [resultsLoading, setResultsLoading] = useState(true);
   const [resultsError, setResultsError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [storedJobId, setStoredJobId] = useState<string | null>(null);
-  const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
+  const [storedJobIds, setStoredJobIds] = useState<string[]>([]);
+  const [submittedJobIds, setSubmittedJobIds] = useState<string[]>([]);
   const [ignoredPersistedJobId, setIgnoredPersistedJobId] = useState<
     string | null
   >(null);
   const resolvedJobIdsRef = useRef(new Set<string>());
+  const submissionKeyRef = useRef<string | null>(null);
+  const activeUserIdRef = useRef<string | null>(null);
   const persistedJobId = usePersistedJobIdFromUrl(IMAGE_JOB_URL_PARAMETER);
   const urlJobId =
     persistedJobId && persistedJobId !== ignoredPersistedJobId
       ? persistedJobId
       : null;
-  const activeJobId = submittedJobId ?? urlJobId ?? storedJobId;
-  const activeJobQuery = useBackgroundJob(activeJobId);
-  const queriedJob = activeJobQuery.data;
-  const durableJob =
-    queriedJob?.jobType === "image_generation" ? queriedJob : null;
+  const activeJobIds = Array.from(
+    new Set([
+      ...submittedJobIds,
+      ...(urlJobId ? [urlJobId] : []),
+      ...storedJobIds,
+    ]),
+  );
+  const activeJobQueries = useBackgroundJobs(activeJobIds);
+  const queriedJobs = activeJobQueries.flatMap((query) =>
+    query.data ? [query.data] : [],
+  );
+  const durableJobs = queriedJobs.filter(
+    (job) => job.jobType === "image_generation",
+  );
   const generationLocked = accessState !== "pro";
   const isGenerating =
     isSubmitting ||
-    Boolean(activeJobId && activeJobQuery.isPending) ||
-    Boolean(durableJob && activeJobStatuses.has(durableJob.status));
+    activeJobQueries.some((query) => query.isPending) ||
+    durableJobs.some((job) => activeJobStatuses.has(job.status));
+  const pendingGenerationCount = isSubmitting
+    ? quantity
+    : activeJobQueries.reduce((count, query) => {
+        if (query.isPending) {
+          return count + 1;
+        }
+
+        return query.data && activeJobStatuses.has(query.data.status)
+          ? count + 1
+          : count;
+      }, 0);
+
+  useEffect(() => {
+    activeUserIdRef.current = user?.uid ?? null;
+    resolvedJobIdsRef.current.clear();
+
+    return () => {
+      activeUserIdRef.current = null;
+    };
+  }, [user?.uid]);
 
   useEffect(() => {
     if (!active || authLoading) {
@@ -161,7 +269,7 @@ export function ImageGenerationStudioPanel({
       if (!user) {
         if (!ignore) {
           setGeneratedAssets([]);
-          setStoredJobId(null);
+          setStoredJobIds([]);
           setResultsError("Sign in to view your generated images.");
           setResultsLoading(false);
         }
@@ -186,13 +294,9 @@ export function ImageGenerationStudioPanel({
 
         if (!ignore) {
           setGeneratedAssets(getAIStudioImageResults(assets));
-          setSubmittedJobId(null);
+          setSubmittedJobIds([]);
           setIgnoredPersistedJobId(null);
-          setStoredJobId(
-            window.localStorage.getItem(
-              `${IMAGE_JOB_STORAGE_PREFIX}${user.uid}`,
-            ),
-          );
+          setStoredJobIds(getStoredImageJobIds(user.uid));
         }
       } catch (error) {
         if (!ignore) {
@@ -216,9 +320,11 @@ export function ImageGenerationStudioPanel({
 
   useEffect(() => {
     if (
-      queriedJob &&
-      queriedJob.jobType !== "image_generation" &&
-      activeJobId === persistedJobId
+      persistedJobId &&
+      queriedJobs.some(
+        (job) =>
+          job?.id === persistedJobId && job.jobType !== "image_generation",
+      )
     ) {
       const timeoutId = window.setTimeout(
         () => setIgnoredPersistedJobId(persistedJobId),
@@ -227,26 +333,32 @@ export function ImageGenerationStudioPanel({
 
       return () => window.clearTimeout(timeoutId);
     }
-  }, [activeJobId, persistedJobId, queriedJob]);
+  }, [persistedJobId, queriedJobs]);
 
   useEffect(() => {
-    if (
-      !durableJob ||
-      durableJob.status !== "completed" ||
-      resolvedJobIdsRef.current.has(durableJob.id) ||
-      !user
-    ) {
+    const completedJobs = durableJobs.filter(
+      (job) =>
+        job.status === "completed" &&
+        !resolvedJobIdsRef.current.has(job.id),
+    );
+
+    if (!user || completedJobs.length === 0) {
       return;
     }
 
-    const completedJob = durableJob;
-    const output = getImageJobOutput(completedJob.output);
-    const userId = user.uid;
-    let ignore = false;
+    for (const completedJob of completedJobs) {
+      resolvedJobIdsRef.current.add(completedJob.id);
+    }
 
-    async function reconcileCompletedImage() {
+    const userId = user.uid;
+
+    async function reconcileCompletedImage(
+      completedJob: (typeof completedJobs)[number],
+    ) {
+      const output = getImageJobOutput(completedJob.output);
+
       if (!output?.url) {
-        if (!ignore) {
+        if (activeUserIdRef.current === userId) {
           setActionError("Image generation completed without a usable output.");
         }
         return;
@@ -289,15 +401,16 @@ export function ImageGenerationStudioPanel({
 
         const nextResult: AIStudioImageResult =
           persistedResult ?? {
-            aspectRatio: "4:5",
+            aspectRatio:
+              output.ratio ??
+              getImageJobAspectRatio(userId, completedJob.id),
             createdAt: completedJob.completedAt ?? completedJob.updatedAt,
             id: output.generationId ?? completedJob.id,
             title: getImageJobPrompt(userId, completedJob.id),
             url: output.url,
           };
 
-        if (!ignore) {
-          resolvedJobIdsRef.current.add(completedJob.id);
+        if (activeUserIdRef.current === userId) {
           setGeneratedAssets((current) =>
             upsertAIStudioResult(current, nextResult),
           );
@@ -307,7 +420,8 @@ export function ImageGenerationStudioPanel({
           setActionError(null);
         }
       } catch (error) {
-        if (!ignore) {
+        resolvedJobIdsRef.current.delete(completedJob.id);
+        if (activeUserIdRef.current === userId) {
           setActionError(
             getErrorMessage(error, "Could not restore the generated image."),
           );
@@ -315,12 +429,8 @@ export function ImageGenerationStudioPanel({
       }
     }
 
-    void reconcileCompletedImage();
-
-    return () => {
-      ignore = true;
-    };
-  }, [durableJob, user]);
+    void Promise.all(completedJobs.map(reconcileCompletedImage));
+  }, [durableJobs, user]);
 
   async function generateFromPrompt(rawPrompt: string) {
     const trimmedPrompt = normalizeAIStudioPrompt(rawPrompt);
@@ -349,13 +459,23 @@ export function ImageGenerationStudioPanel({
         throw new Error("Sign in before generating images.");
       }
 
+      const idempotencyKey =
+        submissionKeyRef.current ?? crypto.randomUUID();
+      submissionKeyRef.current = idempotencyKey;
+
       const response = await fetch("/api/ai-studio/images/generate", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
         },
-        body: JSON.stringify({ prompt: trimmedPrompt }),
+        body: JSON.stringify({
+          aspectRatio,
+          idempotencyKey,
+          prompt: trimmedPrompt,
+          quantity,
+        }),
       });
       const data = (await response.json()) as GenerateResponse;
 
@@ -365,11 +485,18 @@ export function ImageGenerationStudioPanel({
         );
       }
 
-      persistImageJob(user.uid, data.jobId, trimmedPrompt);
+      persistImageJobs(user.uid, data.jobs, { aspectRatio, prompt: trimmedPrompt });
       persistJobIdInUrl(data.jobId, IMAGE_JOB_URL_PARAMETER);
-      resolvedJobIdsRef.current.delete(data.jobId);
-      setStoredJobId(data.jobId);
-      setSubmittedJobId(data.jobId);
+      for (const job of data.jobs) {
+        resolvedJobIdsRef.current.delete(job.jobId);
+      }
+      const jobIds = data.jobs.map((job) => job.jobId);
+      setStoredJobIds(jobIds);
+      setSubmittedJobIds(jobIds);
+      if (data.partial) {
+        setActionError(data.message);
+      }
+      submissionKeyRef.current = null;
       setPrompt("");
     } catch (error) {
       console.error("Image generation failed:", error);
@@ -417,18 +544,22 @@ export function ImageGenerationStudioPanel({
     setPrompt(enhancedPrompt);
   }
 
-  const jobQueryError = activeJobQuery.isError
+  const failedJobQuery = activeJobQueries.find((query) => query.isError);
+  const jobQueryError = failedJobQuery
     ? getErrorMessage(
-        activeJobQuery.error,
-        "Could not retrieve the image generation job.",
+        failedJobQuery.error,
+        "Could not retrieve an image generation job.",
       )
     : null;
-  const durableError =
-    durableJob?.status === "failed"
-      ? durableJob.error?.message || "Image generation failed. Try again."
-      : durableJob?.status === "cancelled"
-        ? "Image generation was cancelled."
-        : null;
+  const failedDurableJob = durableJobs.find((job) => job.status === "failed");
+  const cancelledDurableJob = durableJobs.find(
+    (job) => job.status === "cancelled",
+  );
+  const durableError = failedDurableJob
+    ? failedDurableJob.error?.message || "Image generation failed. Try again."
+    : cancelledDurableJob
+      ? "Image generation was cancelled."
+      : null;
   const resultsErrorMessage = actionError ?? jobQueryError ?? durableError ?? resultsError;
   const resultsStatus: AiStudioResultsStatus | null = resultsErrorMessage
     ? { label: resultsErrorMessage, tone: "error" }
@@ -454,9 +585,18 @@ export function ImageGenerationStudioPanel({
         loading={resultsLoading}
         status={resultsStatus}
       >
-        {isGenerating ? (
-          <OptimisticImageCard prompt={activePrompt} />
-        ) : null}
+        {isGenerating
+          ? Array.from(
+              { length: Math.max(1, pendingGenerationCount) },
+              (_, index) => (
+                <OptimisticImageCard
+                  key={`pending-image-${index}`}
+                  aspectRatio={aspectRatio}
+                  prompt={activePrompt}
+                />
+              ),
+            )
+          : null}
         {generatedAssets.map((asset) => (
           <GeneratedAssetCard
             key={asset.id}
@@ -480,6 +620,7 @@ export function ImageGenerationStudioPanel({
         placeholder="Describe the image you want to create…"
         prompt={prompt}
         onPromptChange={(nextPrompt) => {
+          submissionKeyRef.current = null;
           setActionError(null);
           setPrompt(nextPrompt);
         }}
@@ -487,18 +628,36 @@ export function ImageGenerationStudioPanel({
         onTextareaKeyDown={handleTextareaKeyDown}
         settings={
           <>
-            <AiStudioSetting
+            <AiStudioSettingSelect
+              ariaLabel="Image aspect ratio"
               icon={
                 <span
                   aria-hidden="true"
                   className="inline-block h-4 w-3.5 shrink-0 rounded-[4px] border-2 border-muted"
                 />
               }
-              label="4:5 portrait"
+              options={AI_STUDIO_IMAGE_ASPECT_RATIOS.map((ratio) => ({
+                label: getAIStudioRatioLabel(ratio),
+                value: ratio,
+              }))}
+              value={aspectRatio}
+              onChange={(value) => {
+                submissionKeyRef.current = null;
+                setAspectRatio(value);
+              }}
             />
-            <AiStudioSetting
+            <AiStudioSettingSelect
+              ariaLabel="Number of images"
               icon={<ImageIcon className="size-4" aria-hidden="true" />}
-              label="1 image"
+              options={AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({
+                label: `${count} image${count === 1 ? "" : "s"}`,
+                value: String(count),
+              }))}
+              value={String(quantity)}
+              onChange={(value) => {
+                submissionKeyRef.current = null;
+                setQuantity(Number(value) as AIStudioGenerationQuantity)
+              }}
             />
             <Button
               type="button"
@@ -523,12 +682,18 @@ export function ImageGenerationStudioPanel({
   );
 }
 
-function OptimisticImageCard({ prompt }: { prompt?: string }) {
+function OptimisticImageCard({
+  aspectRatio,
+  prompt,
+}: {
+  aspectRatio: AIStudioImageAspectRatio;
+  prompt?: string;
+}) {
   return (
     <article className="group min-w-0 animate-in fade-in-0 duration-300">
       <div
         className="relative overflow-hidden rounded-[var(--radius-card)] bg-card-muted/70 ring-1 ring-primary/30"
-        style={{ aspectRatio: "4 / 5" }}
+        style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
       >
         <div className="absolute inset-0 bg-gradient-to-tr from-primary/[0.04] via-transparent to-primary/[0.08]" />
 

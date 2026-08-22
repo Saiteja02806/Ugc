@@ -1,17 +1,20 @@
 import OpenAI from "openai";
 
 import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
+import type { AIStudioImageRatio } from "./image-output.js";
 
 const DEFAULT_IMAGE_MODEL = "gpt-image-1";
-const DEFAULT_IMAGE_SIZE = "1024x1536";
 
 let openaiClient: OpenAI | null = null;
 
-export async function generateOpenAiImageBuffer(prompt: string) {
+export async function generateOpenAiImageBuffer(
+  prompt: string,
+  aspectRatio: AIStudioImageRatio = "4:5",
+) {
   const result = await getOpenAIClient().images.generate({
     model: process.env.OPENAI_IMAGE_MODEL?.trim() || DEFAULT_IMAGE_MODEL,
     prompt,
-    size: DEFAULT_IMAGE_SIZE,
+    size: getProviderImageSize(aspectRatio),
   });
   const imageBase64 = result.data?.[0]?.b64_json;
 
@@ -24,6 +27,16 @@ export async function generateOpenAiImageBuffer(prompt: string) {
     model: process.env.OPENAI_IMAGE_MODEL?.trim() || DEFAULT_IMAGE_MODEL,
     requestId: result._request_id ?? null,
   };
+}
+
+function getProviderImageSize(aspectRatio: AIStudioImageRatio) {
+  if (aspectRatio === "1:1") {
+    return "1024x1024" as const;
+  }
+
+  return aspectRatio === "16:9"
+    ? ("1536x1024" as const)
+    : ("1024x1536" as const);
 }
 
 function getOpenAIClient() {

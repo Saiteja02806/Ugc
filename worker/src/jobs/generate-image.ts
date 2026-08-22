@@ -5,10 +5,11 @@ import {
   ProviderSubmissionUncertainError,
 } from "../lib/generation-provider.js";
 import {
-  AI_STUDIO_IMAGE_HEIGHT,
   AI_STUDIO_IMAGE_RATIO,
-  AI_STUDIO_IMAGE_WIDTH,
+  AI_STUDIO_IMAGE_RATIOS,
+  getAIStudioImageDimensions,
   prepareAIStudioImageOutput,
+  type AIStudioImageRatio,
 } from "../lib/image-output.js";
 import {
   downloadStoredObjectBuffer,
@@ -20,6 +21,7 @@ import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 
 const MAX_PROMPT_LENGTH = 2_000;
 type GenerateImageInput = {
+  aspectRatio: AIStudioImageRatio;
   generationId: string;
   prompt: string;
 };
@@ -45,6 +47,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   }
 
   return {
+    aspectRatio: getAspectRatio(job.input_json.aspectRatio),
     generationId: generationId.trim(),
     prompt: prompt.trim(),
   };
@@ -62,7 +65,7 @@ export async function runGenerateImageJob(
   const existingOutput = await getStoredObject(outputKey);
 
   if (existingOutput) {
-    return buildOutput(input.generationId, existingOutput);
+    return buildOutput(input, existingOutput);
   }
 
   await context.checkpoint({
@@ -71,6 +74,7 @@ export async function runGenerateImageJob(
   });
   const operationKey = "openai-image";
   const requestFingerprint = createGenerationRequestFingerprint({
+    aspectRatio: input.aspectRatio,
     generationId: input.generationId,
     outputKey,
     prompt: input.prompt,
@@ -87,7 +91,7 @@ export async function runGenerateImageJob(
     let generated;
 
     try {
-      generated = await generateOpenAiImageBuffer(input.prompt);
+      generated = await generateOpenAiImageBuffer(input.prompt, input.aspectRatio);
     } catch (error) {
       return persistProviderSubmissionFailure({
         error,
@@ -142,7 +146,11 @@ export async function runGenerateImageJob(
     stage: "processing_image",
     status: "processing",
   });
-  const imageBuffer = await prepareAIStudioImageOutput(generatedImageBuffer);
+  const imageBuffer = await prepareAIStudioImageOutput(
+    generatedImageBuffer,
+    input.aspectRatio,
+  );
+  const dimensions = getAIStudioImageDimensions(input.aspectRatio);
 
   await context.checkpoint({
     progress: 90,
@@ -159,34 +167,42 @@ export async function runGenerateImageJob(
   await context.store.markGenerationOutputPersisted({
     jobId: job.id,
     metadata: {
-      height: AI_STUDIO_IMAGE_HEIGHT,
-      ratio: AI_STUDIO_IMAGE_RATIO,
+      height: dimensions.height,
+      ratio: input.aspectRatio,
       stagingKey,
-      width: AI_STUDIO_IMAGE_WIDTH,
+      width: dimensions.width,
     },
     operationKey,
     outputReference: uploaded.key,
     outputUrl: uploaded.url,
   });
 
-  return buildOutput(input.generationId, uploaded);
+  return buildOutput(input, uploaded);
 }
 
 function buildOutput(
-  generationId: string,
+  input: GenerateImageInput,
   uploaded: { key: string; url: string },
 ) {
+  const dimensions = getAIStudioImageDimensions(input.aspectRatio);
+
   return {
     fileSizeBytes: undefined,
-    generationId,
-    height: AI_STUDIO_IMAGE_HEIGHT,
+    generationId: input.generationId,
+    height: dimensions.height,
     key: uploaded.key,
     ok: true,
     provider: "openai",
-    ratio: AI_STUDIO_IMAGE_RATIO,
+    ratio: input.aspectRatio,
     url: uploaded.url,
-    width: AI_STUDIO_IMAGE_WIDTH,
+    width: dimensions.width,
   };
+}
+
+function getAspectRatio(value: Json | undefined): AIStudioImageRatio {
+  return AI_STUDIO_IMAGE_RATIOS.includes(value as AIStudioImageRatio)
+    ? (value as AIStudioImageRatio)
+    : AI_STUDIO_IMAGE_RATIO;
 }
 
 function getJsonString(value: Json, key: string) {

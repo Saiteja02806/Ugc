@@ -27,6 +27,7 @@ import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 
 type GenerateHookVideoInput = {
+  aspectRatio: HookVideoAspectRatio;
   avatarImageUrl?: string;
   cameraStyle: HookVideoCameraStyle;
   emotion: HookVideoEmotion;
@@ -38,6 +39,9 @@ type GenerateHookVideoInput = {
   userId: string;
   videoId: string;
 };
+
+const hookVideoAspectRatios = ["9:16", "16:9"] as const;
+type HookVideoAspectRatio = (typeof hookVideoAspectRatios)[number];
 
 const MAX_HOOK_LENGTH = 1_000;
 const MAX_PRODUCT_NAME_LENGTH = 120;
@@ -105,7 +109,7 @@ export async function runGenerateHookVideoJob(
     metadata: {
       durationSeconds: 4,
       provider,
-      ratio: "9:16",
+      ratio: input.aspectRatio,
     },
     operationKey: generated.operationKey,
     outputReference: uploaded.key,
@@ -212,6 +216,7 @@ async function generateWithProvider(
 ) {
   const operationKey = `${role}-${provider}`;
   const requestFingerprint = createGenerationRequestFingerprint({
+    aspectRatio: input.aspectRatio,
     prompt,
     provider,
     referenceImageUrl: input.avatarImageUrl,
@@ -253,6 +258,7 @@ async function generateWithProvider(
 
   try {
     const params = {
+      aspectRatio: input.aspectRatio,
       onOperationCreated,
       prompt,
       providerOperationId,
@@ -311,7 +317,7 @@ function buildOutput(params: {
     key: params.uploaded.key,
     ok: true,
     provider: params.provider,
-    ratio: "9:16",
+    ratio: params.input.aspectRatio,
     url: params.uploaded.url,
     videoId: params.input.videoId,
   };
@@ -323,6 +329,9 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
   }
 
   return {
+    aspectRatio:
+      getOptionalChoice(job.input_json.aspectRatio, hookVideoAspectRatios) ??
+      "9:16",
     avatarImageUrl: getOptionalHttpsUrl(job.input_json.avatarImageUrl),
     cameraStyle: getChoice(
       job.input_json.cameraStyle,

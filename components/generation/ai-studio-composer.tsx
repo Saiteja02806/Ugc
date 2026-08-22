@@ -267,3 +267,45 @@ export function AiStudioSetting({
     </span>
   );
 }
+
+export function AiStudioSettingSelect<TValue extends string>({
+  ariaLabel,
+  icon,
+  onChange,
+  options,
+  value,
+}: {
+  ariaLabel: string;
+  icon?: ReactNode;
+  onChange: (value: TValue) => void;
+  options: readonly { label: string; value: TValue }[];
+  value: TValue;
+}) {
+  return (
+    <label className="relative inline-flex h-9 min-w-0 items-center rounded-lg bg-card-muted text-sm font-medium text-foreground ring-1 ring-inset ring-border transition-colors focus-within:ring-2 focus-within:ring-focus hover:bg-card-muted/80">
+      <span className="pointer-events-none absolute left-3 z-10 inline-flex items-center">
+        {icon}
+      </span>
+      <span className="sr-only">{ariaLabel}</span>
+      <select
+        aria-label={ariaLabel}
+        value={value}
+        onChange={(event) => onChange(event.target.value as TValue)}
+        className={cn(
+          "h-full min-w-0 cursor-pointer appearance-none rounded-[inherit] bg-transparent py-0 pr-8 text-sm font-medium text-foreground outline-none",
+          icon ? "pl-9" : "pl-3",
+        )}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        aria-hidden="true"
+        className="pointer-events-none absolute right-2.5 size-3.5 text-muted"
+      />
+    </label>
+  );
+}

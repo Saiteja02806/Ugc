@@ -107,6 +107,7 @@ export function serializeAvatarAsset(asset: AvatarAssetRow) {
     durationSeconds: asset.duration_seconds,
     height: asset.height,
     id: asset.id,
+    influencerKey: asset.influencer_key,
     metadata: asset.metadata,
     name: asset.name,
     ratio: asset.ratio,
@@ -114,6 +115,7 @@ export function serializeAvatarAsset(asset: AvatarAssetRow) {
     status: asset.status,
     thumbnailUrl: asset.thumbnail_url,
     updatedAt: asset.updated_at,
+    visualGroup: asset.visual_group,
     width: asset.width,
   };
 }

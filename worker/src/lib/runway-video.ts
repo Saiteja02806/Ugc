@@ -12,6 +12,7 @@ import {
 } from "./generation-provider.js";
 
 type GenerateRunwayHookVideoParams = {
+  aspectRatio?: RunwayAspectRatio;
   onOperationCreated?: (operationId: string) => Promise<void>;
   onOperationSucceeded?: (
     operationId: string,
@@ -21,6 +22,8 @@ type GenerateRunwayHookVideoParams = {
   providerOperationId?: string;
   referenceImageUrl?: string;
 };
+
+export type RunwayAspectRatio = "9:16" | "16:9";
 
 const RUNWAY_POLL_INTERVAL_MS = 5_000;
 const RUNWAY_TIMEOUT_MS = 8 * 60_000;
@@ -32,6 +35,7 @@ const RUNWAY_TEXT_TO_VIDEO_MODEL = "veo3.1_fast";
 let runwayClient: RunwayML | null = null;
 
 export async function generateRunwayHookVideoBuffer({
+  aspectRatio = "9:16",
   onOperationCreated,
   onOperationSucceeded,
   prompt,
@@ -69,14 +73,14 @@ export async function generateRunwayHookVideoBuffer({
             },
           ],
           promptText,
-          ratio: "720:1280",
+          ratio: getRunwayRatio(aspectRatio),
         })
       : await client.textToVideo.create({
           audio: false,
           duration: RUNWAY_DURATION_SECONDS,
           model: RUNWAY_TEXT_TO_VIDEO_MODEL,
           promptText,
-          ratio: "720:1280",
+          ratio: getRunwayRatio(aspectRatio),
         });
     operationId = task.id;
     await onOperationCreated?.(operationId);
@@ -86,6 +90,10 @@ export async function generateRunwayHookVideoBuffer({
   await onOperationSucceeded?.(operationId, outputUrl);
 
   return downloadVideoToBuffer(outputUrl);
+}
+
+function getRunwayRatio(aspectRatio: RunwayAspectRatio) {
+  return aspectRatio === "16:9" ? ("1280:720" as const) : ("720:1280" as const);
 }
 
 function getRunwayClient() {

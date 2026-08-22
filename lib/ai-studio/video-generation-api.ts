@@ -12,6 +12,10 @@ import {
   getAIStudioPromptLengthError,
   normalizeAIStudioPrompt,
 } from "@/lib/ai-studio/prompt-policy";
+import {
+  parseAIStudioGenerationQuantity,
+  parseAIStudioVideoAspectRatio,
+} from "@/lib/ai-studio/generation-settings";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
   getBackgroundJobById,
@@ -28,10 +32,12 @@ import {
 } from "@/lib/billing/subscription-db";
 
 type GenerateVideoRequest = {
+  aspectRatio?: unknown;
   avatarImageUrl?: unknown;
   hookIdea?: unknown;
   idempotencyKey?: unknown;
   prompt?: unknown;
+  quantity?: unknown;
   referenceId?: unknown;
   referenceType?: unknown;
   referenceUrl?: unknown;
@@ -42,6 +48,7 @@ type VideoJobOutput = {
   mediaAssetId?: unknown;
   ok?: unknown;
   provider?: unknown;
+  ratio?: unknown;
   url?: unknown;
   videoId?: unknown;
 };
@@ -94,6 +101,7 @@ function getSafeOutput(output: unknown) {
     ok: videoOutput.ok === true,
     provider:
       typeof videoOutput.provider === "string" ? videoOutput.provider : null,
+    ratio: typeof videoOutput.ratio === "string" ? videoOutput.ratio : null,
     url: typeof videoOutput.url === "string" ? videoOutput.url : null,
     videoId:
       typeof videoOutput.videoId === "string" ? videoOutput.videoId : null,
@@ -126,6 +134,8 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     | null;
   const prompt = normalizeAIStudioPrompt(body?.prompt ?? body?.hookIdea);
   const avatarImageUrl = cleanHttpsUrl(body?.avatarImageUrl);
+  const aspectRatio = parseAIStudioVideoAspectRatio(body?.aspectRatio);
+  const quantity = parseAIStudioGenerationQuantity(body?.quantity);
 
   if (!prompt) {
     return NextResponse.json(
@@ -149,16 +159,6 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
 
-  if (!avatarImageUrl) {
-    return NextResponse.json(
-      {
-        error: "Choose a presenter with a preview image.",
-        ok: false,
-      },
-      { status: 400 },
-    );
-  }
-
   const missingRuntimeEnv = getMissingRuntimeEnv();
 
   if (missingRuntimeEnv.length > 0) {
@@ -174,62 +174,100 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   }
 
   const projectId = "ai-studio";
-  const videoId = crypto.randomUUID();
-  const idempotencyKey = cleanIdempotencyKey(
+  const baseIdempotencyKey = cleanIdempotencyKey(
     request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
   );
-  let creditsReserved = false;
+  const queuedJobs: { jobId: string; videoId: string }[] = [];
+  let queueError: unknown = null;
 
-  try {
-    if (!isAIStudioBillingExemptUser(user)) {
-      await reserveBillingCredits({
-        amount: getGenerationCreditCost("video"),
+  for (let index = 0; index < quantity; index += 1) {
+    const videoId = crypto.randomUUID();
+    const idempotencyKey = getChildIdempotencyKey(
+      baseIdempotencyKey,
+      index,
+      quantity,
+    );
+    let creditsReserved = false;
+
+    try {
+      if (!isAIStudioBillingExemptUser(user)) {
+        await reserveBillingCredits({
+          amount: getGenerationCreditCost("video"),
+          idempotencyKey,
+          jobType: VIDEO_JOB_TYPE,
+          userId: user.uid,
+        });
+        creditsReserved = true;
+      }
+      const backgroundJob = await createAndDispatchBackgroundJob({
         idempotencyKey,
+        input: {
+          aspectRatio,
+          avatarImageUrl,
+          batchIndex: index + 1,
+          batchSize: quantity,
+          cameraStyle: "iphone_selfie",
+          emotion: "confident",
+          hookIdea: prompt,
+          productDescription: "Short-form creator content.",
+          productName: "UGCPilot",
+          projectId,
+          referenceId:
+            typeof body?.referenceId === "string" ? body.referenceId : null,
+          referenceType:
+            typeof body?.referenceType === "string" ? body.referenceType : null,
+          referenceUrl:
+            typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
+          userId: user.uid,
+          videoId,
+        },
         jobType: VIDEO_JOB_TYPE,
+        projectId,
         userId: user.uid,
       });
-      creditsReserved = true;
+
+      queuedJobs.push({
+        jobId: backgroundJob.id,
+        videoId: getJobInputString(backgroundJob.input, "videoId") || videoId,
+      });
+    } catch (error) {
+      queueError = error;
+
+      if (creditsReserved) {
+        await releaseBillingCredits({ idempotencyKey, userId: user.uid }).catch(
+          (releaseError) =>
+            console.error(
+              "Could not release video generation credits:",
+              releaseError,
+            ),
+        );
+      }
+
+      break;
     }
-    const backgroundJob = await createAndDispatchBackgroundJob({
-      idempotencyKey,
-      input: {
-        avatarImageUrl,
-        cameraStyle: "iphone_selfie",
-        emotion: "confident",
-        hookIdea: prompt,
-        productDescription: "Short-form creator content.",
-        productName: "UGCPilot",
-        projectId,
-        referenceId:
-          typeof body?.referenceId === "string" ? body.referenceId : null,
-        referenceType:
-          typeof body?.referenceType === "string" ? body.referenceType : null,
-        referenceUrl:
-          typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
-        userId: user.uid,
-        videoId,
-      },
-      jobType: VIDEO_JOB_TYPE,
-      projectId,
-      userId: user.uid,
-    });
+  }
+
+  if (queuedJobs.length > 0) {
+    const firstJob = queuedJobs[0];
+    const partial = queuedJobs.length < quantity;
 
     return NextResponse.json(
       {
-        jobId: backgroundJob.id,
-        message: "Video generation started.",
+        jobId: firstJob.jobId,
+        jobs: queuedJobs,
+        message: partial
+          ? `${queuedJobs.length} of ${quantity} video generations started.`
+          : `${quantity} video generation${quantity === 1 ? "" : "s"} started.`,
         ok: true,
-        videoId: getJobInputString(backgroundJob.input, "videoId") || videoId,
+        partial,
+        videoId: firstJob.videoId,
       },
       { status: 202 },
     );
-  } catch (error) {
-    if (creditsReserved) {
-      await releaseBillingCredits({ idempotencyKey, userId: user.uid }).catch(
-        (releaseError) =>
-          console.error("Could not release video generation credits:", releaseError),
-      );
-    }
+  }
+
+  {
+    const error = queueError;
 
     if (error instanceof BillingAccessError) {
       return NextResponse.json(
@@ -248,6 +286,12 @@ export async function handleAIStudioVideoGeneration(request: Request) {
       { status: 502 },
     );
   }
+}
+
+function getChildIdempotencyKey(baseKey: string, index: number, quantity: number) {
+  return quantity === 1
+    ? baseKey
+    : `${baseKey.slice(0, 190)}:${index + 1}`;
 }
 
 function cleanIdempotencyKey(value: unknown) {

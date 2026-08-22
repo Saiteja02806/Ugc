@@ -4,7 +4,9 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
   Clock3,
+  FolderOpen,
   Loader2,
   Pause,
   Play,
@@ -22,7 +24,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   AiStudioComposer,
-  AiStudioSetting,
+  AiStudioSettingSelect,
 } from "@/components/generation/ai-studio-composer";
 import {
   AiStudioResults,
@@ -44,6 +46,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import {
+  AI_STUDIO_GENERATION_QUANTITIES,
+  AI_STUDIO_VIDEO_ASPECT_RATIOS,
+  getAIStudioRatioLabel,
+  type AIStudioGenerationQuantity,
+  type AIStudioVideoAspectRatio,
+} from "@/lib/ai-studio/generation-settings";
+import {
   fetchAIStudioMediaAsset,
   fetchAIStudioMediaAssets,
 } from "@/lib/ai-studio/media-client";
@@ -60,7 +69,7 @@ import {
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   persistJobIdInUrl,
-  useBackgroundJob,
+  useBackgroundJobs,
   useCancelBackgroundJob,
   usePersistedJobIdFromUrl,
   useRetryBackgroundJob,
@@ -72,10 +81,12 @@ import {
   getAvatarDisplayName,
   getAvatarFallbackText,
 } from "@/lib/video/avatar-display";
+import { groupAvatarsByCreator } from "@/lib/video/avatar-grouping";
 
 type GenerationState = "empty" | "generating" | "completed" | "failed";
 
 type AvatarOption = {
+  creatorKey: string | null;
   id: string;
   label: string;
   selection: AvatarSelection;
@@ -92,6 +103,7 @@ type AvatarAsset = {
   durationSeconds: number | null;
   height: number | null;
   id: string;
+  influencerKey: string | null;
   metadata: unknown;
   name: string;
   ratio: AvatarRatio;
@@ -99,6 +111,7 @@ type AvatarAsset = {
   status: AvatarStatus;
   thumbnailUrl: string | null;
   updatedAt: string;
+  visualGroup: string | null;
   width: number | null;
 };
 
@@ -145,8 +158,10 @@ const VIDEO_JOB_URL_PARAMETER = "videoJob";
 type GenerateVideoResponse =
   | {
       jobId: string;
+      jobs: { jobId: string; videoId: string }[];
       message: string;
       ok: true;
+      partial: boolean;
       videoId: string;
     }
   | {
@@ -162,6 +177,13 @@ function getVideoJobOutput(output: Json | null) {
   return {
     mediaAssetId:
       typeof output.mediaAssetId === "string" ? output.mediaAssetId : null,
+    ratio:
+      typeof output.ratio === "string" &&
+      AI_STUDIO_VIDEO_ASPECT_RATIOS.includes(
+        output.ratio as AIStudioVideoAspectRatio,
+      )
+        ? (output.ratio as AIStudioVideoAspectRatio)
+        : null,
     url: typeof output.url === "string" ? output.url : null,
     videoId: typeof output.videoId === "string" ? output.videoId : null,
   };
@@ -169,15 +191,25 @@ function getVideoJobOutput(output: Json | null) {
 
 function persistPendingVideoMetadata(
   userId: string,
-  jobId: string,
-  metadata: { avatarName: string; prompt: string },
+  jobs: readonly { jobId: string }[],
+  metadata: {
+    aspectRatio: AIStudioVideoAspectRatio;
+    avatarName: string;
+    prompt: string;
+  },
 ) {
   try {
-    window.localStorage.setItem(`${VIDEO_JOB_STORAGE_PREFIX}${userId}`, jobId);
+    const jobIds = jobs.map((job) => job.jobId);
     window.localStorage.setItem(
-      `${VIDEO_JOB_METADATA_PREFIX}${userId}.${jobId}`,
-      JSON.stringify(metadata),
+      `${VIDEO_JOB_STORAGE_PREFIX}${userId}`,
+      JSON.stringify(jobIds),
     );
+    for (const jobId of jobIds) {
+      window.localStorage.setItem(
+        `${VIDEO_JOB_METADATA_PREFIX}${userId}.${jobId}`,
+        JSON.stringify(metadata),
+      );
+    }
   } catch {
     // Supabase remains authoritative; this metadata only restores local labels.
   }
@@ -196,12 +228,43 @@ function getPendingVideoMetadata(userId: string, jobId: string) {
     const value = JSON.parse(rawValue) as Record<string, unknown>;
 
     return {
+      aspectRatio:
+        typeof value.aspectRatio === "string" &&
+        AI_STUDIO_VIDEO_ASPECT_RATIOS.includes(
+          value.aspectRatio as AIStudioVideoAspectRatio,
+        )
+          ? (value.aspectRatio as AIStudioVideoAspectRatio)
+          : "9:16",
       avatarName:
         typeof value.avatarName === "string" ? value.avatarName : "",
       prompt: typeof value.prompt === "string" ? value.prompt : "",
     };
   } catch {
     return null;
+  }
+}
+
+function getStoredVideoJobIds(userId: string) {
+  try {
+    const rawValue = window.localStorage.getItem(
+      `${VIDEO_JOB_STORAGE_PREFIX}${userId}`,
+    );
+
+    if (!rawValue) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(rawValue) as unknown;
+
+      return Array.isArray(parsed)
+        ? parsed.filter((value): value is string => typeof value === "string")
+        : [];
+    } catch {
+      return [rawValue];
+    }
+  } catch {
+    return [];
   }
 }
 
@@ -276,6 +339,10 @@ export function VideoGenerationStudioPanel({
 
   const { loading: authLoading, user } = useAuth();
   const [prompt, setPrompt] = useState("");
+  const [aspectRatio, setAspectRatio] =
+    useState<AIStudioVideoAspectRatio>("9:16");
+  const [quantity, setQuantity] =
+    useState<AIStudioGenerationQuantity>(1);
   const [avatarLibrary, setAvatarLibrary] = useState<AvatarLibraryItem[]>([]);
   const [personalAvatarAssets, setPersonalAvatarAssets] = useState<MediaAsset[]>([]);
   const [avatarLoading, setAvatarLoading] = useState(true);
@@ -290,22 +357,29 @@ export function VideoGenerationStudioPanel({
   const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
   const [resultsLoading, setResultsLoading] = useState(true);
   const [resultsError, setResultsError] = useState<string | null>(null);
-  const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
+  const [submittedJobIds, setSubmittedJobIds] = useState<string[]>([]);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [storedJobId, setStoredJobId] = useState<string | null>(null);
+  const [storedJobIds, setStoredJobIds] = useState<string[]>([]);
   const [ignoredPersistedJobId, setIgnoredPersistedJobId] = useState<
     string | null
   >(null);
   const resolvedJobIdsRef = useRef(new Set<string>());
   const submissionKeyRef = useRef<string | null>(null);
+  const activeUserIdRef = useRef<string | null>(null);
   const persistedJobId = usePersistedJobIdFromUrl(VIDEO_JOB_URL_PARAMETER);
   const urlJobId =
     persistedJobId && persistedJobId !== ignoredPersistedJobId
       ? persistedJobId
       : null;
-  const activeJobId = submittedJobId ?? urlJobId ?? storedJobId;
-  const activeJobQuery = useBackgroundJob(activeJobId);
+  const activeJobIds = Array.from(
+    new Set([
+      ...submittedJobIds,
+      ...(urlJobId ? [urlJobId] : []),
+      ...storedJobIds,
+    ]),
+  );
+  const activeJobQueries = useBackgroundJobs(activeJobIds);
   const cancelJob = useCancelBackgroundJob();
   const retryJob = useRetryBackgroundJob();
   const generationLocked = accessState !== "pro";
@@ -325,32 +399,64 @@ export function VideoGenerationStudioPanel({
   const selectedAvatar = selectedAvatarId
     ? avatarOptions.find((avatar) => avatar.id === selectedAvatarId) ?? null
     : null;
-  const queriedJob = activeJobQuery.data;
-  const durableJob =
-    queriedJob?.jobType === "video_generation" ? queriedJob : null;
-  const durableOutput = durableJob
-    ? getVideoJobOutput(durableJob.output)
-    : null;
+  const queriedJobs = activeJobQueries.flatMap((query) =>
+    query.data ? [query.data] : [],
+  );
+  const durableJobs = queriedJobs.filter(
+    (job) => job.jobType === "video_generation",
+  );
+  const failedDurableJob = durableJobs.find((job) => job.status === "failed");
+  const cancelledDurableJob = durableJobs.find(
+    (job) => job.status === "cancelled",
+  );
+  const completedWithoutOutput = durableJobs.find(
+    (job) =>
+      job.status === "completed" && !getVideoJobOutput(job.output)?.url,
+  );
   const durableNotice =
-    durableJob?.status === "cancelled"
+    cancelledDurableJob
       ? "Video generation was cancelled."
-      : durableJob?.status === "failed"
-        ? durableJob.error?.message || "Video generation failed. You can retry it."
-        : durableJob?.status === "completed" && !durableOutput?.url
+      : failedDurableJob
+        ? failedDurableJob.error?.message ||
+          "Video generation failed. You can retry it."
+        : completedWithoutOutput
           ? "Video generation completed without a usable output."
           : null;
   const effectiveGenerationState: GenerationState =
-    activeJobId && activeJobQuery.isPending
+    activeJobQueries.some((query) => query.isPending)
       ? "generating"
-      : durableJob && !["cancelled", "completed", "failed"].includes(durableJob.status)
+      : durableJobs.some(
+            (job) =>
+              !["cancelled", "completed", "failed"].includes(job.status),
+          )
         ? "generating"
-        : durableJob?.status === "failed" ||
-            durableJob?.status === "cancelled" ||
-            (durableJob?.status === "completed" && !durableOutput?.url)
+        : failedDurableJob || cancelledDurableJob || completedWithoutOutput
           ? "failed"
           : generationState;
   const isGenerating =
     effectiveGenerationState === "generating";
+  const pendingGenerationCount =
+    generationState === "generating" && activeJobIds.length === 0
+    ? quantity
+    : activeJobQueries.reduce((count, query) => {
+        if (query.isPending) {
+          return count + 1;
+        }
+
+        return query.data &&
+          !["cancelled", "completed", "failed"].includes(query.data.status)
+          ? count + 1
+          : count;
+      }, 0);
+
+  useEffect(() => {
+    activeUserIdRef.current = user?.uid ?? null;
+    resolvedJobIdsRef.current.clear();
+
+    return () => {
+      activeUserIdRef.current = null;
+    };
+  }, [user?.uid]);
 
   useEffect(() => {
     if (!active || authLoading) {
@@ -363,7 +469,7 @@ export function VideoGenerationStudioPanel({
       if (!user) {
         if (!ignore) {
           setGeneratedVideos([]);
-          setStoredJobId(null);
+          setStoredJobIds([]);
           setResultsError("Sign in to view your generated videos.");
           setResultsLoading(false);
         }
@@ -388,13 +494,9 @@ export function VideoGenerationStudioPanel({
 
         if (!ignore) {
           setGeneratedVideos(getAIStudioVideoResults(assets));
-          setSubmittedJobId(null);
+          setSubmittedJobIds([]);
           setIgnoredPersistedJobId(null);
-          setStoredJobId(
-            window.localStorage.getItem(
-              `${VIDEO_JOB_STORAGE_PREFIX}${user.uid}`,
-            ),
-          );
+          setStoredJobIds(getStoredVideoJobIds(user.uid));
         }
       } catch (error) {
         if (!ignore) {
@@ -418,9 +520,11 @@ export function VideoGenerationStudioPanel({
 
   useEffect(() => {
     if (
-      queriedJob &&
-      queriedJob.jobType !== "video_generation" &&
-      activeJobId === persistedJobId
+      persistedJobId &&
+      queriedJobs.some(
+        (job) =>
+          job?.id === persistedJobId && job.jobType !== "video_generation",
+      )
     ) {
       const timeoutId = window.setTimeout(
         () => setIgnoredPersistedJobId(persistedJobId),
@@ -429,32 +533,36 @@ export function VideoGenerationStudioPanel({
 
       return () => window.clearTimeout(timeoutId);
     }
-  }, [activeJobId, persistedJobId, queriedJob]);
+  }, [persistedJobId, queriedJobs]);
 
   useEffect(() => {
-    const job = durableJob;
+    const completedJobs = durableJobs.filter(
+      (job) =>
+        job.status === "completed" &&
+        !resolvedJobIdsRef.current.has(job.id) &&
+        Boolean(getVideoJobOutput(job.output)?.url),
+    );
 
-    if (!job || resolvedJobIdsRef.current.has(job.id) || !user) {
+    if (!user || completedJobs.length === 0) {
       return;
     }
-
-    if (job.status !== "completed") {
-      return;
+    for (const completedJob of completedJobs) {
+      resolvedJobIdsRef.current.add(completedJob.id);
     }
 
-    const output = getVideoJobOutput(job.output);
-
-    if (!output?.url) {
-      return;
-    }
-
-    const completedJob = job;
-    const completedOutput = output;
-    const completedOutputUrl = output.url;
     const userId = user.uid;
-    let ignore = false;
 
-    async function restoreCompletedVideo() {
+    async function restoreCompletedVideo(
+      completedJob: (typeof completedJobs)[number],
+    ) {
+      const completedOutput = getVideoJobOutput(completedJob.output);
+
+      if (!completedOutput?.url) {
+        return;
+      }
+
+      const completedOutputUrl = completedOutput.url;
+
       try {
         const token = await getCurrentUserIdToken();
 
@@ -506,17 +614,17 @@ export function VideoGenerationStudioPanel({
                 completedJob.id,
               mediaAssetId: completedOutput.mediaAssetId,
               prompt: completedPrompt,
-              ratio: "9:16",
+              ratio:
+                completedOutput.ratio ?? metadata?.aspectRatio ?? "9:16",
               status: "Ready",
               title: getGeneratedVideoTitle(completedPrompt),
               url: completedOutputUrl,
             };
 
-        if (ignore) {
+        if (activeUserIdRef.current !== userId) {
           return;
         }
 
-        resolvedJobIdsRef.current.add(completedJob.id);
         setGeneratedVideos((currentVideos) =>
           upsertAIStudioResult(currentVideos, nextVideo),
         );
@@ -527,7 +635,8 @@ export function VideoGenerationStudioPanel({
         setActionNotice(null);
         setActionError(null);
       } catch (error) {
-        if (!ignore) {
+        resolvedJobIdsRef.current.delete(completedJob.id);
+        if (activeUserIdRef.current === userId) {
           setGenerationState("failed");
           setActionError(
             getErrorMessage(error, "Could not restore the generated video."),
@@ -536,12 +645,8 @@ export function VideoGenerationStudioPanel({
       }
     }
 
-    void restoreCompletedVideo();
-
-    return () => {
-      ignore = true;
-    };
-  }, [durableJob, user]);
+    void Promise.all(completedJobs.map(restoreCompletedVideo));
+  }, [durableJobs, user]);
 
   useEffect(() => {
     if (!active) {
@@ -608,9 +713,7 @@ export function VideoGenerationStudioPanel({
             (avatar) => avatar.asset.id === currentAvatarId,
           ) || nextPersonalAssets.some((asset) => asset.id === currentAvatarId))
             ? currentAvatarId
-            : nextPersonalAssets[0]?.id ??
-              nextAvatarLibrary[0]?.asset.id ??
-              null,
+            : null,
         );
       } catch (error) {
         if (!ignore) {
@@ -653,22 +756,6 @@ export function VideoGenerationStudioPanel({
       return;
     }
 
-    if (!selectedAvatar) {
-      setActionError(
-        avatarLoading
-          ? "Source video library is still loading."
-          : "Choose a source video before generating.",
-      );
-      return;
-    }
-
-    if (!selectedAvatar.thumbnailUrl) {
-      setActionError(
-        "Choose a source video with a preview image before generating.",
-      );
-      return;
-    }
-
     setActionNotice(null);
     setActionError(null);
     setActiveVideoPrompt(trimmedPrompt);
@@ -687,9 +774,11 @@ export function VideoGenerationStudioPanel({
 
       const response = await fetch("/api/ai-studio/videos/generate", {
         body: JSON.stringify({
-          avatarImageUrl: selectedAvatar.thumbnailUrl,
+          aspectRatio,
+          avatarImageUrl: selectedAvatar?.thumbnailUrl ?? null,
           idempotencyKey,
           prompt: trimmedPrompt,
+          quantity,
           referenceId: referenceContext?.id ?? null,
           referenceType: referenceContext?.type ?? null,
           referenceUrl: referenceContext?.sourceUrl ?? null,
@@ -708,14 +797,21 @@ export function VideoGenerationStudioPanel({
           data.ok === false ? data.error : "Video generation could not start.",
         );
       }
-      persistPendingVideoMetadata(user.uid, data.jobId, {
-        avatarName: selectedAvatar.label,
+      persistPendingVideoMetadata(user.uid, data.jobs, {
+        aspectRatio,
+        avatarName: selectedAvatar?.label ?? "",
         prompt: trimmedPrompt,
       });
       persistJobIdInUrl(data.jobId, VIDEO_JOB_URL_PARAMETER);
-      resolvedJobIdsRef.current.delete(data.jobId);
-      setStoredJobId(data.jobId);
-      setSubmittedJobId(data.jobId);
+      for (const job of data.jobs) {
+        resolvedJobIdsRef.current.delete(job.jobId);
+      }
+      const jobIds = data.jobs.map((job) => job.jobId);
+      setStoredJobIds(jobIds);
+      setSubmittedJobIds(jobIds);
+      if (data.partial) {
+        setActionNotice(data.message);
+      }
       submissionKeyRef.current = null;
     } catch (error) {
       console.error("Video generation failed:", error);
@@ -727,12 +823,18 @@ export function VideoGenerationStudioPanel({
   }
 
   async function handleCancelGeneration() {
-    if (!activeJobId || cancelJob.isPending) {
+    const cancellableJobIds = durableJobs
+      .filter((job) => !["cancelled", "completed", "failed"].includes(job.status))
+      .map((job) => job.id);
+
+    if (cancellableJobIds.length === 0 || cancelJob.isPending) {
       return;
     }
 
     try {
-      await cancelJob.mutateAsync(activeJobId);
+      for (const jobId of cancellableJobIds) {
+        await cancelJob.mutateAsync(jobId);
+      }
       setActionError(null);
       setActionNotice(
         "Cancellation requested. The current checkpoint will stop safely.",
@@ -745,13 +847,17 @@ export function VideoGenerationStudioPanel({
   }
 
   async function handleRetryGeneration() {
-    if (!activeJobId || retryJob.isPending) {
+    const retryableJob = durableJobs.find(
+      (job) => job.status === "failed" && Boolean(job.error?.retryable),
+    );
+
+    if (!retryableJob || retryJob.isPending) {
       return;
     }
 
     try {
-      resolvedJobIdsRef.current.delete(activeJobId);
-      await retryJob.mutateAsync(activeJobId);
+      resolvedJobIdsRef.current.delete(retryableJob.id);
+      await retryJob.mutateAsync(retryableJob.id);
       setGenerationState("generating");
       setActionNotice(null);
       setActionError(null);
@@ -795,9 +901,10 @@ export function VideoGenerationStudioPanel({
     setPrompt(enhancedPrompt);
   }
 
-  const jobQueryError = activeJobQuery.isError
+  const failedJobQuery = activeJobQueries.find((query) => query.isError);
+  const jobQueryError = failedJobQuery
     ? getErrorMessage(
-        activeJobQuery.error,
+        failedJobQuery.error,
         "Could not retrieve the video generation job.",
       )
     : null;
@@ -817,8 +924,9 @@ export function VideoGenerationStudioPanel({
         : actionNotice ?? durableNotice
           ? { label: actionNotice ?? durableNotice ?? "", tone: "neutral" }
           : null;
-  const canRetry =
-    durableJob?.status === "failed" && Boolean(durableJob.error?.retryable);
+  const canRetry = durableJobs.some(
+    (job) => job.status === "failed" && Boolean(job.error?.retryable),
+  );
 
   return (
     <div
@@ -839,13 +947,20 @@ export function VideoGenerationStudioPanel({
         loading={resultsLoading}
         status={resultsStatus}
       >
-        {isGenerating ? (
-          <OptimisticVideoCard
-            avatarThumbnail={selectedAvatar?.thumbnailUrl ?? null}
-            avatarLabel={selectedAvatar?.label ?? null}
-            prompt={activeVideoPrompt}
-          />
-        ) : null}
+        {isGenerating
+          ? Array.from(
+              { length: Math.max(1, pendingGenerationCount) },
+              (_, index) => (
+                <OptimisticVideoCard
+                  key={`pending-video-${index}`}
+                  aspectRatio={aspectRatio}
+                  avatarThumbnail={selectedAvatar?.thumbnailUrl ?? null}
+                  avatarLabel={selectedAvatar?.label ?? null}
+                  prompt={activeVideoPrompt}
+                />
+              ),
+            )
+          : null}
         {generatedVideos.map((video) => (
           <VideoResultCard
             key={video.id}
@@ -896,8 +1011,7 @@ export function VideoGenerationStudioPanel({
         generateDisabled={
           generationLocked ||
           !prompt.trim() ||
-          isGenerating ||
-          !selectedAvatar?.thumbnailUrl
+          isGenerating
         }
         generateLabel="Generate video"
         generationLocked={generationLocked}
@@ -942,18 +1056,36 @@ export function VideoGenerationStudioPanel({
         }
         settings={
           <>
-            <AiStudioSetting
+            <AiStudioSettingSelect
+              ariaLabel="Video aspect ratio"
               icon={
                 <span
                   aria-hidden="true"
                   className="inline-block h-5 w-3 shrink-0 rounded-[4px] border-2 border-muted"
                 />
               }
-              label="9:16 vertical"
+              options={AI_STUDIO_VIDEO_ASPECT_RATIOS.map((ratio) => ({
+                label: getAIStudioRatioLabel(ratio),
+                value: ratio,
+              }))}
+              value={aspectRatio}
+              onChange={(value) => {
+                submissionKeyRef.current = null;
+                setAspectRatio(value);
+              }}
             />
-            <AiStudioSetting
+            <AiStudioSettingSelect
+              ariaLabel="Number of videos"
               icon={<Video className="size-4" aria-hidden="true" />}
-              label="1 video"
+              options={AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({
+                label: `${count} video${count === 1 ? "" : "s"}`,
+                value: String(count),
+              }))}
+              value={String(quantity)}
+              onChange={(value) => {
+                submissionKeyRef.current = null;
+                setQuantity(Number(value) as AIStudioGenerationQuantity);
+              }}
             />
             <div className="shrink-0">
               <AvatarPicker
@@ -995,6 +1127,7 @@ export function VideoGenerationStudioPanel({
 
 function mapAvatarLibraryItemToOption(avatar: AvatarLibraryItem): AvatarOption {
   return {
+    creatorKey: avatar.asset.influencerKey,
     id: avatar.asset.id,
     label: avatar.asset.name,
     selection: avatar.avatarSelection,
@@ -1034,6 +1167,7 @@ async function fetchPersonalInfluencers(token: string) {
 
 function mapPersonalMediaToAvatarOption(asset: MediaAsset): AvatarOption {
   return {
+    creatorKey: getPersonalCreatorKey(asset),
     id: asset.id,
     label: asset.title,
     selection: {
@@ -1045,6 +1179,21 @@ function mapPersonalMediaToAvatarOption(asset: MediaAsset): AvatarOption {
     },
     thumbnailUrl: asset.thumbnailUrl,
   };
+}
+
+function getPersonalCreatorKey(asset: MediaAsset) {
+  const candidates = [
+    asset.metadata.influencerKey,
+    asset.metadata.creatorId,
+    asset.metadata.creatorName,
+    asset.metadata.influencerName,
+  ];
+
+  return (
+    candidates.find(
+      (value): value is string => typeof value === "string" && Boolean(value.trim()),
+    ) ?? getAvatarDisplayName(asset.title)
+  );
 }
 
 function getGeneratedVideoTitle(prompt: string) {
@@ -1092,20 +1241,53 @@ function AvatarPicker({
   selectedAvatarId: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [activeFolder, setActiveFolder] = useState<{
+    creatorKey: string;
+    library: "global" | "personal";
+  } | null>(null);
   const hasOptions = personalAvatars.length > 0 || globalAvatars.length > 0;
+  const personalCreatorGroups = useMemo(
+    () => groupAvatarsByCreator(personalAvatars),
+    [personalAvatars],
+  );
+  const globalCreatorGroups = useMemo(
+    () => groupAvatarsByCreator(globalAvatars),
+    [globalAvatars],
+  );
+  const activeCreatorGroup = activeFolder
+    ? (activeFolder.library === "personal"
+        ? personalCreatorGroups
+        : globalCreatorGroups
+      ).find((group) => group.creatorKey === activeFolder.creatorKey) ?? null
+    : null;
   const triggerLabel = avatarLoading
     ? "Loading source videos"
     : selectedAvatar
-      ? `Choose source video, currently ${selectedAvatar.label}`
-      : "Choose source video";
+      ? `Choose optional source video, currently ${selectedAvatar.label}`
+      : "Choose optional source video";
 
   function selectAvatar(avatarId: string) {
     onChange(avatarId);
+    setActiveFolder(null);
     setOpen(false);
   }
 
+  function clearAvatar() {
+    onChange(null);
+    setActiveFolder(null);
+    setOpen(false);
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+
+    if (!nextOpen) {
+      setActiveFolder(null);
+    }
+  }
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
           <Button
@@ -1117,7 +1299,7 @@ function AvatarPicker({
               compact && "overflow-hidden p-0",
             )}
             aria-label={triggerLabel}
-            title={selectedAvatar?.label ?? "Choose source video"}
+            title={selectedAvatar?.label ?? "Optional source video"}
           />
         }
       >
@@ -1149,7 +1331,7 @@ function AvatarPicker({
             ? "Loading…"
             : selectedAvatar
               ? getAvatarDisplayName(selectedAvatar.label)
-              : "Source video"}
+              : "Optional source"}
         </span>
         <ChevronDown
           data-icon="inline-end"
@@ -1169,9 +1351,15 @@ function AvatarPicker({
         className="w-[min(92vw,440px)] gap-0 p-0"
       >
         <PopoverHeader className="border-b border-border p-3">
-          <PopoverTitle>Choose a source video</PopoverTitle>
+          <PopoverTitle>
+            {activeCreatorGroup
+              ? activeCreatorGroup.label
+              : "Choose a creator"}
+          </PopoverTitle>
           <PopoverDescription>
-            Select the on-camera source you want to use for this generation.
+            {activeCreatorGroup
+              ? "Choose one source video from this creator."
+              : "Open a creator folder, then choose one source video."}
           </PopoverDescription>
         </PopoverHeader>
 
@@ -1192,20 +1380,68 @@ function AvatarPicker({
         {!avatarLoading && hasOptions ? (
           <ScrollArea className="h-[min(62vh,430px)]">
             <div className="flex flex-col gap-5 p-3">
-              <AvatarGroup
-                emptyMessage="No uploaded source videos yet."
-                label="Your source videos"
-                options={personalAvatars}
-                selectedAvatarId={selectedAvatarId}
-                onSelect={selectAvatar}
-              />
-              <AvatarGroup
-                emptyMessage="No source videos are available yet."
-                label="Available source videos"
-                options={globalAvatars}
-                selectedAvatarId={selectedAvatarId}
-                onSelect={selectAvatar}
-              />
+              {activeFolder && activeCreatorGroup ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setActiveFolder(null)}
+                    className="inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-muted outline-none transition-colors hover:bg-card-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus"
+                  >
+                    <ChevronLeft className="size-4" aria-hidden="true" />
+                    All creators
+                  </button>
+                  <AvatarGroup
+                    label={`${activeCreatorGroup.label} videos`}
+                    options={activeCreatorGroup.options}
+                    selectedAvatarId={selectedAvatarId}
+                    onSelect={selectAvatar}
+                  />
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    aria-pressed={!selectedAvatarId}
+                    onClick={clearAvatar}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl border p-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+                      !selectedAvatarId
+                        ? "border-primary bg-brand-soft"
+                        : "border-border bg-card hover:border-border-strong hover:bg-card-muted",
+                    )}
+                  >
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-card-muted text-muted">
+                      <Sparkles className="size-4" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-foreground">
+                        No reference video
+                      </span>
+                      <span className="block text-xs leading-5 text-muted">
+                        Generate directly from your prompt.
+                      </span>
+                    </span>
+                  </button>
+                  <AvatarFolderGroup
+                    emptyMessage="No uploaded source videos yet."
+                    groups={personalCreatorGroups}
+                    label="Your creators"
+                    selectedAvatarId={selectedAvatarId}
+                    onOpen={(creatorKey) =>
+                      setActiveFolder({ creatorKey, library: "personal" })
+                    }
+                  />
+                  <AvatarFolderGroup
+                    emptyMessage="No source videos are available yet."
+                    groups={globalCreatorGroups}
+                    label="Available creators"
+                    selectedAvatarId={selectedAvatarId}
+                    onOpen={(creatorKey) =>
+                      setActiveFolder({ creatorKey, library: "global" })
+                    }
+                  />
+                </>
+              )}
             </div>
           </ScrollArea>
         ) : null}
@@ -1303,6 +1539,95 @@ function AvatarGroup({
   );
 }
 
+function AvatarFolderGroup({
+  emptyMessage,
+  groups,
+  label,
+  onOpen,
+  selectedAvatarId,
+}: {
+  emptyMessage: string;
+  groups: {
+    creatorKey: string;
+    label: string;
+    options: AvatarOption[];
+  }[];
+  label: string;
+  onOpen: (creatorKey: string) => void;
+  selectedAvatarId: string | null;
+}) {
+  const groupId = useId();
+
+  return (
+    <section aria-labelledby={groupId}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 id={groupId} className="text-sm font-semibold text-foreground">
+          {label}
+        </h3>
+        <span className="text-xs font-medium text-muted-subtle tabular-nums">
+          {groups.length}
+        </span>
+      </div>
+      {groups.length > 0 ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {groups.map((group) => {
+            const cover = group.options[0];
+            const selected = group.options.some(
+              (option) => option.id === selectedAvatarId,
+            );
+
+            return (
+              <button
+                key={group.creatorKey}
+                type="button"
+                aria-label={`Open ${group.label}, ${group.options.length} source videos`}
+                onClick={() => onOpen(group.creatorKey)}
+                className={cn(
+                  "group min-w-0 rounded-xl border p-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
+                  selected
+                    ? "border-primary bg-brand-soft"
+                    : "border-border bg-card hover:border-border-strong hover:bg-card-muted",
+                )}
+              >
+                <span className="relative block aspect-[4/3] overflow-hidden rounded-lg bg-[#1F1F1F]">
+                  <Avatar className="size-full rounded-[inherit] after:rounded-[inherit]">
+                    {cover?.thumbnailUrl ? (
+                      <AvatarImage
+                        src={cover.thumbnailUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="rounded-[inherit] object-cover"
+                      />
+                    ) : null}
+                    <AvatarFallback className="rounded-[inherit] text-base font-semibold">
+                      {getAvatarFallbackText(group.label)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-2 pb-1.5 pt-5 text-white">
+                    <FolderOpen className="size-4" aria-hidden="true" />
+                    <span className="text-[11px] font-semibold tabular-nums">
+                      {group.options.length} video
+                      {group.options.length === 1 ? "" : "s"}
+                    </span>
+                  </span>
+                </span>
+                <span className="mt-2 block truncate px-0.5 text-xs font-semibold text-foreground">
+                  {group.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="rounded-[var(--radius-control)] bg-card-muted px-3 py-2 text-xs font-medium leading-5 text-muted">
+          {emptyMessage}
+        </p>
+      )}
+    </section>
+  );
+}
+
 function AvatarPickerSkeleton() {
   return (
     <div className="p-3" role="status" aria-label="Loading source videos">
@@ -1320,10 +1645,12 @@ function AvatarPickerSkeleton() {
 }
 
 function OptimisticVideoCard({
+  aspectRatio,
   avatarThumbnail,
   avatarLabel,
   prompt,
 }: {
+  aspectRatio: AIStudioVideoAspectRatio;
   avatarThumbnail?: string | null;
   avatarLabel?: string | null;
   prompt?: string;
@@ -1354,7 +1681,7 @@ function OptimisticVideoCard({
       <div className="order-1 w-full max-w-[216px] justify-self-start lg:order-2 lg:justify-self-end">
         <div
           className="relative overflow-hidden rounded-[20px] bg-card-muted ring-1 ring-primary/30 shadow-sm"
-          style={{ aspectRatio: "9 / 16" }}
+          style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
         >
           <div className="absolute inset-0 bg-gradient-to-tr from-primary/[0.04] via-transparent to-primary/[0.08]" />
           <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />

@@ -17,6 +17,9 @@ const resultSurface = readProjectFile(
 const videoWorkspace = readProjectFile(
   "components/video/video-generation-workspace.tsx",
 );
+const videoGenerationApi = readProjectFile(
+  "lib/ai-studio/video-generation-api.ts",
+);
 const promptHelper = composer.slice(
   composer.indexOf("<FieldDescription"),
   composer.indexOf("</FieldDescription>") + "</FieldDescription>".length,
@@ -70,11 +73,53 @@ test("the unified composer stays compact while supporting multiline prompts", ()
 test("the unified toolbar keeps settings and Generate inside the same form", () => {
   assert.match(composer, /<form[\s\S]*?\{settings\}[\s\S]*?type="submit"/);
   assert.match(composer, /layout === "unified" && "px-3 pb-2 sm:px-4 sm:pb-3"/);
-  assert.match(imageWorkspace, /label="4:5 portrait"/);
-  assert.match(imageWorkspace, /label="1 image"/);
+  assert.match(imageWorkspace, /ariaLabel="Image aspect ratio"/);
+  assert.match(imageWorkspace, /ariaLabel="Number of images"/);
+  assert.match(composer, /<select/);
+  assert.match(composer, /onChange=\{\(event\) => onChange/);
   assert.match(imageWorkspace, />\s*Enhance\s*</);
   assert.match(imageWorkspace, /generateLabel="Generate image"/);
   assert.match(videoWorkspace, /layout="unified"/);
+});
+
+test("image and video controls send selected settings to generation APIs", () => {
+  assert.match(imageWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
+  assert.match(videoWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
+  assert.match(videoWorkspace, /ariaLabel="Video aspect ratio"/);
+  assert.match(videoWorkspace, /ariaLabel="Number of videos"/);
+});
+
+test("video sources start empty and open through creator folders", () => {
+  assert.match(videoWorkspace, /: null,\s*\);/);
+  assert.match(videoWorkspace, /groupAvatarsByCreator/);
+  assert.match(videoWorkspace, /function AvatarFolderGroup/);
+  assert.match(videoWorkspace, /Open a creator folder/);
+  assert.doesNotMatch(
+    videoWorkspace,
+    /: nextPersonalAssets\[0\]\?\.id \?\?\s*nextAvatarLibrary\[0\]\?\.asset\.id/,
+  );
+  assert.match(videoWorkspace, /No reference video/);
+  assert.match(videoWorkspace, /Generate directly from your prompt/);
+  assert.match(
+    videoWorkspace,
+    /avatarImageUrl: selectedAvatar\?\.thumbnailUrl \?\? null/,
+  );
+  assert.match(
+    videoWorkspace,
+    /generateDisabled=\{\s*generationLocked \|\|\s*!prompt\.trim\(\) \|\|\s*isGenerating\s*\}/,
+  );
+  assert.doesNotMatch(
+    videoWorkspace,
+    /Choose a source video before generating/,
+  );
+  assert.doesNotMatch(
+    videoGenerationApi,
+    /Choose a presenter with a preview image/,
+  );
+  assert.match(
+    videoGenerationApi,
+    /input: \{[\s\S]*?avatarImageUrl,[\s\S]*?batchIndex/,
+  );
 });
 
 test("the unified composer does not add an accent glow when the prompt is focused", () => {

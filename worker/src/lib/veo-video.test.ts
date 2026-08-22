@@ -20,3 +20,10 @@ test("uses the low-cost portrait Veo configuration accepted by Gemini API", () =
   assert.equal(Object.hasOwn(config, "generateAudio"), false);
   assert.equal(Object.hasOwn(config, "negativePrompt"), false);
 });
+
+test("supports the provider's landscape video mode", () => {
+  const config = buildVeoGenerationConfig("16:9");
+
+  assert.equal(config.aspectRatio, "16:9");
+  assert.equal(config.numberOfVideos, 1);
+});

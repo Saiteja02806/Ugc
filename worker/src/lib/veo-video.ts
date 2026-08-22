@@ -17,12 +17,15 @@ import {
 } from "./generation-provider.js";
 
 type GenerateVeoHookVideoParams = {
+  aspectRatio?: VeoAspectRatio;
   onOperationCreated?: (operationId: string) => Promise<void>;
   onOperationSucceeded?: (operationId: string) => Promise<void>;
   prompt: string;
   providerOperationId?: string;
   referenceImageUrl?: string;
 };
+
+export type VeoAspectRatio = "9:16" | "16:9";
 
 export const VEO_MODEL = "veo-3.1-lite-generate-preview";
 export const VEO_DURATION_SECONDS = 4;
@@ -32,6 +35,7 @@ const VEO_TIMEOUT_MS = 8 * 60_000;
 let googleClient: GoogleGenAI | null = null;
 
 export async function generateVeoHookVideoBuffer({
+  aspectRatio = "9:16",
   onOperationCreated,
   onOperationSucceeded,
   prompt,
@@ -64,7 +68,7 @@ export async function generateVeoHookVideoBuffer({
       model: VEO_MODEL,
       prompt,
       ...(referenceImage ? { image: referenceImage } : {}),
-      config: buildVeoGenerationConfig(),
+      config: buildVeoGenerationConfig(aspectRatio),
     });
 
     if (!operation.name) {
@@ -126,9 +130,11 @@ export async function generateVeoHookVideoBuffer({
   }
 }
 
-export function buildVeoGenerationConfig(): GenerateVideosConfig {
+export function buildVeoGenerationConfig(
+  aspectRatio: VeoAspectRatio = "9:16",
+): GenerateVideosConfig {
   return {
-    aspectRatio: "9:16",
+    aspectRatio,
     durationSeconds: VEO_DURATION_SECONDS,
     numberOfVideos: 1,
     personGeneration: "allow_adult",

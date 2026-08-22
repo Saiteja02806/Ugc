@@ -1,6 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useCallback, useSyncExternalStore } from "react";
 
 import { useAuth } from "@/contexts/auth-context";
@@ -37,6 +42,25 @@ export function useBackgroundJob(jobId: string | null) {
 
       return status && terminalStatuses.has(status) ? false : 5_000;
     },
+  });
+}
+
+export function useBackgroundJobs(jobIds: readonly string[]) {
+  const { loading, user } = useAuth();
+
+  return useQueries({
+    queries: jobIds.map((jobId) => ({
+      enabled: !loading && Boolean(user && jobId),
+      queryFn: () => fetchJob(`/api/jobs/${encodeURIComponent(jobId)}`),
+      queryKey: ["background-jobs", user?.uid, jobId],
+      refetchInterval: (query: {
+        state: { data?: PublicBackgroundJob };
+      }) => {
+        const status = query.state.data?.status;
+
+        return status && terminalStatuses.has(status) ? false : 5_000;
+      },
+    })),
   });
 }
 

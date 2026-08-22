@@ -89,16 +89,22 @@ test("image and video controls send selected settings to generation APIs", () =>
   assert.match(videoWorkspace, /ariaLabel="Number of videos"/);
 });
 
-test("video sources start empty and open through creator folders", () => {
+test("video reference images start empty without exposing creator video folders", () => {
   assert.match(videoWorkspace, /: null,\s*\);/);
-  assert.match(videoWorkspace, /groupAvatarsByCreator/);
-  assert.match(videoWorkspace, /function AvatarFolderGroup/);
-  assert.match(videoWorkspace, /Open a creator folder/);
+  assert.match(videoWorkspace, /function ReferenceImagePicker/);
+  assert.match(videoWorkspace, /referenceImages=\{avatarOptions\}/);
+  assert.match(videoWorkspace, /Choose a reference image/);
+  assert.match(videoWorkspace, /Choose reference image \$\{index \+ 1\}/);
+  assert.doesNotMatch(videoWorkspace, /groupAvatarsByCreator/);
+  assert.doesNotMatch(videoWorkspace, /function AvatarFolderGroup/);
+  assert.doesNotMatch(videoWorkspace, /Open a creator folder/);
+  assert.doesNotMatch(videoWorkspace, /Choose optional source video/);
   assert.doesNotMatch(
     videoWorkspace,
     /: nextPersonalAssets\[0\]\?\.id \?\?\s*nextAvatarLibrary\[0\]\?\.asset\.id/,
   );
-  assert.match(videoWorkspace, /No reference video/);
+  assert.match(videoWorkspace, /No reference image/);
+  assert.doesNotMatch(videoWorkspace, /No reference video/);
   assert.match(videoWorkspace, /Generate directly from your prompt/);
   assert.match(
     videoWorkspace,

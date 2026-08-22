@@ -4,15 +4,13 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronDown,
-  ChevronLeft,
   Clock3,
-  FolderOpen,
+  ImageIcon,
   Loader2,
   Pause,
   Play,
   ScanText,
   Sparkles,
-  UserRound,
   Video,
   Volume2,
   VolumeX,
@@ -20,7 +18,7 @@ import {
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent, KeyboardEvent } from "react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   AiStudioComposer,
@@ -31,7 +29,7 @@ import {
   type AiStudioResultsStatus,
 } from "@/components/generation/ai-studio-results";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -77,19 +75,12 @@ import {
 import type { Json } from "@/lib/jobs/background-jobs";
 import type { MediaAsset } from "@/lib/media/types";
 import { cn } from "@/lib/utils";
-import {
-  getAvatarDisplayName,
-  getAvatarFallbackText,
-} from "@/lib/video/avatar-display";
-import { groupAvatarsByCreator } from "@/lib/video/avatar-grouping";
 
 type GenerationState = "empty" | "generating" | "completed" | "failed";
 
 type AvatarOption = {
-  creatorKey: string | null;
   id: string;
   label: string;
-  selection: AvatarSelection;
   thumbnailUrl: string | null;
 };
 
@@ -667,7 +658,7 @@ export function VideoGenerationStudioPanel({
         setPersonalAvatarAssets([]);
         setSelectedAvatarId(null);
         setAvatarLoading(false);
-        setAvatarErrorMessage("Sign in before choosing a source video.");
+        setAvatarErrorMessage("Sign in before choosing a reference image.");
         return;
       }
 
@@ -677,7 +668,7 @@ export function VideoGenerationStudioPanel({
         const token = await getCurrentUserIdToken();
 
         if (!token) {
-          throw new Error("Sign in before choosing a source video.");
+          throw new Error("Sign in before choosing a reference image.");
         }
 
         const [libraryResult, personalResult] = await Promise.allSettled([
@@ -699,7 +690,7 @@ export function VideoGenerationStudioPanel({
               result.status === "rejected",
           )
           .map((result) =>
-            getErrorMessage(result.reason, "Could not load source videos."),
+            getErrorMessage(result.reason, "Could not load reference images."),
           );
 
         setAvatarLibrary(nextAvatarLibrary);
@@ -721,7 +712,7 @@ export function VideoGenerationStudioPanel({
           setPersonalAvatarAssets([]);
           setSelectedAvatarId(null);
           setAvatarErrorMessage(
-            getErrorMessage(error, "Could not load source videos."),
+            getErrorMessage(error, "Could not load reference images."),
           );
         }
       } finally {
@@ -1088,12 +1079,11 @@ export function VideoGenerationStudioPanel({
               }}
             />
             <div className="shrink-0">
-              <AvatarPicker
+              <ReferenceImagePicker
                 avatarErrorMessage={avatarErrorMessage}
                 avatarLoading={avatarLoading}
                 compact
-                globalAvatars={globalAvatars}
-                personalAvatars={personalAvatars}
+                referenceImages={avatarOptions}
                 selectedAvatarId={selectedAvatarId}
                 selectedAvatar={selectedAvatar}
                 onChange={(avatarId) => {
@@ -1127,10 +1117,8 @@ export function VideoGenerationStudioPanel({
 
 function mapAvatarLibraryItemToOption(avatar: AvatarLibraryItem): AvatarOption {
   return {
-    creatorKey: avatar.asset.influencerKey,
     id: avatar.asset.id,
     label: avatar.asset.name,
-    selection: avatar.avatarSelection,
     thumbnailUrl: avatar.asset.thumbnailUrl,
   };
 }
@@ -1143,7 +1131,7 @@ async function fetchAvatarLibrary(token: string) {
   const data = (await response.json()) as AvatarListResponse;
 
   if (!response.ok || data.ok !== true) {
-    throw new Error(getApiErrorMessage(data, "Could not load source videos."));
+    throw new Error(getApiErrorMessage(data, "Could not load reference images."));
   }
 
   return data.avatars;
@@ -1159,7 +1147,7 @@ async function fetchPersonalInfluencers(token: string) {
     | { error?: string; ok?: false };
 
   if (!response.ok || data.ok !== true) {
-    throw new Error(getApiErrorMessage(data, "Could not load your source videos."));
+    throw new Error(getApiErrorMessage(data, "Could not load your reference images."));
   }
 
   return data.assets;
@@ -1167,33 +1155,10 @@ async function fetchPersonalInfluencers(token: string) {
 
 function mapPersonalMediaToAvatarOption(asset: MediaAsset): AvatarOption {
   return {
-    creatorKey: getPersonalCreatorKey(asset),
     id: asset.id,
     label: asset.title,
-    selection: {
-      avatarAssetId: asset.id,
-      isTrimmed: false,
-      sourceVideoUrl: asset.url,
-      trimEnd: asset.durationSeconds,
-      trimStart: 0,
-    },
     thumbnailUrl: asset.thumbnailUrl,
   };
-}
-
-function getPersonalCreatorKey(asset: MediaAsset) {
-  const candidates = [
-    asset.metadata.influencerKey,
-    asset.metadata.creatorId,
-    asset.metadata.creatorName,
-    asset.metadata.influencerName,
-  ];
-
-  return (
-    candidates.find(
-      (value): value is string => typeof value === "string" && Boolean(value.trim()),
-    ) ?? getAvatarDisplayName(asset.title)
-  );
 }
 
 function getGeneratedVideoTitle(prompt: string) {
@@ -1221,73 +1186,57 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-function AvatarPicker({
+function ReferenceImagePicker({
   avatarErrorMessage,
   avatarLoading,
   compact = false,
-  globalAvatars,
   onChange,
-  personalAvatars,
+  referenceImages,
   selectedAvatar,
   selectedAvatarId,
 }: {
   avatarErrorMessage: string | null;
   avatarLoading: boolean;
   compact?: boolean;
-  globalAvatars: AvatarOption[];
   onChange: (avatarId: string | null) => void;
-  personalAvatars: AvatarOption[];
+  referenceImages: AvatarOption[];
   selectedAvatar: AvatarOption | null;
   selectedAvatarId: string | null;
 }) {
   const [open, setOpen] = useState(false);
-  const [activeFolder, setActiveFolder] = useState<{
-    creatorKey: string;
-    library: "global" | "personal";
-  } | null>(null);
-  const hasOptions = personalAvatars.length > 0 || globalAvatars.length > 0;
-  const personalCreatorGroups = useMemo(
-    () => groupAvatarsByCreator(personalAvatars),
-    [personalAvatars],
-  );
-  const globalCreatorGroups = useMemo(
-    () => groupAvatarsByCreator(globalAvatars),
-    [globalAvatars],
-  );
-  const activeCreatorGroup = activeFolder
-    ? (activeFolder.library === "personal"
-        ? personalCreatorGroups
-        : globalCreatorGroups
-      ).find((group) => group.creatorKey === activeFolder.creatorKey) ?? null
-    : null;
+  const visibleReferenceImages = useMemo(() => {
+    const seenUrls = new Set<string>();
+
+    return referenceImages.filter((image) => {
+      const thumbnailUrl = image.thumbnailUrl?.trim();
+
+      if (!thumbnailUrl || seenUrls.has(thumbnailUrl)) {
+        return false;
+      }
+
+      seenUrls.add(thumbnailUrl);
+      return true;
+    });
+  }, [referenceImages]);
+  const hasOptions = visibleReferenceImages.length > 0;
   const triggerLabel = avatarLoading
-    ? "Loading source videos"
+    ? "Loading reference images"
     : selectedAvatar
-      ? `Choose optional source video, currently ${selectedAvatar.label}`
-      : "Choose optional source video";
+      ? "Change optional reference image"
+      : "Choose optional reference image";
 
-  function selectAvatar(avatarId: string) {
-    onChange(avatarId);
-    setActiveFolder(null);
+  function selectReferenceImage(imageId: string) {
+    onChange(imageId);
     setOpen(false);
   }
 
-  function clearAvatar() {
+  function clearReferenceImage() {
     onChange(null);
-    setActiveFolder(null);
     setOpen(false);
-  }
-
-  function handleOpenChange(nextOpen: boolean) {
-    setOpen(nextOpen);
-
-    if (!nextOpen) {
-      setActiveFolder(null);
-    }
   }
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
           <Button
@@ -1299,7 +1248,7 @@ function AvatarPicker({
               compact && "overflow-hidden p-0",
             )}
             aria-label={triggerLabel}
-            title={selectedAvatar?.label ?? "Optional source video"}
+            title={selectedAvatar ? "Change reference image" : "Optional reference image"}
           />
         }
       >
@@ -1319,19 +1268,16 @@ function AvatarPicker({
                 className={cn(compact && "rounded-[inherit]")}
               />
             ) : null}
-            <AvatarFallback className={cn(compact && "rounded-[inherit]")}>
-              {getAvatarFallbackText(selectedAvatar.label)}
-            </AvatarFallback>
           </Avatar>
         ) : (
-          <UserRound aria-hidden="true" />
+          <ImageIcon aria-hidden="true" />
         )}
         <span className={cn("truncate", compact && "sr-only")}>
           {avatarLoading
             ? "Loading…"
             : selectedAvatar
-              ? getAvatarDisplayName(selectedAvatar.label)
-              : "Optional source"}
+              ? "Reference image selected"
+              : "Optional reference"}
         </span>
         <ChevronDown
           data-icon="inline-end"
@@ -1351,27 +1297,22 @@ function AvatarPicker({
         className="w-[min(92vw,440px)] gap-0 p-0"
       >
         <PopoverHeader className="border-b border-border p-3">
-          <PopoverTitle>
-            {activeCreatorGroup
-              ? activeCreatorGroup.label
-              : "Choose a creator"}
-          </PopoverTitle>
+          <PopoverTitle>Choose a reference image</PopoverTitle>
           <PopoverDescription>
-            {activeCreatorGroup
-              ? "Choose one source video from this creator."
-              : "Open a creator folder, then choose one source video."}
+            Optional. Pick an image to guide the generated video, or generate
+            directly from your prompt.
           </PopoverDescription>
         </PopoverHeader>
 
-        {avatarLoading ? <AvatarPickerSkeleton /> : null}
+        {avatarLoading ? <ReferenceImagePickerSkeleton /> : null}
 
         {!avatarLoading && avatarErrorMessage ? (
           <Alert variant="destructive" className="m-3 w-auto">
             <AlertCircle aria-hidden="true" />
             <AlertTitle>
               {hasOptions
-                ? "Some sources unavailable"
-                : "Sources unavailable"}
+                ? "Some images unavailable"
+                : "Reference images unavailable"}
             </AlertTitle>
             <AlertDescription>{avatarErrorMessage}</AlertDescription>
           </Alert>
@@ -1379,76 +1320,85 @@ function AvatarPicker({
 
         {!avatarLoading && hasOptions ? (
           <ScrollArea className="h-[min(62vh,430px)]">
-            <div className="flex flex-col gap-5 p-3">
-              {activeFolder && activeCreatorGroup ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setActiveFolder(null)}
-                    className="inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-muted outline-none transition-colors hover:bg-card-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus"
-                  >
-                    <ChevronLeft className="size-4" aria-hidden="true" />
-                    All creators
-                  </button>
-                  <AvatarGroup
-                    label={`${activeCreatorGroup.label} videos`}
-                    options={activeCreatorGroup.options}
-                    selectedAvatarId={selectedAvatarId}
-                    onSelect={selectAvatar}
-                  />
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    aria-pressed={!selectedAvatarId}
-                    onClick={clearAvatar}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-xl border p-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
-                      !selectedAvatarId
-                        ? "border-primary bg-brand-soft"
-                        : "border-border bg-card hover:border-border-strong hover:bg-card-muted",
-                    )}
-                  >
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-card-muted text-muted">
-                      <Sparkles className="size-4" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-foreground">
-                        No reference video
-                      </span>
-                      <span className="block text-xs leading-5 text-muted">
-                        Generate directly from your prompt.
-                      </span>
-                    </span>
-                  </button>
-                  <AvatarFolderGroup
-                    emptyMessage="No uploaded source videos yet."
-                    groups={personalCreatorGroups}
-                    label="Your creators"
-                    selectedAvatarId={selectedAvatarId}
-                    onOpen={(creatorKey) =>
-                      setActiveFolder({ creatorKey, library: "personal" })
-                    }
-                  />
-                  <AvatarFolderGroup
-                    emptyMessage="No source videos are available yet."
-                    groups={globalCreatorGroups}
-                    label="Available creators"
-                    selectedAvatarId={selectedAvatarId}
-                    onOpen={(creatorKey) =>
-                      setActiveFolder({ creatorKey, library: "global" })
-                    }
-                  />
-                </>
-              )}
+            <div className="flex flex-col gap-4 p-3">
+              <button
+                type="button"
+                aria-pressed={!selectedAvatarId}
+                onClick={clearReferenceImage}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-xl border p-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+                  !selectedAvatarId
+                    ? "border-primary bg-brand-soft"
+                    : "border-border bg-card hover:border-border-strong hover:bg-card-muted",
+                )}
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-card-muted text-muted">
+                  <Sparkles className="size-4" aria-hidden="true" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-foreground">
+                    No reference image
+                  </span>
+                  <span className="block text-xs leading-5 text-muted">
+                    Generate directly from your prompt.
+                  </span>
+                </span>
+              </button>
+
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Reference images
+                </h3>
+                <span className="text-xs font-medium text-muted-subtle tabular-nums">
+                  {visibleReferenceImages.length}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {visibleReferenceImages.map((image, index) => {
+                  const selected = image.id === selectedAvatarId;
+
+                  return (
+                    <button
+                      key={image.id}
+                      type="button"
+                      aria-label={`Choose reference image ${index + 1}`}
+                      aria-pressed={selected}
+                      title={`Reference image ${index + 1}`}
+                      onClick={() => selectReferenceImage(image.id)}
+                      className={cn(
+                        "group relative aspect-[3/4] min-w-0 overflow-hidden rounded-xl bg-[#1F1F1F] outline-none transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none",
+                        selected
+                          ? "ring-2 ring-primary"
+                          : "hover:ring-2 hover:ring-border-strong",
+                      )}
+                    >
+                      <Avatar className="size-full rounded-[inherit] after:rounded-[inherit]">
+                        <AvatarImage
+                          src={image.thumbnailUrl ?? undefined}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          className="rounded-[inherit] object-cover transition-transform duration-200 group-hover:scale-[1.02] motion-reduce:transition-none"
+                        />
+                      </Avatar>
+                      {selected ? (
+                        <span className="absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                          <CheckCircle2 className="size-4" aria-hidden="true" />
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </ScrollArea>
         ) : null}
 
         {!avatarLoading && !avatarErrorMessage && !hasOptions ? (
           <div className="p-4 text-sm font-medium text-muted">
-            No source videos are available yet.
+            No reference images are available yet. You can still generate from
+            your prompt.
           </div>
         ) : null}
       </PopoverContent>
@@ -1456,188 +1406,13 @@ function AvatarPicker({
   );
 }
 
-function AvatarGroup({
-  emptyMessage,
-  label,
-  onSelect,
-  options,
-  selectedAvatarId,
-}: {
-  emptyMessage?: string;
-  label: string;
-  onSelect: (avatarId: string) => void;
-  options: AvatarOption[];
-  selectedAvatarId: string | null;
-}) {
-  const groupId = useId();
-
+function ReferenceImagePickerSkeleton() {
   return (
-    <section aria-labelledby={groupId}>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 id={groupId} className="text-sm font-semibold text-foreground">
-          {label}
-        </h3>
-        <span className="text-xs font-medium text-muted-subtle tabular-nums">
-          {options.length}
-        </span>
-      </div>
-      {options.length > 0 ? (
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {options.map((avatar) => {
-            const selected = avatar.id === selectedAvatarId;
-            const displayName = getAvatarDisplayName(avatar.label);
-
-            return (
-              <button
-                key={avatar.id}
-                type="button"
-                aria-label={`Choose ${avatar.label}`}
-                aria-pressed={selected}
-                title={avatar.label}
-                onClick={() => onSelect(avatar.id)}
-                className={cn(
-                  "group min-w-0 rounded-lg p-1.5 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none",
-                  selected
-                    ? "bg-brand-soft ring-2 ring-primary"
-                    : "hover:bg-card-muted",
-                )}
-              >
-                <span className="relative block aspect-[3/4] overflow-hidden rounded-md bg-[#1F1F1F]">
-                  <Avatar className="size-full rounded-[inherit] after:rounded-[inherit]">
-                    {avatar.thumbnailUrl ? (
-                      <AvatarImage
-                        src={avatar.thumbnailUrl}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="rounded-[inherit]"
-                      />
-                    ) : null}
-                    <AvatarFallback className="rounded-[inherit] text-base font-semibold">
-                      {getAvatarFallbackText(avatar.label)}
-                    </AvatarFallback>
-                  </Avatar>
-                  {selected ? (
-                    <span className="absolute right-1.5 top-1.5 inline-flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                      <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                    </span>
-                  ) : null}
-                </span>
-                <span className="mt-1.5 block truncate px-0.5 text-xs font-medium text-foreground">
-                  {displayName}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="rounded-[var(--radius-control)] bg-card-muted px-3 py-2 text-xs font-medium leading-5 text-muted">
-          {emptyMessage}
-        </p>
-      )}
-    </section>
-  );
-}
-
-function AvatarFolderGroup({
-  emptyMessage,
-  groups,
-  label,
-  onOpen,
-  selectedAvatarId,
-}: {
-  emptyMessage: string;
-  groups: {
-    creatorKey: string;
-    label: string;
-    options: AvatarOption[];
-  }[];
-  label: string;
-  onOpen: (creatorKey: string) => void;
-  selectedAvatarId: string | null;
-}) {
-  const groupId = useId();
-
-  return (
-    <section aria-labelledby={groupId}>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 id={groupId} className="text-sm font-semibold text-foreground">
-          {label}
-        </h3>
-        <span className="text-xs font-medium text-muted-subtle tabular-nums">
-          {groups.length}
-        </span>
-      </div>
-      {groups.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {groups.map((group) => {
-            const cover = group.options[0];
-            const selected = group.options.some(
-              (option) => option.id === selectedAvatarId,
-            );
-
-            return (
-              <button
-                key={group.creatorKey}
-                type="button"
-                aria-label={`Open ${group.label}, ${group.options.length} source videos`}
-                onClick={() => onOpen(group.creatorKey)}
-                className={cn(
-                  "group min-w-0 rounded-xl border p-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
-                  selected
-                    ? "border-primary bg-brand-soft"
-                    : "border-border bg-card hover:border-border-strong hover:bg-card-muted",
-                )}
-              >
-                <span className="relative block aspect-[4/3] overflow-hidden rounded-lg bg-[#1F1F1F]">
-                  <Avatar className="size-full rounded-[inherit] after:rounded-[inherit]">
-                    {cover?.thumbnailUrl ? (
-                      <AvatarImage
-                        src={cover.thumbnailUrl}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="rounded-[inherit] object-cover"
-                      />
-                    ) : null}
-                    <AvatarFallback className="rounded-[inherit] text-base font-semibold">
-                      {getAvatarFallbackText(group.label)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-2 pb-1.5 pt-5 text-white">
-                    <FolderOpen className="size-4" aria-hidden="true" />
-                    <span className="text-[11px] font-semibold tabular-nums">
-                      {group.options.length} video
-                      {group.options.length === 1 ? "" : "s"}
-                    </span>
-                  </span>
-                </span>
-                <span className="mt-2 block truncate px-0.5 text-xs font-semibold text-foreground">
-                  {group.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="rounded-[var(--radius-control)] bg-card-muted px-3 py-2 text-xs font-medium leading-5 text-muted">
-          {emptyMessage}
-        </p>
-      )}
-    </section>
-  );
-}
-
-function AvatarPickerSkeleton() {
-  return (
-    <div className="p-3" role="status" aria-label="Loading source videos">
+    <div className="p-3" role="status" aria-label="Loading reference images">
       <Skeleton className="mb-3 h-4 w-32" />
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {Array.from({ length: 8 }, (_, index) => (
-          <div key={index} className="flex flex-col gap-2">
-            <Skeleton className="aspect-[3/4] w-full" />
-            <Skeleton className="h-3 w-3/4" />
-          </div>
+          <Skeleton key={index} className="aspect-[3/4] w-full rounded-xl" />
         ))}
       </div>
     </div>

@@ -6,8 +6,9 @@ export function isThemePreference(value: unknown): value is ThemePreference {
   return value === "light" || value === "dark";
 }
 
-export function isProductionThemeLocked(value: unknown) {
-  return value === "production";
+export function isProductionThemeLocked(value?: unknown) {
+  void value;
+  return false;
 }
 
 export function resolveInitialTheme(

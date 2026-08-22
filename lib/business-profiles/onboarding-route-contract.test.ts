@@ -36,12 +36,9 @@ test("onboarding schedules Trending content before redirecting to the dashboard"
   );
   assert.match(
     onboardingPrebuild,
-    /ensureTrendingDailyFeed\(\{[\s\S]+markItemsShown: false/,
+    /ensureUnifiedTrendingDailyFeed\(\{[\s\S]+markItemsShown: false/,
   );
-  assert.match(onboardingPrebuild, /enqueueTrendingWallTextJob\(\{/);
-  assert.match(
-    onboardingPrebuild,
-    /if \(params\.includeHookVideos\)[\s\S]+prepareTrendingHookIdeas/,
-  );
-  assert.match(onboardingPrebuild, /Promise\.allSettled/);
+  assert.match(onboardingPrebuild, /includeWallText: isWallTextEnabled\(\)/);
+  assert.match(onboardingPrebuild, /includeHookVideos: params\.includeHookVideos/);
+  assert.match(onboardingPrebuild, /pendingSlotCount: feed\.feed\.pendingSlotCount/);
 });

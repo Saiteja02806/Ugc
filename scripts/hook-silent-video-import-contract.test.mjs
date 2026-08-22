@@ -44,12 +44,7 @@ test("silent Hook importer activates rows only after exact stored verification",
     "await verifyStoredObjects(item)",
     uploadIndex,
   );
-  const readyMatch = importer
-    .slice(verifyIndex)
-    .match(/\.update\(\{\r?\n\s+status: "ready"/u);
-  const readyIndex = readyMatch?.index == null
-    ? -1
-    : verifyIndex + readyMatch.index;
+  const readyIndex = importer.indexOf('status: "ready"', verifyIndex);
 
   assert.ok(processingIndex >= 0);
   assert.ok(uploadIndex > processingIndex);
@@ -57,6 +52,19 @@ test("silent Hook importer activates rows only after exact stored verification",
   assert.ok(readyIndex > verifyIndex);
   assert.match(importer, /getStoredObjectSha256\(item\.videoKey\)/u);
   assert.match(importer, /storedSha256 !== item\.asset\.sha256/u);
+});
+
+test("silent Hook importer requires reviewed text placement before activation", () => {
+  assert.match(importer, /--placement-manifest/u);
+  assert.match(importer, /Refusing to activate[\s\S]+without first-frame-reviewed Hook text placement/u);
+  assert.match(importer, /hook_text_placement: item\.hookTextPlacement/u);
+  assert.match(importer, /normalized_0_to_1_center_anchor/u);
+  assert.match(importer, /Ready Hook text placement is missing/u);
+  assert.match(importer, /areHookTextPlacementsEqual/u);
+  assert.match(
+    importer,
+    /normalizedLeft\.preset === normalizedRight\.preset[\s\S]+normalizedLeft\.reviewVersion === normalizedRight\.reviewVersion[\s\S]+normalizedLeft\.reviewedAt === normalizedRight\.reviewedAt[\s\S]+normalizedLeft\.x === normalizedRight\.x[\s\S]+normalizedLeft\.y === normalizedRight\.y/u,
+  );
 });
 
 test("silent Hook importer persists all Slice 2 catalog fields", () => {

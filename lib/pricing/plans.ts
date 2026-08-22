@@ -4,12 +4,15 @@ export type PricingPlan = {
   badgeLabel?: string;
   bestFor: string;
   capacityLabel: string;
+  dailyContentPieces: number | string;
   description: string;
+  features: string[];
   highlighted?: boolean;
+  instagramAccounts: number;
   name: string;
   prices: Record<BillingInterval, number>;
   sharedMonthlyCredits: number;
-  slug: "creator" | "pro";
+  slug: "free" | "starter" | "growth";
 };
 
 export type PlanPricing = {
@@ -22,7 +25,8 @@ export type PlanPricing = {
 const usdPriceFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
 });
 
 export function formatPricingAmount(amount: number) {
@@ -41,6 +45,15 @@ export function getPlanPricing(
   plan: PricingPlan,
   interval: BillingInterval,
 ): PlanPricing {
+  if (plan.prices.monthly === 0) {
+    return {
+      billedAmount: 0,
+      billingSummary: "Free forever",
+      monthlyEquivalent: 0,
+      savings: 0,
+    };
+  }
+
   if (interval === "monthly") {
     return {
       billedAmount: plan.prices.monthly,
@@ -62,31 +75,70 @@ export function getPlanPricing(
 
 export const pricingPlans: PricingPlan[] = [
   {
-    slug: "creator",
-    name: "Creator",
-    bestFor: "Consistent creators",
-    description:
-      "For creators building a dependable weekly content workflow.",
+    slug: "free",
+    name: "Free",
+    bestFor: "Test the waters",
+    description: "Explore proven viral formats and preview ready-to-post concepts.",
+    prices: {
+      monthly: 0,
+      yearly: 0,
+    },
+    sharedMonthlyCredits: 0,
+    dailyContentPieces: 3,
+    instagramAccounts: 0,
+    capacityLabel: "3 daily ready-to-post concepts, with no AI generation credits",
+    features: [
+      "No credit card required",
+      "3 ready-to-post pieces daily",
+      "Format discovery mode",
+      "Preview ready-to-post concepts",
+      "Limited draft saves",
+    ],
+  },
+  {
+    slug: "starter",
+    name: "Starter",
+    bestFor: "Solopreneurs & builders",
+    description: "Put your Instagram marketing on autopilot with daily ready-to-post content.",
     prices: {
       monthly: 19,
       yearly: 190,
     },
     sharedMonthlyCredits: 200,
-    highlighted: true,
-    badgeLabel: "Most popular",
-    capacityLabel: "A focused monthly generation budget",
+    dailyContentPieces: 20,
+    instagramAccounts: 1,
+    capacityLabel: "200 shared AI credits for image & video creation",
+    features: [
+      "20 ready-to-post pieces daily",
+      "200 AI generation credits",
+      "1 connected Instagram account",
+      "Reel hooks, Wall-text & Carousels",
+      "1-Click post scheduling & calendar",
+      "Advanced performance analytics",
+    ],
   },
   {
-    slug: "pro",
-    name: "Pro",
-    bestFor: "High-volume creators",
-    description:
-      "For brands and creators producing more campaigns and variations.",
+    slug: "growth",
+    name: "Growth",
+    bestFor: "Growing brands & multi-product teams",
+    description: "Higher daily volume and multiple Instagram brands in one workspace.",
     prices: {
       monthly: 49,
       yearly: 490,
     },
     sharedMonthlyCredits: 600,
-    capacityLabel: "3x the Creator generation budget",
+    dailyContentPieces: 50,
+    instagramAccounts: 3,
+    highlighted: true,
+    badgeLabel: "Most popular",
+    capacityLabel: "600 shared AI credits for high-volume generation",
+    features: [
+      "50 ready-to-post pieces daily",
+      "600 AI generation credits",
+      "3 connected Instagram accounts",
+      "Higher monthly generation allowance",
+      "Advanced performance analytics",
+      "Custom brand voice & asset library",
+    ],
   },
 ];

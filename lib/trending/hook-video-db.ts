@@ -15,6 +15,13 @@ type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+export type HookVideoRenderStatus =
+  | "not_requested"
+  | "queued"
+  | "rendering"
+  | "ready"
+  | "failed";
+
 type HookVideoSuggestionRow = {
   audio_intent: Json | null;
   business_profile_id: string;
@@ -98,6 +105,15 @@ type HookVideoDraftRow = {
   library_saved_at: string | null;
   metadata: Json;
   preview_thumbnail_url: string | null;
+  render_error: string | null;
+  render_fingerprint: string | null;
+  render_id: string | null;
+  render_job_id: string | null;
+  render_requested_at: string | null;
+  render_status: HookVideoRenderStatus;
+  rendered_at: string | null;
+  rendered_media_asset_id: string | null;
+  rendered_video_url: string | null;
   scheduled_post_id: string | null;
   selected_hook_id: string;
   status: HookVideoDraftStatus;
@@ -109,7 +125,16 @@ type HookVideoDraftRow = {
 
 type HookVideoDatabase = {
   public: {
-    Functions: Record<string, never>;
+    Functions: {
+      claim_hook_video_library_render: {
+        Args: {
+          p_draft_id: string;
+          p_render_fingerprint: string;
+          p_user_id: string;
+        };
+        Returns: HookVideoDraftRow[];
+      };
+    };
     Tables: {
       hook_video_drafts: {
         Insert: Partial<HookVideoDraftRow> &
@@ -176,7 +201,15 @@ export type HookVideoDraftRecord = {
   influencerVideoId: string;
   influencerVideoTitle: string;
   librarySavedAt: string | null;
-  previewThumbnailUrl: string | null;
+  renderError: string | null;
+  renderFingerprint: string | null;
+  renderId: string | null;
+  renderJobId: string | null;
+  renderRequestedAt: string | null;
+  renderStatus: HookVideoRenderStatus;
+  renderedAt: string | null;
+  renderedMediaAssetId: string | null;
+  renderedVideoUrl: string | null;
   scheduledPostId: string | null;
   selectedHookId: string;
   sourceKind: HookVideoSourceKind;
@@ -592,6 +625,86 @@ export async function attachScheduleDraftToHookVideo(params: {
   return mapDraft(data);
 }
 
+export async function claimHookVideoLibraryRender(params: {
+  draftId: string;
+  renderFingerprint: string;
+  userId: string;
+}) {
+  const { data, error } = await getClient().rpc(
+    "claim_hook_video_library_render",
+    {
+      p_draft_id: params.draftId,
+      p_render_fingerprint: params.renderFingerprint,
+      p_user_id: params.userId,
+    },
+  );
+
+  if (error) {
+    throw new Error(`Could not reserve Hook video render: ${error.message}`);
+  }
+
+  const row = data[0];
+
+  if (!row) {
+    throw new Error("This saved Hook video is not available for rendering.");
+  }
+
+  return mapDraft(row);
+}
+
+export async function attachHookVideoLibraryRenderJob(params: {
+  draftId: string;
+  jobId: string;
+  renderId: string;
+  userId: string;
+}) {
+  const { data, error } = await getClient()
+    .from("hook_video_drafts")
+    .update({
+      render_job_id: params.jobId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", params.draftId)
+    .eq("user_id", params.userId)
+    .eq("render_id", params.renderId)
+    .eq("render_status", "queued")
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not attach Hook video render job: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("This Hook video render request is stale.");
+  }
+
+  return mapDraft(data);
+}
+
+export async function markHookVideoLibraryRenderQueueFailed(params: {
+  draftId: string;
+  errorMessage: string;
+  renderId: string;
+  userId: string;
+}) {
+  const { error } = await getClient()
+    .from("hook_video_drafts")
+    .update({
+      render_error: params.errorMessage.slice(0, 500),
+      render_status: "failed",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", params.draftId)
+    .eq("user_id", params.userId)
+    .eq("render_id", params.renderId)
+    .in("render_status", ["queued", "rendering"]);
+
+  if (error) {
+    throw new Error(`Could not mark Hook video render failed: ${error.message}`);
+  }
+}
+
 export async function listSavedHookVideoDrafts(userId: string) {
   const { data, error } = await getClient()
     .from("hook_video_drafts")
@@ -656,7 +769,15 @@ function mapDraft(row: HookVideoDraftRow): HookVideoDraftRecord {
     influencerVideoId: row.influencer_video_id,
     influencerVideoTitle: row.influencer_video_title,
     librarySavedAt: row.library_saved_at,
-    previewThumbnailUrl: row.preview_thumbnail_url,
+    renderError: row.render_error,
+    renderFingerprint: row.render_fingerprint,
+    renderId: row.render_id,
+    renderJobId: row.render_job_id,
+    renderRequestedAt: row.render_requested_at,
+    renderStatus: row.render_status,
+    renderedAt: row.rendered_at,
+    renderedMediaAssetId: row.rendered_media_asset_id,
+    renderedVideoUrl: row.rendered_video_url,
     scheduledPostId: row.scheduled_post_id,
     selectedHookId: row.selected_hook_id,
     sourceKind: row.influencer_source,

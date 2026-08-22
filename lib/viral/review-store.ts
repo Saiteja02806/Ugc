@@ -18,6 +18,7 @@ type ViralReferenceRow = {
   publish_status: "pending_review" | "published" | "hidden";
   section: "hook_video" | "wall_of_text" | "slideshow";
   source_url: string;
+  view_count?: number | null;
 };
 
 type ViralHookConfigRow = {
@@ -86,14 +87,16 @@ export function getMissingViralReviewEnvVars() {
 export async function getViralHookReviewPage(params: {
   cursor: string | null;
   limit: number;
+  section?: "hook_video" | "wall_of_text" | "slideshow";
 }): Promise<ViralReviewPage> {
+  const section = params.section ?? "hook_video";
   const limit = Math.min(Math.max(Math.trunc(params.limit), 1), 24);
   let query = getClient()
     .from("viral_references")
     .select(
-      "id,section,platform,source_url,embed_html,embed_status,publish_status,created_at",
+      "id,section,platform,source_url,embed_html,embed_status,publish_status,created_at,view_count",
     )
-    .eq("section", "hook_video")
+    .eq("section", section)
     .eq("embed_status", "active")
     .eq("publish_status", "pending_review")
     .order("id", { ascending: true })
@@ -210,6 +213,7 @@ function toReviewItem(
     id: row.id,
     importedAt: row.created_at,
     publishStatus: "pending_review",
+    section: row.section,
     sourceUrl: row.source_url,
     timing: timing
       ? {
@@ -218,6 +222,10 @@ function toReviewItem(
           reviewedAt: timing.reviewed_at,
         }
       : null,
+    views:
+      typeof row.view_count === "number" && Number.isFinite(row.view_count)
+        ? row.view_count
+        : null,
   };
 }
 

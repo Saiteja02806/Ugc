@@ -14,6 +14,10 @@ import {
 } from "@/lib/media/media-storage";
 import type { MediaRatio, MediaSourceType } from "@/lib/media/types";
 import {
+  parseHookVideoTextPlacement,
+  type HookVideoTextPlacement,
+} from "@/lib/trending/hook-video-text-placement";
+import {
   buildCatalogInfluencerId,
   buildUserInfluencerId,
   getCatalogInfluencerKey,
@@ -49,6 +53,7 @@ export type ResolvedHookVideoSource = {
   durationSeconds: number | null;
   height: number | null;
   id: string;
+  hookTextPlacement: HookVideoTextPlacement | null;
   influencerId: string;
   influencerKey: string | null;
   mimeType: string;
@@ -215,6 +220,9 @@ export async function listHookVideoBrowseInventory(
           video: {
             durationSeconds: asset.duration_seconds,
             id: asset.id,
+            hookTextPlacement: parseHookVideoTextPlacement(
+              asset.hook_text_placement,
+            ),
             influencerKey: asset.influencer_key,
             influencerId,
             ratio: asset.ratio,
@@ -271,6 +279,9 @@ export async function listHookInfluencerVideos(params: {
         return {
           durationSeconds: asset.duration_seconds,
           id: asset.id,
+          hookTextPlacement: parseHookVideoTextPlacement(
+            asset.hook_text_placement,
+          ),
           influencerKey: asset.influencer_key,
           influencerId: params.influencerId,
           ratio: asset.ratio,
@@ -378,6 +389,7 @@ export async function resolveHookVideoSource(params: {
     durationSeconds: asset.duration_seconds,
     height: asset.height,
     id: asset.id,
+    hookTextPlacement: null,
     influencerId: params.influencerId,
     influencerKey: null,
     mimeType: asset.mime_type,
@@ -475,6 +487,9 @@ function mapCatalogSource(params: {
     durationSeconds: params.asset.duration_seconds,
     height: params.asset.height,
     id: params.asset.id,
+    hookTextPlacement: parseHookVideoTextPlacement(
+      params.asset.hook_text_placement,
+    ),
     influencerId: params.influencerId,
     influencerKey: params.asset.influencer_key,
     mimeType: getVideoMimeType(params.asset.source_s3_key),
@@ -504,6 +519,7 @@ function mapUserInfluencerVideo(
   return {
     durationSeconds: asset.duration_seconds,
     id: asset.id,
+    hookTextPlacement: null,
     influencerKey: null,
     influencerId,
     ratio: asset.ratio,

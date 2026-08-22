@@ -25,6 +25,7 @@ import {
 import type { PlannedCarouselSlide } from "@/lib/carousel/slide-plan";
 import { uploadRenderedCarouselSlide } from "@/lib/carousel/storage";
 import { resolveCarouselImageLibraryCategory } from "@/lib/carousel/image-library-category";
+import { buildCarouselSlideImagePlan } from "@/lib/carousel/image-library-relevance";
 import { assertCarouselStructureRuntimeReady } from "@/lib/carousel/structure";
 
 type GenerateCarouselInput = {
@@ -247,10 +248,26 @@ export async function generateCarousel({
       renderer_version: CAROUSEL_RENDERER_VERSION,
     });
     await assertBusinessProfileVersionIsCurrent(generation);
+    const slideImagePlan = buildCarouselSlideImagePlan({
+      carouselId,
+      primaryCategory: imageLibraryCategory,
+      slides: plannedSlides.map((slide) => ({
+        slideNumber: slide.slideNumber,
+        supportingText: [slide.imageDirection],
+        visibleText: [
+          slide.headline,
+          slide.body,
+          slide.listItems,
+          slide.subtext,
+          slide.ctaText,
+        ],
+      })),
+    });
     const reservedAssets = await reserveCarouselRoleAssets({
       businessProfileId: generation.businessProfileId,
       carouselId,
-      categorySlug: imageLibraryCategory,
+      primaryCategorySlug: imageLibraryCategory,
+      slidePlan: slideImagePlan,
     });
     const reservedAssetsBySlideNumber = new Map(
       reservedAssets.map((asset) => [asset.slideNumber, asset]),
@@ -268,7 +285,10 @@ export async function generateCarousel({
       selections: reservedAssets.map((asset) => ({
         assetId: asset.id,
         assetRole: asset.assetRole,
+        categorySlug: asset.categorySlug,
         cycleNumber: asset.cycleNumber,
+        relevanceLevel: asset.relevanceLevel,
+        selectionType: asset.selectionType,
         slideNumber: asset.slideNumber,
       })),
     });

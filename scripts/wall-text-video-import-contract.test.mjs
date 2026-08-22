@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+const importerSource = readFileSync(
+  new URL("./import-wall-text-video-assets.mjs", import.meta.url),
+  "utf8",
+);
+
 const manifest = JSON.parse(
   readFileSync(
     new URL("./data/wall-text-videos-real-2026-07-28.json", import.meta.url),
@@ -12,6 +17,24 @@ const augustManifest = JSON.parse(
   readFileSync(
     new URL(
       "./data/wall-text-videos-real-2026-08-11.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
+const augustPartSevenManifest = JSON.parse(
+  readFileSync(
+    new URL(
+      "./data/wall-text-videos-real-2026-08-20-part-7.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
+const augustPartEightManifest = JSON.parse(
+  readFileSync(
+    new URL(
+      "./data/wall-text-videos-real-2026-08-20-part-8.json",
       import.meta.url,
     ),
     "utf8",
@@ -127,5 +150,61 @@ test("pins the reviewed 2026-08-11 Wall batch as 64 new silent-ready sources", (
       outdoor_static_selfie: 5,
       outdoor_walking_selfie: 2,
     },
+  );
+});
+
+test("uses the pinned FFprobe binary for portable media validation", () => {
+  assert.match(importerSource, /import ffprobeStatic from "ffprobe-static"/);
+  assert.match(importerSource, /execFileSync\([\s\S]+ffprobeStatic\.path/);
+});
+
+test("pins the two reviewed 2026-08-20 Wall batches as 29 new sources", () => {
+  const newAssets = [
+    ...augustPartSevenManifest.assets,
+    ...augustPartEightManifest.assets,
+  ];
+  const previousHashes = new Set([
+    ...manifest.assets.map((asset) => asset.sha256),
+    ...augustManifest.assets.map((asset) => asset.sha256),
+  ]);
+
+  assert.equal(augustPartSevenManifest.assets.length, 14);
+  assert.equal(augustPartEightManifest.assets.length, 15);
+  assert.equal(newAssets.length, 29);
+  assert.equal(new Set(newAssets.map((asset) => asset.fileName)).size, 29);
+  assert.equal(new Set(newAssets.map((asset) => asset.catalogName)).size, 29);
+  assert.equal(new Set(newAssets.map((asset) => asset.sha256)).size, 29);
+  assert.equal(
+    newAssets.every(
+      (asset) =>
+        /^[0-9a-f]{64}$/u.test(asset.sha256) &&
+        !previousHashes.has(asset.sha256),
+    ),
+    true,
+  );
+});
+
+test("imports shared Wall backgrounds as UGCpilot picker assets", () => {
+  assert.match(importerSource, /wall_text_source_kind: "ugcpilot"/);
+  assert.match(
+    importerSource,
+    /row\.wall_text_source_kind !== "ugcpilot"/,
+  );
+});
+
+test("pins only the nine manually reviewed placement overrides", () => {
+  const overrides = [
+    ...augustPartSevenManifest.assets,
+    ...augustPartEightManifest.assets,
+  ].filter((asset) => asset.approvedPlacementZone);
+
+  assert.equal(overrides.length, 9);
+  assert.equal(
+    overrides.every((asset) =>
+      ["upper-middle", "middle", "lower-middle"].includes(
+        asset.approvedPlacementZone,
+      ),
+    ),
+    true,
   );
 });

@@ -1,7 +1,9 @@
 import "server-only";
 
 import { listBusinessProfilesForDailyReplenishment } from "@/lib/business-profiles/db";
-import { ensureTrendingDailyFeed } from "@/lib/trending/daily-feed";
+import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
+import { ensureUnifiedTrendingDailyFeed } from "@/lib/trending/unified-daily-feed";
+import { isWallTextEnabled } from "@/lib/trending/wall-text-access";
 import {
   advanceDailyCarouselReplenishmentCycle,
   claimDailyCarouselReplenishmentCycle,
@@ -71,10 +73,11 @@ export async function replenishTrendingCarouselFeedPage(params: {
         throw new Error("Trending timezone has not been initialized.");
       }
 
-      const feed = await ensureTrendingDailyFeed({
+      const feed = await ensureUnifiedTrendingDailyFeed({
+        includeHookVideos: areTrendingHookVideosEnabled(),
+        includeWallText: isWallTextEnabled(),
         markItemsShown: false,
         profile,
-        throwOnRefillError: true,
         timezone: profile.trendingTimezone,
         userId: profile.userId,
       });

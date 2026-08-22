@@ -1,0 +1,396 @@
+{
+  "schemaVersion": "hook-silent-video-manifest-v1",
+  "sourceBatch": "hook-silent-2026-08-20-approved-11",
+  "reviewedAt": "2026-08-20",
+  "policy": {
+    "audio": "All imported files are silent and enter the Dynamic Hook audio path unless a later approved per-video lock is configured.",
+    "influencerIdentity": "Every generated face is conservatively kept as a separate provisional creator to avoid merging uncertain identities.",
+    "review": "The user approved the recommended 11-video import. The 1.387-second clip remains excluded for readability reasons.",
+    "textPlacement": "Static Hook text placement was reviewed across start, middle, and near-end frames because reveal clips can begin without a visible face.",
+    "visualGrouping": "Airplane clips use the new airplane_reaction visual/audio format; all other videos map to existing active Hook formats."
+  },
+  "sourceFolders": {
+    "approved_root": "C:\\Users\\chund\\OneDrive\\Desktop\\hook videos\\notbeen\\videos (6)"
+  },
+  "visualGroups": {
+    "airplane_reaction": "Influencer reacting while seated in an airplane cabin or beside an airplane window.",
+    "cafe_reaction": "Influencer seated in a cafe or restaurant environment.",
+    "desk_laptop_reaction": "Influencer reacting while a laptop or desk setup is visually prominent.",
+    "indoor_selfie_closeup": "Indoor face-led selfie or close-up reaction without a dominant prop.",
+    "indoor_selfie_medium": "Indoor medium-framed reaction showing more torso or surrounding room."
+  },
+  "reactionTypes": {
+    "amusement_laughter": "Positive amusement, laughter, or delighted surprise.",
+    "concern_anxiety": "Concern, anxiety, worry, nervousness, or emotional unease.",
+    "confidence_approval": "Confident, knowing, satisfied, or approving expression.",
+    "focused_attention": "Neutral-to-focused action that supplies lower-intensity Hook movement.",
+    "shock_surprise": "Clear shock, surprise, disbelief, or startled realization."
+  },
+  "influencers": {
+    "creator_051": {
+      "displayName": "Creator 051",
+      "identityConfidence": "medium"
+    },
+    "creator_052": {
+      "displayName": "Creator 052",
+      "identityConfidence": "medium"
+    },
+    "creator_053": {
+      "displayName": "Creator 053",
+      "identityConfidence": "medium"
+    },
+    "creator_054": {
+      "displayName": "Creator 054",
+      "identityConfidence": "medium"
+    },
+    "creator_055": {
+      "displayName": "Creator 055",
+      "identityConfidence": "medium"
+    },
+    "creator_056": {
+      "displayName": "Creator 056",
+      "identityConfidence": "medium"
+    },
+    "creator_057": {
+      "displayName": "Creator 057",
+      "identityConfidence": "medium"
+    },
+    "creator_058": {
+      "displayName": "Creator 058",
+      "identityConfidence": "medium"
+    },
+    "creator_059": {
+      "displayName": "Creator 059",
+      "identityConfidence": "medium"
+    },
+    "creator_060": {
+      "displayName": "Creator 060",
+      "identityConfidence": "medium"
+    },
+    "creator_061": {
+      "displayName": "Creator 061",
+      "identityConfidence": "medium"
+    }
+  },
+  "assets": [
+    {
+      "assetKey": "hook-silent:6b3aa3ddb8c3354f677cb220eae39e6b726ce94230e6006ae668663e33f4dd61",
+      "catalogName": "creator-051-amusement-laughter-6b3aa3ddb8",
+      "durationSeconds": 4.054,
+      "fileSizeBytes": 3595534,
+      "hasAudio": false,
+      "height": 1280,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-08-20",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_051",
+      "originalFileName": "Face_swap_and_background_modific_202608191845-Vmake-silent.mp4",
+      "ratio": "9:16",
+      "reactionType": "amusement_laughter",
+      "reviewReason": "User approved the recommended 11-video import after technical validation and start/middle/end visual review.",
+      "reviewStatus": "approved",
+      "sha256": "6b3aa3ddb8c3354f677cb220eae39e6b726ce94230e6006ae668663e33f4dd61",
+      "sortOrder": 107,
+      "sourceFolderKey": "approved_root",
+      "videoCodec": "h264",
+      "visualGroup": "airplane_reaction",
+      "width": 720
+    },
+    {
+      "assetKey": "hook-silent:f561ef8d7e5e9991e1596d19f25330a98a5cec3df1019319b78b5aacdb491948",
+      "catalogName": "creator-052-concern-anxiety-f561ef8d7e",
+      "durationSeconds": 2.838,
+      "fileSizeBytes": 2814775,
+      "hasAudio": false,
+      "height": 1280,
+      "hookTextPlacement": {
+        "preset": "below_face",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-08-20",
+        "x": 0.5,
+        "y": 0.68
+      },
+      "influencerKey": "creator_052",
+      "originalFileName": "Face_swap_and_video_editing_202608191842-Vmake-silent.mp4",
+      "ratio": "9:16",
+      "reactionType": "concern_anxiety",
+      "reviewReason": "User approved the recommended 11-video import after technical validation and start/middle/end visual review.",
+      "reviewStatus": "approved",
+      "sha256": "f561ef8d7e5e9991e1596d19f25330a98a5cec3df1019319b78b5aacdb491948",
+      "sortOrder": 108,
+      "sourceFolderKey": "approved_root",
+      "videoCodec": "h264",
+      "visualGroup": "indoor_selfie_closeup",
+      "width": 720
+    },
+    {
+      "assetKey": "hook-silent:294287de11aaed51b19548f773a12dfef817c2c513735973dacf287b1308a142",
+      "catalogName": "creator-053-concern-anxiety-294287de11",
+      "durationSeconds": 2.795,
+      "fileSizeBytes": 1984530,
+      "hasAudio": false,
+      "height": 1280,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-08-20",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_053",
+      "originalFileName": "Perform_face_swap_and_action_202608131952 (1)-silent.mp4",
+      "ratio": "9:16",
+      "reactionType": "concern_anxiety",
+      "reviewReason": "User approved the recommended 11-video import after technical validation and start/middle/end visual review.",
+      "reviewStatus": "approved",
+      "sha256": "294287de11aaed51b19548f773a12dfef817c2c513735973dacf287b1308a142",
+      "sortOrder": 109,
+      "sourceFolderKey": "approved_root",
+      "videoCodec": "h264",
+      "visualGroup": "desk_laptop_reaction",
+      "width": 720
+    },
+    {
+      "assetKey": "hook-silent:0930839847e74ab2c408dcf435bf3323af3226c3b45a2d79b0aee7c43d40087c",
+      "catalogName": "creator-054-concern-anxiety-0930839847",
+      "durationSeconds": 2.667,
+      "fileSizeBytes": 1836480,
+      "hasAudio": false,
+      "height": 1280,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-08-20",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_054",
+      "originalFileName": "Perform_face_swap_and_edit_202608131957 (1)-silent.mp4",
+      "ratio": "9:16",
+      "reactionType": "concern_anxiety",
+      "reviewReason": "User approved the recommended 11-video import after technical validation and start/middle/end visual review.",
+      "reviewStatus": "approved",
+      "sha256": "0930839847e74ab2c408dcf435bf3323af3226c3b45a2d79b0aee7c43d40087c",
+      "sortOrder": 110,
+      "sourceFolderKey": "approved_root",
+      "videoCodec": "h264",
+      "visualGroup": "desk_laptop_reaction",
+      "width": 720
+    },
+    {
+      "assetKey": "hook-silent:093604fdaf6ba3960497a8e774221448ea8cd39e8efcb3602bbea707681973b3",
+      "catalogName": "creator-055-shock-surprise-093604fdaf",
+      "durationSeconds": 2.731,
+      "fileSizeBytes": 2053610,
+      "hasAudio": false,
+      "height": 1280,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-08-20",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_055",
+      "originalFileName": "Perform_face_swap_video_editing_202608131953 (1)-silent.mp4",
+      "ratio": "9:16",
+      "reactionType": "shock_surprise",
+      "reviewReason": "User approved the recommended 11-video import after technical validation and start/middle/end visual review.",
+      "reviewStatus": "approved",
+      "sha256": "093604fdaf6ba3960497a8e774221448ea8cd39e8efcb3602bbea707681973b3",
+      "sortOrder": 111,
+      "sourceFolderKey": "approved_root",
+      "videoCodec": "h264",
+      "visualGroup": "desk_laptop_reaction",
+      "width": 720
+    },
+    {
+      "assetKey": "hook-silent:ecdceae97cc741ea90653b227cdcee4eb2003c283406f7c50c6eeca91e7269f4",
+      "catalogName": "creator-056-shock-surprise-ecdceae97c",
+      "durationSeconds": 4.544,
+      "fileSizeBytes": 4352311,
+      "hasAudio": false,
+      "height": 1280,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-08-20",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_056",
+      "originalFileName": "Perform_video_face_swap_202608191845-Vmake-silent.mp4",
+      "ratio": "9:16",
+      "reactionType": "shock_surprise",
+      "reviewReason": "User approved the recommended 11-video import after technical validation and start/middle/end visual review.",
+      "reviewStatus": "approved",
+      "sha256": "ecdceae97cc741ea90653b227cdcee4eb2003c283406f7c50c6eeca91e7269f4",
+      "sortOrder": 112,
+      "sourceFolderKey": "approved_root",
+      "videoCodec": "h264",
+      "visualGroup": "airplane_reaction",
+      "width": 720
+    },
+    {
+      "assetKey": "hook-silent:00a61c2263212035d6af68748046c3e4ed449766e9b5d20b660000f5ccfe5d97",
+      "catalogName": "creator-057-shock-surprise-00a61c2263",
+      "durationSeconds": 2.859,
+      "fileSizeBytes": 2132384,
+      "hasAudio": false,
+      "height": 1280,
+      "hookTextPlacement": {
+        "preset": "below_face",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-08-20",
+        "x": 0.5,
+        "y": 0.68
+      },
+      "influencerKey": "creator_057",
+      "originalFileName": "Remove_text_swap_face_202608121447 (1)-silent.mp4",
+      "ratio": "9:16",
+      "reactionType": "shock_surprise",
+      "reviewReason": "User approved the recommended 11-video import after technical validation and start/middle/end visual review.",
+      "reviewStatus": "approved",
+      "sha256": "00a61c2263212035d6af68748046c3e4ed449766e9b5d20b660000f5ccfe5d97",
+      "sortOrder": 113,
+      "sourceFolderKey": "approved_root",
+      "videoCodec": "h264",
+      "visualGroup": "desk_laptop_reaction",
+      "width": 720
+    },
+    {
+      "assetKey": "hook-silent:ce485e01400e2b2650b145cd80406f4b7e110fac37003301163683119b1dea4a",
+      "catalogName": "creator-058-confidence-approval-ce485e0140",
+      "durationSeconds": 4.907,
+      "fileSizeBytes": 3528657,
+      "hasAudio": false,
+      "height": 1280,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-08-20",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_058",
+      "originalFileName": "Swap_face_in_video_202608121447 (2)-silent.mp4",
+      "ratio": "9:16",
+      "reactionType": "confidence_approval",
+      "reviewReason": "User approved the recommended 11-video import after technical validation and start/middle/end visual review.",
+      "reviewStatus": "approved",
+      "sha256": "ce485e01400e2b2650b145cd80406f4b7e110fac37003301163683119b1dea4a",
+      "sortOrder": 114,
+      "sourceFolderKey": "approved_root",
+      "videoCodec": "h264",
+      "visualGroup": "desk_laptop_reaction",
+      "width": 720
+    },
+    {
+      "assetKey": "hook-silent:725b4fbc9d40826e7c9152582f5fe443ede53548495c15329e18f44aa24dd6de",
+      "catalogName": "creator-059-amusement-laughter-725b4fbc9d",
+      "durationSeconds": 2.496,
+      "fileSizeBytes": 1750899,
+      "hasAudio": false,
+      "height": 1280,
+      "hookTextPlacement": {
+        "preset": "below_face",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-08-20",
+        "x": 0.5,
+        "y": 0.68
+      },
+      "influencerKey": "creator_059",
+      "originalFileName": "Swap_face_in_video_202608121447_1-silent.mp4",
+      "ratio": "9:16",
+      "reactionType": "amusement_laughter",
+      "reviewReason": "User approved the recommended 11-video import after technical validation and start/middle/end visual review.",
+      "reviewStatus": "approved",
+      "sha256": "725b4fbc9d40826e7c9152582f5fe443ede53548495c15329e18f44aa24dd6de",
+      "sortOrder": 115,
+      "sourceFolderKey": "approved_root",
+      "videoCodec": "h264",
+      "visualGroup": "cafe_reaction",
+      "width": 720
+    },
+    {
+      "assetKey": "hook-silent:0e88f575ea8daca38231339bc0f7bdeb6b785973dcd9aab546ae5a389ae4a738",
+      "catalogName": "creator-060-shock-surprise-0e88f575ea",
+      "durationSeconds": 4.95,
+      "fileSizeBytes": 4535288,
+      "hasAudio": false,
+      "height": 1280,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-08-20",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_060",
+      "originalFileName": "Video_face_swap_and_edit_202608191844-Vmake-silent.mp4",
+      "ratio": "9:16",
+      "reactionType": "shock_surprise",
+      "reviewReason": "User approved the recommended 11-video import after technical validation and start/middle/end visual review.",
+      "reviewStatus": "approved",
+      "sha256": "0e88f575ea8daca38231339bc0f7bdeb6b785973dcd9aab546ae5a389ae4a738",
+      "sortOrder": 116,
+      "sourceFolderKey": "approved_root",
+      "videoCodec": "h264",
+      "visualGroup": "airplane_reaction",
+      "width": 720
+    },
+    {
+      "assetKey": "hook-silent:03592b3183bba20646a42a8cf2cd2785ca27761586302d74ef7469fdd738166f",
+      "catalogName": "creator-061-focused-attention-03592b3183",
+      "durationSeconds": 2.646,
+      "fileSizeBytes": 2364664,
+      "hasAudio": false,
+      "height": 1280,
+      "hookTextPlacement": {
+        "preset": "above_head",
+        "reviewVersion": "hook-multiframe-placement-v2",
+        "reviewedAt": "2026-08-20",
+        "x": 0.5,
+        "y": 0.15
+      },
+      "influencerKey": "creator_061",
+      "originalFileName": "Video_face_swap_and_editing_202608191842-Vmake-silent.mp4",
+      "ratio": "9:16",
+      "reactionType": "focused_attention",
+      "reviewReason": "User approved the recommended 11-video import after technical validation and start/middle/end visual review.",
+      "reviewStatus": "approved",
+      "sha256": "03592b3183bba20646a42a8cf2cd2785ca27761586302d74ef7469fdd738166f",
+      "sortOrder": 117,
+      "sourceFolderKey": "approved_root",
+      "videoCodec": "h264",
+      "visualGroup": "indoor_selfie_medium",
+      "width": 720
+    }
+  ],
+  "summary": {
+    "approvedCount": 11,
+    "rejectedCount": 0,
+    "silentCount": 11,
+    "sourceFolderCounts": {
+      "approved_root": 11
+    },
+    "visualGroupCounts": {
+      "airplane_reaction": 3,
+      "cafe_reaction": 1,
+      "desk_laptop_reaction": 5,
+      "indoor_selfie_closeup": 1,
+      "indoor_selfie_medium": 1
+    },
+    "reactionTypeCounts": {
+      "amusement_laughter": 2,
+      "concern_anxiety": 3,
+      "confidence_approval": 1,
+      "focused_attention": 1,
+      "shock_surprise": 4
+    }
+  }
+}

@@ -3,7 +3,10 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
-import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
+import {
+  isAIStudioBillingExemptUser,
+  requireAIStudioProUser,
+} from "@/lib/ai-studio/server-access";
 import {
   AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
   getAIStudioPromptLengthError,
@@ -16,12 +19,22 @@ import {
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
+import {
+  BillingAccessError,
+  deliverBillingUsageForJob,
+  getGenerationCreditCost,
+  releaseBillingCredits,
+  reserveBillingCredits,
+} from "@/lib/billing/subscription-db";
 
 type GenerateVideoRequest = {
   avatarImageUrl?: unknown;
   hookIdea?: unknown;
   idempotencyKey?: unknown;
   prompt?: unknown;
+  referenceId?: unknown;
+  referenceType?: unknown;
+  referenceUrl?: unknown;
 };
 
 type VideoJobOutput = {
@@ -160,12 +173,23 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     );
   }
 
+  const projectId = "ai-studio";
+  const videoId = crypto.randomUUID();
+  const idempotencyKey = cleanIdempotencyKey(
+    request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
+  );
+  let creditsReserved = false;
+
   try {
-    const projectId = "ai-studio";
-    const videoId = crypto.randomUUID();
-    const idempotencyKey = cleanIdempotencyKey(
-      request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
-    );
+    if (!isAIStudioBillingExemptUser(user)) {
+      await reserveBillingCredits({
+        amount: getGenerationCreditCost("video"),
+        idempotencyKey,
+        jobType: VIDEO_JOB_TYPE,
+        userId: user.uid,
+      });
+      creditsReserved = true;
+    }
     const backgroundJob = await createAndDispatchBackgroundJob({
       idempotencyKey,
       input: {
@@ -176,6 +200,12 @@ export async function handleAIStudioVideoGeneration(request: Request) {
         productDescription: "Short-form creator content.",
         productName: "UGCPilot",
         projectId,
+        referenceId:
+          typeof body?.referenceId === "string" ? body.referenceId : null,
+        referenceType:
+          typeof body?.referenceType === "string" ? body.referenceType : null,
+        referenceUrl:
+          typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
         userId: user.uid,
         videoId,
       },
@@ -194,6 +224,20 @@ export async function handleAIStudioVideoGeneration(request: Request) {
       { status: 202 },
     );
   } catch (error) {
+    if (creditsReserved) {
+      await releaseBillingCredits({ idempotencyKey, userId: user.uid }).catch(
+        (releaseError) =>
+          console.error("Could not release video generation credits:", releaseError),
+      );
+    }
+
+    if (error instanceof BillingAccessError) {
+      return NextResponse.json(
+        { error: error.message, ok: false },
+        { status: error.status },
+      );
+    }
+
     console.error("Failed to start video generation:", error);
 
     return NextResponse.json(
@@ -275,6 +319,12 @@ export async function handleAIStudioVideoStatus(request: Request) {
           ok: false,
         },
         { status: 400 },
+      );
+    }
+
+    if (job.status === "completed") {
+      await deliverBillingUsageForJob(job.id).catch((error) =>
+        console.error("Could not deliver video usage to Dodo:", error),
       );
     }
 

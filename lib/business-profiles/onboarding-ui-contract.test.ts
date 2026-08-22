@@ -6,13 +6,23 @@ const onboarding = readProjectFile(
   "components/business-profiles/business-profile-onboarding.tsx",
 );
 const authGuard = readProjectFile("components/auth/auth-guard.tsx");
+const profileGateQuery = readProjectFile(
+  "lib/business-profiles/profile-gate-query.ts",
+);
 const onboardingPage = readProjectFile("app/onboarding/page.tsx");
 const setup = readProjectFile("lib/business-profiles/setup.ts");
 
 test("the onboarding route bypasses only the profile gate and cannot loop", () => {
   assert.match(onboardingPage, /<AuthGuard requireBusinessProfile=\{false\}>/);
   assert.match(authGuard, /requireBusinessProfile = true/);
-  assert.match(authGuard, /data\.profile\?\.onboardingComplete !== true/);
+  assert.match(
+    profileGateQuery,
+    /data\.profile\?\.onboardingComplete === true/,
+  );
+  assert.match(
+    authGuard,
+    /profileGateQuery\.data\?\.onboardingComplete === false/,
+  );
   assert.match(authGuard, /router\.replace\("\/onboarding"\)/);
 });
 

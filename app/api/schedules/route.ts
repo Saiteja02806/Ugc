@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import {
   FirebaseAuthRequestError,
@@ -9,6 +9,7 @@ import {
   getMissingSchedulingRuntimeEnvVars,
   getSocialSchedulingMinimumLeadMinutes,
   listUserSchedules,
+  reconcileCancelledSchedulerResources,
   SchedulingRequestError,
 } from "@/lib/scheduling/service";
 import { getSocialSchedulingCalendarStartAt } from "@/lib/scheduling/calendar-start";
@@ -80,6 +81,12 @@ export async function GET(request: Request) {
       400,
     );
   }
+
+  after(() =>
+    reconcileCancelledSchedulerResources(userId).catch((error) => {
+      console.error("Could not reconcile cancelled schedule resources:", error);
+    }),
+  );
 
   try {
     const schedules = await listUserSchedules({

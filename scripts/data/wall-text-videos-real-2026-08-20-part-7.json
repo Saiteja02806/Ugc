@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "wall-text-video-manifest-v1",
+  "sourceBatch": "wall-text-real-2026-08-20-part-7",
+  "reviewedAt": "2026-08-20",
+  "playback": {
+    "mode": "once",
+    "textVisibility": "full-duration"
+  },
+  "visualGroups": {
+    "car_selfie": "Influencer filmed inside a car in a selfie-style composition.",
+    "indoor_closeup": "Indoor influencer framed primarily as a close-up.",
+    "indoor_medium": "Indoor influencer framed as a medium or seated shot.",
+    "outdoor_static_selfie": "Outdoor influencer in a mostly static selfie composition.",
+    "outdoor_walking_selfie": "Outdoor influencer walking while filming in selfie style."
+  },
+  "assets": [
+    {
+      "catalogName": "indoor-medium-053",
+      "approvedPlacementZone": "lower-middle",
+      "fileName": "change_outfit_to_purple_t-shirt_202608121832_2_-Vmake-silent.mp4",
+      "sha256": "73b40b71abeae9bbeb99de2ecf71877b8dd881e5a994387673e08f4fb5fed962",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-medium-054",
+      "fileName": "Face_swap_and_edit_video_202608161615_1_-Vmake-silent.mp4",
+      "sha256": "072f2177c4be0cc2fc2e4827fd8ebdd028c953567a8afe957a60616db3902721",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-closeup-034",
+      "approvedPlacementZone": "lower-middle",
+      "fileName": "Face_swap_and_video_editing_202608131146-Vmake-silent.mp4",
+      "sha256": "9795deab5cc827104c387fa5d370a76640f156e4a5246db32430eb9d558d1965",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "outdoor-static-selfie-010",
+      "approvedPlacementZone": "middle",
+      "fileName": "Perform_face_swap_and_edit_202608111649-Vmake-silent.mp4",
+      "sha256": "215f79295120586c0f369c4515aa4e72a113dcba4b28dcf1b1ce1131a35cdc4e",
+      "visualGroup": "outdoor_static_selfie"
+    },
+    {
+      "catalogName": "indoor-closeup-035",
+      "fileName": "Perform_face_swap_and_edit_202608121850-Vmake-silent.mp4",
+      "sha256": "965636567eca1b4f780430ff690f90c19c455b14b683ccf7856111f1f2e17abb",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-055",
+      "fileName": "Perform_face_swap_and_edit_202608131145-Vmake-silent.mp4",
+      "sha256": "ea8297fafcdcb3c871b3e24b383b2102cd76cb1327eb70d9c882646fb960a113",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-medium-056",
+      "fileName": "Perform_face_swap_and_edit_202608131146_1_-Vmake-silent.mp4",
+      "sha256": "6e5e455779739400d88d46484ba73ec5b88a8f7c95b60c79501c09d5af517f70",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "car-selfie-019",
+      "fileName": "Perform_face_swap_and_edit_202608131146_2_-Vmake-silent.mp4",
+      "sha256": "c5eb843bb2becabeb2a3b449288343d44ce1f71d566b0c4d9824212e2dee791c",
+      "visualGroup": "car_selfie"
+    },
+    {
+      "catalogName": "indoor-closeup-036",
+      "fileName": "Perform_face_swap_and_edit_202608131146-Vmake-silent.mp4",
+      "sha256": "bbfb91a5095ba718e91940bc6fc6a74e69885ca6fecf7ace752d2438bbf78570",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "outdoor-walking-selfie-004",
+      "fileName": "Perform_face_swap_and_edit_202608131147-Vmake-silent.mp4",
+      "sha256": "7f44094ae2f81880f1f247aa42747087460fe09a0241aff29776a50c4645617e",
+      "visualGroup": "outdoor_walking_selfie"
+    },
+    {
+      "catalogName": "car-selfie-020",
+      "fileName": "Perform_face_swap_and_edit_202608131202_1_-Vmake-silent.mp4",
+      "sha256": "4415f59ef0e83ab5dccb94eb0013a05928bb817047456ede69b0b4a4c6715f6e",
+      "visualGroup": "car_selfie"
+    },
+    {
+      "catalogName": "indoor-closeup-037",
+      "fileName": "Perform_face_swap_and_edit_202608131202-Vmake-silent.mp4",
+      "sha256": "c665e649a29780a3ab8bfaec28a034c5c67cf0c67ae9f915edfbdb4389bf26bc",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-057",
+      "fileName": "Perform_face_swap_and_edit_202608131215-Vmake-silent.mp4",
+      "sha256": "8b4ace8c140895fd5cf8df9f0bcd020cc4135aeaf49b7fb7e078507bd23327fb",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-closeup-038",
+      "fileName": "Video_face_swap_with_skin_202608111659-Vmake-silent.mp4",
+      "sha256": "7fe19c24967ffa0ce6f38418500a69d52f3cd46e1e57c90c4dedc9cafa4380d8",
+      "visualGroup": "indoor_closeup"
+    }
+  ],
+  "rejectedDuplicates": []
+}

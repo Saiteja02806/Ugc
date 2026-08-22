@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-08-13
+Last updated: 2026-08-22
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -575,6 +575,72 @@ or approve any local image. Runtime duplicate identity now prefers
 then existing Pexels/object-key identity.
 
 ## Daily Trending Feed
+
+### 2026-08-20 unified combined-feed architecture
+
+The source implementation now treats Carousel as one format inside a single
+persisted daily Trending allowance alongside Wall-of-text and Hook Video. This
+is a source decision and must not be described as deployed until migration
+`20260820084842_create_unified_daily_trending_feed.sql`, the Next.js release,
+and the background workers are verified in production.
+
+The stable billing keys are intentionally retained while their visible plan
+names and combined daily limits change:
+
+- `pro` -> **Starter** -> 20 combined posts per user-local day;
+- `creator` -> **Growth** -> 50 combined posts per user-local day;
+- `ultra_pro` remains an inactive legacy entitlement and is not assigned to
+  new users.
+
+Do not migrate existing user plan keys merely to make the labels appear more
+intuitive. Runtime entitlement resolution and pricing display must use the
+exact mapping above.
+
+The default daily mix is 25% Carousel, 50% Wall-of-text, and 25% Hook Video.
+Wall-of-text and Hook Video are each capped at 50%; Carousel may range from 0%
+to 100%; all three integer percentages must total exactly 100%. Largest
+remainder allocation produces whole posts. Starter therefore receives
+5 Carousel / 10 Wall / 5 Hook by default. Growth alternates the one-post
+remainder by local day between 13 Carousel / 25 Wall / 12 Hook and
+12 Carousel / 25 Wall / 13 Hook.
+
+Migration `20260820084842_create_unified_daily_trending_feed.sql` adds:
+
+- `subscription_entitlements.daily_trending_limit`;
+- server-only `trending_content_mix_preferences`;
+- one `daily_trending_feeds` snapshot per `user_id + local_date`;
+- exactly 20 or 50 ordered `daily_trending_feed_slots` rows; and
+- service-role-only planning, assignment, mix-save, unbound-replan, and slot
+  completion RPCs protected by advisory locks.
+
+The slot list is the cross-format source of truth. Slots are allocated and
+interleaved before content is attached, so the frontend must order by the
+persisted slot position rather than grouping formats into blocks. Only a ready
+assignment may attach to its matching reserved format. Assigned or decided
+slots are immutable for that day.
+
+A successful left or right decision retires exactly one reserved slot. It must
+never create a replacement on the same local day. After all 20 or 50 slots are
+decided, the correct state is caught up until the next local day. Background
+preparation fills only still-unbound slots; it is started during onboarding,
+the daily sweep, an Adjust save, or safe GET recovery, and it must never clear
+already visible items.
+
+The Adjust control stores preferences separately. Saving a new mix preserves
+ready, preparing, and decided positions. It may replan only `planned` or
+`failed` slots with no assignment. If none remain, the preference applies on
+the next local day. A saved 0% for a format does not hide that format's posts
+that are already reserved today.
+
+The older `daily_carousel_feeds` and `daily_carousel_feed_items` tables remain
+an internal Carousel inventory source during this migration. They are not the
+user's combined daily limit and must not control visible cross-format ordering.
+Their internal ceiling may be raised when a Growth allocation needs 12 or 13
+Carousel assets, but surplus inventory is not exposed outside the unified
+slots.
+
+The remainder of this section documents the older Carousel-only feed layer and
+its still-relevant inventory, completion-evidence, worker, and rollout rules.
 
 As of 2026-07-16, Trending has a server-backed daily feed layer. The
 frontend should not treat the generic carousel history endpoint as the product
@@ -1153,12 +1219,12 @@ from feed preview.
   including `renderedUrl`, slide number, type, text metadata, and status.
 - Processing and failed generations keep their real lifecycle state; they are
   not represented as template artwork.
-- Pending generations are summarized in one aggregate preparation state with a
-  controlled three-card skeleton and total slide progress. Never render one
-  large lifecycle card for every pending candidate. When completed candidates
-  already exist, use the compact aggregate progress row instead. Failed
-  candidates use one aggregate retry state rather than a wall of repeated
-  failure cards.
+- Pending generations use one dark 9:16 post skeleton in the exact first-card
+  position. The skeleton has no readable placeholder content, no slide dots,
+  and no Carousel stack. It uses a restrained pulse and is replaced in place
+  by the first preview-ready item. Never render one lifecycle card for every
+  pending candidate. Failed candidates use one aggregate retry state rather
+  than a wall of repeated failure cards.
 - Generated candidates appear in a focused Tinder-style deck. One complete
   carousel candidate, including all five slides, is one outer deck card. Never
   flatten slides into the outer deck.
@@ -2005,11 +2071,12 @@ Do not describe planned behavior as deployed behavior.
 - Edit opens the format-specific Trending creative editor for the assigned
   creative. Saving persists an owner-scoped revision; Carousel saves wait for
   the revision-specific worker render before downstream Library use.
-- Trending never renders non-ready cards. When no preview-ready item exists,
-  the customer sees only "We’re preparing new content for you." The sidebar
-  background-job indicator and the Trending render-progress/failure panels are
-  removed from customer UI; job tables, polling, queues, workers, and backend
-  logs remain unchanged.
+- Trending never renders non-ready cards. When no preview-ready item exists and
+  generation is active, the customer sees one dark 9:16 post skeleton in the
+  first real-card slot with no preparation copy or Carousel-style placeholder
+  details. The sidebar background-job indicator and the Trending
+  render-progress/failure panels are removed from customer UI; job tables,
+  polling, queues, workers, and backend logs remain unchanged.
 - This implementation and its Supabase migration are local worktree changes.
   Do not describe the unified decisions as deployed or production-verified
   until the migration and application are deployed and the authenticated
@@ -2383,6 +2450,18 @@ Do not describe planned behavior as deployed behavior.
   application and worker release, working Cloud Tasks configuration, and an
   authenticated production canary before being called live.
 
+## 2026-08-20 Trending Preparing Skeleton
+
+- The customer-facing preparation sentence and Carousel-shaped loading stack
+  are retired. Initial loading and a genuinely preparing empty feed render one
+  dark charcoal 9:16 skeleton at the exact width and position of a Hook or
+  Wall-of-text Trending card.
+- The skeleton contains no fake text, thumbnails, slide dots, or metadata. A
+  restrained pulse is the only motion and is disabled for reduced-motion
+  users. The preview-ready post replaces it in the same deck slot.
+- Caught-up and terminal exhausted states remain explicit text states; they do
+  not pretend that generation is active.
+
 ## 2026-08-17 Carousel Source-Library Reset
 
 - The testing-phase legacy Carousel source library is intentionally being
@@ -2492,3 +2571,97 @@ Name: **Verify v26 and replace the stale production assignment**
 - This is a frontend navigation and presentation decision only. It does not
   remove Carousel records, routes, workers, or the Library-backed scheduling
   source of truth.
+
+## 2026-08-20 Creative Assets Presentation Simplification
+
+- Videos and Images no longer place the optional group switcher inside a
+  dedicated explanatory card. `All assets`, every owner-created group, and the
+  compact `Create group` button remain available in one bare control row; group
+  storage, membership, upload, rename, and delete behavior are unchanged.
+- Saved no longer renders the introductory `Saved content` card or enclosing
+  format panels. Its format filters remain as a compact control row, and Hook,
+  Wall-of-Text, and Carousel results render through a flat embedded
+  presentation. The existing owner-scoped APIs, preview, refresh, removal, and
+  scheduling behavior remain unchanged.
+
+## 2026-08-22 Inline Carousel Scheduling Bundle Boundary
+
+- Trending and Library now load the shared Carousel scheduling modal only after
+  a real `SchedulePlatformContext` has been created. The closed modal is not
+  part of either route's initial client bundle.
+- While the modal chunk opens, a blocking status surface keeps the existing
+  page in place and clearly reports that scheduling is opening.
+- The modal's account loading, selection limits, optional caption, publishing
+  settings, date/time validation, durable-draft recovery, submission callbacks,
+  and close/reset behavior are unchanged. Closing still clears the parent
+  scheduling context, so a later open starts with fresh modal state.
+
+## 2026-08-22 Creative Assets Saved Bundle Boundary
+
+- The default Videos view and the Images view keep the existing
+  `UserMediaCollection` path and behavior. The Saved collection is now a named
+  dynamic import from the client workspace and is requested only when Saved is
+  the active tab.
+- A direct `/avatars?tab=saved` visit still selects Saved on the server and
+  shows a content-only loading status while its client chunk arrives. Normal
+  Videos and Images navigation no longer downloads the inactive Saved
+  collection's Hook, Wall-of-Text, and Carousel library code up front.
+- Saved format filters, owner-scoped APIs, preview, refresh, removal,
+  scheduling, and storage behavior are unchanged. This boundary does not add a
+  cache or alter any data-fetching contract.
+
+## 2026-08-22 Trending Hook Flow Bundle Boundaries
+
+- The live Trending feed keeps Hook composition state in its existing parent
+  wrapper, but loads the large `HookVideoComposer` client module only after an
+  accepted Hook enters composition. Closing the composer still clears the
+  parent composition and refreshes the feed exactly as before.
+- The shared Hook/Wall scheduling drawer is loaded only when its existing
+  open or pending-schedule state is present in Trending, Hook composition, or
+  the Saved Hook library. A blocking scheduling status covers the short chunk
+  load without unmounting the parent creative or library state.
+- Preview-session creation, demo and suggestion selection, drafts, connected
+  account loading, publishing settings, schedule validation, submission,
+  completion, and close/reset behavior are unchanged. These boundaries alter
+  client-code delivery only; they do not change API or storage contracts.
+
+## 2026-08-22 Shared Account Scheduling Queries
+
+- The active Scheduling, Analytics, Settings, Carousel scheduling, and
+  Hook/Wall scheduling surfaces now read social connections and schedules
+  through shared React Query entries keyed by the current Firebase UID.
+- Fresh account data is reused for at most 15 seconds and retained inactive for
+  30 minutes. The account-keyed query provider is still remounted when the UID
+  changes, so no cached connection or schedule can cross accounts.
+- A full schedule read also seeds the smaller scheduling-configuration query,
+  avoiding a second request when a scheduling drawer opens immediately after
+  Scheduling or Analytics. A stale full schedule is never treated as fresh
+  configuration.
+- Existing correctness-sensitive refreshes remain explicit: OAuth completion,
+  manual account refresh, user-initiated Scheduling catalog refresh, and the
+  two-second active-schedule poll bypass the freshness window. Schedule
+  mutations update the open Scheduling cache directly or invalidate the shared
+  schedule query before another route can reuse it.
+- API routes, durable schedule creation/publishing behavior, recovery errors,
+  account selection, lead-time validation, and visible loading/error behavior
+  are unchanged. Dormant legacy multi-platform workspaces remain untouched.
+
+## 2026-08-22 Scheduling Editor Bundle Boundary
+
+- The Scheduling calendar, list, tabs, schedule polling, and action dialogs stay
+  in the initial `/scheduling` client module. The large create/edit drawer is a
+  named dynamic import requested only when a new, edit, or deep-linked draft
+  flow has set the existing parent-owned `drawerOpen` state.
+- The workspace still owns the open/edit identity, selected server schedule,
+  account-scoped catalogs, connections, mutations, refreshes, and error state.
+  The deferred editor owns only the same temporary form state it owned before
+  extraction, so opening, saving, closing, and reopening retain their previous
+  reset and preservation behavior.
+- Presenter preparation still uses the authenticated `/api/media/from-avatar`
+  request through a parent callback. Manual media refresh remains a forced
+  account-scoped catalog refresh, and saved account targets, hidden legacy
+  platforms, carousel sources, captions, five-minute lead validation, and
+  TikTok publishing settings are unchanged.
+- A blocking loading surface is shown only while the editor chunk is arriving.
+  This boundary changes client-code delivery, not scheduling API, database,
+  publishing, recovery, or ownership contracts.

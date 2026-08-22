@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { cn } from "@/lib/utils";
 
 type SavedWallTextDraft = {
   assignmentId: string;
@@ -27,7 +28,11 @@ type DraftsResponse =
   | { drafts: SavedWallTextDraft[]; ok: true }
   | { error?: string; ok?: false };
 
-export function WallTextLibraryTab() {
+export function WallTextLibraryTab({
+  embedded = false,
+}: {
+  embedded?: boolean;
+} = {}) {
   const [drafts, setDrafts] = useState<SavedWallTextDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -80,13 +85,23 @@ export function WallTextLibraryTab() {
   return (
     <section
       aria-labelledby="wall-text-library-heading"
-      className="relative overflow-hidden rounded-panel border border-border bg-card"
+      className={cn(
+        "relative",
+        !embedded && "overflow-hidden rounded-panel border border-border bg-card",
+      )}
     >
-      <header className="flex items-start justify-between gap-4 px-4 py-4 sm:px-5">
+      <header
+        className={cn(
+          "flex items-start justify-between gap-4",
+          embedded ? "pb-3" : "px-4 py-4 sm:px-5",
+        )}
+      >
         <div className="flex min-w-0 items-start gap-3">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
-            <FileText className="size-[18px]" aria-hidden="true" />
-          </span>
+          {!embedded ? (
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
+              <FileText className="size-[18px]" aria-hidden="true" />
+            </span>
+          ) : null}
           <div className="min-w-0">
             <h2
               id="wall-text-library-heading"
@@ -94,9 +109,11 @@ export function WallTextLibraryTab() {
             >
               Wall-text Reels
             </h2>
-            <p className="mt-0.5 text-sm leading-5 text-muted">
-              Saved background videos with the complete text overlay.
-            </p>
+            {!embedded ? (
+              <p className="mt-0.5 text-sm leading-5 text-muted">
+                Saved background videos with the complete text overlay.
+              </p>
+            ) : null}
           </div>
         </div>
         <button
@@ -115,7 +132,12 @@ export function WallTextLibraryTab() {
       </header>
 
       {loading ? (
-        <div className="flex min-h-36 items-center justify-center border-t border-border text-sm font-semibold text-muted">
+        <div
+          className={cn(
+            "flex min-h-36 items-center justify-center text-sm font-semibold text-muted",
+            !embedded && "border-t border-border",
+          )}
+        >
           <Loader2
             className="mr-2 size-4 animate-spin motion-reduce:animate-none"
             aria-hidden="true"
@@ -123,13 +145,23 @@ export function WallTextLibraryTab() {
           Loading saved Reels
         </div>
       ) : errorMessage ? (
-        <div className="border-t border-border px-4 py-6 sm:px-5">
+        <div
+          className={cn(
+            "py-6",
+            !embedded && "border-t border-border px-4 sm:px-5",
+          )}
+        >
           <p role="alert" className="text-sm font-semibold text-error">
             {errorMessage}
           </p>
         </div>
       ) : drafts.length === 0 ? (
-        <div className="border-t border-border px-4 py-8 text-center sm:px-5">
+        <div
+          className={cn(
+            "px-4 py-8 text-center sm:px-5",
+            embedded ? "min-h-36" : "border-t border-border",
+          )}
+        >
           <p className="text-sm font-semibold text-foreground-strong">
             No Wall-text Reels saved yet
           </p>
@@ -138,7 +170,7 @@ export function WallTextLibraryTab() {
           </p>
         </div>
       ) : (
-        <div className="divide-y divide-border border-t border-border">
+        <div className={cn("divide-y divide-border", !embedded && "border-t border-border")}>
           {drafts.map((draft) => {
             const ready =
               draft.renderStatus === "ready" &&
@@ -147,7 +179,10 @@ export function WallTextLibraryTab() {
             return (
               <article
                 key={draft.assignmentId}
-                className="grid gap-4 px-4 py-4 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:items-center sm:px-5"
+                className={cn(
+                  "grid gap-4 py-4 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:items-center",
+                  embedded ? "first:pt-0" : "px-4 sm:px-5",
+                )}
               >
                 <video
                   src={draft.renderedVideoUrl ?? draft.previewUrl}

@@ -62,7 +62,11 @@ for (const [index, asset] of manifest.assets.entries()) {
   const filePath = path.join(folder, asset.fileName);
   console.log(`[${index + 1}/${manifest.assets.length}] ${asset.catalogName}`);
   const frame = extractRepresentativeFrame(filePath);
-  const analysis = await analyzeFrame(frame, filePath);
+  const analysis = await analyzeFrame(
+    frame,
+    filePath,
+    asset.approvedPlacementZone,
+  );
 
   results.push({
     catalogName: asset.catalogName,
@@ -129,7 +133,7 @@ console.log(
   `Saved v2 face-aware placement metadata for ${report.assetCount - report.invalidCount} videos. Cleared stale placement metadata for ${report.invalidCount} rejected videos so they remain stored but ineligible.`,
 );
 
-async function analyzeFrame(frame, filePath) {
+async function analyzeFrame(frame, filePath, approvedPlacementZone) {
   const [localDetection, metadata] = await Promise.all([
     detectFacesLocally(filePath),
     sharp(frame).metadata(),
@@ -187,7 +191,11 @@ async function analyzeFrame(frame, filePath) {
         first.faceOverlap - second.faceOverlap ||
         first.zone.localeCompare(second.zone),
     );
-  const selected = valid[0];
+  const automaticallySelected = valid[0];
+  const manuallySelected = approvedPlacementZone
+    ? candidates.find((candidate) => candidate.zone === approvedPlacementZone)
+    : null;
+  const selected = automaticallySelected ?? manuallySelected;
 
   if (!selected) {
     return null;
@@ -198,6 +206,9 @@ async function analyzeFrame(frame, filePath) {
     faceBoxes: faceBoxes.map(roundBox),
     faceOverlap: round(selected.faceOverlap),
     importantRegions: importantRegions.map(roundBox),
+    reviewMethod: automaticallySelected
+      ? "automated-face-analysis"
+      : "manual-contact-sheet-override",
     selectedZone: selected.zone,
     version: ANALYZER_VERSION,
   };

@@ -5,6 +5,9 @@ import test from "node:test";
 const collection = readProjectFile(
   "components/media/user-media-collection.tsx",
 );
+const workspace = readProjectFile(
+  "components/avatars/avatars-workspace.tsx",
+);
 const groupsRoute = readProjectFile("app/api/media/groups/route.ts");
 const groupRoute = readProjectFile(
   "app/api/media/groups/[groupId]/route.ts",
@@ -22,12 +25,38 @@ const storage = readProjectFile("lib/media/creative-asset-groups.ts");
 
 test("groups are optional and All assets remains the default library", () => {
   assert.match(collection, />\s*All assets\s*</);
-  assert.match(collection, />\s*Optional\s*</);
   assert.match(
     collection,
     /Groups are optional\. They help you organize related assets without[\s\S]*changing All assets\./,
   );
   assert.match(collection, /useState<string \| null>\(null\)/);
+});
+
+test("group controls stay compact without a dedicated explanatory card", () => {
+  const groupSwitcher = getSection(
+    collection,
+    'aria-label={`${title} groups`}',
+    '<div className="flex flex-col gap-4 rounded',
+  );
+
+  assert.match(groupSwitcher, />\s*Create group\s*</);
+  assert.match(groupSwitcher, /className="shrink-0"/);
+  assert.doesNotMatch(groupSwitcher, /shadow-card/);
+  assert.doesNotMatch(groupSwitcher, />\s*Groups\s*</);
+});
+
+test("the inactive Saved collection loads through a separate client bundle", () => {
+  assert.match(workspace, /import dynamic from "next\/dynamic"/);
+  assert.doesNotMatch(
+    workspace,
+    /import\s+\{\s*SavedCreativeAssetsTab\s*\}\s+from\s+"@\/components\/avatars\/saved-creative-assets-tab"/,
+  );
+  assert.match(
+    workspace,
+    /const SavedCreativeAssetsTab = dynamic\([\s\S]*import\("@\/components\/avatars\/saved-creative-assets-tab"\)[\s\S]*module\.SavedCreativeAssetsTab[\s\S]*loading: SavedCreativeAssetsLoading/,
+  );
+  assert.match(workspace, /activeTab === "videos"[\s\S]*activeTab === "images"[\s\S]*<SavedCreativeAssetsTab \/>/);
+  assert.match(workspace, /import \{ UserMediaCollection \} from "@\/components\/media\/user-media-collection"/);
 });
 
 test("existing uploads remain usable without creating or choosing a group", () => {

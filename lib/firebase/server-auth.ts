@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createInFlightAuthRequestCoalescer } from "./in-flight-auth-requests";
+
 export type VerifiedFirebaseUser = {
   displayName: string | null;
   email: string | null;
@@ -26,6 +28,9 @@ type FirebaseLookupResponse = {
   };
   users?: FirebaseLookupUser[];
 };
+
+const runFirebaseUserLookup =
+  createInFlightAuthRequestCoalescer<VerifiedFirebaseUser>();
 
 export class FirebaseAuthRequestError extends Error {
   status: number;
@@ -59,6 +64,12 @@ export async function requireFirebaseUser(request: Request) {
     );
   }
 
+  return runFirebaseUserLookup(`${apiKey}:${idToken}`, () =>
+    lookupFirebaseUser(apiKey, idToken),
+  );
+}
+
+async function lookupFirebaseUser(apiKey: string, idToken: string) {
   const response = await fetch(
     `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(
       apiKey,

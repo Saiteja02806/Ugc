@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { AvatarsWorkspace } from "@/components/avatars/avatars-workspace";
-import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "Creative Assets",
@@ -17,9 +16,5 @@ export default async function AvatarsPage({
   const initialTab =
     tab === "images" || tab === "saved" ? tab : "videos";
 
-  return (
-    <AppShell activeKey="avatars">
-      <AvatarsWorkspace initialTab={initialTab} />
-    </AppShell>
-  );
+  return <AvatarsWorkspace initialTab={initialTab} />;
 }

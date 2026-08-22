@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   CheckCircle2,
@@ -35,18 +36,17 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import {
+  loadAccountSocialConnections,
+  removeAccountSocialConnection,
+} from "@/lib/scheduling/account-data-query";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
 import type {
   SocialConnection,
   SocialPlatform,
 } from "@/lib/social/types";
-
-type ConnectionsResponse = {
-  connections?: SocialConnection[];
-  message?: string;
-  ok?: boolean;
-};
 
 type OAuthTraceInput = {
   callbackHost?: string;
@@ -71,6 +71,9 @@ type InstagramConnectionViewState = {
 const INSTAGRAM_PLATFORM: SocialPlatform = "instagram";
 
 export function InstagramAccountManager() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const accountId = user?.uid ?? "signed-out";
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -82,28 +85,28 @@ export function InstagramAccountManager() {
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
 
   const loadInstagramConnections = useCallback(
-    async (trace?: OAuthTraceInput) => {
+    async (
+      trace?: OAuthTraceInput,
+      options: { force?: boolean } = {},
+    ) => {
       setLoading(true);
       setLoadError(null);
 
       try {
         const token = await getRequiredToken();
-        const response = await fetch("/api/social/connections", {
-          cache: "no-store",
-          headers: getConnectionHeaders(token, trace),
-        });
-        const data = (await response.json().catch(() => null)) as
-          | ConnectionsResponse
-          | null;
-
-        if (!response.ok || data?.ok !== true) {
-          throw new Error(
-            data?.message ??
+        const accountConnections = await loadAccountSocialConnections(
+          queryClient,
+          accountId,
+          {
+            errorMessage:
               "Could not load your Instagram connection. Refresh and try again.",
-          );
-        }
+            force: options.force ?? Boolean(trace),
+            token,
+            trace,
+          },
+        );
 
-        const nextConnections = (data.connections ?? [])
+        const nextConnections = accountConnections
           .filter(
             (connection) => connection.platform === INSTAGRAM_PLATFORM,
           )
@@ -125,7 +128,7 @@ export function InstagramAccountManager() {
         setLoading(false);
       }
     },
-    [],
+    [accountId, queryClient],
   );
 
   const {
@@ -142,7 +145,9 @@ export function InstagramAccountManager() {
       platform,
       previousConnectionUpdatedAt,
     }) => {
-      const refreshedConnections = await loadInstagramConnections();
+      const refreshedConnections = await loadInstagramConnections(undefined, {
+        force: true,
+      });
       const previousUpdatedAt = previousConnectionUpdatedAt
         ? Date.parse(previousConnectionUpdatedAt)
         : null;
@@ -252,7 +257,7 @@ export function InstagramAccountManager() {
   async function refreshConnections() {
     setMessage(null);
     clearPopupError();
-    await loadInstagramConnections();
+    await loadInstagramConnections(undefined, { force: true });
   }
 
   async function disconnectInstagram() {
@@ -289,6 +294,7 @@ export function InstagramAccountManager() {
       setConnections((current) =>
         current.filter((item) => item.id !== connection.id),
       );
+      removeAccountSocialConnection(queryClient, accountId, connection.id);
       setPendingDisconnect(null);
       setMessage("Instagram account disconnected.");
     } catch (error) {
@@ -653,22 +659,6 @@ async function getRequiredToken() {
   }
 
   return token;
-}
-
-function getConnectionHeaders(token: string, trace?: OAuthTraceInput) {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  if (trace?.correlationId) {
-    headers["x-ugc-oauth-correlation-id"] = trace.correlationId;
-  }
-
-  if (trace?.callbackHost) {
-    headers["x-ugc-oauth-callback-host"] = trace.callbackHost;
-  }
-
-  return headers;
 }
 
 function getInstagramConnectionViewState(

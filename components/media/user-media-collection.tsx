@@ -14,8 +14,9 @@ import {
   Plus,
   RefreshCw,
   Trash2,
-  Upload,
+  UploadCloud,
   UserRound,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -89,6 +90,16 @@ type GroupMutationResponse =
   | { group: CreativeAssetGroup; ok: true }
   | { error?: string; ok?: false };
 
+export type AspectRatioMode = "9:16" | "1:1" | "16:9" | "adaptive";
+
+export type UploadTask = {
+  error?: string;
+  fileName: string;
+  id: string;
+  progress: number;
+  status: "preparing" | "uploading" | "completing" | "done" | "error";
+};
+
 export function UserMediaCollection({
   collection,
   description,
@@ -110,12 +121,18 @@ export function UserMediaCollection({
 }) {
   const { loading: authLoading, user } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
+  const dragCounterRef = useRef(0);
   const lastLoadedGroupIdRef = useRef<string | null>(null);
   const [allAssets, setAllAssets] = useState<MediaAsset[]>([]);
   const [groupAssets, setGroupAssets] = useState<MediaAsset[]>([]);
   const [editProjects, setEditProjects] = useState<EditableVideo[]>([]);
   const [groups, setGroups] = useState<CreativeAssetGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [aspectRatioMode, setAspectRatioMode] = useState<AspectRatioMode>(
+    collection === "video" ? "9:16" : "adaptive",
+  );
+  const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
   const [isLoadingGroups, setIsLoadingGroups] = useState(true);
   const [isLoadingGroupAssets, setIsLoadingGroupAssets] = useState(false);
@@ -427,128 +444,239 @@ export function UserMediaCollection({
     };
   }, [groupMediaType, loadEditProjects]);
 
-  async function handleFile(file: File | undefined) {
-    if (!file || isUploading) {
+  const overallUploadProgress = useMemo(() => {
+    if (uploadTasks.length === 0) return 0;
+    const sum = uploadTasks.reduce((acc, task) => acc + task.progress, 0);
+    return Math.round(sum / uploadTasks.length);
+  }, [uploadTasks]);
+
+  function handleDragEnter(event: React.DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounterRef.current += 1;
+    if (event.dataTransfer?.items && event.dataTransfer.items.length > 0) {
+      setIsDraggingOver(true);
+    }
+  }
+
+  function handleDragLeave(event: React.DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDraggingOver(false);
+    }
+  }
+
+  function handleDragOver(event: React.DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "copy";
+    }
+  }
+
+  function handleDrop(event: React.DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDraggingOver(false);
+    if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+      void handleFiles(event.dataTransfer.files);
+    }
+  }
+
+  async function handleFiles(files: FileList | File[] | undefined | null) {
+    if (!files || files.length === 0 || isUploading) {
+      return;
+    }
+
+    const fileList = Array.from(files);
+    if (fileList.length === 0) {
       return;
     }
 
     setIsUploading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
-    let incompleteUpload: { assetId: string; token: string } | null = null;
+
+    const initialTasks: UploadTask[] = fileList.map((file) => ({
+      fileName: file.name,
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      progress: 0,
+      status: "preparing",
+    }));
+
+    setUploadTasks(initialTasks);
+
+    function updateTask(id: string, updates: Partial<UploadTask>) {
+      setUploadTasks((current) =>
+        current.map((task) =>
+          task.id === id ? { ...task, ...updates } : task,
+        ),
+      );
+    }
+
+    const successfulAssets: MediaAsset[] = [];
+    const errors: string[] = [];
 
     try {
-      const metadata = await readMediaMetadata(file, collection);
       const token = await requireToken();
-      const preparedResponse = await fetch("/api/media/create-upload-url", {
-        body: JSON.stringify({
-          collection,
-          contentType: file.type,
-          fileName: file.name,
-          fileSize: file.size,
-          title: getFileTitle(file.name),
-        }),
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-      });
-      const prepared = (await preparedResponse.json()) as {
-        assetId?: string;
-        error?: string;
-        key?: string;
-        ok?: boolean;
-        requiredHeaders?: Record<string, string>;
-        uploadUrl?: string;
-      };
 
-      if (!preparedResponse.ok || !prepared.ok || !prepared.assetId || !prepared.key || !prepared.uploadUrl) {
-        throw new Error(prepared.error || "Could not prepare this upload.");
-      }
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        const task = initialTasks[i];
 
-      incompleteUpload = { assetId: prepared.assetId, token };
+        let incompleteUpload: { assetId: string; token: string } | null = null;
 
-      const uploadResponse = await fetch(prepared.uploadUrl, {
-        body: file,
-        headers: prepared.requiredHeaders,
-        method: "PUT",
-      });
+        try {
+          updateTask(task.id, { progress: 5, status: "preparing" });
+          const metadata = await readMediaMetadata(file, collection);
 
-      if (!uploadResponse.ok) {
-        throw new Error("The file could not be uploaded. Please try again.");
-      }
+          const preparedResponse = await fetch("/api/media/create-upload-url", {
+            body: JSON.stringify({
+              collection,
+              contentType: file.type,
+              fileName: file.name,
+              fileSize: file.size,
+              title: getFileTitle(file.name),
+            }),
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            method: "POST",
+          });
 
-      const completedResponse = await fetch("/api/media/complete-upload", {
-        body: JSON.stringify({
-          assetId: prepared.assetId,
-          durationSeconds: metadata.durationSeconds,
-          height: metadata.height,
-          key: prepared.key,
-          ratio: metadata.ratio,
-          width: metadata.width,
-        }),
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-      });
-      const completed = (await completedResponse.json()) as {
-        asset?: MediaAsset;
-        error?: string;
-        ok?: boolean;
-      };
+          const prepared = (await preparedResponse.json()) as {
+            assetId?: string;
+            error?: string;
+            key?: string;
+            ok?: boolean;
+            requiredHeaders?: Record<string, string>;
+            uploadUrl?: string;
+          };
 
-      if (!completedResponse.ok || !completed.ok || !completed.asset) {
-        throw new Error(completed.error || "Could not finish this upload.");
-      }
+          if (
+            !preparedResponse.ok ||
+            !prepared.ok ||
+            !prepared.assetId ||
+            !prepared.key ||
+            !prepared.uploadUrl
+          ) {
+            throw new Error(prepared.error || "Could not prepare this upload.");
+          }
 
-      const uploadedAsset = completed.asset;
-      incompleteUpload = null;
-      setAllAssets((current) => [
-        uploadedAsset,
-        ...current.filter((asset) => asset.id !== uploadedAsset.id),
-      ]);
+          incompleteUpload = { assetId: prepared.assetId, token };
+          updateTask(task.id, { progress: 10, status: "uploading" });
 
-      if (selectedGroupId) {
-        const grouped = await addAssetsToGroup({
-          groupId: selectedGroupId,
-          mediaAssetIds: [uploadedAsset.id],
-          token,
-        }).catch(() => false);
+          await uploadSingleFileWithXhr({
+            file,
+            headers: prepared.requiredHeaders,
+            onProgress: (percent) => {
+              const mapped = 10 + Math.round(percent * 0.8);
+              updateTask(task.id, { progress: mapped });
+            },
+            url: prepared.uploadUrl,
+          });
 
-        if (grouped) {
-          setGroupAssets((current) => [
+          updateTask(task.id, { progress: 92, status: "completing" });
+
+          const completedResponse = await fetch("/api/media/complete-upload", {
+            body: JSON.stringify({
+              assetId: prepared.assetId,
+              durationSeconds: metadata.durationSeconds,
+              height: metadata.height,
+              key: prepared.key,
+              ratio: metadata.ratio,
+              width: metadata.width,
+            }),
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            method: "POST",
+          });
+
+          const completed = (await completedResponse.json()) as {
+            asset?: MediaAsset;
+            error?: string;
+            ok?: boolean;
+          };
+
+          if (!completedResponse.ok || !completed.ok || !completed.asset) {
+            throw new Error(completed.error || "Could not finish this upload.");
+          }
+
+          const uploadedAsset = completed.asset;
+          incompleteUpload = null;
+          successfulAssets.push(uploadedAsset);
+
+          setAllAssets((current) => [
             uploadedAsset,
             ...current.filter((asset) => asset.id !== uploadedAsset.id),
           ]);
+
+          if (selectedGroupId) {
+            const grouped = await addAssetsToGroup({
+              groupId: selectedGroupId,
+              mediaAssetIds: [uploadedAsset.id],
+              token,
+            }).catch(() => false);
+
+            if (grouped) {
+              setGroupAssets((current) => [
+                uploadedAsset,
+                ...current.filter((asset) => asset.id !== uploadedAsset.id),
+              ]);
+            }
+          }
+
+          updateTask(task.id, { progress: 100, status: "done" });
+        } catch (itemError) {
+          const message = getErrorMessage(
+            itemError,
+            `Failed to upload ${file.name}`,
+          );
+          errors.push(message);
+          updateTask(task.id, { error: message, progress: 0, status: "error" });
+
+          if (incompleteUpload) {
+            await fetch(
+              `/api/media/${encodeURIComponent(incompleteUpload.assetId)}`,
+              {
+                headers: { Authorization: `Bearer ${incompleteUpload.token}` },
+                method: "DELETE",
+              },
+            ).catch(() => undefined);
+          }
+        }
+      }
+
+      if (successfulAssets.length > 0) {
+        if (selectedGroupId) {
           setSuccessMessage(
-            `${uploadedAsset.title} uploaded and added to ${selectedGroup?.name ?? "the group"}.`,
+            `${successfulAssets.length} ${successfulAssets.length === 1 ? "asset" : "assets"} uploaded and added to ${selectedGroup?.name ?? "the group"}.`,
           );
         } else {
           setSuccessMessage(
-            `${uploadedAsset.title} uploaded to All assets.`,
-          );
-          setErrorMessage(
-            "The upload is safe in All assets, but it could not be added to this group.",
+            `${successfulAssets.length} ${successfulAssets.length === 1 ? "asset" : "assets"} uploaded to All assets.`,
           );
         }
-      } else {
-        setSuccessMessage(`${uploadedAsset.title} uploaded.`);
+      }
+
+      if (errors.length > 0) {
+        setErrorMessage(
+          errors.length === 1
+            ? errors[0]
+            : `${errors.length} uploads could not be completed.`,
+        );
       }
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not upload this media."));
-
-      if (incompleteUpload) {
-        await fetch(`/api/media/${encodeURIComponent(incompleteUpload.assetId)}`, {
-          headers: { Authorization: `Bearer ${incompleteUpload.token}` },
-          method: "DELETE",
-        }).catch(() => undefined);
-      }
+      setErrorMessage(getErrorMessage(error, "Could not upload media."));
     } finally {
       setIsUploading(false);
-
       if (inputRef.current) {
         inputRef.current.value = "";
       }
@@ -804,43 +932,45 @@ export function UserMediaCollection({
     ]);
   }
 
+  const gridColsClass = useMemo(() => {
+    if (
+      aspectRatioMode === "9:16" ||
+      (aspectRatioMode === "adaptive" && collection === "video")
+    ) {
+      return "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5";
+    }
+    if (aspectRatioMode === "1:1") {
+      return "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3.5";
+    }
+    return "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5";
+  }, [aspectRatioMode, collection]);
+
   return (
-    <section>
-      <div className="mb-3 rounded-[var(--radius-card)] border border-border bg-card p-3 shadow-card sm:p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-border bg-card-muted text-primary">
-              <FolderOpen className="size-4.5" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-sm font-semibold text-foreground">
-                  Groups
-                </h2>
-                <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted">
-                  Optional
-                </span>
-              </div>
-              <p className="mt-0.5 text-sm leading-5 text-muted">
-                Keep everything in All assets, or organize related items into groups.
-              </p>
-            </div>
+    <section
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="relative"
+    >
+      {isDraggingOver ? (
+        <div className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center rounded-[var(--radius-card)] border-2 border-dashed border-primary bg-background/95 p-6 text-center backdrop-blur-xs">
+          <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary ring-4 ring-primary/20">
+            <UploadCloud className="size-7 animate-bounce" aria-hidden="true" />
           </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={openCreateGroupDialog}
-          >
-            <FolderPlus data-icon="inline-start" aria-hidden="true" />
-            Create group
-          </Button>
+          <p className="mt-3 text-base font-bold text-foreground">
+            Drop files to upload to {selectedGroup ? selectedGroup.name : "Creative Assets"}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            Supports multiple MP4, MOV, WEBM videos & JPG, PNG, WEBP images
+          </p>
         </div>
+      ) : null}
 
+      <div className="mb-3 flex min-w-0 items-center gap-2">
         <nav
           aria-label={`${title} groups`}
-          className="mt-3 flex max-w-full items-center gap-2 overflow-x-auto pb-1"
+          className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto py-1"
         >
           <Button
             type="button"
@@ -880,6 +1010,17 @@ export function UserMediaCollection({
             </span>
           ) : null}
         </nav>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          onClick={openCreateGroupDialog}
+        >
+          <FolderPlus data-icon="inline-start" aria-hidden="true" />
+          Create group
+        </Button>
       </div>
 
       <div className="flex flex-col gap-4 rounded-[var(--radius-card)] border border-border bg-card px-3.5 py-3.5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:px-4">
@@ -912,6 +1053,70 @@ export function UserMediaCollection({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          {/* Aspect ratio view toggle */}
+          <div className="flex items-center gap-0.5 rounded-[var(--radius-control)] border border-border bg-card-muted/80 p-0.5">
+            <button
+              type="button"
+              onClick={() => setAspectRatioMode("9:16")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-[calc(var(--radius-control)-2px)] px-2.5 py-1 text-xs font-semibold transition-colors",
+                aspectRatioMode === "9:16"
+                  ? "bg-card text-foreground shadow-xs"
+                  : "text-muted hover:text-foreground",
+              )}
+              title="Reel format (9:16)"
+              aria-label="Reel format 9:16"
+            >
+              <RatioReelIcon className="size-3.5" />
+              <span className="hidden sm:inline">9:16</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAspectRatioMode("1:1")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-[calc(var(--radius-control)-2px)] px-2.5 py-1 text-xs font-semibold transition-colors",
+                aspectRatioMode === "1:1"
+                  ? "bg-card text-foreground shadow-xs"
+                  : "text-muted hover:text-foreground",
+              )}
+              title="Square format (1:1)"
+              aria-label="Square format 1:1"
+            >
+              <RatioSquareIcon className="size-3.5" />
+              <span className="hidden sm:inline">1:1</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAspectRatioMode("16:9")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-[calc(var(--radius-control)-2px)] px-2.5 py-1 text-xs font-semibold transition-colors",
+                aspectRatioMode === "16:9"
+                  ? "bg-card text-foreground shadow-xs"
+                  : "text-muted hover:text-foreground",
+              )}
+              title="Landscape format (16:9)"
+              aria-label="Landscape format 16:9"
+            >
+              <RatioLandscapeIcon className="size-3.5" />
+              <span className="hidden sm:inline">16:9</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAspectRatioMode("adaptive")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-[calc(var(--radius-control)-2px)] px-2.5 py-1 text-xs font-semibold transition-colors",
+                aspectRatioMode === "adaptive"
+                  ? "bg-card text-foreground shadow-xs"
+                  : "text-muted hover:text-foreground",
+              )}
+              title="Adaptive format (match original clip)"
+              aria-label="Adaptive format"
+            >
+              <RatioAutoIcon className="size-3.5" />
+              <span className="hidden sm:inline">Auto</span>
+            </button>
+          </div>
+
           <Button
             type="button"
             variant="outline"
@@ -959,9 +1164,10 @@ export function UserMediaCollection({
           <input
             ref={inputRef}
             type="file"
+            multiple
             accept={collection === "image" ? ".jpg,.jpeg,.png,.webp" : ".mp4,.mov,.webm"}
             aria-label={getUploadLabel(collection)}
-            onChange={(event) => void handleFile(event.target.files?.[0])}
+            onChange={(event) => void handleFiles(event.target.files)}
             className="sr-only"
           />
           <Button
@@ -983,6 +1189,63 @@ export function UserMediaCollection({
           </Button>
         </div>
       </div>
+
+      {/* Upload Progress Banner */}
+      {uploadTasks.length > 0 ? (
+        <div className="mt-3 overflow-hidden rounded-[var(--radius-card)] border border-primary/30 bg-card p-3.5 shadow-card">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              {isUploading ? (
+                <Loader2 className="size-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+              ) : (
+                <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
+              )}
+              <p className="text-xs font-semibold text-foreground">
+                {isUploading
+                  ? `Uploading ${uploadTasks.filter((t) => t.status !== "done" && t.status !== "error").length} of ${uploadTasks.length} ${uploadTasks.length === 1 ? "file" : "files"}… (${overallUploadProgress}%)`
+                  : `Completed upload of ${uploadTasks.filter((t) => t.status === "done").length} ${uploadTasks.length === 1 ? "file" : "files"}`}
+              </p>
+            </div>
+            {!isUploading ? (
+              <button
+                type="button"
+                onClick={() => setUploadTasks([])}
+                className="inline-flex size-6 items-center justify-center rounded text-muted hover:text-foreground"
+                aria-label="Dismiss upload progress"
+              >
+                <X className="size-3.5" aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
+          <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-card-muted">
+            <div
+              className={cn(
+                "h-full transition-all duration-200",
+                isUploading ? "bg-primary" : "bg-success",
+              )}
+              style={{ width: `${overallUploadProgress}%` }}
+            />
+          </div>
+          {uploadTasks.length > 1 ? (
+            <div className="mt-2.5 flex max-h-32 flex-col gap-1.5 overflow-y-auto pr-1">
+              {uploadTasks.map((task) => (
+                <div key={task.id} className="flex items-center justify-between text-[11px] text-muted">
+                  <span className="max-w-[200px] truncate sm:max-w-[320px] font-medium text-foreground-strong">
+                    {task.fileName}
+                  </span>
+                  <span>
+                    {task.status === "done"
+                      ? "Done"
+                      : task.status === "error"
+                        ? "Failed"
+                        : `${task.progress}%`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {visibleErrorMessage ? (
         <div
@@ -1009,15 +1272,38 @@ export function UserMediaCollection({
 
       <div className="mt-4">
         {isLoading ? (
-          <div className="flex min-h-44 items-center justify-center rounded-[var(--radius-card)] border border-border bg-card text-sm font-medium text-muted">
-            <Loader2 className="mr-2 size-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
-            Loading media…
+          <div className={gridColsClass}>
+            {Array.from({ length: 10 }).map((_, index) => (
+              <div
+                key={index}
+                className="flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-border/60 bg-card shadow-xs"
+              >
+                <div
+                  className={cn(
+                    "w-full animate-pulse bg-card-muted/70",
+                    aspectRatioMode === "9:16"
+                      ? "aspect-[9/16]"
+                      : aspectRatioMode === "1:1"
+                        ? "aspect-square"
+                        : aspectRatioMode === "16:9"
+                          ? "aspect-video"
+                          : "aspect-[9/16]",
+                  )}
+                />
+                <div className="flex flex-col gap-2 p-3">
+                  <div className="h-3.5 w-3/4 animate-pulse rounded bg-card-muted/80" />
+                  <div className="h-2.5 w-1/2 animate-pulse rounded bg-card-muted/60" />
+                  <div className="mt-2 h-7 w-full animate-pulse rounded bg-card-muted/70" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : assets.length > 0 ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className={gridColsClass}>
             {assets.map((asset) => (
               <MediaAssetCard
                 key={asset.id}
+                aspectRatioMode={aspectRatioMode}
                 asset={asset}
                 deleting={deletingAssetId === asset.id}
                 editProject={editProjectsByAssetId.get(asset.id) ?? null}
@@ -1031,25 +1317,31 @@ export function UserMediaCollection({
             ))}
           </div>
         ) : (
-          <div className="flex min-h-48 flex-col items-center justify-center rounded-[var(--radius-card)] border border-dashed border-border bg-card-muted/55 px-5 py-8 text-center">
+          <div
+            onClick={() => !selectedGroup && inputRef.current?.click()}
+            className={cn(
+              "group relative flex min-h-[260px] flex-col items-center justify-center rounded-[var(--radius-card)] border-2 border-dashed border-border/80 bg-card-muted/30 px-6 py-10 text-center transition-all duration-200",
+              !selectedGroup && "cursor-pointer hover:border-primary/50 hover:bg-card-muted/50",
+            )}
+          >
             <span
               className={cn(
-                "inline-flex size-10 items-center justify-center rounded-[var(--radius-control)] border",
+                "inline-flex size-12 items-center justify-center rounded-2xl border transition-transform duration-200 group-hover:scale-105",
                 isDarkVariant
-                  ? "border-border-strong bg-card text-primary"
-                  : "border-border bg-card text-muted",
+                  ? "border-border-strong bg-card text-primary shadow-xs"
+                  : "border-border bg-card text-primary shadow-xs",
               )}
             >
               {selectedGroup ? (
-                <FolderOpen className="size-4.5" aria-hidden="true" />
+                <FolderOpen className="size-5.5" aria-hidden="true" />
               ) : (
-                <Upload className="size-4.5" aria-hidden="true" />
+                <UploadCloud className="size-5.5" aria-hidden="true" />
               )}
             </span>
-            <h3 className="mt-3 text-sm font-semibold text-foreground">
+            <h3 className="mt-3.5 text-sm font-semibold text-foreground">
               {selectedGroup ? "No assets in this group" : emptyTitle}
             </h3>
-            <p className="mt-1 max-w-md text-sm leading-5 text-muted">
+            <p className="mt-1 max-w-md text-xs leading-5 text-muted">
               {selectedGroup
                 ? "Add existing assets, or upload a new one while this group is open."
                 : emptyDescription}
@@ -1060,11 +1352,19 @@ export function UserMediaCollection({
                 variant="outline"
                 size="sm"
                 className="mt-4"
-                onClick={openAddAssetsDialog}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openAddAssetsDialog();
+                }}
               >
                 <Plus data-icon="inline-start" aria-hidden="true" />
                 Add existing assets
               </Button>
+            ) : !selectedGroup ? (
+              <div className="mt-4 inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted shadow-xs transition-colors group-hover:border-primary/40 group-hover:text-foreground">
+                <UploadCloud className="size-3.5 text-primary" aria-hidden="true" />
+                <span>Drag & drop files here, or click to browse</span>
+              </div>
             ) : null}
           </div>
         )}
@@ -1414,6 +1714,7 @@ export function UserMediaCollection({
 }
 
 function MediaAssetCard({
+  aspectRatioMode = "9:16",
   asset,
   deleting,
   editProject,
@@ -1421,6 +1722,7 @@ function MediaAssetCard({
   onRemove,
   variant = "default",
 }: {
+  aspectRatioMode?: AspectRatioMode;
   asset: MediaAsset;
   deleting: boolean;
   editProject: EditableVideo | null;
@@ -1434,47 +1736,100 @@ function MediaAssetCard({
   const statusLabel = getCreativeAssetCardStatusLabel(editProject);
   const statusVariant = getCreativeAssetCardStatusVariant(editProject);
 
+  const cardAspectClass = useMemo(() => {
+    if (aspectRatioMode === "9:16") return "aspect-[9/16]";
+    if (aspectRatioMode === "1:1") return "aspect-square";
+    if (aspectRatioMode === "16:9") return "aspect-video";
+    // adaptive mode
+    if (asset.ratio === "9:16") return "aspect-[9/16]";
+    if (asset.ratio === "4:5") return "aspect-[4/5]";
+    if (asset.ratio === "1:1") return "aspect-square";
+    if (asset.ratio === "16:9") return "aspect-video";
+    return isImage ? "aspect-square" : "aspect-[9/16]";
+  }, [aspectRatioMode, asset.ratio, isImage]);
+
   return (
-    <article className="group overflow-hidden rounded-[var(--radius-card)] border border-border bg-card shadow-card transition-colors hover:border-border-strong">
-      <div className={cn("relative aspect-video overflow-hidden border-b border-border", isDarkVariant ? "bg-[#181818]" : "bg-[#111827]")}>
-        {isImage ? (
-          <Image src={asset.thumbnailUrl || asset.url} alt={asset.title} fill unoptimized className="object-cover" sizes="(max-width: 640px) 100vw, 25vw" />
-        ) : (
-          <video key={displayState.playbackUrl} src={displayState.playbackUrl} poster={asset.thumbnailUrl || undefined} preload="metadata" muted controls className="size-full object-cover" />
+    <article className="group flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-card shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+      <div
+        className={cn(
+          "relative w-full overflow-hidden border-b border-border/80 transition-all",
+          isDarkVariant ? "bg-[#090b10]" : "bg-[#090b10]",
+          cardAspectClass,
         )}
+      >
+        {isImage ? (
+          <Image
+            src={asset.thumbnailUrl || asset.url}
+            alt={asset.title}
+            fill
+            unoptimized
+            className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            sizes="(max-width: 640px) 100vw, 25vw"
+          />
+        ) : (
+          <video
+            key={displayState.playbackUrl}
+            src={displayState.playbackUrl}
+            poster={asset.thumbnailUrl || undefined}
+            preload="metadata"
+            muted
+            controls
+            playsInline
+            className="size-full object-cover"
+          />
+        )}
+
+        {/* Ratio & Duration Badges Overlay */}
+        <div className="pointer-events-none absolute inset-x-2 top-2 flex items-center justify-between gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white/95 shadow-sm backdrop-blur-md">
+            {asset.ratio === "other" ? "Custom" : asset.ratio}
+          </span>
+          {!isImage && asset.durationSeconds !== null ? (
+            <span className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white/95 shadow-sm backdrop-blur-md">
+              {formatDuration(asset.durationSeconds)}
+            </span>
+          ) : null}
+        </div>
       </div>
-      <div className="p-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-semibold text-foreground">{asset.title}</h3>
-            <p className="mt-1 truncate text-xs text-muted">
-              {getSourceLabel(asset)} · {formatAssetDate(asset.createdAt)}
-            </p>
+      <div className="flex flex-1 flex-col justify-between p-3">
+        <div>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate text-sm font-semibold text-foreground" title={asset.title}>
+                {asset.title}
+              </h3>
+              <p className="mt-0.5 truncate text-xs text-muted">
+                {getSourceLabel(asset)} · {formatAssetDate(asset.createdAt)}
+              </p>
+            </div>
+            <Badge
+              aria-label={`${asset.title} status: ${statusLabel}`}
+              aria-live="polite"
+              role="status"
+              variant={statusVariant}
+              className="shrink-0"
+            >
+              {displayState.isRendering ? (
+                <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              ) : (
+                <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+              )}
+              {statusLabel}
+            </Badge>
           </div>
-          <Badge
-            aria-label={`${asset.title} status: ${statusLabel}`}
-            aria-live="polite"
-            role="status"
-            variant={statusVariant}
-          >
-            {displayState.isRendering ? (
-              <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
-            ) : (
-              <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
-            )}
-            {statusLabel}
-          </Badge>
         </div>
         <div className="mt-3 flex items-center gap-2">
           {!isImage ? (
             <Link
               href={getCreativeAssetEditorHref(asset.id)}
-              className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-card-muted px-3 text-xs font-semibold text-foreground-strong shadow-sm transition-colors hover:border-primary/50 hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-card-muted px-3 text-xs font-semibold text-foreground-strong shadow-xs transition-colors hover:border-primary/50 hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               Edit video
             </Link>
           ) : (
-            <span className="min-w-0 flex-1 text-xs text-muted">Available across your image tools</span>
+            <span className="min-w-0 flex-1 text-xs text-muted">
+              Ready for post / carousel
+            </span>
           )}
           <button
             type="button"
@@ -1505,6 +1860,94 @@ function MediaAssetCard({
       </div>
     </article>
   );
+}
+
+function RatioReelIcon({ className = "size-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className} stroke="currentColor">
+      <rect x="4.25" y="1.25" width="7.5" height="13.5" rx="1.75" strokeWidth="1.4" />
+      <line x1="6.5" y1="12.25" x2="9.5" y2="12.25" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function RatioSquareIcon({ className = "size-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className} stroke="currentColor">
+      <rect x="2" y="2" width="12" height="12" rx="2" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+function RatioLandscapeIcon({ className = "size-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className} stroke="currentColor">
+      <rect x="1.25" y="3.5" width="13.5" height="9" rx="1.75" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+function RatioAutoIcon({ className = "size-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className} stroke="currentColor">
+      <path d="M8 1.5L9.5 5.5L13.5 7L9.5 8.5L8 12.5L6.5 8.5L2.5 7L6.5 5.5L8 1.5Z" strokeWidth="1.3" strokeLinejoin="round" />
+      <path d="M12.5 11.5L13.25 13.25L15 14L13.25 14.75L12.5 16.5L11.75 14.75L10 14L11.75 13.25L12.5 11.5Z" strokeWidth="1.1" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function uploadSingleFileWithXhr({
+  file,
+  headers,
+  onProgress,
+  url,
+}: {
+  file: File;
+  headers?: Record<string, string>;
+  onProgress: (percent: number) => void;
+  url: string;
+}): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    if (headers) {
+      for (const [key, value] of Object.entries(headers)) {
+        xhr.setRequestHeader(key, value);
+      }
+    }
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) {
+        const percent = Math.min(
+          100,
+          Math.max(0, Math.round((event.loaded / event.total) * 100)),
+        );
+        onProgress(percent);
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Upload failed with status ${xhr.status}`));
+      }
+    };
+    xhr.onerror = () => {
+      reject(new Error("Network error during file upload."));
+    };
+    xhr.ontimeout = () => {
+      reject(new Error("File upload timed out."));
+    };
+    xhr.send(file);
+  });
+}
+
+function formatDuration(seconds: number | null) {
+  if (seconds === null || !Number.isFinite(seconds)) {
+    return "0:00";
+  }
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.max(0, Math.round(seconds % 60));
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
 function getCreativeAssetCardStatusLabel(editProject: EditableVideo | null) {

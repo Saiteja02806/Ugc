@@ -3,16 +3,18 @@
 import {
   AlertCircle,
   Clapperboard,
+  Images,
   LoaderCircle,
   RefreshCw,
+  ScanText,
+  Video,
 } from "lucide-react";
 import Script from "next/script";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { HookReviewCard } from "@/components/viral/hook-review-card";
 import type { InstagramEmbedSdkState } from "@/components/viral/instagram-embed";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -30,10 +32,47 @@ import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type {
   ViralReviewItem,
   ViralReviewPage,
-  ViralReviewTiming,
 } from "@/lib/viral/hook-review";
 
-const ACTIVE_SECTION = ["hook-videos"];
+type ExploreSection = "hook-videos" | "wall-of-text" | "slideshows";
+
+const SECTION_CONFIG: Record<
+  ExploreSection,
+  {
+    backendSection: "hook_video" | "wall_of_text" | "slideshow";
+    emptyDescription: string;
+    emptyTitle: string;
+    label: string;
+    subtitle: string;
+  }
+> = {
+  "hook-videos": {
+    backendSection: "hook_video",
+    emptyDescription: "Newly imported Hook videos will appear here automatically.",
+    emptyTitle: "No Hook videos yet",
+    label: "Hook Videos",
+    subtitle: "Watch each reference video and find the hook you want to use.",
+  },
+  "wall-of-text": {
+    backendSection: "wall_of_text",
+    emptyDescription:
+      "Newly imported Wall of Text references will appear here automatically.",
+    emptyTitle: "No Wall of Text posts yet",
+    label: "Wall of Text",
+    subtitle:
+      "Browse viral text overlay references and see how creators format on-screen copy.",
+  },
+  slideshows: {
+    backendSection: "slideshow",
+    emptyDescription:
+      "Newly imported Slideshow carousel references will appear here automatically.",
+    emptyTitle: "No Slideshow posts yet",
+    label: "Slideshows",
+    subtitle:
+      "Explore viral multi-slide carousel posts and discover high-performing slide formats.",
+  },
+};
+
 const PAGE_SIZE = 12;
 
 type ReviewPageResponse = ViralReviewPage & {
@@ -42,6 +81,8 @@ type ReviewPageResponse = ViralReviewPage & {
 };
 
 export function ViralWorkspace() {
+  const [activeSection, setActiveSection] =
+    useState<ExploreSection>("hook-videos");
   const [items, setItems] = useState<Array<ViralReviewItem>>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<"error" | "loading" | "ready">(
@@ -55,22 +96,30 @@ export function ViralWorkspace() {
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
 
-  const loadFirstPage = useCallback(async (signal?: AbortSignal) => {
-    try {
-      const page = await fetchReviewPage(null, signal);
-      setItems(page.items);
-      setNextCursor(page.nextCursor);
-      setLoadState("ready");
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      setLoadError(
-        error instanceof Error
-          ? error.message
-          : "Could not load the Explore review queue.",
-      );
-      setLoadState("error");
-    }
-  }, []);
+  const currentSectionConfig = SECTION_CONFIG[activeSection];
+
+  const loadFirstPage = useCallback(
+    async (section: ExploreSection, signal?: AbortSignal) => {
+      try {
+        setLoadState("loading");
+        setLoadError(null);
+        const backendSection = SECTION_CONFIG[section].backendSection;
+        const page = await fetchReviewPage(backendSection, null, signal);
+        setItems(page.items);
+        setNextCursor(page.nextCursor);
+        setLoadState("ready");
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "Could not load the Explore review queue.",
+        );
+        setLoadState("error");
+      }
+    },
+    [],
+  );
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMoreRef.current) return;
@@ -79,7 +128,8 @@ export function ViralWorkspace() {
     setIsLoadingMore(true);
 
     try {
-      const page = await fetchReviewPage(nextCursor);
+      const backendSection = SECTION_CONFIG[activeSection].backendSection;
+      const page = await fetchReviewPage(backendSection, nextCursor);
       setItems((current) => mergeReviewItems(current, page.items));
       setNextCursor(page.nextCursor);
     } catch (error) {
@@ -92,19 +142,19 @@ export function ViralWorkspace() {
       loadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [nextCursor]);
+  }, [activeSection, nextCursor]);
 
   useEffect(() => {
     const controller = new AbortController();
     const frame = window.requestAnimationFrame(() => {
-      void loadFirstPage(controller.signal);
+      void loadFirstPage(activeSection, controller.signal);
     });
 
     return () => {
       window.cancelAnimationFrame(frame);
       controller.abort();
     };
-  }, [loadFirstPage]);
+  }, [activeSection, loadFirstPage]);
 
   useEffect(() => {
     const sentinel = loadMoreSentinelRef.current;
@@ -125,19 +175,6 @@ export function ViralWorkspace() {
     return () => observer.disconnect();
   }, [loadMore, loadState, nextCursor]);
 
-  const reviewedCount = useMemo(
-    () => items.filter((item) => item.timing !== null).length,
-    [items],
-  );
-
-  function handleTimingSaved(referenceId: string, timing: ViralReviewTiming) {
-    setItems((current) =>
-      current.map((item) =>
-        item.id === referenceId ? { ...item, timing } : item,
-      ),
-    );
-  }
-
   return (
     <section className="min-h-dvh min-w-0 flex-1 bg-background px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <Script
@@ -152,52 +189,63 @@ export function ViralWorkspace() {
       />
 
       <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-7">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <header className="flex flex-col gap-2">
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-primary">
-              Private review queue
-            </p>
+            <div className="flex items-center gap-2.5">
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-primary">
+                Private review queue
+              </p>
+              {loadState === "ready" && items.length > 0 ? (
+                <span className="inline-flex items-center rounded-full bg-card-muted px-2.5 py-0.5 text-xs font-medium text-muted">
+                  {items.length} {items.length === 1 ? "reference" : "references"}
+                </span>
+              ) : null}
+            </div>
             <h1 className="text-[32px] font-semibold tracking-[-0.035em] text-foreground-strong sm:text-[36px]">
               Explore
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-muted sm:text-[15px]">
-              Watch each reference video and save the exact moment its opening
-              hook ends. Every hook begins at 0 seconds.
+              {currentSectionConfig.subtitle}
             </p>
           </div>
-
-          {loadState === "ready" ? (
-            <div className="flex items-center gap-2" aria-label="Review progress">
-              <Badge variant="outline">{items.length} loaded</Badge>
-              <Badge variant={reviewedCount > 0 ? "success" : "draft"}>
-                {reviewedCount} timed
-              </Badge>
-            </div>
-          ) : null}
         </header>
 
         <ToggleGroup
           aria-label="Explore content sections"
-          value={ACTIVE_SECTION}
-          onValueChange={() => undefined}
+          value={[activeSection]}
+          onValueChange={(val) => {
+            const next = val[0] as ExploreSection | undefined;
+            if (next && next !== activeSection) {
+              setItems([]);
+              setNextCursor(null);
+              setActiveSection(next);
+            }
+          }}
           variant="outline"
-          className="w-full justify-start overflow-x-auto border-b border-border pb-3 sm:w-fit sm:border-b-0 sm:pb-0"
+          className="inline-flex w-fit max-w-full items-center gap-1 rounded-full border border-border bg-card-muted p-1 sm:w-fit"
         >
-          <ToggleGroupItem value="hook-videos" aria-label="Hook Videos">
+          <ToggleGroupItem
+            value="hook-videos"
+            aria-label="Hook Videos"
+            className="inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold data-[state=on]:bg-card data-[state=on]:text-foreground-strong data-[state=on]:shadow-sm transition-[background-color,color,box-shadow]"
+          >
+            <Video className="size-3.5 text-primary" aria-hidden="true" />
             Hook Videos
           </ToggleGroupItem>
           <ToggleGroupItem
             value="wall-of-text"
             aria-label="Wall of Text"
-            disabled
+            className="inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold data-[state=on]:bg-card data-[state=on]:text-foreground-strong data-[state=on]:shadow-sm transition-[background-color,color,box-shadow]"
           >
+            <ScanText className="size-3.5 text-primary" aria-hidden="true" />
             Wall of Text
           </ToggleGroupItem>
           <ToggleGroupItem
             value="slideshows"
             aria-label="Slideshows"
-            disabled
+            className="inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold data-[state=on]:bg-card data-[state=on]:text-foreground-strong data-[state=on]:shadow-sm transition-[background-color,color,box-shadow]"
           >
+            <Images className="size-3.5 text-primary" aria-hidden="true" />
             Slideshows
           </ToggleGroupItem>
         </ToggleGroup>
@@ -243,9 +291,7 @@ export function ViralWorkspace() {
               variant="outline"
               size="lg"
               onClick={() => {
-                setLoadState("loading");
-                setLoadError(null);
-                void loadFirstPage();
+                void loadFirstPage(activeSection);
               }}
               className="mt-2 w-fit"
             >
@@ -266,24 +312,34 @@ export function ViralWorkspace() {
                   <Clapperboard className="size-5" aria-hidden="true" />
                 </EmptyMedia>
                 <EmptyTitle className="text-base font-semibold text-foreground-strong">
-                  No Hooks waiting for review
+                  {currentSectionConfig.emptyTitle}
                 </EmptyTitle>
                 <EmptyDescription>
-                  Newly imported hook videos will appear here when they are
-                  ready for timing review.
+                  {currentSectionConfig.emptyDescription}
                 </EmptyDescription>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    void loadFirstPage(activeSection);
+                  }}
+                  className="mt-3 gap-1.5"
+                >
+                  <RefreshCw data-icon="inline-start" className="size-3.5" aria-hidden="true" />
+                  Refresh queue
+                </Button>
               </EmptyHeader>
             </Empty>
           </div>
         ) : null}
 
         {loadState === "ready" && items.length > 0 ? (
-          <div className="grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-2 xl:gap-6">
+          <div className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(220px,290px))] items-start justify-start gap-x-5 gap-y-8">
             {items.map((item) => (
               <HookReviewCard
                 key={item.id}
                 item={item}
-                onTimingSaved={handleTimingSaved}
                 sdkRevision={sdkRevision}
                 sdkState={sdkState}
               />
@@ -316,23 +372,18 @@ export function ViralWorkspace() {
 
 function ReviewGridSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2" aria-busy="true">
-      {[0, 1].map((index) => (
+    <div
+      className="grid grid-cols-[repeat(auto-fill,minmax(220px,290px))] items-start justify-start gap-x-5 gap-y-8"
+      aria-busy="true"
+    >
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((index) => (
         <div
           key={index}
-          className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card"
+          className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm"
         >
-          <div className="bg-card-muted px-4 py-4 sm:px-5 sm:py-5">
-            <Skeleton className="mx-auto aspect-[9/16] w-full max-w-[369px] rounded-[18px]" />
-          </div>
-          <div className="flex flex-col gap-4 border-t border-border px-4 py-5 sm:px-5">
-            <div className="flex items-center justify-between gap-3">
-              <Skeleton className="h-5 w-24" />
-              <Skeleton className="h-5 w-24 rounded-full" />
-            </div>
-            <Skeleton className="h-12 w-full rounded-lg" />
-            <Skeleton className="h-20 w-full rounded-lg" />
-            <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="aspect-[9/16] w-full rounded-none" />
+          <div className="border-t border-border bg-card p-2">
+            <Skeleton className="h-7 w-full rounded-md" />
           </div>
         </div>
       ))}
@@ -342,6 +393,7 @@ function ReviewGridSkeleton() {
 }
 
 async function fetchReviewPage(
+  section: "hook_video" | "wall_of_text" | "slideshow",
   cursor: string | null,
   signal?: AbortSignal,
 ): Promise<ViralReviewPage> {
@@ -350,7 +402,10 @@ async function fetchReviewPage(
     throw new Error("Your sign-in session is unavailable. Refresh and try again.");
   }
 
-  const searchParams = new URLSearchParams({ limit: String(PAGE_SIZE) });
+  const searchParams = new URLSearchParams({
+    limit: String(PAGE_SIZE),
+    section,
+  });
   if (cursor) searchParams.set("cursor", cursor);
 
   const response = await fetch(`/api/admin/viral/review?${searchParams}`, {

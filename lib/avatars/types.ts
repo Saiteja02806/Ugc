@@ -20,6 +20,7 @@ export type AvatarAssetRow = {
   duration_seconds: number | null;
   has_audio: boolean;
   height: number | null;
+  hook_text_placement: Json | null;
   id: string;
   influencer_key: string | null;
   metadata: Json;

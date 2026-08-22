@@ -6,11 +6,11 @@ import { useEffect, type ReactNode } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { useViralReviewerAccess } from "@/components/viral/use-viral-reviewer-access";
+import { useViralReviewerAccessQuery } from "@/components/viral/use-viral-reviewer-access";
 
 export function ViralAccessGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const accessState = useViralReviewerAccess();
+  const { accessState, retryAccessCheck } = useViralReviewerAccessQuery();
 
   useEffect(() => {
     if (accessState === "locked") {
@@ -24,7 +24,7 @@ export function ViralAccessGuard({ children }: { children: ReactNode }) {
 
   if (accessState === "unavailable") {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10 text-foreground sm:px-6">
+      <main className="flex min-h-dvh min-w-0 flex-1 items-center justify-center bg-background px-4 py-10 text-foreground sm:px-6">
         <Alert
           variant="destructive"
           className="w-full max-w-lg bg-card shadow-card"
@@ -39,7 +39,7 @@ export function ViralAccessGuard({ children }: { children: ReactNode }) {
             type="button"
             variant="outline"
             size="lg"
-            onClick={() => window.location.reload()}
+            onClick={() => void retryAccessCheck()}
             className="mt-2 w-fit"
           >
             <RefreshCw data-icon="inline-start" aria-hidden="true" />
@@ -52,7 +52,7 @@ export function ViralAccessGuard({ children }: { children: ReactNode }) {
 
   if (accessState === "error") {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10 text-foreground sm:px-6">
+      <main className="flex min-h-dvh min-w-0 flex-1 items-center justify-center bg-background px-4 py-10 text-foreground sm:px-6">
         <Alert
           variant="destructive"
           className="w-full max-w-lg bg-card shadow-card"
@@ -66,7 +66,7 @@ export function ViralAccessGuard({ children }: { children: ReactNode }) {
             type="button"
             variant="outline"
             size="lg"
-            onClick={() => window.location.reload()}
+            onClick={() => void retryAccessCheck()}
             className="mt-2 w-fit"
           >
             <RefreshCw data-icon="inline-start" aria-hidden="true" />
@@ -80,7 +80,7 @@ export function ViralAccessGuard({ children }: { children: ReactNode }) {
   return (
     <main
       aria-busy="true"
-      className="flex min-h-dvh items-center justify-center bg-background px-6 text-foreground"
+      className="flex min-h-dvh min-w-0 flex-1 items-center justify-center bg-background px-6 text-foreground"
     >
       <div
         role="status"

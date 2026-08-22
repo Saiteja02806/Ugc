@@ -3,6 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
+import { listReadyAvatarAssets } from "@/lib/avatars/avatar-storage";
 import {
   listActiveTrendingHookIdeas,
   listTrendingHookVideoSuggestions,
@@ -15,6 +16,11 @@ import {
 import { getHookPerformanceSignals } from "@/lib/trending/hook-performance";
 import { enqueueTrendingHookCopyJob } from "@/lib/trending/trending-hook-copy-jobs";
 import { listHookVideoBrowseInventory } from "@/lib/trending/hook-video-sources";
+import {
+  getHookVideoTextPosition,
+  parseHookVideoTextPlacement,
+  type HookVideoTextPosition,
+} from "@/lib/trending/hook-video-text-placement";
 import { selectTrendingHookCandidates } from "@/lib/trending/trending-hook-feed-logic";
 import { resolveTrendingVideoSource } from "@/lib/trending/video-source-selection";
 import {
@@ -52,6 +58,7 @@ export async function prepareTrendingHookIdeas(
         selectedAssetIds.has(idea.influencer_video_id),
       )
     : allExisting;
+  let activeCount = 0;
 
   if (existing.length > 0) {
     const allActive = await listActiveTrendingHookIdeas({
@@ -64,6 +71,7 @@ export async function prepareTrendingHookIdeas(
       allActive,
       selectedAssetIds,
     );
+    activeCount = active.length;
 
     if (mode === "initial" && active.length === 0) {
       // Older accounts may have valid historical suggestions but no active
@@ -89,13 +97,20 @@ export async function prepareTrendingHookIdeas(
   const usedVideoIds = new Set(
     existing.map((idea) => idea.influencer_video_id),
   );
+  const unusedInventory = fullInventory.filter(
+    (entry) => !usedVideoIds.has(entry.video.id),
+  );
+  // Once the approved Hook library has completed a full rotation, start a new
+  // rotation instead of permanently exhausting the user's daily allowance.
   const inventory =
-    mode === "refill"
-      ? fullInventory.filter(
-          (entry) => !usedVideoIds.has(entry.video.id),
-        )
+    mode === "refill" && unusedInventory.length > 0
+      ? unusedInventory
       : fullInventory;
-  const candidates = selectTrendingHookCandidates(inventory);
+  const requestedCount = Math.min(
+    Math.max(targetActive - activeCount, 1),
+    12,
+  );
+  const candidates = selectTrendingHookCandidates(inventory, requestedCount);
 
   if (candidates.length === 0) {
     if (mode === "refill") {
@@ -184,7 +199,7 @@ export async function getTrendingHookFeedProvider(
   profile: BusinessProfileRecord,
 ): Promise<TrendingFeedProviderResult<TrendingHookVideoFeedItem>> {
   try {
-    const [allIdeas, source] = await Promise.all([
+    const [allIdeas, source, catalogAssets] = await Promise.all([
       listActiveTrendingHookIdeas({
         businessProfileId: profile.id,
         businessProfileVersion: profile.profileVersion,
@@ -195,7 +210,16 @@ export async function getTrendingHookFeedProvider(
         format: "hook_video",
         userId: profile.userId,
       }),
+      listReadyAvatarAssets(),
     ]);
+    const textPositionByVideoId = new Map(
+      catalogAssets.map((asset) => [
+        asset.id,
+        getHookVideoTextPosition(
+          parseHookVideoTextPlacement(asset.hook_text_placement),
+        ),
+      ]),
+    );
     const selectedAssetIds = source.selection
       ? new Set(source.assets.map((asset) => asset.id))
       : null;
@@ -220,7 +244,14 @@ export async function getTrendingHookFeedProvider(
       );
     }
 
-    return createHookTrendingFeedProvider(ideas.map(toHookSourceRecord));
+    return createHookTrendingFeedProvider(
+      ideas.map((idea) =>
+        toHookSourceRecord(
+          idea,
+          textPositionByVideoId.get(idea.influencerVideoId) ?? null,
+        ),
+      ),
+    );
   } catch (error) {
     console.error("Could not load unified Trending Hook ideas:", error);
     return createUnavailableTrendingFeedProvider<TrendingHookVideoFeedItem>(
@@ -274,6 +305,7 @@ function toHookCopyJobCandidate(
 
 function toHookSourceRecord(
   idea: TrendingHookIdeaRecord,
+  textPosition: HookVideoTextPosition | null,
 ): TrendingHookVideoSourceRecord {
   return {
     aspectRatio: "9:16",
@@ -294,7 +326,8 @@ function toHookSourceRecord(
       kind: "hook",
       lines: idea.openingLines,
       patternId: idea.patternId,
-      placement: "center",
+      placement: textPosition ? "catalog" : "default",
+      position: textPosition,
       styleVersion: "hook-overlay-v3",
       value: idea.hookText,
       writingFormatId: idea.writingFormatId,

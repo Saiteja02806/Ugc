@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { AppShell } from "@/components/layout/app-shell";
 import { SchedulingWorkspace } from "@/components/scheduling/scheduling-workspace";
 
 export const metadata: Metadata = {
@@ -9,9 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function SchedulingPage() {
-  return (
-    <AppShell activeKey="scheduling">
-      <SchedulingWorkspace />
-    </AppShell>
-  );
+  return <SchedulingWorkspace />;
 }

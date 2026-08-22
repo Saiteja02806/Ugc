@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 
 import { PricingCard } from "@/components/pricing/pricing-card";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import {
   pricingPlans,
   type BillingInterval,
   parseBillingInterval,
 } from "@/lib/pricing/plans";
+import { cn } from "@/lib/utils";
 
 type PricingCatalogProps = {
   initialBillingInterval: BillingInterval;
@@ -19,6 +20,7 @@ export function PricingCatalog({
 }: PricingCatalogProps) {
   const [billingInterval, setBillingInterval] =
     useState<BillingInterval>(initialBillingInterval);
+  const subscriptionQuery = useBillingSubscription();
 
   useEffect(() => {
     function syncBillingInterval() {
@@ -47,50 +49,71 @@ export function PricingCatalog({
     setBillingInterval(nextInterval);
   }
 
+  const isYearly = billingInterval === "yearly";
+
   return (
     <>
-      <div className="mt-7 flex flex-col items-center gap-2.5">
-        <ToggleGroup
+      {/* Segmented Billing Interval Switcher */}
+      <div className="mt-8 flex flex-col items-center gap-2">
+        <div
+          className="inline-flex items-center rounded-full border border-border bg-card p-1 shadow-xs"
+          role="group"
           aria-label="Billing interval"
-          value={[billingInterval]}
-          onValueChange={(value) => {
-            const nextInterval = value[0] as BillingInterval | undefined;
-
-            if (nextInterval) {
-              updateBillingInterval(nextInterval);
-            }
-          }}
-          spacing={1}
-          className="grid w-full max-w-sm grid-cols-2 rounded-card border border-border bg-card-muted p-1"
         >
-          <ToggleGroupItem
-            value="monthly"
-            className="h-10 rounded-small px-3 text-sm font-semibold text-muted hover:bg-card/70 hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground-strong aria-pressed:shadow-card"
+          <button
+            type="button"
+            aria-pressed={!isYearly}
+            onClick={() => updateBillingInterval("monthly")}
+            className={cn(
+              "rounded-full px-4 py-1.5 text-xs font-semibold transition-all duration-150 cursor-pointer",
+              !isYearly
+                ? "bg-foreground text-background shadow-xs"
+                : "text-muted hover:text-foreground",
+            )}
           >
-            Monthly
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="yearly"
-            className="h-10 rounded-small px-3 text-sm font-semibold text-muted hover:bg-card/70 hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground-strong aria-pressed:shadow-card"
+            Monthly Billing
+          </button>
+          <button
+            type="button"
+            aria-pressed={isYearly}
+            onClick={() => updateBillingInterval("yearly")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-all duration-150 cursor-pointer",
+              isYearly
+                ? "bg-foreground text-background shadow-xs"
+                : "text-muted hover:text-foreground",
+            )}
           >
-            Yearly
-            <span className="text-xs font-bold text-success">2 months free</span>
-          </ToggleGroupItem>
-        </ToggleGroup>
-        <p className="text-center text-xs font-medium text-muted">
-          Generation credits refresh monthly on both billing options.
+            <span>Annual Billing</span>
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                isYearly
+                  ? "bg-emerald-500 text-white"
+                  : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+              )}
+            >
+              Save 20%
+            </span>
+          </button>
+        </div>
+        <p className="text-center text-xs text-muted">
+          All plans include full workflow access · Cancel or switch anytime
         </p>
       </div>
 
+      {/* Pricing Cards Grid */}
       <div
         aria-label="Pricing plans"
-        className="mt-7 grid items-stretch gap-5 md:grid-cols-2"
+        className="mx-auto mt-8 grid max-w-5xl items-stretch gap-5 lg:grid-cols-3"
       >
         {pricingPlans.map((plan) => (
           <PricingCard
             key={plan.slug}
             billingInterval={billingInterval}
+            isSubscriptionLoading={subscriptionQuery.isPending}
             plan={plan}
+            subscription={subscriptionQuery.data ?? null}
           />
         ))}
       </div>

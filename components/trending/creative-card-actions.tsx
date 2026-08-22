@@ -24,28 +24,47 @@ export function CreativeDecisionActions({
       className="mx-auto mt-5 flex items-center justify-center gap-4 sm:gap-5"
       role="group"
     >
-      <Button
-        type="button"
-        variant="creative-reject"
-        size="creative-icon"
-        aria-label="Reject this creative"
-        title="Reject"
-        disabled={disabled || rejectDisabled}
-        onClick={onReject}
-      >
-        <X data-icon="inline-start" aria-hidden="true" />
-      </Button>
-      <Button
-        type="button"
-        variant="creative-accept"
-        size="creative-icon"
-        aria-label="Accept this creative"
-        title="Accept"
-        disabled={disabled || acceptDisabled}
-        onClick={onAccept}
-      >
-        <Check data-icon="inline-start" aria-hidden="true" />
-      </Button>
+      <div className="flex flex-col items-center gap-1.5">
+        <Button
+          type="button"
+          variant="creative-reject"
+          size="creative-icon"
+          aria-label="Reject this creative"
+          title="Reject"
+          disabled={disabled || rejectDisabled}
+          onClick={onReject}
+          className="transition-transform duration-150 active:scale-95"
+        >
+          <X data-icon="inline-start" aria-hidden="true" />
+        </Button>
+        <span className="hidden items-center gap-1 text-[11px] font-medium text-muted sm:inline-flex">
+          <kbd className="rounded border border-border/80 bg-card-muted px-1.5 py-0.5 text-[10px] font-mono font-semibold text-foreground/75">
+            ←
+          </kbd>
+          Skip
+        </span>
+      </div>
+
+      <div className="flex flex-col items-center gap-1.5">
+        <Button
+          type="button"
+          variant="creative-accept"
+          size="creative-icon"
+          aria-label="Accept this creative"
+          title="Accept"
+          disabled={disabled || acceptDisabled}
+          onClick={onAccept}
+          className="transition-transform duration-150 active:scale-95"
+        >
+          <Check data-icon="inline-start" aria-hidden="true" />
+        </Button>
+        <span className="hidden items-center gap-1 text-[11px] font-medium text-muted sm:inline-flex">
+          Accept
+          <kbd className="rounded border border-border/80 bg-card-muted px-1.5 py-0.5 text-[10px] font-mono font-semibold text-foreground/75">
+            →
+          </kbd>
+        </span>
+      </div>
     </div>
   );
 }
@@ -63,12 +82,21 @@ export function CreativeEditAction({
       type="button"
       variant="creative-edit"
       size="creative-edit"
-      aria-label="Edit this creative"
+      aria-label="Edit this creative (Press E)"
+      title="Edit (E)"
+      className="group transition-all duration-200 hover:border-primary/40 hover:bg-primary/[0.06] hover:text-primary active:scale-[0.98] shadow-xs"
       disabled={disabled}
       onClick={onEdit}
     >
-      <Pencil data-icon="inline-start" aria-hidden="true" />
-      Edit
+      <Pencil
+        data-icon="inline-start"
+        className="size-3.5 transition-transform duration-200 group-hover:-rotate-12 group-hover:scale-110"
+        aria-hidden="true"
+      />
+      <span>Edit</span>
+      <kbd className="hidden ml-1 rounded border border-border/80 bg-card-muted px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted transition-colors group-hover:border-primary/30 group-hover:text-primary sm:inline-block">
+        E
+      </kbd>
     </Button>
   );
 }

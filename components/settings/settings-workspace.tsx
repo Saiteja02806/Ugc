@@ -2,13 +2,17 @@
 
 import {
   AlertCircle,
+  ArrowUpRight,
   CheckCircle2,
+  CreditCard,
+  Images,
   LoaderCircle,
   LogOut,
   Mail,
   Moon,
   Palette,
   ShieldCheck,
+  Sparkles,
   Sun,
   Trash2,
   UserRound,
@@ -29,9 +33,12 @@ import { Separator } from "@/components/ui/separator";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { InstagramAccountManager } from "@/components/settings/instagram-account-manager";
 import { CarouselAdminSettings } from "@/components/settings/carousel-admin-settings";
+import { AppScreenshotsSettings } from "@/components/settings/app-screenshots-settings";
 import { useTheme } from "@/components/providers/theme-provider";
+import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
+import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 
 export function SettingsWorkspace() {
   const router = useRouter();
@@ -39,6 +46,10 @@ export function SettingsWorkspace() {
   const { locked: themeLocked, setTheme, theme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [isOpeningBilling, setIsOpeningBilling] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
+  const subscriptionQuery = useBillingSubscription();
+  const subscription = subscriptionQuery.data;
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -51,6 +62,40 @@ export function SettingsWorkspace() {
       setSignOutError("Could not sign out. Check your connection and try again.");
     } finally {
       setIsSigningOut(false);
+    }
+  }
+
+  async function handleOpenBillingPortal() {
+    setIsOpeningBilling(true);
+    setBillingError(null);
+
+    try {
+      const token = await getCurrentUserIdToken();
+
+      if (!token) {
+        throw new Error("Sign in again before opening billing.");
+      }
+
+      const response = await fetch("/api/billing/portal", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await response.json().catch(() => null)) as
+        | { error?: string; portalUrl?: string }
+        | null;
+
+      if (!response.ok || !data?.portalUrl) {
+        throw new Error(data?.error || "Could not open the billing portal.");
+      }
+
+      window.location.assign(data.portalUrl);
+    } catch (error) {
+      setIsOpeningBilling(false);
+      setBillingError(
+        error instanceof Error
+          ? error.message
+          : "Could not open the billing portal.",
+      );
     }
   }
 
@@ -167,11 +212,152 @@ export function SettingsWorkspace() {
           </SettingsSection>
 
           <SettingsSection
-            description={
-              themeLocked
-                ? "UGC Pilot uses one consistent dark appearance in production."
-                : "Choose how UGC Pilot looks on this device. New users always start in light mode."
-            }
+            id="subscription-billing"
+            description="Manage your current plan, monthly generation credits, and billing interval."
+            icon={<CreditCard className="size-5" aria-hidden="true" />}
+            title="Subscription & billing"
+            accent
+          >
+            <div className="flex flex-col gap-5 px-5 py-5 sm:px-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-primary/10 text-primary">
+                    <Sparkles className="size-5" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-base font-bold text-foreground-strong">
+                        {subscription ? `${subscription.displayName} Plan` : "Loading plan"}
+                      </p>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs font-bold",
+                          subscription?.isActive
+                            ? "text-success border-success/30"
+                            : "text-muted border-border",
+                        )}
+                      >
+                        {subscription?.isActive
+                          ? subscription.cancelAtPeriodEnd
+                            ? "Cancels at period end"
+                            : "Active"
+                          : subscription?.status === "on_hold"
+                            ? "Payment required"
+                            : "Free tier"}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-muted">
+                      {subscription?.isActive
+                        ? `Your ${subscription.displayName} subscription includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits.`
+                        : "Free includes 3 daily ready-to-post concepts and no AI generation credits."}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {subscription?.isActive ? (
+                    <Button
+                      type="button"
+                      size="lg"
+                      className="w-full sm:w-auto"
+                      onClick={() => void handleOpenBillingPortal()}
+                      disabled={isOpeningBilling}
+                    >
+                      {isOpeningBilling ? (
+                        <LoaderCircle
+                          data-icon="inline-start"
+                          className="animate-spin motion-reduce:animate-none"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <CreditCard data-icon="inline-start" aria-hidden="true" />
+                      )}
+                      {isOpeningBilling ? "Opening billing" : "Manage billing"}
+                    </Button>
+                  ) : (
+                    <Link
+                      href="/pricing"
+                      className={buttonVariants({
+                        variant: "default",
+                        size: "lg",
+                        className: "w-full sm:w-auto font-semibold",
+                      })}
+                    >
+                      <span>Upgrade plan</span>
+                      <ArrowUpRight data-icon="inline-end" aria-hidden="true" />
+                    </Link>
+                  )}
+                </div>
+              </div>
+
+              {billingError ? (
+                <Alert variant="destructive" aria-live="polite">
+                  <AlertCircle aria-hidden="true" />
+                  <AlertTitle>Billing portal unavailable</AlertTitle>
+                  <AlertDescription>{billingError}</AlertDescription>
+                </Alert>
+              ) : null}
+
+              <div className="grid border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-border">
+                <div className="py-4 sm:pr-5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-subtle">
+                    AI credits remaining
+                  </p>
+                  <p className="mt-1 text-lg font-black text-foreground-strong font-mono">
+                    {subscription?.creditsRemaining ?? 0}{" "}
+                    <span className="text-xs font-normal text-muted">/ {subscription?.sharedMonthlyCredits ?? 0}</span>
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted">
+                    {subscription?.creditsUsed ?? 0} used this month
+                  </p>
+                </div>
+
+                <div className="border-t border-border py-4 sm:border-t-0 sm:px-5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-subtle">
+                    Daily Drops
+                  </p>
+                  <p className="mt-1 text-lg font-black text-foreground-strong font-mono">
+                    {subscription ? subscription.dailyContentPieces : "Limited"}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted">Up to 50 daily on Growth</p>
+                </div>
+
+                <div className="border-t border-border py-4 sm:border-t-0 sm:pl-5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-subtle">
+                    Connected Accounts
+                  </p>
+                  <p className="mt-1 text-lg font-black text-foreground-strong font-mono">
+                    {subscription?.connectedInstagramAccounts ?? 0}{" "}
+                    <span className="text-xs font-normal text-muted">
+                      / {subscription?.instagramAccounts ?? 0} allowed
+                    </span>
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted">Up to 3 on Growth</p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <p className="text-xs font-medium text-muted">
+                Need higher generation volume, custom brand models, or team seats?
+              </p>
+              <Link
+                href="/pricing"
+                className={buttonVariants({
+                  variant: "ghost",
+                  size: "sm",
+                  className: "text-xs font-semibold text-primary hover:text-primary-hover",
+                })}
+              >
+                View all plan comparison matrix →
+              </Link>
+            </div>
+          </SettingsSection>
+
+          <SettingsSection
+            description="Choose how UGC Pilot looks on this device. New users always start in light mode."
             icon={<Palette className="size-5" aria-hidden="true" />}
             title="Appearance"
           >
@@ -190,12 +376,12 @@ export function SettingsWorkspace() {
                       {theme === "light" ? "Light theme" : "Dark theme"}
                     </p>
                     <Badge variant="secondary">
-                      {themeLocked ? "Production theme" : "Saved on this device"}
+                      {themeLocked ? "Theme locked" : "Saved on this device"}
                     </Badge>
                   </div>
                   <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
                     {themeLocked
-                      ? "Dark theme is fixed in production to keep the product appearance consistent."
+                      ? "Theme switching is locked on this environment."
                       : "Your choice overrides the product default and is applied before the page appears."}
                   </p>
                 </div>
@@ -215,10 +401,19 @@ export function SettingsWorkspace() {
                   <Sun data-icon="inline-start" aria-hidden="true" />
                 )}
                 {themeLocked
-                  ? "Dark theme locked"
+                  ? "Theme locked"
                   : `Use ${theme === "light" ? "dark" : "light"} theme`}
               </Button>
             </div>
+          </SettingsSection>
+
+          <SettingsSection
+            id="app-screenshots"
+            description="Keep real product screens ready for Structure 2 carousels."
+            icon={<Images className="size-5" aria-hidden="true" />}
+            title="App screenshots"
+          >
+            <AppScreenshotsSettings />
           </SettingsSection>
 
           <SettingsSection
@@ -277,32 +472,34 @@ export function SettingsWorkspace() {
 
             <Separator />
 
-            <div className="flex flex-col gap-4 bg-error/5 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <div className="flex min-w-0 items-start gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-error/10 text-error">
-                  <Trash2 className="size-4" aria-hidden="true" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-foreground-strong">
-                    Request account deletion
-                  </p>
-                  <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-                    This opens a privacy support request. Your account is not
-                    deleted immediately, and support will verify the request
-                    before removing data.
-                  </p>
+            <div className="p-5 sm:p-6">
+              <div className="flex flex-col gap-4 rounded-[var(--radius-control)] border border-error/20 bg-error/5 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-error/10 text-error">
+                    <Trash2 className="size-4" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-foreground-strong">
+                      Request account deletion
+                    </p>
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
+                      This opens a privacy support request. Your account is not
+                      deleted immediately, and support will verify the request
+                      before removing data.
+                    </p>
+                  </div>
                 </div>
+                <a
+                  href="mailto:privacy@getugcpilot.com?subject=Delete%20UGC%20Pilot%20account%20and%20data"
+                  className={cn(
+                    buttonVariants({ size: "lg", variant: "destructive" }),
+                    "w-full sm:w-auto",
+                  )}
+                >
+                  <Mail data-icon="inline-start" aria-hidden="true" />
+                  Request deletion
+                </a>
               </div>
-              <a
-                href="mailto:privacy@getugcpilot.com?subject=Delete%20UGC%20Pilot%20account%20and%20data"
-                className={cn(
-                  buttonVariants({ size: "lg", variant: "destructive" }),
-                  "w-full sm:w-auto",
-                )}
-              >
-                <Mail data-icon="inline-start" aria-hidden="true" />
-                Request deletion
-              </a>
             </div>
           </SettingsSection>
         </div>
@@ -341,7 +538,7 @@ function SettingsSection({
         />
       ) : null}
       <header className="flex items-start gap-3 px-5 py-5 sm:px-6">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-card-muted text-primary">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
           {icon}
         </span>
         <div className="min-w-0">

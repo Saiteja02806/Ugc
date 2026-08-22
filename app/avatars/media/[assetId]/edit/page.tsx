@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { FocusedVideoEditorShell } from "@/components/edit/focused-video-editor-shell";
-import { AppShell } from "@/components/layout/app-shell";
 import { CREATIVE_ASSETS_VIDEOS_HREF } from "@/lib/edit/routes";
 
 export const metadata: Metadata = {
@@ -21,12 +20,10 @@ export default async function CreativeAssetEditorPage({
   const { assetId } = await params;
 
   return (
-    <AppShell activeKey="avatars" defaultSidebarCollapsed>
-      <FocusedVideoEditorShell
-        returnHref={CREATIVE_ASSETS_VIDEOS_HREF}
-        returnLabel="Back to Creative Assets"
-        videoId={assetId}
-      />
-    </AppShell>
+    <FocusedVideoEditorShell
+      returnHref={CREATIVE_ASSETS_VIDEOS_HREF}
+      returnLabel="Back to Creative Assets"
+      videoId={assetId}
+    />
   );
 }

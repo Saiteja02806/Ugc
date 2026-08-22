@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   ArrowRight,
@@ -75,6 +76,7 @@ import {
   type InstagramContentType,
 } from "@/lib/analytics/instagram-content-insights";
 import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
+import { useAuth } from "@/contexts/auth-context";
 import {
   getInstagramPerformanceTrendMode,
   getUniqueInstagramConnections,
@@ -82,6 +84,10 @@ import {
   type InstagramInsightsAccount,
 } from "@/lib/analytics/instagram-insights";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import {
+  loadAccountSchedules,
+  loadAccountSocialConnections,
+} from "@/lib/scheduling/account-data-query";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
 import type { ScheduledPost } from "@/lib/scheduling/types";
 import type { SocialConnection } from "@/lib/social/types";
@@ -90,18 +96,6 @@ import { cn } from "@/lib/utils";
 type AnalyticsLoadState = "error" | "loading" | "ready";
 type DateRangeDays = 7 | 30 | 90;
 type PerformanceMetric = "interactions" | "reach" | "views";
-
-type ConnectionsResponse = {
-  connections?: SocialConnection[];
-  message?: string;
-  ok?: boolean;
-};
-
-type SchedulesResponse = {
-  message?: string;
-  ok?: boolean;
-  schedules?: ScheduledPost[];
-};
 
 type InstagramInsightsResponse = {
   accounts?: InstagramInsightsAccount[];
@@ -208,6 +202,9 @@ const contentTypeLabels: Record<InstagramContentType, string> = {
 };
 
 export function InstagramAnalyticsWorkspace() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const accountId = user?.uid ?? "signed-out";
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [schedules, setSchedules] = useState<ScheduledPost[]>([]);
   const [dateRangeDays, setDateRangeDays] = useState<DateRangeDays>(30);
@@ -260,21 +257,22 @@ export function InstagramAnalyticsWorkspace() {
         ...current,
         state: "loading",
       }));
-      const headers = { Authorization: `Bearer ${token}` };
       const [
-        connectionsResponse,
-        schedulesResponse,
+        accountConnections,
+        accountSchedules,
         insightsOutput,
       ] = await Promise.all([
-        fetch("/api/social/connections", {
-          cache: "no-store",
-          headers,
-          signal,
+        loadAccountSocialConnections(queryClient, accountId, {
+          errorMessage:
+            "Could not load your account connection. Refresh and try again.",
+          force: Boolean(idempotencyKey),
+          token,
         }),
-        fetch("/api/schedules", {
-          cache: "no-store",
-          headers,
-          signal,
+        loadAccountSchedules(queryClient, accountId, {
+          errorMessage:
+            "Could not load publishing activity. Refresh and try again.",
+          force: Boolean(idempotencyKey),
+          token,
         }),
         runAnalyticsBackgroundSync({
           body: { days: dateRangeDays },
@@ -284,12 +282,6 @@ export function InstagramAnalyticsWorkspace() {
           url: "/api/analytics/instagram/insights",
         }),
       ]);
-      const connectionsData = (await connectionsResponse
-        .json()
-        .catch(() => null)) as ConnectionsResponse | null;
-      const schedulesData = (await schedulesResponse
-        .json()
-        .catch(() => null)) as SchedulesResponse | null;
       const insightsData =
         insightsOutput as InstagramInsightsResponse | null;
 
@@ -297,33 +289,15 @@ export function InstagramAnalyticsWorkspace() {
         return;
       }
 
-      if (!connectionsResponse.ok || connectionsData?.ok !== true) {
-        throw new Error(
-          connectionsData?.message ??
-            "Could not load your account connection. Refresh and try again.",
-        );
-      }
-
-      if (!schedulesResponse.ok || schedulesData?.ok !== true) {
-        throw new Error(
-          schedulesData?.message ??
-            "Could not load publishing activity. Refresh and try again.",
-        );
-      }
-
       setConnections(
         getUniqueInstagramConnections(
-          [...(connectionsData.connections ?? [])].sort(
+          [...accountConnections].sort(
             (left, right) =>
               Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
           ),
         ),
       );
-      setSchedules(
-        Array.isArray(schedulesData.schedules)
-          ? schedulesData.schedules
-          : [],
-      );
+      setSchedules(accountSchedules.schedules);
       setInsightsResult({
         accounts: insightsData?.accounts ?? [],
         days: dateRangeDays,
@@ -350,7 +324,7 @@ export function InstagramAnalyticsWorkspace() {
       }));
       setLoadState("error");
     }
-  }, [dateRangeDays]);
+  }, [accountId, dateRangeDays, queryClient]);
 
   const loadContentPerformance = useCallback(
     async (signal?: AbortSignal, idempotencyKey?: string) => {

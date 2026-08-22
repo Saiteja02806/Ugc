@@ -35,6 +35,7 @@ type PatchDemoBody = {
   draft?: unknown;
   projectId?: unknown;
   status?: unknown;
+  tags?: unknown;
   title?: unknown;
 };
 
@@ -149,6 +150,7 @@ export async function PATCH(request: Request, context: DemoRouteContext) {
   const titleUpdate = getTitleUpdate(body);
   const draftUpdate = getDraftUpdate(body);
   const statusUpdate = getStatusUpdate(body);
+  const tagsUpdate = getTagsUpdate(body);
 
   if (!titleUpdate.ok) {
     return jsonResponse(
@@ -180,12 +182,51 @@ export async function PATCH(request: Request, context: DemoRouteContext) {
     );
   }
 
+  if (!tagsUpdate.ok) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: tagsUpdate.error,
+      },
+      400,
+    );
+  }
+
   try {
+    let finalDraft = draftUpdate.value;
+    let finalStatus = statusUpdate.value;
+
+    if (tagsUpdate.value !== undefined) {
+      const existing = await getDemoVideo({
+        demoId,
+        projectId: getProjectId(projectId),
+        userId: auth.user.uid,
+      });
+
+      const existingDraftObj =
+        existing.draft_json &&
+        typeof existing.draft_json === "object" &&
+        !Array.isArray(existing.draft_json)
+          ? (existing.draft_json as Record<string, Json | undefined>)
+          : {};
+
+      finalDraft = {
+        ...(finalDraft ?? existingDraftObj),
+        tags: tagsUpdate.value,
+      };
+
+      if (!statusUpdate.value && !draftUpdate.value) {
+        if (existing.status === "ready" || existing.status === "draft") {
+          finalStatus = existing.status;
+        }
+      }
+    }
+
     const demo = await updateDemoVideoDetails({
       demoId,
-      draft: draftUpdate.value,
+      draft: finalDraft,
       projectId: getProjectId(projectId),
-      status: statusUpdate.value,
+      status: finalStatus,
       title: titleUpdate.value,
       userId: auth.user.uid,
     });
@@ -313,5 +354,51 @@ function getStatusUpdate(body: PatchDemoBody):
   return {
     ok: true,
     value: body.status as Extract<DemoVideoStatus, "ready" | "draft">,
+  };
+}
+
+function getTagsUpdate(body: PatchDemoBody):
+  | {
+      ok: true;
+      value?: string[];
+    }
+  | {
+      ok: false;
+      error: string;
+    } {
+  if (!("tags" in body)) {
+    return { ok: true };
+  }
+
+  if (!Array.isArray(body.tags)) {
+    return {
+      ok: false,
+      error: "Tags must be an array of strings.",
+    };
+  }
+
+  const tags: string[] = [];
+
+  for (const item of body.tags) {
+    if (typeof item !== "string") {
+      continue;
+    }
+
+    const clean = item.trim().slice(0, 32);
+
+    if (!clean) {
+      continue;
+    }
+
+    const formatted = clean.startsWith("#") ? clean : `#${clean}`;
+
+    if (!tags.includes(formatted)) {
+      tags.push(formatted);
+    }
+  }
+
+  return {
+    ok: true,
+    value: tags.slice(0, 10),
   };
 }

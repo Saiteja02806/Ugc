@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   CalendarClock,
@@ -19,8 +20,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
+import {
+  invalidateAccountSchedules,
+  loadAccountScheduleConfig,
+  loadAccountSocialConnections,
+} from "@/lib/scheduling/account-data-query";
 import {
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
@@ -42,20 +49,8 @@ import {
 import type { SocialConnection, SocialPlatform } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
-type ConnectionsResponse =
-  | { connections: SocialConnection[]; ok: true }
-  | { message?: string; ok?: false };
-
 type TikTokCapabilitiesResponse =
   | { capabilities: TikTokPublishCapabilities; ok: true }
-  | { message?: string; ok?: false };
-
-type ScheduleConfigResponse =
-  | {
-      minimumRenderLeadMinutes?: number;
-      minimumScheduleLeadMinutes?: number;
-      ok: true;
-    }
   | { message?: string; ok?: false };
 
 type PublishingSettings = ScheduleTargetSettings;
@@ -99,6 +94,9 @@ export function HookVideoScheduleDrawer({
   onConfirm: (selection: HookVideoScheduleSelection) => Promise<void>;
   summary: HookVideoScheduleSummary;
 }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const accountId = user?.uid ?? "signed-out";
   const initialDateTime = useMemo(() => getInitialDateTime(), []);
   const timezone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -126,31 +124,18 @@ export function HookVideoScheduleDrawer({
 
     try {
       const token = await requireToken();
-      const [connectionsResponse, configResponse] = await Promise.all([
-        fetch("/api/social/connections", {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${token}` },
+      const [accountConnections, configData] = await Promise.all([
+        loadAccountSocialConnections(queryClient, accountId, {
+          errorMessage: "Could not load connected accounts.",
+          token,
         }),
-        fetch("/api/schedules?configOnly=1", {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${token}` },
+        loadAccountScheduleConfig(queryClient, accountId, {
+          errorMessage: "Could not load scheduling settings.",
+          token,
         }),
       ]);
-      const data = (await connectionsResponse.json().catch(() => null)) as
-        | ConnectionsResponse
-        | null;
-      const configData = (await configResponse.json().catch(() => null)) as
-        | ScheduleConfigResponse
-        | null;
 
-      if (!connectionsResponse.ok || !data || data.ok !== true) {
-        throw new Error(getApiMessage(data, "Could not load connected accounts."));
-      }
-      if (!configResponse.ok || !configData || configData.ok !== true) {
-        throw new Error(getApiMessage(configData, "Could not load scheduling settings."));
-      }
-
-      setConnections(data.connections);
+      setConnections(accountConnections);
       const configuredLeadValue =
         configData.minimumScheduleLeadMinutes ??
         configData.minimumRenderLeadMinutes;
@@ -169,7 +154,7 @@ export function HookVideoScheduleDrawer({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [accountId, queryClient]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadConnections(), 0);
@@ -316,6 +301,8 @@ export function HookVideoScheduleDrawer({
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Could not schedule this video."));
       setSubmitting(false);
+    } finally {
+      void invalidateAccountSchedules(queryClient, accountId);
     }
   }
 

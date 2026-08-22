@@ -61,15 +61,17 @@ test("button, keyboard, and physical swipe decisions converge on one handler", (
   assert.match(workspace, /onReject=\{\(\) => requestCreativeDecision\("rejected"\)\}/);
   assert.match(workspace, /event\.key === "ArrowLeft"[\s\S]*completeCandidateSwipe\("left"\)/);
   assert.match(workspace, /event\.key === "ArrowRight"[\s\S]*completeCandidateSwipe\("right"\)/);
+  assert.match(workspace, /event\.key === "e" \|\| event\.key === "E"/);
+  assert.match(workspace, /data-trending-edited-badge/);
 });
 
 test("labels every Trending card with its content format above the creative", () => {
   assert.match(workspace, /function TrendingFormatPill/);
-  assert.match(workspace, /<TrendingFormatPill format=\{activeCandidate\.format\} \/>/);
+  assert.match(workspace, /<TrendingFormatPill/);
   assert.match(workspace, /data-trending-format-pill/);
-  assert.match(workspace, /\? "Hook video"/);
-  assert.match(workspace, /\? "Wall-of-text video"/);
-  assert.match(workspace, /: "Carousel"/);
+  assert.match(workspace, /"Reel Hook"/);
+  assert.match(workspace, /"Wall-of-Text"/);
+  assert.match(workspace, /Slideshow/);
 });
 
 test("keeps the outgoing card mounted until its transform transition finishes", () => {
@@ -122,6 +124,44 @@ test("Edit opens the real editor and the tick persists text and drag position", 
   assert.match(editor, /expectedRevision: edit\.revision/);
 });
 
+test("defers the large Trending editor until Edit is opened", () => {
+  assert.match(workspace, /const TrendingCreativeEditor = dynamic\(/);
+  assert.match(
+    workspace,
+    /import\("@\/components\/trending\/trending-creative-editor"\)/,
+  );
+  assert.doesNotMatch(
+    workspace,
+    /import \{ TrendingCreativeEditor \} from "@\/components\/trending\/trending-creative-editor"/,
+  );
+  assert.match(
+    workspace,
+    /editorCandidate \? \([\s\S]*?<TrendingCreativeEditor[\s\S]*?item=\{editorCandidate\.item\}/,
+  );
+  assert.match(workspace, /function TrendingCreativeEditorLoading\(\)/);
+});
+
+test("defers the Trending Hook composer until an accepted Hook opens it", () => {
+  assert.match(workspace, /const HookVideoComposer = dynamic\(/);
+  assert.match(
+    workspace,
+    /import\("@\/components\/trending\/hook-video-composer"\)/,
+  );
+  assert.doesNotMatch(
+    workspace,
+    /import \{ HookVideoComposer \} from "@\/components\/trending\/hook-video-composer"/,
+  );
+  assert.match(
+    workspace,
+    /if \(hookComposition\)[\s\S]*<TrendingHookComposer[\s\S]*item=\{hookComposition\.item\}/,
+  );
+  assert.match(
+    workspace,
+    /function TrendingHookComposer[\s\S]*useState<HookVideoFlowState>[\s\S]*<HookVideoComposer/,
+  );
+  assert.match(workspace, /function HookVideoComposerLoading\(\)/);
+});
+
 test("Carousel editing previews the bubble treatment on the clean source image", () => {
   assert.match(editor, /src=\{slide\.backgroundUrl \|\| slide\.renderedUrl\}/);
   assert.match(editor, /function CarouselBubbleText/);
@@ -138,8 +178,18 @@ test("Trending editor footer uses the dialog surface instead of the muted strip"
   assert.match(editor, /<DialogFooter className="[^"]*bg-card[^"]*"/);
 });
 
-test("shows only the simple ready-state message and hides customer job operations", () => {
-  assert.match(workspace, /We’re preparing new content for you\./);
+test("shows one dark 9:16 post skeleton while Trending prepares content", () => {
+  assert.match(workspace, /function TrendingPostSkeleton/);
+  assert.match(
+    workspace,
+    /aspect-\[9\/16\] w-\[min\(76vw,248px\)\][^\"]*rounded-lg[^\"]*bg-\[#171717\]/,
+  );
+  assert.match(workspace, /aria-label="Loading trending content ideas"/);
+  assert.doesNotMatch(workspace, /CarouselLoadingStackVisual/);
+  assert.doesNotMatch(workspace, /LOADING_STACK_PLACEHOLDERS/);
+  assert.doesNotMatch(workspace, /We’re preparing new content for you\./);
+  assert.doesNotMatch(workspace, /Your next ideas are being prepared\./);
+  assert.doesNotMatch(workspace, /Ready posts will appear here automatically/);
   assert.doesNotMatch(workspace, /worker did not finish|slides ready|Retry generation/);
   assert.doesNotMatch(sidebar, /Creating in background|jobs running|useActiveBackgroundJobs/);
 });

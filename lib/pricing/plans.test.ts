@@ -7,13 +7,19 @@ import {
   pricingPlans,
 } from "./plans.ts";
 
-test("annual pricing charges ten monthly payments", () => {
+test("annual pricing charges ten monthly payments for paid tiers", () => {
   for (const plan of pricingPlans) {
     const annualPricing = getPlanPricing(plan, "yearly");
 
-    assert.equal(annualPricing.billedAmount, plan.prices.monthly * 10);
-    assert.equal(annualPricing.savings, plan.prices.monthly * 2);
-    assert.equal(annualPricing.monthlyEquivalent, plan.prices.yearly / 12);
+    if (plan.prices.monthly === 0) {
+      assert.equal(annualPricing.billedAmount, 0);
+      assert.equal(annualPricing.savings, 0);
+      assert.equal(annualPricing.monthlyEquivalent, 0);
+    } else {
+      assert.equal(annualPricing.billedAmount, plan.prices.monthly * 10);
+      assert.equal(annualPricing.savings, plan.prices.monthly * 2);
+      assert.equal(annualPricing.monthlyEquivalent, plan.prices.yearly / 12);
+    }
   }
 });
 
@@ -27,12 +33,39 @@ test("monthly pricing has no annual savings", () => {
   }
 });
 
-test("plans expose a single shared monthly credit balance", () => {
+test("plans expose credit balances for Free, Starter, and Growth", () => {
   assert.deepEqual(
     pricingPlans.map((plan) => [plan.slug, plan.sharedMonthlyCredits]),
     [
-      ["creator", 200],
-      ["pro", 600],
+      ["free", 0],
+      ["starter", 200],
+      ["growth", 600],
+    ],
+  );
+});
+
+test("plans map slug to proper display name", () => {
+  assert.deepEqual(
+    pricingPlans.map((plan) => [plan.slug, plan.name]),
+    [
+      ["free", "Free"],
+      ["starter", "Starter"],
+      ["growth", "Growth"],
+    ],
+  );
+});
+
+test("display prices match the configured Dodo catalog", () => {
+  assert.deepEqual(
+    pricingPlans.map((plan) => [
+      plan.slug,
+      plan.prices.monthly,
+      plan.prices.yearly,
+    ]),
+    [
+      ["free", 0, 0],
+      ["starter", 19, 190],
+      ["growth", 49, 490],
     ],
   );
 });

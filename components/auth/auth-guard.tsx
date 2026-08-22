@@ -1,11 +1,10 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, LoaderCircle, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
-  useCallback,
   useEffect,
-  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -13,17 +12,22 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
-import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-
-type ProfileGateState = "checking" | "error" | "ready" | "redirecting";
+import {
+  BUSINESS_PROFILE_GATE_GC_TIME_MS,
+  BUSINESS_PROFILE_GATE_STALE_TIME_MS,
+  fetchBusinessProfileGate,
+  getBusinessProfileGateQueryKey,
+} from "@/lib/business-profiles/profile-gate-query";
 
 type AuthGuardProps = {
   children: ReactNode;
+  requireAuthentication?: boolean;
   requireBusinessProfile?: boolean;
 };
 
 export function AuthGuard({
   children,
+  requireAuthentication = true,
   requireBusinessProfile = true,
 }: AuthGuardProps) {
   const router = useRouter();
@@ -33,13 +37,26 @@ export function AuthGuard({
     getPreviewBypassSnapshot,
     getServerPreviewBypassSnapshot,
   );
-  const [profileGateState, setProfileGateState] = useState<ProfileGateState>(
-    requireBusinessProfile ? "checking" : "ready",
-  );
-  const [profileGateError, setProfileGateError] = useState<string | null>(null);
-  const [profileCheckAttempt, setProfileCheckAttempt] = useState(0);
+  const profileGateEnabled =
+    requireAuthentication &&
+    !isDevPreviewBypass &&
+    requireBusinessProfile &&
+    !loading &&
+    Boolean(user?.emailVerified);
+  const profileGateQuery = useQuery({
+    enabled: profileGateEnabled,
+    gcTime: BUSINESS_PROFILE_GATE_GC_TIME_MS,
+    queryFn: ({ signal }) => fetchBusinessProfileGate(signal),
+    queryKey: getBusinessProfileGateQueryKey(user?.uid ?? "signed-out"),
+    refetchOnWindowFocus: false,
+    staleTime: BUSINESS_PROFILE_GATE_STALE_TIME_MS,
+  });
 
   useEffect(() => {
+    if (!requireAuthentication) {
+      return;
+    }
+
     if (!isDevPreviewBypass && !loading && !user) {
       router.replace("/sign-in");
       return;
@@ -48,86 +65,23 @@ export function AuthGuard({
     if (!isDevPreviewBypass && !loading && user && !user.emailVerified) {
       router.replace("/verify-email");
     }
-  }, [isDevPreviewBypass, loading, router, user]);
+  }, [isDevPreviewBypass, loading, requireAuthentication, router, user]);
 
   useEffect(() => {
-    if (isDevPreviewBypass || !requireBusinessProfile) {
-      return;
+    if (
+      profileGateEnabled &&
+      profileGateQuery.data?.onboardingComplete === false
+    ) {
+      router.replace("/onboarding");
     }
+  }, [profileGateEnabled, profileGateQuery.data, router]);
 
-    if (loading || !user || !user.emailVerified) {
-      return;
-    }
-
-    const controller = new AbortController();
-
-    async function verifyCompletedProfile() {
-      setProfileGateError(null);
-      setProfileGateState("checking");
-
-      try {
-        const token = await getCurrentUserIdToken();
-
-        if (!token) {
-          throw new Error("Could not verify your sign-in session.");
-        }
-
-        const response = await fetch("/api/business-profile", {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
-        const data = (await response.json().catch(() => null)) as {
-          message?: string;
-          ok?: boolean;
-          profile?: { onboardingComplete?: boolean } | null;
-        } | null;
-
-        if (!response.ok || !data?.ok) {
-          throw new Error(
-            data?.message ?? "Could not verify your business profile.",
-          );
-        }
-
-        if (data.profile?.onboardingComplete !== true) {
-          setProfileGateState("redirecting");
-          router.replace("/onboarding");
-          return;
-        }
-
-        setProfileGateState("ready");
-      } catch (error) {
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        setProfileGateError(
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : "Could not verify your business profile.",
-        );
-        setProfileGateState("error");
-      }
-    }
-
-    void verifyCompletedProfile();
-
-    return () => controller.abort();
-  }, [
-    isDevPreviewBypass,
-    loading,
-    profileCheckAttempt,
-    requireBusinessProfile,
-    router,
-    user,
-  ]);
-
-  const retryProfileCheck = useCallback(() => {
-    setProfileCheckAttempt((attempt) => attempt + 1);
-  }, []);
+  if (!requireAuthentication) {
+    return children;
+  }
 
   if (!isDevPreviewBypass) {
-    if (loading || (requireBusinessProfile && profileGateState === "checking")) {
+    if (loading || (profileGateEnabled && profileGateQuery.isPending)) {
       return <GuardLoadingState label="Opening your workspace..." />;
     }
 
@@ -135,11 +89,14 @@ export function AuthGuard({
       return null;
     }
 
-    if (requireBusinessProfile && profileGateState === "redirecting") {
+    if (
+      profileGateEnabled &&
+      profileGateQuery.data?.onboardingComplete === false
+    ) {
       return <GuardLoadingState label="Finishing your business setup..." />;
     }
 
-    if (requireBusinessProfile && profileGateState === "error") {
+    if (profileGateEnabled && profileGateQuery.isError) {
       return (
         <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10 text-foreground sm:px-6">
           <Alert
@@ -149,14 +106,16 @@ export function AuthGuard({
             <AlertCircle aria-hidden="true" />
             <AlertTitle>We could not verify your business setup</AlertTitle>
             <AlertDescription>
-              {profileGateError ??
-                "Check your connection, then try opening the workspace again."}
+              {profileGateQuery.error instanceof Error &&
+              profileGateQuery.error.message.trim()
+                ? profileGateQuery.error.message
+                : "Check your connection, then try opening the workspace again."}
             </AlertDescription>
             <Button
               type="button"
               variant="outline"
               size="lg"
-              onClick={retryProfileCheck}
+              onClick={() => void profileGateQuery.refetch()}
               className="mt-2 w-fit"
             >
               <RefreshCw data-icon="inline-start" aria-hidden="true" />

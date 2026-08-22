@@ -9,7 +9,7 @@ import {
   getMissingTrendingDecisionEnvVars,
   recordTrendingCreativeDecision,
 } from "@/lib/trending/creative-decisions";
-import { replenishTrendingFormatAfterDecision } from "@/lib/trending/feed-replenishment";
+import { markDailyTrendingSlotDecided } from "@/lib/trending/unified-daily-feed-db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,12 +72,11 @@ export async function POST(request: Request) {
       ...parsed.data,
       userId,
     });
-    let replenishment: Awaited<
-      ReturnType<typeof replenishTrendingFormatAfterDecision>
-    > | null = null;
+    let dailyFeedSlotId: string | null = null;
 
     try {
-      replenishment = await replenishTrendingFormatAfterDecision({
+      dailyFeedSlotId = await markDailyTrendingSlotDecided({
+        assignmentId: parsed.data.assignmentId,
         format: parsed.data.format,
         userId,
       });
@@ -85,12 +84,12 @@ export async function POST(request: Request) {
       // The user's decision is already durable. A temporary queue or inventory
       // failure must not make the client retry and accidentally double-submit it.
       console.error(
-        "Could not schedule Trending feed replenishment after a saved decision:",
+        "Could not mark the daily Trending position after a saved decision:",
         error,
       );
     }
 
-    return json({ decision, ok: true, replenishment });
+    return json({ dailyFeedSlotId, decision, ok: true });
   } catch (error) {
     console.error("Could not save Trending creative decision:", error);
     return json(

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   formatHookEndSeconds,
+  formatViewCount,
   getInstagramReelShortcode,
   normalizeHookEndSeconds,
   ViralHookTimingInputError,
@@ -42,4 +43,15 @@ test("extracts a short, reviewer-friendly Reel identifier", () => {
     "DZYQrk7Rzkd",
   );
   assert.equal(getInstagramReelShortcode("not-a-url"), "Instagram Reel");
+});
+
+test("formats view counts in compact human-readable notation", () => {
+  assert.equal(formatViewCount(0), "0");
+  assert.equal(formatViewCount(850), "850");
+  assert.equal(formatViewCount(1_200), "1.2K");
+  assert.equal(formatViewCount(10_000), "10K");
+  assert.equal(formatViewCount(450_000), "450K");
+  assert.equal(formatViewCount(1_200_000), "1.2M");
+  assert.equal(formatViewCount(15_000_000), "15M");
+  assert.equal(formatViewCount(2_500_000_000), "2.5B");
 });

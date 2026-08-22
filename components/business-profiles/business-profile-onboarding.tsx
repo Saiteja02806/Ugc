@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   ArrowLeft,
@@ -58,6 +59,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
+import { getBusinessProfileGateQueryKey } from "@/lib/business-profiles/profile-gate-query";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   persistJobIdInUrl,
@@ -167,10 +169,11 @@ const initialManualDraft: ManualProfileDraft = {
 
 const countFormatter = new Intl.NumberFormat("en");
 const profileControlClassName =
-  "h-12 w-full rounded-lg border border-border bg-card-muted px-3 text-sm leading-6 text-foreground outline-none transition-[background-color,border-color,box-shadow] placeholder:text-muted-subtle hover:border-border-strong focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/20 disabled:cursor-not-allowed disabled:bg-card disabled:opacity-70";
+  "h-12 w-full rounded-xl border border-border bg-card-muted/60 px-3.5 text-sm leading-6 text-foreground outline-none transition-[background-color,border-color,box-shadow,transform] placeholder:text-muted-subtle hover:border-border-strong focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:bg-card disabled:opacity-70";
 
 export function BusinessProfileOnboarding() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { loading: authLoading, user } = useAuth();
   const persistedJobId = usePersistedJobIdFromUrl();
   const backgroundJobQuery = useBackgroundJob(persistedJobId);
@@ -224,6 +227,7 @@ export function BusinessProfileOnboarding() {
       return;
     }
 
+    const currentUserId = user.uid;
     const controller = new AbortController();
 
     async function loadProfile() {
@@ -232,6 +236,10 @@ export function BusinessProfileOnboarding() {
         hydrateProfile(loadedProfile);
 
         if (loadedProfile?.onboardingComplete) {
+          queryClient.setQueryData(
+            getBusinessProfileGateQueryKey(currentUserId),
+            { onboardingComplete: true },
+          );
           router.replace("/dashboard");
           router.refresh();
           return;
@@ -259,7 +267,14 @@ export function BusinessProfileOnboarding() {
 
     void loadProfile();
     return () => controller.abort();
-  }, [authLoading, persistedJobId, profileLoadAttempt, router, user]);
+  }, [
+    authLoading,
+    persistedJobId,
+    profileLoadAttempt,
+    queryClient,
+    router,
+    user,
+  ]);
 
   useEffect(() => {
     if (!backgroundJob || !backgroundJobTerminal) {
@@ -525,6 +540,10 @@ export function BusinessProfileOnboarding() {
     setStatus("saving");
 
     try {
+      if (!user) {
+        throw new Error("Sign in before completing onboarding.");
+      }
+
       const token = await getCurrentUserIdToken();
       if (!token) {
         throw new Error("Sign in before completing onboarding.");
@@ -546,6 +565,10 @@ export function BusinessProfileOnboarding() {
       if (!data.profile.onboardingComplete) {
         throw new Error("Onboarding was saved but is not complete yet.");
       }
+      queryClient.setQueryData(
+        getBusinessProfileGateQueryKey(user.uid),
+        { onboardingComplete: true },
+      );
       router.replace("/dashboard");
       router.refresh();
     } catch (completeError) {
@@ -672,10 +695,10 @@ export function BusinessProfileOnboarding() {
     <OnboardingFrame>
       <form
         onSubmit={submit}
-        className="overflow-hidden rounded-[var(--radius-modal)] border border-border/90 bg-card shadow-floating"
+        className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-floating transition-all duration-300"
       >
         <div
-          className="h-1 bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]"
+          className="h-1.5 bg-[linear-gradient(90deg,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet))]"
           aria-hidden="true"
         />
 
@@ -772,7 +795,7 @@ function BusinessInformationStep({
 
   return (
     <>
-      <div className="px-5 py-6 sm:px-7 sm:py-7">
+      <div className="px-5 py-6 sm:px-8 sm:py-8">
         <header>
           <Badge variant="secondary">Source details</Badge>
           <h2 className="mt-4 max-w-2xl text-balance text-2xl font-bold tracking-[-0.025em] text-foreground-strong sm:text-[30px]">
@@ -786,7 +809,7 @@ function BusinessInformationStep({
 
         <FieldSet className="mt-7">
           <FieldLegend className="sr-only">Business context source</FieldLegend>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3.5 sm:grid-cols-3">
             {intakeOptions.map((option) => {
               const Icon = option.icon;
               const selected = intakeType === option.value;
@@ -794,10 +817,10 @@ function BusinessInformationStep({
                 <label
                   key={option.value}
                   className={cn(
-                    "relative flex min-h-32 touch-manipulation cursor-pointer flex-col rounded-xl border p-4 text-left transition-[background-color,border-color,box-shadow,transform] duration-200 focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-card motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+                    "relative flex min-h-36 touch-manipulation cursor-pointer flex-col rounded-2xl border p-4.5 text-left transition-all duration-200 focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-card motion-reduce:transition-none motion-reduce:hover:translate-y-0",
                     selected
-                      ? "border-primary/50 bg-selected shadow-[0_10px_26px_rgb(225_101_64_/_0.08)]"
-                      : "border-border bg-card-muted/55 hover:-translate-y-0.5 hover:border-border-strong hover:bg-card-muted",
+                      ? "border-primary/60 bg-selected/90 shadow-[0_8px_24px_rgba(201,71,22,0.1)] ring-1 ring-primary/20"
+                      : "border-border/80 bg-card-muted/50 hover:-translate-y-0.5 hover:border-border-strong hover:bg-card-muted/80 shadow-xs",
                     isSaving && "cursor-not-allowed opacity-60",
                   )}
                 >
@@ -812,23 +835,23 @@ function BusinessInformationStep({
                   />
                   <span className="flex items-start justify-between gap-3">
                     <span className={cn(
-                      "flex size-9 shrink-0 items-center justify-center rounded-lg border",
+                      "flex size-10 shrink-0 items-center justify-center rounded-xl border transition-colors shadow-xs",
                       selected
                         ? "border-primary/25 bg-primary/10 text-primary"
-                        : "border-border bg-background text-muted",
+                        : "border-border/80 bg-card text-muted",
                     )}>
-                      <Icon className="size-4" aria-hidden="true" />
+                      <Icon className="size-4.5" aria-hidden="true" />
                     </span>
                     <span className={cn(
-                      "flex size-5 items-center justify-center rounded-full border",
+                      "flex size-5.5 items-center justify-center rounded-full border transition-all",
                       selected
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border text-transparent",
+                        ? "border-primary bg-primary text-primary-foreground shadow-xs scale-105"
+                        : "border-border-strong bg-card text-transparent",
                     )} aria-hidden="true">
-                      <Check className="size-3" />
+                      <Check className="size-3.5 stroke-[2.5]" />
                     </span>
                   </span>
-                  <span className="mt-4 text-sm font-bold text-foreground-strong">{option.label}</span>
+                  <span className="mt-4 text-[15px] font-bold tracking-tight text-foreground-strong">{option.label}</span>
                   <span className="mt-1 text-xs leading-5 text-muted">{option.description}</span>
                 </label>
               );
@@ -839,7 +862,7 @@ function BusinessInformationStep({
 
       <Separator />
 
-      <div className="px-5 py-7 sm:px-7 sm:py-8">
+      <div className="px-5 py-7 sm:px-8 sm:py-8">
         {intakeType === "website" ? (
           <section aria-labelledby="website-source-title">
             <h3 id="website-source-title" className="text-lg font-bold text-foreground-strong">Website details</h3>
@@ -883,12 +906,12 @@ function BusinessInformationStep({
                     <StepNumber value="1" />
                     <h4 className="text-sm font-bold text-foreground">Copy the analysis prompt</h4>
                   </div>
-                  <Button type="button" variant="outline" size="lg" onClick={onCopyPrompt} disabled={isSaving}>
-                    {copied ? <Check data-icon="inline-start" className="text-success" aria-hidden="true" /> : <Copy data-icon="inline-start" aria-hidden="true" />}
+                  <Button type="button" variant="outline" size="lg" className="h-10 rounded-xl px-4 font-medium" onClick={onCopyPrompt} disabled={isSaving}>
+                    {copied ? <Check data-icon="inline-start" className="text-success stroke-[2.5]" aria-hidden="true" /> : <Copy data-icon="inline-start" aria-hidden="true" />}
                     <span aria-live="polite">{copied ? "Copied" : "Copy prompt"}</span>
                   </Button>
                 </div>
-                <pre className="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-background p-4 font-mono text-xs leading-5 text-muted sm:p-5">{aiIdePrompt}</pre>
+                <pre className="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-border/80 bg-card p-4.5 font-mono text-xs leading-5 text-muted shadow-xs sm:p-5">{aiIdePrompt}</pre>
               </li>
               <li>
                 <div className="flex items-center gap-3">
@@ -944,12 +967,12 @@ function BusinessInformationStep({
       </div>
 
       <Separator />
-      <footer className="flex flex-col gap-5 bg-card-muted/35 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+      <footer className="flex flex-col gap-5 bg-card-muted/35 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <div className="max-w-lg">
           <p className="text-sm font-medium text-foreground">One profile grounds every personalized idea.</p>
           <p className="mt-1 text-xs leading-5 text-muted-subtle">Nothing is published until you review and approve it.</p>
         </div>
-        <Button type="submit" disabled={isSaving} size="lg" className="h-11 w-full px-4 sm:w-auto">
+        <Button type="submit" disabled={isSaving} size="lg" className="h-12 w-full rounded-xl px-6 font-semibold shadow-sm sm:w-auto">
           {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Sparkles data-icon="inline-start" aria-hidden="true" />}
           <span aria-live="polite">{isSaving ? getSavingLabel(intakeType) : "Save profile & prepare ideas"}</span>
         </Button>
@@ -994,9 +1017,9 @@ function BusinessIdentityStep({
       </p>
 
       {profile?.analysisSummary ? (
-        <div className="mt-6 rounded-xl border border-border bg-card-muted/45 p-4">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-success/10 text-success"><Check className="size-4" aria-hidden="true" /></span>
+        <div className="mt-6 rounded-2xl border border-border/80 bg-card-muted/45 p-4.5 shadow-xs">
+          <div className="flex items-start gap-3.5">
+            <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-success/15 text-success border border-success/20 shadow-xs"><Check className="size-4 stroke-[2.5]" aria-hidden="true" /></span>
             <div>
               <p className="text-sm font-semibold text-foreground-strong">Business source analyzed</p>
               <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted">{profile.analysisSummary}</p>
@@ -1027,20 +1050,20 @@ function BusinessIdentityStep({
 
       <FormField className="mt-6">
         <FieldLabel htmlFor={logoInputId}>Business logo <span className="font-normal text-muted-subtle">(optional)</span></FieldLabel>
-        <div className="flex flex-col gap-4 rounded-xl border border-border bg-card-muted/45 p-4 sm:flex-row sm:items-center">
-          <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-background text-muted">
+        <div className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-card-muted/45 p-5 shadow-xs sm:flex-row sm:items-center">
+          <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-border-strong/70 bg-card text-muted shadow-xs">
             {logoPreviewUrl ? (
               <Image src={logoPreviewUrl} alt="Business logo preview" width={80} height={80} unoptimized className="size-full object-contain p-1" />
             ) : (
-              <ImagePlus className="size-6" aria-hidden="true" />
+              <ImagePlus className="size-6 text-muted-subtle" aria-hidden="true" />
             )}
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground-strong">{logoPreviewUrl ? "Logo ready" : "Add a logo if you have one"}</p>
             <p className="mt-1 text-xs leading-5 text-muted">PNG, JPEG, or WebP. Maximum 2 MB.</p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2.5">
               <label htmlFor={logoInputId} className={cn(
-                "inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border-strong bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-card-muted focus-within:ring-2 focus-within:ring-focus",
+                "inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border-strong bg-card px-4 text-sm font-medium text-foreground transition-all hover:bg-card-muted hover:border-foreground/30 shadow-xs focus-within:ring-2 focus-within:ring-focus",
                 isSaving && "pointer-events-none opacity-55",
               )}>
                 <ImagePlus className="size-4" aria-hidden="true" />
@@ -1048,8 +1071,8 @@ function BusinessIdentityStep({
               </label>
               <input id={logoInputId} type="file" accept="image/png,image/jpeg,image/webp" disabled={isSaving} onChange={onLogoChange} className="sr-only" />
               {logoPreviewUrl ? (
-                <Button type="button" variant="ghost" size="lg" disabled={isSaving} onClick={onRemoveLogo}>
-                  <Trash2 data-icon="inline-start" aria-hidden="true" />Remove
+                <Button type="button" variant="ghost" size="lg" className="rounded-xl h-10 px-3 font-medium text-muted hover:text-error" disabled={isSaving} onClick={onRemoveLogo}>
+                  <Trash2 data-icon="inline-start" className="size-4" aria-hidden="true" />Remove
                 </Button>
               ) : null}
             </div>
@@ -1059,11 +1082,11 @@ function BusinessIdentityStep({
 
       {error ? <FieldError className="mt-4">{error}</FieldError> : null}
 
-      <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row">
-        <Button type="button" variant="outline" size="lg" className="h-12 sm:w-auto" onClick={onBack} disabled={isSaving}>
+      <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
+        <Button type="button" variant="outline" size="lg" className="h-12 rounded-xl px-6 font-semibold sm:w-auto hover:bg-card-muted" onClick={onBack} disabled={isSaving}>
           <ArrowLeft data-icon="inline-start" aria-hidden="true" />Back
         </Button>
-        <Button type="submit" size="lg" className="h-12 flex-1" disabled={isSaving || !businessName.trim()}>
+        <Button type="submit" size="lg" className="h-12 flex-1 rounded-xl font-semibold shadow-sm transition-transform active:scale-[0.99]" disabled={isSaving || !businessName.trim()}>
           {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <ArrowRight data-icon="inline-end" aria-hidden="true" />}
           {isSaving ? "Saving identity…" : "Continue"}
         </Button>
@@ -1099,9 +1122,14 @@ function PrimaryGoalStep({
 
       <FieldSet className="mt-7">
         <FieldLegend className="sr-only">Content goals</FieldLegend>
-        <div className="mb-3 flex items-center justify-between gap-4">
+        <div className="mb-3.5 flex items-center justify-between gap-4">
           <p className="text-sm font-semibold text-foreground-strong">Content goals</p>
-          <span className="text-xs font-medium text-muted" aria-live="polite">
+          <span className={cn(
+            "rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors",
+            primaryGoals.length > 0
+              ? "bg-primary/10 text-primary border border-primary/20"
+              : "bg-card-muted text-muted border border-border",
+          )} aria-live="polite">
             {primaryGoals.length === 0
               ? "Select at least one"
               : `${primaryGoals.length} selected`}
@@ -1113,10 +1141,10 @@ function PrimaryGoalStep({
             const selected = primaryGoals.includes(option.value);
             return (
               <label key={option.value} className={cn(
-                "group relative flex min-h-[76px] cursor-pointer items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-[background-color,border-color,box-shadow,transform] focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-card",
+                "group relative flex min-h-[80px] cursor-pointer items-center gap-3.5 rounded-2xl border px-4.5 py-3.5 text-left transition-all duration-200 focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-card motion-reduce:transition-none",
                 selected
-                  ? "border-primary/55 bg-selected shadow-[0_8px_24px_rgb(225_101_64_/_0.08)]"
-                  : "border-border bg-card hover:-translate-y-0.5 hover:border-border-strong hover:bg-card-muted/55",
+                  ? "border-primary/60 bg-selected/90 shadow-[0_8px_24px_rgba(201,71,22,0.1)] ring-1 ring-primary/20"
+                  : "border-border/80 bg-card hover:-translate-y-0.5 hover:border-border-strong hover:bg-card-muted/40 shadow-xs",
                 isSaving && "cursor-not-allowed opacity-60",
               )}>
                 <input
@@ -1129,23 +1157,23 @@ function PrimaryGoalStep({
                   className="sr-only"
                 />
                 <span className={cn(
-                  "flex size-10 shrink-0 items-center justify-center rounded-lg border transition-colors",
+                  "flex size-11 shrink-0 items-center justify-center rounded-xl border transition-colors shadow-xs",
                   selected
                     ? "border-primary/25 bg-primary/10 text-primary"
-                    : "border-border bg-card-muted text-muted group-hover:border-border-strong",
+                    : "border-border/70 bg-card-muted/70 text-muted group-hover:border-border-strong group-hover:text-foreground",
                 )}>
-                  <Icon className="size-[18px]" aria-hidden="true" />
+                  <Icon className="size-5 stroke-[1.85]" aria-hidden="true" />
                 </span>
-                <span className="min-w-0 flex-1 text-sm font-semibold leading-5 text-foreground-strong">
+                <span className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground-strong">
                   {option.label}
                 </span>
                 <span className={cn(
-                  "flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors",
+                  "flex size-5.5 shrink-0 items-center justify-center rounded-lg border-2 transition-all",
                   selected
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border-strong bg-card text-transparent",
+                    ? "border-primary bg-primary text-primary-foreground shadow-xs scale-105"
+                    : "border-border-strong/80 bg-card text-transparent group-hover:border-foreground/30",
                 )} aria-hidden="true">
-                  <Check className="size-3.5" />
+                  <Check className="size-3.5 stroke-[2.5]" />
                 </span>
               </label>
             );
@@ -1156,10 +1184,10 @@ function PrimaryGoalStep({
       {error ? <FieldError className="mt-4">{error}</FieldError> : null}
 
       <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Button type="button" variant="outline" size="lg" className="h-11 sm:min-w-28" onClick={onBack} disabled={isSaving}>
+        <Button type="button" variant="outline" size="lg" className="h-12 rounded-xl px-6 font-semibold sm:min-w-28 hover:bg-card-muted" onClick={onBack} disabled={isSaving}>
           <ArrowLeft data-icon="inline-start" aria-hidden="true" />Back
         </Button>
-        <Button type="submit" size="lg" className="h-11 sm:min-w-56" disabled={isSaving || primaryGoals.length === 0}>
+        <Button type="submit" size="lg" className="h-12 rounded-xl font-semibold sm:min-w-60 shadow-sm transition-transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed" disabled={isSaving || primaryGoals.length === 0}>
           {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Sparkles data-icon="inline-start" aria-hidden="true" />}
           {isSaving ? "Personalizing Trending…" : "Enter Trending"}
         </Button>

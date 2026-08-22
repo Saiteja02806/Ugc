@@ -24,6 +24,7 @@ type AvatarAssetInsert = {
   duration_seconds?: number | null;
   has_audio?: boolean;
   height?: number | null;
+  hook_text_placement?: Json | null;
   id?: string;
   influencer_key?: string | null;
   metadata?: Json;
@@ -84,6 +85,7 @@ type CreateAvatarAssetInput = {
   durationSeconds?: number | null;
   hasAudio: boolean;
   height?: number | null;
+  hookTextPlacement?: Json | null;
   influencerKey: string;
   metadata?: Json;
   name: string;
@@ -165,6 +167,7 @@ export async function createAvatarAsset(input: CreateAvatarAssetInput) {
       duration_seconds: input.durationSeconds ?? null,
       has_audio: input.hasAudio,
       height: input.height ?? null,
+      hook_text_placement: input.hookTextPlacement ?? null,
       influencer_key: input.influencerKey.trim(),
       metadata: input.metadata ?? {},
       name: input.name.trim(),

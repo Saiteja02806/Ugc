@@ -1,9 +1,11 @@
 import type { HookVideoBrowseEntry } from "@/lib/trending/hook-video-types";
 
-const TRENDING_HOOK_IDEA_COUNT = 6;
+const DEFAULT_TRENDING_HOOK_IDEA_COUNT = 6;
+const MAX_TRENDING_HOOK_IDEA_COUNT = 12;
 
 export function selectTrendingHookCandidates(
   inventory: readonly HookVideoBrowseEntry[],
+  requestedCount = DEFAULT_TRENDING_HOOK_IDEA_COUNT,
 ) {
   const seenVideoIds = new Set<string>();
   const validEntries = inventory.flatMap((entry) => {
@@ -28,7 +30,10 @@ export function selectTrendingHookCandidates(
       },
     ];
   });
-  const selected = selectDiverseCandidates(validEntries);
+  const selected = selectDiverseCandidates(
+    validEntries,
+    Math.min(Math.max(Math.trunc(requestedCount), 1), MAX_TRENDING_HOOK_IDEA_COUNT),
+  );
 
   return selected
     .map((candidate, candidateIndex) => ({
@@ -39,7 +44,7 @@ export function selectTrendingHookCandidates(
 
 function selectDiverseCandidates<T extends {
   entry: HookVideoBrowseEntry;
-}>(candidates: readonly T[]) {
+}>(candidates: readonly T[], requestedCount: number) {
   const selected: T[] = [];
   const remaining = [...candidates];
   const usedInfluencers = new Set<string>();
@@ -47,7 +52,7 @@ function selectDiverseCandidates<T extends {
   const usedVisualGroups = new Set<string>();
 
   while (
-    selected.length < TRENDING_HOOK_IDEA_COUNT &&
+    selected.length < requestedCount &&
     remaining.length > 0
   ) {
     let bestIndex = 0;

@@ -2,12 +2,25 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { QueryClient } from "@tanstack/react-query";
 
 import {
   DEFAULT_SOCIAL_SCHEDULING_CALENDAR_START_AT,
   getSocialSchedulingCalendarStartAt,
   isScheduleDraftVisibleInCalendar,
 } from "./calendar-start.ts";
+import {
+  getSchedulingMediaCatalogQueryKey,
+  SCHEDULING_CATALOG_FRESH_TIME_MS,
+  SCHEDULING_CATALOG_GC_TIME_MS,
+} from "./workspace-query-cache.ts";
+import {
+  ACCOUNT_DATA_FRESH_TIME_MS,
+  ACCOUNT_DATA_GC_TIME_MS,
+  getAccountScheduleConfigQueryKey,
+  getAccountSchedulesQueryKey,
+  getAccountSocialConnectionsQueryKey,
+} from "./account-data-query-cache.ts";
 
 const recoveryMigration = readProjectFile(
   "supabase/migrations/20260715191340_harden_schedule_recovery.sql",
@@ -37,11 +50,29 @@ const schedulingDb = readProjectFile("lib/scheduling/db.ts");
 const schedulingWorkspace = readProjectFile(
   "components/scheduling/scheduling-workspace.tsx",
 );
+const scheduleEditor = readProjectFile(
+  "components/scheduling/schedule-editor.tsx",
+);
+const accountDataQuery = readProjectFile(
+  "lib/scheduling/account-data-query.ts",
+);
+const instagramAnalyticsWorkspace = readProjectFile(
+  "components/analytics/instagram-analytics-workspace.tsx",
+);
+const instagramAccountManager = readProjectFile(
+  "components/settings/instagram-account-manager.tsx",
+);
 const carouselScheduleModal = readProjectFile(
   "components/social/platform-selection-modal.tsx",
 );
 const hookVideoScheduleDrawer = readProjectFile(
   "components/trending/hook-video-schedule-drawer.tsx",
+);
+const hookVideoComposer = readProjectFile(
+  "components/trending/hook-video-composer.tsx",
+);
+const hookVideoLibrary = readProjectFile(
+  "components/library/hook-video-library-tab.tsx",
 );
 const scheduleTime = readProjectFile("lib/scheduling/schedule-time.ts");
 const schedulingService = readProjectFile("lib/scheduling/service.ts");
@@ -58,7 +89,10 @@ const libraryWorkspace = readProjectFile(
 const renderRoute = readProjectFile(
   "app/api/schedules/[scheduleId]/render/route.ts",
 );
-const schedulingLayout = readProjectFile("app/scheduling/layout.tsx");
+const workspaceRouteBoundary = readProjectFile(
+  "components/layout/workspace-route-boundary.tsx",
+);
+const workspaceRoutes = readProjectFile("lib/navigation/workspace-route.ts");
 
 test("publish claiming locks the post and target and refuses cancelled work", () => {
   const claimFunction = getSection(
@@ -353,8 +387,308 @@ test("stale selected media is reported as an editable draft conflict", () => {
 });
 
 test("the scheduling workspace waits for Firebase auth restoration", () => {
-  assert.match(schedulingLayout, /import \{ AuthGuard \}/);
-  assert.match(schedulingLayout, /<AuthGuard>\{children\}<\/AuthGuard>/);
+  assert.match(
+    workspaceRoutes,
+    /prefix: "\/scheduling", activeKey: "scheduling", access: "profile"/,
+  );
+  assert.match(
+    workspaceRouteBoundary,
+    /requireBusinessProfile=\{route\.access === "profile"\}/,
+  );
+});
+
+test("schedule listing returns without waiting for provider cleanup", () => {
+  const listSchedules = getSection(
+    schedulingService,
+    "export async function listUserSchedules",
+    "export async function reconcileCancelledSchedulerResources",
+  );
+  const reconciliation = getSection(
+    schedulingService,
+    "export async function reconcileCancelledSchedulerResources",
+    "export async function getUserSchedule",
+  );
+  const getRoute = getSection(
+    schedulesRoute,
+    "export async function GET(request: Request)",
+    "export async function POST(request: Request)",
+  );
+
+  assert.match(listSchedules, /return listScheduledPostsForUser\(params\)/);
+  assert.doesNotMatch(
+    listSchedules,
+    /reconcileCancelledSchedulerResources|deleteSocialPublishSchedule/,
+  );
+  assert.match(
+    reconciliation,
+    /listCancelledScheduleTargetsNeedingCleanup\([\s\S]*limit: 10[\s\S]*userId/,
+  );
+  assert.match(
+    reconciliation,
+    /cleanupCancelledSchedulerTargets\(\{ targets, userId \}\)/,
+  );
+  assert.match(schedulesRoute, /import \{ after, NextResponse \} from "next\/server"/);
+  assert.match(
+    getRoute,
+    /after\(\(\) =>[\s\S]*reconcileCancelledSchedulerResources\(userId\)\.catch/,
+  );
+  assert.ok(
+    getRoute.indexOf("after(() =>") <
+      getRoute.indexOf("const schedules = await listUserSchedules"),
+  );
+  assert.ok(
+    getRoute.indexOf("requireFirebaseUser(request)") <
+      getRoute.indexOf("after(() =>"),
+  );
+  assert.ok(
+    getRoute.indexOf('url.searchParams.get("configOnly") === "1"') <
+      getRoute.indexOf("after(() =>"),
+  );
+  assert.ok(
+    getRoute.indexOf('url.searchParams.get("status") && !status') <
+      getRoute.indexOf("after(() =>"),
+  );
+  assert.match(
+    getRoute,
+    /reconcileCancelledSchedulerResources\(userId\)\.catch\([\s\S]*Could not reconcile cancelled schedule resources/,
+  );
+});
+
+test("direct cancellation still waits for provider cleanup", () => {
+  const cancellation = getSection(
+    schedulingService,
+    "export async function cancelUserSchedule",
+    "function assertScheduleTargetSelection",
+  );
+
+  assert.match(
+    cancellation,
+    /await cleanupCancelledSchedulerTargets\(\{[\s\S]*targets: cancelled\.targets[\s\S]*userId: params\.userId/,
+  );
+  assert.ok(
+    cancellation.indexOf("await cleanupCancelledSchedulerTargets") <
+      cancellation.lastIndexOf("return getRequiredSchedule"),
+  );
+});
+
+test("scheduling loads independent media and avatar catalogs concurrently", () => {
+  const mediaLoad = getSection(
+    schedulingWorkspace,
+    "const loadScheduleMedia = useCallback(async (",
+    "const loadSchedules = useCallback(async (",
+  );
+
+  assert.match(
+    mediaLoad,
+    /Promise\.all\(\[[\s\S]*collection=influencer[\s\S]*collection=video[\s\S]*\/api\/avatars/,
+  );
+  assert.match(mediaLoad, /avatarResult\?\.response\.ok/);
+});
+
+test("scheduling media catalogs are briefly reused only inside one Firebase account", () => {
+  assert.deepEqual(getSchedulingMediaCatalogQueryKey("user-a"), [
+    "scheduling-workspace",
+    "user-a",
+    "media-catalog",
+  ]);
+  assert.notDeepEqual(
+    getSchedulingMediaCatalogQueryKey("user-a"),
+    getSchedulingMediaCatalogQueryKey("user-b"),
+  );
+  assert.equal(SCHEDULING_CATALOG_FRESH_TIME_MS, 15_000);
+  assert.equal(SCHEDULING_CATALOG_GC_TIME_MS, 30 * 60 * 1_000);
+
+  assert.match(schedulingWorkspace, /const \{ user \} = useAuth\(\)/);
+  assert.match(schedulingWorkspace, /const accountId = user\?\.uid \?\? "signed-out"/);
+  assert.match(schedulingWorkspace, /queryClient\.getQueryData<SchedulingMediaCatalog>/);
+  assert.match(schedulingWorkspace, /queryClient\.fetchQuery\(\{/);
+  assert.match(
+    schedulingWorkspace,
+    /staleTime: options\.force \? 0 : SCHEDULING_CATALOG_FRESH_TIME_MS/,
+  );
+  assert.match(schedulingWorkspace, /retry: false/);
+});
+
+test("connections and schedules use shared account-scoped query keys", () => {
+  assert.deepEqual(getAccountSocialConnectionsQueryKey("user-a"), [
+    "account",
+    "user-a",
+    "social-connections",
+  ]);
+  assert.deepEqual(getAccountSchedulesQueryKey("user-a"), [
+    "account",
+    "user-a",
+    "schedules",
+  ]);
+  assert.deepEqual(getAccountScheduleConfigQueryKey("user-a"), [
+    "account",
+    "user-a",
+    "schedule-config",
+  ]);
+  assert.notDeepEqual(
+    getAccountSchedulesQueryKey("user-a"),
+    getAccountSchedulesQueryKey("user-b"),
+  );
+  assert.equal(ACCOUNT_DATA_FRESH_TIME_MS, 15_000);
+  assert.equal(ACCOUNT_DATA_GC_TIME_MS, 30 * 60 * 1_000);
+
+  assert.match(accountDataQuery, /queryClient\.fetchQuery\(\{/);
+  assert.match(accountDataQuery, /fetch\("\/api\/social\/connections"/);
+  assert.match(accountDataQuery, /fetch\("\/api\/schedules"/);
+  assert.match(accountDataQuery, /fetch\("\/api\/schedules\?configOnly=1"/);
+  assert.match(
+    accountDataQuery,
+    /staleTime: options\.force \? 0 : ACCOUNT_DATA_FRESH_TIME_MS/,
+  );
+  assert.match(accountDataQuery, /retry: false/);
+});
+
+test("active account screens consume the shared connection and schedule queries", () => {
+  for (const consumer of [
+    schedulingWorkspace,
+    carouselScheduleModal,
+    hookVideoScheduleDrawer,
+    instagramAnalyticsWorkspace,
+    instagramAccountManager,
+  ]) {
+    assert.match(consumer, /loadAccountSocialConnections/);
+  }
+
+  assert.match(schedulingWorkspace, /loadAccountSchedules/);
+  assert.match(instagramAnalyticsWorkspace, /loadAccountSchedules/);
+  assert.match(carouselScheduleModal, /loadAccountScheduleConfig/);
+  assert.match(hookVideoScheduleDrawer, /loadAccountScheduleConfig/);
+  assert.doesNotMatch(instagramAnalyticsWorkspace, /fetch\("\/api\/schedules"/);
+  assert.doesNotMatch(carouselScheduleModal, /fetch\("\/api\/social\/connections"/);
+  assert.doesNotMatch(hookVideoScheduleDrawer, /fetch\("\/api\/social\/connections"/);
+  assert.doesNotMatch(instagramAccountManager, /fetch\("\/api\/social\/connections"/);
+  assert.match(schedulingWorkspace, /upsertAccountSchedule\(queryClient, accountId, schedule\)/);
+  assert.match(carouselScheduleModal, /invalidateAccountSchedules\(queryClient, accountId\)/);
+  assert.match(hookVideoScheduleDrawer, /invalidateAccountSchedules\(queryClient, accountId\)/);
+});
+
+test("the catalog cache reuses fresh data, refetches on force, and isolates accounts", async () => {
+  const queryClient = new QueryClient();
+  let requestCount = 0;
+  const queryFn = async () => {
+    requestCount += 1;
+    return { requestCount };
+  };
+
+  try {
+    const first = await queryClient.fetchQuery({
+      queryFn,
+      queryKey: getSchedulingMediaCatalogQueryKey("user-a"),
+      staleTime: SCHEDULING_CATALOG_FRESH_TIME_MS,
+    });
+    const reused = await queryClient.fetchQuery({
+      queryFn,
+      queryKey: getSchedulingMediaCatalogQueryKey("user-a"),
+      staleTime: SCHEDULING_CATALOG_FRESH_TIME_MS,
+    });
+    const forced = await queryClient.fetchQuery({
+      queryFn,
+      queryKey: getSchedulingMediaCatalogQueryKey("user-a"),
+      staleTime: 0,
+    });
+    const otherAccount = await queryClient.fetchQuery({
+      queryFn,
+      queryKey: getSchedulingMediaCatalogQueryKey("user-b"),
+      staleTime: SCHEDULING_CATALOG_FRESH_TIME_MS,
+    });
+
+    assert.deepEqual(first, { requestCount: 1 });
+    assert.deepEqual(reused, first);
+    assert.deepEqual(forced, { requestCount: 2 });
+    assert.deepEqual(otherAccount, { requestCount: 3 });
+    assert.equal(requestCount, 3);
+  } finally {
+    queryClient.clear();
+  }
+});
+
+test("the shared account cache reuses fresh data, refetches on force, and isolates accounts", async () => {
+  const queryClient = new QueryClient();
+  let requestCount = 0;
+  const queryFn = async () => {
+    requestCount += 1;
+    return { requestCount };
+  };
+
+  try {
+    const first = await queryClient.fetchQuery({
+      queryFn,
+      queryKey: getAccountSocialConnectionsQueryKey("user-a"),
+      staleTime: ACCOUNT_DATA_FRESH_TIME_MS,
+    });
+    const reused = await queryClient.fetchQuery({
+      queryFn,
+      queryKey: getAccountSocialConnectionsQueryKey("user-a"),
+      staleTime: ACCOUNT_DATA_FRESH_TIME_MS,
+    });
+    const forced = await queryClient.fetchQuery({
+      queryFn,
+      queryKey: getAccountSocialConnectionsQueryKey("user-a"),
+      staleTime: 0,
+    });
+    const otherAccount = await queryClient.fetchQuery({
+      queryFn,
+      queryKey: getAccountSocialConnectionsQueryKey("user-b"),
+      staleTime: ACCOUNT_DATA_FRESH_TIME_MS,
+    });
+
+    assert.deepEqual(first, { requestCount: 1 });
+    assert.deepEqual(reused, first);
+    assert.deepEqual(forced, { requestCount: 2 });
+    assert.deepEqual(otherAccount, { requestCount: 3 });
+    assert.equal(requestCount, 3);
+  } finally {
+    queryClient.clear();
+  }
+});
+
+test("user actions still force fresh scheduling catalogs", () => {
+  const newScheduleFlow = getSection(
+    schedulingWorkspace,
+    "async function handleNewSchedulePost(",
+    "async function handleEditSchedule",
+  );
+  const editScheduleFlow = getSection(
+    schedulingWorkspace,
+    "async function handleEditSchedule",
+    "useEffect(() => {",
+  );
+
+  assert.match(newScheduleFlow, /loadSocialConnections\(\{ force: true \}\)/);
+  assert.match(newScheduleFlow, /loadScheduleMedia\(\{ force: true \}\)/);
+  assert.match(editScheduleFlow, /loadScheduleMedia\(\{ force: true \}\)/);
+  assert.match(editScheduleFlow, /loadSocialConnections\(\{ force: true \}\)/);
+  assert.match(
+    schedulingWorkspace,
+    /onRefreshMedia=\{\(\) => loadScheduleMedia\(\{ force: true \}\)\}/,
+  );
+});
+
+test("schedule refreshes share in-flight reads while polling still forces fresh data", () => {
+  const scheduleLoad = getSection(
+    schedulingWorkspace,
+    "const loadSchedules = useCallback(async (",
+    "const loadSocialConnections = useCallback(async (",
+  );
+
+  assert.match(
+    scheduleLoad,
+    /loadAccountSchedules\(queryClient, accountId, options\)/,
+  );
+  assert.doesNotMatch(scheduleLoad, /fetch\("\/api\/schedules"/);
+  assert.match(
+    schedulingWorkspace,
+    /ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 2_000/,
+  );
+  assert.match(
+    schedulingWorkspace,
+    /window\.setInterval\(\(\) => \{[\s\S]*?loadSchedules\(\{ force: true \}\)/,
+  );
 });
 
 test("a deep-linked carousel draft opens the scheduling editor without switching to Drafts", () => {
@@ -373,7 +707,7 @@ test("a deep-linked carousel draft opens the scheduling editor without switching
   assert.match(draftHandoff, /setDrawerOpen\(true\)/);
   assert.match(
     draftHandoff,
-    /schedule\.sourceKind === "library_item"[\s\S]*?loadSocialConnections\(\)[\s\S]*?Promise\.all\(\[loadScheduleMedia\(\), loadSocialConnections\(\)\]\)/,
+    /schedule\.sourceKind === "library_item"[\s\S]*?loadSocialConnections\(\{ force: true \}\)[\s\S]*?Promise\.all\(\[[\s\S]*?loadScheduleMedia\(\{ force: true \}\)[\s\S]*?loadSocialConnections\(\{ force: true \}\)/,
   );
   assert.doesNotMatch(draftHandoff, /setActiveTab\("drafts"\)/);
   assert.doesNotMatch(draftHandoff, /setViewMode\("list"\)/);
@@ -386,14 +720,14 @@ test("a deep-linked carousel draft opens the scheduling editor without switching
 
 test("new video schedules auto-select the only available scheduled video", () => {
   assert.match(
-    schedulingWorkspace,
+    scheduleEditor,
     /editingSchedule \|\|[\s\S]*selectedDemoMediaId \|\|[\s\S]*demoMediaOptions\.length !== 1[\s\S]*setSelectedDemoMediaId\(demoMediaOptions\[0\]!\.id\)/,
   );
 });
 
 test("carousel captions remain optional and are never replaced with the carousel title", () => {
   const mediaValidation = getSection(
-    schedulingWorkspace,
+    scheduleEditor,
     "function getScheduleMediaValidationError",
     "function getStatusPreviewMessage",
   );
@@ -406,12 +740,44 @@ test("carousel captions remain optional and are never replaced with the carousel
   assert.doesNotMatch(mediaValidation, /caption/i);
   assert.match(requestBody, /caption: submission\.caption/);
   assert.doesNotMatch(requestBody, /submission\.caption\s*\|\|/);
-  assert.match(schedulingWorkspace, /Caption[\s\S]*?\(optional\)/);
-  assert.match(schedulingWorkspace, /Caption optional\./);
+  assert.match(scheduleEditor, /Caption[\s\S]*?\(optional\)/);
+  assert.match(scheduleEditor, /Caption optional\./);
   assert.match(
-    schedulingWorkspace,
+    scheduleEditor,
     /Confirm the carousel, choose your Instagram account, and set the publish time\./,
   );
+});
+
+test("the Scheduling editor loads only after an editor flow opens", () => {
+  assert.match(schedulingWorkspace, /const ScheduleEditor = dynamic\(/);
+  assert.match(
+    schedulingWorkspace,
+    /import\("@\/components\/scheduling\/schedule-editor"\)/,
+  );
+  assert.doesNotMatch(
+    schedulingWorkspace,
+    /function NewScheduleDrawer|function ScheduleFlowSection/,
+  );
+  assert.match(
+    schedulingWorkspace,
+    /drawerOpen \? \([\s\S]*?<ScheduleEditor/,
+  );
+  assert.match(schedulingWorkspace, /loading: ScheduleEditorLoading/);
+  assert.match(scheduleEditor, /export function ScheduleEditor/);
+  assert.match(scheduleEditor, /onPrepareCatalogInfluencer/);
+  assert.match(
+    schedulingWorkspace,
+    /onRefreshMedia=\{\(\) => loadScheduleMedia\(\{ force: true \}\)\}/,
+  );
+  assert.match(
+    schedulingWorkspace,
+    /const \[drawerOpen, setDrawerOpen\] = useState\(false\)/,
+  );
+  assert.match(
+    schedulingWorkspace,
+    /const \[editingScheduleId, setEditingScheduleId\] = useState<string \| null>/,
+  );
+  assert.match(scheduleEditor, /const \[caption, setCaption\] = useState/);
 });
 
 test("carousel scheduling stays inline on Trending and Library", () => {
@@ -430,6 +796,53 @@ test("carousel scheduling stays inline on Trending and Library", () => {
   );
   assert.match(libraryWorkspace, /await scheduleLibraryCarousel\(/);
   assert.match(libraryWorkspace, /Carousel scheduled\. View it on the Scheduled page\./);
+});
+
+test("the large inline Carousel scheduler loads only after scheduling is opened", () => {
+  for (const workspace of [trendingWorkspace, libraryWorkspace]) {
+    assert.match(workspace, /const PlatformSelectionModal = dynamic\(/);
+    assert.match(
+      workspace,
+      /import\("@\/components\/social\/platform-selection-modal"\)/,
+    );
+    assert.doesNotMatch(
+      workspace,
+      /import \{\s*PlatformSelectionModal[\s,}]/,
+    );
+    assert.match(
+      workspace,
+      /scheduleContext \? \([\s\S]*?<PlatformSelectionModal[\s\S]*?context=\{scheduleContext\}[\s\S]*?open/,
+    );
+    assert.match(workspace, /loading: PlatformSelectionModalLoading/);
+  }
+});
+
+test("the Hook and Wall scheduling drawer loads only from an open flow", () => {
+  for (const source of [trendingWorkspace, hookVideoComposer, hookVideoLibrary]) {
+    assert.match(source, /const HookVideoScheduleDrawer = dynamic\(/);
+    assert.match(
+      source,
+      /import\("@\/components\/trending\/hook-video-schedule-drawer"\)/,
+    );
+    assert.doesNotMatch(
+      source,
+      /import \{\s*HookVideoScheduleDrawer[\s,}]/,
+    );
+    assert.match(source, /loading: PlatformSelectionModalLoading/);
+  }
+
+  assert.match(
+    trendingWorkspace,
+    /pendingWallTextScheduleCandidate \? \([\s\S]*<HookVideoScheduleDrawer/,
+  );
+  assert.match(
+    hookVideoComposer,
+    /scheduleDrawerOpen &&[\s\S]*<HookVideoScheduleDrawer/,
+  );
+  assert.match(
+    hookVideoLibrary,
+    /pendingScheduleItem \? \([\s\S]*<HookVideoScheduleDrawer/,
+  );
 });
 
 test("the inline carousel modal implements exact-account content and time steps", () => {
@@ -555,12 +968,12 @@ test("social scheduling uses one five-minute rule without quarter-hour rounding"
   }
 
   assert.match(
-    schedulingWorkspace,
+    scheduleEditor,
     /SOCIAL_SCHEDULING_TIME_STEP_SECONDS \/ 60/,
   );
-  assert.match(schedulingWorkspace, /function ScheduleTimePicker/);
-  assert.doesNotMatch(schedulingWorkspace, /type="time"/);
-  assert.doesNotMatch(schedulingWorkspace, /getMinutes\(\) \/ 15/);
+  assert.match(scheduleEditor, /function ScheduleTimePicker/);
+  assert.doesNotMatch(scheduleEditor, /type="time"/);
+  assert.doesNotMatch(scheduleEditor, /getMinutes\(\) \/ 15/);
 
   assert.doesNotMatch(carouselScheduleModal, /minimumLeadMinutes \+ 2/);
   assert.match(
@@ -572,28 +985,28 @@ test("social scheduling uses one five-minute rule without quarter-hour rounding"
 test("the main scheduler uses compact horizontal video and time dropdowns", () => {
   assert.match(
     schedulingWorkspace,
-    /setDemoMediaOptions\([\s\S]*filter\(isScheduledVideoMediaAsset\)/,
+    /demoMediaOptions: videoAssets[\s\S]*filter\(isScheduledVideoMediaAsset\)/,
   );
-  assert.match(schedulingWorkspace, /title="Choose a video"/);
-  assert.match(schedulingWorkspace, /Choose a video to publish/);
+  assert.match(scheduleEditor, /title="Choose a video"/);
+  assert.match(scheduleEditor, /Choose a video to publish/);
   assert.match(
-    schedulingWorkspace,
+    scheduleEditor,
     /Scroll sideways through Creative Assets\. Selecting a video closes this list\./,
   );
   assert.match(
-    schedulingWorkspace,
+    scheduleEditor,
     /flex snap-x snap-mandatory gap-3 overflow-x-auto/,
   );
-  assert.match(schedulingWorkspace, /function SchedulePrimaryMediaCard/);
-  assert.match(schedulingWorkspace, /<ScheduleMediaVisual option=\{option\}/);
-  assert.match(schedulingWorkspace, /setFailedThumbnailUrl/);
-  assert.match(schedulingWorkspace, /24-hour time with 1-minute precision\./);
-  assert.match(schedulingWorkspace, /function ScheduleTimeRail/);
+  assert.match(scheduleEditor, /function SchedulePrimaryMediaCard/);
+  assert.match(scheduleEditor, /<ScheduleMediaVisual option=\{option\}/);
+  assert.match(scheduleEditor, /setFailedThumbnailUrl/);
+  assert.match(scheduleEditor, /24-hour time with 1-minute precision\./);
+  assert.match(scheduleEditor, /function ScheduleTimeRail/);
   assert.match(
-    schedulingWorkspace,
+    scheduleEditor,
     /snap-x snap-mandatory gap-1\.5 overflow-x-auto/,
   );
-  assert.match(schedulingWorkspace, /aria-label="Scheduling checklist"/);
+  assert.match(scheduleEditor, /aria-label="Scheduling checklist"/);
 });
 
 test("every calendar date opens the dedicated day view", () => {

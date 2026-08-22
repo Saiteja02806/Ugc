@@ -37,12 +37,23 @@ test("Creative Assets exposes a durable Saved route and tab", () => {
 });
 
 test("Saved includes every reviewed Trending format", () => {
-  assert.match(savedTab, /<HookVideoLibraryTab \/>/);
-  assert.match(savedTab, /<WallTextLibraryTab \/>/);
-  assert.match(savedTab, /<CarouselLibraryTab \/>/);
+  assert.match(savedTab, /<HookVideoLibraryTab embedded \/>/);
+  assert.match(savedTab, /<WallTextLibraryTab embedded \/>/);
+  assert.match(savedTab, /<CarouselLibraryTab embedded \/>/);
   assert.match(savedTab, /Hook videos/);
   assert.match(savedTab, /Wall-of-Text/);
   assert.match(savedTab, /Carousels/);
+});
+
+test("Saved content renders through a flat embedded presentation", () => {
+  assert.doesNotMatch(savedTab, /Every reviewed creative you save/);
+  assert.match(savedTab, /id="saved-creative-assets-heading" className="sr-only"/);
+  assert.match(hookLibrary, /embedded = false/);
+  assert.match(wallLibrary, /embedded = false/);
+  assert.match(carouselLibrary, /embedded = false/);
+  assert.match(hookLibrary, /!embedded && "overflow-hidden rounded-panel/);
+  assert.match(wallLibrary, /!embedded && "overflow-hidden rounded-panel/);
+  assert.match(carouselLibrary, /!embedded && "overflow-hidden rounded-panel/);
 });
 
 test("Saved category controls stay readable on narrow screens", () => {

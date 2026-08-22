@@ -1,0 +1,115 @@
+{
+  "schemaVersion": "wall-text-video-manifest-v1",
+  "sourceBatch": "wall-text-real-2026-08-20-part-8",
+  "reviewedAt": "2026-08-20",
+  "playback": {
+    "mode": "once",
+    "textVisibility": "full-duration"
+  },
+  "visualGroups": {
+    "car_selfie": "Influencer filmed inside a car in a selfie-style composition.",
+    "indoor_closeup": "Indoor influencer framed primarily as a close-up.",
+    "indoor_medium": "Indoor influencer framed as a medium or seated shot.",
+    "outdoor_static_selfie": "Outdoor influencer in a mostly static selfie composition.",
+    "outdoor_walking_selfie": "Outdoor influencer walking while filming in selfie style."
+  },
+  "assets": [
+    {
+      "catalogName": "outdoor-walking-selfie-005",
+      "approvedPlacementZone": "middle",
+      "fileName": "Perform_face_swap_and_edit_202608131231-Vmake-silent.mp4",
+      "sha256": "c3f32c039b26103dec4f5e1e892e65db76c66c5589dedfe06b2f149962649998",
+      "visualGroup": "outdoor_walking_selfie"
+    },
+    {
+      "catalogName": "indoor-medium-058",
+      "fileName": "Perform_face_swap_and_edit_202608131945-Vmake-silent.mp4",
+      "sha256": "c8246146fe8941876a4329704f069c0640cec59868332d86ad3b7841a81eb8ae",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "indoor-medium-059",
+      "approvedPlacementZone": "lower-middle",
+      "fileName": "Perform_face_swap_and_video_202608111646-Vmake-silent.mp4",
+      "sha256": "8e126d4ccac698415658892cb3c4fa77b204bb6423b199f7ecf2924bb364bde1",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "outdoor-static-selfie-011",
+      "fileName": "Perform_face_swap_and_video_202608131215-Vmake-silent.mp4",
+      "sha256": "4d973b5c22840f6c4b69d521bea7dcbf8462bc10ca3bea252012d16283e3802a",
+      "visualGroup": "outdoor_static_selfie"
+    },
+    {
+      "catalogName": "indoor-medium-060",
+      "fileName": "Perform_face_swap_video_editing_202608161613-Vmake-silent.mp4",
+      "sha256": "8b0499448427f46f01f69b2dfb128ff4911eb9737c47264f4b3cf91470b5bab4",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "outdoor-static-selfie-012",
+      "approvedPlacementZone": "lower-middle",
+      "fileName": "Perform_video_face_swap_202608111649-Vmake-silent.mp4",
+      "sha256": "4e3efce609157a7be8dfc39ff5825c4a7731044df78a3a0f9e61ae4926870ae9",
+      "visualGroup": "outdoor_static_selfie"
+    },
+    {
+      "catalogName": "outdoor-static-selfie-013",
+      "approvedPlacementZone": "lower-middle",
+      "fileName": "Swap_face_and_change_background_202608121837_1_-Vmake-silent.mp4",
+      "sha256": "ecf04cd49fd2e7f7621cff2dc384e3ea996e131ae4c1f82123d45c022431e136",
+      "visualGroup": "outdoor_static_selfie"
+    },
+    {
+      "catalogName": "indoor-medium-061",
+      "approvedPlacementZone": "lower-middle",
+      "fileName": "Swap_face_and_edit_video_202608111645-Vmake-silent.mp4",
+      "sha256": "a53187cb76559afe24b8544ae406480b41dd555cd2bb562026887555d0d47771",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "car-selfie-021",
+      "fileName": "Swap_video_face_with_image_202608111657-Vmake-silent.mp4",
+      "sha256": "2fa5dffa0903531cb36df25d12f1561cbece4056b47531f5ffecd7d7e99b4993",
+      "visualGroup": "car_selfie"
+    },
+    {
+      "catalogName": "indoor-closeup-039",
+      "fileName": "video_202608111654-Vmake-silent.mp4",
+      "sha256": "e6f378ceb72bbc837cfbf81f2fd0c1c3e4d1ed9b47cefe9df672dfe5b4184da6",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-closeup-040",
+      "fileName": "Video_face_swap_and_edit_202608111645-Vmake-silent.mp4",
+      "sha256": "a680a34e8ce7826bb37682ea49a039d1a37d7b4de09fa86e01023e692f3f8a5d",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-062",
+      "fileName": "Video_face_swap_and_edit_202608111646-Vmake-silent.mp4",
+      "sha256": "d60fb7cdb5fe9ea94deb612a957c6854e459b2677ca6fff0db3c00cae1e69e8b",
+      "visualGroup": "indoor_medium"
+    },
+    {
+      "catalogName": "outdoor-static-selfie-014",
+      "fileName": "Video_face_swap_and_edit_202608131146-Vmake-silent.mp4",
+      "sha256": "de6fb03cbe4d480166afcee7adb098bed7a95f7135ffe4a7b2470de1c74aef54",
+      "visualGroup": "outdoor_static_selfie"
+    },
+    {
+      "catalogName": "indoor-closeup-041",
+      "approvedPlacementZone": "lower-middle",
+      "fileName": "Video_face_swap_and_edit_202608131202-Vmake-silent.mp4",
+      "sha256": "4227db641e6ff5a323d04bdeeccf3f5f3536b2e2a7c7b74bbd790052452bdb7a",
+      "visualGroup": "indoor_closeup"
+    },
+    {
+      "catalogName": "indoor-medium-063",
+      "fileName": "Video_face_swap_and_edit_202608131221 (1)-silent.mp4",
+      "sha256": "68295eba5d36fc45e9db4b707541e56a9d8fbec0b99cc6d3c77daac1c53739f4",
+      "visualGroup": "indoor_medium"
+    }
+  ],
+  "rejectedDuplicates": []
+}

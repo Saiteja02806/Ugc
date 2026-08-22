@@ -48,15 +48,18 @@ test("saves only the fixed-zero Hook ending boundary", () => {
   assert.doesNotMatch(saveRoute, /publish_status.*published/);
 });
 
-test("renders trusted stored embeds lazily and keeps future actions disabled", () => {
+test("renders trusted stored embeds lazily with one future action", () => {
   assert.match(workspace, /https:\/\/www\.instagram\.com\/embed\.js/);
   assert.match(workspace, /onError=\{\(\) => setSdkState\("error"\)\}/);
   assert.match(instagramEmbed, /IntersectionObserver/);
   assert.match(instagramEmbed, /EMBED_LOAD_TIMEOUT_MS/);
   assert.match(instagramEmbed, /Video preview did not load/);
   assert.match(instagramEmbed, /dangerouslySetInnerHTML/);
-  assert.match(reviewCard, />\s*Use This Hook\s*</);
-  assert.match(reviewCard, /Use This Hook[\s\S]*disabled/);
+  assert.match(reviewCard, /Use This Hook/);
+  assert.match(reviewCard, /Use It/);
+  assert.match(reviewCard, /handleUseReference/);
+  assert.doesNotMatch(reviewCard, /Hook timing|Needs timing|Hook ends at/);
+  assert.doesNotMatch(reviewCard, /Save ending time|More options/);
 });
 
 test("presents Hook references as plain video-first review cards", () => {
@@ -65,7 +68,18 @@ test("presents Hook references as plain video-first review cards", () => {
   assert.doesNotMatch(reviewCard, /Reel \{shortcode\}/);
   assert.match(instagramEmbed, /aspect-\[9\/16\]/);
   assert.match(instagramEmbed, /VIDEO_HORIZONTAL_CROP/);
-  assert.match(reviewCard, />\s*Hook timing\s*</);
+  assert.match(
+    instagramEmbed,
+    /\(EMBED_STAGE_WIDTH - VIDEO_VIEWPORT_WIDTH \/ VIDEO_OVERSCAN\) \/ 2/,
+  );
+  assert.doesNotMatch(instagramEmbed, /VIDEO_HORIZONTAL_CROP = 80/);
+  assert.doesNotMatch(instagramEmbed, /bg-card-muted px-4 py-4/);
+  assert.doesNotMatch(instagramEmbed, /ring-black/);
+  assert.match(
+    reviewCard,
+    /overflow-hidden rounded-xl border border-border bg-card shadow-sm/,
+  );
+  assert.match(reviewCard, /border-t border-border bg-card p-2/);
 });
 
 test("keeps the review implementation outside Trending and generation systems", () => {

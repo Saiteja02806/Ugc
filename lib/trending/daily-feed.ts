@@ -300,6 +300,7 @@ export function getMissingTrendingFeedEnvVars() {
 }
 
 export async function ensureTrendingDailyFeed(params: {
+  dailyLimitOverride?: number;
   markItemsShown?: boolean;
   profile: BusinessProfileRecord;
   throwOnRefillError?: boolean;
@@ -317,12 +318,47 @@ export async function ensureTrendingDailyFeed(params: {
 
   const localDate = getLocalDateForTimezone(timezone);
   const currentEntitlement = await getTrendingFeedEntitlement(params.userId);
-  const feed = await getOrCreateDailyFeed({
-    entitlement: currentEntitlement,
+  const requestedDailyLimit = params.dailyLimitOverride === undefined
+    ? currentEntitlement.dailyCarouselLimit
+    : Math.max(Math.trunc(params.dailyLimitOverride), 1);
+  const requestedEntitlement = {
+    ...currentEntitlement,
+    dailyCarouselLimit: requestedDailyLimit,
+  };
+  let feed = await getOrCreateDailyFeed({
+    entitlement: requestedEntitlement,
     localDate,
     timezone,
     userId: params.userId,
   });
+
+  // The legacy Carousel feed remains the inventory source for unified daily
+  // positions. An existing row may have been snapshotted with the old limit of
+  // 10 before a Growth mix asks for 12 or 13 Carousels. Only raise that
+  // internal inventory ceiling; never lower it or replace already assigned
+  // content.
+  if (
+    params.dailyLimitOverride !== undefined &&
+    feed.daily_limit < requestedDailyLimit
+  ) {
+    const { data: expandedFeed, error: expandError } = await getClient()
+      .from(DAILY_CAROUSEL_FEEDS_TABLE)
+      .update({ daily_limit: requestedDailyLimit })
+      .eq("id", feed.id)
+      .lt("daily_limit", requestedDailyLimit)
+      .select("*")
+      .maybeSingle();
+
+    if (expandError) {
+      throw new Error(
+        `Could not expand today's Carousel inventory: ${expandError.message}`,
+      );
+    }
+
+    if (expandedFeed) {
+      feed = expandedFeed;
+    }
+  }
   const entitlement = {
     dailyCarouselLimit: feed.daily_limit,
     planKey: feed.plan_key,

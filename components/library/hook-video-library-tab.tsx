@@ -10,13 +10,12 @@ import {
   UserRound,
   Video,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import {
-  HookVideoScheduleDrawer,
-  type HookVideoScheduleSelection,
-} from "@/components/trending/hook-video-schedule-drawer";
+import { PlatformSelectionModalLoading } from "@/components/social/platform-selection-modal-loading";
+import type { HookVideoScheduleSelection } from "@/components/trending/hook-video-schedule-drawer";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +26,14 @@ import {
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { HookVideoSourceKind } from "@/lib/trending/hook-video-types";
 import { cn } from "@/lib/utils";
+
+const HookVideoScheduleDrawer = dynamic(
+  () =>
+    import("@/components/trending/hook-video-schedule-drawer").then(
+      (module) => module.HookVideoScheduleDrawer,
+    ),
+  { loading: PlatformSelectionModalLoading },
+);
 
 type SavedHookVideo = {
   createdAt: string;
@@ -39,7 +46,12 @@ type SavedHookVideo = {
   influencerVideoId: string;
   influencerVideoTitle: string;
   librarySavedAt: string | null;
-  previewThumbnailUrl: string | null;
+  renderError: string | null;
+  renderJobId: string | null;
+  renderStatus: "not_requested" | "queued" | "rendering" | "ready" | "failed";
+  renderedAt: string | null;
+  renderedMediaAssetId: string | null;
+  renderedVideoUrl: string | null;
   scheduledPostId: string | null;
   selectedHookId: string;
   sourceKind: HookVideoSourceKind;
@@ -53,10 +65,6 @@ type SavedHookVideoResponse =
   | { drafts: SavedHookVideo[]; ok: true }
   | { error?: string; ok?: false };
 
-type PreviewSessionResponse =
-  | { ok: true; previewUrl: string }
-  | { error?: string; ok?: false };
-
 type ScheduleResponse =
   | { draft: { id: string }; ok: true; scheduleId: string }
   | { error?: string; ok?: false };
@@ -65,19 +73,19 @@ type RenderResponse =
   | { jobId: string | null; ok: true; status: string }
   | { message?: string; ok?: false };
 
-export function HookVideoLibraryTab() {
+export function HookVideoLibraryTab({
+  embedded = false,
+}: {
+  embedded?: boolean;
+} = {}) {
   const [items, setItems] = useState<SavedHookVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<SavedHookVideo | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
   const [schedulingId, setSchedulingId] = useState<string | null>(null);
   const [pendingScheduleItem, setPendingScheduleItem] =
     useState<SavedHookVideo | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
-  const previewRequestId = useRef(0);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -113,50 +121,18 @@ export function HookVideoLibraryTab() {
     return () => window.clearTimeout(timer);
   }, [loadItems]);
 
-  async function openPreview(item: SavedHookVideo) {
-    const requestId = previewRequestId.current + 1;
-    previewRequestId.current = requestId;
-    setSelectedItem(item);
-    setPreviewUrl(null);
-    setPreviewError(null);
-    setPreviewLoading(true);
+  useEffect(() => {
+    if (!items.some((item) => isRenderPending(item.renderStatus))) {
+      return;
+    }
 
-    try {
-      const token = await requireToken();
-      const response = await fetch(
-        `/api/trending/hook-videos/videos/${encodeURIComponent(item.influencerVideoId)}/preview-session`,
-        {
-          body: JSON.stringify({
-            influencerId: item.influencerId,
-            sourceKind: item.sourceKind,
-          }),
-          cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          method: "POST",
-        },
-      );
-      const data = (await response.json().catch(() => null)) as
-        | PreviewSessionResponse
-        | null;
+    const timer = window.setInterval(() => void loadItems(), 5_000);
+    return () => window.clearInterval(timer);
+  }, [items, loadItems]);
 
-      if (!response.ok || !data || data.ok !== true) {
-        throw new Error(getApiError(data, "Could not load this preview."));
-      }
-
-      if (previewRequestId.current === requestId) {
-        setPreviewUrl(data.previewUrl);
-      }
-    } catch (error) {
-      if (previewRequestId.current === requestId) {
-        setPreviewError(getErrorMessage(error, "Could not load this preview."));
-      }
-    } finally {
-      if (previewRequestId.current === requestId) {
-        setPreviewLoading(false);
-      }
+  function openPreview(item: SavedHookVideo) {
+    if (item.renderStatus === "ready" && item.renderedVideoUrl) {
+      setSelectedItem(item);
     }
   }
 
@@ -251,14 +227,24 @@ export function HookVideoLibraryTab() {
 
   return (
     <section
-      className="relative overflow-hidden rounded-panel border border-border bg-card"
+      className={cn(
+        "relative",
+        !embedded && "overflow-hidden rounded-panel border border-border bg-card",
+      )}
       aria-labelledby="hook-video-library-heading"
     >
-      <header className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <header
+        className={cn(
+          "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
+          embedded ? "pb-3" : "px-4 py-4 sm:px-5",
+        )}
+      >
         <div className="flex min-w-0 items-start gap-3">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
-            <Video className="size-[18px]" aria-hidden="true" />
-          </span>
+          {!embedded ? (
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
+              <Video className="size-[18px]" aria-hidden="true" />
+            </span>
+          ) : null}
           <div className="min-w-0">
             <h2
               id="hook-video-library-heading"
@@ -266,9 +252,11 @@ export function HookVideoLibraryTab() {
             >
               Reel hooks
             </h2>
-            <p className="mt-0.5 text-sm leading-5 text-muted">
-              Saved hooks paired with your real opening and product footage.
-            </p>
+            {!embedded ? (
+              <p className="mt-0.5 text-sm leading-5 text-muted">
+                Saved hooks paired with your real opening and product footage.
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -297,7 +285,11 @@ export function HookVideoLibraryTab() {
         </div>
       </header>
 
-      <div className="border-t border-border bg-surface-subtle/55 p-4 sm:p-5">
+      <div
+        className={cn(
+          !embedded && "border-t border-border bg-surface-subtle/55 p-4 sm:p-5",
+        )}
+      >
         {errorMessage ? (
           <p
             role="alert"
@@ -325,7 +317,14 @@ export function HookVideoLibraryTab() {
         ) : null}
 
         {!loading && items.length === 0 ? (
-          <div className="flex min-h-[330px] items-center justify-center rounded-panel border border-dashed border-border-strong bg-card px-5 py-8 text-center">
+          <div
+            className={cn(
+              "flex items-center justify-center px-5 py-8 text-center",
+              embedded
+                ? "min-h-44"
+                : "min-h-[330px] rounded-panel border border-dashed border-border-strong bg-card",
+            )}
+          >
             <div className="max-w-md">
               <span className="mx-auto flex size-11 items-center justify-center rounded-full bg-brand-soft text-primary">
                 <Sparkles className="size-4.5" aria-hidden="true" />
@@ -356,31 +355,49 @@ export function HookVideoLibraryTab() {
               >
                 <button
                   type="button"
-                  onClick={() => void openPreview(item)}
+                  onClick={() => openPreview(item)}
                   aria-label={`Preview ${item.hookText}`}
-                  className="relative block aspect-[9/12] w-full overflow-hidden bg-[#17171a] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  disabled={
+                    item.renderStatus !== "ready" || !item.renderedVideoUrl
+                  }
+                  className="relative block aspect-[9/12] w-full overflow-hidden bg-[#17171a] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-default"
                 >
-                  {item.previewThumbnailUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.previewThumbnailUrl}
-                      alt=""
+                  {item.renderStatus === "ready" && item.renderedVideoUrl ? (
+                    <video
+                      src={item.renderedVideoUrl}
+                      muted
+                      playsInline
+                      preload="metadata"
                       className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.015] motion-reduce:transition-none"
                     />
+                  ) : isRenderPending(item.renderStatus) ? (
+                    <span className="flex size-full flex-col items-center justify-center gap-3 px-5 text-center text-white/70">
+                      <Loader2 className="size-6 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                      <span className="text-xs font-semibold">
+                        Preparing finished video
+                      </span>
+                    </span>
                   ) : (
-                    <span className="flex size-full items-center justify-center text-white/60">
-                      <UserRound className="size-8" aria-hidden="true" />
+                    <span className="flex size-full flex-col items-center justify-center gap-3 px-5 text-center text-white/60">
+                      <Video className="size-7" aria-hidden="true" />
+                      <span className="text-xs font-semibold">
+                        {item.renderStatus === "failed"
+                          ? "Video preparation failed"
+                          : "Finished video not prepared"}
+                      </span>
                     </span>
                   )}
-                  <span className="absolute inset-x-3 bottom-4 rounded-control bg-black/72 px-3 py-2.5 text-center text-sm font-bold leading-5 text-white">
-                    {item.hookText}
-                  </span>
                 </button>
 
                 <div className="p-4">
-                  <p className="truncate text-sm font-semibold text-foreground-strong">
-                    {item.influencerName}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-semibold text-foreground-strong">
+                      {item.influencerName}
+                    </p>
+                    <span className="shrink-0 text-[11px] font-semibold text-muted">
+                      {getRenderStatusLabel(item.renderStatus)}
+                    </span>
+                  </div>
                   <p className="mt-1 truncate text-xs font-medium text-muted">
                     Demo: {item.demoTitle}
                   </p>
@@ -390,8 +407,11 @@ export function HookVideoLibraryTab() {
                   <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border pt-3">
                     <button
                       type="button"
-                      onClick={() => void openPreview(item)}
-                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                      onClick={() => openPreview(item)}
+                      disabled={
+                        item.renderStatus !== "ready" || !item.renderedVideoUrl
+                      }
+                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Eye className="size-3.5" aria-hidden="true" />
                       Preview
@@ -412,7 +432,9 @@ export function HookVideoLibraryTab() {
                           setNoticeMessage(null);
                           setPendingScheduleItem(item);
                         }}
-                        disabled={Boolean(schedulingId)}
+                        disabled={
+                          Boolean(schedulingId) || item.renderStatus !== "ready"
+                        }
                         className="inline-flex h-10 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60"
                       >
                         {schedulingId === item.id ? (
@@ -433,15 +455,9 @@ export function HookVideoLibraryTab() {
 
       <HookVideoPreviewDialog
         item={selectedItem}
-        loading={previewLoading}
-        previewError={previewError}
-        previewUrl={previewUrl}
         onOpenChange={(open) => {
           if (!open) {
-            previewRequestId.current += 1;
             setSelectedItem(null);
-            setPreviewUrl(null);
-            setPreviewError(null);
           }
         }}
       />
@@ -464,15 +480,9 @@ export function HookVideoLibraryTab() {
 
 function HookVideoPreviewDialog({
   item,
-  loading,
-  previewError,
-  previewUrl,
   onOpenChange,
 }: {
   item: SavedHookVideo | null;
-  loading: boolean;
-  previewError: string | null;
-  previewUrl: string | null;
   onOpenChange: (open: boolean) => void;
 }) {
   return (
@@ -488,39 +498,24 @@ function HookVideoPreviewDialog({
         </DialogHeader>
         <div className="grid min-h-0 gap-6 overflow-y-auto p-5 sm:grid-cols-[260px_minmax(0,1fr)]">
           <div className="relative mx-auto aspect-[9/16] w-full max-w-[260px] overflow-hidden rounded-[16px] bg-[#17171a]">
-            {previewUrl ? (
+            {item?.renderedVideoUrl ? (
               <video
-                key={previewUrl}
-                src={previewUrl}
+                key={item.renderedVideoUrl}
+                src={item.renderedVideoUrl}
                 controls
                 playsInline
                 preload="metadata"
                 className="size-full object-contain"
               />
             ) : null}
-            {loading ? (
-              <span className="absolute inset-0 flex items-center justify-center text-white/70">
-                <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-              </span>
-            ) : null}
-            {!loading && !previewUrl ? (
+            {!item?.renderedVideoUrl ? (
               <span className="absolute inset-0 flex items-center justify-center text-white/60">
                 <Video className="size-7" aria-hidden="true" />
-              </span>
-            ) : null}
-            {item ? (
-              <span className="pointer-events-none absolute inset-x-3 bottom-14 rounded-control bg-black/72 px-3 py-2.5 text-center text-sm font-bold leading-5 text-white">
-                {item.hookText}
               </span>
             ) : null}
           </div>
 
           <div className="min-w-0">
-            {previewError ? (
-              <p role="alert" className="text-sm font-semibold text-error">
-                {previewError}
-              </p>
-            ) : null}
             <p className="text-xs font-bold uppercase text-muted">Hook</p>
             <p className="mt-2 text-lg font-semibold leading-7 text-foreground-strong">
               {item?.hookText}
@@ -587,6 +582,17 @@ function formatDate(value: string) {
     day: "numeric",
     month: "short",
   }).format(date);
+}
+
+function isRenderPending(status: SavedHookVideo["renderStatus"]) {
+  return status === "queued" || status === "rendering";
+}
+
+function getRenderStatusLabel(status: SavedHookVideo["renderStatus"]) {
+  if (status === "ready") return "Ready";
+  if (status === "failed") return "Failed";
+  if (isRenderPending(status)) return "Preparing";
+  return "Not prepared";
 }
 
 function getApiError(value: unknown, fallback: string) {

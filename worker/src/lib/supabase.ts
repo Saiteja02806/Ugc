@@ -17,6 +17,7 @@ import type {
 } from "../types.js";
 import type { CarouselBusinessVisualProfileId } from "./carousel-business-visual-profile.js";
 import type { CarouselStructureId } from "./carousel-structure.js";
+import type { CarouselSlideImagePlan } from "./carousel-image-library-relevance.js";
 import type { RenderWallTextVideoPayload } from "./render-engine.js";
 import {
   getBroadAssetSourceCategorySlugsForProfile,
@@ -34,6 +35,7 @@ const CAROUSEL_SLIDES_TABLE = "carousel_slides";
 const CATEGORY_IMAGE_ASSETS_TABLE = "category_image_assets";
 const CATEGORY_IMAGE_ASSET_PAGE_SIZE = 1000;
 const GENERATION_PROVIDER_OPERATIONS_TABLE = "generation_provider_operations";
+const HOOK_VIDEO_DRAFTS_TABLE = "hook_video_drafts";
 const LIBRARY_CAROUSEL_SLIDES_TABLE = "library_carousel_slides";
 const LIBRARY_ITEMS_TABLE = "library_items";
 const MEDIA_ASSETS_TABLE = "media_assets";
@@ -878,6 +880,134 @@ export class SupabaseJobStore {
       scheduleId: params.scheduleId,
       userId: params.userId,
     });
+  }
+
+  async markHookVideoLibraryRenderStarted(params: {
+    draftId: string;
+    jobId: string;
+    renderId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(HOOK_VIDEO_DRAFTS_TABLE)
+      .update({
+        render_error: null,
+        render_job_id: params.jobId,
+        render_status: "rendering",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.draftId)
+      .eq("user_id", params.userId)
+      .eq("render_id", params.renderId)
+      .in("render_status", ["queued", "rendering"])
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not mark Hook video render started: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error("Hook video render request is stale.");
+    }
+  }
+
+  async markHookVideoLibraryRenderCompleted(params: {
+    compositionFingerprint: string;
+    demoVideoId: string;
+    draftId: string;
+    hookAudioAssetId: string | null;
+    hookVideoId: string;
+    key: string;
+    mediaAssetId: string;
+    projectId: string;
+    ratio: "1:1" | "4:5" | "9:16" | "16:9";
+    renderId: string;
+    title: string;
+    url: string;
+    userId: string;
+  }) {
+    const now = new Date().toISOString();
+
+    await this.saveMediaAsset({
+      collection: "video",
+      duration_seconds: null,
+      file_name: null,
+      file_size_bytes: null,
+      height: null,
+      id: params.mediaAssetId,
+      metadata: {
+        compositionFingerprint: params.compositionFingerprint,
+        demoVideoId: params.demoVideoId,
+        hookAudioAssetId: params.hookAudioAssetId,
+        hookVideoDraftId: params.draftId,
+        hookVideoId: params.hookVideoId,
+        libraryVisibility: "hook_videos_only",
+        renderId: params.renderId,
+      },
+      mime_type: "video/mp4",
+      parent_asset_id: params.hookVideoId,
+      project_id: params.projectId,
+      ratio: params.ratio,
+      source_record_id: params.renderId,
+      source_type: "combined_render",
+      status: "ready",
+      storage_key: params.key,
+      thumbnail_url: null,
+      title: params.title,
+      updated_at: now,
+      url: params.url,
+      user_id: params.userId,
+      width: null,
+    });
+
+    const { data, error } = await this.client
+      .from(HOOK_VIDEO_DRAFTS_TABLE)
+      .update({
+        render_error: null,
+        render_status: "ready",
+        rendered_at: now,
+        rendered_media_asset_id: params.mediaAssetId,
+        rendered_video_url: params.url,
+        updated_at: now,
+      })
+      .eq("id", params.draftId)
+      .eq("user_id", params.userId)
+      .eq("render_id", params.renderId)
+      .in("render_status", ["queued", "rendering"])
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not finish Hook video render: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error("Hook video render request is stale.");
+    }
+  }
+
+  async markHookVideoLibraryRenderFailed(params: {
+    draftId: string;
+    errorMessage: string;
+    renderId: string;
+    userId: string;
+  }) {
+    const { error } = await this.client
+      .from(HOOK_VIDEO_DRAFTS_TABLE)
+      .update({
+        render_error: params.errorMessage.slice(0, 500),
+        render_status: "failed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.draftId)
+      .eq("user_id", params.userId)
+      .eq("render_id", params.renderId)
+      .in("render_status", ["queued", "rendering"]);
+
+    if (error) {
+      throw new Error(`Could not mark Hook video render failed: ${error.message}`);
+    }
   }
 
   async markWallTextRenderStarted(params: {
@@ -2029,15 +2159,24 @@ export class SupabaseJobStore {
   async reserveCarouselRoleAssets(params: {
     businessProfileId: string;
     carouselId: string;
-    categorySlug: string;
+    primaryCategorySlug: string;
+    slidePlan: readonly CarouselSlideImagePlan[];
     useProductAsset?: boolean;
   }) {
     const { data, error } = await this.client.rpc(
-      "reserve_carousel_role_assets_v1",
+      "reserve_carousel_role_assets_v2",
       {
         p_business_profile_id: params.businessProfileId,
         p_carousel_id: params.carouselId,
-        p_category_slug: params.categorySlug,
+        p_primary_category_slug: params.primaryCategorySlug,
+        p_slide_plan: params.slidePlan.map((slide) => ({
+          asset_role: slide.assetRole,
+          category_slug: slide.categorySlug,
+          relevance_level: slide.relevanceLevel,
+          relevance_reason: slide.relevanceReason,
+          selection_type: slide.selectionType,
+          slide_number: slide.slideNumber,
+        })),
         p_use_product_asset: Boolean(params.useProductAsset),
       },
     );

@@ -44,13 +44,30 @@ export async function GET(request: Request) {
     return Response.json(
       {
         ok: true,
-        assets: rows.map(serializeMediaAsset),
+        assets: rows
+          .filter(isVisibleInFrontendMediaLibrary)
+          .map(serializeMediaAsset),
       },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
     return mediaErrorResponse(error, "Could not load your media.");
   }
+}
+
+function isVisibleInFrontendMediaLibrary(
+  row: Awaited<ReturnType<typeof listMediaAssets>>[number],
+) {
+  if (row.source_type === "catalog_influencer") {
+    return false;
+  }
+
+  const metadata =
+    row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? row.metadata
+      : null;
+
+  return metadata?.libraryVisibility !== "hook_videos_only";
 }
 
 function parseSourceTypes(value: string | null): MediaSourceType[] | null {

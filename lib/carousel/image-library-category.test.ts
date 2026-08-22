@@ -24,9 +24,13 @@ test("resolves the six role-library categories", () => {
   );
 });
 
-test("does not silently borrow an unrelated library", () => {
-  assert.throws(
-    () => resolveCarouselImageLibraryCategory({ category: "Legal services" }),
-    /does not resolve/i,
+test("defaults unsupported businesses to the productivity library", () => {
+  assert.equal(
+    resolveCarouselImageLibraryCategory({ category: "Legal services" }),
+    "productivity",
+  );
+  assert.equal(
+    resolveCarouselImageLibraryCategory({ category: "Education consultancy" }),
+    "productivity",
   );
 });

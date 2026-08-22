@@ -11,6 +11,8 @@ export type NormalizedInstagramReel = {
   sourceUrl: string;
 };
 
+export type NormalizedInstagramPost = NormalizedInstagramReel;
+
 export type ViralImportRejection = {
   input: string;
   lineNumber: number;
@@ -23,13 +25,18 @@ export type ParsedInstagramReelInput = {
   rejected: Array<ViralImportRejection>;
 };
 
+export type ViralImportSection =
+  | "hook_video"
+  | "wall_of_text"
+  | "slideshow";
+
 export type PreparedViralReference = {
   embed_html: string;
   embed_status: "active";
   last_verified_at: string;
   platform: "instagram";
   publish_status: "pending_review";
-  section: "hook_video";
+  section: ViralImportSection;
   source_url: string;
 };
 
@@ -47,6 +54,7 @@ type FetchInstagramOEmbedOptions = {
 type PrepareInstagramReelImportsOptions = {
   existingSourceUrls: ReadonlySet<string>;
   fetchOEmbed?: (sourceUrl: string) => Promise<string>;
+  section?: ViralImportSection;
   verifiedAt?: string;
 };
 
@@ -59,6 +67,19 @@ export class ViralImportInputError extends Error {
 
 export function normalizeInstagramReelUrl(
   rawInput: string,
+): Omit<NormalizedInstagramReel, "lineNumber"> {
+  return normalizeInstagramMediaUrl(rawInput, "reel");
+}
+
+export function normalizeInstagramPostUrl(
+  rawInput: string,
+): Omit<NormalizedInstagramPost, "lineNumber"> {
+  return normalizeInstagramMediaUrl(rawInput, "p");
+}
+
+function normalizeInstagramMediaUrl(
+  rawInput: string,
+  pathKind: "p" | "reel",
 ): Omit<NormalizedInstagramReel, "lineNumber"> {
   const trimmed = rawInput.trim();
   if (!trimmed) {
@@ -83,7 +104,7 @@ export function normalizeInstagramReelUrl(
   const hostname = parsed.hostname.toLowerCase();
   if (hostname !== "instagram.com" && hostname !== "www.instagram.com") {
     throw new ViralImportInputError(
-      "Only instagram.com Reel URLs are allowed.",
+      "Only instagram.com URLs are allowed.",
     );
   }
 
@@ -94,26 +115,44 @@ export function normalizeInstagramReelUrl(
   }
 
   const segments = parsed.pathname.split("/").filter(Boolean);
-  if (segments.length !== 2 || segments[0].toLowerCase() !== "reel") {
+  if (segments.length !== 2 || segments[0].toLowerCase() !== pathKind) {
+    const expectedPath = pathKind === "p" ? "p" : "reel";
     throw new ViralImportInputError(
-      "Use a direct Instagram Reel URL in the form instagram.com/reel/SHORTCODE/.",
+      `Use a direct Instagram URL in the form instagram.com/${expectedPath}/SHORTCODE/.`,
     );
   }
 
   const shortcode = segments[1];
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(shortcode)) {
-    throw new ViralImportInputError("The Instagram Reel shortcode is invalid.");
+    throw new ViralImportInputError("The Instagram shortcode is invalid.");
   }
 
   return {
     shortcode,
-    sourceUrl: `https://www.instagram.com/reel/${shortcode}/`,
+    sourceUrl: `https://www.instagram.com/${pathKind}/${shortcode}/`,
   };
 }
 
 export function parseInstagramReelInput(
   text: string,
   options: { maxItems?: number } = {},
+): ParsedInstagramReelInput {
+  return parseInstagramMediaInput(text, normalizeInstagramReelUrl, options);
+}
+
+export function parseInstagramPostInput(
+  text: string,
+  options: { maxItems?: number } = {},
+): ParsedInstagramReelInput {
+  return parseInstagramMediaInput(text, normalizeInstagramPostUrl, options);
+}
+
+function parseInstagramMediaInput(
+  text: string,
+  normalize: (
+    rawInput: string,
+  ) => Omit<NormalizedInstagramReel, "lineNumber">,
+  options: { maxItems?: number },
 ): ParsedInstagramReelInput {
   const maxItems = options.maxItems ?? MAX_VIRAL_IMPORT_ITEMS;
   if (!Number.isSafeInteger(maxItems) || maxItems < 1) {
@@ -138,7 +177,7 @@ export function parseInstagramReelInput(
 
   for (const candidate of candidates) {
     try {
-      const normalized = normalizeInstagramReelUrl(candidate.input);
+      const normalized = normalize(candidate.input);
       const reel = { ...normalized, lineNumber: candidate.lineNumber };
 
       if (seenSourceUrls.has(reel.sourceUrl)) {
@@ -231,7 +270,7 @@ export async function fetchInstagramOEmbed(
     if (!response.ok) {
       if (response.status === 400 || response.status === 404) {
         throw new ViralImportInputError(
-          "Meta could not find a public, embeddable Reel at this URL.",
+          "Meta could not find a public, embeddable Instagram post at this URL.",
         );
       }
       if (response.status === 429) {
@@ -296,6 +335,7 @@ export async function prepareInstagramReelImports(
   options: PrepareInstagramReelImportsOptions,
 ): Promise<ViralImportPreparation> {
   const fetchOEmbed = options.fetchOEmbed ?? ((url) => fetchInstagramOEmbed(url));
+  const section = options.section ?? "hook_video";
   const verifiedAt = options.verifiedAt ?? new Date().toISOString();
   const duplicateDatabaseUrls: Array<string> = [];
   const prepared: Array<PreparedViralReference> = [];
@@ -315,7 +355,7 @@ export async function prepareInstagramReelImports(
         last_verified_at: verifiedAt,
         platform: "instagram",
         publish_status: "pending_review",
-        section: "hook_video",
+        section,
         source_url: reel.sourceUrl,
       });
     } catch (error) {

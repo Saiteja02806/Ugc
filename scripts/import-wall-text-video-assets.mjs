@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import ffmpegPath from "ffmpeg-static";
+import ffprobeStatic from "ffprobe-static";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -27,6 +28,11 @@ const DEFAULT_MANIFEST =
 const RESULT_ROOT = ".tmp/wall-text-video-import";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+const WALL_TEXT_PLACEMENT_ZONES = new Set([
+  "upper-middle",
+  "middle",
+  "lower-middle",
+]);
 
 loadEnvFile(path.resolve(".env.local"));
 
@@ -184,6 +190,7 @@ async function assertRemoteSchemaReady() {
         "thumbnail_s3_key",
         "duration_seconds",
         "status",
+        "wall_text_source_kind",
       ].join(","),
     )
     .limit(1);
@@ -203,7 +210,7 @@ async function loadExistingRows(items) {
     const { data, error } = await supabase
       .from("overlay_media_assets")
       .select(
-        "id,s3_key,source_batch,source_file_sha256,status,thumbnail_s3_key,visual_group",
+        "id,s3_key,source_batch,source_file_sha256,status,thumbnail_s3_key,visual_group,wall_text_source_kind",
       )
       .in("source_file_sha256", chunk);
 
@@ -255,6 +262,7 @@ async function createPendingAssetRow(item) {
         textVisibility: manifest.playback.textVisibility,
       },
       visual_group: item.asset.visualGroup,
+      wall_text_source_kind: "ugcpilot",
     })
     .select("id")
     .single();
@@ -396,7 +404,9 @@ function assertManifest(manifest) {
       !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(asset.catalogName) ||
       !asset.fileName?.toLowerCase().endsWith(".mp4") ||
       !/^[0-9a-f]{64}$/u.test(asset.sha256) ||
-      !groups.has(asset.visualGroup)
+      !groups.has(asset.visualGroup) ||
+      (asset.approvedPlacementZone !== undefined &&
+        !WALL_TEXT_PLACEMENT_ZONES.has(asset.approvedPlacementZone))
     ) {
       throw new Error(`Invalid manifest asset: ${asset.fileName ?? "unknown"}.`);
     }
@@ -432,7 +442,7 @@ function probeVideo(filePath) {
 
   try {
     output = execFileSync(
-      "ffprobe",
+      ffprobeStatic.path,
       [
         "-v",
         "error",
@@ -545,7 +555,8 @@ function assertExistingRowMatches(row, item) {
     row.s3_key !== item.videoKey ||
     row.thumbnail_s3_key !== item.thumbnailKey ||
     row.source_batch !== manifest.sourceBatch ||
-    row.visual_group !== item.asset.visualGroup
+    row.visual_group !== item.asset.visualGroup ||
+    row.wall_text_source_kind !== "ugcpilot"
   ) {
     throw new Error(
       `Existing row metadata conflicts with ${item.asset.catalogName}.`,

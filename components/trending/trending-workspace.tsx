@@ -6,12 +6,16 @@ import {
   CalendarCheck,
   Check,
   CircleAlert,
+  Clapperboard,
+  Images,
   Loader2,
   RefreshCw,
   Save,
+  ScanText,
   Sparkles,
   X,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import type {
   CSSProperties,
@@ -25,6 +29,7 @@ import {
   forwardRef,
   useCallback,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -37,25 +42,18 @@ import {
   CreativeDecisionActions,
   CreativeEditAction,
 } from "@/components/trending/creative-card-actions";
-import { TrendingCreativeEditor } from "@/components/trending/trending-creative-editor";
-import {
-  PlatformSelectionModal,
-  type SchedulePlatformContext,
-} from "@/components/social/platform-selection-modal";
+import { PlatformSelectionModalLoading } from "@/components/social/platform-selection-modal-loading";
+import type { SchedulePlatformContext } from "@/components/social/platform-selection-modal";
 import { HookVideoCard } from "@/components/trending/hook-video-card";
 import type { HookPreviewAudio } from "@/components/trending/hook-audio-preview";
-import { HookVideoComposer } from "@/components/trending/hook-video-composer";
-import {
-  HookVideoScheduleDrawer,
-  type HookVideoScheduleSelection,
-} from "@/components/trending/hook-video-schedule-drawer";
+import type { HookVideoScheduleSelection } from "@/components/trending/hook-video-schedule-drawer";
 import {
   WallTextDetailView,
   type WallTextDetailActionState,
 } from "@/components/trending/wall-text-detail-view";
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
 import { WallTextAudioPreview } from "@/components/trending/wall-text-audio-preview";
-import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { useBackgroundJob } from "@/lib/jobs/background-job-client";
@@ -88,6 +86,38 @@ import type {
 } from "@/lib/trending/hook-video-types";
 import type { TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-contract";
 import { cn } from "@/lib/utils";
+
+const TrendingCreativeEditor = dynamic(
+  () =>
+    import("@/components/trending/trending-creative-editor").then(
+      (module) => module.TrendingCreativeEditor,
+    ),
+  { loading: TrendingCreativeEditorLoading },
+);
+
+const HookVideoComposer = dynamic(
+  () =>
+    import("@/components/trending/hook-video-composer").then(
+      (module) => module.HookVideoComposer,
+    ),
+  { loading: HookVideoComposerLoading },
+);
+
+const HookVideoScheduleDrawer = dynamic(
+  () =>
+    import("@/components/trending/hook-video-schedule-drawer").then(
+      (module) => module.HookVideoScheduleDrawer,
+    ),
+  { loading: PlatformSelectionModalLoading },
+);
+
+const PlatformSelectionModal = dynamic(
+  () =>
+    import("@/components/social/platform-selection-modal").then(
+      (module) => module.PlatformSelectionModal,
+    ),
+  { loading: PlatformSelectionModalLoading },
+);
 
 type CarouselHistoryState = "error" | "idle" | "loading" | "ready";
 type TrendingDailyFeedState =
@@ -264,11 +294,42 @@ const DECK_CARD_STYLES: Record<
     zIndex: 1,
   },
 };
-const LOADING_STACK_PLACEHOLDERS = [
-  { opacity: 0.65, scale: 0.93, translateY: 24, zIndex: 1 },
-  { opacity: 0.9, scale: 0.965, translateY: 12, zIndex: 2 },
-  { opacity: 1, scale: 1, translateY: 0, zIndex: 3 },
-] as const;
+
+function TrendingCreativeEditorLoading() {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+      aria-live="polite"
+      role="status"
+    >
+      <div className="flex w-full max-w-sm items-center gap-3 rounded-[var(--radius-panel)] border border-border bg-card px-5 py-4 text-sm font-semibold text-foreground shadow-card">
+        <Loader2
+          className="size-5 shrink-0 animate-spin text-primary motion-reduce:animate-none"
+          aria-hidden="true"
+        />
+        Opening editor…
+      </div>
+    </div>
+  );
+}
+
+function HookVideoComposerLoading() {
+  return (
+    <div
+      aria-live="polite"
+      className="flex min-h-[540px] items-center justify-center px-5 py-8"
+      role="status"
+    >
+      <div className="flex items-center gap-3 rounded-[var(--radius-panel)] border border-border bg-card px-5 py-4 text-sm font-semibold text-foreground shadow-card">
+        <Loader2
+          className="size-5 shrink-0 animate-spin text-primary motion-reduce:animate-none"
+          aria-hidden="true"
+        />
+        Opening Hook composer…
+      </div>
+    </div>
+  );
+}
 
 export function TrendingWorkspace() {
   const router = useRouter();
@@ -764,7 +825,7 @@ function TrendingFeedGallery({
   profile: CarouselProfileFeed | null;
 }) {
   if (loading) {
-    return <GeneratedCarouselFeedSkeleton />;
+    return <TrendingPostSkeleton />;
   }
 
   if (error) {
@@ -801,7 +862,10 @@ function TrendingReadyEmptyState() {
   return (
     <Empty role="status" className="min-h-[360px] text-foreground">
       <EmptyHeader>
-        <EmptyTitle>We’re preparing new content for you.</EmptyTitle>
+        <EmptyTitle>You&apos;re all caught up</EmptyTitle>
+        <EmptyDescription>
+          Check back tomorrow for fresh daily hooks and carousel ideas.
+        </EmptyDescription>
       </EmptyHeader>
     </Empty>
   );
@@ -947,6 +1011,7 @@ function TrendingHookComposer({
       editedSource?.resolvedAssetDurationSeconds ??
       creative.sourceDurationSeconds,
     id: videoId,
+    hookTextPlacement: null,
     influencerKey: null,
     influencerId,
     ratio: creative.aspectRatio,
@@ -1567,8 +1632,52 @@ function TrendingDeck({
     } else if (event.key === "ArrowRight" || event.key === "Enter") {
       event.preventDefault();
       completeCandidateSwipe("right");
+    } else if (event.key === "e" || event.key === "E") {
+      event.preventDefault();
+      handleEditActiveCandidate();
     }
   }
+
+  const handleWindowKeyDown = useEffectEvent((event: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      const isInputActive =
+        activeElement instanceof HTMLInputElement ||
+        activeElement instanceof HTMLTextAreaElement ||
+        activeElement?.getAttribute("contenteditable") === "true";
+
+      if (
+        isInputActive ||
+        editorCandidate ||
+        actionCandidate ||
+        wallTextCandidate ||
+        decisionLockRef.current ||
+        exitDirection ||
+        pendingDecisionItemId ||
+        !activeCandidate
+      ) {
+        return;
+      }
+
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        completeCandidateSwipe("left");
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        completeCandidateSwipe("right");
+      } else if (event.key === "e" || event.key === "E") {
+        event.preventDefault();
+        handleEditActiveCandidate();
+      }
+  });
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => window.removeEventListener("keydown", handleWindowKeyDown);
+  }, []);
 
   async function handleSaveToLibrary() {
     if (!actionCandidate) {
@@ -1794,7 +1903,10 @@ function TrendingDeck({
             onKeyDown={handleDeckKeyDown}
             className="relative isolate mx-auto mt-3 h-[482px] w-full max-w-xl overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-7"
           >
-            <TrendingFormatPill format={activeCandidate.format} />
+            <TrendingFormatPill
+              candidate={activeCandidate}
+              format={activeCandidate.format}
+            />
             {[...deckSlots].reverse().map((slot) => (
               <TrendingDeckCard
                 key={slot.candidate.item.id}
@@ -1874,67 +1986,73 @@ function TrendingDeck({
           onSchedulePost={handleSchedulePost}
         />
       ) : null}
-      <TrendingCreativeEditor
-        item={editorCandidate?.item ?? null}
-        onClose={() => setEditorCandidate(null)}
-        onSaved={(savedEdit) => {
-          setEditByCreativeId((current) => ({
-            ...current,
-            [savedEdit.creativeId]: savedEdit,
-          }));
-          showActionNotice({
-            message:
-              savedEdit.format === "carousel" &&
-              (savedEdit.renderState === "queued" ||
-                savedEdit.renderState === "rendering")
-                ? "Edit saved. Final Carousel slides are rendering."
-                : "Edit saved.",
-          });
-        }}
-      />
-      <PlatformSelectionModal
-        context={scheduleContext}
-        open={Boolean(scheduleContext)}
-        onConfirmed={async (submission) => {
-          if (!scheduleContext || !pendingScheduleCandidate) {
-            throw new Error("Choose an Instagram carousel before scheduling.");
-          }
+      {editorCandidate ? (
+        <TrendingCreativeEditor
+          item={editorCandidate.item}
+          onClose={() => setEditorCandidate(null)}
+          onSaved={(savedEdit) => {
+            setEditByCreativeId((current) => ({
+              ...current,
+              [savedEdit.creativeId]: savedEdit,
+            }));
+            showActionNotice({
+              message:
+                savedEdit.format === "carousel" &&
+                (savedEdit.renderState === "queued" ||
+                  savedEdit.renderState === "rendering")
+                  ? "Edit saved. Final Carousel slides are rendering."
+                  : "Edit saved.",
+            });
+          }}
+        />
+      ) : null}
+      {scheduleContext ? (
+        <PlatformSelectionModal
+          context={scheduleContext}
+          open
+          onConfirmed={async (submission) => {
+            if (!scheduleContext || !pendingScheduleCandidate) {
+              throw new Error(
+                "Choose an Instagram carousel before scheduling.",
+              );
+            }
 
-          await scheduleTrendingCarousel({
-            candidate: pendingScheduleCandidate,
-            context: scheduleContext,
-            submission,
-          });
+            await scheduleTrendingCarousel({
+              candidate: pendingScheduleCandidate,
+              context: scheduleContext,
+              submission,
+            });
 
-          let completionWarning = false;
+            let completionWarning = false;
 
-          try {
-            await completeAcceptedCarouselWorkflow(
-              pendingScheduleCandidate,
-              "scheduled",
-            );
-          } catch {
-            completionWarning = true;
-          }
+            try {
+              await completeAcceptedCarouselWorkflow(
+                pendingScheduleCandidate,
+                "scheduled",
+              );
+            } catch {
+              completionWarning = true;
+            }
 
-          setScheduleContext(null);
-          setPendingScheduleCandidate(null);
-          showActionNotice({
-            actionHref: "/scheduling",
-            actionLabel: "View schedule",
-            message: completionWarning
-              ? "Carousel scheduled. Trending may need a refresh."
-              : "Carousel scheduled.",
-          });
-          onCarouselCompleted();
-        }}
-        onOpenChange={(open) => {
-          if (!open) {
             setScheduleContext(null);
             setPendingScheduleCandidate(null);
-          }
-        }}
-      />
+            showActionNotice({
+              actionHref: "/scheduling",
+              actionLabel: "View schedule",
+              message: completionWarning
+                ? "Carousel scheduled. Trending may need a refresh."
+                : "Carousel scheduled.",
+            });
+            onCarouselCompleted();
+          }}
+          onOpenChange={(open) => {
+            if (!open) {
+              setScheduleContext(null);
+              setPendingScheduleCandidate(null);
+            }
+          }}
+        />
+      ) : null}
       {actionNotice ? <CarouselActionToast notice={actionNotice} /> : null}
     </section>
   );
@@ -2184,25 +2302,45 @@ function CarouselActionToast({ notice }: { notice: CarouselActionNotice }) {
 }
 
 function TrendingFormatPill({
+  candidate,
   format,
 }: {
-  format: TrendingCandidate["format"];
+  candidate?: TrendingCandidate | null;
+  format?: TrendingCandidate["format"];
 }) {
-  const label =
-    format === "hook_video"
-      ? "Hook video"
-      : format === "wall_text"
-        ? "Wall-of-text video"
-        : "Carousel";
+  const activeFormat = candidate?.format ?? format ?? "carousel";
+  const isHook = activeFormat === "hook_video";
+  const isWallText = activeFormat === "wall_text";
+
+  const slideCount =
+    candidate && candidate.format === "carousel"
+      ? candidate.carousel.slideCount || candidate.slides.length || 5
+      : 5;
+
+  const label = isHook
+    ? "Reel Hook"
+    : isWallText
+      ? "Wall-of-Text"
+      : `Slideshow · ${slideCount} Slides`;
+
+  const Icon = isHook ? Clapperboard : isWallText ? ScanText : Images;
+  const colorBadge = isHook
+    ? "border-blue-500/25 bg-card/95 text-blue-500 ring-1 ring-blue-500/10"
+    : isWallText
+      ? "border-purple-500/25 bg-card/95 text-purple-500 ring-1 ring-purple-500/10"
+      : "border-primary/25 bg-card/95 text-primary ring-1 ring-primary/10";
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex h-8 items-center justify-center">
+    <div className="pointer-events-none absolute inset-x-0 top-1 z-40 flex h-[24px] items-center justify-center">
       <span
         data-trending-format-pill
-        className="inline-flex h-7 items-center gap-2 rounded-full border border-border-strong bg-card px-3 text-xs font-semibold text-foreground-strong shadow-sm"
+        className={cn(
+          "inline-flex h-[24px] items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-bold tracking-tight text-foreground-strong shadow-xs backdrop-blur-md",
+          colorBadge,
+        )}
       >
-        <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
-        {label}
+        <Icon className="size-3 shrink-0" aria-hidden="true" />
+        <span>{label}</span>
       </span>
     </div>
   );
@@ -2437,7 +2575,7 @@ function TrendingHookDeckCard({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-10"
+      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-9"
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
@@ -2456,12 +2594,21 @@ function TrendingHookDeckCard({
         onTransitionEnd={isActive ? onExitTransitionEnd : undefined}
         style={cardStyle}
       >
+        {edit ? (
+          <div
+            data-trending-edited-badge
+            className="pointer-events-none absolute right-2.5 top-2.5 z-30 inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-card/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-500 shadow-sm backdrop-blur-md"
+          >
+            <Check className="size-2.5 stroke-[3]" aria-hidden="true" />
+            <span>Edited</span>
+          </div>
+        ) : null}
         <HookVideoCard
           dragOffset={0}
           hookAudio={isActive ? previewAudio : null}
           hookFontSize={editedContent?.fontSize ?? creative.text.fontSize}
           hookLines={editedContent?.lines ?? creative.text.lines}
-          hookPosition={editedContent?.position}
+          hookPosition={editedContent?.position ?? creative.text.position}
           hookTextColor={editedContent?.textColor}
           hookText={editedContent?.hookText ?? creative.text.value}
           previewError={isActive ? previewError : null}
@@ -2474,6 +2621,7 @@ function TrendingHookDeckCard({
               editedSource?.resolvedAssetDurationSeconds ??
               creative.sourceDurationSeconds,
             id: editedSource?.resolvedAssetId ?? creative.videoId,
+            hookTextPlacement: null,
             influencerKey: null,
             influencerId: editedSource
               ? buildUserInfluencerId(editedSource.resolvedAssetId)
@@ -2578,7 +2726,7 @@ function TrendingWallTextDeckCard({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-10"
+      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-9"
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
@@ -2597,6 +2745,15 @@ function TrendingWallTextDeckCard({
         onTransitionEnd={isActive ? onExitTransitionEnd : undefined}
         style={cardStyle}
       >
+        {edit ? (
+          <div
+            data-trending-edited-badge
+            className="pointer-events-none absolute right-2.5 top-2.5 z-30 inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-card/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-500 shadow-sm backdrop-blur-md"
+          >
+            <Check className="size-2.5 stroke-[3]" aria-hidden="true" />
+            <span>Edited</span>
+          </div>
+        ) : null}
         <div
           className={cn(
             "relative aspect-[9/16] overflow-hidden rounded-lg bg-[#171717]",
@@ -2715,7 +2872,7 @@ function CarouselDeckCard({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-10"
+      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-9"
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
@@ -2734,6 +2891,15 @@ function CarouselDeckCard({
         onTransitionEnd={isActive ? onExitTransitionEnd : undefined}
         style={cardStyle}
       >
+        {edit ? (
+          <div
+            data-trending-edited-badge
+            className="pointer-events-none absolute right-2.5 top-2.5 z-30 inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-card/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-500 shadow-sm backdrop-blur-md"
+          >
+            <Check className="size-2.5 stroke-[3]" aria-hidden="true" />
+            <span>Edited</span>
+          </div>
+        ) : null}
         <div
           className={cn(
             "relative aspect-[4/5] overflow-hidden rounded-lg bg-card",
@@ -2821,54 +2987,6 @@ function getTrendingDeckSlots(
   });
 }
 
-function CarouselLoadingStackVisual() {
-  return (
-    <div
-      className="relative isolate mx-auto h-[348px] w-full max-w-lg overflow-hidden"
-      aria-hidden="true"
-    >
-      {LOADING_STACK_PLACEHOLDERS.map((placeholder, index) => (
-        <div
-          key={placeholder.translateY}
-          className="absolute inset-0 flex items-start justify-center pt-1"
-          style={{ zIndex: placeholder.zIndex }}
-        >
-          <div
-            className="relative aspect-[4/5] w-[min(76vw,252px)] origin-center overflow-hidden rounded-[12px] border border-border bg-card shadow-card"
-            style={{
-              opacity: placeholder.opacity,
-              transform: `translateY(${placeholder.translateY}px) scale(${placeholder.scale})`,
-            }}
-          >
-            <div className="size-full p-5">
-              <Skeleton className="h-2.5 w-16 rounded-full bg-border" />
-              <Skeleton className="mt-5 h-[150px] w-full rounded-[8px] bg-card-muted" />
-              <div className="mt-5 flex flex-col gap-2.5">
-                <Skeleton className="h-3 w-4/5 rounded-full bg-border" />
-                <Skeleton className="h-3 w-full rounded-full bg-border" />
-                <Skeleton className="h-3 w-3/5 rounded-full bg-border" />
-              </div>
-              {index === LOADING_STACK_PLACEHOLDERS.length - 1 ? (
-                <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-1.5">
-                  {[0, 1, 2, 3, 4].map((dot) => (
-                    <span
-                      key={dot}
-                      className={cn(
-                        "size-1.5 rounded-full",
-                        dot === 0 ? "bg-primary" : "bg-border-strong",
-                      )}
-                    />
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function CarouselFeedState({
   actionIcon = "sparkles",
   actionLabel,
@@ -2891,7 +3009,7 @@ function CarouselFeedState({
   return (
     <div className="flex min-h-[420px] w-full flex-col items-center justify-center px-6 text-center">
       {icon === "preparing" ? (
-        <CarouselLoadingStackVisual />
+        <TrendingPostSkeleton />
       ) : (
         <span
           className={cn(
@@ -2929,20 +3047,18 @@ function CarouselFeedState({
   );
 }
 
-function GeneratedCarouselFeedSkeleton() {
+function TrendingPostSkeleton() {
   return (
     <div
       role="status"
       aria-label="Loading trending content ideas"
-      className="w-full"
+      className="relative isolate mx-auto mt-3 h-[482px] w-full max-w-xl overflow-hidden sm:mt-7"
     >
-      <CarouselLoadingStackVisual />
-      <div className="mx-auto mt-4 flex max-w-sm items-center gap-3 px-4">
-        <Skeleton className="size-10 shrink-0 rounded-[8px] bg-selected" />
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <Skeleton className="h-3 w-44 max-w-full rounded-full bg-border-strong" />
-          <Skeleton className="h-2.5 w-64 max-w-full rounded-full bg-border" />
-        </div>
+      <div className="absolute inset-0 flex items-start justify-center pt-9">
+        <Skeleton
+          aria-hidden="true"
+          className="aspect-[9/16] w-[min(76vw,248px)] rounded-lg border border-white/[0.04] bg-[#171717] opacity-80 shadow-[0_10px_18px_rgb(9_9_11_/_0.22)] motion-reduce:animate-none"
+        />
       </div>
     </div>
   );

@@ -165,9 +165,7 @@ export function resolveCarouselImageLibraryCategory(input: {
   const selected = scores[0];
 
   if (!selected || selected.score === 0) {
-    throw new Error(
-      "This business does not resolve to an active Carousel image-library category.",
-    );
+    return "productivity";
   }
 
   return selected.category;

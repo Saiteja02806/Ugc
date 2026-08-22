@@ -26,6 +26,7 @@ import { getCarouselContentFormat } from "./carousel-content-grammar.js";
 import { getPersistedCarouselSlideCopy } from "./carousel-slide-persistence.js";
 import { uploadRenderedCarouselSlide } from "./carousel-storage.js";
 import { resolveCarouselImageLibraryCategory } from "./carousel-image-library-category.js";
+import { buildCarouselSlideImagePlan } from "./carousel-image-library-relevance.js";
 import { assertCarouselStructureRuntimeReady } from "./carousel-structure.js";
 import { generateCarouselStructure2Batch } from "./carousel-structure-2-generate.js";
 
@@ -559,10 +560,26 @@ export async function generateCarousel({
       renderer_version: CAROUSEL_RENDERER_VERSION,
     });
     await assertBusinessProfileVersionIsCurrent({ generation, store });
+    const slideImagePlan = buildCarouselSlideImagePlan({
+      carouselId,
+      primaryCategory: imageLibraryCategory,
+      slides: plannedSlides.map((slide) => ({
+        slideNumber: slide.slideNumber,
+        supportingText: [slide.imageDirection],
+        visibleText: [
+          slide.headline,
+          slide.body,
+          slide.listItems,
+          slide.subtext,
+          slide.ctaText,
+        ],
+      })),
+    });
     const reservedAssets = await store.reserveCarouselRoleAssets({
       businessProfileId: generation.business_profile_id,
       carouselId,
-      categorySlug: imageLibraryCategory,
+      primaryCategorySlug: imageLibraryCategory,
+      slidePlan: slideImagePlan,
     });
     const reservedAssetsBySlideNumber = new Map(
       reservedAssets.map((asset) => [asset.slide_number, asset]),
@@ -580,7 +597,10 @@ export async function generateCarousel({
       selections: reservedAssets.map((asset) => ({
         assetId: asset.asset_id,
         assetRole: asset.asset_role,
+        categorySlug: asset.category_slug,
         cycleNumber: asset.cycle_number,
+        relevanceLevel: asset.relevance_level,
+        selectionType: asset.selection_type,
         slideNumber: asset.slide_number,
       })),
     });

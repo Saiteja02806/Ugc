@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { AvatarsWorkspace } from "@/components/avatars/avatars-workspace";
-import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "Source Video Editor",
@@ -13,9 +12,5 @@ export default async function AvatarEditorPage({
 }: PageProps<"/avatars/[avatarId]">) {
   const { avatarId } = await params;
 
-  return (
-    <AppShell activeKey="avatars">
-      <AvatarsWorkspace editorAvatarId={avatarId} />
-    </AppShell>
-  );
+  return <AvatarsWorkspace editorAvatarId={avatarId} />;
 }

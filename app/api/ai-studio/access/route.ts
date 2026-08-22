@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(
       {
-        isPro: isAIStudioProUser(user),
+        isPro: await isAIStudioProUser(user),
         ok: true,
       },
       {

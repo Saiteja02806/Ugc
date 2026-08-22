@@ -11,14 +11,13 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { UploadedPostsTab } from "@/components/demos/demos-workspace";
-import {
-  PlatformSelectionModal,
-  type SchedulePlatformContext,
-} from "@/components/social/platform-selection-modal";
+import { PlatformSelectionModalLoading } from "@/components/social/platform-selection-modal-loading";
+import type { SchedulePlatformContext } from "@/components/social/platform-selection-modal";
 import {
   Dialog,
   DialogClose,
@@ -35,6 +34,14 @@ import {
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
 import { cn } from "@/lib/utils";
+
+const PlatformSelectionModal = dynamic(
+  () =>
+    import("@/components/social/platform-selection-modal").then(
+      (module) => module.PlatformSelectionModal,
+    ),
+  { loading: PlatformSelectionModalLoading },
+);
 
 type LibraryCarouselSlide = {
   headline: string | null;
@@ -102,8 +109,10 @@ export function LibraryWorkspace() {
 }
 
 export function CarouselLibraryTab({
+  embedded = false,
   onShowPosts,
 }: {
+  embedded?: boolean;
   onShowPosts?: () => void;
 } = {}) {
   const [serverItems, setServerItems] = useState<LibraryCarouselItem[]>([]);
@@ -247,14 +256,23 @@ export function CarouselLibraryTab({
 
   return (
     <section
-      className="overflow-hidden rounded-panel border border-border bg-card"
+      className={cn(
+        !embedded && "overflow-hidden rounded-panel border border-border bg-card",
+      )}
       aria-labelledby="library-content-heading"
     >
-      <header className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <header
+        className={cn(
+          "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
+          embedded ? "pb-3" : "px-4 py-4 sm:px-5",
+        )}
+      >
         <div className="flex min-w-0 items-start gap-3">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
-            <Images className="size-[18px]" aria-hidden="true" />
-          </span>
+          {!embedded ? (
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
+              <Images className="size-[18px]" aria-hidden="true" />
+            </span>
+          ) : null}
           <div className="min-w-0">
             <h2
               id="library-content-heading"
@@ -262,10 +280,12 @@ export function CarouselLibraryTab({
             >
               Saved carousels
             </h2>
-            <p className="mt-0.5 max-w-xl text-sm leading-5 text-muted">
-              Complete carousel sets saved from Trending and ready to
-              schedule as Instagram posts.
-            </p>
+            {!embedded ? (
+              <p className="mt-0.5 max-w-xl text-sm leading-5 text-muted">
+                Complete carousel sets saved from Trending and ready to
+                schedule as Instagram posts.
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -303,7 +323,12 @@ export function CarouselLibraryTab({
         </div>
       </header>
 
-      <div className="flex flex-col gap-4 border-t border-border bg-surface-subtle/55 p-4 sm:p-5">
+      <div
+        className={cn(
+          "flex flex-col gap-4",
+          !embedded && "border-t border-border bg-surface-subtle/55 p-4 sm:p-5",
+        )}
+      >
         {errorMessage ? (
           <div
             role="status"
@@ -338,7 +363,7 @@ export function CarouselLibraryTab({
             ))}
           </div>
         ) : (
-          <LibraryContentEmptyState onShowPosts={onShowPosts} />
+          <LibraryContentEmptyState embedded={embedded} onShowPosts={onShowPosts} />
         )}
       </div>
 
@@ -369,25 +394,48 @@ export function CarouselLibraryTab({
           }
         }}
       />
-      <PlatformSelectionModal
-        context={scheduleContext}
-        open={Boolean(scheduleContext)}
-        onConfirmed={confirmPlatforms}
-        onOpenChange={(open) => {
-          if (!open) {
-            setScheduleContext(null);
-          }
-        }}
-      />
+      {scheduleContext ? (
+        <PlatformSelectionModal
+          context={scheduleContext}
+          open
+          onConfirmed={confirmPlatforms}
+          onOpenChange={(open) => {
+            if (!open) {
+              setScheduleContext(null);
+            }
+          }}
+        />
+      ) : null}
     </section>
   );
 }
 
 function LibraryContentEmptyState({
+  embedded,
   onShowPosts,
 }: {
+  embedded: boolean;
   onShowPosts?: () => void;
 }) {
+  if (embedded) {
+    return (
+      <div className="flex min-h-44 items-center justify-center px-5 py-8 text-center">
+        <div className="max-w-md">
+          <h3 className="text-lg font-semibold text-foreground-strong">
+            No saved carousels yet
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Save a carousel from Trending and it will appear here.
+          </p>
+          <Link href="/dashboard" className={`${primaryActionClassName} mt-5`}>
+            Explore carousel ideas
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="grid min-h-[330px] items-center gap-8 rounded-panel border border-dashed border-border-strong bg-card px-5 py-8 sm:grid-cols-[minmax(0,1fr)_280px] sm:px-8">
       <div className="max-w-xl text-left">

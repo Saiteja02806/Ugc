@@ -6,10 +6,8 @@ import { GoogleAuthRedirectHandler } from "@/components/auth/google-auth-redirec
 import { AuthProvider } from "@/contexts/auth-context";
 import { JobQueryProvider } from "@/components/providers/job-query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import {
-  isProductionThemeLocked,
-  THEME_STORAGE_KEY,
-} from "@/lib/theme";
+import { WorkspaceRouteBoundary } from "@/components/layout/workspace-route-boundary";
+import { THEME_STORAGE_KEY } from "@/lib/theme";
 
 import "./globals.css";
 
@@ -62,8 +60,6 @@ export const metadata: Metadata = {
     "Create Instagram Reel hooks, text-led videos, carousel posts, and approved publishing workflows in one focused workspace.",
 };
 
-const forceDarkTheme = isProductionThemeLocked(process.env.VERCEL_ENV);
-
 const RETIRED_GLOBAL_CONTENT_STORAGE_KEYS = [
   "ugc-studio.carousel-library.v1",
   "ugc-studio.schedule-drafts.v1",
@@ -79,19 +75,18 @@ const retiredContentStorageCleanupScript = `(() => {
 })();`;
 
 const themeInitializationScript = `(() => {
-  const forceDark = ${JSON.stringify(forceDarkTheme)};
   try {
     const savedTheme = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
-    const theme = forceDark || savedTheme === "dark" ? "dark" : "light";
+    const theme = savedTheme === "dark" ? "dark" : "light";
     const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
     root.dataset.theme = theme;
     root.style.colorScheme = theme;
   } catch {
-    const theme = forceDark ? "dark" : "light";
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.style.colorScheme = theme;
+    const root = document.documentElement;
+    root.classList.remove("dark");
+    root.dataset.theme = "light";
+    root.style.colorScheme = "light";
   }
 })();`;
 
@@ -103,9 +98,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} h-full${forceDarkTheme ? " dark" : ""}`}
-      data-theme={forceDarkTheme ? "dark" : undefined}
-      style={forceDarkTheme ? { colorScheme: "dark" } : undefined}
+      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} h-full`}
       suppressHydrationWarning
     >
       <body
@@ -123,10 +116,12 @@ export default function RootLayout({
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: themeInitializationScript }}
         />
-        <ThemeProvider forceDark={forceDarkTheme}>
+        <ThemeProvider>
           <AuthProvider>
             <GoogleAuthRedirectHandler />
-            <JobQueryProvider>{children}</JobQueryProvider>
+            <JobQueryProvider>
+              <WorkspaceRouteBoundary>{children}</WorkspaceRouteBoundary>
+            </JobQueryProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

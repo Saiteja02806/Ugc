@@ -12,14 +12,34 @@ export type ViralReviewItem = {
   id: string;
   importedAt: string;
   publishStatus: "pending_review";
+  section?: "hook_video" | "wall_of_text" | "slideshow";
   sourceUrl: string;
   timing: ViralReviewTiming | null;
+  views?: number | null;
 };
 
 export type ViralReviewPage = {
   items: Array<ViralReviewItem>;
   nextCursor: string | null;
 };
+
+export function formatViewCount(views: number): string {
+  if (!Number.isFinite(views) || views < 0) {
+    return "0";
+  }
+
+  if (views >= 1_000_000_000) {
+    return `${(views / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B`;
+  }
+  if (views >= 1_000_000) {
+    return `${(views / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  }
+  if (views >= 1_000) {
+    return `${(views / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  }
+
+  return Math.trunc(views).toString();
+}
 
 export class ViralHookTimingInputError extends Error {
   constructor(message: string) {

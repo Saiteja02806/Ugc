@@ -453,6 +453,14 @@ export function HookVideoWorkspace({ active }: { active: boolean }) {
           flowState={flowState}
           influencer={selectedInfluencer}
           openingPreviewUrl={previewUrl}
+          overlayPosition={
+            selectedVideo.hookTextPlacement
+              ? {
+                  x: selectedVideo.hookTextPlacement.x,
+                  y: selectedVideo.hookTextPlacement.y,
+                }
+              : null
+          }
           video={selectedVideo}
           onClose={() => setFlowState(INITIAL_HOOK_VIDEO_FLOW_STATE)}
           onStateChange={setFlowState}

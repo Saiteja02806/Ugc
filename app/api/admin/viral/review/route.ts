@@ -17,6 +17,7 @@ export const dynamic = "force-dynamic";
 const ReviewQuerySchema = z.object({
   cursor: z.string().uuid().nullable(),
   limit: z.coerce.number().int().min(1).max(24),
+  section: z.enum(["hook_video", "wall_of_text", "slideshow"]).optional(),
 });
 
 export async function GET(request: Request) {
@@ -30,6 +31,7 @@ export async function GET(request: Request) {
   const query = ReviewQuerySchema.safeParse({
     cursor: url.searchParams.get("cursor"),
     limit: url.searchParams.get("limit") ?? "12",
+    section: url.searchParams.get("section") ?? "hook_video",
   });
 
   if (!query.success) {

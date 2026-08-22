@@ -4,6 +4,7 @@ import path from "node:path";
 
 import {
   MAX_VIRAL_IMPORT_FILE_BYTES,
+  parseInstagramPostInput,
   parseInstagramReelInput,
   prepareInstagramReelImports,
 } from "../lib/viral/instagram-reel-import.ts";
@@ -17,6 +18,7 @@ if (args.help) {
 }
 
 const execute = Boolean(args.execute);
+const section = parseSection(args.section);
 if (execute && !args.yes) {
   throw new Error(
     "Refusing to write without --yes. Run the dry-run first, then use --execute --yes.",
@@ -28,11 +30,14 @@ if (!execute && args.yes) {
 
 const inputPath = resolveInputPath(args.file);
 const inputText = readSafeInputFile(inputPath);
-const parsedInput = parseInstagramReelInput(inputText);
+const parsedInput =
+  section === "slideshow"
+    ? parseInstagramPostInput(inputText)
+    : parseInstagramReelInput(inputText);
 
 if (parsedInput.reels.length === 0) {
   printInputSummary(parsedInput);
-  throw new Error("The input file contains no valid Instagram Reel URLs.");
+  throw new Error("The input file contains no valid Instagram URLs.");
 }
 
 const supabase = createClient(
@@ -42,14 +47,22 @@ const supabase = createClient(
 );
 
 await assertRemoteSchemaReady();
-const existingSourceUrls = await loadExistingSourceUrls(
+const existingReferences = await loadExistingReferences(
   parsedInput.reels.map((reel) => reel.sourceUrl),
 );
 const preparation = await prepareInstagramReelImports(parsedInput.reels, {
-  existingSourceUrls,
+  existingSourceUrls: new Set(existingReferences.keys()),
+  section,
 });
 
-printPlan({ execute, inputPath, parsedInput, preparation });
+printPlan({
+  execute,
+  existingReferences,
+  inputPath,
+  parsedInput,
+  preparation,
+  section,
+});
 
 if (!execute) {
   console.log("Dry run complete. No Supabase row was changed.");
@@ -68,7 +81,7 @@ if (!execute) {
       ignoreDuplicates: true,
       onConflict: "source_url",
     })
-    .select("id,source_url,publish_status");
+    .select("id,source_url,section,publish_status");
 
   if (error) {
     throw new Error(`Could not save Viral references: ${error.message}`);
@@ -82,11 +95,30 @@ if (!execute) {
     .map((row) => row.source_url)
     .filter((sourceUrl) => !importedSourceUrls.has(sourceUrl));
 
+  const verifiedReferences = await loadExistingReferences(
+    preparation.prepared.map((row) => row.source_url),
+  );
+  const missingReferences = preparation.prepared.filter(
+    (row) => !verifiedReferences.has(row.source_url),
+  );
+  const wrongSectionReferences = preparation.prepared.filter(
+    (row) => verifiedReferences.get(row.source_url)?.section !== section,
+  );
+
+  if (missingReferences.length > 0 || wrongSectionReferences.length > 0) {
+    throw new Error(
+      `Post-import verification failed: ${missingReferences.length} missing and ${wrongSectionReferences.length} stored in a different section.`,
+    );
+  }
+
   console.log("");
   console.log(
-    `Import complete: ${importedRows.length} imported as pending_review, ${concurrentDuplicates.length} skipped because another process inserted them first.`,
+    `Import complete: ${importedRows.length} imported as pending_review in ${section}, ${concurrentDuplicates.length} skipped because another process inserted them first.`,
   );
-  console.log("No Reel video file was downloaded or stored.");
+  console.log(
+    `Verified ${preparation.prepared.length} prepared reference(s) in ${section}.`,
+  );
+  console.log("No underlying Instagram media file was downloaded or stored.");
 
   if (parsedInput.rejected.length + preparation.rejected.length > 0) {
     process.exitCode = 1;
@@ -106,22 +138,35 @@ async function assertRemoteSchemaReady() {
   throw new Error(`Could not verify the Viral import schema: ${error.message}`);
 }
 
-async function loadExistingSourceUrls(sourceUrls) {
+async function loadExistingReferences(sourceUrls) {
   const { data, error } = await supabase
     .from("viral_references")
-    .select("source_url")
+    .select("source_url,section")
     .in("source_url", sourceUrls);
 
   if (error) {
     throw new Error(`Could not check existing Viral references: ${error.message}`);
   }
 
-  return new Set((data ?? []).map((row) => String(row.source_url)));
+  return new Map(
+    (data ?? []).map((row) => [
+      String(row.source_url),
+      { section: String(row.section) },
+    ]),
+  );
 }
 
-function printPlan({ execute: shouldExecute, inputPath: filePath, parsedInput, preparation }) {
-  console.log("Viral Hook Video reference import");
+function printPlan({
+  execute: shouldExecute,
+  existingReferences,
+  inputPath: filePath,
+  parsedInput,
+  preparation,
+  section: selectedSection,
+}) {
+  console.log(`Viral ${formatSectionLabel(selectedSection)} reference import`);
   console.log(`Mode: ${shouldExecute ? "EXECUTE" : "DRY RUN"}`);
+  console.log(`Section: ${selectedSection}`);
   console.log(`Input: ${filePath}`);
   console.log(`Valid unique URLs: ${parsedInput.reels.length}`);
   console.log(`Duplicate lines in file: ${parsedInput.duplicateInputs.length}`);
@@ -135,7 +180,10 @@ function printPlan({ execute: shouldExecute, inputPath: filePath, parsedInput, p
     console.log(`  READY ${row.source_url}`);
   }
   for (const sourceUrl of preparation.duplicateDatabaseUrls) {
-    console.log(`  SKIP  ${sourceUrl} (already imported)`);
+    const existingSection = existingReferences.get(sourceUrl)?.section;
+    console.log(
+      `  SKIP  ${sourceUrl} (already imported in ${existingSection ?? "an unknown section"})`,
+    );
   }
   for (const duplicate of parsedInput.duplicateInputs) {
     console.log(
@@ -154,7 +202,7 @@ function printPlan({ execute: shouldExecute, inputPath: filePath, parsedInput, p
 }
 
 function printInputSummary(parsedInput) {
-  console.log("Viral Hook Video reference import");
+  console.log(`Viral ${formatSectionLabel(section)} reference import`);
   console.log(`Valid unique URLs: ${parsedInput.reels.length}`);
   console.log(`Duplicate lines in file: ${parsedInput.duplicateInputs.length}`);
   console.log(`Rejected: ${parsedInput.rejected.length}`);
@@ -195,7 +243,7 @@ function resolveInputPath(value) {
 function parseArgs(rawArgs) {
   const parsed = {};
   const booleanFlags = new Set(["execute", "help", "yes"]);
-  const valueFlags = new Set(["file"]);
+  const valueFlags = new Set(["file", "section"]);
 
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
@@ -223,14 +271,36 @@ function parseArgs(rawArgs) {
   return parsed;
 }
 
+function parseSection(value) {
+  const selectedSection = value ?? "hook_video";
+  if (
+    selectedSection !== "hook_video" &&
+    selectedSection !== "wall_of_text" &&
+    selectedSection !== "slideshow"
+  ) {
+    throw new Error(
+      "Invalid --section. Use hook_video, wall_of_text, or slideshow.",
+    );
+  }
+  return selectedSection;
+}
+
+function formatSectionLabel(selectedSection) {
+  if (selectedSection === "wall_of_text") return "Wall of Text";
+  if (selectedSection === "slideshow") return "Slideshow";
+  return "Hook Video";
+}
+
 function printHelp() {
   console.log(`Usage:
-  npm run viral:import -- --file <path>
-  npm run viral:import -- --file <path> --execute --yes
+  npm run viral:import -- --file <path> [--section hook_video|wall_of_text|slideshow]
+  npm run viral:import -- --file <path> [--section hook_video|wall_of_text|slideshow] --execute --yes
 
 The default mode is a read-only dry run. The importer accepts direct public
-Instagram Reel URLs only, retrieves official Meta embed HTML, and never
-downloads or stores Reel video files.`);
+Instagram Reel URLs for Hook Videos and Wall of Text, or Instagram /p/ post
+URLs for Slideshows. It retrieves one official Meta embed per source post and
+never downloads or stores the underlying media. The default section is
+hook_video.`);
 }
 
 function getRequiredEnv(...names) {

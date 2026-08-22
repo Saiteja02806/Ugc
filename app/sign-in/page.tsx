@@ -1,25 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useEffect } from "react";
 
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { ProductLogoMark } from "@/components/brand/product-logo";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth-context";
+import { getPostSignInDestination } from "@/lib/billing/purchase-intent";
 
 export default function SignInPage() {
-  const router = useRouter();
-  const { user, loading } = useAuth();
-
-  useEffect(() => {
-    if (!loading && user) {
-      router.replace(user.emailVerified ? "/dashboard" : "/verify-email");
-    }
-  }, [user, loading, router]);
-
   return (
     <main className="instagram-theme min-h-screen bg-background px-5 text-foreground sm:px-8">
+      <Suspense fallback={null}>
+        <SignInPostAuthRedirect />
+      </Suspense>
       <header className="mx-auto flex h-20 max-w-6xl items-center justify-between">
         <Link
           href="/"
@@ -48,9 +44,9 @@ export default function SignInPage() {
             className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--instagram-orange),var(--instagram-rose),var(--instagram-violet),transparent)]"
           />
           <div className="mb-8 text-center">
-            <p className="mb-3 text-sm font-bold text-primary">
-              Instagram content workspace
-            </p>
+            <Suspense fallback={<DefaultSignInContext />}>
+              <SelectedPlanContext />
+            </Suspense>
             <h1 className="text-balance text-3xl font-bold tracking-normal text-foreground">
               Sign in to your Instagram workspace
             </h1>
@@ -60,7 +56,9 @@ export default function SignInPage() {
             </p>
           </div>
 
-          <GoogleSignInButton />
+          <Suspense fallback={<GoogleSignInButton />}>
+            <PurchaseAwareGoogleSignInButton />
+          </Suspense>
 
           <p className="mt-6 text-center text-xs leading-5 text-muted-subtle">
             By continuing, you agree to the{" "}
@@ -76,5 +74,68 @@ export default function SignInPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function SignInPostAuthRedirect() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace(
+        user.emailVerified
+          ? getPostSignInDestination(searchParams)
+          : "/verify-email",
+      );
+    }
+  }, [loading, router, searchParams, user]);
+
+  return null;
+}
+
+function PurchaseAwareGoogleSignInButton() {
+  const searchParams = useSearchParams();
+
+  return (
+    <GoogleSignInButton
+      successPath={getPostSignInDestination(searchParams)}
+    />
+  );
+}
+
+function SelectedPlanContext() {
+  const searchParams = useSearchParams();
+  const selectedPlan = searchParams.get("plan");
+  const isYearly = searchParams.get("billing") === "yearly";
+  const planLabel =
+    selectedPlan === "growth"
+      ? `Growth Plan (${isYearly ? "$41/mo billed yearly" : "$49/mo"})`
+      : selectedPlan === "starter"
+        ? `Starter Plan (${isYearly ? "$24/mo billed yearly" : "$29/mo"})`
+        : selectedPlan === "free"
+          ? "Free Plan ($0)"
+          : null;
+
+  return planLabel ? (
+    <div className="mb-3">
+      <Badge
+        variant="secondary"
+        className="px-3 py-1 font-bold text-primary"
+      >
+        Selected: {planLabel}
+      </Badge>
+    </div>
+  ) : (
+    <DefaultSignInContext />
+  );
+}
+
+function DefaultSignInContext() {
+  return (
+    <p className="mb-3 text-sm font-bold text-primary">
+      Instagram content workspace
+    </p>
   );
 }

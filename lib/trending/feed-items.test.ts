@@ -219,7 +219,7 @@ test("allows explicitly enabled Hook videos on localhost for testing", () => {
   );
 });
 
-test("groups preview-ready items by Wall, Hook, then Carousel without duplicates", () => {
+test("orders preview-ready items by persisted feed position without duplicates", () => {
   const hookItem = {
     assignmentId: "assignment-hook",
     creative: {
@@ -237,7 +237,8 @@ test("groups preview-ready items by Wall, Hook, then Carousel without duplicates
         kind: "hook",
         lines: ["A business-profile Hook"],
         patternId: "direct_capability",
-        placement: "center",
+        placement: "catalog",
+        position: { x: 0.5, y: 0.15 },
         styleVersion: "hook-overlay-v1",
         value: "A business-profile Hook",
         writingFormatId: "direct_capability",
@@ -339,7 +340,7 @@ test("groups preview-ready items by Wall, Hook, then Carousel without duplicates
 
   assert.deepEqual(
     buildUnifiedTrendingFeed(providers).map((item) => item.id),
-    ["wall_text:feed-wall", "hook_video:feed-hook", "carousel:feed-item-1"],
+    ["hook_video:feed-hook", "carousel:feed-item-1", "wall_text:feed-wall"],
   );
 });
 

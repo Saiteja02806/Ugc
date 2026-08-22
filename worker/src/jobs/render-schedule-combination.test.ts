@@ -9,6 +9,7 @@ const JOB_ID = "00000000-0000-4000-8000-000000000201";
 const RENDER_ID = "00000000-0000-4000-8000-000000000202";
 const SCHEDULE_ID = "00000000-0000-4000-8000-000000000203";
 const MEDIA_ASSET_ID = "00000000-0000-4000-8000-000000000204";
+const HOOK_VIDEO_DRAFT_ID = "00000000-0000-4000-8000-000000000209";
 
 test("renders and asks the server to finalize a planned schedule", async () => {
   const fixture = createStore();
@@ -92,6 +93,49 @@ test("does not call server finalization for a render-only request", async () => 
     "render-started",
     "render",
     "render-completed",
+  ]);
+});
+
+test("stores an explicit library save on the Hook draft without touching schedules", async () => {
+  const events: string[] = [];
+  const job = createJob(false);
+  (job.input_json as Record<string, unknown>).hookVideoDraftId =
+    HOOK_VIDEO_DRAFT_ID;
+  (job.input_json as Record<string, unknown>).scheduleId = HOOK_VIDEO_DRAFT_ID;
+  const store = {
+    async markHookVideoLibraryRenderStarted(params: { draftId: string }) {
+      events.push("hook-render-started");
+      assert.equal(params.draftId, HOOK_VIDEO_DRAFT_ID);
+    },
+    async markHookVideoLibraryRenderCompleted(params: {
+      draftId: string;
+      mediaAssetId: string;
+    }) {
+      events.push("hook-render-completed");
+      assert.equal(params.draftId, HOOK_VIDEO_DRAFT_ID);
+      assert.equal(params.mediaAssetId, MEDIA_ASSET_ID);
+    },
+    async markHookVideoLibraryRenderFailed() {
+      events.push("hook-render-failed");
+    },
+  } as unknown as SupabaseJobStore;
+
+  const output = await runRenderScheduleCombinationJob(job, {
+    dependencies: {
+      createMediaAssetId: () => MEDIA_ASSET_ID,
+      async renderScheduleCombinationToStorage(payload) {
+        events.push("render");
+        return createRenderOutput(payload);
+      },
+    },
+    store,
+  });
+
+  assert.equal(output.finalScheduleStatus, "not_requested");
+  assert.deepEqual(events, [
+    "hook-render-started",
+    "render",
+    "hook-render-completed",
   ]);
 });
 

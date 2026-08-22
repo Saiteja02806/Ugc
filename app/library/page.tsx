@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { AppShell } from "@/components/layout/app-shell";
 import { LibraryWorkspace } from "@/components/library/library-workspace";
 
 export const metadata: Metadata = {
@@ -9,9 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function LibraryPage() {
-  return (
-    <AppShell activeKey="library">
-      <LibraryWorkspace />
-    </AppShell>
-  );
+  return <LibraryWorkspace />;
 }

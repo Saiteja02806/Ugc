@@ -15,11 +15,13 @@ import { cn } from "@/lib/utils";
 type GoogleSignInButtonProps = {
   appearance?: "card" | "header" | "menu";
   label?: string;
+  successPath?: string;
 };
 
 export function GoogleSignInButton({
   appearance = "card",
   label = "Continue with Google",
+  successPath = "/dashboard",
 }: GoogleSignInButtonProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -32,7 +34,7 @@ export function GoogleSignInButton({
 
     try {
       const user = await signInWithGoogle();
-      router.push(user.emailVerified ? "/dashboard" : "/verify-email");
+      router.push(user.emailVerified ? successPath : "/verify-email");
     } catch (error) {
       if (isFirebaseError(error, "auth/popup-closed-by-user")) {
         setErrorMessage("Sign-in was cancelled. Try again when you are ready.");

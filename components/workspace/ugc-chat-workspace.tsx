@@ -302,7 +302,7 @@ export function ImageGenerationStudioPanel({
             upsertAIStudioResult(current, nextResult),
           );
           setLatestCompletedId(nextResult.id);
-          window.setTimeout(() => setLatestCompletedId(null), 3_500);
+          setTimeout(() => setLatestCompletedId(null), 3500);
           setActivePrompt("");
           setActionError(null);
         }
@@ -454,7 +454,9 @@ export function ImageGenerationStudioPanel({
         loading={resultsLoading}
         status={resultsStatus}
       >
-        {isGenerating ? <OptimisticImageCard prompt={activePrompt} /> : null}
+        {isGenerating ? (
+          <OptimisticImageCard prompt={activePrompt} />
+        ) : null}
         {generatedAssets.map((asset) => (
           <GeneratedAssetCard
             key={asset.id}
@@ -529,12 +531,10 @@ function OptimisticImageCard({ prompt }: { prompt?: string }) {
         style={{ aspectRatio: "4 / 5" }}
       >
         <div className="absolute inset-0 bg-gradient-to-tr from-primary/[0.04] via-transparent to-primary/[0.08]" />
+
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 p-4 text-center">
           <span className="inline-flex size-10 items-center justify-center rounded-full border border-primary/30 bg-card/90 shadow-sm backdrop-blur-md">
-            <Loader2
-              className="size-4 animate-spin text-primary"
-              aria-hidden="true"
-            />
+            <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" />
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-card/85 px-2.5 py-1 text-[11px] font-semibold text-foreground-strong shadow-xs backdrop-blur-md">
             <Sparkles className="size-3 text-primary" aria-hidden="true" />
@@ -547,7 +547,7 @@ function OptimisticImageCard({ prompt }: { prompt?: string }) {
           <h3 className="truncate text-xs font-semibold text-foreground/85">
             {prompt || "Creating image…"}
           </h3>
-          <p className="mt-0.5 animate-pulse text-xs text-muted-subtle">
+          <p className="mt-0.5 text-xs text-muted-subtle animate-pulse">
             Polishing details…
           </p>
         </div>
@@ -568,7 +568,7 @@ function GeneratedAssetCard({
       className={cn(
         "group min-w-0 transition-[transform,box-shadow] duration-300",
         isNew &&
-          "animate-in fade-in-50 zoom-in-[0.98] rounded-[var(--radius-card)] duration-500 ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background",
+          "animate-in fade-in-50 zoom-in-[0.98] duration-500 rounded-[var(--radius-card)] ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background",
       )}
     >
       <div

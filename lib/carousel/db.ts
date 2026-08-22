@@ -20,6 +20,7 @@ import type {
   CarouselStructure2FormatAssignment,
   CarouselStructure2RecentHistory,
 } from "@/lib/carousel/structure-2-selector";
+import type { CarouselSlideImagePlan } from "@/lib/carousel/image-library-relevance";
 import {
   isCarouselStructureId,
   isCarouselStructureMode,
@@ -488,6 +489,16 @@ type CarouselDatabase = {
         };
         Returns: ReservedCarouselRoleAssetRow[];
       };
+      reserve_carousel_role_assets_v2: {
+        Args: {
+          p_business_profile_id: string;
+          p_carousel_id: string;
+          p_primary_category_slug: string;
+          p_slide_plan: Json;
+          p_use_product_asset: boolean;
+        };
+        Returns: ReservedCarouselRoleAssetRow[];
+      };
     };
     Tables: {
       carousel_global_settings: {
@@ -619,6 +630,11 @@ type ReservedCarouselRoleAssetRow = {
   category_slug: string;
   cycle_number: number;
   library_asset_id: string;
+  primary_category_slug?: string;
+  relevance_level?: "light" | "moderate" | "none" | "strong";
+  relevance_reason?: string | null;
+  requested_category_slug?: string;
+  selection_type?: "primary" | "product" | "related" | "related_fallback";
   slide_number: number;
   source_file_sha256: string;
 };
@@ -631,6 +647,11 @@ export type ReservedCarouselRoleAsset = {
   cycleNumber: number;
   id: string;
   libraryAssetId: string;
+  primaryCategorySlug: string;
+  relevanceLevel: NonNullable<ReservedCarouselRoleAssetRow["relevance_level"]>;
+  relevanceReason: string | null;
+  requestedCategorySlug: string;
+  selectionType: NonNullable<ReservedCarouselRoleAssetRow["selection_type"]>;
   slideNumber: number;
   sourceFileSha256: string;
 };
@@ -1331,15 +1352,24 @@ export async function countActiveCarouselRoleAssets(categorySlug: string) {
 export async function reserveCarouselRoleAssets(params: {
   businessProfileId: string;
   carouselId: string;
-  categorySlug: string;
+  primaryCategorySlug: string;
+  slidePlan: readonly CarouselSlideImagePlan[];
   useProductAsset?: boolean;
 }) {
   const { data, error } = await getSupabaseServerClient().rpc(
-    "reserve_carousel_role_assets_v1",
+    "reserve_carousel_role_assets_v2",
     {
       p_business_profile_id: params.businessProfileId,
       p_carousel_id: params.carouselId,
-      p_category_slug: params.categorySlug,
+      p_primary_category_slug: params.primaryCategorySlug,
+      p_slide_plan: params.slidePlan.map((slide) => ({
+        asset_role: slide.assetRole,
+        category_slug: slide.categorySlug,
+        relevance_level: slide.relevanceLevel,
+        relevance_reason: slide.relevanceReason,
+        selection_type: slide.selectionType,
+        slide_number: slide.slideNumber,
+      })),
       p_use_product_asset: Boolean(params.useProductAsset),
     },
   );
@@ -1357,6 +1387,13 @@ export async function reserveCarouselRoleAssets(params: {
       cycleNumber: row.cycle_number,
       id: row.asset_id,
       libraryAssetId: row.library_asset_id,
+      primaryCategorySlug:
+        row.primary_category_slug ?? params.primaryCategorySlug,
+      relevanceLevel: row.relevance_level ?? "none",
+      relevanceReason: row.relevance_reason ?? null,
+      requestedCategorySlug:
+        row.requested_category_slug ?? row.category_slug,
+      selectionType: row.selection_type ?? "primary",
       slideNumber: row.slide_number,
       sourceFileSha256: row.source_file_sha256,
     }),
@@ -1862,6 +1899,7 @@ export async function createCarouselProductAssetUpload(input: {
   libraryAssetId: string;
   mimeType: string;
   publicUrl: string;
+  source: "settings_app_screenshots" | "trending_carousel_editor";
   storageKey: string;
 }) {
   const { data, error } = await getSupabaseServerClient()
@@ -1881,7 +1919,7 @@ export async function createCarouselProductAssetUpload(input: {
       source_folder: "carousel-product-assets",
       source_metadata: {
         mimeType: input.mimeType,
-        uploadKind: "trending_carousel_editor",
+        uploadKind: input.source,
       },
       source_original_s3_key: input.storageKey,
       source_original_url: input.publicUrl,
@@ -1929,6 +1967,7 @@ export async function completeCarouselProductAssetUpload(input: {
   mimeType: string;
   orientation: CategoryImageAssetRow["orientation"];
   sha256: string;
+  source: "settings_app_screenshots" | "trending_carousel_editor";
   width: number;
 }) {
   const { data, error } = await getSupabaseServerClient()
@@ -1942,7 +1981,7 @@ export async function completeCarouselProductAssetUpload(input: {
       source_metadata: {
         fileSize: input.fileSize,
         mimeType: input.mimeType,
-        uploadKind: "trending_carousel_editor",
+        uploadKind: input.source,
       },
       status: "ready",
       subject_review_status: "approved",

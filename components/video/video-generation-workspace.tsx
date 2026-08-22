@@ -8,12 +8,15 @@ import {
   Loader2,
   Pause,
   Play,
+  ScanText,
   Sparkles,
   UserRound,
   Video,
   Volume2,
   VolumeX,
+  X,
 } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
@@ -202,6 +205,23 @@ function getPendingVideoMetadata(userId: string, jobId: string) {
   }
 }
 
+function extractInstagramShortcode(sourceUrl: string | null): string | null {
+  if (!sourceUrl) return null;
+  try {
+    const url = new URL(sourceUrl);
+    const segments = url.pathname.split("/").filter(Boolean);
+    if (
+      (segments[0] === "reel" || segments[0] === "p" || segments[0] === "tv") &&
+      segments[1]
+    ) {
+      return segments[1];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function VideoGenerationStudioPanel({
   accessMessage,
   accessState = "locked",
@@ -211,6 +231,49 @@ export function VideoGenerationStudioPanel({
   accessState?: AIStudioAccessState;
   active?: boolean;
 }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const refTypeParam = searchParams.get("refType");
+  const refIdParam = searchParams.get("refId");
+  const sourceUrlParam = searchParams.get("sourceUrl");
+  const referenceParamContext: {
+    id: string;
+    shortcode: string | null;
+    sourceUrl: string;
+    type: "hook" | "wall_text";
+  } | null =
+    (refTypeParam === "hook" || refTypeParam === "wall_text") && refIdParam
+      ? {
+          id: refIdParam,
+          shortcode: extractInstagramShortcode(sourceUrlParam),
+          sourceUrl: sourceUrlParam ?? "",
+          type: refTypeParam,
+        }
+      : null;
+  const referenceParamKey = referenceParamContext
+    ? `${referenceParamContext.type}:${referenceParamContext.id}:${referenceParamContext.sourceUrl}`
+    : null;
+  const [dismissedReferenceKey, setDismissedReferenceKey] = useState<
+    string | null
+  >(null);
+  const referenceContext =
+    referenceParamKey && dismissedReferenceKey !== referenceParamKey
+      ? referenceParamContext
+      : null;
+
+  function handleDismissReference() {
+    setDismissedReferenceKey(referenceParamKey);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("refType");
+    nextParams.delete("refId");
+    nextParams.delete("sourceUrl");
+    const query = nextParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }
+
   const { loading: authLoading, user } = useAuth();
   const [prompt, setPrompt] = useState("");
   const [avatarLibrary, setAvatarLibrary] = useState<AvatarLibraryItem[]>([]);
@@ -221,9 +284,7 @@ export function VideoGenerationStudioPanel({
   );
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
   const [activeVideoPrompt, setActiveVideoPrompt] = useState("");
-  const [latestCompletedVideoId, setLatestCompletedVideoId] = useState<string | null>(
-    null,
-  );
+  const [latestCompletedVideoId, setLatestCompletedVideoId] = useState<string | null>(null);
   const [generationState, setGenerationState] =
     useState<GenerationState>("empty");
   const [generatedVideos, setGeneratedVideos] = useState<GeneratedVideo[]>([]);
@@ -460,7 +521,7 @@ export function VideoGenerationStudioPanel({
           upsertAIStudioResult(currentVideos, nextVideo),
         );
         setLatestCompletedVideoId(nextVideo.id);
-        window.setTimeout(() => setLatestCompletedVideoId(null), 3_500);
+        setTimeout(() => setLatestCompletedVideoId(null), 3500);
         setActiveVideoPrompt("");
         setGenerationState("completed");
         setActionNotice(null);
@@ -629,6 +690,9 @@ export function VideoGenerationStudioPanel({
           avatarImageUrl: selectedAvatar.thumbnailUrl,
           idempotencyKey,
           prompt: trimmedPrompt,
+          referenceId: referenceContext?.id ?? null,
+          referenceType: referenceContext?.type ?? null,
+          referenceUrl: referenceContext?.sourceUrl ?? null,
         }),
         headers: {
           Authorization: `Bearer ${token}`,
@@ -795,6 +859,40 @@ export function VideoGenerationStudioPanel({
         accessMessage={accessMessage}
         active={active}
         ariaLabel="Video prompt"
+        contextBanner={
+          referenceContext ? (
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-foreground shadow-sm">
+              <div className="flex items-center gap-2 truncate">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-selected text-primary">
+                  {referenceContext.type === "hook" ? (
+                    <Video className="size-3" aria-hidden="true" />
+                  ) : (
+                    <ScanText className="size-3" aria-hidden="true" />
+                  )}
+                </span>
+                <span className="font-semibold text-foreground-strong">
+                  {referenceContext.type === "hook"
+                    ? "Reference Hook"
+                    : "Reference Format"}
+                </span>
+                <span className="truncate text-muted">
+                  {referenceContext.shortcode
+                    ? `• Instagram (${referenceContext.shortcode})`
+                    : "• Attached Context"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleDismissReference}
+                aria-label="Remove reference context"
+                title="Remove reference"
+                className="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-card hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              >
+                <X className="size-3.5" aria-hidden="true" />
+              </button>
+            </div>
+          ) : null
+        }
         generateDisabled={
           generationLocked ||
           !prompt.trim() ||
@@ -1231,7 +1329,7 @@ function OptimisticVideoCard({
   prompt?: string;
 }) {
   return (
-    <article className="grid min-w-0 animate-in fade-in-0 gap-5 border-b border-border py-5 duration-300 first:pt-1 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_216px] lg:items-center">
+    <article className="grid min-w-0 gap-5 border-b border-border py-5 first:pt-1 last:border-b-0 animate-in fade-in-0 duration-300 lg:grid-cols-[minmax(0,1fr)_216px] lg:items-center">
       <div className="order-2 min-w-0 space-y-3 lg:order-1 lg:py-3">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-xs font-medium tracking-[0.12em] text-muted uppercase">
@@ -1246,9 +1344,9 @@ function OptimisticVideoCard({
           {prompt || "Creating presenter video…"}
         </h3>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted">
-          <span className="inline-flex animate-pulse items-center gap-1.5 text-primary">
+          <span className="inline-flex items-center gap-1.5 animate-pulse text-primary">
             <Sparkles className="size-3" aria-hidden="true" />
-            Synthesizing avatar &amp; audio…
+            Synthesizing avatar & audio…
           </span>
         </div>
       </div>
@@ -1259,6 +1357,7 @@ function OptimisticVideoCard({
           style={{ aspectRatio: "9 / 16" }}
         >
           <div className="absolute inset-0 bg-gradient-to-tr from-primary/[0.04] via-transparent to-primary/[0.08]" />
+          <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 p-4 text-center">
             {avatarThumbnail ? (
               <div className="relative size-12 overflow-hidden rounded-full border-2 border-primary/40 shadow-sm">
@@ -1269,18 +1368,12 @@ function OptimisticVideoCard({
                   className="size-full object-cover"
                 />
                 <span className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
-                  <Loader2
-                    className="size-5 animate-spin text-white"
-                    aria-hidden="true"
-                  />
+                  <Loader2 className="size-5 animate-spin text-white" aria-hidden="true" />
                 </span>
               </div>
             ) : (
               <span className="inline-flex size-11 items-center justify-center rounded-full border border-primary/30 bg-card/90 shadow-sm backdrop-blur-md">
-                <Loader2
-                  className="size-5 animate-spin text-primary"
-                  aria-hidden="true"
-                />
+                <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
               </span>
             )}
             <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card/85 px-2.5 py-0.5 text-[10px] font-semibold text-foreground-strong backdrop-blur-md">
@@ -1349,9 +1442,9 @@ function VideoResultCard({
   return (
     <article
       className={cn(
-        "grid min-w-0 gap-5 border-b border-border py-5 transition-[transform,box-shadow] duration-300 first:pt-1 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_216px] lg:items-center",
+        "grid min-w-0 gap-5 border-b border-border py-5 first:pt-1 last:border-b-0 transition-[transform,box-shadow] duration-300 lg:grid-cols-[minmax(0,1fr)_216px] lg:items-center",
         isNew &&
-          "animate-in fade-in-50 zoom-in-[0.98] rounded-[var(--radius-card)] px-3 duration-500 ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background",
+          "animate-in fade-in-50 zoom-in-[0.98] duration-500 rounded-[var(--radius-card)] ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background px-3",
       )}
     >
       <div className="order-2 min-w-0 space-y-3 lg:order-1 lg:py-3">

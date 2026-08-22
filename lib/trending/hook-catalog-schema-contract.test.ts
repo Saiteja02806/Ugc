@@ -17,6 +17,13 @@ const avatarStorage = readFileSync(
   new URL("../avatars/avatar-storage.ts", import.meta.url),
   "utf8",
 );
+const placementMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260819132229_add_per_hook_video_text_placement.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 test("Hook catalog migration adds the five reviewed selection fields", () => {
   for (const column of [
@@ -62,4 +69,21 @@ test("application storage writes and returns Hook catalog fields", () => {
     assert.match(avatarTypes, new RegExp(`${field}:`));
     assert.match(avatarStorage, new RegExp(`${field}:`));
   }
+});
+
+test("reviewed Hook placements are SHA-keyed and required before ready", () => {
+  assert.match(
+    placementMigration,
+    /add column if not exists hook_text_placement jsonb/u,
+  );
+  assert.equal(
+    [...placementMigration.matchAll(/\('[0-9a-f]{64}', '\{"preset":"(?:above_head|below_face)"/gu)].length,
+    107,
+  );
+  assert.match(
+    placementMigration,
+    /avatar_assets_ready_hook_text_placement_chk[\s\S]+source_batch not like 'hook-silent-%'[\s\S]+hook_text_placement is not null/u,
+  );
+  assert.match(avatarTypes, /hook_text_placement: Json \| null/u);
+  assert.match(avatarStorage, /hook_text_placement: input\.hookTextPlacement \?\? null/u);
 });

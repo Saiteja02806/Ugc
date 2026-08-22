@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
-import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard";
-import { AppShell } from "@/components/layout/app-shell";
+import { InstagramAnalyticsWorkspace } from "@/components/analytics/instagram-analytics-workspace";
 
 export const metadata: Metadata = {
   title: "Analytics",
@@ -10,9 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function AnalyticsPage() {
-  return (
-    <AppShell activeKey="analytics">
-      <AnalyticsDashboard />
-    </AppShell>
-  );
+  return <InstagramAnalyticsWorkspace />;
 }

@@ -4,7 +4,9 @@ import test from "node:test";
 import {
   buildInstagramOEmbedUrl,
   fetchInstagramOEmbed,
+  normalizeInstagramPostUrl,
   normalizeInstagramReelUrl,
+  parseInstagramPostInput,
   parseInstagramReelInput,
   prepareInstagramReelImports,
   sanitizeInstagramEmbedHtml,
@@ -13,6 +15,8 @@ import {
 
 const SAFE_EMBED =
   '<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/ABC_123/"><a href="https://www.instagram.com/reel/ABC_123/">View</a></blockquote><script async src="//www.instagram.com/embed.js"></script>';
+const SAFE_CAROUSEL_EMBED =
+  '<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/CAROUSEL_1/"><a href="https://www.instagram.com/p/CAROUSEL_1/">View carousel</a></blockquote><script async src="//www.instagram.com/embed.js"></script>';
 
 test("normalizes direct Instagram Reel URLs and removes tracking parameters", () => {
   assert.deepEqual(
@@ -29,6 +33,23 @@ test("normalizes direct Instagram Reel URLs and removes tracking parameters", ()
     shortcode: "xyz-9",
     sourceUrl: "https://www.instagram.com/reel/xyz-9/",
   });
+});
+
+test("normalizes an Instagram carousel post as one canonical post URL", () => {
+  assert.deepEqual(
+    normalizeInstagramPostUrl(
+      "https://www.instagram.com/p/CAROUSEL_1/?utm_source=share#slide-2",
+    ),
+    {
+      shortcode: "CAROUSEL_1",
+      sourceUrl: "https://www.instagram.com/p/CAROUSEL_1/",
+    },
+  );
+
+  assert.throws(
+    () => normalizeInstagramPostUrl("https://www.instagram.com/reel/ABC/"),
+    ViralImportInputError,
+  );
 });
 
 test("rejects non-Reel, lookalike, credentialed, and malformed URLs", () => {
@@ -153,7 +174,7 @@ test("rejects untrusted or unavailable Meta responses", async () => {
     fetchInstagramOEmbed("https://www.instagram.com/reel/ABC/", {
       fetchImpl: async () => new Response(null, { status: 404 }),
     }),
-    /public, embeddable Reel/,
+    /public, embeddable Instagram post/,
   );
 });
 
@@ -190,4 +211,50 @@ https://www.instagram.com/reel/NEW/
     section: "hook_video",
     source_url: "https://www.instagram.com/reel/NEW/",
   });
+});
+
+test("prepares Wall of Text references without hook timing fields", async () => {
+  const parsed = parseInstagramReelInput(
+    "https://www.instagram.com/reel/WALL_TEXT/",
+  );
+
+  const result = await prepareInstagramReelImports(parsed.reels, {
+    existingSourceUrls: new Set(),
+    fetchOEmbed: async () => sanitizeInstagramEmbedHtml(SAFE_EMBED),
+    section: "wall_of_text",
+    verifiedAt: "2026-08-20T10:00:00.000Z",
+  });
+
+  assert.equal(result.prepared.length, 1);
+  assert.equal(result.prepared[0].section, "wall_of_text");
+  assert.equal("hook_start_ms" in result.prepared[0], false);
+  assert.equal("hook_end_ms" in result.prepared[0], false);
+});
+
+test("keeps every Instagram carousel together as one slideshow reference", async () => {
+  const parsed = parseInstagramPostInput(`
+https://www.instagram.com/p/CAROUSEL_1/?utm_source=share
+`);
+  const calls: Array<string> = [];
+
+  const result = await prepareInstagramReelImports(parsed.reels, {
+    existingSourceUrls: new Set(),
+    fetchOEmbed: async (sourceUrl) => {
+      calls.push(sourceUrl);
+      return sanitizeInstagramEmbedHtml(SAFE_CAROUSEL_EMBED);
+    },
+    section: "slideshow",
+    verifiedAt: "2026-08-20T12:00:00.000Z",
+  });
+
+  assert.deepEqual(calls, ["https://www.instagram.com/p/CAROUSEL_1/"]);
+  assert.equal(result.prepared.length, 1);
+  assert.equal(result.prepared[0].section, "slideshow");
+  assert.equal(
+    result.prepared[0].source_url,
+    "https://www.instagram.com/p/CAROUSEL_1/",
+  );
+  assert.match(result.prepared[0].embed_html, /data-instgrm-permalink/);
+  assert.equal("hook_start_ms" in result.prepared[0], false);
+  assert.equal("hook_end_ms" in result.prepared[0], false);
 });

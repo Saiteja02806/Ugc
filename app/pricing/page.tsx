@@ -6,7 +6,7 @@ import { parseBillingInterval } from "@/lib/pricing/plans";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Compare monthly and annual UGCPilot Creator and Pro plans with one shared generation credit balance.",
+    "Compare monthly and annual UGCPilot Free, Starter, and Growth plans with shared AI credits and daily content limits.",
 };
 
 type PricingRouteProps = {

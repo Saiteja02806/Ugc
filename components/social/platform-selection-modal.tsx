@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   ArrowLeft,
@@ -31,7 +32,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import {
+  invalidateAccountSchedules,
+  loadAccountScheduleConfig,
+  loadAccountSocialConnections,
+} from "@/lib/scheduling/account-data-query";
 import {
   CarouselScheduleRecoveryError,
   type CarouselScheduleSubmission,
@@ -78,18 +85,6 @@ type PlatformSelectionModalProps = {
   onOpenChange: (open: boolean) => void;
   open: boolean;
 };
-
-type ConnectionsResponse =
-  | { connections: SocialConnection[]; ok: true }
-  | { message: string; ok: false };
-
-type ScheduleConfigResponse =
-  | {
-      minimumRenderLeadMinutes?: number;
-      minimumScheduleLeadMinutes?: number;
-      ok: true;
-    }
-  | { message?: string; ok: false };
 
 type TikTokPublishSettingsResponse =
   | { capabilities: TikTokPublishCapabilities; ok: true }
@@ -180,6 +175,9 @@ export function PlatformSelectionModal({
   onOpenChange,
   open,
 }: PlatformSelectionModalProps) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const accountId = user?.uid ?? "signed-out";
   const [step, setStep] = useState<ModalStep>("accounts");
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("choose");
   const [connections, setConnections] = useState<SocialConnection[]>([]);
@@ -212,7 +210,10 @@ export function PlatformSelectionModal({
   const [submitting, setSubmitting] = useState(false);
   const [renderTrace, setRenderTrace] = useState<OAuthTraceInput | null>(null);
 
-  const loadConnections = useCallback(async (trace?: OAuthTraceInput) => {
+  const loadConnections = useCallback(async (
+    trace?: OAuthTraceInput,
+    options: { force?: boolean } = {},
+  ) => {
     setLoading(true);
     setLoadError(null);
 
@@ -223,31 +224,26 @@ export function PlatformSelectionModal({
         throw new Error("Sign in before connecting a social account.");
       }
 
-      const response = await fetch("/api/social/connections", {
-        cache: "no-store",
-        headers: getConnectionHeaders(token, trace),
-      });
-      const data = (await response.json().catch(() => null)) as
-        | ConnectionsResponse
-        | null;
+      const connections = await loadAccountSocialConnections(
+        queryClient,
+        accountId,
+        {
+          errorMessage: "Could not load connected accounts.",
+          force: options.force ?? Boolean(trace),
+          token,
+          trace,
+        },
+      );
 
-      if (!response.ok || data?.ok !== true) {
-        throw new Error(
-          data?.ok === false
-            ? data.message
-            : "Could not load connected accounts.",
-        );
-      }
-
-      setConnections(data.connections);
-      return data.connections;
+      setConnections(connections);
+      return connections;
     } catch (error) {
       setLoadError(getErrorMessage(error, "Could not load connected accounts."));
       return [];
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [accountId, queryClient]);
 
   const loadMinimumLeadMinutes = useCallback(async () => {
     try {
@@ -257,19 +253,13 @@ export function PlatformSelectionModal({
         return;
       }
 
-      const response = await fetch("/api/schedules?status=draft", {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
+      const data = await loadAccountScheduleConfig(queryClient, accountId, {
+        token,
       });
-      const data = (await response.json().catch(() => null)) as
-        | ScheduleConfigResponse
-        | null;
-      const leadMinutes = data?.ok === true
-        ? data.minimumScheduleLeadMinutes ?? data.minimumRenderLeadMinutes
-        : null;
+      const leadMinutes =
+        data.minimumScheduleLeadMinutes ?? data.minimumRenderLeadMinutes;
 
       if (
-        response.ok &&
         Number.isInteger(leadMinutes) &&
         Number(leadMinutes) >= 1
       ) {
@@ -278,7 +268,7 @@ export function PlatformSelectionModal({
     } catch {
       // The shared server default remains the safe fallback.
     }
-  }, []);
+  }, [accountId, queryClient]);
 
   async function handleOAuthResult(result: SocialOAuthResultMessage) {
     if (result.status !== "success") {
@@ -325,7 +315,9 @@ export function PlatformSelectionModal({
       platform,
       previousConnectionUpdatedAt,
     }) => {
-      const refreshedConnections = await loadConnections();
+      const refreshedConnections = await loadConnections(undefined, {
+        force: true,
+      });
       const previousUpdatedAt = previousConnectionUpdatedAt
         ? Date.parse(previousConnectionUpdatedAt)
         : null;
@@ -682,9 +674,14 @@ export function PlatformSelectionModal({
         })),
         timezone,
       });
+      void invalidateAccountSchedules(queryClient, accountId);
       resetModal();
       onOpenChange(false);
     } catch (error) {
+      if (error instanceof CarouselScheduleRecoveryError) {
+        void invalidateAccountSchedules(queryClient, accountId);
+      }
+
       setConfirmError(
         getErrorMessage(error, "Could not schedule this carousel."),
       );
@@ -1843,22 +1840,6 @@ function getPreferredConnection(connections: SocialConnection[]) {
     connections.find((connection) => connection.status === "connected") ??
     connections[0]
   );
-}
-
-function getConnectionHeaders(token: string, trace?: OAuthTraceInput) {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  if (trace?.correlationId) {
-    headers["x-ugc-oauth-correlation-id"] = trace.correlationId;
-  }
-
-  if (trace?.callbackHost) {
-    headers["x-ugc-oauth-callback-host"] = trace.callbackHost;
-  }
-
-  return headers;
 }
 
 function getStatusDisplay(

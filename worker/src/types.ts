@@ -461,6 +461,11 @@ export type ReservedCarouselRoleAssetRow = {
   category_slug: string;
   cycle_number: number;
   library_asset_id: string;
+  primary_category_slug?: string;
+  relevance_level?: "light" | "moderate" | "none" | "strong";
+  relevance_reason?: string | null;
+  requested_category_slug?: string;
+  selection_type?: "primary" | "product" | "related" | "related_fallback";
   slide_number: number;
   source_file_sha256: string;
 };
@@ -519,6 +524,16 @@ export type BusinessProfileCarouselRow = {
   profile_version: number;
   user_id: string;
 };
+
+export type HookVideoDraftRenderUpdate = Partial<{
+  render_error: string | null;
+  render_job_id: string | null;
+  render_status: "failed" | "queued" | "ready" | "rendering";
+  rendered_at: string | null;
+  rendered_media_asset_id: string | null;
+  rendered_video_url: string | null;
+  updated_at: string;
+}>;
 
 export type CarouselGenerationUpdate = Partial<{
   content_angle: string | null;
@@ -851,6 +866,16 @@ export type BackgroundJobsDatabase = {
         };
         Returns: ReservedCarouselRoleAssetRow[];
       };
+      reserve_carousel_role_assets_v2: {
+        Args: {
+          p_business_profile_id: string;
+          p_carousel_id: string;
+          p_primary_category_slug: string;
+          p_slide_plan: Json;
+          p_use_product_asset: boolean;
+        };
+        Returns: ReservedCarouselRoleAssetRow[];
+      };
       take_over_carousel_experiment_batch_with_structure_2: {
         Args: {
           p_experiment_batch_id: string;
@@ -1055,6 +1080,16 @@ export type BackgroundJobsDatabase = {
           deleted_at: string | null;
         };
         Update: Partial<MediaAssetInsert> & { deleted_at?: string | null };
+      };
+      hook_video_drafts: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: {
+          id: string;
+          render_id: string | null;
+          user_id: string;
+        };
+        Update: HookVideoDraftRenderUpdate;
       };
       user_wall_text_assignments: {
         Insert: Record<string, never>;

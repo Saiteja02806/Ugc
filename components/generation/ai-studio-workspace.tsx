@@ -1,9 +1,12 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { KeyboardEvent } from "react";
 
 import { useAIStudioAccess } from "@/components/generation/use-ai-studio-access";
+import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { Badge } from "@/components/ui/badge";
 import { VideoGenerationStudioPanel } from "@/components/video/video-generation-workspace";
 import { ImageGenerationStudioPanel } from "@/components/workspace/ugc-chat-workspace";
@@ -39,6 +42,8 @@ export function AIStudioWorkspace({
   const searchParams = useSearchParams();
   const mode = toAIStudioMode(searchParams.get("mode") ?? initialMode);
   const accessState = useAIStudioAccess();
+  const subscriptionQuery = useBillingSubscription();
+  const subscription = subscriptionQuery.data;
   const accessMessage = getAIStudioAccessMessage(accessState);
 
   function selectMode(nextMode: AIStudioMode) {
@@ -57,6 +62,17 @@ export function AIStudioWorkspace({
                 AI Studio
               </h1>
               <AIStudioAccessBadge state={accessState} />
+              <Link
+                href={subscription?.isActive ? "/settings#subscription-billing" : "/pricing"}
+                className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                title="Manage AI generation credits"
+              >
+                <Sparkles className="size-3" aria-hidden="true" />
+                <span>{subscription?.creditsRemaining ?? 0} AI credits</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                  · {subscription?.isActive ? "Manage" : "Upgrade"}
+                </span>
+              </Link>
             </div>
             <p className="mt-1 text-sm text-muted">
               Create platform-ready images and presenter videos from a prompt.

@@ -8,6 +8,9 @@ const migration = readProjectFile(
 const productAssetRoute = readProjectFile(
   "app/api/trending/carousel-product-assets/route.ts",
 );
+const productAssetService = readProjectFile(
+  "lib/carousel/product-asset-service.ts",
+);
 const editRoute = readProjectFile(
   "app/api/trending/creatives/[format]/[creativeId]/edit/route.ts",
 );
@@ -33,8 +36,10 @@ test("keeps screenshot management authenticated, business scoped, and soft remov
   assert.match(productAssetRoute, /export async function POST[\s\S]*requireFirebaseUser/);
   assert.match(productAssetRoute, /export async function PATCH[\s\S]*requireFirebaseUser/);
   assert.match(productAssetRoute, /export async function DELETE[\s\S]*requireFirebaseUser/);
-  assert.match(productAssetRoute, /generation\.userId !== userId/);
-  assert.match(productAssetRoute, /generation\.businessProfileId/);
+  assert.match(productAssetService, /generation\.userId !== input\.userId/);
+  assert.match(productAssetService, /generation\.businessProfileId/);
+  assert.match(productAssetService, /getCarouselProductAssetUpload/);
+  assert.match(productAssetService, /findCarouselProductAssetByHash/);
   const archiveFunction = carouselDb.slice(
     carouselDb.indexOf("export async function archiveCarouselProductAsset"),
     carouselDb.indexOf("function mapCarouselProductAssetUpload"),
@@ -44,7 +49,7 @@ test("keeps screenshot management authenticated, business scoped, and soft remov
   assert.doesNotMatch(archiveFunction, /\.delete\(/);
 });
 
-test("exposes App Screenshots only in the Carousel editor and saves the asset id", () => {
+test("keeps App Screenshots in the Carousel editor and saves the asset id", () => {
   assert.match(editor, /function AppScreenshotsSection/);
   assert.match(editor, /content\.format === "carousel" \? \(/);
   assert.match(editor, /Product reveal lane/);

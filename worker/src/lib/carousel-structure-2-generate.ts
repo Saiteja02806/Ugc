@@ -6,6 +6,7 @@ import type {
 import { logger } from "../logger.js";
 import type { SupabaseJobStore } from "./supabase.js";
 import { resolveCarouselImageLibraryCategory } from "./carousel-image-library-category.js";
+import { buildCarouselSlideImagePlan } from "./carousel-image-library-relevance.js";
 import {
   getCarouselStructure2Format,
   resolveCarouselStructure2FormatId,
@@ -207,7 +208,16 @@ async function generateCarouselStructure2(params: {
   const assets = await store.reserveCarouselRoleAssets({
     businessProfileId,
     carouselId: generation.id,
-    categorySlug: imageLibraryCategory,
+    primaryCategorySlug: imageLibraryCategory,
+    slidePlan: buildCarouselSlideImagePlan({
+      carouselId: generation.id,
+      primaryCategory: imageLibraryCategory,
+      slides: plannedItem.plan.slides.map((slide) => ({
+        slideNumber: slide.slideNumber,
+        supportingText: [slide.visualContext],
+        visibleText: [slide.storyText, slide.ctaText],
+      })),
+    }),
     useProductAsset: true,
   });
   const renderSpecs = buildCarouselStructure2RenderSpecs({

@@ -136,11 +136,16 @@ export async function listUserSchedules(params: {
   to?: string | null;
   userId: string;
 }) {
-  await reconcileCancelledSchedulerResources(params.userId).catch((error) => {
-    console.error("Could not reconcile cancelled schedule resources:", error);
+  return listScheduledPostsForUser(params);
+}
+
+export async function reconcileCancelledSchedulerResources(userId: string) {
+  const targets = await listCancelledScheduleTargetsNeedingCleanup({
+    limit: 10,
+    userId,
   });
 
-  return listScheduledPostsForUser(params);
+  await cleanupCancelledSchedulerTargets({ targets, userId });
 }
 
 export async function getUserSchedule(params: {
@@ -2078,15 +2083,6 @@ async function scheduleTargetRows(params: {
       );
     },
   });
-}
-
-async function reconcileCancelledSchedulerResources(userId: string) {
-  const targets = await listCancelledScheduleTargetsNeedingCleanup({
-    limit: 10,
-    userId,
-  });
-
-  await cleanupCancelledSchedulerTargets({ targets, userId });
 }
 
 async function cleanupCancelledSchedulerTargets(params: {

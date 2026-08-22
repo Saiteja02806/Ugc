@@ -62,7 +62,8 @@ export type TrendingHookTextContent = {
   lines: string[];
   patternId: string | null;
   writingFormatId: string;
-  placement: "center";
+  placement: "catalog" | "default";
+  position: { x: number; y: number } | null;
   styleVersion:
     | "hook-overlay-v1"
     | "hook-overlay-v2"
@@ -175,9 +176,9 @@ export function compareTrendingFeedItems(
   second: TrendingFeedItem,
 ) {
   return (
+    first.position - second.position ||
     (formatOrder.get(first.format) ?? Number.MAX_SAFE_INTEGER) -
       (formatOrder.get(second.format) ?? Number.MAX_SAFE_INTEGER) ||
-    first.position - second.position ||
     first.id.localeCompare(second.id)
   );
 }

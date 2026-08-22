@@ -34,6 +34,25 @@ test("not been is treated as a staging wrapper and numbered folders normalize", 
   assert.equal(classified.sourceBatch, "not been");
 });
 
+test("part folders preserve their batch while role-bucket version suffixes normalize", () => {
+  for (const [folder, category, role] of [
+    ["dating_human_2", "dating", "human"],
+    ["food_static_2.1", "food", "static"],
+    ["food_static_2.2", "food", "static"],
+    ["productivity_static_2", "productivity", "static"],
+  ]) {
+    const classified = classifyCarouselRoleSourcePath(
+      sourceRoot,
+      path.join(sourceRoot, "part-2", folder, "asset.jpg"),
+    );
+
+    assert.equal(classified.status, "included");
+    assert.equal(classified.category, category);
+    assert.equal(classified.role, role);
+    assert.equal(classified.sourceBatch, "part-2");
+  }
+});
+
 test("folder aliases normalize and marketing_static is excluded", () => {
   assert.equal(
     classifyCarouselRoleSourcePath(

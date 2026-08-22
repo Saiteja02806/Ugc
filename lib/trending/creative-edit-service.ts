@@ -6,12 +6,17 @@ import {
   getCarouselProductAssetsByIds,
 } from "@/lib/carousel/db";
 import { resolveCarouselImageLibraryCategory } from "@/lib/carousel/image-library-category";
+import {
+  getCarouselHyperHookAssetById,
+  getCarouselHyperHookAssetUrl,
+} from "@/lib/carousel/hyper-hook-library";
 import { listCreativeAssetGroupAssets } from "@/lib/media/creative-asset-groups";
 import {
   getMediaAssetForOwner,
   serializeMediaAsset,
 } from "@/lib/media/media-storage";
 import type { MediaAsset } from "@/lib/media/types";
+import { getAvatarAsset } from "@/lib/avatars/avatar-storage";
 import {
   clampNormalizedTextPosition,
   TRENDING_CREATIVE_EDIT_VERSION,
@@ -39,6 +44,10 @@ import {
   getDefaultHookTextPosition,
   HookTextLayoutError,
 } from "@/lib/trending/hook-text-layout";
+import {
+  getHookVideoTextPosition,
+  parseHookVideoTextPlacement,
+} from "@/lib/trending/hook-video-text-placement";
 import {
   DEFAULT_TRENDING_TEXT_COLOR,
   resolveTrendingTextColor,
@@ -285,13 +294,26 @@ async function buildDefaultContent(params: {
       fontSize: idea.overlayFontSize,
       lines: idea.openingLines,
     });
+    const catalogPlacement =
+      idea.sourceKind === "catalog"
+        ? await getAvatarAsset(idea.influencerVideoId)
+            .then((asset) =>
+              getHookVideoTextPosition(
+                parseHookVideoTextPlacement(asset.hook_text_placement),
+              ),
+            )
+            .catch(() => null)
+        : null;
 
     return {
       fontSize: idea.overlayFontSize,
       format: "hook_video",
       hookText: idea.hookText,
       lines: idea.openingLines,
-      position: getDefaultHookTextPosition(layout.positionBounds),
+      position: clampHookTextPosition(
+        catalogPlacement ?? getDefaultHookTextPosition(layout.positionBounds),
+        layout.positionBounds,
+      ),
       textColor: DEFAULT_TRENDING_TEXT_COLOR,
       version: TRENDING_CREATIVE_EDIT_VERSION,
     };
@@ -411,7 +433,7 @@ async function validateAndNormalizeSubmittedContent(params: {
     const sourceSlideById = new Map(
       status.slides.map((slide) => [slide.id, slide]),
     );
-    const changedProductAssetIds = params.content.slides.flatMap((slide) => {
+    const changedBackgroundAssetIds = params.content.slides.flatMap((slide) => {
       const sourceSlide = sourceSlideById.get(slide.slideId);
       return sourceSlide &&
         slide.backgroundAssetId &&
@@ -419,6 +441,15 @@ async function validateAndNormalizeSubmittedContent(params: {
         ? [slide.backgroundAssetId]
         : [];
     });
+    const hyperHookAssetsById = new Map(
+      changedBackgroundAssetIds.flatMap((assetId) => {
+        const asset = getCarouselHyperHookAssetById(assetId);
+        return asset ? [[assetId, asset] as const] : [];
+      }),
+    );
+    const changedProductAssetIds = changedBackgroundAssetIds.filter(
+      (assetId) => !hyperHookAssetsById.has(assetId),
+    );
     let productAssetsById = new Map<
       string,
       Awaited<ReturnType<typeof getCarouselProductAssetsByIds>>[number]
@@ -480,6 +511,25 @@ async function validateAndNormalizeSubmittedContent(params: {
           backgroundAssetId: sourceSlide.categoryImageAssetId,
           backgroundUrl: slide.originalBackgroundUrl,
           visualRole: slide.originalVisualRole,
+        };
+      }
+
+      const hyperHookAsset = slide.backgroundAssetId
+        ? hyperHookAssetsById.get(slide.backgroundAssetId)
+        : null;
+
+      if (hyperHookAsset) {
+        if (slide.slideNumber !== 1) {
+          throw new TrendingCreativeEditAccessError(
+            "Hyper Hooks can replace only the Slide 1 background.",
+            400,
+          );
+        }
+
+        return {
+          ...slide,
+          backgroundUrl: getCarouselHyperHookAssetUrl(hyperHookAsset),
+          visualRole: "hook" as const,
         };
       }
 

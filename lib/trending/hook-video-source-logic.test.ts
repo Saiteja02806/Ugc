@@ -134,6 +134,7 @@ function buildBrowseEntry(videoId: string): HookVideoBrowseEntry {
     video: {
       durationSeconds: 8,
       id: videoId,
+      hookTextPlacement: null,
       influencerKey: "maya",
       influencerId: "catalog:maya",
       ratio: "9:16",

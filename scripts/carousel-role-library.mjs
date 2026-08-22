@@ -44,13 +44,14 @@ export function classifyCarouselRoleSourcePath(sourceRoot, filePath) {
   const firstSegment = segments[0]?.trim() ?? "";
   const firstNormalized = normalizeFolderName(firstSegment);
   const isStagingFolder = firstNormalized === "not_been";
-  const bucketSegment = isStagingFolder ? segments[1] : segments[0];
+  const isPartFolder = /^part_\d+(?:\.\d+)*$/.test(firstNormalized);
+  const bucketSegment = isStagingFolder || isPartFolder ? segments[1] : segments[0];
 
   if (!bucketSegment) {
     return { reason: "missing-role-bucket", status: "excluded" };
   }
 
-  const bucket = normalizeFolderName(bucketSegment);
+  const bucket = normalizeRoleBucketName(bucketSegment);
 
   if (bucket === "marketing_static") {
     return { reason: "marketing-static-excluded-v1", status: "excluded" };
@@ -75,7 +76,11 @@ export function classifyCarouselRoleSourcePath(sourceRoot, filePath) {
     category,
     relativePath: toPosixPath(relativePath),
     role,
-    sourceBatch: isStagingFolder ? "not been" : "power",
+    sourceBatch: isStagingFolder
+      ? "not been"
+      : isPartFolder
+        ? firstNormalized.replaceAll("_", "-")
+        : "power",
     status: "included",
   };
 }
@@ -177,6 +182,10 @@ function normalizeFolderName(value) {
     .replace(/[\s-]+/g, "_")
     .replace(/_+/g, "_")
     .replace(/^_|_$/g, "");
+}
+
+function normalizeRoleBucketName(value) {
+  return normalizeFolderName(value).replace(/_\d+(?:\.\d+)*$/, "");
 }
 
 function compareDuplicateCandidates(first, second) {

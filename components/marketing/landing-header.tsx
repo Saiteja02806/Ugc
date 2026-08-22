@@ -38,7 +38,7 @@ export function LandingHeader() {
       <div
         className={`pointer-events-auto mx-auto flex w-full items-center justify-between border transition-[max-width,height,padding,gap,background-color,border-color,border-radius,box-shadow] duration-300 ease-out motion-reduce:transition-none ${
           isScrolled
-            ? "h-16 max-w-[560px] gap-3 rounded-[32px] border-border bg-card/90 px-3 shadow-floating backdrop-blur-xl sm:px-4"
+            ? "h-13 max-w-[540px] gap-3 rounded-full border-border bg-card/90 px-3.5 shadow-floating backdrop-blur-xl"
             : "h-16 max-w-[1200px] gap-5 rounded-none border-transparent bg-transparent px-0 shadow-none"
         }`}
       >

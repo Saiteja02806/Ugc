@@ -151,6 +151,27 @@ type CarouselProductAssetCompleteResponse =
   | { asset: CarouselProductAsset; deduplicated: boolean; ok: true }
   | { error?: string; ok?: false };
 
+type CarouselHyperHookAsset = {
+  height: number;
+  id: string;
+  name: string;
+  url: string;
+  width: number;
+};
+
+type CarouselHyperHooksResponse =
+  | {
+      assets: CarouselHyperHookAsset[];
+      folder: {
+        assetCount: number;
+        description: string;
+        id: "hyper-hooks";
+        name: string;
+      };
+      ok: true;
+    }
+  | { error?: string; ok?: false };
+
 export function TrendingCreativeEditor({
   item,
   onClose,
@@ -181,6 +202,14 @@ export function TrendingCreativeEditor({
   const [productAssetsError, setProductAssetsError] = useState<string | null>(
     null,
   );
+  const [hyperHookAssets, setHyperHookAssets] = useState<
+    CarouselHyperHookAsset[]
+  >([]);
+  const [hyperHookAssetsLoading, setHyperHookAssetsLoading] = useState(false);
+  const [hyperHookAssetsError, setHyperHookAssetsError] = useState<
+    string | null
+  >(null);
+  const [hyperHookFolderOpen, setHyperHookFolderOpen] = useState(false);
   const [folderView, setFolderView] = useState<
     "folders" | "creative-assets" | "group"
   >("folders");
@@ -208,6 +237,9 @@ export function TrendingCreativeEditor({
     setProtectedHookPreviewUrl(null);
     setProductAssets([]);
     setProductAssetsError(null);
+    setHyperHookAssets([]);
+    setHyperHookAssetsError(null);
+    setHyperHookFolderOpen(false);
 
     try {
       const token = await requireToken();
@@ -368,6 +400,38 @@ export function TrendingCreativeEditor({
     }
   }, [item]);
 
+  const loadCarouselHyperHooks = useCallback(async () => {
+    if (!item || item.format !== "carousel") {
+      return;
+    }
+
+    setHyperHookAssetsLoading(true);
+    setHyperHookAssetsError(null);
+
+    try {
+      const token = await requireToken();
+      const response = await fetch("/api/trending/carousel-hyper-hooks", {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await response.json().catch(() => null)) as
+        | CarouselHyperHooksResponse
+        | null;
+
+      if (!response.ok || data?.ok !== true) {
+        throw new Error(getApiError(data, "Could not load Hyper Hooks."));
+      }
+
+      setHyperHookAssets(data.assets);
+    } catch (loadError) {
+      setHyperHookAssetsError(
+        getErrorMessage(loadError, "Could not load Hyper Hooks."),
+      );
+    } finally {
+      setHyperHookAssetsLoading(false);
+    }
+  }, [item]);
+
   useEffect(() => {
     if (!item) {
       return;
@@ -397,6 +461,15 @@ export function TrendingCreativeEditor({
     );
     return () => window.clearTimeout(timer);
   }, [edit, loadCarouselProductAssets]);
+
+  useEffect(() => {
+    if (!edit || edit.format !== "carousel") {
+      return;
+    }
+
+    const timer = window.setTimeout(() => void loadCarouselHyperHooks(), 0);
+    return () => window.clearTimeout(timer);
+  }, [edit, loadCarouselHyperHooks]);
 
   useEffect(() => {
     if (!item || item.format !== "hook_video" || edit?.source) {
@@ -534,6 +607,42 @@ export function TrendingCreativeEditor({
     }
 
     setSourceChoice(selectEntireLibrary(activeGroupId, selectedAsset.id));
+  }
+
+  function assignHyperHookAsset(asset: CarouselHyperHookAsset) {
+    if (!content || content.format !== "carousel" || !content.slides[0]) {
+      return;
+    }
+
+    setHyperHookAssetsError(null);
+    setActiveSlideIndex(0);
+    setContent({
+      ...content,
+      slides: content.slides.map((slide, index) =>
+        index === 0
+          ? {
+              ...slide,
+              backgroundAssetId: asset.id,
+              backgroundUrl: asset.url,
+              visualRole: "hook",
+            }
+          : slide,
+      ),
+    });
+  }
+
+  function restoreCarouselHookBackground() {
+    if (!content || content.format !== "carousel" || !content.slides[0]) {
+      return;
+    }
+
+    setActiveSlideIndex(0);
+    setContent({
+      ...content,
+      slides: content.slides.map((slide, index) =>
+        index === 0 ? restoreOriginalCarouselBackground(slide) : slide,
+      ),
+    });
   }
 
   async function uploadProductAsset(file: File) {
@@ -823,7 +932,7 @@ export function TrendingCreativeEditor({
           <DialogTitle>Edit creative</DialogTitle>
           <DialogDescription>
             Your current design and media stay unchanged unless you choose a
-            different app screenshot or Creative Assets video.
+            Hyper Hook, app screenshot, or Creative Assets video.
           </DialogDescription>
         </DialogHeader>
 
@@ -859,6 +968,18 @@ export function TrendingCreativeEditor({
 
                 {content.format === "carousel" ? (
                   <>
+                    <HyperHookLibrarySection
+                      assets={hyperHookAssets}
+                      content={content}
+                      error={hyperHookAssetsError}
+                      folderOpen={hyperHookFolderOpen}
+                      loading={hyperHookAssetsLoading}
+                      onAssign={assignHyperHookAsset}
+                      onBack={() => setHyperHookFolderOpen(false)}
+                      onOpen={() => setHyperHookFolderOpen(true)}
+                      onRestore={restoreCarouselHookBackground}
+                      onRetry={() => void loadCarouselHyperHooks()}
+                    />
                     <AppScreenshotsSection
                       activeSlideIndex={activeSlideIndex}
                       assets={productAssets}
@@ -1786,6 +1907,207 @@ function TextColorPicker({
         The selected color is saved with the edit and used for export.
       </FieldDescription>
     </Field>
+  );
+}
+
+function HyperHookLibrarySection({
+  assets,
+  content,
+  error,
+  folderOpen,
+  loading,
+  onAssign,
+  onBack,
+  onOpen,
+  onRestore,
+  onRetry,
+}: {
+  assets: CarouselHyperHookAsset[];
+  content: TrendingCarouselEditContent;
+  error: string | null;
+  folderOpen: boolean;
+  loading: boolean;
+  onAssign: (asset: CarouselHyperHookAsset) => void;
+  onBack: () => void;
+  onOpen: () => void;
+  onRestore: () => void;
+  onRetry: () => void;
+}) {
+  const hookSlide = content.slides[0] ?? null;
+  const selectedAssetId = hookSlide?.backgroundAssetId ?? null;
+  const selectedHyperHook = assets.some(
+    (asset) => asset.id === selectedAssetId,
+  );
+  const hasCustomHook = Boolean(
+    hookSlide &&
+      hookSlide.backgroundAssetId !== hookSlide.originalBackgroundAssetId,
+  );
+  const covers = assets.slice(0, 3);
+
+  return (
+    <section
+      aria-labelledby="carousel-hyper-hooks-heading"
+      className="mt-7 border-t pt-6"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3
+              id="carousel-hyper-hooks-heading"
+              className="text-sm font-semibold text-foreground"
+            >
+              Hook image library
+            </h3>
+            <Badge variant="secondary">Slide 1 only</Badge>
+          </div>
+          <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">
+            Open the global folder and choose a high-attention background for
+            the first slide. Other slides stay unchanged.
+          </p>
+        </div>
+        {loading ? (
+          <Loader2
+            className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
+            aria-label="Loading Hyper Hooks"
+          />
+        ) : null}
+      </div>
+
+      {error && assets.length === 0 ? (
+        <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+          <p role="alert" className="text-sm font-medium text-destructive">
+            {error}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="mt-3"
+            onClick={onRetry}
+          >
+            <RefreshCw />
+            Retry
+          </Button>
+        </div>
+      ) : !folderOpen ? (
+        loading && assets.length === 0 ? (
+          <Skeleton className="mt-4 h-28 rounded-xl" />
+        ) : (
+          <button
+            type="button"
+            onClick={onOpen}
+            className="group mt-4 flex w-full items-center gap-4 rounded-xl border bg-card p-3 text-left shadow-xs transition-colors hover:border-foreground/30 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="relative flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+              {covers.map((asset, index) => (
+                <span
+                  key={asset.id}
+                  className={cn(
+                    "absolute h-14 w-11 overflow-hidden rounded-md border-2 border-background shadow-sm transition-transform group-hover:-translate-y-0.5 motion-reduce:transition-none",
+                    index === 0 && "-translate-x-5 -rotate-6",
+                    index === 1 && "z-10",
+                    index === 2 && "translate-x-5 rotate-6",
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={asset.url}
+                    alt=""
+                    className="size-full object-cover"
+                    loading="lazy"
+                  />
+                </span>
+              ))}
+              <span className="absolute bottom-1.5 right-1.5 z-20 flex size-7 items-center justify-center rounded-md bg-background/90 text-foreground shadow-sm backdrop-blur-sm">
+                <Folder className="size-4" aria-hidden="true" />
+              </span>
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                Hyper Hooks
+                {selectedHyperHook ? (
+                  <Check className="size-4 text-primary" aria-label="Selected" />
+                ) : null}
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                {assets.length} curated attention images
+              </span>
+            </span>
+            <ChevronRight
+              className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+              aria-hidden="true"
+            />
+          </button>
+        )
+      ) : (
+        <div className="mt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Button type="button" size="sm" variant="ghost" onClick={onBack}>
+              <ChevronLeft />
+              Image folders
+            </Button>
+            {hasCustomHook ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={onRestore}
+              >
+                Use original hook
+              </Button>
+            ) : null}
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <FolderOpen className="size-4" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold">Hyper Hooks</p>
+              <p className="text-xs text-muted-foreground">
+                Choosing an image applies it directly to Slide 1.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {assets.map((asset) => {
+              const selected = asset.id === selectedAssetId;
+
+              return (
+                <button
+                  key={asset.id}
+                  type="button"
+                  aria-label={`Use ${asset.name} on Slide 1`}
+                  aria-pressed={selected}
+                  onClick={() => onAssign(asset)}
+                  className={cn(
+                    "group relative aspect-[4/5] overflow-hidden rounded-lg border bg-muted shadow-xs transition-[border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    selected
+                      ? "border-foreground ring-2 ring-foreground/15"
+                      : "border-border hover:border-foreground/30",
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={asset.url}
+                    alt=""
+                    className="size-full object-cover transition-transform group-hover:scale-[1.02] motion-reduce:transition-none"
+                    loading="lazy"
+                  />
+                  <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-5 text-left text-[10px] font-medium text-white">
+                    {asset.name}
+                  </span>
+                  {selected ? (
+                    <span className="absolute left-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-foreground text-background shadow-sm">
+                      <Check className="size-3.5" aria-hidden="true" />
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

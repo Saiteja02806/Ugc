@@ -20,9 +20,11 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { PlatformSelectionModalLoading } from "@/components/social/platform-selection-modal-loading";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,10 +36,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HookTextOverlay } from "@/components/trending/hook-text-overlay";
-import {
-  HookVideoScheduleDrawer,
-  type HookVideoScheduleSelection,
-} from "@/components/trending/hook-video-schedule-drawer";
+import type { HookVideoScheduleSelection } from "@/components/trending/hook-video-schedule-drawer";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   persistJobIdInUrl,
@@ -61,7 +60,16 @@ import type {
   HookInfluencerVideoSummary,
   HookSuggestion,
 } from "@/lib/trending/hook-video-types";
+import { getHookVideoTextPosition } from "@/lib/trending/hook-video-text-placement";
 import { cn } from "@/lib/utils";
+
+const HookVideoScheduleDrawer = dynamic(
+  () =>
+    import("@/components/trending/hook-video-schedule-drawer").then(
+      (module) => module.HookVideoScheduleDrawer,
+    ),
+  { loading: PlatformSelectionModalLoading },
+);
 
 type DemoListResponse =
   | { demos: HookDemoSummary[]; ok: true }
@@ -112,6 +120,8 @@ export function HookVideoComposer({
   onClose: () => void;
   onStateChange: (state: HookVideoFlowState) => void;
 }) {
+  const resolvedOverlayPosition =
+    overlayPosition ?? getHookVideoTextPosition(video.hookTextPlacement);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const openingVideoRef = useRef<HTMLVideoElement>(null);
   const demoMediaRequestId = useRef(0);
@@ -428,7 +438,9 @@ export function HookVideoComposer({
         ...flowState,
         draft: { ...flowState.draft, id: data.draft.id },
       });
-      setActionNotice("Saved to Creative Assets as a Hook composition.");
+      setActionNotice(
+        "Saved to Creative Assets. Your finished Hook video is being prepared.",
+      );
 
       try {
         await recordCommittedSelection();
@@ -600,7 +612,7 @@ export function HookVideoComposer({
               openingPreviewUrl={openingPreviewUrl}
               overlayFontSize={overlayFontSize}
               overlayLines={overlayLines}
-              overlayPosition={overlayPosition}
+              overlayPosition={resolvedOverlayPosition}
               overlayTextColor={overlayTextColor}
               video={video}
             />
@@ -634,7 +646,7 @@ export function HookVideoComposer({
             openingVideoRef={openingVideoRef}
             overlayFontSize={overlayFontSize}
             overlayLines={overlayLines}
-            overlayPosition={overlayPosition}
+            overlayPosition={resolvedOverlayPosition}
             overlayTextColor={overlayTextColor}
             previewMode={previewMode}
             trimEnd={trimEnd}

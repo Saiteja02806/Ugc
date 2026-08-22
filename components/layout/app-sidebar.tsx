@@ -3,6 +3,7 @@
 import {
   Menu,
   Settings,
+  Sparkles,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -24,6 +25,7 @@ import { ProductLogoMark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
 import { useViralReviewerAccess } from "@/components/viral/use-viral-reviewer-access";
 import { cn } from "@/lib/utils";
+import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 
 export type AppSidebarActiveKey =
   | "trending"
@@ -51,13 +53,6 @@ const primaryNavigationItems: SidebarItem[] = [
     icon: "trending",
   },
   {
-    key: "viral",
-    label: "Explore",
-    href: "/viral",
-    icon: "viral",
-    reviewerOnly: true,
-  },
-  {
     key: "ai-studio",
     label: "AI Studio",
     href: "/ai-studio?mode=images",
@@ -74,6 +69,13 @@ const primaryNavigationItems: SidebarItem[] = [
     label: "Analytics",
     href: "/analytics",
     icon: "analytics",
+  },
+  {
+    key: "viral",
+    label: "Explore",
+    href: "/viral",
+    icon: "viral",
+    reviewerOnly: true,
   },
 ];
 
@@ -222,6 +224,8 @@ export function AppSidebar({
           showReviewerOnlyItems={viralReviewerAccessState === "reviewer"}
         />
 
+        <SidebarPlanCreditsWidget collapsed={collapsed} />
+
         <AccountSection
           active={activeKey === "settings"}
           collapsed={collapsed}
@@ -269,6 +273,8 @@ export function AppSidebar({
               onNavigate={() => setIsMobileNavigationOpen(false)}
               showReviewerOnlyItems={viralReviewerAccessState === "reviewer"}
             />
+
+            <SidebarPlanCreditsWidget collapsed={false} />
 
             <AccountSection
               active={activeKey === "settings"}
@@ -535,6 +541,66 @@ function CollapsedMagneticNavItem({
         {item.label}
       </span>
     </Link>
+  );
+}
+
+function SidebarPlanCreditsWidget({ collapsed = false }: { collapsed?: boolean }) {
+  const tooltipId = useId();
+  const subscriptionQuery = useBillingSubscription();
+  const subscription = subscriptionQuery.data;
+  const planLabel = subscription?.displayName ?? "Free";
+  const creditsRemaining = subscription?.creditsRemaining ?? 0;
+  const creditsLimit = subscription?.sharedMonthlyCredits ?? 0;
+  const billingHref = subscription?.status === "free"
+    ? "/pricing"
+    : "/settings#subscription-billing";
+  const actionLabel = subscription?.status === "free" ? "Upgrade" : "Manage";
+
+  if (collapsed) {
+    return (
+      <div className="mb-2 flex justify-center">
+        <Link
+          href={billingHref}
+          aria-describedby={tooltipId}
+          aria-label={`${planLabel} plan, ${creditsRemaining} credits remaining, ${actionLabel}`}
+          className="group/credit-badge relative flex size-10 items-center justify-center rounded-control text-primary transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <Sparkles className="size-[18px]" aria-hidden="true" />
+          <span
+            id={tooltipId}
+            role="tooltip"
+            className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 group-hover/credit-badge:visible group-hover/credit-badge:opacity-100"
+          >
+            {planLabel} plan · {creditsRemaining} credits · {actionLabel}
+          </span>
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-2.5 mb-2 rounded-xl border border-border/80 bg-card-muted/60 p-2.5 backdrop-blur-xs">
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Sparkles className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+          <span className="truncate text-xs font-bold text-foreground-strong">
+            {planLabel} Plan
+          </span>
+        </div>
+        <Link
+          href={billingHref}
+          className="inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary/25"
+        >
+          {actionLabel}
+        </Link>
+      </div>
+      <div className="mt-1.5 flex items-center justify-between text-[11px] font-medium text-muted">
+        <span>Shared AI credits</span>
+        <span className="font-mono font-bold text-foreground">
+          {creditsRemaining} / {creditsLimit}
+        </span>
+      </div>
+    </div>
   );
 }
 

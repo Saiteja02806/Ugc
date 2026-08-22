@@ -10,21 +10,14 @@ import {
   requireFirebaseUser,
 } from "@/lib/firebase/server-auth";
 import {
-  ensureTrendingDailyFeed,
   getMissingTrendingFeedEnvVars,
 } from "@/lib/trending/daily-feed";
-import {
-  buildUnifiedTrendingFeed,
-  createCurrentTrendingFeedProviders,
-  getTrendingFeedProviderAvailability,
-} from "@/lib/trending/feed-items";
 import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
-import { getTrendingHookFeedProvider } from "@/lib/trending/trending-hook-feed";
-import { getTrendingWallTextFeedProvider } from "@/lib/trending/trending-wall-text-feed";
 import {
-  filterWallTextProvidersForRuntime,
   isWallTextEnabled,
 } from "@/lib/trending/wall-text-access";
+import { ensureUnifiedTrendingDailyFeed } from "@/lib/trending/unified-daily-feed";
+import { getMissingUnifiedTrendingFeedEnvVars } from "@/lib/trending/unified-daily-feed-db";
 
 export const runtime = "nodejs";
 
@@ -71,6 +64,7 @@ export async function GET(request: Request) {
     ...new Set([
       ...getMissingBusinessProfileEnvVars(),
       ...getMissingTrendingFeedEnvVars(),
+      ...getMissingUnifiedTrendingFeedEnvVars(),
     ]),
   ];
 
@@ -103,19 +97,13 @@ export async function GET(request: Request) {
       );
     }
 
-    const [dailyFeed, hookProvider, wallTextProvider] = await Promise.all([
-      ensureTrendingDailyFeed({
-        profile,
-        timezone: new URL(request.url).searchParams.get("timezone"),
-        userId,
-      }),
-      hookVideosEnabled
-        ? getTrendingHookFeedProvider(profile)
-        : Promise.resolve(undefined),
-      isWallTextEnabled()
-        ? getTrendingWallTextFeedProvider(profile)
-        : Promise.resolve(undefined),
-    ]);
+    const dailyFeed = await ensureUnifiedTrendingDailyFeed({
+      includeHookVideos: hookVideosEnabled,
+      includeWallText: isWallTextEnabled(),
+      profile,
+      timezone: new URL(request.url).searchParams.get("timezone"),
+      userId,
+    });
     const profileState =
       dailyFeed.carousels.length > 0
         ? "ready"
@@ -124,21 +112,13 @@ export async function GET(request: Request) {
           : dailyFeed.feed.state === "preparing"
             ? "preparing"
             : "ready";
-    const providers = filterWallTextProvidersForRuntime(
-      createCurrentTrendingFeedProviders(
-        dailyFeed.carousels,
-        hookProvider,
-        wallTextProvider,
-        { includeHookVideos: hookVideosEnabled },
-      ),
-    );
-
     return jsonResponse({
       carousels: dailyFeed.carousels,
+      contentMix: dailyFeed.contentMix,
       entitlement: dailyFeed.entitlement,
       feed: dailyFeed.feed,
-      formatAvailability: getTrendingFeedProviderAvailability(providers),
-      items: buildUnifiedTrendingFeed(providers),
+      formatAvailability: dailyFeed.formatAvailability,
+      items: dailyFeed.items,
       ok: true,
       profile: {
         error: profile.preparationError,

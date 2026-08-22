@@ -30,6 +30,22 @@ const analyticsWorkspaceSource = readFileSync(
   ),
   "utf8",
 );
+const analyticsPageSource = readFileSync(
+  new URL("../../app/analytics/page.tsx", import.meta.url),
+  "utf8",
+);
+
+test("the Analytics route bypasses the dormant multi-platform dashboard", () => {
+  assert.match(
+    analyticsPageSource,
+    /import \{ InstagramAnalyticsWorkspace \} from "@\/components\/analytics\/instagram-analytics-workspace"/,
+  );
+  assert.match(analyticsPageSource, /<InstagramAnalyticsWorkspace \/>/);
+  assert.doesNotMatch(
+    analyticsPageSource,
+    /components\/analytics\/analytics-dashboard|DormantMultiPlatformAnalyticsDashboard/,
+  );
+});
 
 const account = {
   accountName: "North Studio",

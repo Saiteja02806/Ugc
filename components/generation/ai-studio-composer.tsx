@@ -22,6 +22,7 @@ export function AiStudioComposer({
   active,
   accessMessage,
   ariaLabel,
+  contextBanner,
   generateDisabled,
   generateLabel,
   generationLocked,
@@ -41,6 +42,7 @@ export function AiStudioComposer({
   active: boolean;
   accessMessage?: string | null;
   ariaLabel: string;
+  contextBanner?: ReactNode;
   generateDisabled: boolean;
   generateLabel: string;
   generationLocked: boolean;
@@ -94,12 +96,18 @@ export function AiStudioComposer({
         )}
       >
         <FieldGroup className={layout === "unified" ? "gap-0" : "gap-2"}>
+          {contextBanner ? (
+            <div className={layout === "unified" ? "px-4 pt-3 sm:px-5" : "px-1 pt-1"}>
+              {contextBanner}
+            </div>
+          ) : null}
           <Field
             className={cn(
               "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3",
               layout === "unified"
                 ? "gap-y-1 px-4 pb-1 pt-3 sm:px-5"
                 : "gap-y-2 px-1 pt-1",
+              contextBanner && layout === "unified" && "!pt-1.5",
             )}
           >
             {leadingControl}

@@ -13,6 +13,9 @@ import type { BackgroundJobRow, Json } from "../types.js";
 
 const videoRatios = new Set(["9:16", "1:1", "4:5", "16:9"]);
 type CombinationRenderRatio = RenderScheduleCombinationPayload["ratio"];
+type ParsedCombinationRenderPayload = RenderScheduleCombinationPayload & {
+  hookVideoDraftId: string | null;
+};
 
 type RenderScheduleCombinationDependencies = {
   createMediaAssetId: () => string;
@@ -50,15 +53,25 @@ export async function runRenderScheduleCombinationJob(
     jobId: job.id,
     renderId: payload.renderId,
     scheduleId: payload.scheduleId,
+    hookVideoDraftId: payload.hookVideoDraftId,
     userId: payload.userId,
   });
 
-  await context.store.markScheduleCombinationRenderStarted({
-    jobId: job.id,
-    renderId: payload.renderId,
-    scheduleId: payload.scheduleId,
-    userId: payload.userId,
-  });
+  if (payload.hookVideoDraftId) {
+    await context.store.markHookVideoLibraryRenderStarted({
+      draftId: payload.hookVideoDraftId,
+      jobId: job.id,
+      renderId: payload.renderId,
+      userId: payload.userId,
+    });
+  } else {
+    await context.store.markScheduleCombinationRenderStarted({
+      jobId: job.id,
+      renderId: payload.renderId,
+      scheduleId: payload.scheduleId,
+      userId: payload.userId,
+    });
+  }
 
   let result: Awaited<
     ReturnType<typeof defaultRenderScheduleCombinationToStorage>
@@ -68,33 +81,60 @@ export async function runRenderScheduleCombinationJob(
   try {
     result = await dependencies.renderScheduleCombinationToStorage(payload);
 
-    await context.store.markScheduleCombinationRenderCompleted({
-      autoFinalize: payload.autoFinalize,
-      compositionFingerprint: payload.compositionFingerprint,
-      demoVideoId: payload.demoVideoId,
-      hookAudioAssetId: payload.hookAudio?.audioAssetId ?? null,
-      hookVideoId: payload.hookVideoId,
-      key: result.key,
-      mediaAssetId,
-      projectId: payload.projectId,
-      ratio: payload.ratio,
-      renderId: payload.renderId,
-      scheduleId: payload.scheduleId,
-      title: payload.title,
-      url: result.url,
-      userId: payload.userId,
-    });
+    if (payload.hookVideoDraftId) {
+      await context.store.markHookVideoLibraryRenderCompleted({
+        compositionFingerprint: payload.compositionFingerprint,
+        demoVideoId: payload.demoVideoId,
+        draftId: payload.hookVideoDraftId,
+        hookAudioAssetId: payload.hookAudio?.audioAssetId ?? null,
+        hookVideoId: payload.hookVideoId,
+        key: result.key,
+        mediaAssetId,
+        projectId: payload.projectId,
+        ratio: payload.ratio,
+        renderId: payload.renderId,
+        title: payload.title,
+        url: result.url,
+        userId: payload.userId,
+      });
+    } else {
+      await context.store.markScheduleCombinationRenderCompleted({
+        autoFinalize: payload.autoFinalize,
+        compositionFingerprint: payload.compositionFingerprint,
+        demoVideoId: payload.demoVideoId,
+        hookAudioAssetId: payload.hookAudio?.audioAssetId ?? null,
+        hookVideoId: payload.hookVideoId,
+        key: result.key,
+        mediaAssetId,
+        projectId: payload.projectId,
+        ratio: payload.ratio,
+        renderId: payload.renderId,
+        scheduleId: payload.scheduleId,
+        title: payload.title,
+        url: result.url,
+        userId: payload.userId,
+      });
+    }
 
   } catch (error) {
     const errorMessage = getErrorMessage(error);
 
     try {
-      await context.store.markScheduleCombinationRenderFailed({
-        errorMessage,
-        renderId: payload.renderId,
-        scheduleId: payload.scheduleId,
-        userId: payload.userId,
-      });
+      if (payload.hookVideoDraftId) {
+        await context.store.markHookVideoLibraryRenderFailed({
+          draftId: payload.hookVideoDraftId,
+          errorMessage,
+          renderId: payload.renderId,
+          userId: payload.userId,
+        });
+      } else {
+        await context.store.markScheduleCombinationRenderFailed({
+          errorMessage,
+          renderId: payload.renderId,
+          scheduleId: payload.scheduleId,
+          userId: payload.userId,
+        });
+      }
     } catch (persistenceError) {
       logger.error("Could not persist schedule combination render failure", {
         error: getErrorMessage(persistenceError),
@@ -182,7 +222,7 @@ export async function runRenderScheduleCombinationJob(
 
 function parseRenderScheduleCombinationPayload(
   value: Json,
-): RenderScheduleCombinationPayload {
+): ParsedCombinationRenderPayload {
   const input = getJsonRecord(value, "input_json");
   const hookTrimStart = getOptionalNonNegativeNumber(
     input.hookTrimStart,
@@ -198,8 +238,19 @@ function parseRenderScheduleCombinationPayload(
     throw new Error("hookTrimEnd must be after hookTrimStart.");
   }
 
+  const autoFinalize = getOptionalBoolean(
+    input.autoFinalize,
+    "autoFinalize",
+    false,
+  );
+  const hookVideoDraftId = getOptionalString(input.hookVideoDraftId, 128) || null;
+
+  if (hookVideoDraftId && autoFinalize) {
+    throw new Error("Saved Hook video renders cannot auto-finalize a schedule.");
+  }
+
   return {
-    autoFinalize: getOptionalBoolean(input.autoFinalize, "autoFinalize", false),
+    autoFinalize,
     compositionFingerprint:
       getOptionalString(input.compositionFingerprint, 128) || "legacy",
     demoVideoId: getRequiredString(input.demoVideoId, "demoVideoId"),
@@ -213,6 +264,7 @@ function parseRenderScheduleCombinationPayload(
     hookTrimEnd,
     hookTrimStart,
     hookVideoId: getRequiredString(input.hookVideoId, "hookVideoId"),
+    hookVideoDraftId,
     hookVideoUrl: getHttpUrl(input.hookVideoUrl, "hookVideoUrl"),
     projectId: getRequiredString(input.projectId, "projectId"),
     ratio: getChoice<CombinationRenderRatio>(

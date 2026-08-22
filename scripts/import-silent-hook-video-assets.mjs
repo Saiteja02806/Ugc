@@ -41,7 +41,14 @@ const manifestPath = path.resolve(
   String(args.manifest || DEFAULT_MANIFEST),
 );
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-const fullPlan = buildImportPlan({ manifest });
+const placementManifestPath = args["placement-manifest"]
+  ? path.resolve(String(args["placement-manifest"]))
+  : null;
+const placementManifest = placementManifestPath
+  ? JSON.parse(readFileSync(placementManifestPath, "utf8"))
+  : null;
+const placementsByHash = buildPlacementsByHash(placementManifest);
+const fullPlan = buildImportPlan({ manifest, placementsByHash });
 const canaryCount = args.canary
   ? getPositiveInteger(args.canary, "--canary")
   : null;
@@ -68,8 +75,21 @@ if ((execute || rollback) && !args.yes) {
   );
 }
 
+if (execute) {
+  const missingPlacement = plan.items.find(
+    (item) => item.hookTextPlacement === null,
+  );
+
+  if (missingPlacement) {
+    throw new Error(
+      `Refusing to activate ${missingPlacement.asset.catalogName} without first-frame-reviewed Hook text placement. Add hookTextPlacement to the source manifest or pass --placement-manifest.`,
+    );
+  }
+}
+
 printPlan({
   manifestPath,
+  placementManifestPath,
   operation: rollback
     ? "rollback"
     : verifyOnly
@@ -188,6 +208,7 @@ try {
     const { data, error } = await supabase
       .from("avatar_assets")
       .update({
+        hook_text_placement: item.hookTextPlacement,
         status: "ready",
         thumbnail_url: item.thumbnailUrl,
         updated_at: new Date().toISOString(),
@@ -242,6 +263,7 @@ async function assertRemoteSchemaReady() {
         "visual_group",
         "hook_format_id",
         "has_audio",
+        "hook_text_placement",
         "source_s3_key",
         "source_video_url",
         "status",
@@ -266,7 +288,7 @@ async function loadExistingRows(items) {
     const { data, error } = await supabase
       .from("avatar_assets")
       .select(
-        "id,name,duration_seconds,width,height,ratio,status,source_s3_key,source_video_url,thumbnail_url,source_file_sha256,source_batch,influencer_key,visual_group,hook_format_id,has_audio,sort_order,metadata,deleted_at",
+        "id,name,duration_seconds,width,height,ratio,status,source_s3_key,source_video_url,thumbnail_url,source_file_sha256,source_batch,influencer_key,visual_group,hook_format_id,hook_text_placement,has_audio,sort_order,metadata,deleted_at",
       )
       .in("source_file_sha256", hashes)
       .is("deleted_at", null);
@@ -295,6 +317,7 @@ async function createProcessingAssetRow(item) {
       has_audio: false,
       height: item.metadata.height,
       hook_format_id: item.asset.visualGroup,
+      hook_text_placement: item.hookTextPlacement,
       influencer_key: item.asset.influencerKey,
       metadata: item.catalogMetadata,
       name: item.name,
@@ -322,7 +345,7 @@ async function createProcessingAssetRow(item) {
   return data.id;
 }
 
-function buildImportPlan({ manifest }) {
+function buildImportPlan({ manifest, placementsByHash }) {
   assertManifest(manifest);
 
   const reactionTotals = countBy(
@@ -423,6 +446,10 @@ function buildImportPlan({ manifest }) {
       },
       description: `${influencer.displayName} ${reactionLabel.toLowerCase()} Hook clip.`,
       filePath,
+      hookTextPlacement:
+        parseHookTextPlacement(asset.hookTextPlacement) ??
+        placementsByHash.get(asset.sha256) ??
+        null,
       metadata,
       name,
       sizeBytes: stats.size,
@@ -448,6 +475,73 @@ function buildImportPlan({ manifest }) {
       (total, item) => total + item.sizeBytes,
       0,
     ),
+  };
+}
+
+function buildPlacementsByHash(placementManifest) {
+  if (!placementManifest) {
+    return new Map();
+  }
+
+  if (
+    placementManifest.placementContract?.coordinateSystem !==
+      "normalized_0_to_1_center_anchor" ||
+    !Array.isArray(placementManifest.videos) ||
+    placementManifest.videoCount !== placementManifest.videos.length
+  ) {
+    throw new Error("The Hook text placement manifest is invalid.");
+  }
+
+  const placements = new Map();
+
+  for (const video of placementManifest.videos) {
+    const sourceFileSha256 = video?.sourceFileSha256;
+    const placement = parseHookTextPlacement(video?.placement);
+
+    if (
+      typeof sourceFileSha256 !== "string" ||
+      !/^[0-9a-f]{64}$/u.test(sourceFileSha256) ||
+      !placement ||
+      placements.has(sourceFileSha256)
+    ) {
+      throw new Error("The Hook text placement manifest contains an invalid video.");
+    }
+
+    placements.set(sourceFileSha256, placement);
+  }
+
+  return placements;
+}
+
+function parseHookTextPlacement(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  if (
+    !["above_head", "below_face"].includes(value.preset) ||
+    typeof value.reviewVersion !== "string" ||
+    !value.reviewVersion.trim() ||
+    typeof value.reviewedAt !== "string" ||
+    !value.reviewedAt.trim() ||
+    typeof value.x !== "number" ||
+    !Number.isFinite(value.x) ||
+    value.x < 0 ||
+    value.x > 1 ||
+    typeof value.y !== "number" ||
+    !Number.isFinite(value.y) ||
+    value.y < 0 ||
+    value.y > 1
+  ) {
+    return null;
+  }
+
+  return {
+    preset: value.preset,
+    reviewVersion: value.reviewVersion.trim(),
+    reviewedAt: value.reviewedAt.trim(),
+    x: value.x,
+    y: value.y,
   };
 }
 
@@ -740,12 +834,49 @@ function assertExistingRowMatches(row, item) {
 
   if (
     row.status === "ready" &&
+    !parseHookTextPlacement(row.hook_text_placement)
+  ) {
+    throw new Error(
+      `Ready Hook text placement is missing for ${item.asset.catalogName}.`,
+    );
+  }
+
+  if (
+    item.hookTextPlacement &&
+    row.hook_text_placement !== null &&
+    !areHookTextPlacementsEqual(
+      row.hook_text_placement,
+      item.hookTextPlacement,
+    )
+  ) {
+    throw new Error(
+      `Hook text placement conflicts with ${item.asset.catalogName}.`,
+    );
+  }
+
+  if (
+    row.status === "ready" &&
     row.thumbnail_url !== item.thumbnailUrl
   ) {
     throw new Error(
       `Ready Hook thumbnail URL conflicts with ${item.asset.catalogName}.`,
     );
   }
+}
+
+function areHookTextPlacementsEqual(left, right) {
+  const normalizedLeft = parseHookTextPlacement(left);
+  const normalizedRight = parseHookTextPlacement(right);
+
+  return (
+    normalizedLeft !== null &&
+    normalizedRight !== null &&
+    normalizedLeft.preset === normalizedRight.preset &&
+    normalizedLeft.reviewVersion === normalizedRight.reviewVersion &&
+    normalizedLeft.reviewedAt === normalizedRight.reviewedAt &&
+    normalizedLeft.x === normalizedRight.x &&
+    normalizedLeft.y === normalizedRight.y
+  );
 }
 
 async function rollbackBatch() {

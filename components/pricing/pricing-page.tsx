@@ -1,8 +1,12 @@
+"use client";
+
 import {
-  BarChart3,
+  CalendarClock,
+  ChevronDown,
+  Compass,
+  Flame,
+  HelpCircle,
   Layers3,
-  RefreshCw,
-  SlidersHorizontal,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -10,27 +14,63 @@ import { ProductLogoMark } from "@/components/brand/product-logo";
 import { PricingCatalog } from "@/components/pricing/pricing-catalog";
 import { PricingComparison } from "@/components/pricing/pricing-comparison";
 import { buttonVariants } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
 import {
   pricingPlans,
   type BillingInterval,
 } from "@/lib/pricing/plans";
 
-const workflowItems = [
+const platformFeatures = [
+  {
+    icon: Flame,
+    title: "Daily Viral Formats",
+    description:
+      "Fresh Reel hooks, Wall-of-text videos, and swipeable carousels engineered from proven high-engagement Instagram patterns.",
+  },
   {
     icon: Layers3,
-    label: "Discover formats",
+    title: "AI Creative Studio",
+    description:
+      "Turn your product features, screens, and value propositions into custom AI image assets and presenter avatar clips.",
   },
   {
-    icon: SlidersHorizontal,
-    label: "Create and edit",
+    icon: CalendarClock,
+    title: "1-Click Auto-Publishing",
+    description:
+      "Connect your Instagram Professional accounts, inspect copy and visuals with 100% human control, and schedule instantly.",
+  },
+];
+
+const faqs = [
+  {
+    question: "How does UGCPilot automate my Instagram marketing?",
+    answer:
+      "UGCPilot analyzes your product, screenshots, and value proposition to generate daily ready-to-post content in proven viral Instagram formats (Reel hooks, Wall-of-text videos, and multi-slide carousels). You simply review, tweak if needed, and schedule in seconds so you can focus on building.",
   },
   {
-    icon: RefreshCw,
-    label: "Schedule content",
+    question: "What is the daily ready-to-post replenishment limit?",
+    answer:
+      "Every single day, UGCPilot automatically delivers fresh creative ideas tailored to your business profile. Starter delivers 20 ready-to-post drops daily, while Growth delivers 50 drops daily.",
   },
   {
-    icon: BarChart3,
-    label: "Review performance",
+    question: "How do shared AI generation credits work?",
+    answer:
+      "In addition to your daily ready-to-post content drops, credits give you extra flexibility for generating custom AI images and avatar presenter videos in AI Studio. Credits refresh every month on both monthly and annual plans.",
+  },
+  {
+    question: "How many Instagram accounts can I connect?",
+    answer:
+      "The Starter plan allows 1 connected Instagram Professional account for direct in-app scheduling. The Growth plan unlocks up to 3 Instagram accounts, allowing you to manage and auto-publish across multiple brands.",
+  },
+  {
+    question: "Can I upgrade, downgrade, or cancel anytime?",
+    answer:
+      "Yes. Paid customers can open the secure billing portal from Settings to change plans, update payment details, or cancel immediately or at the next billing date.",
+  },
+  {
+    question: "Is there any credit card required for the Free plan?",
+    answer:
+      "No credit card is required. You can sign up with email or Google to explore trending formats, browse daily hooks, and preview ready-to-post concepts completely free.",
   },
 ];
 
@@ -39,8 +79,10 @@ type PricingPageProps = {
 };
 
 export function PricingPage({ initialBillingInterval }: PricingPageProps) {
+  const { user, loading } = useAuth();
+
   return (
-    <div className="instagram-theme min-h-screen bg-background text-foreground">
+    <div className="instagram-theme min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-foreground-strong">
       <Link
         href="#pricing-content"
         className="sr-only focus:fixed focus:left-4 focus:top-4 focus:not-sr-only focus:rounded-control focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-foreground-strong focus:ring-2 focus:ring-focus"
@@ -48,133 +90,193 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
         Skip to pricing
       </Link>
 
-      <header className="border-b border-border bg-background/95 px-5 py-3.5 backdrop-blur sm:px-8 lg:px-10">
+      {/* Header */}
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 px-5 py-3.5 backdrop-blur-xl sm:px-8 lg:px-10">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-5">
           <Link
             href="/"
-            className="flex min-w-0 items-center gap-2.5 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="group flex min-w-0 items-center gap-2.5 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label="UGCPilot home"
           >
             <ProductLogoMark
-              className="size-9 rounded-small bg-primary p-2"
+              className="size-8 rounded-xl bg-primary p-1.5 shadow-xs"
               imageClassName="brightness-0 invert"
-              sizes="36px"
+              sizes="32px"
             />
-            <span className="truncate text-[16px] font-semibold text-foreground-strong">
+            <span className="truncate text-base font-bold tracking-tight text-foreground-strong">
               UGCPilot
             </span>
           </Link>
 
-          <nav aria-label="Pricing navigation" className="flex items-center gap-2">
-            <span className="hidden text-sm font-medium text-muted sm:inline">
-              Already have an account?
-            </span>
-            <Link
-              href="/sign-in"
-              className={buttonVariants({ variant: "outline", size: "lg" })}
-            >
-              Sign in
-            </Link>
+          <nav aria-label="Pricing navigation" className="flex items-center gap-3">
+            {!loading && user ? (
+              <div className="flex items-center gap-3">
+                <span className="hidden text-xs font-medium text-muted sm:inline">
+                  {user.displayName || user.email?.split("@")[0] || "Logged in"}
+                </span>
+                <Link
+                  href="/dashboard"
+                  className={buttonVariants({
+                    variant: "default",
+                    size: "sm",
+                    className: "h-8 rounded-lg text-xs font-semibold shadow-xs",
+                  })}
+                >
+                  <Compass className="size-3.5" data-icon="inline-start" aria-hidden="true" />
+                  <span>Open workspace</span>
+                </Link>
+              </div>
+            ) : (
+              <>
+                <span className="hidden text-xs font-medium text-muted sm:inline">
+                  Already have an account?
+                </span>
+                <Link
+                  href="/sign-in"
+                  className={buttonVariants({
+                    variant: "outline",
+                    size: "sm",
+                    className: "h-8 rounded-lg text-xs font-semibold",
+                  })}
+                >
+                  Sign in
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>
 
-      <main>
+      <main className="relative">
+        {/* Hero Section */}
         <section
           id="pricing-content"
           aria-labelledby="pricing-title"
-          className="px-5 pb-14 pt-9 sm:px-8 sm:pt-11 lg:px-10"
+          className="px-5 pb-16 pt-12 sm:px-8 sm:pt-16 lg:px-10"
           tabIndex={-1}
         >
           <div className="mx-auto max-w-5xl">
+            {/* Hero Header */}
             <div className="mx-auto max-w-2xl text-center">
-              <p className="text-xs font-bold uppercase text-foreground">
-                Simple pricing
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                Marketing On Autopilot For Builders
               </p>
               <h1
                 id="pricing-title"
-                className="mt-3 text-balance text-3xl font-bold leading-tight tracking-normal text-foreground-strong sm:text-4xl"
+                className="mt-3 text-balance text-3xl font-bold tracking-tight text-foreground-strong sm:text-4xl lg:text-5xl"
               >
-                Turn content ideas into published posts
+                Focus on building.
+                <span className="block mt-1">Put your Instagram marketing on autopilot.</span>
               </h1>
-              <p className="mx-auto mt-3 max-w-xl text-pretty text-sm font-medium leading-6 text-muted sm:text-base">
-                Every plan includes UGCPilot&apos;s complete workflow. Choose
-                how much monthly generation capacity you need and how often
-                you want to pay.
+              <p className="mx-auto mt-3 max-w-xl text-pretty text-sm font-medium leading-relaxed text-muted sm:text-base">
+                Turn your product features, screens, and value prop into daily ready-to-post Reel hooks,
+                Wall-of-text videos, and swipeable carousels.
               </p>
             </div>
 
-            <div className="mx-auto mt-6 grid max-w-3xl grid-cols-2 gap-x-4 gap-y-3 border-y border-border py-4 sm:grid-cols-4">
-              {workflowItems.map((item) => {
-                const Icon = item.icon;
-
-                return (
-                  <div
-                    key={item.label}
-                    className="flex items-center justify-center gap-2 text-xs font-semibold text-foreground sm:text-sm"
-                  >
-                    <Icon className="size-4 text-primary" aria-hidden="true" />
-                    <span>{item.label}</span>
-                  </div>
-                );
-              })}
-            </div>
-
+            {/* Pricing Cards Catalog */}
             <PricingCatalog initialBillingInterval={initialBillingInterval} />
           </div>
         </section>
 
+        {/* Feature Comparison Matrix */}
         <PricingComparison plans={pricingPlans} />
 
+        {/* 3-Card Platform Features */}
         <section
-          aria-labelledby="credits-title"
-          className="px-5 py-10 sm:px-8 lg:px-10 lg:py-12"
+          aria-labelledby="features-title"
+          className="border-b border-border bg-card-muted/20 px-5 py-14 sm:px-8 lg:px-10 lg:py-16"
         >
-          <div className="mx-auto grid max-w-5xl gap-7 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14">
-            <div className="max-w-md">
-              <p className="text-xs font-bold uppercase text-foreground">
-                Usage model
+          <div className="mx-auto max-w-5xl">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                Complete Platform
               </p>
               <h2
-                id="credits-title"
-                className="mt-2 text-2xl font-bold leading-tight tracking-normal text-foreground-strong sm:text-3xl"
+                id="features-title"
+                className="mt-2 text-2xl font-bold tracking-tight text-foreground-strong sm:text-3xl"
               >
-                One balance for generation
+                Everything you need to grow on Instagram
               </h2>
-              <p className="mt-3 text-sm font-medium leading-6 text-muted">
-                Image and short-video generation draw from the same monthly
-                credit balance, so you can use the plan around your actual
-                content mix.
+              <p className="mt-2 text-sm text-muted">
+                Every plan includes our complete creative engine. Scale capacity as you grow.
               </p>
             </div>
 
-            <dl className="divide-y divide-border border-y border-border">
-              <div className="grid gap-1 py-4 sm:grid-cols-[0.55fr_1fr] sm:gap-6">
-                <dt className="text-sm font-bold text-foreground-strong">
-                  Monthly refresh
-                </dt>
-                <dd className="text-sm font-medium leading-6 text-muted">
-                  Credits refresh every month, including on annual plans.
-                </dd>
+            <div className="mt-8 grid gap-5 sm:grid-cols-3">
+              {platformFeatures.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <div
+                    key={item.title}
+                    className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-border-strong"
+                  >
+                    <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Icon className="size-4.5" aria-hidden="true" />
+                    </div>
+                    <h3 className="mt-3 text-base font-bold text-foreground-strong">{item.title}</h3>
+                    <p className="mt-1.5 text-xs font-medium leading-relaxed text-muted">
+                      {item.description}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* Grouped Accordion FAQ Section */}
+        <section
+          aria-labelledby="faq-title"
+          className="bg-card-muted/40 px-5 py-14 sm:px-8 lg:px-10 lg:py-18"
+        >
+          <div className="mx-auto max-w-3xl">
+            <div className="text-center">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-bold uppercase tracking-wider text-foreground">
+                <HelpCircle className="size-3.5 text-primary" aria-hidden="true" />
+                <span>Got Questions?</span>
               </div>
-              <div className="grid gap-1 py-4 sm:grid-cols-[0.55fr_1fr] sm:gap-6">
-                <dt className="text-sm font-bold text-foreground-strong">
-                  Usage by output
-                </dt>
-                <dd className="text-sm font-medium leading-6 text-muted">
-                  Credit cost varies by generation type and model. Video uses
-                  more credits than an image.
-                </dd>
-              </div>
-            </dl>
+              <h2
+                id="faq-title"
+                className="mt-3 text-2xl font-bold tracking-tight text-foreground-strong sm:text-3xl"
+              >
+                Frequently asked questions
+              </h2>
+              <p className="mt-2 text-sm text-muted">
+                Everything you need to know about plans, AI credits, and automated scheduling.
+              </p>
+            </div>
+
+            <div className="mt-8 divide-y divide-border rounded-2xl border border-border bg-card p-1 shadow-xs">
+              {faqs.map((faq) => (
+                <details
+                  key={faq.question}
+                  className="group p-4 transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-card-muted/40"
+                >
+                  <summary className="flex cursor-pointer items-center justify-between gap-4 text-sm font-semibold text-foreground-strong [&::-webkit-details-marker]:hidden sm:text-base">
+                    <span>{faq.question}</span>
+                    <ChevronDown className="size-4 shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" />
+                  </summary>
+                  <p className="mt-2 text-xs font-medium leading-relaxed text-muted sm:text-sm">
+                    {faq.answer}
+                  </p>
+                </details>
+              ))}
+            </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-border px-5 py-6 sm:px-8 lg:px-10">
-        <div className="mx-auto flex max-w-5xl flex-col gap-2 text-xs font-medium text-muted sm:flex-row sm:items-center sm:justify-between">
-          <span>UGCPilot Creator and Pro plans</span>
-          <span>Prices shown in USD. Taxes may apply.</span>
+      {/* Footer */}
+      <footer className="border-t border-border bg-background px-5 py-8 sm:px-8 lg:px-10">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 text-xs font-medium text-muted sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <ProductLogoMark className="size-4.5 rounded-md bg-primary p-1" imageClassName="brightness-0 invert" sizes="18px" />
+            <span className="font-semibold text-foreground-strong">UGCPilot</span>
+            <span>— Instagram Marketing on Autopilot</span>
+          </div>
+          <span>Prices shown in USD. Secured by Dodo Payments.</span>
         </div>
       </footer>
     </div>

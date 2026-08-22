@@ -12,10 +12,10 @@ import {
   Scissors,
   UserRound,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
-import { SavedCreativeAssetsTab } from "@/components/avatars/saved-creative-assets-tab";
 import { useAuth } from "@/contexts/auth-context";
 import { UserMediaCollection } from "@/components/media/user-media-collection";
 import {
@@ -25,6 +25,14 @@ import {
 import { getCreativeAssetEditorHref } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaCollection, MediaSourceType } from "@/lib/media/types";
+
+const SavedCreativeAssetsTab = dynamic(
+  () =>
+    import("@/components/avatars/saved-creative-assets-tab").then(
+      (module) => module.SavedCreativeAssetsTab,
+    ),
+  { loading: SavedCreativeAssetsLoading },
+);
 
 type AvatarRatio = "9:16" | "1:1" | "4:5" | "16:9" | "other";
 type AvatarStatus = "ready" | "disabled" | "processing" | "failed";
@@ -95,6 +103,19 @@ type TrimDraft = {
   end: string;
   start: string;
 };
+
+function SavedCreativeAssetsLoading() {
+  return (
+    <div
+      aria-live="polite"
+      className="flex min-h-64 items-center justify-center gap-3 rounded-[var(--radius-panel)] border border-border bg-card-muted px-6 text-sm font-medium text-muted"
+      role="status"
+    >
+      <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+      Loading saved content…
+    </div>
+  );
+}
 
 export function AvatarsWorkspace({
   editorAvatarId = null,
@@ -513,7 +534,6 @@ type MediaWorkspaceTab = "videos" | "images" | "saved";
 const hookVideoSourceTypes: MediaSourceType[] = [
   "upload",
   "influencer_upload",
-  "catalog_influencer",
   "generated_video",
 ];
 

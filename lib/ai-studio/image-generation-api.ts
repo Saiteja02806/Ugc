@@ -3,7 +3,10 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
-import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
+import {
+  isAIStudioBillingExemptUser,
+  requireAIStudioProUser,
+} from "@/lib/ai-studio/server-access";
 import {
   AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
   getAIStudioPromptLengthError,
@@ -15,6 +18,13 @@ import {
   getMissingBackgroundJobStorageEnvVars,
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
+import {
+  BillingAccessError,
+  deliverBillingUsageForJob,
+  getGenerationCreditCost,
+  releaseBillingCredits,
+  reserveBillingCredits,
+} from "@/lib/billing/subscription-db";
 
 type GenerateRequest = {
   idempotencyKey?: unknown;
@@ -134,11 +144,22 @@ export async function handleAIStudioImageGeneration(request: Request) {
     );
   }
 
+  const generationId = crypto.randomUUID();
+  const idempotencyKey = cleanIdempotencyKey(
+    request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
+  );
+  let creditsReserved = false;
+
   try {
-    const generationId = crypto.randomUUID();
-    const idempotencyKey = cleanIdempotencyKey(
-      request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
-    );
+    if (!isAIStudioBillingExemptUser(user)) {
+      await reserveBillingCredits({
+        amount: getGenerationCreditCost("image"),
+        idempotencyKey,
+        jobType: IMAGE_JOB_TYPE,
+        userId: user.uid,
+      });
+      creditsReserved = true;
+    }
     const backgroundJob = await createAndDispatchBackgroundJob({
       idempotencyKey,
       input: {
@@ -162,6 +183,20 @@ export async function handleAIStudioImageGeneration(request: Request) {
       { status: 202 },
     );
   } catch (error) {
+    if (creditsReserved) {
+      await releaseBillingCredits({ idempotencyKey, userId: user.uid }).catch(
+        (releaseError) =>
+          console.error("Could not release image generation credits:", releaseError),
+      );
+    }
+
+    if (error instanceof BillingAccessError) {
+      return NextResponse.json(
+        { message: error.message, ok: false },
+        { status: error.status },
+      );
+    }
+
     console.error("Failed to start image generation:", error);
 
     return NextResponse.json(
@@ -243,6 +278,12 @@ export async function handleAIStudioImageStatus(request: Request) {
           ok: false,
         },
         { status: 400 },
+      );
+    }
+
+    if (job.status === "completed") {
+      await deliverBillingUsageForJob(job.id).catch((error) =>
+        console.error("Could not deliver image usage to Dodo:", error),
       );
     }
 

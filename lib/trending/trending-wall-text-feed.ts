@@ -123,23 +123,18 @@ export async function enqueueTrendingWallTextRefill(
       (template) => !usedBackgroundAssetIds.has(template.asset.id),
     );
 
-  if (!hasUnusedBackground) {
-    return {
-      activeCount: active.length,
-      status: "exhausted" as const,
-    };
-  }
-
   const job = await enqueueTrendingWallTextJob({
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,
     refillKey: String(existing.length),
+    requestedCount: Math.max(targetActive - active.length, 1),
     userId: profile.userId,
   });
 
   return {
     activeCount: active.length,
     jobId: job.id,
+    rotatedLibrary: !hasUnusedBackground,
     status: job.status === "completed" ? ("ready" as const) : ("scheduled" as const),
   };
 }
@@ -257,12 +252,13 @@ export async function prepareTrendingWallTextIdeas(
   const existingBackgroundAssetIds = new Set(
     existing.map((creative) => creative.overlay_media_asset_id),
   );
-  const inventory =
+  const unusedInventory =
     mode === "refill"
       ? fullInventory.filter(
           (asset) => !existingBackgroundAssetIds.has(asset.id),
         )
       : fullInventory;
+  const inventory = unusedInventory.length > 0 ? unusedInventory : fullInventory;
   const groupFreshInventory = inventory.filter(
     (asset) =>
       !recentBackgrounds.assetIds.has(asset.id) &&
@@ -281,10 +277,14 @@ export async function prepareTrendingWallTextIdeas(
       : assetFreshCandidates.length > 0
         ? assetFreshCandidates
         : selectTrendingWallTextCandidates(inventory, requestedCount);
-  const availableInstagramTemplates = activeInstagramTemplates.filter(
+  const unusedInstagramTemplates = activeInstagramTemplates.filter(
     (template) =>
       mode !== "refill" || !existingBackgroundAssetIds.has(template.asset.id),
   );
+  const availableInstagramTemplates =
+    unusedInstagramTemplates.length > 0
+      ? unusedInstagramTemplates
+      : activeInstagramTemplates;
   const freshInstagramTemplates = availableInstagramTemplates.filter(
     (template) => !recentBackgrounds.assetIds.has(template.asset.id),
   );

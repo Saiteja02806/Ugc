@@ -1,4 +1,5 @@
 import type { MediaRatio, MediaSourceType } from "@/lib/media/types";
+import type { HookVideoTextPlacement } from "@/lib/trending/hook-video-text-placement";
 
 export const hookVideoSourceKinds = ["catalog", "user"] as const;
 
@@ -17,6 +18,7 @@ export type HookInfluencerVideoSummary = {
   id: string;
   influencerKey: string | null;
   influencerId: string;
+  hookTextPlacement: HookVideoTextPlacement | null;
   ratio: MediaRatio;
   reactionType: string | null;
   sourceKind: HookVideoSourceKind;

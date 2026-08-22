@@ -9,9 +9,6 @@ const route = readProjectFile(
   "app/api/trending/feed/decisions/route.ts",
 );
 const service = readProjectFile("lib/trending/creative-decisions.ts");
-const replenishment = readProjectFile(
-  "lib/trending/feed-replenishment.ts",
-);
 
 test("persists the required owner, creative, decision, and timestamp fields", () => {
   assert.match(migration, /create table if not exists public\.trending_creative_decisions/);
@@ -77,27 +74,16 @@ test("authenticates the decision route and derives userId from Firebase", () => 
   assert.match(service, /record_trending_creative_decision/);
 });
 
-test("schedules format replenishment only after the decision is durable", () => {
+test("finishes one reserved daily slot without generating a replacement", () => {
   assert.match(
     route,
-    /recordTrendingCreativeDecision\(\{[\s\S]+replenishTrendingFormatAfterDecision\(\{/,
+    /recordTrendingCreativeDecision\(\{[\s\S]+markDailyTrendingSlotDecided\(\{/,
   );
   assert.match(
     route,
-    /Could not schedule Trending feed replenishment after a saved decision/,
+    /Could not mark the daily Trending position after a saved decision/,
   );
-  assert.match(
-    replenishment,
-    /params\.format === "carousel"[\s\S]+status: "not_applicable"/,
-  );
-  assert.match(
-    replenishment,
-    /mode: "refill"[\s\S]+targetActive: TRENDING_GENERATED_FORMAT_ACTIVE_TARGET/,
-  );
-  assert.match(
-    replenishment,
-    /enqueueTrendingWallTextRefill\(profile/,
-  );
+  assert.doesNotMatch(route, /replenishTrendingFormatAfterDecision/);
 });
 
 function readProjectFile(relativePath: string) {

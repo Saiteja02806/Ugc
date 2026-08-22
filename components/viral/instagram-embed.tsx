@@ -10,8 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 const EMBED_STAGE_WIDTH = 540;
 const EMBED_STAGE_HEIGHT = 864;
 const VIDEO_VIEWPORT_WIDTH = 369;
-const VIDEO_OVERSCAN = 1.012;
-const VIDEO_HORIZONTAL_CROP = 80;
+const VIDEO_OVERSCAN = 1.065;
+const VIDEO_HORIZONTAL_CROP =
+  (EMBED_STAGE_WIDTH - VIDEO_VIEWPORT_WIDTH / VIDEO_OVERSCAN) / 2;
 const VIDEO_TOP_CROP = 54;
 const EMBED_LOAD_TIMEOUT_MS = 15_000;
 
@@ -144,13 +145,10 @@ export function InstagramEmbed({
   const isEmbedLoading = !isEmbedReady && !showEmbedError;
 
   return (
-    <div
-      ref={containerRef}
-      className="bg-card-muted px-4 py-4 sm:px-5 sm:py-5"
-    >
+    <div ref={containerRef} className="w-full">
       <div
         ref={viewportRef}
-        className="relative mx-auto aspect-[9/16] w-full max-w-[369px] overflow-hidden rounded-[18px] bg-muted shadow-[0_16px_38px_-24px_rgba(15,23,42,0.5)] ring-1 ring-black/10"
+        className="relative aspect-[9/16] w-full overflow-hidden bg-muted"
         aria-busy={isEmbedLoading}
         aria-label="Hook video preview"
       >

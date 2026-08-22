@@ -4,6 +4,10 @@ import {
   hookVideoJson,
 } from "@/lib/trending/hook-video-api";
 import { listSavedHookVideoDrafts } from "@/lib/trending/hook-video-db";
+import {
+  getMissingHookVideoLibraryRenderEnvVars,
+  queueSavedHookVideoRender,
+} from "@/lib/trending/hook-video-library-render";
 import { persistHookVideoSelection } from "@/lib/trending/hook-video-service";
 import { HookVideoDraftRequestSchema } from "@/lib/trending/hook-video-validation";
 
@@ -45,15 +49,32 @@ export async function POST(request: Request) {
     );
   }
 
+  if (getMissingHookVideoLibraryRenderEnvVars().length > 0) {
+    return hookVideoJson(
+      {
+        error: "Hook video preparation is temporarily unavailable.",
+        ok: false,
+      },
+      501,
+    );
+  }
+
   try {
-    const result = await persistHookVideoSelection({
+    const composition = await persistHookVideoSelection({
       input: parsed.data,
       librarySaved: true,
       userId: auth.user.uid,
     });
+    const result = await queueSavedHookVideoRender({
+      composition,
+      userId: auth.user.uid,
+    });
 
-    return hookVideoJson({ draft: result.draft, ok: true });
+    return hookVideoJson({ draft: result.draft, jobId: result.jobId, ok: true }, 202);
   } catch (error) {
-    return hookVideoErrorResponse(error, "Could not save this Hook video.");
+    return hookVideoErrorResponse(
+      error,
+      "Could not save and prepare this Hook video.",
+    );
   }
 }

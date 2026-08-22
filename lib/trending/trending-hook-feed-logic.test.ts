@@ -26,6 +26,7 @@ function createEntry(params: {
     },
     video: {
       durationSeconds: params.durationSeconds,
+      hookTextPlacement: null,
       id: params.id,
       influencerId: `catalog:${influencerKey}`,
       influencerKey,

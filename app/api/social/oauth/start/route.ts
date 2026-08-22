@@ -16,6 +16,7 @@ import {
   isSocialPlatform,
   isSocialProvider,
 } from "@/lib/social/types";
+import { getUserSubscription } from "@/lib/billing/subscription-db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -91,6 +92,26 @@ export async function POST(request: Request) {
       },
       400,
     );
+  }
+
+  if (intent === "add" && platform === "instagram") {
+    const subscription = await getUserSubscription(userId);
+
+    if (
+      subscription.connectedInstagramAccounts >= subscription.instagramAccounts
+    ) {
+      return json(
+        {
+          code: "instagram_account_limit_reached",
+          message:
+            subscription.instagramAccounts === 0
+              ? "Upgrade to Starter or Growth before connecting Instagram."
+              : `Your ${subscription.displayName} plan supports ${subscription.instagramAccounts} Instagram account${subscription.instagramAccounts === 1 ? "" : "s"}.`,
+          ok: false,
+        },
+        402,
+      );
+    }
   }
 
   let libraryItemId: string | null = null;

@@ -3,9 +3,8 @@ import { NextResponse } from "next/server";
 import { enqueueAnalyticsSyncJob } from "@/lib/analytics/jobs";
 import {
   FirebaseAuthRequestError,
+  requireFirebaseUser,
 } from "@/lib/firebase/server-auth";
-import { BillingAccessError } from "@/lib/billing/subscription-db";
-import { requireActivePaidUser } from "@/lib/billing/server-access";
 import { getPublicBackgroundJob } from "@/lib/jobs/background-job-contract";
 import { getMissingBackgroundJobStorageEnvVars } from "@/lib/jobs/background-jobs";
 import { getMissingBackgroundJobCloudTasksEnvVars } from "@/lib/jobs/gcp-cloud-tasks";
@@ -17,19 +16,14 @@ export async function POST(request: Request) {
   let userId: string;
 
   try {
-    userId = (await requireActivePaidUser(request)).user.uid;
+    userId = (await requireFirebaseUser(request)).uid;
   } catch (error) {
-    const status =
-      error instanceof FirebaseAuthRequestError || error instanceof BillingAccessError
-        ? error.status
-        : 500;
+    const status = error instanceof FirebaseAuthRequestError ? error.status : 500;
     return json({
       message:
-        error instanceof BillingAccessError
-          ? error.message
-          : status === 401
-            ? "Sign in before viewing TikTok analytics."
-            : "Could not verify your sign-in session.",
+        status === 401
+          ? "Sign in before viewing TikTok analytics."
+          : "Could not verify your sign-in session.",
       ok: false,
     }, status);
   }

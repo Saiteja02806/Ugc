@@ -48,6 +48,20 @@ test("user-facing AI and analytics routes only enqueue durable jobs", () => {
   }
 });
 
+test("Analytics is available to every signed-in user without a paid-plan gate", () => {
+  for (const routePath of [
+    "app/api/analytics/instagram/insights/route.ts",
+    "app/api/analytics/instagram/content/route.ts",
+    "app/api/analytics/tiktok/videos/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /requireFirebaseUser\(request\)/);
+    assert.doesNotMatch(source, /requireActivePaidUser/);
+    assert.doesNotMatch(source, /BillingAccessError/);
+  }
+});
+
 test("analysis retries restore provider output from a job-scoped database row", () => {
   const migration = readFileSync(
     "supabase/migrations/20260801103000_add_website_analysis_job_idempotency.sql",

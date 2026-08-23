@@ -1,9 +1,9 @@
 "use client";
 
 import {
+  ExternalLink,
   Menu,
   Settings,
-  Sparkles,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -21,6 +21,7 @@ import {
   SidebarIcon,
   type SidebarIconName,
 } from "@/components/icons/sidebar-icon";
+import { DiscordIcon } from "@/components/icons/discord-icon";
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
 import { useViralReviewerAccess } from "@/components/viral/use-viral-reviewer-access";
@@ -224,6 +225,8 @@ export function AppSidebar({
           showReviewerOnlyItems={viralReviewerAccessState === "reviewer"}
         />
 
+        <SidebarDiscordLink collapsed={collapsed} />
+
         <SidebarPlanCreditsWidget collapsed={collapsed} />
 
         <AccountSection
@@ -273,6 +276,8 @@ export function AppSidebar({
               onNavigate={() => setIsMobileNavigationOpen(false)}
               showReviewerOnlyItems={viralReviewerAccessState === "reviewer"}
             />
+
+            <SidebarDiscordLink collapsed={false} />
 
             <SidebarPlanCreditsWidget collapsed={false} />
 
@@ -544,17 +549,109 @@ function CollapsedMagneticNavItem({
   );
 }
 
+function SidebarDiscordLink({ collapsed = false }: { collapsed?: boolean }) {
+  const surfaceRef = useRef<HTMLSpanElement>(null);
+  const tooltipId = useId();
+  const discordHref = "https://discord.gg/wNtwSVFvK";
+
+  function resetSurface() {
+    if (surfaceRef.current) {
+      surfaceRef.current.style.transform = "translate3d(0, 0, 0) scale(1)";
+    }
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLAnchorElement>) {
+    if (
+      event.pointerType !== "mouse" ||
+      window.matchMedia("(pointer: coarse)").matches ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const relativeX = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const relativeY = (event.clientY - bounds.top) / bounds.height - 0.5;
+    const translateX = Math.max(-4, Math.min(4, relativeX * 8));
+    const translateY = Math.max(-3, Math.min(3, relativeY * 6));
+
+    if (surfaceRef.current) {
+      surfaceRef.current.style.transform = `translate3d(${translateX}px, ${translateY}px, 0) scale(1.05)`;
+    }
+  }
+
+  if (collapsed) {
+    return (
+      <div className="mb-2 flex justify-center">
+        <a
+          href={discordHref}
+          target="_blank"
+          rel="noreferrer noopener"
+          onBlur={resetSurface}
+          onPointerCancel={resetSurface}
+          onPointerLeave={resetSurface}
+          onPointerMove={handlePointerMove}
+          aria-describedby={tooltipId}
+          aria-label="Discord"
+          className="group/rail-item relative flex size-10 items-center justify-center rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+        >
+          <span
+            ref={surfaceRef}
+            className="flex size-10 items-center justify-center rounded-control text-muted-subtle transition-[transform,background-color,color,box-shadow] duration-[160ms] ease-out will-change-transform group-hover/rail-item:bg-deep-contrast group-hover/rail-item:text-white group-hover/rail-item:shadow-[0_8px_20px_rgb(23_52_84_/_0.24)] group-focus-visible/rail-item:bg-deep-contrast group-focus-visible/rail-item:text-white group-focus-visible/rail-item:shadow-[0_8px_20px_rgb(23_52_84_/_0.24)] motion-reduce:transform-none motion-reduce:transition-none"
+          >
+            <DiscordIcon className="size-5" />
+          </span>
+          <span
+            id={tooltipId}
+            role="tooltip"
+            className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 delay-0 group-hover/rail-item:visible group-hover/rail-item:opacity-100 group-hover/rail-item:delay-[160ms] group-focus-visible/rail-item:visible group-focus-visible/rail-item:opacity-100 motion-reduce:transition-none"
+          >
+            Discord
+          </span>
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-2 px-3">
+      <a
+        href={discordHref}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="group relative flex h-10 w-full items-center gap-3 rounded-control px-3 text-sm font-medium text-muted transition-colors duration-150 hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none"
+      >
+        <DiscordIcon className="size-[19px] text-muted-subtle transition-colors group-hover:text-foreground-strong" />
+        <span className="truncate">Discord</span>
+        <ExternalLink
+          className="ml-auto size-3.5 text-muted-subtle/70 transition-colors group-hover:text-foreground-strong"
+          aria-hidden="true"
+        />
+      </a>
+    </div>
+  );
+}
+
 function SidebarPlanCreditsWidget({ collapsed = false }: { collapsed?: boolean }) {
   const tooltipId = useId();
   const subscriptionQuery = useBillingSubscription();
   const subscription = subscriptionQuery.data;
+
+  // Only display this card for Free users; hide completely when user is on Starter or Growth
+  const isFreeUser =
+    !subscription ||
+    subscription.status === "free" ||
+    subscription.planKey === "free";
+
+  if (!isFreeUser) {
+    return null;
+  }
+
   const planLabel = subscription?.displayName ?? "Free";
   const creditsRemaining = subscription?.creditsRemaining ?? 0;
   const creditsLimit = subscription?.sharedMonthlyCredits ?? 0;
-  const billingHref = subscription?.status === "free"
-    ? "/pricing"
-    : "/settings#subscription-billing";
-  const actionLabel = subscription?.status === "free" ? "Upgrade" : "Manage";
+  const billingHref = "/pricing";
+  const actionLabel = "Upgrade";
 
   if (collapsed) {
     return (
@@ -565,7 +662,9 @@ function SidebarPlanCreditsWidget({ collapsed = false }: { collapsed?: boolean }
           aria-label={`${planLabel} plan, ${creditsRemaining} credits remaining, ${actionLabel}`}
           className="group/credit-badge relative flex size-10 items-center justify-center rounded-control text-primary transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <Sparkles className="size-[18px]" aria-hidden="true" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+            Free
+          </span>
           <span
             id={tooltipId}
             role="tooltip"
@@ -581,8 +680,7 @@ function SidebarPlanCreditsWidget({ collapsed = false }: { collapsed?: boolean }
   return (
     <div className="mx-2.5 mb-2 rounded-xl border border-border/80 bg-card-muted/60 p-2.5 backdrop-blur-xs">
       <div className="flex items-center justify-between gap-1">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <Sparkles className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+        <div className="flex min-w-0 items-center">
           <span className="truncate text-xs font-bold text-foreground-strong">
             {planLabel} Plan
           </span>

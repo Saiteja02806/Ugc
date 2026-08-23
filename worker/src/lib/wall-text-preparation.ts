@@ -11,6 +11,8 @@ export async function prepareWallTextInApp(params: {
   businessProfileId: string;
   businessProfileVersion: number;
   refillKey?: string | null;
+  requestedCount: number;
+  requestKey: string;
   userId: string;
 }) {
   const config = getConfig();
@@ -35,6 +37,7 @@ export async function prepareWallTextInApp(params: {
       signal: controller.signal,
     });
     const result = (await response.json().catch(() => null)) as {
+      error?: unknown;
       ideaCount?: unknown;
       ok?: unknown;
     } | null;
@@ -44,8 +47,12 @@ export async function prepareWallTextInApp(params: {
       result?.ok !== true ||
       typeof result.ideaCount !== "number"
     ) {
+      const detail =
+        typeof result?.error === "string" && result.error.trim()
+          ? ` ${result.error.trim().slice(0, 240)}`
+          : "";
       throw new Error(
-        `Wall-of-text preparation request failed with HTTP ${response.status}.`,
+        `Wall-of-text preparation request failed with HTTP ${response.status}.${detail}`,
       );
     }
 

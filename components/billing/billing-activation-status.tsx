@@ -11,8 +11,10 @@ import { buttonVariants } from "@/components/ui/button";
 const ACTIVATION_WAIT_MS = 60_000;
 
 export function BillingActivationStatus() {
-  const subscriptionQuery = useBillingSubscription({ activationPolling: true });
   const [timedOut, setTimedOut] = useState(false);
+  const subscriptionQuery = useBillingSubscription({
+    activationPolling: !timedOut,
+  });
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setTimedOut(true), ACTIVATION_WAIT_MS);

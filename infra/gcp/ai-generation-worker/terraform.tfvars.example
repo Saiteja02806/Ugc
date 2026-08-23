@@ -20,7 +20,7 @@ worker_job_types             = "generate_avatar,generate_image,generate_hook_vid
 
 worker_visibility_timeout_seconds = 1800
 min_instance_count                = 1
-max_instance_count                = 1
+max_instance_count                = 4
 request_timeout_seconds           = 1800
 cpu                               = "2"
 memory                            = "4Gi"

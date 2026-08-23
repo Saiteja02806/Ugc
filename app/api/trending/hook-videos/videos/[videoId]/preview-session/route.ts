@@ -5,8 +5,8 @@ import {
 } from "@/lib/trending/hook-video-api";
 import {
   createHookVideoPreviewSession,
+  getHookVideoPreviewCookieName,
   hasHookVideoPreviewSecret,
-  HOOK_VIDEO_PREVIEW_COOKIE,
   HOOK_VIDEO_PREVIEW_TTL_SECONDS,
 } from "@/lib/trending/hook-video-preview-session";
 import { getLockedHookAudioForVideo } from "@/lib/trending/hook-audio-db";
@@ -87,10 +87,10 @@ export async function POST(
       previewUrl: `/api/trending/hook-videos/preview/${encodeURIComponent(videoId)}`,
     });
 
-    response.cookies.set(HOOK_VIDEO_PREVIEW_COOKIE, session.token, {
+    response.cookies.set(getHookVideoPreviewCookieName(videoId), session.token, {
       httpOnly: true,
       maxAge: HOOK_VIDEO_PREVIEW_TTL_SECONDS,
-      path: "/api/trending/hook-videos/preview",
+      path: `/api/trending/hook-videos/preview/${encodeURIComponent(videoId)}`,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
     });

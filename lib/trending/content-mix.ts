@@ -6,6 +6,12 @@ export const DEFAULT_TRENDING_CONTENT_MIX = {
   wall_text: 50,
 } as const satisfies TrendingContentMix;
 
+export const FREE_TRENDING_CONTENT_MIX = {
+  carousel: 30,
+  hook_video: 30,
+  wall_text: 40,
+} as const satisfies TrendingContentMix;
+
 export const TRENDING_CONTENT_MIX_LIMITS = {
   carousel: 100,
   hook_video: 50,
@@ -57,7 +63,13 @@ export function allocateTrendingContent(params: {
     ]),
   ) as TrendingContentAllocation;
   let remaining = dailyLimit - sumAllocation(allocation);
-  const tieOrder = getDailyTieOrder(params.localDate);
+  // The default Growth allocation has a 12.5/25/12.5 split. Keep its extra
+  // slot on Carousel so the complete Hook allocation fits in the validated
+  // twelve-candidate worker batch instead of serializing a second AI job for
+  // one remaining daily-feed position.
+  const tieOrder = isDefaultGrowthMix(params)
+    ? (["carousel", "wall_text", "hook_video"] as const)
+    : getDailyTieOrder(params.localDate);
   const tieIndex = new Map(tieOrder.map((format, index) => [format, index]));
   const ranked = [...FORMATS].sort((first, second) => {
     const firstRemainder = (dailyLimit * params.mix[first]) % 100;
@@ -197,6 +209,18 @@ function getDailyTieOrder(localDate: string) {
   return Number.isFinite(dayNumber) && Math.abs(dayNumber) % 2 === 1
     ? (["hook_video", "wall_text", "carousel"] as const)
     : (["carousel", "wall_text", "hook_video"] as const);
+}
+
+function isDefaultGrowthMix(params: {
+  dailyLimit: number;
+  mix: TrendingContentMix;
+}) {
+  return (
+    params.dailyLimit === 50 &&
+    params.mix.carousel === DEFAULT_TRENDING_CONTENT_MIX.carousel &&
+    params.mix.wall_text === DEFAULT_TRENDING_CONTENT_MIX.wall_text &&
+    params.mix.hook_video === DEFAULT_TRENDING_CONTENT_MIX.hook_video
+  );
 }
 
 function sumAllocation(allocation: TrendingContentAllocation) {

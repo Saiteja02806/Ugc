@@ -88,10 +88,25 @@ function parseInput(rawBody: string) {
     const input = JSON.parse(rawBody) as PrepareWallTextInput;
     const businessProfileId = getString(input.businessProfileId);
     const refillKey = getOptionalString(input.refillKey);
-    const requestKey = getString(input.requestKey);
-    const requestedCount = input.requestedCount;
     const userId = getString(input.userId);
     const businessProfileVersion = input.businessProfileVersion;
+    const requestedCount =
+      input.requestedCount === null || input.requestedCount === undefined
+        ? 6
+        : input.requestedCount;
+    const requestKey =
+      getString(input.requestKey) ||
+      (businessProfileId &&
+      typeof businessProfileVersion === "number" &&
+      Number.isInteger(businessProfileVersion) &&
+      businessProfileVersion > 0
+        ? [
+            "legacy-wall-job",
+            businessProfileId,
+            `v${businessProfileVersion}`,
+            ...(refillKey ? [`refill-${refillKey}`] : []),
+          ].join(":")
+        : "");
 
     return businessProfileId &&
       userId &&

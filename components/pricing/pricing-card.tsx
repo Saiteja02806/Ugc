@@ -128,7 +128,7 @@ export function PricingCard({
       {/* Most Popular Pill with Gradient */}
       {plan.badgeLabel ? (
         <div className="absolute -top-3 right-6 z-10">
-          <span className="inline-flex items-center rounded-full bg-gradient-to-r from-orange-500 via-rose-500 to-primary px-3 py-0.5 text-[11px] font-bold text-white shadow-xs">
+          <span className="inline-flex items-center rounded-full bg-gradient-to-r from-orange-500 via-rose-500 to-primary px-3 py-0.5 text-[11px] font-semibold text-white shadow-xs">
             {plan.badgeLabel}
           </span>
         </div>
@@ -137,19 +137,19 @@ export function PricingCard({
       {/* 1. Header: Plan Name & Audience */}
       <div>
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold tracking-tight text-foreground-strong">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground-strong">
             {plan.name}
           </h2>
           {isCurrentPlan ? (
             <Badge
               variant="outline"
-              className="border-success/40 bg-success/10 text-xs font-semibold text-success"
+              className="border-success/40 bg-success/10 text-xs font-medium text-success"
             >
               Current plan
             </Badge>
           ) : null}
         </div>
-        <p className="mt-1 text-xs text-muted font-medium">{plan.bestFor}</p>
+        <p className="mt-1 text-xs font-normal text-muted">{plan.bestFor}</p>
       </div>
 
       {/* 2. Price Header */}
@@ -158,11 +158,11 @@ export function PricingCard({
           <span className="font-mono text-4xl font-bold tracking-tight text-foreground-strong">
             {formatPricingAmount(pricing.monthlyEquivalent)}
           </span>
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <span className="text-xs font-medium uppercase tracking-wider text-muted">
             / month
           </span>
         </div>
-        <p className="mt-1 min-h-4 text-xs text-muted">
+        <p className="mt-1 min-h-4 text-xs font-normal text-muted">
           {isFree
             ? "Free forever · No card required"
             : pricing.savings > 0
@@ -234,13 +234,13 @@ export function PricingCard({
       {/* 4. Deliverable Callout Pill */}
       {plan.capacityLabel ? (
         <div className="mt-4">
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-card-muted/60 px-3 py-2 text-xs font-semibold text-foreground-strong">
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-card-muted/60 px-3 py-2 text-xs font-medium text-foreground-strong">
             <span>{plan.capacityLabel}</span>
           </div>
         </div>
       ) : null}
 
-      <p className="mt-3 text-xs leading-relaxed text-muted">
+      <p className="mt-3 text-xs font-normal leading-relaxed text-muted">
         {plan.description}
       </p>
 
@@ -248,17 +248,17 @@ export function PricingCard({
 
       {/* 5. Features Checklist */}
       <div className="flex flex-1 flex-col">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-muted">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
           Included
         </p>
         <ul className="mt-3 flex flex-1 flex-col gap-2.5 text-xs">
           {plan.features.map((feature) => (
             <li key={feature} className="flex items-start gap-2.5">
               <Check
-                className="mt-0.5 size-3.5 shrink-0 text-primary"
+                className="mt-0.5 size-3.5 shrink-0 text-success"
                 aria-hidden="true"
               />
-              <span className="font-medium text-foreground leading-snug">
+              <span className="font-normal text-foreground leading-snug">
                 {feature}
               </span>
             </li>
@@ -266,7 +266,7 @@ export function PricingCard({
         </ul>
 
         <div className="mt-auto pt-4">
-          <p className="text-center text-[11px] text-muted">
+          <p className="text-center text-[11px] font-normal text-muted">
             {isFree
               ? "No payment method required."
               : "Secured checkout · Cancel anytime"}

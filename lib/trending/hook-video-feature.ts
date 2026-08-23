@@ -1,5 +1,5 @@
 export function parseTrendingHookVideosEnabled(value: string | undefined) {
-  return value?.trim().toLowerCase() === "true";
+  return value?.trim().toLowerCase() !== "false";
 }
 
 type TrendingHookVideoFeatureInput = {
@@ -11,8 +11,9 @@ type TrendingHookVideoFeatureInput = {
 export function resolveTrendingHookVideosEnabled({
   featureFlag,
 }: TrendingHookVideoFeatureInput) {
-  // Hook videos stay off in every environment unless the server explicitly
-  // opts in. Production uses the same reversible flag as previews.
+  // Hook ideas are part of every daily bundle. Keep an explicit false value as
+  // an emergency kill switch without making a missing flag silently strand
+  // reserved Hook positions forever.
   return parseTrendingHookVideosEnabled(featureFlag);
 }
 

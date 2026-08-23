@@ -23,6 +23,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AiStudioComposer,
   AiStudioSettingSelect,
+  AiStudioRatioPicker,
 } from "@/components/generation/ai-studio-composer";
 import {
   AiStudioResults,
@@ -48,7 +49,6 @@ import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upl
 import {
   AI_STUDIO_GENERATION_QUANTITIES,
   AI_STUDIO_VIDEO_ASPECT_RATIOS,
-  getAIStudioRatioLabel,
   type AIStudioGenerationQuantity,
   type AIStudioVideoAspectRatio,
 } from "@/lib/ai-studio/generation-settings";
@@ -878,34 +878,6 @@ export function VideoGenerationStudioPanel({
     }
   }
 
-  function handleEnhancePrompt() {
-    const trimmedPrompt = normalizeAIStudioPrompt(prompt);
-    const enhancement =
-      "Structure notes: lead with the stated hook, keep the message concise and direct, show only the described product context, and end with one clear action.";
-
-    if (generationLocked || !trimmedPrompt) {
-      return;
-    }
-
-    if (trimmedPrompt.includes("Structure notes:")) {
-      return;
-    }
-
-    const enhancedPrompt = `${trimmedPrompt}\n\n${enhancement}`;
-    const promptLengthError = getAIStudioPromptLengthError(
-      enhancedPrompt,
-      AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
-    );
-
-    if (promptLengthError) {
-      setActionError(promptLengthError);
-      return;
-    }
-
-    setActionError(null);
-    setPrompt(enhancedPrompt);
-  }
-
   const failedJobQuery = activeJobQueries.find((query) => query.isError);
   const jobQueryError = failedJobQuery
     ? getErrorMessage(
@@ -1063,23 +1035,14 @@ export function VideoGenerationStudioPanel({
         }
         settings={
           <>
-            <AiStudioSettingSelect
-              ariaLabel="Video aspect ratio"
-              icon={
-                <span
-                  aria-hidden="true"
-                  className="inline-block h-5 w-3 shrink-0 rounded-[4px] border-2 border-muted"
-                />
-              }
-              options={AI_STUDIO_VIDEO_ASPECT_RATIOS.map((ratio) => ({
-                label: getAIStudioRatioLabel(ratio),
-                value: ratio,
-              }))}
+            <AiStudioRatioPicker
               value={aspectRatio}
               onChange={(value) => {
                 submissionKeyRef.current = null;
-                setAspectRatio(value);
+                setAspectRatio(value as AIStudioVideoAspectRatio);
               }}
+              allowedRatios={["9:16", "16:9"]}
+              disabled={generationLocked || isGenerating}
             />
             <AiStudioSettingSelect
               ariaLabel="Number of videos"
@@ -1130,22 +1093,6 @@ export function VideoGenerationStudioPanel({
                 }
               }}
             />
-            <Button
-              type="button"
-              variant="muted"
-              size="lg"
-              onClick={handleEnhancePrompt}
-              disabled={generationLocked || !prompt.trim() || isGenerating}
-              aria-label={
-                generationLocked
-                  ? "Video prompt enhancement locked"
-                  : "Enhance video prompt"
-              }
-              title={generationLocked ? accessMessage ?? undefined : undefined}
-            >
-              <Sparkles data-icon="inline-start" aria-hidden="true" />
-              Enhance
-            </Button>
           </>
         }
       />
@@ -1277,13 +1224,13 @@ function ReferenceImagePicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <Button
+          <button
             type="button"
-            variant="outline"
-            size={compact ? "icon-lg" : "lg"}
             className={cn(
-              !compact && "w-full max-w-none justify-between",
-              compact && "overflow-hidden p-0",
+              "inline-flex cursor-pointer items-center gap-1.5 rounded-full transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+              compact
+                ? "h-8 border border-border/80 bg-card-muted/80 px-2.5 text-xs font-medium text-foreground hover:border-border hover:bg-card"
+                : "w-full justify-between rounded-lg border border-border bg-card p-2.5 text-sm",
             )}
             aria-label={triggerLabel}
             title={selectedAvatar ? "Change reference image" : "Optional reference image"}
@@ -1291,26 +1238,24 @@ function ReferenceImagePicker({
         }
       >
         {avatarLoading ? (
-          <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          <Loader2 className="size-3.5 animate-spin text-muted motion-reduce:animate-none" aria-hidden="true" />
         ) : selectedAvatar ? (
           <Avatar
             size="sm"
-            className={cn(
-              compact && "size-full rounded-[inherit] after:rounded-[inherit]",
-            )}
+            className="size-5 shrink-0 rounded-full ring-1 ring-border/80"
           >
             {selectedAvatar.thumbnailUrl ? (
               <AvatarImage
                 src={selectedAvatar.thumbnailUrl}
                 alt=""
-                className={cn(compact && "rounded-[inherit]")}
+                className="size-full object-cover"
               />
             ) : null}
           </Avatar>
         ) : (
           <ImageIcon aria-hidden="true" />
         )}
-        <span className={cn("truncate", compact && "sr-only")}>
+        <span className="max-w-[120px] truncate font-medium text-foreground">
           {avatarLoading
             ? "Loading…"
             : selectedAvatar
@@ -1318,10 +1263,8 @@ function ReferenceImagePicker({
               : "Optional reference"}
         </span>
         <ChevronDown
-          data-icon="inline-end"
           className={cn(
-            "transition-transform duration-200 motion-reduce:transition-none",
-            compact && "hidden",
+            "size-3 text-muted transition-transform duration-200 motion-reduce:transition-none",
             open && "rotate-180",
           )}
           aria-hidden="true"

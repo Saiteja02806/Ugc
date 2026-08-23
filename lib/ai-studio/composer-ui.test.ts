@@ -30,11 +30,11 @@ test("the image prompt uses one unified composer surface", () => {
   assert.match(composer, /data-layout=\{layout\}/);
   assert.match(
     composer,
-    /"mx-auto w-full border bg-card shadow-floating"/,
+    /"mx-auto w-full border bg-card/,
   );
   assert.match(
     composer,
-    /layout === "unified"[\s\S]*?"max-w-\[944px\] rounded-\[24px\] border-border-strong p-0/,
+    /layout === "unified"[\s\S]*?"max-w-\[944px\] rounded-\[24px\] border-border/,
   );
   assert.match(
     composer,
@@ -50,7 +50,7 @@ test("the unified composer is narrower without squeezing standard layouts", () =
   );
   assert.match(
     composer,
-    /: "max-w-\[1024px\] rounded-\[var\(--radius-panel\)\]/,
+    /: "max-w-\[1024px\] rounded-\[20px\]/,
   );
 });
 
@@ -73,11 +73,8 @@ test("the unified composer stays compact while supporting multiline prompts", ()
 test("the unified toolbar keeps settings and Generate inside the same form", () => {
   assert.match(composer, /<form[\s\S]*?\{settings\}[\s\S]*?type="submit"/);
   assert.match(composer, /layout === "unified" && "px-3 pb-2 sm:px-4 sm:pb-3"/);
-  assert.match(imageWorkspace, /ariaLabel="Image aspect ratio"/);
+  assert.match(imageWorkspace, /AiStudioRatioPicker/);
   assert.match(imageWorkspace, /ariaLabel="Number of images"/);
-  assert.match(composer, /<select/);
-  assert.match(composer, /onChange=\{\(event\) => onChange/);
-  assert.match(imageWorkspace, />\s*Enhance\s*</);
   assert.match(imageWorkspace, /generateLabel="Generate image"/);
   assert.match(videoWorkspace, /layout="unified"/);
 });
@@ -85,7 +82,8 @@ test("the unified toolbar keeps settings and Generate inside the same form", () 
 test("image and video controls send selected settings to generation APIs", () => {
   assert.match(imageWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
   assert.match(videoWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
-  assert.match(videoWorkspace, /ariaLabel="Video aspect ratio"/);
+  assert.match(videoWorkspace, /AiStudioRatioPicker/);
+  assert.match(videoWorkspace, /allowedRatios=\{\["9:16", "16:9"\]\}/);
   assert.match(videoWorkspace, /ariaLabel="Number of videos"/);
 });
 
@@ -188,7 +186,6 @@ test("the redesign preserves prompt and submission behavior", () => {
   assert.match(composer, /onKeyDown=\{onTextareaKeyDown\}/);
   assert.match(composer, /prompt\.length > maxLength/);
   assert.match(composer, /disabled=\{generateDisabled \|\| promptTooLong\}/);
-  assert.match(imageWorkspace, /onClick=\{handleEnhancePrompt\}/);
 });
 
 function readProjectFile(relativePath: string) {

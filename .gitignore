@@ -44,6 +44,20 @@
 /ugc-home-*.png
 /ugcpilot_logo__1.png
 
+# local visual QA and generated review artifacts
+/.codex-audits/
+/artifacts/
+/edit-screen-audit/
+/onboarding-flow-audit/
+/landing_page/
+/design-qa*
+/landing-*.png
+/ai-studio-images-desktop.png
+/auth-desktop.png
+/local-landing-page.png
+/desktop.ini
+/folderico-*.ico
+
 # debug
 npm-debug.log*
 yarn-debug.log*

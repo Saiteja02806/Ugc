@@ -15,6 +15,26 @@ const generatedMediaPersistenceMigration = readMigration(
   "supabase/migrations/20260801104000_harden_generated_media_persistence.sql",
 );
 
+test("identifies deployed workers and lets independent AI jobs run concurrently", () => {
+  const aiWorkerMain = readFileSync(
+    "infra/gcp/ai-generation-worker/main.tf",
+    "utf8",
+  );
+  const aiWorkerVariables = readFileSync(
+    "infra/gcp/ai-generation-worker/variables.tf",
+    "utf8",
+  );
+
+  assert.match(
+    aiWorkerMain,
+    /name\s+= "WORKER_ID"[\s\S]*var\.service_name[\s\S]*var\.worker_version[\s\S]*var\.worker_git_commit/,
+  );
+  assert.match(
+    aiWorkerVariables,
+    /variable "max_instance_count"[\s\S]*default\s+= 4/,
+  );
+});
+
 test("expands background jobs with durable GCP-only lifecycle fields", () => {
   for (const field of [
     "stage",

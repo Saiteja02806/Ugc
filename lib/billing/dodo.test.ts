@@ -3,12 +3,18 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
+  assertDodoCheckoutConfigured,
   getDodoEnvironment,
   resolveDefaultReturnUrl,
   resolveDodoProductConfig,
   resolveDodoProductId,
 } from "./dodo.ts";
 import { getPostSignInDestination, parsePurchaseIntent } from "./purchase-intent.ts";
+import {
+  getBillingUsageRetryDelayMs,
+  getSubscriptionEntitlementPlanKey,
+  resolveDailyContentPieces,
+} from "./policy.ts";
 
 const migration = readFileSync(
   new URL(
@@ -21,6 +27,13 @@ const webhookRoute = readFileSync(
   new URL("../../app/api/webhooks/dodo/route.ts", import.meta.url),
   "utf8",
 );
+const billingActivationStatus = readFileSync(
+  new URL(
+    "../../components/billing/billing-activation-status.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const subscriptionDb = readFileSync(
   new URL("./subscription-db.ts", import.meta.url),
   "utf8",
@@ -28,6 +41,13 @@ const subscriptionDb = readFileSync(
 const usageFlushRoute = readFileSync(
   new URL(
     "../../app/api/internal/billing/usage/flush/route.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const hardeningMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260823130914_harden_billing_credit_cycles_and_usage_retry.sql",
     import.meta.url,
   ),
   "utf8",
@@ -65,6 +85,31 @@ test("checkout returns to activation verification instead of declaring success",
   assert.equal(url.pathname, "/dashboard/billing");
   assert.equal(url.searchParams.get("checkout"), "returned");
   assert.equal(url.searchParams.has("success"), false);
+});
+
+test("checkout fails closed until signed webhook delivery is configured", () => {
+  const originalApiKey = process.env.DODO_PAYMENTS_API_KEY;
+  const originalWebhookKey = process.env.DODO_PAYMENTS_WEBHOOK_KEY;
+  process.env.DODO_PAYMENTS_API_KEY = "test-api-key";
+  delete process.env.DODO_PAYMENTS_WEBHOOK_KEY;
+
+  assert.throws(
+    () => assertDodoCheckoutConfigured(),
+    /signed webhook credentials/,
+  );
+
+  process.env.DODO_PAYMENTS_WEBHOOK_KEY = "test-webhook-key";
+  assert.doesNotThrow(() => assertDodoCheckoutConfigured());
+  restoreEnvironment("DODO_PAYMENTS_API_KEY", originalApiKey);
+  restoreEnvironment("DODO_PAYMENTS_WEBHOOK_KEY", originalWebhookKey);
+});
+
+test("subscription activation stops its two-second polling after the bounded wait", () => {
+  assert.match(billingActivationStatus, /const ACTIVATION_WAIT_MS = 60_000/);
+  assert.match(
+    billingActivationStatus,
+    /activationPolling: !timedOut/,
+  );
 });
 
 test("purchase intent survives authentication using validated values only", () => {
@@ -110,6 +155,35 @@ test("usage delivery matches the configured Dodo meter aggregation", () => {
   assert.match(subscriptionDb, /flushPendingBillingUsageEvents/);
   assert.match(usageFlushRoute, /verifyCloudTasksOidcRequest/);
   assert.match(usageFlushRoute, /Cache-Control": "no-store"/);
+});
+
+test("billing entitlements use the database-backed legacy plan mapping", () => {
+  assert.equal(getSubscriptionEntitlementPlanKey("free"), "free");
+  assert.equal(getSubscriptionEntitlementPlanKey("starter"), "pro");
+  assert.equal(getSubscriptionEntitlementPlanKey("growth"), "creator");
+  assert.equal(resolveDailyContentPieces("free", false, 12), 12);
+  assert.match(subscriptionDb, /refresh_billing_credit_balance/);
+});
+
+test("usage retry delay is exponential and capped", () => {
+  assert.equal(getBillingUsageRetryDelayMs(1), 5 * 60 * 1000);
+  assert.equal(getBillingUsageRetryDelayMs(2), 10 * 60 * 1000);
+  assert.equal(getBillingUsageRetryDelayMs(20), 6 * 60 * 60 * 1000);
+});
+
+test("billing hardening migration anchors monthly cycles and attributes reservations", () => {
+  assert.match(hardeningMigration, /credit_cycle_anchor timestamptz/);
+  assert.match(hardeningMigration, /credit_period_start timestamptz/);
+  assert.match(hardeningMigration, /resolve_billing_credit_cycle/);
+  assert.match(hardeningMigration, /make_interval\(months => month_offset \+ 1\)/);
+  assert.match(
+    hardeningMigration,
+    /reservation\.credit_period_start = balance\.period_start/,
+  );
+  assert.doesNotMatch(
+    hardeningMigration,
+    /period_start = date_trunc\('month', now\(\)\)/,
+  );
 });
 
 function restoreEnvironment(name: string, value: string | undefined) {

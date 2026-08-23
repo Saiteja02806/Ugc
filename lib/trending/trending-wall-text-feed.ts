@@ -737,6 +737,15 @@ export async function getTrendingWallTextFeedProvider(
       );
     }
 
+    // Active assignments already passed the current read contract. Historical
+    // preview-ready creatives from an older generator version must not hide
+    // those ready ideas while stale inventory is refreshed in the background.
+    if (ideas.length > 0) {
+      return createWallTextTrendingFeedProvider(
+        ideas.map(toWallTextSourceRecord),
+      );
+    }
+
     if (
       creatives.length > 0 &&
       !areTrendingWallTextCreativesCurrent(creatives)
@@ -747,17 +756,11 @@ export async function getTrendingWallTextFeedProvider(
       );
     }
 
-    if (ideas.length === 0) {
-      return createUnavailableTrendingFeedProvider<TrendingWallTextFeedItem>(
-        "wall_text",
-        source.selection
-          ? "Wall-of-text ideas are being prepared from the selected videos."
-          : "Wall-of-text ideas are being prepared from the business profile.",
-      );
-    }
-
-    return createWallTextTrendingFeedProvider(
-      ideas.map(toWallTextSourceRecord),
+    return createUnavailableTrendingFeedProvider<TrendingWallTextFeedItem>(
+      "wall_text",
+      source.selection
+        ? "Wall-of-text ideas are being prepared from the selected videos."
+        : "Wall-of-text ideas are being prepared from the business profile.",
     );
   } catch (error) {
     console.error("Could not load unified Trending Wall-of-text ideas:", error);

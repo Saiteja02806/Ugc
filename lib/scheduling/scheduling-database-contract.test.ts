@@ -495,7 +495,7 @@ test("scheduling media catalogs are briefly reused only inside one Firebase acco
     getSchedulingMediaCatalogQueryKey("user-a"),
     getSchedulingMediaCatalogQueryKey("user-b"),
   );
-  assert.equal(SCHEDULING_CATALOG_FRESH_TIME_MS, 15_000);
+  assert.equal(SCHEDULING_CATALOG_FRESH_TIME_MS, 30 * 60 * 1_000);
   assert.equal(SCHEDULING_CATALOG_GC_TIME_MS, 30 * 60 * 1_000);
 
   assert.match(schedulingWorkspace, /const \{ user \} = useAuth\(\)/);
@@ -529,7 +529,7 @@ test("connections and schedules use shared account-scoped query keys", () => {
     getAccountSchedulesQueryKey("user-a"),
     getAccountSchedulesQueryKey("user-b"),
   );
-  assert.equal(ACCOUNT_DATA_FRESH_TIME_MS, 15_000);
+  assert.equal(ACCOUNT_DATA_FRESH_TIME_MS, 30 * 60 * 1_000);
   assert.equal(ACCOUNT_DATA_GC_TIME_MS, 30 * 60 * 1_000);
 
   assert.match(accountDataQuery, /queryClient\.fetchQuery\(\{/);
@@ -647,7 +647,7 @@ test("the shared account cache reuses fresh data, refetches on force, and isolat
   }
 });
 
-test("user actions still force fresh scheduling catalogs", () => {
+test("user actions open the editor using cached scheduling catalogs while refresh forces fresh media", () => {
   const newScheduleFlow = getSection(
     schedulingWorkspace,
     "async function handleNewSchedulePost(",
@@ -659,10 +659,10 @@ test("user actions still force fresh scheduling catalogs", () => {
     "useEffect(() => {",
   );
 
-  assert.match(newScheduleFlow, /loadSocialConnections\(\{ force: true \}\)/);
-  assert.match(newScheduleFlow, /loadScheduleMedia\(\{ force: true \}\)/);
-  assert.match(editScheduleFlow, /loadScheduleMedia\(\{ force: true \}\)/);
-  assert.match(editScheduleFlow, /loadSocialConnections\(\{ force: true \}\)/);
+  assert.match(newScheduleFlow, /loadSocialConnections\(\)/);
+  assert.match(newScheduleFlow, /loadScheduleMedia\(\)/);
+  assert.match(editScheduleFlow, /loadScheduleMedia\(\)/);
+  assert.match(editScheduleFlow, /loadSocialConnections\(\)/);
   assert.match(
     schedulingWorkspace,
     /onRefreshMedia=\{\(\) => loadScheduleMedia\(\{ force: true \}\)\}/,
@@ -683,11 +683,15 @@ test("schedule refreshes share in-flight reads while polling still forces fresh 
   assert.doesNotMatch(scheduleLoad, /fetch\("\/api\/schedules"/);
   assert.match(
     schedulingWorkspace,
-    /ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 2_000/,
+    /ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 5_000/,
   );
   assert.match(
     schedulingWorkspace,
     /window\.setInterval\(\(\) => \{[\s\S]*?loadSchedules\(\{ force: true \}\)/,
+  );
+  assert.match(
+    schedulingWorkspace,
+    /target\.status === "publishing" \|\| target\.status === "scheduling"[\s\S]*?target\.updatedAt[\s\S]*?ACTIVE_JOB_TIMEOUT_MS/,
   );
 });
 
@@ -978,7 +982,7 @@ test("social scheduling uses one five-minute rule without quarter-hour rounding"
   assert.doesNotMatch(carouselScheduleModal, /minimumLeadMinutes \+ 2/);
   assert.match(
     schedulingWorkspace,
-    /ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 2_000/,
+    /ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 5_000/,
   );
 });
 

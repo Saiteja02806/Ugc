@@ -37,9 +37,9 @@ test("Creative Assets exposes a durable Saved route and tab", () => {
 });
 
 test("Saved includes every reviewed Trending format", () => {
-  assert.match(savedTab, /<HookVideoLibraryTab embedded \/>/);
-  assert.match(savedTab, /<WallTextLibraryTab embedded \/>/);
-  assert.match(savedTab, /<CarouselLibraryTab embedded \/>/);
+  assert.match(savedTab, /<HookVideoLibraryTab[\s\S]*embedded/);
+  assert.match(savedTab, /<WallTextLibraryTab[\s\S]*embedded/);
+  assert.match(savedTab, /<CarouselLibraryTab[\s\S]*embedded/);
   assert.match(savedTab, /Hook videos/);
   assert.match(savedTab, /Wall-of-Text/);
   assert.match(savedTab, /Carousels/);
@@ -56,10 +56,10 @@ test("Saved content renders through a flat embedded presentation", () => {
   assert.match(carouselLibrary, /!embedded && "overflow-hidden rounded-panel/);
 });
 
-test("Saved category controls stay readable on narrow screens", () => {
-  assert.match(savedTab, /grid-cols-2/);
-  assert.match(savedTab, /sm:flex/);
-  assert.match(savedTab, /w-full justify-start/);
+test("Saved category controls use a responsive floating pill track", () => {
+  assert.match(savedTab, /rounded-full/);
+  assert.match(savedTab, /sm:w-auto/);
+  assert.match(savedTab, /savedCreativeFilters/);
 });
 
 test("saved carousel cards use a compact grid without thumbnail letterboxing", () => {

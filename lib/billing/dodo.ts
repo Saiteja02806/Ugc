@@ -41,6 +41,14 @@ export function getDodoWebhookKey(): string | null {
   return process.env.DODO_PAYMENTS_WEBHOOK_KEY?.trim() || null;
 }
 
+export function assertDodoCheckoutConfigured() {
+  if (!getDodoApiKey() || !getDodoWebhookKey()) {
+    throw new Error(
+      "Dodo checkout requires both API and signed webhook credentials.",
+    );
+  }
+}
+
 export function getDodoClient() {
   const apiKey = getDodoApiKey();
 
@@ -96,7 +104,7 @@ export function getBillingAppBaseUrl() {
   const rawUrl =
     process.env.APP_BASE_URL?.trim() ||
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    "https://www.getugcpilot.com";
+    "https://getugcpilot.com";
   const url = new URL(rawUrl);
 
   if (getDodoEnvironment() === "live_mode" && url.protocol !== "https:") {
@@ -132,6 +140,7 @@ export function resolveCheckoutCancelUrl(params: {
 export async function createDodoCheckoutSession(
   params: DodoCheckoutParams,
 ): Promise<DodoCheckoutResult> {
+  assertDodoCheckoutConfigured();
   const productId = resolveDodoProductId(
     params.planSlug,
     params.billingInterval,

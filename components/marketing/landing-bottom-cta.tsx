@@ -10,7 +10,11 @@ import {
 import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 
-export function LandingBottomCta() {
+export function LandingBottomCta({
+  initialHasSession,
+}: {
+  initialHasSession: boolean;
+}) {
   return (
     <section className="px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
       <div className="mx-auto overflow-hidden rounded-[24px] border border-border bg-card shadow-card">
@@ -34,7 +38,10 @@ export function LandingBottomCta() {
             </p>
 
             <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <LandingAuthCta className="group inline-flex h-12 items-center justify-center rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" />
+              <LandingAuthCta
+                className="group inline-flex h-12 items-center justify-center rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                initialHasSession={initialHasSession}
+              />
             </div>
 
             {/* Trust Badges */}

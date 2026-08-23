@@ -1,4 +1,4 @@
-import { Check, Minus, Sparkles } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 
 import {
   formatPricingAmount,
@@ -60,26 +60,25 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
   return (
     <section
       aria-labelledby="plan-comparison-title"
-      className="overflow-x-hidden border-y border-border/80 bg-card-muted/30 py-16 text-foreground sm:py-20 backdrop-blur-xs"
+      className="overflow-x-hidden border-y border-border/80 bg-card-muted/30 py-14 text-foreground sm:py-16"
     >
       <div className="mx-auto min-w-0 max-w-5xl px-5 sm:px-8 lg:px-10">
         <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
-            <Sparkles className="size-3 text-primary" aria-hidden="true" />
-            <span>Full Matrix</span>
-          </div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Feature Comparison
+          </p>
           <h2
             id="plan-comparison-title"
-            className="mt-3 text-2xl font-black tracking-tight text-foreground-strong sm:text-3xl lg:text-4xl"
+            className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-foreground-strong sm:text-3xl"
           >
             Compare plan features &amp; limits
           </h2>
-          <p className="mt-2 text-sm font-medium text-muted sm:text-base">
+          <p className="mt-2 text-sm font-normal text-muted">
             Detailed breakdown of daily ready-to-post drops, allowances, and tools included with each plan.
           </p>
         </div>
 
-        <div className="mt-10 min-w-0 max-w-full overflow-hidden rounded-3xl border border-border/80 bg-card/85 shadow-md backdrop-blur-xl ring-1 ring-border/50">
+        <div className="mt-8 min-w-0 max-w-full overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
           <div className="max-w-full overflow-x-auto overscroll-x-contain">
             <table className="w-full min-w-[620px] table-fixed border-collapse text-left">
               <caption className="sr-only">
@@ -92,8 +91,8 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                 <col className="w-[22%]" />
               </colgroup>
               <thead>
-                <tr className="border-b border-border/80 bg-card-muted/60 text-xs font-bold uppercase text-foreground">
-                  <th scope="col" className="px-6 py-5">
+                <tr className="border-b border-border bg-card-muted/60 text-xs font-semibold uppercase text-foreground">
+                  <th scope="col" className="px-5 py-4">
                     Plan Detail
                   </th>
                   {plans.map((plan) => (
@@ -101,9 +100,9 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                       key={plan.slug}
                       scope="col"
                       className={cn(
-                        "px-4 py-5 text-center text-sm font-black tracking-tight",
+                        "px-4 py-4 text-center text-sm font-semibold tracking-tight",
                         plan.highlighted
-                          ? "bg-primary/[0.08] text-primary"
+                          ? "bg-primary/[0.06] text-primary"
                           : "text-foreground-strong",
                       )}
                     >
@@ -116,7 +115,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                 <tr className="hover:bg-card-muted/30 transition-colors">
                   <th
                     scope="row"
-                    className="px-6 py-4 font-semibold text-muted"
+                    className="px-5 py-3.5 text-xs font-normal text-muted"
                   >
                     Monthly subscription
                   </th>
@@ -124,7 +123,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                     <td
                       key={plan.slug}
                       className={cn(
-                        "px-4 py-4 text-center font-mono font-bold tabular-nums text-foreground-strong",
+                        "px-4 py-3.5 text-center font-mono text-xs font-semibold tabular-nums text-foreground-strong",
                         plan.highlighted ? "bg-primary/[0.04]" : "",
                       )}
                     >
@@ -137,7 +136,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                 <tr className="hover:bg-card-muted/30 transition-colors">
                   <th
                     scope="row"
-                    className="px-6 py-4 font-semibold text-muted"
+                    className="px-5 py-3.5 text-xs font-normal text-muted"
                   >
                     Annual subscription
                   </th>
@@ -145,7 +144,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                     <td
                       key={plan.slug}
                       className={cn(
-                        "px-4 py-4 text-center font-mono font-bold tabular-nums text-foreground-strong",
+                        "px-4 py-3.5 text-center font-mono text-xs font-semibold tabular-nums text-foreground-strong",
                         plan.highlighted ? "bg-primary/[0.04]" : "",
                       )}
                     >
@@ -158,7 +157,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                 <tr className="hover:bg-card-muted/30 transition-colors">
                   <th
                     scope="row"
-                    className="px-6 py-4 font-semibold text-muted"
+                    className="px-5 py-3.5 text-xs font-normal text-muted"
                   >
                     Monthly AI generation credits
                   </th>
@@ -166,7 +165,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                     <td
                       key={plan.slug}
                       className={cn(
-                        "px-4 py-4 text-center font-mono font-black tabular-nums text-foreground-strong",
+                        "px-4 py-3.5 text-center font-mono text-xs font-semibold tabular-nums text-foreground-strong",
                         plan.highlighted ? "bg-primary/[0.04] text-primary" : "",
                       )}
                     >
@@ -177,7 +176,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                 <tr className="hover:bg-card-muted/30 transition-colors">
                   <th
                     scope="row"
-                    className="px-6 py-4 font-semibold text-muted"
+                    className="px-5 py-3.5 text-xs font-normal text-muted"
                   >
                     Daily ready-to-post pieces
                   </th>
@@ -185,7 +184,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                     <td
                       key={plan.slug}
                       className={cn(
-                        "px-4 py-4 text-center font-bold text-foreground-strong",
+                        "px-4 py-3.5 text-center text-xs font-medium text-foreground-strong",
                         plan.highlighted ? "bg-primary/[0.04] text-primary" : "",
                       )}
                     >
@@ -198,7 +197,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                 <tr className="hover:bg-card-muted/30 transition-colors">
                   <th
                     scope="row"
-                    className="px-6 py-4 font-semibold text-muted"
+                    className="px-5 py-3.5 text-xs font-normal text-muted"
                   >
                     Connected Instagram accounts
                   </th>
@@ -206,7 +205,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                     <td
                       key={plan.slug}
                       className={cn(
-                        "px-4 py-4 text-center font-bold text-foreground-strong",
+                        "px-4 py-3.5 text-center text-xs font-medium text-foreground-strong",
                         plan.highlighted ? "bg-primary/[0.04]" : "",
                       )}
                     >
@@ -220,7 +219,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                   <tr key={row.label} className="hover:bg-card-muted/30 transition-colors">
                     <th
                       scope="row"
-                      className="px-6 py-4 font-medium leading-5 text-foreground-strong"
+                      className="px-5 py-3 text-xs font-normal text-foreground"
                     >
                       {row.label}
                     </th>
@@ -236,7 +235,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                         <td
                           key={plan.slug}
                           className={cn(
-                            "px-4 py-4 text-center",
+                            "px-4 py-3 text-center",
                             plan.highlighted ? "bg-primary/[0.04]" : "",
                           )}
                         >
@@ -246,9 +245,9 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                                 className="inline-flex justify-center"
                                 aria-label="Included"
                               >
-                                <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/25">
+                                <span className="flex size-4 items-center justify-center rounded-full bg-primary/10 text-primary">
                                   <Check
-                                    className="size-3 stroke-[3]"
+                                    className="size-2.5 stroke-[3]"
                                     aria-hidden="true"
                                   />
                                 </span>
@@ -259,13 +258,13 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                                 aria-label="Not included"
                               >
                                 <Minus
-                                  className="size-4 text-muted/30"
+                                  className="size-3.5 text-muted/30"
                                   aria-hidden="true"
                                 />
                               </span>
                             )
                           ) : (
-                            <span className="inline-block rounded-lg bg-card-muted px-2.5 py-1 text-xs font-bold text-foreground">
+                            <span className="inline-block rounded-md bg-card-muted px-2 py-0.5 text-xs font-medium text-foreground">
                               {val}
                             </span>
                           )}

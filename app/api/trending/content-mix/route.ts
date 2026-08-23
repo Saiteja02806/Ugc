@@ -8,8 +8,7 @@ import {
   requireFirebaseUser,
 } from "@/lib/firebase/server-auth";
 import {
-  allocateUnboundTrendingSlots,
-  type TrendingContentAllocation,
+  FREE_TRENDING_CONTENT_MIX,
   type TrendingContentMix,
 } from "@/lib/trending/content-mix";
 import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
@@ -20,7 +19,6 @@ import {
   getTrendingLocalDate,
   getTrendingPlanEntitlement,
   normalizeTrendingTimezone,
-  replanDailyTrendingUnboundSlots,
   saveTrendingContentMixPreference,
 } from "@/lib/trending/unified-daily-feed-db";
 import { isWallTextEnabled } from "@/lib/trending/wall-text-access";
@@ -57,12 +55,17 @@ export async function GET(request: Request) {
       getTrendingContentMixPreference(auth.userId),
       getTrendingPlanEntitlement(auth.userId),
     ]);
+    const effectivePreference =
+      entitlement.planKey === "free"
+        ? { ...preference, mix: { ...FREE_TRENDING_CONTENT_MIX } }
+        : preference;
 
     return json({
+      editable: entitlement.planKey !== "free",
       entitlement,
       limits: { carousel: 100, hook_video: 50, wall_text: 50 },
       ok: true,
-      preference,
+      preference: effectivePreference,
     });
   } catch (error) {
     console.error("Could not load the Trending content mix:", error);
@@ -97,7 +100,10 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const profile = await getBusinessProfileForUser(auth.userId);
+    const [profile, entitlement] = await Promise.all([
+      getBusinessProfileForUser(auth.userId),
+      getTrendingPlanEntitlement(auth.userId),
+    ]);
     const onboardingGate = getBusinessProfileOnboardingGate(profile);
 
     if (onboardingGate || !profile) {
@@ -112,6 +118,17 @@ export async function PUT(request: Request) {
       );
     }
 
+    if (entitlement.planKey === "free") {
+      return json(
+        {
+          message:
+            "Free includes a fixed daily mix of 3 Slideshows, 4 Wall-of-text posts, and 3 Hooks.",
+          ok: false,
+        },
+        403,
+      );
+    }
+
     const mix: TrendingContentMix = {
       carousel: parsed.data.carousel,
       hook_video: parsed.data.hook_video,
@@ -121,52 +138,10 @@ export async function PUT(request: Request) {
       parsed.data.timezone ?? profile.trendingTimezone,
     );
     const localDate = getTrendingLocalDate(timezone);
-    const [savedPreference, entitlement, currentFeed] = await Promise.all([
+    const [savedPreference, currentFeed] = await Promise.all([
       saveTrendingContentMixPreference({ mix, userId: auth.userId }),
-      getTrendingPlanEntitlement(auth.userId),
       getDailyTrendingFeedForDate({ localDate, userId: auth.userId }),
     ]);
-    let changedToday = 0;
-
-    if (currentFeed) {
-      const unboundSlots = currentFeed.slots.filter(
-        (slot) =>
-          !slot.assignmentId &&
-          (slot.state === "planned" || slot.state === "failed"),
-      );
-      const unboundPositionSet = new Set(
-        unboundSlots.map((slot) => slot.position),
-      );
-      const fixedCounts: TrendingContentAllocation = {
-        carousel: 0,
-        hook_video: 0,
-        wall_text: 0,
-      };
-
-      for (const slot of currentFeed.slots) {
-        if (!unboundPositionSet.has(slot.position)) {
-          fixedCounts[slot.format] += 1;
-        }
-      }
-
-      const formats = allocateUnboundTrendingSlots({
-        currentCounts: fixedCounts,
-        dailyLimit: currentFeed.feed.dailyLimit,
-        localDate,
-        mix,
-        unboundCount: unboundSlots.length,
-      });
-
-      changedToday = await replanDailyTrendingUnboundSlots({
-        feedId: currentFeed.feed.id,
-        formats,
-        mix,
-        positions: unboundSlots.map((slot) => slot.position),
-        preferenceVersion: savedPreference.preferenceVersion,
-        userId: auth.userId,
-      });
-    }
-
     const dailyFeed = await ensureUnifiedTrendingDailyFeed({
       includeHookVideos: areTrendingHookVideosEnabled(request),
       includeWallText: isWallTextEnabled(),
@@ -177,8 +152,8 @@ export async function PUT(request: Request) {
     });
 
     return json({
-      applied: currentFeed && changedToday === 0 ? "next_day" : "today",
-      changedToday,
+      applied: currentFeed ? "next_day" : "today",
+      changedToday: 0,
       contentMix: dailyFeed.contentMix,
       entitlement: {
         ...entitlement,
@@ -186,9 +161,9 @@ export async function PUT(request: Request) {
       },
       feed: dailyFeed.feed,
       message:
-        currentFeed && changedToday === 0
-          ? "Mix saved. Today's ready posts stay unchanged; the new mix starts tomorrow."
-          : "Mix saved. Missing posts are being prepared in the background.",
+        currentFeed
+          ? "Mix saved. Today's complete pack stays unchanged; the new mix starts tomorrow."
+          : "Mix saved. Today's complete pack is being prepared in the background.",
       ok: true,
       preference: savedPreference,
     });

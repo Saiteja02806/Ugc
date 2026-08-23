@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import { getWorkspaceRouteConfig } from "../navigation/workspace-route.ts";
+import { hasAuthSessionCookie } from "../firebase/auth-session.ts";
 
 const projectRoot = new URL("../../", import.meta.url);
 const carouselLibrary = readProjectFile(
@@ -16,6 +17,10 @@ const queryProvider = readProjectFile(
   "components/providers/job-query-provider.tsx",
 );
 const rootLayout = readProjectFile("app/layout.tsx");
+const landingPage = readProjectFile("app/page.tsx");
+const landingAuthActions = readProjectFile(
+  "components/marketing/landing-auth-actions.tsx",
+);
 const signInPage = readProjectFile("app/sign-in/page.tsx");
 const authGuard = readProjectFile("components/auth/auth-guard.tsx");
 const workspaceRouteBoundary = readProjectFile(
@@ -64,6 +69,19 @@ test("changing Firebase users creates a fresh application cache and subtree", ()
     queryProvider,
     /<AccountQueryClientProvider key=\{user\?\.uid \?\? "signed-out"\}>/,
   );
+});
+
+test("landing auth CTAs receive an exact server-rendered session hint", () => {
+  assert.equal(hasAuthSessionCookie("ugc_session=1"), true);
+  assert.equal(
+    hasAuthSessionCookie("theme=dark; ugc_session=1; preference=compact"),
+    true,
+  );
+  assert.equal(hasAuthSessionCookie("not_ugc_session=1"), false);
+  assert.equal(hasAuthSessionCookie("ugc_session=10"), false);
+  assert.match(landingPage, /await cookies\(\)/);
+  assert.match(landingPage, /initialHasSession=\{initialHasSession\}/);
+  assert.match(landingAuthActions, /initialHasSession \|\| hasSessionCookie\(\)/);
 });
 
 test("the persistent workspace shell preserves the existing route access matrix", () => {

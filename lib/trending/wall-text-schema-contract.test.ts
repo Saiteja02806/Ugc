@@ -108,6 +108,20 @@ const jobsSource = readFileSync(
   new URL("./wall-text-jobs.ts", import.meta.url),
   "utf8",
 );
+const internalPreparationRoute = readFileSync(
+  new URL(
+    "../../app/api/internal/jobs/prepare-wall-text/route.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const workerPreparationClient = readFileSync(
+  new URL(
+    "../../worker/src/lib/wall-text-preparation.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const migration =
   `${creativeMigration}\n${catalogMigration}\n${unifiedCopyMigration}\n${renderingMigration}\n${semanticOverlayMigration}\n${sixSecondMigration}\n${qualityMigration}`;
 
@@ -626,6 +640,34 @@ test("upgrades stale Wall layout without sending existing copy back to AI", () =
   assert.match(
     databaseSource,
     /creative\.generator_version === WALL_TEXT_GENERATOR_VERSION[\s\S]+finalLayout !== undefined/,
+  );
+});
+
+test("serves ready Wall assignments before considering stale historical inventory", () => {
+  const readyCheck = feedSource.indexOf("if (ideas.length > 0)");
+  const staleCheck = feedSource.indexOf("!areTrendingWallTextCreativesCurrent(creatives)");
+
+  assert.notEqual(readyCheck, -1);
+  assert.notEqual(staleCheck, -1);
+  assert.ok(readyCheck < staleCheck);
+});
+
+test("accepts the previous Wall worker payload during rolling deployments", () => {
+  assert.match(
+    internalPreparationRoute,
+    /input\.requestedCount === null \|\| input\.requestedCount === undefined[\s\S]*\? 6/,
+  );
+  assert.match(
+    internalPreparationRoute,
+    /"legacy-wall-job"[\s\S]*`v\$\{businessProfileVersion\}`/,
+  );
+  assert.match(
+    workerPreparationClient,
+    /requestedCount: number;[\s\S]*requestKey: string;/,
+  );
+  assert.match(
+    workerPreparationClient,
+    /typeof result\?\.error === "string"[\s\S]*response\.status/,
   );
 });
 

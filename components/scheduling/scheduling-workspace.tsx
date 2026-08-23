@@ -24,7 +24,7 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   ReactNode,
 } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { useAuth } from "@/contexts/auth-context";
@@ -113,6 +113,7 @@ import type {
   ScheduleCatalogInfluencerOption,
   ScheduleFormSubmission,
 } from "@/components/scheduling/schedule-editor";
+import { formatCreatorDisplayName } from "@/lib/video/avatar-display";
 import { cn } from "@/lib/utils";
 
 const ScheduleEditor = dynamic(
@@ -135,8 +136,10 @@ const scheduledVideoSourceTypes: MediaSourceType[] = [
   "generated_video",
   "edit_export",
 ];
-const ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 2_000;
+const ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 5_000;
 const ACTIVE_SCHEDULE_LOOKAHEAD_MS = 60_000;
+const ACTIVE_SCHEDULE_LOOKBEHIND_MS = 120_000;
+const ACTIVE_JOB_TIMEOUT_MS = 5 * 60 * 1_000;
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
   | { error?: string; ok?: false };
@@ -481,14 +484,19 @@ export function SchedulingWorkspace() {
     try {
       const data = await loadAccountSchedules(queryClient, accountId, options);
 
-      setServerSchedules(data.schedules);
-      setCalendarStartAt(
-        getSocialSchedulingCalendarStartAt(data.calendarStartAt),
+      setServerSchedules((current) =>
+        areSchedulesEqual(current, data.schedules) ? current : data.schedules,
       );
+      setCalendarStartAt((current) => {
+        const next = getSocialSchedulingCalendarStartAt(data.calendarStartAt);
+        return current === next ? current : next;
+      });
       const configuredLeadMinutes = getConfiguredScheduleLeadMinutes(data);
 
       if (configuredLeadMinutes !== null) {
-        setMinimumScheduleLeadMinutes(configuredLeadMinutes);
+        setMinimumScheduleLeadMinutes((current) =>
+          current === configuredLeadMinutes ? current : configuredLeadMinutes,
+        );
       }
       return data;
     } catch (error) {
@@ -534,35 +542,17 @@ export function SchedulingWorkspace() {
   }, [accountId, queryClient]);
 
   useEffect(() => {
+    if (accountId === "signed-out") {
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       void loadScheduleMedia();
       void loadSchedules();
       void loadSocialConnections();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadScheduleMedia, loadSchedules, loadSocialConnections]);
-
-  useEffect(() => {
-    function refreshSchedulingData() {
-      void loadScheduleMedia();
-      void loadSchedules();
-      void loadSocialConnections();
-    }
-
-    function handleVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        refreshSchedulingData();
-      }
-    }
-
-    window.addEventListener("focus", refreshSchedulingData);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", refreshSchedulingData);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [loadScheduleMedia, loadSchedules, loadSocialConnections]);
+  }, [accountId, loadScheduleMedia, loadSchedules, loadSocialConnections]);
 
   const hasActiveServerWork = useMemo(
     () => serverSchedules.some(hasActiveSchedulingWork),
@@ -634,7 +624,7 @@ export function SchedulingWorkspace() {
     setActionNotice(null);
 
     try {
-      const connections = await loadSocialConnections({ force: true });
+      const connections = await loadSocialConnections();
 
       if (!connections) {
         return;
@@ -656,7 +646,7 @@ export function SchedulingWorkspace() {
       if (!options.keepDayOpen) {
         setDayPlannerOpen(false);
       }
-      await loadScheduleMedia({ force: true });
+      await loadScheduleMedia();
       setDrawerOpen(true);
     } finally {
       setCheckingScheduleAccess(false);
@@ -684,8 +674,8 @@ export function SchedulingWorkspace() {
     setRequireScheduleTarget(true);
     setNewScheduleInitialDate(draft.scheduledDate ?? selectedCalendarDate);
     await Promise.all([
-      loadScheduleMedia({ force: true }),
-      loadSocialConnections({ force: true }),
+      loadScheduleMedia(),
+      loadSocialConnections(),
     ]);
     setDrawerOpen(true);
   }
@@ -2216,7 +2206,7 @@ function CalendarPlanner({
   );
 }
 
-function CalendarDayCell({
+const CalendarDayCell = memo(function CalendarDayCell({
   day,
   drafts,
   onOpenDate,
@@ -2297,7 +2287,7 @@ function CalendarDayCell({
       </div>
     </button>
   );
-}
+});
 
 function CompactCalendarDay({
   day,
@@ -3412,27 +3402,47 @@ function getDraftPlannedScheduledFor(draft: ScheduleDraft) {
 }
 
 function hasActiveSchedulingWork(schedule: ScheduledPost) {
+  const now = Date.now();
   const renderStatus = getString(schedule.metadata.combinedRenderStatus);
   const finalScheduleStatus = getString(schedule.metadata.finalScheduleStatus);
+  const renderQueuedAt = Date.parse(
+    getString(schedule.metadata.combinedRenderQueuedAt) ?? schedule.updatedAt,
+  );
+  const isRecentRender =
+    (renderStatus === "queued" || renderStatus === "rendering") &&
+    Number.isFinite(renderQueuedAt) &&
+    now - renderQueuedAt < ACTIVE_JOB_TIMEOUT_MS;
+
+  const finalScheduleStartedAt = Date.parse(
+    getString(schedule.metadata.finalScheduleQueuedAt) ?? schedule.updatedAt,
+  );
+  const isRecentFinalize =
+    ["draft", "scheduling"].includes(schedule.status) &&
+    ["finalizing", "scheduling"].includes(finalScheduleStatus ?? "") &&
+    Number.isFinite(finalScheduleStartedAt) &&
+    now - finalScheduleStartedAt < ACTIVE_JOB_TIMEOUT_MS;
+
   const hasDuePublishingTarget = schedule.targets.some((target) => {
     if (target.status === "publishing" || target.status === "scheduling") {
-      return true;
+      const targetUpdatedAt = Date.parse(target.updatedAt);
+
+      return (
+        Number.isFinite(targetUpdatedAt) &&
+        now - targetUpdatedAt < ACTIVE_JOB_TIMEOUT_MS
+      );
     }
+
+    const scheduledTime = Date.parse(target.scheduledFor);
 
     return (
       target.status === "scheduled" &&
-      Date.parse(target.scheduledFor) <=
-        Date.now() + ACTIVE_SCHEDULE_LOOKAHEAD_MS
+      Number.isFinite(scheduledTime) &&
+      scheduledTime >= now - ACTIVE_SCHEDULE_LOOKBEHIND_MS &&
+      scheduledTime <= now + ACTIVE_SCHEDULE_LOOKAHEAD_MS
     );
   });
 
-  return (
-    renderStatus === "queued" ||
-    renderStatus === "rendering" ||
-    hasDuePublishingTarget ||
-    (["draft", "scheduling"].includes(schedule.status) &&
-      ["finalizing", "scheduling"].includes(finalScheduleStatus ?? ""))
-  );
+  return isRecentRender || isRecentFinalize || hasDuePublishingTarget;
 }
 
 async function queueCombinationRender({
@@ -3887,7 +3897,7 @@ function mapAvatarToCatalogInfluencerOption(
     durationLabel: formatAssetDuration(avatar.asset.durationSeconds),
     id: `catalog-influencer:${avatar.asset.id}`,
     thumbnailUrl: avatar.asset.thumbnailUrl ?? undefined,
-    title: avatar.asset.name,
+    title: formatCreatorDisplayName(avatar.asset.name),
   };
 }
 
@@ -4190,4 +4200,33 @@ function useLockBodyScroll() {
       document.body.style.overflow = previousOverflow;
     };
   }, []);
+}
+
+function areSchedulesEqual(
+  first: ScheduledPost[],
+  second: ScheduledPost[],
+): boolean {
+  if (first === second) {
+    return true;
+  }
+
+  if (first.length !== second.length) {
+    return false;
+  }
+
+  for (let i = 0; i < first.length; i += 1) {
+    const a = first[i]!;
+    const b = second[i]!;
+
+    if (
+      a.id !== b.id ||
+      a.status !== b.status ||
+      a.updatedAt !== b.updatedAt ||
+      a.scheduledFor !== b.scheduledFor
+    ) {
+      return false;
+    }
+  }
+
+  return true;
 }

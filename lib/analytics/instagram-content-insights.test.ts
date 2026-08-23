@@ -516,6 +516,61 @@ test("uses the first caption line as the content title", () => {
   );
 });
 
+test("Analytics workspace renders the Instagram account selector and isolates per-account data", () => {
+  assert.match(analyticsWorkspaceSource, /function InstagramAccountSelector/);
+  assert.match(analyticsWorkspaceSource, /selectedConnectionId/);
+  assert.match(analyticsWorkspaceSource, /effectiveSelectedConnectionId/);
+  assert.match(analyticsWorkspaceSource, /displayedContentAccounts/);
+  assert.match(analyticsWorkspaceSource, /displayedInsightAccounts/);
+
+  // Slicing test: when account 1 is selected from a multi-account dataset
+  const account1: InstagramContentAccount = {
+    accountName: "Brand One",
+    accountUsername: "brand_one",
+    connectionId: "conn-1",
+    items: [
+      createItem({
+        connectionId: "conn-1",
+        metrics: { ...emptyMetrics(), views: 1200, interactions: 150 },
+      }),
+    ],
+    lastSyncedAt: null,
+    message: null,
+    status: "ready",
+  };
+  const account2: InstagramContentAccount = {
+    accountName: "Brand Two",
+    accountUsername: "brand_two",
+    connectionId: "conn-2",
+    items: [
+      createItem({
+        connectionId: "conn-2",
+        metrics: { ...emptyMetrics(), views: 3500, interactions: 420 },
+      }),
+    ],
+    lastSyncedAt: null,
+    message: null,
+    status: "ready",
+  };
+
+  const allAccounts = [account1, account2];
+  const filteredForAccount1 = allAccounts.filter((a) => a.connectionId === "conn-1");
+  const filteredForAccount2 = allAccounts.filter((a) => a.connectionId === "conn-2");
+
+  const summaryAll = summarizeInstagramContentPerformance(allAccounts);
+  const summary1 = summarizeInstagramContentPerformance(filteredForAccount1);
+  const summary2 = summarizeInstagramContentPerformance(filteredForAccount2);
+
+  assert.equal(summaryAll.views, 4700);
+  assert.equal(summaryAll.interactions, 570);
+
+  assert.equal(summary1.views, 1200);
+  assert.equal(summary1.interactions, 150);
+
+  assert.equal(summary2.views, 3500);
+  assert.equal(summary2.interactions, 420);
+});
+
 function createItem(
   overrides: Partial<InstagramContentItem> = {},
 ): InstagramContentItem {

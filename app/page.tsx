@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import {
   CreditCard,
   ShieldCheck,
@@ -13,6 +14,7 @@ import { LandingComparisonSection } from "@/components/marketing/landing-compari
 import { LandingHeader } from "@/components/marketing/landing-header";
 import { LandingHeroShowcase } from "@/components/marketing/landing-hero-showcase";
 import { LandingSwipeDeck } from "@/components/marketing/landing-swipe-deck";
+import { AUTH_SESSION_COOKIE_NAME } from "@/lib/firebase/auth-session";
 
 const authHref = "/sign-in";
 
@@ -72,10 +74,13 @@ const legalFooterLinks = [
   { label: "Cookie Policy", href: "/cookies" },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const initialHasSession =
+    (await cookies()).get(AUTH_SESSION_COOKIE_NAME)?.value === "1";
+
   return (
     <main className="instagram-theme min-h-screen overflow-x-hidden bg-background text-foreground">
-      <LandingHeader />
+      <LandingHeader initialHasSession={initialHasSession} />
 
       <section className="relative z-0 px-4 pb-0 pt-28 sm:px-6 sm:pb-0 sm:pt-32 lg:px-8 lg:pb-0 lg:pt-36">
         <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-12 lg:gap-16">
@@ -137,6 +142,7 @@ export default function Home() {
             <div className="mt-8 flex justify-center">
               <LandingAuthCta
                 className="group inline-flex h-12 items-center justify-center rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                initialHasSession={initialHasSession}
               />
             </div>
           </div>
@@ -209,7 +215,7 @@ export default function Home() {
       <LandingComparisonSection />
 
       {/* Section 5: Connect Multiple Instagram Accounts (Connect -> Post Flow) */}
-      <LandingBottomCta />
+      <LandingBottomCta initialHasSession={initialHasSession} />
 
       <footer className="border-t border-border bg-card px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-[1200px] gap-10 md:grid-cols-[1.25fr_0.75fr_0.75fr_0.75fr]">

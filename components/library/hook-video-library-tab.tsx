@@ -75,8 +75,12 @@ type RenderResponse =
 
 export function HookVideoLibraryTab({
   embedded = false,
+  hideIfEmpty = false,
+  onLoadedCount,
 }: {
   embedded?: boolean;
+  hideIfEmpty?: boolean;
+  onLoadedCount?: (count: number, loading: boolean) => void;
 } = {}) {
   const [items, setItems] = useState<SavedHookVideo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,15 +110,17 @@ export function HookVideoLibraryTab({
       }
 
       setItems(data.drafts);
+      onLoadedCount?.(data.drafts.length, false);
     } catch (error) {
       setItems([]);
+      onLoadedCount?.(0, false);
       setErrorMessage(
         getErrorMessage(error, "Could not load saved Reel hooks."),
       );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onLoadedCount]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadItems(), 0);
@@ -223,6 +229,10 @@ export function HookVideoLibraryTab({
     } finally {
       setSchedulingId(null);
     }
+  }
+
+  if (hideIfEmpty && !loading && items.length === 0) {
+    return null;
   }
 
   return (

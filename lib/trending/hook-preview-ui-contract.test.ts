@@ -18,6 +18,9 @@ const composer = readProjectFile(
 const previewSession = readProjectFile(
   "app/api/trending/hook-videos/videos/[videoId]/preview-session/route.ts",
 );
+const previewStream = readProjectFile(
+  "app/api/trending/hook-videos/preview/[videoId]/route.ts",
+);
 
 test("blocks Hook acceptance until the protected video preview is playable", () => {
   assert.match(workspace, /type HookPreviewStatus = "error" \| "loading" \| "ready"/);
@@ -33,9 +36,10 @@ test("blocks Hook acceptance until the protected video preview is playable", () 
   assert.match(workspace, /acceptDisabled=\{activeHookPreviewStatus/);
 });
 
-test("shows an explicit pending state while a decision is being saved", () => {
-  assert.match(workspace, /aria-busy=\{Boolean\(pendingDecisionItemId\)\}/);
-  assert.match(workspace, /role="status"[\s\S]+Saving choice…/);
+test("does not block the deck while a decision is being saved", () => {
+  assert.doesNotMatch(workspace, /pendingDecisionItemId/);
+  assert.doesNotMatch(workspace, /Saving choice…/);
+  assert.match(workspace, /enqueueDecision/);
 });
 
 test("returns only validated Locked Hook audio to the authenticated preview", () => {
@@ -43,6 +47,15 @@ test("returns only validated Locked Hook audio to the authenticated preview", ()
   assert.match(previewSession, /body\.sourceKind === "catalog"/);
   assert.match(previewSession, /isTrustedStorageUrl\(hookAudio\.audioUrl\)/);
   assert.match(previewSession, /hookAudio,[\s\S]+previewUrl/);
+});
+
+test("keeps protected preview sessions independent so upcoming Hooks can prefetch", () => {
+  assert.match(previewSession, /getHookVideoPreviewCookieName\(videoId\)/);
+  assert.match(previewStream, /getHookVideoPreviewCookieName\(videoId\)/);
+  assert.doesNotMatch(workspace, /if \(!isActive\) \{\s*return;\s*\}[\s\S]*loadPreview/);
+  assert.match(workspace, /previewUrl=\{previewUrl\}/);
+  assert.match(card, /preload="auto"/);
+  assert.match(card, /autoPlay=\{active\}/);
 });
 
 test("previews approved Hook audio without exposing it to deck swipe gestures", () => {

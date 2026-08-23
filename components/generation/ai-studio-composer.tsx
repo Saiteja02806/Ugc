@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Check,
   ChevronDown,
   Loader2,
   SlidersHorizontal,
@@ -16,6 +17,11 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 export function AiStudioComposer({
@@ -89,10 +95,10 @@ export function AiStudioComposer({
         noValidate
         onSubmit={onSubmit}
         className={cn(
-          "mx-auto w-full border bg-card shadow-floating",
+          "mx-auto w-full border bg-card transition-all duration-200",
           layout === "unified"
-            ? "max-w-[944px] rounded-[24px] border-border-strong p-0"
-            : "max-w-[1024px] rounded-[var(--radius-panel)] border-border p-2.5 sm:p-3",
+            ? "max-w-[944px] rounded-[24px] border-border/80 p-0 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15"
+            : "max-w-[1024px] rounded-[20px] border-border p-2.5 shadow-[0_8px_30px_rgb(0_0_0_/_0.06),0_2px_8px_rgb(0_0_0_/_0.03)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 sm:p-3",
         )}
       >
         <FieldGroup className={layout === "unified" ? "gap-0" : "gap-2"}>
@@ -154,7 +160,7 @@ export function AiStudioComposer({
                   : accessMessage ??
                     "Press Enter to generate. Use Shift+Enter for a new line."}
               </span>
-              <span className="shrink-0 tabular-nums">
+              <span className="shrink-0 tabular-nums font-mono">
                 {prompt.length.toLocaleString("en-US")}/
                 {maxLength.toLocaleString("en-US")}
               </span>
@@ -223,7 +229,7 @@ export function AiStudioComposer({
                   disabled={generateDisabled || promptTooLong}
                   title={generationLocked ? accessMessage ?? undefined : undefined}
                   className={cn(
-                    "min-w-0 flex-1 transition-[transform,box-shadow,background-color] duration-150 active:scale-[0.98] sm:min-w-[168px]",
+                    "min-w-0 flex-1 h-10 rounded-full px-5 text-sm font-semibold tracking-[-0.01em] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all duration-150 active:scale-[0.98] sm:min-w-[168px]",
                     isGenerating && "ring-2 ring-primary/35 shadow-xs shadow-primary/20",
                     layout === "unified" && "w-full",
                   )}
@@ -261,7 +267,7 @@ export function AiStudioSetting({
   label: string;
 }) {
   return (
-    <span className="inline-flex h-9 items-center gap-2 rounded-lg bg-card-muted px-3 text-sm font-medium text-foreground ring-1 ring-inset ring-border">
+    <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70">
       {icon}
       {label}
     </span>
@@ -282,7 +288,7 @@ export function AiStudioSettingSelect<TValue extends string>({
   value: TValue;
 }) {
   return (
-    <label className="relative inline-flex h-9 min-w-0 items-center rounded-lg bg-card-muted text-sm font-medium text-foreground ring-1 ring-inset ring-border transition-colors focus-within:ring-2 focus-within:ring-focus hover:bg-card-muted/80">
+    <label className="relative inline-flex h-8 min-w-0 items-center rounded-full bg-card-muted/80 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-colors focus-within:ring-2 focus-within:ring-focus hover:bg-card">
       <span className="pointer-events-none absolute left-3 z-10 inline-flex items-center">
         {icon}
       </span>
@@ -292,7 +298,7 @@ export function AiStudioSettingSelect<TValue extends string>({
         value={value}
         onChange={(event) => onChange(event.target.value as TValue)}
         className={cn(
-          "h-full min-w-0 cursor-pointer appearance-none rounded-[inherit] bg-transparent py-0 pr-8 text-sm font-medium text-foreground outline-none",
+          "h-full min-w-0 cursor-pointer appearance-none rounded-[inherit] bg-transparent py-0 pr-8 text-xs font-medium text-foreground outline-none",
           icon ? "pl-9" : "pl-3",
         )}
       >
@@ -304,8 +310,142 @@ export function AiStudioSettingSelect<TValue extends string>({
       </select>
       <ChevronDown
         aria-hidden="true"
-        className="pointer-events-none absolute right-2.5 size-3.5 text-muted"
+        className="pointer-events-none absolute right-2.5 size-3 text-muted"
       />
     </label>
+  );
+}
+
+export type AIStudioAspectRatio = "4:5" | "1:1" | "9:16" | "16:9";
+
+export const AI_STUDIO_RATIO_OPTIONS: {
+  id: AIStudioAspectRatio;
+  label: string;
+  sublabel: string;
+  iconClassName: string;
+}[] = [
+  {
+    id: "4:5",
+    label: "4:5 portrait",
+    sublabel: "Instagram Feed (Default)",
+    iconClassName: "h-4 w-3.5",
+  },
+  {
+    id: "1:1",
+    label: "1:1 square",
+    sublabel: "Square Post / Carousel",
+    iconClassName: "size-3.5",
+  },
+  {
+    id: "9:16",
+    label: "9:16 vertical",
+    sublabel: "Reel / Story / TikTok",
+    iconClassName: "h-5 w-3",
+  },
+  {
+    id: "16:9",
+    label: "16:9 landscape",
+    sublabel: "Horizontal Video",
+    iconClassName: "h-3 w-5",
+  },
+];
+
+export function AiStudioRatioPicker({
+  allowedRatios,
+  disabled = false,
+  onChange,
+  value,
+}: {
+  allowedRatios?: AIStudioAspectRatio[];
+  disabled?: boolean;
+  onChange: (ratio: AIStudioAspectRatio) => void;
+  value: AIStudioAspectRatio;
+}) {
+  const [open, setOpen] = useState(false);
+  const options = allowedRatios
+    ? AI_STUDIO_RATIO_OPTIONS.filter((option) => allowedRatios.includes(option.id))
+    : AI_STUDIO_RATIO_OPTIONS;
+  const currentOption =
+    options.find((option) => option.id === value) ?? options[0]!;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            disabled={disabled}
+            aria-label={`Aspect ratio, currently ${currentOption.label}`}
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        }
+      >
+        <span
+          aria-hidden="true"
+          className={cn(
+            "inline-block shrink-0 rounded-[3px] border-2 border-muted-foreground",
+            currentOption.iconClassName,
+          )}
+        />
+        <span>{currentOption.label}</span>
+        <ChevronDown
+          className={cn(
+            "size-3 text-muted transition-transform duration-200 motion-reduce:transition-none",
+            open && "rotate-180",
+          )}
+          aria-hidden="true"
+        />
+      </PopoverTrigger>
+
+      <PopoverContent
+        side="top"
+        align="start"
+        sideOffset={6}
+        className="w-56 p-1.5"
+      >
+        <div className="flex flex-col gap-0.5">
+          {options.map((option) => {
+            const isSelected = option.id === value;
+
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => {
+                  onChange(option.id);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex cursor-pointer items-center justify-between gap-2.5 rounded-md px-2.5 py-2 text-left text-xs transition-colors",
+                  isSelected
+                    ? "bg-brand-soft font-semibold text-primary"
+                    : "text-foreground hover:bg-card-muted",
+                )}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-5 shrink-0 items-center justify-center text-muted">
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "inline-block rounded-[3px] border-2",
+                        isSelected ? "border-primary" : "border-muted-foreground",
+                        option.iconClassName,
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <div className="font-medium">{option.label}</div>
+                    <div className="text-[10px] text-muted">{option.sublabel}</div>
+                  </div>
+                </div>
+                {isSelected ? (
+                  <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

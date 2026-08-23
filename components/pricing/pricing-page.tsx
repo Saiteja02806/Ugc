@@ -103,7 +103,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
               imageClassName="brightness-0 invert"
               sizes="32px"
             />
-            <span className="truncate text-base font-bold tracking-tight text-foreground-strong">
+            <span className="truncate text-base font-semibold tracking-tight text-foreground-strong">
               UGCPilot
             </span>
           </Link>
@@ -158,17 +158,19 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
           <div className="mx-auto max-w-5xl">
             {/* Hero Header */}
             <div className="mx-auto max-w-2xl text-center">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                Marketing On Autopilot For Builders
-              </p>
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                <span className="text-primary font-semibold">Marketing on Autopilot</span>
+                <span className="text-border-strong">•</span>
+                <span className="text-muted font-normal">For Builders</span>
+              </div>
               <h1
                 id="pricing-title"
-                className="mt-3 text-balance text-3xl font-bold tracking-tight text-foreground-strong sm:text-4xl lg:text-5xl"
+                className="text-balance text-3xl font-semibold leading-tight tracking-[-0.045em] text-foreground-strong sm:text-4xl lg:text-[44px]"
               >
                 Focus on building.
                 <span className="block mt-1">Put your Instagram marketing on autopilot.</span>
               </h1>
-              <p className="mx-auto mt-3 max-w-xl text-pretty text-sm font-medium leading-relaxed text-muted sm:text-base">
+              <p className="mx-auto mt-4 max-w-xl text-pretty text-sm font-normal leading-relaxed text-muted sm:text-base">
                 Turn your product features, screens, and value prop into daily ready-to-post Reel hooks,
                 Wall-of-text videos, and swipeable carousels.
               </p>
@@ -189,16 +191,16 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
         >
           <div className="mx-auto max-w-5xl">
             <div className="mx-auto max-w-2xl text-center">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
                 Complete Platform
               </p>
               <h2
                 id="features-title"
-                className="mt-2 text-2xl font-bold tracking-tight text-foreground-strong sm:text-3xl"
+                className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-foreground-strong sm:text-3xl"
               >
                 Everything you need to grow on Instagram
               </h2>
-              <p className="mt-2 text-sm text-muted">
+              <p className="mt-2 text-sm font-normal text-muted">
                 Every plan includes our complete creative engine. Scale capacity as you grow.
               </p>
             </div>
@@ -215,8 +217,10 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
                     <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <Icon className="size-4.5" aria-hidden="true" />
                     </div>
-                    <h3 className="mt-3 text-base font-bold text-foreground-strong">{item.title}</h3>
-                    <p className="mt-1.5 text-xs font-medium leading-relaxed text-muted">
+                    <h3 className="mt-3 text-base font-semibold leading-snug text-foreground-strong">
+                      {item.title}
+                    </h3>
+                    <p className="mt-1.5 text-xs font-normal leading-relaxed text-muted">
                       {item.description}
                     </p>
                   </div>
@@ -233,17 +237,17 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
         >
           <div className="mx-auto max-w-3xl">
             <div className="text-center">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-bold uppercase tracking-wider text-foreground">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground shadow-xs">
                 <HelpCircle className="size-3.5 text-primary" aria-hidden="true" />
                 <span>Got Questions?</span>
               </div>
               <h2
                 id="faq-title"
-                className="mt-3 text-2xl font-bold tracking-tight text-foreground-strong sm:text-3xl"
+                className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-foreground-strong sm:text-3xl"
               >
                 Frequently asked questions
               </h2>
-              <p className="mt-2 text-sm text-muted">
+              <p className="mt-2 text-sm font-normal text-muted">
                 Everything you need to know about plans, AI credits, and automated scheduling.
               </p>
             </div>
@@ -258,7 +262,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
                     <span>{faq.question}</span>
                     <ChevronDown className="size-4 shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" />
                   </summary>
-                  <p className="mt-2 text-xs font-medium leading-relaxed text-muted sm:text-sm">
+                  <p className="mt-2 text-xs font-normal leading-relaxed text-muted sm:text-sm">
                     {faq.answer}
                   </p>
                 </details>
@@ -270,7 +274,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
 
       {/* Footer */}
       <footer className="border-t border-border bg-background px-5 py-8 sm:px-8 lg:px-10">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 text-xs font-medium text-muted sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 text-xs font-normal text-muted sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <ProductLogoMark className="size-4.5 rounded-md bg-primary p-1" imageClassName="brightness-0 invert" sizes="18px" />
             <span className="font-semibold text-foreground-strong">UGCPilot</span>

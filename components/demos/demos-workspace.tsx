@@ -33,6 +33,7 @@ import {
 } from "@/lib/demo/demo-display";
 import { getContentDemoEditorHref } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -59,11 +60,11 @@ const CONTENT_TYPE_BY_EXTENSION: Record<string, DemoContentType> = {
   webm: "video/webm",
 };
 const demoPrimaryActionClassName =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex h-9 items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all hover:bg-primary-hover active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const demoIconActionClassName =
-  "inline-flex size-11 items-center justify-center rounded-control border border-border bg-card text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 sm:size-10";
+  "inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const demoMetricChipClassName =
-  "inline-flex min-h-10 items-center rounded-control bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-border";
+  "inline-flex h-8 items-center rounded-full border border-border/70 bg-card-muted/80 px-3.5 text-xs font-mono font-medium text-muted";
 
 type DemoContentType = "video/mp4" | "video/quicktime" | "video/webm";
 type DemoRatio = "9:16" | "1:1" | "4:5" | "16:9" | "other";
@@ -133,6 +134,15 @@ export function DemosWorkspace() {
   return <UploadedPostsTab showPageHeader />;
 }
 
+type DemoVideosMemoryCache = {
+  cachedAt: number;
+  demos: DemoVideo[];
+  projectId: string;
+  userId: string;
+};
+
+let inMemoryDemoVideos: DemoVideosMemoryCache | null = null;
+
 export function UploadedPostsTab({
   embeddedInLibrary = false,
   showPageHeader = false,
@@ -140,12 +150,23 @@ export function UploadedPostsTab({
   embeddedInLibrary?: boolean;
   showPageHeader?: boolean;
 } = {}) {
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const latestDemoLoadRequestIdRef = useRef(0);
   const latestBlockingDemoLoadRequestIdRef = useRef(0);
-  const [demos, setDemos] = useState<DemoVideo[]>([]);
+
+  const existingCache =
+    inMemoryDemoVideos && user && inMemoryDemoVideos.userId === user.uid
+      ? inMemoryDemoVideos
+      : null;
+
+  const [demos, setDemos] = useState<DemoVideo[]>(() => {
+    return existingCache ? existingCache.demos : [];
+  });
   const [isDragActive, setIsDragActive] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    return existingCache ? false : true;
+  });
   const [deletingDemoId, setDeletingDemoId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [playingDemoId, setPlayingDemoId] = useState<string | null>(null);
@@ -209,6 +230,14 @@ export function UploadedPostsTab({
       if (latestDemoLoadRequestIdRef.current === requestId) {
         setDemos(data.demos);
         setErrorMessage(null);
+        if (user) {
+          inMemoryDemoVideos = {
+            cachedAt: Date.now(),
+            demos: data.demos,
+            projectId: DEFAULT_PROJECT_ID,
+            userId: user.uid,
+          };
+        }
       }
     } catch (error) {
       if (latestDemoLoadRequestIdRef.current === requestId) {
@@ -222,15 +251,21 @@ export function UploadedPostsTab({
         setIsLoading(false);
       }
     }
-  }, [loadErrorFallback]);
+  }, [loadErrorFallback, user]);
 
   useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const hasCache =
+      inMemoryDemoVideos && inMemoryDemoVideos.userId === user.uid;
     const timer = window.setTimeout(() => {
-      void loadDemos();
+      void loadDemos({ silent: Boolean(hasCache) });
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [loadDemos]);
+  }, [loadDemos, user]);
 
   useEffect(() => {
     if (!activeDemoStatusSignature) {
@@ -875,12 +910,12 @@ function EmbeddedDemoWorkspace({
   return (
     <section
       aria-labelledby="library-demo-heading"
-      className="overflow-hidden rounded-panel border border-border bg-card"
+      className="overflow-hidden rounded-3xl border border-border/80 bg-card shadow-[0_4px_24px_rgba(0,0,0,0.04)]"
     >
-      <header className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-3 border-b border-border/60 bg-card px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
-            <FileVideo className="size-[18px]" aria-hidden="true" />
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-primary ring-1 ring-inset ring-primary/10 shadow-xs">
+            <FileVideo className="size-4" aria-hidden="true" />
           </span>
           <div className="min-w-0">
             <h2
@@ -889,7 +924,7 @@ function EmbeddedDemoWorkspace({
             >
               Demo footage
             </h2>
-            <p className="mt-0.5 max-w-xl text-sm leading-5 text-muted">
+            <p className="mt-0.5 max-w-xl text-xs sm:text-sm leading-5 text-muted">
               Product walkthroughs and screen recordings you can reuse when
               preparing posts.
             </p>
@@ -912,7 +947,7 @@ function EmbeddedDemoWorkspace({
           >
             <RefreshCw
               className={cn(
-                "size-4",
+                "size-3.5",
                 isLoading && "animate-spin motion-reduce:animate-none",
               )}
               aria-hidden="true"
@@ -922,7 +957,7 @@ function EmbeddedDemoWorkspace({
             type="button"
             onClick={onBrowse}
             disabled={hasActiveUpload}
-            className={cn(demoPrimaryActionClassName, "px-3.5 text-xs")}
+            className={demoPrimaryActionClassName}
           >
             <Upload className="size-3.5" aria-hidden="true" />
             Upload demo
@@ -953,6 +988,7 @@ function EmbeddedDemoWorkspace({
         }}
         onDragLeave={(event) => {
           event.preventDefault();
+          onDragActiveChange(false);
 
           if (event.currentTarget === event.target) {
             onDragActiveChange(false);
@@ -964,8 +1000,8 @@ function EmbeddedDemoWorkspace({
           void onFiles(event.dataTransfer.files);
         }}
         className={cn(
-          "relative border-t border-border bg-surface-subtle/55 p-3 transition-colors sm:p-4",
-          isDragActive && "bg-brand-soft/30",
+          "relative bg-card p-4 sm:p-6 transition-colors",
+          isDragActive && "bg-brand-soft/20",
         )}
       >
         {uploadQueue.length > 0 ? (
@@ -985,7 +1021,7 @@ function EmbeddedDemoWorkspace({
             {Array.from({ length: 4 }, (_, index) => (
               <div
                 key={index}
-                className="overflow-hidden rounded-card border border-border bg-card"
+                className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs"
               >
                 <div className="aspect-[4/5] animate-pulse bg-card-muted motion-reduce:animate-none" />
                 <div className="space-y-3 p-4">
@@ -1016,20 +1052,20 @@ function EmbeddedDemoWorkspace({
         ) : uploadQueue.length === 0 ? (
           <div
             className={cn(
-              "grid min-h-[220px] items-center gap-5 rounded-panel border border-dashed px-4 py-5 transition-colors sm:grid-cols-[minmax(0,1fr)_220px] sm:px-6",
+              "grid min-h-[220px] items-center gap-6 rounded-2xl border-2 border-dashed p-6 sm:p-8 transition-all sm:grid-cols-[minmax(0,1fr)_220px]",
               isDragActive
                 ? "border-primary bg-brand-soft/30"
-                : "border-border-strong bg-card",
+                : "border-border/80 bg-card-muted/40 hover:bg-card-muted/60",
             )}
           >
             <div className="max-w-xl text-left">
-              <span className="flex size-10 items-center justify-center rounded-control bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
+              <span className="flex size-11 items-center justify-center rounded-full bg-brand-soft text-primary ring-1 ring-inset ring-primary/10 shadow-xs">
                 <Upload className="size-4" aria-hidden="true" />
               </span>
-              <h3 className="mt-3 text-lg font-semibold text-foreground-strong">
+              <h3 className="mt-3.5 text-lg font-semibold tracking-[-0.01em] text-foreground-strong">
                 {isDragActive ? "Drop your videos here" : "Add demo footage"}
               </h3>
-              <p className="mt-1.5 max-w-lg text-sm leading-5 text-muted">
+              <p className="mt-1 max-w-lg text-sm leading-relaxed text-muted">
                 Upload product walkthroughs or screen recordings. You can drop multiple files at once.
               </p>
               <button
@@ -1037,28 +1073,28 @@ function EmbeddedDemoWorkspace({
                 onClick={onBrowse}
                 className={cn(demoPrimaryActionClassName, "mt-4")}
               >
-                <Upload className="size-4" aria-hidden="true" />
+                <Upload className="size-3.5" aria-hidden="true" />
                 Choose video files
               </button>
               <p className="mt-2 text-xs font-medium text-muted-subtle">
                 or drop multiple files anywhere in this area
               </p>
             </div>
-            <div className="rounded-control bg-surface-subtle p-3.5">
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-subtle">
+            <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-xs">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-subtle">
                 Upload rules
               </p>
-              <div className="mt-2 flex flex-col gap-1.5 text-sm font-semibold text-muted">
-                <span>MP4, MOV or WebM</span>
-                <span>Up to 100 MB per file</span>
-                <span>1-60 seconds duration</span>
+              <div className="mt-2 flex flex-col gap-1.5 text-xs font-medium text-muted">
+                <span>• MP4, MOV or WebM</span>
+                <span>• Up to 100 MB per file</span>
+                <span>• 1-60 seconds duration</span>
               </div>
             </div>
           </div>
         ) : null}
 
         {demos.length > 0 && isDragActive ? (
-          <div className="pointer-events-none absolute inset-4 z-10 flex items-center justify-center rounded-card border-2 border-dashed border-primary bg-card/95 text-sm font-semibold text-primary shadow-floating sm:inset-5">
+          <div className="pointer-events-none absolute inset-4 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed border-primary bg-card/95 text-sm font-semibold text-primary shadow-floating sm:inset-6">
             Drop your video files to upload
           </div>
         ) : null}
@@ -1541,10 +1577,10 @@ export function DemoCard({
   return (
     <article
       className={cn(
-        "group min-w-0 overflow-hidden rounded-panel border bg-card transition-all",
+        "group min-w-0 overflow-hidden rounded-2xl border bg-card shadow-xs transition-all duration-200",
         isSelected
           ? "border-primary ring-2 ring-primary/20 shadow-md"
-          : "border-border hover:border-border-strong hover:shadow-sm",
+          : "border-border/80 hover:border-border-strong hover:shadow-md hover:-translate-y-0.5",
       )}
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-[#17181b] text-white">
@@ -1556,7 +1592,7 @@ export function DemoCard({
               onToggleSelect();
             }}
             className={cn(
-              "flex size-6 items-center justify-center rounded-md bg-black/60 backdrop-blur-xs transition-opacity cursor-pointer border border-white/20",
+              "flex size-6 items-center justify-center rounded-lg bg-black/60 backdrop-blur-md transition-opacity cursor-pointer border border-white/20",
               isSelected
                 ? "opacity-100 bg-primary border-primary"
                 : "opacity-0 group-hover:opacity-100",
@@ -1577,26 +1613,26 @@ export function DemoCard({
           onClick={onOpenPreview}
           aria-label={`Expand preview for ${demo.title}`}
           title="Expand preview"
-          className="absolute right-2.5 top-2.5 z-20 inline-flex size-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-xs transition-opacity hover:bg-black/80 hover:scale-105 group-hover:opacity-100"
+          className="absolute right-2.5 top-2.5 z-20 inline-flex size-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-md transition-all hover:bg-black/80 hover:scale-105 group-hover:opacity-100"
         >
           <Maximize2 className="size-3.5" />
         </button>
 
         <DemoMediaPreview
-          key={`${demo.id}:${playbackUrl ?? "unavailable"}:${demo.thumbnail_url ?? "no-thumbnail"}`}
+          key={demo.id}
           demo={demo}
           playbackUrl={playbackUrl}
           playing={isPlaying}
         />
 
-        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-linear-to-t from-black/60 to-transparent p-3 z-10">
+        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-linear-to-t from-black/70 via-black/20 to-transparent p-3 z-10">
           <button
             type="button"
             onClick={onPlay}
             disabled={!playable}
             aria-label={`Play ${demo.title}`}
             title="Play preview"
-            className="inline-flex size-10 items-center justify-center rounded-full bg-card text-foreground-strong shadow-sm transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex size-9 items-center justify-center rounded-full bg-white/95 text-foreground shadow-md backdrop-blur-md transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Play className="ml-0.5 size-3.5 fill-current" aria-hidden="true" />
           </button>
@@ -1620,12 +1656,12 @@ export function DemoCard({
               title="Delete demo"
               onClick={onDelete}
               disabled={deleting}
-              className="inline-flex size-8 shrink-0 items-center justify-center rounded-control text-muted transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-60"
             >
               {deleting ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <Trash2 className="size-4" aria-hidden="true" />
+                <Trash2 className="size-3.5" aria-hidden="true" />
               )}
             </button>
           </div>
@@ -2437,9 +2473,9 @@ function DemoMediaPreview({
   return (
     <>
       {previewState === "loading" ? (
-        <div className="absolute inset-0 animate-pulse bg-[#25272b] motion-reduce:animate-none">
+        <div className="absolute inset-0 bg-[#17181b]">
           <div className="flex size-full items-center justify-center">
-            <Loader2 className="size-5 animate-spin text-white/65 motion-reduce:animate-none" aria-hidden="true" />
+            <Loader2 className="size-5 animate-spin text-white/40 motion-reduce:animate-none" aria-hidden="true" />
             <span className="sr-only">Loading video preview</span>
           </div>
         </div>

@@ -3,19 +3,21 @@
 import {
   AlertCircle,
   CheckCircle2,
-  FileImage,
-  Film,
   Folder,
   FolderMinus,
   FolderOpen,
   FolderPlus,
+  Image as ImageIcon,
   Loader2,
   Pencil,
+  Play,
   Plus,
   RefreshCw,
   Trash2,
+  Upload,
   UploadCloud,
   UserRound,
+  Video,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -967,84 +969,89 @@ export function UserMediaCollection({
         </div>
       ) : null}
 
-      <div className="mb-3 flex min-w-0 items-center gap-2">
+      <div className="mb-3.5 flex min-w-0 items-center gap-2">
         <nav
           aria-label={`${title} groups`}
-          className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto py-1"
+          className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto py-1"
         >
-          <Button
+          <button
             type="button"
-            variant={selectedGroupId === null ? "secondary" : "ghost"}
-            size="sm"
             onClick={() => {
               setSelectedGroupId(null);
               setErrorMessage(null);
               setSuccessMessage(null);
             }}
             aria-current={selectedGroupId === null ? "page" : undefined}
+            className={cn(
+              "h-8 shrink-0 rounded-full px-3.5 text-xs font-medium transition-all",
+              selectedGroupId === null
+                ? "bg-card font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-border/70"
+                : "text-muted hover:bg-card-muted/80 hover:text-foreground",
+            )}
           >
             All assets
-          </Button>
+          </button>
           {groups.map((group) => (
-            <Button
+            <button
               key={group.id}
               type="button"
-              variant={selectedGroupId === group.id ? "secondary" : "ghost"}
-              size="sm"
               onClick={() => {
                 setSelectedGroupId(group.id);
                 setErrorMessage(null);
                 setSuccessMessage(null);
               }}
               aria-current={selectedGroupId === group.id ? "page" : undefined}
-              className="max-w-52 shrink-0"
+              className={cn(
+                "inline-flex h-8 max-w-52 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-medium transition-all",
+                selectedGroupId === group.id
+                  ? "bg-card font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-border/70"
+                  : "text-muted hover:bg-card-muted/80 hover:text-foreground",
+              )}
             >
-              <Folder data-icon="inline-start" aria-hidden="true" />
+              <Folder className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="truncate">{group.name}</span>
-            </Button>
+            </button>
           ))}
           {isLoadingGroups ? (
-            <span className="inline-flex items-center gap-2 px-2 text-xs text-muted">
+            <span className="inline-flex items-center gap-1.5 px-2 text-xs text-muted">
               <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
               Loading groups…
             </span>
           ) : null}
         </nav>
 
-        <Button
+        <button
           type="button"
-          variant="outline"
-          size="sm"
-          className="shrink-0"
           onClick={openCreateGroupDialog}
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border/80 bg-card px-3.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95"
         >
-          <FolderPlus data-icon="inline-start" aria-hidden="true" />
+          <FolderPlus className="size-3.5" aria-hidden="true" />
           Create group
-        </Button>
+        </button>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-[var(--radius-card)] border border-border bg-card px-3.5 py-3.5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:px-4">
+      <div className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-card p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <span
             className={cn(
-              "inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-primary",
+              "inline-flex size-10 shrink-0 items-center justify-center rounded-full text-primary shadow-xs",
               isDarkVariant
-                ? "border border-primary/20 bg-brand-soft shadow-sm"
+                ? "border border-primary/20 bg-brand-soft ring-1 ring-inset ring-primary/10"
                 : "bg-primary/10",
             )}
           >
             <CollectionIcon collection={collection} />
           </span>
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <h2 className="text-sm font-semibold text-foreground">
                 {selectedGroup?.name ?? title}
               </h2>
-              <span className="text-xs text-muted">
+              <span className="inline-flex h-5 items-center rounded-full border border-border/70 bg-card-muted/80 px-2 text-[11px] font-mono font-medium text-muted">
                 {isLoading ? "Loading…" : `${assets.length} ${assets.length === 1 ? "asset" : "assets"}`}
               </span>
             </div>
-            <p className="mt-0.5 max-w-2xl text-sm leading-5 text-muted">
+            <p className="mt-0.5 max-w-2xl text-xs sm:text-sm leading-5 text-muted">
               {selectedGroup
                 ? `Only assets added to ${selectedGroup.name} are shown here.`
                 : description}
@@ -1054,14 +1061,14 @@ export function UserMediaCollection({
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           {/* Aspect ratio view toggle */}
-          <div className="flex items-center gap-0.5 rounded-[var(--radius-control)] border border-border bg-card-muted/80 p-0.5">
+          <div className="flex items-center gap-1 rounded-full border border-border/80 bg-card-muted/80 p-1 shadow-xs">
             <button
               type="button"
               onClick={() => setAspectRatioMode("9:16")}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-[calc(var(--radius-control)-2px)] px-2.5 py-1 text-xs font-semibold transition-colors",
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all",
                 aspectRatioMode === "9:16"
-                  ? "bg-card text-foreground shadow-xs"
+                  ? "bg-card font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-border/60"
                   : "text-muted hover:text-foreground",
               )}
               title="Reel format (9:16)"
@@ -1074,9 +1081,9 @@ export function UserMediaCollection({
               type="button"
               onClick={() => setAspectRatioMode("1:1")}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-[calc(var(--radius-control)-2px)] px-2.5 py-1 text-xs font-semibold transition-colors",
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all",
                 aspectRatioMode === "1:1"
-                  ? "bg-card text-foreground shadow-xs"
+                  ? "bg-card font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-border/60"
                   : "text-muted hover:text-foreground",
               )}
               title="Square format (1:1)"
@@ -1089,9 +1096,9 @@ export function UserMediaCollection({
               type="button"
               onClick={() => setAspectRatioMode("16:9")}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-[calc(var(--radius-control)-2px)] px-2.5 py-1 text-xs font-semibold transition-colors",
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all",
                 aspectRatioMode === "16:9"
-                  ? "bg-card text-foreground shadow-xs"
+                  ? "bg-card font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-border/60"
                   : "text-muted hover:text-foreground",
               )}
               title="Landscape format (16:9)"
@@ -1104,9 +1111,9 @@ export function UserMediaCollection({
               type="button"
               onClick={() => setAspectRatioMode("adaptive")}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-[calc(var(--radius-control)-2px)] px-2.5 py-1 text-xs font-semibold transition-colors",
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all",
                 aspectRatioMode === "adaptive"
-                  ? "bg-card text-foreground shadow-xs"
+                  ? "bg-card font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-border/60"
                   : "text-muted hover:text-foreground",
               )}
               title="Adaptive format (match original clip)"
@@ -1117,48 +1124,44 @@ export function UserMediaCollection({
             </button>
           </div>
 
-          <Button
+          <button
             type="button"
-            variant="outline"
-            size="icon-sm"
             onClick={() => void refreshLibrary()}
             disabled={isLoading || isUploading || isLoadingGroups}
             aria-label={`Refresh ${title}`}
             title={`Refresh ${title}`}
+            className="inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <RefreshCw className={isLoading ? "size-4 animate-spin motion-reduce:animate-none" : "size-4"} aria-hidden="true" />
-          </Button>
+            <RefreshCw className={isLoading ? "size-3.5 animate-spin motion-reduce:animate-none" : "size-3.5"} aria-hidden="true" />
+          </button>
           {selectedGroup ? (
             <>
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
                 onClick={openAddAssetsDialog}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/80 bg-card px-3.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95"
               >
-                <Plus data-icon="inline-start" aria-hidden="true" />
+                <Plus className="size-3.5" aria-hidden="true" />
                 Add assets
-              </Button>
-              <Button
+              </button>
+              <button
                 type="button"
-                variant="ghost"
-                size="icon-sm"
                 onClick={openRenameGroupDialog}
                 aria-label={`Rename ${selectedGroup.name}`}
                 title={`Rename ${selectedGroup.name}`}
+                className="inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95"
               >
-                <Pencil aria-hidden="true" />
-              </Button>
-              <Button
+                <Pencil className="size-3.5" aria-hidden="true" />
+              </button>
+              <button
                 type="button"
-                variant="ghost"
-                size="icon-sm"
                 onClick={() => setPendingDeleteGroup(selectedGroup)}
                 aria-label={`Delete ${selectedGroup.name}`}
                 title={`Delete ${selectedGroup.name}`}
+                className="inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-error/40 hover:bg-error/10 hover:text-error active:scale-95"
               >
-                <Trash2 aria-hidden="true" />
-              </Button>
+                <Trash2 className="size-3.5" aria-hidden="true" />
+              </button>
             </>
           ) : null}
           <input
@@ -1170,23 +1173,22 @@ export function UserMediaCollection({
             onChange={(event) => void handleFiles(event.target.files)}
             className="sr-only"
           />
-          <Button
+          <button
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={isUploading}
-            size="sm"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isUploading ? (
               <Loader2
-                data-icon="inline-start"
-                className="animate-spin motion-reduce:animate-none"
+                className="size-3.5 animate-spin motion-reduce:animate-none"
                 aria-hidden="true"
               />
             ) : (
-              <Plus data-icon="inline-start" aria-hidden="true" />
+              <Upload className="size-3.5" aria-hidden="true" />
             )}
             {isUploading ? "Uploading…" : getUploadLabel(collection)}
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -1320,25 +1322,25 @@ export function UserMediaCollection({
           <div
             onClick={() => !selectedGroup && inputRef.current?.click()}
             className={cn(
-              "group relative flex min-h-[260px] flex-col items-center justify-center rounded-[var(--radius-card)] border-2 border-dashed border-border/80 bg-card-muted/30 px-6 py-10 text-center transition-all duration-200",
-              !selectedGroup && "cursor-pointer hover:border-primary/50 hover:bg-card-muted/50",
+              "group relative flex min-h-[260px] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border/80 bg-card-muted/20 px-6 py-12 text-center transition-all duration-200",
+              !selectedGroup && "cursor-pointer hover:border-primary/50 hover:bg-card-muted/40",
             )}
           >
             <span
               className={cn(
-                "inline-flex size-12 items-center justify-center rounded-2xl border transition-transform duration-200 group-hover:scale-105",
+                "inline-flex size-12 items-center justify-center rounded-full border transition-transform duration-200 group-hover:scale-105",
                 isDarkVariant
-                  ? "border-border-strong bg-card text-primary shadow-xs"
-                  : "border-border bg-card text-primary shadow-xs",
+                  ? "border-primary/20 bg-brand-soft text-primary ring-4 ring-primary/10 shadow-xs"
+                  : "border-primary/20 bg-brand-soft text-primary ring-4 ring-primary/10 shadow-xs",
               )}
             >
               {selectedGroup ? (
-                <FolderOpen className="size-5.5" aria-hidden="true" />
+                <FolderOpen className="size-5" aria-hidden="true" />
               ) : (
-                <UploadCloud className="size-5.5" aria-hidden="true" />
+                <UploadCloud className="size-5" aria-hidden="true" />
               )}
             </span>
-            <h3 className="mt-3.5 text-sm font-semibold text-foreground">
+            <h3 className="mt-4 text-sm font-semibold text-foreground">
               {selectedGroup ? "No assets in this group" : emptyTitle}
             </h3>
             <p className="mt-1 max-w-md text-xs leading-5 text-muted">
@@ -1347,21 +1349,19 @@ export function UserMediaCollection({
                 : emptyDescription}
             </p>
             {selectedGroup && allAssets.length > 0 ? (
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
-                className="mt-4"
+                className="mt-4 inline-flex h-8 items-center gap-1.5 rounded-full border border-border/80 bg-card px-3.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95"
                 onClick={(e) => {
                   e.stopPropagation();
                   openAddAssetsDialog();
                 }}
               >
-                <Plus data-icon="inline-start" aria-hidden="true" />
+                <Plus className="size-3.5" aria-hidden="true" />
                 Add existing assets
-              </Button>
+              </button>
             ) : !selectedGroup ? (
-              <div className="mt-4 inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted shadow-xs transition-colors group-hover:border-primary/40 group-hover:text-foreground">
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-border/80 bg-card px-3.5 py-1.5 text-xs font-medium text-muted shadow-xs transition-colors group-hover:border-primary/40 group-hover:text-foreground">
                 <UploadCloud className="size-3.5 text-primary" aria-hidden="true" />
                 <span>Drag & drop files here, or click to browse</span>
               </div>
@@ -1736,6 +1736,8 @@ function MediaAssetCard({
   const statusLabel = getCreativeAssetCardStatusLabel(editProject);
   const statusVariant = getCreativeAssetCardStatusVariant(editProject);
 
+  const [isPlaying, setIsPlaying] = useState(false);
+
   const cardAspectClass = useMemo(() => {
     if (aspectRatioMode === "9:16") return "aspect-[9/16]";
     if (aspectRatioMode === "1:1") return "aspect-square";
@@ -1749,7 +1751,7 @@ function MediaAssetCard({
   }, [aspectRatioMode, asset.ratio, isImage]);
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-card shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+    <article className="group flex flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md">
       <div
         className={cn(
           "relative w-full overflow-hidden border-b border-border/80 transition-all",
@@ -1766,32 +1768,71 @@ function MediaAssetCard({
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             sizes="(max-width: 640px) 100vw, 25vw"
           />
-        ) : (
+        ) : isPlaying ? (
           <video
             key={displayState.playbackUrl}
             src={displayState.playbackUrl}
             poster={asset.thumbnailUrl || undefined}
-            preload="metadata"
-            muted
+            preload="auto"
+            autoPlay
             controls
             playsInline
             className="size-full object-cover"
+            onEnded={() => setIsPlaying(false)}
           />
+        ) : (
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label={`Play ${asset.title}`}
+            onClick={() => setIsPlaying(true)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setIsPlaying(true);
+              }
+            }}
+            className="relative size-full cursor-pointer"
+          >
+            {asset.thumbnailUrl ? (
+              <Image
+                src={asset.thumbnailUrl}
+                alt={asset.title}
+                fill
+                unoptimized
+                className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                sizes="(max-width: 640px) 100vw, 25vw"
+              />
+            ) : (
+              <video
+                src={displayState.playbackUrl}
+                preload="none"
+                muted
+                playsInline
+                className="size-full object-cover"
+              />
+            )}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100">
+              <span className="flex size-10 items-center justify-center rounded-full bg-white/95 text-foreground shadow-md backdrop-blur-md transition-all group-hover:scale-105 active:scale-95">
+                <Play className="ml-0.5 size-4 fill-current text-foreground" aria-hidden="true" />
+              </span>
+            </div>
+          </div>
         )}
 
         {/* Ratio & Duration Badges Overlay */}
         <div className="pointer-events-none absolute inset-x-2 top-2 flex items-center justify-between gap-1.5">
-          <span className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white/95 shadow-sm backdrop-blur-md">
+          <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/75 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-md">
             {asset.ratio === "other" ? "Custom" : asset.ratio}
           </span>
           {!isImage && asset.durationSeconds !== null ? (
-            <span className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white/95 shadow-sm backdrop-blur-md">
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/75 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-md">
               {formatDuration(asset.durationSeconds)}
             </span>
           ) : null}
         </div>
       </div>
-      <div className="flex flex-1 flex-col justify-between p-3">
+      <div className="flex flex-1 flex-col justify-between p-3.5">
         <div>
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
@@ -1822,7 +1863,7 @@ function MediaAssetCard({
           {!isImage ? (
             <Link
               href={getCreativeAssetEditorHref(asset.id)}
-              className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-card-muted px-3 text-xs font-semibold text-foreground-strong shadow-xs transition-colors hover:border-primary/50 hover:bg-selected hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="inline-flex h-8 min-w-0 flex-1 items-center justify-center rounded-full border border-border/80 bg-card-muted/80 px-3 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               Edit video
             </Link>
@@ -1836,8 +1877,8 @@ function MediaAssetCard({
             onClick={onRemove}
             disabled={deleting}
             className={cn(
-              "inline-flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-border text-muted transition-colors hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
-              "bg-card hover:border-error/40 hover:bg-error/10",
+              "inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-border/80 text-muted shadow-xs transition-colors hover:border-error/40 hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+              "bg-card",
             )}
             aria-label={
               grouped
@@ -1865,8 +1906,9 @@ function MediaAssetCard({
 function RatioReelIcon({ className = "size-3.5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 16 16" fill="none" className={className} stroke="currentColor">
-      <rect x="4.25" y="1.25" width="7.5" height="13.5" rx="1.75" strokeWidth="1.4" />
-      <line x1="6.5" y1="12.25" x2="9.5" y2="12.25" strokeWidth="1.2" strokeLinecap="round" />
+      <rect x="4" y="1.5" width="8" height="13" rx="2.5" strokeWidth="1.3" />
+      <line x1="6.5" y1="3.5" x2="9.5" y2="3.5" strokeWidth="1.1" strokeLinecap="round" opacity="0.6" />
+      <circle cx="8" cy="12" r="0.75" fill="currentColor" stroke="none" opacity="0.7" />
     </svg>
   );
 }
@@ -1874,7 +1916,7 @@ function RatioReelIcon({ className = "size-3.5" }: { className?: string }) {
 function RatioSquareIcon({ className = "size-3.5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 16 16" fill="none" className={className} stroke="currentColor">
-      <rect x="2" y="2" width="12" height="12" rx="2" strokeWidth="1.4" />
+      <rect x="2" y="2" width="12" height="12" rx="2.5" strokeWidth="1.3" />
     </svg>
   );
 }
@@ -1882,16 +1924,15 @@ function RatioSquareIcon({ className = "size-3.5" }: { className?: string }) {
 function RatioLandscapeIcon({ className = "size-3.5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 16 16" fill="none" className={className} stroke="currentColor">
-      <rect x="1.25" y="3.5" width="13.5" height="9" rx="1.75" strokeWidth="1.4" />
+      <rect x="1.5" y="3.5" width="13" height="9" rx="2.5" strokeWidth="1.3" />
     </svg>
   );
 }
 
 function RatioAutoIcon({ className = "size-3.5" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 16 16" fill="none" className={className} stroke="currentColor">
-      <path d="M8 1.5L9.5 5.5L13.5 7L9.5 8.5L8 12.5L6.5 8.5L2.5 7L6.5 5.5L8 1.5Z" strokeWidth="1.3" strokeLinejoin="round" />
-      <path d="M12.5 11.5L13.25 13.25L15 14L13.25 14.75L12.5 16.5L11.75 14.75L10 14L11.75 13.25L12.5 11.5Z" strokeWidth="1.1" strokeLinejoin="round" />
+    <svg viewBox="0 0 16 16" fill="currentColor" className={className}>
+      <path d="M8 1.5C8 5.08985 5.08985 8 1.5 8C5.08985 8 8 10.9101 8 14.5C8 10.9101 10.9101 8 14.5 8C10.9101 8 8 5.08985 8 1.5Z" />
     </svg>
   );
 }
@@ -2017,9 +2058,9 @@ function getRatio(width: number, height: number): MediaRatio {
 }
 
 function CollectionIcon({ collection }: { collection: MediaCollection }) {
-  if (collection === "influencer") return <UserRound className="size-4.5" aria-hidden="true" />;
-  if (collection === "image") return <FileImage className="size-4.5" aria-hidden="true" />;
-  return <Film className="size-4.5" aria-hidden="true" />;
+  if (collection === "influencer") return <UserRound className="size-4" aria-hidden="true" />;
+  if (collection === "image") return <ImageIcon className="size-4" aria-hidden="true" />;
+  return <Video className="size-4" aria-hidden="true" />;
 }
 
 function getUploadLabel(collection: MediaCollection) {

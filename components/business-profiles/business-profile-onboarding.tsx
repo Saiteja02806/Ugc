@@ -10,7 +10,6 @@ import {
   Copy,
   Download,
   Eye,
-  Globe2,
   ImagePlus,
   Loader2,
   Megaphone,
@@ -119,10 +118,37 @@ type ProfileSummary = {
   profileVersion: number;
 };
 
+function WebsiteIntakeIcon(props: React.ComponentProps<"svg">) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <rect x="2.5" y="3.5" width="19" height="17" rx="3.5" strokeWidth="1.75" />
+      <path d="M2.5 8.5h19" strokeWidth="1.5" />
+      <circle cx="5.5" cy="6" r="0.75" fill="currentColor" stroke="none" />
+      <circle cx="8" cy="6" r="0.75" fill="currentColor" stroke="none" />
+      <circle cx="10.5" cy="6" r="0.75" fill="currentColor" stroke="none" />
+      <path d="M6 13h6.5" strokeWidth="1.75" strokeLinecap="round" />
+      <path d="M6 16.5h4" strokeWidth="1.75" strokeLinecap="round" opacity="0.6" />
+      <path
+        d="M17 12l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z"
+        fill="currentColor"
+        stroke="none"
+      />
+    </svg>
+  );
+}
+
 const intakeOptions = [
   {
     description: "We read your public product pages and organize the useful details.",
-    icon: Globe2,
+    icon: WebsiteIntakeIcon,
     label: "Website",
     value: "website",
   },
@@ -761,7 +787,7 @@ export function BusinessProfileOnboarding() {
   );
 }
 
-function BusinessInformationStep({
+export function BusinessInformationStep({
   aiIdeContext,
   copied,
   error,
@@ -981,7 +1007,7 @@ function BusinessInformationStep({
   );
 }
 
-function BusinessIdentityStep({
+export function BusinessIdentityStep({
   businessName,
   error,
   headingRef,
@@ -1095,7 +1121,7 @@ function BusinessIdentityStep({
   );
 }
 
-function PrimaryGoalStep({
+export function PrimaryGoalStep({
   error,
   headingRef,
   isSaving,
@@ -1196,7 +1222,7 @@ function PrimaryGoalStep({
   );
 }
 
-function OnboardingFrame({ children }: { children: React.ReactNode }) {
+export function OnboardingFrame({ children }: { children: React.ReactNode }) {
   return (
     <main className="instagram-theme relative min-h-dvh overflow-x-hidden bg-background text-foreground">
       <div

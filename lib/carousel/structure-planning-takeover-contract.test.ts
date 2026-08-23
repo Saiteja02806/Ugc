@@ -18,6 +18,10 @@ const structure2Planner = readFileSync(
   "worker/src/lib/carousel-structure-2-planner.ts",
   "utf8",
 );
+const structure2Runtime = readFileSync(
+  "worker/src/lib/carousel-structure-2-generate.ts",
+  "utf8",
+);
 
 test("persists requested and resolved Carousel structures separately", () => {
   assert.match(migration, /requested_structure_id text/i);
@@ -73,17 +77,17 @@ test("runtime retries Structure 1 twice and then reloads the whole batch as Stru
   assert.match(runtime, /generateCarouselStructure2Batch/);
 });
 
-test("production planners fail closed instead of generating generic fallback copy", () => {
+test("Structure 1 fails closed while Structure 2 uses its validated dedicated fallback", () => {
   assert.match(
     structure1Planner,
     /input\.allowDeterministicFallback === false[\s\S]*runtime fallback copy is not permitted/i,
   );
   assert.match(
     structure2Planner,
-    /input\.allowDeterministicFallback === false[\s\S]*runtime fallback copy is not permitted/i,
+    /buildDeterministicCarouselStructure2StoryPlan/,
   );
   assert.match(
-    structure2Planner,
-    /planning failed after isolated repair/i,
+    structure2Runtime,
+    /buildCarouselStructure2StoryPlanBatch\(\{[\s\S]*allowDeterministicFallback: true/,
   );
 });

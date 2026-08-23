@@ -40,7 +40,7 @@ test("group controls stay compact without a dedicated explanatory card", () => {
   );
 
   assert.match(groupSwitcher, />\s*Create group\s*</);
-  assert.match(groupSwitcher, /className="shrink-0"/);
+  assert.match(groupSwitcher, /shrink-0/);
   assert.doesNotMatch(groupSwitcher, /shadow-card/);
   assert.doesNotMatch(groupSwitcher, />\s*Groups\s*</);
 });

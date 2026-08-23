@@ -250,7 +250,7 @@ export function SettingsWorkspace() {
                     <p className="mt-1 text-sm text-muted">
                       {subscription?.isActive
                         ? `Your ${subscription.displayName} subscription includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits.`
-                        : "Free includes 3 daily ready-to-post concepts and no AI generation credits."}
+                        : "Free includes 10 daily ready-to-post concepts and no AI generation credits."}
                     </p>
                   </div>
                 </div>

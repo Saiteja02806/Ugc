@@ -29,6 +29,7 @@ export async function runGenerateTrendingHookCopyJob(
     process.env.OPENAI_TRENDING_HOOK_MODEL?.trim() ||
     "gpt-5.6-terra";
   const copies = await generateValidatedTrendingHookCopies({
+    allowPartialCandidates: true,
     businessProfile: input.businessProfile,
     candidates: input.candidates,
     model,
@@ -56,6 +57,7 @@ export async function runGenerateTrendingHookCopyJob(
     ideaCount: copies.length,
     model,
     promptVersion: input.promptVersion,
+    rejectedCandidateCount: input.candidates.length - copies.length,
     repairedCount: copies.filter(
       (copy) => copy.readabilityReview.repairApplied,
     ).length,

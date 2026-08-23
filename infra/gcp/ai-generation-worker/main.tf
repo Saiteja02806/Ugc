@@ -97,6 +97,11 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
 
       env {
+        name  = "WORKER_ID"
+        value = "${var.service_name}:${var.worker_version}:${var.worker_git_commit}"
+      }
+
+      env {
         name  = "WORKER_VERSION"
         value = var.worker_version
       }

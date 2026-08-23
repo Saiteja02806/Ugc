@@ -138,7 +138,7 @@ function AIStudioModeToggle({
 
   return (
     <div
-      className="inline-grid grid-cols-2 gap-1 rounded-xl bg-card-muted p-1 ring-1 ring-inset ring-border"
+      className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-card-muted/80 p-1 shadow-xs backdrop-blur-xs"
       role="tablist"
       aria-label="AI Studio mode"
     >
@@ -159,10 +159,10 @@ function AIStudioModeToggle({
             onClick={() => onChange(mode.value)}
             onKeyDown={handleKeyDown}
             className={cn(
-              "inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none sm:min-w-[82px] sm:px-4",
+              "inline-flex h-8 min-w-[76px] items-center justify-center rounded-full px-4 text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none sm:min-w-[86px] sm:text-sm",
               selected
-                ? "bg-primary text-primary-foreground"
-                : "bg-transparent text-muted hover:bg-card hover:text-foreground",
+                ? "bg-card text-foreground-strong shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)]"
+                : "bg-transparent text-muted hover:text-foreground",
             )}
           >
             {mode.label}

@@ -17,6 +17,7 @@ import {
   Heart,
   ImageIcon,
   Images,
+  Layers,
   MessageCircle,
   RefreshCw,
   Share2,
@@ -34,6 +35,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
 import {
   Alert,
   AlertDescription,
@@ -202,9 +204,10 @@ const contentTypeLabels: Record<InstagramContentType, string> = {
 };
 
 export function InstagramAnalyticsWorkspace() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const accountId = user?.uid ?? "signed-out";
+  const { user } = useAuth();
+  const accountId = user?.uid ?? "";
+
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [schedules, setSchedules] = useState<ScheduledPost[]>([]);
   const [dateRangeDays, setDateRangeDays] = useState<DateRangeDays>(30);
@@ -258,19 +261,15 @@ export function InstagramAnalyticsWorkspace() {
         state: "loading",
       }));
       const [
-        accountConnections,
-        accountSchedules,
+        loadedConnections,
+        loadedSchedules,
         insightsOutput,
       ] = await Promise.all([
         loadAccountSocialConnections(queryClient, accountId, {
-          errorMessage:
-            "Could not load your account connection. Refresh and try again.",
           force: Boolean(idempotencyKey),
           token,
         }),
         loadAccountSchedules(queryClient, accountId, {
-          errorMessage:
-            "Could not load publishing activity. Refresh and try again.",
           force: Boolean(idempotencyKey),
           token,
         }),
@@ -291,17 +290,21 @@ export function InstagramAnalyticsWorkspace() {
 
       setConnections(
         getUniqueInstagramConnections(
-          [...accountConnections].sort(
+          [...(loadedConnections ?? [])].sort(
             (left, right) =>
               Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
           ),
         ),
       );
-      setSchedules(accountSchedules.schedules);
+      setSchedules(
+        Array.isArray(loadedSchedules.schedules)
+          ? loadedSchedules.schedules
+          : [],
+      );
       setInsightsResult({
         accounts: insightsData?.accounts ?? [],
         days: dateRangeDays,
-        message: null,
+        message: insightsData?.message ?? null,
         state: "ready",
       });
       setErrorMessage(null);
@@ -408,10 +411,22 @@ export function InstagramAnalyticsWorkspace() {
     void loadContentPerformance(undefined, refreshKey);
   }, [loadAnalytics, loadContentPerformance]);
 
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string>("all");
+
   const activeConnectionIds = useMemo(
     () => new Set(connections.map((connection) => connection.id)),
     [connections],
   );
+  const effectiveSelectedConnectionId =
+    selectedConnectionId !== "all" && !activeConnectionIds.has(selectedConnectionId)
+      ? "all"
+      : selectedConnectionId;
+
+  const displayedConnections = useMemo(() => {
+    if (effectiveSelectedConnectionId === "all") return connections;
+    return connections.filter((c) => c.id === effectiveSelectedConnectionId);
+  }, [connections, effectiveSelectedConnectionId]);
+
   const activeInsightAccounts = useMemo(
     () =>
       insightsResult.accounts.filter((account) =>
@@ -426,36 +441,57 @@ export function InstagramAnalyticsWorkspace() {
       ),
     [activeConnectionIds, contentResult.accounts],
   );
+
+  const displayedContentAccounts = useMemo(() => {
+    if (effectiveSelectedConnectionId === "all") return activeContentAccounts;
+    return activeContentAccounts.filter(
+      (account) => account.connectionId === effectiveSelectedConnectionId,
+    );
+  }, [activeContentAccounts, effectiveSelectedConnectionId]);
+
+  const displayedInsightAccounts = useMemo(() => {
+    if (effectiveSelectedConnectionId === "all") return activeInsightAccounts;
+    return activeInsightAccounts.filter(
+      (account) => account.connectionId === effectiveSelectedConnectionId,
+    );
+  }, [activeInsightAccounts, effectiveSelectedConnectionId]);
+
+  const displayedVisibleConnectionIds = useMemo(
+    () => new Set(displayedConnections.map((connection) => connection.id)),
+    [displayedConnections],
+  );
+
   const analytics = useMemo<InstagramAnalyticsWorkspaceSummary>(() => {
     const dateKeys = getDateRangeKeys(dateRangeDays);
 
     return {
       ...buildInstagramActivitySummary({
         accountNames: new Map(
-          connections.map((connection) => [
+          displayedConnections.map((connection) => [
             connection.id,
             getInstagramAccountName(connection),
           ]),
         ),
         dateKeys,
         schedules,
-        visibleConnectionIds: activeConnectionIds,
+        visibleConnectionIds: displayedVisibleConnectionIds,
       }),
       rangeLabel: getRangeLabel(dateKeys),
     };
-  }, [activeConnectionIds, connections, dateRangeDays, schedules]);
+  }, [dateRangeDays, displayedConnections, displayedVisibleConnectionIds, schedules]);
+
   const primaryConnection = useMemo(
-    () => getPrimaryInstagramConnection(connections),
-    [connections],
+    () => getPrimaryInstagramConnection(displayedConnections),
+    [displayedConnections],
   );
   const primaryInsightAccount = useMemo(
     () =>
       primaryConnection
-        ? activeInsightAccounts.find(
+        ? displayedInsightAccounts.find(
             (account) => account.connectionId === primaryConnection.id,
           ) ?? null
         : null,
-    [activeInsightAccounts, primaryConnection],
+    [displayedInsightAccounts, primaryConnection],
   );
   const insightsLoading =
     insightsResult.state === "loading" ||
@@ -522,10 +558,11 @@ export function InstagramAnalyticsWorkspace() {
           ) : null}
           {loadState === "ready" ? (
             <AnalyticsReadyState
+              allConnections={connections}
               analytics={analytics}
               connection={primaryConnection}
-              connectionCount={connections.length}
-              contentAccounts={activeContentAccounts}
+              connectionCount={displayedConnections.length}
+              contentAccounts={displayedContentAccounts}
               contentLoading={contentLoading}
               contentMessage={contentResult.message}
               dateRangeDays={dateRangeDays}
@@ -534,7 +571,9 @@ export function InstagramAnalyticsWorkspace() {
               insightsMessage={insightsResult.message}
               onDateRangeChange={setDateRangeDays}
               onPerformanceMetricChange={setPerformanceMetric}
+              onSelectConnectionId={setSelectedConnectionId}
               performanceMetric={performanceMetric}
+              selectedConnectionId={effectiveSelectedConnectionId}
             />
           ) : null}
         </div>
@@ -544,6 +583,7 @@ export function InstagramAnalyticsWorkspace() {
 }
 
 function AnalyticsReadyState({
+  allConnections,
   analytics,
   connection,
   connectionCount,
@@ -556,8 +596,11 @@ function AnalyticsReadyState({
   insightsMessage,
   onDateRangeChange,
   onPerformanceMetricChange,
+  onSelectConnectionId,
   performanceMetric,
+  selectedConnectionId,
 }: {
+  allConnections: SocialConnection[];
   analytics: InstagramAnalyticsWorkspaceSummary;
   connection: SocialConnection | null;
   connectionCount: number;
@@ -570,7 +613,9 @@ function AnalyticsReadyState({
   insightsMessage: string | null;
   onDateRangeChange: (days: DateRangeDays) => void;
   onPerformanceMetricChange: (metric: PerformanceMetric) => void;
+  onSelectConnectionId: (connectionId: string) => void;
   performanceMetric: PerformanceMetric;
+  selectedConnectionId: string;
 }) {
   const contentSnapshot = useMemo(
     () =>
@@ -614,6 +659,21 @@ function AnalyticsReadyState({
           onChange={onDateRangeChange}
         />
       </div>
+
+      {allConnections.length > 1 ? (
+        <div className="flex flex-col gap-3 rounded-[var(--radius-panel)] border border-border bg-card p-3.5 shadow-card sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 px-0.5">
+            <span className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+              Account View
+            </span>
+          </div>
+          <InstagramAccountSelector
+            connections={allConnections}
+            selectedConnectionId={selectedConnectionId}
+            onChange={onSelectConnectionId}
+          />
+        </div>
+      ) : null}
 
       <section className="relative overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card">
         <span
@@ -783,6 +843,76 @@ function AnalyticsSurface({
       </header>
       {children}
     </section>
+  );
+}
+
+function InstagramAccountSelector({
+  connections,
+  onChange,
+  selectedConnectionId,
+}: {
+  connections: SocialConnection[];
+  onChange: (connectionId: string) => void;
+  selectedConnectionId: string;
+}) {
+  return (
+    <div
+      aria-label="Filter by Instagram account"
+      className="inline-flex w-fit max-w-full flex-wrap items-center gap-1 rounded-[var(--radius-control)] border border-border bg-card-muted/50 p-1"
+      role="tablist"
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={selectedConnectionId === "all"}
+        className={cn(
+          "inline-flex min-h-11 touch-manipulation items-center gap-2 whitespace-nowrap rounded-[7px] px-3 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+          selectedConnectionId === "all"
+            ? "bg-primary text-primary-foreground shadow-card"
+            : "text-muted hover:bg-card hover:text-foreground-strong",
+        )}
+        onClick={() => onChange("all")}
+      >
+        <Layers className="size-3.5" aria-hidden="true" />
+        <span>All accounts</span>
+        <span
+          className={cn(
+            "rounded px-1.5 py-0.5 text-[10px] font-bold leading-none",
+            selectedConnectionId === "all"
+              ? "bg-primary-foreground/20 text-primary-foreground"
+              : "bg-background text-muted-foreground",
+          )}
+        >
+          {connections.length}
+        </span>
+      </button>
+
+      {connections.map((connection) => {
+        const selected = selectedConnectionId === connection.id;
+        const handle = getInstagramAccountHandle(connection);
+        const name = getInstagramAccountName(connection);
+        const label = handle ?? name;
+
+        return (
+          <button
+            key={connection.id}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            className={cn(
+              "inline-flex min-h-11 touch-manipulation items-center gap-2 whitespace-nowrap rounded-[7px] px-3 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+              selected
+                ? "bg-primary text-primary-foreground shadow-card"
+                : "text-muted hover:bg-card hover:text-foreground-strong",
+            )}
+            onClick={() => onChange(connection.id)}
+          >
+            <SocialAccountAvatar connection={connection} size="sm" />
+            <span className="max-w-[150px] truncate">{label}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

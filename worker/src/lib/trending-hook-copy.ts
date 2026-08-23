@@ -394,6 +394,7 @@ export type HookReview = {
 type StructuredResponseClient = Pick<OpenAI, "responses">;
 
 export async function generateValidatedTrendingHookCopies(params: {
+  allowPartialCandidates?: boolean;
   businessProfile: unknown;
   candidates: TrendingHookCopyCandidate[];
   client?: StructuredResponseClient;
@@ -528,6 +529,7 @@ export async function generateValidatedTrendingHookCopies(params: {
     ]),
   );
   const selected = selectBestDraftPerCandidate({
+    allowPartialCandidates: params.allowPartialCandidates === true,
     candidates,
     draftByKey,
     reviewByKey,
@@ -1240,13 +1242,15 @@ function validateDraftBatch(params: {
 }
 
 function selectBestDraftPerCandidate(params: {
+  allowPartialCandidates: boolean;
   candidates: TrendingHookCopyCandidate[];
   draftByKey: Map<string, HookDraft>;
   reviewByKey: Map<string, HookReview>;
   specs: HookDraftSpec[];
   validationByKey: Map<string, HookDeterministicValidation>;
 }) {
-  return params.candidates.map((candidate) => {
+  const failures: string[] = [];
+  const selected = params.candidates.flatMap((candidate) => {
     const eligible = params.specs
       .filter(
         (spec) =>
@@ -1315,13 +1319,27 @@ function selectBestDraftPerCandidate(params: {
           };
         });
 
-      throw new Error(
-        `No validated Hook copy remained for candidate index ${candidate.candidateIndex}: ${JSON.stringify(diagnostics)}.`,
-      );
+      const message =
+        `No validated Hook copy remained for candidate index ${candidate.candidateIndex}: ${JSON.stringify(diagnostics)}.`;
+
+      if (params.allowPartialCandidates) {
+        failures.push(message);
+        return [];
+      }
+
+      throw new Error(message);
     }
 
-    return chosen;
+    return [chosen];
   });
+
+  if (selected.length === 0) {
+    throw new Error(
+      failures[0] ?? "No validated Hook copy remained for any candidate.",
+    );
+  }
+
+  return selected;
 }
 
 function parseHookDrafts(

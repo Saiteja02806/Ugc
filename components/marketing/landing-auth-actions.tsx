@@ -1,21 +1,34 @@
 "use client";
 
-import { ArrowRight, LoaderCircle } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { useAuth } from "@/contexts/auth-context";
+import { hasAuthSessionCookie } from "@/lib/firebase/auth-session";
 import { cn } from "@/lib/utils";
 
 type LandingAuthActionProps = {
   appearance: "header" | "menu";
+  initialHasSession: boolean;
 };
 
 type LandingAuthCtaProps = {
   className?: string;
+  initialHasSession: boolean;
 };
 
-export function LandingAuthAction({ appearance }: LandingAuthActionProps) {
+function hasSessionCookie(): boolean {
+  if (typeof document === "undefined") {
+    return false;
+  }
+  return hasAuthSessionCookie(document.cookie);
+}
+
+export function LandingAuthAction({
+  appearance,
+  initialHasSession,
+}: LandingAuthActionProps) {
   const { loading, user } = useAuth();
   const className = cn(
     "inline-flex h-10 items-center rounded-full text-sm font-semibold",
@@ -24,12 +37,12 @@ export function LandingAuthAction({ appearance }: LandingAuthActionProps) {
       : "w-full justify-start px-3",
   );
 
-  if (loading) {
-    return <SessionCheckStatus className={className} />;
-  }
+  const hasSession =
+    Boolean(user) ||
+    (loading && (initialHasSession || hasSessionCookie()));
 
-  if (user) {
-    const needsEmailVerification = !user.emailVerified;
+  if (hasSession) {
+    const needsEmailVerification = user && !user.emailVerified;
 
     return (
       <Link
@@ -53,20 +66,26 @@ export function LandingAuthAction({ appearance }: LandingAuthActionProps) {
   );
 }
 
-export function LandingAuthCta({ className }: LandingAuthCtaProps) {
+export function LandingAuthCta({
+  className,
+  initialHasSession,
+}: LandingAuthCtaProps) {
   const { loading, user } = useAuth();
 
-  if (loading) {
-    return <SessionCheckStatus className={className} />;
-  }
-
+  const hasSession =
+    Boolean(user) ||
+    (loading && (initialHasSession || hasSessionCookie()));
   const needsEmailVerification = user && !user.emailVerified;
   const href = needsEmailVerification
     ? "/verify-email"
-    : user
+    : hasSession
       ? "/dashboard"
       : "/sign-in";
-  const label = needsEmailVerification ? "Verify email" : "Start Creating";
+  const label = needsEmailVerification
+    ? "Verify email"
+    : hasSession
+      ? "Start Posting"
+      : "Start Creating";
 
   return (
     <Link href={href} className={className}>
@@ -76,25 +95,5 @@ export function LandingAuthCta({ className }: LandingAuthCtaProps) {
         aria-hidden="true"
       />
     </Link>
-  );
-}
-
-function SessionCheckStatus({ className }: { className?: string }) {
-  return (
-    <span
-      role="status"
-      aria-live="polite"
-      aria-busy="true"
-      className={cn(
-        "inline-flex items-center justify-center gap-2 text-muted",
-        className,
-      )}
-    >
-      <LoaderCircle
-        className="size-4 animate-spin motion-reduce:animate-none"
-        aria-hidden="true"
-      />
-      <span>Checking session</span>
-    </span>
   );
 }

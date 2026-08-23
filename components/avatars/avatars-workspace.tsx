@@ -3,14 +3,14 @@
 import {
   AlertCircle,
   ArrowLeft,
-  BookmarkCheck,
+  Bookmark,
   CheckCircle2,
-  FileImage,
-  Film,
+  Image as ImageIcon,
   Loader2,
   Pencil,
   Scissors,
   UserRound,
+  Video,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -117,6 +117,14 @@ function SavedCreativeAssetsLoading() {
   );
 }
 
+type AvatarsMemoryCache = {
+  avatars: AvatarLibraryItem[];
+  cachedAt: number;
+  userId: string;
+};
+
+let inMemoryAvatars: AvatarsMemoryCache | null = null;
+
 export function AvatarsWorkspace({
   editorAvatarId = null,
   initialTab = "videos",
@@ -127,13 +135,24 @@ export function AvatarsWorkspace({
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
   const isEditorMode = editorAvatarId !== null;
-  const [avatars, setAvatars] = useState<AvatarLibraryItem[]>([]);
+
+  const existingCache =
+    inMemoryAvatars && user && inMemoryAvatars.userId === user.uid
+      ? inMemoryAvatars
+      : null;
+
+  const [avatars, setAvatars] = useState<AvatarLibraryItem[]>(() => {
+    return existingCache ? existingCache.avatars : [];
+  });
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
   const [trimDraft, setTrimDraft] = useState<TrimDraft>({
     end: "",
     start: "0",
   });
-  const [isLoading, setIsLoading] = useState(isEditorMode);
+  const [isLoading, setIsLoading] = useState(() => {
+    if (existingCache) return false;
+    return isEditorMode;
+  });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [savingTrim, setSavingTrim] = useState(false);
@@ -161,13 +180,15 @@ export function AvatarsWorkspace({
     setSelectedAvatarId(avatarId);
   }, []);
 
-  const loadAvatars = useCallback(async () => {
+  const loadAvatars = useCallback(async (options?: { silent?: boolean }) => {
     if (authLoading) {
       return;
     }
 
-    setIsLoading(true);
-    setErrorMessage(null);
+    if (!options?.silent) {
+      setIsLoading(true);
+      setErrorMessage(null);
+    }
 
     try {
       if (!user) {
@@ -197,6 +218,13 @@ export function AvatarsWorkspace({
       }
 
       setAvatars(data.avatars);
+      if (user) {
+        inMemoryAvatars = {
+          avatars: data.avatars,
+          cachedAt: Date.now(),
+          userId: user.uid,
+        };
+      }
 
       const currentSelectedAvatarId = selectedAvatarIdRef.current;
       const nextSelectedAvatarId =
@@ -221,21 +249,24 @@ export function AvatarsWorkspace({
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Could not load this source video."));
     } finally {
-      setIsLoading(false);
+      if (!options?.silent) {
+        setIsLoading(false);
+      }
     }
   }, [authLoading, commitSelectedAvatarId, editorAvatarId, user]);
 
   useEffect(() => {
-    if (!isEditorMode) {
+    if (!isEditorMode || !user) {
       return;
     }
 
+    const hasCache = inMemoryAvatars && inMemoryAvatars.userId === user.uid;
     const timer = window.setTimeout(() => {
-      void loadAvatars();
+      void loadAvatars({ silent: Boolean(hasCache) });
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [isEditorMode, loadAvatars]);
+  }, [isEditorMode, loadAvatars, user]);
 
   async function handleSaveTrim() {
     if (!selectedAvatar || savingTrim) {
@@ -479,19 +510,20 @@ export function AvatarsWorkspace({
               }
             }}
             spacing={1}
-            className="inline-flex w-full rounded-[var(--radius-panel)] border border-border bg-card-muted p-1 md:w-auto"
+            className="inline-flex w-full rounded-full border border-border/80 bg-card-muted/80 p-1 shadow-xs md:w-auto"
           >
             {mediaWorkspaceTabs.map((tab) => {
               const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
 
               return (
                 <ToggleGroupItem
                   key={tab.id}
                   value={tab.id}
-                  aria-current={activeTab === tab.id ? "page" : undefined}
-                  className="h-9 flex-1 gap-2 rounded-[calc(var(--radius-panel)-4px)] px-4 text-muted hover:bg-card/60 hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-card aria-pressed:ring-1 aria-pressed:ring-border md:flex-none"
+                  aria-current={isActive ? "page" : undefined}
+                  className="h-9 flex-1 gap-2 rounded-full px-4 text-xs sm:text-sm font-medium text-muted transition-all hover:text-foreground aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] aria-pressed:ring-1 aria-pressed:ring-border/60 md:flex-none"
                 >
-                  <Icon className="size-4" aria-hidden="true" />
+                  <Icon className="size-3.5 sm:size-4" aria-hidden="true" />
                   {tab.label}
                 </ToggleGroupItem>
               );
@@ -543,13 +575,13 @@ const creativeAssetVideoCollections: MediaCollection[] = [
 ];
 
 const mediaWorkspaceTabs: {
-  icon: typeof Film;
+  icon: typeof Video;
   id: MediaWorkspaceTab;
   label: string;
 }[] = [
-  { icon: Film, id: "videos", label: "Videos" },
-  { icon: FileImage, id: "images", label: "Images" },
-  { icon: BookmarkCheck, id: "saved", label: "Saved" },
+  { icon: Video, id: "videos", label: "Videos" },
+  { icon: ImageIcon, id: "images", label: "Images" },
+  { icon: Bookmark, id: "saved", label: "Saved" },
 ];
 
 function AvatarEditorShell({

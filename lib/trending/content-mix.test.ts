@@ -6,8 +6,20 @@ import {
   allocateUnboundTrendingSlots,
   buildTrendingDailyFormatPlan,
   DEFAULT_TRENDING_CONTENT_MIX,
+  FREE_TRENDING_CONTENT_MIX,
   validateTrendingContentMix,
 } from "./content-mix.ts";
+
+test("Free receives exactly 3 Slideshows, 4 Wall posts, and 3 Hooks", () => {
+  assert.deepEqual(
+    allocateTrendingContent({
+      dailyLimit: 10,
+      localDate: "2026-08-23",
+      mix: FREE_TRENDING_CONTENT_MIX,
+    }),
+    { carousel: 3, hook_video: 3, wall_text: 4 },
+  );
+});
 
 test("Starter default mix creates exactly 5 Carousel, 10 Wall, and 5 Hook posts", () => {
   assert.deepEqual(
@@ -35,7 +47,7 @@ test("a changed mix replans only unbound positions", () => {
   assert.equal(formats.filter((format) => format === "wall_text").length, 8);
 });
 
-test("Growth alternates the half-post remainder between Carousel and Hook", () => {
+test("Growth keeps all fifty posts in one default preparation wave", () => {
   const first = allocateTrendingContent({
     dailyLimit: 50,
     localDate: "2026-08-20",
@@ -47,19 +59,9 @@ test("Growth alternates the half-post remainder between Carousel and Hook", () =
     mix: DEFAULT_TRENDING_CONTENT_MIX,
   });
 
-  assert.deepEqual(
-    [first.carousel + second.carousel, first.wall_text + second.wall_text, first.hook_video + second.hook_video],
-    [25, 50, 25],
-  );
-  assert.deepEqual(
-    [first.carousel, first.wall_text, first.hook_video].sort((a, b) => a - b),
-    [12, 13, 25],
-  );
-  assert.deepEqual(
-    [second.carousel, second.wall_text, second.hook_video].sort((a, b) => a - b),
-    [12, 13, 25],
-  );
-  assert.notEqual(first.carousel, second.carousel);
+  assert.deepEqual(first, { carousel: 13, hook_video: 12, wall_text: 25 });
+  assert.deepEqual(second, first);
+  assert.equal(first.carousel + first.wall_text + first.hook_video, 50);
 });
 
 test("the planned feed is interleaved and preserves exact totals", () => {

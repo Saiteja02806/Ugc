@@ -2,11 +2,20 @@ import "server-only";
 
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import { updateBusinessProfileTrendingTimezone } from "@/lib/business-profiles/db";
-import { ensureTrendingDailyFeed } from "@/lib/trending/daily-feed";
+import {
+  ensureTrendingDailyFeed,
+  readTrendingDailyFeed,
+} from "@/lib/trending/daily-feed";
 import {
   buildTrendingDailyFormatPlan,
+  FREE_TRENDING_CONTENT_MIX,
   type TrendingContentAllocation,
 } from "@/lib/trending/content-mix";
+import {
+  exposeTrendingDailyPackItems,
+  getTrendingDailyPackReadiness,
+  type TrendingDailyPackReadiness,
+} from "@/lib/trending/daily-pack-readiness";
 import {
   createCarouselTrendingFeedProvider,
   createUnavailableTrendingFeedProvider,
@@ -26,17 +35,271 @@ import {
   attachDailyTrendingAssignments,
   ensureDailyTrendingFeedPlan,
   getDailyTrendingFeed,
+  getDailyTrendingFeedForDate,
   getTrendingContentMixPreference,
   getTrendingLocalDate,
   getTrendingPlanEntitlement,
+  markDailyTrendingFeedPreparationFailed,
   normalizeTrendingTimezone,
   type DailyTrendingFeedSlotRecord,
+  type TrendingPlanEntitlement,
 } from "@/lib/trending/unified-daily-feed-db";
 
 export type UnifiedTrendingDailyFeedState =
   | "caught_up"
+  | "failed"
   | "preparing"
   | "ready";
+
+const inFlightDailyPackPreparations = new Map<string, Promise<void>>();
+
+export async function readUnifiedTrendingDailyFeed(params: {
+  includeHookVideos: boolean;
+  includeWallText: boolean;
+  profile: BusinessProfileRecord;
+  timezone?: string | null;
+  userId: string;
+}) {
+  const timezone = normalizeTrendingTimezone(
+    params.timezone ?? params.profile.trendingTimezone,
+  );
+  const localDate = getTrendingLocalDate(timezone);
+  const [entitlement, preference, existingPlan] = await Promise.all([
+    getTrendingPlanEntitlement(params.userId),
+    getTrendingContentMixPreference(params.userId),
+    getDailyTrendingFeedForDate({ localDate, userId: params.userId }),
+  ]);
+  const effectivePreference =
+    entitlement.planKey === "free"
+      ? { ...preference, mix: { ...FREE_TRENDING_CONTENT_MIX } }
+      : preference;
+  const dailyPlan = buildTrendingDailyFormatPlan({
+    dailyLimit: entitlement.dailyLimit,
+    localDate,
+    mix: effectivePreference.mix,
+  });
+
+  if (!existingPlan) {
+    return buildPreparingDailyFeed({
+      allocation: dailyPlan.allocation,
+      entitlement,
+      localDate,
+      mix: effectivePreference.mix,
+      preferenceVersion: effectivePreference.preferenceVersion,
+      timezone,
+    });
+  }
+
+  const reservedAllocation = countReservedSlots(existingPlan.slots);
+  const [carouselFeed, hookProvider, wallTextProvider] = await Promise.all([
+    reservedAllocation.carousel > 0
+      ? readTrendingDailyFeed({
+          dailyLimitOverride: reservedAllocation.carousel,
+          profile: params.profile,
+          timezone,
+          userId: params.userId,
+        })
+      : Promise.resolve(null),
+    params.includeHookVideos && reservedAllocation.hook_video > 0
+      ? getTrendingHookFeedProvider(params.profile)
+      : Promise.resolve(
+          createUnavailableTrendingFeedProvider<TrendingHookVideoFeedItem>(
+            "hook_video",
+            reservedAllocation.hook_video === 0
+              ? "Hook Videos are disabled in this content mix."
+              : "Hook Videos are not enabled for this environment.",
+          ),
+        ),
+    params.includeWallText && reservedAllocation.wall_text > 0
+      ? getTrendingWallTextFeedProvider(params.profile)
+      : Promise.resolve(
+          createUnavailableTrendingFeedProvider<TrendingWallTextFeedItem>(
+            "wall_text",
+            reservedAllocation.wall_text === 0
+              ? "Wall-of-text is disabled in this content mix."
+              : "Wall-of-text is not enabled for this environment.",
+          ),
+        ),
+  ]);
+  const carouselProvider = carouselFeed
+    ? createCarouselTrendingFeedProvider(carouselFeed.carousels)
+    : createCarouselTrendingFeedProvider([]);
+  const providers = [carouselProvider, hookProvider, wallTextProvider] as const;
+  const resolvedItems = buildSlotOrderedItems({
+    providers,
+    slots: existingPlan.slots,
+  });
+  const resolvedAssignmentIds = new Set(
+    resolvedItems.map((item) => item.assignmentId),
+  );
+  const readiness = getTrendingDailyPackReadiness({
+    dailyLimit: existingPlan.feed.dailyLimit,
+    resolvedAssignmentIds,
+    slots: existingPlan.slots,
+  });
+  const items = exposeTrendingDailyPackItems({
+    items: resolvedItems,
+    readiness,
+  });
+  const unresolvedByFormat = countUnresolvedSlots({
+    resolvedAssignmentIds,
+    slots: existingPlan.slots,
+  });
+  const state: UnifiedTrendingDailyFeedState =
+    readiness.remainingCount === 0
+      ? "caught_up"
+      : existingPlan.feed.status === "failed" ||
+          hasUnresolvedReadyAssignment({
+            resolvedAssignmentIds,
+            slots: existingPlan.slots,
+          })
+        ? "failed"
+        : readiness.pendingSlotCount > 0
+          ? "preparing"
+          : "ready";
+
+  return {
+    ...buildUnifiedDailyFeedResponse({
+      allocation: reservedAllocation,
+      entitlement,
+      feedId: existingPlan.feed.id,
+      items,
+      localDate,
+      mix: existingPlan.feed.mix,
+      preferenceVersion: existingPlan.feed.preferenceVersion,
+      readiness,
+      state,
+      timezone,
+    }),
+    formatAvailability: buildFormatAvailability({
+      allocation: reservedAllocation,
+      missingByFormat: unresolvedByFormat,
+      preparationResults: new Map(),
+    }),
+    requiresPreparation: state === "preparing" || state === "failed",
+  };
+}
+
+export function prepareUnifiedTrendingDailyFeed(params: Parameters<
+  typeof ensureUnifiedTrendingDailyFeed
+>[0]) {
+  const timezone = normalizeTrendingTimezone(
+    params.timezone ?? params.profile.trendingTimezone,
+  );
+  const localDate = getTrendingLocalDate(timezone);
+  const key = `${params.userId}:${localDate}`;
+  const existing = inFlightDailyPackPreparations.get(key);
+
+  if (existing) {
+    return existing;
+  }
+
+  const preparation = ensureUnifiedTrendingDailyFeed(params)
+    .then(() => undefined)
+    .finally(() => {
+      if (inFlightDailyPackPreparations.get(key) === preparation) {
+        inFlightDailyPackPreparations.delete(key);
+      }
+    });
+
+  inFlightDailyPackPreparations.set(key, preparation);
+  return preparation;
+}
+
+function buildPreparingDailyFeed(params: {
+  allocation: TrendingContentAllocation;
+  entitlement: TrendingPlanEntitlement;
+  localDate: string;
+  mix: {
+    carousel: number;
+    hook_video: number;
+    wall_text: number;
+  };
+  preferenceVersion: number;
+  timezone: string;
+}) {
+  const readiness: TrendingDailyPackReadiness = {
+    completedCount: 0,
+    pendingSlotCount: params.entitlement.dailyLimit,
+    ready: false,
+    remainingCount: params.entitlement.dailyLimit,
+  };
+
+  return {
+    ...buildUnifiedDailyFeedResponse({
+      allocation: params.allocation,
+      entitlement: params.entitlement,
+      feedId: null,
+      items: [],
+      localDate: params.localDate,
+      mix: params.mix,
+      preferenceVersion: params.preferenceVersion,
+      readiness,
+      state: "preparing",
+      timezone: params.timezone,
+    }),
+    formatAvailability: buildFormatAvailability({
+      allocation: params.allocation,
+      missingByFormat: params.allocation,
+      preparationResults: new Map(),
+    }),
+    requiresPreparation: true,
+  };
+}
+
+function buildUnifiedDailyFeedResponse(params: {
+  allocation: TrendingContentAllocation;
+  entitlement: TrendingPlanEntitlement;
+  feedId: string | null;
+  items: TrendingFeedItem[];
+  localDate: string;
+  mix: {
+    carousel: number;
+    hook_video: number;
+    wall_text: number;
+  };
+  preferenceVersion: number;
+  readiness: TrendingDailyPackReadiness;
+  state: UnifiedTrendingDailyFeedState;
+  timezone: string;
+}) {
+  return {
+    carousels: params.items
+      .filter(
+        (item): item is TrendingCarouselFeedItem => item.format === "carousel",
+      )
+      .map((item) => ({
+        ...item.creative,
+        assignmentId: item.assignmentId,
+        feedItemId: item.feedItemId,
+        feedPosition: item.position,
+        feedSource: item.source,
+      })),
+    contentMix: {
+      allocation: params.allocation,
+      limits: { carousel: 100, hook_video: 50, wall_text: 50 },
+      preferenceVersion: params.preferenceVersion,
+      percentages: params.mix,
+    },
+    entitlement: {
+      dailyCarouselLimit: params.allocation.carousel,
+      dailyTrendingLimit: params.entitlement.dailyLimit,
+      displayName: params.entitlement.displayName,
+      planKey: params.entitlement.planKey,
+    },
+    feed: {
+      assignedCount: params.items.length + params.readiness.completedCount,
+      completedCount: params.readiness.completedCount,
+      id: params.feedId,
+      localDate: params.localDate,
+      pendingSlotCount: params.readiness.pendingSlotCount,
+      remainingCount: params.readiness.remainingCount,
+      state: params.state,
+      timezone: params.timezone,
+    },
+    items: params.items,
+  };
+}
 
 export async function ensureUnifiedTrendingDailyFeed(params: {
   includeHookVideos: boolean;
@@ -62,10 +325,14 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     getTrendingPlanEntitlement(params.userId),
     getTrendingContentMixPreference(params.userId),
   ]);
+  const effectivePreference =
+    entitlement.planKey === "free"
+      ? { ...preference, mix: { ...FREE_TRENDING_CONTENT_MIX } }
+      : preference;
   const dailyPlan = buildTrendingDailyFormatPlan({
     dailyLimit: entitlement.dailyLimit,
     localDate,
-    mix: preference.mix,
+    mix: effectivePreference.mix,
   });
   const initialPlan = await ensureDailyTrendingFeedPlan({
     businessProfileId: params.profile.id,
@@ -73,7 +340,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     entitlement,
     formats: dailyPlan.formats,
     localDate,
-    preference,
+    preference: effectivePreference,
     timezone,
     userId: params.userId,
   });
@@ -111,22 +378,57 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     missingByFormat,
     profile: params.profile,
   });
-  const items = buildSlotOrderedItems({
+  const resolvedItems = buildSlotOrderedItems({
     providers: [carouselProvider, hookProvider, wallTextProvider],
     slots: attachedPlan.slots,
   });
-  const decidedCount = attachedPlan.slots.filter(
-    (slot) => slot.state === "decided",
-  ).length;
-  const pendingSlotCount = attachedPlan.slots.filter(
-    (slot) => slot.state === "planned" || slot.state === "preparing" || slot.state === "failed",
-  ).length;
+  const resolvedAssignmentIds = new Set(
+    resolvedItems.map((item) => item.assignmentId),
+  );
+  const readiness = getTrendingDailyPackReadiness({
+    dailyLimit: attachedPlan.feed.dailyLimit,
+    resolvedAssignmentIds,
+    slots: attachedPlan.slots,
+  });
+  const items = exposeTrendingDailyPackItems({
+    items: resolvedItems,
+    readiness,
+  });
+  const unresolvedByFormat = countUnresolvedSlots({
+    resolvedAssignmentIds,
+    slots: attachedPlan.slots,
+  });
+  const preparationFailed =
+    hasUnresolvedReadyAssignment({
+      resolvedAssignmentIds,
+      slots: attachedPlan.slots,
+    }) ||
+    hasTerminalPreparationFailure({
+      hookProvider,
+      includeHookVideos: params.includeHookVideos,
+      includeWallText: params.includeWallText,
+      missingByFormat,
+      preparationResults,
+      unresolvedByFormat,
+      wallTextProvider,
+    });
   const state: UnifiedTrendingDailyFeedState =
-    decidedCount >= attachedPlan.feed.dailyLimit
+    readiness.remainingCount === 0
       ? "caught_up"
-      : pendingSlotCount > 0
-        ? "preparing"
-        : "ready";
+      : preparationFailed
+        ? "failed"
+        : readiness.pendingSlotCount > 0
+          ? "preparing"
+          : "ready";
+
+  if (state === "failed") {
+    await markDailyTrendingFeedPreparationFailed({
+      feedId: attachedPlan.feed.id,
+      message:
+        "One or more reserved formats could not be prepared for today's Trending pack.",
+      userId: params.userId,
+    });
+  }
 
   return {
     carousels: items
@@ -141,7 +443,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     contentMix: {
       allocation: reservedAllocation,
       limits: { carousel: 100, hook_video: 50, wall_text: 50 },
-      preferenceVersion: preference.preferenceVersion,
+      preferenceVersion: effectivePreference.preferenceVersion,
       percentages: attachedPlan.feed.mix,
     },
     entitlement: {
@@ -151,24 +453,86 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
       planKey: entitlement.planKey,
     },
     feed: {
-      assignedCount: attachedPlan.slots.filter(
-        (slot) => slot.state === "ready" || slot.state === "decided",
-      ).length,
-      completedCount: decidedCount,
+      assignedCount: resolvedItems.length + readiness.completedCount,
+      completedCount: readiness.completedCount,
       id: attachedPlan.feed.id,
       localDate,
-      pendingSlotCount,
-      remainingCount: Math.max(entitlement.dailyLimit - decidedCount, 0),
+      pendingSlotCount: readiness.pendingSlotCount,
+      remainingCount: readiness.remainingCount,
       state,
       timezone,
     },
     formatAvailability: buildFormatAvailability({
       allocation: reservedAllocation,
-      missingByFormat,
+      missingByFormat: unresolvedByFormat,
       preparationResults,
     }),
     items,
   };
+}
+
+function hasUnresolvedReadyAssignment(params: {
+  resolvedAssignmentIds: ReadonlySet<string>;
+  slots: DailyTrendingFeedSlotRecord[];
+}) {
+  return params.slots.some(
+    (slot) =>
+      slot.state === "ready" &&
+      slot.assignmentId !== null &&
+      !params.resolvedAssignmentIds.has(slot.assignmentId),
+  );
+}
+
+function hasTerminalPreparationFailure(params: {
+  hookProvider: TrendingFeedProviderResult<TrendingHookVideoFeedItem>;
+  includeHookVideos: boolean;
+  includeWallText: boolean;
+  missingByFormat: TrendingContentAllocation;
+  preparationResults: Map<"hook_video" | "wall_text", "failed" | "scheduled">;
+  unresolvedByFormat: TrendingContentAllocation;
+  wallTextProvider: TrendingFeedProviderResult<TrendingWallTextFeedItem>;
+}) {
+  const hookFailed =
+    params.unresolvedByFormat.hook_video > 0 &&
+    (!params.includeHookVideos ||
+      params.preparationResults.get("hook_video") === "failed" ||
+      (params.missingByFormat.hook_video === 0 &&
+        params.hookProvider.state === "unavailable"));
+  const wallTextFailed =
+    params.unresolvedByFormat.wall_text > 0 &&
+    (!params.includeWallText ||
+      params.preparationResults.get("wall_text") === "failed" ||
+      (params.missingByFormat.wall_text === 0 &&
+        params.wallTextProvider.state === "unavailable"));
+
+  return hookFailed || wallTextFailed;
+}
+
+function countUnresolvedSlots(params: {
+  resolvedAssignmentIds: ReadonlySet<string>;
+  slots: DailyTrendingFeedSlotRecord[];
+}) {
+  const counts: TrendingContentAllocation = {
+    carousel: 0,
+    hook_video: 0,
+    wall_text: 0,
+  };
+
+  for (const slot of params.slots) {
+    if (slot.state === "decided") {
+      continue;
+    }
+
+    if (
+      slot.state !== "ready" ||
+      !slot.assignmentId ||
+      !params.resolvedAssignmentIds.has(slot.assignmentId)
+    ) {
+      counts[slot.format] += 1;
+    }
+  }
+
+  return counts;
 }
 
 function countReservedSlots(slots: DailyTrendingFeedSlotRecord[]) {

@@ -14,8 +14,8 @@ test("groups every source from the same creator into one folder", () => {
   assert.deepEqual(
     groups.map((group) => [group.label, group.options.map((item) => item.id)]),
     [
-      ["Creator 001", ["a", "b"]],
-      ["Creator 002", ["c"]],
+      ["Creator 1", ["a", "b"]],
+      ["Creator 2", ["c"]],
     ],
   );
 });

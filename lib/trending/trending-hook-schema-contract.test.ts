@@ -73,6 +73,20 @@ const hookJobsSource = readFileSync(
   new URL("./trending-hook-copy-jobs.ts", import.meta.url),
   "utf8",
 );
+const hookWorkerJobSource = readFileSync(
+  new URL(
+    "../../worker/src/jobs/generate-trending-hook-copy.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const hookWorkerCopySource = readFileSync(
+  new URL(
+    "../../worker/src/lib/trending-hook-copy.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 test("stores pre-demo Hook text separately from demo-based composition text", () => {
   assert.match(
@@ -84,6 +98,21 @@ test("stores pre-demo Hook text separately from demo-based composition text", ()
   assert.match(
     migration,
     /suggestion_context = 'trending'[\s\S]*demo_asset_id is null/i,
+  );
+});
+
+test("keeps validated Hook results when one source candidate fails review", () => {
+  assert.match(
+    hookWorkerJobSource,
+    /allowPartialCandidates: true/,
+  );
+  assert.match(
+    hookWorkerCopySource,
+    /if \(params\.allowPartialCandidates\)[\s\S]*failures\.push\(message\)[\s\S]*return \[\]/,
+  );
+  assert.match(
+    hookFeedSource,
+    /Math\.max\(targetActive - activeCount, 6\)/,
   );
 });
 

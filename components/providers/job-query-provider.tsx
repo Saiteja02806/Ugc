@@ -21,10 +21,11 @@ function AccountQueryClientProvider({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
+            gcTime: 60 * 60 * 1_000,
             refetchOnReconnect: true,
-            refetchOnWindowFocus: true,
+            refetchOnWindowFocus: false,
             retry: 1,
-            staleTime: 1_000,
+            staleTime: 30 * 60 * 1_000,
           },
         },
       }),

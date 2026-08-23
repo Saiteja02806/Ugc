@@ -45,7 +45,7 @@ export async function generateCarouselStructure2Batch(params: {
 
   try {
     plannedItems = await buildCarouselStructure2StoryPlanBatch({
-      allowDeterministicFallback: false,
+      allowDeterministicFallback: true,
       analysis: params.businessAnalysis,
       assignments: params.generations.map((generation, slotIndex) => ({
         candidateIndex: generation.candidate_index,

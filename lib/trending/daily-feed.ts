@@ -406,6 +406,49 @@ export async function ensureTrendingDailyFeed(params: {
   });
 }
 
+/**
+ * Reads an already-prepared Carousel inventory without creating feed rows,
+ * assigning candidates, or enqueueing replenishment work. The unified
+ * Trending route uses this as its request-time fast path.
+ */
+export async function readTrendingDailyFeed(params: {
+  dailyLimitOverride?: number;
+  profile: BusinessProfileRecord;
+  timezone?: string | null;
+  userId: string;
+}): Promise<TrendingDailyFeed | null> {
+  const timezone = normalizeTimezone(params.timezone);
+  const localDate = getLocalDateForTimezone(timezone);
+  const feed = await findDailyFeed({
+    localDate,
+    userId: params.userId,
+  });
+
+  if (!feed) {
+    return null;
+  }
+
+  const requestedDailyLimit =
+    params.dailyLimitOverride === undefined
+      ? feed.daily_limit
+      : Math.max(Math.trunc(params.dailyLimitOverride), 1);
+  const entitlement = {
+    dailyCarouselLimit: requestedDailyLimit,
+    planKey: feed.plan_key,
+  };
+  const feedItems = await listFeedItems(feed.id);
+
+  return buildDailyFeedResponse({
+    entitlement,
+    feed,
+    feedItems,
+    inspectProcessingCandidates: false,
+    markItemsShown: false,
+    profile: params.profile,
+    userId: params.userId,
+  });
+}
+
 export async function completeTrendingFeedAssignment(params: {
   action: TrendingFeedCompletionAction;
   assignmentId: string;
@@ -908,6 +951,7 @@ async function buildDailyFeedResponse(params: {
   entitlement: TrendingFeedEntitlement;
   feed: DailyCarouselFeedRow;
   feedItems: DailyCarouselFeedItemRow[];
+  inspectProcessingCandidates?: boolean;
   markItemsShown: boolean;
   profile: BusinessProfileRecord;
   userId: string;
@@ -980,7 +1024,7 @@ async function buildDailyFeedResponse(params: {
     isCompletedAssignmentState(item.assignment.state),
   ).length;
   const hasProcessingCandidates =
-    pendingSlotCount > 0
+    pendingSlotCount > 0 && params.inspectProcessingCandidates !== false
       ? (
           await getViableUnassignedCarouselInventory({
             localDate: params.feed.local_date,

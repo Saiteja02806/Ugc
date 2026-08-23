@@ -73,7 +73,7 @@ variable "min_instance_count" {
 variable "max_instance_count" {
   description = "Maximum Cloud Run instances for the AI-generation worker."
   type        = number
-  default     = 1
+  default     = 4
 }
 
 variable "request_timeout_seconds" {

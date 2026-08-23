@@ -90,7 +90,7 @@ test("keeps the outgoing card mounted until its transform transition finishes", 
   );
 });
 
-test("follows the next creative ID across refreshes, blocks duplicates, and restores on save failure", () => {
+test("advances locally and sends decisions through a durable background outbox", () => {
   assert.match(workspace, /decisionLockRef\.current = true/);
   assert.match(
     workspace,
@@ -98,7 +98,7 @@ test("follows the next creative ID across refreshes, blocks duplicates, and rest
   );
   assert.match(
     workspace,
-    /dismissCandidate\(candidate\);[\s\S]*setActiveItemId\(nextCandidateId\);[\s\S]*commitCreativeDecision/,
+    /dismissCandidate\(candidate\);[\s\S]*setActiveItemId\(nextCandidateId\);[\s\S]*decisionLockRef\.current = false;[\s\S]*enqueueDecision/,
   );
   assert.match(
     workspace,
@@ -106,10 +106,18 @@ test("follows the next creative ID across refreshes, blocks duplicates, and rest
   );
   assert.match(
     workspace,
-    /await persistTrendingCreativeDecision[\s\S]*catch \(error\)[\s\S]*restoreCandidate\(candidate\)[\s\S]*setActiveItemId\(candidate\.item\.id\)/,
+    /function useTrendingDecisionOutbox[\s\S]*persistTrendingDecisionOutboxEntry/,
+  );
+  assert.match(workspace, /window\.localStorage\.setItem/);
+  assert.match(workspace, /!data\.dailyFeedSlotId/);
+  assert.doesNotMatch(workspace, /restoreCandidate\(candidate\)/);
+  assert.doesNotMatch(workspace, /Saving choice…/);
+  assert.doesNotMatch(
+    workspace,
+    /\/api\/trending\/(hook-videos|wall-text)\/feed\/prepare/,
   );
   assert.doesNotMatch(workspace, /setActiveItemIndex\(/);
-  assert.match(workspace, /disabled=\{Boolean\(exitDirection \|\| pendingDecisionItemId\)\}/);
+  assert.match(workspace, /disabled=\{Boolean\(exitDirection\)\}/);
 });
 
 test("Edit opens the real editor and the tick persists text and drag position", () => {
@@ -182,16 +190,31 @@ test("shows one dark 9:16 post skeleton while Trending prepares content", () => 
   assert.match(workspace, /function TrendingPostSkeleton/);
   assert.match(
     workspace,
-    /aspect-\[9\/16\] w-\[min\(76vw,248px\)\][^\"]*rounded-lg[^\"]*bg-\[#171717\]/,
+    /aspect-\[9\/16\] w-\[min\(76vw,248px\)\][^\"]*rounded-\[20px\]/,
   );
   assert.match(workspace, /aria-label="Loading trending content ideas"/);
   assert.doesNotMatch(workspace, /CarouselLoadingStackVisual/);
   assert.doesNotMatch(workspace, /LOADING_STACK_PLACEHOLDERS/);
+  assert.doesNotMatch(workspace, /Preparing ideas/);
+  assert.doesNotMatch(workspace, /Glossy light-sweep wave/);
+  assert.match(workspace, /animate-pulse[^"]*bg-\[#151517\]/);
   assert.doesNotMatch(workspace, /We’re preparing new content for you\./);
   assert.doesNotMatch(workspace, /Your next ideas are being prepared\./);
   assert.doesNotMatch(workspace, /Ready posts will appear here automatically/);
   assert.doesNotMatch(workspace, /worker did not finish|slides ready|Retry generation/);
   assert.doesNotMatch(sidebar, /Creating in background|jobs running|useActiveBackgroundJobs/);
+});
+
+test("holds partial daily results behind the skeleton until the pack is complete", () => {
+  assert.match(workspace, /setTrendingFeedState\(data\.feed\?\.state \?\? null\)/);
+  assert.match(
+    workspace,
+    /preparing=\{trendingFeedState === "preparing"\}/,
+  );
+  assert.match(
+    workspace,
+    /if \(preparing\) \{\s*return <TrendingPostSkeleton \/>;\s*\}/,
+  );
 });
 
 function readProjectFile(relativePath: string) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { flushPendingBillingUsageEvents } from "@/lib/billing/subscription-db";
+import { buildBillingUsageFlushAudience } from "@/lib/billing/usage-scheduler";
 import {
   getMissingCloudTasksOidcEnvVars,
   verifyCloudTasksOidcRequest,
@@ -44,10 +45,7 @@ function getRequestAudience(requestUrl: string) {
     return explicitAudience;
   }
 
-  const url = new URL(requestUrl);
-  url.search = "";
-  url.hash = "";
-  return url.toString();
+  return buildBillingUsageFlushAudience(new URL(requestUrl).origin);
 }
 
 function clampLimit(rawValue: string | null) {

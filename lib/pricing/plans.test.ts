@@ -44,6 +44,17 @@ test("plans expose credit balances for Free, Starter, and Growth", () => {
   );
 });
 
+test("plans expose the complete daily content allowance", () => {
+  assert.deepEqual(
+    pricingPlans.map((plan) => [plan.slug, plan.dailyContentPieces]),
+    [
+      ["free", 10],
+      ["starter", 20],
+      ["growth", 50],
+    ],
+  );
+});
+
 test("plans map slug to proper display name", () => {
   assert.deepEqual(
     pricingPlans.map((plan) => [plan.slug, plan.name]),

@@ -81,8 +81,9 @@ export async function POST(request: Request) {
         userId,
       });
     } catch (error) {
-      // The user's decision is already durable. A temporary queue or inventory
-      // failure must not make the client retry and accidentally double-submit it.
+      // The decision RPC is idempotent. Returning a null slot id lets the
+      // browser outbox retry until the daily slot is also retired, without
+      // blocking the swipe or creating a second decision.
       console.error(
         "Could not mark the daily Trending position after a saved decision:",
         error,

@@ -1,8 +1,15 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { ingestDodoUsageEvent } from "@/lib/billing/dodo";
+import {
+  getBillingUsageRetryDelayMs,
+  getSubscriptionEntitlementPlanKey,
+  MAX_BILLING_USAGE_ATTEMPTS,
+  resolveDailyContentPieces,
+  type BillingPlanKey,
+} from "@/lib/billing/policy";
 
-export type BillingPlanKey = "free" | "starter" | "growth";
+export type { BillingPlanKey } from "@/lib/billing/policy";
 export type BillingSubscriptionStatus =
   | "active"
   | "cancelled"
@@ -114,6 +121,7 @@ export function resolveSubscriptionEntitlements(
   isActive: boolean,
   userId: string,
   updatedAt?: string | null,
+  configuredDailyContentPieces?: number | null,
 ): UserSubscriptionInfo {
   const paidPlan = planKey;
   const sharedMonthlyCredits =
@@ -132,12 +140,11 @@ export function resolveSubscriptionEntitlements(
     creditsUsed: 0,
     currentPeriodEnd: null,
     currentPeriodStart: null,
-    dailyContentPieces:
-      isActive && paidPlan === "growth"
-        ? 50
-        : isActive && paidPlan === "starter"
-          ? 20
-          : "Limited",
+    dailyContentPieces: resolveDailyContentPieces(
+      isActive ? paidPlan : "free",
+      isActive,
+      configuredDailyContentPieces,
+    ),
     displayName:
       paidPlan === "growth"
         ? "Growth"
@@ -167,7 +174,23 @@ export async function getUserSubscription(
   }
 
   const db = getClient();
-  const [subscriptionResult, creditsResult, accountsResult] = await Promise.all([
+  const refreshResult = await db.rpc("refresh_billing_credit_balance", {
+    p_user_id: userId,
+  });
+
+  if (refreshResult.error) {
+    console.warn(
+      `Could not refresh billing credit cycle for user ${userId}:`,
+      refreshResult.error.message,
+    );
+  }
+
+  const [
+    subscriptionResult,
+    creditsResult,
+    accountsResult,
+    entitlementsResult,
+  ] = await Promise.all([
     db
       .from("billing_subscriptions")
       .select(
@@ -188,6 +211,10 @@ export async function getUserSubscription(
       .eq("user_id", userId)
       .eq("platform", "instagram")
       .is("revoked_at", null),
+    db
+      .from("subscription_entitlements")
+      .select("daily_trending_limit,plan_key")
+      .in("plan_key", ["free", "pro", "creator"]),
   ]);
 
   if (subscriptionResult.error) {
@@ -201,11 +228,27 @@ export async function getUserSubscription(
   const row = subscriptionResult.data;
   const planKey = normalizeSubscriptionPlanKey(row?.plan_key);
   const status = normalizeSubscriptionStatus(row?.status);
+  const isActive = status === "active";
+  const entitlementPlanKey = getSubscriptionEntitlementPlanKey(
+    isActive ? planKey : "free",
+  );
+  const configuredDailyContentPieces = entitlementsResult.data?.find(
+    (entitlement) => entitlement.plan_key === entitlementPlanKey,
+  )?.daily_trending_limit;
+
+  if (entitlementsResult.error) {
+    console.warn(
+      `Could not fetch subscription entitlements for user ${userId}:`,
+      entitlementsResult.error.message,
+    );
+  }
+
   const base = resolveSubscriptionEntitlements(
     planKey,
-    status === "active",
+    isActive,
     userId,
     row?.last_event_at,
+    configuredDailyContentPieces,
   );
   const creditLimit = Math.max(
     0,
@@ -364,7 +407,7 @@ export async function deliverBillingUsageForJob(jobId: string) {
   const { data, error } = await db
     .from("billing_usage_outbox")
     .select(
-      "attempt_count,credit_cost,dodo_customer_id,event_id,generation_kind,occurred_at,status,user_id",
+      "attempt_count,credit_cost,dodo_customer_id,event_id,generation_kind,next_attempt_at,occurred_at,status,user_id",
     )
     .eq("background_job_id", jobId)
     .maybeSingle();
@@ -373,7 +416,12 @@ export async function deliverBillingUsageForJob(jobId: string) {
     throw new Error(`Could not load billing usage event: ${error.message}`);
   }
 
-  if (!data || data.status === "delivered") {
+  if (
+    !data ||
+    data.status === "delivered" ||
+    toInteger(data.attempt_count) >= MAX_BILLING_USAGE_ATTEMPTS ||
+    isFutureTimestamp(data.next_attempt_at)
+  ) {
     return;
   }
 
@@ -396,32 +444,56 @@ export async function deliverBillingUsageForJob(jobId: string) {
         occurred_at: data.occurred_at,
         user_id: data.user_id,
       },
-      timestamp: new Date().toISOString(),
+      timestamp: data.occurred_at,
     });
 
-    await db
+    const attemptedAt = new Date().toISOString();
+    const { error: updateError } = await db
       .from("billing_usage_outbox")
       .update({
         attempt_count: toInteger(data.attempt_count) + 1,
-        delivered_at: new Date().toISOString(),
+        delivered_at: attemptedAt,
+        last_attempt_at: attemptedAt,
         last_error: null,
+        next_attempt_at: null,
         status: "delivered",
-        updated_at: new Date().toISOString(),
+        updated_at: attemptedAt,
       })
       .eq("event_id", data.event_id);
+
+    if (updateError) {
+      throw new Error(`Could not mark Dodo usage as delivered: ${updateError.message}`);
+    }
   } catch (usageError) {
-    await db
+    const attemptCount = toInteger(data.attempt_count) + 1;
+    const attemptedAt = new Date();
+    const nextAttemptAt =
+      attemptCount >= MAX_BILLING_USAGE_ATTEMPTS
+        ? null
+        : new Date(
+            attemptedAt.getTime() + getBillingUsageRetryDelayMs(attemptCount),
+          ).toISOString();
+    const { error: updateError } = await db
       .from("billing_usage_outbox")
       .update({
-        attempt_count: toInteger(data.attempt_count) + 1,
+        attempt_count: attemptCount,
+        last_attempt_at: attemptedAt.toISOString(),
         last_error:
           usageError instanceof Error
             ? usageError.message.slice(0, 1000)
             : "Dodo usage delivery failed.",
+        next_attempt_at: nextAttemptAt,
         status: "failed",
-        updated_at: new Date().toISOString(),
+        updated_at: attemptedAt.toISOString(),
       })
       .eq("event_id", data.event_id);
+
+    if (updateError) {
+      console.error("Could not record Dodo usage delivery failure:", {
+        error: updateError.message,
+        eventId: data.event_id,
+      });
+    }
 
     throw usageError;
   }
@@ -434,7 +506,8 @@ export async function flushPendingBillingUsageEvents(limit = 50) {
     .from("billing_usage_outbox")
     .select("background_job_id,event_id")
     .in("status", ["pending", "failed"])
-    .lt("attempt_count", 10)
+    .lt("attempt_count", MAX_BILLING_USAGE_ATTEMPTS)
+    .lte("next_attempt_at", new Date().toISOString())
     .order("created_at", { ascending: true })
     .limit(boundedLimit);
 
@@ -498,4 +571,10 @@ function toInteger(value: unknown, fallback = 0) {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.trunc(value)
     : fallback;
+}
+
+function isFutureTimestamp(value: unknown) {
+  if (typeof value !== "string") return false;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && timestamp > Date.now();
 }

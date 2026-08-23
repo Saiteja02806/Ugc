@@ -169,18 +169,18 @@ export function ReferenceImageAttachment({
         type="button"
         variant="muted"
         size="icon-lg"
-        className="col-start-1 row-start-1"
+        className="col-start-1 row-start-1 size-9 rounded-full border border-border/80 bg-card-muted/80 text-muted shadow-xs transition-all duration-150 hover:border-border hover:bg-card hover:text-foreground-strong active:scale-95"
         aria-label={label}
         title={label}
         disabled={disabled || isReading}
         onClick={openFilePicker}
       >
         {isReading ? (
-          <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
         ) : selection ? (
-          <RefreshCw aria-hidden="true" />
+          <RefreshCw className="size-4" aria-hidden="true" />
         ) : (
-          <Plus aria-hidden="true" />
+          <Plus className="size-4" aria-hidden="true" />
         )}
       </Button>
 

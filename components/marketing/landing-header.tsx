@@ -10,7 +10,11 @@ import { LandingAuthAction } from "@/components/marketing/landing-auth-actions";
 const navItems = [{ label: "Pricing", href: "/pricing" }];
 const topOnlyNavItems = [{ label: "How it works", href: "#workflow" }];
 
-export function LandingHeader() {
+export function LandingHeader({
+  initialHasSession,
+}: {
+  initialHasSession: boolean;
+}) {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -85,7 +89,10 @@ export function LandingHeader() {
               {item.label}
             </Link>
           ))}
-          <LandingAuthAction appearance="header" />
+          <LandingAuthAction
+            appearance="header"
+            initialHasSession={initialHasSession}
+          />
         </nav>
 
         <details className="group relative md:hidden">
@@ -112,7 +119,10 @@ export function LandingHeader() {
                 </Link>
               ),
             )}
-            <LandingAuthAction appearance="menu" />
+            <LandingAuthAction
+              appearance="menu"
+              initialHasSession={initialHasSession}
+            />
           </div>
         </details>
       </div>

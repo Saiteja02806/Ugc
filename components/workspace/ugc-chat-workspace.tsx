@@ -7,20 +7,20 @@ import { useEffect, useRef, useState } from "react";
 import {
   AiStudioComposer,
   AiStudioSettingSelect,
+  AiStudioRatioPicker,
 } from "@/components/generation/ai-studio-composer";
+import { ReferenceImageAttachment } from "@/components/generation/reference-image-attachment";
 import {
   AiStudioResults,
   type AiStudioResultsStatus,
 } from "@/components/generation/ai-studio-results";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import {
   AI_STUDIO_GENERATION_QUANTITIES,
   AI_STUDIO_IMAGE_ASPECT_RATIOS,
-  getAIStudioRatioLabel,
   type AIStudioGenerationQuantity,
   type AIStudioImageAspectRatio,
 } from "@/lib/ai-studio/generation-settings";
@@ -525,30 +525,6 @@ export function ImageGenerationStudioPanel({
     }
   }
 
-  function handleEnhancePrompt() {
-    const trimmedPrompt = normalizeAIStudioPrompt(prompt);
-    const enhancement =
-      "Production notes: preserve the subject and intent, improve composition, lighting, clarity, and platform-ready framing without adding unrequested text or objects.";
-
-    if (generationLocked || !trimmedPrompt || trimmedPrompt.includes("Production notes:")) {
-      return;
-    }
-
-    const enhancedPrompt = `${trimmedPrompt}\n\n${enhancement}`;
-    const promptLengthError = getAIStudioPromptLengthError(
-      enhancedPrompt,
-      AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
-    );
-
-    if (promptLengthError) {
-      setActionError(promptLengthError);
-      return;
-    }
-
-    setActionError(null);
-    setPrompt(enhancedPrompt);
-  }
-
   const failedJobQuery = activeJobQueries.find((query) => query.isError);
   const jobQueryError = failedJobQuery
     ? getErrorMessage(
@@ -620,6 +596,11 @@ export function ImageGenerationStudioPanel({
         generationLocked={generationLocked}
         isGenerating={isGenerating}
         layout="unified"
+        leadingControl={
+          <ReferenceImageAttachment
+            disabled={generationLocked || isGenerating}
+          />
+        }
         maxLength={AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH}
         name="imagePrompt"
         placeholder="Describe the image you want to create…"
@@ -633,23 +614,13 @@ export function ImageGenerationStudioPanel({
         onTextareaKeyDown={handleTextareaKeyDown}
         settings={
           <>
-            <AiStudioSettingSelect
-              ariaLabel="Image aspect ratio"
-              icon={
-                <span
-                  aria-hidden="true"
-                  className="inline-block h-4 w-3.5 shrink-0 rounded-[4px] border-2 border-muted"
-                />
-              }
-              options={AI_STUDIO_IMAGE_ASPECT_RATIOS.map((ratio) => ({
-                label: getAIStudioRatioLabel(ratio),
-                value: ratio,
-              }))}
+            <AiStudioRatioPicker
               value={aspectRatio}
               onChange={(value) => {
                 submissionKeyRef.current = null;
                 setAspectRatio(value);
               }}
+              disabled={generationLocked || isGenerating}
             />
             <AiStudioSettingSelect
               ariaLabel="Number of images"
@@ -673,22 +644,6 @@ export function ImageGenerationStudioPanel({
                 setReferenceImage(selection);
               }}
             />
-            <Button
-              type="button"
-              variant="muted"
-              size="lg"
-              onClick={handleEnhancePrompt}
-              disabled={generationLocked || !prompt.trim() || isGenerating}
-              aria-label={
-                generationLocked
-                  ? "Image prompt enhancement locked"
-                  : "Enhance image prompt"
-              }
-              title={generationLocked ? accessMessage ?? undefined : undefined}
-            >
-              <Sparkles data-icon="inline-start" aria-hidden="true" />
-              Enhance
-            </Button>
           </>
         }
       />

@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, Loader2, Play, Video } from "lucide-react";
-import { useRef, type CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 
 import type { HookInfluencerVideoSummary } from "@/lib/trending/hook-video-types";
 import type { TrendingTextColor } from "@/lib/trending/text-color";
@@ -13,6 +13,7 @@ import {
 import { HookTextOverlay } from "@/components/trending/hook-text-overlay";
 
 export function HookVideoCard({
+  active = true,
   className,
   dragOffset,
   exitingDirection = null,
@@ -33,6 +34,7 @@ export function HookVideoCard({
   onPreviewReady,
   onRetryPreview,
 }: {
+  active?: boolean;
   className?: string;
   dragOffset: number;
   exitingDirection?: "left" | "right" | null;
@@ -58,10 +60,25 @@ export function HookVideoCard({
     exitingDirection === "left" ? -280 : exitingDirection === "right" ? 280 : 0;
   const visibleOffset = exitingDirection ? exitOffset : dragOffset;
 
+  useEffect(() => {
+    const element = videoRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    if (active) {
+      restartPreview(element, trimStart);
+    } else {
+      element.pause();
+      element.currentTime = Math.max(trimStart, 0);
+    }
+  }, [active, previewUrl, trimStart]);
+
   return (
     <div
       className={cn(
-        "relative aspect-[9/16] w-full shrink-0 overflow-hidden rounded-control border border-border-strong bg-foreground-strong shadow-[0_12px_32px_rgb(23_23_27_/_0.16)]",
+        "relative aspect-[9/16] w-full shrink-0 overflow-hidden rounded-[20px] border border-border-strong bg-foreground-strong shadow-[0_12px_32px_rgb(23_23_27_/_0.16)]",
         className,
       )}
       style={{
@@ -98,17 +115,22 @@ export function HookVideoCard({
           src={previewUrl}
           poster={video.thumbnailUrl ?? undefined}
           aria-label={video.title}
-          autoPlay
+          autoPlay={active}
           loop={trimStart <= 0 && trimEnd === null}
           muted
           playsInline
-          preload="metadata"
+          preload="auto"
           draggable={false}
           className="absolute inset-0 size-full bg-black object-cover"
           onEnded={() => restartPreview(videoRef.current, trimStart)}
           onError={onPreviewError}
           onLoadedMetadata={() => {
-            restartPreview(videoRef.current, trimStart);
+            if (active) {
+              restartPreview(videoRef.current, trimStart);
+            } else if (videoRef.current) {
+              videoRef.current.currentTime = Math.max(trimStart, 0);
+              videoRef.current.pause();
+            }
             onPreviewReady?.();
           }}
           onTimeUpdate={() => {

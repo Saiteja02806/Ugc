@@ -167,12 +167,12 @@ test("omits the Hook provider when the server feature is disabled", () => {
   );
 });
 
-test("enables Hook videos only for an explicit true server value", () => {
+test("enables Hook videos by default and preserves an explicit kill switch", () => {
   assert.equal(parseTrendingHookVideosEnabled("true"), true);
   assert.equal(parseTrendingHookVideosEnabled(" TRUE "), true);
-  assert.equal(parseTrendingHookVideosEnabled("1"), false);
+  assert.equal(parseTrendingHookVideosEnabled("1"), true);
   assert.equal(parseTrendingHookVideosEnabled("false"), false);
-  assert.equal(parseTrendingHookVideosEnabled(undefined), false);
+  assert.equal(parseTrendingHookVideosEnabled(undefined), true);
 });
 
 test("allows the explicit Hook flag to control production safely", () => {

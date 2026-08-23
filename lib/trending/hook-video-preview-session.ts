@@ -1,14 +1,22 @@
 import "server-only";
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 import {
   isHookVideoSourceKind,
   type HookVideoSourceKind,
 } from "@/lib/trending/hook-video-types";
 
-export const HOOK_VIDEO_PREVIEW_COOKIE = "ugc_hook_video_preview";
 export const HOOK_VIDEO_PREVIEW_TTL_SECONDS = 5 * 60;
+
+export function getHookVideoPreviewCookieName(videoId: string) {
+  const videoKey = createHash("sha256")
+    .update(videoId)
+    .digest("hex")
+    .slice(0, 20);
+
+  return `ugc_hook_preview_${videoKey}`;
+}
 
 type HookVideoPreviewClaims = {
   exp: number;

@@ -21,7 +21,7 @@ export function CreativeDecisionActions({
     <div
       data-deck-control
       aria-label="Creative decisions"
-      className="mx-auto mt-5 flex items-center justify-center gap-4 sm:gap-5"
+      className="mx-auto mt-3.5 sm:mt-4 flex items-center justify-center gap-4 sm:gap-5"
       role="group"
     >
       <div className="flex flex-col items-center gap-1.5">

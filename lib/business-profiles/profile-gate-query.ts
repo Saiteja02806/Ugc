@@ -2,8 +2,8 @@
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
-export const BUSINESS_PROFILE_GATE_STALE_TIME_MS = 5 * 60 * 1_000;
-export const BUSINESS_PROFILE_GATE_GC_TIME_MS = 30 * 60 * 1_000;
+export const BUSINESS_PROFILE_GATE_STALE_TIME_MS = 30 * 60 * 1_000;
+export const BUSINESS_PROFILE_GATE_GC_TIME_MS = 60 * 60 * 1_000;
 
 export type BusinessProfileGateResult = {
   onboardingComplete: boolean;

@@ -14,6 +14,101 @@ const contentMixRoute = readFileSync(
   "app/api/trending/content-mix/route.ts",
   "utf8",
 );
+const freeAllowanceMigration = readFileSync(
+  "supabase/migrations/20260823130857_raise_free_trending_allowance.sql",
+  "utf8",
+);
+const unifiedFeed = readFileSync(
+  "lib/trending/unified-daily-feed.ts",
+  "utf8",
+);
+const unifiedFeedDatabase = readFileSync(
+  "lib/trending/unified-daily-feed-db.ts",
+  "utf8",
+);
+const feedRoute = readFileSync(
+  "app/api/trending/feed/route.ts",
+  "utf8",
+);
+const carouselDailyFeed = readFileSync(
+  "lib/trending/daily-feed.ts",
+  "utf8",
+);
+
+test("raises Free to ten posts and expands an already-created smaller feed", () => {
+  assert.match(
+    freeAllowanceMigration,
+    /daily_trending_limit = 10[\s\S]*where plan_key = 'free'/,
+  );
+  assert.match(
+    freeAllowanceMigration,
+    /resolved_daily_limit < p_daily_limit[\s\S]*where requested\.ordinality > resolved_daily_limit/,
+  );
+  assert.match(
+    freeAllowanceMigration,
+    /daily_limit = p_daily_limit[\s\S]*status = 'preparing'/,
+  );
+  assert.match(
+    unifiedFeedDatabase,
+    /requestedPlanKey === "free"[\s\S]*fallback\.dailyLimit/,
+  );
+});
+
+test("plans Free at 3/4/3 and dispatches missing formats together", () => {
+  assert.match(
+    unifiedFeed,
+    /entitlement\.planKey === "free"[\s\S]*FREE_TRENDING_CONTENT_MIX/,
+  );
+  assert.match(
+    unifiedFeed,
+    /carouselAssignmentIds: carouselProvider\.items\.map[\s\S]*hookVideoAssignmentIds: hookProvider\.items\.map[\s\S]*wallTextAssignmentIds: wallTextProvider\.items\.map/,
+  );
+  assert.match(unifiedFeed, /await Promise\.all\(tasks\)/);
+});
+
+test("exposes daily content only after the complete remaining pack resolves", () => {
+  assert.match(unifiedFeed, /getTrendingDailyPackReadiness/);
+  assert.match(unifiedFeed, /exposeTrendingDailyPackItems/);
+  assert.match(
+    unifiedFeed,
+    /const resolvedAssignmentIds = new Set\([\s\S]*resolvedItems\.map\(\(item\) => item\.assignmentId\)/,
+  );
+  assert.match(
+    unifiedFeed,
+    /readiness\.remainingCount === 0[\s\S]*readiness\.pendingSlotCount > 0/,
+  );
+});
+
+test("serves a read-only feed fast path and prepares missing work after the response", () => {
+  assert.match(feedRoute, /readUnifiedTrendingDailyFeed\(preparationParams\)/);
+  assert.match(
+    feedRoute,
+    /after\(\(\) =>[\s\S]*prepareUnifiedTrendingDailyFeed\(preparationParams\)/,
+  );
+  assert.doesNotMatch(feedRoute, /await ensureUnifiedTrendingDailyFeed/);
+  assert.match(unifiedFeed, /inFlightDailyPackPreparations/);
+  assert.match(unifiedFeed, /readTrendingDailyFeed\(/);
+  assert.match(carouselDailyFeed, /inspectProcessingCandidates: false/);
+});
+
+test("surfaces terminal format preparation failures instead of polling forever", () => {
+  assert.match(unifiedFeed, /hasTerminalPreparationFailure/);
+  assert.match(unifiedFeed, /hasUnresolvedReadyAssignment/);
+  assert.match(
+    unifiedFeed,
+    /preparationResults\.get\("hook_video"\) === "failed"/,
+  );
+  assert.match(
+    unifiedFeed,
+    /preparationResults\.get\("wall_text"\) === "failed"/,
+  );
+  assert.match(unifiedFeed, /preparationFailed[\s\S]*\? "failed"/);
+  assert.match(unifiedFeed, /markDailyTrendingFeedPreparationFailed/);
+  assert.match(
+    unifiedFeedDatabase,
+    /status: "failed"[\s\S]*\.in\("state", \["planned", "preparing"\]\)/,
+  );
+});
 
 test("stores an exact combined daily allowance for the renamed billing plans", () => {
   assert.match(
@@ -67,14 +162,16 @@ test("retires a daily slot after a swipe and never schedules a replacement", () 
   );
 });
 
-test("replans only unbound positions after an authenticated mix update", () => {
+test("keeps an existing daily pack immutable after an authenticated mix update", () => {
   assert.match(contentMixRoute, /requireFirebaseUser\(request\)/);
   assert.match(contentMixRoute, /wall_text: z\.number\(\)\.int\(\)\.min\(0\)\.max\(50\)/);
   assert.match(contentMixRoute, /hook_video: z\.number\(\)\.int\(\)\.min\(0\)\.max\(50\)/);
-  assert.match(contentMixRoute, /allocateUnboundTrendingSlots/);
-  assert.match(contentMixRoute, /replanDailyTrendingUnboundSlots/);
+  assert.doesNotMatch(contentMixRoute, /allocateUnboundTrendingSlots/);
+  assert.doesNotMatch(contentMixRoute, /replanDailyTrendingUnboundSlots/);
+  assert.match(contentMixRoute, /applied: currentFeed \? "next_day" : "today"/);
+  assert.match(contentMixRoute, /Today's complete pack stays unchanged/);
   assert.match(
-    migration,
-    /state in \('planned', 'failed'\)[\s\S]*carousel_assignment_id is null/,
+    contentMixRoute,
+    /entitlement\.planKey === "free"[\s\S]*3 Slideshows, 4 Wall-of-text posts, and 3 Hooks/,
   );
 });

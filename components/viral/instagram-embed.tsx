@@ -63,7 +63,7 @@ export function InstagramEmbed({
           observer.disconnect();
         }
       },
-      { rootMargin: "700px 0px" },
+      { rootMargin: "0px" },
     );
 
     observer.observe(container);

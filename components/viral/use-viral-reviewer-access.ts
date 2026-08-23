@@ -11,8 +11,8 @@ type AccessResponse = {
   ok?: unknown;
 };
 
-const VIRAL_REVIEWER_ACCESS_STALE_TIME_MS = 5 * 60 * 1_000;
-const VIRAL_REVIEWER_ACCESS_GC_TIME_MS = 30 * 60 * 1_000;
+const VIRAL_REVIEWER_ACCESS_STALE_TIME_MS = 30 * 60 * 1_000;
+const VIRAL_REVIEWER_ACCESS_GC_TIME_MS = 60 * 60 * 1_000;
 
 export function useViralReviewerAccess({
   authorizedByParent = false,

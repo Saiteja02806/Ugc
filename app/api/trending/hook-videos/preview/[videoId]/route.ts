@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { getStorageObject } from "@/lib/storage/storage";
 import {
-  HOOK_VIDEO_PREVIEW_COOKIE,
+  getHookVideoPreviewCookieName,
   verifyHookVideoPreviewSession,
 } from "@/lib/trending/hook-video-preview-session";
 import { resolveHookVideoSource } from "@/lib/trending/hook-video-sources";
@@ -16,7 +16,7 @@ export async function GET(
 ) {
   const { videoId } = await params;
   const claims = verifyHookVideoPreviewSession(
-    request.cookies.get(HOOK_VIDEO_PREVIEW_COOKIE)?.value,
+    request.cookies.get(getHookVideoPreviewCookieName(videoId))?.value,
     videoId,
   );
 

@@ -74,15 +74,15 @@ type LibraryContentResponse =
     };
 
 const primaryActionClassName =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex h-9 items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.22),0_1px_3px_rgba(0,0,0,0.12)] transition-all hover:bg-primary-hover active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const secondaryActionClassName =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex h-9 items-center justify-center gap-2 rounded-full border border-border/80 bg-card px-4 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const compactSecondaryActionClassName =
-  "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-control border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-border/80 bg-card px-3 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-border hover:bg-card-muted active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const iconActionClassName =
-  "inline-flex size-11 items-center justify-center rounded-control border border-border bg-card text-muted transition-colors hover:border-border-strong hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 sm:size-10";
+  "inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const metricChipClassName =
-  "inline-flex min-h-10 items-center rounded-control bg-surface-subtle px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-border";
+  "inline-flex h-8 items-center rounded-full border border-border/70 bg-card-muted/80 px-3 text-xs font-mono font-medium text-muted";
 
 export function LibraryWorkspace() {
   return (
@@ -110,9 +110,13 @@ export function LibraryWorkspace() {
 
 export function CarouselLibraryTab({
   embedded = false,
+  hideIfEmpty = false,
+  onLoadedCount,
   onShowPosts,
 }: {
   embedded?: boolean;
+  hideIfEmpty?: boolean;
+  onLoadedCount?: (count: number, loading: boolean) => void;
   onShowPosts?: () => void;
 } = {}) {
   const [serverItems, setServerItems] = useState<LibraryCarouselItem[]>([]);
@@ -137,6 +141,7 @@ export function CarouselLibraryTab({
 
       if (!token) {
         setServerItems([]);
+        onLoadedCount?.(0, false);
         return;
       }
 
@@ -154,15 +159,17 @@ export function CarouselLibraryTab({
       }
 
       setServerItems(data.items);
+      onLoadedCount?.(data.items.length, false);
     } catch {
       setServerItems([]);
+      onLoadedCount?.(0, false);
       setErrorMessage(
         "Could not load your saved carousels. Check your connection and try again.",
       );
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [onLoadedCount]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -252,6 +259,10 @@ export function CarouselLibraryTab({
 
     setScheduleContext(null);
     setNotice("Carousel scheduled. View it on the Scheduled page.");
+  }
+
+  if (hideIfEmpty && !isLoading && items.length === 0) {
+    return null;
   }
 
   return (

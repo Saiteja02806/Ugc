@@ -136,8 +136,10 @@ export async function getTrendingPlanEntitlement(
 
   return {
     dailyLimit:
-      typeof entitlement?.daily_trending_limit === "number" &&
-      entitlement.daily_trending_limit > 0
+      requestedPlanKey === "free"
+        ? fallback.dailyLimit
+        : typeof entitlement?.daily_trending_limit === "number" &&
+            entitlement.daily_trending_limit > 0
         ? Math.trunc(entitlement.daily_trending_limit)
         : fallback.dailyLimit,
     displayName: fallback.displayName,
@@ -270,6 +272,44 @@ export async function attachDailyTrendingAssignments(params: {
 
   if (error) {
     throw new Error(`Could not attach ready Trending content: ${error.message}`);
+  }
+}
+
+export async function markDailyTrendingFeedPreparationFailed(params: {
+  feedId: string;
+  message: string;
+  userId: string;
+}) {
+  const now = new Date().toISOString();
+  const { error: feedError } = await getClient()
+    .from(DAILY_FEEDS_TABLE)
+    .update({
+      last_error: params.message,
+      status: "failed",
+      updated_at: now,
+    })
+    .eq("id", params.feedId)
+    .eq("user_id", params.userId);
+
+  if (feedError) {
+    throw new Error(
+      `Could not record the failed Trending preparation: ${feedError.message}`,
+    );
+  }
+
+  const { error: slotError } = await getClient()
+    .from(DAILY_SLOTS_TABLE)
+    .update({ state: "failed", updated_at: now })
+    .eq("feed_id", params.feedId)
+    .in("state", ["planned", "preparing"])
+    .is("carousel_assignment_id", null)
+    .is("hook_video_assignment_id", null)
+    .is("wall_text_assignment_id", null);
+
+  if (slotError) {
+    throw new Error(
+      `Could not record the failed Trending positions: ${slotError.message}`,
+    );
   }
 }
 
@@ -417,7 +457,7 @@ function getFallbackEntitlement(
   planKey: TrendingPlanEntitlement["planKey"],
 ): TrendingPlanEntitlement {
   if (planKey === "free") {
-    return { dailyLimit: 3, displayName: "Free", planKey };
+    return { dailyLimit: 10, displayName: "Free", planKey };
   }
 
   return planKey === "pro"

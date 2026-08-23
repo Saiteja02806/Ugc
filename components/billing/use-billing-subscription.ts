@@ -40,14 +40,14 @@ export function useBillingSubscription(options?: {
 
   return useQuery({
     enabled: !loading && Boolean(user),
-    gcTime: 10 * 60 * 1_000,
+    gcTime: 60 * 60 * 1_000,
     queryFn: fetchBillingSubscription,
     queryKey: ["billing-subscription", user?.uid ?? "signed-out"],
     refetchInterval: (query) =>
       options?.activationPolling && !query.state.data?.isActive ? 2_000 : false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     retry: 1,
-    staleTime: options?.activationPolling ? 0 : 30_000,
+    staleTime: options?.activationPolling ? 0 : 30 * 60 * 1_000,
   });
 }
 

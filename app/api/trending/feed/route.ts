@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import {
   getBusinessProfileForUser,
@@ -16,10 +16,14 @@ import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature"
 import {
   isWallTextEnabled,
 } from "@/lib/trending/wall-text-access";
-import { ensureUnifiedTrendingDailyFeed } from "@/lib/trending/unified-daily-feed";
+import {
+  prepareUnifiedTrendingDailyFeed,
+  readUnifiedTrendingDailyFeed,
+} from "@/lib/trending/unified-daily-feed";
 import { getMissingUnifiedTrendingFeedEnvVars } from "@/lib/trending/unified-daily-feed-db";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 function jsonResponse(body: unknown, status = 200) {
   return NextResponse.json(body, {
@@ -97,28 +101,34 @@ export async function GET(request: Request) {
       );
     }
 
-    const dailyFeed = await ensureUnifiedTrendingDailyFeed({
+    const preparationParams = {
       includeHookVideos: hookVideosEnabled,
       includeWallText: isWallTextEnabled(),
       profile,
       timezone: new URL(request.url).searchParams.get("timezone"),
       userId,
-    });
+    };
+    const dailyFeed = await readUnifiedTrendingDailyFeed(preparationParams);
+    const { requiresPreparation, ...publicDailyFeed } = dailyFeed;
+
+    if (requiresPreparation) {
+      after(() =>
+        prepareUnifiedTrendingDailyFeed(preparationParams).catch((error) => {
+          console.error("Could not prepare the Trending daily pack:", error);
+        }),
+      );
+    }
+
     const profileState =
-      dailyFeed.carousels.length > 0
+      publicDailyFeed.items.length > 0
         ? "ready"
         : profile.preparationStatus === "failed"
           ? "failed"
-          : dailyFeed.feed.state === "preparing"
+          : publicDailyFeed.feed.state === "preparing"
             ? "preparing"
             : "ready";
     return jsonResponse({
-      carousels: dailyFeed.carousels,
-      contentMix: dailyFeed.contentMix,
-      entitlement: dailyFeed.entitlement,
-      feed: dailyFeed.feed,
-      formatAvailability: dailyFeed.formatAvailability,
-      items: dailyFeed.items,
+      ...publicDailyFeed,
       ok: true,
       profile: {
         error: profile.preparationError,

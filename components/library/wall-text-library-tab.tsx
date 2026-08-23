@@ -30,8 +30,12 @@ type DraftsResponse =
 
 export function WallTextLibraryTab({
   embedded = false,
+  hideIfEmpty = false,
+  onLoadedCount,
 }: {
   embedded?: boolean;
+  hideIfEmpty?: boolean;
+  onLoadedCount?: (count: number, loading: boolean) => void;
 } = {}) {
   const [drafts, setDrafts] = useState<SavedWallTextDraft[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,8 +69,10 @@ export function WallTextLibraryTab({
       }
 
       setDrafts(data.drafts);
+      onLoadedCount?.(data.drafts.length, false);
     } catch (error) {
       setDrafts([]);
+      onLoadedCount?.(0, false);
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -75,12 +81,16 @@ export function WallTextLibraryTab({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onLoadedCount]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadDrafts(), 0);
     return () => window.clearTimeout(timer);
   }, [loadDrafts]);
+
+  if (hideIfEmpty && !loading && drafts.length === 0) {
+    return null;
+  }
 
   return (
     <section

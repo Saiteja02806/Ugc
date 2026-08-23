@@ -54,13 +54,18 @@ import {
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
 import { WallTextAudioPreview } from "@/components/trending/wall-text-audio-preview";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import { useBackgroundJob } from "@/lib/jobs/background-job-client";
 import {
   createAndPublishCarouselSchedule,
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
+import {
+  getTrendingDecisionOutboxKey,
+  parseTrendingDecisionOutbox,
+  removeTrendingDecisionOutboxEntry,
+  type TrendingDecisionOutboxEntry,
+  upsertTrendingDecisionOutboxEntry,
+} from "@/lib/trending/decision-outbox";
 import {
   compareTrendingFeedItems,
   createCarouselTrendingFeedProvider,
@@ -71,7 +76,6 @@ import {
   type TrendingCarouselSlide,
   type TrendingCarouselSourceRecord,
   type TrendingFeedItem,
-  type TrendingFeedProviderAvailability,
   type TrendingHookVideoFeedItem,
   type TrendingWallTextFeedItem,
 } from "@/lib/trending/feed-items";
@@ -123,6 +127,7 @@ type CarouselHistoryState = "error" | "idle" | "loading" | "ready";
 type TrendingDailyFeedState =
   | "caught_up"
   | "exhausted"
+  | "failed"
   | "preparing"
   | "ready";
 
@@ -191,7 +196,6 @@ type CarouselHistoryResponse =
         state: TrendingDailyFeedState;
         timezone: string;
       } | null;
-      formatAvailability?: TrendingFeedProviderAvailability[];
       items?: TrendingFeedItem[];
       profile: CarouselProfileFeed;
     }
@@ -266,8 +270,20 @@ type CarouselActionNotice = {
   onAction?: () => void | Promise<void>;
 };
 
-const HISTORY_POLL_INTERVAL_MS = 6_000;
 const HISTORY_REPAIR_POLL_INTERVAL_MS = 60_000;
+
+function getSmartPreparingPollInterval(attemptCount: number): number {
+  if (attemptCount <= 2) return 2_000;
+  if (attemptCount <= 4) return 3_500;
+  if (attemptCount <= 7) return 6_000;
+  return 10_000;
+}
+const DECISION_OUTBOX_RETRY_MIN_MS = 2_000;
+const DECISION_OUTBOX_RETRY_MAX_MS = 30_000;
+const decisionOutboxMemoryFallback = new Map<
+  string,
+  TrendingDecisionOutboxEntry[]
+>();
 const SWIPE_THRESHOLD_PX = 90;
 const SWIPE_EXIT_DURATION_MS = 220;
 const MAX_ROTATION_DEGREES = 5;
@@ -331,32 +347,181 @@ function HookVideoComposerLoading() {
   );
 }
 
+function useTrendingDecisionOutbox(userId: string | null) {
+  const flushingRef = useRef(false);
+  const flushRef = useRef<() => Promise<void>>(async () => undefined);
+  const retryDelayRef = useRef(DECISION_OUTBOX_RETRY_MIN_MS);
+  const retryTimerRef = useRef<number | null>(null);
+
+  const flush = useCallback(async () => {
+    if (!userId || flushingRef.current) {
+      return;
+    }
+
+    const entries = readPendingDecisionEntries(userId);
+
+    if (entries.length === 0) {
+      retryDelayRef.current = DECISION_OUTBOX_RETRY_MIN_MS;
+      return;
+    }
+
+    flushingRef.current = true;
+    let failed = false;
+
+    for (const entry of entries) {
+      try {
+        await persistTrendingDecisionOutboxEntry(entry);
+        writePendingDecisionEntries(
+          userId,
+          removeTrendingDecisionOutboxEntry(
+            readPendingDecisionEntries(userId),
+            entry.assignmentId,
+          ),
+        );
+        retryDelayRef.current = DECISION_OUTBOX_RETRY_MIN_MS;
+      } catch (error) {
+        failed = true;
+        console.warn(
+          "A Trending decision is queued for automatic retry:",
+          error,
+        );
+      }
+    }
+
+    flushingRef.current = false;
+
+    if (readPendingDecisionEntries(userId).length === 0) {
+      window.queueMicrotask(() => void flushRef.current());
+      return;
+    }
+
+    if (failed) {
+      if (retryTimerRef.current !== null) {
+        window.clearTimeout(retryTimerRef.current);
+      }
+
+      const retryDelay = retryDelayRef.current;
+      retryDelayRef.current = Math.min(
+        retryDelay * 2,
+        DECISION_OUTBOX_RETRY_MAX_MS,
+      );
+      retryTimerRef.current = window.setTimeout(() => {
+        retryTimerRef.current = null;
+        void flushRef.current();
+      }, retryDelay);
+      return;
+    }
+
+    window.queueMicrotask(() => void flushRef.current());
+  }, [userId]);
+
+  useEffect(() => {
+    flushRef.current = flush;
+    void flush();
+
+    function handleOnline() {
+      retryDelayRef.current = DECISION_OUTBOX_RETRY_MIN_MS;
+      void flushRef.current();
+    }
+
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+
+      if (retryTimerRef.current !== null) {
+        window.clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    };
+  }, [flush]);
+
+  return useCallback(
+    (entry: TrendingDecisionOutboxEntry) => {
+      if (!userId) {
+        return;
+      }
+
+      writePendingDecisionEntries(
+        userId,
+        upsertTrendingDecisionOutboxEntry(
+          readPendingDecisionEntries(userId),
+          entry,
+        ),
+      );
+      void flushRef.current();
+    },
+    [userId],
+  );
+}
+
+type TrendingFeedMemoryCache = {
+  cachedAt: number;
+  feedState: TrendingDailyFeedState | null;
+  items: TrendingFeedItem[];
+  localDate: string;
+  profile: CarouselProfileFeed | null;
+  userId: string;
+};
+
+let inMemoryTrendingFeed: TrendingFeedMemoryCache | null = null;
+
+export function getInMemoryTrendingFeed(userId: string, localDate: string) {
+  if (
+    inMemoryTrendingFeed &&
+    inMemoryTrendingFeed.userId === userId &&
+    inMemoryTrendingFeed.localDate === localDate
+  ) {
+    return inMemoryTrendingFeed;
+  }
+  return null;
+}
+
 export function TrendingWorkspace() {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
-  const loadedFeedLocalDate = useRef<string | null>(null);
-  const loadedFeedUserId = useRef<string | null>(null);
-  const hookPreparationAttemptKey = useRef<string | null>(null);
-  const wallTextPreparationAttemptKey = useRef<string | null>(null);
-  const resolvedWallTextJobIds = useRef(new Set<string>());
-  const [trendingItems, setTrendingItems] = useState<TrendingFeedItem[]>([]);
+  const currentBrowserLocalDate = getBrowserLocalDate();
+  const existingMemoryCache = user
+    ? getInMemoryTrendingFeed(user.uid, currentBrowserLocalDate)
+    : null;
+
+  const loadedFeedLocalDate = useRef<string | null>(
+    existingMemoryCache ? existingMemoryCache.localDate : null,
+  );
+  const loadedFeedUserId = useRef<string | null>(
+    existingMemoryCache ? existingMemoryCache.userId : null,
+  );
+  const loadedFeedFailed = useRef(false);
+  const preparingPollAttemptsRef = useRef(0);
+  const [trendingItems, setTrendingItems] = useState<TrendingFeedItem[]>(() => {
+    if (existingMemoryCache && user) {
+      const pendingDecisionAssignmentIds = getPendingDecisionAssignmentIds(
+        user.uid,
+      );
+      return existingMemoryCache.items.filter(
+        (item) => !pendingDecisionAssignmentIds.has(item.assignmentId),
+      );
+    }
+    return [];
+  });
+  const [trendingFeedState, setTrendingFeedState] =
+    useState<TrendingDailyFeedState | null>(() => {
+      return existingMemoryCache ? existingMemoryCache.feedState : null;
+    });
   const [headerActionsRoot, setHeaderActionsRoot] =
     useState<HTMLDivElement | null>(null);
-  const [formatAvailability, setFormatAvailability] = useState<
-    TrendingFeedProviderAvailability[]
-  >([]);
   const [carouselHistoryError, setCarouselHistoryError] = useState<string | null>(
     null,
   );
   const [carouselHistoryState, setCarouselHistoryState] =
-    useState<CarouselHistoryState>("idle");
-  const [carouselProfile, setCarouselProfile] = useState<CarouselProfileFeed | null>(
-    null,
-  );
+    useState<CarouselHistoryState>(() => {
+      return existingMemoryCache ? "ready" : "idle";
+    });
+  const [carouselProfile, setCarouselProfile] = useState<CarouselProfileFeed | null>(() => {
+    return existingMemoryCache ? existingMemoryCache.profile : null;
+  });
   const [carouselHistoryRefreshKey, setCarouselHistoryRefreshKey] = useState(0);
-  const [wallTextPreparationJobId, setWallTextPreparationJobId] =
-    useState<string | null>(null);
-  const wallTextPreparationJob = useBackgroundJob(wallTextPreparationJobId);
+  const enqueueDecision = useTrendingDecisionOutbox(user?.uid ?? null);
 
   const hasAuthenticatedUser = Boolean(user);
   const visibleTrendingItems = useMemo(
@@ -386,11 +551,17 @@ export function TrendingWorkspace() {
     let pollTimer: number | null = null;
 
     async function loadCarouselHistory() {
-      const isInitialUserLoad = loadedFeedUserId.current !== userId;
+      const currentLocalDate = getBrowserLocalDate();
+      const validMemoryCache = getInMemoryTrendingFeed(userId, currentLocalDate);
+      const isInitialUserLoad =
+        !validMemoryCache && loadedFeedUserId.current !== userId;
+      const isNewLocalDate =
+        loadedFeedLocalDate.current !== null &&
+        loadedFeedLocalDate.current !== currentLocalDate;
 
-      if (isInitialUserLoad) {
+      if (isInitialUserLoad || isNewLocalDate || loadedFeedFailed.current) {
         setTrendingItems([]);
-        setFormatAvailability([]);
+        setTrendingFeedState(null);
         setCarouselHistoryState("loading");
       }
       setCarouselHistoryError(null);
@@ -436,272 +607,107 @@ export function TrendingWorkspace() {
           return;
         }
 
-        setTrendingItems(
+        const receivedItems =
           data.items ??
-            createCarouselTrendingFeedProvider(data.carousels).items,
+          createCarouselTrendingFeedProvider(data.carousels).items;
+        const pendingDecisionAssignmentIds = getPendingDecisionAssignmentIds(
+          userId,
         );
-        setFormatAvailability(data.formatAvailability ?? []);
+        const nextVisibleItems = receivedItems.filter(
+          (item) => !pendingDecisionAssignmentIds.has(item.assignmentId),
+        );
+        setTrendingItems(nextVisibleItems);
+        setTrendingFeedState(data.feed?.state ?? null);
+        loadedFeedFailed.current = data.feed?.state === "failed";
+        if (data.feed?.state === "failed") {
+          setCarouselHistoryError(
+            "The complete daily pack could not be prepared. Try again to restart the failed work.",
+          );
+        }
         setCarouselProfile(data.profile);
         loadedFeedLocalDate.current = data.feed?.localDate ?? null;
         loadedFeedUserId.current = userId;
         setCarouselHistoryState("ready");
 
+        inMemoryTrendingFeed = {
+          cachedAt: Date.now(),
+          feedState: data.feed?.state ?? null,
+          items: receivedItems,
+          localDate: data.feed?.localDate ?? getBrowserLocalDate(),
+          profile: data.profile,
+          userId,
+        };
+
         if ((data.feed?.pendingSlotCount ?? 0) > 0) {
+          const isPreparing = data.feed?.state === "preparing";
+          if (isPreparing) {
+            preparingPollAttemptsRef.current += 1;
+          } else {
+            preparingPollAttemptsRef.current = 0;
+          }
+
+          const pollInterval = isPreparing
+            ? getSmartPreparingPollInterval(preparingPollAttemptsRef.current)
+            : HISTORY_REPAIR_POLL_INTERVAL_MS;
+
           pollTimer = window.setTimeout(() => {
-            setCarouselHistoryRefreshKey((current) => current + 1);
-          },
-          data.feed?.state === "preparing"
-            ? HISTORY_POLL_INTERVAL_MS
-            : HISTORY_REPAIR_POLL_INTERVAL_MS);
+            if (typeof document === "undefined" || document.visibilityState === "visible") {
+              setCarouselHistoryRefreshKey((current) => current + 1);
+            }
+          }, pollInterval);
+        } else {
+          preparingPollAttemptsRef.current = 0;
         }
       } catch (error) {
         if (controller.signal.aborted) {
           return;
         }
 
-        setTrendingItems([]);
-        setFormatAvailability([]);
-        setCarouselProfile(null);
-        setCarouselHistoryError(
-          toCarouselDisplayCopy(
-            error instanceof Error
-              ? error.message
-              : "Generated carousels are unavailable.",
-          ),
-        );
-        setCarouselHistoryState("error");
+        if (!validMemoryCache) {
+          setTrendingItems([]);
+          setTrendingFeedState(null);
+          setCarouselProfile(null);
+          setCarouselHistoryError(
+            toCarouselDisplayCopy(
+              error instanceof Error
+                ? error.message
+                : "Generated carousels are unavailable.",
+            ),
+          );
+          setCarouselHistoryState("error");
+        }
       }
     }
 
     void loadCarouselHistory();
+
+    function handleVisibilityChange() {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        preparingPollAttemptsRef.current = 0;
+        setCarouselHistoryRefreshKey((current) => current + 1);
+      }
+    }
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
 
     return () => {
       controller.abort();
       if (pollTimer) {
         window.clearTimeout(pollTimer);
       }
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
     };
   }, [carouselHistoryRefreshKey, user]);
-
-  useEffect(() => {
-    const hookAvailability = formatAvailability.find(
-      (format) => format.format === "hook_video",
-    );
-    const profileId = carouselProfile?.id;
-    const profileVersion = carouselProfile?.profileVersion;
-
-    if (
-      !user ||
-      carouselHistoryState !== "ready" ||
-      !profileId ||
-      !profileVersion ||
-      hookAvailability?.state !== "unavailable"
-    ) {
-      return;
-    }
-
-    const attemptKey = `${user.uid}:${profileId}:${profileVersion}`;
-
-    if (hookPreparationAttemptKey.current === attemptKey) {
-      return;
-    }
-
-    hookPreparationAttemptKey.current = attemptKey;
-    const controller = new AbortController();
-    let preparationCompleted = false;
-
-    async function prepareHookIdeas() {
-      try {
-        const idToken = await getCurrentUserIdToken();
-
-        if (!idToken) {
-          return;
-        }
-
-        for (let attempt = 0; attempt < 60; attempt += 1) {
-          const response = await fetch(
-            "/api/trending/hook-videos/feed/prepare",
-            {
-              headers: { Authorization: `Bearer ${idToken}` },
-              method: "POST",
-              signal: controller.signal,
-            },
-          );
-          const data = (await response.json().catch(() => null)) as {
-            error?: string;
-            ok?: boolean;
-            status?: "processing" | "queued" | "ready";
-          } | null;
-
-          if (!response.ok || data?.ok !== true) {
-            throw new Error(
-              data?.error ?? "Could not prepare Hook ideas.",
-            );
-          }
-
-          if (data.status === "ready") {
-            if (!controller.signal.aborted) {
-              preparationCompleted = true;
-              setCarouselHistoryRefreshKey(
-                (current) => current + 1,
-              );
-            }
-            return;
-          }
-
-          await waitForHookPreparationPoll(controller.signal);
-        }
-
-        throw new Error(
-          "Hook ideas are still being reviewed. Refresh Trending shortly.",
-        );
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          console.error("Could not prepare unified Instagram Reel ideas:", error);
-        }
-      }
-    }
-
-    void prepareHookIdeas();
-
-    return () => {
-      controller.abort();
-
-      if (
-        !preparationCompleted &&
-        hookPreparationAttemptKey.current === attemptKey
-      ) {
-        hookPreparationAttemptKey.current = null;
-      }
-    };
-  }, [
-    carouselHistoryState,
-    carouselProfile,
-    formatAvailability,
-    user,
-  ]);
-
-  useEffect(() => {
-    const wallTextAvailability = formatAvailability.find(
-      (format) => format.format === "wall_text",
-    );
-    const profileId = carouselProfile?.id;
-    const profileVersion = carouselProfile?.profileVersion;
-
-    if (
-      !user ||
-      carouselHistoryState !== "ready" ||
-      !profileId ||
-      !profileVersion ||
-      wallTextAvailability?.state !== "unavailable"
-    ) {
-      return;
-    }
-
-    const attemptKey = `${user.uid}:${profileId}:${profileVersion}`;
-
-    if (wallTextPreparationAttemptKey.current === attemptKey) {
-      return;
-    }
-
-    wallTextPreparationAttemptKey.current = attemptKey;
-    const controller = new AbortController();
-    let preparationCompleted = false;
-
-    async function prepareWallTextIdeas() {
-      try {
-        const idToken = await getCurrentUserIdToken();
-
-        if (!idToken) {
-          return;
-        }
-
-        const response = await fetch(
-          "/api/trending/wall-text/feed/prepare",
-          {
-            headers: { Authorization: `Bearer ${idToken}` },
-            method: "POST",
-            signal: controller.signal,
-          },
-        );
-        const data = (await response.json().catch(() => null)) as {
-          error?: string;
-          jobId?: string;
-          ok?: boolean;
-        } | null;
-
-        if (!response.ok || data?.ok !== true) {
-          throw new Error(
-            data?.error ?? "Could not prepare Wall-of-text ideas.",
-          );
-        }
-
-        if (!controller.signal.aborted) {
-          preparationCompleted = true;
-          if (data.jobId) {
-            setWallTextPreparationJobId(data.jobId);
-          }
-
-          if (response.status === 200) {
-            setCarouselHistoryRefreshKey((current) => current + 1);
-          }
-        }
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          console.error(
-            "Could not prepare unified Wall-of-text ideas:",
-            error,
-          );
-        }
-      }
-    }
-
-    void prepareWallTextIdeas();
-
-    return () => {
-      controller.abort();
-
-      if (
-        !preparationCompleted &&
-        wallTextPreparationAttemptKey.current === attemptKey
-      ) {
-        wallTextPreparationAttemptKey.current = null;
-      }
-    };
-  }, [
-    carouselHistoryState,
-    carouselProfile,
-    formatAvailability,
-    user,
-  ]);
-
-  useEffect(() => {
-    const job = wallTextPreparationJob.data;
-
-    if (
-      !job ||
-      job.status !== "completed" ||
-      resolvedWallTextJobIds.current.has(job.id)
-    ) {
-      return;
-    }
-
-    resolvedWallTextJobIds.current.add(job.id);
-
-    async function refreshCompletedWallTextJob() {
-      await Promise.resolve();
-      setCarouselHistoryRefreshKey((current) => current + 1);
-    }
-
-    void refreshCompletedWallTextJob();
-  }, [wallTextPreparationJob.data]);
 
   useEffect(() => {
     if (!user) {
       loadedFeedLocalDate.current = null;
       loadedFeedUserId.current = null;
-      hookPreparationAttemptKey.current = null;
-      wallTextPreparationAttemptKey.current = null;
+      loadedFeedFailed.current = false;
       return;
     }
 
@@ -764,14 +770,14 @@ export function TrendingWorkspace() {
   }
 
   return (
-    <section className="min-h-dvh flex-1 bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8 lg:py-8 xl:px-10">
+    <section className="min-h-dvh flex-1 bg-background px-4 py-4 text-foreground sm:px-6 lg:px-8 lg:py-5 xl:px-10">
       <div className="mx-auto flex min-h-full max-w-[1360px] flex-col">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-balance text-[32px] font-semibold leading-10 text-foreground-strong">
+            <h1 className="text-balance text-[30px] font-semibold leading-9 text-foreground-strong sm:text-[32px] sm:leading-10">
               Trending
             </h1>
-            <p className="mt-1.5 max-w-2xl text-[15px] leading-[22px] text-muted">
+            <p className="mt-1 max-w-2xl text-[14px] leading-[20px] text-muted sm:text-[15px] sm:leading-[22px]">
               Explore Carousel, Hook, and Wall-of-text ideas made from your
               business profile.
             </p>
@@ -782,21 +788,21 @@ export function TrendingWorkspace() {
           />
         </header>
 
-        <section className="mt-8 min-h-[560px]">
-          <div className="flex min-h-[502px] items-start py-6 sm:py-7">
+        <section className="mt-3 min-h-[490px] sm:mt-4">
+          <div className="flex min-h-[482px] items-start py-1 sm:py-2">
             <TrendingFeedGallery
+              enqueueDecision={enqueueDecision}
               headerActionsRoot={headerActionsRoot}
               items={orderedTrendingItems}
               error={visibleCarouselHistoryError}
               loading={carouselFeedLoading}
+              preparing={trendingFeedState === "preparing"}
               profile={carouselFeedProfile}
               onCompleteProfile={openBusinessProfile}
-              onCarouselCompleted={() =>
-                setCarouselHistoryRefreshKey((current) => current + 1)
-              }
-              onRetryHistory={() =>
-                setCarouselHistoryRefreshKey((current) => current + 1)
-              }
+              onRetryHistory={() => {
+                setCarouselHistoryState("loading");
+                setCarouselHistoryRefreshKey((current) => current + 1);
+              }}
             />
           </div>
         </section>
@@ -806,21 +812,23 @@ export function TrendingWorkspace() {
 }
 
 function TrendingFeedGallery({
+  enqueueDecision,
   error,
   headerActionsRoot,
   items,
   loading,
+  preparing,
   onCompleteProfile,
-  onCarouselCompleted,
   onRetryHistory,
   profile,
 }: {
+  enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   error: string | null;
   headerActionsRoot: HTMLDivElement | null;
   items: TrendingFeedItem[];
   loading: boolean;
+  preparing: boolean;
   onCompleteProfile: () => void;
-  onCarouselCompleted: () => void;
   onRetryHistory: () => void;
   profile: CarouselProfileFeed | null;
 }) {
@@ -845,15 +853,19 @@ function TrendingFeedGallery({
     return <CarouselProfilePrompt onAction={onCompleteProfile} />;
   }
 
+  if (preparing) {
+    return <TrendingPostSkeleton />;
+  }
+
   if (items.length === 0) {
     return <TrendingReadyEmptyState />;
   }
 
   return (
     <TrendingFeed
+      enqueueDecision={enqueueDecision}
       headerActionsRoot={headerActionsRoot}
       items={items}
-      onCarouselCompleted={onCarouselCompleted}
     />
   );
 }
@@ -894,13 +906,13 @@ function CarouselProfilePrompt({ onAction }: { onAction: () => void }) {
 }
 
 function TrendingFeed({
+  enqueueDecision,
   headerActionsRoot,
   items,
-  onCarouselCompleted,
 }: {
+  enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   headerActionsRoot: HTMLDivElement | null;
   items: TrendingFeedItem[];
-  onCarouselCompleted: () => void;
 }) {
   const [activeSlideByCarouselId, setActiveSlideByCarouselId] = useState<
     Record<string, number>
@@ -943,7 +955,6 @@ function TrendingFeed({
         item={hookComposition.item}
         onClose={() => {
           setHookComposition(null);
-          onCarouselCompleted();
         }}
       />
     );
@@ -955,9 +966,9 @@ function TrendingFeed({
         <TrendingDeck
           activeSlideByCarouselId={activeSlideByCarouselId}
           candidates={candidates}
+          enqueueDecision={enqueueDecision}
           headerActionsRoot={headerActionsRoot}
           onActiveSlideChange={setActiveSlide}
-          onCarouselCompleted={onCarouselCompleted}
           onHookCompose={(item, edit) => setHookComposition({ edit, item })}
         />
       ) : null}
@@ -1098,16 +1109,16 @@ function TrendingHookComposer({
 function TrendingDeck({
   activeSlideByCarouselId,
   candidates,
+  enqueueDecision,
   headerActionsRoot,
   onActiveSlideChange,
-  onCarouselCompleted,
   onHookCompose,
 }: {
   activeSlideByCarouselId: Record<string, number>;
   candidates: TrendingCandidate[];
+  enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   headerActionsRoot: HTMLDivElement | null;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
-  onCarouselCompleted: () => void;
   onHookCompose: (
     item: TrendingHookVideoFeedItem,
     edit: TrendingCreativeEditRecord | null,
@@ -1149,9 +1160,6 @@ function TrendingDeck({
     useState<CompleteCarousel | null>(null);
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [pendingDecisionItemId, setPendingDecisionItemId] = useState<
-    string | null
-  >(null);
   const [hookPreviewStatusByCreativeId, setHookPreviewStatusByCreativeId] =
     useState<Record<string, HookPreviewStatus>>({});
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(
@@ -1361,18 +1369,6 @@ function TrendingDeck({
     });
   }
 
-  function restoreCandidate(candidate: TrendingCandidate) {
-    setOptimisticallyDismissedItemIds((current) => {
-      if (!current.has(candidate.item.id)) {
-        return current;
-      }
-
-      const next = new Set(current);
-      next.delete(candidate.item.id);
-      return next;
-    });
-  }
-
   function advancePastActiveItem(
     direction: "left" | "right",
     onTransitionComplete: () => void,
@@ -1492,46 +1488,29 @@ function TrendingDeck({
     const direction = decision === "accepted" ? "right" : "left";
 
     decisionLockRef.current = true;
-    setPendingDecisionItemId(candidate.item.id);
     advancePastActiveItem(direction, () => {
       dismissCandidate(candidate);
       setActiveItemId(nextCandidateId);
-      void commitCreativeDecision(candidate, decision);
+      decisionLockRef.current = false;
+      enqueueDecision({
+        assignmentId: candidate.item.assignmentId,
+        creativeId: candidate.item.creativeId,
+        decision,
+        format: candidate.item.format,
+        queuedAt: new Date().toISOString(),
+      });
+      showActionNotice({
+        message: decision === "accepted" ? "Accepted." : "Rejected.",
+      });
+
+      if (decision === "accepted") {
+        openAcceptedCandidate(candidate);
+      }
     });
     return true;
   }
 
-  async function commitCreativeDecision(
-    candidate: TrendingCandidate,
-    decision: "accepted" | "rejected",
-  ) {
-    try {
-      await persistTrendingCreativeDecision(candidate.item, decision);
-    } catch (error) {
-      restoreCandidate(candidate);
-      setActiveItemId(candidate.item.id);
-      showActionNotice({
-        message: getErrorMessage(
-          error,
-          "Could not save this decision. The creative was restored.",
-        ),
-      });
-      decisionLockRef.current = false;
-      setPendingDecisionItemId(null);
-      return;
-    }
-
-    decisionLockRef.current = false;
-    setPendingDecisionItemId(null);
-    showActionNotice({
-      message: decision === "accepted" ? "Accepted." : "Rejected.",
-    });
-
-    if (decision === "rejected") {
-      onCarouselCompleted();
-      return;
-    }
-
+  function openAcceptedCandidate(candidate: TrendingCandidate) {
     if (candidate.format === "hook_video") {
       onHookCompose(
         candidate.item,
@@ -1563,7 +1542,6 @@ function TrendingDeck({
 
     if (
       exitDirection ||
-      pendingDecisionItemId ||
       (event.pointerType === "mouse" && event.button !== 0) ||
       target.closest("[data-deck-control]")
     ) {
@@ -1620,8 +1598,7 @@ function TrendingDeck({
   function handleDeckKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
     if (
       event.target !== event.currentTarget ||
-      exitDirection ||
-      pendingDecisionItemId
+      exitDirection
     ) {
       return;
     }
@@ -1652,7 +1629,6 @@ function TrendingDeck({
         wallTextCandidate ||
         decisionLockRef.current ||
         exitDirection ||
-        pendingDecisionItemId ||
         !activeCandidate
       ) {
         return;
@@ -1699,7 +1675,6 @@ function TrendingDeck({
           ? "Saved to Creative Assets."
           : "Already saved in Creative Assets.",
       });
-      onCarouselCompleted();
     } catch (error) {
       setActionState({
         message: getErrorMessage(error, "Could not save this carousel."),
@@ -1754,7 +1729,6 @@ function TrendingDeck({
         actionLabel: "View Saved",
         message: "Saved to Creative Assets. Video preparation has started.",
       });
-      onCarouselCompleted();
     } catch (error) {
       setWallTextActionState({
         message: getErrorMessage(
@@ -1824,7 +1798,6 @@ function TrendingDeck({
       actionLabel: "View schedule",
       message: "Wall-text Reel scheduled.",
     });
-    onCarouselCompleted();
   }
 
   const wallTextEdit = wallTextCandidate
@@ -1854,7 +1827,6 @@ function TrendingDeck({
             if (!pendingWallTextScheduleCandidate) {
               setWallTextActionState({ status: "idle" });
               setWallTextCandidate(null);
-              onCarouselCompleted();
             }
           }}
           onSave={handleSaveWallText}
@@ -1886,7 +1858,7 @@ function TrendingDeck({
       {activeCandidate && headerActionsRoot
         ? createPortal(
             <CreativeEditAction
-              disabled={Boolean(exitDirection || pendingDecisionItemId)}
+              disabled={Boolean(exitDirection)}
               onEdit={handleEditActiveCandidate}
             />,
             headerActionsRoot,
@@ -1897,11 +1869,11 @@ function TrendingDeck({
           <div
             role="group"
             aria-roledescription="Trending content deck"
-            aria-busy={Boolean(pendingDecisionItemId)}
+            aria-busy={Boolean(exitDirection)}
             tabIndex={0}
             aria-label={`Trending content deck. Showing idea ${activeItemIndex + 1} of ${visibleCandidates.length}. Press left arrow to reject or right arrow to accept this creative.`}
             onKeyDown={handleDeckKeyDown}
-            className="relative isolate mx-auto mt-3 h-[482px] w-full max-w-xl overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-7"
+            className="relative isolate mx-auto mt-2 h-[482px] w-full max-w-xl overflow-hidden rounded-[20px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-3"
           >
             <TrendingFormatPill
               candidate={activeCandidate}
@@ -1946,23 +1918,10 @@ function TrendingDeck({
             >
               Reject
             </div>
-            {pendingDecisionItemId ? (
-              <div
-                role="status"
-                aria-live="polite"
-                className="pointer-events-none absolute bottom-3 left-1/2 z-30 inline-flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-black/78 px-3 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-sm"
-              >
-                <Loader2
-                  className="size-3.5 animate-spin motion-reduce:animate-none"
-                  aria-hidden="true"
-                />
-                Saving choice…
-              </div>
-            ) : null}
           </div>
           <CreativeDecisionActions
             acceptDisabled={activeHookPreviewStatus !== null && activeHookPreviewStatus !== "ready"}
-            disabled={Boolean(exitDirection || pendingDecisionItemId)}
+            disabled={Boolean(exitDirection)}
             onAccept={() => requestCreativeDecision("accepted")}
             onReject={() => requestCreativeDecision("rejected")}
           />
@@ -1980,7 +1939,6 @@ function TrendingDeck({
           onClose={() => {
             setActionState({ status: "idle" });
             setActionCandidate(null);
-            onCarouselCompleted();
           }}
           onSaveToLibrary={handleSaveToLibrary}
           onSchedulePost={handleSchedulePost}
@@ -2043,7 +2001,6 @@ function TrendingDeck({
                 ? "Carousel scheduled. Trending may need a refresh."
                 : "Carousel scheduled.",
             });
-            onCarouselCompleted();
           }}
           onOpenChange={(open) => {
             if (!open) {
@@ -2311,6 +2268,7 @@ function TrendingFormatPill({
   const activeFormat = candidate?.format ?? format ?? "carousel";
   const isHook = activeFormat === "hook_video";
   const isWallText = activeFormat === "wall_text";
+  const isCarousel = activeFormat === "carousel";
 
   const slideCount =
     candidate && candidate.format === "carousel"
@@ -2330,18 +2288,24 @@ function TrendingFormatPill({
       ? "border-purple-500/25 bg-card/95 text-purple-500 ring-1 ring-purple-500/10"
       : "border-primary/25 bg-card/95 text-primary ring-1 ring-primary/10";
 
+  const cardWidthClass = isCarousel
+    ? "w-[min(78vw,270px)] sm:w-[270px]"
+    : "w-[min(76vw,248px)]";
+
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-1 z-40 flex h-[24px] items-center justify-center">
-      <span
-        data-trending-format-pill
-        className={cn(
-          "inline-flex h-[24px] items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-bold tracking-tight text-foreground-strong shadow-xs backdrop-blur-md",
-          colorBadge,
-        )}
-      >
-        <Icon className="size-3 shrink-0" aria-hidden="true" />
-        <span>{label}</span>
-      </span>
+    <div className="pointer-events-none absolute inset-x-0 top-1.5 z-40 flex h-[24px] items-center justify-center">
+      <div className={cn("flex items-center justify-start", cardWidthClass)}>
+        <span
+          data-trending-format-pill
+          className={cn(
+            "inline-flex h-[24px] items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-bold tracking-tight text-foreground-strong shadow-xs backdrop-blur-md",
+            colorBadge,
+          )}
+        >
+          <Icon className="size-3 shrink-0" aria-hidden="true" />
+          <span>{label}</span>
+        </span>
+      </div>
     </div>
   );
 }
@@ -2490,10 +2454,6 @@ function TrendingHookDeckCard({
   };
 
   useEffect(() => {
-    if (!isActive) {
-      return;
-    }
-
     const controller = new AbortController();
 
     async function loadPreview() {
@@ -2568,7 +2528,6 @@ function TrendingHookDeckCard({
     creative,
     creativeId,
     editedSource,
-    isActive,
     onPreviewStatusChange,
     previewRetryKey,
   ]);
@@ -2604,6 +2563,7 @@ function TrendingHookDeckCard({
           </div>
         ) : null}
         <HookVideoCard
+          active={isActive}
           dragOffset={0}
           hookAudio={isActive ? previewAudio : null}
           hookFontSize={editedContent?.fontSize ?? creative.text.fontSize}
@@ -2613,7 +2573,7 @@ function TrendingHookDeckCard({
           hookText={editedContent?.hookText ?? creative.text.value}
           previewError={isActive ? previewError : null}
           previewLoading={isActive && previewLoading}
-          previewUrl={isActive ? previewUrl : null}
+          previewUrl={previewUrl}
           trimEnd={creative.trimEnd}
           trimStart={creative.trimStart}
           video={{
@@ -2756,7 +2716,7 @@ function TrendingWallTextDeckCard({
         ) : null}
         <div
           className={cn(
-            "relative aspect-[9/16] overflow-hidden rounded-lg bg-[#171717]",
+            "relative aspect-[9/16] overflow-hidden rounded-[20px] bg-[#171717]",
             isActive
               ? "shadow-[0_10px_18px_rgb(9_9_11_/_0.28)]"
               : "shadow-[0_6px_12px_rgb(9_9_11_/_0.18)]",
@@ -2902,7 +2862,7 @@ function CarouselDeckCard({
         ) : null}
         <div
           className={cn(
-            "relative aspect-[4/5] overflow-hidden rounded-lg bg-card",
+            "relative aspect-[4/5] overflow-hidden rounded-[20px] bg-card",
             isActive
               ? "shadow-[0_10px_18px_rgb(9_9_11_/_0.2)]"
               : "shadow-[0_6px_12px_rgb(9_9_11_/_0.14)]",
@@ -3052,12 +3012,12 @@ function TrendingPostSkeleton() {
     <div
       role="status"
       aria-label="Loading trending content ideas"
-      className="relative isolate mx-auto mt-3 h-[482px] w-full max-w-xl overflow-hidden sm:mt-7"
+      className="relative isolate mx-auto mt-3 h-[482px] w-full max-w-xl overflow-hidden rounded-[20px] sm:mt-7"
     >
       <div className="absolute inset-0 flex items-start justify-center pt-9">
-        <Skeleton
+        <div
           aria-hidden="true"
-          className="aspect-[9/16] w-[min(76vw,248px)] rounded-lg border border-white/[0.04] bg-[#171717] opacity-80 shadow-[0_10px_18px_rgb(9_9_11_/_0.22)] motion-reduce:animate-none"
+          className="aspect-[9/16] w-[min(76vw,248px)] animate-pulse rounded-[20px] border border-white/[0.06] bg-[#151517] shadow-[0_14px_30px_rgba(0,0,0,0.32)] [animation-duration:2.4s] motion-reduce:animate-none"
         />
       </div>
     </div>
@@ -3131,9 +3091,8 @@ async function completeAcceptedCarouselWorkflow(
   }
 }
 
-async function persistTrendingCreativeDecision(
-  item: TrendingFeedItem,
-  decision: "accepted" | "rejected",
+async function persistTrendingDecisionOutboxEntry(
+  entry: TrendingDecisionOutboxEntry,
 ) {
   const token = await getCurrentUserIdToken();
 
@@ -3143,28 +3102,86 @@ async function persistTrendingCreativeDecision(
 
   const response = await fetch("/api/trending/feed/decisions", {
     body: JSON.stringify({
-      assignmentId: item.assignmentId,
-      creativeId: item.creativeId,
-      decision,
-      format: item.format,
+      assignmentId: entry.assignmentId,
+      creativeId: entry.creativeId,
+      decision: entry.decision,
+      format: entry.format,
     }),
+    cache: "no-store",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
+    keepalive: true,
     method: "POST",
   });
   const data = (await response.json().catch(() => null)) as
     | { error?: string; ok: false }
-    | { decision: { decidedAt: string }; ok: true }
+    | {
+        dailyFeedSlotId: string | null;
+        decision: { decidedAt: string };
+        ok: true;
+      }
     | null;
 
-  if (!response.ok || data?.ok !== true) {
+  if (
+    !response.ok ||
+    data?.ok !== true ||
+    !data.dailyFeedSlotId
+  ) {
     throw new Error(
       data?.ok === false && data.error
         ? data.error
         : "Could not save this creative decision.",
     );
+  }
+}
+
+function getPendingDecisionAssignmentIds(userId: string) {
+  return new Set(
+    readPendingDecisionEntries(userId).map((entry) => entry.assignmentId),
+  );
+}
+
+function readPendingDecisionEntries(userId: string) {
+  try {
+    const rawValue = window.localStorage.getItem(
+      getTrendingDecisionOutboxKey(userId),
+    );
+
+    if (rawValue !== null) {
+      const entries = parseTrendingDecisionOutbox(rawValue);
+      decisionOutboxMemoryFallback.set(userId, entries);
+      return entries;
+    }
+  } catch {
+    // Fall through to the same-page queue when storage is unavailable.
+  }
+
+  return decisionOutboxMemoryFallback.get(userId) ?? [];
+}
+
+function writePendingDecisionEntries(
+  userId: string,
+  entries: readonly TrendingDecisionOutboxEntry[],
+) {
+  if (entries.length === 0) {
+    decisionOutboxMemoryFallback.delete(userId);
+  } else {
+    decisionOutboxMemoryFallback.set(userId, [...entries]);
+  }
+
+  try {
+    const key = getTrendingDecisionOutboxKey(userId);
+
+    if (entries.length === 0) {
+      window.localStorage.removeItem(key);
+      return;
+    }
+
+    window.localStorage.setItem(key, JSON.stringify(entries));
+  } catch {
+    // The current page still advances when browser storage is unavailable.
   }
 }
 
@@ -3508,24 +3525,4 @@ function getBrowserLocalDate() {
   return year && month && day
     ? `${year}-${month}-${day}`
     : new Date().toISOString().slice(0, 10);
-}
-
-function waitForHookPreparationPoll(signal: AbortSignal) {
-  return new Promise<void>((resolve, reject) => {
-    if (signal.aborted) {
-      reject(new DOMException("Aborted", "AbortError"));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      signal.removeEventListener("abort", handleAbort);
-      resolve();
-    }, 2_000);
-    const handleAbort = () => {
-      window.clearTimeout(timer);
-      reject(new DOMException("Aborted", "AbortError"));
-    };
-
-    signal.addEventListener("abort", handleAbort, { once: true });
-  });
 }

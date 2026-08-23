@@ -16,11 +16,28 @@ import {
 } from "firebase/auth";
 
 import { auth, googleProvider } from "./client";
+import { AUTH_SESSION_COOKIE_NAME } from "./auth-session";
+
+export { AUTH_SESSION_COOKIE_NAME } from "./auth-session";
 
 export const EDIT_RENDER_E2E_TOKEN_STORAGE_KEY =
   "ugc-studio.edit-render-e2e-token";
 export const GOOGLE_SIGN_IN_REDIRECT_PENDING_KEY =
   "ugc-pilot.google-sign-in-redirect-pending";
+export function setAuthSessionCookie() {
+  if (typeof document === "undefined") {
+    return;
+  }
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${AUTH_SESSION_COOKIE_NAME}=1; path=/; max-age=2592000; SameSite=Lax${secure}`;
+}
+
+export function clearAuthSessionCookie() {
+  if (typeof document === "undefined") {
+    return;
+  }
+  document.cookie = `${AUTH_SESSION_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0; SameSite=Lax`;
+}
 
 export type AuthUser = {
   uid: string;
@@ -245,6 +262,7 @@ export function listenToAuthState(
   const e2eTestUser = getEditRenderE2ETestUser();
 
   if (e2eTestUser) {
+    setAuthSessionCookie();
     onUser(e2eTestUser);
 
     return () => {};
@@ -253,9 +271,17 @@ export function listenToAuthState(
   return onAuthStateChanged(
     auth,
     (user) => {
+      if (user) {
+        setAuthSessionCookie();
+      } else {
+        clearAuthSessionCookie();
+      }
       onUser(user ? mapFirebaseUser(user) : null);
     },
-    onError,
+    (error) => {
+      clearAuthSessionCookie();
+      onError?.(error);
+    },
   );
 }
 
@@ -322,6 +348,7 @@ function getEditRenderE2ETestUser(): AuthUser | null {
 }
 
 export async function logout() {
+  clearAuthSessionCookie();
   await signOut(auth);
 }
 

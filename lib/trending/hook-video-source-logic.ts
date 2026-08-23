@@ -1,7 +1,8 @@
 import type {
   HookInfluencerSummary,
   HookVideoBrowseEntry,
-} from "@/lib/trending/hook-video-types";
+} from "./hook-video-types.ts";
+import { formatCreatorDisplayName } from "../video/avatar-display.ts";
 
 const CATALOG_PREFIX = "catalog:";
 const USER_PREFIX = "user:";
@@ -68,7 +69,7 @@ export function getCatalogInfluencerKey(asset: CatalogAvatarMetadataRow) {
 export function getCatalogInfluencerName(asset: CatalogAvatarMetadataRow) {
   const [name] = asset.name.split(" - ");
 
-  return name?.trim() || "Influencer";
+  return formatCreatorDisplayName(name?.trim() || "Influencer");
 }
 
 export function buildCatalogInfluencerId(key: string) {

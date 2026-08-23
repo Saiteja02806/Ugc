@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-08-22
+Last updated: 2026-08-23
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -576,6 +576,109 @@ then existing Pexels/object-key identity.
 
 ## Daily Trending Feed
 
+### 2026-08-23 complete daily-pack delivery and Free allowance
+
+Free receives exactly 10 combined posts per user-local day: 3 Slideshows,
+4 Wall-of-text posts, and 3 Hooks. This is a fixed 30% / 40% / 30% product
+bundle rather than the paid-plan default mix. The Free content-mix endpoint is
+read-only and must not imply that a saved percentage can change this bundle.
+Starter remains 20 posts and Growth remains 50 posts.
+
+Migration `20260823130857_raise_free_trending_allowance.sql` raises the
+persisted Free entitlement to 10. If a smaller feed was already created for
+the current day, the planning RPC appends the newly entitled slots, updates the
+feed snapshot, and resumes preparation instead of leaving that user at the old
+allowance until tomorrow. Existing ready or decided positions are preserved.
+
+Carousel, Wall-of-text, and Hook preparation are dispatched as independent
+background work. `GET /api/trending/feed` uses a read-only request fast path:
+it reads the existing plan and ready provider rows, returns the current public
+state without creating rows or enqueueing work in the request, and schedules
+the idempotent/coalesced preparation boundary with Next.js `after`. The first
+two preparation polls use a two-second interval, then back off through 3.5 and
+6 seconds to a ten-second maximum; a hidden tab does not poll. This avoids both
+the former request-time orchestration delay and a fixed tight polling loop.
+
+The client does not expose a partially ready daily pack. The unified feed API
+returns an empty `items` array until every remaining reserved slot has both a
+durable ready assignment and its resolved provider item. It then returns the
+complete remaining ordered pack in one response. The client keeps that whole
+response in memory and shows one blank dark 9:16 skeleton in the first-card
+position until the atomic boundary opens. This prevents a user from consuming
+one ready item and seeing an empty state while another format worker finishes.
+The skeleton contains no fake text, internal placeholders, spinner, or loading
+message.
+
+After the atomic response arrives, left and right swipes only dismiss the
+current in-memory item and select the next in-memory item. Swipe completion no
+longer waits for the decision API or refreshes the feed. Decisions enter an
+account-scoped browser outbox first, are retried in the background with bounded
+backoff, and are filtered from a reload while still pending. The server remains
+the durable source of truth and its idempotent decision route still retires the
+daily slot without replenishment.
+
+The browser no longer calls the format-specific Hook or Wall preparation
+routes from the Trending workspace. `readUnifiedTrendingDailyFeed` is the
+request-time reader; `ensureUnifiedTrendingDailyFeed` is the single deferred
+orchestration boundary for recovery, attachment, preparation, and readiness.
+A terminal enqueue/provider failure is persisted as feed state `failed` so the
+next read offers a retry instead of polling a skeleton forever.
+
+The next two mounted deck cards prewarm their presentation assets. Protected
+Hook preview cookies are keyed by video ID, allowing multiple upcoming Hook
+sessions to coexist; inactive Hook videos preload without playing and become
+active without requesting a new generation or feed response. Carousel images
+and Wall video metadata retain their existing look-ahead preload behavior.
+
+Hooks are part of the daily entitlement and are enabled when
+`TRENDING_HOOK_VIDEOS_ENABLED` is true or absent. An explicit false value is an
+emergency kill switch; it is not the normal production configuration.
+
+There is currently no Trending-wide Adjust button mounted in the workspace.
+The authenticated content-mix API remains available for Starter and Growth,
+and the header control on an active card is Edit. Inside the accepted Hook
+composer, “Adjust opening clip” is the trim section for changing only the
+opening video's start and end times; it does not change the daily content mix.
+Saving a paid content-mix preference never mutates an already-created daily
+pack, including its unbound positions. If today's pack exists, the preference
+starts with the next local-day pack; if no pack exists yet, it is used to create
+today's pack. This immutable boundary avoids discarding or duplicating work
+while an atomic pack is still preparing.
+
+Free's runtime allowance is fixed at 10 even if the entitlement row is briefly
+stale during a migration-first rollout. The database migration remains required
+to expand an already-created three-slot feed and keep persisted plan metadata
+consistent.
+
+The complete-pack reliability path has these format-specific safeguards:
+
+- a preview-ready active Wall assignment is returned before old Wall creative
+  inventory is checked for a stale generator version; historical v6 rows must
+  not hide a current v7 assignment;
+- the internal Wall preparation route accepts the immediately previous worker
+  payload by defaulting a missing requested count to six and deriving the same
+  stable legacy request key as the worker, so app/worker rolling deployments do
+  not turn valid jobs into HTTP 400 failures;
+- Hook generation requests at least six source candidates and may persist the
+  validated subset when one candidate exhausts review and repair. A later
+  idempotent refill fills any remaining Hook slot instead of failing the whole
+  batch because one source was rejected; composition generation still requires
+  its complete candidate contract;
+- Structure 1 remains fail-closed and atomically transfers an untouched batch
+  to Structure 2 after two planning failures. Structure 2 uses only its own
+  business-profile-specific, schema-validated deterministic story fallback
+  after its initial batch and isolated repair fail. It does not restore the
+  retired generic Structure 1 copy path.
+
+Hook and Wall preparation share the AI-generation Cloud Tasks queue but are
+independent jobs. The queue permits four concurrent deliveries, and the Cloud
+Run AI-generation service may scale to four one-request instances so those
+formats are not serialized behind one another or behind an unrelated AI job.
+Carousel keeps its separate controlled-batch queue and worker boundary. Every
+Cloud Run worker profile sets an explicit worker ID containing service name,
+release version, and Git commit so a failed `background_jobs` row identifies
+the deployed revision instead of an ambiguous container hostname.
+
 ### 2026-08-20 unified combined-feed architecture
 
 The source implementation now treats Carousel as one format inside a single
@@ -587,6 +690,8 @@ and the background workers are verified in production.
 The stable billing keys are intentionally retained while their visible plan
 names and combined daily limits change:
 
+- no active paid-plan row -> **Free** -> 10 combined posts per user-local day,
+  fixed at 3 Slideshow / 4 Wall-of-text / 3 Hook;
 - `pro` -> **Starter** -> 20 combined posts per user-local day;
 - `creator` -> **Growth** -> 50 combined posts per user-local day;
 - `ultra_pro` remains an inactive legacy entitlement and is not assigned to
@@ -596,20 +701,21 @@ Do not migrate existing user plan keys merely to make the labels appear more
 intuitive. Runtime entitlement resolution and pricing display must use the
 exact mapping above.
 
-The default daily mix is 25% Carousel, 50% Wall-of-text, and 25% Hook Video.
+The paid-plan default daily mix is 25% Carousel, 50% Wall-of-text, and 25% Hook Video.
 Wall-of-text and Hook Video are each capped at 50%; Carousel may range from 0%
 to 100%; all three integer percentages must total exactly 100%. Largest
 remainder allocation produces whole posts. Starter therefore receives
-5 Carousel / 10 Wall / 5 Hook by default. Growth alternates the one-post
-remainder by local day between 13 Carousel / 25 Wall / 12 Hook and
-12 Carousel / 25 Wall / 13 Hook.
+5 Carousel / 10 Wall / 5 Hook by default. Growth receives
+13 Carousel / 25 Wall / 12 Hook. Keeping the half-post remainder on Carousel
+allows the default Hook allocation to fit one validated twelve-candidate worker
+batch instead of serializing a second AI job for one slot; the total remains 50.
 
 Migration `20260820084842_create_unified_daily_trending_feed.sql` adds:
 
 - `subscription_entitlements.daily_trending_limit`;
 - server-only `trending_content_mix_preferences`;
 - one `daily_trending_feeds` snapshot per `user_id + local_date`;
-- exactly 20 or 50 ordered `daily_trending_feed_slots` rows; and
+- exactly 10, 20, or 50 ordered `daily_trending_feed_slots` rows; and
 - service-role-only planning, assignment, mix-save, unbound-replan, and slot
   completion RPCs protected by advisory locks.
 
@@ -620,17 +726,17 @@ assignment may attach to its matching reserved format. Assigned or decided
 slots are immutable for that day.
 
 A successful left or right decision retires exactly one reserved slot. It must
-never create a replacement on the same local day. After all 20 or 50 slots are
+never create a replacement on the same local day. After all 10, 20, or 50 slots are
 decided, the correct state is caught up until the next local day. Background
 preparation fills only still-unbound slots; it is started during onboarding,
 the daily sweep, an Adjust save, or safe GET recovery, and it must never clear
 already visible items.
 
-The Adjust control stores preferences separately. Saving a new mix preserves
-ready, preparing, and decided positions. It may replan only `planned` or
-`failed` slots with no assignment. If none remain, the preference applies on
-the next local day. A saved 0% for a format does not hide that format's posts
-that are already reserved today.
+The paid content-mix API stores preferences separately. Once a daily pack
+exists, saving a new mix does not replan any of its positions, including
+`planned` or `failed` unbound slots. The preference applies on the next local
+day. A saved 0% for a format does not hide that format's posts that are already
+reserved today.
 
 The older `daily_carousel_feeds` and `daily_carousel_feed_items` tables remain
 an internal Carousel inventory source during this migration. They are not the
@@ -1340,13 +1446,9 @@ The Hook videos product flow, when enabled from an approved surface, is:
    owner-scoped Hook video draft for Content. Schedule persists or reuses the
    same reviewed selection, creates a real `scheduled_posts` draft, and opens the
    Scheduling workspace with that exact draft ID.
-8. Hook ideas are a server-gated rollout. The server-only
-   `TRENDING_HOOK_VIDEOS_ENABLED` variable must equal `true` to query or return
-   the Hook feed provider or to run Hook preparation. Missing or false values
-   fail closed. The deployed Vercel production environment and the
-   `getugcpilot.com` production hosts always override that flag to `false`;
-   localhost and non-production preview environments can explicitly enable it
-   for testing.
+8. Hook ideas are part of the daily Trending allowance. The server-only
+   `TRENDING_HOOK_VIDEOS_ENABLED` variable may be set to `false` as an emergency
+   kill switch; `true` or a missing value keeps Hook preparation enabled.
 
 Protected influencer playback uses a five-minute, HTTP-only, same-origin preview
 session. The preview route revalidates the signed video, influencer, source, and
@@ -2614,8 +2716,9 @@ Name: **Verify v26 and replace the stale production assignment**
 
 - The live Trending feed keeps Hook composition state in its existing parent
   wrapper, but loads the large `HookVideoComposer` client module only after an
-  accepted Hook enters composition. Closing the composer still clears the
-  parent composition and refreshes the feed exactly as before.
+  accepted Hook enters composition. Closing the composer clears the parent
+  composition and returns to the already-loaded in-memory daily pack; it does
+  not refresh or regenerate the feed.
 - The shared Hook/Wall scheduling drawer is loaded only when its existing
   open or pending-schedule state is present in Trending, Hook composition, or
   the Saved Hook library. A blocking scheduling status covers the short chunk
@@ -2665,3 +2768,35 @@ Name: **Verify v26 and replace the stale production assignment**
 - A blocking loading surface is shown only while the editor chunk is arriving.
   This boundary changes client-code delivery, not scheduling API, database,
   publishing, recovery, or ownership contracts.
+
+## 2026-08-23 Creative Assets Premium Pill Navigation & Unified Saved Presentation
+
+- The primary Creative Assets collection switcher (`Videos`, `Images`, `Saved`)
+  now uses a premium floating pill capsule track with elevated active tabs,
+  matching the secondary format switcher in Saved.
+- The `Saved` tab retains its dynamic bundle boundary and owner-scoped Hook,
+  Wall-of-Text, and Carousel stores, but now unifies their presentation:
+  - When filtering by `All`, empty sub-libraries do not render placeholder
+    boxes that push down populated content.
+  - If all formats are empty, a single unified onboarding empty state is
+    displayed with shortcuts to explore Trending.
+  - When specific format filters (`Hook videos`, `Wall-of-Text`, `Carousels`)
+    are selected, only the targeted format is rendered.
+- Existing preview dialogs, Instagram/TikTok scheduling drawers, deletion APIs,
+  and recovery error handling remain unchanged.
+
+## 2026-08-23 Production Color Palette Modernization
+
+- Upgraded the central light design tokens in `app/globals.css` from the legacy warm/brownish palette to the modern production palette:
+  - `--primary: #ff5a1f` (Electric Coral-Orange) replacing legacy `#c94716`
+  - `--primary-hover: #e04810` replacing legacy `#ad3c12`
+  - `--brand: #ff5a1f` and `--brand-soft: #fff7ed`
+  - `--background: #f8fafc` (Ghost White / Slate 50) replacing `#f8f8f7`
+  - `--foreground: #0f172a` (Deep Slate 900) replacing `#181817`
+  - `--muted: #475569` (Slate 600) replacing `#666663`
+  - `--muted-subtle: #94a3b8` (Slate 400) replacing `#73736f`
+  - `--border: #e2e8f0` (Slate 200) and `--border-strong: #cbd5e1` replacing `#e5e5e2` / `#d4d4d0`
+  - `--card-muted: #f1f5f9` and `--surface-subtle: #f1f5f9` (Slate 100)
+  - `--success: #10b981` (Emerald 500) replacing `#168a4a`
+- Updated pricing checklist checkmarks to use `text-success` (`#10b981`).
+- All layout dimensions, responsive behaviors, component trees, API contracts, and business logic remain completely unchanged.

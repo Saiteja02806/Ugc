@@ -107,7 +107,7 @@ export async function prepareTrendingHookIdeas(
       ? unusedInventory
       : fullInventory;
   const requestedCount = Math.min(
-    Math.max(targetActive - activeCount, 1),
+    Math.max(targetActive - activeCount, 6),
     12,
   );
   const candidates = selectTrendingHookCandidates(inventory, requestedCount);

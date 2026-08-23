@@ -21,6 +21,8 @@ type GenerateRunwayHookVideoParams = {
   prompt: string;
   providerOperationId?: string;
   referenceImageUrl?: string;
+  referenceVideoDurationSeconds?: number;
+  referenceVideoUrl?: string;
 };
 
 export type RunwayAspectRatio = "9:16" | "16:9";
@@ -31,6 +33,7 @@ const RUNWAY_PROMPT_LIMIT = 1_000;
 const RUNWAY_DURATION_SECONDS = 4;
 const RUNWAY_IMAGE_TO_VIDEO_MODEL = "gen4_turbo";
 const RUNWAY_TEXT_TO_VIDEO_MODEL = "veo3.1_fast";
+const RUNWAY_VIDEO_TO_VIDEO_MODEL = "aleph2";
 
 let runwayClient: RunwayML | null = null;
 
@@ -41,13 +44,26 @@ export async function generateRunwayHookVideoBuffer({
   prompt,
   providerOperationId,
   referenceImageUrl,
+  referenceVideoDurationSeconds,
+  referenceVideoUrl,
 }: GenerateRunwayHookVideoParams) {
+  if (referenceImageUrl && referenceVideoUrl) {
+    throw new ProviderRequestNotSubmittedError(
+      "Choose either a reference image or reference video, not both.",
+    );
+  }
+
   const client = getRunwayClient();
   const promptText = prompt.trim().slice(0, RUNWAY_PROMPT_LIMIT);
   let operationId = providerOperationId;
 
   if (!operationId) {
-    const estimatedCredits = referenceImageUrl
+    const estimatedCredits = referenceVideoUrl
+      ? estimateRunwayVideoCredits(
+          RUNWAY_VIDEO_TO_VIDEO_MODEL,
+          referenceVideoDurationSeconds ?? RUNWAY_DURATION_SECONDS,
+        )
+      : referenceImageUrl
       ? estimateRunwayVideoCredits(
           RUNWAY_IMAGE_TO_VIDEO_MODEL,
           RUNWAY_DURATION_SECONDS,
@@ -62,7 +78,14 @@ export async function generateRunwayHookVideoBuffer({
       estimatedCredits,
     );
 
-    const task = referenceImageUrl
+    const task = referenceVideoUrl
+      ? await client.videoToVideo.create({
+          model: RUNWAY_VIDEO_TO_VIDEO_MODEL,
+          promptText,
+          targetAspectRatio: aspectRatio,
+          videoUri: referenceVideoUrl,
+        })
+      : referenceImageUrl
       ? await client.imageToVideo.create({
           duration: RUNWAY_DURATION_SECONDS,
           model: RUNWAY_IMAGE_TO_VIDEO_MODEL,

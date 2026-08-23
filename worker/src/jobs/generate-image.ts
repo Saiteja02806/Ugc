@@ -24,6 +24,7 @@ type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
   prompt: string;
+  referenceImageUrl?: string;
 };
 
 function getInput(job: BackgroundJobRow): GenerateImageInput {
@@ -50,6 +51,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     aspectRatio: getAspectRatio(job.input_json.aspectRatio),
     generationId: generationId.trim(),
     prompt: prompt.trim(),
+    referenceImageUrl: getOptionalHttpsUrl(job.input_json.referenceImageUrl),
   };
 }
 
@@ -78,6 +80,7 @@ export async function runGenerateImageJob(
     generationId: input.generationId,
     outputKey,
     prompt: input.prompt,
+    referenceImageUrl: input.referenceImageUrl ?? null,
   });
   const reservation = await context.store.reserveGenerationProviderOperation({
     jobId: job.id,
@@ -91,7 +94,11 @@ export async function runGenerateImageJob(
     let generated;
 
     try {
-      generated = await generateOpenAiImageBuffer(input.prompt, input.aspectRatio);
+      generated = await generateOpenAiImageBuffer(
+        input.prompt,
+        input.aspectRatio,
+        input.referenceImageUrl,
+      );
     } catch (error) {
       return persistProviderSubmissionFailure({
         error,
@@ -203,6 +210,20 @@ function getAspectRatio(value: Json | undefined): AIStudioImageRatio {
   return AI_STUDIO_IMAGE_RATIOS.includes(value as AIStudioImageRatio)
     ? (value as AIStudioImageRatio)
     : AI_STUDIO_IMAGE_RATIO;
+}
+
+function getOptionalHttpsUrl(value: Json | undefined) {
+  if (typeof value !== "string" || !value.trim()) {
+    return undefined;
+  }
+
+  const url = new URL(value.trim());
+
+  if (url.protocol !== "https:") {
+    throw new Error("generate_image referenceImageUrl must use HTTPS.");
+  }
+
+  return url.toString();
 }
 
 function getJsonString(value: Json, key: string) {

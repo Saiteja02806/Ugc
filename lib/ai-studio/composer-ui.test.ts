@@ -108,7 +108,7 @@ test("video reference images start empty without exposing creator video folders"
   assert.match(videoWorkspace, /Generate directly from your prompt/);
   assert.match(
     videoWorkspace,
-    /avatarImageUrl: selectedAvatar\?\.thumbnailUrl \?\? null/,
+    /avatarImageUrl: activeReferenceImageUrl/,
   );
   assert.match(
     videoWorkspace,
@@ -125,6 +125,19 @@ test("video reference images start empty without exposing creator video folders"
   assert.match(
     videoGenerationApi,
     /input: \{[\s\S]*?avatarImageUrl,[\s\S]*?batchIndex/,
+  );
+});
+
+test("AI Studio supports optional direct image and video reference uploads", () => {
+  assert.match(imageWorkspace, /allowedKinds=\{\["image"\]\}/);
+  assert.match(imageWorkspace, /referenceImageUrl: referenceImage\?\.asset\.url \?\? null/);
+  assert.match(videoWorkspace, /allowedKinds=\{\["image", "video"\]\}/);
+  assert.match(videoWorkspace, /referenceVideoUrl: uploadedReferenceVideo\?\.asset\.url \?\? null/);
+  assert.match(videoWorkspace, /referenceVideoDurationSeconds:/);
+  assert.match(videoWorkspace, /setSelectedAvatarId\(null\)/);
+  assert.match(
+    videoWorkspace,
+    /generateDisabled=\{\s*generationLocked \|\|\s*!prompt\.trim\(\) \|\|\s*isGenerating\s*\}/,
   );
 });
 

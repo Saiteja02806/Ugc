@@ -1,0 +1,43 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+
+const imageApi = readProjectFile("lib/ai-studio/image-generation-api.ts");
+const videoApi = readProjectFile("lib/ai-studio/video-generation-api.ts");
+const imageWorker = readProjectFile("worker/src/jobs/generate-image.ts");
+const videoWorker = readProjectFile("worker/src/jobs/generate-hook-video.ts");
+const openAiProvider = readProjectFile("worker/src/lib/openai-image.ts");
+const runwayProvider = readProjectFile("worker/src/lib/runway-video.ts");
+
+test("uploaded image references reach the image provider", () => {
+  assert.match(imageApi, /input: \{[\s\S]*?referenceImageUrl,/);
+  assert.match(imageWorker, /referenceImageUrl: input\.referenceImageUrl \?\? null/);
+  assert.match(
+    imageWorker,
+    /generateOpenAiImageBuffer\([\s\S]*?input\.referenceImageUrl/,
+  );
+  assert.match(openAiProvider, /client\.images\.edit/);
+  assert.match(openAiProvider, /downloadReferenceImage\(referenceImageUrl\)/);
+});
+
+test("uploaded video references reach Runway video-to-video generation", () => {
+  assert.match(videoApi, /referenceVideoDurationSeconds,/);
+  assert.match(videoApi, /referenceVideoUrl,/);
+  assert.match(videoApi, /Choose either a reference image or a reference video/);
+  assert.match(videoWorker, /if \(input\.referenceVideoUrl\)/);
+  assert.match(videoWorker, /referenceVideoUrl: input\.referenceVideoUrl/);
+  assert.match(runwayProvider, /client\.videoToVideo\.create/);
+  assert.match(runwayProvider, /model: RUNWAY_VIDEO_TO_VIDEO_MODEL/);
+  assert.match(runwayProvider, /videoUri: referenceVideoUrl/);
+});
+
+test("prompt-only generation remains valid", () => {
+  assert.match(imageApi, /referenceImageUrl = cleanTrustedHttpsUrl/);
+  assert.match(videoApi, /referenceVideoUrl = cleanHttpsUrl/);
+  assert.doesNotMatch(imageApi, /Add a reference image before generating/);
+  assert.doesNotMatch(videoApi, /Add a reference video before generating/);
+});
+
+function readProjectFile(relativePath: string) {
+  return readFileSync(new URL(`../../${relativePath}`, import.meta.url), "utf8");
+}

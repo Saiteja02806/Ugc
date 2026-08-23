@@ -36,6 +36,8 @@ type GenerateHookVideoInput = {
   productName?: string;
   projectId: string;
   provider?: HookVideoProvider;
+  referenceVideoDurationSeconds?: number;
+  referenceVideoUrl?: string;
   userId: string;
   videoId: string;
 };
@@ -107,7 +109,7 @@ export async function runGenerateHookVideoJob(
   await context.store.markGenerationOutputPersisted({
     jobId: job.id,
     metadata: {
-      durationSeconds: 4,
+      durationSeconds: getOutputDurationSeconds(input),
       provider,
       ratio: input.aspectRatio,
     },
@@ -136,6 +138,17 @@ async function generateWithFallback(
   prompt: string,
 ) {
   const preferredProvider = input.provider ?? DEFAULT_HOOK_VIDEO_PROVIDER;
+
+  if (input.referenceVideoUrl) {
+    return generateWithProvider(
+      job,
+      context,
+      "runway",
+      "primary",
+      input,
+      prompt,
+    );
+  }
 
   if (preferredProvider === "runway") {
     return generateWithProvider(
@@ -220,6 +233,8 @@ async function generateWithProvider(
     prompt,
     provider,
     referenceImageUrl: input.avatarImageUrl,
+    referenceVideoDurationSeconds: input.referenceVideoDurationSeconds ?? null,
+    referenceVideoUrl: input.referenceVideoUrl ?? null,
     videoId: input.videoId,
   });
   const reservation = await context.store.reserveGenerationProviderOperation({
@@ -263,6 +278,8 @@ async function generateWithProvider(
       prompt,
       providerOperationId,
       referenceImageUrl: input.avatarImageUrl,
+      referenceVideoDurationSeconds: input.referenceVideoDurationSeconds,
+      referenceVideoUrl: input.referenceVideoUrl,
     };
 
     return {
@@ -312,7 +329,7 @@ function buildOutput(params: {
   uploaded: { key: string; url: string };
 }) {
   return {
-    durationSeconds: 4,
+    durationSeconds: getOutputDurationSeconds(params.input),
     fileSizeBytes: params.bufferSize,
     key: params.uploaded.key,
     ok: true,
@@ -350,9 +367,29 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     ),
     projectId: getPathSegment(job.input_json.projectId, "projectId"),
     provider: getOptionalChoice(job.input_json.provider, hookVideoProviders),
+    referenceVideoDurationSeconds: getOptionalDurationSeconds(
+      job.input_json.referenceVideoDurationSeconds,
+    ),
+    referenceVideoUrl: getOptionalHttpsUrl(job.input_json.referenceVideoUrl),
     userId: getPathSegment(job.input_json.userId, "userId"),
     videoId: getPathSegment(job.input_json.videoId, "videoId"),
   };
+}
+
+function getOutputDurationSeconds(input: GenerateHookVideoInput) {
+  return input.referenceVideoDurationSeconds ?? 4;
+}
+
+function getOptionalDurationSeconds(value: Json | undefined) {
+  if (typeof value !== "number") {
+    return undefined;
+  }
+
+  if (!Number.isFinite(value) || value <= 0 || value > 3) {
+    throw new Error("generate_hook_video reference video must be 3 seconds or shorter.");
+  }
+
+  return value;
 }
 
 function isJsonObject(value: Json | undefined): value is Record<string, Json | undefined> {

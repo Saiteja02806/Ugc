@@ -1,6 +1,7 @@
 const DEFAULT_RUNWAY_DAILY_CREDIT_LIMIT = 100;
 
 const RUNWAY_VIDEO_CREDITS_PER_SECOND = {
+  aleph2: 28,
   gen4_turbo: 5,
   "veo3.1_fast": 10,
 } as const;

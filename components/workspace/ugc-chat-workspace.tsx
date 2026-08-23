@@ -12,9 +12,11 @@ import {
   AiStudioResults,
   type AiStudioResultsStatus,
 } from "@/components/generation/ai-studio-results";
+import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
+import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import {
   AI_STUDIO_GENERATION_QUANTITIES,
   AI_STUDIO_IMAGE_ASPECT_RATIOS,
@@ -196,6 +198,8 @@ export function ImageGenerationStudioPanel({
     useState<AIStudioImageAspectRatio>("4:5");
   const [quantity, setQuantity] =
     useState<AIStudioGenerationQuantity>(1);
+  const [referenceImage, setReferenceImage] =
+    useState<AIStudioReferenceMedia | null>(null);
   const [activePrompt, setActivePrompt] = useState("");
   const [latestCompletedId, setLatestCompletedId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -475,6 +479,7 @@ export function ImageGenerationStudioPanel({
           idempotencyKey,
           prompt: trimmedPrompt,
           quantity,
+          referenceImageUrl: referenceImage?.asset.url ?? null,
         }),
       });
       const data = (await response.json()) as GenerateResponse;
@@ -657,6 +662,15 @@ export function ImageGenerationStudioPanel({
               onChange={(value) => {
                 submissionKeyRef.current = null;
                 setQuantity(Number(value) as AIStudioGenerationQuantity)
+              }}
+            />
+            <ReferenceMediaUpload
+              allowedKinds={["image"]}
+              disabled={generationLocked || isGenerating}
+              selection={referenceImage}
+              onChange={(selection) => {
+                submissionKeyRef.current = null;
+                setReferenceImage(selection);
               }}
             />
             <Button

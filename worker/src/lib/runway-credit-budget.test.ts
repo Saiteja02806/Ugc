@@ -18,6 +18,7 @@ test("rejects an invalid Runway daily credit limit", () => {
 });
 
 test("estimates the current four-second Hook video costs", () => {
+  assert.equal(estimateRunwayVideoCredits("aleph2", 3), 84);
   assert.equal(estimateRunwayVideoCredits("gen4_turbo", 4), 20);
   assert.equal(estimateRunwayVideoCredits("veo3.1_fast", 4), 40);
 });

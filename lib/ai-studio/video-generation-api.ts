@@ -38,6 +38,8 @@ type GenerateVideoRequest = {
   idempotencyKey?: unknown;
   prompt?: unknown;
   quantity?: unknown;
+  referenceVideoDurationSeconds?: unknown;
+  referenceVideoUrl?: unknown;
   referenceId?: unknown;
   referenceType?: unknown;
   referenceUrl?: unknown;
@@ -134,8 +136,40 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     | null;
   const prompt = normalizeAIStudioPrompt(body?.prompt ?? body?.hookIdea);
   const avatarImageUrl = cleanHttpsUrl(body?.avatarImageUrl);
+  const referenceVideoUrl = cleanHttpsUrl(body?.referenceVideoUrl);
+  const referenceVideoDurationSeconds = cleanReferenceVideoDuration(
+    body?.referenceVideoDurationSeconds,
+  );
   const aspectRatio = parseAIStudioVideoAspectRatio(body?.aspectRatio);
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
+
+  if (body?.avatarImageUrl && !avatarImageUrl) {
+    return NextResponse.json(
+      { error: "The reference image is not a trusted uploaded file.", ok: false },
+      { status: 400 },
+    );
+  }
+
+  if (body?.referenceVideoUrl && !referenceVideoUrl) {
+    return NextResponse.json(
+      { error: "The reference video is not a trusted uploaded file.", ok: false },
+      { status: 400 },
+    );
+  }
+
+  if (avatarImageUrl && referenceVideoUrl) {
+    return NextResponse.json(
+      { error: "Choose either a reference image or a reference video, not both.", ok: false },
+      { status: 400 },
+    );
+  }
+
+  if (referenceVideoUrl && !referenceVideoDurationSeconds) {
+    return NextResponse.json(
+      { error: "Reference videos must be 3 seconds or shorter.", ok: false },
+      { status: 400 },
+    );
+  }
 
   if (!prompt) {
     return NextResponse.json(
@@ -212,6 +246,8 @@ export async function handleAIStudioVideoGeneration(request: Request) {
           productDescription: "Short-form creator content.",
           productName: "UGCPilot",
           projectId,
+          referenceVideoDurationSeconds,
+          referenceVideoUrl,
           referenceId:
             typeof body?.referenceId === "string" ? body.referenceId : null,
           referenceType:
@@ -298,6 +334,15 @@ function cleanIdempotencyKey(value: unknown) {
   return typeof value === "string" && value.trim()
     ? value.trim().slice(0, 200)
     : crypto.randomUUID();
+}
+
+function cleanReferenceVideoDuration(value: unknown) {
+  return typeof value === "number" &&
+    Number.isFinite(value) &&
+    value > 0 &&
+    value <= 3
+    ? value
+    : null;
 }
 
 function getJobInputString(value: unknown, key: string) {

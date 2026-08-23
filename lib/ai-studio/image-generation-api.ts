@@ -22,6 +22,7 @@ import {
   getMissingBackgroundJobStorageEnvVars,
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
+import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import {
   BillingAccessError,
   deliverBillingUsageForJob,
@@ -35,6 +36,7 @@ type GenerateRequest = {
   idempotencyKey?: unknown;
   prompt?: unknown;
   quantity?: unknown;
+  referenceImageUrl?: unknown;
 };
 
 type ImageJobOutput = {
@@ -52,6 +54,21 @@ const IMAGE_JOB_TYPE = "generate_image";
 const TERMINAL_STATUSES = new Set(["cancelled", "completed", "failed"]);
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function cleanTrustedHttpsUrl(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" && isTrustedStorageUrl(url.toString())
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 function getMissingRuntimeEnv() {
   return Array.from(
@@ -115,6 +132,14 @@ export async function handleAIStudioImageGeneration(request: Request) {
   const prompt = normalizeAIStudioPrompt(body?.prompt);
   const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio);
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
+  const referenceImageUrl = cleanTrustedHttpsUrl(body?.referenceImageUrl);
+
+  if (body?.referenceImageUrl && !referenceImageUrl) {
+    return NextResponse.json(
+      { message: "The reference image is not a trusted uploaded file.", ok: false },
+      { status: 400 },
+    );
+  }
 
   if (!prompt) {
     return NextResponse.json(
@@ -185,6 +210,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
           batchSize: quantity,
           generationId,
           prompt,
+          referenceImageUrl,
         },
         jobType: IMAGE_JOB_TYPE,
         projectId: "ai-studio",

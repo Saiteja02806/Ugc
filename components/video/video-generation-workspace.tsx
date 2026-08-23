@@ -28,6 +28,7 @@ import {
   AiStudioResults,
   type AiStudioResultsStatus,
 } from "@/components/generation/ai-studio-results";
+import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
+import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import {
   AI_STUDIO_GENERATION_QUANTITIES,
   AI_STUDIO_VIDEO_ASPECT_RATIOS,
@@ -341,6 +343,8 @@ export function VideoGenerationStudioPanel({
     null,
   );
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
+  const [uploadedReference, setUploadedReference] =
+    useState<AIStudioReferenceMedia | null>(null);
   const [activeVideoPrompt, setActiveVideoPrompt] = useState("");
   const [latestCompletedVideoId, setLatestCompletedVideoId] = useState<string | null>(null);
   const [generationState, setGenerationState] =
@@ -390,6 +394,12 @@ export function VideoGenerationStudioPanel({
   const selectedAvatar = selectedAvatarId
     ? avatarOptions.find((avatar) => avatar.id === selectedAvatarId) ?? null
     : null;
+  const uploadedReferenceImage =
+    uploadedReference?.kind === "image" ? uploadedReference : null;
+  const uploadedReferenceVideo =
+    uploadedReference?.kind === "video" ? uploadedReference : null;
+  const activeReferenceImageUrl =
+    uploadedReferenceImage?.asset.url ?? selectedAvatar?.thumbnailUrl ?? null;
   const queriedJobs = activeJobQueries.flatMap((query) =>
     query.data ? [query.data] : [],
   );
@@ -766,10 +776,13 @@ export function VideoGenerationStudioPanel({
       const response = await fetch("/api/ai-studio/videos/generate", {
         body: JSON.stringify({
           aspectRatio,
-          avatarImageUrl: selectedAvatar?.thumbnailUrl ?? null,
+          avatarImageUrl: activeReferenceImageUrl,
           idempotencyKey,
           prompt: trimmedPrompt,
           quantity,
+          referenceVideoDurationSeconds:
+            uploadedReferenceVideo?.asset.durationSeconds ?? null,
+          referenceVideoUrl: uploadedReferenceVideo?.asset.url ?? null,
           referenceId: referenceContext?.id ?? null,
           referenceType: referenceContext?.type ?? null,
           referenceUrl: referenceContext?.sourceUrl ?? null,
@@ -790,7 +803,8 @@ export function VideoGenerationStudioPanel({
       }
       persistPendingVideoMetadata(user.uid, data.jobs, {
         aspectRatio,
-        avatarName: selectedAvatar?.label ?? "",
+        avatarName:
+          uploadedReference?.asset.title ?? selectedAvatar?.label ?? "",
         prompt: trimmedPrompt,
       });
       persistJobIdInUrl(data.jobId, VIDEO_JOB_URL_PARAMETER);
@@ -945,8 +959,10 @@ export function VideoGenerationStudioPanel({
                 <OptimisticVideoCard
                   key={`pending-video-${index}`}
                   aspectRatio={aspectRatio}
-                  avatarThumbnail={selectedAvatar?.thumbnailUrl ?? null}
-                  avatarLabel={selectedAvatar?.label ?? null}
+                  avatarThumbnail={activeReferenceImageUrl}
+                  avatarLabel={
+                    uploadedReference?.asset.title ?? selectedAvatar?.label ?? null
+                  }
                   prompt={activeVideoPrompt}
                 />
               ),
@@ -1088,10 +1104,32 @@ export function VideoGenerationStudioPanel({
                 selectedAvatar={selectedAvatar}
                 onChange={(avatarId) => {
                   submissionKeyRef.current = null;
+                  setUploadedReference(null);
                   setSelectedAvatarId(avatarId);
                 }}
               />
             </div>
+            <ReferenceMediaUpload
+              allowedKinds={["image", "video"]}
+              disabled={generationLocked || isGenerating}
+              selection={uploadedReference}
+              onChange={(selection) => {
+                submissionKeyRef.current = null;
+                setUploadedReference(selection);
+
+                if (selection) {
+                  setSelectedAvatarId(null);
+                }
+
+                if (
+                  selection?.kind === "video" &&
+                  (selection.asset.ratio === "9:16" ||
+                    selection.asset.ratio === "16:9")
+                ) {
+                  setAspectRatio(selection.asset.ratio);
+                }
+              }}
+            />
             <Button
               type="button"
               variant="muted"

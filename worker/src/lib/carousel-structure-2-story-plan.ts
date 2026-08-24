@@ -13,7 +13,7 @@ import {
 } from "./carousel-structure-2-formats.js";
 
 export const CAROUSEL_STRUCTURE_2_STORY_SCHEMA_VERSION =
-  "carousel-structure-2-flexible-story-v2";
+  "carousel-structure-2-flexible-story-v3-optional-cta";
 export const CAROUSEL_STRUCTURE_2_STORY_HISTORY_LIMIT = 10;
 export const CAROUSEL_STRUCTURE_2_POSITION_KEYS = [
   "first",
@@ -102,17 +102,6 @@ export function parseCarouselStructure2StoryPlan(
   const slides = CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) =>
     parseStorySlide(slidesRecord[positionKey], index),
   );
-  const ctaSlides = slides.filter((slide) => slide.ctaText !== null);
-  const format = getCarouselStructure2Format(params.storyFormatId);
-
-  if (ctaSlides.length !== 1) {
-    throw new Error("Structure 2 requires exactly one CTA across its five slides.");
-  }
-  if (!format.allowedCtaPositions.includes(ctaSlides[0]!.slideNumber)) {
-    throw new Error(
-      `Structure 2 format ${format.id} allows its CTA only on slide ${format.allowedCtaPositions.join(" or ")}.`,
-    );
-  }
 
   return {
     schemaVersion: CAROUSEL_STRUCTURE_2_STORY_SCHEMA_VERSION,
@@ -316,24 +305,19 @@ export function partitionCarouselStructure2ValidationIssues(
   return { advisoryIssues, blockingIssues };
 }
 
-export function buildCarouselStructure2StoryPlanSchema(params: {
-  storyFormatId: CarouselStructure2FormatId;
-}) {
-  const format = getCarouselStructure2Format(params.storyFormatId);
+export function buildCarouselStructure2StoryPlanSchema() {
   const slides = Object.fromEntries(
-    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) => [
+    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey) => [
       positionKey,
       {
         additionalProperties: false,
         properties: {
-          ctaText: format.allowedCtaPositions.includes(index + 1)
-            ? {
-                anyOf: [
-                  { maxLength: MAX_CTA_TEXT_LENGTH, minLength: 1, type: "string" },
-                  { type: "null" },
-                ],
-              }
-            : { type: "null" },
+          ctaText: {
+            anyOf: [
+              { maxLength: MAX_CTA_TEXT_LENGTH, minLength: 1, type: "string" },
+              { type: "null" },
+            ],
+          },
           storyRole: {
             enum: [...CAROUSEL_STRUCTURE_2_STORY_ROLES],
             type: "string",
@@ -382,15 +366,10 @@ export function buildCarouselStructure2StoryBatchSchema(params: {
   assignments: readonly CarouselStructure2StoryAssignment[];
 }) {
   assertCarouselStructure2StoryAssignments(params.assignments);
-  const assignments = [...params.assignments].sort(
-    (left, right) => left.slotIndex - right.slotIndex,
-  );
   const plans = Object.fromEntries(
-    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) => [
+    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey) => [
       positionKey,
-      buildCarouselStructure2StoryPlanSchema({
-        storyFormatId: assignments[index]!.storyFormatId,
-      }),
+      buildCarouselStructure2StoryPlanSchema(),
     ]),
   );
 
@@ -453,7 +432,7 @@ export function buildCarouselStructure2BatchMessages(params: {
     {
       role: "system" as const,
       content:
-        "You write native Instagram story carousels for Structure 2. Create exactly five independent carousels with exactly five slides each. The format is a controlled creative reference, not a compulsory sentence-by-sentence backbone. The CTA position is format-specific and structurally required. Return only the requested JSON.",
+        "You write native Instagram story carousels for Structure 2. Create exactly five independent carousels with exactly five slides each. The format is a controlled creative reference, not a compulsory sentence-by-sentence backbone. A CTA is optional and is never required to complete a story. Return only the requested JSON.",
     },
     {
       role: "user" as const,
@@ -461,9 +440,9 @@ export function buildCarouselStructure2BatchMessages(params: {
         "Use each creativeSeed as a broad starting point and its emotion as the emotional current. Do not treat either as finished copy or a complete plot.",
         "Return each plan under its assigned outputKey. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values.",
         "Develop genuinely different stories. Do not force every item through the same overwhelmed-to-easier arc.",
-        "Each story must contain exactly one CTA, and it must appear only at a position listed in that format's allowedCtaPositions.",
+        "Use ctaText only when a natural invitation improves the story. Otherwise return null. CTA presence and slide position are your creative choice.",
         `Every story uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px type over a connected white SVG background. Keep storyText within six visual lines and CTA text within three; the renderer will not shrink or truncate copy.`,
-        "Use exampleFlows and roleGuidance as inspiration. You may choose another ordering of the known story roles when it better serves the seed, except for the locked CTA position.",
+        "Use exampleFlows and roleGuidance as inspiration. You may choose another ordering of the known story roles when it better serves the seed.",
         "Keep product connections natural and grounded only in businessDescription. Do not force a product sentence onto Slide 4.",
         "Do not invent precise features, proof, metrics, customers, guarantees, health outcomes, financial outcomes, or performance claims.",
         "Avoid close wording and close paraphrases from recentAcceptedCopy, including hooks, emotional turns, and CTA wording.",
@@ -489,7 +468,7 @@ export function buildCarouselStructure2RepairMessages(params: {
     {
       role: "system" as const,
       content:
-        "Repair one Structure 2 JSON plan. Preserve valid AI copy unless a structural or renderability issue requires changing it. Keep the selected format reference, creative seed, emotion, five-slide count, and format-specific CTA position. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values. Return only repaired JSON.",
+        "Repair one Structure 2 JSON plan. Preserve valid AI copy unless a structural or renderability issue requires changing it. Keep the selected format reference, creative seed, emotion, and five-slide count. A CTA remains optional and must not be added merely to satisfy the repair. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values. Return only repaired JSON.",
     },
     {
       role: "user" as const,
@@ -578,7 +557,6 @@ export function formatCarouselStructure2ValidationIssues(
 function getFormatReference(storyFormatId: CarouselStructure2FormatId) {
   const format = getCarouselStructure2Format(storyFormatId);
   return {
-    allowedCtaPositions: format.allowedCtaPositions,
     exampleFlows: format.exampleFlows,
     generationRules: format.generationRules,
     id: format.id,

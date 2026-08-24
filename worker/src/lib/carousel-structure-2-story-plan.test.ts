@@ -19,7 +19,6 @@ import {
 } from "./carousel-structure-2-story-plan.js";
 import {
   CAROUSEL_STRUCTURE_2_FORMAT_IDS,
-  getCarouselStructure2Format,
   type CarouselStructure2FormatId,
 } from "./carousel-structure-2-formats.js";
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
@@ -37,37 +36,34 @@ test("Structure 2 receives only the minimal business description, seeds, emotion
 
   assert.match(prompt, /creativeSeed/);
   assert.match(prompt, /emotion/);
-  assert.match(prompt, /allowedCtaPositions/);
+  assert.match(prompt, /CTA is optional/i);
+  assert.doesNotMatch(prompt, /allowedCtaPositions|exactly one CTA|CTA position is .*required/i);
   assert.match(prompt, /exact visible text/i);
   assert.match(prompt, /i kept rebuilding monday's list/);
   assert.doesNotMatch(prompt, /productMechanism/);
   assert.doesNotMatch(prompt, /targetAudience|painPoints|valueProps|claimsToAvoid/);
 });
 
-test("all eight formats keep five slides while moving CTA by format", () => {
-  const ctaPositions = new Set<number>();
-
+test("all eight formats keep five slides without requiring a CTA", () => {
   for (const storyFormatId of CAROUSEL_STRUCTURE_2_FORMAT_IDS) {
-    const plan = makeStoryPlan(storyFormatId);
-    const format = getCarouselStructure2Format(storyFormatId);
-    const ctaSlide = plan.slides.find((slide) => slide.ctaText !== null)!;
+    const rawPlan = makeRawStoryPlan();
+    for (const slide of Object.values(rawPlan.slides)) slide.ctaText = null;
+    const plan = parseCarouselStructure2StoryPlan(rawPlan, {
+      businessDescription,
+      storyFormatId,
+    });
 
     assert.equal(plan.slides.length, 5);
-    assert.ok(format.allowedCtaPositions.includes(ctaSlide.slideNumber));
+    assert.ok(plan.slides.every((slide) => slide.ctaText === null));
     assert.equal(plan.strategy.storyFormatId, storyFormatId);
-    ctaPositions.add(ctaSlide.slideNumber);
   }
-
-  assert.deepEqual([...ctaPositions].sort(), [2, 3, 4, 5]);
 });
 
 test("the AI contract omits structural identities and the worker assigns them", () => {
   const assignments = makeAssignments(CAROUSEL_STRUCTURE_2_FORMAT_IDS.slice(0, 5));
-  const rawPlan = makeRawStoryPlan(assignments[0]!.storyFormatId);
+  const rawPlan = makeRawStoryPlan();
   const planSchema = JSON.stringify(
-    buildCarouselStructure2StoryPlanSchema({
-      storyFormatId: assignments[0]!.storyFormatId,
-    }),
+    buildCarouselStructure2StoryPlanSchema(),
   );
   const batchSchema = JSON.stringify(
     buildCarouselStructure2StoryBatchSchema({ assignments }),
@@ -101,9 +97,9 @@ test("the AI contract omits structural identities and the worker assigns them", 
   );
 
   const rawPlans = Object.fromEntries(
-    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) => [
+    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey) => [
       positionKey,
-      makeRawStoryPlan(assignments[index]!.storyFormatId),
+      makeRawStoryPlan(),
     ]),
   );
   const parsedBatch = parseCarouselStructure2StoryBatch(
@@ -119,8 +115,8 @@ test("the AI contract omits structural identities and the worker assigns them", 
   });
 });
 
-test("the format flow is reference material while format id and CTA position stay structural", () => {
-  const plan = makeRawStoryPlan("perfect_plan_breaks");
+test("the format flow is reference material while CTA presence and position stay flexible", () => {
+  const plan = makeRawStoryPlan();
   [plan.slides.second, plan.slides.third] = [
     plan.slides.third!,
     plan.slides.second!,
@@ -133,19 +129,40 @@ test("the format flow is reference material while format id and CTA position sta
     }),
   );
 
-  const wrongCta = makeRawStoryPlan("perfect_plan_breaks");
+  const flexibleCta = makeRawStoryPlan();
   CAROUSEL_STRUCTURE_2_POSITION_KEYS.forEach((positionKey, index) => {
-    wrongCta.slides[positionKey]!.ctaText =
-      index === 4 ? "try this with your own week" : null;
+    flexibleCta.slides[positionKey]!.ctaText =
+      index === 0 ? "try this with your own week" : null;
   });
-  assert.throws(
+  assert.doesNotThrow(
     () =>
-      parseCarouselStructure2StoryPlan(wrongCta, {
+      parseCarouselStructure2StoryPlan(flexibleCta, {
         businessDescription,
         storyFormatId: "perfect_plan_breaks",
       }),
-    /allows its CTA only on slide 4/i,
   );
+});
+
+test("the structured-output schema permits a CTA or null on every slide", () => {
+  const schema = buildCarouselStructure2StoryPlanSchema() as {
+    properties: {
+      slides: {
+        properties: Record<
+          string,
+          { properties: { ctaText: { anyOf: Array<{ type: string }> } } }
+        >;
+      };
+    };
+  };
+
+  for (const positionKey of CAROUSEL_STRUCTURE_2_POSITION_KEYS) {
+    assert.deepEqual(
+      schema.properties.slides.properties[positionKey]!.properties.ctaText.anyOf.map(
+        (entry) => entry.type,
+      ),
+      ["string", "null"],
+    );
+  }
 });
 
 test("valid AI copy is preserved and writing-quality warnings stay advisory", () => {
@@ -203,7 +220,8 @@ test("repair keeps the same creative brief and flexible format reference", () =>
 
   assert.match(prompt, /new_rule/);
   assert.match(prompt, /quiet frustration/);
-  assert.match(prompt, /allowedCtaPositions/);
+  assert.match(prompt, /CTA remains optional/i);
+  assert.doesNotMatch(prompt, /allowedCtaPositions|format-specific CTA position/i);
   assert.doesNotMatch(prompt, /productMechanism/);
 });
 
@@ -238,15 +256,13 @@ function makeAssignments(formatIds: readonly CarouselStructure2FormatId[]) {
 }
 
 function makeStoryPlan(storyFormatId: CarouselStructure2FormatId) {
-  return parseCarouselStructure2StoryPlan(makeRawStoryPlan(storyFormatId), {
+  return parseCarouselStructure2StoryPlan(makeRawStoryPlan(), {
     businessDescription,
     storyFormatId,
   });
 }
 
-function makeRawStoryPlan(storyFormatId: CarouselStructure2FormatId) {
-  const ctaPosition = getCarouselStructure2Format(storyFormatId)
-    .allowedCtaPositions[0]!;
+function makeRawStoryPlan() {
   const copy = [
     "i thought a perfect weekly plan would keep every priority under control",
     "then monday changed one task and i rebuilt the whole list before starting anything",
@@ -268,7 +284,7 @@ function makeRawStoryPlan(storyFormatId: CarouselStructure2FormatId) {
         positionKey,
         {
           ctaText:
-            index + 1 === ctaPosition
+            index === 4
               ? "try the same idea with one changing priority"
               : null,
           storyRole: roles[index]!,

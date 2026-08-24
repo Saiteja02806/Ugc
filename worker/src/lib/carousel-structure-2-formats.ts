@@ -47,7 +47,6 @@ export type CarouselStructure2SlideDefinition = {
 
 export type CarouselStructure2FormatDefinition = {
   aliases: string[];
-  allowedCtaPositions: number[];
   exampleFlows: CarouselStructure2StoryRole[][];
   generationRules: string[];
   id: CarouselStructure2FormatId;
@@ -166,17 +165,10 @@ function parseFormat(value: unknown, index: number) {
     parseSlide(slide, id, slideIndex),
   );
 
-  const allowedCtaPositions = getIntegerArray(
-    record.allowedCtaPositions,
-    `${id} allowed CTA positions`,
-    1,
-    5,
-  );
   const exampleFlows = getStoryRoleFlows(record.exampleFlows, id);
 
   return {
     aliases: getOptionalStringArray(record.aliases, `${id} aliases`),
-    allowedCtaPositions,
     exampleFlows,
     generationRules: getRequiredStringArray(
       record.generationRules,
@@ -389,27 +381,6 @@ function getNumber(
   }
 
   return value;
-}
-
-function getIntegerArray(
-  value: unknown,
-  label: string,
-  minimum: number,
-  maximum: number,
-) {
-  if (!Array.isArray(value) || value.length === 0) {
-    throw new Error(`${label} must be a non-empty integer array.`);
-  }
-
-  const result = value.map((item, index) =>
-    getInteger(item, `${label} item ${index + 1}`, minimum, maximum),
-  );
-
-  if (new Set(result).size !== result.length) {
-    throw new Error(`${label} must not contain duplicates.`);
-  }
-
-  return result;
 }
 
 function getStoryRoleFlows(value: unknown, formatId: CarouselStructure2FormatId) {

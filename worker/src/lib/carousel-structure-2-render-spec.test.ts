@@ -9,7 +9,6 @@ import {
 } from "./carousel-structure-2-render-spec.js";
 import {
   CAROUSEL_STRUCTURE_2_FORMAT_IDS,
-  getCarouselStructure2Format,
   type CarouselStructure2FormatId,
 } from "./carousel-structure-2-formats.js";
 import {
@@ -80,8 +79,6 @@ function makeSpecs(storyFormatId: CarouselStructure2FormatId) {
 }
 
 function makeStoryPlan(storyFormatId: CarouselStructure2FormatId) {
-  const ctaPosition = getCarouselStructure2Format(storyFormatId)
-    .allowedCtaPositions[0]!;
   const slideValues = [
     { storyRole: "recognition", storyText: "i'd plan the perfect week every sunday night", visualContext: "a weekly plan" },
     { storyRole: "failure_scene", storyText: "i mapped every task before monday, then one changing priority made me rebuild the schedule and second guess each choice.", visualContext: "a changing task list" },
@@ -95,7 +92,7 @@ function makeStoryPlan(storyFormatId: CarouselStructure2FormatId) {
       {
         ...slideValues[index],
         ctaText:
-          index + 1 === ctaPosition
+          index === 4
             ? "if your priorities keep changing, test a smaller planning change."
             : null,
       },

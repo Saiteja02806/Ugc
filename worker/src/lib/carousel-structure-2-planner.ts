@@ -22,7 +22,7 @@ import type { CarouselStructure2FormatId } from "./carousel-structure-2-formats.
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-flexible-seed-writer-v6-server-owned-order";
+  "llm-carousel-structure-2-flexible-seed-writer-v7-optional-cta";
 
 let openaiClient: OpenAI | null = null;
 
@@ -207,9 +207,7 @@ async function attemptIsolatedRepair(params: {
         type: "json_schema",
         json_schema: {
           name: `carousel_structure_2_story_repair_${params.assignment.slotIndex}`,
-          schema: buildCarouselStructure2StoryPlanSchema({
-            storyFormatId: params.assignment.storyFormatId,
-          }),
+          schema: buildCarouselStructure2StoryPlanSchema(),
           strict: true,
         },
       },

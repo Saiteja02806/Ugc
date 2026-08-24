@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -2975,10 +2975,10 @@ Name: **Verify v26 and replace the stale production assignment**
   history is not reduced to an LLM-generated summary.
 - Structure 1's format contract is unchanged. Structure 2 remains exactly five
   slides, but its eight formats are creative references rather than a compulsory
-  sentence-by-sentence story backbone. Each format defines its structurally
-  required CTA position (slides 2, 3, 4, or 5 across the library), examples, and
-  role guidance; the LLM may vary story-role order while preserving five slides,
-  the selected format ID, one CTA in the allowed position, and renderability.
+  sentence-by-sentence story backbone. Examples and role guidance may inspire
+  the LLM, while the five-slide count, selected format ID, required fields, and
+  renderability remain structural. CTA presence and slide position are creative
+  choices and never publishing gates.
 - Content-plan generation and both slideshow writers are source-pinned to
   `gpt-4o-mini`. Structural invalidity can trigger one isolated LLM repair or a
   failure. Structurally valid AI copy is preserved even when advisory diagnostics
@@ -3286,11 +3286,12 @@ Name: **Verify v26 and replace the stale production assignment**
   generation link are additive, service-role-only database changes. Deploy the
   five ordered `2026082415*` migrations before application and worker code.
 - Structure 2 format metadata is versioned as
-  `carousel-structure-2-formats-v2-flexible-flow` with story reference version
-  `carousel-structure-2-story-reference-v2`. Each format still uses the same
+  `carousel-structure-2-formats-v3-optional-cta` with story reference version
+  `carousel-structure-2-story-reference-v3`. Each format still uses the same
   five known roles exactly once, but their order is no longer a fixed runtime
-  backbone. Format-specific example flows guide the writer, while the format ID
-  and its allowed CTA position remain structural requirements.
+  backbone. Format-specific example flows guide the writer, while only the
+  format ID and five-slide output shape remain structural requirements. CTA
+  presence and placement remain AI-owned and optional.
 - Structure 2 remains LLM-only and source-pinned to `gpt-4o-mini`. It receives
   the minimal saved business description, the reserved creative seed and
   emotion, its format reference, and the last ten exact accepted copies. One
@@ -3368,9 +3369,10 @@ Name: **Verify v26 and replace the stale production assignment**
   still retain their normal numeric slot/slide metadata; only AI ownership of
   that metadata is removed.
 - The exact-key parser remains a second fail-closed boundary. Extra structural
-  fields, missing named positions, an invalid CTA position, invalid roles, or
-  render-fit failures still receive at most the existing isolated LLM repair;
-  no deterministic story copy is introduced.
+  fields, missing named positions, invalid roles, or render-fit failures still
+  receive at most the existing isolated LLM repair; no deterministic story copy
+  is introduced. A missing CTA or a CTA on any slide is valid and does not enter
+  the repair path.
 - Migration `20260824180000_align_hook_fixed_type_validation.sql` makes the Hook
   persistence boundary rolling-safe for the matched V3 and fixed-type V4
   validator/overlay pairs. It does not allow a V4 validator with a V3 overlay,
@@ -3383,3 +3385,27 @@ Name: **Verify v26 and replace the stale production assignment**
   Apply the Hook migration before releasing the application and workers, then
   verify Hook persistence plus a new Structure 2 batch through the authenticated
   production Trending flow on `https://www.getugcpilot.com`.
+
+## 2026-08-25 Structure 2 Optional CTA Contract
+
+- Structure 2 no longer requires exactly one CTA and no longer owns a fixed CTA
+  slide. The model-facing schema permits `ctaText` to be either a non-empty
+  string or `null` on every slide.
+- The planner prompt treats CTA presence and placement as creative choices. The
+  parser does not count CTA fields or compare them with format metadata, so a
+  missing CTA, a CTA on any slide, or more than one natural CTA cannot reject an
+  otherwise publishable Carousel.
+- When `ctaText` is null, the renderer omits the separate CTA bubble and gives
+  the story copy the available space. When CTA copy exists, its existing fixed
+  44px render-fit and safety checks still apply; unrenderable text is not
+  published merely because CTA placement is flexible.
+- Exact five-slide shape, server-owned slide order, required story fields,
+  renderer fit, human-image safety, unsupported-claim checks, and ownership
+  boundaries remain unchanged. This removes a copy-format rigidity, not the
+  publishing and safety boundaries that protect usable output.
+- Planner version
+  `llm-carousel-structure-2-flexible-seed-writer-v7-optional-cta`, story schema
+  `carousel-structure-2-flexible-story-v3-optional-cta`, and format metadata
+  `carousel-structure-2-formats-v3-optional-cta` identify this contract. These
+  source changes are not live until the updated Carousel worker is deployed and
+  a production Structure 2 batch is verified.

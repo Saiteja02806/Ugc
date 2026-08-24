@@ -33,11 +33,11 @@ test("defines exactly the eight canonical Structure 2 formats", () => {
   );
   assert.equal(
     CAROUSEL_STRUCTURE_2_FORMATS_VERSION,
-    "carousel-structure-2-formats-v2-flexible-flow",
+    "carousel-structure-2-formats-v3-optional-cta",
   );
   assert.equal(
     CAROUSEL_STRUCTURE_2_BACKBONE_VERSION,
-    "carousel-structure-2-story-reference-v2",
+    "carousel-structure-2-story-reference-v3",
   );
 });
 
@@ -86,7 +86,6 @@ test("keeps five-role references while allowing format-specific story flow", () 
         [18, 32],
       ],
     );
-    assert.ok(format.allowedCtaPositions.length > 0);
     assert.ok(format.exampleFlows.length > 0);
 
     for (const flow of format.exampleFlows) {

@@ -1,6 +1,6 @@
 {
-  "version": "carousel-structure-2-formats-v2-flexible-flow",
-  "backboneVersion": "carousel-structure-2-story-reference-v2",
+  "version": "carousel-structure-2-formats-v3-optional-cta",
+  "backboneVersion": "carousel-structure-2-story-reference-v3",
   "formats": [
     {
       "id": "wrong_belief",
@@ -10,7 +10,6 @@
       "name": "Wrong Belief",
       "purpose": "Reveal how a reasonable-sounding belief caused a recognizable behavior and made the problem worse.",
       "selectionWeight": 1,
-      "allowedCtaPositions": [5],
       "exampleFlows": [
         ["recognition", "failure_scene", "reframe", "product_turning_point", "proof_reflection_cta"],
         ["recognition", "reframe", "failure_scene", "product_turning_point", "proof_reflection_cta"]
@@ -81,7 +80,6 @@
       "name": "Perfect Plan Breaks",
       "purpose": "Show an ideal plan colliding with ordinary life before the product adapts the plan to reality.",
       "selectionWeight": 1,
-      "allowedCtaPositions": [4],
       "exampleFlows": [
         ["recognition", "failure_scene", "reframe", "proof_reflection_cta", "product_turning_point"],
         ["recognition", "failure_scene", "proof_reflection_cta", "reframe", "product_turning_point"]
@@ -152,7 +150,6 @@
       "name": "I Stopped",
       "purpose": "Lead with an ordinary behavior the narrator stopped and replace it with a smaller, concrete rule.",
       "selectionWeight": 1,
-      "allowedCtaPositions": [3],
       "exampleFlows": [
         ["recognition", "failure_scene", "proof_reflection_cta", "product_turning_point", "reframe"],
         ["recognition", "reframe", "proof_reflection_cta", "failure_scene", "product_turning_point"]
@@ -223,7 +220,6 @@
       "name": "I Was Terrible At",
       "purpose": "Use mild vulnerability to make a normal problem visible without turning the narrator into a spokesperson.",
       "selectionWeight": 1,
-      "allowedCtaPositions": [5],
       "exampleFlows": [
         ["recognition", "failure_scene", "reframe", "product_turning_point", "proof_reflection_cta"],
         ["recognition", "failure_scene", "product_turning_point", "reframe", "proof_reflection_cta"]
@@ -294,7 +290,6 @@
       "name": "Result Without the Expected Sacrifice",
       "purpose": "Lead with a desired result achieved without the method or sacrifice people normally expect.",
       "selectionWeight": 1,
-      "allowedCtaPositions": [2],
       "exampleFlows": [
         ["recognition", "proof_reflection_cta", "failure_scene", "reframe", "product_turning_point"],
         ["recognition", "proof_reflection_cta", "reframe", "failure_scene", "product_turning_point"]
@@ -365,7 +360,6 @@
       "name": "Identity Transformation",
       "purpose": "Contrast an undesirable old identity with a concrete new behavior without exaggerating the transformation.",
       "selectionWeight": 1,
-      "allowedCtaPositions": [4],
       "exampleFlows": [
         ["recognition", "failure_scene", "reframe", "proof_reflection_cta", "product_turning_point"],
         ["recognition", "reframe", "failure_scene", "proof_reflection_cta", "product_turning_point"]
@@ -436,7 +430,6 @@
       "name": "New Rule",
       "purpose": "Build the story around one exact behavioral rule that replaces recurring friction.",
       "selectionWeight": 1,
-      "allowedCtaPositions": [3],
       "exampleFlows": [
         ["recognition", "reframe", "proof_reflection_cta", "failure_scene", "product_turning_point"],
         ["recognition", "failure_scene", "proof_reflection_cta", "reframe", "product_turning_point"]
@@ -507,7 +500,6 @@
       "name": "Wrong Villain / Turns Out",
       "purpose": "Show why the obvious thing the narrator blamed was not the actual cause of the problem.",
       "selectionWeight": 1,
-      "allowedCtaPositions": [5],
       "exampleFlows": [
         ["recognition", "failure_scene", "reframe", "product_turning_point", "proof_reflection_cta"],
         ["recognition", "failure_scene", "product_turning_point", "reframe", "proof_reflection_cta"]

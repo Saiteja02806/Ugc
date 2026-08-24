@@ -2,10 +2,13 @@ import {
   clampHookTextPosition,
   createHookTextLayout,
   getDefaultHookTextPosition,
+  HOOK_TEXT_FIXED_FONT_SIZE,
   HOOK_TEXT_BROWSER_FONT_FAMILY,
   HOOK_TEXT_FONT_WEIGHT,
   HOOK_TEXT_OUTLINE_COLOR,
   HOOK_TEXT_OUTLINE_WIDTH,
+  LEGACY_HOOK_TEXT_LAYOUT_VERSION,
+  type HookTextLayoutVersion,
   type HookTextLayout,
 } from "@/lib/trending/hook-text-layout";
 import {
@@ -18,6 +21,7 @@ type HookTextOverlayProps = {
   className?: string;
   color?: TrendingTextColor;
   fontSize?: number;
+  layoutVersion?: HookTextLayoutVersion;
   lines?: readonly string[] | null;
   position?: { x: number; y: number } | null;
   size?: "card" | "compact" | "review";
@@ -28,12 +32,13 @@ export function HookTextOverlay({
   className,
   color = DEFAULT_TRENDING_TEXT_COLOR,
   fontSize,
+  layoutVersion,
   lines,
   position,
   size = "card",
   text,
 }: HookTextOverlayProps) {
-  const layout = getPreviewLayout({ fontSize, lines, text });
+  const layout = getPreviewLayout({ fontSize, layoutVersion, lines, text });
 
   if (!layout) {
     return null;
@@ -87,6 +92,7 @@ export function HookTextOverlay({
 
 function getPreviewLayout(params: {
   fontSize: number | undefined;
+  layoutVersion: HookTextLayoutVersion | undefined;
   lines: readonly string[] | null | undefined;
   text: string | null | undefined;
 }): HookTextLayout | null {
@@ -107,6 +113,11 @@ function getPreviewLayout(params: {
         enforceMaximum: false,
         enforceMinimum: false,
         fontSize: params.fontSize,
+        layoutVersion:
+          params.layoutVersion ??
+          (params.fontSize === HOOK_TEXT_FIXED_FONT_SIZE
+            ? undefined
+            : LEGACY_HOOK_TEXT_LAYOUT_VERSION),
         lines: savedLines,
       });
     } catch {

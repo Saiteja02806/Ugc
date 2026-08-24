@@ -103,7 +103,8 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-bubble-renderer-v11-hybrid-soft-union";
+  "social-bubble-renderer-v12-fixed-type";
+export const CAROUSEL_FIXED_FONT_SIZE = 44;
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
   "1:1": { height: 1080, width: 1080 },
@@ -395,46 +396,49 @@ function buildBalancedLines(params: {
 }
 
 async function fitMeasuredText(value: string, params: {
+  fontSize: number;
   fontFamily: string;
   fontWeight: number;
   getCornerSafety: (fontSize: number) => number;
   lineHeightRatio: number;
   maxLines: number;
   maxWidth: number;
-  minFontSize: number;
   paddingX: number;
-  startFontSize: number;
 }): Promise<MeasuredWrappedText> {
-  for (
-    let fontSize = params.startFontSize;
-    fontSize >= params.minFontSize;
-    fontSize -= 2
-  ) {
-    const cornerSafety = params.getCornerSafety(fontSize);
-    const maxTextWidth =
-      params.maxWidth - 2 * (params.paddingX + cornerSafety);
-    const wrapped = await buildMeasuredLines({
-      fontFamily: params.fontFamily,
-      fontSize,
-      fontWeight: params.fontWeight,
-      maxLines: params.maxLines,
-      maxTextWidth,
-      value,
-    });
+  if (!normalizeText(value)) {
+    return {
+      fontSize: 0,
+      lineHeight: 0,
+      lines: [],
+      measuredLineExtents: [],
+      measuredLineWidths: [],
+    };
+  }
 
-    if (!wrapped.truncated && wrapped.fits) {
-      return {
-        fontSize,
-        lineHeight: Math.round(fontSize * params.lineHeightRatio),
-        lines: wrapped.lines,
-        measuredLineExtents: wrapped.extents,
-        measuredLineWidths: wrapped.extents.map((extent) => extent.width),
-      };
-    }
+  const cornerSafety = params.getCornerSafety(params.fontSize);
+  const maxTextWidth =
+    params.maxWidth - 2 * (params.paddingX + cornerSafety);
+  const wrapped = await buildMeasuredLines({
+    fontFamily: params.fontFamily,
+    fontSize: params.fontSize,
+    fontWeight: params.fontWeight,
+    maxLines: params.maxLines,
+    maxTextWidth,
+    value,
+  });
+
+  if (!wrapped.truncated && wrapped.fits) {
+    return {
+      fontSize: params.fontSize,
+      lineHeight: Math.round(params.fontSize * params.lineHeightRatio),
+      lines: wrapped.lines,
+      measuredLineExtents: wrapped.extents,
+      measuredLineWidths: wrapped.extents.map((extent) => extent.width),
+    };
   }
 
   throw new Error(
-    `Carousel text could not fit within ${params.maxLines} lines without truncation.`,
+    `Carousel text could not fit within ${params.maxLines} lines at the fixed ${params.fontSize}px font size.`,
   );
 }
 
@@ -508,15 +512,14 @@ async function buildMeasuredLines(params: {
 }
 
 async function fitStackedText(values: string[], params: {
+  fontSize: number;
   fontFamily: string;
   fontWeight: number;
   getCornerSafety: (fontSize: number) => number;
   lineHeightRatio: number;
   maxLines: number;
   maxWidth: number;
-  minFontSize: number;
   paddingX: number;
-  startFontSize: number;
 }): Promise<MeasuredWrappedText> {
   const cleanValues = values.map(normalizeText).filter(Boolean);
 
@@ -536,49 +539,39 @@ async function fitStackedText(values: string[], params: {
     );
   }
 
-  for (
-    let fontSize = params.startFontSize;
-    fontSize >= params.minFontSize;
-    fontSize -= 2
-  ) {
-    const cornerSafety = params.getCornerSafety(fontSize);
-    const maxTextWidth =
-      params.maxWidth - 2 * (params.paddingX + cornerSafety);
-    const lines: string[] = [];
-    const extents: RenderedTextExtents[] = [];
-    let fits = true;
+  const cornerSafety = params.getCornerSafety(params.fontSize);
+  const maxTextWidth =
+    params.maxWidth - 2 * (params.paddingX + cornerSafety);
+  const lines: string[] = [];
+  const extents: RenderedTextExtents[] = [];
 
-    for (const value of cleanValues) {
-      const wrapped = await buildMeasuredLines({
-        fontFamily: params.fontFamily,
-        fontSize,
-        fontWeight: params.fontWeight,
-        maxLines: 1,
-        maxTextWidth,
-        value,
-      });
+  for (const value of cleanValues) {
+    const wrapped = await buildMeasuredLines({
+      fontFamily: params.fontFamily,
+      fontSize: params.fontSize,
+      fontWeight: params.fontWeight,
+      maxLines: 1,
+      maxTextWidth,
+      value,
+    });
 
-      if (wrapped.truncated || !wrapped.fits || wrapped.lines.length !== 1) {
-        fits = false;
-        break;
-      }
-
-      lines.push(wrapped.lines[0]);
-      extents.push(wrapped.extents[0]);
+    if (wrapped.truncated || !wrapped.fits || wrapped.lines.length !== 1) {
+      throw new Error(
+        `Carousel list text could not fit at the fixed ${params.fontSize}px font size.`,
+      );
     }
 
-    if (fits) {
-      return {
-        fontSize,
-        lineHeight: Math.round(fontSize * params.lineHeightRatio),
-        lines,
-        measuredLineExtents: extents,
-        measuredLineWidths: extents.map((extent) => extent.width),
-      };
-    }
+    lines.push(wrapped.lines[0]);
+    extents.push(wrapped.extents[0]);
   }
 
-  throw new Error("Carousel list text could not fit without truncation.");
+  return {
+    fontSize: params.fontSize,
+    lineHeight: Math.round(params.fontSize * params.lineHeightRatio),
+    lines,
+    measuredLineExtents: extents,
+    measuredLineWidths: extents.map((extent) => extent.width),
+  };
 }
 
 async function downloadImageBuffer(imageUrl: string) {
@@ -1192,7 +1185,6 @@ async function buildOverlaySvg(params: {
   normalizedTextPosition?: CarouselNormalizedTextPosition;
   safetyBoost: number;
   slide: PlannedCarouselSlide;
-  typographyScale: number;
   width: number;
 }): Promise<OverlayLayers> {
   const isSquare = params.format === "1:1";
@@ -1221,8 +1213,8 @@ async function buildOverlaySvg(params: {
   const bodyPaddingX = 18;
   const bodyPaddingY = 6;
   const bodyLineOverlap = 9;
-  const scaledFont = (value: number) => Math.max(1, Math.round(value * params.typographyScale));
   const headline = await fitMeasuredText(headlineText, {
+    fontSize: CAROUSEL_FIXED_FONT_SIZE,
     fontFamily: TEXT_FONT_FAMILY,
     fontWeight: HEADLINE_FONT_WEIGHT,
     getCornerSafety: (fontSize) =>
@@ -1230,12 +1222,11 @@ async function buildOverlaySvg(params: {
     lineHeightRatio: 1.04,
     maxLines: 2,
     maxWidth: maxBubbleWidth,
-    minFontSize: scaledFont(isSquare ? 40 : 42),
     paddingX: headlinePaddingX,
-    startFontSize: scaledFont(isSquare ? 50 : 54),
   });
   const body = hasStackedBody
     ? await fitStackedText(stackedBodyLines, {
+        fontSize: CAROUSEL_FIXED_FONT_SIZE,
         fontFamily: TEXT_FONT_FAMILY,
         fontWeight: BODY_FONT_WEIGHT,
         getCornerSafety: (fontSize) =>
@@ -1243,16 +1234,11 @@ async function buildOverlaySvg(params: {
         lineHeightRatio: 1.04,
         maxLines: 4,
         maxWidth: maxBubbleWidth,
-        minFontSize: scaledFont(
-          bodyOnlyMode ? (isSquare ? 32 : 34) : isSquare ? 30 : 32,
-        ),
         paddingX: bodyPaddingX,
-        startFontSize: scaledFont(
-          bodyOnlyMode ? (isSquare ? 40 : 42) : isSquare ? 36 : 38,
-        ),
       })
     : bodyText
       ? await fitMeasuredText(bodyText, {
+          fontSize: CAROUSEL_FIXED_FONT_SIZE,
           fontFamily: TEXT_FONT_FAMILY,
           fontWeight: BODY_FONT_WEIGHT,
           getCornerSafety: (fontSize) =>
@@ -1260,13 +1246,7 @@ async function buildOverlaySvg(params: {
           lineHeightRatio: bodyOnlyMode ? 1.04 : 1.05,
           maxLines: 4,
           maxWidth: maxBubbleWidth,
-          minFontSize: scaledFont(
-            bodyOnlyMode ? (isSquare ? 34 : 36) : isSquare ? 32 : 34,
-          ),
           paddingX: bodyPaddingX,
-          startFontSize: scaledFont(
-            bodyOnlyMode ? (isSquare ? 42 : 44) : isSquare ? 38 : 40,
-          ),
         })
       : {
           fontSize: 0,
@@ -1455,8 +1435,8 @@ async function buildValidatedOverlay(params: {
   width: number;
 }) {
   const attempts = [
-    { safetyBoost: 0, typographyScale: 1 },
-    { safetyBoost: 8, typographyScale: 0.94 },
+    { safetyBoost: 0 },
+    { safetyBoost: 8 },
   ];
   let lastContainment = { escapedTextPixels: 0, textPixels: 0 };
 

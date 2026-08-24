@@ -9,7 +9,9 @@ import {
 } from "../lib/schedule-finalization.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import {
+  HOOK_TEXT_FIXED_FONT_SIZE,
   HOOK_TEXT_LAYOUT_VERSION,
+  LEGACY_HOOK_TEXT_LAYOUT_VERSION,
   parseTextColor,
 } from "../lib/edit-overlay-render-spec.js";
 import type { BackgroundJobRow, Json } from "../types.js";
@@ -279,6 +281,15 @@ function parseRenderScheduleCombinationPayload(
     throw new Error("The authoritative Hook text layout is incomplete.");
   }
 
+  if (
+    hookTextLayoutVersion === HOOK_TEXT_LAYOUT_VERSION &&
+    hookTextFontSize !== HOOK_TEXT_FIXED_FONT_SIZE
+  ) {
+    throw new Error(
+      `Current Hook text must use the fixed ${HOOK_TEXT_FIXED_FONT_SIZE}px font size.`,
+    );
+  }
+
   return {
     autoFinalize,
     compositionFingerprint:
@@ -408,8 +419,11 @@ function getOptionalHookTextLayoutVersion(value: Json | undefined) {
     return null;
   }
 
-  if (value === HOOK_TEXT_LAYOUT_VERSION) {
-    return HOOK_TEXT_LAYOUT_VERSION;
+  if (
+    value === HOOK_TEXT_LAYOUT_VERSION ||
+    value === LEGACY_HOOK_TEXT_LAYOUT_VERSION
+  ) {
+    return value;
   }
 
   throw new Error("hookTextLayoutVersion is not supported.");

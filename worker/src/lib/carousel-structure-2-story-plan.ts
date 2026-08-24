@@ -1,5 +1,10 @@
 import type { CarouselRecentAcceptedCopy } from "./carousel-content-plan.js";
 import {
+  CAROUSEL_FIXED_FONT_SIZE,
+  CAROUSEL_STRUCTURE_2_FIXED_TEXT_WIDTH,
+  inspectCarouselFixedTextFit,
+} from "./carousel-slide-plan.js";
+import {
   CAROUSEL_STRUCTURE_2_STORY_ROLES,
   getCarouselStructure2Format,
   isCarouselStructure2FormatId,
@@ -60,6 +65,7 @@ export type CarouselStructure2StoryValidationIssue = {
     | "invalid_plan"
     | "perspective"
     | "product_timing"
+    | "render_fit"
     | "recent_repetition"
     | "story_repetition"
     | "story_structure"
@@ -178,6 +184,35 @@ export function validateCarouselStructure2StoryPlan(
       (definition) => definition.storyRole === slide.storyRole,
     );
     const wordCount = countWords(copy);
+    const storyFit = inspectCarouselFixedTextFit({
+      maximumLines: 6,
+      maximumWidth: CAROUSEL_STRUCTURE_2_FIXED_TEXT_WIDTH,
+      value: slide.storyText,
+    });
+
+    if (!storyFit.fits) {
+      issues.push({
+        code: "render_fit",
+        message: `Story copy must fit within six lines at the fixed ${CAROUSEL_FIXED_FONT_SIZE}px font size. ${storyFit.reason ?? ""}`.trim(),
+        slideNumber: slide.slideNumber,
+      });
+    }
+
+    if (slide.ctaText) {
+      const ctaFit = inspectCarouselFixedTextFit({
+        maximumLines: 3,
+        maximumWidth: CAROUSEL_STRUCTURE_2_FIXED_TEXT_WIDTH,
+        value: slide.ctaText,
+      });
+
+      if (!ctaFit.fits) {
+        issues.push({
+          code: "render_fit",
+          message: `CTA copy must fit within three lines at the fixed ${CAROUSEL_FIXED_FONT_SIZE}px font size. ${ctaFit.reason ?? ""}`.trim(),
+          slideNumber: slide.slideNumber,
+        });
+      }
+    }
 
     if (
       reference &&
@@ -271,7 +306,9 @@ export function partitionCarouselStructure2ValidationIssues(
   const advisoryIssues: CarouselStructure2StoryValidationIssue[] = [];
 
   for (const issue of dedupeCarouselStructure2ValidationIssues(issues)) {
-    if (issue.code === "invalid_plan") blockingIssues.push(issue);
+    if (issue.code === "invalid_plan" || issue.code === "render_fit") {
+      blockingIssues.push(issue);
+    }
     else advisoryIssues.push(issue);
   }
 
@@ -404,6 +441,7 @@ export function buildCarouselStructure2BatchMessages(params: {
         "Use each creativeSeed as a broad starting point and its emotion as the emotional current. Do not treat either as finished copy or a complete plot.",
         "Develop genuinely different stories. Do not force every item through the same overwhelmed-to-easier arc.",
         "Each story must contain exactly one CTA, and it must appear only at a position listed in that format's allowedCtaPositions.",
+        `Every story uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px type over a connected white SVG background. Keep storyText within six visual lines and CTA text within three; the renderer will not shrink or truncate copy.`,
         "Use exampleFlows and roleGuidance as inspiration. You may choose another ordering of the known story roles when it better serves the seed, except for the locked CTA position.",
         "Keep product connections natural and grounded only in businessDescription. Do not force a product sentence onto Slide 4.",
         "Do not invent precise features, proof, metrics, customers, guarantees, health outcomes, financial outcomes, or performance claims.",

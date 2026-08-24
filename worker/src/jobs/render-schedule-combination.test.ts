@@ -188,6 +188,19 @@ test("accepts a three-line Hook at the reference font size", async () => {
   });
 });
 
+test("rejects a non-fixed font size for the current Hook layout", async () => {
+  const fixture = createStore();
+  const job = createJob(false);
+  (job.input_json as Record<string, unknown>).hookTextLayoutVersion =
+    "hook-overlay-layout-v2-fixed";
+
+  await assert.rejects(
+    runRenderScheduleCombinationJob(job, { store: fixture.store }),
+    /Current Hook text must use the fixed 52px font size/,
+  );
+  assert.deepEqual(fixture.events, []);
+});
+
 test("rejects authoritative Hook lines that do not match the saved copy", async () => {
   const fixture = createStore();
   const job = createJob(false);

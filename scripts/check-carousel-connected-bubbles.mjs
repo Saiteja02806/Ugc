@@ -10,7 +10,7 @@ const outputDir = path.join(
   workspaceRoot,
   ".tmp",
   "carousel-connected-bubbles",
-  "v11-hybrid-soft-union-patterns",
+  "v12-fixed-type-patterns",
 );
 
 const {
@@ -23,7 +23,7 @@ const {
 
 if (
   CAROUSEL_RENDERER_VERSION !==
-  "social-bubble-renderer-v11-hybrid-soft-union"
+  "social-bubble-renderer-v12-fixed-type"
 ) {
   throw new Error(`Unexpected renderer version: ${CAROUSEL_RENDERER_VERSION}`);
 }
@@ -86,26 +86,23 @@ const cases = [
     slideForFormat: (format) =>
       createStackedSlide([
         format === "1:1"
-          ? "Wide metrics keep every visible character safely inside"
-          : "Wide metrics keep visible characters safely inside",
+          ? "Wide metrics keep every glyph safe."
+          : "Wide metrics keep every glyph safe.",
       ]),
   },
   {
-    id: "10-minimum-font-size-copy",
-    slideForFormat: (format) =>
-      createStackedSlide([
-        format === "1:1"
-          ? "WWW MMM @2026: 100% contained 111i today now."
-          : "WWW MMM @2026: 100% contained iiiii today now.",
-      ]),
+    id: "10-fixed-font-size-copy",
+    slide: createStackedSlide([
+      "Fixed type stays readable at 44px.",
+    ]),
   },
   {
     id: "11-reference-silhouette",
     slide: createStackedSlide([
-      "opening apps, searching foods,",
-      "picking servings, adjusting",
-      "portions, no busy person keeps",
-      "weeks",
+      "Open apps",
+      "Search foods",
+      "Pick servings",
+      "Adjust portions",
     ]),
   },
 ];
@@ -128,15 +125,15 @@ for (const format of formats) {
         ...diagnostics.lines.map((line) => line.rectangleWidth),
       );
 
-      if (widest < diagnostics.maxBubbleWidth - 42) {
+      if (widest < diagnostics.maxBubbleWidth - 125) {
         throw new Error(
-          `${item.id} did not exercise the maximum-width boundary in ${format}.`,
+          `${item.id} did not exercise the maximum-width boundary in ${format}: ${widest}/${diagnostics.maxBubbleWidth}.`,
         );
       }
     }
 
-    if (item.id === "10-minimum-font-size-copy") {
-      const expectedFontSize = format === "1:1" ? 32 : 34;
+    if (item.id === "10-fixed-font-size-copy") {
+      const expectedFontSize = 44;
       const actualFontSize = Math.min(
         ...diagnostics.lines.map((line) => line.fontSize),
       );

@@ -9,7 +9,7 @@ import {
   ScanText,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -62,34 +62,49 @@ type ContentMixErrorPayload = {
 type LoadState = "error" | "idle" | "loading" | "ready";
 
 const MIX_ROWS: Array<{
-  accentClass: string;
+  accentColor: string;
   barClass: string;
   format: TrendingFeedFormat;
   icon: typeof Images;
+  iconClass: string;
+  iconSurfaceClass: string;
   label: string;
+  valueClass: string;
 }> = [
   {
-    accentClass: "accent-primary",
+    accentColor: "var(--primary)",
     barClass: "bg-primary",
     format: "carousel",
     icon: Images,
+    iconClass: "text-primary",
+    iconSurfaceClass: "border-primary/15 bg-brand-soft",
     label: "Slideshows",
+    valueClass: "text-primary",
   },
   {
-    accentClass: "accent-purple-500",
-    barClass: "bg-purple-500",
+    accentColor: "var(--accent-purple)",
+    barClass: "bg-accent-purple",
     format: "wall_text",
     icon: ScanText,
+    iconClass: "text-accent-purple",
+    iconSurfaceClass: "border-accent-purple/15 bg-accent-purple/10",
     label: "Wall-of-Text",
+    valueClass: "text-accent-purple",
   },
   {
-    accentClass: "accent-blue-500",
-    barClass: "bg-blue-500",
+    accentColor: "var(--info)",
+    barClass: "bg-info",
     format: "hook_video",
     icon: Clapperboard,
+    iconClass: "text-info",
+    iconSurfaceClass: "border-info/15 bg-info/10",
     label: "Hooks",
+    valueClass: "text-info",
   },
 ];
+
+const CONTENT_MIX_RANGE_CLASS =
+  "mt-2 h-2 w-full cursor-pointer appearance-none rounded-full outline-none transition-[filter,opacity] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-80 [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:-mt-1 [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-card [&::-webkit-slider-thumb]:bg-[var(--mix-accent)] [&::-webkit-slider-thumb]:shadow-[0_0_0_1px_var(--mix-accent)] [&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-card [&::-moz-range-thumb]:bg-[var(--mix-accent)]";
 
 export function TrendingContentMixDialog({
   onApplied,
@@ -340,18 +355,40 @@ export function TrendingContentMixDialog({
 
               <div className="mt-5 space-y-5">
                 {MIX_ROWS.map(
-                  ({ accentClass, format, icon: Icon, label }) => (
-                    <label key={format} className="block">
+                  ({
+                    accentColor,
+                    format,
+                    icon: Icon,
+                    iconClass,
+                    iconSurfaceClass,
+                    label,
+                    valueClass,
+                  }) => {
+                    const sliderFillPercent =
+                      (mix[format] / Math.max(payload.limits[format], 1)) * 100;
+
+                    return (
+                      <label key={format} className="block">
                       <span className="flex items-center justify-between gap-3">
                         <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                          <Icon
-                            className="size-4 text-muted"
-                            aria-hidden="true"
-                          />
+                          <span
+                            className={cn(
+                              "flex size-7 shrink-0 items-center justify-center rounded-lg border",
+                              iconClass,
+                              iconSurfaceClass,
+                            )}
+                          >
+                            <Icon className="size-3.5" aria-hidden="true" />
+                          </span>
                           {label}
                         </span>
                         <span className="flex items-baseline gap-2">
-                          <output className="min-w-10 text-right text-sm font-semibold tabular-nums text-foreground-strong">
+                          <output
+                            className={cn(
+                              "min-w-10 text-right text-sm font-semibold tabular-nums",
+                              valueClass,
+                            )}
+                          >
                             {mix[format]}%
                           </output>
                           {allocation ? (
@@ -364,22 +401,26 @@ export function TrendingContentMixDialog({
                       <input
                         aria-label={`${label} percentage`}
                         aria-valuetext={`${mix[format]} percent, ${allocation?.[format] ?? 0} per day`}
-                        className={cn(
-                          "mt-2 h-5 w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-45",
-                          accentClass,
-                        )}
+                        className={CONTENT_MIX_RANGE_CLASS}
                         disabled={!payload.editable || saving}
                         max={payload.limits[format]}
                         min={0}
                         step={1}
+                        style={
+                          {
+                            "--mix-accent": accentColor,
+                            background: `linear-gradient(to right, ${accentColor} 0 ${sliderFillPercent}%, var(--card-muted) ${sliderFillPercent}% 100%)`,
+                          } as CSSProperties
+                        }
                         type="range"
                         value={mix[format]}
                         onChange={(event) =>
                           updateMix(format, Number(event.target.value))
                         }
                       />
-                    </label>
-                  ),
+                      </label>
+                    );
+                  },
                 )}
               </div>
 

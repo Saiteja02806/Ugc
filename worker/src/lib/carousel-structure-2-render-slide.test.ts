@@ -9,7 +9,7 @@ import {
 } from "./carousel-structure-2-render-slide.js";
 import type { CarouselStructure2RenderSpec } from "./carousel-structure-2-render-spec.js";
 
-test("the dedicated renderer produces all three native layouts inside the safe area", async () => {
+test("the dedicated renderer keeps all layouts fixed and inside the safe area", async () => {
   const background = await sharp({
     create: {
       background: { alpha: 1, b: 90, g: 130, r: 170 },
@@ -63,8 +63,17 @@ test("the dedicated renderer produces all three native layouts inside the safe a
         CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
       );
       assert.equal(result.diagnostics.layoutVariant, spec.layoutVariant);
-      assert.ok(result.diagnostics.storyFontSize >= 36);
-      assert.ok(result.diagnostics.storyFontSize <= 60);
+      assert.equal(result.diagnostics.storyFontSize, 44);
+      assert.equal(result.diagnostics.ctaFontSize, spec.ctaText ? 44 : null);
+      assert.equal(
+        result.diagnostics.bubbleShapeStrategy,
+        "hybrid-soft-union-connected-path",
+      );
+      assert.equal(
+        result.diagnostics.whiteBackgroundGroupCount,
+        spec.ctaText ? 2 : 1,
+      );
+      assert.equal(result.diagnostics.textTreatment, "pill");
     }
   }
 });

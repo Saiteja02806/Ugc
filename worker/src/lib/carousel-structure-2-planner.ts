@@ -21,7 +21,7 @@ import type { CarouselStructure2FormatId } from "./carousel-structure-2-formats.
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-flexible-seed-writer-v4";
+  "llm-carousel-structure-2-flexible-seed-writer-v5-fixed-render-fit";
 
 let openaiClient: OpenAI | null = null;
 

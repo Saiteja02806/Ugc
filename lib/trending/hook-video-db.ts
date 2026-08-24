@@ -2,6 +2,13 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  HOOK_TEXT_FIXED_FONT_SIZE,
+  HOOK_TEXT_LAYOUT_VERSION,
+  LEGACY_HOOK_TEXT_LAYOUT_VERSION,
+  type HookTextLayoutVersion,
+} from "@/lib/trending/hook-text-layout";
+
 import type {
   HookVideoDraftStatus,
   HookVideoSourceKind,
@@ -232,6 +239,7 @@ export type TrendingHookIdeaRecord = {
   influencerVideoTitle: string;
   openingLines: string[];
   overlayFontSize: number;
+  overlayLayoutVersion: HookTextLayoutVersion;
   hookTextFormatId: string | null;
   patternId: string | null;
   writingFormatId: string;
@@ -354,9 +362,13 @@ export async function listActiveTrendingHookIdeas(params: {
       suggestion?.opening_lines ?? null,
       suggestion?.text ?? null,
     );
-    const overlayFontSize = parseOverlayFontSize(
-      suggestion?.visual_fit ?? null,
-    );
+    const renderLayout = suggestion
+      ? parseHookSuggestionRenderLayout({
+          hookText: suggestion.text,
+          openingLines: suggestion.opening_lines,
+          visualFit: suggestion.visual_fit,
+        })
+      : null;
 
     if (
       !suggestion ||
@@ -365,7 +377,7 @@ export async function listActiveTrendingHookIdeas(params: {
         params.businessProfileVersion ||
       !isCompleteTrendingHookSuggestion(suggestion) ||
       !openingLines ||
-      !overlayFontSize ||
+      !renderLayout ||
       !(suggestion.hook_text_format_id || suggestion.pattern_id)
     ) {
       return [];
@@ -385,7 +397,8 @@ export async function listActiveTrendingHookIdeas(params: {
         influencerVideoId: suggestion.influencer_video_id,
         influencerVideoTitle: suggestion.influencer_video_title,
         openingLines,
-        overlayFontSize,
+        overlayFontSize: renderLayout.fontSize,
+        overlayLayoutVersion: renderLayout.layoutVersion,
         patternId: suggestion.pattern_id,
         writingFormatId:
           suggestion.hook_text_format_id ?? suggestion.pattern_id!,
@@ -492,11 +505,15 @@ export async function getEditableTrendingHookIdea(params: {
     suggestion.opening_lines,
     suggestion.text,
   );
-  const overlayFontSize = parseOverlayFontSize(suggestion.visual_fit);
+  const renderLayout = parseHookSuggestionRenderLayout({
+    hookText: suggestion.text,
+    openingLines: suggestion.opening_lines,
+    visualFit: suggestion.visual_fit,
+  });
 
   if (
     !openingLines ||
-    !overlayFontSize ||
+    !renderLayout ||
     !(suggestion.hook_text_format_id || suggestion.pattern_id)
   ) {
     return null;
@@ -515,7 +532,8 @@ export async function getEditableTrendingHookIdea(params: {
     influencerVideoId: suggestion.influencer_video_id,
     influencerVideoTitle: suggestion.influencer_video_title,
     openingLines,
-    overlayFontSize,
+    overlayFontSize: renderLayout.fontSize,
+    overlayLayoutVersion: renderLayout.layoutVersion,
     patternId: suggestion.pattern_id,
     writingFormatId:
       suggestion.hook_text_format_id ?? suggestion.pattern_id!,
@@ -843,9 +861,10 @@ function parseOverlayFontSize(value: Json | null) {
   const fontSize = value.fontSize;
 
   return typeof fontSize === "number" &&
-    Number.isFinite(fontSize) &&
+    Number.isInteger(fontSize) &&
     fontSize >= 34 &&
-    fontSize <= 60
+    fontSize <= 60 &&
+    fontSize % 2 === 0
     ? fontSize
     : null;
 }
@@ -858,5 +877,20 @@ export function parseHookSuggestionRenderLayout(params: {
   const lines = parseOpeningLines(params.openingLines, params.hookText);
   const fontSize = parseOverlayFontSize(params.visualFit);
 
-  return lines && fontSize ? { fontSize, lines } : null;
+  if (!lines || !fontSize) return null;
+
+  const overlayVersion =
+    params.visualFit &&
+    typeof params.visualFit === "object" &&
+    !Array.isArray(params.visualFit) &&
+    typeof params.visualFit.overlayVersion === "string"
+      ? params.visualFit.overlayVersion
+      : null;
+  const layoutVersion =
+    overlayVersion === "hook-overlay-v4-fixed-type" &&
+    fontSize === HOOK_TEXT_FIXED_FONT_SIZE
+      ? HOOK_TEXT_LAYOUT_VERSION
+      : LEGACY_HOOK_TEXT_LAYOUT_VERSION;
+
+  return { fontSize, layoutVersion, lines };
 }

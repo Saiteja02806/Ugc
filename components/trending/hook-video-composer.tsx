@@ -1089,7 +1089,7 @@ function DemoSelection({
       <input
         ref={fileInputRef}
         type="file"
-        accept="video/*"
+        accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm"
         className="sr-only"
         aria-label="Upload demo video"
         onChange={(event) => onUpload(event.target.files?.[0])}
@@ -1143,7 +1143,7 @@ function DemoSelection({
               Choose existing
             </span>
             <span className="mt-0.5 block text-xs font-medium text-muted">
-              Browse saved demo videos
+              Browse demo videos from Content
             </span>
           </span>
         </Button>
@@ -1176,9 +1176,9 @@ function DemoPickerDialog({
         className="max-h-[calc(100dvh-1rem)] gap-0 overflow-hidden rounded-[18px] border border-border bg-background p-0 ring-0 sm:max-w-[760px]"
       >
         <DialogHeader className="border-b border-border px-5 py-4 pr-12">
-          <DialogTitle>Choose an existing demo</DialogTitle>
+          <DialogTitle>Choose a demo from Content</DialogTitle>
           <DialogDescription>
-            Select one of your saved demo videos.
+            Select one of the demo videos saved in your Content library.
           </DialogDescription>
         </DialogHeader>
 
@@ -1227,8 +1227,14 @@ function DemoPickerDialog({
                   No saved demos yet
                 </p>
                 <p className="mt-1 max-w-xs text-sm font-medium text-muted">
-                  Close this window and upload your first demo video.
+                  Upload a demo here or add one from the Content screen.
                 </p>
+                <Link
+                  href="/library"
+                  className="mt-4 text-sm font-semibold text-primary underline underline-offset-4"
+                >
+                  Open Content
+                </Link>
               </div>
             ) : null}
 

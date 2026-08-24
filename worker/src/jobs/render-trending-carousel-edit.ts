@@ -570,13 +570,7 @@ function createStructure2EditRenderSpec(
         : edited.textPosition.y > 0.58
           ? "lower"
           : "center",
-    textTreatment: isProduct
-      ? "overlay"
-      : getChoice(
-          original.story_text_treatment,
-          ["outlined_overlay", "overlay", "pill"] as const,
-          "overlay",
-        ),
+    textTreatment: "pill",
     visualContext: original.image_direction ?? "",
     visualRole,
   };

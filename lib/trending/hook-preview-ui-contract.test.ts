@@ -79,7 +79,7 @@ test("keeps Hook feed and editor typography aligned with the final semibold outl
     editor.match(/function HookOverlayText[\s\S]+?function WallTextOverlayText/)?.[0] ??
     "";
 
-  assert.match(card, /hookFontSize = 60/);
+  assert.match(card, /hookFontSize = 52/);
   assert.match(hookLayout, /HOOK_TEXT_FONT_WEIGHT = 600/);
   assert.match(hookLayout, /HOOK_TEXT_OUTLINE_WIDTH = 5/);
   assert.match(hookLayout, /"Segoe UI Emoji"/);

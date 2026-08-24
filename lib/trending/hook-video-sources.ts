@@ -32,12 +32,7 @@ import type {
   HookVideoSourceKind,
 } from "@/lib/trending/hook-video-types";
 
-const demoSourceTypes: MediaSourceType[] = [
-  "demo_upload",
-  "upload",
-  "generated_video",
-  "edit_export",
-];
+const demoSourceTypes: MediaSourceType[] = ["demo_upload"];
 
 export class HookVideoSourceError extends Error {
   constructor(

@@ -1065,8 +1065,10 @@ planner source/model provenance.
 
 The planner supports varied text modes rather than forcing a headline and body
 on every slide. Rendering is performed with Sharp in the worker. Text must be
-rendered into the final image with measured typography, safe wrapping, adaptive
-font sizing, proper padding, and no heading-pill overflow.
+rendered into the final image with measured typography, safe wrapping, fixed
+44px type, proper padding, and no heading-pill overflow. Adaptive font sizing is
+reserved for Wall-of-Text and must not be introduced into either Carousel
+structure.
 
 Balanced carousel copy rules:
 
@@ -1087,15 +1089,16 @@ Balanced carousel copy rules:
   the production font stack, actual font size, available width, padding, and
   card dimensions, then keep headings to at most two rendered lines and body
   text to at most four rendered lines.
-- A headline and its supporting copy remain two distinct text groups. Within
-  either group, paint one measured rounded rectangle directly behind each line
-  and overlap adjacent rectangles vertically by 6-9px. Use an opaque-enough
-  fill so overlap does not create a visible dark seam. Do not clip one large
-  rectangle through a fragile silhouette.
+- A headline and its supporting copy remain two distinct text groups. Each
+  group uses one backend-generated connected white SVG path derived from its
+  measured line widths. Structure 2 uses the same connected-path engine for
+  story copy and for its separate CTA group; it does not switch to outlined
+  white text or a dark CTA panel.
 - Reserve horizontal corner safety of at least `radius + 6px` on each side in
   addition to normal padding. Never cap a line rectangle below its required
-  visible text width. Rewrap first, reduce type slightly only when rewrapping
-  cannot fit, and reject the render if a text-mask pixel falls outside the
+  visible text width. Rewrap at the fixed size and reject the plan/render when
+  it does not fit. Never shrink, truncate, add an ellipsis, or substitute
+  fallback copy. Reject the render if a text-mask pixel falls outside the
   white-background mask.
 - JSON/schema validity, the backend-selected format, exact slide order and
   roles, required fields, renderer character limits, product timing, prohibited
@@ -1425,12 +1428,15 @@ The Hook videos product flow, when enabled from an approved surface, is:
    not complete the Hook assignment. The Hook is recorded as selected only
    after Save to Content succeeds or after a real schedule and render request
    succeeds. These interactions do not mutate a Carousel assignment.
-4. Product demos come only after a right swipe, from the caller's ready
-   `media_assets` video collection or a new owner upload. The first screen shows
-   only `Upload demo video` and `Choose existing`; saved videos are fetched and
-   displayed only after the user opens the existing-demo picker. Selecting or
-   uploading a demo moves a prefilled Trending Hook directly to Review. Save
-   and Schedule remain final composition actions.
+4. Product demos come only after a right swipe, from the caller's Content
+   Library or a new owner upload saved into that Content Library. The durable
+   Content record is `demo_videos`; its ready `media_assets` row with
+   `source_type = demo_upload` is an internal composition projection, not
+   Creative Assets membership. The first screen shows only `Upload demo video`
+   and `Choose existing`; Content demos are fetched and displayed only after
+   the user opens the existing-demo picker. Selecting or uploading a demo moves
+   a prefilled Trending Hook directly to Review. Save and Schedule remain final
+   composition actions.
 5. The product must not fabricate demo, influencer, or Hook records when real
    inventory is empty.
 6. The legacy `POST /api/trending/hook-videos/suggestions` composition path
@@ -2804,25 +2810,30 @@ Name: **Verify v26 and replace the stale production assignment**
 - Updated pricing checklist checkmarks to use `text-success` (`#10b981`).
 - All layout dimensions, responsive behaviors, component trees, API contracts, and business logic remain completely unchanged.
 
-## 2026-08-23 Trending Single-Creative Review Stage
+## 2026-08-24 Trending Centered Stacked Review Stage
 
-- Trending now presents exactly one visible active creative in a centered review
-  stage. Upcoming Carousel, Hook, and Wall-of-Text cards must not peek above or
-  below the active creative or resemble additional slides in the current
-  Carousel.
-- The next two feed items remain mounted in an invisible, non-interactive,
-  assistive-technology-hidden preload boundary. This preserves protected Hook
-  preview preparation and media warm-up without restoring the visible stacked
-  deck treatment.
-- The active Carousel uses a responsive 4:5 width capped at 420px and constrained
-  by the available dynamic viewport height. Hook and Wall-of-Text previews use
-  the equivalent responsive 9:16 sizing. Short viewports shrink the media before
-  allowing the decision controls to leave the visible review area.
+- Trending presents one interactive active creative in a centered review stage,
+  with the next two real feed items mounted as a quiet visual stack behind it.
+  The next card peeks above the active creative at rest, and the deeper preload
+  layer remains visible enough to communicate that more content is ready.
+- Both background cards remain non-interactive, inert, and hidden from
+  assistive technology. They retain protected Hook preview preparation,
+  Carousel image preloading, and Wall video warm-up without creating duplicate
+  controls or another accessible review target.
+- Dragging the active card in either direction progressively promotes the same
+  next card using the absolute horizontal drag distance. A small left or right
+  movement therefore reveals real prepared media immediately; cancelling the
+  gesture returns the stack to rest, while a completed decision promotes that
+  already-mounted item without a blank intermediate frame.
+- The active Carousel uses a compact responsive 4:5 width capped at 270px.
+  Hook and Wall-of-Text previews use a compact responsive 9:16 width capped at
+  230px. Both formats remain constrained by the available dynamic viewport
+  height so decision controls stay visible on short screens.
 - The format label is attached directly above the active card and uses a compact,
   flat treatment. Reject and Accept stay centered immediately below the active
   creative and do not use ambient elevation.
-- The format label uses a neutral 20px surface with 9px medium-weight copy. Only
-  its small icon carries subdued format color; the pill itself has no glow,
+- The format label uses a neutral 22px surface with 10px medium-weight copy. Only
+  its small icon carries the format identity color; the pill itself has no glow,
   ring, shadow, blur, or format-colored background.
 - Swipe, keyboard, Edit, decision outbox, Carousel slide navigation, and feed
   ordering behavior are unchanged.
@@ -2832,6 +2843,15 @@ Name: **Verify v26 and replace the stale production assignment**
 - Hook and Wall-of-Text audio controls use a compact flat overlay without ambient
   shadow or backdrop blur. Hook cards, rendered Carousel/Wall cards, edited
   badges, and the Trending loading card also avoid ambient elevation.
+- The Trending header's `Adjust` and item-level `Edit` actions share the same
+  compact 36px pill size, padding, typography, icon scale, border weight, hover
+  treatment, and focus behavior. Their labels and semantics remain distinct.
+- The Adjust content-mix dialog keeps one identity color per format everywhere
+  that format is represented: Slideshows use the existing primary orange,
+  Wall-of-Text uses the existing product purple, and Hooks use the existing info
+  blue. The composition segments, icon badges, percentages, slider progress,
+  and slider thumbs use that same mapping. Disabled Free-plan sliders remain
+  visibly read-only without losing their format identity.
 
 ## 2026-08-23 Carousel AI Copy Preservation and Model Pin
 
@@ -3187,6 +3207,25 @@ Name: **Verify v26 and replace the stale production assignment**
   `https://www.getugcpilot.com`. Wall rendering behavior and all
   Slideshow/Carousel behavior are otherwise unchanged.
 
+## 2026-08-24 Trending Hook Demo Content Boundary
+
+- A demo uploaded during Trending Hook composition is Content. Trending uses
+  the same `/api/demo/create-upload-url` and `/api/demo/complete-upload`
+  persistence path as the Content screen, creating an owner-scoped
+  `demo_videos` row before using its ready media projection in composition.
+- `Choose existing` lists only ready `media_assets` projections whose
+  `source_type = demo_upload`. General Creative Assets uploads, generated
+  videos, and Edit exports are not eligible as product demos.
+- The `demo_upload` projection exists so Hook validation and rendering can use
+  the unified media contract. It must remain excluded from Creative Assets and
+  visible in the Content Library at `/library`.
+- Failed Trending demo uploads are cleaned up through the demo delete API, so
+  the Content record, media projection, and raw storage object retain their
+  existing synchronized-deletion behavior.
+- This application change is locally validated but is not live until deployed
+  and verified in the authenticated Trending and Content flows on
+  `https://www.getugcpilot.com`.
+
 ## 2026-08-24 Carousel Content Plans and Flexible Structure 2 Flow
 
 - Automatic Carousel preparation is now backed by an owner- and
@@ -3218,3 +3257,57 @@ Name: **Verify v26 and replace the stale production assignment**
 - These changes are locally validated but are not live until the ordered
   migrations, application, and worker are deployed and the authenticated
   Carousel flow is verified on `https://www.getugcpilot.com`.
+
+## 2026-08-24 Wall-of-Text Accepted Action Surface
+
+- Accepting or right-swiping a Wall-of-Text idea opens one compact action card
+  with the smaller 9:16 video preview on the left and only two actions on the
+  right: `Create a Schedule` and `Save to Creative Assets`.
+- The accepted action surface does not repeat the format label, title,
+  explanatory copy, overlay-copy label, or full overlay text outside the video.
+  The rendered overlay remains visible inside the video preview itself.
+- `Create a Schedule` is the primary action and opens the existing inline
+  scheduling dialog on Trending. Its first step collects an exact Instagram
+  account plus date and time; its review step confirms the destination and
+  publish time before durable scheduling.
+- `Save to Creative Assets` keeps the existing owner-scoped Wall draft save and
+  render-preparation behavior. Loading and failure feedback remain visible
+  because they communicate the state of the two requested actions.
+- This is a presentation-only decision. Wall copy generation, authoritative
+  line layout, video/audio preview, edit persistence, rendering, scheduling,
+  ownership, and completion contracts are unchanged.
+
+## 2026-08-24 Fixed Hook and Slideshow Typography Contract
+
+- Adaptive typography belongs only to Wall-of-Text. Its existing measured
+  52/50/48/46/44px range and 44px readability floor remain unchanged.
+- Current Hook layouts use fixed 52px Geist SemiBold type under
+  `hook-overlay-layout-v2-fixed`. Hook writing still owns one to three semantic
+  lines and the existing word/character limits. If those authoritative lines
+  do not fit at 52px, the candidate receives the existing single targeted LLM
+  repair and then fails; the renderer never shrinks, truncates, adds an
+  ellipsis, or publishes fallback wording.
+- Stored and already-queued `hook-overlay-layout-v1` layouts remain readable at
+  their saved 34-60px size through an explicit legacy path. Current v2 payloads
+  are rejected unless their saved font is exactly 52px and their lines match
+  their text.
+- Structure 1 and Structure 2 Carousel renders use fixed 44px typography.
+  Pre-render validation checks Structure 1 headline/body/list groups and
+  Structure 2 story/CTA groups against their fixed-size line capacities. A
+  failing AI plan gets the existing one isolated repair and then fails closed.
+- Structure 1 renderer `social-bubble-renderer-v12-fixed-type` preserves its
+  text-pixel containment retry, but that retry may only increase bubble safety;
+  it may not reduce typography.
+- Structure 2 renderer
+  `story-native-renderer-v3-fixed-connected-white` uses the same backend
+  connected-path geometry as Structure 1. Every story group is black text on
+  an opaque white connected SVG path. A separate CTA creates a second white
+  connected path. Stored legacy treatment labels remain readable, but new
+  Structure 2 specs normalize the effective treatment to the white bubble.
+- Existing rendered Carousel WebPs and Hook videos are immutable. The new
+  renderer/layout versions apply only to new generations and explicit
+  re-renders after the application and worker are deployed.
+- These are local source changes. Do not describe them as live until the
+  application and GCP workers are deployed and authenticated production
+  canaries verify both Carousel structures and Hook rendering on
+  `https://www.getugcpilot.com`.

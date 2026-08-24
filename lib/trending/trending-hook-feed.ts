@@ -324,11 +324,15 @@ function toHookSourceRecord(
       fontSize: idea.overlayFontSize,
       hookTextFormatId: idea.hookTextFormatId,
       kind: "hook",
+      layoutVersion: idea.overlayLayoutVersion,
       lines: idea.openingLines,
       patternId: idea.patternId,
       placement: textPosition ? "catalog" : "default",
       position: textPosition,
-      styleVersion: "hook-overlay-v3",
+      styleVersion:
+        idea.overlayLayoutVersion === "hook-overlay-layout-v2-fixed"
+          ? "hook-overlay-v4-fixed-type"
+          : "hook-overlay-v3",
       value: idea.hookText,
       writingFormatId: idea.writingFormatId,
     },

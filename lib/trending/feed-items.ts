@@ -1,3 +1,4 @@
+import type { HookTextLayoutVersion } from "@/lib/trending/hook-text-layout";
 import type {
   TrendingWallTextContent,
   TrendingWallTextLayout,
@@ -59,6 +60,7 @@ export type TrendingHookTextContent = {
   fontSize: number;
   hookTextFormatId: string | null;
   kind: "hook";
+  layoutVersion?: HookTextLayoutVersion;
   lines: string[];
   patternId: string | null;
   writingFormatId: string;
@@ -67,7 +69,8 @@ export type TrendingHookTextContent = {
   styleVersion:
     | "hook-overlay-v1"
     | "hook-overlay-v2"
-    | "hook-overlay-v3";
+    | "hook-overlay-v3"
+    | "hook-overlay-v4-fixed-type";
   value: string;
 };
 

@@ -7,6 +7,7 @@ import {
   clampHookTextPosition,
   createHookTextLayout,
   HOOK_TEXT_LAYOUT_VERSION,
+  type HookTextLayoutVersion,
 } from "./hook-text-layout.ts";
 import type { TrendingTextColor } from "./text-color.ts";
 import { getWallTextLinePolicy } from "./wall-text-text-logic.ts";
@@ -69,7 +70,7 @@ export type TrendingHookEditContent = {
   fontSize: number;
   format: "hook_video";
   hookText: string;
-  layoutVersion?: typeof HOOK_TEXT_LAYOUT_VERSION;
+  layoutVersion?: HookTextLayoutVersion;
   lines: string[];
   position: NormalizedTextPosition;
   textColor: TrendingTextColor;

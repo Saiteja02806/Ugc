@@ -60,8 +60,14 @@ test("Hook render claims are owner-scoped and require an explicit library save",
 });
 
 test("new saved and scheduled Hook renders carry the authoritative layout version", () => {
-  assert.match(scheduleRoute, /hookTextLayoutVersion: HOOK_TEXT_LAYOUT_VERSION/);
-  assert.match(savedRender, /hookTextLayoutVersion: HOOK_TEXT_LAYOUT_VERSION/);
+  assert.match(
+    scheduleRoute,
+    /hookTextLayoutVersion: composition\.hookRenderSpec\.version/,
+  );
+  assert.match(
+    savedRender,
+    /hookTextLayoutVersion: composition\.hookRenderSpec\.version/,
+  );
   assert.match(workerJob, /The authoritative Hook text layout is incomplete/);
   assert.match(workerJob, /hookTextLines must match hookText exactly/);
 });

@@ -36,7 +36,11 @@ import {
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { resolveTrendingTextColor } from "@/lib/trending/text-color";
 import { getLockedHookAudioForVideo } from "@/lib/trending/hook-audio-db";
-import { HOOK_TEXT_LAYOUT_VERSION } from "@/lib/trending/hook-text-layout";
+import {
+  HOOK_TEXT_FIXED_FONT_SIZE,
+  HOOK_TEXT_LAYOUT_VERSION,
+  LEGACY_HOOK_TEXT_LAYOUT_VERSION,
+} from "@/lib/trending/hook-text-layout";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -243,7 +247,8 @@ export async function POST(
 
   if (
     hookTextLayoutVersion !== null &&
-    hookTextLayoutVersion !== HOOK_TEXT_LAYOUT_VERSION
+    hookTextLayoutVersion !== HOOK_TEXT_LAYOUT_VERSION &&
+    hookTextLayoutVersion !== LEGACY_HOOK_TEXT_LAYOUT_VERSION
   ) {
     return jsonResponse(
       {
@@ -257,6 +262,7 @@ export async function POST(
   if (
     hookTextLayoutVersion === HOOK_TEXT_LAYOUT_VERSION &&
     (!hookTextFontSize ||
+      hookTextFontSize !== HOOK_TEXT_FIXED_FONT_SIZE ||
       !hookTextLines ||
       normalizeHookText(hookTextLines.join(" ")) !== normalizeHookText(hookText))
   ) {

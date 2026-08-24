@@ -26,6 +26,9 @@ const hookAudio = readProjectFile(
 const wallAudio = readProjectFile(
   "components/trending/wall-text-audio-preview.tsx",
 );
+const wallTextDetail = readProjectFile(
+  "components/trending/wall-text-detail-view.tsx",
+);
 const sidebar = readProjectFile("components/layout/app-sidebar.tsx");
 
 test("places Edit in the page header and keeps circular decisions below the card", () => {
@@ -44,12 +47,15 @@ test("places Edit in the page header and keeps circular decisions below the card
   assert.match(workspace, /ref=\{setHeaderActionsRoot\}/);
 });
 
-test("uses two accessible circular decision targets and a separate Edit pill", () => {
+test("uses two accessible circular decision targets and a compact Edit pill", () => {
   assert.match(actions, /flex items-center justify-center gap-4 sm:gap-5/);
   assert.equal((actions.match(/size="creative-icon"/g) ?? []).length, 2);
   assert.equal((actions.match(/size="creative-edit"/g) ?? []).length, 1);
   assert.match(buttons, /"creative-icon":\s*\n\s*"size-14[^"]*sm:size-16/);
-  assert.match(buttons, /"creative-edit":\s*\n\s*"h-11[^"]*sm:h-12/);
+  assert.match(
+    buttons,
+    /"creative-edit":\s*\n\s*"h-9[^"]*px-3\.5[^"]*text-sm/,
+  );
   assert.doesNotMatch(actions, /size="creative-action"/);
 });
 
@@ -72,6 +78,10 @@ test("restores Adjust as the global content-mix action beside item-level Edit", 
   assert.match(workspace, />\s*Adjust\s*</);
   assert.match(
     workspace,
+    /data-trending-adjust-control[\s\S]*variant="creative-edit"[\s\S]*size="creative-edit"/,
+  );
+  assert.match(
+    workspace,
     /<Button[\s\S]*data-trending-adjust-control[\s\S]*<div ref=\{setHeaderActionsRoot\}/,
   );
   assert.match(
@@ -84,6 +94,15 @@ test("restores Adjust as the global content-mix action beside item-level Edit", 
   assert.match(contentMixDialog, /Editing an individual creative remains under Edit/);
   assert.match(contentMixDialog, /type="range"/);
   assert.match(contentMixDialog, /Your Free mix is fixed/);
+  assert.match(contentMixDialog, /barClass: "bg-primary"/);
+  assert.match(contentMixDialog, /barClass: "bg-accent-purple"/);
+  assert.match(contentMixDialog, /barClass: "bg-info"/);
+  assert.match(contentMixDialog, /"--mix-accent": accentColor/);
+  assert.match(contentMixDialog, /iconSurfaceClass/);
+  assert.match(
+    contentMixDialog,
+    /mix\[format\] \/ Math\.max\(payload\.limits\[format\], 1\)/,
+  );
 });
 
 test("keeps review cards, audio controls, and creative actions flat", () => {
@@ -135,12 +154,21 @@ test("labels every Trending card with its content format above the creative", ()
   assert.match(workspace, /"Reel Hook"/);
   assert.match(workspace, /"Wall-of-Text"/);
   assert.match(workspace, /Slideshow/);
-});
-
-test("centers one larger responsive creative while preloading later cards invisibly", () => {
   assert.match(
     workspace,
-    /CAROUSEL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(88vw,420px,calc\(\(100dvh-238px\)\*0\.8\)\)\]"/,
+    /h-\[22px\][^"]*px-2[^"]*text-\[10px\]/,
+  );
+  assert.match(workspace, /cn\("size-3 shrink-0", iconColor\)/);
+});
+
+test("centers the active creative over visible inert next-card layers", () => {
+  assert.match(
+    workspace,
+    /CAROUSEL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(78vw,270px,calc\(\(100dvh-238px\)\*0\.8\)\)\]"/,
+  );
+  assert.match(
+    workspace,
+    /VERTICAL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,230px,calc\(\(100dvh-238px\)\*0\.5625\)\)\]"/,
   );
   assert.match(
     workspace,
@@ -148,12 +176,13 @@ test("centers one larger responsive creative while preloading later cards invisi
   );
   assert.match(
     workspace,
-    /data-trending-card-state=\{isActive \? "active" : "preload"\}/,
+    /data-trending-card-state=\{getTrendingDeckCardState\(depth\)\}/,
   );
   assert.match(
     workspace,
-    /pointer-events-none absolute left-0 top-0 size-px overflow-hidden opacity-0/,
+    /pointer-events-none absolute inset-0 overflow-visible/,
   );
+  assert.match(workspace, /overflow-x-clip overflow-y-visible/);
   assert.equal(
     (workspace.match(/data-trending-card-state=/g) ?? []).length,
     3,
@@ -163,23 +192,48 @@ test("centers one larger responsive creative while preloading later cards invisi
     3,
   );
   assert.match(workspace, /function getTrendingDeckSlots/);
-  assert.doesNotMatch(
-    workspace,
-    /pointer-events-none absolute inset-0 flex items-start justify-center pt-9/,
-  );
+  assert.match(workspace, /depth === 1 \? "next" : "preload"/);
+  assert.match(workspace, /Math\.abs\(dragX\) \/ SWIPE_THRESHOLD_PX/);
+  assert.match(workspace, /dragX=\{dragX\}/);
+  assert.match(workspace, /isDragging=\{isDragging\}/);
+  assert.doesNotMatch(workspace, /size-px overflow-hidden opacity-0/);
 });
 
-test("attaches a smaller flat format label to the responsive card", () => {
+test("keeps actual upcoming media ready behind either swipe direction", () => {
+  assert.match(
+    workspace,
+    /const revealProgress = isActive[\s\S]*Math\.abs\(dragX\)/,
+  );
+  assert.match(workspace, /previewUrl=\{previewUrl\}/);
+  assert.match(workspace, /preload=\{depth <= 1 \? "auto" : "metadata"\}/);
+  assert.match(workspace, /src=\{editedRenderedUrl \?\? activeSlide\.renderedUrl\}/);
+  assert.doesNotMatch(workspace, /dragX > 0 \?/);
+});
+
+test("keeps the Wall-of-Text accepted view compact and action-only", () => {
+  assert.match(wallTextDetail, /max-w-\[220px\]/);
+  assert.match(
+    wallTextDetail,
+    /"Create a Schedule"[\s\S]*"Save to Creative Assets"/,
+  );
+  assert.match(wallTextDetail, /onClick=\{\(\) => void onSchedule\(\)\}/);
+  assert.doesNotMatch(wallTextDetail, /Review the complete overlay/);
+  assert.doesNotMatch(wallTextDetail, /Wall-text Reel<\/p>/);
+  assert.doesNotMatch(wallTextDetail, /Overlay copy/);
+  assert.doesNotMatch(wallTextDetail, /getWallTextRenderBlocks/);
+});
+
+test("attaches a slightly larger but compact flat format label to the card", () => {
   assert.match(
     workspace,
     /pointer-events-none z-10 mb-1\.5 flex items-center justify-start/,
   );
   assert.match(
     workspace,
-    /inline-flex h-5[^\"]*border-border\/60 bg-card\/75[^\"]*text-\[9px\] font-medium/,
+    /inline-flex h-\[22px\][^\"]*border-border\/60 bg-card\/80[^\"]*text-\[10px\] font-medium/,
   );
   assert.match(workspace, /const iconColor = isHook/);
-  assert.match(workspace, /className=\{cn\("size-2\.5 shrink-0", iconColor\)\}/);
+  assert.match(workspace, /className=\{cn\("size-3 shrink-0", iconColor\)\}/);
   assert.doesNotMatch(
     workspace,
     /data-trending-format-pill[\s\S]{0,400}(?:shadow-|drop-shadow|backdrop-blur|ring-)/,
@@ -288,7 +342,8 @@ test("Carousel editing starts from the exact render and keeps live previews stru
   assert.match(editor, /showExactRender \? "exact-render" : "live-render"/);
   assert.match(editor, /function getExactCarouselPreviewUrl/);
   assert.match(editor, /function Structure2StoryText/);
-  assert.match(editor, /isPill \? "#141518" : "#ffffff"/);
+  assert.match(editor, /color: "#141518"/);
+  assert.match(editor, /fontWeight: 600/);
   assert.match(editor, /function CarouselEditorBackground/);
   assert.match(editor, /story_product_reveal/);
   assert.match(editor, /function CarouselBubbleText/);

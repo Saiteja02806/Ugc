@@ -20,9 +20,12 @@ import {
   EDIT_OVERLAY_SHADOW_OFFSET_PX,
   EDIT_OVERLAY_VERTICAL_INSET_PERCENT,
   HOOK_TEXT_LAYOUT_VERSION,
+  LEGACY_HOOK_TEXT_LAYOUT_VERSION,
   buildEditOverlayTextLayout,
+  buildLegacyEditOverlayTextLayout,
   buildResolvedEditOverlayTextLayout,
   type EditOverlayTextLayout,
+  type HookTextLayoutVersion,
 } from "./edit-overlay-render-spec.js";
 import {
   buildWallTextRenderLayout,
@@ -50,7 +53,7 @@ export type PreparedTextOverlay = {
 type RenderTextOverlay = {
   fontSize?: number | null;
   id: string;
-  layoutVersion?: typeof HOOK_TEXT_LAYOUT_VERSION | null;
+  layoutVersion?: HookTextLayoutVersion | null;
   lines?: string[] | null;
   normalizedPosition?: NormalizedTextPosition | null;
   position: TextOverlayPosition;
@@ -105,7 +108,7 @@ export type RenderScheduleCombinationPayload = {
   demoVideoUrl: string;
   hookText: string;
   hookTextFontSize?: number | null;
-  hookTextLayoutVersion?: typeof HOOK_TEXT_LAYOUT_VERSION | null;
+  hookTextLayoutVersion?: HookTextLayoutVersion | null;
   hookTextLines?: string[] | null;
   hookTextPosition?: NormalizedTextPosition | null;
   hookTextColor: string;
@@ -1142,19 +1145,30 @@ function buildPreparedTextOverlay(params: {
     hasSavedFont && savedLines && savedLines.length > 0
       ? buildResolvedEditOverlayTextLayout({
           fontSize: params.overlay.fontSize!,
+          layoutVersion:
+            params.overlay.layoutVersion ?? LEGACY_HOOK_TEXT_LAYOUT_VERSION,
           lines: savedLines,
           ratio: params.ratio,
           style: params.overlay.style,
           textColor: params.overlay.textColor,
         })
-      : buildEditOverlayTextLayout(
-          savedLines && savedLines.length > 0
-            ? savedLines.join("\n")
-            : text,
-          params.overlay.style,
-          params.ratio,
-          params.overlay.textColor,
-        );
+      : params.overlay.style === "hook"
+        ? buildLegacyEditOverlayTextLayout(
+            savedLines && savedLines.length > 0
+              ? savedLines.join("\n")
+              : text,
+            params.overlay.style,
+            params.ratio,
+            params.overlay.textColor,
+          )
+        : buildEditOverlayTextLayout(
+            savedLines && savedLines.length > 0
+              ? savedLines.join("\n")
+              : text,
+            params.overlay.style,
+            params.ratio,
+            params.overlay.textColor,
+          );
 
   return {
     imagePath: params.imagePath,

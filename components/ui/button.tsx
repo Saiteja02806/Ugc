@@ -55,7 +55,7 @@ const buttonVariants = cva(
         "creative-icon":
           "size-14 rounded-full [&_svg:not([class*='size-'])]:size-5 sm:size-16 sm:[&_svg:not([class*='size-'])]:size-6",
         "creative-edit":
-          "h-11 gap-2 rounded-full px-5 text-sm font-semibold sm:h-12 sm:px-6 sm:text-base [&_svg:not([class*='size-'])]:size-4.5",
+          "h-9 gap-1.5 rounded-full px-3.5 text-sm font-semibold [&_svg:not([class*='size-'])]:size-3.5",
       },
     },
     defaultVariants: {

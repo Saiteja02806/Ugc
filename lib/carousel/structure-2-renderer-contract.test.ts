@@ -30,12 +30,13 @@ test("Structure 2 owns a dedicated renderer and persistence adapter", async () =
     read("worker/src/lib/carousel-structure-2-render-spec.ts"),
   ]);
 
-  assert.match(renderer, /story-native-renderer-v2-line-bubbles/);
+  assert.match(renderer, /story-native-renderer-v3-fixed-connected-white/);
   assert.match(renderer, /story_product_reveal/);
-  assert.match(
-    renderer,
-    /const textFill = isPill \? "#141518" : "#ffffff"/,
-  );
+  assert.match(renderer, /buildConnectedBubblePath/);
+  assert.match(renderer, /fill="#ffffff"/);
+  assert.match(renderer, /fill="#141518"/);
+  assert.match(renderer, /CAROUSEL_FIXED_FONT_SIZE/);
+  assert.doesNotMatch(renderer, /fontSize\s*-=\s*2/);
   assert.match(renderer, /params\.layout\.lines\s*\.map/);
   assert.match(persistence, /structure_id: "structure_2"/);
   assert.match(persistence, /story_format_id: spec\.storyFormatId/);

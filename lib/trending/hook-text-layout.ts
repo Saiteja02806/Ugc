@@ -6,7 +6,14 @@ export const HOOK_TEXT_MAXIMUM_LINES = 3;
 export const HOOK_TEXT_MAXIMUM_WORDS_PER_LINE = 7;
 export const HOOK_TEXT_MAXIMUM_FONT_SIZE = 60;
 export const HOOK_TEXT_MINIMUM_FONT_SIZE = 34;
-export const HOOK_TEXT_LAYOUT_VERSION = "hook-overlay-layout-v1" as const;
+export const HOOK_TEXT_FIXED_FONT_SIZE = 52;
+export const LEGACY_HOOK_TEXT_LAYOUT_VERSION =
+  "hook-overlay-layout-v1" as const;
+export const HOOK_TEXT_LAYOUT_VERSION =
+  "hook-overlay-layout-v2-fixed" as const;
+export type HookTextLayoutVersion =
+  | typeof HOOK_TEXT_LAYOUT_VERSION
+  | typeof LEGACY_HOOK_TEXT_LAYOUT_VERSION;
 export const HOOK_TEXT_FONT_WEIGHT = 600;
 export const HOOK_TEXT_OUTLINE_WIDTH = 5;
 export const HOOK_TEXT_OUTLINE_COLOR = "rgba(0, 0, 0, 0.82)";
@@ -42,7 +49,7 @@ export type HookTextLayout = {
   lineWidths: number[];
   positionBounds: HookTextPositionBounds;
   wordCount: number;
-  version: typeof HOOK_TEXT_LAYOUT_VERSION;
+  version: HookTextLayoutVersion;
 };
 
 export class HookTextLayoutError extends Error {
@@ -58,6 +65,7 @@ export function createHookTextLayout(
     enforceMaximum?: boolean;
     enforceMinimum?: boolean;
     fontSize?: number;
+    layoutVersion?: HookTextLayoutVersion;
     lines?: readonly string[];
   } = {},
 ): HookTextLayout {
@@ -111,15 +119,21 @@ export function createHookTextLayout(
   const candidates = explicitLines
     ? [sourceLines]
     : createAutomaticLineCandidates(words);
-  const fixedFontSize = normalizeRequestedFontSize(options.fontSize);
+  const layoutVersion = options.layoutVersion ?? HOOK_TEXT_LAYOUT_VERSION;
+  const fixedFontSize = normalizeRequestedFontSize(
+    options.fontSize,
+    layoutVersion,
+  );
   if (options.fontSize !== undefined && fixedFontSize === null) {
     throw new HookTextLayoutError(
-      `Hook font size must be an even number from ${HOOK_TEXT_MINIMUM_FONT_SIZE} to ${HOOK_TEXT_MAXIMUM_FONT_SIZE}.`,
+      layoutVersion === HOOK_TEXT_LAYOUT_VERSION
+        ? `Current Hook text must use the fixed ${HOOK_TEXT_FIXED_FONT_SIZE}px font size.`
+        : `Legacy Hook font size must be an even number from ${HOOK_TEXT_MINIMUM_FONT_SIZE} to ${HOOK_TEXT_MAXIMUM_FONT_SIZE}.`,
     );
   }
   const fontSizes = fixedFontSize
     ? [fixedFontSize]
-    : createFontSizeCandidates();
+    : createFontSizeCandidates(layoutVersion);
 
   for (const fontSize of fontSizes) {
     const validCandidates = candidates
@@ -149,6 +163,7 @@ export function createHookTextLayout(
         hookText,
         lines: selected.lines,
         lineWidths: selected.widths,
+        version: layoutVersion,
         wordCount: words.length,
       });
     }
@@ -230,7 +245,11 @@ function createAutomaticLineCandidates(words: string[]) {
   return candidates;
 }
 
-function createFontSizeCandidates() {
+function createFontSizeCandidates(layoutVersion: HookTextLayoutVersion) {
+  if (layoutVersion === HOOK_TEXT_LAYOUT_VERSION) {
+    return [HOOK_TEXT_FIXED_FONT_SIZE];
+  }
+
   const fontSizes: number[] = [];
 
   for (
@@ -244,7 +263,16 @@ function createFontSizeCandidates() {
   return fontSizes;
 }
 
-function normalizeRequestedFontSize(value: number | undefined) {
+function normalizeRequestedFontSize(
+  value: number | undefined,
+  layoutVersion: HookTextLayoutVersion,
+) {
+  if (value === undefined) return null;
+
+  if (layoutVersion === HOOK_TEXT_LAYOUT_VERSION) {
+    return value === HOOK_TEXT_FIXED_FONT_SIZE ? value : null;
+  }
+
   return typeof value === "number" &&
     Number.isInteger(value) &&
     value >= HOOK_TEXT_MINIMUM_FONT_SIZE &&
@@ -267,6 +295,7 @@ function buildResolvedHookTextLayout(params: {
   hookText: string;
   lines: string[];
   lineWidths: number[];
+  version: HookTextLayoutVersion;
   wordCount: number;
 }): HookTextLayout {
   const lineSpacing = Math.max(
@@ -315,7 +344,7 @@ function buildResolvedHookTextLayout(params: {
       minY: Math.min(minY, maxY),
     },
     wordCount: params.wordCount,
-    version: HOOK_TEXT_LAYOUT_VERSION,
+    version: params.version,
   };
 }
 

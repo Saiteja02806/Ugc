@@ -1302,6 +1302,7 @@ const STRUCTURE_2_SAFE_TOP = 84;
 const STRUCTURE_2_SAFE_BOTTOM = 92;
 const STRUCTURE_2_STORY_HORIZONTAL_PADDING = 34;
 const STRUCTURE_2_STORY_VERTICAL_PADDING = 10;
+const CAROUSEL_FIXED_EDITOR_FONT_SIZE = 44;
 
 type Structure2EditorTextLayout = {
   blockHeight: number;
@@ -1439,31 +1440,17 @@ function CarouselEditorBackground({
 }
 
 function Structure2StoryText({ layout }: { layout: Structure2EditorLayout }) {
-  const isPill = layout.treatment === "pill";
-
   return (
     <div
       className="text-center"
       style={{
-        color: isPill ? "#141518" : "#ffffff",
+        color: "#141518",
         fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
         fontSize: `${layout.story.fontSize / 10.8}cqw`,
-        fontWeight: 720,
-        letterSpacing: `${-1.1 / 10.8}cqw`,
+        fontWeight: 600,
+        letterSpacing: 0,
         lineHeight: layout.story.lineHeight / layout.story.fontSize,
-        paddingBlock: isPill
-          ? `${STRUCTURE_2_STORY_VERTICAL_PADDING / 2 / 10.8}cqw`
-          : undefined,
-        textShadow:
-          layout.treatment === "overlay"
-            ? "0 0.28cqw 0.42cqw rgba(0,0,0,.42)"
-            : undefined,
-        WebkitTextStroke:
-          layout.treatment === "outlined_overlay"
-            ? "0.32cqw rgba(0,0,0,.78)"
-            : undefined,
-        paintOrder:
-          layout.treatment === "outlined_overlay" ? "stroke fill" : undefined,
+        paddingBlock: `${STRUCTURE_2_STORY_VERTICAL_PADDING / 2 / 10.8}cqw`,
         width: `${layout.storyBounds.width / 10.8}cqw`,
       }}
     >
@@ -1471,30 +1458,24 @@ function Structure2StoryText({ layout }: { layout: Structure2EditorLayout }) {
         <span
           key={`${index}:${line}`}
           className={cn(
-            "mx-auto block w-fit whitespace-nowrap",
-            isPill && "rounded-[1.7cqw] bg-white/95",
+            "mx-auto block w-fit whitespace-nowrap rounded-[1.7cqw] bg-white",
           )}
-          style={
-            isPill
-              ? {
-                  marginTop:
-                    index > 0
-                      ? `${-STRUCTURE_2_STORY_VERTICAL_PADDING / 10.8}cqw`
-                      : undefined,
-                  paddingBlock: `${STRUCTURE_2_STORY_VERTICAL_PADDING / 2 / 10.8}cqw`,
-                  width: `${Math.min(
-                    layout.storyBounds.width,
-                    Math.ceil(
-                      estimateStructure2EditorTextWidth(
-                        line,
-                        layout.story.fontSize,
-                      ) +
-                        STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
-                    ),
-                  ) / 10.8}cqw`,
-                }
-              : undefined
-          }
+          style={{
+            marginTop:
+              index > 0
+                ? `${-STRUCTURE_2_STORY_VERTICAL_PADDING / 10.8}cqw`
+                : undefined,
+            paddingBlock: `${STRUCTURE_2_STORY_VERTICAL_PADDING / 2 / 10.8}cqw`,
+            width: `${Math.min(
+              layout.storyBounds.width,
+              Math.ceil(
+                estimateStructure2EditorTextWidth(
+                  line,
+                  layout.story.fontSize,
+                ) + STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
+              ),
+            ) / 10.8}cqw`,
+          }}
         >
           {line}
         </span>
@@ -1512,21 +1493,35 @@ function Structure2CtaText({
 }) {
   return (
     <div
-      className="pointer-events-none absolute flex flex-col items-center justify-center rounded-[2.6cqw] bg-black/70 px-[3.3cqw] text-center text-white"
+      className="pointer-events-none absolute flex flex-col items-center justify-center text-center text-[#141518]"
       style={{
         fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
         fontSize: `${layout.text.fontSize / 10.8}cqw`,
-        fontWeight: 650,
+        fontWeight: 600,
         height: `${(layout.bounds.height / layout.renderHeight) * 100}%`,
         left: `${(layout.bounds.x / STRUCTURE_2_RENDER_WIDTH) * 100}%`,
-        letterSpacing: `${-0.4 / 10.8}cqw`,
+        letterSpacing: 0,
         lineHeight: layout.text.lineHeight / layout.text.fontSize,
         top: `${(layout.bounds.y / layout.renderHeight) * 100}%`,
         width: `${(layout.bounds.width / STRUCTURE_2_RENDER_WIDTH) * 100}%`,
       }}
     >
       {layout.text.lines.map((line, index) => (
-        <span key={`${index}:${line}`} className="block whitespace-nowrap">
+        <span
+          key={`${index}:${line}`}
+          className="mx-auto block whitespace-nowrap rounded-[1.7cqw] bg-white"
+          style={{
+            marginTop:
+              index > 0
+                ? `${-STRUCTURE_2_STORY_VERTICAL_PADDING / 10.8}cqw`
+                : undefined,
+            paddingBlock: `${STRUCTURE_2_STORY_VERTICAL_PADDING / 2 / 10.8}cqw`,
+            width: `${Math.ceil(
+              estimateStructure2EditorTextWidth(line, layout.text.fontSize) +
+                STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
+            ) / 10.8}cqw`,
+          }}
+        >
           {line}
         </span>
       ))}
@@ -1539,23 +1534,11 @@ function createStructure2EditorLayout(
 ): Structure2EditorLayout {
   const height = getStructure2RenderHeight(slide.renderFormat);
   const maximumTextWidth = STRUCTURE_2_RENDER_WIDTH - STRUCTURE_2_SAFE_X * 2;
-  const isProduct = slide.visualRole === "product_asset";
-  const layoutVariant = isProduct
-    ? "story_product_reveal"
-    : slide.storyLayoutVariant ?? "story_overlay_only";
-  const treatment = isProduct
-    ? "overlay"
-    : slide.storyTextTreatment ??
-      (layoutVariant === "story_pill_overlay" ? "pill" : "overlay");
-  const isPill = treatment === "pill";
+  const treatment = "pill" as const;
   const story = fitStructure2EditorText({
-    initialFontSize: layoutVariant === "story_pill_overlay" ? 56 : 54,
-    maximumFontSize: 60,
     maximumLines: 6,
     maximumWidth:
-      maximumTextWidth -
-      (isPill ? STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2 : 16),
-    minimumFontSize: 36,
+      maximumTextWidth - STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
     value:
       (slide.subtext
         ? `${slide.headline} ${slide.subtext}`
@@ -1563,23 +1546,28 @@ function createStructure2EditorLayout(
   });
   const cta = slide.ctaText
     ? fitStructure2EditorText({
-        initialFontSize: 36,
-        maximumFontSize: 38,
         maximumLines: 3,
-        maximumWidth: maximumTextWidth - 72,
-        minimumFontSize: 28,
+        maximumWidth:
+          maximumTextWidth - STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
         value: slide.ctaText,
       })
     : null;
   const storyWidth = Math.min(
     maximumTextWidth,
     story.maximumLineWidth +
-      (isPill ? STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2 : 16),
+      STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
   );
   const storyHeight =
-    story.blockHeight +
-    (isPill ? STRUCTURE_2_STORY_VERTICAL_PADDING * 2 : 0);
-  const ctaHeight = cta ? cta.blockHeight + 36 : 0;
+    story.blockHeight + STRUCTURE_2_STORY_VERTICAL_PADDING * 2;
+  const ctaHeight = cta
+    ? cta.blockHeight + STRUCTURE_2_STORY_VERTICAL_PADDING * 2
+    : 0;
+  const ctaWidth = cta
+    ? Math.min(
+        maximumTextWidth,
+        cta.maximumLineWidth + STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
+      )
+    : 0;
   const ctaBottom = height - STRUCTURE_2_SAFE_BOTTOM;
   const ctaTop = cta ? ctaBottom - ctaHeight : null;
   const maximumStoryBottom = ctaTop
@@ -1604,8 +1592,8 @@ function createStructure2EditorLayout(
         ? {
             bounds: {
               height: ctaHeight,
-              width: maximumTextWidth,
-              x: STRUCTURE_2_SAFE_X,
+              width: ctaWidth,
+              x: Math.round((STRUCTURE_2_RENDER_WIDTH - ctaWidth) / 2),
               y: ctaTop,
             },
             text: cta,
@@ -1623,48 +1611,17 @@ function createStructure2EditorLayout(
 }
 
 function fitStructure2EditorText(params: {
-  initialFontSize: number;
-  maximumFontSize: number;
   maximumLines: number;
   maximumWidth: number;
-  minimumFontSize: number;
   value: string;
 }): Structure2EditorTextLayout {
   const value = params.value.trim().replace(/\s+/gu, " ");
-  let fallbackLines = [value || "Add a headline"];
-
-  for (
-    let fontSize = Math.min(params.initialFontSize, params.maximumFontSize);
-    fontSize >= params.minimumFontSize;
-    fontSize -= 2
-  ) {
-    const lines = wrapStructure2EditorWords(
-      value || "Add a headline",
-      params.maximumWidth,
-      fontSize,
-    );
-    fallbackLines = lines;
-
-    if (lines.length <= params.maximumLines) {
-      const lineHeight = Math.round(fontSize * 1.16);
-      return {
-        blockHeight: lineHeight * lines.length,
-        fontSize,
-        lineHeight,
-        lines,
-        maximumLineWidth: Math.ceil(
-          Math.max(
-            ...lines.map((line) =>
-              estimateStructure2EditorTextWidth(line, fontSize),
-            ),
-          ),
-        ),
-      };
-    }
-  }
-
-  const fontSize = params.minimumFontSize;
-  const lines = fallbackLines.slice(0, params.maximumLines);
+  const fontSize = CAROUSEL_FIXED_EDITOR_FONT_SIZE;
+  const lines = wrapStructure2EditorWords(
+    value || "Add a headline",
+    params.maximumWidth,
+    fontSize,
+  );
   const lineHeight = Math.round(fontSize * 1.16);
   return {
     blockHeight: lineHeight * lines.length,
@@ -1853,8 +1810,8 @@ function CarouselBubbleText({
       className={cn(
         "relative isolate mx-auto max-w-[78cqw] text-center text-[#111316]",
         kind === "headline"
-          ? "text-[5cqw] font-bold leading-[1.04]"
-          : "mt-[2.2cqw] text-[3.5cqw] font-semibold leading-[1.05]",
+          ? "text-[4.074cqw] font-bold leading-[1.04]"
+          : "mt-[2.2cqw] text-[4.074cqw] font-semibold leading-[1.05]",
       )}
     >
       {geometry.width > 0 && geometry.height > 0 ? (
@@ -1916,6 +1873,7 @@ function getHookEditorLayout(
       enforceMaximum: false,
       enforceMinimum: false,
       fontSize: content.fontSize,
+      layoutVersion: content.layoutVersion,
       lines: content.lines,
     });
   } catch {
@@ -3395,6 +3353,7 @@ function validateContent(content: TrendingCreativeEditContent) {
     try {
       createHookTextLayout(content.hookText, {
         fontSize: content.fontSize,
+        layoutVersion: content.layoutVersion,
         lines: content.lines,
       });
     } catch (error) {

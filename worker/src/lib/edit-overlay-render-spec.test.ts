@@ -149,10 +149,10 @@ test("renders Hook copy as restrained text without a background plate", () => {
 
   assert.equal(layout.backgroundColor, undefined);
   assert.equal(layout.backgroundOpacity, null);
-  assert.equal(layout.fontSize, 60);
+  assert.equal(layout.fontSize, 52);
   assert.equal(layout.fontWeight, 600);
   assert.equal(layout.padding, 0);
-  assert.equal(layout.lineHeight, 74);
+  assert.equal(layout.lineHeight, 64);
   assert.equal(layout.isTruncated, false);
 });
 
@@ -168,28 +168,26 @@ test("preserves three intentional Hook lines with an emoji", () => {
     "interrupts the day",
     "again 😩",
   ]);
-  assert.equal(layout.fontSize, 60);
+  assert.equal(layout.fontSize, 52);
   assert.equal(layout.isTruncated, false);
 });
 
-test("shrinks Hook text before breaking semantic lines", () => {
+test("keeps fixed Hook type and exposes semantic-line overflow", () => {
   const layout = buildEditOverlayTextLayout(
     "Quitting stems from slow meal logging\nFaster entry makes consistency possible",
     "hook",
     "9:16",
   );
 
-  assert.deepEqual(layout.lines, [
-    "Quitting stems from slow meal logging",
-    "Faster entry makes consistency possible",
-  ]);
-  assert.equal(layout.fontSize, 44);
+  assert.equal(layout.fontSize, 52);
+  assert.ok(layout.lines.length > 2);
   assert.equal(layout.isTruncated, false);
 });
 
 test("uses saved Hook lines and font size without recalculating", () => {
   const layout = buildResolvedEditOverlayTextLayout({
     fontSize: 44,
+    layoutVersion: "hook-overlay-layout-v1",
     lines: [
       "Quitting stems from slow meal logging",
       "Faster entry makes consistency possible",
@@ -210,7 +208,7 @@ test("uses saved Hook lines and font size without recalculating", () => {
 
 test("accepts a saved three-line Hook layout", () => {
   const layout = buildResolvedEditOverlayTextLayout({
-    fontSize: 60,
+    fontSize: 52,
     lines: ["Meal logging", "interrupts the day", "again 😩"],
     ratio: "9:16",
     style: "hook",

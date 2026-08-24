@@ -261,6 +261,31 @@ test("Structure 1 wording preferences remain advisory for publishing", () => {
   assert.ok(partitioned.advisoryIssues.length > 0);
 });
 
+test("Structure 1 blocks copy that cannot fit at the fixed slideshow font size", () => {
+  const parsed = parseAssignedFixture("checklist", "utility");
+  const oversized = {
+    ...parsed,
+    slides: parsed.slides.map((slide, index) =>
+      index === 1 && slide.listItems.length > 0
+        ? {
+            ...slide,
+            listItems: [
+              "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+              ...slide.listItems.slice(1),
+            ],
+          }
+        : slide,
+    ),
+  };
+  const partitioned = partitionCarouselContentPlanValidationIssues(
+    validateCarouselContentPlan(oversized, analysis),
+  );
+
+  assert.ok(
+    partitioned.blockingIssues.some((issue) => issue.code === "render_fit"),
+  );
+});
+
 test("Structure 1 reports unsupported claims without replacing structurally valid AI copy", () => {
   const parsed = parseAssignedFixture("myth_fact", "contrarian");
   const unsupported = {

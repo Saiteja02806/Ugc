@@ -68,7 +68,14 @@ export const EDIT_OVERLAY_MAX_TEXT_WIDTH_PERCENT =
   100 - EDIT_OVERLAY_HORIZONTAL_INSET_PERCENT * 2;
 export const EDIT_OVERLAY_FONT_FAMILY = "Geist";
 export const EDIT_OVERLAY_FONT_WEIGHT = 600;
-export const HOOK_TEXT_LAYOUT_VERSION = "hook-overlay-layout-v1" as const;
+export const HOOK_TEXT_FIXED_FONT_SIZE = 52;
+export const LEGACY_HOOK_TEXT_LAYOUT_VERSION =
+  "hook-overlay-layout-v1" as const;
+export const HOOK_TEXT_LAYOUT_VERSION =
+  "hook-overlay-layout-v2-fixed" as const;
+export type HookTextLayoutVersion =
+  | typeof HOOK_TEXT_LAYOUT_VERSION
+  | typeof LEGACY_HOOK_TEXT_LAYOUT_VERSION;
 export const EDIT_OVERLAY_TEXT_COLOR = DEFAULT_TEXT_COLOR;
 export const EDIT_OVERLAY_SHADOW_COLOR = "rgba(0, 0, 0, 0.45)";
 export const EDIT_OVERLAY_FFMPEG_SHADOW_COLOR = "black@0.45";
@@ -87,21 +94,21 @@ export const EDIT_OVERLAY_OUTPUT_DIMENSIONS: Record<
 const styleFontSizes: Record<EditOverlayStyle, number> = {
   bubble: 62,
   clean: 68,
-  hook: 60,
+  hook: HOOK_TEXT_FIXED_FONT_SIZE,
   minimal: 64,
 };
 
 const styleMinimumFontSizes: Record<EditOverlayStyle, number> = {
   bubble: 38,
   clean: 42,
-  hook: 34,
+  hook: HOOK_TEXT_FIXED_FONT_SIZE,
   minimal: 40,
 };
 
 const styleLineSpacing: Record<EditOverlayStyle, number> = {
   bubble: 22,
   clean: 24,
-  hook: 14,
+  hook: 12,
   minimal: 22,
 };
 
@@ -212,11 +219,6 @@ export function buildEditOverlayTextLayout(
   const maxContainerHeight = Math.round(
     canvasHeight * (metrics.maxTextHeightPercent / 100),
   );
-  const requestedManualLineCount = text
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .trim()
-    .split("\n").length;
   let fallback: EditOverlayTextLayout | null = null;
 
   for (
@@ -237,11 +239,7 @@ export function buildEditOverlayTextLayout(
     layout.textColor = resolveTextColor(textColor);
     fallback = layout;
 
-    if (
-      layout.bounds.containerHeight <= maxContainerHeight &&
-      (style !== "hook" ||
-        layout.lines.length === requestedManualLineCount)
-    ) {
+    if (layout.bounds.containerHeight <= maxContainerHeight) {
       return layout;
     }
   }
@@ -261,17 +259,80 @@ export function buildEditOverlayTextLayout(
 
   overflowLayout.textColor = resolveTextColor(textColor);
 
+  if (style === "hook") {
+    throw new Error(
+      `Hook text cannot fit at the fixed ${HOOK_TEXT_FIXED_FONT_SIZE}px font size. Shorten the wording.`,
+    );
+  }
+
   return truncateEditOverlayLayoutToHeight(overflowLayout);
+}
+
+export function buildLegacyEditOverlayTextLayout(
+  text: string,
+  style: EditOverlayStyle,
+  ratio: EditOverlayRatio,
+  textColor?: unknown,
+): EditOverlayTextLayout {
+  if (style !== "hook") {
+    return buildEditOverlayTextLayout(text, style, ratio, textColor);
+  }
+
+  const metrics = getEditOverlayRenderMetrics(style, ratio);
+  const { height: canvasHeight, width: canvasWidth } =
+    getEditOverlayOutputDimensions(ratio);
+  const maxContainerWidth = Math.round(
+    canvasWidth * (metrics.maxTextWidthPercent / 100),
+  );
+  const maxContainerHeight = Math.round(
+    canvasHeight * (metrics.maxTextHeightPercent / 100),
+  );
+  const requestedManualLineCount = text
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim()
+    .split("\n").length;
+  let fallback: EditOverlayTextLayout | null = null;
+
+  for (let fontSize = 60; fontSize >= 34; fontSize -= 2) {
+    const layout = buildLayoutAtFontSize({
+      canvasHeight,
+      canvasWidth,
+      fontSize,
+      maxContainerHeight,
+      maxContainerWidth,
+      ratio,
+      style,
+      text,
+    });
+    layout.textColor = resolveTextColor(textColor);
+    fallback = layout;
+
+    if (
+      layout.bounds.containerHeight <= maxContainerHeight &&
+      layout.lines.length === requestedManualLineCount
+    ) {
+      return layout;
+    }
+  }
+
+  if (!fallback) {
+    throw new Error("The legacy Hook text layout could not be derived.");
+  }
+
+  return truncateEditOverlayLayoutToHeight(fallback);
 }
 
 export function buildResolvedEditOverlayTextLayout(params: {
   fontSize: number;
+  layoutVersion?: HookTextLayoutVersion | null;
   lines: readonly string[];
   ratio: EditOverlayRatio;
   style: EditOverlayStyle;
   textColor?: unknown;
 }): EditOverlayTextLayout {
   const metrics = getEditOverlayRenderMetrics(params.style, params.ratio);
+  const layoutVersion = params.layoutVersion ?? HOOK_TEXT_LAYOUT_VERSION;
   const normalizedLines = params.lines
     .map((line) => line.replace(/\s+/gu, " ").trim())
     .filter(Boolean);
@@ -279,9 +340,20 @@ export function buildResolvedEditOverlayTextLayout(params: {
   if (
     normalizedLines.length < 1 ||
     (params.style === "hook" && normalizedLines.length > 3) ||
+    (params.style === "hook" &&
+      layoutVersion === HOOK_TEXT_LAYOUT_VERSION &&
+      params.fontSize !== HOOK_TEXT_FIXED_FONT_SIZE) ||
     !Number.isInteger(params.fontSize) ||
-    params.fontSize < metrics.minFontSize ||
-    params.fontSize > metrics.fontSize ||
+    params.fontSize <
+      (params.style === "hook" &&
+      layoutVersion === LEGACY_HOOK_TEXT_LAYOUT_VERSION
+        ? 34
+        : metrics.minFontSize) ||
+    params.fontSize >
+      (params.style === "hook" &&
+      layoutVersion === LEGACY_HOOK_TEXT_LAYOUT_VERSION
+        ? 60
+        : metrics.fontSize) ||
     params.fontSize % 2 !== 0
   ) {
     throw new Error("The saved text layout is outside the supported limits.");

@@ -127,7 +127,7 @@ function resolvePresentation(params: {
     return {
       layoutVariant: "story_product_reveal",
       textPosition: "upper",
-      textTreatment: "overlay",
+      textTreatment: "pill",
     };
   }
 
@@ -142,11 +142,7 @@ function resolvePresentation(params: {
   return {
     layoutVariant: "story_overlay_only",
     textPosition: params.slideNumber === 3 ? "upper" : "lower",
-    textTreatment:
-      params.storyRole === "reframe" ||
-      params.storyRole === "proof_reflection_cta"
-        ? "outlined_overlay"
-        : "overlay",
+    textTreatment: "pill",
   };
 }
 

@@ -100,6 +100,22 @@ test("valid AI copy is preserved and writing-quality warnings stay advisory", ()
   assert.ok(partitioned.advisoryIssues.some((issue) => issue.code === "generic_copy"));
 });
 
+test("Structure 2 blocks copy that cannot fit at the fixed slideshow font size", () => {
+  const plan = makeStoryPlan("wrong_belief");
+  plan.slides[0]!.storyText = Array.from(
+    { length: 32 },
+    (_, index) => `wideword${index + 1}`,
+  ).join(" ");
+
+  const partitioned = partitionCarouselStructure2ValidationIssues(
+    validateCarouselStructure2StoryPlan(plan, { businessDescription }),
+  );
+
+  assert.ok(
+    partitioned.blockingIssues.some((issue) => issue.code === "render_fit"),
+  );
+});
+
 test("recent repetition compares exact accepted slide copy", () => {
   const plan = makeStoryPlan("wrong_belief");
   const history = makeRecentCopy(plan.slides.map((slide) => slide.storyText));

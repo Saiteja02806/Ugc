@@ -136,7 +136,8 @@ test("Hook edits recalculate their final lines, font, and safe position", () => 
     lines: edited.lines,
   });
 
-  assert.equal(edited.lines.length, 3);
+  assert.equal(edited.lines.length, 2);
+  assert.equal(edited.fontSize, 52);
   assert.equal(edited.fontSize, layout.fontSize);
   assert.equal(layout.version, HOOK_TEXT_LAYOUT_VERSION);
   assert.equal(edited.textColor, "#ffffff");
@@ -165,7 +166,7 @@ test("Hook edits preserve three intentional lines and a trailing emoji", () => {
     "shouldn't interrupt",
     "your whole day 😩",
   ]);
-  assert.equal(layout.fontSize, 60);
+  assert.equal(layout.fontSize, 52);
   assert.equal(layout.wordCount, 8);
 });
 
@@ -205,7 +206,7 @@ test("Hook layouts fail closed when saved lines or font metadata change", () => 
         fontSize: 55,
         lines: ["The original Hook copy"],
       }),
-    /even number from 34 to 60/,
+    /fixed 52px font size/,
   );
 });
 

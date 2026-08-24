@@ -18,7 +18,7 @@ export function HookVideoCard({
   dragOffset,
   exitingDirection = null,
   hookAudio = null,
-  hookFontSize = 60,
+  hookFontSize = 52,
   hookLines = null,
   hookPosition = null,
   hookTextColor,

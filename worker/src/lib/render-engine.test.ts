@@ -177,7 +177,7 @@ test("rasterizes a reference-style three-line Hook with an emoji", async () => {
     style: "hook",
   });
 
-  assert.equal(layout.fontSize, 60);
+  assert.equal(layout.fontSize, 52);
   assert.equal(layout.lines.length, 3);
   assert.match(svg, /Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji/);
   assert.match(svg, /stroke-width="5"/);

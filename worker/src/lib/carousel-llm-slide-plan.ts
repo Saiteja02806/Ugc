@@ -3,6 +3,13 @@ import OpenAI from "openai";
 import type { WebsiteBusinessAnalysis } from "../types.js";
 import type { CarouselRecentAcceptedCopy } from "./carousel-content-plan.js";
 import {
+  CAROUSEL_FIXED_FONT_SIZE,
+  CAROUSEL_STRUCTURE_1_FIXED_TEXT_WIDTH,
+  inspectCarouselFixedTextFit,
+  type CarouselTextMode,
+  type PlannedCarouselSlide,
+} from "./carousel-slide-plan.js";
+import {
   getCarouselContentFormat,
   getCarouselHookFamily,
   isCarouselContentFormatId,
@@ -12,14 +19,10 @@ import {
   type CarouselHookFamilyDefinition,
   type CarouselHookFamilyId,
 } from "./carousel-content-grammar.js";
-import type {
-  CarouselTextMode,
-  PlannedCarouselSlide,
-} from "./carousel-slide-plan.js";
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v30-llm-only-structure-contract";
+  "llm-carousel-planner-v31-fixed-render-fit";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly five slides plus a backend-selected content format and compatible hook family.";
 
@@ -105,6 +108,7 @@ export type CarouselPlanValidationIssue = {
     | "invalid_plan"
     | "multiple_ideas"
     | "recent_repetition"
+    | "render_fit"
     | "repeated_punctuation"
     | "story_structure"
     | "story_repetition"
@@ -1022,6 +1026,65 @@ function isProblemFramedCopy(value: string | null) {
   return hasProblemSignal && !hasSolutionAction;
 }
 
+function validateStructure1FixedTextFit(
+  slide: PlannedCarouselSlide,
+): CarouselPlanValidationIssue[] {
+  const issues: CarouselPlanValidationIssue[] = [];
+  const isBodyOnly =
+    slide.textMode === "body_only" || slide.textMode === "single_statement";
+  const headline = isBodyOnly ? "" : slide.headline?.trim() ?? "";
+  const isList =
+    slide.textMode === "question_list" || slide.textMode === "checklist";
+  const listLines = isList
+    ? [
+        slide.body?.trim() ?? "",
+        ...(slide.listItems ?? []).map((item, index) =>
+          slide.textMode === "checklist"
+            ? `- ${item.trim()}`
+            : `${index + 1}. ${item.trim()}`,
+        ),
+      ].filter(Boolean)
+    : [];
+  const body = isList
+    ? ""
+    : slide.body?.trim() ||
+      slide.subtext?.trim() ||
+      slide.ctaText?.trim() ||
+      (!headline ? slide.headline?.trim() ?? "" : "");
+
+  const groups: Array<{
+    label: string;
+    maximumLines: number;
+    value: string;
+  }> = [
+    { label: "Headline", maximumLines: 2, value: headline },
+    { label: "Body", maximumLines: 4, value: body },
+    ...listLines.map((value, index) => ({
+      label: `List line ${index + 1}`,
+      maximumLines: 1,
+      value,
+    })),
+  ];
+
+  for (const group of groups) {
+    const fit = inspectCarouselFixedTextFit({
+      maximumLines: group.maximumLines,
+      maximumWidth: CAROUSEL_STRUCTURE_1_FIXED_TEXT_WIDTH,
+      value: group.value,
+    });
+
+    if (!fit.fits) {
+      issues.push({
+        code: "render_fit",
+        message: `${group.label} must fit within ${group.maximumLines} line${group.maximumLines === 1 ? "" : "s"} at the fixed ${CAROUSEL_FIXED_FONT_SIZE}px font size. ${fit.reason ?? ""}`.trim(),
+        slideNumber: slide.slideNumber,
+      });
+    }
+  }
+
+  return issues;
+}
+
 export function validateCarouselContentPlan(
   plan: Pick<CarouselContentPlan, "broadSituations" | "concept" | "slides"> &
     Partial<Pick<CarouselContentPlan, "contentStrategy">>,
@@ -1058,6 +1121,9 @@ export function validateCarouselContentPlan(
       slide.ctaText,
       ...(slide.listItems ?? []),
     ].filter((value): value is string => Boolean(value));
+    const fixedLayoutIssues = validateStructure1FixedTextFit(slide);
+
+    issues.push(...fixedLayoutIssues);
 
     if (slide.slideType === "solution" && isProblemFramedCopy(slide.body)) {
       issues.push({
@@ -1352,7 +1418,7 @@ export function partitionCarouselContentPlanValidationIssues(
   const advisoryIssues: CarouselPlanValidationIssue[] = [];
 
   for (const issue of dedupeValidationIssues([...issues])) {
-    if (issue.code === "invalid_plan") {
+    if (issue.code === "invalid_plan" || issue.code === "render_fit") {
       blockingIssues.push(issue);
     } else {
       advisoryIssues.push(issue);
@@ -1515,6 +1581,7 @@ function buildGrammarPlannerMessages(
         "- Hook wording must be completely fresh and must follow the selected hook family without copying examples or history.",
         `- Headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than two visual lines.`,
         `- Body copy must be one complete sentence of ${TARGET_BODY_MIN_WORDS}-${TARGET_BODY_MAX_WORDS} words, at most ${MAX_BODY_LENGTH} characters, and normally no more than three visual lines.`,
+        `- Every visible text group uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px type over a connected white SVG background. Headlines must fit within two lines; body copy within four; each list item must fit one line. The renderer will not shrink or truncate copy.`,
         "- A headline must not repeat its body. If the body works alone, use body_only and set headline to null.",
         "- List slides must use the exact configured number of short listItems and normally set body to null.",
         "- Every slide without a configured listItemCount must return listItems as an empty array.",

@@ -44,6 +44,7 @@ import {
   getDefaultHookTextPosition,
   HOOK_TEXT_LAYOUT_VERSION,
   HookTextLayoutError,
+  LEGACY_HOOK_TEXT_LAYOUT_VERSION,
 } from "@/lib/trending/hook-text-layout";
 import {
   getHookVideoTextPosition,
@@ -296,6 +297,7 @@ async function buildDefaultContent(params: {
 
     const layout = createHookTextLayout(idea.hookText, {
       fontSize: idea.overlayFontSize,
+      layoutVersion: idea.overlayLayoutVersion,
       lines: idea.openingLines,
     });
     const catalogPlacement =
@@ -313,7 +315,7 @@ async function buildDefaultContent(params: {
       fontSize: idea.overlayFontSize,
       format: "hook_video",
       hookText: idea.hookText,
-      layoutVersion: HOOK_TEXT_LAYOUT_VERSION,
+      layoutVersion: layout.version,
       lines: idea.openingLines,
       position: clampHookTextPosition(
         catalogPlacement ?? getDefaultHookTextPosition(layout.positionBounds),
@@ -581,6 +583,7 @@ async function validateAndNormalizeSubmittedContent(params: {
     try {
       const layout = createHookTextLayout(params.content.hookText, {
         fontSize: params.content.fontSize,
+        layoutVersion: params.content.layoutVersion,
         lines: params.content.lines,
       });
 
@@ -748,19 +751,24 @@ function mergeStoredContentWithOwnerDefaults(
         : storedLines.join("\n");
 
     try {
-      const layout =
-        stored.layoutVersion === HOOK_TEXT_LAYOUT_VERSION
-          ? createHookTextLayout(storedText, {
-              fontSize: stored.fontSize,
-              lines: storedLines,
-            })
-          : createHookTextLayout(storedText);
+      const storedLayoutVersion =
+        stored.layoutVersion === HOOK_TEXT_LAYOUT_VERSION ||
+        stored.layoutVersion === LEGACY_HOOK_TEXT_LAYOUT_VERSION
+          ? stored.layoutVersion
+          : null;
+      const layout = storedLayoutVersion
+        ? createHookTextLayout(storedText, {
+            fontSize: stored.fontSize,
+            layoutVersion: storedLayoutVersion,
+            lines: storedLines,
+          })
+        : createHookTextLayout(storedText);
 
       return {
         ...stored,
         fontSize: layout.fontSize,
         hookText: layout.hookText,
-        layoutVersion: HOOK_TEXT_LAYOUT_VERSION,
+        layoutVersion: layout.version,
         lines: layout.lines,
         position: clampHookTextPosition(stored.position, layout.positionBounds),
         textColor: resolveTrendingTextColor(stored.textColor),

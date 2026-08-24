@@ -300,9 +300,9 @@ const SWIPE_THRESHOLD_PX = 90;
 const SWIPE_EXIT_DURATION_MS = 220;
 const MAX_ROTATION_DEGREES = 5;
 const CAROUSEL_REVIEW_CARD_WIDTH_CLASS =
-  "w-[min(88vw,420px,calc((100dvh-238px)*0.8))]";
+  "w-[min(78vw,270px,calc((100dvh-238px)*0.8))]";
 const VERTICAL_REVIEW_CARD_WIDTH_CLASS =
-  "w-[min(80vw,315px,calc((100dvh-238px)*0.5625))]";
+  "w-[min(76vw,230px,calc((100dvh-238px)*0.5625))]";
 const DECK_CARD_STYLES: Record<
   DeckDepth,
   { opacity: number; scale: number; translateY: number; zIndex: number }
@@ -314,18 +314,83 @@ const DECK_CARD_STYLES: Record<
     zIndex: 3,
   },
   1: {
-    opacity: 0.9,
+    opacity: 0.82,
     scale: 0.965,
-    translateY: 12,
+    translateY: -24,
     zIndex: 2,
   },
   2: {
-    opacity: 0.65,
+    opacity: 0.58,
     scale: 0.93,
-    translateY: 24,
+    translateY: -44,
     zIndex: 1,
   },
 };
+
+function getTrendingDeckCardState(depth: DeckDepth) {
+  return depth === 0 ? "active" : depth === 1 ? "next" : "preload";
+}
+
+function getTrendingDeckCardPresentation({
+  depth,
+  dragX,
+  exitDirection,
+  isDragging,
+}: {
+  depth: DeckDepth;
+  dragX: number;
+  exitDirection: "left" | "right" | null;
+  isDragging: boolean;
+}): CSSProperties {
+  const isActive = depth === 0;
+  const deckStyle = DECK_CARD_STYLES[depth];
+  const promotedStyle =
+    depth === 0
+      ? deckStyle
+      : DECK_CARD_STYLES[(depth - 1) as DeckDepth];
+  const revealProgress = isActive
+    ? 0
+    : Math.min(Math.abs(dragX) / SWIPE_THRESHOLD_PX, 1);
+  const opacity = interpolateDeckValue(
+    deckStyle.opacity,
+    promotedStyle.opacity,
+    revealProgress,
+  );
+  const scale = interpolateDeckValue(
+    deckStyle.scale,
+    promotedStyle.scale,
+    revealProgress,
+  );
+  const translateY = interpolateDeckValue(
+    deckStyle.translateY,
+    promotedStyle.translateY,
+    revealProgress,
+  );
+  const clampedRotation = Math.max(
+    -MAX_ROTATION_DEGREES,
+    Math.min(MAX_ROTATION_DEGREES, dragX / 28),
+  );
+  const translateX = exitDirection
+    ? exitDirection === "left"
+      ? "-115vw"
+      : "115vw"
+    : `${dragX}px`;
+
+  return {
+    opacity,
+    touchAction: isActive ? "pan-y" : undefined,
+    transform: `translateX(${isActive ? translateX : "0px"}) translateY(${translateY}px) rotate(${isActive ? clampedRotation : 0}deg) scale(${scale})`,
+    transition: isDragging ? "none" : undefined,
+  };
+}
+
+function interpolateDeckValue(
+  start: number,
+  end: number,
+  progress: number,
+) {
+  return start + (end - start) * progress;
+}
 
 function TrendingCreativeEditorLoading() {
   return (
@@ -821,13 +886,13 @@ export function TrendingWorkspace() {
             <Button
               data-trending-adjust-control
               type="button"
-              variant="outline"
-              size="lg"
+              variant="creative-edit"
+              size="creative-edit"
               aria-label="Adjust Trending content mix"
               title="Adjust content mix"
               disabled={authLoading || !user}
               onClick={() => setContentMixOpen(true)}
-              className="rounded-full hover:border-primary/35 hover:bg-primary/[0.04] hover:text-primary"
+              className="group transition-all duration-200 hover:border-primary/40 hover:bg-primary/[0.06] hover:text-primary active:scale-[0.98]"
             >
               <SlidersHorizontal
                 data-icon="inline-start"
@@ -1954,7 +2019,7 @@ function TrendingDeck({
             tabIndex={0}
             aria-label={`Trending content deck. Showing idea ${activeItemIndex + 1} of ${visibleCandidates.length}. Press left arrow to reject or right arrow to accept this creative.`}
             onKeyDown={handleDeckKeyDown}
-            className="relative isolate mx-auto flex w-full max-w-3xl flex-col items-center overflow-hidden rounded-[20px] px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="relative isolate mx-auto flex w-full max-w-3xl flex-col items-center overflow-x-clip overflow-y-visible rounded-[20px] px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <TrendingFormatPill
               candidate={activeCandidate}
@@ -1968,9 +2033,9 @@ function TrendingDeck({
                   candidate={slot.candidate}
                   depth={slot.depth}
                   edit={editByCreativeId[slot.candidate.item.creativeId] ?? null}
-                  dragX={slot.depth === 0 ? dragX : 0}
+                  dragX={dragX}
                   exitDirection={slot.depth === 0 ? exitDirection : null}
-                  isDragging={slot.depth === 0 && isDragging}
+                  isDragging={isDragging}
                   itemCount={visibleCandidates.length}
                   itemIndex={slot.itemIndex}
                   onActiveSlideChange={onActiveSlideChange}
@@ -2376,10 +2441,10 @@ function TrendingFormatPill({
 
   const Icon = isHook ? Clapperboard : isWallText ? ScanText : Images;
   const iconColor = isHook
-    ? "text-blue-500/75"
+    ? "text-info"
     : isWallText
-      ? "text-purple-500/75"
-      : "text-primary/75";
+      ? "text-accent-purple"
+      : "text-primary";
 
   const cardWidthClass = getTrendingReviewCardWidthClass(activeFormat);
 
@@ -2392,10 +2457,10 @@ function TrendingFormatPill({
     >
       <span
         data-trending-format-pill
-        className="inline-flex h-5 items-center gap-1 rounded-full border border-border/60 bg-card/75 px-1.5 text-[9px] font-medium leading-none text-muted"
+        className="inline-flex h-[22px] items-center gap-1.5 rounded-full border border-border/60 bg-card/80 px-2 text-[10px] font-medium leading-none text-muted"
       >
         <Icon
-          className={cn("size-2.5 shrink-0", iconColor)}
+          className={cn("size-3 shrink-0", iconColor)}
           aria-hidden="true"
         />
         <span>{label}</span>
@@ -2539,21 +2604,12 @@ function TrendingHookDeckCard({
     edit?.content.format === "hook_video" ? edit.content : null;
   const editedSource = edit?.source ?? null;
   const deckStyle = DECK_CARD_STYLES[depth];
-  const clampedRotation = Math.max(
-    -MAX_ROTATION_DEGREES,
-    Math.min(MAX_ROTATION_DEGREES, dragX / 28),
-  );
-  const translateX = exitDirection
-    ? exitDirection === "left"
-      ? "-115vw"
-      : "115vw"
-    : `${dragX}px`;
-  const cardStyle: CSSProperties = {
-    opacity: deckStyle.opacity,
-    touchAction: isActive ? "pan-y" : undefined,
-    transform: `translateX(${isActive ? translateX : "0px"}) translateY(${deckStyle.translateY}px) rotate(${isActive ? clampedRotation : 0}deg) scale(${deckStyle.scale})`,
-    transition: isDragging ? "none" : undefined,
-  };
+  const cardStyle = getTrendingDeckCardPresentation({
+    depth,
+    dragX,
+    exitDirection,
+    isDragging,
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -2636,13 +2692,13 @@ function TrendingHookDeckCard({
 
   return (
     <div
-      data-trending-card-state={isActive ? "active" : "preload"}
+      data-trending-card-state={getTrendingDeckCardState(depth)}
       inert={isActive ? undefined : true}
       className={cn(
         "flex items-center justify-center",
         isActive
           ? "relative"
-          : "pointer-events-none absolute left-0 top-0 size-px overflow-hidden opacity-0",
+          : "pointer-events-none absolute inset-0 overflow-visible",
       )}
       style={{ zIndex: deckStyle.zIndex }}
     >
@@ -2763,21 +2819,12 @@ function TrendingWallTextDeckCard({
   const thumbnailUrl =
     edit?.source?.resolvedThumbnailUrl ?? creative.thumbnailUrl;
   const deckStyle = DECK_CARD_STYLES[depth];
-  const clampedRotation = Math.max(
-    -MAX_ROTATION_DEGREES,
-    Math.min(MAX_ROTATION_DEGREES, dragX / 28),
-  );
-  const translateX = exitDirection
-    ? exitDirection === "left"
-      ? "-115vw"
-      : "115vw"
-    : `${dragX}px`;
-  const cardStyle: CSSProperties = {
-    opacity: deckStyle.opacity,
-    touchAction: isActive ? "pan-y" : undefined,
-    transform: `translateX(${isActive ? translateX : "0px"}) translateY(${deckStyle.translateY}px) rotate(${isActive ? clampedRotation : 0}deg) scale(${deckStyle.scale})`,
-    transition: isDragging ? "none" : undefined,
-  };
+  const cardStyle = getTrendingDeckCardPresentation({
+    depth,
+    dragX,
+    exitDirection,
+    isDragging,
+  });
   useEffect(() => {
     const video = videoRef.current;
 
@@ -2796,13 +2843,13 @@ function TrendingWallTextDeckCard({
 
   return (
     <div
-      data-trending-card-state={isActive ? "active" : "preload"}
+      data-trending-card-state={getTrendingDeckCardState(depth)}
       inert={isActive ? undefined : true}
       className={cn(
         "flex items-center justify-center",
         isActive
           ? "relative"
-          : "pointer-events-none absolute left-0 top-0 size-px overflow-hidden opacity-0",
+          : "pointer-events-none absolute inset-0 overflow-visible",
       )}
       style={{ zIndex: deckStyle.zIndex }}
     >
@@ -2840,7 +2887,7 @@ function TrendingWallTextDeckCard({
             autoPlay={isActive}
             muted
             playsInline
-            preload={isActive ? "auto" : "metadata"}
+            preload={depth <= 1 ? "auto" : "metadata"}
             aria-hidden="true"
             className="pointer-events-none size-full object-cover"
           />
@@ -2911,21 +2958,12 @@ function CarouselDeckCard({
         )?.renderedUrl ?? null
       : null;
   const deckStyle = DECK_CARD_STYLES[depth];
-  const clampedRotation = Math.max(
-    -MAX_ROTATION_DEGREES,
-    Math.min(MAX_ROTATION_DEGREES, dragX / 28),
-  );
-  const translateX = exitDirection
-    ? exitDirection === "left"
-      ? "-115vw"
-      : "115vw"
-    : `${dragX}px`;
-  const cardStyle: CSSProperties = {
-    opacity: deckStyle.opacity,
-    touchAction: isActive ? "pan-y" : undefined,
-    transform: `translateX(${isActive ? translateX : "0px"}) translateY(${deckStyle.translateY}px) rotate(${isActive ? clampedRotation : 0}deg) scale(${deckStyle.scale})`,
-    transition: isDragging ? "none" : undefined,
-  };
+  const cardStyle = getTrendingDeckCardPresentation({
+    depth,
+    dragX,
+    exitDirection,
+    isDragging,
+  });
 
   function moveSlide(event: ReactMouseEvent<HTMLButtonElement>, direction: number) {
     event.stopPropagation();
@@ -2943,13 +2981,13 @@ function CarouselDeckCard({
 
   return (
     <div
-      data-trending-card-state={isActive ? "active" : "preload"}
+      data-trending-card-state={getTrendingDeckCardState(depth)}
       inert={isActive ? undefined : true}
       className={cn(
         "flex items-center justify-center",
         isActive
           ? "relative"
-          : "pointer-events-none absolute left-0 top-0 size-px overflow-hidden opacity-0",
+          : "pointer-events-none absolute inset-0 overflow-visible",
       )}
       style={{ zIndex: deckStyle.zIndex }}
     >

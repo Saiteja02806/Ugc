@@ -5,6 +5,9 @@ import OpenAI from "openai";
 import {
   buildEditOverlayTextLayout,
   estimateEditOverlayLineWidth,
+  getEditOverlayOutputDimensions,
+  getEditOverlayRenderMetrics,
+  HOOK_TEXT_FIXED_FONT_SIZE,
 } from "./edit-overlay-render-spec.js";
 import {
   buildTrendingHookCampaignPurposeSequence,
@@ -40,9 +43,9 @@ export const TRENDING_HOOK_PROMPT_VERSION =
 export const TRENDING_HOOK_SELECTION_VERSION =
   "global-format-rotation-v1";
 export const TRENDING_HOOK_OVERLAY_VERSION =
-  "hook-overlay-v3";
+  "hook-overlay-v4-fixed-type";
 export const TRENDING_HOOK_VALIDATOR_VERSION =
-  "trending-hook-validator-v3";
+  "trending-hook-validator-v4-fixed-type";
 
 export const HOOK_AUDIO_MOODS = [
   "curious",
@@ -597,15 +600,51 @@ export function measureHookOverlayVisualFit(
   const semanticLines = normalizeHookLines(value);
   const normalizedText = semanticLines.join(" ");
   const text = semanticLines.join("\n");
-  const layout = buildEditOverlayTextLayout(text, "hook", "9:16");
-  const renderedLines = layout.lines.filter((line) => line.trim());
-  const semanticLineWidths = semanticLines.map((line) =>
-    Math.ceil(estimateEditOverlayLineWidth(line, layout.fontSize)),
-  );
   const wordCount = semanticLines
     .join(" ")
     .split(/\s+/u)
     .filter(Boolean).length;
+  let layout: ReturnType<typeof buildEditOverlayTextLayout>;
+
+  try {
+    layout = buildEditOverlayTextLayout(text, "hook", "9:16");
+  } catch {
+    const metrics = getEditOverlayRenderMetrics("hook", "9:16");
+    const dimensions = getEditOverlayOutputDimensions("9:16");
+    const maximumTextWidth = Math.round(
+      dimensions.width * (metrics.maxTextWidthPercent / 100),
+    );
+    const maximumTextHeight = Math.round(
+      dimensions.height * (metrics.maxTextHeightPercent / 100),
+    );
+    const lineWidths = semanticLines.map((line) =>
+      Math.ceil(estimateEditOverlayLineWidth(line, HOOK_TEXT_FIXED_FONT_SIZE)),
+    );
+
+    return {
+      canvasHeight: dimensions.height,
+      canvasWidth: dimensions.width,
+      characterCount: Array.from(normalizedText).length,
+      fits: false,
+      fontSize: HOOK_TEXT_FIXED_FONT_SIZE,
+      isTruncated: false,
+      lineWidths,
+      maximumTextHeight,
+      maximumTextWidth,
+      overlayVersion: TRENDING_HOOK_OVERLAY_VERSION,
+      renderedLineCount: 0,
+      semanticLineCount: semanticLines.length,
+      textHeight:
+        semanticLines.length * HOOK_TEXT_FIXED_FONT_SIZE +
+        Math.max(0, semanticLines.length - 1) * metrics.lineSpacing,
+      textWidth: Math.max(0, ...lineWidths),
+      wordCount,
+    };
+  }
+  const renderedLines = layout.lines.filter((line) => line.trim());
+  const semanticLineWidths = semanticLines.map((line) =>
+    Math.ceil(estimateEditOverlayLineWidth(line, layout.fontSize)),
+  );
   const fits =
     semanticLines.length > 0 &&
     semanticLines.every(Boolean) &&

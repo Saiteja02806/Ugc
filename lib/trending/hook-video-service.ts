@@ -116,12 +116,14 @@ export async function persistHookVideoSelection(params: {
     editedHookContent
       ? {
           fontSize: editedHookContent.fontSize,
+          layoutVersion: editedHookContent.layoutVersion,
           lines: editedHookContent.lines,
         }
       : {
           enforceMaximum: false,
           enforceMinimum: false,
           fontSize: suggestionLayout!.fontSize,
+          layoutVersion: suggestionLayout!.layoutVersion,
           lines: suggestionLayout!.lines,
         },
   );

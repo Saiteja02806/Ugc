@@ -25,6 +25,10 @@ const progressMigration = readFileSync(
   "supabase/migrations/20260824183000_add_business_profile_onboarding_step.sql",
   "utf8",
 );
+const legacyProgressCorrection = readFileSync(
+  "supabase/migrations/20260824184500_restart_stale_business_profile_onboarding.sql",
+  "utf8",
+);
 
 test("onboarding persistence defaults analyzed profiles to incomplete", () => {
   assert.match(migration, /onboarding_status text not null default 'incomplete'/i);
@@ -43,6 +47,19 @@ test("onboarding progress distinguishes fresh setup from verified later steps", 
   assert.match(storage, /onboarding_step: 2/);
   assert.match(storage, /onboarding_step: 3/);
   assert.match(storage, /onboardingStep: normalizeOnboardingStep/);
+});
+
+test("stale completed profiles restart at source selection", () => {
+  assert.match(
+    legacyProgressCorrection,
+    /onboarding_status = 'completed' and onboarding_version >= 3 then 3/i,
+  );
+  assert.match(legacyProgressCorrection, /else 1/i);
+  assert.match(legacyProgressCorrection, /onboarding_version < 3/i);
+  assert.doesNotMatch(
+    storage,
+    /status === "completed"[\s\S]*return 3/,
+  );
 });
 
 test("the v2 backfill depends only on a non-empty business name", () => {

@@ -500,10 +500,7 @@ function mapProfile(row: BusinessProfileRow): BusinessProfileRecord {
     logoUrl: row.logo_url ?? null,
     logoWidth: row.logo_width ?? null,
     onboardingCompletedAt: row.onboarding_completed_at ?? null,
-    onboardingStep: normalizeOnboardingStep(
-      row.onboarding_step,
-      row.onboarding_status,
-    ),
+    onboardingStep: normalizeOnboardingStep(row.onboarding_step),
     onboardingStatus: row.onboarding_status ?? "incomplete",
     onboardingVersion: row.onboarding_version ?? 0,
     preparationError: row.preparation_error,
@@ -519,12 +516,7 @@ function mapProfile(row: BusinessProfileRow): BusinessProfileRecord {
 
 function normalizeOnboardingStep(
   step: number,
-  status: BusinessProfileOnboardingStatus,
 ): BusinessProfileOnboardingStep {
-  if (status === "completed") {
-    return 3;
-  }
-
   return step === 2 || step === 3 ? step : 1;
 }
 

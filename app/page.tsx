@@ -84,7 +84,7 @@ export default async function Home() {
 
       <section className="relative z-0 px-4 pb-0 pt-28 sm:px-6 sm:pb-0 sm:pt-32 lg:px-8 lg:pb-0 lg:pt-36">
         <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-12 lg:gap-16">
-          <div className="hero-rise w-full max-w-[1200px] text-center">
+          <div className="w-full max-w-[1200px] text-center">
             {/* Announcement Pill Badge */}
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-semibold text-foreground shadow-sm">
               <span className="text-primary font-semibold">Instagram-First</span>
@@ -147,7 +147,7 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="hero-rise hero-rise-delay-1 w-full">
+          <div className="w-full">
             <LandingHeroShowcase />
           </div>
         </div>

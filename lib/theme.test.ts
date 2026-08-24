@@ -59,6 +59,22 @@ test("the root layout renders dark before the saved choice is read", () => {
   );
 });
 
+test("the landing hero remains fully visible through first paint and hydration", () => {
+  const landingSource = readFileSync(
+    new URL("../app/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const styles = readFileSync(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(landingSource, /hero-rise/);
+  assert.doesNotMatch(styles, /@keyframes hero-rise|\.hero-rise/);
+  assert.match(styles, /@keyframes section-reveal/);
+  assert.match(styles, /\.landing-reveal/);
+});
+
 test("dialog footers and destructive actions use semantic colors in both themes", () => {
   const dialogSource = readFileSync(
     new URL("../components/ui/dialog.tsx", import.meta.url),

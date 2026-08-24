@@ -373,6 +373,7 @@ function toClientProfile(
       ...(profile.primaryGoals.length > 0 ? [] : ["primaryGoals"]),
     ],
     onboardingRequiredVersion: BUSINESS_PROFILE_ONBOARDING_VERSION,
+    onboardingStep: profile.onboardingStep,
     onboardingStatus: onboardingComplete ? "completed" : "incomplete",
     onboardingVersion: profile.onboardingVersion,
     preparationError: profile.preparationError,

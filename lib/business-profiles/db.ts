@@ -28,6 +28,7 @@ const MUTABLE_ONBOARDING_STATUS_FILTER =
 
 type BusinessProfileStatus = "failed" | "preparing";
 type BusinessProfileOnboardingStatus = "completed" | "incomplete";
+export type BusinessProfileOnboardingStep = 1 | 2 | 3;
 
 type BusinessProfileRow = {
   analysis_id: string | null;
@@ -44,6 +45,7 @@ type BusinessProfileRow = {
   logo_url: string | null;
   logo_width: number | null;
   onboarding_completed_at: string | null;
+  onboarding_step: number;
   onboarding_status: BusinessProfileOnboardingStatus;
   onboarding_version: number;
   preparation_error: string | null;
@@ -87,6 +89,7 @@ export type BusinessProfileRecord = {
   logoUrl: string | null;
   logoWidth: number | null;
   onboardingCompletedAt: string | null;
+  onboardingStep: BusinessProfileOnboardingStep;
   onboardingStatus: BusinessProfileOnboardingStatus;
   onboardingVersion: number;
   preparationError: string | null;
@@ -182,6 +185,7 @@ export async function saveBusinessProfile(input: {
 
   if (
     existing &&
+    existing.onboardingStep >= 2 &&
     (existing.analysisId === input.analysisId ||
       contentHash === getStoredHash(existing))
   ) {
@@ -194,6 +198,7 @@ export async function saveBusinessProfile(input: {
     context_json: input.analysis,
     intake_type: input.intakeType,
     onboarding_completed_at: null,
+    onboarding_step: 2,
     onboarding_status: "incomplete" as const,
     onboarding_version: 0,
     preparation_error: null,
@@ -263,6 +268,7 @@ async function completeBusinessProfileOnboardingAttempt(
       content_hash: contentHash,
       context_json: analysis,
       onboarding_completed_at: completedAt,
+      onboarding_step: 3,
       onboarding_status: "completed",
       onboarding_version: BUSINESS_PROFILE_ONBOARDING_VERSION,
       primary_goal: primaryGoals[0],
@@ -405,6 +411,7 @@ export async function saveBusinessProfileOnboardingIdentity(params: {
     .update({
       content_hash: hashAnalysis(analysis, params.profile.intakeType),
       context_json: analysis,
+      onboarding_step: 3,
       ...logoPatch,
       profile_version: params.profile.profileVersion + 1,
       updated_at: updatedAt,
@@ -493,6 +500,10 @@ function mapProfile(row: BusinessProfileRow): BusinessProfileRecord {
     logoUrl: row.logo_url ?? null,
     logoWidth: row.logo_width ?? null,
     onboardingCompletedAt: row.onboarding_completed_at ?? null,
+    onboardingStep: normalizeOnboardingStep(
+      row.onboarding_step,
+      row.onboarding_status,
+    ),
     onboardingStatus: row.onboarding_status ?? "incomplete",
     onboardingVersion: row.onboarding_version ?? 0,
     preparationError: row.preparation_error,
@@ -504,6 +515,17 @@ function mapProfile(row: BusinessProfileRow): BusinessProfileRecord {
     trendingTimezone: row.trending_timezone,
     userId: row.user_id,
   };
+}
+
+function normalizeOnboardingStep(
+  step: number,
+  status: BusinessProfileOnboardingStatus,
+): BusinessProfileOnboardingStep {
+  if (status === "completed") {
+    return 3;
+  }
+
+  return step === 2 || step === 3 ? step : 1;
 }
 
 function getStoredPrimaryGoals(row: BusinessProfileRow): PrimaryGoals {

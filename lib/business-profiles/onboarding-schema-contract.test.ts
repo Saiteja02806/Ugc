@@ -21,6 +21,10 @@ const multiGoalMigration = readFileSync(
   "supabase/migrations/20260809114404_add_multiple_business_profile_goals.sql",
   "utf8",
 );
+const progressMigration = readFileSync(
+  "supabase/migrations/20260824183000_add_business_profile_onboarding_step.sql",
+  "utf8",
+);
 
 test("onboarding persistence defaults analyzed profiles to incomplete", () => {
   assert.match(migration, /onboarding_status text not null default 'incomplete'/i);
@@ -28,6 +32,17 @@ test("onboarding persistence defaults analyzed profiles to incomplete", () => {
   assert.match(migration, /onboarding_completed_at timestamptz/i);
   assert.match(storage, /onboarding_status: "incomplete"/);
   assert.match(storage, /onboarding_version: 0/);
+});
+
+test("onboarding progress distinguishes fresh setup from verified later steps", () => {
+  assert.match(progressMigration, /onboarding_step smallint not null default 1/i);
+  assert.match(progressMigration, /onboarding_status = 'completed' then 3/i);
+  assert.match(progressMigration, /context_json ->> 'businessName'/i);
+  assert.match(progressMigration, /else 1/i);
+  assert.match(progressMigration, /between 1 and 3/i);
+  assert.match(storage, /onboarding_step: 2/);
+  assert.match(storage, /onboarding_step: 3/);
+  assert.match(storage, /onboardingStep: normalizeOnboardingStep/);
 });
 
 test("the v2 backfill depends only on a non-empty business name", () => {

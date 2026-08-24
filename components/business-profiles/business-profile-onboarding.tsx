@@ -109,6 +109,7 @@ type ProfileSummary = {
   onboardingCompletedAt: string | null;
   onboardingMissingFields: string[];
   onboardingRequiredVersion: number;
+  onboardingStep: OnboardingStep;
   onboardingStatus: "completed" | "incomplete";
   onboardingVersion: number;
   preparationError: string | null;
@@ -271,8 +272,12 @@ export function BusinessProfileOnboarding() {
           return;
         }
 
-        if (loadedProfile && !persistedJobId) {
-          moveToStep(2);
+        if (
+          loadedProfile &&
+          !persistedJobId &&
+          loadedProfile.onboardingStep !== 1
+        ) {
+          moveToStep(loadedProfile.onboardingStep);
         }
       } catch (loadError) {
         if (!controller.signal.aborted) {

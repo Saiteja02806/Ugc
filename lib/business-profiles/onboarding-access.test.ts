@@ -41,6 +41,7 @@ const completedProfile = {
   logoUrl: null,
   logoWidth: null,
   onboardingCompletedAt: "2026-08-03T00:00:00.000Z",
+  onboardingStep: 3 as const,
   onboardingStatus: "completed" as const,
   onboardingVersion: 3,
   preparationError: null,

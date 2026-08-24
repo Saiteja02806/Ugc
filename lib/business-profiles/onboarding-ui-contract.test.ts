@@ -26,6 +26,18 @@ test("the onboarding route bypasses only the profile gate and cannot loop", () =
   assert.match(authGuard, /router\.replace\("\/onboarding"\)/);
 });
 
+test("the onboarding screen resumes only from persisted verified progress", () => {
+  assert.match(onboarding, /onboardingStep: OnboardingStep/);
+  assert.match(
+    onboarding,
+    /loadedProfile\.onboardingStep !== 1[\s\S]*moveToStep\(loadedProfile\.onboardingStep\)/,
+  );
+  assert.doesNotMatch(
+    onboarding,
+    /if \(loadedProfile && !persistedJobId\) \{\s*moveToStep\(2\)/,
+  );
+});
+
 test("the final approved flow has exactly information, identity, and goal", () => {
   for (const requiredCopy of [
     "Choose the source you trust most",

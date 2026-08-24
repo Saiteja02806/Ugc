@@ -91,6 +91,7 @@ function OnboardingPreviewInner() {
               onboardingCompletedAt: null,
               onboardingMissingFields: [],
               onboardingRequiredVersion: 1,
+              onboardingStep: 2,
               onboardingStatus: "incomplete",
               onboardingVersion: 1,
               preparationError: null,

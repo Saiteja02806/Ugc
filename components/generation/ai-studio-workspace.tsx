@@ -88,11 +88,17 @@ export function AIStudioWorkspace({
             accessState={accessState}
             accessMessage={accessMessage}
             active={mode === "images"}
+            creditCost={subscription?.imageGenerationCreditCost ?? 1}
+            creditsRemaining={subscription?.creditsRemaining ?? null}
           />
           <VideoGenerationStudioPanel
             accessState={accessState}
             accessMessage={accessMessage}
             active={mode === "videos"}
+            creditsPerSecond={
+              subscription?.videoGenerationCreditsPerSecond ?? 3
+            }
+            creditsRemaining={subscription?.creditsRemaining ?? null}
           />
         </div>
       </div>

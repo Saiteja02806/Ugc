@@ -3353,3 +3353,33 @@ Name: **Verify v26 and replace the stale production assignment**
   application and GCP workers are deployed and authenticated production
   canaries verify both Carousel structures and Hook rendering on
   `https://www.getugcpilot.com`.
+
+## 2026-08-24 Structure 2 Server-Owned Ordering and Hook V4 Contract Repair
+
+- Structure 2 AI responses no longer own `slideNumber`, `slotIndex`,
+  `candidateIndex`, or `storyFormatId`. The structured-output contract uses
+  five required named positions for the batch and for each plan. The worker
+  maps those positions to the already-reserved assignments, injects slide
+  numbers 1 through 5 from position, and injects the backend-selected format
+  before publishing validation and persistence.
+- This removes the former `items.anyOf` ambiguity that allowed duplicate or
+  reordered numeric identities to satisfy the model-facing JSON schema before
+  failing the stricter application parser. Persisted Carousel plans and slides
+  still retain their normal numeric slot/slide metadata; only AI ownership of
+  that metadata is removed.
+- The exact-key parser remains a second fail-closed boundary. Extra structural
+  fields, missing named positions, an invalid CTA position, invalid roles, or
+  render-fit failures still receive at most the existing isolated LLM repair;
+  no deterministic story copy is introduced.
+- Migration `20260824180000_align_hook_fixed_type_validation.sql` makes the Hook
+  persistence boundary rolling-safe for the matched V3 and fixed-type V4
+  validator/overlay pairs. It does not allow a V4 validator with a V3 overlay,
+  or vice versa.
+- A Hook job whose database error is a deterministic generation/persistence
+  contract failure is no longer replaced three more times. Transient worker or
+  provider failures retain the existing recovery path, while a later normal
+  refill may choose new candidates after a terminal content failure.
+- These source and migration changes are locally validated but are not live.
+  Apply the Hook migration before releasing the application and workers, then
+  verify Hook persistence plus a new Structure 2 batch through the authenticated
+  production Trending flow on `https://www.getugcpilot.com`.

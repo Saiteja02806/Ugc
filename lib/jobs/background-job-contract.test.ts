@@ -11,6 +11,7 @@ import {
 import type { BackgroundJobRecord } from "./background-jobs.ts";
 
 test("normalizes implementation job aliases to the public contract", () => {
+  assert.equal(getCanonicalBackgroundJobType("generate_image"), "image_generation");
   assert.equal(getCanonicalBackgroundJobType("generate_hook_video"), "video_generation");
   assert.equal(getCanonicalBackgroundJobType("render_edit_video"), "final_render");
   assert.equal(getCanonicalBackgroundJobType("publish_social_post"), "social_publish");

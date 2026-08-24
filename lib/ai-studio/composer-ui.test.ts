@@ -26,6 +26,9 @@ const videoWorkspace = readProjectFile(
 const videoGenerationApi = readProjectFile(
   "lib/ai-studio/video-generation-api.ts",
 );
+const billingSubscription = readProjectFile(
+  "lib/billing/subscription-db.ts",
+);
 const promptHelper = composer.slice(
   composer.indexOf("<FieldDescription"),
   composer.indexOf("</FieldDescription>") + "</FieldDescription>".length,
@@ -88,9 +91,44 @@ test("the unified toolbar keeps settings and Generate inside the same form", () 
 test("image and video controls send selected settings to generation APIs", () => {
   assert.match(imageWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
   assert.match(videoWorkspace, /body: JSON\.stringify\(\{[\s\S]*?aspectRatio,[\s\S]*?quantity,/);
+  assert.match(imageWorkspace, /ariaLabel="Image model"/);
+  assert.match(imageWorkspace, /Nano Banana 2/);
+  assert.match(imageWorkspace, /GPT Image/);
+  assert.match(imageWorkspace, /model,[\s\S]*?quantity,/);
+  assert.match(videoWorkspace, /ariaLabel="Video model"/);
+  assert.match(videoWorkspace, /Google Omni/);
+  assert.match(videoWorkspace, /ariaLabel="Video duration"/);
+  assert.match(videoWorkspace, /durationSeconds,[\s\S]*?model,/);
+  assert.match(
+    videoGenerationApi,
+    /getGenerationCreditCost\("video", durationSeconds\)/,
+  );
   assert.match(videoWorkspace, /AiStudioRatioPicker/);
   assert.match(videoWorkspace, /allowedRatios=\{\["9:16", "16:9"\]\}/);
   assert.match(videoWorkspace, /ariaLabel="Number of videos"/);
+});
+
+test("video duration displays and enforces three credits per second", () => {
+  assert.match(
+    videoWorkspace,
+    /label: `\$\{duration\} sec · \$\{duration \* creditsPerSecond\} credits`/,
+  );
+  assert.match(videoWorkspace, /creditsPerSecond = 3/);
+  assert.match(videoWorkspace, /hasInsufficientCredits/);
+  assert.match(imageWorkspace, /hasInsufficientCredits/);
+  assert.match(
+    billingSubscription,
+    /videoGenerationCreditsPerSecond: getVideoGenerationCreditsPerSecond\(\)/,
+  );
+});
+
+test("image defaults to 9:16 and workspaces use the public canonical job names", () => {
+  assert.match(
+    imageWorkspace,
+    /useState<AIStudioImageAspectRatio>\("9:16"\)/,
+  );
+  assert.match(imageWorkspace, /job\.jobType === "image_generation"/);
+  assert.match(videoWorkspace, /job\.jobType === "video_generation"/);
 });
 
 test("quantity controls lock with the rest of each generation composer", () => {
@@ -124,7 +162,7 @@ test("video references start empty without exposing competing pickers", () => {
   );
   assert.match(
     videoWorkspace,
-    /generateDisabled=\{\s*generationLocked \|\|\s*!prompt\.trim\(\) \|\|\s*isGenerating\s*\}/,
+    /generateDisabled=\{[\s\S]*?generationLocked \|\|[\s\S]*?hasInsufficientCredits \|\|[\s\S]*?!prompt\.trim\(\) \|\|[\s\S]*?isGenerating[\s\S]*?\}/,
   );
   assert.doesNotMatch(
     videoWorkspace,
@@ -148,7 +186,7 @@ test("AI Studio supports optional direct image and video reference uploads", () 
   assert.match(videoWorkspace, /referenceVideoDurationSeconds:/);
   assert.match(
     videoWorkspace,
-    /generateDisabled=\{\s*generationLocked \|\|\s*!prompt\.trim\(\) \|\|\s*isGenerating\s*\}/,
+    /generateDisabled=\{[\s\S]*?generationLocked \|\|[\s\S]*?hasInsufficientCredits \|\|[\s\S]*?!prompt\.trim\(\) \|\|[\s\S]*?isGenerating[\s\S]*?\}/,
   );
 });
 

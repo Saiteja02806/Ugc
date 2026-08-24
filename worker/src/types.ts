@@ -278,7 +278,7 @@ type UserWallTextAssignmentUpdate = Partial<{
   updated_at: string;
 }>;
 
-export type GenerationProvider = "openai" | "runway" | "veo";
+export type GenerationProvider = "gemini" | "openai" | "runway" | "veo";
 
 export type GenerationProviderOperationStatus =
   | "failed"

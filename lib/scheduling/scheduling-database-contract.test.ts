@@ -722,10 +722,20 @@ test("a deep-linked carousel draft opens the scheduling editor without switching
   );
 });
 
-test("new video schedules auto-select the only available scheduled video", () => {
+test("new schedules preselect available hook and secondary clips", () => {
   assert.match(
     scheduleEditor,
-    /editingSchedule \|\|[\s\S]*selectedDemoMediaId \|\|[\s\S]*demoMediaOptions\.length !== 1[\s\S]*setSelectedDemoMediaId\(demoMediaOptions\[0\]!\.id\)/,
+    /editingSchedule \|\|[\s\S]*selectedDemoMediaId \|\|[\s\S]*demoMediaOptions\.length === 0[\s\S]*setSelectedDemoMediaId\(demoMediaOptions\[0\]!\.id\)/,
+  );
+  assert.match(
+    scheduleEditor,
+    /editingSchedule \|\|[\s\S]*selectedHookMediaId \|\|[\s\S]*localHookMediaOptions\.length === 0[\s\S]*setSelectedHookMediaId\(localHookMediaOptions\[0\]!\.id\)/,
+  );
+  assert.match(scheduleEditor, /function getInitialClipSelection/);
+  assert.match(schedulingWorkspace, /clipSelection: submission\.clipSelection/);
+  assert.match(
+    schedulingWorkspace,
+    /clipSelection\) === "hook_only"[\s\S]*initialHookMediaId/,
   );
 });
 
@@ -990,16 +1000,17 @@ test("social scheduling uses one five-minute rule without quarter-hour rounding"
   );
 });
 
-test("the main scheduler uses compact horizontal video and time dropdowns", () => {
+test("the main scheduler uses compact role-based clip and time controls", () => {
   assert.match(
     schedulingWorkspace,
     /demoMediaOptions: videoAssets[\s\S]*filter\(isScheduledVideoMediaAsset\)/,
   );
-  assert.match(scheduleEditor, /title="Choose a video"/);
-  assert.match(scheduleEditor, /Choose a video to publish/);
+  assert.match(scheduleEditor, /Hook clip/);
+  assert.match(scheduleEditor, /title="Secondary clip"/);
+  assert.match(scheduleEditor, /Choose a secondary clip/);
   assert.match(
     scheduleEditor,
-    /Scroll sideways through Creative Assets\. Selecting a video closes this list\./,
+    /Content videos appear here\. Selecting a clip closes this list\./,
   );
   assert.match(
     scheduleEditor,
@@ -1015,6 +1026,10 @@ test("the main scheduler uses compact horizontal video and time dropdowns", () =
     /snap-x snap-mandatory gap-1\.5 overflow-x-auto/,
   );
   assert.match(scheduleEditor, /aria-label="Scheduling checklist"/);
+  assert.match(scheduleEditor, /Show on profile grid/);
+  assert.match(scheduleEditor, /max-w-xl/);
+  assert.match(schedulingService, /"catalog_influencer"/);
+  assert.match(schedulingService, /directScheduledVideoCollections/);
 });
 
 test("every calendar date opens the dedicated day view", () => {

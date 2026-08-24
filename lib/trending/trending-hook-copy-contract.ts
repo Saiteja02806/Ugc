@@ -5,6 +5,22 @@ export const TRENDING_HOOK_SELECTION_VERSION =
 export const TRENDING_HOOK_COPY_JOB_TYPE =
   "generate_trending_hook_copy" as const;
 
+const TERMINAL_TRENDING_HOOK_COPY_ERROR_MARKERS = [
+  "trending_hook_generation_invalid_",
+  "trending_hook_generation_v7_persistence_mismatch",
+  "trending_hook_generation_scope_mismatch",
+  "hook_video_suggestions_v5_metadata_check",
+] as const;
+
+export function isTerminalTrendingHookCopyFailure(
+  errorMessage: string | null | undefined,
+) {
+  const normalized = errorMessage?.toLocaleLowerCase() ?? "";
+  return TERMINAL_TRENDING_HOOK_COPY_ERROR_MARKERS.some((marker) =>
+    normalized.includes(marker),
+  );
+}
+
 export const TRENDING_HOOK_CAMPAIGN_PURPOSES = [
   "product_discovery",
   "education",

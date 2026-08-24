@@ -137,7 +137,7 @@ export async function POST(
       {
         ok: false,
         message:
-          "Choose an opening clip and scheduled video before preparing the post.",
+          "Choose a hook clip and a secondary clip before preparing the post.",
       },
       409,
     );
@@ -154,7 +154,7 @@ export async function POST(
         code: "selected_opening_video_unavailable",
         ok: false,
         message:
-          "The selected opening clip is no longer available. Edit this draft and choose another clip.",
+            "The selected hook clip is no longer available. Edit this draft and choose another clip.",
       },
       409,
     );
@@ -166,7 +166,7 @@ export async function POST(
         code: "selected_demo_video_unavailable",
         ok: false,
         message:
-          "The selected scheduled video is no longer available. Edit this draft and choose another video.",
+            "The selected secondary clip is no longer available. Edit this draft and choose another clip.",
       },
       409,
     );
@@ -279,7 +279,7 @@ export async function POST(
     return jsonResponse(
       {
         ok: false,
-        message: "Review the opening clip trim before preparing this video.",
+        message: "Review the hook clip trim before preparing this video.",
       },
       409,
     );
@@ -296,7 +296,7 @@ export async function POST(
         {
           code: "locked_hook_audio_unavailable",
           message:
-            "The approved sound for this opening clip is unavailable. Review its Locked audio before rendering.",
+              "The approved sound for this hook clip is unavailable. Review its Locked audio before rendering.",
           ok: false,
         },
         409,

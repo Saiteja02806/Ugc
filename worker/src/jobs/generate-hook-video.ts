@@ -8,6 +8,7 @@ import {
   toProviderPollingRetry,
 } from "../lib/generation-provider.js";
 import { generateRunwayHookVideoBuffer } from "../lib/runway-video.js";
+import { generateGeminiOmniVideoBuffer } from "../lib/gemini-omni-video.js";
 import { getStoredObject, uploadBufferToStorage } from "../lib/storage.js";
 import {
   buildUgcVideoPrompt,
@@ -30,8 +31,10 @@ type GenerateHookVideoInput = {
   aspectRatio: HookVideoAspectRatio;
   avatarImageUrl?: string;
   cameraStyle: HookVideoCameraStyle;
+  durationSeconds: number;
   emotion: HookVideoEmotion;
   hookIdea: string;
+  model?: "google_omni";
   productDescription?: string;
   productName?: string;
   projectId: string;
@@ -67,7 +70,9 @@ export async function runGenerateHookVideoJob(
       bufferSize: undefined,
       input,
       provider:
-        (persistedProvider === "runway" || persistedProvider === "veo"
+        (persistedProvider === "gemini" ||
+        persistedProvider === "runway" ||
+        persistedProvider === "veo"
           ? persistedProvider
           : undefined) ??
         input.provider ??
@@ -138,6 +143,7 @@ async function generateWithFallback(
   prompt: string,
 ) {
   const preferredProvider = input.provider ?? DEFAULT_HOOK_VIDEO_PROVIDER;
+  const selectedProvider = input.model === "google_omni" ? "gemini" : preferredProvider;
 
   if (input.referenceVideoUrl) {
     return generateWithProvider(
@@ -150,7 +156,18 @@ async function generateWithFallback(
     );
   }
 
-  if (preferredProvider === "runway") {
+  if (selectedProvider === "gemini") {
+    return generateWithProvider(
+      job,
+      context,
+      "gemini",
+      "primary",
+      input,
+      prompt,
+    );
+  }
+
+  if (selectedProvider === "runway") {
     return generateWithProvider(
       job,
       context,
@@ -230,6 +247,8 @@ async function generateWithProvider(
   const operationKey = `${role}-${provider}`;
   const requestFingerprint = createGenerationRequestFingerprint({
     aspectRatio: input.aspectRatio,
+    durationSeconds: input.durationSeconds,
+    model: input.model ?? null,
     prompt,
     provider,
     referenceImageUrl: input.avatarImageUrl,
@@ -274,6 +293,7 @@ async function generateWithProvider(
   try {
     const params = {
       aspectRatio: input.aspectRatio,
+      durationSeconds: input.durationSeconds,
       onOperationCreated,
       prompt,
       providerOperationId,
@@ -283,17 +303,7 @@ async function generateWithProvider(
     };
 
     return {
-      buffer:
-        provider === "runway"
-          ? await generateRunwayHookVideoBuffer({
-              ...params,
-              onOperationSucceeded,
-            })
-          : await generateVeoHookVideoBuffer({
-              ...params,
-              onOperationSucceeded: async (operationId) =>
-                onOperationSucceeded(operationId),
-            }),
+      buffer: await generateProviderBuffer(provider, params, onOperationSucceeded),
       operationKey,
       provider,
     };
@@ -320,6 +330,41 @@ async function generateWithProvider(
       store: context.store,
     });
   }
+}
+
+async function generateProviderBuffer(
+  provider: HookVideoProvider,
+  params: {
+    aspectRatio: HookVideoAspectRatio;
+    durationSeconds: number;
+    onOperationCreated: (operationId: string) => Promise<void>;
+    prompt: string;
+    providerOperationId?: string;
+    referenceImageUrl?: string;
+    referenceVideoDurationSeconds?: number;
+    referenceVideoUrl?: string;
+  },
+  onOperationSucceeded: (operationId: string, outputUrl?: string) => Promise<void>,
+) {
+  if (provider === "gemini") {
+    return generateGeminiOmniVideoBuffer({
+      ...params,
+      onOperationSucceeded,
+    });
+  }
+
+  if (provider === "runway") {
+    return generateRunwayHookVideoBuffer({
+      ...params,
+      onOperationSucceeded,
+    });
+  }
+
+  return generateVeoHookVideoBuffer({
+    ...params,
+    onOperationSucceeded: async (operationId) =>
+      onOperationSucceeded(operationId),
+  });
 }
 
 function buildOutput(params: {
@@ -356,7 +401,9 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
       "cameraStyle",
     ),
     emotion: getChoice(job.input_json.emotion, hookVideoEmotions, "emotion"),
+    durationSeconds: getGenerationDurationSeconds(job.input_json.durationSeconds),
     hookIdea: getText(job.input_json.hookIdea, "hookIdea", MAX_HOOK_LENGTH),
+    model: job.input_json.model === "google_omni" ? "google_omni" : undefined,
     productDescription: getOptionalText(
       job.input_json.productDescription,
       MAX_PRODUCT_DESCRIPTION_LENGTH,
@@ -377,7 +424,15 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
 }
 
 function getOutputDurationSeconds(input: GenerateHookVideoInput) {
-  return input.referenceVideoDurationSeconds ?? 4;
+  return input.referenceVideoUrl
+    ? input.referenceVideoDurationSeconds ?? input.durationSeconds
+    : input.durationSeconds;
+}
+
+function getGenerationDurationSeconds(value: Json | undefined) {
+  return typeof value === "number" && Number.isInteger(value) && value >= 3 && value <= 10
+    ? value
+    : 4;
 }
 
 function getOptionalDurationSeconds(value: Json | undefined) {

@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { isTerminalTrendingHookCopyFailure } from "./trending-hook-copy-contract.ts";
+
 const migration = readFileSync(
   new URL(
     "../../supabase/migrations/20260728183858_add_trending_hook_ideas.sql",
@@ -54,6 +56,13 @@ const threeLineOverlayMigration = readFileSync(
 const globalFormatsMigration = readFileSync(
   new URL(
     "../../supabase/migrations/20260813150000_add_global_hook_text_formats_v1.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const fixedTypeValidationMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260824180000_align_hook_fixed_type_validation.sql",
     import.meta.url,
   ),
   "utf8",
@@ -297,6 +306,46 @@ test("V7 stores Global writing formats without changing visual or audio format r
   );
   assert.doesNotMatch(globalFormatsMigration, /alter table public\.hook_formats/);
   assert.doesNotMatch(globalFormatsMigration, /update public\.hook_audio_assets/);
+});
+
+test("fixed-type Hook provenance is accepted as a matched rolling-safe pair", () => {
+  assert.match(
+    hookWorkerCopySource,
+    /TRENDING_HOOK_OVERLAY_VERSION\s*=\s*[\s\S]*hook-overlay-v4-fixed-type/,
+  );
+  assert.match(
+    hookWorkerCopySource,
+    /TRENDING_HOOK_VALIDATOR_VERSION\s*=\s*[\s\S]*trending-hook-validator-v4-fixed-type/,
+  );
+  assert.match(
+    fixedTypeValidationMigration,
+    /validator_version in \([\s\S]*trending-hook-validator-v3[\s\S]*trending-hook-validator-v4-fixed-type/,
+  );
+  assert.match(
+    fixedTypeValidationMigration,
+    /trending-hook-validator-v4-fixed-type[\s\S]*hook-overlay-v4-fixed-type/,
+  );
+  assert.match(
+    fixedTypeValidationMigration,
+    /trending-hook-validator-v3[\s\S]*hook-overlay-v3/,
+  );
+});
+
+test("does not repeat a Hook job that failed a deterministic persistence contract", () => {
+  assert.equal(
+    isTerminalTrendingHookCopyFailure(
+      "Could not persist Trending Hook copy: trending_hook_generation_invalid_v7_candidate",
+    ),
+    true,
+  );
+  assert.equal(
+    isTerminalTrendingHookCopyFailure("Temporary OpenAI request timeout"),
+    false,
+  );
+  assert.match(
+    hookJobsSource,
+    /!isTerminalTrendingHookCopyFailure\(job\.errorMessage\)/,
+  );
 });
 
 test("refills Hook ideas from unused videos with one deduplicated batch", () => {

@@ -18,6 +18,7 @@ import {
   TRENDING_HOOK_PROMPT_VERSION,
   TRENDING_HOOK_SELECTION_VERSION,
   getTrendingHookPerformanceSignalKey,
+  isTerminalTrendingHookCopyFailure,
   type TrendingHookPerformanceSignals,
 } from "@/lib/trending/trending-hook-copy-contract";
 
@@ -68,6 +69,7 @@ export async function enqueueTrendingHookCopyJob(params: {
   for (
     let recoveryDepth = 0;
     (job.status === "failed" || job.status === "cancelled") &&
+    !isTerminalTrendingHookCopyFailure(job.errorMessage) &&
     recoveryDepth < 3;
     recoveryDepth += 1
   ) {

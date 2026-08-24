@@ -17,6 +17,7 @@ export type BillingSubscription = {
   dailyContentPieces: number | "Limited";
   displayName: "Free" | "Starter" | "Growth";
   instagramAccounts: number;
+  imageGenerationCreditCost: number;
   isActive: boolean;
   planKey: "free" | "starter" | "growth";
   sharedMonthlyCredits: number;
@@ -31,6 +32,7 @@ export type BillingSubscription = {
     | "pending";
   updatedAt: string | null;
   userId: string;
+  videoGenerationCreditsPerSecond: number;
 };
 
 export function useBillingSubscription(options?: {

@@ -15,6 +15,13 @@ import {
 export const CAROUSEL_STRUCTURE_2_STORY_SCHEMA_VERSION =
   "carousel-structure-2-flexible-story-v2";
 export const CAROUSEL_STRUCTURE_2_STORY_HISTORY_LIMIT = 10;
+export const CAROUSEL_STRUCTURE_2_POSITION_KEYS = [
+  "first",
+  "second",
+  "third",
+  "fourth",
+  "fifth",
+] as const;
 
 const MAX_ANGLE_LENGTH = 180;
 const MAX_CTA_TEXT_LENGTH = 180;
@@ -83,24 +90,17 @@ export function parseCarouselStructure2StoryPlan(
   },
 ): CarouselStructure2StoryPlan {
   const record = asRecord(value, "Structure 2 story plan");
+  assertExactObjectKeys(record, ["slides", "strategy"], "Structure 2 story plan");
   const strategyRecord = asRecord(record.strategy, "Structure 2 strategy");
-  const storyFormatId = getRequiredString(
-    strategyRecord.storyFormatId,
-    "Structure 2 storyFormatId",
-    80,
+  assertExactObjectKeys(strategyRecord, ["angle"], "Structure 2 strategy");
+  const slidesRecord = asRecord(record.slides, "Structure 2 slides");
+  assertExactObjectKeys(
+    slidesRecord,
+    CAROUSEL_STRUCTURE_2_POSITION_KEYS,
+    "Structure 2 slides",
   );
-
-  if (storyFormatId !== params.storyFormatId) {
-    throw new Error(
-      `Structure 2 storyFormatId must remain ${params.storyFormatId}.`,
-    );
-  }
-  if (!Array.isArray(record.slides) || record.slides.length !== 5) {
-    throw new Error("Structure 2 story plan must contain exactly five slides.");
-  }
-
-  const slides = record.slides.map((value, index) =>
-    parseStorySlide(value, index),
+  const slides = CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) =>
+    parseStorySlide(slidesRecord[positionKey], index),
   );
   const ctaSlides = slides.filter((slide) => slide.ctaText !== null);
   const format = getCarouselStructure2Format(params.storyFormatId);
@@ -131,12 +131,13 @@ export function parseCarouselStructure2StoryPlan(
 function parseStorySlide(value: unknown, index: number) {
   const label = `Structure 2 slide ${index + 1}`;
   const record = asRecord(value, label);
-  const slideNumber = getInteger(record.slideNumber, `${label} number`, 1, 5);
+  assertExactObjectKeys(
+    record,
+    ["ctaText", "storyRole", "storyText", "visualContext"],
+    label,
+  );
   const storyRole = getRequiredString(record.storyRole, `${label} role`, 80);
 
-  if (slideNumber !== index + 1) {
-    throw new Error(`${label} has an invalid slide number.`);
-  }
   if (
     !CAROUSEL_STRUCTURE_2_STORY_ROLES.includes(
       storyRole as CarouselStructure2StoryRole,
@@ -149,7 +150,7 @@ function parseStorySlide(value: unknown, index: number) {
   return {
     ctaText: getOptionalString(record.ctaText, `${label} CTA`, MAX_CTA_TEXT_LENGTH),
     productVisualEligibility: getProductVisualEligibility(resolvedRole),
-    slideNumber,
+    slideNumber: index + 1,
     storyRole: resolvedRole,
     storyText: getRequiredString(
       record.storyText,
@@ -319,60 +320,56 @@ export function buildCarouselStructure2StoryPlanSchema(params: {
   storyFormatId: CarouselStructure2FormatId;
 }) {
   const format = getCarouselStructure2Format(params.storyFormatId);
+  const slides = Object.fromEntries(
+    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) => [
+      positionKey,
+      {
+        additionalProperties: false,
+        properties: {
+          ctaText: format.allowedCtaPositions.includes(index + 1)
+            ? {
+                anyOf: [
+                  { maxLength: MAX_CTA_TEXT_LENGTH, minLength: 1, type: "string" },
+                  { type: "null" },
+                ],
+              }
+            : { type: "null" },
+          storyRole: {
+            enum: [...CAROUSEL_STRUCTURE_2_STORY_ROLES],
+            type: "string",
+          },
+          storyText: {
+            maxLength: MAX_STORY_TEXT_LENGTH,
+            minLength: 1,
+            type: "string",
+          },
+          visualContext: {
+            maxLength: MAX_VISUAL_CONTEXT_LENGTH,
+            minLength: 1,
+            type: "string",
+          },
+        },
+        required: ["ctaText", "storyRole", "storyText", "visualContext"],
+        type: "object",
+      },
+    ]),
+  );
 
   return {
     additionalProperties: false,
     properties: {
       slides: {
-        items: {
-          anyOf: [0, 1, 2, 3, 4].map((index) => ({
-            additionalProperties: false,
-            properties: {
-              ctaText: format.allowedCtaPositions.includes(index + 1)
-                ? {
-                    anyOf: [
-                      { maxLength: MAX_CTA_TEXT_LENGTH, minLength: 1, type: "string" },
-                      { type: "null" },
-                    ],
-                  }
-                : { type: "null" },
-              slideNumber: { enum: [index + 1], type: "integer" },
-              storyRole: {
-                enum: [...CAROUSEL_STRUCTURE_2_STORY_ROLES],
-                type: "string",
-              },
-              storyText: {
-                maxLength: MAX_STORY_TEXT_LENGTH,
-                minLength: 1,
-                type: "string",
-              },
-              visualContext: {
-                maxLength: MAX_VISUAL_CONTEXT_LENGTH,
-                minLength: 1,
-                type: "string",
-              },
-            },
-            required: [
-              "ctaText",
-              "slideNumber",
-              "storyRole",
-              "storyText",
-              "visualContext",
-            ],
-            type: "object",
-          })),
-        },
-        maxItems: 5,
-        minItems: 5,
-        type: "array",
+        additionalProperties: false,
+        properties: slides,
+        required: [...CAROUSEL_STRUCTURE_2_POSITION_KEYS],
+        type: "object",
       },
       strategy: {
         additionalProperties: false,
         properties: {
           angle: { maxLength: MAX_ANGLE_LENGTH, minLength: 1, type: "string" },
-          storyFormatId: { enum: [format.id], type: "string" },
         },
-        required: ["angle", "storyFormatId"],
+        required: ["angle"],
         type: "object",
       },
     },
@@ -385,32 +382,56 @@ export function buildCarouselStructure2StoryBatchSchema(params: {
   assignments: readonly CarouselStructure2StoryAssignment[];
 }) {
   assertCarouselStructure2StoryAssignments(params.assignments);
+  const assignments = [...params.assignments].sort(
+    (left, right) => left.slotIndex - right.slotIndex,
+  );
+  const plans = Object.fromEntries(
+    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) => [
+      positionKey,
+      buildCarouselStructure2StoryPlanSchema({
+        storyFormatId: assignments[index]!.storyFormatId,
+      }),
+    ]),
+  );
 
   return {
     additionalProperties: false,
     properties: {
-      items: {
-        items: {
-          anyOf: params.assignments.map((assignment) => ({
-            additionalProperties: false,
-            properties: {
-              plan: buildCarouselStructure2StoryPlanSchema({
-                storyFormatId: assignment.storyFormatId,
-              }),
-              slotIndex: { enum: [assignment.slotIndex], type: "integer" },
-            },
-            required: ["plan", "slotIndex"],
-            type: "object",
-          })),
-        },
-        maxItems: 5,
-        minItems: 5,
-        type: "array",
+      plans: {
+        additionalProperties: false,
+        properties: plans,
+        required: [...CAROUSEL_STRUCTURE_2_POSITION_KEYS],
+        type: "object",
       },
     },
-    required: ["items"],
+    required: ["plans"],
     type: "object",
   } as const;
+}
+
+export function parseCarouselStructure2StoryBatch(
+  value: unknown,
+  assignments: readonly CarouselStructure2StoryAssignment[],
+) {
+  assertCarouselStructure2StoryAssignments(assignments);
+  const record = asRecord(value, "Structure 2 story batch");
+  assertExactObjectKeys(record, ["plans"], "Structure 2 story batch");
+  const plansRecord = asRecord(record.plans, "Structure 2 story batch plans");
+  assertExactObjectKeys(
+    plansRecord,
+    CAROUSEL_STRUCTURE_2_POSITION_KEYS,
+    "Structure 2 story batch plans",
+  );
+  const sortedAssignments = [...assignments].sort(
+    (left, right) => left.slotIndex - right.slotIndex,
+  );
+
+  return new Map(
+    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) => [
+      sortedAssignments[index]!.slotIndex,
+      plansRecord[positionKey],
+    ]),
+  );
 }
 
 export function buildCarouselStructure2BatchMessages(params: {
@@ -421,12 +442,11 @@ export function buildCarouselStructure2BatchMessages(params: {
   assertCarouselStructure2StoryAssignments(params.assignments);
   const assignments = [...params.assignments]
     .sort((left, right) => left.slotIndex - right.slotIndex)
-    .map((assignment) => ({
-      candidateIndex: assignment.candidateIndex,
+    .map((assignment, index) => ({
       creativeSeed: assignment.creativeSeed,
       emotion: assignment.emotion,
       formatReference: getFormatReference(assignment.storyFormatId),
-      slotIndex: assignment.slotIndex,
+      outputKey: CAROUSEL_STRUCTURE_2_POSITION_KEYS[index],
     }));
 
   return [
@@ -439,6 +459,7 @@ export function buildCarouselStructure2BatchMessages(params: {
       role: "user" as const,
       content: [
         "Use each creativeSeed as a broad starting point and its emotion as the emotional current. Do not treat either as finished copy or a complete plot.",
+        "Return each plan under its assigned outputKey. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values.",
         "Develop genuinely different stories. Do not force every item through the same overwhelmed-to-easier arc.",
         "Each story must contain exactly one CTA, and it must appear only at a position listed in that format's allowedCtaPositions.",
         `Every story uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px type over a connected white SVG background. Keep storyText within six visual lines and CTA text within three; the renderer will not shrink or truncate copy.`,
@@ -468,14 +489,16 @@ export function buildCarouselStructure2RepairMessages(params: {
     {
       role: "system" as const,
       content:
-        "Repair one Structure 2 JSON plan. Preserve valid AI copy unless a structural or renderability issue requires changing it. Keep the selected format ID, creative seed, emotion, five-slide count, and format-specific CTA position. Return only repaired JSON.",
+        "Repair one Structure 2 JSON plan. Preserve valid AI copy unless a structural or renderability issue requires changing it. Keep the selected format reference, creative seed, emotion, five-slide count, and format-specific CTA position. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values. Return only repaired JSON.",
     },
     {
       role: "user" as const,
       content: [
-        `Repair slot ${params.assignment.slotIndex}.`,
         "Creative brief:",
-        JSON.stringify(params.assignment),
+        JSON.stringify({
+          creativeSeed: params.assignment.creativeSeed,
+          emotion: params.assignment.emotion,
+        }),
         "Minimal business context:",
         JSON.stringify({ businessDescription: params.businessDescription }),
         "Format reference:",
@@ -632,21 +655,20 @@ function asRecord(value: unknown, label: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function getInteger(
-  value: unknown,
+function assertExactObjectKeys(
+  record: Record<string, unknown>,
+  expectedKeys: readonly string[],
   label: string,
-  minimum: number,
-  maximum: number,
 ) {
+  const actualKeys = Object.keys(record).sort();
+  const normalizedExpectedKeys = [...expectedKeys].sort();
+
   if (
-    typeof value !== "number" ||
-    !Number.isInteger(value) ||
-    value < minimum ||
-    value > maximum
+    actualKeys.length !== normalizedExpectedKeys.length ||
+    actualKeys.some((key, index) => key !== normalizedExpectedKeys[index])
   ) {
-    throw new Error(`${label} must be an integer from ${minimum} to ${maximum}.`);
+    throw new Error(`${label} does not match the required structural fields.`);
   }
-  return value;
 }
 
 function getRequiredString(value: unknown, label: string, maximum: number) {

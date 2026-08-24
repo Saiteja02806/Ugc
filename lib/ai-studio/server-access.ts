@@ -1,6 +1,5 @@
 import "server-only";
 
-import { hasAIStudioProAccess } from "@/lib/ai-studio/access-policy";
 import { getUserSubscription } from "@/lib/billing/subscription-db";
 import {
   FirebaseAuthRequestError,
@@ -8,16 +7,13 @@ import {
   type VerifiedFirebaseUser,
 } from "@/lib/firebase/server-auth";
 
-const PRO_ACCESS_MESSAGE = "AI Studio generation is available to Pro users.";
+const PRO_ACCESS_MESSAGE =
+  "An active Starter or Growth subscription is required for AI Studio generation.";
 
 export async function isAIStudioProUser(user: VerifiedFirebaseUser) {
   const subscription = await getUserSubscription(user.uid);
 
-  return subscription.isActive || isAIStudioBillingExemptUser(user);
-}
-
-export function isAIStudioBillingExemptUser(user: VerifiedFirebaseUser) {
-  return hasAIStudioProAccess(user, process.env.AI_STUDIO_ALLOWED_EMAILS);
+  return subscription.isActive;
 }
 
 export async function requireAIStudioProUser(request: Request) {

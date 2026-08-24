@@ -6,8 +6,12 @@ import {
   CAROUSEL_STRUCTURE_2_PLANNER_VERSION,
 } from "./carousel-structure-2-planner.js";
 import {
+  buildCarouselStructure2StoryBatchSchema,
   buildCarouselStructure2BatchMessages,
   buildCarouselStructure2RepairMessages,
+  buildCarouselStructure2StoryPlanSchema,
+  CAROUSEL_STRUCTURE_2_POSITION_KEYS,
+  parseCarouselStructure2StoryBatch,
   parseCarouselStructure2StoryPlan,
   partitionCarouselStructure2ValidationIssues,
   validateCarouselStructure2StoryPlan,
@@ -57,12 +61,70 @@ test("all eight formats keep five slides while moving CTA by format", () => {
   assert.deepEqual([...ctaPositions].sort(), [2, 3, 4, 5]);
 });
 
+test("the AI contract omits structural identities and the worker assigns them", () => {
+  const assignments = makeAssignments(CAROUSEL_STRUCTURE_2_FORMAT_IDS.slice(0, 5));
+  const rawPlan = makeRawStoryPlan(assignments[0]!.storyFormatId);
+  const planSchema = JSON.stringify(
+    buildCarouselStructure2StoryPlanSchema({
+      storyFormatId: assignments[0]!.storyFormatId,
+    }),
+  );
+  const batchSchema = JSON.stringify(
+    buildCarouselStructure2StoryBatchSchema({ assignments }),
+  );
+
+  assert.doesNotMatch(planSchema, /slideNumber|storyFormatId/);
+  assert.doesNotMatch(batchSchema, /slideNumber|slotIndex|candidateIndex|storyFormatId/);
+  assert.ok(
+    CAROUSEL_STRUCTURE_2_POSITION_KEYS.every(
+      (positionKey) => rawPlan.slides[positionKey] !== undefined,
+    ),
+  );
+  assert.ok(
+    Object.values(rawPlan.slides).every(
+      (slide) => !("slideNumber" in slide),
+    ),
+  );
+  assert.ok(!("storyFormatId" in rawPlan.strategy));
+
+  const parsedPlan = parseCarouselStructure2StoryPlan(rawPlan, {
+    businessDescription,
+    storyFormatId: assignments[0]!.storyFormatId,
+  });
+  assert.deepEqual(
+    parsedPlan.slides.map((slide) => slide.slideNumber),
+    [1, 2, 3, 4, 5],
+  );
+  assert.equal(
+    parsedPlan.strategy.storyFormatId,
+    assignments[0]!.storyFormatId,
+  );
+
+  const rawPlans = Object.fromEntries(
+    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) => [
+      positionKey,
+      makeRawStoryPlan(assignments[index]!.storyFormatId),
+    ]),
+  );
+  const parsedBatch = parseCarouselStructure2StoryBatch(
+    { plans: rawPlans },
+    assignments,
+  );
+
+  assignments.forEach((assignment, index) => {
+    assert.equal(
+      parsedBatch.get(assignment.slotIndex),
+      rawPlans[CAROUSEL_STRUCTURE_2_POSITION_KEYS[index]],
+    );
+  });
+});
+
 test("the format flow is reference material while format id and CTA position stay structural", () => {
   const plan = makeRawStoryPlan("perfect_plan_breaks");
-  [plan.slides[1], plan.slides[2]] = [plan.slides[2]!, plan.slides[1]!];
-  plan.slides.forEach((slide, index) => {
-    slide.slideNumber = index + 1;
-  });
+  [plan.slides.second, plan.slides.third] = [
+    plan.slides.third!,
+    plan.slides.second!,
+  ];
 
   assert.doesNotThrow(() =>
     parseCarouselStructure2StoryPlan(plan, {
@@ -72,8 +134,9 @@ test("the format flow is reference material while format id and CTA position sta
   );
 
   const wrongCta = makeRawStoryPlan("perfect_plan_breaks");
-  wrongCta.slides.forEach((slide) => {
-    slide.ctaText = slide.slideNumber === 5 ? "try this with your own week" : null;
+  CAROUSEL_STRUCTURE_2_POSITION_KEYS.forEach((positionKey, index) => {
+    wrongCta.slides[positionKey]!.ctaText =
+      index === 4 ? "try this with your own week" : null;
   });
   assert.throws(
     () =>
@@ -200,19 +263,22 @@ function makeRawStoryPlan(storyFormatId: CarouselStructure2FormatId) {
   ] as const;
 
   return {
-    slides: copy.map((storyText, index) => ({
-      ctaText:
-        index + 1 === ctaPosition
-          ? "try the same idea with one changing priority"
-          : null,
-      slideNumber: index + 1,
-      storyRole: roles[index]!,
-      storyText,
-      visualContext: `ordinary planning scene ${index + 1}`,
-    })),
+    slides: Object.fromEntries(
+      CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) => [
+        positionKey,
+        {
+          ctaText:
+            index + 1 === ctaPosition
+              ? "try the same idea with one changing priority"
+              : null,
+          storyRole: roles[index]!,
+          storyText: copy[index]!,
+          visualContext: `ordinary planning scene ${index + 1}`,
+        },
+      ]),
+    ),
     strategy: {
       angle: "a perfect weekly plan colliding with an ordinary change",
-      storyFormatId,
     },
   };
 }

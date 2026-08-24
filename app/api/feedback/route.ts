@@ -4,6 +4,7 @@ import { z } from "zod";
 import { PRODUCT_FEEDBACK_TYPES } from "@/lib/feedback/product-feedback-types";
 import {
   createProductFeedback,
+  prepareProductFeedbackAttachment,
   ProductFeedbackStoreError,
 } from "@/lib/feedback/product-feedback-store";
 import {
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
 
 const ProductFeedbackSchema = z
   .object({
+    attachmentId: z.string().uuid().optional(),
     description: z.string().trim().min(10).max(4000),
     sourcePath: z.string().trim().min(1).max(500).startsWith("/").optional(),
     title: z.string().trim().min(3).max(120),
@@ -42,6 +44,12 @@ export async function POST(request: Request) {
     }
 
     const submission = await createProductFeedback({
+      attachment: body.data.attachmentId
+        ? await prepareProductFeedbackAttachment({
+            attachmentId: body.data.attachmentId,
+            userId: user.uid,
+          })
+        : null,
       description: body.data.description,
       sourcePath: body.data.sourcePath ?? null,
       title: body.data.title,

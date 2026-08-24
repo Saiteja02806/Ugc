@@ -15,6 +15,10 @@ import {
   getSubscriptionEntitlementPlanKey,
   resolveDailyContentPieces,
 } from "./policy.ts";
+import {
+  calculateVideoGenerationCreditCost,
+  DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND,
+} from "./generation-credit-policy.ts";
 
 const migration = readFileSync(
   new URL(
@@ -155,6 +159,21 @@ test("usage delivery matches the configured Dodo meter aggregation", () => {
   assert.match(subscriptionDb, /flushPendingBillingUsageEvents/);
   assert.match(usageFlushRoute, /verifyCloudTasksOidcRequest/);
   assert.match(usageFlushRoute, /Cache-Control": "no-store"/);
+});
+
+test("video generation charges three credits for every selected second", () => {
+  assert.equal(DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND, 3);
+  assert.deepEqual(
+    [3, 4, 5, 6, 7, 8, 9, 10].map((seconds) =>
+      calculateVideoGenerationCreditCost(seconds),
+    ),
+    [9, 12, 15, 18, 21, 24, 27, 30],
+  );
+  assert.match(
+    subscriptionDb,
+    /BILLING_VIDEO_GENERATION_CREDITS_PER_SECOND/,
+  );
+  assert.doesNotMatch(subscriptionDb, /BILLING_VIDEO_GENERATION_CREDITS"/);
 });
 
 test("billing entitlements use the database-backed legacy plan mapping", () => {

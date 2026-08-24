@@ -9,6 +9,7 @@ import {
   createCarouselStructure2InvalidPlanIssue,
   dedupeCarouselStructure2ValidationIssues,
   formatCarouselStructure2ValidationIssues,
+  parseCarouselStructure2StoryBatch,
   parseCarouselStructure2StoryPlan,
   partitionCarouselStructure2ValidationIssues,
   validateCarouselStructure2StoryPlan,
@@ -21,7 +22,7 @@ import type { CarouselStructure2FormatId } from "./carousel-structure-2-formats.
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-flexible-seed-writer-v5-fixed-render-fit";
+  "llm-carousel-structure-2-flexible-seed-writer-v6-server-owned-order";
 
 let openaiClient: OpenAI | null = null;
 
@@ -88,7 +89,10 @@ export async function buildCarouselStructure2StoryPlanBatch(
       throw new Error("OpenAI returned no Structure 2 story batch content.");
     }
 
-    rawPlans = parseBatchEnvelope(JSON.parse(initialBatchResponse));
+    rawPlans = parseCarouselStructure2StoryBatch(
+      JSON.parse(initialBatchResponse),
+      assignments,
+    );
   } catch (error) {
     batchFailure = createCarouselStructure2InvalidPlanIssue(error);
   }
@@ -303,36 +307,6 @@ function createLlmResult(params: {
   };
 }
 
-function parseBatchEnvelope(value: unknown) {
-  const record = asRecord(value, "Structure 2 story batch");
-
-  if (!Array.isArray(record.items) || record.items.length !== 5) {
-    throw new Error("Structure 2 story batch must contain exactly five items.");
-  }
-
-  const plans = new Map<number, unknown>();
-
-  for (const [index, itemValue] of record.items.entries()) {
-    const item = asRecord(itemValue, `Structure 2 batch item ${index + 1}`);
-
-    if (
-      typeof item.slotIndex !== "number" ||
-      !Number.isInteger(item.slotIndex) ||
-      item.slotIndex < 0 ||
-      item.slotIndex > 4 ||
-      plans.has(item.slotIndex)
-    ) {
-      throw new Error(
-        "Structure 2 story batch must contain slots 0 through 4 exactly once.",
-      );
-    }
-
-    plans.set(item.slotIndex, item.plan);
-  }
-
-  return plans;
-}
-
 function toRecentHistory(
   plan: CarouselStructure2StoryPlan,
   slotIndex: number,
@@ -349,14 +323,6 @@ function toRecentHistory(
     })),
     structureId: "structure_2",
   };
-}
-
-function asRecord(value: unknown, label: string): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`${label} must be an object.`);
-  }
-
-  return value as Record<string, unknown>;
 }
 
 function getOpenAIClient() {

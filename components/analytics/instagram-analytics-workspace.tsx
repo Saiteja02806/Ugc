@@ -37,6 +37,7 @@ import {
 } from "react";
 
 import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
+import { InstagramAccountAvatar } from "@/components/social/instagram-account-avatar";
 import {
   Alert,
   AlertDescription,
@@ -1874,9 +1875,16 @@ function InstagramReadinessPanel({
 
       <div className="mt-5 rounded-[var(--radius-control)] border border-border bg-card-muted/45 p-4">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand-soft ring-1 ring-inset ring-primary/10">
-            <CircleUserRound className="size-5" aria-hidden="true" />
-          </span>
+          {connection ? (
+            <InstagramAccountAvatar
+              className="size-10"
+              connection={connection}
+            />
+          ) : (
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand-soft ring-1 ring-inset ring-primary/10">
+              <CircleUserRound className="size-5" aria-hidden="true" />
+            </span>
+          )}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground-strong">
               {primaryAccountLabel}

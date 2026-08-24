@@ -3,10 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
-import {
-  isAIStudioBillingExemptUser,
-  requireAIStudioProUser,
-} from "@/lib/ai-studio/server-access";
+import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
 import {
   AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
   getAIStudioPromptLengthError,
@@ -15,6 +12,7 @@ import {
 import {
   parseAIStudioGenerationQuantity,
   parseAIStudioImageAspectRatio,
+  parseAIStudioImageModel,
 } from "@/lib/ai-studio/generation-settings";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
@@ -34,6 +32,7 @@ import {
 type GenerateRequest = {
   aspectRatio?: unknown;
   idempotencyKey?: unknown;
+  model?: unknown;
   prompt?: unknown;
   quantity?: unknown;
   referenceImageUrl?: unknown;
@@ -132,6 +131,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
   const prompt = normalizeAIStudioPrompt(body?.prompt);
   const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio);
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
+  const model = parseAIStudioImageModel(body?.model);
   const referenceImageUrl = cleanTrustedHttpsUrl(body?.referenceImageUrl);
 
   if (body?.referenceImageUrl && !referenceImageUrl) {
@@ -193,15 +193,13 @@ export async function handleAIStudioImageGeneration(request: Request) {
     let creditsReserved = false;
 
     try {
-      if (!isAIStudioBillingExemptUser(user)) {
-        await reserveBillingCredits({
-          amount: getGenerationCreditCost("image"),
-          idempotencyKey,
-          jobType: IMAGE_JOB_TYPE,
-          userId: user.uid,
-        });
-        creditsReserved = true;
-      }
+      await reserveBillingCredits({
+        amount: getGenerationCreditCost("image"),
+        idempotencyKey,
+        jobType: IMAGE_JOB_TYPE,
+        userId: user.uid,
+      });
+      creditsReserved = true;
       const backgroundJob = await createAndDispatchBackgroundJob({
         idempotencyKey,
         input: {
@@ -209,6 +207,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
           batchIndex: index + 1,
           batchSize: quantity,
           generationId,
+          model,
           prompt,
           referenceImageUrl,
         },

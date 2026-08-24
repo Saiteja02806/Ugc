@@ -14,6 +14,9 @@ const transitionsMigration = readMigration(
 const generatedMediaPersistenceMigration = readMigration(
   "supabase/migrations/20260801104000_harden_generated_media_persistence.sql",
 );
+const geminiProviderMigration = readMigration(
+  "supabase/migrations/20260824120000_add_gemini_generation_provider.sql",
+);
 
 test("identifies deployed workers and lets independent AI jobs run concurrently", () => {
   const aiWorkerMain = readFileSync(
@@ -103,6 +106,10 @@ test("fences paid provider calls and completes generated media atomically", () =
   assert.match(
     generatedMediaPersistenceMigration,
     /'submission_uncertain'/,
+  );
+  assert.match(
+    geminiProviderMigration,
+    /provider in \('gemini', 'openai', 'runway', 'veo'\)/,
   );
   assert.match(
     generatedMediaPersistenceMigration,

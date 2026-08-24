@@ -16,12 +16,21 @@ const slideshowImages = [
 
 export function LandingHeroShowcase() {
   const [activeSlide, setActiveSlide] = useState(0);
+  const [shouldLoadVideoPreviews, setShouldLoadVideoPreviews] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % slideshowImages.length);
     }, 2800);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setShouldLoadVideoPreviews(true);
+    }, 750);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -52,11 +61,16 @@ export function LandingHeroShowcase() {
 
               {/* Video preview */}
               <video
-                src="/marketing/showcase/wot-preview.mp4"
+                src={
+                  shouldLoadVideoPreviews
+                    ? "/marketing/showcase/wot-preview-v2.mp4"
+                    : undefined
+                }
                 autoPlay
                 muted
                 loop
                 playsInline
+                poster="/marketing/showcase/wot-preview-poster-v2.webp"
                 preload="metadata"
                 className="size-full object-cover"
               />
@@ -84,12 +98,17 @@ export function LandingHeroShowcase() {
 
               {/* Real Hook Video playback */}
               <video
-                src="/marketing/showcase/hook-preview.mp4"
+                src={
+                  shouldLoadVideoPreviews
+                    ? "/marketing/showcase/hook-preview-v2.mp4"
+                    : undefined
+                }
                 autoPlay
                 muted
                 loop
                 playsInline
-                preload="auto"
+                poster="/marketing/showcase/hook-preview-poster-v2.webp"
+                preload="metadata"
                 className="size-full object-cover"
               />
 

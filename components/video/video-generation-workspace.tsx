@@ -12,6 +12,7 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -34,8 +35,12 @@ import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upl
 import {
   AI_STUDIO_GENERATION_QUANTITIES,
   AI_STUDIO_VIDEO_ASPECT_RATIOS,
+  AI_STUDIO_VIDEO_DURATIONS,
+  AI_STUDIO_VIDEO_MODELS,
   type AIStudioGenerationQuantity,
   type AIStudioVideoAspectRatio,
+  type AIStudioVideoDuration,
+  type AIStudioVideoModel,
 } from "@/lib/ai-studio/generation-settings";
 import {
   fetchAIStudioMediaAsset,
@@ -204,10 +209,14 @@ export function VideoGenerationStudioPanel({
   accessMessage,
   accessState = "locked",
   active = true,
+  creditsPerSecond = 3,
+  creditsRemaining = null,
 }: {
   accessMessage?: string | null;
   accessState?: AIStudioAccessState;
   active?: boolean;
+  creditsPerSecond?: number;
+  creditsRemaining?: number | null;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -253,11 +262,15 @@ export function VideoGenerationStudioPanel({
   }
 
   const { loading: authLoading, user } = useAuth();
+  const queryClient = useQueryClient();
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] =
     useState<AIStudioVideoAspectRatio>("9:16");
   const [quantity, setQuantity] =
     useState<AIStudioGenerationQuantity>(1);
+  const [model, setModel] = useState<AIStudioVideoModel>("google_omni");
+  const [durationSeconds, setDurationSeconds] =
+    useState<AIStudioVideoDuration>(4);
   const [uploadedReference, setUploadedReference] =
     useState<AIStudioReferenceMedia | null>(null);
   const [activeVideoPrompt, setActiveVideoPrompt] = useState("");
@@ -275,6 +288,7 @@ export function VideoGenerationStudioPanel({
     string | null
   >(null);
   const resolvedJobIdsRef = useRef(new Set<string>());
+  const billingSyncedJobIdsRef = useRef(new Set<string>());
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
   const persistedJobId = usePersistedJobIdFromUrl(VIDEO_JOB_URL_PARAMETER);
@@ -293,6 +307,17 @@ export function VideoGenerationStudioPanel({
   const cancelJob = useCancelBackgroundJob();
   const retryJob = useRetryBackgroundJob();
   const generationLocked = accessState !== "pro";
+  const creditsPerVideo = durationSeconds * creditsPerSecond;
+  const requiredCredits = creditsPerVideo * quantity;
+  const hasInsufficientCredits =
+    accessState === "pro" &&
+    creditsRemaining !== null &&
+    creditsRemaining < requiredCredits;
+  const composerMessage = generationLocked
+    ? accessMessage
+    : hasInsufficientCredits
+      ? `This generation needs ${requiredCredits} AI credits. You have ${creditsRemaining}.`
+      : `This generation uses ${requiredCredits} AI credits (${creditsPerSecond} per second).`;
 
   const uploadedReferenceImage =
     uploadedReference?.kind === "image" ? uploadedReference : null;
@@ -353,6 +378,7 @@ export function VideoGenerationStudioPanel({
   useEffect(() => {
     activeUserIdRef.current = user?.uid ?? null;
     resolvedJobIdsRef.current.clear();
+    billingSyncedJobIdsRef.current.clear();
 
     return () => {
       activeUserIdRef.current = null;
@@ -435,6 +461,27 @@ export function VideoGenerationStudioPanel({
       return () => window.clearTimeout(timeoutId);
     }
   }, [persistedJobId, queriedJobs]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const terminalJobs = durableJobs.filter(
+      (job) =>
+        ["cancelled", "completed", "failed"].includes(job.status) &&
+        !billingSyncedJobIdsRef.current.has(job.id),
+    );
+
+    if (terminalJobs.length === 0) {
+      return;
+    }
+
+    terminalJobs.forEach((job) => billingSyncedJobIdsRef.current.add(job.id));
+    void queryClient.invalidateQueries({
+      queryKey: ["billing-subscription", user.uid],
+    });
+  }, [durableJobs, queryClient, user]);
 
   useEffect(() => {
     const completedJobs = durableJobs.filter(
@@ -558,7 +605,12 @@ export function VideoGenerationStudioPanel({
       AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
     );
 
-    if (generationLocked || !trimmedPrompt || isGenerating) {
+    if (
+      generationLocked ||
+      hasInsufficientCredits ||
+      !trimmedPrompt ||
+      isGenerating
+    ) {
       return;
     }
 
@@ -587,7 +639,9 @@ export function VideoGenerationStudioPanel({
         body: JSON.stringify({
           aspectRatio,
           avatarImageUrl: activeReferenceImageUrl,
+          durationSeconds,
           idempotencyKey,
+          model,
           prompt: trimmedPrompt,
           quantity,
           referenceVideoDurationSeconds:
@@ -615,6 +669,9 @@ export function VideoGenerationStudioPanel({
         aspectRatio,
         avatarName: uploadedReference?.asset.title ?? "",
         prompt: trimmedPrompt,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["billing-subscription", user.uid],
       });
       persistJobIdInUrl(data.jobId, VIDEO_JOB_URL_PARAMETER);
       for (const job of data.jobs) {
@@ -757,7 +814,7 @@ export function VideoGenerationStudioPanel({
       </AiStudioResults>
 
       <AiStudioComposer
-        accessMessage={accessMessage}
+        accessMessage={composerMessage}
         active={active}
         ariaLabel="Video prompt"
         contextBanner={
@@ -796,6 +853,7 @@ export function VideoGenerationStudioPanel({
         }
         generateDisabled={
           generationLocked ||
+          hasInsufficientCredits ||
           !prompt.trim() ||
           isGenerating
         }
@@ -861,6 +919,34 @@ export function VideoGenerationStudioPanel({
         }
         settings={
           <>
+            <AiStudioSettingSelect
+              ariaLabel="Video model"
+              disabled={generationLocked || isGenerating}
+              icon={<Sparkles className="size-4" aria-hidden="true" />}
+              options={AI_STUDIO_VIDEO_MODELS.map((value) => ({
+                label: "Google Omni",
+                value,
+              }))}
+              value={model}
+              onChange={(value) => {
+                submissionKeyRef.current = null;
+                setModel(value as AIStudioVideoModel);
+              }}
+            />
+            <AiStudioSettingSelect
+              ariaLabel="Video duration"
+              disabled={generationLocked || isGenerating}
+              icon={<Clock3 className="size-4" aria-hidden="true" />}
+              options={AI_STUDIO_VIDEO_DURATIONS.map((duration) => ({
+                label: `${duration} sec · ${duration * creditsPerSecond} credits`,
+                value: String(duration),
+              }))}
+              value={String(durationSeconds)}
+              onChange={(value) => {
+                submissionKeyRef.current = null;
+                setDurationSeconds(Number(value) as AIStudioVideoDuration);
+              }}
+            />
             <AiStudioRatioPicker
               value={aspectRatio}
               onChange={(value) => {

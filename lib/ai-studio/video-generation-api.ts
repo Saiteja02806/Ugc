@@ -3,10 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
-import {
-  isAIStudioBillingExemptUser,
-  requireAIStudioProUser,
-} from "@/lib/ai-studio/server-access";
+import { requireAIStudioProUser } from "@/lib/ai-studio/server-access";
 import {
   AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH,
   getAIStudioPromptLengthError,
@@ -14,7 +11,9 @@ import {
 } from "@/lib/ai-studio/prompt-policy";
 import {
   parseAIStudioGenerationQuantity,
+  parseAIStudioVideoDuration,
   parseAIStudioVideoAspectRatio,
+  parseAIStudioVideoModel,
 } from "@/lib/ai-studio/generation-settings";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
@@ -36,6 +35,7 @@ type GenerateVideoRequest = {
   avatarImageUrl?: unknown;
   hookIdea?: unknown;
   idempotencyKey?: unknown;
+  model?: unknown;
   prompt?: unknown;
   quantity?: unknown;
   referenceVideoDurationSeconds?: unknown;
@@ -43,6 +43,7 @@ type GenerateVideoRequest = {
   referenceId?: unknown;
   referenceType?: unknown;
   referenceUrl?: unknown;
+  durationSeconds?: unknown;
 };
 
 type VideoJobOutput = {
@@ -142,6 +143,8 @@ export async function handleAIStudioVideoGeneration(request: Request) {
   );
   const aspectRatio = parseAIStudioVideoAspectRatio(body?.aspectRatio);
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
+  const model = parseAIStudioVideoModel(body?.model);
+  const durationSeconds = parseAIStudioVideoDuration(body?.durationSeconds);
 
   if (body?.avatarImageUrl && !avatarImageUrl) {
     return NextResponse.json(
@@ -224,15 +227,13 @@ export async function handleAIStudioVideoGeneration(request: Request) {
     let creditsReserved = false;
 
     try {
-      if (!isAIStudioBillingExemptUser(user)) {
-        await reserveBillingCredits({
-          amount: getGenerationCreditCost("video"),
-          idempotencyKey,
-          jobType: VIDEO_JOB_TYPE,
-          userId: user.uid,
-        });
-        creditsReserved = true;
-      }
+      await reserveBillingCredits({
+        amount: getGenerationCreditCost("video", durationSeconds),
+        idempotencyKey,
+        jobType: VIDEO_JOB_TYPE,
+        userId: user.uid,
+      });
+      creditsReserved = true;
       const backgroundJob = await createAndDispatchBackgroundJob({
         idempotencyKey,
         input: {
@@ -242,7 +243,9 @@ export async function handleAIStudioVideoGeneration(request: Request) {
           batchSize: quantity,
           cameraStyle: "iphone_selfie",
           emotion: "confident",
+          durationSeconds,
           hookIdea: prompt,
+          model,
           productDescription: "Short-form creator content.",
           productName: "UGCPilot",
           projectId,

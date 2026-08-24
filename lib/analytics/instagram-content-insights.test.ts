@@ -47,6 +47,17 @@ test("the Analytics route bypasses the dormant multi-platform dashboard", () => 
   );
 });
 
+test("account readiness shows the connected Instagram profile picture", () => {
+  assert.match(
+    analyticsWorkspaceSource,
+    /import \{ InstagramAccountAvatar \} from "@\/components\/social\/instagram-account-avatar"/,
+  );
+  assert.match(
+    analyticsWorkspaceSource,
+    /connection \? \([\s\S]*?<InstagramAccountAvatar[\s\S]*?connection=\{connection\}/,
+  );
+});
+
 const account = {
   accountName: "North Studio",
   accountUsername: "northstudio",

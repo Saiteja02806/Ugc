@@ -1,6 +1,7 @@
 "use client";
 
 import { ImageIcon, Loader2, Sparkles } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -22,8 +23,10 @@ import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upl
 import {
   AI_STUDIO_GENERATION_QUANTITIES,
   AI_STUDIO_IMAGE_ASPECT_RATIOS,
+  AI_STUDIO_IMAGE_MODELS,
   type AIStudioGenerationQuantity,
   type AIStudioImageAspectRatio,
+  type AIStudioImageModel,
 } from "@/lib/ai-studio/generation-settings";
 import {
   fetchAIStudioMediaAsset,
@@ -180,9 +183,9 @@ function getImageJobAspectRatio(
         value.aspectRatio as AIStudioImageAspectRatio,
       )
       ? (value.aspectRatio as AIStudioImageAspectRatio)
-      : "4:5";
+      : "9:16";
   } catch {
-    return "4:5";
+    return "9:16";
   }
 }
 
@@ -190,15 +193,21 @@ export function ImageGenerationStudioPanel({
   accessMessage,
   accessState = "locked",
   active = true,
+  creditCost = 1,
+  creditsRemaining = null,
 }: {
   accessMessage?: string | null;
   accessState?: AIStudioAccessState;
   active?: boolean;
+  creditCost?: number;
+  creditsRemaining?: number | null;
 }) {
   const { loading: authLoading, user } = useAuth();
+  const queryClient = useQueryClient();
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] =
-    useState<AIStudioImageAspectRatio>("4:5");
+    useState<AIStudioImageAspectRatio>("9:16");
+  const [model, setModel] = useState<AIStudioImageModel>("gpt_image");
   const [quantity, setQuantity] =
     useState<AIStudioGenerationQuantity>(1);
   const [referenceImage, setReferenceImage] =
@@ -219,6 +228,7 @@ export function ImageGenerationStudioPanel({
     string | null
   >(null);
   const resolvedJobIdsRef = useRef(new Set<string>());
+  const billingSyncedJobIdsRef = useRef(new Set<string>());
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
   const persistedJobId = usePersistedJobIdFromUrl(IMAGE_JOB_URL_PARAMETER);
@@ -243,6 +253,16 @@ export function ImageGenerationStudioPanel({
     (job) => job.jobType === "image_generation",
   );
   const generationLocked = accessState !== "pro";
+  const requiredCredits = creditCost * quantity;
+  const hasInsufficientCredits =
+    accessState === "pro" &&
+    creditsRemaining !== null &&
+    creditsRemaining < requiredCredits;
+  const composerMessage = generationLocked
+    ? accessMessage
+    : hasInsufficientCredits
+      ? `This generation needs ${requiredCredits} AI credits. You have ${creditsRemaining}.`
+      : `This generation uses ${requiredCredits} AI credit${requiredCredits === 1 ? "" : "s"}.`;
   const isGenerating =
     isSubmitting ||
     activeJobQueries.some((query) => query.isPending) ||
@@ -262,6 +282,7 @@ export function ImageGenerationStudioPanel({
   useEffect(() => {
     activeUserIdRef.current = user?.uid ?? null;
     resolvedJobIdsRef.current.clear();
+    billingSyncedJobIdsRef.current.clear();
 
     return () => {
       activeUserIdRef.current = null;
@@ -344,6 +365,27 @@ export function ImageGenerationStudioPanel({
       return () => window.clearTimeout(timeoutId);
     }
   }, [persistedJobId, queriedJobs]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const terminalJobs = durableJobs.filter(
+      (job) =>
+        ["cancelled", "completed", "failed"].includes(job.status) &&
+        !billingSyncedJobIdsRef.current.has(job.id),
+    );
+
+    if (terminalJobs.length === 0) {
+      return;
+    }
+
+    terminalJobs.forEach((job) => billingSyncedJobIdsRef.current.add(job.id));
+    void queryClient.invalidateQueries({
+      queryKey: ["billing-subscription", user.uid],
+    });
+  }, [durableJobs, queryClient, user]);
 
   useEffect(() => {
     const completedJobs = durableJobs.filter(
@@ -450,7 +492,12 @@ export function ImageGenerationStudioPanel({
       AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH,
     );
 
-    if (generationLocked || !trimmedPrompt || isGenerating) {
+    if (
+      generationLocked ||
+      hasInsufficientCredits ||
+      !trimmedPrompt ||
+      isGenerating
+    ) {
       return;
     }
 
@@ -485,6 +532,7 @@ export function ImageGenerationStudioPanel({
         body: JSON.stringify({
           aspectRatio,
           idempotencyKey,
+          model,
           prompt: trimmedPrompt,
           quantity,
           referenceImageUrl: referenceImage?.asset.url ?? null,
@@ -499,6 +547,9 @@ export function ImageGenerationStudioPanel({
       }
 
       persistImageJobs(user.uid, data.jobs, { aspectRatio, prompt: trimmedPrompt });
+      void queryClient.invalidateQueries({
+        queryKey: ["billing-subscription", user.uid],
+      });
       persistJobIdInUrl(data.jobId, IMAGE_JOB_URL_PARAMETER);
       for (const job of data.jobs) {
         resolvedJobIdsRef.current.delete(job.jobId);
@@ -645,10 +696,15 @@ export function ImageGenerationStudioPanel({
       </AiStudioResults>
 
       <AiStudioComposer
-        accessMessage={accessMessage}
+        accessMessage={composerMessage}
         active={active}
         ariaLabel="Image prompt"
-        generateDisabled={generationLocked || !prompt.trim() || isGenerating}
+        generateDisabled={
+          generationLocked ||
+          hasInsufficientCredits ||
+          !prompt.trim() ||
+          isGenerating
+        }
         generateLabel="Generate image"
         generationLocked={generationLocked}
         isGenerating={isGenerating}
@@ -703,6 +759,20 @@ export function ImageGenerationStudioPanel({
         }
         settings={
           <>
+            <AiStudioSettingSelect
+              ariaLabel="Image model"
+              disabled={generationLocked || isGenerating}
+              icon={<Sparkles className="size-4" aria-hidden="true" />}
+              options={AI_STUDIO_IMAGE_MODELS.map((value) => ({
+                label: value === "nano_banana_2" ? "Nano Banana 2" : "GPT Image",
+                value,
+              }))}
+              value={model}
+              onChange={(value) => {
+                submissionKeyRef.current = null;
+                setModel(value as AIStudioImageModel);
+              }}
+            />
             <AiStudioRatioPicker
               value={aspectRatio}
               onChange={(value) => {

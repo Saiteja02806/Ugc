@@ -9,9 +9,21 @@ function readProjectFile(path: string) {
 const migration = readProjectFile(
   "supabase/migrations/20260824123801_create_product_feedback.sql",
 );
+const attachmentMigration = readProjectFile(
+  "supabase/migrations/20260824155001_add_product_feedback_attachments.sql",
+);
 const submissionRoute = readProjectFile("app/api/feedback/route.ts");
+const attachmentUploadRoute = readProjectFile(
+  "app/api/feedback/attachment/upload-url/route.ts",
+);
 const adminRoute = readProjectFile("app/api/admin/feedback/route.ts");
+const adminAttachmentRoute = readProjectFile(
+  "app/api/admin/feedback/[feedbackId]/attachment/route.ts",
+);
 const store = readProjectFile("lib/feedback/product-feedback-store.ts");
+const attachmentStore = readProjectFile(
+  "lib/feedback/product-feedback-attachment.ts",
+);
 const settings = readProjectFile("components/settings/settings-workspace.tsx");
 const support = readProjectFile(
   "components/settings/support-feedback-settings.tsx",
@@ -43,6 +55,31 @@ test("requires verified Firebase identity and validates every submission", () =>
   assert.match(submissionRoute, /sourcePath:[\s\S]*startsWith\("\/"\)/);
   assert.match(store, /\(count \?\? 0\) >= 10/);
   assert.match(store, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.doesNotMatch(submissionRoute, /subscription|entitlement|plan/i);
+  assert.doesNotMatch(store, /subscription|entitlement|plan/i);
+});
+
+test("keeps an optional image attachment service-only and validates it before saving", () => {
+  assert.match(
+    attachmentMigration,
+    /create table if not exists public\.product_feedback_attachment_uploads/,
+  );
+  assert.match(attachmentMigration, /attachment_upload_id uuid/);
+  assert.match(attachmentMigration, /10485760/);
+  assert.match(
+    attachmentMigration,
+    /revoke all privileges on table public\.product_feedback_attachment_uploads[\s\S]*from public, anon, authenticated, service_role/,
+  );
+  assert.match(attachmentUploadRoute, /requireFirebaseUser\(request\)/);
+  assert.match(attachmentUploadRoute, /createSignedPutUrl/);
+  assert.match(attachmentStore, /PRODUCT_FEEDBACK_ATTACHMENT_MAX_BYTES/);
+  assert.match(attachmentStore, /sharp\(buffer/);
+  assert.match(submissionRoute, /attachmentId: z\.string\(\)\.uuid\(\)\.optional\(\)/);
+  assert.match(submissionRoute, /prepareProductFeedbackAttachment/);
+  assert.match(store, /createProductFeedbackAttachmentUpload/);
+  assert.match(store, /getProductFeedbackAttachment/);
+  assert.match(adminAttachmentRoute, /isProductFeedbackAdmin\(user\)/);
+  assert.match(adminAttachmentRoute, /getStorageObject/);
 });
 
 test("keeps the owner inbox behind the verified email allowlist", () => {
@@ -72,4 +109,7 @@ test("adds two separate Settings sections and an owner-only request inbox", () =
   assert.match(support, /Customer requests/);
   assert.match(support, /getCurrentUserIdToken\(\)/);
   assert.match(support, /response\.status === 401 \|\| response\.status === 403/);
+  assert.match(support, /Attach Image/);
+  assert.match(support, /api\/feedback\/attachment\/upload-url/);
+  assert.match(support, /FeedbackAttachmentPreview/);
 });

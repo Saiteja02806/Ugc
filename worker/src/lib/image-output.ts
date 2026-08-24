@@ -1,7 +1,7 @@
 import sharp from "sharp";
 
 export const AI_STUDIO_IMAGE_HEIGHT = 1_280;
-export const AI_STUDIO_IMAGE_RATIO = "4:5";
+export const AI_STUDIO_IMAGE_RATIO = "9:16";
 export const AI_STUDIO_IMAGE_WIDTH = 1_024;
 
 export const AI_STUDIO_IMAGE_RATIOS = ["4:5", "1:1", "9:16", "16:9"] as const;

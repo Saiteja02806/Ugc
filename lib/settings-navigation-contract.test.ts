@@ -44,3 +44,9 @@ test("Settings keeps existing deep links while rendering one active panel", () =
   assert.match(workspace, /window\.addEventListener\("hashchange"/);
   assert.match(workspace, /window\.addEventListener\("popstate"/);
 });
+
+test("Settings has an explicit close control that returns to the workspace", () => {
+  assert.match(workspace, /function handleCloseSettings\(\)[\s\S]*router\.push\("\/dashboard"\)/);
+  assert.match(workspace, /aria-label="Close settings"/);
+  assert.match(workspace, /title="Close settings"/);
+});

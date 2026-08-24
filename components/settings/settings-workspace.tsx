@@ -19,6 +19,7 @@ import {
   Sun,
   Trash2,
   UserRound,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -123,6 +124,10 @@ export function SettingsWorkspace() {
     if (window.location.hash !== `#${sectionId}`) {
       window.history.pushState(null, "", `#${sectionId}`);
     }
+  }
+
+  function handleCloseSettings() {
+    router.push("/dashboard");
   }
 
   async function handleSignOut() {
@@ -262,7 +267,18 @@ export function SettingsWorkspace() {
           </div>
         </aside>
 
-        <main className="min-w-0 bg-card px-4 py-5 sm:px-6 sm:py-7 lg:px-9 lg:py-8">
+        <main className="relative min-w-0 bg-card px-4 py-5 sm:px-6 sm:py-7 lg:px-9 lg:py-8">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-lg"
+            onClick={handleCloseSettings}
+            aria-label="Close settings"
+            title="Close settings"
+            className="absolute top-3 right-3 z-10 text-muted hover:text-foreground-strong sm:top-5 sm:right-5 lg:top-6 lg:right-7"
+          >
+            <X className="size-5" aria-hidden="true" />
+          </Button>
           {activeSection === "account" ? (
           <SettingsSection
             id="account"
@@ -684,7 +700,7 @@ function SettingsSection({
 }) {
   return (
     <section id={id} className="min-w-0" aria-labelledby={`${id}-title`}>
-      <header className="flex items-start gap-3 px-5 py-5 sm:px-6">
+      <header className="flex items-start gap-3 px-5 py-5 pr-14 sm:px-6 sm:pr-16">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
           {icon}
         </span>

@@ -13,6 +13,7 @@ import {
   type CarouselStructure2FormatId,
 } from "./carousel-structure-2-formats.js";
 import {
+  CAROUSEL_STRUCTURE_2_POSITION_KEYS,
   parseCarouselStructure2StoryPlan,
 } from "./carousel-structure-2-story-plan.js";
 
@@ -81,26 +82,31 @@ function makeSpecs(storyFormatId: CarouselStructure2FormatId) {
 function makeStoryPlan(storyFormatId: CarouselStructure2FormatId) {
   const ctaPosition = getCarouselStructure2Format(storyFormatId)
     .allowedCtaPositions[0]!;
-  const slides = [
-    { ctaText: null, slideNumber: 1, storyRole: "recognition", storyText: "i'd plan the perfect week every sunday night", visualContext: "a weekly plan" },
-    { ctaText: null, slideNumber: 2, storyRole: "failure_scene", storyText: "i mapped every task before monday, then one changing priority made me rebuild the schedule and second guess each choice.", visualContext: "a changing task list" },
-    { ctaText: null, slideNumber: 3, storyRole: "reframe", storyText: "i realized the plan needed flexibility instead of another complete rebuild whenever normal work changed during the week.", visualContext: "a flexible weekly plan" },
-    { ctaText: null, slideNumber: 4, storyRole: "product_turning_point", storyText: "then i tried Todaywise; it helped me work from the changing task list without rebuilding everything.", visualContext: "Todaywise with a task list" },
-    { ctaText: null, slideNumber: 5, storyRole: "proof_reflection_cta", storyText: "i'm still adjusting, but important work now feels easier to finish on ordinary days.", visualContext: "one clearer next task" },
-  ].map((slide) => ({
-    ...slide,
-    ctaText:
-      slide.slideNumber === ctaPosition
-        ? "if your priorities keep changing, test a smaller planning change."
-        : null,
-  }));
+  const slideValues = [
+    { storyRole: "recognition", storyText: "i'd plan the perfect week every sunday night", visualContext: "a weekly plan" },
+    { storyRole: "failure_scene", storyText: "i mapped every task before monday, then one changing priority made me rebuild the schedule and second guess each choice.", visualContext: "a changing task list" },
+    { storyRole: "reframe", storyText: "i realized the plan needed flexibility instead of another complete rebuild whenever normal work changed during the week.", visualContext: "a flexible weekly plan" },
+    { storyRole: "product_turning_point", storyText: "then i tried Todaywise; it helped me work from the changing task list without rebuilding everything.", visualContext: "Todaywise with a task list" },
+    { storyRole: "proof_reflection_cta", storyText: "i'm still adjusting, but important work now feels easier to finish on ordinary days.", visualContext: "one clearer next task" },
+  ];
+  const slides = Object.fromEntries(
+    CAROUSEL_STRUCTURE_2_POSITION_KEYS.map((positionKey, index) => [
+      positionKey,
+      {
+        ...slideValues[index],
+        ctaText:
+          index + 1 === ctaPosition
+            ? "if your priorities keep changing, test a smaller planning change."
+            : null,
+      },
+    ]),
+  );
 
   return parseCarouselStructure2StoryPlan(
     {
       slides,
       strategy: {
         angle: "a rigid weekly plan that could not adapt to real work",
-        storyFormatId,
       },
     },
     {

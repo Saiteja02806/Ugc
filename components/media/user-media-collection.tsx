@@ -1813,8 +1813,8 @@ function MediaAssetCard({
               />
             )}
             <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100">
-              <span className="flex size-10 items-center justify-center rounded-full bg-white/95 text-foreground shadow-md backdrop-blur-md transition-all group-hover:scale-105 active:scale-95">
-                <Play className="ml-0.5 size-4 fill-current text-foreground" aria-hidden="true" />
+              <span className="flex size-10 items-center justify-center rounded-full border border-white/40 bg-white/95 text-slate-950 shadow-md backdrop-blur-md transition-all group-hover:scale-105 active:scale-95">
+                <Play className="ml-0.5 size-4 fill-current text-current" aria-hidden="true" />
               </span>
             </div>
           </div>

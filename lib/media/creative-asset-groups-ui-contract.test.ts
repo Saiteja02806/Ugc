@@ -146,6 +146,17 @@ test("asset removal confirmation uses a clear destructive action", () => {
   assert.match(removalDialog, /onClick=\{\(\) => void removeAsset\(\)\}/);
 });
 
+test("video playback control keeps a visible icon in either theme", () => {
+  const card = getSection(
+    collection,
+    "function MediaAssetCard",
+    "function getCreativeAssetCardStatusLabel",
+  );
+
+  assert.match(card, /bg-white\/95 text-slate-950/);
+  assert.match(card, /<Play className="ml-0\.5 size-4 fill-current text-current"/);
+});
+
 test("group deletion confirmation uses the shared surface and a clear destructive action", () => {
   const deletionDialog = getSection(
     collection,

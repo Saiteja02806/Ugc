@@ -87,12 +87,15 @@ import { isSocialPlatform } from "@/lib/social/types";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const directScheduledVideoSourceTypes = new Set([
+  "catalog_influencer",
   "demo_upload",
+  "influencer_upload",
   "upload",
   "generated_video",
   "edit_export",
   "wall_text_render",
 ]);
+const directScheduledVideoCollections = new Set(["influencer", "video"]);
 
 type ScheduleMediaMode = "single_video" | "combined_video" | "carousel";
 type ScheduleLeadPolicy = "render_finalization" | "standard";
@@ -214,7 +217,7 @@ export async function createUserSchedule(params: {
     })
   ) {
     throw new SchedulingRequestError(
-      "Choose a scheduled video or prepare the opening clip and video before scheduling.",
+      "Choose a Reel clip or prepare the hook and secondary clips before scheduling.",
       409,
       "publishable_media_required",
     );
@@ -490,7 +493,7 @@ export async function scheduleRenderedPost(params: {
 
     if (!isDirectScheduledVideoAsset(scheduledVideoAsset)) {
       throw new SchedulingRequestError(
-        "The selected scheduled video is not available for publishing.",
+        "The selected Reel clip is not available for publishing.",
         409,
         "scheduled_video_unavailable",
       );
@@ -578,7 +581,7 @@ export async function scheduleRenderedPost(params: {
 
   if (combinedRenderStatus !== "ready" || !combinedMediaAssetId) {
     throw new SchedulingRequestError(
-      "Prepare the opening clip and scheduled video before scheduling the final post.",
+      "Prepare the hook and secondary clips before scheduling the final post.",
       409,
       "combined_render_not_ready",
     );
@@ -895,12 +898,12 @@ export async function updateUserSchedule(params: {
 
   if (nextMediaMode === "combined_video" && !hookMediaId) {
     throw new SchedulingRequestError(
-      "Choose an opening clip before saving this schedule.",
+      "Choose a hook clip before saving this schedule.",
     );
   }
 
   if (hookMediaId) {
-    assertUuid(hookMediaId, "Opening clip ID is invalid.");
+    assertUuid(hookMediaId, "Hook clip ID is invalid.");
   }
 
   const source = await resolveScheduleSource({
@@ -1098,7 +1101,7 @@ async function assertCombinedRenderIsCurrent(params: {
 
   if (!hookAsset || !scheduledVideoAsset) {
     throw new SchedulingRequestError(
-      "The selected opening clip or scheduled video is no longer available.",
+      "The selected hook or secondary clip is no longer available.",
       409,
       "schedule_source_unavailable",
     );
@@ -1149,7 +1152,7 @@ async function assertCombinedRenderIsCurrent(params: {
     combinedDemoMediaId !== resolvedScheduledVideoAsset.asset.id
   ) {
     throw new SchedulingRequestError(
-      "Prepare the latest opening clip and scheduled video before scheduling the final post.",
+      "Prepare the latest hook and secondary clips before scheduling the final post.",
       409,
       "combined_render_stale",
     );
@@ -1360,7 +1363,7 @@ function isDirectScheduledVideoSource(params: {
   sourceType: string;
 }) {
   return (
-    params.collection === "video" &&
+    directScheduledVideoCollections.has(params.collection) &&
     isDirectScheduledVideoSourceType(params.sourceType)
   );
 }
@@ -1375,7 +1378,7 @@ function isDirectScheduledVideoAsset(
   return Boolean(
     asset &&
       asset.status === "ready" &&
-      asset.collection === "video" &&
+      directScheduledVideoCollections.has(asset.collection) &&
       isDirectScheduledVideoSourceType(asset.source_type),
   );
 }

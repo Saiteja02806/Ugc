@@ -1236,13 +1236,21 @@ export function SchedulingWorkspace() {
           errorMessage={drawerError}
           hookMediaOptions={hookMediaOptions}
           initialDemoMediaId={
-            getString(editingSchedule?.metadata.scheduledVideoId) ??
-            getString(editingSchedule?.metadata.demoMediaId) ??
-            editingSchedule?.mediaAssetId ??
-            ""
+            getString(editingSchedule?.metadata.clipSelection) === "hook_only"
+              ? ""
+              : getString(editingSchedule?.metadata.scheduledVideoId) ??
+                getString(editingSchedule?.metadata.demoMediaId) ??
+                editingSchedule?.mediaAssetId ??
+                ""
           }
           initialHookMediaId={
-            getString(editingSchedule?.metadata.hookMediaId) ?? ""
+            getString(editingSchedule?.metadata.hookMediaId) ??
+            (getString(editingSchedule?.metadata.clipSelection) === "hook_only"
+              ? getString(editingSchedule?.metadata.scheduledVideoId) ??
+                getString(editingSchedule?.metadata.demoMediaId) ??
+                editingSchedule?.mediaAssetId ??
+                ""
+              : "")
           }
           initialPlannedTargets={getSavedPlannedTargets(editingSchedule)}
           initialScheduledDate={defaultNewScheduleSlot.date}
@@ -2516,8 +2524,8 @@ function DayScheduleWorkspace({
                   Day workflow
                 </p>
                 <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-                  Choose a scheduled video. You can optionally add an opening
-                  clip and prepare both as one final post.
+                  Choose a hook clip, a secondary clip, or both. When both are
+                  selected, they are prepared as one final post.
                 </p>
               </div>
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
@@ -2576,7 +2584,7 @@ function DayScheduleWorkspace({
                   Nothing scheduled here.
                 </p>
                 <p className="mt-1 text-sm font-medium leading-6 text-muted">
-                  Add a scheduled video for this day.
+                  Add a hook or secondary clip for this day.
                 </p>
               </div>
             )}
@@ -2615,7 +2623,7 @@ function SelectedDayDraftCard({
   const combinedDraft = isCombinedVideoDraft(draft);
   const primaryMediaLabel = isCarouselDraft(draft)
     ? "Carousel"
-    : "Scheduled video";
+    : "Reel clip";
 
   return (
     <article className="rounded-[var(--radius-card)] border border-border bg-card px-3 py-3 transition-colors hover:border-border-strong">
@@ -2641,11 +2649,11 @@ function SelectedDayDraftCard({
       {combinedDraft ? (
         <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs font-bold">
           <span className="truncate rounded-lg bg-card-muted px-2 py-1 text-muted">
-            Opening clip: {hookMedia?.title ?? "Missing"}
+            Hook clip: {hookMedia?.title ?? "Missing"}
           </span>
-          <span className="text-muted">+</span>
+          <span className="text-primary">→</span>
           <span className="truncate rounded-lg bg-card-muted px-2 py-1 text-muted">
-            Scheduled video: {demoMedia?.title ?? "Missing"}
+            Secondary clip: {demoMedia?.title ?? "Missing"}
           </span>
         </div>
       ) : (
@@ -3989,6 +3997,7 @@ function buildScheduleRequestBody(submission: ScheduleFormSubmission) {
   return {
     caption: submission.caption,
     metadata: {
+      clipSelection: submission.clipSelection,
       demoMediaId: submission.scheduledVideo.id,
       demoMediaTitle: submission.scheduledVideo.title,
       hookMediaId: submission.openingMedia?.id ?? null,
@@ -4110,7 +4119,7 @@ function getCompositeMediaTitle(
   hookMedia: ScheduleMediaOption,
   demoMedia: ScheduleMediaOption,
 ) {
-  return `${hookMedia.title} + ${demoMedia.title}`.slice(0, 140);
+  return `${hookMedia.title} → ${demoMedia.title}`.slice(0, 140);
 }
 
 function getApiResponseMessage(responseData: unknown, fallback: string) {

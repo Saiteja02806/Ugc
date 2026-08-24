@@ -12,7 +12,16 @@ export type ProductFeedbackStatus =
   | "resolved"
   | "declined";
 
+export type ProductFeedbackAttachment = {
+  fileName: string;
+  height: number;
+  mimeType: string;
+  sizeBytes: number;
+  width: number;
+};
+
 export type ProductFeedbackItem = {
+  attachment: ProductFeedbackAttachment | null;
   createdAt: string;
   description: string;
   id: string;

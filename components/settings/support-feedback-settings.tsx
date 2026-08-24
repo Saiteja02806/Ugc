@@ -2,14 +2,17 @@
 
 import {
   CheckCircle2,
+  ImagePlus,
   Inbox,
   LoaderCircle,
   RefreshCw,
   Send,
+  X,
 } from "lucide-react";
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
@@ -31,12 +34,28 @@ type FeedbackApiResponse = {
   ok?: boolean;
 };
 
+type FeedbackAttachmentUploadResponse =
+  | {
+      attachmentId: string;
+      ok: true;
+      requiredHeaders: Record<string, string>;
+      uploadUrl: string;
+    }
+  | { error?: string; ok?: false };
+
 type FeedbackAdminApiResponse = {
   canReview?: boolean;
   message?: string;
   ok?: boolean;
   submissions?: ProductFeedbackItem[];
 };
+
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+const ATTACHMENT_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
 export function SupportFeedbackSettings({
   showOwnerInbox = false,
@@ -45,13 +64,34 @@ export function SupportFeedbackSettings({
   showOwnerInbox?: boolean;
   type: ProductFeedbackType;
 }) {
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const isTicket = type === "support_ticket";
   const actionLabel = isTicket ? "Raised Ticket" : "Request Feature";
+
+  function chooseAttachment(file: File) {
+    if (!ATTACHMENT_CONTENT_TYPES.has(file.type)) {
+      setError("Attach a JPG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size <= 0 || file.size > MAX_ATTACHMENT_BYTES) {
+      setError("Choose an image up to 10 MB.");
+      return;
+    }
+
+    setAttachment(file);
+    setError(null);
+  }
+
+  function removeAttachment() {
+    setAttachment(null);
+    if (attachmentInputRef.current) attachmentInputRef.current.value = "";
+  }
 
   async function submitFeedback(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -69,8 +109,13 @@ export function SupportFeedbackSettings({
         throw new Error("Sign in again before sending your request.");
       }
 
+      const attachmentId = attachment
+        ? await uploadFeedbackAttachment({ file: attachment, token })
+        : undefined;
+
       const response = await fetch("/api/feedback", {
         body: JSON.stringify({
+          ...(attachmentId ? { attachmentId } : {}),
           description,
           sourcePath: `${window.location.pathname}${window.location.hash}`,
           title,
@@ -97,6 +142,7 @@ export function SupportFeedbackSettings({
       );
       setTitle("");
       setDescription("");
+      removeAttachment();
     } catch (submissionError) {
       setError(
         submissionError instanceof Error
@@ -172,6 +218,65 @@ export function SupportFeedbackSettings({
                     : "What should it do, when would you use it, and how would it help?"
                 }
                 className="w-full resize-y rounded-lg border border-input bg-card px-3 py-2.5 text-sm leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:bg-card-muted disabled:opacity-70"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Label htmlFor="feedback-attachment">Attach Image</Label>
+                <Badge variant="outline">Optional</Badge>
+              </div>
+              <p className="text-xs leading-5 text-muted">
+                JPG, PNG, or WebP up to 10 MB. The image is stored with your request for the UGC Pilot team to review.
+              </p>
+              {attachment ? (
+                <div className="flex min-w-0 items-center gap-3 rounded-control border border-border bg-card px-3 py-2.5">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
+                    <ImagePlus className="size-4" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-foreground-strong">
+                      {attachment.name}
+                    </p>
+                    <p className="text-xs text-muted">
+                      {formatFileSize(attachment.size)}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label="Remove attached image"
+                    disabled={isSubmitting}
+                    onClick={removeAttachment}
+                  >
+                    <X aria-hidden="true" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={isSubmitting}
+                  onClick={() => attachmentInputRef.current?.click()}
+                >
+                  <ImagePlus data-icon="inline-start" aria-hidden="true" />
+                  Attach Image
+                </Button>
+              )}
+              <input
+                ref={attachmentInputRef}
+                id="feedback-attachment"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                disabled={isSubmitting}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) chooseAttachment(file);
+                  event.target.value = "";
+                }}
               />
             </div>
 
@@ -369,6 +474,12 @@ function FeedbackOwnerInbox() {
                     <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted">
                       {submission.description}
                     </p>
+                    {submission.attachment ? (
+                      <FeedbackAttachmentPreview
+                        attachment={submission.attachment}
+                        feedbackId={submission.id}
+                      />
+                    ) : null}
                   </div>
                   <div className="shrink-0 text-left text-xs leading-5 text-muted-subtle sm:max-w-56 sm:text-right">
                     <p className="font-semibold text-muted">
@@ -402,6 +513,108 @@ function FeedbackOwnerInbox() {
   );
 }
 
+function FeedbackAttachmentPreview({
+  attachment,
+  feedbackId,
+}: {
+  attachment: NonNullable<ProductFeedbackItem["attachment"]>;
+  feedbackId: string;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (imageUrl) URL.revokeObjectURL(imageUrl);
+    };
+  }, [imageUrl]);
+
+  async function showAttachment() {
+    if (isLoading) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const token = await getCurrentUserIdToken();
+      if (!token) throw new Error("Sign in again before viewing the image.");
+
+      const response = await fetch(
+        `/api/admin/feedback/${encodeURIComponent(feedbackId)}/attachment`,
+        {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        throw new Error(data?.error || "Could not load the attached image.");
+      }
+
+      const blob = await response.blob();
+      if (imageUrl) URL.revokeObjectURL(imageUrl);
+      setImageUrl(URL.createObjectURL(blob));
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Could not load the attached image.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  function hideAttachment() {
+    if (imageUrl) URL.revokeObjectURL(imageUrl);
+    setImageUrl(null);
+  }
+
+  return (
+    <div className="mt-3 rounded-control border border-border bg-card-muted/35 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-bold text-foreground-strong">
+            Attached image: {attachment.fileName}
+          </p>
+          <p className="mt-0.5 text-xs text-muted">
+            {attachment.width} × {attachment.height} · {formatFileSize(attachment.sizeBytes)}
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => void (imageUrl ? hideAttachment() : showAttachment())}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <LoaderCircle
+              data-icon="inline-start"
+              className="animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+          ) : null}
+          {isLoading ? "Loading image" : imageUrl ? "Hide image" : "View image"}
+        </Button>
+      </div>
+      {error ? <p className="mt-2 text-xs text-error" role="alert">{error}</p> : null}
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt={`Attached image: ${attachment.fileName}`}
+          className="mt-3 max-h-96 w-full rounded-control border border-border bg-card object-contain"
+        />
+      ) : null}
+    </div>
+  );
+}
+
 function formatDateTime(value: string) {
   const date = new Date(value);
 
@@ -411,4 +624,56 @@ function formatDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+async function uploadFeedbackAttachment({
+  file,
+  token,
+}: {
+  file: File;
+  token: string;
+}) {
+  const preparedResponse = await fetch("/api/feedback/attachment/upload-url", {
+    body: JSON.stringify({
+      contentType: file.type,
+      fileName: file.name,
+      fileSize: file.size,
+    }),
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+  const prepared = (await preparedResponse.json().catch(() => null)) as
+    | FeedbackAttachmentUploadResponse
+    | null;
+
+  if (!preparedResponse.ok || prepared?.ok !== true) {
+    throw new Error(
+      prepared && "error" in prepared && prepared.error
+        ? prepared.error
+        : "Could not prepare the image attachment.",
+    );
+  }
+
+  const uploadResponse = await fetch(prepared.uploadUrl, {
+    body: file,
+    headers: prepared.requiredHeaders,
+    method: "PUT",
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error("Could not upload the image attachment. Try again.");
+  }
+
+  return prepared.attachmentId;
+}
+
+function formatFileSize(sizeBytes: number) {
+  if (sizeBytes < 1024 * 1024) {
+    return `${Math.max(1, Math.round(sizeBytes / 1024))} KB`;
+  }
+
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }

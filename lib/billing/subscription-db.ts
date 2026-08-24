@@ -2,6 +2,11 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { ingestDodoUsageEvent } from "@/lib/billing/dodo";
 import {
+  calculateVideoGenerationCreditCost,
+  DEFAULT_IMAGE_GENERATION_CREDITS,
+  DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND,
+} from "@/lib/billing/generation-credit-policy";
+import {
   getBillingUsageRetryDelayMs,
   getSubscriptionEntitlementPlanKey,
   MAX_BILLING_USAGE_ATTEMPTS,
@@ -33,12 +38,14 @@ export type UserSubscriptionInfo = {
   dailyContentPieces: number | "Limited";
   displayName: "Free" | "Starter" | "Growth";
   instagramAccounts: number;
+  imageGenerationCreditCost: number;
   isActive: boolean;
   planKey: BillingPlanKey;
   sharedMonthlyCredits: number;
   status: BillingSubscriptionStatus;
   updatedAt: string | null;
   userId: string;
+  videoGenerationCreditsPerSecond: number;
 };
 
 export type DodoSubscriptionEventInput = {
@@ -153,12 +160,14 @@ export function resolveSubscriptionEntitlements(
           ? "Starter"
           : "Free",
     instagramAccounts: resolveInstagramAccountLimit(paidPlan, isActive),
+    imageGenerationCreditCost: getGenerationCreditCost("image"),
     isActive: isActive && paidPlan !== "free",
     planKey: paidPlan,
     sharedMonthlyCredits,
     status: paidPlan === "free" ? "free" : isActive ? "active" : "pending",
     updatedAt: updatedAt ?? null,
     userId,
+    videoGenerationCreditsPerSecond: getVideoGenerationCreditsPerSecond(),
   };
 }
 
@@ -537,13 +546,41 @@ export async function flushPendingBillingUsageEvents(limit = 50) {
   };
 }
 
-export function getGenerationCreditCost(kind: "image" | "video") {
-  const variableName =
-    kind === "video"
-      ? "BILLING_VIDEO_GENERATION_CREDITS"
-      : "BILLING_IMAGE_GENERATION_CREDITS";
-  const fallback = kind === "video" ? 10 : 1;
-  const configured = Number.parseInt(process.env[variableName] ?? "", 10);
+export function getGenerationCreditCost(kind: "image"): number;
+export function getGenerationCreditCost(
+  kind: "video",
+  durationSeconds: number,
+): number;
+export function getGenerationCreditCost(
+  kind: "image" | "video",
+  durationSeconds?: number,
+) {
+  if (kind === "video") {
+    if (durationSeconds === undefined) {
+      throw new Error("Video credit calculation requires durationSeconds.");
+    }
+
+    return calculateVideoGenerationCreditCost(
+      durationSeconds,
+      getVideoGenerationCreditsPerSecond(),
+    );
+  }
+
+  return getConfiguredPositiveInteger(
+    "BILLING_IMAGE_GENERATION_CREDITS",
+    DEFAULT_IMAGE_GENERATION_CREDITS,
+  );
+}
+
+export function getVideoGenerationCreditsPerSecond() {
+  return getConfiguredPositiveInteger(
+    "BILLING_VIDEO_GENERATION_CREDITS_PER_SECOND",
+    DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND,
+  );
+}
+
+function getConfiguredPositiveInteger(name: string, fallback: number) {
+  const configured = Number.parseInt(process.env[name] ?? "", 10);
 
   return Number.isFinite(configured) && configured > 0 ? configured : fallback;
 }

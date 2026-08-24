@@ -1,3 +1,4 @@
+import { generateGeminiImageBuffer } from "../lib/gemini-image.js";
 import { generateOpenAiImageBuffer } from "../lib/openai-image.js";
 import {
   createGenerationRequestFingerprint,
@@ -23,6 +24,7 @@ const MAX_PROMPT_LENGTH = 2_000;
 type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
+  model: "gpt_image" | "nano_banana_2";
   prompt: string;
   referenceImageUrl?: string;
 };
@@ -50,6 +52,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   return {
     aspectRatio: getAspectRatio(job.input_json.aspectRatio),
     generationId: generationId.trim(),
+    model: getImageModel(job.input_json.model),
     prompt: prompt.trim(),
     referenceImageUrl: getOptionalHttpsUrl(job.input_json.referenceImageUrl),
   };
@@ -63,21 +66,23 @@ export async function runGenerateImageJob(
   const userId = getPathSegment(job.user_id, "user");
   const projectId = getPathSegment(job.project_id, "default");
   const outputKey = `images/generated/${userId}/${projectId}/${input.generationId}.png`;
-  const stagingKey = `generation-staging/${job.id}/openai-image-source.png`;
+  const provider = input.model === "nano_banana_2" ? "gemini" : "openai";
+  const stagingKey = `generation-staging/${job.id}/${provider}-image-source.png`;
   const existingOutput = await getStoredObject(outputKey);
 
   if (existingOutput) {
-    return buildOutput(input, existingOutput);
+    return buildOutput(input, existingOutput, provider);
   }
 
   await context.checkpoint({
     stage: "waiting_for_image_provider",
     status: "waiting_external_service",
   });
-  const operationKey = "openai-image";
+  const operationKey = `${provider}-image`;
   const requestFingerprint = createGenerationRequestFingerprint({
     aspectRatio: input.aspectRatio,
     generationId: input.generationId,
+    model: input.model,
     outputKey,
     prompt: input.prompt,
     referenceImageUrl: input.referenceImageUrl ?? null,
@@ -85,7 +90,7 @@ export async function runGenerateImageJob(
   const reservation = await context.store.reserveGenerationProviderOperation({
     jobId: job.id,
     operationKey,
-    provider: "openai",
+    provider,
     requestFingerprint,
   });
   let generatedImageBuffer: Buffer;
@@ -94,11 +99,18 @@ export async function runGenerateImageJob(
     let generated;
 
     try {
-      generated = await generateOpenAiImageBuffer(
-        input.prompt,
-        input.aspectRatio,
-        input.referenceImageUrl,
-      );
+      generated =
+        input.model === "nano_banana_2"
+          ? await generateGeminiImageBuffer(
+              input.prompt,
+              input.aspectRatio,
+              input.referenceImageUrl,
+            )
+          : await generateOpenAiImageBuffer(
+              input.prompt,
+              input.aspectRatio,
+              input.referenceImageUrl,
+            );
     } catch (error) {
       return persistProviderSubmissionFailure({
         error,
@@ -184,12 +196,13 @@ export async function runGenerateImageJob(
     outputUrl: uploaded.url,
   });
 
-  return buildOutput(input, uploaded);
+  return buildOutput(input, uploaded, provider);
 }
 
 function buildOutput(
   input: GenerateImageInput,
   uploaded: { key: string; url: string },
+  provider: "gemini" | "openai",
 ) {
   const dimensions = getAIStudioImageDimensions(input.aspectRatio);
 
@@ -199,11 +212,16 @@ function buildOutput(
     height: dimensions.height,
     key: uploaded.key,
     ok: true,
-    provider: "openai",
+    model: input.model,
+    provider,
     ratio: input.aspectRatio,
     url: uploaded.url,
     width: dimensions.width,
   };
+}
+
+function getImageModel(value: Json | undefined) {
+  return value === "nano_banana_2" ? "nano_banana_2" : "gpt_image";
 }
 
 function getAspectRatio(value: Json | undefined): AIStudioImageRatio {

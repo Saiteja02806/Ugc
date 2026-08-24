@@ -3,13 +3,13 @@ import OpenAI, { toFile } from "openai";
 import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
 import type { AIStudioImageRatio } from "./image-output.js";
 
-const DEFAULT_IMAGE_MODEL = "gpt-image-1";
+const DEFAULT_IMAGE_MODEL = "gpt-image-2";
 
 let openaiClient: OpenAI | null = null;
 
 export async function generateOpenAiImageBuffer(
   prompt: string,
-  aspectRatio: AIStudioImageRatio = "4:5",
+  aspectRatio: AIStudioImageRatio = "9:16",
   referenceImageUrl?: string,
 ) {
   const client = getOpenAIClient();

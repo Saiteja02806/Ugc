@@ -7,7 +7,10 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { JobQueryProvider } from "@/components/providers/job-query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { WorkspaceRouteBoundary } from "@/components/layout/workspace-route-boundary";
-import { THEME_STORAGE_KEY } from "@/lib/theme";
+import {
+  THEME_BACKGROUND_COLORS,
+  THEME_STORAGE_KEY,
+} from "@/lib/theme";
 
 import "./globals.css";
 
@@ -75,18 +78,22 @@ const retiredContentStorageCleanupScript = `(() => {
 })();`;
 
 const themeInitializationScript = `(() => {
+  const themeBackgroundColors = ${JSON.stringify(THEME_BACKGROUND_COLORS)};
+
   try {
     const savedTheme = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
-    const theme = savedTheme === "dark" ? "dark" : "light";
+    const theme = savedTheme === "light" ? "light" : "dark";
     const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
     root.dataset.theme = theme;
     root.style.colorScheme = theme;
+    root.style.backgroundColor = themeBackgroundColors[theme];
   } catch {
     const root = document.documentElement;
-    root.classList.remove("dark");
-    root.dataset.theme = "light";
-    root.style.colorScheme = "light";
+    root.classList.add("dark");
+    root.dataset.theme = "dark";
+    root.style.colorScheme = "dark";
+    root.style.backgroundColor = themeBackgroundColors.dark;
   }
 })();`;
 
@@ -98,9 +105,20 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} h-full`}
+      className={`${geistSans.variable} ${geistMono.variable} ${geistEditOverlay.variable} ${interWallText.variable} h-full dark`}
+      data-theme="dark"
+      style={{
+        backgroundColor: THEME_BACKGROUND_COLORS.dark,
+        colorScheme: "dark",
+      }}
       suppressHydrationWarning
     >
+      <head>
+        <script
+          id="ugc-pilot-theme"
+          dangerouslySetInnerHTML={{ __html: themeInitializationScript }}
+        />
+      </head>
       <body
         className={`${geistSans.className} min-h-full bg-background text-foreground antialiased`}
       >
@@ -110,11 +128,6 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: retiredContentStorageCleanupScript,
           }}
-        />
-        <Script
-          id="ugc-pilot-theme"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: themeInitializationScript }}
         />
         <ThemeProvider>
           <AuthProvider>

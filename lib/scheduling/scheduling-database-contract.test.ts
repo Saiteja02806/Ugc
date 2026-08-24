@@ -471,7 +471,7 @@ test("direct cancellation still waits for provider cleanup", () => {
   );
 });
 
-test("scheduling loads independent media and avatar catalogs concurrently", () => {
+test("scheduling loads only Creative Assets media catalogs concurrently", () => {
   const mediaLoad = getSection(
     schedulingWorkspace,
     "const loadScheduleMedia = useCallback(async (",
@@ -480,9 +480,10 @@ test("scheduling loads independent media and avatar catalogs concurrently", () =
 
   assert.match(
     mediaLoad,
-    /Promise\.all\(\[[\s\S]*collection=influencer[\s\S]*collection=video[\s\S]*\/api\/avatars/,
+    /Promise\.all\(\[[\s\S]*collection=influencer[\s\S]*collection=video/,
   );
-  assert.match(mediaLoad, /avatarResult\?\.response\.ok/);
+  assert.match(mediaLoad, /isCreativeAssetHookMediaAsset/);
+  assert.doesNotMatch(mediaLoad, /\/api\/avatars/);
 });
 
 test("scheduling media catalogs are briefly reused only inside one Firebase account", () => {
@@ -778,7 +779,7 @@ test("the Scheduling editor loads only after an editor flow opens", () => {
   );
   assert.match(schedulingWorkspace, /loading: ScheduleEditorLoading/);
   assert.match(scheduleEditor, /export function ScheduleEditor/);
-  assert.match(scheduleEditor, /onPrepareCatalogInfluencer/);
+  assert.doesNotMatch(scheduleEditor, /onPrepareCatalogInfluencer/);
   assert.match(
     schedulingWorkspace,
     /onRefreshMedia=\{\(\) => loadScheduleMedia\(\{ force: true \}\)\}/,
@@ -1028,7 +1029,20 @@ test("the main scheduler uses compact role-based clip and time controls", () => 
   assert.match(scheduleEditor, /aria-label="Scheduling checklist"/);
   assert.match(scheduleEditor, /Show on profile grid/);
   assert.match(scheduleEditor, /max-w-xl/);
-  assert.match(schedulingService, /"catalog_influencer"/);
+  assert.match(
+    schedulingWorkspace,
+    /influencerData\.assets[\s\S]*filter\(isCreativeAssetHookMediaAsset\)/,
+  );
+  assert.doesNotMatch(schedulingWorkspace, /\/api\/avatars/);
+  assert.doesNotMatch(scheduleEditor, /Presenter catalog/);
+  assert.doesNotMatch(scheduleEditor, /onPrepareCatalogInfluencer/);
+  assert.doesNotMatch(schedulingService, /"catalog_influencer"/);
+  assert.match(schedulingService, /assertSelectedHookIsCreativeAsset/);
+  assert.match(schedulingService, /hook_creative_asset_required/);
+  assert.match(
+    renderRoute,
+    /\["influencer_upload", "upload", "generated_video"\]/,
+  );
   assert.match(schedulingService, /directScheduledVideoCollections/);
 });
 

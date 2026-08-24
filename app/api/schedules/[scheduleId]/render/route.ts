@@ -533,9 +533,10 @@ function authErrorResponse(error: unknown, unauthorizedMessage: string) {
 function isHookAsset(asset: MediaAssetRow) {
   return (
     asset.status === "ready" &&
-    (asset.collection === "influencer" ||
-      (asset.collection === "video" &&
-        ["upload", "generated_video", "edit_export"].includes(asset.source_type)))
+    (asset.collection === "influencer" || asset.collection === "video") &&
+    ["influencer_upload", "upload", "generated_video"].includes(
+      asset.source_type,
+    )
   );
 }
 

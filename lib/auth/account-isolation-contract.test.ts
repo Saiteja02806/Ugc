@@ -130,6 +130,15 @@ test("profile access checks are reused only inside the active Firebase account",
   assert.match(authGuard, /refetchOnWindowFocus: false/);
 });
 
+test("authentication redirects keep a themed frame visible", () => {
+  assert.match(authGuard, /Opening sign in\.\.\./);
+  assert.match(authGuard, /Opening email verification\.\.\./);
+  assert.doesNotMatch(
+    authGuard,
+    /if \(!user \|\| !user\.emailVerified\) \{\s*return null/,
+  );
+});
+
 test("AI Studio access is cached only inside the active Firebase account", () => {
   assert.match(aiStudioAccess, /useQuery\(\{/);
   assert.match(

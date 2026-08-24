@@ -86,7 +86,11 @@ export function AuthGuard({
     }
 
     if (!user || !user.emailVerified) {
-      return null;
+      return (
+        <GuardLoadingState
+          label={user ? "Opening email verification..." : "Opening sign in..."}
+        />
+      );
     }
 
     if (

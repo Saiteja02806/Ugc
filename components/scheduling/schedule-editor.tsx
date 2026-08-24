@@ -13,7 +13,6 @@ import {
   Plus,
   RefreshCw,
   Settings2,
-  UserRound,
   Video,
   X,
 } from "lucide-react";
@@ -67,9 +66,8 @@ import { cn } from "@/lib/utils";
 
 const openingVideoSourceTabs = [
   { id: "all", label: "All" },
-  { id: "influencers", label: "Presenters" },
+  { id: "creators", label: "Creator clips" },
   { id: "videos", label: "Videos" },
-  { id: "edited", label: "Edited" },
 ] as const;
 const scheduleSetupSteps = [
   { description: "Choose what to publish", label: "Media", mobileLabel: "Media", step: "1" },
@@ -94,14 +92,6 @@ const defaultTimezone =
   typeof Intl !== "undefined"
     ? Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
     : "UTC";
-
-export type ScheduleCatalogInfluencerOption = {
-  avatarId: string;
-  durationLabel: string;
-  id: string;
-  thumbnailUrl?: string;
-  title: string;
-};
 
 export type ScheduleFormSubmission = {
   caption: string;
@@ -218,7 +208,6 @@ function getScheduleTimeValidation(params: {
 }
 
 export function ScheduleEditor({
-  catalogInfluencerOptions,
   demoMediaOptions,
   editingIsCombinedVideo,
   editingPlannedPlatforms,
@@ -234,14 +223,12 @@ export function ScheduleEditor({
   initialScheduledTime,
   minimumScheduleLeadMinutes,
   onClose,
-  onPrepareCatalogInfluencer,
   onRefreshMedia,
   onSave,
   requireScheduleTarget,
   saving,
   socialConnections,
 }: {
-  catalogInfluencerOptions: ScheduleCatalogInfluencerOption[];
   demoMediaOptions: ScheduleMediaOption[];
   editingIsCombinedVideo: boolean;
   editingPlannedPlatforms: SchedulePlatform[];
@@ -257,7 +244,6 @@ export function ScheduleEditor({
   initialScheduledTime: string;
   minimumScheduleLeadMinutes: number;
   onClose: () => void;
-  onPrepareCatalogInfluencer: (avatarId: string) => Promise<ScheduleMediaOption>;
   onRefreshMedia: () => Promise<boolean>;
   onSave: (submission: ScheduleFormSubmission) => void;
   requireScheduleTarget: boolean;
@@ -304,8 +290,6 @@ export function ScheduleEditor({
       return platform !== undefined && platform !== "instagram";
     },
   );
-  const [preparedHookMediaOptions, setPreparedHookMediaOptions] =
-    useState<ScheduleMediaOption[]>([]);
   const [useOpeningClip, setUseOpeningClip] = useState(
     () =>
       getInitialClipSelection({
@@ -330,8 +314,6 @@ export function ScheduleEditor({
   const [selectedDemoMediaId, setSelectedDemoMediaId] = useState<string>(
     initialDemoMediaId,
   );
-  const [preparingCatalogInfluencerId, setPreparingCatalogInfluencerId] =
-    useState<string | null>(null);
   const [refreshingMedia, setRefreshingMedia] = useState(false);
   const [hookPickerError, setHookPickerError] = useState<string | null>(null);
   const [caption, setCaption] = useState(editingSchedule?.caption ?? "");
@@ -362,10 +344,7 @@ export function ScheduleEditor({
   );
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
-  const localHookMediaOptions = useMemo(
-    () => dedupeScheduleMediaOptions([...preparedHookMediaOptions, ...hookMediaOptions]),
-    [hookMediaOptions, preparedHookMediaOptions],
-  );
+  const localHookMediaOptions = hookMediaOptions;
 
   const activeHookMediaId = localHookMediaOptions.some(
     (option) => option.id === selectedHookMediaId,
@@ -748,32 +727,6 @@ export function ScheduleEditor({
     }
   }
 
-  async function handleSelectCatalogInfluencer(
-    option: ScheduleCatalogInfluencerOption,
-  ) {
-    if (preparingCatalogInfluencerId) {
-      return;
-    }
-
-    setHookPickerError(null);
-    setPreparingCatalogInfluencerId(option.avatarId);
-
-    try {
-      const mediaOption = await onPrepareCatalogInfluencer(option.avatarId);
-
-      setPreparedHookMediaOptions((currentOptions) =>
-        dedupeScheduleMediaOptions([mediaOption, ...currentOptions]),
-      );
-      setSelectedHookMediaId(mediaOption.id);
-    } catch (error) {
-      setHookPickerError(
-        getErrorMessage(error, "Could not prepare this presenter."),
-      );
-    } finally {
-      setPreparingCatalogInfluencerId(null);
-    }
-  }
-
   function handleSaveDraft() {
     if (
       mediaValidationError ||
@@ -926,14 +879,11 @@ export function ScheduleEditor({
                         onToggle={handleToggleOpeningClip}
                       >
                         <ScheduleOpeningMediaPicker
-                          catalogInfluencerOptions={catalogInfluencerOptions}
                           errorMessage={hookPickerError}
                           mediaOptions={localHookMediaOptions}
-                          preparingCatalogInfluencerId={preparingCatalogInfluencerId}
                           refreshingMedia={refreshingMedia}
                           selectedMediaId={activeHookMediaId}
                           onRefreshMedia={handleRefreshMedia}
-                          onSelectCatalogInfluencer={handleSelectCatalogInfluencer}
                           onSelectMedia={handleSelectHookMedia}
                         />
                       </ScheduleOpeningClipControl>
@@ -1483,70 +1433,36 @@ function ScheduleOpeningClipControl({
 }
 
 function ScheduleOpeningMediaPicker({
-  catalogInfluencerOptions,
   errorMessage,
   mediaOptions,
   onRefreshMedia,
-  onSelectCatalogInfluencer,
   onSelectMedia,
-  preparingCatalogInfluencerId,
   refreshingMedia,
   selectedMediaId,
 }: {
-  catalogInfluencerOptions: ScheduleCatalogInfluencerOption[];
   errorMessage: string | null;
   mediaOptions: ScheduleMediaOption[];
   onRefreshMedia: () => void;
-  onSelectCatalogInfluencer: (option: ScheduleCatalogInfluencerOption) => void;
   onSelectMedia: (mediaId: string) => void;
-  preparingCatalogInfluencerId: string | null;
   refreshingMedia: boolean;
   selectedMediaId: string;
 }) {
   const [activeSource, setActiveSource] =
     useState<OpeningVideoSourceTab>("all");
-  const catalogInfluencerIds = useMemo(
-    () => new Set(catalogInfluencerOptions.map((option) => option.avatarId)),
-    [catalogInfluencerOptions],
-  );
-  const selectedMedia = mediaOptions.find((option) => option.id === selectedMediaId);
-  const influencerMediaOptions = mediaOptions.filter(
-    (option) =>
-      option.sourceType === "influencer_video" &&
-      !catalogInfluencerIds.has(option.sourceRecordId ?? ""),
+  const creatorMediaOptions = mediaOptions.filter(
+    (option) => option.sourceType === "influencer_video",
   );
   const videoMediaOptions = mediaOptions.filter(
     (option) =>
       option.sourceType === "generated_video" ||
       option.sourceType === "user_video",
   );
-  const editedMediaOptions = mediaOptions.filter(
-    (option) => option.sourceType === "edit_video",
-  );
   const sourceCounts: Record<OpeningVideoSourceTab, number> = {
-    all:
-      catalogInfluencerOptions.length +
-      influencerMediaOptions.length +
-      videoMediaOptions.length +
-      editedMediaOptions.length,
-    edited: editedMediaOptions.length,
-    influencers: catalogInfluencerOptions.length + influencerMediaOptions.length,
+    all: creatorMediaOptions.length + videoMediaOptions.length,
+    creators: creatorMediaOptions.length,
     videos: videoMediaOptions.length,
   };
   const hasAnyOptions = sourceCounts.all > 0;
-
-  function renderCatalogInfluencers() {
-    return catalogInfluencerOptions.map((option) => (
-      <ScheduleCatalogInfluencerButton
-        key={option.id}
-        option={option}
-        preparing={preparingCatalogInfluencerId === option.avatarId}
-        selected={selectedMedia?.sourceRecordId === option.avatarId}
-        disabled={Boolean(preparingCatalogInfluencerId)}
-        onSelect={() => onSelectCatalogInfluencer(option)}
-      />
-    ));
-  }
 
   function renderMediaOptions(options: ScheduleMediaOption[]) {
     return options.map((option) => (
@@ -1560,22 +1476,14 @@ function ScheduleOpeningMediaPicker({
   }
 
   function renderSourceSections() {
-    if (activeSource === "influencers") {
-      return sourceCounts.influencers > 0 ? (
-        <>
-          <OpeningVideoSourceSection
-            count={catalogInfluencerOptions.length}
-            title="Presenter catalog"
-          >
-            {renderCatalogInfluencers()}
-          </OpeningVideoSourceSection>
-          <OpeningVideoSourceSection
-            count={influencerMediaOptions.length}
-            title="My presenter clips"
-          >
-            {renderMediaOptions(influencerMediaOptions)}
-          </OpeningVideoSourceSection>
-        </>
+    if (activeSource === "creators") {
+      return sourceCounts.creators > 0 ? (
+        <OpeningVideoSourceSection
+          count={creatorMediaOptions.length}
+          title="Creator clips"
+        >
+          {renderMediaOptions(creatorMediaOptions)}
+        </OpeningVideoSourceSection>
       ) : (
         <OpeningVideoEmptyState source={activeSource} />
       );
@@ -1591,41 +1499,16 @@ function ScheduleOpeningMediaPicker({
       );
     }
 
-    if (activeSource === "edited") {
-      return sourceCounts.edited > 0 ? (
-        <OpeningVideoSourceSection
-          count={editedMediaOptions.length}
-          title="Edited videos"
-        >
-          {renderMediaOptions(editedMediaOptions)}
-        </OpeningVideoSourceSection>
-      ) : (
-        <OpeningVideoEmptyState source={activeSource} />
-      );
-    }
-
     return hasAnyOptions ? (
       <>
         <OpeningVideoSourceSection
-          count={catalogInfluencerOptions.length}
-          title="Presenter catalog"
+          count={creatorMediaOptions.length}
+          title="Creator clips"
         >
-          {renderCatalogInfluencers()}
-        </OpeningVideoSourceSection>
-        <OpeningVideoSourceSection
-          count={influencerMediaOptions.length}
-          title="My presenter clips"
-        >
-          {renderMediaOptions(influencerMediaOptions)}
+          {renderMediaOptions(creatorMediaOptions)}
         </OpeningVideoSourceSection>
         <OpeningVideoSourceSection count={videoMediaOptions.length} title="Videos">
           {renderMediaOptions(videoMediaOptions)}
-        </OpeningVideoSourceSection>
-        <OpeningVideoSourceSection
-          count={editedMediaOptions.length}
-          title="Edited videos"
-        >
-          {renderMediaOptions(editedMediaOptions)}
         </OpeningVideoSourceSection>
       </>
     ) : (
@@ -1728,65 +1611,6 @@ function OpeningVideoSourceSection({
       </div>
       <div className="grid gap-2">{children}</div>
     </div>
-  );
-}
-
-function ScheduleCatalogInfluencerButton({
-  disabled,
-  onSelect,
-  option,
-  preparing,
-  selected,
-}: {
-  disabled: boolean;
-  onSelect: () => void;
-  option: ScheduleCatalogInfluencerOption;
-  preparing: boolean;
-  selected: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      disabled={disabled}
-      onClick={onSelect}
-      className={cn(
-        "grid grid-cols-[58px_minmax(0,1fr)_auto] items-center gap-3 rounded-control border bg-card-muted p-2 text-left transition hover:border-border-strong hover:bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-wait disabled:opacity-70",
-        selected ? "border-primary/60 ring-2 ring-primary/15" : "border-border",
-      )}
-    >
-      <div className="flex aspect-[9/12] items-center justify-center overflow-hidden rounded-control bg-card text-muted">
-        {option.thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={option.thumbnailUrl}
-            alt=""
-            width={116}
-            height={154}
-            loading="lazy"
-            className="size-full object-cover"
-          />
-        ) : (
-          <UserRound className="size-5 text-muted" aria-hidden="true" />
-        )}
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-bold text-foreground">
-          {option.title}
-        </p>
-        <p className="mt-1 text-xs font-semibold text-muted">
-          Presenter catalog · {option.durationLabel}
-        </p>
-      </div>
-      {preparing ? (
-        <Loader2
-          className="size-4 animate-spin text-primary motion-reduce:animate-none"
-          aria-hidden="true"
-        />
-      ) : selected ? (
-        <CheckCircle2 className="size-4 text-primary" aria-hidden="true" />
-      ) : null}
-    </button>
   );
 }
 
@@ -2841,22 +2665,6 @@ function getApiResponseMessage(responseData: unknown, fallback: string) {
   return typeof error === "string" && error.trim() ? error : fallback;
 }
 
-function dedupeScheduleMediaOptions(options: ScheduleMediaOption[]) {
-  const seen = new Set<string>();
-  const deduped: ScheduleMediaOption[] = [];
-
-  for (const option of options) {
-    if (seen.has(option.id)) {
-      continue;
-    }
-
-    seen.add(option.id);
-    deduped.push(option);
-  }
-
-  return deduped;
-}
-
 function getMediaSourceLabel(option: ScheduleMediaOption) {
   const sourceLabels: Record<ScheduleMediaOption["sourceType"], string> = {
     demo_video: "Content video",
@@ -2872,11 +2680,11 @@ function getMediaSourceLabel(option: ScheduleMediaOption) {
 }
 
 function getOpeningVideoEmptyCopy(source: OpeningVideoSourceTab) {
-  if (source === "influencers") {
+  if (source === "creators") {
     return {
       description:
-        "Choose a presenter from Creative Assets or upload your own hook clip.",
-      title: "No hook presenters found.",
+        "Upload a creator clip in Creative Assets before scheduling.",
+      title: "No creator clips found.",
     };
   }
 
@@ -2888,17 +2696,9 @@ function getOpeningVideoEmptyCopy(source: OpeningVideoSourceTab) {
     };
   }
 
-  if (source === "edited") {
-    return {
-      description:
-        "Save an edited Creative Assets video, then select it as the hook.",
-      title: "No edited hook videos found.",
-    };
-  }
-
   return {
     description:
-      "Add a Creative Assets video or create an Edit export before scheduling.",
+      "Add a video to Creative Assets before scheduling.",
     title: "No hook clips found.",
   };
 }

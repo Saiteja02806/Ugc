@@ -11,6 +11,7 @@ import {
 
 import {
   resolveInitialTheme,
+  THEME_BACKGROUND_COLORS,
   THEME_STORAGE_KEY,
   type ThemePreference,
 } from "@/lib/theme";
@@ -30,6 +31,7 @@ function applyTheme(theme: ThemePreference) {
   root.classList.toggle("dark", theme === "dark");
   root.dataset.theme = theme;
   root.style.colorScheme = theme;
+  root.style.backgroundColor = THEME_BACKGROUND_COLORS[theme];
 }
 
 function getThemeSnapshot(forceDark: boolean): ThemePreference {
@@ -40,7 +42,7 @@ function getThemeSnapshot(forceDark: boolean): ThemePreference {
 }
 
 function getServerThemeSnapshot(forceDark: boolean): ThemePreference {
-  return forceDark ? "dark" : "light";
+  return resolveInitialTheme(undefined, forceDark);
 }
 
 function subscribeToTheme(onStoreChange: () => void, forceDark: boolean) {

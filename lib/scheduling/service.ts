@@ -87,7 +87,6 @@ import { isSocialPlatform } from "@/lib/social/types";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const directScheduledVideoSourceTypes = new Set([
-  "catalog_influencer",
   "demo_upload",
   "influencer_upload",
   "upload",
@@ -96,6 +95,11 @@ const directScheduledVideoSourceTypes = new Set([
   "wall_text_render",
 ]);
 const directScheduledVideoCollections = new Set(["influencer", "video"]);
+const creativeAssetHookVideoSourceTypes = new Set([
+  "influencer_upload",
+  "upload",
+  "generated_video",
+]);
 
 type ScheduleMediaMode = "single_video" | "combined_video" | "carousel";
 type ScheduleLeadPolicy = "render_finalization" | "standard";
@@ -206,6 +210,12 @@ export async function createUserSchedule(params: {
       : trustedMetadata;
   const isDraft = targetConnections.length === 0;
   const mediaMode = getScheduleMediaMode(metadata);
+
+  await assertSelectedHookIsCreativeAsset({
+    mediaMode,
+    metadata,
+    userId: params.userId,
+  });
 
   if (
     !isDraft &&
@@ -906,6 +916,12 @@ export async function updateUserSchedule(params: {
     assertUuid(hookMediaId, "Hook clip ID is invalid.");
   }
 
+  await assertSelectedHookIsCreativeAsset({
+    mediaMode: nextMediaMode,
+    metadata: normalized.metadata,
+    userId: params.userId,
+  });
+
   const source = await resolveScheduleSource({
     sourceId: normalized.source.id,
     sourceKind: normalized.source.kind,
@@ -1370,6 +1386,48 @@ function isDirectScheduledVideoSource(params: {
 
 function isDirectScheduledVideoSourceType(sourceType: string) {
   return directScheduledVideoSourceTypes.has(sourceType);
+}
+
+async function assertSelectedHookIsCreativeAsset(params: {
+  mediaMode: ScheduleMediaMode;
+  metadata: Record<string, unknown>;
+  userId: string;
+}) {
+  if (params.mediaMode !== "combined_video") {
+    return;
+  }
+
+  const hookMediaId = getMetadataString(params.metadata.hookMediaId);
+
+  if (!hookMediaId) {
+    throw new SchedulingRequestError("Choose a hook clip before saving this schedule.");
+  }
+
+  assertUuid(hookMediaId, "Hook clip ID is invalid.");
+
+  const hookAsset = await getMediaAssetForOwner({
+    assetId: hookMediaId,
+    userId: params.userId,
+  });
+
+  if (!isCreativeAssetHookVideo(hookAsset)) {
+    throw new SchedulingRequestError(
+      "Choose a hook clip from Creative Assets.",
+      409,
+      "hook_creative_asset_required",
+    );
+  }
+}
+
+function isCreativeAssetHookVideo(
+  asset: MediaAssetRow | null,
+): asset is MediaAssetRow {
+  return Boolean(
+    asset &&
+      asset.status === "ready" &&
+      directScheduledVideoCollections.has(asset.collection) &&
+      creativeAssetHookVideoSourceTypes.has(asset.source_type),
+  );
 }
 
 function isDirectScheduledVideoAsset(

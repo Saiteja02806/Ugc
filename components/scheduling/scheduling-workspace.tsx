@@ -109,11 +109,7 @@ import {
   SCHEDULING_CATALOG_GC_TIME_MS,
 } from "@/lib/scheduling/workspace-query-cache";
 import type { SocialConnection } from "@/lib/social/types";
-import type {
-  ScheduleCatalogInfluencerOption,
-  ScheduleFormSubmission,
-} from "@/components/scheduling/schedule-editor";
-import { formatCreatorDisplayName } from "@/lib/video/avatar-display";
+import type { ScheduleFormSubmission } from "@/components/scheduling/schedule-editor";
 import { cn } from "@/lib/utils";
 
 const ScheduleEditor = dynamic(
@@ -124,11 +120,10 @@ const ScheduleEditor = dynamic(
   { loading: ScheduleEditorLoading },
 );
 
-const hookVideoSourceTypes: MediaSourceType[] = [
+const creativeAssetHookVideoSourceTypes: MediaSourceType[] = [
   "upload",
+  "influencer_upload",
   "generated_video",
-  "edit_export",
-  "wall_text_render",
 ];
 const scheduledVideoSourceTypes: MediaSourceType[] = [
   "demo_upload",
@@ -142,24 +137,6 @@ const ACTIVE_SCHEDULE_LOOKBEHIND_MS = 120_000;
 const ACTIVE_JOB_TIMEOUT_MS = 5 * 60 * 1_000;
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
-  | { error?: string; ok?: false };
-
-type AvatarListResponse =
-  | {
-      avatars: {
-        asset: {
-          durationSeconds: number | null;
-          id: string;
-          name: string;
-          thumbnailUrl: string | null;
-        };
-      }[];
-      ok: true;
-    }
-  | { error?: string; ok?: false };
-
-type PreparedCatalogInfluencerResponse =
-  | { asset: MediaAsset; ok: true }
   | { error?: string; ok?: false };
 
 type ScheduleCreateResponse =
@@ -207,7 +184,6 @@ type SchedulePublishRetryResponse =
   | { message?: string; ok?: false };
 
 type SchedulingMediaCatalog = {
-  catalogInfluencerOptions: ScheduleCatalogInfluencerOption[];
   demoMediaOptions: ScheduleMediaOption[];
   hookMediaOptions: ScheduleMediaOption[];
 };
@@ -249,9 +225,6 @@ export function SchedulingWorkspace() {
   const initialDraftQueryState = useRef<"handled" | "idle" | "opening">(
     "idle",
   );
-  const [catalogInfluencerOptions, setCatalogInfluencerOptions] = useState<
-    ScheduleCatalogInfluencerOption[]
-  >(() => cachedMediaCatalog?.catalogInfluencerOptions ?? []);
   const [hookMediaOptions, setHookMediaOptions] = useState<ScheduleMediaOption[]>(
     () => cachedMediaCatalog?.hookMediaOptions ?? [],
   );
@@ -373,9 +346,10 @@ export function SchedulingWorkspace() {
             throw new SchedulingAuthenticationUnavailableError();
           }
 
-          // `collection=influencer` is a legacy storage/API contract. The
-          // Instagram-first scheduling UI presents these real assets as presenters.
-          const [influencerResponse, videoResponse, avatarResult] =
+          // Creative Assets spans the legacy influencer collection as well as
+          // standard videos. The app-owned avatar catalog is intentionally not
+          // part of scheduling: a hook must be a user-owned Creative Asset.
+          const [influencerResponse, videoResponse] =
             await Promise.all([
               fetch("/api/media?collection=influencer", {
                 cache: "no-store",
@@ -387,18 +361,6 @@ export function SchedulingWorkspace() {
                 headers: { Authorization: `Bearer ${token}` },
                 signal,
               }),
-              fetch("/api/avatars", {
-                cache: "no-store",
-                headers: { Authorization: `Bearer ${token}` },
-                signal,
-              })
-                .then(async (response) => ({
-                  data: (await response.json().catch(() => null)) as
-                    | AvatarListResponse
-                    | null,
-                  response,
-                }))
-                .catch(() => null),
             ]);
           const [influencerData, videoData] = (await Promise.all([
             influencerResponse.json(),
@@ -417,17 +379,15 @@ export function SchedulingWorkspace() {
           const videoAssets = videoData.assets;
 
           return {
-            catalogInfluencerOptions:
-              avatarResult?.response.ok && avatarResult.data?.ok === true
-                ? avatarResult.data.avatars.map(mapAvatarToCatalogInfluencerOption)
-                : [],
             demoMediaOptions: videoAssets
               .filter(isScheduledVideoMediaAsset)
               .map(mapMediaAssetToScheduleMediaOption),
             hookMediaOptions: dedupeScheduleMediaOptions([
-              ...influencerData.assets.map(mapMediaAssetToScheduleMediaOption),
+              ...influencerData.assets
+                .filter(isCreativeAssetHookMediaAsset)
+                .map(mapMediaAssetToScheduleMediaOption),
               ...videoAssets
-                .filter(isOpeningVideoMediaAsset)
+                .filter(isCreativeAssetHookMediaAsset)
                 .map(mapMediaAssetToScheduleMediaOption),
             ]),
           } satisfies SchedulingMediaCatalog;
@@ -439,7 +399,6 @@ export function SchedulingWorkspace() {
 
       setHookMediaOptions(mediaCatalog.hookMediaOptions);
       setDemoMediaOptions(mediaCatalog.demoMediaOptions);
-      setCatalogInfluencerOptions(mediaCatalog.catalogInfluencerOptions);
       setScheduleMediaLoaded(true);
       return true;
     } catch (error) {
@@ -451,32 +410,6 @@ export function SchedulingWorkspace() {
       return false;
     }
   }, [accountId, queryClient]);
-
-  const prepareCatalogInfluencer = useCallback(async (avatarId: string) => {
-    const token = await getCurrentUserIdToken();
-
-    if (!token) {
-      throw new Error("Sign in before choosing a presenter.");
-    }
-
-    const response = await fetch("/api/media/from-avatar", {
-      body: JSON.stringify({ avatarId }),
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-    });
-    const data = (await response.json()) as PreparedCatalogInfluencerResponse;
-
-    if (!response.ok || data.ok !== true) {
-      throw new Error(
-        getApiResponseMessage(data, "Could not prepare this presenter."),
-      );
-    }
-
-    return mapMediaAssetToScheduleMediaOption(data.asset);
-  }, []);
 
   const loadSchedules = useCallback(async (
     options: SchedulingCatalogLoadOptions = {},
@@ -1224,7 +1157,6 @@ export function SchedulingWorkspace() {
 
       {drawerOpen ? (
         <ScheduleEditor
-          catalogInfluencerOptions={catalogInfluencerOptions}
           demoMediaOptions={demoMediaOptions}
           editingIsCombinedVideo={isCombinedVideoMetadata(
             editingSchedule?.metadata ?? {},
@@ -1257,7 +1189,6 @@ export function SchedulingWorkspace() {
           initialScheduledTime={defaultNewScheduleSlot.time}
           minimumScheduleLeadMinutes={minimumScheduleLeadMinutes}
           onClose={handleCloseScheduleDrawer}
-          onPrepareCatalogInfluencer={prepareCatalogInfluencer}
           onRefreshMedia={() => loadScheduleMedia({ force: true })}
           onSave={handleSaveScheduleDraft}
           requireScheduleTarget={requireScheduleTarget}
@@ -3900,18 +3831,6 @@ function mapMediaAssetToScheduleMediaOption(asset: MediaAsset): ScheduleMediaOpt
   };
 }
 
-function mapAvatarToCatalogInfluencerOption(
-  avatar: Extract<AvatarListResponse, { ok: true }>["avatars"][number],
-): ScheduleCatalogInfluencerOption {
-  return {
-    avatarId: avatar.asset.id,
-    durationLabel: formatAssetDuration(avatar.asset.durationSeconds),
-    id: `catalog-influencer:${avatar.asset.id}`,
-    thumbnailUrl: avatar.asset.thumbnailUrl ?? undefined,
-    title: formatCreatorDisplayName(avatar.asset.name),
-  };
-}
-
 function getScheduleSourceTypeFromMediaAsset(
   asset: MediaAsset,
 ): ScheduleMediaOption["sourceType"] {
@@ -3938,8 +3857,11 @@ function getScheduleSourceTypeFromMediaAsset(
   return "user_video";
 }
 
-function isOpeningVideoMediaAsset(asset: MediaAsset) {
-  return hookVideoSourceTypes.includes(asset.sourceType);
+function isCreativeAssetHookMediaAsset(asset: MediaAsset) {
+  return (
+    (asset.collection === "influencer" || asset.collection === "video") &&
+    creativeAssetHookVideoSourceTypes.includes(asset.sourceType)
+  );
 }
 
 function isScheduledVideoMediaAsset(asset: MediaAsset) {

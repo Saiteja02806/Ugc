@@ -19,6 +19,7 @@ import {
   EDIT_OVERLAY_SHADOW_COLOR,
   EDIT_OVERLAY_SHADOW_OFFSET_PX,
   EDIT_OVERLAY_VERTICAL_INSET_PERCENT,
+  HOOK_TEXT_LAYOUT_VERSION,
   buildEditOverlayTextLayout,
   buildResolvedEditOverlayTextLayout,
   type EditOverlayTextLayout,
@@ -49,6 +50,7 @@ export type PreparedTextOverlay = {
 type RenderTextOverlay = {
   fontSize?: number | null;
   id: string;
+  layoutVersion?: typeof HOOK_TEXT_LAYOUT_VERSION | null;
   lines?: string[] | null;
   normalizedPosition?: NormalizedTextPosition | null;
   position: TextOverlayPosition;
@@ -103,6 +105,7 @@ export type RenderScheduleCombinationPayload = {
   demoVideoUrl: string;
   hookText: string;
   hookTextFontSize?: number | null;
+  hookTextLayoutVersion?: typeof HOOK_TEXT_LAYOUT_VERSION | null;
   hookTextLines?: string[] | null;
   hookTextPosition?: NormalizedTextPosition | null;
   hookTextColor: string;
@@ -326,6 +329,7 @@ export async function renderScheduleCombinationToBuffer(
     overlay: {
       id: "hook-text",
       fontSize: payload.hookTextFontSize,
+      layoutVersion: payload.hookTextLayoutVersion,
       lines: payload.hookTextLines,
       normalizedPosition: payload.hookTextPosition,
       position: "top",
@@ -1110,13 +1114,34 @@ function buildPreparedTextOverlay(params: {
     return null;
   }
 
+  const hasSavedFont =
+    params.overlay.fontSize !== null && params.overlay.fontSize !== undefined;
+  const hasSavedLines = Boolean(savedLines && savedLines.length > 0);
+
+  if (hasSavedFont !== hasSavedLines) {
+    throw new Error(
+      "Hook text requires both saved lines and a saved font size.",
+    );
+  }
+
+  if (
+    hasSavedLines &&
+    normalizeOverlayText(savedLines!.join(" ")) !== normalizeOverlayText(text)
+  ) {
+    throw new Error("The saved Hook lines do not match the Hook text.");
+  }
+
+  if (
+    params.overlay.layoutVersion === HOOK_TEXT_LAYOUT_VERSION &&
+    (!hasSavedFont || !hasSavedLines)
+  ) {
+    throw new Error("The authoritative Hook text layout is incomplete.");
+  }
+
   const layout =
-    params.overlay.fontSize !== null &&
-    params.overlay.fontSize !== undefined &&
-    savedLines &&
-    savedLines.length > 0
+    hasSavedFont && savedLines && savedLines.length > 0
       ? buildResolvedEditOverlayTextLayout({
-          fontSize: params.overlay.fontSize,
+          fontSize: params.overlay.fontSize!,
           lines: savedLines,
           ratio: params.ratio,
           style: params.overlay.style,
@@ -1138,6 +1163,10 @@ function buildPreparedTextOverlay(params: {
     position: params.overlay.position,
     style: params.overlay.style,
   };
+}
+
+function normalizeOverlayText(value: string) {
+  return value.replace(/\s+/gu, " ").trim();
 }
 
 async function renderPreparedTextOverlayImage(
@@ -1235,7 +1264,7 @@ async function registerWallTextFonts() {
   const directText = await sharp({
     text: {
       dpi: 72,
-      font: "Inter Bold 52",
+      font: "Inter Semi Bold 52",
       fontfile: fontPath,
       rgba: true,
       text: "Wall text 0123",
@@ -1245,7 +1274,7 @@ async function registerWallTextFonts() {
 
   if (!directText.width || !directText.height) {
     throw new Error(
-      "Inter Bold could not be registered for Wall-of-text rendering.",
+      "Inter SemiBold could not be registered for Wall-of-text rendering.",
     );
   }
 }
@@ -1263,7 +1292,7 @@ async function validateWallTextRenderedLineWidths(
       const metadata = await sharp({
         text: {
           dpi: 72,
-          font: `Inter Bold ${segment.fontSize}`,
+          font: `Inter Semi Bold ${segment.fontSize}`,
           fontfile: fontPath,
           rgba: true,
           text: escapePangoMarkup(line),
@@ -1289,7 +1318,7 @@ async function getWallTextFontPath() {
     "@fontsource",
     "inter",
     "files",
-    "inter-latin-700-normal.woff",
+    "inter-latin-600-normal.woff",
   ];
   const candidatePaths = [
     join(process.cwd(), ...fontParts),
@@ -1306,7 +1335,7 @@ async function getWallTextFontPath() {
   }
 
   throw new Error(
-    "Inter Bold is unavailable; refusing to render with a fallback font.",
+    "Inter SemiBold is unavailable; refusing to render with a fallback font.",
   );
 }
 

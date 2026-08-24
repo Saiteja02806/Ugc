@@ -264,7 +264,7 @@ function buildPlan({ manifest: value, root: sourceRoot }) {
     const audio = probeMedia(audioPath);
     if (
       video.width * 16 !== video.height * 9 ||
-      video.durationSeconds <= 0 ||
+      video.durationSeconds < 6 ||
       video.durationSeconds > 60 ||
       video.videoStreamCount !== 1 ||
       video.audioStreamCount < 1

@@ -1,11 +1,5 @@
-import type { Metadata } from "next";
-
-import { ViralWorkspace } from "@/components/viral/viral-workspace";
-
-export const metadata: Metadata = {
-  title: "Explore",
-};
+import { redirect } from "next/navigation";
 
 export default function ViralPage() {
-  return <ViralWorkspace />;
+  redirect("/dashboard");
 }

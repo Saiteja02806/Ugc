@@ -19,9 +19,6 @@ const {
   getCarouselBusinessProfileBucketTargetCount,
   resolveCarouselBusinessVisualProfile,
 } = await jiti.import("../lib/carousel/business-visual-profile.ts");
-const { buildCarouselSlidePlan } = await jiti.import(
-  "../lib/carousel/slide-plan.ts",
-);
 const {
   CAROUSEL_IMAGE_SAFETY_POLICY_VERSION,
   CAROUSEL_RUNTIME_MATCHER_VERSION,
@@ -349,11 +346,9 @@ function runDryRunSimulation({
       profiles[0];
     const inventoryForProfile = inventoryByProfileId.get(profile.id);
     const assets = safeAssetsByCategory.get(profile.categorySlug) ?? [];
-    const slides = buildCarouselSlidePlan({
+    const slides = buildReadinessAuditSlidePlan({
       analysis: user.analysis,
       candidateIndex: user.candidateIndex,
-      goal: user.analysis.mainPromise,
-      selectedAngle: user.analysis.carouselAngles[0] ?? null,
       slideCount,
     });
     const selections = selectRuntimeVisualBucketAssets({
@@ -510,6 +505,59 @@ function runDryRunSimulation({
     uniqueSelectedAssets,
     userCount,
   };
+}
+
+function buildReadinessAuditSlidePlan({
+  analysis,
+  candidateIndex,
+  slideCount,
+}) {
+  const angles = [
+    ...(analysis.carouselAngles ?? []),
+    analysis.mainProblem,
+    analysis.mainPromise,
+  ].filter((value) => typeof value === "string" && value.trim());
+  const supportingCopy = [
+    ...(analysis.painPoints ?? []),
+    ...(analysis.valueProps ?? []),
+    ...(analysis.differentiators ?? []),
+    analysis.productSummary,
+  ].filter((value) => typeof value === "string" && value.trim());
+  const visualDirections = [
+    ...(analysis.visualKeywords ?? []),
+    ...(analysis.pexelsImageQueries ?? []),
+    analysis.category,
+  ].filter((value) => typeof value === "string" && value.trim());
+
+  return Array.from({ length: slideCount }, (_, index) => {
+    const slideNumber = index + 1;
+    const finalSlide = index === slideCount - 1;
+    const headline =
+      angles[(candidateIndex + index) % Math.max(angles.length, 1)] ??
+      `Readiness audit slide ${slideNumber}`;
+    const body =
+      supportingCopy[
+        (candidateIndex + index) % Math.max(supportingCopy.length, 1)
+      ] ?? "Offline readiness audit copy";
+    const imageDirection =
+      visualDirections[
+        (candidateIndex + index) % Math.max(visualDirections.length, 1)
+      ] ?? "object-only still life";
+
+    return {
+      body,
+      ctaText: null,
+      headline,
+      imageDirection,
+      layoutPreset: finalSlide ? "middle-statement" : "bottom-message",
+      listItems: [],
+      slideNumber,
+      slideType: index === 0 ? "hook" : finalSlide ? "cta" : "benefit",
+      subtext: body,
+      textMode: finalSlide ? "cta_takeaway" : "headline_body",
+      textPosition: finalSlide ? "center" : "bottom",
+    };
+  });
 }
 
 function buildReport({

@@ -903,6 +903,7 @@ function createPublishStore(
         throw new Error("Could not update target projection: database unavailable.");
       }
     },
+    async registerInstagramAnalyticsPublication() {},
     async markSocialPublishTargetRetrying(params: {
       errorCode: string;
       errorMessage: string;

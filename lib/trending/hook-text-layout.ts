@@ -6,6 +6,12 @@ export const HOOK_TEXT_MAXIMUM_LINES = 3;
 export const HOOK_TEXT_MAXIMUM_WORDS_PER_LINE = 7;
 export const HOOK_TEXT_MAXIMUM_FONT_SIZE = 60;
 export const HOOK_TEXT_MINIMUM_FONT_SIZE = 34;
+export const HOOK_TEXT_LAYOUT_VERSION = "hook-overlay-layout-v1" as const;
+export const HOOK_TEXT_FONT_WEIGHT = 600;
+export const HOOK_TEXT_OUTLINE_WIDTH = 5;
+export const HOOK_TEXT_OUTLINE_COLOR = "rgba(0, 0, 0, 0.82)";
+export const HOOK_TEXT_BROWSER_FONT_FAMILY =
+  'var(--font-edit-overlay), Geist, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Noto Sans CJK SC", "Noto Sans CJK JP", sans-serif';
 export const HOOK_TEXT_CANVAS_WIDTH = 1080;
 export const HOOK_TEXT_CANVAS_HEIGHT = 1920;
 export const HOOK_TEXT_MAXIMUM_WIDTH = Math.round(
@@ -36,6 +42,7 @@ export type HookTextLayout = {
   lineWidths: number[];
   positionBounds: HookTextPositionBounds;
   wordCount: number;
+  version: typeof HOOK_TEXT_LAYOUT_VERSION;
 };
 
 export class HookTextLayoutError extends Error {
@@ -56,6 +63,7 @@ export function createHookTextLayout(
 ): HookTextLayout {
   const sourceLines = normalizeHookLines(options.lines ?? splitManualLines(value));
   const hookText = sourceLines.join(" ").replace(/\s+/gu, " ").trim();
+  const normalizedValue = value.replace(/\s+/gu, " ").trim();
   const words = hookText.split(/\s+/u).filter(Boolean);
   const characterCount = Array.from(hookText).length;
   const enforceMinimum = options.enforceMinimum !== false;
@@ -63,6 +71,12 @@ export function createHookTextLayout(
 
   if (!hookText) {
     throw new HookTextLayoutError("Enter Hook text before saving.");
+  }
+
+  if (options.lines !== undefined && hookText !== normalizedValue) {
+    throw new HookTextLayoutError(
+      "The saved Hook lines do not match the Hook text.",
+    );
   }
 
   if (
@@ -98,6 +112,11 @@ export function createHookTextLayout(
     ? [sourceLines]
     : createAutomaticLineCandidates(words);
   const fixedFontSize = normalizeRequestedFontSize(options.fontSize);
+  if (options.fontSize !== undefined && fixedFontSize === null) {
+    throw new HookTextLayoutError(
+      `Hook font size must be an even number from ${HOOK_TEXT_MINIMUM_FONT_SIZE} to ${HOOK_TEXT_MAXIMUM_FONT_SIZE}.`,
+    );
+  }
   const fontSizes = fixedFontSize
     ? [fixedFontSize]
     : createFontSizeCandidates();
@@ -296,6 +315,7 @@ function buildResolvedHookTextLayout(params: {
       minY: Math.min(minY, maxY),
     },
     wordCount: params.wordCount,
+    version: HOOK_TEXT_LAYOUT_VERSION,
   };
 }
 

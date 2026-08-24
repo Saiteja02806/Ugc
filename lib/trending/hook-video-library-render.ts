@@ -31,6 +31,7 @@ import {
 import type { persistHookVideoSelection } from "@/lib/trending/hook-video-service";
 import { prepareOwnedHookMediaAsset } from "@/lib/trending/hook-video-sources";
 import { getHookVideoTextPosition } from "@/lib/trending/hook-video-text-placement";
+import { HOOK_TEXT_LAYOUT_VERSION } from "@/lib/trending/hook-text-layout";
 import { resolveTrendingTextColor } from "@/lib/trending/text-color";
 
 const COMBINATION_RENDER_JOB_TYPE = "render_schedule_combination" as const;
@@ -137,6 +138,7 @@ export async function queueSavedHookVideoRender(params: {
     hookText: composition.draft.hookText,
     hookTextColor,
     hookTextFontSize: composition.hookRenderSpec.fontSize,
+    hookTextLayoutVersion: HOOK_TEXT_LAYOUT_VERSION,
     hookTextLines: composition.hookRenderSpec.lines,
     hookTextPosition,
     hookTrimEnd: composition.draft.trimEnd,
@@ -198,6 +200,7 @@ export async function queueSavedHookVideoRender(params: {
       hookText: composition.draft.hookText,
       hookTextColor,
       hookTextFontSize: composition.hookRenderSpec.fontSize,
+      hookTextLayoutVersion: HOOK_TEXT_LAYOUT_VERSION,
       hookTextLines: composition.hookRenderSpec.lines,
       hookTextPosition,
       hookTrimEnd: composition.draft.trimEnd,
@@ -301,6 +304,7 @@ function createCompositionFingerprint(value: {
   hookText: string;
   hookTextColor: string;
   hookTextFontSize: number | null;
+  hookTextLayoutVersion: typeof HOOK_TEXT_LAYOUT_VERSION;
   hookTextLines: string[];
   hookTextPosition: { x: number; y: number } | null;
   hookTrimEnd: number | null;

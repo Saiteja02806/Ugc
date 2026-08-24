@@ -1,6 +1,13 @@
 "use client";
 
-import { FileImage, FileVideo, Loader2, X } from "lucide-react";
+import {
+  FileImage,
+  FileVideo,
+  Loader2,
+  Plus,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import type { ChangeEvent } from "react";
 import { useRef, useState } from "react";
 
@@ -22,8 +29,7 @@ export function ReferenceMediaUpload({
   selection: AIStudioReferenceMedia | null;
   onChange: (selection: AIStudioReferenceMedia | null) => void;
 }) {
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
-  const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploadingKind, setUploadingKind] = useState<AIStudioReferenceKind | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -44,108 +50,108 @@ export function ReferenceMediaUpload({
     }
   }
 
-  function handleInputChange(
-    kind: AIStudioReferenceKind,
-    event: ChangeEvent<HTMLInputElement>,
-  ) {
+  function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
     event.currentTarget.value = "";
 
     if (file) {
+      const kind = getReferenceKind(file);
+
+      if (!allowedKinds.includes(kind)) {
+        setErrorMessage(`Choose a reference ${allowedKinds.join(" or ")}.`);
+        return;
+      }
+
       void selectFile(kind, file);
     }
   }
 
   const busy = uploadingKind !== null;
+  const accepts = allowedKinds.flatMap((kind) => REFERENCE_ACCEPTS[kind]).join(",");
+  const allowedLabel = allowedKinds.length > 1 ? "image or video" : allowedKinds[0];
+  const buttonLabel = selection
+    ? `Replace reference ${selection.kind}`
+    : `Add reference ${allowedLabel}`;
 
   return (
-    <div className="flex min-w-0 shrink-0 flex-col gap-1.5">
-      <div className="flex flex-wrap items-center gap-2">
-        {allowedKinds.includes("image") ? (
-          <>
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              aria-label="Upload reference image"
-              onChange={(event) => handleInputChange("image", event)}
-            />
-            <Button
-              type="button"
-              variant="muted"
-              size="lg"
-              disabled={disabled || busy}
-              onClick={() => imageInputRef.current?.click()}
-            >
-              {uploadingKind === "image" ? (
-                <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
-              ) : (
-                <FileImage aria-hidden="true" />
-              )}
-              Upload image
-            </Button>
-          </>
-        ) : null}
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accepts}
+        className="hidden"
+        aria-label={buttonLabel}
+        onChange={handleInputChange}
+      />
+      <Button
+        type="button"
+        variant="muted"
+        size="icon-lg"
+        className="col-start-1 row-start-1 size-9 min-w-9 max-w-9 rounded-full border border-border/80 bg-card-muted/80 text-muted shadow-xs transition-all duration-150 hover:border-border hover:bg-card hover:text-foreground-strong active:scale-95"
+        aria-label={buttonLabel}
+        title={buttonLabel}
+        disabled={disabled || busy}
+        onClick={() => inputRef.current?.click()}
+      >
+        {busy ? (
+          <Loader2
+            className="size-4 animate-spin motion-reduce:animate-none"
+            aria-hidden="true"
+          />
+        ) : selection ? (
+          <RefreshCw className="size-4" aria-hidden="true" />
+        ) : (
+          <Plus className="size-4" aria-hidden="true" />
+        )}
+      </Button>
 
-        {allowedKinds.includes("video") ? (
-          <>
-            <input
-              ref={videoInputRef}
-              type="file"
-              accept="video/mp4,video/quicktime,video/webm"
-              className="hidden"
-              aria-label="Upload reference video"
-              onChange={(event) => handleInputChange("video", event)}
-            />
-            <Button
-              type="button"
-              variant="muted"
-              size="lg"
-              disabled={disabled || busy}
-              onClick={() => videoInputRef.current?.click()}
-            >
-              {uploadingKind === "video" ? (
-                <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+      {selection || errorMessage ? (
+        <div
+          className="col-span-full col-start-1 row-start-2 mt-1 flex min-w-0 flex-col items-start gap-1.5"
+          aria-live="polite"
+        >
+          {selection ? (
+            <div className="inline-flex max-w-full items-center gap-2 rounded-lg border border-border bg-card-muted px-2.5 py-1 text-xs">
+              {selection.kind === "image" ? (
+                <FileImage className="size-4 shrink-0 text-primary" aria-hidden="true" />
               ) : (
-                <FileVideo aria-hidden="true" />
+                <FileVideo className="size-4 shrink-0 text-primary" aria-hidden="true" />
               )}
-              Upload video
-            </Button>
-          </>
-        ) : null}
-      </div>
+              <span className="min-w-0 truncate font-medium text-foreground">
+                {selection.asset.fileName || selection.asset.title}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="-my-1 -mr-1"
+                aria-label={`Remove reference ${selection.kind}`}
+                disabled={disabled || busy}
+                onClick={() => onChange(null)}
+              >
+                <X aria-hidden="true" />
+              </Button>
+            </div>
+          ) : null}
 
-      {selection ? (
-        <div className="flex max-w-80 items-center gap-2 rounded-lg border border-border bg-card-muted px-2.5 py-1.5 text-xs">
-          {selection.kind === "image" ? (
-            <FileImage className="size-4 shrink-0 text-primary" aria-hidden="true" />
-          ) : (
-            <FileVideo className="size-4 shrink-0 text-primary" aria-hidden="true" />
-          )}
-          <span className="min-w-0 flex-1 truncate font-medium text-foreground">
-            {selection.asset.fileName || selection.asset.title}
-          </span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Remove reference ${selection.kind}`}
-            disabled={disabled || busy}
-            onClick={() => onChange(null)}
-          >
-            <X aria-hidden="true" />
-          </Button>
+          {errorMessage ? (
+            <p role="alert" className="max-w-80 text-xs font-medium text-destructive">
+              {errorMessage}
+            </p>
+          ) : null}
         </div>
-      ) : (
-        <p className="text-xs text-muted">Optional — generate without a reference if you prefer.</p>
-      )}
-
-      {errorMessage ? (
-        <p role="alert" className="max-w-80 text-xs font-medium text-destructive">
-          {errorMessage}
-        </p>
       ) : null}
-    </div>
+    </>
   );
+}
+
+const REFERENCE_ACCEPTS: Record<AIStudioReferenceKind, readonly string[]> = {
+  image: ["image/jpeg", "image/png", "image/webp"],
+  video: ["video/mp4", "video/quicktime", "video/webm"],
+};
+
+function getReferenceKind(file: File): AIStudioReferenceKind {
+  return file.type.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(file.name)
+    ? "video"
+    : "image";
 }

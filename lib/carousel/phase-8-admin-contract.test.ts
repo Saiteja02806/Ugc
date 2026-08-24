@@ -78,8 +78,8 @@ test("analytics keep structure and format identities paired", () => {
   assert.match(adminStore, /isCarouselContentFormatId/);
 });
 
-test("the Settings control explains batch-level routing and history preservation", () => {
-  assert.match(settingsWorkspace, /<CarouselAdminSettings \/>/);
+test("the Carousel control is not mounted in customer Settings", () => {
+  assert.doesNotMatch(settingsWorkspace, /CarouselAdminSettings/);
   assert.match(settingsUi, /Rotate 50\/50/);
   assert.match(settingsUi, /Structure 1 only/);
   assert.match(settingsUi, /Structure 2 only/);

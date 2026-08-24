@@ -36,6 +36,7 @@ import {
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { resolveTrendingTextColor } from "@/lib/trending/text-color";
 import { getLockedHookAudioForVideo } from "@/lib/trending/hook-audio-db";
+import { HOOK_TEXT_LAYOUT_VERSION } from "@/lib/trending/hook-text-layout";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -229,6 +230,7 @@ export async function POST(
 
   const hookText = getString(metadata.hookText)?.slice(0, 220) ?? "";
   const hookTextFontSize = getHookTextFontSize(metadata.hookTextFontSize);
+  const hookTextLayoutVersion = getString(metadata.hookTextLayoutVersion);
   const hookTextLines = getHookTextLines(metadata.hookTextLines);
   const hookTextPosition = getNormalizedPosition(metadata.hookTextPosition);
   const hookTextColor = resolveTrendingTextColor(metadata.hookTextColor);
@@ -238,6 +240,34 @@ export async function POST(
     getString(metadata.hookCatalogVideoId) ??
     getStringFromValue(getObjectValue(hookAsset.metadata, "avatarAssetId"));
   let hookAudio = null;
+
+  if (
+    hookTextLayoutVersion !== null &&
+    hookTextLayoutVersion !== HOOK_TEXT_LAYOUT_VERSION
+  ) {
+    return jsonResponse(
+      {
+        message: "The saved Hook text layout version is not supported.",
+        ok: false,
+      },
+      409,
+    );
+  }
+
+  if (
+    hookTextLayoutVersion === HOOK_TEXT_LAYOUT_VERSION &&
+    (!hookTextFontSize ||
+      !hookTextLines ||
+      normalizeHookText(hookTextLines.join(" ")) !== normalizeHookText(hookText))
+  ) {
+    return jsonResponse(
+      {
+        message: "The saved Hook text layout no longer matches its copy.",
+        ok: false,
+      },
+      409,
+    );
+  }
 
   if (hookTrimEnd !== null && hookTrimEnd <= hookTrimStart) {
     return jsonResponse(
@@ -288,6 +318,7 @@ export async function POST(
     demoVideoId: resolvedDemoAsset.asset.id,
     hookText,
     hookTextFontSize,
+    hookTextLayoutVersion,
     hookTextLines,
     hookTextPosition,
     hookTextColor,
@@ -336,6 +367,7 @@ export async function POST(
     demoVideoUrl: resolvedDemoAsset.asset.url,
     hookText,
     hookTextFontSize,
+    hookTextLayoutVersion,
     hookTextLines,
     hookTextPosition,
     hookTextColor,
@@ -627,6 +659,7 @@ function createCompositionFingerprint(value: {
   demoVideoId: string;
   hookText: string;
   hookTextFontSize: number | null;
+  hookTextLayoutVersion: string | null;
   hookTextLines: string[] | null;
   hookTextPosition: { x: number; y: number } | null;
   hookTextColor: string;
@@ -639,6 +672,10 @@ function createCompositionFingerprint(value: {
   ratio: CombinationRenderRatio;
 }) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function normalizeHookText(value: string) {
+  return value.replace(/\s+/gu, " ").trim();
 }
 
 function hasPlannedFinalSchedule(metadata: Record<string, unknown>) {

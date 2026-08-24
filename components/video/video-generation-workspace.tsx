@@ -1,11 +1,7 @@
 "use client";
 
 import {
-  AlertCircle,
-  CheckCircle2,
-  ChevronDown,
   Clock3,
-  ImageIcon,
   Loader2,
   Pause,
   Play,
@@ -18,7 +14,7 @@ import {
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent, KeyboardEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   AiStudioComposer,
@@ -30,19 +26,7 @@ import {
   type AiStudioResultsStatus,
 } from "@/components/generation/ai-studio-results";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverDescription,
-  PopoverHeader,
-  PopoverTitle,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
@@ -75,72 +59,9 @@ import {
   useRetryBackgroundJob,
 } from "@/lib/jobs/background-job-client";
 import type { Json } from "@/lib/jobs/background-jobs";
-import type { MediaAsset } from "@/lib/media/types";
 import { cn } from "@/lib/utils";
 
 type GenerationState = "empty" | "generating" | "completed" | "failed";
-
-type AvatarOption = {
-  id: string;
-  label: string;
-  thumbnailUrl: string | null;
-};
-
-type AvatarRatio = "9:16" | "1:1" | "4:5" | "16:9" | "other";
-type AvatarStatus = "ready" | "disabled" | "processing" | "failed";
-
-type AvatarAsset = {
-  avatarType: "global";
-  createdAt: string;
-  description: string | null;
-  durationSeconds: number | null;
-  height: number | null;
-  id: string;
-  influencerKey: string | null;
-  metadata: unknown;
-  name: string;
-  ratio: AvatarRatio;
-  sourceVideoUrl: string;
-  status: AvatarStatus;
-  thumbnailUrl: string | null;
-  updatedAt: string;
-  visualGroup: string | null;
-  width: number | null;
-};
-
-type AvatarPreference = {
-  avatarAssetId: string;
-  id: string;
-  isTrimmed: boolean;
-  lastUsedAt: string | null;
-  trimEnd: number | null;
-  trimStart: number | null;
-  updatedAt: string;
-} | null;
-
-type AvatarSelection = {
-  avatarAssetId: string;
-  isTrimmed: boolean;
-  sourceVideoUrl: string;
-  trimEnd: number | null;
-  trimStart: number;
-};
-
-type AvatarLibraryItem = {
-  asset: AvatarAsset;
-  avatarSelection: AvatarSelection;
-  preference: AvatarPreference;
-};
-
-type AvatarListResponse =
-  | {
-      avatars: AvatarLibraryItem[];
-      ok: true;
-    }
-  | {
-      error?: string;
-      ok?: false;
-    };
 
 type GeneratedVideo = AIStudioVideoResult;
 
@@ -336,13 +257,6 @@ export function VideoGenerationStudioPanel({
     useState<AIStudioVideoAspectRatio>("9:16");
   const [quantity, setQuantity] =
     useState<AIStudioGenerationQuantity>(1);
-  const [avatarLibrary, setAvatarLibrary] = useState<AvatarLibraryItem[]>([]);
-  const [personalAvatarAssets, setPersonalAvatarAssets] = useState<MediaAsset[]>([]);
-  const [avatarLoading, setAvatarLoading] = useState(true);
-  const [avatarErrorMessage, setAvatarErrorMessage] = useState<string | null>(
-    null,
-  );
-  const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
   const [uploadedReference, setUploadedReference] =
     useState<AIStudioReferenceMedia | null>(null);
   const [activeVideoPrompt, setActiveVideoPrompt] = useState("");
@@ -379,27 +293,12 @@ export function VideoGenerationStudioPanel({
   const retryJob = useRetryBackgroundJob();
   const generationLocked = accessState !== "pro";
 
-  const personalAvatars = useMemo(
-    () => personalAvatarAssets.map(mapPersonalMediaToAvatarOption),
-    [personalAvatarAssets],
-  );
-  const globalAvatars = useMemo(
-    () => avatarLibrary.map(mapAvatarLibraryItemToOption),
-    [avatarLibrary],
-  );
-  const avatarOptions = useMemo(
-    () => [...personalAvatars, ...globalAvatars],
-    [globalAvatars, personalAvatars],
-  );
-  const selectedAvatar = selectedAvatarId
-    ? avatarOptions.find((avatar) => avatar.id === selectedAvatarId) ?? null
-    : null;
   const uploadedReferenceImage =
     uploadedReference?.kind === "image" ? uploadedReference : null;
   const uploadedReferenceVideo =
     uploadedReference?.kind === "video" ? uploadedReference : null;
   const activeReferenceImageUrl =
-    uploadedReferenceImage?.asset.url ?? selectedAvatar?.thumbnailUrl ?? null;
+    uploadedReferenceImage?.asset.url ?? null;
   const queriedJobs = activeJobQueries.flatMap((query) =>
     query.data ? [query.data] : [],
   );
@@ -649,96 +548,6 @@ export function VideoGenerationStudioPanel({
     void Promise.all(completedJobs.map(restoreCompletedVideo));
   }, [durableJobs, user]);
 
-  useEffect(() => {
-    if (!active) {
-      return;
-    }
-
-    let ignore = false;
-
-    async function loadAvatarLibrary() {
-      if (authLoading) {
-        return;
-      }
-
-      setAvatarErrorMessage(null);
-
-      if (!user) {
-        setAvatarLibrary([]);
-        setPersonalAvatarAssets([]);
-        setSelectedAvatarId(null);
-        setAvatarLoading(false);
-        setAvatarErrorMessage("Sign in before choosing a reference image.");
-        return;
-      }
-
-      setAvatarLoading(true);
-
-      try {
-        const token = await getCurrentUserIdToken();
-
-        if (!token) {
-          throw new Error("Sign in before choosing a reference image.");
-        }
-
-        const [libraryResult, personalResult] = await Promise.allSettled([
-          fetchAvatarLibrary(token),
-          fetchPersonalInfluencers(token),
-        ]);
-
-        if (ignore) {
-          return;
-        }
-
-        const nextAvatarLibrary =
-          libraryResult.status === "fulfilled" ? libraryResult.value : [];
-        const nextPersonalAssets =
-          personalResult.status === "fulfilled" ? personalResult.value : [];
-        const partialErrors = [libraryResult, personalResult]
-          .filter(
-            (result): result is PromiseRejectedResult =>
-              result.status === "rejected",
-          )
-          .map((result) =>
-            getErrorMessage(result.reason, "Could not load reference images."),
-          );
-
-        setAvatarLibrary(nextAvatarLibrary);
-        setPersonalAvatarAssets(nextPersonalAssets);
-        setAvatarErrorMessage(
-          partialErrors.length > 0 ? partialErrors.join(" ") : null,
-        );
-        setSelectedAvatarId((currentAvatarId) =>
-          currentAvatarId &&
-          (nextAvatarLibrary.some(
-            (avatar) => avatar.asset.id === currentAvatarId,
-          ) || nextPersonalAssets.some((asset) => asset.id === currentAvatarId))
-            ? currentAvatarId
-            : null,
-        );
-      } catch (error) {
-        if (!ignore) {
-          setAvatarLibrary([]);
-          setPersonalAvatarAssets([]);
-          setSelectedAvatarId(null);
-          setAvatarErrorMessage(
-            getErrorMessage(error, "Could not load reference images."),
-          );
-        }
-      } finally {
-        if (!ignore) {
-          setAvatarLoading(false);
-        }
-      }
-    }
-
-    void loadAvatarLibrary();
-
-    return () => {
-      ignore = true;
-    };
-  }, [active, authLoading, user]);
-
   async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
 
@@ -803,8 +612,7 @@ export function VideoGenerationStudioPanel({
       }
       persistPendingVideoMetadata(user.uid, data.jobs, {
         aspectRatio,
-        avatarName:
-          uploadedReference?.asset.title ?? selectedAvatar?.label ?? "",
+        avatarName: uploadedReference?.asset.title ?? "",
         prompt: trimmedPrompt,
       });
       persistJobIdInUrl(data.jobId, VIDEO_JOB_URL_PARAMETER);
@@ -932,9 +740,7 @@ export function VideoGenerationStudioPanel({
                   key={`pending-video-${index}`}
                   aspectRatio={aspectRatio}
                   avatarThumbnail={activeReferenceImageUrl}
-                  avatarLabel={
-                    uploadedReference?.asset.title ?? selectedAvatar?.label ?? null
-                  }
+                  avatarLabel={uploadedReference?.asset.title ?? null}
                   prompt={activeVideoPrompt}
                 />
               ),
@@ -996,6 +802,25 @@ export function VideoGenerationStudioPanel({
         generationLocked={generationLocked}
         isGenerating={isGenerating}
         layout="unified"
+        leadingControl={
+          <ReferenceMediaUpload
+            allowedKinds={["image", "video"]}
+            disabled={generationLocked || isGenerating}
+            selection={uploadedReference}
+            onChange={(selection) => {
+              submissionKeyRef.current = null;
+              setUploadedReference(selection);
+
+              if (
+                selection?.kind === "video" &&
+                (selection.asset.ratio === "9:16" ||
+                  selection.asset.ratio === "16:9")
+              ) {
+                setAspectRatio(selection.asset.ratio);
+              }
+            }}
+          />
+        }
         maxLength={AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH}
         name="videoPrompt"
         placeholder="Describe the video you want to create…"
@@ -1057,93 +882,11 @@ export function VideoGenerationStudioPanel({
                 setQuantity(Number(value) as AIStudioGenerationQuantity);
               }}
             />
-            <div className="shrink-0">
-              <ReferenceImagePicker
-                avatarErrorMessage={avatarErrorMessage}
-                avatarLoading={avatarLoading}
-                compact
-                referenceImages={avatarOptions}
-                selectedAvatarId={selectedAvatarId}
-                selectedAvatar={selectedAvatar}
-                onChange={(avatarId) => {
-                  submissionKeyRef.current = null;
-                  setUploadedReference(null);
-                  setSelectedAvatarId(avatarId);
-                }}
-              />
-            </div>
-            <ReferenceMediaUpload
-              allowedKinds={["image", "video"]}
-              disabled={generationLocked || isGenerating}
-              selection={uploadedReference}
-              onChange={(selection) => {
-                submissionKeyRef.current = null;
-                setUploadedReference(selection);
-
-                if (selection) {
-                  setSelectedAvatarId(null);
-                }
-
-                if (
-                  selection?.kind === "video" &&
-                  (selection.asset.ratio === "9:16" ||
-                    selection.asset.ratio === "16:9")
-                ) {
-                  setAspectRatio(selection.asset.ratio);
-                }
-              }}
-            />
           </>
         }
       />
     </div>
   );
-}
-
-function mapAvatarLibraryItemToOption(avatar: AvatarLibraryItem): AvatarOption {
-  return {
-    id: avatar.asset.id,
-    label: avatar.asset.name,
-    thumbnailUrl: avatar.asset.thumbnailUrl,
-  };
-}
-
-async function fetchAvatarLibrary(token: string) {
-  const response = await fetch("/api/avatars", {
-    cache: "no-store",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = (await response.json()) as AvatarListResponse;
-
-  if (!response.ok || data.ok !== true) {
-    throw new Error(getApiErrorMessage(data, "Could not load reference images."));
-  }
-
-  return data.avatars;
-}
-
-async function fetchPersonalInfluencers(token: string) {
-  const response = await fetch("/api/media?collection=influencer", {
-    cache: "no-store",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = (await response.json()) as
-    | { assets: MediaAsset[]; ok: true }
-    | { error?: string; ok?: false };
-
-  if (!response.ok || data.ok !== true) {
-    throw new Error(getApiErrorMessage(data, "Could not load your reference images."));
-  }
-
-  return data.assets;
-}
-
-function mapPersonalMediaToAvatarOption(asset: MediaAsset): AvatarOption {
-  return {
-    id: asset.id,
-    label: asset.title,
-    thumbnailUrl: asset.thumbnailUrl,
-  };
 }
 
 function getGeneratedVideoTitle(prompt: string) {
@@ -1154,250 +897,8 @@ function getGeneratedVideoTitle(prompt: string) {
     : singleLinePrompt;
 }
 
-function getApiErrorMessage(response: unknown, fallback: string) {
-  if (
-    response &&
-    typeof response === "object" &&
-    "error" in response &&
-    typeof response.error === "string"
-  ) {
-    return response.error;
-  }
-
-  return fallback;
-}
-
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
-}
-
-function ReferenceImagePicker({
-  avatarErrorMessage,
-  avatarLoading,
-  compact = false,
-  onChange,
-  referenceImages,
-  selectedAvatar,
-  selectedAvatarId,
-}: {
-  avatarErrorMessage: string | null;
-  avatarLoading: boolean;
-  compact?: boolean;
-  onChange: (avatarId: string | null) => void;
-  referenceImages: AvatarOption[];
-  selectedAvatar: AvatarOption | null;
-  selectedAvatarId: string | null;
-}) {
-  const [open, setOpen] = useState(false);
-  const visibleReferenceImages = useMemo(() => {
-    const seenUrls = new Set<string>();
-
-    return referenceImages.filter((image) => {
-      const thumbnailUrl = image.thumbnailUrl?.trim();
-
-      if (!thumbnailUrl || seenUrls.has(thumbnailUrl)) {
-        return false;
-      }
-
-      seenUrls.add(thumbnailUrl);
-      return true;
-    });
-  }, [referenceImages]);
-  const hasOptions = visibleReferenceImages.length > 0;
-  const triggerLabel = avatarLoading
-    ? "Loading reference images"
-    : selectedAvatar
-      ? "Change optional reference image"
-      : "Choose optional reference image";
-
-  function selectReferenceImage(imageId: string) {
-    onChange(imageId);
-    setOpen(false);
-  }
-
-  function clearReferenceImage() {
-    onChange(null);
-    setOpen(false);
-  }
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <button
-            type="button"
-            className={cn(
-              "inline-flex cursor-pointer items-center gap-1.5 rounded-full transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-              compact
-                ? "h-8 border border-border/80 bg-card-muted/80 px-2.5 text-xs font-medium text-foreground hover:border-border hover:bg-card"
-                : "w-full justify-between rounded-lg border border-border bg-card p-2.5 text-sm",
-            )}
-            aria-label={triggerLabel}
-            title={selectedAvatar ? "Change reference image" : "Optional reference image"}
-          />
-        }
-      >
-        {avatarLoading ? (
-          <Loader2 className="size-3.5 animate-spin text-muted motion-reduce:animate-none" aria-hidden="true" />
-        ) : selectedAvatar ? (
-          <Avatar
-            size="sm"
-            className="size-5 shrink-0 rounded-full ring-1 ring-border/80"
-          >
-            {selectedAvatar.thumbnailUrl ? (
-              <AvatarImage
-                src={selectedAvatar.thumbnailUrl}
-                alt=""
-                className="size-full object-cover"
-              />
-            ) : null}
-          </Avatar>
-        ) : (
-          <ImageIcon aria-hidden="true" />
-        )}
-        <span className="max-w-[120px] truncate font-medium text-foreground">
-          {avatarLoading
-            ? "Loading…"
-            : selectedAvatar
-              ? "Reference image selected"
-              : "Optional reference"}
-        </span>
-        <ChevronDown
-          className={cn(
-            "size-3 text-muted transition-transform duration-200 motion-reduce:transition-none",
-            open && "rotate-180",
-          )}
-          aria-hidden="true"
-        />
-      </PopoverTrigger>
-
-      <PopoverContent
-        side="top"
-        align="start"
-        sideOffset={8}
-        className="w-[min(92vw,440px)] gap-0 p-0"
-      >
-        <PopoverHeader className="border-b border-border p-3">
-          <PopoverTitle>Choose a reference image</PopoverTitle>
-          <PopoverDescription>
-            Optional. Pick an image to guide the generated video, or generate
-            directly from your prompt.
-          </PopoverDescription>
-        </PopoverHeader>
-
-        {avatarLoading ? <ReferenceImagePickerSkeleton /> : null}
-
-        {!avatarLoading && avatarErrorMessage ? (
-          <Alert variant="destructive" className="m-3 w-auto">
-            <AlertCircle aria-hidden="true" />
-            <AlertTitle>
-              {hasOptions
-                ? "Some images unavailable"
-                : "Reference images unavailable"}
-            </AlertTitle>
-            <AlertDescription>{avatarErrorMessage}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        {!avatarLoading && hasOptions ? (
-          <ScrollArea className="h-[min(62vh,430px)]">
-            <div className="flex flex-col gap-4 p-3">
-              <button
-                type="button"
-                aria-pressed={!selectedAvatarId}
-                onClick={clearReferenceImage}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-xl border p-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
-                  !selectedAvatarId
-                    ? "border-primary bg-brand-soft"
-                    : "border-border bg-card hover:border-border-strong hover:bg-card-muted",
-                )}
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-card-muted text-muted">
-                  <Sparkles className="size-4" aria-hidden="true" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-foreground">
-                    No reference image
-                  </span>
-                  <span className="block text-xs leading-5 text-muted">
-                    Generate directly from your prompt.
-                  </span>
-                </span>
-              </button>
-
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold text-foreground">
-                  Reference images
-                </h3>
-                <span className="text-xs font-medium text-muted-subtle tabular-nums">
-                  {visibleReferenceImages.length}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {visibleReferenceImages.map((image, index) => {
-                  const selected = image.id === selectedAvatarId;
-
-                  return (
-                    <button
-                      key={image.id}
-                      type="button"
-                      aria-label={`Choose reference image ${index + 1}`}
-                      aria-pressed={selected}
-                      title={`Reference image ${index + 1}`}
-                      onClick={() => selectReferenceImage(image.id)}
-                      className={cn(
-                        "group relative aspect-[3/4] min-w-0 overflow-hidden rounded-xl bg-[#1F1F1F] outline-none transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none",
-                        selected
-                          ? "ring-2 ring-primary"
-                          : "hover:ring-2 hover:ring-border-strong",
-                      )}
-                    >
-                      <Avatar className="size-full rounded-[inherit] after:rounded-[inherit]">
-                        <AvatarImage
-                          src={image.thumbnailUrl ?? undefined}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                          className="rounded-[inherit] object-cover transition-transform duration-200 group-hover:scale-[1.02] motion-reduce:transition-none"
-                        />
-                      </Avatar>
-                      {selected ? (
-                        <span className="absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                          <CheckCircle2 className="size-4" aria-hidden="true" />
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </ScrollArea>
-        ) : null}
-
-        {!avatarLoading && !avatarErrorMessage && !hasOptions ? (
-          <div className="p-4 text-sm font-medium text-muted">
-            No reference images are available yet. You can still generate from
-            your prompt.
-          </div>
-        ) : null}
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function ReferenceImagePickerSkeleton() {
-  return (
-    <div className="p-3" role="status" aria-label="Loading reference images">
-      <Skeleton className="mb-3 h-4 w-32" />
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-        {Array.from({ length: 8 }, (_, index) => (
-          <Skeleton key={index} className="aspect-[3/4] w-full rounded-xl" />
-        ))}
-      </div>
-    </div>
-  );
 }
 
 function OptimisticVideoCard({

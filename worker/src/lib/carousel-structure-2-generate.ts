@@ -3,6 +3,10 @@ import type {
   Json,
   WebsiteBusinessAnalysis,
 } from "../types.js";
+import type {
+  CarouselCreativeBrief,
+  CarouselRecentAcceptedCopy,
+} from "./carousel-content-plan.js";
 import { logger } from "../logger.js";
 import type { SupabaseJobStore } from "./supabase.js";
 import { resolveCarouselImageLibraryCategory } from "./carousel-image-library-category.js";
@@ -21,13 +25,15 @@ import {
   renderCarouselStructure2SlideWithDiagnostics,
 } from "./carousel-structure-2-render-slide.js";
 import { buildCarouselStructure2RenderSpecs } from "./carousel-structure-2-render-spec.js";
-import type { CarouselStructure2RecentHistoryInput } from "./carousel-structure-2-story-plan.js";
 import { uploadRenderedCarouselSlide } from "./carousel-storage.js";
 
 export async function generateCarouselStructure2Batch(params: {
   businessAnalysis: WebsiteBusinessAnalysis;
+  businessDescription: string;
+  creativeBriefs: readonly CarouselCreativeBrief[];
   experimentBatchId: string;
   generations: readonly CarouselGenerationRow[];
+  recentHistory: readonly CarouselRecentAcceptedCopy[];
   store: SupabaseJobStore;
   websiteAnalysis: {
     category: string | null;
@@ -37,6 +43,18 @@ export async function generateCarouselStructure2Batch(params: {
   };
 }) {
   assertStructure2Batch(params.generations);
+  if (
+    params.creativeBriefs.length !== params.generations.length ||
+    params.creativeBriefs.some(
+      (brief, index) =>
+        brief.contentPlanItemId !==
+        params.generations[index]?.content_plan_item_id,
+    )
+  ) {
+    throw new Error(
+      "Structure 2 creative briefs do not match their reserved content-plan items.",
+    );
+  }
   await params.store.updateCarouselExperimentBatch(params.experimentBatchId, {
     status: "processing",
   });
@@ -45,16 +63,17 @@ export async function generateCarouselStructure2Batch(params: {
 
   try {
     plannedItems = await buildCarouselStructure2StoryPlanBatch({
-      allowDeterministicFallback: true,
-      analysis: params.businessAnalysis,
       assignments: params.generations.map((generation, slotIndex) => ({
         candidateIndex: generation.candidate_index,
+        creativeSeed: params.creativeBriefs[slotIndex]!.creativeSeed,
+        emotion: params.creativeBriefs[slotIndex]!.emotion,
         slotIndex,
         storyFormatId: requireStructure2FormatId(
           generation.content_format_id ?? generation.content_assigned_format_id,
         ),
       })),
-      recentHistory: getStructure2History(params.generations),
+      businessDescription: params.businessDescription,
+      recentHistory: [...params.recentHistory],
     });
   } catch (error) {
     await failEntireBatch(params, error);
@@ -163,10 +182,10 @@ async function generateCarouselStructure2(params: {
   await Promise.all([
     store.updateCarouselGeneration(generation.id, {
       content_angle: plannedItem.plan.strategy.angle,
-      content_audience_id: plannedItem.plan.strategy.audienceId,
+      content_audience_id: null,
       content_format_id: format.id,
       content_format_version: format.version,
-      content_goal_id: plannedItem.plan.strategy.customerGoalId,
+      content_goal_id: null,
       content_plan_fallback_reason: plannedItem.fallbackReason,
       content_plan_normalized: plannedItem.plan as unknown as Json,
       content_plan_raw_response: plannedItem.rawLlmResponse as unknown as Json,
@@ -174,9 +193,9 @@ async function generateCarouselStructure2(params: {
       content_plan_validation: plannedItem.validationResult as unknown as Json,
       content_planner_model: plannedItem.model,
       content_planner_version: plannedItem.plannerVersion,
-      content_problem_id: plannedItem.plan.strategy.problemId,
-      content_topic: plannedItem.plan.strategy.topic,
-      content_topic_id: plannedItem.plan.strategy.topicId,
+      content_problem_id: null,
+      content_topic: null,
+      content_topic_id: null,
       error_message: null,
       hook_family_id: null,
       renderer_version: CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
@@ -295,41 +314,6 @@ function requireStructure2FormatId(value: unknown) {
   return formatId;
 }
 
-function getStructure2History(
-  generations: readonly CarouselGenerationRow[],
-): CarouselStructure2RecentHistoryInput[] {
-  const seen = new Set<string>();
-
-  return generations
-    .flatMap((generation) => parseHistory(generation.content_history_snapshot))
-    .filter((item) => {
-      const key = JSON.stringify(item);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .slice(0, 10);
-}
-
-function parseHistory(value: Json): CarouselStructure2RecentHistoryInput[] {
-  if (!Array.isArray(value)) return [];
-
-  return value.slice(0, 10).flatMap((item) => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
-    const record = item as Record<string, Json | undefined>;
-
-    return [{
-      centralProblem: optional(record.centralProblem),
-      ctaAngle: optional(record.ctaAngle),
-      hookIdea: optional(record.hookIdea),
-      productMechanism: optional(record.productMechanism),
-      storyAngle: optional(record.storyAngle),
-      storyFormatId: optional(record.storyFormatId),
-      summary: optional(record.summary),
-    }];
-  });
-}
-
 async function assertBusinessProfileVersionIsCurrent(
   generation: CarouselGenerationRow,
   store: SupabaseJobStore,
@@ -382,9 +366,6 @@ async function failEntireBatch(
   ]);
 }
 
-function optional(value: Json | undefined) {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
 
 function truncate(value: string) {
   return value.trim().slice(0, 900);

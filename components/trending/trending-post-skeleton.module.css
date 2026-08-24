@@ -1,0 +1,45 @@
+.base {
+  position: relative;
+  overflow: hidden;
+  background: #18191c;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 8%);
+  contain: paint;
+}
+
+.shimmer {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 32%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 1.8%) 35%,
+    rgb(255 255 255 / 5.5%) 50%,
+    rgb(255 255 255 / 1.8%) 65%,
+    transparent 100%
+  );
+  transform: translate3d(-120%, 0, 0);
+  animation: trending-post-shimmer 2s linear infinite;
+  will-change: transform;
+}
+
+.paused {
+  animation-play-state: paused;
+  will-change: auto;
+}
+
+@keyframes trending-post-shimmer {
+  to {
+    transform: translate3d(420%, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+    transform: translate3d(-120%, 0, 0);
+    will-change: auto;
+  }
+}

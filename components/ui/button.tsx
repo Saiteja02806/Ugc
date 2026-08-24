@@ -31,11 +31,11 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
         "creative-reject":
-          "border-border-strong bg-card text-error shadow-sm hover:border-error/35 hover:bg-error/10 focus-visible:border-error/60 focus-visible:ring-error/20",
+          "border-border-strong bg-card text-error hover:border-error/35 hover:bg-error/10 focus-visible:border-error/60 focus-visible:ring-error/20",
         "creative-accept":
-          "border-border-strong bg-card text-success shadow-sm hover:border-success/35 hover:bg-success/10 focus-visible:border-success/60 focus-visible:ring-success/20",
+          "border-border-strong bg-card text-success hover:border-success/35 hover:bg-success/10 focus-visible:border-success/60 focus-visible:ring-success/20",
         "creative-edit":
-          "border-border-strong bg-card text-foreground shadow-sm hover:bg-card-muted focus-visible:border-ring focus-visible:ring-ring/35",
+          "border-border-strong bg-card text-foreground hover:bg-card-muted focus-visible:border-ring focus-visible:ring-ring/35",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

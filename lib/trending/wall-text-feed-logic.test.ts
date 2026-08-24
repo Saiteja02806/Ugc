@@ -40,7 +40,7 @@ function asset(
   };
 }
 
-test("accepts reviewed vertical Wall-of-text videos at their native duration", () => {
+test("accepts only reviewed vertical Wall-of-text videos from six to sixty seconds", () => {
   assert.equal(isEligibleWallTextVideo(asset()), true);
   assert.equal(
     isEligibleWallTextVideo(asset({ assetType: "image" })),
@@ -52,6 +52,14 @@ test("accepts reviewed vertical Wall-of-text videos at their native duration", (
   );
   assert.equal(
     isEligibleWallTextVideo(asset({ durationSeconds: 5 })),
+    false,
+  );
+  assert.equal(
+    isEligibleWallTextVideo(asset({ durationSeconds: 5.999 })),
+    false,
+  );
+  assert.equal(
+    isEligibleWallTextVideo(asset({ durationSeconds: 6 })),
     true,
   );
   assert.equal(
@@ -91,7 +99,7 @@ test("preserves native durations and diversifies visual groups before reuse", ()
   const selected = selectTrendingWallTextCandidates([
     asset({ id: "car-2", usageCount: 1, visualGroup: "car_selfie" }),
     asset({
-      durationSeconds: 5.056,
+      durationSeconds: 6.056,
       id: "car-1",
       usageCount: 0,
       visualGroup: "car_selfie",
@@ -106,7 +114,7 @@ test("preserves native durations and diversifies visual groups before reuse", ()
       id: candidate.entry.id,
     })),
     [
-      { durationSeconds: 5.056, id: "car-1" },
+      { durationSeconds: 6.056, id: "car-1" },
       { durationSeconds: 12, id: "indoor-1" },
       { durationSeconds: 12, id: "outdoor-1" },
       { durationSeconds: 12, id: "car-2" },

@@ -8,7 +8,10 @@ import {
   type ScheduleFinalizationResult,
 } from "../lib/schedule-finalization.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
-import { parseTextColor } from "../lib/edit-overlay-render-spec.js";
+import {
+  HOOK_TEXT_LAYOUT_VERSION,
+  parseTextColor,
+} from "../lib/edit-overlay-render-spec.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 
 const videoRatios = new Set(["9:16", "1:1", "4:5", "16:9"]);
@@ -249,6 +252,33 @@ function parseRenderScheduleCombinationPayload(
     throw new Error("Saved Hook video renders cannot auto-finalize a schedule.");
   }
 
+  const hookText = getOptionalString(input.hookText, 220);
+  const hookTextFontSize = getOptionalHookTextFontSize(input.hookTextFontSize);
+  const hookTextLayoutVersion = getOptionalHookTextLayoutVersion(
+    input.hookTextLayoutVersion,
+  );
+  const hookTextLines = getOptionalHookTextLines(input.hookTextLines);
+
+  if ((hookTextFontSize === null) !== (hookTextLines === null)) {
+    throw new Error(
+      "Hook text requires both hookTextFontSize and hookTextLines.",
+    );
+  }
+
+  if (
+    hookTextLines &&
+    normalizeHookText(hookTextLines.join(" ")) !== normalizeHookText(hookText)
+  ) {
+    throw new Error("hookTextLines must match hookText exactly.");
+  }
+
+  if (
+    hookTextLayoutVersion === HOOK_TEXT_LAYOUT_VERSION &&
+    (hookTextFontSize === null || hookTextLines === null)
+  ) {
+    throw new Error("The authoritative Hook text layout is incomplete.");
+  }
+
   return {
     autoFinalize,
     compositionFingerprint:
@@ -256,9 +286,10 @@ function parseRenderScheduleCombinationPayload(
     demoVideoId: getRequiredString(input.demoVideoId, "demoVideoId"),
     demoVideoUrl: getHttpUrl(input.demoVideoUrl, "demoVideoUrl"),
     hookAudio: getOptionalHookAudio(input.hookAudio),
-    hookText: getOptionalString(input.hookText, 220),
-    hookTextFontSize: getOptionalHookTextFontSize(input.hookTextFontSize),
-    hookTextLines: getOptionalHookTextLines(input.hookTextLines),
+    hookText,
+    hookTextFontSize,
+    hookTextLayoutVersion,
+    hookTextLines,
     hookTextPosition: getOptionalNormalizedPosition(input.hookTextPosition),
     hookTextColor: parseTextColor(input.hookTextColor, "hookTextColor"),
     hookTrimEnd,
@@ -372,6 +403,18 @@ function getOptionalHookTextFontSize(value: Json | undefined) {
   throw new Error("hookTextFontSize must be an even number from 34 to 60.");
 }
 
+function getOptionalHookTextLayoutVersion(value: Json | undefined) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (value === HOOK_TEXT_LAYOUT_VERSION) {
+    return HOOK_TEXT_LAYOUT_VERSION;
+  }
+
+  throw new Error("hookTextLayoutVersion is not supported.");
+}
+
 function getOptionalHookTextLines(value: Json | undefined) {
   if (value === undefined || value === null) {
     return null;
@@ -392,6 +435,10 @@ function getOptionalHookTextLines(value: Json | undefined) {
   }
 
   return value.map((line) => String(line).trim().replace(/\s+/gu, " "));
+}
+
+function normalizeHookText(value: string) {
+  return value.replace(/\s+/gu, " ").trim();
 }
 
 function getOptionalNonNegativeNumber(

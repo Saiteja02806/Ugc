@@ -139,7 +139,7 @@ export type WallTextFinalLayout = {
   blocks: WallTextLayoutBlock[];
   fontFamily: "Inter";
   fontSizePx: WallTextFontSize;
-  fontWeight: 700;
+  fontWeight: 600;
   lineHeightPx: number;
   textBox: WallTextNormalizedBox;
   version:

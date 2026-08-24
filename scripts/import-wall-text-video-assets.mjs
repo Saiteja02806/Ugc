@@ -28,6 +28,7 @@ const DEFAULT_MANIFEST =
 const RESULT_ROOT = ".tmp/wall-text-video-import";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+const MIN_WALL_TEXT_VIDEO_DURATION_SECONDS = 6;
 const WALL_TEXT_PLACEMENT_ZONES = new Set([
   "upper-middle",
   "middle",
@@ -334,6 +335,12 @@ function buildImportPlan({ folder, manifest }) {
     if (metadata.width * 16 !== metadata.height * 9) {
       throw new Error(
         `${asset.fileName} is ${metadata.width}x${metadata.height}, not 9:16.`,
+      );
+    }
+
+    if (metadata.durationSeconds < MIN_WALL_TEXT_VIDEO_DURATION_SECONDS) {
+      throw new Error(
+        `${asset.fileName} is ${metadata.durationSeconds}s; Wall-of-text source videos must be at least ${MIN_WALL_TEXT_VIDEO_DURATION_SECONDS}s.`,
       );
     }
 

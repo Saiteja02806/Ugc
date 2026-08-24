@@ -42,6 +42,7 @@ import {
   clampHookTextPosition,
   createHookTextLayout,
   getDefaultHookTextPosition,
+  HOOK_TEXT_LAYOUT_VERSION,
   HookTextLayoutError,
 } from "@/lib/trending/hook-text-layout";
 import {
@@ -263,9 +264,12 @@ async function buildDefaultContent(params: {
           originalBackgroundUrl: backgroundUrl,
           originalVisualRole: slide.visualRole,
           productVisualEligibility: slide.productVisualEligibility,
+          renderFormat: status.generation.format,
           renderedUrl: slide.renderedUrl ?? "",
           slideId: slide.id,
           slideNumber: slide.slideNumber,
+          storyLayoutVariant: slide.storyLayoutVariant,
+          storyTextTreatment: slide.storyTextTreatment,
           structureId: slide.structureId,
           subtext: slide.subtext ?? "",
           textPosition: getDefaultCarouselTextPosition(slide.textPosition),
@@ -309,6 +313,7 @@ async function buildDefaultContent(params: {
       fontSize: idea.overlayFontSize,
       format: "hook_video",
       hookText: idea.hookText,
+      layoutVersion: HOOK_TEXT_LAYOUT_VERSION,
       lines: idea.openingLines,
       position: clampHookTextPosition(
         catalogPlacement ?? getDefaultHookTextPosition(layout.positionBounds),
@@ -384,6 +389,7 @@ function mergeSubmittedContent(
     return {
       ...submitted,
       hookText: submitted.hookText.trim(),
+      layoutVersion: HOOK_TEXT_LAYOUT_VERSION,
       lines: submitted.lines.map((line) => line.trim()).filter(Boolean),
       position: clampNormalizedTextPosition(submitted.position),
       textColor: resolveTrendingTextColor(submitted.textColor),
@@ -573,12 +579,15 @@ async function validateAndNormalizeSubmittedContent(params: {
 
   if (params.content.format === "hook_video") {
     try {
-      const layout = createHookTextLayout(params.content.hookText);
+      const layout = createHookTextLayout(params.content.hookText, {
+        fontSize: params.content.fontSize,
+        lines: params.content.lines,
+      });
 
       return {
         ...params.content,
         fontSize: layout.fontSize,
-        hookText: layout.lines.join("\n"),
+        hookText: layout.hookText,
         lines: layout.lines,
         position: clampHookTextPosition(
           params.content.position,
@@ -732,17 +741,38 @@ function mergeStoredContentWithOwnerDefaults(
           .filter((line): line is string => typeof line === "string")
           .map((line) => line.replace(/\s+/gu, " ").trim())
           .filter(Boolean)
-          .slice(0, 3)
       : [];
-    const lines = storedLines.length > 0 ? storedLines : defaults.lines;
+    const storedText =
+      typeof stored.hookText === "string" && stored.hookText.trim()
+        ? stored.hookText
+        : storedLines.join("\n");
 
-    return {
-      ...stored,
-      hookText: lines.join("\n"),
-      lines,
-      position: clampNormalizedTextPosition(stored.position),
-      textColor: resolveTrendingTextColor(stored.textColor),
-    } satisfies TrendingHookEditContent;
+    try {
+      const layout =
+        stored.layoutVersion === HOOK_TEXT_LAYOUT_VERSION
+          ? createHookTextLayout(storedText, {
+              fontSize: stored.fontSize,
+              lines: storedLines,
+            })
+          : createHookTextLayout(storedText);
+
+      return {
+        ...stored,
+        fontSize: layout.fontSize,
+        hookText: layout.hookText,
+        layoutVersion: HOOK_TEXT_LAYOUT_VERSION,
+        lines: layout.lines,
+        position: clampHookTextPosition(stored.position, layout.positionBounds),
+        textColor: resolveTrendingTextColor(stored.textColor),
+      } satisfies TrendingHookEditContent;
+    } catch (error) {
+      throw new TrendingCreativeEditAccessError(
+        error instanceof HookTextLayoutError
+          ? error.message
+          : "The saved Hook text layout could not be opened.",
+        409,
+      );
+    }
   }
 
   if (defaults.format === "wall_text" && stored?.format === "wall_text") {

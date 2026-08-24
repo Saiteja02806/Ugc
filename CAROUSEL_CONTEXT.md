@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -665,10 +665,10 @@ The complete-pack reliability path has these format-specific safeguards:
   batch because one source was rejected; composition generation still requires
   its complete candidate contract;
 - Structure 1 remains fail-closed and atomically transfers an untouched batch
-  to Structure 2 after two planning failures. Structure 2 uses only its own
-  business-profile-specific, schema-validated deterministic story fallback
-  after its initial batch and isolated repair fail. It does not restore the
-  retired generic Structure 1 copy path.
+  to Structure 2 after two planning failures. Structure 2 uses its dedicated
+  LLM batch plus one isolated LLM repair for a structurally invalid item. If
+  that repair still fails the publishing contract, the batch fails; it never
+  substitutes authored runtime story copy.
 
 Hook and Wall preparation share the AI-generation Cloud Tasks queue but are
 independent jobs. The queue permits four concurrent deliveries, and the Cloud
@@ -1055,9 +1055,9 @@ matcher version in logs.
 ## Content and Rendering
 
 Website analysis provides business context. The Carousel planner uses an LLM
-(`gpt-4o-mini` by default in the current implementation) to create structured
-slide content and visual intent, with a deterministic fallback planner if the
-LLM path fails.
+(`gpt-4o-mini`, pinned in source for both Structure 1 and Structure 2) to create
+structured slide content and visual intent. A stale deployment model variable
+cannot silently split the two Carousel writers across models.
 Worker startup metadata records the planner mode/version and whether the OpenAI
 secret is configured. This proves runtime capability, not a successful model
 call; acceptance of a generated carousel must also verify its persisted
@@ -1097,27 +1097,27 @@ Balanced carousel copy rules:
   visible text width. Rewrap first, reduce type slightly only when rewrapping
   cannot fit, and reject the render if a text-mask pixel falls outside the
   white-background mask.
-- Planner validation rejects repeated punctuation, fragments, incomplete
-  endings, generic copy, repeated ideas, unsupported claims, grammar problems,
-  and overlong copy. Invalid LLM output receives one short repair pass before a
-  validated deterministic fallback is considered.
-- Because headlines are optional, a repaired headline that still violates the
-  3-8 word or 50-character limit is removed and its valid body is preserved as
-  `body_only`; it must not force the whole repaired LLM plan into fallback.
+- JSON/schema validity, the backend-selected format, exact slide order and
+  roles, required fields, renderer character limits, product timing, prohibited
+  visual subjects, and unsupported/prohibited claims are publishing gates.
+  A failing item may receive one isolated LLM repair; a second failure remains
+  failed instead of receiving hardcoded replacement copy.
+- Word-count preferences, perspective quality, CTA phrasing, generic wording,
+  grammar style, headline/body overlap, and recent repetition remain prompt
+  guidance and persisted advisory diagnostics. They do not rewrite or reject
+  otherwise contract-valid AI copy.
+- The application does not run a hardcoded post-LLM copy normalizer. Accepted
+  headline, body, list, story, and CTA strings are preserved apart from the
+  whitespace normalization required to parse and render their JSON fields.
 - Object-only safety validation treats clock and watch hands as object parts,
   while continuing to reject human hands and other prohibited human subjects.
 - Unsupported-claim validation rejects unsubstantiated quantified social proof
   and money/revenue/profit/sales/conversion outcomes, plus CamelCase product or brand
   names that do not appear in the stored website analysis.
 - CTA commands that introduce a capitalized product name must use a name found
-  in the analysis. Text mode is normalized again after a repeated or invalid
-  optional headline is removed, so valid body copy remains renderable.
-- Headline/body overlap at 60% or more drops the optional headline, and body
-  grammar validation rejects nearby repeated content words such as
-  `leads to lost leads`.
-- `businessName` is authoritative for CTA brand names. Deterministic fallback
-  sanitizes stale or mismatched CTA ideas, and quantified social proof is
-  rejected even when an old analysis contains it.
+  in the analysis. `businessName` remains authoritative for named products and
+  quantified social proof remains an unsupported-claim blocker when the saved
+  analysis does not support it.
 - Every generation stores raw initial/repair LLM responses, the normalized
   plan, planner version/model/source/fallback reason, validation result, and
   renderer version on `carousel_generations`.
@@ -1162,9 +1162,9 @@ Balanced carousel copy rules:
   is made atomic in Postgres.
 - The planner receives exactly one reserved format, one compatible hook family,
   the controlled profile options, and the compact recent-history snapshot. One
-  normal LLM request creates one complete carousel. A single repair request is
-  allowed only when the first result fails validation; otherwise the validated
-  deterministic fallback is used.
+  normal LLM request creates one complete carousel. A single LLM repair request
+  is allowed only when the first result fails a publishing gate. The writer
+  never falls through to authored runtime copy.
 - Automatic V1 output is always exactly five slides. Each slide stores its
   format-specific role while retaining the existing coarse `slideType` and
   `textMode`, so current image matching and rendering remain compatible.
@@ -1176,11 +1176,8 @@ Balanced carousel copy rules:
   formats such as Checklist, How-To, Swap, Comparison, or Myth vs Fact without
   fabricating nutritional values.
 - Recent-topic validation uses the stable controlled topic ID as well as the
-  compact topic label. A repeated topic is rejected while another saved topic
-  option remains unused. Once every saved topic has appeared, controlled topic
-  reuse is allowed so a small profile cannot deadlock generation; hook and
-  angle freshness checks still apply. The deterministic fallback follows the
-  same unused-topic-first selection rule.
+  compact topic label. Repetition remains a selection and writing signal, and
+  is persisted as an advisory diagnostic rather than replacing usable AI copy.
 - Object-only image safety, manual-review authority, matching policy, rendering,
   and scheduling boundaries are unchanged by the content-grammar slice.
 - The V1 schema, selector, planner, app, worker, tests, and this architecture
@@ -1566,10 +1563,10 @@ Implemented:
   definition env and the latest CloudWatch startup log for matcher mode,
   broad matcher version, image safety policy, planner version, renderer
   version, and Geist font availability.
-- LLM slide planner with one copy-repair pass and validated deterministic
-  fallback. Generated rows store the raw initial/repair responses, normalized
-  plan, planner version, actual model, source, fallback reason, validation
-  result, and renderer version.
+- LLM slide planner with one structurally scoped LLM repair pass and no
+  published hardcoded copy fallback. Generated rows store the raw initial/repair
+  responses, normalized plan, planner version, actual model, source, fallback
+  reason, validation result, and renderer version.
 - Professional Sharp text renderer and AWS Carousel worker path.
 - AWS Carousel worker revision 32 runs image
   `831963379461.dkr.ecr.us-east-2.amazonaws.com/ugc-worker:worker-20260713184011`
@@ -2380,12 +2377,14 @@ Do not describe planned behavior as deployed behavior.
 
 ## 2026-08-13 Carousel V1-Only Generation Guard
 
-- The supplied Carousel architecture remains the product contract: one current
+- At that release, the supplied Carousel architecture used one current
   Business Profile, backend selection of one of 15 five-slide formats and one
   compatible hook family, one compact history snapshot of at most ten prior
   Carousels, strict validation, and a validated deterministic safety fallback.
   The per-Carousel request boundary described in this original guard was
-  superseded by the controlled five-Carousel batch decision below.
+  superseded by the controlled five-Carousel batch decision below, and the
+  deterministic publishing fallback was later retired by the 2026-08-23 copy
+  preservation decision.
 - Every Carousel still begins with one hook. Diversity means rotating the
   backend-selected hook family and writing fresh wording; it does not mean
   producing a Carousel without a hook.
@@ -2407,12 +2406,10 @@ Do not describe planned behavior as deployed behavior.
   deleted, rewritten, or re-rendered.
 - Compact recent history is present in the initial prompt and is now also
   present in every repair prompt when history exists, even when the first
-  validation failure was not itself classified as repetition. Post-repair and
-  deterministic-fallback repetition validation remain mandatory.
-- The deterministic V1 fallback now makes the selected hook family visible in
-  its hook wording while preserving the selected format. Cross-profile repair
-  substitutions no longer inject campaign-specific language into unrelated
-  businesses.
+  validation failure was not itself classified as repetition. The later
+  2026-08-23 decision keeps repetition advisory and does not use fallback copy.
+- The deterministic V1 behavior described by this historical release remains
+  only as legacy compatibility/test code; active publishing calls fail closed.
 - Validation telemetry now distinguishes `fallbackUsed` from `repaired`. A
   deterministic fallback records `fallbackUsed = true` and `repaired = false`;
   a successful LLM repair records the inverse. This prevents quality reports
@@ -2559,8 +2556,14 @@ Do not describe planned behavior as deployed behavior.
   dark charcoal 9:16 skeleton at the exact width and position of a Hook or
   Wall-of-text Trending card.
 - The skeleton contains no fake text, thumbnails, slide dots, or metadata. A
-  restrained pulse is the only motion and is disabled for reduced-motion
-  users. The preview-ready post replaces it in the same deck slot.
+  separate, faint 32%-wide gradient highlight travels left to right over the
+  stable `#18191c` base in a two-second linear loop. The card background,
+  opacity, scale, border, and shadow do not animate, and reduced-motion users
+  receive the stationary base without the travelling highlight.
+- The preview-ready post and skeleton share the same reserved card dimensions
+  and crossfade in place over 200ms. Both transition layers remain mounted
+  through the handoff, so the change does not require a timer, per-frame React
+  updates, or a layout-moving replacement.
 - Caught-up and terminal exhausted states remain explicit text states; they do
   not pretend that generation is active.
 
@@ -2800,3 +2803,418 @@ Name: **Verify v26 and replace the stale production assignment**
   - `--success: #10b981` (Emerald 500) replacing `#168a4a`
 - Updated pricing checklist checkmarks to use `text-success` (`#10b981`).
 - All layout dimensions, responsive behaviors, component trees, API contracts, and business logic remain completely unchanged.
+
+## 2026-08-23 Trending Single-Creative Review Stage
+
+- Trending now presents exactly one visible active creative in a centered review
+  stage. Upcoming Carousel, Hook, and Wall-of-Text cards must not peek above or
+  below the active creative or resemble additional slides in the current
+  Carousel.
+- The next two feed items remain mounted in an invisible, non-interactive,
+  assistive-technology-hidden preload boundary. This preserves protected Hook
+  preview preparation and media warm-up without restoring the visible stacked
+  deck treatment.
+- The active Carousel uses a responsive 4:5 width capped at 420px and constrained
+  by the available dynamic viewport height. Hook and Wall-of-Text previews use
+  the equivalent responsive 9:16 sizing. Short viewports shrink the media before
+  allowing the decision controls to leave the visible review area.
+- The format label is attached directly above the active card and uses a compact,
+  flat treatment. Reject and Accept stay centered immediately below the active
+  creative and do not use ambient elevation.
+- The format label uses a neutral 20px surface with 9px medium-weight copy. Only
+  its small icon carries subdued format color; the pill itself has no glow,
+  ring, shadow, blur, or format-colored background.
+- Swipe, keyboard, Edit, decision outbox, Carousel slide navigation, and feed
+  ordering behavior are unchanged.
+- The shared `creative-reject`, `creative-accept`, and `creative-edit` button
+  variants are shadowless by default. Their separation comes from a quiet border,
+  semantic icon color, hover fill, and the existing keyboard focus ring.
+- Hook and Wall-of-Text audio controls use a compact flat overlay without ambient
+  shadow or backdrop blur. Hook cards, rendered Carousel/Wall cards, edited
+  badges, and the Trending loading card also avoid ambient elevation.
+
+## 2026-08-23 Carousel AI Copy Preservation and Model Pin
+
+- Structure 1 and Structure 2 Carousel writing requests use the shared
+  source-pinned `gpt-4o-mini` model. The worker logs that exact model plus both
+  planner versions at startup, and stored generation provenance remains the
+  authority for confirming the model that produced a particular Carousel.
+- The publishing contract separates blockers from writing preferences. Invalid
+  JSON, changed selected format, wrong slide order or role, missing required
+  fields, renderer length/shape violations, product-timing violations,
+  prohibited visual subjects, and unsupported or prohibited claims may block
+  or trigger one isolated LLM repair. Word-count targets, perspective style,
+  CTA semantics, generic phrasing, grammar style, and repetition are advisory
+  diagnostics only.
+- When an AI response passes the publishing contract, its copy is preserved.
+  The worker no longer replaces or augments accepted text through a hardcoded
+  post-processing copy rewriter.
+- Structure 2's authored deterministic story fallback is removed from the
+  planner and its active batch runtime. If the initial structured batch and one
+  isolated LLM repair cannot produce a publishable item, generation fails and
+  can be retried; no template sentence is published in its place. Structure 1
+  is also LLM-only: its deterministic writer, enable/disable switch, fallback
+  result type, and authored persistence placeholder have been removed rather
+  than merely disabled at publishing call sites.
+- Historical rows whose provenance says `deterministic-fallback` remain
+  immutable records of the earlier implementation. They are not rewritten or
+  presented as LLM output.
+- This source change is locally build- and regression-tested. It is not live
+  until the Carousel worker is deployed and an authenticated production canary
+  verifies `content_planner_model = gpt-4o-mini`, `content_plan_source = llm`,
+  and preserved visible copy on both structures.
+
+## 2026-08-24 Structure Contract and Live-Output Validation
+
+- Structure 1 planner `llm-carousel-planner-v30-llm-only-structure-contract`
+  has no deterministic writing mode or authored-copy fallback. Missing OpenAI
+  configuration, an invalid initial response, and a failed isolated repair all
+  fail closed. The historical `content_plan_fallback_reason` and
+  `fallbackUsed` persistence fields remain readable for old rows but new
+  Structure 1 planner results always use source `llm`, a null fallback reason,
+  and `fallbackUsed = false`.
+- The Structure 1 JSON contract binds every returned slide to the assigned
+  slide number, role, slide type, allowed text modes, CTA position, and exact
+  list-item count. A role without `listItemCount` must return an empty list;
+  extra list copy is a structural failure eligible for the one LLM repair, not
+  ignored data and not replacement prose.
+- Slide persistence no longer invents `Slide N` when an impossible empty-copy
+  record reaches it. It throws before persistence because every published
+  visible string must originate in the accepted AI plan.
+- Structure 2 remains LLM-only. The historical `productMechanism` selection and
+  forced Slide 4 product sentence have been removed. The writer now receives the
+  minimal saved `businessDescription`, one open creative seed plus emotion, the
+  selected format as a flexible reference, and recent accepted copy. Unsupported
+  precise features, proof, metrics, customers, guarantees, and outcome claims
+  remain blockers; valid original AI wording is not replaced.
+- The shared runtime slide-plan module now contains types only; its old authored
+  deterministic builder was removed. The scale-readiness audit owns a local
+  synthetic fixture instead, so offline matcher testing cannot become published
+  copy by being imported into a runtime path.
+- Local contract validation covers all 15 Structure 1 formats and all eight
+  Structure 2 formats. A live `gpt-4o-mini` planner audit returned one valid
+  Structure 1 plan and five valid Structure 2 plans with LLM provenance and no
+  fallback copy. Structure 2 still produced advisory word-count and writing
+  quality findings; these are retained as diagnostics, consistent with the
+  decision not to replace structurally valid AI wording.
+- Structure 1's two-attempt recovery to Structure 2 is allowed only for an
+  automatic rotation batch whose five items already have durable content-plan
+  provenance. An explicit Structure 1 request fails as Structure 1. Recovery
+  preserves the same reserved creative seeds and emotions and only changes the
+  LLM presentation structure; neither writer may publish deterministic prose.
+- These changes are local source changes and must not be described as live
+  until the Carousel worker is deployed and the authenticated production flow
+  is verified on `https://www.getugcpilot.com`.
+
+## 2026-08-24 Carousel 30-Day Creative Plan Architecture
+
+- A business profile keeps its complete analysis for existing product and
+  operational uses. Carousel creative planning does not replace or truncate
+  that stored analysis. It deliberately projects only the saved
+  `businessDescription` into the creative-plan and slideshow-writing prompts so
+  the writer receives factual grounding without a fixed problem, audience,
+  workflow, outcome, or product-mechanism storyline.
+- Each 30-day plan contains 150 durable items: five organizational slots for
+  each of 30 days. The day grouping is inventory organization, not a daily usage
+  limit. Every item contains exactly an open-ended `creativeSeed` and a required
+  `emotion`; it must not contain finished slide copy, a hook, CTA, full story,
+  format, structure, or product mechanism.
+- Structure 1 and Structure 2 consume the same neutral item inventory. A request
+  reserves the required number of items atomically, attaches them to the job,
+  and consumes each item only after successful Carousel persistence. Failed
+  requests release their reservations, and expired reservations can be reused.
+  The next 30-day plan is generated when the current planning period needs a new
+  inventory.
+- Both writers receive the reserved `creativeSeed`, its `emotion`, the minimal
+  `businessDescription`, their selected format reference, and the exact visible
+  copy from the last ten accepted Carousels (hook/headline, every slide's visible
+  text, CTA, structure, format, generation ID, and content-plan item ID). The
+  history is not reduced to an LLM-generated summary.
+- Structure 1's format contract is unchanged. Structure 2 remains exactly five
+  slides, but its eight formats are creative references rather than a compulsory
+  sentence-by-sentence story backbone. Each format defines its structurally
+  required CTA position (slides 2, 3, 4, or 5 across the library), examples, and
+  role guidance; the LLM may vary story-role order while preserving five slides,
+  the selected format ID, one CTA in the allowed position, and renderability.
+- Content-plan generation and both slideshow writers are source-pinned to
+  `gpt-4o-mini`. Structural invalidity can trigger one isolated LLM repair or a
+  failure. Structurally valid AI copy is preserved even when advisory diagnostics
+  identify generic phrasing, repetition, CTA quality, perspective, or word-count
+  drift.
+- The database foundation, lifecycle, asynchronous plan-generation job, and
+  Carousel provenance link are introduced by migrations `20260824150000`
+  through `20260824153000`. They must be applied before deploying the app and
+  worker revisions that use the plan-first contract.
+
+## 2026-08-24 Carousel Human-Hook Library Reconciliation
+
+- Source paths under `gym_part2/human_hook` classify as Gym hook assets, and
+  source paths under `productivity_humanhookpart-2/human` classify as
+  Productivity hook assets. They are available to the first-slide human-hook
+  rotation without changing unrelated categories.
+- `scripts/reconcile-carousel-role-library.mjs` is the targeted, auditable sync
+  path for these three local source trees. It uploads new sources, refreshes
+  changed sources, removes stale database rows and objects only within the
+  selected source scopes, and verifies the resulting backend inventory.
+- The live targeted reconciliation inserted 30 hook assets, refreshed 240
+  retained Productivity human assets, removed 33 stale selected-scope rows, and
+  verified 810 selected-scope GCS objects with no stale selected-scope rows.
+  Unrelated missing Travel sources were intentionally outside this operation.
+
+## 2026-08-23 Carousel Editor Render Fidelity
+
+- The persisted rendered slide is the initial Carousel editor preview source of
+  truth. Opening Edit must show the same crop, compositing, line breaks, font
+  scale, text treatment, and text position as Trending; the editor must not
+  immediately replace that asset with a browser reconstruction over the raw
+  category image.
+- After the user changes a field, the live preview reads the slide's real
+  `structureId`, Structure 2 layout variant, text treatment, render format, and
+  visual role. Structure 2 stays horizontally centered and exposes only the
+  renderer-supported upper/center/lower vertical placement. Product screenshots
+  preview the contained foreground over the softened cover backdrop used by the
+  renderer.
+- Structure 2 renderer version `story-native-renderer-v2-line-bubbles` replaces
+  the oversized full-block pill with quiet line-sized white shapes and reduces
+  the story and CTA font ranges. `pill` treatment uses black text on white;
+  `overlay` and `outlined_overlay` use white text directly over the image.
+- Structure 1 continues to use its connected line-bubble renderer and therefore
+  uses black text on white. A no-bubble Structure 1 mode is not inferred in the
+  editor because it is not part of the Structure 1 persistence contract.
+- The editor-only SVG drop shadow is removed. Any treatment visible when Edit
+  opens now comes from the actual rendered asset, and live preview geometry does
+  not add a separate shadow that the worker did not render.
+- The user-facing first-slide image selector is named `Hook library` and is
+  presented as a simple folder. The existing `hyper-hooks` identifier and API
+  remain internal compatibility details and are not user-facing product names.
+- Existing immutable Carousel render files are not rewritten in place. New
+  generations and saved edits use the v2 Structure 2 renderer; an already-stored
+  v1 asset remains exact until it is explicitly edited and rendered again.
+
+## 2026-08-23 Trending Adjust and Edit Action Boundary
+
+- `Adjust` is the global Trending feed action. It opens the authenticated
+  content-mix preference flow backed by `/api/trending/content-mix` and controls
+  the daily percentage split between Slideshows, Wall-of-Text, and Hooks.
+- `Edit` remains the active-creative action. It changes the current creative's
+  copy, media, and supported placement; it does not change the daily feed mix.
+- Both actions are visible together in the Trending header when an active
+  creative exists. Adjust remains available while the feed is loading, empty,
+  or caught up so the global preference is not coupled to a card being present.
+- The mix editor keeps the three percentages at exactly 100 percent while
+  respecting the existing backend caps. Changes to either video format trade
+  against Slideshow; changing Slideshow proportionally redistributes the two
+  capped video formats.
+- Free users can inspect their fixed 30/40/30 daily mix but cannot mutate it.
+  The dialog explains the entitlement and links to plans instead of hiding the
+  Adjust entry point.
+- Saving does not rewrite a completed daily pack. The existing backend contract
+  applies the preference today only when no daily feed exists; otherwise it
+  starts with the next local day.
+
+## 2026-08-24 Sectioned Settings Navigation
+
+- Customer Settings now presents one active section at a time in this fixed
+  order: Account, Plan & billing, App screenshots, Connected accounts,
+  Preferences, and Privacy & data.
+- App screenshots remains the existing owner-scoped product-screen library;
+  its upload, validation, storage, removal, and Structure 2 eligibility
+  behavior are unchanged.
+- The Carousel administration component and APIs remain in source, but the
+  administration panel is no longer mounted in the customer Settings screen.
+- Existing `#subscription-billing`, `#app-screenshots`, and
+  `#instagram-publishing` deep links select the matching section instead of
+  scrolling through one long settings page.
+
+## 2026-08-24 Database-first Instagram Analytics Refresh
+
+- Instagram Analytics reads owner-scoped durable database snapshots before it
+  considers a provider refresh. The account-keyed browser query cache keeps
+  those results fresh for 30 minutes, so revisiting Analytics inside that
+  window neither clears visible data nor starts another synchronization job.
+- Account-insight snapshots are specific to the selected 7-, 30-, or 90-day
+  range. Content feed coverage is also tracked per range. Opening Analytics
+  enqueues work only when that relevant saved snapshot is missing or stale;
+  saved data remains visible while an eligible refresh runs in the background.
+- Post metrics use the bounded age policy: posts under 24 hours refresh hourly,
+  posts from one through seven days refresh every six hours, and older posts
+  refresh daily. After the first range snapshot, provider feed scans use a
+  one-day overlap from the last successful scan instead of re-reading the
+  complete range. Manual
+  Refresh bypasses freshness gates but remains an incremental range refresh.
+- A successful UGC Pilot Instagram publication immediately inserts its
+  non-sensitive media identity into the analytics content store. The normal
+  provider synchronization later fills metrics and richer media metadata.
+  Registration is best-effort after the durable publish projection and cannot
+  turn a successful Instagram publication into a failed publish retry.
+- Media-insight failures are isolated per post. A failed post retains its last
+  saved values and error marker while other posts in the same account continue
+  to refresh; a transient account/feed failure likewise keeps an existing saved
+  account visible.
+- Hook, Carousel, and Wall attribution no longer runs before content analytics
+  is returned. Content synchronization persists the general Analytics
+  snapshot, queues a separate durable `instagram_attribution` job, and returns
+  without waiting for that attribution work. The existing seven-day Carousel
+  performance policy, views-only learning input, evidence chain, and bounded
+  selector are unchanged.
+- The former three-second browser polling loop is not on the saved-data render
+  path. A first-ever load may still observe its durable job, while background
+  refresh observation uses a ten-second interval and the same 15-minute upper
+  bound as the worker-to-application analytics request.
+- These migration, application, and worker changes are local source changes.
+  Deploy the additive snapshot migration before the application and worker,
+  then verify the authenticated Analytics and post-publication flows on
+  `https://www.getugcpilot.com` before describing the behavior as live.
+
+## 2026-08-24 Wall Source Minimum-Duration Cleanup
+
+- Wall-of-Text source videos must be at least 6.000 seconds and at most 60
+  seconds. The six-second floor is source eligibility only; it must not be used
+  as a duration-derived copy budget.
+- The 16 active reviewed Wall sources below six seconds were exported locally,
+  SHA-256 and duration verified, human validated, and then removed from the
+  production database and GCP storage. Their 16 MP4s, manifest, dependency
+  backup, and deletion result remain in
+  `artifacts/wall-text-under-6s-review-2026-08-24` for recovery.
+- Cleanup removed only the exact reviewed targets: four unused Wall previews,
+  three rejected decisions, one historical decided daily-feed slot, one
+  isolated one-item generation batch, 16 catalog rows, 16 video objects, and
+  16 thumbnails. There were no accepted, selected, edited, published, or
+  performance-observed dependents. Post-cleanup verification found zero
+  under-six-second active Wall sources, zero orphaned Wall creatives or feed
+  slots, and 128 eligible Wall source videos.
+- The production database now rejects any active `wall_text_overlay` video
+  below six seconds. Local application selection, user-source preparation, and
+  both Wall importers apply the same floor; those application/import guards are
+  not live until their source changes are deployed.
+- Hook video duration eligibility and all Slideshow/Carousel behavior are
+  unchanged by this decision.
+
+## 2026-08-24 Wall V7 Spatial-Fit Copy Contract
+
+- New Wall-of-Text writing reservations use prompt version
+  `wall-text-writer-prompt-v8-spatial-fit`. Clip duration no longer creates a
+  word maximum, reading-time score, or rewrite trigger for the current V7
+  `wall-text-overlay-v6` content path.
+- Video duration remains source and render metadata only. A current Wall source
+  must still be between 6.000 and 60 seconds, but every eligible source uses the
+  same copy acceptance contract.
+- Each format's word range is a soft target. The layout engine also estimates a
+  soft spatial target from the safe text box, but neither target is a required
+  minimum or a hard rejection boundary.
+- Current V7 copy has an 8-word structural minimum and a 50-word absolute safety
+  ceiling. Final acceptance is authoritative measured layout: one continuous
+  message must form 4-7 balanced lines inside the safe box using Inter at one of
+  the supported 52, 50, 48, 46, or 44px sizes. Copy that cannot fit at 44px
+  fails instead of shrinking further.
+- The writer may receive one isolated repair for a real publishing failure such
+  as measured overflow. The runtime does not truncate, replace, or publish
+  canned fallback copy when repair is exhausted.
+- A batch already reserved under the prior prompt keeps its persisted assignment
+  budgets when resumed so idempotent in-flight work is not silently mutated.
+  New reservations use the spatial-fit contract and store its prompt version.
+- Hook copy, Hook duration handling, Wall font weight, semantic line ownership,
+  and all Slideshow/Carousel behavior are unchanged in this implementation.
+- These application changes are locally validated but are not live until the
+  application source is deployed and the authenticated production Wall flow is
+  verified on `https://www.getugcpilot.com`.
+
+## 2026-08-24 Wall SemiBold Typography and Authoritative Lines
+
+- Current Wall-of-Text preview, editing, validation, and final rendering use
+  the bundled Inter SemiBold 600 face. The supported responsive range remains
+  52, 50, 48, 46, or 44px, and 44px remains the readability floor.
+- The layout engine owns the final measured 4-7 lines. The writer supplies one
+  continuous message without authored line breaks; the browser and worker
+  consume the saved `finalLayout.blocks[].lines` and do not independently
+  reflow accepted copy.
+- Current V7 validation requires normalized `sourceContent.text`, `fullText`,
+  and the joined authoritative final lines to represent the same message. A
+  mismatch fails closed instead of truncating, replacing, or silently
+  reformatting the content.
+- Legacy database rows and already-queued render payloads with weight 700 stay
+  readable during rollout. They are accepted at the boundary and normalized to
+  600 in active preview/render specifications without changing their saved
+  line text. The production constraint accepts both 600 and 700 and was
+  validated without rewriting existing rows.
+- Existing rendered MP4 files are immutable and are not retroactively changed.
+  Newly generated or re-rendered Wall videos receive the 600 face after the
+  worker and application source are deployed.
+- The rolling production database migration is live. The application and
+  worker source changes are locally validated but are not live until they are
+  deployed and the authenticated Wall flow is verified on
+  `https://www.getugcpilot.com`.
+- Hook typography and text flow, Hook duration behavior, and all
+  Slideshow/Carousel behavior are unchanged by this implementation.
+
+## 2026-08-24 Hook Authoritative-Line and Fallback Contract
+
+- The approved Hook writing structure remains one continuous opening thought
+  expressed in 1-3 intentional semantic lines, with at most 12 words total,
+  7 words per line, and 78 characters. The existing Global Hook text formats,
+  evidence requirements, duration-aware human review, and 34-60px readable
+  font range are unchanged.
+- `hook-overlay-layout-v1` identifies the current authoritative render layout.
+  Validated `opening_lines` and the measured `visual_fit.fontSize` now travel
+  together through feed preview, editing, draft saving, scheduling, saved-video
+  rendering, and the worker. The joined lines must represent the same text.
+- Current layouts fail closed when their saved lines, font size, or text do not
+  match. The preview does not silently reflow them, the editor does not slice
+  extra in-progress lines, and the renderer does not truncate or substitute a
+  different line arrangement.
+- Hook feed and editor previews now share the export typography contract: the
+  exact Geist SemiBold browser face, weight 600, a 5px black outline at the
+  1080px render width, and the same emoji/CJK fallback families. Preview-only
+  bold and shadow treatments were removed, so review no longer shows heavier
+  or softer text than the finished video.
+- Old queued jobs and old stored edits without the layout version retain one
+  isolated compatibility path that derives a layout once and upgrades it in
+  memory. Versioned current content never enters that legacy path.
+- A generated Hook receives at most one targeted repair for a real validation
+  or review failure. If the repaired result still fails, that candidate is
+  excluded; the system does not run a repeated rewrite loop or publish canned
+  fallback copy.
+- The Wall editor's client-side save gate was also aligned with the already
+  approved 8-50-word, measured 4-7-line contract; it no longer repeats the old
+  12-word or clip-duration message.
+- A final source scan confirmed that clip-time word formulas remain only in
+  validation for pre-V7 Wall layout versions. New V7 Wall copy uses the
+  duration-independent 8-50 absolute bounds plus measured 4-7-line fit, while
+  one targeted content repair remains the only quality rewrite attempt for
+  both current Wall and Hook generation.
+- These application and worker changes are locally validated but are not live
+  until deployed and verified in the authenticated Hook flow on
+  `https://www.getugcpilot.com`. Wall rendering behavior and all
+  Slideshow/Carousel behavior are otherwise unchanged.
+
+## 2026-08-24 Carousel Content Plans and Flexible Structure 2 Flow
+
+- Automatic Carousel preparation is now backed by an owner- and
+  business-profile-version-scoped 30-day content plan. Each plan item owns one
+  creative seed and one emotion; plans activate only after all required items
+  are complete.
+- Content-plan writing runs as the durable
+  `carousel_content_plan_generation` background job. Writer work is partitioned
+  into five-item batches, is idempotently attached to its plan, and uses the
+  normal retry/recovery lifecycle instead of making a page request wait for AI.
+- Plan items are reserved atomically for Carousel generation and consumed only
+  by a completed generation with matching owner, profile, plan, and item
+  provenance. Failed or abandoned work can release an unconsumed reservation;
+  another user or profile version cannot reuse it.
+- The planning tables, reservation functions, job completion function, and
+  generation link are additive, service-role-only database changes. Deploy the
+  five ordered `2026082415*` migrations before application and worker code.
+- Structure 2 format metadata is versioned as
+  `carousel-structure-2-formats-v2-flexible-flow` with story reference version
+  `carousel-structure-2-story-reference-v2`. Each format still uses the same
+  five known roles exactly once, but their order is no longer a fixed runtime
+  backbone. Format-specific example flows guide the writer, while the format ID
+  and its allowed CTA position remain structural requirements.
+- Structure 2 remains LLM-only and source-pinned to `gpt-4o-mini`. It receives
+  the minimal saved business description, the reserved creative seed and
+  emotion, its format reference, and the last ten exact accepted copies. One
+  isolated LLM repair is allowed; the runtime does not publish deterministic
+  substitute prose.
+- These changes are locally validated but are not live until the ordered
+  migrations, application, and worker are deployed and the authenticated
+  Carousel flow is verified on `https://www.getugcpilot.com`.

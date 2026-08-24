@@ -80,6 +80,20 @@ const generationV7Migration = readFileSync(
   ),
   "utf8",
 );
+const sixSecondSourceMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260824160000_enforce_wall_text_six_second_sources.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const semiboldTypographyMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260824170000_allow_wall_text_semibold_typography.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const generatorSource = readFileSync(
   new URL("./generate-trending-wall-text-ideas.ts", import.meta.url),
   "utf8",
@@ -94,6 +108,30 @@ const promptSource = readFileSync(
 );
 const layoutEngineSource = readFileSync(
   new URL("./wall-layout-engine.ts", import.meta.url),
+  "utf8",
+);
+const textLogicSource = readFileSync(
+  new URL("./wall-text-text-logic.ts", import.meta.url),
+  "utf8",
+);
+const visualStyleSource = readFileSync(
+  new URL("./wall-text-visual-style.ts", import.meta.url),
+  "utf8",
+);
+const renderValidationSource = readFileSync(
+  new URL("./wall-text-render-validation.ts", import.meta.url),
+  "utf8",
+);
+const overlaySource = readFileSync(
+  new URL("../../components/trending/wall-text-overlay.tsx", import.meta.url),
+  "utf8",
+);
+const editorSource = readFileSync(
+  new URL("../../components/trending/trending-creative-editor.tsx", import.meta.url),
+  "utf8",
+);
+const rootLayoutSource = readFileSync(
+  new URL("../../app/layout.tsx", import.meta.url),
   "utf8",
 );
 const feedSource = readFileSync(
@@ -152,6 +190,32 @@ test("validates profile ownership and reviewed video metadata in the database", 
   assert.match(
     migration,
     /asset\.asset_type = 'video'[\s\S]+asset\.aspect_ratio = '9:16'[\s\S]+asset\.status = 'active'[\s\S]+asset\.analysis_status = 'succeeded'[\s\S]+asset\.duration_seconds > 0[\s\S]+asset\.source_file_sha256 is not null[\s\S]+asset\.source_batch is not null[\s\S]+asset\.visual_group is not null/i,
+  );
+});
+
+test("requires every active Wall source video to be at least six seconds", () => {
+  assert.match(
+    sixSecondSourceMigration,
+    /status <> 'active'[\s\S]+asset_type <> 'video'[\s\S]+format_family <> 'wall_text_overlay'[\s\S]+duration_seconds >= 6/i,
+  );
+  assert.match(
+    sixSecondSourceMigration,
+    /validate constraint overlay_media_assets_active_wall_min_duration_chk/i,
+  );
+});
+
+test("allows a rolling Wall transition from legacy 700 to current 600 weight", () => {
+  assert.match(
+    semiboldTypographyMigration,
+    /layoutVersion' = 'wall-text-overlay-v6'[\s\S]+fontWeight'\)::integer in \(600, 700\)/i,
+  );
+  assert.match(
+    semiboldTypographyMigration,
+    /add constraint wall_text_creatives_text_content_chk[\s\S]+not valid[\s\S]+validate constraint wall_text_creatives_text_content_chk/i,
+  );
+  assert.doesNotMatch(
+    semiboldTypographyMigration,
+    /update\s+public\.wall_text_creatives/i,
   );
 });
 
@@ -435,6 +499,132 @@ test("measures final Wall lines with Inter before saving authoritative layout", 
     layoutEngineSource,
     /widths\.some\(\(width\) => width > maximumWidth\)/,
   );
+});
+
+test("uses Inter SemiBold 600 everywhere while preserving the 44-52px range", () => {
+  assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 600/);
+  assert.match(visualStyleSource, /WALL_TEXT_MINIMUM_FONT_SIZE = 44/);
+  assert.match(visualStyleSource, /WALL_TEXT_MAXIMUM_FONT_SIZE = 52/);
+  assert.match(layoutEngineSource, /Inter Semi Bold \$\{fontSize\}/);
+  assert.match(layoutEngineSource, /inter-latin-600-normal\.woff/);
+  assert.match(renderValidationSource, /Inter Semi Bold \$\{fontSize\}/);
+  assert.match(renderValidationSource, /inter-latin-600-normal\.woff/);
+  assert.match(overlaySource, /fontWeight: WALL_TEXT_FONT_WEIGHT/);
+  assert.match(editorSource, /fontWeight: WALL_TEXT_FONT_WEIGHT/);
+  assert.doesNotMatch(
+    editorSource.match(/function WallTextOverlayText[\s\S]+?function StaticCreativeTextOverlay/)?.[0] ?? "",
+    /font-bold/,
+  );
+  assert.match(
+    rootLayoutSource,
+    /inter-latin-600-normal\.woff2[\s\S]+variable: "--font-wall-text"[\s\S]+weight: "600"/,
+  );
+});
+
+test("keeps the Wall editor save gate aligned with the 8-50 word contract", () => {
+  assert.match(editorSource, /wordCount < 8 \|\| wordCount > 50/);
+  assert.match(editorSource, /8–50 words and fit the measured 4–7-line layout/);
+  assert.doesNotMatch(editorSource, /wordCount < 12/);
+  assert.doesNotMatch(editorSource, /exact limit is checked against the selected clip/);
+});
+
+test("keeps measured finalLayout lines as the current Wall source of truth", () => {
+  assert.match(promptSource, /do not insert newline characters/i);
+  assert.match(promptSource, /Do not return[\s\S]+final visual lines/i);
+  assert.match(layoutEngineSource, /createWallTextFinalLayout[\s\S]+blocks,/);
+  assert.match(overlaySource, /getWallTextRenderBlocks\(content\)/);
+  assert.match(
+    databaseSource,
+    /finalLayoutText = lines\.join\(" "\)[\s\S]+parsedSource\.text !== normalizedFullText[\s\S]+finalLayoutText !== normalizedFullText/,
+  );
+  assert.match(
+    textLogicSource,
+    /authoritativeText = lines\.join\(" "\)[\s\S]+normalizeText\(authoritativeText\) !== normalizeText\(content\.fullText\)/,
+  );
+});
+
+test("V7 uses soft copy targets and measured fit instead of clip-time limits", () => {
+  const currentValidation = textLogicSource.match(
+    /if \(content\.layoutVersion === "wall-text-overlay-v6"\)[\s\S]+?\n    return;/,
+  )?.[0] ?? "";
+
+  assert.match(layoutEngineSource, /deriveWallTextSpatialBudget/);
+  assert.doesNotMatch(layoutEngineSource, /temporalMaximum|durationSeconds\s*\*\s*4\.3/);
+  assert.match(layoutEngineSource, /maxWords: ABSOLUTE_MAXIMUM_WORDS/);
+  assert.match(formatsSource, /preferredWordRange/);
+  assert.doesNotMatch(formatsSource, /hardWordRange/);
+  assert.match(
+    promptSource,
+    /soft writing target, not a required minimum[\s\S]+absolute safety ceiling[\s\S]+measured 4-7 line fit/i,
+  );
+  assert.doesNotMatch(promptSource, /CODE-DERIVED READABILITY BUDGETS/);
+  assert.doesNotMatch(generatorSource, /targetWords\s*-\s*4/);
+  assert.match(currentValidation, /MAX_CURRENT_WALL_TEXT_WORDS/);
+  assert.doesNotMatch(
+    currentValidation,
+    /durationSeconds\s*\*|estimateWallTextReadingSeconds|longer than the/,
+  );
+  assert.match(feedSource, /promptVersion: WALL_TEXT_PROMPT_VERSION/);
+});
+
+test("V7 accepts thirty words on a six-second source when measured layout fits", () => {
+  const loaderPath = new URL(
+    "../../scripts/next-server-only-test-loader.mjs",
+    import.meta.url,
+  ).href;
+  const engineUrl = new URL("wall-layout-engine.ts", import.meta.url).href;
+  const feedLogicUrl = new URL("wall-text-feed-logic.ts", import.meta.url).href;
+  const textLogicUrl = new URL("wall-text-text-logic.ts", import.meta.url).href;
+  const original =
+    "A full day can seem clear until small tasks use every open gap. When those quiet demands become visible, the next useful choice becomes easier to make without guessing again.";
+  const script = `
+    const [engine, feed, logic] = await Promise.all([
+      import(${JSON.stringify(engineUrl)}),
+      import(${JSON.stringify(feedLogicUrl)}),
+      import(${JSON.stringify(textLogicUrl)}),
+    ]);
+    const layout = feed.createWallTextLayout();
+    const result = await engine.createAuthoritativeWallTextContent({
+      content: { kind: "text", text: ${JSON.stringify(original)} },
+      formatId: "hidden_cause",
+      layout,
+    });
+    logic.validateWallTextContent(result.content, 6);
+    const budget = await engine.deriveWallTextSpatialBudget({
+      formatId: "hidden_cause",
+      layout,
+    });
+    process.stdout.write(JSON.stringify({ budget, content: result.content }));
+  `;
+  const output = execFileSync(
+    process.execPath,
+    [
+      "--import",
+      loaderPath,
+      "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+      "--experimental-strip-types",
+      "--input-type=module",
+      "--eval",
+      script,
+    ],
+    { encoding: "utf8" },
+  );
+  const result = JSON.parse(output) as {
+    budget: { maxWords: number; spatialMaximum: number; targetWords: number };
+    content: {
+      finalLayout: {
+        blocks: Array<{ lines: string[] }>;
+        fontWeight: number;
+      };
+    };
+  };
+  const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
+
+  assert.equal(original.split(/\s+/u).length, 30);
+  assert.equal(result.budget.maxWords, 50);
+  assert.equal(result.content.finalLayout.fontWeight, 600);
+  assert.ok(result.budget.targetWords <= result.budget.spatialMaximum);
+  assert.ok(lines.length >= 4 && lines.length <= 7);
 });
 
 test("balances the reported Wall example into readable measured lines", () => {

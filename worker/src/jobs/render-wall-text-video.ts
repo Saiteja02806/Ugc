@@ -12,6 +12,10 @@ import type {
   WallTextSegment,
   WallTextSegmentRole,
 } from "../lib/wall-text-render-spec.js";
+import {
+  LEGACY_WALL_TEXT_FONT_WEIGHT,
+  WALL_TEXT_FONT_WEIGHT,
+} from "../lib/wall-text-render-spec.js";
 import { parseTextColor } from "../lib/edit-overlay-render-spec.js";
 
 type RenderWallTextDependencies = {
@@ -407,7 +411,9 @@ function getFinalLayout(value: Json) {
       String(layout.version),
     ) ||
     layout.fontFamily !== "Inter" ||
-    layout.fontWeight !== 700 ||
+    ![WALL_TEXT_FONT_WEIGHT, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
+      Number(layout.fontWeight),
+    ) ||
     ![44, 46, 48, 50, 52].includes(Number(layout.fontSizePx)) ||
     typeof layout.lineHeightPx !== "number" ||
     !Array.isArray(layout.blocks) ||
@@ -451,7 +457,7 @@ function getFinalLayout(value: Json) {
     blocks,
     fontFamily: "Inter" as const,
     fontSizePx: Number(layout.fontSizePx) as 44 | 46 | 48 | 50 | 52,
-    fontWeight: 700 as const,
+    fontWeight: WALL_TEXT_FONT_WEIGHT as 600,
     lineHeightPx: layout.lineHeightPx,
     textBox: getTextBoxFromRecord(layout.textBox, "text.finalLayout.textBox"),
     version: isV2

@@ -11,6 +11,7 @@ import {
   Mail,
   Moon,
   Palette,
+  Plug,
   ShieldCheck,
   Sparkles,
   Sun,
@@ -19,7 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import {
   Alert,
@@ -32,13 +33,47 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { InstagramAccountManager } from "@/components/settings/instagram-account-manager";
-import { CarouselAdminSettings } from "@/components/settings/carousel-admin-settings";
 import { AppScreenshotsSettings } from "@/components/settings/app-screenshots-settings";
 import { useTheme } from "@/components/providers/theme-provider";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
+
+const SETTINGS_SECTIONS = [
+  {
+    icon: UserRound,
+    id: "account",
+    label: "Account",
+  },
+  {
+    icon: CreditCard,
+    id: "subscription-billing",
+    label: "Plan & billing",
+  },
+  {
+    icon: Images,
+    id: "app-screenshots",
+    label: "App screenshots",
+  },
+  {
+    icon: Plug,
+    id: "instagram-publishing",
+    label: "Connected accounts",
+  },
+  {
+    icon: Palette,
+    id: "preferences",
+    label: "Preferences",
+  },
+  {
+    icon: ShieldCheck,
+    id: "privacy-data",
+    label: "Privacy & data",
+  },
+] as const;
+
+type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]["id"];
 
 export function SettingsWorkspace() {
   const router = useRouter();
@@ -48,8 +83,34 @@ export function SettingsWorkspace() {
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [isOpeningBilling, setIsOpeningBilling] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] =
+    useState<SettingsSectionId>("account");
   const subscriptionQuery = useBillingSubscription();
   const subscription = subscriptionQuery.data;
+
+  useEffect(() => {
+    function syncSectionFromLocation() {
+      setActiveSection(getSettingsSectionFromHash(window.location.hash));
+    }
+
+    const initialSync = window.setTimeout(syncSectionFromLocation, 0);
+    window.addEventListener("hashchange", syncSectionFromLocation);
+    window.addEventListener("popstate", syncSectionFromLocation);
+
+    return () => {
+      window.clearTimeout(initialSync);
+      window.removeEventListener("hashchange", syncSectionFromLocation);
+      window.removeEventListener("popstate", syncSectionFromLocation);
+    };
+  }, []);
+
+  function selectSection(sectionId: SettingsSectionId) {
+    setActiveSection(sectionId);
+
+    if (window.location.hash !== `#${sectionId}`) {
+      window.history.pushState(null, "", `#${sectionId}`);
+    }
+  }
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -105,26 +166,96 @@ export function SettingsWorkspace() {
   const initials = getInitials(displayName, email);
 
   return (
-    <section className="min-h-dvh min-w-0 flex-1 bg-background px-4 py-5 text-foreground sm:px-6 lg:px-10 lg:py-8">
-      <div className="mx-auto w-full max-w-[1120px]">
-        <header className="border-b border-border pb-6">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
-            Workspace settings
-          </p>
-          <h1 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-foreground-strong sm:text-4xl">
-            Settings
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-muted sm:text-base">
-            Manage your account, Instagram publishing access, and privacy from
-            one place.
-          </p>
-        </header>
+    <section className="min-h-dvh min-w-0 flex-1 bg-background px-3 py-3 text-foreground sm:px-5 sm:py-5 lg:px-8 lg:py-7">
+      <div className="mx-auto w-full max-w-[1180px] overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card md:grid md:min-h-[calc(100dvh-3.5rem)] md:grid-cols-[240px_minmax(0,1fr)]">
+        <aside className="flex min-w-0 flex-col border-b border-border bg-card-muted/35 md:border-b-0 md:border-r">
+          <div className="px-5 pb-3 pt-5 md:px-6 md:pb-5 md:pt-7">
+            <h1 className="text-xs font-bold uppercase tracking-[0.14em] text-muted">
+              Settings
+            </h1>
+          </div>
 
-        <div className="mt-6 flex flex-col gap-5">
+          <nav
+            aria-label="Settings sections"
+            className="flex gap-2 overflow-x-auto px-3 pb-4 md:flex-col md:overflow-visible md:px-3"
+          >
+            {SETTINGS_SECTIONS.map((section) => {
+              const Icon = section.icon;
+              const selected = section.id === activeSection;
+
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  aria-current={selected ? "page" : undefined}
+                  className={cn(
+                    "group relative flex min-h-11 shrink-0 items-center gap-3 rounded-control px-3 py-2.5 text-left text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card-muted md:w-full",
+                    selected
+                      ? "bg-brand-soft text-foreground-strong"
+                      : "text-muted hover:bg-card hover:text-foreground-strong",
+                  )}
+                  onClick={() => selectSection(section.id)}
+                >
+                  <span
+                    className={cn(
+                      "absolute inset-y-2 left-0 hidden w-0.5 rounded-full bg-primary md:block",
+                      selected ? "opacity-100" : "opacity-0",
+                    )}
+                    aria-hidden="true"
+                  />
+                  <Icon
+                    className={cn(
+                      "size-4.5 shrink-0",
+                      selected
+                        ? "text-primary"
+                        : "text-muted-subtle group-hover:text-muted",
+                    )}
+                    aria-hidden="true"
+                  />
+                  <span className="whitespace-nowrap">{section.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="mt-auto hidden border-t border-border p-3 md:block">
+            <Button
+              type="button"
+              variant="ghost"
+              size="lg"
+              onClick={() => void handleSignOut()}
+              disabled={isSigningOut}
+              className="w-full justify-start text-muted hover:text-foreground-strong"
+            >
+              {isSigningOut ? (
+                <LoaderCircle
+                  data-icon="inline-start"
+                  className="animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              ) : (
+                <LogOut data-icon="inline-start" aria-hidden="true" />
+              )}
+              {isSigningOut ? "Signing out…" : "Sign out"}
+            </Button>
+            {signOutError ? (
+              <p
+                className="px-3 pb-1 pt-2 text-xs leading-5 text-error"
+                role="alert"
+              >
+                {signOutError}
+              </p>
+            ) : null}
+          </div>
+        </aside>
+
+        <main className="min-w-0 bg-card px-4 py-5 sm:px-6 sm:py-7 lg:px-9 lg:py-8">
+          {activeSection === "account" ? (
           <SettingsSection
-            description="Your identity, sign-in method, and current session."
+            id="account"
+            description="Review your profile and the sign-in methods connected to your account."
             icon={<UserRound className="size-5" aria-hidden="true" />}
-            title="Account & session"
+            title="Account"
           >
             <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div className="flex min-w-0 items-center gap-3">
@@ -168,24 +299,14 @@ export function SettingsWorkspace() {
               </div>
             </div>
 
-            <Separator />
-
-            <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <div>
-                <p className="text-sm font-bold text-foreground-strong">
-                  Current session
-                </p>
-                <p className="mt-1 text-sm leading-6 text-muted">
-                  Sign out of UGC Pilot on this device.
-                </p>
-              </div>
+            <div className="border-t border-border px-5 py-4 md:hidden">
               <Button
                 type="button"
                 variant="outline"
                 size="lg"
                 onClick={() => void handleSignOut()}
                 disabled={isSigningOut}
-                className="w-full sm:w-auto"
+                className="w-full justify-start"
               >
                 {isSigningOut ? (
                   <LoaderCircle
@@ -198,25 +319,22 @@ export function SettingsWorkspace() {
                 )}
                 {isSigningOut ? "Signing out…" : "Sign out"}
               </Button>
+              {signOutError ? (
+                <p className="pt-2 text-xs leading-5 text-error" role="alert">
+                  {signOutError}
+                </p>
+              ) : null}
             </div>
 
-            {signOutError ? (
-              <div className="px-5 pb-5 sm:px-6">
-                <Alert variant="destructive" aria-live="polite">
-                  <AlertCircle aria-hidden="true" />
-                  <AlertTitle>Sign-out failed</AlertTitle>
-                  <AlertDescription>{signOutError}</AlertDescription>
-                </Alert>
-              </div>
-            ) : null}
           </SettingsSection>
+          ) : null}
 
+          {activeSection === "subscription-billing" ? (
           <SettingsSection
             id="subscription-billing"
             description="Manage your current plan, monthly generation credits, and billing interval."
             icon={<CreditCard className="size-5" aria-hidden="true" />}
-            title="Subscription & billing"
-            accent
+            title="Plan & billing"
           >
             <div className="flex flex-col gap-5 px-5 py-5 sm:px-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -355,11 +473,41 @@ export function SettingsWorkspace() {
               </Link>
             </div>
           </SettingsSection>
+          ) : null}
 
+          {activeSection === "app-screenshots" ? (
           <SettingsSection
-            description="Choose how UGC Pilot looks on this device. New users always start in light mode."
+            id="app-screenshots"
+            description="Manage the real product screens available to eligible Slideshows."
+            icon={<Images className="size-5" aria-hidden="true" />}
+            title="App screenshots"
+          >
+            <AppScreenshotsSettings />
+          </SettingsSection>
+          ) : null}
+
+          {activeSection === "instagram-publishing" ? (
+          <SettingsSection
+            id="instagram-publishing"
+            description="Connect and manage the Instagram accounts available for publishing."
+            icon={
+              <SocialPlatformIcon
+                className="size-5"
+                platform="instagram"
+              />
+            }
+            title="Connected accounts"
+          >
+            <InstagramAccountManager />
+          </SettingsSection>
+          ) : null}
+
+          {activeSection === "preferences" ? (
+          <SettingsSection
+            id="preferences"
+            description="Choose how UGC Pilot looks and behaves on this device."
             icon={<Palette className="size-5" aria-hidden="true" />}
-            title="Appearance"
+            title="Preferences"
           >
             <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div className="flex min-w-0 items-start gap-3">
@@ -406,34 +554,11 @@ export function SettingsWorkspace() {
               </Button>
             </div>
           </SettingsSection>
+          ) : null}
 
+          {activeSection === "privacy-data" ? (
           <SettingsSection
-            id="app-screenshots"
-            description="Keep real product screens ready for Structure 2 carousels."
-            icon={<Images className="size-5" aria-hidden="true" />}
-            title="App screenshots"
-          >
-            <AppScreenshotsSettings />
-          </SettingsSection>
-
-          <SettingsSection
-            id="instagram-publishing"
-            description="The real Instagram account available for scheduled publishing."
-            icon={
-              <SocialPlatformIcon
-                className="size-5"
-                platform="instagram"
-              />
-            }
-            title="Instagram publishing"
-            accent
-          >
-            <InstagramAccountManager />
-          </SettingsSection>
-
-          <CarouselAdminSettings />
-
-          <SettingsSection
+            id="privacy-data"
             description="Review privacy information and request changes to your data."
             icon={<ShieldCheck className="size-5" aria-hidden="true" />}
             title="Privacy & data"
@@ -502,47 +627,39 @@ export function SettingsWorkspace() {
               </div>
             </div>
           </SettingsSection>
-        </div>
+          ) : null}
+        </main>
       </div>
     </section>
   );
 }
 
 function SettingsSection({
-  accent = false,
   children,
   description,
   id,
   icon,
   title,
 }: {
-  accent?: boolean;
   children: ReactNode;
   description: string;
-  id?: string;
+  id: SettingsSectionId;
   icon: ReactNode;
   title: string;
 }) {
   return (
-    <section
-      id={id}
-      className={cn(
-        "relative scroll-mt-6 overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card shadow-card",
-        accent && "border-primary/25",
-      )}
-    >
-      {accent ? (
-        <span
-          className="absolute inset-y-0 left-0 w-1 bg-primary"
-          aria-hidden="true"
-        />
-      ) : null}
+    <section id={id} className="min-w-0" aria-labelledby={`${id}-title`}>
       <header className="flex items-start gap-3 px-5 py-5 sm:px-6">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
           {icon}
         </span>
         <div className="min-w-0">
-          <h2 className="text-base font-bold text-foreground-strong">{title}</h2>
+          <h2
+            id={`${id}-title`}
+            className="text-xl font-bold tracking-[-0.025em] text-foreground-strong"
+          >
+            {title}
+          </h2>
           <p className="mt-1 text-sm leading-6 text-muted">{description}</p>
         </div>
       </header>
@@ -571,4 +688,11 @@ function getProviderLabel(providerId: string) {
   if (providerId === "google.com") return "Google sign-in";
   if (providerId === "password") return "Email sign-in";
   return providerId;
+}
+
+function getSettingsSectionFromHash(hash: string): SettingsSectionId {
+  const sectionId = hash.replace(/^#/, "");
+  const section = SETTINGS_SECTIONS.find((item) => item.id === sectionId);
+
+  return section?.id ?? "account";
 }

@@ -23,6 +23,7 @@ import {
   createWallTextLayout,
   getWallTextZoneBox,
   isEligibleWallTextVideo,
+  MIN_WALL_TEXT_VIDEO_DURATION_SECONDS,
   type WallTextAssetSelectionInput,
 } from "@/lib/trending/wall-text-feed-logic";
 import {
@@ -31,6 +32,10 @@ import {
   type ResolvedWallTextAudioSelection,
 } from "@/lib/trending/wall-audio-db";
 import type { WallTextDuplicateSignature } from "@/lib/trending/wall-text-duplicate-logic";
+import {
+  LEGACY_WALL_TEXT_FONT_WEIGHT,
+  WALL_TEXT_FONT_WEIGHT,
+} from "@/lib/trending/wall-text-visual-style";
 import {
   deriveWallTextPerformanceSignals,
   type WallTextPerformanceSignals,
@@ -498,6 +503,7 @@ export async function listWallTextVideoAssetInventory(
     .eq("analysis_status", "succeeded")
     .eq("wall_text_source_kind", "ugcpilot")
     .not("duration_seconds", "is", null)
+    .gte("duration_seconds", MIN_WALL_TEXT_VIDEO_DURATION_SECONDS)
     .not("preview_url", "is", null)
     .order("usage_count", { ascending: true })
     .order("last_used_at", { ascending: true, nullsFirst: true })
@@ -585,7 +591,7 @@ export async function ensureWallTextOverlayAssetsForMediaAssets(params: {
       asset.status === "ready" &&
       asset.mime_type.startsWith("video/") &&
       typeof asset.duration_seconds === "number" &&
-      asset.duration_seconds > 0 &&
+      asset.duration_seconds >= MIN_WALL_TEXT_VIDEO_DURATION_SECONDS &&
       Boolean(asset.storage_key.trim()) &&
       Boolean(asset.url.trim()),
   );
@@ -656,6 +662,7 @@ export async function listWallTextOverlayAssetsForMediaAssetIds(params: {
     .in("source_media_asset_id", params.mediaAssetIds)
     .eq("status", "active")
     .eq("analysis_status", "succeeded")
+    .gte("duration_seconds", MIN_WALL_TEXT_VIDEO_DURATION_SECONDS)
     .eq("wall_text_source_kind", "creative_asset");
 
   if (error) {
@@ -885,7 +892,8 @@ export async function listWallTextOverlayAssetsByIds(assetIds: string[]) {
     .eq("asset_type", "video")
     .eq("format_family", "wall_text_overlay")
     .eq("status", "active")
-    .eq("analysis_status", "succeeded");
+    .eq("analysis_status", "succeeded")
+    .gte("duration_seconds", MIN_WALL_TEXT_VIDEO_DURATION_SECONDS);
   if (error) {
     throw new Error(`Could not resume Wall-of-text backgrounds: ${error.message}`);
   }
@@ -1862,7 +1870,9 @@ function parseCurrentWallTextContent(
     finalLayout.version !==
       (isV7 ? "wall-text-final-layout-v2" : "wall-text-final-layout-v1") ||
     finalLayout.fontFamily !== "Inter" ||
-    finalLayout.fontWeight !== 700 ||
+    ![WALL_TEXT_FONT_WEIGHT, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
+      Number(finalLayout.fontWeight),
+    ) ||
     ![44, 46, 48, 50, 52].includes(Number(finalLayout.fontSizePx)) ||
     typeof finalLayout.lineHeightPx !== "number" ||
     finalLayout.lineHeightPx <= 0 ||
@@ -1893,13 +1903,18 @@ function parseCurrentWallTextContent(
   });
 
   const lines = blocks.flatMap((block) => block.lines);
+  const normalizedFullText = value.fullText.replace(/\s+/gu, " ").trim();
+  const finalLayoutText = lines.join(" ");
   if (
     blocks.length !== finalLayout.blocks.length ||
     (isV7 &&
       (blocks.length !== 1 ||
         blocks[0]?.role !== "text" ||
         lines.length < 4 ||
-        lines.length > 7))
+        lines.length > 7 ||
+        parsedSource.kind !== "text" ||
+        parsedSource.text !== normalizedFullText ||
+        finalLayoutText !== normalizedFullText))
   ) {
     return null;
   }
@@ -1912,7 +1927,7 @@ function parseCurrentWallTextContent(
       blocks,
       fontFamily: "Inter",
       fontSizePx: Number(finalLayout.fontSizePx) as 44 | 46 | 48 | 50 | 52,
-      fontWeight: 700,
+      fontWeight: WALL_TEXT_FONT_WEIGHT,
       lineHeightPx: finalLayout.lineHeightPx,
       textBox,
       version: isV7
@@ -1920,7 +1935,7 @@ function parseCurrentWallTextContent(
         : "wall-text-final-layout-v1",
     },
     formatId,
-    fullText: value.fullText.replace(/\s+/gu, " ").trim(),
+    fullText: normalizedFullText,
     kind: "wall_text",
     layoutVersion: isV7 ? "wall-text-overlay-v6" : "wall-text-overlay-v5",
     pattern: formatId,

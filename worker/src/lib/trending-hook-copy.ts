@@ -31,7 +31,9 @@ const MAX_HOOK_CHARACTERS = 78;
 const MAX_HOOK_EMOJIS = 2;
 const MAX_EVIDENCE_BINDINGS = 2;
 const MIN_PASSING_SCORE = 80;
-const MAX_REPAIR_ROUNDS = 3;
+// One targeted repair can fix a real publishability failure without repeatedly
+// rewriting the original idea into lower-quality fallback copy.
+const MAX_REPAIR_ROUNDS = 1;
 
 export const TRENDING_HOOK_PROMPT_VERSION =
   "trending-hook-copy-v7";
@@ -483,8 +485,6 @@ export async function generateValidatedTrendingHookCopies(params: {
       ),
       evidenceCatalog,
       model,
-      finalEvidenceRecovery:
-        repairRound === MAX_REPAIR_ROUNDS - 1,
       reviews: finalReviews.filter((review) =>
         failedKeys.includes(review.draftKey),
       ),
@@ -1027,7 +1027,6 @@ async function repairHookDrafts(params: {
   client: StructuredResponseClient;
   drafts: HookDraft[];
   evidenceCatalog: HookEvidenceBinding[];
-  finalEvidenceRecovery: boolean;
   model: string;
   reviews: HookReview[];
   specs: HookDraftSpec[];
@@ -1041,9 +1040,7 @@ async function repairHookDrafts(params: {
     input: {
       businessContext: params.businessContext,
       evidenceCatalog: params.evidenceCatalog,
-      repairMode: params.finalEvidenceRecovery
-        ? "final_evidence_recovery"
-        : "standard",
+      repairMode: "single_targeted_repair",
       policies: getGenerationPolicies(),
       requests: params.specs.map((spec) => ({
         ...toPromptSpec(spec),
@@ -1085,12 +1082,6 @@ async function repairHookDrafts(params: {
       "Use visualFit.lineWidths and visualFit.maximumTextWidth: when a line is too wide, shorten that line decisively. Do not hide the overflow by adding another dense line.",
       "For unsupported_time_or_number, remove every digit, number word, currency, percentage, date, and time-unit word unless it occurs verbatim in the selected evidence and the assigned format requires that evidence. Do not paraphrase it as another numeric or time claim.",
       "For weak_business_grounding, remove invented settings, objects, metaphors, mechanisms, and features. Rebuild the Hook from the supplied audience problem, product summary, value props, or differentiators.",
-      ...(params.finalEvidenceRecovery
-        ? [
-            "This is the final evidence-recovery pass. Use exactly one evidenceKey and keep every meaningful noun, action, problem, and capability close to that evidence text. Do not infer a new setting, behavior, result, comparison, or benefit.",
-            "Prefer one short, natural question or statement over cleverness. It must still fit the assigned format and earn the publishable score without weakening any safety rule.",
-          ]
-        : []),
       "Aim for a genuinely strong result that can earn at least 80/100, not merely a shorter version.",
       "Remove unsupported facts, personal history, numbers, time claims, quotations, and generic marketing language. Preserve permitted rhetorical first-person emotion only when the assigned format allows it. Keep at most two emotionally relevant emojis; remove any emoji that substitutes for evidence or does not match the reaction.",
       "Do not add a demo, CTA, headline/body structure, or any new fact.",

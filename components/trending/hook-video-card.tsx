@@ -78,7 +78,7 @@ export function HookVideoCard({
   return (
     <div
       className={cn(
-        "relative aspect-[9/16] w-full shrink-0 overflow-hidden rounded-[20px] border border-border-strong bg-foreground-strong shadow-[0_12px_32px_rgb(23_23_27_/_0.16)]",
+        "relative aspect-[9/16] w-full shrink-0 overflow-hidden rounded-[20px] border border-border/80 bg-foreground-strong",
         className,
       )}
       style={{

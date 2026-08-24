@@ -27,6 +27,7 @@ export type BackgroundJobStatus =
 
 export type BackgroundJobType =
   | "analytics_sync"
+  | "carousel_content_plan_generation"
   | "carousel_generation"
   | "final_render"
   | "generate_avatar"
@@ -53,6 +54,7 @@ export type BackgroundJobType =
 
 export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
   "analytics_sync",
+  "carousel_content_plan_generation",
   "generate_avatar",
   "generate_carousel",
   "generate_hook_video",
@@ -491,6 +493,9 @@ export type CarouselGenerationRow = {
   content_plan_raw_response: Json | null;
   content_plan_source: string | null;
   content_plan_validation: Json | null;
+  content_plan_id: string | null;
+  content_plan_item_id: string | null;
+  content_plan_reservation_id: string | null;
   content_planner_model: string | null;
   content_planner_version: string | null;
   content_problem_id: string | null;
@@ -522,6 +527,93 @@ export type BusinessProfileCarouselRow = {
   context_json: WebsiteBusinessAnalysis;
   id: string;
   profile_version: number;
+  user_id: string;
+};
+
+export type CarouselContentPlanRow = {
+  activated_at: string | null;
+  business_description: string;
+  business_profile_id: string;
+  business_profile_version: number;
+  created_at: string;
+  exhausted_at: string | null;
+  failed_at: string | null;
+  failure_reason: string | null;
+  generation_completed_at: string | null;
+  generation_job_id: string | null;
+  generation_started_at: string | null;
+  id: string;
+  period_end_date: string;
+  period_start_date: string;
+  plan_version: number;
+  planner_model: string;
+  planner_prompt_version: string;
+  project_id: string;
+  schema_version: number;
+  status: "active" | "exhausted" | "failed" | "generating" | "superseded";
+  superseded_at: string | null;
+  superseded_by_plan_id: string | null;
+  target_item_count: number;
+  timezone: string;
+  updated_at: string;
+  user_id: string;
+};
+
+export type CarouselContentPlanItemRow = {
+  consumed_at: string | null;
+  consumed_by_carousel_generation_id: string | null;
+  created_at: string;
+  creative_seed: string;
+  day_number: number;
+  day_slot_index: number;
+  emotion: string;
+  id: string;
+  plan_id: string;
+  reservation_expires_at: string | null;
+  reservation_key: string | null;
+  reservation_token: string | null;
+  reserved_at: string | null;
+  reserved_by_job_id: string | null;
+  retired_at: string | null;
+  retirement_reason: string | null;
+  seed_fingerprint: string;
+  sequence_index: number;
+  status: "available" | "consumed" | "planned" | "reserved" | "retired";
+  updated_at: string;
+  user_id: string;
+};
+
+export type CarouselContentPlanItemInsert = Pick<
+  CarouselContentPlanItemRow,
+  | "creative_seed"
+  | "day_number"
+  | "day_slot_index"
+  | "emotion"
+  | "plan_id"
+  | "seed_fingerprint"
+  | "sequence_index"
+  | "user_id"
+> & { status?: "planned" };
+
+export type CarouselContentPlanReservationRow = {
+  completed_at: string | null;
+  consumed_count: number;
+  created_at: string;
+  expires_at: string;
+  id: string;
+  plan_id: string;
+  release_reason: string | null;
+  released_at: string | null;
+  requested_count: number;
+  reservation_key: string;
+  status:
+    | "active"
+    | "completed"
+    | "expired"
+    | "expired_partial"
+    | "released"
+    | "released_partial";
+  updated_at: string;
   user_id: string;
 };
 
@@ -751,6 +843,29 @@ export type SocialConnectionRow = {
   user_id: string;
 };
 
+export type InstagramAnalyticsContentInsert = {
+  account_name: string | null;
+  account_username: string | null;
+  caption: string | null;
+  comments: number | null;
+  content_type: "carousel" | "post" | "reel";
+  interactions: number | null;
+  last_sync_error: string | null;
+  likes: number | null;
+  media_type: string | null;
+  metrics_synced_at: string | null;
+  permalink: string | null;
+  platform_media_id: string;
+  published_at: string;
+  reach: number | null;
+  saves: number | null;
+  shares: number | null;
+  social_connection_id: string;
+  thumbnail_url: string | null;
+  user_id: string;
+  views: number | null;
+};
+
 export type BackgroundJobsDatabase = {
   public: {
     Functions: {
@@ -806,6 +921,23 @@ export type BackgroundJobsDatabase = {
         };
         Returns: BackgroundJobRow[];
       };
+      complete_carousel_content_plan_generation: {
+        Args: {
+          p_job_id: string;
+          p_plan_id: string;
+          p_user_id: string;
+        };
+        Returns: CarouselContentPlanRow;
+      };
+      consume_carousel_content_plan_item: {
+        Args: {
+          p_carousel_generation_id: string;
+          p_plan_item_id: string;
+          p_reservation_token: string;
+          p_user_id: string;
+        };
+        Returns: CarouselContentPlanItemRow;
+      };
       finalize_edit_render: {
         Args: {
           p_error_message: string | null;
@@ -852,6 +984,14 @@ export type BackgroundJobsDatabase = {
           p_user_id: string;
         };
         Returns: boolean;
+      };
+      release_carousel_content_plan_reservation: {
+        Args: {
+          p_release_reason: string;
+          p_reservation_key: string;
+          p_user_id: string;
+        };
+        Returns: number;
       };
       increment_category_image_asset_usage: {
         Args: { asset_ids: string[] };
@@ -1005,6 +1145,24 @@ export type BackgroundJobsDatabase = {
         Row: BusinessProfileCarouselRow;
         Update: Record<string, never>;
       };
+      carousel_content_plan_items: {
+        Insert: CarouselContentPlanItemInsert;
+        Relationships: [];
+        Row: CarouselContentPlanItemRow;
+        Update: Partial<CarouselContentPlanItemRow>;
+      };
+      carousel_content_plans: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: CarouselContentPlanRow;
+        Update: Partial<CarouselContentPlanRow>;
+      };
+      carousel_content_plan_reservations: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: CarouselContentPlanReservationRow;
+        Update: Partial<CarouselContentPlanReservationRow>;
+      };
       carousel_global_settings: {
         Insert: Record<string, never>;
         Relationships: [];
@@ -1090,6 +1248,15 @@ export type BackgroundJobsDatabase = {
           user_id: string;
         };
         Update: HookVideoDraftRenderUpdate;
+      };
+      instagram_analytics_content: {
+        Insert: InstagramAnalyticsContentInsert;
+        Relationships: [];
+        Row: InstagramAnalyticsContentInsert & {
+          created_at: string;
+          updated_at: string;
+        };
+        Update: Partial<InstagramAnalyticsContentInsert>;
       };
       user_wall_text_assignments: {
         Insert: Record<string, never>;

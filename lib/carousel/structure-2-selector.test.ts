@@ -186,7 +186,6 @@ test("keeps compact Structure 2 history and normalizes turns_out", () => {
     centralProblem: ` Problem ${index} `,
     ctaAngle: ` CTA ${index} `,
     hookIdea: ` Hook ${index} `,
-    productMechanism: ` Mechanism ${index} `,
     storyAngle: ` Angle ${index} `,
     storyFormatId: index === 0 ? "turns_out" : "wrong_belief",
     summary: ` Summary ${index} `,

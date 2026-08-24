@@ -7,6 +7,7 @@ import {
 
 export const DEFAULT_TRENDING_WALL_TEXT_CANDIDATES = 6;
 export const MAX_TRENDING_WALL_TEXT_CANDIDATES = 50;
+export const MIN_WALL_TEXT_VIDEO_DURATION_SECONDS = 6;
 export const MAX_WALL_TEXT_VIDEO_DURATION_SECONDS = 60;
 
 export type WallTextAssetSelectionInput = {
@@ -116,7 +117,7 @@ export function isRenderableWallTextDuration(
   return (
     typeof durationSeconds === "number" &&
     Number.isFinite(durationSeconds) &&
-    durationSeconds > 0 &&
+    durationSeconds >= MIN_WALL_TEXT_VIDEO_DURATION_SECONDS &&
     durationSeconds <= MAX_WALL_TEXT_VIDEO_DURATION_SECONDS
   );
 }

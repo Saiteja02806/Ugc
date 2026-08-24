@@ -30,6 +30,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -77,7 +78,7 @@ import {
   type InstagramContentSort,
   type InstagramContentType,
 } from "@/lib/analytics/instagram-content-insights";
-import { runAnalyticsBackgroundSync } from "@/lib/analytics/background-sync-client";
+import { loadInstagramAnalyticsQuery } from "@/lib/analytics/instagram-query";
 import { useAuth } from "@/contexts/auth-context";
 import {
   getInstagramPerformanceTrendMode,
@@ -101,6 +102,7 @@ type PerformanceMetric = "interactions" | "reach" | "views";
 
 type InstagramInsightsResponse = {
   accounts?: InstagramInsightsAccount[];
+  days?: DateRangeDays;
   message?: string;
   ok?: boolean;
 };
@@ -114,6 +116,7 @@ type InstagramInsightsResult = {
 
 type InstagramContentResponse = {
   accounts?: InstagramContentAccount[];
+  days?: DateRangeDays;
   message?: string;
   ok?: boolean;
 };
@@ -211,10 +214,12 @@ export function InstagramAnalyticsWorkspace() {
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [schedules, setSchedules] = useState<ScheduledPost[]>([]);
   const [dateRangeDays, setDateRangeDays] = useState<DateRangeDays>(30);
+  const activeDateRangeRef = useRef<DateRangeDays>(dateRangeDays);
   const [performanceMetric, setPerformanceMetric] =
     useState<PerformanceMetric>("views");
   const [loadState, setLoadState] =
     useState<AnalyticsLoadState>("loading");
+  const [refreshInProgress, setRefreshInProgress] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [insightsResult, setInsightsResult] =
     useState<InstagramInsightsResult>({
@@ -230,6 +235,10 @@ export function InstagramAnalyticsWorkspace() {
       message: null,
       state: "loading",
     });
+
+  useEffect(() => {
+    activeDateRangeRef.current = dateRangeDays;
+  }, [dateRangeDays]);
 
   const loadAnalytics = useCallback(async (
     signal?: AbortSignal,
@@ -256,10 +265,11 @@ export function InstagramAnalyticsWorkspace() {
         return;
       }
 
-      setInsightsResult((current) => ({
-        ...current,
-        state: "loading",
-      }));
+      setInsightsResult((current) =>
+        current.days === dateRangeDays && current.accounts.length > 0
+          ? current
+          : { ...current, state: "loading" },
+      );
       const [
         loadedConnections,
         loadedSchedules,
@@ -273,12 +283,35 @@ export function InstagramAnalyticsWorkspace() {
           force: Boolean(idempotencyKey),
           token,
         }),
-        runAnalyticsBackgroundSync({
-          body: { days: dateRangeDays },
+        loadInstagramAnalyticsQuery({
+          accountId,
+          days: dateRangeDays,
+          force: Boolean(idempotencyKey),
           idempotencyKey,
-          signal,
+          kind: "insights",
+          onBackgroundError: (error) => {
+            setInsightsResult((current) => ({
+              ...current,
+              message: error.message,
+            }));
+          },
+          onBackgroundOutput: (output) => {
+            const refreshed = output as InstagramInsightsResponse | null;
+
+            if (
+              refreshed?.accounts &&
+              refreshed.days === activeDateRangeRef.current
+            ) {
+              setInsightsResult({
+                accounts: refreshed.accounts,
+                days: dateRangeDays,
+                message: refreshed.message ?? null,
+                state: "ready",
+              });
+            }
+          },
+          queryClient,
           token,
-          url: "/api/analytics/instagram/insights",
         }),
       ]);
       const insightsData =
@@ -348,16 +381,41 @@ export function InstagramAnalyticsWorkspace() {
           return;
         }
 
-        setContentResult((current) => ({
-          ...current,
-          state: "loading",
-        }));
-        const output = await runAnalyticsBackgroundSync({
-          body: { days: dateRangeDays },
+        setContentResult((current) =>
+          current.days === dateRangeDays && current.accounts.length > 0
+            ? current
+            : { ...current, state: "loading" },
+        );
+        const output = await loadInstagramAnalyticsQuery({
+          accountId,
+          days: dateRangeDays,
+          force: Boolean(idempotencyKey),
           idempotencyKey,
-          signal,
+          kind: "content",
+          onBackgroundError: (error) => {
+            setContentResult((current) => ({
+              ...current,
+              message: error.message,
+            }));
+          },
+          onBackgroundOutput: (backgroundOutput) => {
+            const refreshed =
+              backgroundOutput as InstagramContentResponse | null;
+
+            if (
+              refreshed?.accounts &&
+              refreshed.days === activeDateRangeRef.current
+            ) {
+              setContentResult({
+                accounts: refreshed.accounts,
+                days: dateRangeDays,
+                message: refreshed.message ?? null,
+                state: "ready",
+              });
+            }
+          },
+          queryClient,
           token,
-          url: "/api/analytics/instagram/content",
         });
         const data = output as InstagramContentResponse | null;
 
@@ -387,7 +445,7 @@ export function InstagramAnalyticsWorkspace() {
         });
       }
     },
-    [dateRangeDays],
+    [accountId, dateRangeDays, queryClient],
   );
 
   useEffect(() => {
@@ -405,10 +463,12 @@ export function InstagramAnalyticsWorkspace() {
 
   const retryAnalytics = useCallback(() => {
     setErrorMessage(null);
-    setLoadState("loading");
+    setRefreshInProgress(true);
     const refreshKey = crypto.randomUUID();
-    void loadAnalytics(undefined, refreshKey);
-    void loadContentPerformance(undefined, refreshKey);
+    void Promise.all([
+      loadAnalytics(undefined, refreshKey),
+      loadContentPerformance(undefined, refreshKey),
+    ]).finally(() => setRefreshInProgress(false));
   }, [loadAnalytics, loadContentPerformance]);
 
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>("all");
@@ -500,7 +560,10 @@ export function InstagramAnalyticsWorkspace() {
     contentResult.state === "loading" ||
     contentResult.days !== dateRangeDays;
   const refreshing =
-    loadState === "loading" || insightsLoading || contentLoading;
+    refreshInProgress ||
+    loadState === "loading" ||
+    insightsLoading ||
+    contentLoading;
 
   return (
     <section className="min-h-dvh min-w-0 flex-1 bg-background px-4 py-5 text-foreground sm:px-6 lg:px-10 lg:py-8">
@@ -1243,22 +1306,24 @@ function InstagramPerformanceTrendChart({
               />
             </linearGradient>
           </defs>
-          {[0, 0.25, 0.5, 0.75, 1].map((step) => {
-            const y = paddingTop + step * drawableHeight;
+          {hasData
+            ? [0, 0.25, 0.5, 0.75, 1].map((step) => {
+                const y = paddingTop + step * drawableHeight;
 
-            return (
-              <line
-                key={step}
-                stroke="rgb(56 56 56)"
-                strokeDasharray={step === 1 ? "0" : "4 8"}
-                strokeWidth="1"
-                x1={paddingX}
-                x2={chartWidth - paddingX}
-                y1={y}
-                y2={y}
-              />
-            );
-          })}
+                return (
+                  <line
+                    key={step}
+                    stroke="rgb(56 56 56)"
+                    strokeDasharray={step === 1 ? "0" : "4 8"}
+                    strokeWidth="1"
+                    x1={paddingX}
+                    x2={chartWidth - paddingX}
+                    y1={y}
+                    y2={y}
+                  />
+                );
+              })
+            : null}
           {segments.map((segment) => {
             const linePath = buildSmoothPath(segment);
             const areaPath =

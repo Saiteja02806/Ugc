@@ -43,6 +43,21 @@ export function classifyCarouselRoleSourcePath(sourceRoot, filePath) {
   const segments = relativePath.split(path.sep);
   const firstSegment = segments[0]?.trim() ?? "";
   const firstNormalized = normalizeFolderName(firstSegment);
+  const nestedHumanHook = resolveNestedHumanHookSource(
+    segments.map(normalizeFolderName),
+  );
+
+  if (nestedHumanHook) {
+    return {
+      bucket: `${nestedHumanHook.category}_hook`,
+      category: nestedHumanHook.category,
+      relativePath: toPosixPath(relativePath),
+      role: "hook",
+      sourceBatch: "part-2",
+      status: "included",
+    };
+  }
+
   const isStagingFolder = firstNormalized === "not_been";
   const isPartFolder = /^part_\d+(?:\.\d+)*$/.test(firstNormalized);
   const bucketSegment = isStagingFolder || isPartFolder ? segments[1] : segments[0];
@@ -83,6 +98,26 @@ export function classifyCarouselRoleSourcePath(sourceRoot, filePath) {
         : "power",
     status: "included",
   };
+}
+
+function resolveNestedHumanHookSource(segments) {
+  if (
+    segments[0] === "gym_part2" &&
+    segments[1] === "human_hook" &&
+    segments.length >= 3
+  ) {
+    return { category: "gym" };
+  }
+
+  if (
+    /^productivity_humanhookpart_?2$/.test(segments[0] ?? "") &&
+    segments[1] === "human" &&
+    segments.length >= 3
+  ) {
+    return { category: "productivity" };
+  }
+
+  return null;
 }
 
 export function selectExactDuplicateWinners(records) {

@@ -17,6 +17,7 @@ import {
   createHookTextLayout,
   getDefaultHookTextPosition,
   HOOK_TEXT_MAXIMUM_CHARACTERS,
+  HOOK_TEXT_LAYOUT_VERSION,
 } from "./hook-text-layout.ts";
 import { validateWallTextContent } from "./wall-text-text-logic.ts";
 import type { TrendingWallTextContent } from "./wall-text-types.ts";
@@ -137,6 +138,7 @@ test("Hook edits recalculate their final lines, font, and safe position", () => 
 
   assert.equal(edited.lines.length, 3);
   assert.equal(edited.fontSize, layout.fontSize);
+  assert.equal(layout.version, HOOK_TEXT_LAYOUT_VERSION);
   assert.equal(edited.textColor, "#ffffff");
   assert.ok(edited.position.x >= layout.positionBounds.minX);
   assert.ok(edited.position.y >= layout.positionBounds.minY);
@@ -186,6 +188,49 @@ test("Hook editor changes preserve user-controlled line breaks", () => {
     "shouldn't interrupt",
     "your whole day",
   ]);
+});
+
+test("Hook layouts fail closed when saved lines or font metadata change", () => {
+  assert.throws(
+    () =>
+      createHookTextLayout("The original Hook copy", {
+        fontSize: 60,
+        lines: ["Different Hook copy"],
+      }),
+    /saved Hook lines do not match/,
+  );
+  assert.throws(
+    () =>
+      createHookTextLayout("The original Hook copy", {
+        fontSize: 55,
+        lines: ["The original Hook copy"],
+      }),
+    /even number from 34 to 60/,
+  );
+});
+
+test("invalid in-progress Hook edits are preserved instead of sliced", () => {
+  const current = {
+    fontSize: 52,
+    format: "hook_video" as const,
+    hookText: "Old Hook copy",
+    lines: ["Old Hook copy"],
+    position: { x: 0.5, y: 0.15 },
+    textColor: "#ffffff" as const,
+    version: "trending-creative-edit-v1" as const,
+  };
+  const edited = createHookEditContent("One\nTwo\nThree\nFour", current);
+
+  assert.equal(edited.hookText, "One\nTwo\nThree\nFour");
+  assert.deepEqual(edited.lines, ["One", "Two", "Three", "Four"]);
+  assert.throws(
+    () =>
+      createHookTextLayout(edited.hookText, {
+        fontSize: edited.fontSize,
+        lines: edited.lines,
+      }),
+    /3 lines/,
+  );
 });
 
 test("Hook save validation rejects word and character limit violations", () => {

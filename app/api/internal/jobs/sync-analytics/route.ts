@@ -5,6 +5,8 @@ import {
   type InstagramInsightsRangeDays,
 } from "@/lib/analytics/instagram";
 import { listInstagramContentInsightsForOwner } from "@/lib/analytics/instagram-content";
+import { enqueueAnalyticsSyncJob } from "@/lib/analytics/jobs";
+import { getInstagramContentSnapshotForOwner } from "@/lib/analytics/instagram-snapshots";
 import { listTikTokPublicVideoAnalyticsForOwner } from "@/lib/analytics/tiktok";
 import { recordInstagramCarouselPerformance } from "@/lib/carousel/performance";
 import { getBackgroundJobById, type Json } from "@/lib/jobs/background-jobs";
@@ -104,6 +106,32 @@ export async function POST(request: Request) {
     if (input.operation === "instagram_content") {
       const accounts = await listInstagramContentInsightsForOwner({
         days: days as InstagramInsightsRangeDays,
+        force: input.force === true,
+        userId,
+      });
+
+      // Attribution is a durable follow-up. Analytics snapshots are returned
+      // immediately instead of waiting for Hook, Carousel, and Wall writes.
+      try {
+        await enqueueAnalyticsSyncJob({
+          days: days as InstagramInsightsRangeDays,
+          idempotencyKey: `content-job:${job.id}`,
+          operation: "instagram_attribution",
+          userId,
+        });
+      } catch (error) {
+        console.error(
+          "Instagram analytics persisted, but attribution could not be queued:",
+          error,
+        );
+      }
+
+      return json({ accounts, days, ok: true, operation: input.operation });
+    }
+
+    if (input.operation === "instagram_attribution") {
+      const { accounts } = await getInstagramContentSnapshotForOwner({
+        days: days as InstagramInsightsRangeDays,
         userId,
       });
 
@@ -119,7 +147,7 @@ export async function POST(request: Request) {
         ),
       ]);
 
-      return json({ accounts, days, ok: true, operation: input.operation });
+      return json({ days, ok: true, operation: input.operation });
     }
 
     return json({ error: "Unsupported analytics operation.", ok: false }, 400);

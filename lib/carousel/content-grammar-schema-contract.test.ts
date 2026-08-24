@@ -104,13 +104,15 @@ test("automatic generation persists controlled five-item batches before one batc
 
   assert.match(appGenerator, /contentFormatId: generation\.contentFormatId/);
   assert.match(appGenerator, /getBusinessProfileForUser/);
-  assert.match(appGenerator, /listCarouselBatchContentHistory/);
-  assert.match(appGenerator, /analysis: businessAnalysis/);
+  assert.match(appGenerator, /getCarouselCreativeBriefForGeneration/);
+  assert.match(appGenerator, /listRecentAcceptedCarouselCopy/);
+  assert.match(appGenerator, /businessDescription: creativeBrief\.businessDescription/);
   assert.match(appGenerator, /recentHistory,/);
   assert.match(workerGenerator, /contentFormatId: generation\.content_format_id/);
   assert.match(workerGenerator, /getBusinessProfileForCarousel/);
-  assert.match(workerGenerator, /listCarouselBatchContentHistory/);
-  assert.match(workerGenerator, /analysis: businessAnalysis/);
+  assert.match(workerGenerator, /getCarouselCreativeBrief/);
+  assert.match(workerGenerator, /listRecentAcceptedCarouselCopy/);
+  assert.match(workerGenerator, /businessDescription,/);
   assert.match(workerGenerator, /recentHistory,/);
   assert.match(
     workerStore,

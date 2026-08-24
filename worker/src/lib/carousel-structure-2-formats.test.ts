@@ -31,10 +31,13 @@ test("defines exactly the eight canonical Structure 2 formats", () => {
     ).size,
     8,
   );
-  assert.equal(CAROUSEL_STRUCTURE_2_FORMATS_VERSION, "carousel-structure-2-formats-v1");
+  assert.equal(
+    CAROUSEL_STRUCTURE_2_FORMATS_VERSION,
+    "carousel-structure-2-formats-v2-flexible-flow",
+  );
   assert.equal(
     CAROUSEL_STRUCTURE_2_BACKBONE_VERSION,
-    "carousel-structure-2-story-backbone-v1",
+    "carousel-structure-2-story-reference-v2",
   );
 });
 
@@ -55,7 +58,7 @@ test("keeps turns_out as an alias instead of creating a ninth format", () => {
   );
 });
 
-test("locks the same five-slide story backbone for all eight formats", () => {
+test("keeps five-role references while allowing format-specific story flow", () => {
   for (const format of CAROUSEL_STRUCTURE_2_FORMAT_LIBRARY.formats) {
     assert.deepEqual(
       format.slides.map((slide) => slide.storyRole),
@@ -83,5 +86,15 @@ test("locks the same five-slide story backbone for all eight formats", () => {
         [18, 32],
       ],
     );
+    assert.ok(format.allowedCtaPositions.length > 0);
+    assert.ok(format.exampleFlows.length > 0);
+
+    for (const flow of format.exampleFlows) {
+      assert.equal(flow.length, 5);
+      assert.deepEqual(
+        [...new Set(flow)].sort(),
+        [...CAROUSEL_STRUCTURE_2_STORY_ROLES].sort(),
+      );
+    }
   }
 });

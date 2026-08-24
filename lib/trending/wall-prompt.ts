@@ -2,6 +2,9 @@ import type { WallTextBusinessContext } from "./wall-text-text-logic";
 import { getWallTextFormat } from "./wall-formats";
 import type { WallTextFormatId } from "./wall-text-types";
 
+export const WALL_TEXT_PROMPT_VERSION =
+  "wall-text-writer-prompt-v8-spatial-fit" as const;
+
 export type WallTextPromptCandidate = {
   assignedFormatId: WallTextFormatId;
   candidateIndex: number;
@@ -26,7 +29,7 @@ const GLOBAL_WALL_RULES = [
   "Make every candidate a distinct idea with a distinct opening.",
   "For a community prompt, stop immediately after one clear question.",
   "Return one continuous message per candidate: no title, bullets, list object, sections, or visual line breaks.",
-  "Before answering, silently self-check grammar, completeness, unsupported claims, calls to action, assigned format, and word limit inside this same request.",
+  "Before answering, silently self-check grammar, completeness, unsupported claims, calls to action, assigned format, and the absolute safety ceiling inside this same request.",
 ] as const;
 
 export function buildWallTextGenerationPrompt(params: {
@@ -66,7 +69,7 @@ export function buildWallTextGenerationPrompt(params: {
     "BUSINESS PROFILE",
     JSON.stringify(params.business, null, 2),
     "",
-    "CANDIDATES AND CODE-DERIVED READABILITY BUDGETS",
+    "CANDIDATES: SOFT COPY TARGETS AND ABSOLUTE SAFETY CEILINGS",
     JSON.stringify(candidates, null, 2),
     "",
     "APPROVED WALL FORMATS",
@@ -77,7 +80,7 @@ export function buildWallTextGenerationPrompt(params: {
     "",
     "TASK",
     "For each candidate, use its assignedFormatId and return only candidateIndex plus one complete text string.",
-    "Aim for targetWords and never exceed maxWords.",
+    "Treat targetWords as a soft writing target, not a required minimum. maxWords is only the absolute safety ceiling; the layout engine will decide final acceptance from measured 4-7 line fit.",
     "A referenceTextForThisCandidateOnly belongs only to that candidate. Use it only as structural and emotional inspiration, adapt it to the Business Profile, and do not copy its wording.",
     "Reference text is not evidence. Never repeat its numbers, psychology statements, factual claims, product names, or promises unless the Business Profile independently supports them.",
     "Return exactly one result for every candidate. Do not return formatId, duration, coordinates, or final visual lines.",

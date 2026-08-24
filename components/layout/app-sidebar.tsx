@@ -24,13 +24,11 @@ import {
 import { DiscordIcon } from "@/components/icons/discord-icon";
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
-import { useViralReviewerAccess } from "@/components/viral/use-viral-reviewer-access";
 import { cn } from "@/lib/utils";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 
 export type AppSidebarActiveKey =
   | "trending"
-  | "viral"
   | "ai-studio"
   | "library"
   | "avatars"
@@ -43,7 +41,6 @@ type SidebarItem = {
   icon: SidebarIconName;
   key: AppSidebarActiveKey;
   label: string;
-  reviewerOnly?: boolean;
 };
 
 const primaryNavigationItems: SidebarItem[] = [
@@ -70,13 +67,6 @@ const primaryNavigationItems: SidebarItem[] = [
     label: "Analytics",
     href: "/analytics",
     icon: "analytics",
-  },
-  {
-    key: "viral",
-    label: "Explore",
-    href: "/viral",
-    icon: "viral",
-    reviewerOnly: true,
   },
 ];
 
@@ -106,9 +96,6 @@ export function AppSidebar({
   defaultCollapsed?: boolean;
 }) {
   const { user } = useAuth();
-  const viralReviewerAccessState = useViralReviewerAccess({
-    authorizedByParent: activeKey === "viral",
-  });
   const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
   const mobileNavigationId = useId();
   const mobileNavigationRef = useRef<HTMLElement>(null);
@@ -222,12 +209,11 @@ export function AppSidebar({
         <SidebarNavigation
           activeKey={activeKey}
           collapsed={collapsed}
-          showReviewerOnlyItems={viralReviewerAccessState === "reviewer"}
         />
 
         <SidebarDiscordLink collapsed={collapsed} />
 
-        <SidebarPlanCreditsWidget collapsed={collapsed} />
+        {collapsed ? null : <SidebarPlanCreditsWidget />}
 
         <AccountSection
           active={activeKey === "settings"}
@@ -274,12 +260,11 @@ export function AppSidebar({
             <SidebarNavigation
               activeKey={activeKey}
               onNavigate={() => setIsMobileNavigationOpen(false)}
-              showReviewerOnlyItems={viralReviewerAccessState === "reviewer"}
             />
 
             <SidebarDiscordLink collapsed={false} />
 
-            <SidebarPlanCreditsWidget collapsed={false} />
+            <SidebarPlanCreditsWidget />
 
             <AccountSection
               active={activeKey === "settings"}
@@ -365,12 +350,10 @@ function SidebarNavigation({
   activeKey,
   collapsed = false,
   onNavigate,
-  showReviewerOnlyItems = false,
 }: {
   activeKey: AppSidebarActiveKey;
   collapsed?: boolean;
   onNavigate?: () => void;
-  showReviewerOnlyItems?: boolean;
 }) {
   return (
     <nav
@@ -382,17 +365,15 @@ function SidebarNavigation({
       )}
     >
       <div className="flex flex-col gap-1">
-        {primaryNavigationItems
-          .filter((item) => !item.reviewerOnly || showReviewerOnlyItems)
-          .map((item) => (
-            <SidebarLink
-              key={item.key}
-              active={item.key === activeKey}
-              collapsed={collapsed}
-              item={item}
-              onNavigate={onNavigate}
-            />
-          ))}
+        {primaryNavigationItems.map((item) => (
+          <SidebarLink
+            key={item.key}
+            active={item.key === activeKey}
+            collapsed={collapsed}
+            item={item}
+            onNavigate={onNavigate}
+          />
+        ))}
       </div>
 
       <div className={cn(collapsed ? "mt-3.5" : "mt-5")}>
@@ -632,8 +613,7 @@ function SidebarDiscordLink({ collapsed = false }: { collapsed?: boolean }) {
   );
 }
 
-function SidebarPlanCreditsWidget({ collapsed = false }: { collapsed?: boolean }) {
-  const tooltipId = useId();
+function SidebarPlanCreditsWidget() {
   const subscriptionQuery = useBillingSubscription();
   const subscription = subscriptionQuery.data;
 
@@ -652,30 +632,6 @@ function SidebarPlanCreditsWidget({ collapsed = false }: { collapsed?: boolean }
   const creditsLimit = subscription?.sharedMonthlyCredits ?? 0;
   const billingHref = "/pricing";
   const actionLabel = "Upgrade";
-
-  if (collapsed) {
-    return (
-      <div className="mb-2 flex justify-center">
-        <Link
-          href={billingHref}
-          aria-describedby={tooltipId}
-          aria-label={`${planLabel} plan, ${creditsRemaining} credits remaining, ${actionLabel}`}
-          className="group/credit-badge relative flex size-10 items-center justify-center rounded-control text-primary transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        >
-          <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
-            Free
-          </span>
-          <span
-            id={tooltipId}
-            role="tooltip"
-            className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 group-hover/credit-badge:visible group-hover/credit-badge:opacity-100"
-          >
-            {planLabel} plan · {creditsRemaining} credits · {actionLabel}
-          </span>
-        </Link>
-      </div>
-    );
-  }
 
   return (
     <div className="mx-2.5 mb-2 rounded-xl border border-border/80 bg-card-muted/60 p-2.5 backdrop-blur-xs">

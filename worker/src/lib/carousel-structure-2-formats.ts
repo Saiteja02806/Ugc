@@ -47,6 +47,8 @@ export type CarouselStructure2SlideDefinition = {
 
 export type CarouselStructure2FormatDefinition = {
   aliases: string[];
+  allowedCtaPositions: number[];
+  exampleFlows: CarouselStructure2StoryRole[][];
   generationRules: string[];
   id: CarouselStructure2FormatId;
   name: string;
@@ -164,17 +166,18 @@ function parseFormat(value: unknown, index: number) {
     parseSlide(slide, id, slideIndex),
   );
 
-  for (const [slideIndex, expectedRole] of
-    CAROUSEL_STRUCTURE_2_STORY_ROLES.entries()) {
-    if (slides[slideIndex]?.storyRole !== expectedRole) {
-      throw new Error(
-        `${id} slide ${slideIndex + 1} must use story role ${expectedRole}.`,
-      );
-    }
-  }
+  const allowedCtaPositions = getIntegerArray(
+    record.allowedCtaPositions,
+    `${id} allowed CTA positions`,
+    1,
+    5,
+  );
+  const exampleFlows = getStoryRoleFlows(record.exampleFlows, id);
 
   return {
     aliases: getOptionalStringArray(record.aliases, `${id} aliases`),
+    allowedCtaPositions,
+    exampleFlows,
     generationRules: getRequiredStringArray(
       record.generationRules,
       `${id} generation rules`,
@@ -386,4 +389,47 @@ function getNumber(
   }
 
   return value;
+}
+
+function getIntegerArray(
+  value: unknown,
+  label: string,
+  minimum: number,
+  maximum: number,
+) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error(`${label} must be a non-empty integer array.`);
+  }
+
+  const result = value.map((item, index) =>
+    getInteger(item, `${label} item ${index + 1}`, minimum, maximum),
+  );
+
+  if (new Set(result).size !== result.length) {
+    throw new Error(`${label} must not contain duplicates.`);
+  }
+
+  return result;
+}
+
+function getStoryRoleFlows(value: unknown, formatId: CarouselStructure2FormatId) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error(`${formatId} exampleFlows must be a non-empty array.`);
+  }
+
+  return value.map((flow, flowIndex) => {
+    if (!Array.isArray(flow) || flow.length !== 5) {
+      throw new Error(`${formatId} example flow ${flowIndex + 1} must contain five roles.`);
+    }
+
+    return flow.map((role, roleIndex) => {
+      if (typeof role !== "string" || !STORY_ROLES.has(role)) {
+        throw new Error(
+          `${formatId} example flow ${flowIndex + 1} role ${roleIndex + 1} is invalid.`,
+        );
+      }
+
+      return role as CarouselStructure2StoryRole;
+    });
+  });
 }

@@ -11,6 +11,9 @@ const imageWorkspace = readProjectFile(
 const studioWorkspace = readProjectFile(
   "components/generation/ai-studio-workspace.tsx",
 );
+const referenceUploader = readProjectFile(
+  "components/generation/reference-media-upload.tsx",
+);
 const resultSurface = readProjectFile(
   "components/generation/ai-studio-results.tsx",
 );
@@ -87,23 +90,19 @@ test("image and video controls send selected settings to generation APIs", () =>
   assert.match(videoWorkspace, /ariaLabel="Number of videos"/);
 });
 
-test("video reference images start empty without exposing creator video folders", () => {
-  assert.match(videoWorkspace, /: null,\s*\);/);
-  assert.match(videoWorkspace, /function ReferenceImagePicker/);
-  assert.match(videoWorkspace, /referenceImages=\{avatarOptions\}/);
-  assert.match(videoWorkspace, /Choose a reference image/);
-  assert.match(videoWorkspace, /Choose reference image \$\{index \+ 1\}/);
+test("video references start empty without exposing competing pickers", () => {
+  assert.match(videoWorkspace, /useState<AIStudioReferenceMedia \| null>\(null\)/);
+  assert.doesNotMatch(videoWorkspace, /function ReferenceImagePicker/);
+  assert.doesNotMatch(videoWorkspace, /Optional reference/);
   assert.doesNotMatch(videoWorkspace, /groupAvatarsByCreator/);
   assert.doesNotMatch(videoWorkspace, /function AvatarFolderGroup/);
   assert.doesNotMatch(videoWorkspace, /Open a creator folder/);
   assert.doesNotMatch(videoWorkspace, /Choose optional source video/);
   assert.doesNotMatch(
     videoWorkspace,
-    /: nextPersonalAssets\[0\]\?\.id \?\?\s*nextAvatarLibrary\[0\]\?\.asset\.id/,
+    /Choose optional reference image/,
   );
-  assert.match(videoWorkspace, /No reference image/);
   assert.doesNotMatch(videoWorkspace, /No reference video/);
-  assert.match(videoWorkspace, /Generate directly from your prompt/);
   assert.match(
     videoWorkspace,
     /avatarImageUrl: activeReferenceImageUrl/,
@@ -132,11 +131,20 @@ test("AI Studio supports optional direct image and video reference uploads", () 
   assert.match(videoWorkspace, /allowedKinds=\{\["image", "video"\]\}/);
   assert.match(videoWorkspace, /referenceVideoUrl: uploadedReferenceVideo\?\.asset\.url \?\? null/);
   assert.match(videoWorkspace, /referenceVideoDurationSeconds:/);
-  assert.match(videoWorkspace, /setSelectedAvatarId\(null\)/);
   assert.match(
     videoWorkspace,
     /generateDisabled=\{\s*generationLocked \|\|\s*!prompt\.trim\(\) \|\|\s*isGenerating\s*\}/,
   );
+});
+
+test("image and video use one compact leading attachment control", () => {
+  assert.match(imageWorkspace, /leadingControl=\{[\s\S]*?<ReferenceMediaUpload/);
+  assert.match(videoWorkspace, /leadingControl=\{[\s\S]*?<ReferenceMediaUpload/);
+  assert.match(referenceUploader, /<Plus className="size-4"/);
+  assert.match(referenceUploader, /type="file"[\s\S]*?accept=\{accepts\}/);
+  assert.doesNotMatch(referenceUploader, />\s*Upload image\s*</);
+  assert.doesNotMatch(referenceUploader, />\s*Upload video\s*</);
+  assert.doesNotMatch(referenceUploader, /generate without a reference/);
 });
 
 test("the unified composer does not add an accent glow when the prompt is focused", () => {

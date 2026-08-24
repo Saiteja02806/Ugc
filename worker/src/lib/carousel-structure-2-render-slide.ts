@@ -7,7 +7,7 @@ import type {
 } from "./carousel-structure-2-render-spec.js";
 
 export const CAROUSEL_STRUCTURE_2_RENDERER_VERSION =
-  "story-native-renderer-v1-three-layouts";
+  "story-native-renderer-v2-line-bubbles";
 
 const FORMAT_DIMENSIONS: Record<
   CarouselFormat,
@@ -119,24 +119,24 @@ function buildCarouselStructure2Overlay(params: {
 }) {
   const maximumTextWidth = params.width - SAFE_X * 2;
   const isPill = params.spec.textTreatment === "pill";
-  const storyHorizontalPadding = isPill ? 54 : 8;
-  const storyVerticalPadding = isPill ? 34 : 0;
+  const storyHorizontalPadding = isPill ? 34 : 8;
+  const storyVerticalPadding = isPill ? 10 : 0;
   const story = fitText({
     initialFontSize:
-      params.spec.layoutVariant === "story_pill_overlay" ? 68 : 64,
-    maximumFontSize: 72,
+      params.spec.layoutVariant === "story_pill_overlay" ? 56 : 54,
+    maximumFontSize: 60,
     maximumLines: 6,
     maximumWidth: maximumTextWidth - storyHorizontalPadding * 2,
-    minimumFontSize: 40,
+    minimumFontSize: 36,
     value: params.spec.storyText,
   });
   const cta = params.spec.ctaText
     ? fitText({
-        initialFontSize: 38,
-        maximumFontSize: 40,
+        initialFontSize: 36,
+        maximumFontSize: 38,
         maximumLines: 3,
         maximumWidth: maximumTextWidth - 72,
-        minimumFontSize: 30,
+        minimumFontSize: 28,
         value: params.spec.ctaText,
       })
     : null;
@@ -220,7 +220,7 @@ function buildCarouselStructure2Overlay(params: {
       <svg width="${params.width}" height="${params.height}" viewBox="0 0 ${params.width} ${params.height}" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <filter id="story-shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity="0.58" />
+            <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.42" />
           </filter>
         </defs>
         ${gradient}
@@ -324,7 +324,7 @@ function buildStoryTextMarkup(params: {
   const isPill = params.treatment === "pill";
   const baselineStart =
     params.bounds.y +
-    (isPill ? 34 : 0) +
+    (isPill ? 10 : 0) +
     params.layout.fontSize * 0.86;
   const textFill = isPill ? "#141518" : "#ffffff";
   const stroke =
@@ -333,7 +333,20 @@ function buildStoryTextMarkup(params: {
       : "";
   const filter = params.treatment === "overlay" ? 'filter="url(#story-shadow)"' : "";
   const pill = isPill
-    ? `<rect x="${params.bounds.x}" y="${params.bounds.y}" width="${params.bounds.width}" height="${params.bounds.height}" rx="34" fill="rgba(255,255,255,0.94)" />`
+    ? params.layout.lines
+        .map((line, index) => {
+          const width = Math.min(
+            params.bounds.width,
+            Math.ceil(estimateTextWidth(line, params.layout.fontSize) + 68),
+          );
+          const height = params.layout.lineHeight + 10;
+          const x = Math.round(
+            params.bounds.x + (params.bounds.width - width) / 2,
+          );
+          const y = params.bounds.y + 5 + index * params.layout.lineHeight;
+          return `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="18" fill="rgba(255,255,255,0.94)" />`;
+        })
+        .join("")
     : "";
   const lines = params.layout.lines
     .map(

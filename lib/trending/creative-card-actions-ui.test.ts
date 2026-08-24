@@ -8,10 +8,24 @@ const actions = readProjectFile(
 const workspace = readProjectFile(
   "components/trending/trending-workspace.tsx",
 );
+const skeletonStyles = readProjectFile(
+  "components/trending/trending-post-skeleton.module.css",
+);
 const editor = readProjectFile(
   "components/trending/trending-creative-editor.tsx",
 );
+const contentMixDialog = readProjectFile(
+  "components/trending/trending-content-mix-dialog.tsx",
+);
 const buttons = readProjectFile("components/ui/button.tsx");
+const hookCard = readProjectFile("components/trending/hook-video-card.tsx");
+const hookDeck = readProjectFile("components/trending/hook-video-deck.tsx");
+const hookAudio = readProjectFile(
+  "components/trending/hook-audio-preview.tsx",
+);
+const wallAudio = readProjectFile(
+  "components/trending/wall-text-audio-preview.tsx",
+);
 const sidebar = readProjectFile("components/layout/app-sidebar.tsx");
 
 test("places Edit in the page header and keeps circular decisions below the card", () => {
@@ -52,6 +66,55 @@ test("keeps reject and accept controls neutral with restrained semantic color", 
   assert.doesNotMatch(buttons, /"creative-accept":\s*\n\s*"bg-success /);
 });
 
+test("restores Adjust as the global content-mix action beside item-level Edit", () => {
+  assert.match(workspace, /data-trending-adjust-control/);
+  assert.match(workspace, /aria-label="Adjust Trending content mix"/);
+  assert.match(workspace, />\s*Adjust\s*</);
+  assert.match(
+    workspace,
+    /<Button[\s\S]*data-trending-adjust-control[\s\S]*<div ref=\{setHeaderActionsRoot\}/,
+  );
+  assert.match(
+    workspace,
+    /import\("@\/components\/trending\/trending-content-mix-dialog"\)/,
+  );
+  assert.match(contentMixDialog, /fetch\("\/api\/trending\/content-mix"/);
+  assert.match(contentMixDialog, /method: "PUT"/);
+  assert.match(contentMixDialog, />\s*Adjust content mix\s*</);
+  assert.match(contentMixDialog, /Editing an individual creative remains under Edit/);
+  assert.match(contentMixDialog, /type="range"/);
+  assert.match(contentMixDialog, /Your Free mix is fixed/);
+});
+
+test("keeps review cards, audio controls, and creative actions flat", () => {
+  assert.doesNotMatch(
+    buttons,
+    /"creative-(?:reject|accept|edit)":\s*\n\s*"[^"]*shadow/,
+  );
+  assert.doesNotMatch(actions, /shadow-(?:none|xs|sm)/);
+  assert.match(
+    hookCard,
+    /rounded-\[20px\] border border-border\/80 bg-foreground-strong/,
+  );
+  assert.doesNotMatch(hookCard, /shadow-\[/);
+  assert.doesNotMatch(hookDeck, /shadow-\[0_10px_26px/);
+
+  for (const audioControl of [hookAudio, wallAudio]) {
+    assert.match(audioControl, /size-8[^\"]*border-white\/20 bg-black\/60/);
+    assert.doesNotMatch(audioControl, /(?:shadow-|backdrop-blur)/);
+    assert.match(audioControl, /focus-visible:ring-2 focus-visible:ring-white/);
+  }
+
+  assert.doesNotMatch(
+    workspace,
+    /shadow-\[0_14px_30px_rgba\(0,0,0,0\.32\)\]/,
+  );
+  assert.doesNotMatch(
+    workspace,
+    /data-trending-edited-badge[\s\S]{0,350}(?:shadow-|backdrop-blur)/,
+  );
+});
+
 test("button, keyboard, and physical swipe decisions converge on one handler", () => {
   assert.match(
     workspace,
@@ -72,6 +135,56 @@ test("labels every Trending card with its content format above the creative", ()
   assert.match(workspace, /"Reel Hook"/);
   assert.match(workspace, /"Wall-of-Text"/);
   assert.match(workspace, /Slideshow/);
+});
+
+test("centers one larger responsive creative while preloading later cards invisibly", () => {
+  assert.match(
+    workspace,
+    /CAROUSEL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(88vw,420px,calc\(\(100dvh-238px\)\*0\.8\)\)\]"/,
+  );
+  assert.match(
+    workspace,
+    /className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center"/,
+  );
+  assert.match(
+    workspace,
+    /data-trending-card-state=\{isActive \? "active" : "preload"\}/,
+  );
+  assert.match(
+    workspace,
+    /pointer-events-none absolute left-0 top-0 size-px overflow-hidden opacity-0/,
+  );
+  assert.equal(
+    (workspace.match(/data-trending-card-state=/g) ?? []).length,
+    3,
+  );
+  assert.equal(
+    (workspace.match(/inert=\{isActive \? undefined : true\}/g) ?? []).length,
+    3,
+  );
+  assert.match(workspace, /function getTrendingDeckSlots/);
+  assert.doesNotMatch(
+    workspace,
+    /pointer-events-none absolute inset-0 flex items-start justify-center pt-9/,
+  );
+});
+
+test("attaches a smaller flat format label to the responsive card", () => {
+  assert.match(
+    workspace,
+    /pointer-events-none z-10 mb-1\.5 flex items-center justify-start/,
+  );
+  assert.match(
+    workspace,
+    /inline-flex h-5[^\"]*border-border\/60 bg-card\/75[^\"]*text-\[9px\] font-medium/,
+  );
+  assert.match(workspace, /const iconColor = isHook/);
+  assert.match(workspace, /className=\{cn\("size-2\.5 shrink-0", iconColor\)\}/);
+  assert.doesNotMatch(
+    workspace,
+    /data-trending-format-pill[\s\S]{0,400}(?:shadow-|drop-shadow|backdrop-blur|ring-)/,
+  );
+  assert.doesNotMatch(actions, /shadow-(?:none|xs|sm)/);
 });
 
 test("keeps the outgoing card mounted until its transform transition finishes", () => {
@@ -170,16 +283,24 @@ test("defers the Trending Hook composer until an accepted Hook opens it", () => 
   assert.match(workspace, /function HookVideoComposerLoading\(\)/);
 });
 
-test("Carousel editing previews the bubble treatment on the clean source image", () => {
-  assert.match(editor, /src=\{slide\.backgroundUrl \|\| slide\.renderedUrl\}/);
+test("Carousel editing starts from the exact render and keeps live previews structure-aware", () => {
+  assert.match(editor, /data-carousel-editor-preview=\{/);
+  assert.match(editor, /showExactRender \? "exact-render" : "live-render"/);
+  assert.match(editor, /function getExactCarouselPreviewUrl/);
+  assert.match(editor, /function Structure2StoryText/);
+  assert.match(editor, /isPill \? "#141518" : "#ffffff"/);
+  assert.match(editor, /function CarouselEditorBackground/);
+  assert.match(editor, /story_product_reveal/);
   assert.match(editor, /function CarouselBubbleText/);
-  assert.match(editor, /<feDropShadow/);
   assert.match(editor, /fill="#ffffff"/);
-  assert.doesNotMatch(
-    editor,
-    /w-\[82cqw\] text-center text-white \[text-shadow:/,
-  );
-  assert.match(editor, /Rendered when Supporting text is empty\./);
+  assert.doesNotMatch(editor, /<feDropShadow/);
+  assert.match(editor, /Rendered as the bottom action label\./);
+});
+
+test("Carousel editor presents a quiet Hook library folder", () => {
+  assert.match(editor, />\s*Hook library\s*</);
+  assert.match(editor, /<Folder className="size-4"/);
+  assert.doesNotMatch(editor, />\s*Hyper Hooks\s*</);
 });
 
 test("Trending editor footer uses the dialog surface instead of the muted strip", () => {
@@ -190,14 +311,28 @@ test("shows one dark 9:16 post skeleton while Trending prepares content", () => 
   assert.match(workspace, /function TrendingPostSkeleton/);
   assert.match(
     workspace,
-    /aspect-\[9\/16\] w-\[min\(76vw,248px\)\][^\"]*rounded-\[20px\]/,
+    /VERTICAL_REVIEW_CARD_WIDTH_CLASS,[\s\S]{0,180}aspect-\[9\/16\] rounded-\[20px\]/,
   );
+  assert.match(
+    workspace,
+    /VERTICAL_REVIEW_CARD_WIDTH_CLASS, "mb-1\.5 h-5"/,
+  );
+  assert.match(workspace, /className="mt-3\.5 h-14 sm:mt-4 sm:h-\[86px\]"/);
   assert.match(workspace, /aria-label="Loading trending content ideas"/);
   assert.doesNotMatch(workspace, /CarouselLoadingStackVisual/);
   assert.doesNotMatch(workspace, /LOADING_STACK_PLACEHOLDERS/);
   assert.doesNotMatch(workspace, /Preparing ideas/);
   assert.doesNotMatch(workspace, /Glossy light-sweep wave/);
-  assert.match(workspace, /animate-pulse[^"]*bg-\[#151517\]/);
+  assert.doesNotMatch(workspace, /animate-pulse[^"]*bg-\[#151517\]/);
+  assert.match(skeletonStyles, /background: #18191c/);
+  assert.match(skeletonStyles, /width: 32%/);
+  assert.match(skeletonStyles, /rgb\(255 255 255 \/ 5\.5%\) 50%/);
+  assert.match(skeletonStyles, /animation: trending-post-shimmer 2s linear infinite/);
+  assert.match(skeletonStyles, /transform: translate3d\(-120%, 0, 0\)/);
+  assert.match(skeletonStyles, /transform: translate3d\(420%, 0, 0\)/);
+  assert.match(skeletonStyles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(skeletonStyles, /box-shadow: 0 4px 16px rgb\(0 0 0 \/ 8%\)/);
+  assert.match(skeletonStyles, /animation-play-state: paused/);
   assert.doesNotMatch(workspace, /We’re preparing new content for you\./);
   assert.doesNotMatch(workspace, /Your next ideas are being prepared\./);
   assert.doesNotMatch(workspace, /Ready posts will appear here automatically/);
@@ -211,9 +346,13 @@ test("holds partial daily results behind the skeleton until the pack is complete
     workspace,
     /preparing=\{trendingFeedState === "preparing"\}/,
   );
+  assert.match(workspace, /const showSkeleton = loading \|\| preparing/);
+  assert.match(workspace, /<TrendingPostSkeleton active=\{showSkeleton\} \/>/);
+  assert.match(workspace, /inert=\{showSkeleton \? true : undefined\}/);
+  assert.match(workspace, /transition-opacity duration-200 ease-linear/);
   assert.match(
     workspace,
-    /if \(preparing\) \{\s*return <TrendingPostSkeleton \/>;\s*\}/,
+    /showSkeleton \? "pointer-events-none opacity-0" : "opacity-100"/,
   );
 });
 

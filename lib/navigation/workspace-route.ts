@@ -3,8 +3,7 @@ import type { AppSidebarActiveKey } from "@/components/layout/app-sidebar";
 export type WorkspaceAccessRequirement =
   | "authentication"
   | "none"
-  | "profile"
-  | "reviewer";
+  | "profile";
 
 export type WorkspaceRouteConfig = {
   access: WorkspaceAccessRequirement;
@@ -24,7 +23,6 @@ const workspaceRoutes: ReadonlyArray<WorkspaceRouteDefinition> = [
   { prefix: "/dashboard", activeKey: "trending", access: "profile" },
   { prefix: "/ai-studio", activeKey: "ai-studio", access: "profile" },
   { prefix: "/analytics", activeKey: "analytics", access: "profile" },
-  { prefix: "/viral", activeKey: "viral", access: "reviewer" },
   { prefix: "/library", activeKey: "library", access: "profile" },
   { prefix: "/scheduling", activeKey: "scheduling", access: "profile" },
   { prefix: "/settings", activeKey: "settings", access: "profile" },

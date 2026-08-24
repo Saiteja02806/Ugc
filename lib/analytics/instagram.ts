@@ -6,6 +6,7 @@ import {
   normalizeInstagramAccountInsights,
   type InstagramInsightsAccount,
 } from "@/lib/analytics/instagram-insights";
+import { persistInstagramAccountInsightsSnapshots } from "@/lib/analytics/instagram-snapshots";
 import {
   getSocialConnectionCredentialForOwner,
   listSocialConnections,
@@ -22,7 +23,7 @@ export async function listInstagramAccountInsightsForOwner(params: {
   const connections = await listSocialConnections(params.userId);
   const instagramConnections = getUniqueInstagramConnections(connections);
 
-  return Promise.all(
+  const accounts = await Promise.all(
     instagramConnections.map(
       async (connection): Promise<InstagramInsightsAccount> => {
         const baseAccount = {
@@ -126,6 +127,14 @@ export async function listInstagramAccountInsightsForOwner(params: {
       },
     ),
   );
+
+  await persistInstagramAccountInsightsSnapshots({
+    accounts,
+    days: params.days,
+    userId: params.userId,
+  });
+
+  return accounts;
 }
 
 class InstagramInsightsRequestError extends Error {

@@ -35,6 +35,7 @@ test("renders and asks the server to finalize a planned schedule", async () => {
         fixture.events.push("render");
         assert.equal(payload.hookText, "The old way takes twice the effort.");
         assert.equal(payload.hookTextFontSize, 44);
+        assert.equal(payload.hookTextLayoutVersion, "hook-overlay-layout-v1");
         assert.deepEqual(payload.hookTextLines, [
           "The old way takes",
           "twice the effort.",
@@ -180,6 +181,54 @@ test("accepts a three-line Hook at the reference font size", async () => {
           "shouldn't interrupt",
           "your whole day 😩",
         ]);
+        return createRenderOutput(payload);
+      },
+    },
+    store: fixture.store,
+  });
+});
+
+test("rejects authoritative Hook lines that do not match the saved copy", async () => {
+  const fixture = createStore();
+  const job = createJob(false);
+  (job.input_json as Record<string, unknown>).hookTextLines = [
+    "A different Hook",
+  ];
+
+  await assert.rejects(
+    runRenderScheduleCombinationJob(job, { store: fixture.store }),
+    /hookTextLines must match hookText exactly/,
+  );
+  assert.deepEqual(fixture.events, []);
+});
+
+test("rejects an incomplete authoritative Hook layout", async () => {
+  const fixture = createStore();
+  const job = createJob(false);
+  delete (job.input_json as Record<string, unknown>).hookTextLines;
+
+  await assert.rejects(
+    runRenderScheduleCombinationJob(job, { store: fixture.store }),
+    /both hookTextFontSize and hookTextLines/,
+  );
+  assert.deepEqual(fixture.events, []);
+});
+
+test("keeps the isolated legacy layout path for old queued jobs", async () => {
+  const fixture = createStore();
+  const job = createJob(false);
+  delete (job.input_json as Record<string, unknown>).hookTextFontSize;
+  delete (job.input_json as Record<string, unknown>).hookTextLayoutVersion;
+  delete (job.input_json as Record<string, unknown>).hookTextLines;
+
+  await runRenderScheduleCombinationJob(job, {
+    dependencies: {
+      createMediaAssetId: () => MEDIA_ASSET_ID,
+      async renderScheduleCombinationToStorage(payload) {
+        fixture.events.push("render");
+        assert.equal(payload.hookTextFontSize, null);
+        assert.equal(payload.hookTextLayoutVersion, null);
+        assert.equal(payload.hookTextLines, null);
         return createRenderOutput(payload);
       },
     },
@@ -347,6 +396,7 @@ function createJob(autoFinalize: boolean): BackgroundJobRow {
       demoVideoUrl: "https://cdn.example.com/demo.mp4",
       hookText: "The old way takes twice the effort.",
       hookTextFontSize: 44,
+      hookTextLayoutVersion: "hook-overlay-layout-v1",
       hookTextLines: ["The old way takes", "twice the effort."],
       hookTextColor: "#fde047",
       hookAudio: {

@@ -75,12 +75,23 @@ export async function runGenerateCarouselJob(
   const input = getInput(job);
   if (input.carouselIds && input.experimentBatchId) {
     try {
-      return await generateCarouselBatch({
+      const output = await generateCarouselBatch({
         carouselIds: input.carouselIds,
         experimentBatchId: input.experimentBatchId,
         store: context.store,
         textStyle: getCarouselRenderStyle(input.textStyle),
       });
+      const generations = await Promise.all(
+        input.carouselIds.map((carouselId) =>
+          context.store.getCarouselGeneration(carouselId),
+        ),
+      );
+      await settleCarouselContentPlanItems({
+        generations,
+        releaseReason: null,
+        store: context.store,
+      });
+      return output;
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Carousel batch generation failed.";
@@ -108,6 +119,16 @@ export async function runGenerateCarouselJob(
         input.experimentBatchId,
         { status: completedCount > 0 ? "partial" : "failed" },
       );
+      await settleCarouselContentPlanItems({
+        generations,
+        releaseReason: message,
+        store: context.store,
+      }).catch((settlementError) => {
+        console.error(
+          "Could not settle content-plan items after Carousel batch failure:",
+          settlementError,
+        );
+      });
       throw error;
     }
   }
@@ -125,4 +146,48 @@ export async function runGenerateCarouselJob(
     renderedSlideCount: result.renderedSlideCount,
     slideUrls: result.slideUrls,
   };
+}
+
+async function settleCarouselContentPlanItems(params: {
+  generations: Array<
+    Awaited<ReturnType<SupabaseJobStore["getCarouselGeneration"]>>
+  >;
+  releaseReason: string | null;
+  store: SupabaseJobStore;
+}) {
+  const reservationTokens = new Map<string, string>();
+
+  for (const generation of params.generations) {
+    if (
+      !generation ||
+      !generation.content_plan_item_id ||
+      !generation.content_plan_reservation_id
+    ) {
+      continue;
+    }
+
+    reservationTokens.set(
+      generation.content_plan_reservation_id,
+      generation.user_id,
+    );
+
+    if (generation.status === "completed") {
+      await params.store.consumeCarouselContentPlanItem({
+        carouselGenerationId: generation.id,
+        planItemId: generation.content_plan_item_id,
+        reservationToken: generation.content_plan_reservation_id,
+        userId: generation.user_id,
+      });
+    }
+  }
+
+  if (!params.releaseReason) return;
+
+  for (const [reservationToken, userId] of reservationTokens) {
+    await params.store.releaseCarouselContentPlanReservationByToken({
+      reason: params.releaseReason,
+      reservationToken,
+      userId,
+    });
+  }
 }

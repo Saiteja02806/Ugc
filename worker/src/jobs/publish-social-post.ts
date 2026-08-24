@@ -159,6 +159,16 @@ export async function runPublishSocialPostJob(
       publishContext.target.status === "published" &&
       publishContext.target.platform_post_id
     ) {
+      await registerInstagramAnalyticsPublicationSafely({
+        context: publishContext,
+        platformPostId: publishContext.target.platform_post_id,
+        platformPostUrl: publishContext.target.platform_post_url,
+        publishedAt:
+          publishContext.target.published_at ?? new Date().toISOString(),
+        store: context.store,
+        userId: job.user_id,
+      });
+
       return buildExistingPublishResult({
         platform: publishContext.target.platform,
         platformPostId: publishContext.target.platform_post_id,
@@ -182,6 +192,15 @@ export async function runPublishSocialPostJob(
           platformPostId: completedOperation.platform_post_id,
           platformPostUrl: completedOperation.platform_post_url,
           targetId: payload.targetId,
+          userId: job.user_id,
+        });
+        await registerInstagramAnalyticsPublicationSafely({
+          context: publishContext,
+          platformPostId: completedOperation.platform_post_id,
+          platformPostUrl: completedOperation.platform_post_url,
+          publishedAt:
+            completedOperation.published_at ?? new Date().toISOString(),
+          store: context.store,
           userId: job.user_id,
         });
 
@@ -234,6 +253,15 @@ export async function runPublishSocialPostJob(
           platformPostId: existingOperation.platform_post_id,
           platformPostUrl: existingOperation.platform_post_url,
           targetId: payload.targetId,
+          userId: job.user_id,
+        });
+        await registerInstagramAnalyticsPublicationSafely({
+          context: latestContext,
+          platformPostId: existingOperation.platform_post_id,
+          platformPostUrl: existingOperation.platform_post_url,
+          publishedAt:
+            existingOperation.published_at ?? new Date().toISOString(),
+          store: context.store,
           userId: job.user_id,
         });
 
@@ -539,6 +567,14 @@ export async function runPublishSocialPostJob(
       targetId: payload.targetId,
       userId: job.user_id,
     });
+    await registerInstagramAnalyticsPublicationSafely({
+      context: publishContext,
+      platformPostId: publishedResult.platformPostId,
+      platformPostUrl: publishedResult.platformPostUrl,
+      publishedAt,
+      store: context.store,
+      userId: job.user_id,
+    });
 
     logger.info("Social publish timing completed", {
       executionDelaySeconds,
@@ -693,6 +729,41 @@ export async function runPublishSocialPostJob(
     }
 
     throw error;
+  }
+}
+
+async function registerInstagramAnalyticsPublicationSafely(params: {
+  context: Awaited<ReturnType<SupabaseJobStore["getSocialPublishContext"]>>;
+  platformPostId: string;
+  platformPostUrl: string | null;
+  publishedAt: string;
+  store: SupabaseJobStore;
+  userId: string;
+}) {
+  if (params.context.target.platform !== "instagram") {
+    return;
+  }
+
+  try {
+    await params.store.registerInstagramAnalyticsPublication({
+      accountName: params.context.connection.platform_account_name,
+      accountUsername: params.context.connection.platform_account_username,
+      caption: params.context.post.caption,
+      connectionId: params.context.connection.id,
+      contentType: params.context.carousel ? "carousel" : "reel",
+      platformPostId: params.platformPostId,
+      platformPostUrl: params.platformPostUrl,
+      publishedAt: params.publishedAt,
+      userId: params.userId,
+    });
+  } catch (error) {
+    // Publication is already durable. Analytics registration is an immediate
+    // projection and must not turn a successful provider publish into a retry.
+    logger.error("Could not register Instagram publication for analytics", {
+      error: error instanceof Error ? error.message : String(error),
+      platformPostId: params.platformPostId,
+      userId: params.userId,
+    });
   }
 }
 

@@ -68,6 +68,7 @@ export const EDIT_OVERLAY_MAX_TEXT_WIDTH_PERCENT =
   100 - EDIT_OVERLAY_HORIZONTAL_INSET_PERCENT * 2;
 export const EDIT_OVERLAY_FONT_FAMILY = "Geist";
 export const EDIT_OVERLAY_FONT_WEIGHT = 600;
+export const HOOK_TEXT_LAYOUT_VERSION = "hook-overlay-layout-v1" as const;
 export const EDIT_OVERLAY_TEXT_COLOR = DEFAULT_TEXT_COLOR;
 export const EDIT_OVERLAY_SHADOW_COLOR = "rgba(0, 0, 0, 0.45)";
 export const EDIT_OVERLAY_FFMPEG_SHADOW_COLOR = "black@0.45";

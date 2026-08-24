@@ -16,6 +16,7 @@ import { createHookVideoScheduleIdempotencyKey } from "@/lib/trending/hook-video
 import { persistHookVideoSelection } from "@/lib/trending/hook-video-service";
 import { prepareOwnedHookMediaAsset } from "@/lib/trending/hook-video-sources";
 import { getHookVideoTextPosition } from "@/lib/trending/hook-video-text-placement";
+import { HOOK_TEXT_LAYOUT_VERSION } from "@/lib/trending/hook-text-layout";
 import { HookVideoScheduleRequestSchema } from "@/lib/trending/hook-video-validation";
 
 export const runtime = "nodejs";
@@ -108,6 +109,7 @@ export async function POST(request: Request) {
               : null,
           hookText: composition.draft.hookText,
           hookTextFontSize: composition.hookRenderSpec.fontSize,
+          hookTextLayoutVersion: HOOK_TEXT_LAYOUT_VERSION,
           hookTextLines: composition.hookRenderSpec.lines,
           hookTextPosition:
             composition.creativeEdit?.content.format === "hook_video"

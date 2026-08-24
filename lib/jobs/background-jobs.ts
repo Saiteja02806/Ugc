@@ -29,6 +29,7 @@ export type BackgroundJobStatus =
 
 export type BackgroundJobType =
   | "analytics_sync"
+  | "carousel_content_plan_generation"
   | "carousel_generation"
   | "final_render"
   | "generate_avatar"

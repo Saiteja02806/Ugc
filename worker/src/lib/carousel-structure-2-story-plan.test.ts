@@ -8,354 +8,215 @@ import {
 import {
   buildCarouselStructure2BatchMessages,
   buildCarouselStructure2RepairMessages,
-  buildCarouselStructure2StoryBusinessContext,
-  buildDeterministicCarouselStructure2StoryPlan,
   parseCarouselStructure2StoryPlan,
+  partitionCarouselStructure2ValidationIssues,
   validateCarouselStructure2StoryPlan,
   type CarouselStructure2StoryAssignment,
-  type CarouselStructure2StoryPlan,
 } from "./carousel-structure-2-story-plan.js";
 import {
   CAROUSEL_STRUCTURE_2_FORMAT_IDS,
   getCarouselStructure2Format,
+  type CarouselStructure2FormatId,
 } from "./carousel-structure-2-formats.js";
+import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
-const analysis = {
-  brandTone: "conversational and grounded",
-  businessModel: "b2c" as const,
-  businessName: "Todaywise",
-  campaignPurposes: ["product_discovery" as const],
-  carouselAngles: ["make changing priorities easier to handle"],
-  category: "productivity planning",
-  claimsToAvoid: ["guaranteed results"],
-  ctaIdeas: ["see what matters first"],
-  differentiators: ["prioritizes tasks around changing constraints"],
-  mainProblem: "constant task reprioritization",
-  mainPromise: "finish important work with fewer repeated decisions",
-  painPoints: [
-    "rebuilding the task list whenever priorities change",
-    "checking the list throughout the day",
-  ],
-  productSummary: "Todaywise prioritizes a changing task list",
-  targetAudience: ["busy professionals", "independent founders"],
-  valueProps: ["automatic task prioritization", "a clearer next step"],
-  visualKeywords: ["task list", "weekly planning"],
-};
+const businessDescription =
+  "Todaywise is an application for planning work when priorities change.";
 
-test("the dedicated prompt locks Structure 2 and never requests Structure 1 grammar", () => {
-  const assignments = makeAssignments(CAROUSEL_STRUCTURE_2_FORMAT_IDS.slice(0, 5));
+test("Structure 2 receives only the minimal business description, seeds, emotions, formats, and exact copy history", () => {
   const messages = buildCarouselStructure2BatchMessages({
-    analysis,
-    assignments,
-    recentHistory: [
-      {
-        centralProblem: "checking the same task list all day",
-        storyFormatId: "wrong_belief",
-        summary: "A repeated task-list checking story.",
-      },
-    ],
+    assignments: makeAssignments(CAROUSEL_STRUCTURE_2_FORMAT_IDS.slice(0, 5)),
+    businessDescription,
+    recentHistory: [makeRecentCopy()],
   });
   const prompt = messages.map((message) => message.content).join("\n");
 
-  assert.match(prompt, /not the informational Structure 1 writer/i);
-  assert.match(prompt, /Slide 1 recognition/i);
-  assert.match(prompt, /Slides 1-3 must not introduce or name the business/i);
-  assert.match(prompt, /Slide 4 must name the saved business/i);
-  assert.match(prompt, /Recent compact Structure 2 history only/i);
-  assert.doesNotMatch(prompt, /hookFamilyId|checklist|question_list/);
+  assert.match(prompt, /creativeSeed/);
+  assert.match(prompt, /emotion/);
+  assert.match(prompt, /allowedCtaPositions/);
+  assert.match(prompt, /exact visible text/i);
+  assert.match(prompt, /i kept rebuilding monday's list/);
+  assert.doesNotMatch(prompt, /productMechanism/);
+  assert.doesNotMatch(prompt, /targetAudience|painPoints|valueProps|claimsToAvoid/);
 });
 
-test("all eight deterministic story formats satisfy the locked five-slide validator", () => {
-  for (const [candidateIndex, storyFormatId] of
-    CAROUSEL_STRUCTURE_2_FORMAT_IDS.entries()) {
-    const plan = buildDeterministicCarouselStructure2StoryPlan({
-      analysis,
-      assignment: {
-        candidateIndex,
-        slotIndex: candidateIndex % 5,
-        storyFormatId,
-      },
-    });
+test("all eight formats keep five slides while moving CTA by format", () => {
+  const ctaPositions = new Set<number>();
+
+  for (const storyFormatId of CAROUSEL_STRUCTURE_2_FORMAT_IDS) {
+    const plan = makeStoryPlan(storyFormatId);
     const format = getCarouselStructure2Format(storyFormatId);
-    const issues = validateCarouselStructure2StoryPlan(plan, { analysis });
+    const ctaSlide = plan.slides.find((slide) => slide.ctaText !== null)!;
 
-    assert.deepEqual(issues, [], storyFormatId);
     assert.equal(plan.slides.length, 5);
-    assert.deepEqual(
-      plan.slides.map((slide) => slide.storyRole),
-      format.slides.map((slide) => slide.storyRole),
-    );
-    assert.deepEqual(
-      plan.slides.map((slide) => slide.productVisualEligibility),
-      ["forbidden", "forbidden", "forbidden", "preferred", "allowed"],
-    );
-    assert.equal(plan.historySummary.storyFormatId, storyFormatId);
-
-    for (const [index, slide] of plan.slides.entries()) {
-      const words = countWords(
-        [slide.storyText, slide.ctaText].filter(Boolean).join(" "),
-      );
-      assert.ok(words >= format.slides[index]!.minimumWords, storyFormatId);
-      assert.ok(words <= format.slides[index]!.maximumWords, storyFormatId);
-    }
+    assert.ok(format.allowedCtaPositions.includes(ctaSlide.slideNumber));
+    assert.equal(plan.strategy.storyFormatId, storyFormatId);
+    ctaPositions.add(ctaSlide.slideNumber);
   }
+
+  assert.deepEqual([...ctaPositions].sort(), [2, 3, 4, 5]);
 });
 
-test("the deterministic safety path remains valid for sparse saved context", () => {
-  const sparseAnalysis = {
-    businessName: "Plainly",
-    mainProblem: "unclear daily priorities",
-    mainPromise: "a clearer daily plan",
-    productSummary: "Plainly helps organize daily work",
-  };
-
-  for (const [candidateIndex, storyFormatId] of
-    CAROUSEL_STRUCTURE_2_FORMAT_IDS.entries()) {
-    const plan = buildDeterministicCarouselStructure2StoryPlan({
-      analysis: sparseAnalysis,
-      assignment: {
-        candidateIndex,
-        slotIndex: candidateIndex % 5,
-        storyFormatId,
-      },
-    });
-
-    assert.deepEqual(
-      validateCarouselStructure2StoryPlan(plan, {
-        analysis: sparseAnalysis,
-      }),
-      [],
-      storyFormatId,
-    );
-  }
-});
-
-test("the parser rejects a borrowed or changed format id", () => {
-  const plan = buildDeterministicCarouselStructure2StoryPlan({
-    analysis,
-    assignment: {
-      candidateIndex: 0,
-      slotIndex: 0,
-      storyFormatId: "wrong_belief",
-    },
+test("the format flow is reference material while format id and CTA position stay structural", () => {
+  const plan = makeRawStoryPlan("perfect_plan_breaks");
+  [plan.slides[1], plan.slides[2]] = [plan.slides[2]!, plan.slides[1]!];
+  plan.slides.forEach((slide, index) => {
+    slide.slideNumber = index + 1;
   });
-  const raw = toRawPlan(plan);
-  raw.strategy.storyFormatId = "checklist";
 
+  assert.doesNotThrow(() =>
+    parseCarouselStructure2StoryPlan(plan, {
+      businessDescription,
+      storyFormatId: "perfect_plan_breaks",
+    }),
+  );
+
+  const wrongCta = makeRawStoryPlan("perfect_plan_breaks");
+  wrongCta.slides.forEach((slide) => {
+    slide.ctaText = slide.slideNumber === 5 ? "try this with your own week" : null;
+  });
   assert.throws(
     () =>
-      parseCarouselStructure2StoryPlan(raw, {
-        analysis,
-        storyFormatId: "wrong_belief",
-      }),
-    /must remain wrong_belief/i,
-  );
-});
-
-test("validation rejects early product naming, second-person setup, and a missing Slide 4 action", () => {
-  const plan = clonePlan(
-    buildDeterministicCarouselStructure2StoryPlan({
-      analysis,
-      assignment: {
-        candidateIndex: 0,
-        slotIndex: 0,
-        storyFormatId: "wrong_belief",
-      },
-    }),
-  );
-  plan.slides[0]!.storyText =
-    "i thought Todaywise would fix every priority before i even started";
-  plan.slides[1]!.storyText =
-    "you kept checking the list whenever priorities changed, and the repeated decisions left the whole working day feeling unsettled.";
-  plan.slides[3]!.storyText =
-    "then i tried Todaywise; the product was revolutionary and everything in my routine felt completely transformed by the end.";
-
-  const issues = validateCarouselStructure2StoryPlan(plan, { analysis });
-
-  assert.ok(
-    issues.some(
-      (issue) => issue.code === "product_timing" && issue.slideNumber === 1,
-    ),
-  );
-  assert.ok(
-    issues.some(
-      (issue) => issue.code === "perspective" && issue.slideNumber === 2,
-    ),
-  );
-  assert.ok(
-    issues.some(
-      (issue) => issue.code === "product_timing" && issue.slideNumber === 4,
-    ),
-  );
-  assert.ok(issues.some((issue) => issue.code === "generic_copy"));
-  assert.ok(issues.some((issue) => issue.code === "unsupported_claim"));
-});
-
-test("validation rejects a generic CTA that does not mirror the story", () => {
-  const plan = clonePlan(
-    buildDeterministicCarouselStructure2StoryPlan({
-      analysis,
-      assignment: {
-        candidateIndex: 1,
-        slotIndex: 1,
+      parseCarouselStructure2StoryPlan(wrongCta, {
+        businessDescription,
         storyFormatId: "perfect_plan_breaks",
-      },
-    }),
+      }),
+    /allows its CTA only on slide 4/i,
   );
-  plan.slides[4]!.ctaText = "download now and unlock efficiency";
-
-  const issues = validateCarouselStructure2StoryPlan(plan, { analysis });
-
-  assert.ok(issues.some((issue) => issue.code === "cta_mismatch"));
-  assert.ok(issues.some((issue) => issue.code === "generic_copy"));
 });
 
-test("recent-history validation uses only compact Structure 2 fingerprints", () => {
-  const plan = buildDeterministicCarouselStructure2StoryPlan({
-    analysis,
-    assignment: {
-      candidateIndex: 2,
-      slotIndex: 2,
-      storyFormatId: "stopped_behavior",
-    },
-  });
+test("valid AI copy is preserved and writing-quality warnings stay advisory", () => {
+  const plan = makeStoryPlan("wrong_belief");
+  const aiCopy = "i’d plan the perfect meal prep schedule every sunday…";
+  plan.slides[0]!.storyText = aiCopy;
+  plan.slides[1]!.storyText = "one platform helped me work smarter";
+
+  const partitioned = partitionCarouselStructure2ValidationIssues(
+    validateCarouselStructure2StoryPlan(plan, { businessDescription }),
+  );
+
+  assert.equal(plan.slides[0]!.storyText, aiCopy);
+  assert.deepEqual(partitioned.blockingIssues, []);
+  assert.ok(partitioned.advisoryIssues.some((issue) => issue.code === "generic_copy"));
+});
+
+test("recent repetition compares exact accepted slide copy", () => {
+  const plan = makeStoryPlan("wrong_belief");
+  const history = makeRecentCopy(plan.slides.map((slide) => slide.storyText));
   const issues = validateCarouselStructure2StoryPlan(plan, {
-    analysis,
-    recentHistory: [{ ...plan.historySummary }],
+    businessDescription,
+    recentHistory: [history],
   });
 
   assert.ok(issues.some((issue) => issue.code === "recent_repetition"));
-  assert.deepEqual(Object.keys(plan.historySummary).sort(), [
-    "centralProblem",
-    "ctaAngle",
-    "hookIdea",
-    "productMechanism",
-    "storyAngle",
-    "storyFormatId",
-    "summary",
-  ]);
 });
 
-test("repair instructions preserve the selected format and include history for every failure", () => {
-  const assignment: CarouselStructure2StoryAssignment = {
-    candidateIndex: 0,
-    slotIndex: 0,
-    storyFormatId: "wrong_villain",
-  };
+test("repair keeps the same creative brief and flexible format reference", () => {
+  const assignment = makeAssignments(["new_rule"])[0]!;
   const messages = buildCarouselStructure2RepairMessages({
-    analysis,
     assignment,
-    issues: [
-      {
-        code: "word_count",
-        message: "too short",
-        slideNumber: 2,
-      },
-    ],
+    businessDescription,
+    issues: [{ code: "invalid_plan", message: "CTA missing", slideNumber: null }],
     rawPlan: {},
-    recentHistory: [
-      {
-        centralProblem: "constant reprioritization",
-        storyFormatId: "wrong_belief",
-      },
-    ],
+    recentHistory: [makeRecentCopy()],
   });
   const prompt = messages.map((message) => message.content).join("\n");
 
-  assert.match(prompt, /storyFormatId wrong_villain/i);
-  assert.match(prompt, /Recent compact Structure 2 history only/i);
-  assert.match(prompt, /constant reprioritization/i);
-  assert.match(prompt, /Never use Structure 1 formats/i);
+  assert.match(prompt, /new_rule/);
+  assert.match(prompt, /quiet frustration/);
+  assert.match(prompt, /allowedCtaPositions/);
+  assert.doesNotMatch(prompt, /productMechanism/);
 });
 
-test("deterministic batch mode returns five retry-safe validated plans", async () => {
-  const previousMode = process.env.CAROUSEL_STRUCTURE_2_PLANNER_MODE;
-  process.env.CAROUSEL_STRUCTURE_2_PLANNER_MODE = "deterministic";
+test("Structure 2 remains LLM-only and pinned to gpt-4o-mini", async () => {
+  const previousApiKey = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
 
   try {
-    const assignments = makeAssignments(
-      CAROUSEL_STRUCTURE_2_FORMAT_IDS.slice(0, 5),
+    await assert.rejects(
+      buildCarouselStructure2StoryPlanBatch({
+        assignments: makeAssignments(CAROUSEL_STRUCTURE_2_FORMAT_IDS.slice(0, 5)),
+        businessDescription,
+      }),
+      /OPENAI_API_KEY is required/i,
     );
-    const results = await buildCarouselStructure2StoryPlanBatch({
-      analysis,
-      assignments,
-    });
-
-    assert.equal(results.length, 5);
-    assert.deepEqual(
-      results.map((result) => result.slotIndex),
-      [0, 1, 2, 3, 4],
-    );
-    assert.ok(
-      results.every(
-        (result) =>
-          result.source === "deterministic-fallback" &&
-          result.validationResult.ok &&
-          result.validationResult.fallbackUsed &&
-          result.plannerVersion === CAROUSEL_STRUCTURE_2_PLANNER_VERSION,
-      ),
-    );
+    assert.match(CAROUSEL_STRUCTURE_2_PLANNER_VERSION, /flexible-seed-writer/);
+    assert.equal(CAROUSEL_TEXT_MODEL, "gpt-4o-mini");
   } finally {
-    if (previousMode === undefined) {
-      delete process.env.CAROUSEL_STRUCTURE_2_PLANNER_MODE;
-    } else {
-      process.env.CAROUSEL_STRUCTURE_2_PLANNER_MODE = previousMode;
-    }
+    if (previousApiKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousApiKey;
   }
 });
 
-test("controlled business context exposes saved product mechanisms without another profile", () => {
-  const context = buildCarouselStructure2StoryBusinessContext(analysis);
-
-  assert.deepEqual(context.productMechanisms, [
-    "prioritizes tasks around changing constraints",
-    "automatic task prioritization",
-    "a clearer next step",
-    "Todaywise prioritizes a changing task list",
-    "finish important work with fewer repeated decisions",
-  ]);
-  assert.equal(context.brand.businessName, "Todaywise");
-});
-
-function makeAssignments(
-  formatIds: readonly (typeof CAROUSEL_STRUCTURE_2_FORMAT_IDS)[number][],
-) {
-  return formatIds.map((storyFormatId, slotIndex) => ({
+function makeAssignments(formatIds: readonly CarouselStructure2FormatId[]) {
+  return Array.from({ length: 5 }, (_, slotIndex) => ({
     candidateIndex: slotIndex,
+    creativeSeed: `A different open creative starting point ${slotIndex + 1}`,
+    emotion: slotIndex === 0 ? "quiet frustration" : `emotion ${slotIndex + 1}`,
     slotIndex,
-    storyFormatId,
-  }));
+    storyFormatId: formatIds[slotIndex % formatIds.length]!,
+  })) satisfies CarouselStructure2StoryAssignment[];
 }
 
-function toRawPlan(plan: CarouselStructure2StoryPlan) {
+function makeStoryPlan(storyFormatId: CarouselStructure2FormatId) {
+  return parseCarouselStructure2StoryPlan(makeRawStoryPlan(storyFormatId), {
+    businessDescription,
+    storyFormatId,
+  });
+}
+
+function makeRawStoryPlan(storyFormatId: CarouselStructure2FormatId) {
+  const ctaPosition = getCarouselStructure2Format(storyFormatId)
+    .allowedCtaPositions[0]!;
+  const copy = [
+    "i thought a perfect weekly plan would keep every priority under control",
+    "then monday changed one task and i rebuilt the whole list before starting anything",
+    "the problem was not effort; the plan left no room for ordinary changes",
+    "i tried Todaywise and used the changing plan as my starting point",
+    "the week stayed imperfect, but i stopped treating every change like a restart",
+  ];
+  const roles = [
+    "recognition",
+    "failure_scene",
+    "reframe",
+    "product_turning_point",
+    "proof_reflection_cta",
+  ] as const;
+
   return {
-    slides: plan.slides.map((slide) => ({
-      ctaText: slide.ctaText,
-      slideNumber: slide.slideNumber,
-      storyRole: slide.storyRole,
-      storyText: slide.storyText,
-      visualContext: slide.visualContext,
+    slides: copy.map((storyText, index) => ({
+      ctaText:
+        index + 1 === ctaPosition
+          ? "try the same idea with one changing priority"
+          : null,
+      slideNumber: index + 1,
+      storyRole: roles[index]!,
+      storyText,
+      visualContext: `ordinary planning scene ${index + 1}`,
     })),
     strategy: {
-      angle: plan.strategy.angle,
-      audienceId: plan.strategy.audienceId,
-      centralProblem: plan.strategy.centralProblem,
-      ctaAngle: plan.strategy.ctaAngle,
-      customerGoalId: plan.strategy.customerGoalId,
-      problemId: plan.strategy.problemId,
-      productMechanism: plan.strategy.productMechanism,
-      reframe: plan.strategy.reframe,
-      storyFormatId: plan.strategy.storyFormatId as string,
-      topicId: plan.strategy.topicId,
-      visibleBehavior: plan.strategy.visibleBehavior,
+      angle: "a perfect weekly plan colliding with an ordinary change",
+      storyFormatId,
     },
   };
 }
 
-function clonePlan(plan: CarouselStructure2StoryPlan) {
-  return structuredClone(plan);
-}
+function makeRecentCopy(copy?: string[]) {
+  const visible = copy ?? [
+    "i kept rebuilding monday's list",
+    "one changed priority restarted the whole plan",
+  ];
 
-function countWords(value: string) {
-  return value.trim().split(/\s+/).filter(Boolean).length;
+  return {
+    contentPlanItemId: "00000000-0000-0000-0000-000000000001",
+    formatId: "wrong_belief",
+    generationId: "00000000-0000-0000-0000-000000000002",
+    slides: visible.map((headline, index) => ({
+      ctaText: null,
+      headline,
+      slideNumber: index + 1,
+      subtext: null,
+    })),
+    structureId: "structure_2" as const,
+  };
 }

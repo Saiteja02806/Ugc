@@ -6,6 +6,7 @@ import type {
 import {
   clampHookTextPosition,
   createHookTextLayout,
+  HOOK_TEXT_LAYOUT_VERSION,
 } from "./hook-text-layout.ts";
 import type { TrendingTextColor } from "./text-color.ts";
 import { getWallTextLinePolicy } from "./wall-text-text-logic.ts";
@@ -42,9 +43,16 @@ export type TrendingCarouselEditSlide = {
   originalBackgroundUrl: string;
   originalVisualRole: "hook" | "human" | "product_asset" | "static" | null;
   productVisualEligibility: "allowed" | "forbidden" | "preferred" | null;
+  renderFormat: "1:1" | "4:5";
   renderedUrl: string;
   slideId: string;
   slideNumber: number;
+  storyLayoutVariant:
+    | "story_overlay_only"
+    | "story_pill_overlay"
+    | "story_product_reveal"
+    | null;
+  storyTextTreatment: "outlined_overlay" | "overlay" | "pill" | null;
   structureId: "structure_1" | "structure_2";
   subtext: string;
   textPosition: NormalizedTextPosition;
@@ -61,6 +69,7 @@ export type TrendingHookEditContent = {
   fontSize: number;
   format: "hook_video";
   hookText: string;
+  layoutVersion?: typeof HOOK_TEXT_LAYOUT_VERSION;
   lines: string[];
   position: NormalizedTextPosition;
   textColor: TrendingTextColor;
@@ -164,8 +173,7 @@ export function createHookEditLines(value: string) {
     return normalized
       .split("\n")
       .map((line) => line.replace(/\s+/gu, " ").trim())
-      .filter(Boolean)
-      .slice(0, 3);
+      .filter(Boolean);
   }
 }
 
@@ -183,6 +191,7 @@ export function createHookEditContent(
       ...current,
       fontSize: layout.fontSize,
       hookText: value,
+      layoutVersion: HOOK_TEXT_LAYOUT_VERSION,
       lines: layout.lines,
       position: clampHookTextPosition(current.position, layout.positionBounds),
     };
@@ -190,6 +199,7 @@ export function createHookEditContent(
     return {
       ...current,
       hookText: value,
+      layoutVersion: HOOK_TEXT_LAYOUT_VERSION,
       lines: createHookEditLines(value),
     };
   }

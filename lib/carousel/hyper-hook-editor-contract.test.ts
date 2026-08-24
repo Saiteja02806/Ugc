@@ -68,7 +68,7 @@ test("keeps the global folder authenticated and read-only", () => {
 
 test("shows a folder picker and applies its selection to Slide 1 only", () => {
   assert.match(editor, /function HyperHookLibrarySection/);
-  assert.match(editor, /Hyper Hooks/);
+  assert.match(editor, /Hook library/);
   assert.match(editor, /Slide 1 only/);
   assert.match(editor, /setActiveSlideIndex\(0\)/);
   assert.match(

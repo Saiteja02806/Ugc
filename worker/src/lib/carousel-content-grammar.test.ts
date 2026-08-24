@@ -7,12 +7,10 @@ import {
   CAROUSEL_CONTENT_GRAMMAR_VERSION,
 } from "./carousel-content-grammar.js";
 import {
-  buildCarouselContentPlanBatch,
   buildCarouselContentPlan,
-  CAROUSEL_CONTENT_PLANNER_VERSION,
   mergeCarouselRecentContentHistory,
-  normalizeRepairedCarouselCopy,
-  selectCarouselBatchReplacement,
+  parseCarouselContentPlanForAssignment,
+  partitionCarouselContentPlanValidationIssues,
   validateCarouselRecentContentRepetition,
   validateCarouselContentPlan,
 } from "./carousel-llm-slide-plan.js";
@@ -48,67 +46,160 @@ const analysis: WebsiteBusinessAnalysis = {
   visualKeywords: ["paper calendar", "organized desk", "reporting dashboard"],
 };
 
-test("every V1 content format produces its exact five-slide grammar", async () => {
-  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
+test("every Structure 1 format accepts the exact assigned five-slide grammar", () => {
+  assert.equal(CAROUSEL_CONTENT_GRAMMAR.formats.length, 15);
+  assert.equal(CAROUSEL_CONTENT_GRAMMAR.hookFamilies.length, 10);
+  assert.deepEqual(
+    CAROUSEL_CONTENT_GRAMMAR.formats
+      .map((format) => format.rotationOrder)
+      .sort((left, right) => left - right),
+    Array.from({ length: 15 }, (_, index) => index + 1),
+  );
 
-  try {
-    assert.equal(CAROUSEL_CONTENT_GRAMMAR.formats.length, 15);
-    assert.equal(CAROUSEL_CONTENT_GRAMMAR.hookFamilies.length, 10);
-    assert.deepEqual(
-      CAROUSEL_CONTENT_GRAMMAR.formats
-        .map((format) => format.rotationOrder)
-        .sort((left, right) => left - right),
-      Array.from({ length: 15 }, (_, index) => index + 1),
-    );
-    assert.ok(
-      CAROUSEL_CONTENT_GRAMMAR.formats.every((format) => format.version === 1),
-    );
+  for (const format of CAROUSEL_CONTENT_GRAMMAR.formats) {
+    const hookFamilyId = format.compatibleHookFamilies[0]!;
+    const fixture = createAssignedStructure1Fixture(format.id, hookFamilyId);
+    const result = parseCarouselContentPlanForAssignment(fixture, {
+      analysis,
+      candidateIndex: format.rotationOrder - 1,
+      contentFormatId: format.id,
+      hookFamilyId,
+      recentHistory: [],
+      slideCount: 5,
+    });
 
-    for (const [candidateIndex, format] of
-      CAROUSEL_CONTENT_GRAMMAR.formats.entries()) {
-      const hookFamilyId = format.compatibleHookFamilies[0]!;
-      const plan = await buildCarouselContentPlan({
-        analysis,
-        candidateIndex,
-        contentFormatId: format.id,
-        hookFamilyId,
-        recentHistory: [],
-        slideCount: 5,
-      });
+    assert.deepEqual(result.blockingIssues, [], format.id);
+    assert.equal(result.plan.contentStrategy?.contentFormatId, format.id);
+    assert.equal(result.plan.contentStrategy?.hookFamilyId, hookFamilyId);
+    assert.equal(result.plan.slides.length, 5, format.id);
 
-      assert.equal(plan.source, "deterministic-fallback", format.id);
-      assert.equal(plan.plannerVersion, CAROUSEL_CONTENT_PLANNER_VERSION);
-      assert.equal(plan.contentStrategy?.contentFormatId, format.id);
-      assert.equal(plan.contentStrategy?.hookFamilyId, hookFamilyId);
-      assert.equal(plan.slides.length, 5, format.id);
-      assert.equal(plan.validationResult.ok, true, format.id);
-      assert.equal(plan.validationResult.fallbackUsed, true, format.id);
-      assert.equal(plan.validationResult.repaired, false, format.id);
-
-      for (const [slideIndex, definition] of format.slides.entries()) {
-        const slide = plan.slides[slideIndex]!;
-        assert.equal(slide.slideNumber, slideIndex + 1, format.id);
-        assert.equal(slide.formatRole, definition.role, format.id);
-        assert.equal(slide.slideType, definition.slideType, format.id);
-        assert.ok(
-          definition.preferredTextModes.includes(slide.textMode),
-          `${format.id} slide ${slideIndex + 1} used ${slide.textMode}`,
-        );
-
-        if (definition.listItemCount !== undefined) {
-          assert.equal(
-            slide.listItems.length,
-            definition.listItemCount,
-            `${format.id} slide ${slideIndex + 1}`,
-          );
-        }
+    for (const [slideIndex, definition] of format.slides.entries()) {
+      const slide = result.plan.slides[slideIndex]!;
+      assert.equal(slide.slideNumber, slideIndex + 1, format.id);
+      assert.equal(slide.formatRole, definition.role, format.id);
+      assert.equal(slide.slideType, definition.slideType, format.id);
+      assert.ok(
+        definition.preferredTextModes.includes(slide.textMode),
+        `${format.id} slide ${slideIndex + 1} used ${slide.textMode}`,
+      );
+      if (definition.listItemCount !== undefined) {
+        assert.equal(slide.listItems.length, definition.listItemCount);
       }
     }
+  }
 
-    assert.equal(
-      CAROUSEL_CONTENT_GRAMMAR_VERSION,
-      "carousel-formats-v1+carousel-hook-families-v1",
+  assert.equal(
+    CAROUSEL_CONTENT_GRAMMAR_VERSION,
+    "carousel-formats-v1+carousel-hook-families-v1",
+  );
+});
+
+test("Structure 1 preserves structurally valid AI copy verbatim", () => {
+  const fixture = createAssignedStructure1Fixture(
+    "comparison",
+    "question",
+  );
+  const exactCopy =
+    "i’d compare both campaign handoffs before choosing the calmer workflow.";
+  fixture.slides[0]!.body = exactCopy;
+
+  const result = parseCarouselContentPlanForAssignment(fixture, {
+    analysis,
+    candidateIndex: 0,
+    contentFormatId: "comparison",
+    hookFamilyId: "question",
+    recentHistory: [],
+    slideCount: 5,
+  });
+
+  assert.equal(result.plan.slides[0]?.body, exactCopy);
+  assert.equal(result.plan.slides[0]?.subtext, exactCopy);
+  assert.deepEqual(result.blockingIssues, []);
+});
+
+test("Structure 1 rejects a changed format, role order, or required field", () => {
+  const changedFormat = createAssignedStructure1Fixture(
+    "comparison",
+    "question",
+  );
+  changedFormat.contentStrategy.contentFormatId = "list";
+  assert.throws(
+    () =>
+      parseCarouselContentPlanForAssignment(changedFormat, {
+        analysis,
+        contentFormatId: "comparison",
+        hookFamilyId: "question",
+        slideCount: 5,
+      }),
+    /changed the backend-selected content format/,
+  );
+
+  const changedRole = createAssignedStructure1Fixture(
+    "comparison",
+    "question",
+  );
+  changedRole.slides[1]!.formatRole = "option_b";
+  assert.throws(
+    () =>
+      parseCarouselContentPlanForAssignment(changedRole, {
+        analysis,
+        contentFormatId: "comparison",
+        hookFamilyId: "question",
+        slideCount: 5,
+      }),
+    /must use format role option_a/,
+  );
+
+  const missingCopy = createAssignedStructure1Fixture(
+    "comparison",
+    "question",
+  );
+  missingCopy.slides[1]!.body = null;
+  assert.throws(
+    () =>
+      parseCarouselContentPlanForAssignment(missingCopy, {
+        analysis,
+        contentFormatId: "comparison",
+        hookFamilyId: "question",
+        slideCount: 5,
+      }),
+    /body_only needs body/,
+  );
+
+  const unexpectedList = createAssignedStructure1Fixture(
+    "problem_solution",
+    "problem_recognition",
+  );
+  unexpectedList.slides[4]!.listItems = ["Hardcoded extra item"];
+  assert.throws(
+    () =>
+      parseCarouselContentPlanForAssignment(unexpectedList, {
+        analysis,
+        contentFormatId: "problem_solution",
+        hookFamilyId: "problem_recognition",
+        slideCount: 5,
+      }),
+    /must keep listItems empty/,
+  );
+});
+
+test("Structure 1 has no deterministic planner mode or authored fallback", async () => {
+  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+  const previousApiKey = process.env.OPENAI_API_KEY;
+  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
+  delete process.env.OPENAI_API_KEY;
+
+  try {
+    await assert.rejects(
+      buildCarouselContentPlan({
+        analysis,
+        candidateIndex: 0,
+        contentFormatId: "comparison",
+        hookFamilyId: "question",
+        recentHistory: [],
+        slideCount: 5,
+      }),
+      /Missing OPENAI_API_KEY/,
     );
   } finally {
     if (previousMode === undefined) {
@@ -116,78 +207,10 @@ test("every V1 content format produces its exact five-slide grammar", async () =
     } else {
       process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
     }
-  }
-});
-
-test("plans exactly five controlled Carousels through the batch planner contract", async () => {
-  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
-
-  try {
-    const formats = CAROUSEL_CONTENT_GRAMMAR.formats.slice(0, 5);
-    const plans = await buildCarouselContentPlanBatch({
-      analysis,
-      items: formats.map((format, slotIndex) => ({
-        candidateIndex: slotIndex,
-        contentFormatId: format.id,
-        hookFamilyId: format.compatibleHookFamilies[0]!,
-        slotIndex,
-      })),
-      recentHistory: [],
-    });
-
-    assert.equal(plans.length, 5);
-    assert.deepEqual(
-      plans.map((item) => item.actualContentFormatId),
-      formats.map((format) => format.id),
-    );
-    assert.ok(plans.every((item) => item.plan.slides.length === 5));
-    assert.ok(plans.every((item) => item.plan.validationResult.fallbackUsed));
-  } finally {
-    if (previousMode === undefined) {
-      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
+    if (previousApiKey === undefined) {
+      delete process.env.OPENAI_API_KEY;
     } else {
-      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
-    }
-  }
-});
-
-test("reuses an applicable same-batch format for a not-applicable slot", async () => {
-  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
-
-  try {
-    const formats = CAROUSEL_CONTENT_GRAMMAR.formats.slice(0, 4);
-    const completed = await buildCarouselContentPlanBatch({
-      analysis,
-      items: [
-        ...formats.map((format, slotIndex) => ({
-          candidateIndex: slotIndex,
-          contentFormatId: format.id,
-          hookFamilyId: format.compatibleHookFamilies[0]!,
-          slotIndex,
-        })),
-        {
-          candidateIndex: 4,
-          contentFormatId: "swap",
-          hookFamilyId: "utility",
-          slotIndex: 4,
-        },
-      ],
-      recentHistory: [],
-    });
-    const replacement = selectCarouselBatchReplacement(
-      completed.slice(0, 4),
-      4,
-    );
-
-    assert.equal(replacement?.slotIndex, 3);
-    assert.equal(replacement?.actualContentFormatId, "comparison");
-  } finally {
-    if (previousMode === undefined) {
-      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-    } else {
-      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
+      process.env.OPENAI_API_KEY = previousApiKey;
     }
   }
 });
@@ -216,355 +239,51 @@ test("fails closed before planning when a V1 assignment is missing or incomplete
   );
 });
 
-test("deterministic hooks visibly follow the backend-selected hook family", async () => {
-  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
+test("Structure 1 wording preferences remain advisory for publishing", () => {
+  const parsed = parseAssignedFixture("checklist", "utility");
+  const usableCopy = {
+    ...parsed,
+    slides: parsed.slides.map((slide, index) =>
+      index === 1
+        ? {
+            ...slide,
+            body: "work smarter with ease",
+            subtext: "work smarter with ease",
+          }
+        : slide,
+    ),
+  };
+  const issues = validateCarouselContentPlan(usableCopy, analysis);
+  const partitioned = partitionCarouselContentPlanValidationIssues(issues);
 
-  try {
-    const hookByFamily = new Map<string, string>();
-
-    for (const hookFamilyId of [
-      "comparison",
-      "curiosity",
-      "question",
-      "surprise",
-    ] as const) {
-      const plan = await buildCarouselContentPlan({
-        analysis,
-        candidateIndex: 0,
-        contentFormatId: "comparison",
-        hookFamilyId,
-        recentHistory: [],
-        slideCount: 5,
-      });
-      hookByFamily.set(
-        hookFamilyId,
-        plan.slides[0]?.headline ?? plan.slides[0]?.body ?? "",
-      );
-    }
-
-    assert.equal(new Set(hookByFamily.values()).size, 4);
-    assert.match(hookByFamily.get("comparison") ?? "", /^Compare\b/i);
-    assert.match(hookByFamily.get("curiosity") ?? "", /\breveal\b/i);
-    assert.match(hookByFamily.get("question") ?? "", /\?$/);
-    assert.match(hookByFamily.get("surprise") ?? "", /\boverlooked\b/i);
-  } finally {
-    if (previousMode === undefined) {
-      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-    } else {
-      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
-    }
-  }
+  assert.ok(issues.some((issue) => issue.code === "generic_copy"));
+  assert.deepEqual(partitioned.blockingIssues, []);
+  assert.ok(partitioned.advisoryIssues.length > 0);
 });
 
-test("resources fallback stays valid with only four saved content options", async () => {
-  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
+test("Structure 1 reports unsupported claims without replacing structurally valid AI copy", () => {
+  const parsed = parseAssignedFixture("myth_fact", "contrarian");
+  const unsupported = {
+    ...parsed,
+    slides: parsed.slides.map((slide, index) =>
+      index === 1
+        ? {
+            ...slide,
+            body: "A 1,200 calorie target works for every person.",
+            subtext: "A 1,200 calorie target works for every person.",
+          }
+        : slide,
+    ),
+  };
+  const issues = validateCarouselContentPlan(unsupported, analysis);
 
-  try {
-    const sparseAnalysis: WebsiteBusinessAnalysis = {
-      ...analysis,
-      carouselAngles: [],
-      categories: ["meal planning"],
-      category: "fitness",
-      mainProblem: "Meal logging feels inconsistent",
-      mainPromise: "Keep meal logging clearer",
-      painPoints: [],
-      valueProps: [],
-      visualKeywords: [],
-    };
-    const plan = await buildCarouselContentPlan({
-      analysis: sparseAnalysis,
-      candidateIndex: 0,
-      contentFormatId: "resources",
-      hookFamilyId: "specific_outcome",
-      recentHistory: [],
-      slideCount: 5,
-    });
-    const resourceSlides = plan.slides.slice(1, 4);
-    const resourceItems = resourceSlides.flatMap((slide) => slide.listItems);
-
-    assert.equal(plan.validationResult.ok, true);
-    assert.equal(resourceItems.length, 6);
-    assert.equal(new Set(resourceItems).size, 6);
-    assert.equal(
-      new Set(resourceSlides.map((slide) => slide.listItems.join(" "))).size,
-      3,
-    );
-  } finally {
-    if (previousMode === undefined) {
-      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-    } else {
-      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
-    }
-  }
+  assert.ok(issues.some((issue) => issue.code === "unsupported_claim"));
+  assert.deepEqual(
+    partitionCarouselContentPlanValidationIssues(issues).blockingIssues,
+    [],
+  );
 });
 
-test("resources fallback treats AI as meaningful copy in repetition checks", async () => {
-  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
-
-  try {
-    const compactTopicAnalysis: WebsiteBusinessAnalysis = {
-      ...analysis,
-      carouselAngles: ["Speed up meal logging"],
-      categories: ["Nutrition Tracking"],
-      category: "Nutrition Tracking",
-      mainProblem:
-        "Users struggle with meal logging and need personalized guidance.",
-      mainPromise: "Fast meal tracking with access to nutrition experts.",
-      painPoints: ["Logging meals is time-consuming"],
-      valueProps: ["AI-assisted meal logging"],
-      visualKeywords: ["AI", "nutrition", "meal logging", "support", "progress"],
-    };
-    const plan = await buildCarouselContentPlan({
-      analysis: compactTopicAnalysis,
-      candidateIndex: 0,
-      contentFormatId: "resources",
-      hookFamilyId: "specific_outcome",
-      recentHistory: [],
-      slideCount: 5,
-    });
-
-    assert.equal(plan.validationResult.ok, true);
-    const resourceItems = plan.slides.slice(1, 4).flatMap((slide) => slide.listItems);
-    assert.equal(resourceItems.length, 6);
-    assert.equal(new Set(resourceItems).size, 6);
-    assert.ok(
-      resourceItems.every((item) =>
-        /^(Checklist|Guide|Review prompt):/i.test(item),
-      ),
-    );
-    assert.ok(resourceItems.every((item) => item.length <= 44));
-    assert.equal(resourceItems[0], "Guide: Nutrition Tracking");
-    assert.equal(resourceItems[1], "Checklist: Fast meal tracking");
-    assert.equal(resourceItems[2], "Guide: meal logging");
-    assert.ok(resourceItems.includes("Checklist: AI-assisted meal logging"));
-    assert.ok(
-      resourceItems.every((item) => !/^(?:Guide|Checklist): (?:AI|support)$/i.test(item)),
-    );
-    assert.match(
-      `${plan.slides[0]?.headline ?? ""} ${plan.slides[0]?.body ?? ""}`,
-      /(?:six Nutrition Tracking resources|six practical references)/i,
-    );
-    assert.match(
-      plan.slides[0]?.subtext ?? "",
-      /^Save six practical references for (?:AI-assisted meal logging|fast meal tracking with access to nutrition experts)\.$/,
-    );
-    assert.ok(resourceItems.every((item) => !/users struggle/i.test(item)));
-    assert.equal(plan.slides.length, 5);
-
-    const actionTopicPlan = await buildCarouselContentPlan({
-      analysis: {
-        ...compactTopicAnalysis,
-        carouselAngles: [],
-        categories: [],
-        category: "Speed up meal logging",
-        visualKeywords: [],
-      },
-      candidateIndex: 0,
-      contentFormatId: "resources",
-      hookFamilyId: "specific_outcome",
-      recentHistory: [],
-      slideCount: 5,
-    });
-    assert.match(
-      `${actionTopicPlan.slides[0]?.headline ?? ""} ${actionTopicPlan.slides[0]?.body ?? ""}`,
-      /(?:meal logging resources|practical references)/i,
-    );
-
-    const compactTermIssues = validateCarouselContentPlan(
-      {
-        ...plan,
-        slides: plan.slides.map((slide, index) =>
-          index === 1
-            ? { ...slide, listItems: ["Nutrition Tracking", "AI"] }
-            : slide,
-        ),
-      },
-      compactTopicAnalysis,
-    );
-    assert.equal(
-      compactTermIssues.some((issue) => issue.code === "story_repetition"),
-      false,
-    );
-  } finally {
-    if (previousMode === undefined) {
-      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-    } else {
-      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
-    }
-  }
-});
-
-test("examples fallback replaces repeated AI copy with a fresh format-aware story", async () => {
-  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
-
-  try {
-    const nutritionAnalysis: WebsiteBusinessAnalysis = {
-      brandTone: "supportive and practical",
-      businessName: "Calorie Fit",
-      carouselAngles: ["Speed up meal logging", "Understand your nutrition"],
-      categories: ["Nutrition Tracking"],
-      category: "fitness health",
-      ctaIdeas: ["Join the waitlist"],
-      mainProblem: "Logging meals can be tedious",
-      mainPromise: "Fast meal logging with access to nutrition experts",
-      painPoints: [
-        "Logging meals can be tedious",
-        "Traditional calorie tracking lacks personalized guidance",
-        "Need for context in tracking",
-      ],
-      targetAudience: ["People seeking weight management"],
-      valueProps: [
-        "AI-assisted meal logging",
-        "Personalized nutrition guidance",
-        "Clear progress insights",
-      ],
-      visualKeywords: ["AI", "nutrition", "meal logging", "support", "progress"],
-    };
-    const recentHistory = [
-      {
-        angle:
-          "Speed up meal logging with expert support for health-conscious individuals",
-        contentFormatId: "framework",
-        hook:
-          "Use this simple system to log meals faster and get expert nutrition help.",
-        hookFamilyId: "utility",
-        topic: "Speed up meal logging",
-        topicId: "topic_speed_up_meal_logging_95vb7h",
-      },
-      {
-        angle: "AI: Need for context in tracking toward Clear progress insights",
-        contentFormatId: "list",
-        hook: "AI has a less obvious pattern",
-        hookFamilyId: "surprise",
-        topic: "AI",
-        topicId: "topic_ai_9xx36n",
-      },
-    ];
-    const plan = await buildCarouselContentPlan({
-      analysis: nutritionAnalysis,
-      candidateIndex: 1,
-      contentFormatId: "examples",
-      hookFamilyId: "utility",
-      recentHistory,
-      slideCount: 5,
-    });
-
-    assert.equal(plan.source, "deterministic-fallback");
-    assert.equal(plan.contentStrategy?.contentFormatId, "examples");
-    assert.equal(plan.contentStrategy?.hookFamilyId, "utility");
-    assert.deepEqual(
-      plan.slides.map((slide) => slide.formatRole),
-      ["hook", "example_1", "example_2", "example_3", "pattern_cta"],
-    );
-    assert.equal(
-      plan.slides.some((slide) =>
-        slide.body?.includes(
-          "Busy meals make detailed logging easy to postpone until the day is already over.",
-        ),
-      ),
-      false,
-    );
-    assert.match(
-      `${plan.slides[0]?.headline ?? ""} ${plan.slides[0]?.body ?? ""}`,
-      /examples/i,
-    );
-    assert.ok(
-      plan.slides.every(
-        (slide) => !/current routine|supporting context/i.test(slide.body ?? ""),
-      ),
-    );
-    assert.deepEqual(
-      validateCarouselRecentContentRepetition(
-        plan,
-        recentHistory,
-        buildCarouselBusinessContentContext(nutritionAnalysis).topics,
-      ),
-      [],
-    );
-  } finally {
-    if (previousMode === undefined) {
-      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-    } else {
-      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
-    }
-  }
-});
-
-test("V1 repair keeps a completed takeaway CTA-free", async () => {
-  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
-
-  try {
-    const plan = await buildCarouselContentPlan({
-      analysis,
-      candidateIndex: 0,
-      contentFormatId: "checklist",
-      hookFamilyId: "utility",
-      recentHistory: [],
-      slideCount: 5,
-    });
-    const repaired = normalizeRepairedCarouselCopy({
-      ...plan.normalizedPlan,
-      slides: plan.normalizedPlan.slides.map((slide, index) =>
-        index === 4
-          ? { ...slide, ctaText: null, formatRole: slide.formatRole ?? null }
-          : { ...slide, formatRole: slide.formatRole ?? null },
-      ),
-    });
-
-    assert.equal(repaired.slides[4]?.ctaText, null);
-  } finally {
-    if (previousMode === undefined) {
-      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-    } else {
-      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
-    }
-  }
-});
-
-test("rejects an exact calorie claim missing from the saved profile evidence", async () => {
-  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
-
-  try {
-    const plan = await buildCarouselContentPlan({
-      analysis,
-      candidateIndex: 0,
-      contentFormatId: "myth_fact",
-      hookFamilyId: "contrarian",
-      recentHistory: [],
-      slideCount: 5,
-    });
-    const unsupported = {
-      ...plan,
-      slides: plan.slides.map((slide, index) =>
-        index === 1
-          ? {
-              ...slide,
-              body: "A 1,200 calorie target works for every person.",
-              subtext: "A 1,200 calorie target works for every person.",
-            }
-          : slide,
-      ),
-    };
-
-    assert.ok(
-      validateCarouselContentPlan(unsupported, analysis).some(
-        (issue) => issue.code === "unsupported_claim",
-      ),
-    );
-  } finally {
-    if (previousMode === undefined) {
-      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-    } else {
-      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
-    }
-  }
-});
 
 test("uses saved business model and campaign purposes in controlled context", () => {
   const context = buildCarouselBusinessContentContext({
@@ -581,23 +300,10 @@ test("uses saved business model and campaign purposes in controlled context", ()
 });
 
 test("merges same-batch ideas ahead of reserved history without exceeding ten", () => {
-  const sibling = {
-    angle: "A fresh sibling angle",
-    audienceId: null,
-    contentFormatId: "comparison",
-    hook: "Which campaign view is clearer?",
-    hookFamilyId: "question",
-    topic: "campaign reporting",
-    topicId: "topic_campaign_reporting",
-  };
-  const olderHistory = Array.from({ length: 10 }, (_, index) => ({
-    angle: `Older angle ${index}`,
-    contentFormatId: "list",
-    hook: `Older hook ${index}`,
-    hookFamilyId: "utility",
-    topic: `Older topic ${index}`,
-    topicId: `topic_older_${index}`,
-  }));
+  const sibling = makeRecentCopy("sibling", "Which campaign view is clearer?");
+  const olderHistory = Array.from({ length: 10 }, (_, index) =>
+    makeRecentCopy(`older-${index}`, `Older hook ${index}`),
+  );
   const merged = mergeCarouselRecentContentHistory(
     [sibling],
     [sibling, ...olderHistory],
@@ -605,54 +311,135 @@ test("merges same-batch ideas ahead of reserved history without exceeding ten", 
 
   assert.equal(merged.length, 10);
   assert.deepEqual(merged[0], sibling);
-  assert.equal(
-    merged.filter((item) => item.topicId === sibling.topicId).length,
-    1,
+  assert.equal(merged.filter((item) => item.generationId === sibling.generationId).length, 1);
+});
+
+test("classifies repeated exact Structure 1 copy as advisory", () => {
+  const plan = parseAssignedFixture("comparison", "question");
+  const hook = plan.slides[0]!.headline ?? plan.slides[0]!.body ?? "";
+  const issues = validateCarouselRecentContentRepetition(
+    plan,
+    [makeRecentCopy("repeat", hook)],
+  );
+  const partitioned = partitionCarouselContentPlanValidationIssues(issues);
+
+  assert.ok(
+    issues.some((issue) => issue.code === "recent_repetition"),
+  );
+  assert.deepEqual(partitioned.blockingIssues, []);
+  assert.ok(
+    partitioned.advisoryIssues.some(
+      (issue) => issue.code === "recent_repetition",
+    ),
   );
 });
 
-test("rejects a repeated topic while another saved topic is available", async () => {
-  const previousMode = process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-  process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
-
-  try {
-    const context = buildCarouselBusinessContentContext(analysis);
-    const plan = await buildCarouselContentPlan({
+function parseAssignedFixture(formatId: string, hookFamilyId: string) {
+  return parseCarouselContentPlanForAssignment(
+    createAssignedStructure1Fixture(formatId, hookFamilyId),
+    {
       analysis,
-      candidateIndex: 0,
-      contentFormatId: "comparison",
-      hookFamilyId: "question",
+      contentFormatId: formatId,
+      hookFamilyId,
       recentHistory: [],
       slideCount: 5,
-    });
-    const strategy = plan.contentStrategy!;
-    const issues = validateCarouselRecentContentRepetition(
-      plan,
-      [{ topic: strategy.topic, topicId: strategy.topicId }],
-      context.topics,
-    );
+    },
+  ).plan;
+}
 
-    assert.ok(
-      issues.some((issue) =>
-        issue.message.includes("another saved topic is available"),
-      ),
-    );
+function makeRecentCopy(id: string, headline: string) {
+  return {
+    contentPlanItemId: null,
+    formatId: "comparison",
+    generationId: id,
+    slides: [
+      {
+        ctaText: null,
+        headline,
+        slideNumber: 1,
+        subtext: null,
+      },
+    ],
+    structureId: "structure_1" as const,
+  };
+}
 
-    const rotatedPlan = await buildCarouselContentPlan({
-      analysis,
-      candidateIndex: 0,
-      contentFormatId: "comparison",
-      hookFamilyId: "question",
-      recentHistory: [{ topic: strategy.topic, topicId: strategy.topicId }],
-      slideCount: 5,
-    });
+function createAssignedStructure1Fixture(
+  formatId: string,
+  hookFamilyId: string,
+) {
+  const format = CAROUSEL_CONTENT_GRAMMAR.formats.find(
+    (candidate) => candidate.id === formatId,
+  );
+  if (!format) throw new Error(`Unknown Structure 1 test format ${formatId}.`);
 
-    assert.notEqual(rotatedPlan.contentStrategy?.topicId, strategy.topicId);
-  } finally {
-    if (previousMode === undefined) {
-      delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
-    } else {
-      process.env.CAROUSEL_CONTENT_PLANNER_MODE = previousMode;
-    }
-  }
-});
+  const businessContext = buildCarouselBusinessContentContext(analysis);
+  const listItems = [
+    "Capture launch context",
+    "Name the next action",
+    "Connect approval notes",
+    "Review campaign timing",
+    "Keep reporting visible",
+    "Record the handoff",
+  ];
+  const ordinals = ["opening", "first", "second", "third", "closing"];
+  let listCursor = 0;
+
+  return {
+    broadSituations: [
+      "campaign details scattered across tools",
+      "approval notes separated from launch work",
+      "reporting context missing during handoffs",
+    ],
+    concept: `A practical ${format.name} for clearer campaign handoffs`,
+    contentStrategy: {
+      angle: `Use ${format.name} to keep campaign handoffs clear`,
+      audienceId: businessContext.audiences[0]!.id,
+      contentFormatId: format.id,
+      customerGoalId: businessContext.customerGoals[0]!.id,
+      hookFamilyId,
+      problemId: businessContext.problems[0]!.id,
+      topicId: businessContext.topics[0]!.id,
+    },
+    slides: format.slides.map((definition, index) => {
+      const listItemCount = definition.listItemCount ?? 0;
+      const selectedListItems = listItems.slice(
+        listCursor,
+        listCursor + listItemCount,
+      );
+      listCursor += listItemCount;
+      const textMode = listItemCount > 0
+        ? definition.preferredTextModes[0]!
+        : definition.slideType === "cta"
+          ? "cta_takeaway"
+          : definition.preferredTextModes.includes("single_statement")
+            ? "single_statement"
+            : definition.preferredTextModes.includes("body_only")
+              ? "body_only"
+              : "headline_body";
+      const body = listItemCount > 0
+        ? null
+        : index === 0
+          ? "Scattered campaign details make every launch harder to review calmly."
+          : index === 4
+            ? "Keep one clear action visible before the next campaign handoff begins."
+            : `The ${ordinals[index]} campaign detail stays connected before the next launch review begins.`;
+      const headline = textMode === "headline_body"
+        ? `Campaign detail ${ordinals[index]}`
+        : null;
+
+      return {
+        body,
+        ctaText: null,
+        formatRole: definition.role,
+        headline,
+        imageDirection:
+          "Organized calendar and notebook still life with clear upper space.",
+        listItems: selectedListItems,
+        slideNumber: index + 1,
+        slideType: definition.slideType,
+        textMode,
+      };
+    }),
+  };
+}

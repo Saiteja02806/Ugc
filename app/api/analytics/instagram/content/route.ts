@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { enqueueAnalyticsSyncJob } from "@/lib/analytics/jobs";
 import type { InstagramInsightsRangeDays } from "@/lib/analytics/instagram";
+import { getInstagramContentSnapshotForOwner } from "@/lib/analytics/instagram-snapshots";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
@@ -31,11 +32,37 @@ export async function POST(request: Request) {
     }, status);
   }
 
-  const body = await request.json().catch(() => null) as { days?: unknown } | null;
+  const body = await request.json().catch(() => null) as {
+    days?: unknown;
+    force?: unknown;
+  } | null;
   const days = Number(body?.days);
+  const force = body?.force === true;
 
   if (!supportedRanges.has(days as InstagramInsightsRangeDays)) {
     return json({ message: "Choose a supported Instagram content date range.", ok: false }, 400);
+  }
+
+  let snapshot;
+
+  try {
+    snapshot = await getInstagramContentSnapshotForOwner({
+      days: days as InstagramInsightsRangeDays,
+      userId,
+    });
+  } catch (error) {
+    console.error("Could not read Instagram content snapshots:", error);
+    return json({ message: "Could not read saved Instagram analytics.", ok: false }, 500);
+  }
+
+  const data = {
+    accounts: snapshot.accounts,
+    days,
+    operation: "instagram_content",
+  };
+
+  if (!force && snapshot.hasSnapshot && !snapshot.needsRefresh) {
+    return json({ data, ok: true, refreshing: false });
   }
 
   const missing = Array.from(new Set([
@@ -44,17 +71,33 @@ export async function POST(request: Request) {
   ]));
 
   if (missing.length > 0) {
+    if (snapshot.hasSnapshot) {
+      return json({
+        data,
+        message: "Saved analytics are shown, but background refresh is not configured.",
+        ok: true,
+        refreshing: false,
+      });
+    }
+
     return json({ message: `Analytics jobs are not configured. Add ${missing.join(", ")}.`, ok: false }, 501);
   }
 
   try {
     const job = await enqueueAnalyticsSyncJob({
       days: days as InstagramInsightsRangeDays,
+      force,
       idempotencyKey: request.headers.get("Idempotency-Key")?.trim().slice(0, 200) || null,
       operation: "instagram_content",
       userId,
     });
-    return json({ job: getPublicBackgroundJob(job), jobId: job.id, ok: true }, job.status === "completed" ? 200 : 202);
+    return json({
+      ...(snapshot.hasSnapshot ? { data } : {}),
+      job: getPublicBackgroundJob(job),
+      jobId: job.id,
+      ok: true,
+      refreshing: job.status !== "completed",
+    }, snapshot.hasSnapshot || job.status === "completed" ? 200 : 202);
   } catch (error) {
     console.error("Could not queue Instagram content synchronization:", error);
     return json({ message: "Could not start Instagram content synchronization.", ok: false }, 502);

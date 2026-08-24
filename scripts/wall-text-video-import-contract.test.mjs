@@ -158,6 +158,14 @@ test("uses the pinned FFprobe binary for portable media validation", () => {
   assert.match(importerSource, /execFileSync\([\s\S]+ffprobeStatic\.path/);
 });
 
+test("rejects Wall source videos shorter than six seconds before upload", () => {
+  assert.match(importerSource, /MIN_WALL_TEXT_VIDEO_DURATION_SECONDS = 6/);
+  assert.match(
+    importerSource,
+    /metadata\.durationSeconds < MIN_WALL_TEXT_VIDEO_DURATION_SECONDS/,
+  );
+});
+
 test("pins the two reviewed 2026-08-20 Wall batches as 29 new sources", () => {
   const newAssets = [
     ...augustPartSevenManifest.assets,

@@ -5,8 +5,14 @@ export function getPersistedCarouselSlideCopy(slide: PlannedCarouselSlide) {
     slide.headline ??
     slide.body ??
     slide.listItems[0] ??
-    slide.ctaText ??
-    `Slide ${slide.slideNumber}`;
+    slide.ctaText;
+
+  if (!headline) {
+    throw new Error(
+      `Carousel slide ${slide.slideNumber} has no AI-authored visible copy to persist.`,
+    );
+  }
+
   const subtext =
     normalizeVisibleCopy(headline) === normalizeVisibleCopy(slide.subtext)
       ? null

@@ -15,6 +15,12 @@ const mediaRoute = readProjectFile("app/api/media/route.ts");
 const scheduleRoute = readProjectFile(
   "app/api/trending/hook-videos/drafts/schedule/route.ts",
 );
+const savedRender = readProjectFile(
+  "lib/trending/hook-video-library-render.ts",
+);
+const workerJob = readProjectFile(
+  "worker/src/jobs/render-schedule-combination.ts",
+);
 const migration = readProjectFile(
   "supabase/migrations/20260822130444_add_saved_hook_video_rendering.sql",
 );
@@ -51,6 +57,13 @@ test("Hook render claims are owner-scoped and require an explicit library save",
     migration,
     /grant execute on function public\.claim_hook_video_library_render\(uuid, text, text\)[\s\S]*to service_role/,
   );
+});
+
+test("new saved and scheduled Hook renders carry the authoritative layout version", () => {
+  assert.match(scheduleRoute, /hookTextLayoutVersion: HOOK_TEXT_LAYOUT_VERSION/);
+  assert.match(savedRender, /hookTextLayoutVersion: HOOK_TEXT_LAYOUT_VERSION/);
+  assert.match(workerJob, /The authoritative Hook text layout is incomplete/);
+  assert.match(workerJob, /hookTextLines must match hookText exactly/);
 });
 
 function readProjectFile(relativePath: string) {

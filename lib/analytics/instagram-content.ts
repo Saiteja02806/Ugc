@@ -11,7 +11,19 @@ import {
   type InstagramMediaInsightMetric,
 } from "@/lib/analytics/instagram-content-insights";
 import type { InstagramInsightsRangeDays } from "@/lib/analytics/instagram";
+import {
+  getInstagramIncrementalFeedStart,
+  INSTAGRAM_MEDIA_FEED_REFRESH_MS,
+  isInstagramContentMetricsStale,
+  isInstagramTimestampStale,
+} from "@/lib/analytics/instagram-freshness";
 import { getUniqueInstagramConnections } from "@/lib/analytics/instagram-insights";
+import {
+  getInstagramContentSnapshotForOwner,
+  persistInstagramContentConnectionSnapshots,
+  persistInstagramContentRecords,
+  type StoredInstagramContentItem,
+} from "@/lib/analytics/instagram-snapshots";
 import {
   listPublishedInstagramPostReferencesForUser,
   type PublishedInstagramPostReference,
@@ -39,64 +51,101 @@ const instagramMediaFields = [
 
 const instagramMediaPageSize = 50;
 const maxInstagramMediaPages = 10;
+const accountSyncConcurrency = 2;
 const mediaInsightConcurrency = 4;
 
 export async function listInstagramContentInsightsForOwner(params: {
   days: InstagramInsightsRangeDays;
+  force?: boolean;
   userId: string;
 }): Promise<InstagramContentAccount[]> {
-  const connections = await listSocialConnections(params.userId);
+  const [connections, previousSnapshot] = await Promise.all([
+    listSocialConnections(params.userId),
+    getInstagramContentSnapshotForOwner({
+      days: params.days,
+      userId: params.userId,
+    }),
+  ]);
   const instagramConnections = getUniqueInstagramConnections(connections);
   const publishedPostReferences = await getPublishedInstagramPostReferences({
     days: params.days,
     userId: params.userId,
   });
-  const accounts: InstagramContentAccount[] = [];
-
-  for (const connection of instagramConnections) {
-    accounts.push(
-      await loadInstagramContentAccount({
+  const loadedAccounts = await mapWithConcurrency(
+    instagramConnections,
+    accountSyncConcurrency,
+    (connection) =>
+      loadInstagramContentAccount({
         connection,
         days: params.days,
+        force: params.force ?? false,
+        previousState:
+          previousSnapshot.connectionStates.get(connection.id) ?? null,
         publishedPostReferences: publishedPostReferences.filter(
           (reference) => reference.connectionId === connection.id,
         ),
+        storedRecords:
+          previousSnapshot.recordsByConnectionId.get(connection.id) ?? [],
         userId: params.userId,
       }),
-    );
-  }
+  );
 
-  return accounts;
+  await persistInstagramContentConnectionSnapshots({
+    days: params.days,
+    snapshots: loadedAccounts.map(({ account, feedSyncedAt }) => ({
+      account,
+      feedSyncedAt,
+    })),
+    userId: params.userId,
+  });
+
+  return loadedAccounts.map(({ account }) => account);
 }
 
 async function loadInstagramContentAccount(params: {
   connection: SocialConnection;
   days: InstagramInsightsRangeDays;
+  force: boolean;
+  previousState: {
+    feedSyncedAt: string | null;
+    lastSyncedAt: string | null;
+  } | null;
   publishedPostReferences: PublishedInstagramPostReference[];
+  storedRecords: StoredInstagramContentItem[];
   userId: string;
-}): Promise<InstagramContentAccount> {
+}): Promise<{
+  account: InstagramContentAccount;
+  feedSyncedAt: string | null;
+}> {
+  const storedItems = params.storedRecords.map((record) => record.item);
   const baseAccount = {
     accountName: params.connection.platformAccountName,
     accountUsername: params.connection.platformAccountUsername,
     connectionId: params.connection.id,
-    items: [],
-    lastSyncedAt: null,
+    items: storedItems,
+    lastSyncedAt: params.previousState?.lastSyncedAt ?? null,
   };
 
   if (params.connection.status !== "connected") {
     return {
-      ...baseAccount,
-      message: "Reconnect Instagram before loading content performance.",
-      status: "unavailable",
+      account: {
+        ...baseAccount,
+        message: "Reconnect Instagram before loading content performance.",
+        status: "unavailable",
+      },
+      feedSyncedAt: params.previousState?.feedSyncedAt ?? null,
     };
   }
 
   if (!hasInstagramAnalyticsScope(params.connection.scopes)) {
     return {
-      ...baseAccount,
-      message:
-        "Reconnect Instagram once to grant content performance access.",
-      status: "permission_missing",
+      account: {
+        ...baseAccount,
+        message:
+          "Reconnect Instagram once to grant content performance access.",
+        status: "permission_missing",
+      },
+      feedSyncedAt: params.previousState?.feedSyncedAt ?? null,
     };
   }
 
@@ -109,41 +158,76 @@ async function loadInstagramContentAccount(params: {
     });
   } catch (error) {
     return {
-      ...baseAccount,
-      message:
-        error instanceof SocialOAuthError
-          ? error.message
-          : "Instagram content performance could not load for this account.",
-      status: "error",
+      account: keepStoredAccountAvailable({
+        account: baseAccount,
+        message:
+          error instanceof SocialOAuthError
+            ? error.message
+            : "Instagram content performance could not load for this account.",
+      }),
+      feedSyncedAt: params.previousState?.feedSyncedAt ?? null,
     };
   }
 
   if (!credential || credential.connection.platform !== "instagram") {
     return {
-      ...baseAccount,
-      message: "The connected Instagram account was not found.",
-      status: "unavailable",
+      account: {
+        ...baseAccount,
+        message: "The connected Instagram account was not found.",
+        status: "unavailable",
+      },
+      feedSyncedAt: params.previousState?.feedSyncedAt ?? null,
     };
   }
 
   if (!hasInstagramAnalyticsScope(credential.connection.scopes)) {
     return {
-      ...baseAccount,
-      message:
-        "Reconnect Instagram once to grant content performance access.",
-      status: "permission_missing",
+      account: {
+        ...baseAccount,
+        message:
+          "Reconnect Instagram once to grant content performance access.",
+        status: "permission_missing",
+      },
+      feedSyncedAt: params.previousState?.feedSyncedAt ?? null,
     };
   }
 
   try {
-    const feedItems = await requestInstagramMedia({
-      accessToken: credential.accessToken,
-      accountId: credential.connection.platformAccountId,
-      accountName: credential.connection.platformAccountName,
-      accountUsername: credential.connection.platformAccountUsername,
-      connectionId: credential.connection.id,
-      days: params.days,
-    });
+    const shouldScanFeed =
+      params.force ||
+      isInstagramTimestampStale({
+        maxAgeMs: INSTAGRAM_MEDIA_FEED_REFRESH_MS,
+        timestamp: params.previousState?.feedSyncedAt ?? null,
+      });
+    let feedSyncedAt = params.previousState?.feedSyncedAt ?? null;
+    let feedError: string | null = null;
+    let feedItems = storedItems;
+
+    if (shouldScanFeed) {
+      try {
+        const incrementalItems = await requestInstagramMedia({
+          accessToken: credential.accessToken,
+          accountId: credential.connection.platformAccountId,
+          accountName: credential.connection.platformAccountName,
+          accountUsername: credential.connection.platformAccountUsername,
+          connectionId: credential.connection.id,
+          since: getInstagramIncrementalFeedStart({
+            days: params.days,
+            feedSyncedAt,
+          }),
+        });
+
+        feedItems = mergeInstagramContentItems(incrementalItems, storedItems);
+        feedSyncedAt = new Date().toISOString();
+      } catch (error) {
+        if (storedItems.length === 0) {
+          throw error;
+        }
+
+        feedError = getInstagramContentErrorMessage(error);
+      }
+    }
+
     const reconciledMedia = await reconcilePublishedInstagramMedia({
       accessToken: credential.accessToken,
       accountName: credential.connection.platformAccountName,
@@ -152,47 +236,89 @@ async function loadInstagramContentAccount(params: {
       feedItems,
       publishedPostReferences: params.publishedPostReferences,
     });
-    const itemsWithInsights = await mapWithConcurrency(
+    const storedByMediaId = new Map(
+      params.storedRecords.map((record) => [record.item.id, record]),
+    );
+    const records = await mapWithConcurrency(
       reconciledMedia,
       mediaInsightConcurrency,
       async (item) => {
+        const stored = storedByMediaId.get(item.id);
+        const mergedItem = stored
+          ? mergeStoredInstagramContentItem(item, stored.item)
+          : item;
+
+        if (
+          !params.force &&
+          !isInstagramContentMetricsStale({
+            metricsSyncedAt: stored?.metricsSyncedAt ?? null,
+            publishedAt: item.publishedAt,
+          })
+        ) {
+          return {
+            item: mergedItem,
+            lastSyncError: stored?.lastSyncError ?? null,
+            metricsSyncedAt: stored?.metricsSyncedAt ?? null,
+          } satisfies StoredInstagramContentItem;
+        }
+
         try {
           const insights = await requestInstagramMediaInsights({
             accessToken: credential.accessToken,
             mediaId: item.id,
           });
 
-          return mergeInstagramContentMetrics(item, insights);
+          return {
+            item: mergeInstagramContentMetrics(mergedItem, insights),
+            lastSyncError: null,
+            metricsSyncedAt: new Date().toISOString(),
+          } satisfies StoredInstagramContentItem;
         } catch (error) {
-          if (
-            error instanceof InstagramContentRequestError &&
-            error.mediaUnavailable
-          ) {
-            return item;
-          }
-
-          throw error;
+          // A single unavailable, incompatible, rate-limited, or otherwise
+          // failed post must never discard the other posts in this account.
+          return {
+            item: mergedItem,
+            lastSyncError: getInstagramContentErrorMessage(error),
+            metricsSyncedAt: stored?.metricsSyncedAt ?? null,
+          } satisfies StoredInstagramContentItem;
         }
       },
     );
+    await persistInstagramContentRecords({
+      records,
+      userId: params.userId,
+    });
+    const failedPostCount = records.filter(
+      (record) => record.lastSyncError,
+    ).length;
+    const message = [
+      feedError,
+      failedPostCount > 0
+        ? `${failedPostCount} post${failedPostCount === 1 ? "" : "s"} could not refresh; saved metrics are still shown.`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" ") || null;
 
     return {
-      accountName: credential.connection.platformAccountName,
-      accountUsername: credential.connection.platformAccountUsername,
-      connectionId: credential.connection.id,
-      items: itemsWithInsights,
-      lastSyncedAt: new Date().toISOString(),
-      message: null,
-      status: "ready",
+      account: {
+        accountName: credential.connection.platformAccountName,
+        accountUsername: credential.connection.platformAccountUsername,
+        connectionId: credential.connection.id,
+        items: records.map((record) => record.item),
+        lastSyncedAt: new Date().toISOString(),
+        message,
+        status: "ready",
+      },
+      feedSyncedAt,
     };
   } catch (error) {
     return {
-      ...baseAccount,
-      message:
-        error instanceof InstagramContentRequestError
-          ? error.userMessage
-          : "Instagram content performance could not load right now.",
-      status: "error",
+      account: keepStoredAccountAvailable({
+        account: baseAccount,
+        message: getInstagramContentErrorMessage(error),
+      }),
+      feedSyncedAt: params.previousState?.feedSyncedAt ?? null,
     };
   }
 }
@@ -203,9 +329,9 @@ async function requestInstagramMedia(params: {
   accountName: string | null;
   accountUsername: string | null;
   connectionId: string;
-  days: InstagramInsightsRangeDays;
+  since: Date;
 }) {
-  const since = getInstagramContentSince(params.days);
+  const since = params.since;
   const until = new Date();
   const items: InstagramContentItem[] = [];
   let after: string | null = null;
@@ -258,6 +384,43 @@ async function requestInstagramMedia(params: {
     (left, right) =>
       Date.parse(right.publishedAt) - Date.parse(left.publishedAt),
   );
+}
+
+function mergeStoredInstagramContentItem(
+  current: InstagramContentItem,
+  stored: InstagramContentItem,
+): InstagramContentItem {
+  return {
+    ...current,
+    metrics: {
+      comments: current.metrics.comments ?? stored.metrics.comments,
+      interactions: stored.metrics.interactions,
+      likes: current.metrics.likes ?? stored.metrics.likes,
+      reach: stored.metrics.reach,
+      saves: stored.metrics.saves,
+      shares: stored.metrics.shares,
+      views: stored.metrics.views,
+    },
+  };
+}
+
+function keepStoredAccountAvailable(params: {
+  account: Omit<InstagramContentAccount, "message" | "status">;
+  message: string;
+}): InstagramContentAccount {
+  return {
+    ...params.account,
+    message: params.message,
+    status: params.account.items.length > 0 ? "ready" : "error",
+  };
+}
+
+function getInstagramContentErrorMessage(error: unknown) {
+  return error instanceof InstagramContentRequestError
+    ? error.userMessage
+    : error instanceof SocialOAuthError
+      ? error.message
+      : "Instagram content performance could not load right now.";
 }
 
 /**

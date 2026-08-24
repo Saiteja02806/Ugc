@@ -4,10 +4,8 @@ import test from "node:test";
 import {
   buildWallTextBusinessContext,
   estimateWallTextReadingSeconds,
-  getWallTextLinePolicy,
   getWallTextMaximumWords,
   getWallTextPreviewTitle,
-  getWallTextWordPolicy,
   validateGeneratedWallTextIdeas,
 } from "./wall-text-text-logic.ts";
 
@@ -36,70 +34,14 @@ test("uses the Wall 24-word global hard limit", () => {
   assert.equal(getWallTextMaximumWords(), 24);
 });
 
-test("uses a shorter 4-line policy for a 3-second Wall video", () => {
-  assert.deepEqual(getWallTextWordPolicy(3), {
-    maximum: 11,
-    minimum: 8,
-    preferredMaximum: 11,
-    preferredMinimum: 9,
-  });
-  assert.deepEqual(getWallTextLinePolicy("action_benefit", 3), {
-    ideal: 4,
-    maximum: 7,
-    minimum: 4,
-    preferredMaximum: 4,
-    preferredMinimum: 4,
-  });
-
-  const shortIdea = {
-    candidateIndex: 5,
-    fullText:
-      "Reviewing weekly progress reveals patterns. Better choices feel much clearer.",
-    pattern: "action_benefit" as const,
-    segments: [
-      {
-        lines: ["Reviewing weekly progress", "reveals patterns."],
-        role: "lead" as const,
-      },
-      {
-        lines: ["Better choices feel", "much clearer."],
-        role: "closing" as const,
-      },
-    ],
-  };
-
-  assert.doesNotThrow(() =>
-    validateGeneratedWallTextIdeas({
-      candidates: [{ candidateIndex: 5, durationSeconds: 3 }],
-      generated: [shortIdea],
-    }),
-  );
+test("rejects Wall generation candidates shorter than six seconds", () => {
   assert.throws(
     () =>
       validateGeneratedWallTextIdeas({
         candidates: [{ candidateIndex: 5, durationSeconds: 3 }],
-        generated: [
-          {
-            ...shortIdea,
-            fullText:
-              "Reviewing weekly progress reveals useful patterns. Better daily choices now feel much clearer.",
-            segments: [
-              {
-                lines: [
-                  "Reviewing weekly progress",
-                  "reveals useful patterns.",
-                ],
-                role: "lead",
-              },
-              {
-                lines: ["Better daily choices", "now feel much clearer."],
-                role: "closing",
-              },
-            ],
-          },
-        ],
+        generated: [CURRENT_EXAMPLE],
       }),
-    /8–11 words for a 3.0-second clip/,
+    /valid clip durations/,
   );
 });
 
@@ -204,15 +146,15 @@ test("maps the assigned pattern and semantic segments into the Wall v4 payload",
   ]);
 });
 
-test("estimates comfort from the native clip duration", () => {
+test("estimates comfort only for an eligible native clip duration", () => {
   assert.ok(estimateWallTextReadingSeconds(CURRENT_EXAMPLE.fullText) < 6.016);
   assert.throws(
     () =>
       validateGeneratedWallTextIdeas({
-        candidates: [{ candidateIndex: 2, durationSeconds: 4.5 }],
+        candidates: [{ candidateIndex: 2, durationSeconds: 5.999 }],
         generated: [CURRENT_EXAMPLE],
       }),
-    /16–18 words for a 4.5-second clip/,
+    /valid clip durations/,
   );
 });
 

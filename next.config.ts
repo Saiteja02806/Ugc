@@ -13,6 +13,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/viral/:path*",
+        destination: "/dashboard",
+        permanent: false,
+      },
+    ];
+  },
   async rewrites() {
     if (!firebaseAuthHelperDomain) {
       return [];

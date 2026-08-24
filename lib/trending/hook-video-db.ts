@@ -352,6 +352,7 @@ export async function listActiveTrendingHookIdeas(params: {
     const suggestion = suggestionById.get(assignment.hook_suggestion_id);
     const openingLines = parseOpeningLines(
       suggestion?.opening_lines ?? null,
+      suggestion?.text ?? null,
     );
     const overlayFontSize = parseOverlayFontSize(
       suggestion?.visual_fit ?? null,
@@ -487,7 +488,10 @@ export async function getEditableTrendingHookIdea(params: {
     return null;
   }
 
-  const openingLines = parseOpeningLines(suggestion.opening_lines);
+  const openingLines = parseOpeningLines(
+    suggestion.opening_lines,
+    suggestion.text,
+  );
   const overlayFontSize = parseOverlayFontSize(suggestion.visual_fit);
 
   if (
@@ -811,7 +815,7 @@ function isCompleteTrendingHookSuggestion(
   );
 }
 
-function parseOpeningLines(value: Json | null) {
+function parseOpeningLines(value: Json | null, hookText: string | null) {
   if (
     !Array.isArray(value) ||
     value.length < 1 ||
@@ -823,7 +827,12 @@ function parseOpeningLines(value: Json | null) {
     return null;
   }
 
-  return value.map((line) => String(line).trim());
+  const lines = value.map((line) =>
+    String(line).trim().replace(/\s+/gu, " "),
+  );
+  const normalizedText = hookText?.replace(/\s+/gu, " ").trim() ?? "";
+
+  return lines.join(" ") === normalizedText ? lines : null;
 }
 
 function parseOverlayFontSize(value: Json | null) {
@@ -839,4 +848,15 @@ function parseOverlayFontSize(value: Json | null) {
     fontSize <= 60
     ? fontSize
     : null;
+}
+
+export function parseHookSuggestionRenderLayout(params: {
+  hookText: string;
+  openingLines: Json | null;
+  visualFit: Json | null;
+}) {
+  const lines = parseOpeningLines(params.openingLines, params.hookText);
+  const fontSize = parseOverlayFontSize(params.visualFit);
+
+  return lines && fontSize ? { fontSize, lines } : null;
 }

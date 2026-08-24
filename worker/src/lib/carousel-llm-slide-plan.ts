@@ -1,12 +1,7 @@
 import OpenAI from "openai";
 
 import type { WebsiteBusinessAnalysis } from "../types.js";
-import {
-  buildCarouselBusinessContentContext,
-  resolveCarouselBusinessContentOption,
-  type CarouselBusinessContentOption,
-  type CarouselBusinessContentContext,
-} from "./carousel-business-content-context.js";
+import type { CarouselRecentAcceptedCopy } from "./carousel-content-plan.js";
 import {
   getCarouselContentFormat,
   getCarouselHookFamily,
@@ -17,18 +12,17 @@ import {
   type CarouselHookFamilyDefinition,
   type CarouselHookFamilyId,
 } from "./carousel-content-grammar.js";
-import { buildCarouselSlidePlan } from "./carousel-slide-plan.js";
 import type {
   CarouselTextMode,
   PlannedCarouselSlide,
 } from "./carousel-slide-plan.js";
+import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v28-controlled-five-carousel-batch";
+  "llm-carousel-planner-v30-llm-only-structure-contract";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly five slides plus a backend-selected content format and compatible hook family.";
 
-const DEFAULT_MODEL = "gpt-4.1-mini";
 const MAX_BODY_LENGTH = 120;
 const MAX_HEADLINE_LENGTH = 50;
 const MAX_CTA_LENGTH = 34;
@@ -96,7 +90,7 @@ export type CarouselContentPlan = {
     repair: string | null;
   };
   slides: PlannedCarouselSlide[];
-  source: "deterministic-fallback" | "llm";
+  source: "llm";
   validationResult: CarouselPlanValidationResult;
 };
 
@@ -120,6 +114,7 @@ export type CarouselPlanValidationIssue = {
 };
 
 export type CarouselPlanValidationResult = {
+  advisoryIssues: CarouselPlanValidationIssue[];
   fallbackUsed: boolean;
   finalIssues: CarouselPlanValidationIssue[];
   initialIssues: CarouselPlanValidationIssue[];
@@ -128,38 +123,32 @@ export type CarouselPlanValidationResult = {
   repaired: boolean;
 };
 
-type CarouselContentPlanInput = {
-  allowDeterministicFallback?: boolean;
-  analysis: WebsiteBusinessAnalysis;
+export type CarouselContentPlanInput = {
+  analysis?: WebsiteBusinessAnalysis;
+  businessDescription?: string;
   candidateIndex?: number;
   contentFormatId?: string | null;
+  creativeSeed?: string;
+  emotion?: string;
   goal?: string | null;
   hookFamilyId?: string | null;
-  recentHistory?: CarouselRecentContentSummaryInput[];
+  recentHistory?: CarouselRecentAcceptedCopy[];
   selectedAngle?: string | null;
   slideCount: number;
 };
 
-export type CarouselRecentContentSummaryInput = {
-  angle?: string | null;
-  audienceId?: string | null;
-  contentFormatId?: string | null;
-  hook?: string | null;
-  hookFamilyId?: string | null;
-  topic?: string | null;
-  topicId?: string | null;
-};
-
 export type CarouselBatchContentPlanInput = {
-  allowDeterministicFallback?: boolean;
-  analysis: WebsiteBusinessAnalysis;
+  analysis?: WebsiteBusinessAnalysis;
+  businessDescription: string;
   items: Array<{
     candidateIndex: number;
     contentFormatId: string;
+    creativeSeed: string;
+    emotion: string;
     hookFamilyId: string;
     slotIndex: number;
   }>;
-  recentHistory?: CarouselRecentContentSummaryInput[];
+  recentHistory?: CarouselRecentAcceptedCopy[];
 };
 
 export type CarouselBatchContentPlanItem = {
@@ -173,20 +162,19 @@ export type CarouselBatchContentPlanItem = {
 
 export type ResolvedCarouselContentStrategy = {
   angle: string;
-  audience: string;
-  audienceId: string;
+  audience: null;
+  audienceId: null;
   contentFormatId: CarouselContentFormatId;
-  customerGoal: string;
-  customerGoalId: string;
+  customerGoal: null;
+  customerGoalId: null;
   hookFamilyId: CarouselHookFamilyId;
-  problem: string;
-  problemId: string;
-  topic: string;
-  topicId: string;
+  problem: null;
+  problemId: null;
+  topic: null;
+  topicId: null;
 };
 
 type CarouselGrammarGenerationContext = {
-  businessContext: CarouselBusinessContentContext;
   format: CarouselContentFormatDefinition;
   hookFamily: CarouselHookFamilyDefinition;
 };
@@ -212,7 +200,6 @@ function getGrammarGenerationContext(
   }
 
   return {
-    businessContext: buildCarouselBusinessContentContext(input.analysis),
     format,
     hookFamily: getCarouselHookFamily(input.hookFamilyId),
   };
@@ -223,27 +210,11 @@ export async function buildCarouselContentPlan(
 ): Promise<CarouselContentPlan> {
   const grammarContext = getGrammarGenerationContext(input, input.slideCount);
   const slideCount = 5;
-  const model =
-    process.env.OPENAI_CAROUSEL_PLANNER_MODEL?.trim() || DEFAULT_MODEL;
+  const model = CAROUSEL_TEXT_MODEL;
   let initialRawResponse: string | null = null;
   let repairRawResponse: string | null = null;
   let initialIssues: CarouselPlanValidationIssue[] = [];
-
-  if (process.env.CAROUSEL_CONTENT_PLANNER_MODE?.trim() === "deterministic") {
-    if (input.allowDeterministicFallback === false) {
-      throw new Error(
-        "Carousel Structure 1 LLM planning is disabled; runtime fallback copy is not permitted.",
-      );
-    }
-    return buildFallbackPlan(
-      input,
-      grammarContext,
-      "LLM planning was disabled by CAROUSEL_CONTENT_PLANNER_MODE.",
-      { initial: null, repair: null },
-      [],
-      null,
-    );
-  }
+  let initialAdvisoryIssues: CarouselPlanValidationIssue[] = [];
 
   try {
     const completion = await getOpenAIClient().chat.completions.create({
@@ -274,14 +245,13 @@ export async function buildCarouselContentPlan(
         slideCount,
         grammarContext,
       );
-      initialIssues = [
-        ...validateCarouselContentPlan(normalizedPlan, input.analysis),
-        ...validateCarouselRecentContentRepetition(
-          normalizedPlan,
-          input.recentHistory,
-          grammarContext?.businessContext.topics,
-        ),
-      ];
+      const validation = evaluateCarouselContentPlanForPublishing({
+        analysis: input.analysis,
+        plan: normalizedPlan,
+        recentHistory: input.recentHistory,
+      });
+      initialIssues = validation.blockingIssues;
+      initialAdvisoryIssues = validation.advisoryIssues;
     } catch (error) {
       initialIssues = [createInvalidPlanIssue(error)];
     }
@@ -294,6 +264,7 @@ export async function buildCarouselContentPlan(
         rawLlmResponse: { initial: initialRawResponse, repair: null },
         source: "llm",
         validationResult: {
+          advisoryIssues: initialAdvisoryIssues,
           fallbackUsed: false,
           finalIssues: [],
           initialIssues: [],
@@ -308,6 +279,9 @@ export async function buildCarouselContentPlan(
       max_completion_tokens: 1_200,
       messages: buildRepairMessages({
         analysis: input.analysis,
+        businessDescription: input.businessDescription,
+        creativeSeed: input.creativeSeed,
+        emotion: input.emotion,
         grammarContext,
         issues: initialIssues,
         rawResponse: initialRawResponse,
@@ -331,21 +305,17 @@ export async function buildCarouselContentPlan(
       throw new Error("OpenAI returned no repaired carousel plan content.");
     }
 
-    const repairedPlan = normalizeRepairedCarouselCopy(
-      parseCarouselContentPlanShape(
-        JSON.parse(repairRawResponse),
-        slideCount,
-        grammarContext,
-      ),
+    const repairedPlan = parseCarouselContentPlanShape(
+      JSON.parse(repairRawResponse),
+      slideCount,
+      grammarContext,
     );
-    const finalIssues = [
-      ...validateCarouselContentPlan(repairedPlan, input.analysis),
-      ...validateCarouselRecentContentRepetition(
-        repairedPlan,
-        input.recentHistory,
-        grammarContext?.businessContext.topics,
-      ),
-    ];
+    const repairedValidation = evaluateCarouselContentPlanForPublishing({
+      analysis: input.analysis,
+      plan: repairedPlan,
+      recentHistory: input.recentHistory,
+    });
+    const finalIssues = repairedValidation.blockingIssues;
 
     if (finalIssues.length > 0) {
       initialIssues = dedupeValidationIssues([...initialIssues, ...finalIssues]);
@@ -362,6 +332,7 @@ export async function buildCarouselContentPlan(
       },
       source: "llm",
       validationResult: {
+        advisoryIssues: repairedValidation.advisoryIssues,
         fallbackUsed: false,
         finalIssues: [],
         initialIssues,
@@ -371,22 +342,9 @@ export async function buildCarouselContentPlan(
       },
     });
   } catch (error) {
-    if (input.allowDeterministicFallback === false) {
-      throw new Error(
-        `Carousel Structure 1 planning failed after validation repair: ${getErrorMessage(error)}`,
-        { cause: error },
-      );
-    }
-    return buildFallbackPlan(
-      input,
-      grammarContext,
-      getErrorMessage(error),
-      {
-        initial: initialRawResponse,
-        repair: repairRawResponse,
-      },
-      initialIssues,
-      model,
+    throw new Error(
+      `Carousel Structure 1 planning failed after validation repair: ${getErrorMessage(error)}`,
+      { cause: error },
     );
   }
 }
@@ -407,8 +365,11 @@ export async function buildCarouselContentPlanBatch(
     .map((item) => {
       const planInput = {
         analysis: input.analysis,
+        businessDescription: input.businessDescription,
         candidateIndex: item.candidateIndex,
         contentFormatId: item.contentFormatId,
+        creativeSeed: item.creativeSeed,
+        emotion: item.emotion,
         hookFamilyId: item.hookFamilyId,
         recentHistory: input.recentHistory,
         slideCount: 5,
@@ -421,29 +382,7 @@ export async function buildCarouselContentPlanBatch(
       };
     });
 
-  if (process.env.CAROUSEL_CONTENT_PLANNER_MODE?.trim() === "deterministic") {
-    if (input.allowDeterministicFallback === false) {
-      throw new Error(
-        "Carousel Structure 1 batch LLM planning is disabled; runtime fallback copy is not permitted.",
-      );
-    }
-    return requested.map(({ context, item, planInput }) => ({
-      actualContentFormatId: context.format.id,
-      actualHookFamilyId: context.hookFamily.id,
-      assignedContentFormatId: context.format.id,
-      plan: buildFallbackPlan(
-        planInput,
-        context,
-        "LLM batch planning was disabled by CAROUSEL_CONTENT_PLANNER_MODE.",
-        { initial: null, repair: null },
-      ),
-      replacementForFormatId: null,
-      slotIndex: item.slotIndex,
-    }));
-  }
-
-  const model =
-    process.env.OPENAI_CAROUSEL_PLANNER_MODEL?.trim() || DEFAULT_MODEL;
+  const model = CAROUSEL_TEXT_MODEL;
   let batchRawResponse: string | null = null;
 
   try {
@@ -489,7 +428,7 @@ export async function buildCarouselContentPlanBatch(
       requestedItem: (typeof requested)[number];
       status: "invalid" | "not_applicable";
     }> = [];
-    let workingHistory: CarouselRecentContentSummaryInput[] =
+    let workingHistory: CarouselRecentAcceptedCopy[] =
       normalizeRecentHistory(input.recentHistory);
 
     for (const requestedItem of requested) {
@@ -523,16 +462,18 @@ export async function buildCarouselContentPlanBatch(
 
       try {
         const parsed = parseCarouselContentPlanShape(rawItem.plan, 5, requestedItem.context);
-        const issues = [
-          ...validateCarouselContentPlan(parsed, input.analysis),
-          ...validateCarouselRecentContentRepetition(
-            parsed,
-            workingHistory,
-            requestedItem.context.businessContext.topics,
-          ),
-        ];
-        if (issues.length > 0) {
-          pendingRepairs.push({ issues, rawItem, requestedItem, status: "invalid" });
+        const validation = evaluateCarouselContentPlanForPublishing({
+          analysis: input.analysis,
+          plan: parsed,
+          recentHistory: workingHistory,
+        });
+        if (validation.blockingIssues.length > 0) {
+          pendingRepairs.push({
+            issues: validation.blockingIssues,
+            rawItem,
+            requestedItem,
+            status: "invalid",
+          });
           continue;
         }
 
@@ -543,6 +484,7 @@ export async function buildCarouselContentPlanBatch(
           rawLlmResponse: { initial: JSON.stringify(rawItem), repair: null },
           source: "llm",
           validationResult: {
+            advisoryIssues: validation.advisoryIssues,
             fallbackUsed: false,
             finalIssues: [],
             initialIssues: [],
@@ -593,7 +535,6 @@ export async function buildCarouselContentPlanBatch(
       } satisfies CarouselContentPlanInput;
       const repairContext = getGrammarGenerationContext(repairInput, 5);
       const repairedPlan = await buildSingleBatchItemRepair({
-        allowDeterministicFallback: input.allowDeterministicFallback !== false,
         context: repairContext,
         input: repairInput,
         issues: pending.issues,
@@ -620,27 +561,10 @@ export async function buildCarouselContentPlanBatch(
 
     return completed.sort((left, right) => left.slotIndex - right.slotIndex);
   } catch (error) {
-    if (input.allowDeterministicFallback === false) {
-      throw new Error(
-        `Carousel Structure 1 batch planning failed after validation repair: ${getErrorMessage(error)}`,
-        { cause: error },
-      );
-    }
-    return requested.map(({ context, item, planInput }) => ({
-      actualContentFormatId: context.format.id,
-      actualHookFamilyId: context.hookFamily.id,
-      assignedContentFormatId: context.format.id,
-      plan: buildFallbackPlan(
-        planInput,
-        context,
-        getErrorMessage(error),
-        { initial: batchRawResponse, repair: null },
-        [createInvalidPlanIssue(error)],
-        model,
-      ),
-      replacementForFormatId: null,
-      slotIndex: item.slotIndex,
-    }));
+    throw new Error(
+      `Carousel Structure 1 batch planning failed after validation repair: ${getErrorMessage(error)}`,
+      { cause: error },
+    );
   }
 }
 
@@ -649,13 +573,34 @@ export function parseCarouselContentPlan(
   requestedSlideCount: number,
 ) {
   const plan = parseCarouselContentPlanShape(value, requestedSlideCount);
-  const issues = validateCarouselContentPlan(plan);
+  const issues = partitionCarouselContentPlanValidationIssues(
+    validateCarouselContentPlan(plan),
+  ).blockingIssues;
 
   if (issues.length > 0) {
     throw new Error(formatValidationIssues(issues));
   }
 
   return plan;
+}
+
+export function parseCarouselContentPlanForAssignment(
+  value: unknown,
+  input: CarouselContentPlanInput,
+) {
+  const grammarContext = getGrammarGenerationContext(input, input.slideCount);
+  const plan = parseCarouselContentPlanShape(value, 5, grammarContext);
+  const validation = evaluateCarouselContentPlanForPublishing({
+    analysis: input.analysis,
+    plan,
+    recentHistory: input.recentHistory,
+  });
+
+  if (validation.blockingIssues.length > 0) {
+    throw new Error(formatValidationIssues(validation.blockingIssues));
+  }
+
+  return { ...validation, plan };
 }
 
 function parseCarouselContentPlanShape(
@@ -762,6 +707,16 @@ function parseCarouselContentPlanShape(
       );
     }
 
+    if (
+      expectedFormatSlide &&
+      expectedFormatSlide.listItemCount === undefined &&
+      listItems.length > 0
+    ) {
+      throw new Error(
+        `Slide ${index + 1} must keep listItems empty for format role ${expectedFormatSlide.role}.`,
+      );
+    }
+
     if (index === slideCount - 1 && slideType !== "cta") {
       throw new Error("The final carousel slide must be a CTA.");
     }
@@ -783,16 +738,7 @@ function parseCarouselContentPlanShape(
       slideType,
       textMode: requestedTextMode,
     });
-    const headline = shouldDropHeadline({
-      body: parsedBody,
-      headline: parsedHeadline,
-      slideType,
-      textMode: preliminaryTextMode,
-    })
-      ? null
-      : parsedHeadline
-        ? normalizeHeadlineCase(parsedHeadline)
-        : null;
+    const headline = parsedHeadline;
     const textMode = normalizeTextMode({
       body: parsedBody,
       headline,
@@ -859,14 +805,6 @@ function parseContentStrategy(
   grammarContext: CarouselGrammarGenerationContext,
 ): ResolvedCarouselContentStrategy {
   const record = asRecord(value, "contentStrategy");
-  const audienceId = getRequiredString(record.audienceId, 100, "audienceId");
-  const problemId = getRequiredString(record.problemId, 100, "problemId");
-  const customerGoalId = getRequiredString(
-    record.customerGoalId,
-    100,
-    "customerGoalId",
-  );
-  const topicId = getRequiredString(record.topicId, 100, "topicId");
   const contentFormatId = getRequiredString(
     record.contentFormatId,
     80,
@@ -887,39 +825,18 @@ function parseContentStrategy(
     throw new Error("The AI changed the backend-selected hook family.");
   }
 
-  const audience = resolveCarouselBusinessContentOption(
-    grammarContext.businessContext.audiences,
-    audienceId,
-    "audience",
-  );
-  const problem = resolveCarouselBusinessContentOption(
-    grammarContext.businessContext.problems,
-    problemId,
-    "problem",
-  );
-  const customerGoal = resolveCarouselBusinessContentOption(
-    grammarContext.businessContext.customerGoals,
-    customerGoalId,
-    "customer goal",
-  );
-  const topic = resolveCarouselBusinessContentOption(
-    grammarContext.businessContext.topics,
-    topicId,
-    "topic",
-  );
-
   return {
     angle,
-    audience: audience.label,
-    audienceId,
+    audience: null,
+    audienceId: null,
     contentFormatId: grammarContext.format.id,
-    customerGoal: customerGoal.label,
-    customerGoalId,
+    customerGoal: null,
+    customerGoalId: null,
     hookFamilyId: grammarContext.hookFamily.id,
-    problem: problem.label,
-    problemId,
-    topic: topic.label,
-    topicId,
+    problem: null,
+    problemId: null,
+    topic: null,
+    topicId: null,
   };
 }
 
@@ -932,27 +849,6 @@ function hasProhibitedVisualSubject(value: string) {
   return PROHIBITED_VISUAL_SUBJECT_PATTERN.test(validationText);
 }
 
-function normalizeHeadlineCase(value: string) {
-  const words = value.split(/\s+/).filter(Boolean);
-  const alphaWords = words.filter((word) => /[a-z]/i.test(word));
-
-  if (alphaWords.length < 3) {
-    return value;
-  }
-
-  const titleCaseWords = alphaWords.filter((word) => /^[A-Z][a-z]/.test(word));
-
-  if (titleCaseWords.length / alphaWords.length < 0.65) {
-    return value;
-  }
-
-  return value
-    .toLowerCase()
-    .replace(/\bai\b/g, "AI")
-    .replace(/\bugc\b/g, "UGC")
-    .replace(/\bsaas\b/g, "SaaS");
-}
-
 function getNormalizedTokens(value: string) {
   return value
     .toLowerCase()
@@ -961,42 +857,6 @@ function getNormalizedTokens(value: string) {
     .filter(
       (token) => token.length > 2 || MEANINGFUL_COMPACT_COPY_TOKENS.has(token),
     );
-}
-
-function shouldDropHeadline(params: {
-  body: string | null;
-  headline: string | null;
-  slideType: PlannedCarouselSlide["slideType"];
-  textMode: CarouselTextMode;
-}) {
-  if (!params.headline) {
-    return false;
-  }
-
-  if (params.textMode === "body_only" || params.textMode === "single_statement") {
-    return true;
-  }
-
-  if (!params.body) {
-    return false;
-  }
-
-  const headlineTokens = new Set(getNormalizedTokens(params.headline));
-  const bodyTokens = new Set(getNormalizedTokens(params.body));
-
-  if (headlineTokens.size === 0 || bodyTokens.size === 0) {
-    return false;
-  }
-
-  let overlap = 0;
-
-  for (const token of headlineTokens) {
-    if (bodyTokens.has(token)) {
-      overlap += 1;
-    }
-  }
-
-  return overlap / headlineTokens.size >= 0.6;
 }
 
 function normalizeTextMode(params: {
@@ -1163,7 +1023,8 @@ function isProblemFramedCopy(value: string | null) {
 }
 
 export function validateCarouselContentPlan(
-  plan: Pick<CarouselContentPlan, "broadSituations" | "concept" | "slides">,
+  plan: Pick<CarouselContentPlan, "broadSituations" | "concept" | "slides"> &
+    Partial<Pick<CarouselContentPlan, "contentStrategy">>,
   analysis?: WebsiteBusinessAnalysis,
 ) {
   const issues: CarouselPlanValidationIssue[] = [];
@@ -1176,6 +1037,19 @@ export function validateCarouselContentPlan(
   const compactBusinessName = normalizeValidationText(
     analysis?.businessName ?? "",
   ).replace(/\s+/g, "");
+  const planLevelCopy = [
+    plan.concept,
+    plan.contentStrategy?.angle,
+    ...plan.broadSituations,
+  ].filter((value): value is string => Boolean(value));
+
+  if (planLevelCopy.some(hasGenericCopy)) {
+    issues.push({
+      code: "generic_copy",
+      message: "The concept or angle is generic instead of specific to saved evidence.",
+      slideNumber: null,
+    });
+  }
 
   for (const slide of plan.slides) {
     const texts = [
@@ -1319,7 +1193,7 @@ export function validateCarouselContentPlan(
         );
 
         return (
-          /\b(always|best|guarantee|guaranteed|never|perfect|number one|100 percent)\b/.test(
+          /\b(guarantee|guaranteed|number one|100 percent)\b/.test(
             normalizedText,
           ) ||
           Boolean(quantifiedClaim) ||
@@ -1401,8 +1275,7 @@ export function validateCarouselContentPlan(
 
 export function validateCarouselRecentContentRepetition(
   plan: Pick<CarouselContentPlan, "contentStrategy" | "slides">,
-  history: readonly CarouselRecentContentSummaryInput[] | undefined,
-  topicOptions: readonly CarouselBusinessContentOption[] | undefined,
+  history: readonly CarouselRecentAcceptedCopy[] | undefined,
 ) {
   const normalizedHistory = normalizeRecentHistory(history);
 
@@ -1417,13 +1290,29 @@ export function validateCarouselRecentContentRepetition(
   ]
     .filter((value): value is string => Boolean(value))
     .join(" ");
-  const angle = plan.contentStrategy?.angle ?? "";
-  const topic = plan.contentStrategy?.topic ?? "";
-  const topicId = plan.contentStrategy?.topicId ?? "";
+  const fullCopy = plan.slides
+    .flatMap((slide) => [
+      slide.headline,
+      slide.body,
+      ...(slide.listItems ?? []),
+      slide.ctaText,
+    ])
+    .filter((value): value is string => Boolean(value))
+    .join(" ");
   const issues: CarouselPlanValidationIssue[] = [];
 
   for (const previous of normalizedHistory) {
-    if (hook && previous.hook && getTokenOverlap(hook, previous.hook) >= 0.75) {
+    const previousHook = previous.slides[0]
+      ? [
+          previous.slides[0].headline,
+          previous.slides[0].subtext,
+          previous.slides[0].ctaText,
+        ]
+          .filter((value): value is string => Boolean(value))
+          .join(" ")
+      : "";
+
+    if (hook && previousHook && getTokenOverlap(hook, previousHook) >= 0.75) {
       issues.push({
         code: "recent_repetition",
         message: "The hook is too similar to recent Carousel history.",
@@ -1434,75 +1323,60 @@ export function validateCarouselRecentContentRepetition(
   }
 
   for (const previous of normalizedHistory) {
+    const previousFullCopy = previous.slides
+      .flatMap((slide) => [slide.headline, slide.subtext, slide.ctaText])
+      .filter((value): value is string => Boolean(value))
+      .join(" ");
+
     if (
-      angle &&
-      previous.angle &&
-      getTokenOverlap(angle, previous.angle) >= 0.72
+      fullCopy &&
+      previousFullCopy &&
+      getTokenOverlap(fullCopy, previousFullCopy) >= 0.72
     ) {
       issues.push({
         code: "recent_repetition",
-        message: "The content angle is too similar to recent Carousel history.",
+        message: "The visible copy is too similar to a recent Carousel.",
         slideNumber: null,
       });
       break;
     }
   }
 
-  const repeatedTopic = normalizedHistory.some((previous) =>
-    isSameRecentTopic({
-      currentTopic: topic,
-      currentTopicId: topicId,
-      previousTopic: previous.topic,
-      previousTopicId: previous.topicId,
-    }),
-  );
-  const hasUnusedTopicOption = (topicOptions ?? []).some(
-    (option) =>
-      !normalizedHistory.some((previous) =>
-        isSameRecentTopic({
-          currentTopic: option.label,
-          currentTopicId: option.id,
-          previousTopic: previous.topic,
-          previousTopicId: previous.topicId,
-        }),
-      ),
-  );
-
-  if (repeatedTopic && hasUnusedTopicOption) {
-    issues.push({
-      code: "recent_repetition",
-      message:
-        "The selected topic repeats recent Carousel history even though another saved topic is available.",
-      slideNumber: null,
-    });
-  }
-
   return issues;
 }
 
-function isSameRecentTopic(params: {
-  currentTopic: string | null | undefined;
-  currentTopicId: string | null | undefined;
-  previousTopic: string | null | undefined;
-  previousTopicId: string | null | undefined;
-}) {
-  if (
-    params.currentTopicId &&
-    params.previousTopicId &&
-    params.currentTopicId === params.previousTopicId
-  ) {
-    return true;
+export function partitionCarouselContentPlanValidationIssues(
+  issues: readonly CarouselPlanValidationIssue[],
+) {
+  const blockingIssues: CarouselPlanValidationIssue[] = [];
+  const advisoryIssues: CarouselPlanValidationIssue[] = [];
+
+  for (const issue of dedupeValidationIssues([...issues])) {
+    if (issue.code === "invalid_plan") {
+      blockingIssues.push(issue);
+    } else {
+      advisoryIssues.push(issue);
+    }
   }
 
-  const currentTopic = normalizeValidationText(params.currentTopic ?? "");
-  const previousTopic = normalizeValidationText(params.previousTopic ?? "");
+  return { advisoryIssues, blockingIssues };
+}
 
-  return Boolean(
-    currentTopic &&
-      previousTopic &&
-      (currentTopic === previousTopic ||
-        getTokenOverlap(currentTopic, previousTopic) >= 0.85),
-  );
+function evaluateCarouselContentPlanForPublishing(params: {
+  analysis?: WebsiteBusinessAnalysis;
+  plan: Pick<
+    CarouselContentPlan,
+    "broadSituations" | "concept" | "contentStrategy" | "slides"
+  >;
+  recentHistory: readonly CarouselRecentAcceptedCopy[] | undefined;
+}) {
+  return partitionCarouselContentPlanValidationIssues([
+    ...validateCarouselContentPlan(params.plan, params.analysis),
+    ...validateCarouselRecentContentRepetition(
+      params.plan,
+      params.recentHistory,
+    ),
+  ]);
 }
 
 function hasUnsupportedPreciseNumber(value: string, evidenceText: string) {
@@ -1544,7 +1418,7 @@ function getTokenOverlap(left: string, right: string) {
 }
 
 function hasGenericCopy(value: string) {
-  return /\b((?:achieve|enjoy|experience|gain) (?:better|greater|improved|more)|better (?:management|organization|outcomes?|results?)|boost your productivity|effectively|efficiently|effortlessly|enhance your marketing efforts|game changer|improved (?:clarity|organization|outcomes?|results?)|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|stay on top|streamline your workflow|transform your campaign management|unify your (?:planning and reporting|workflow)|unlock efficiency|with ease|work smarter)\b/i.test(
+  return /\b((?:achieve|enjoy|experience|gain) (?:better|greater|improved|more)|better (?:efficiency|management|organization|outcomes?|results?)|boost your productivity|effectively|efficiently|effortlessly|enhance your marketing efforts|game changer|improved (?:clarity|organization|outcomes?|results?)|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|single platform|stay on top|streamline your workflow|transform your (?:campaign management|workflow)|unified platform|unify your (?:planning and reporting|workflow)|unlock efficiency|with ease|work smarter)\b/i.test(
     value,
   );
 }
@@ -1593,7 +1467,6 @@ function buildGrammarPlannerMessages(
   input: CarouselContentPlanInput & { slideCount: number },
   grammarContext: CarouselGrammarGenerationContext,
 ) {
-  const analysis = input.analysis;
   const candidateNumber = Math.max(0, input.candidateIndex ?? 0) + 1;
   const recentHistory = normalizeRecentHistory(input.recentHistory);
   const formatForPrompt = {
@@ -1617,23 +1490,22 @@ function buildGrammarPlannerMessages(
     {
       role: "system" as const,
       content:
-        "You are a senior Instagram carousel strategist. The backend has already selected the content format and hook family. You must not change them. Choose one supplied audience, problem, customer goal, and topic by their exact IDs, create one fresh angle, and write exactly five renderer-safe slides. Return only the requested JSON. Never invent product, nutrition, health, financial, performance, or numerical claims. Visual directions must describe only objects, surfaces, rooms, food, devices, documents, or still-life details and must never contain human-related words, even as exclusions.",
+        "You are a senior Instagram carousel strategist. Use the broad creative seed and emotion to invent a fresh, coherent angle. The selected Structure 1 format and hook family are renderer contracts, so keep their IDs and required slide fields. Return only the requested JSON. Do not invent precise claims, metrics, proof, or guarantees. Visual directions must describe only objects, surfaces, rooms, food, devices, documents, or still-life details and must never contain human-related words, even as exclusions.",
     },
     {
       role: "user" as const,
       content: [
         `Create Carousel candidate ${candidateNumber} with exactly five slides.`,
-        `Required businessName: ${analysis.businessName?.trim() || "unnamed business"}.`,
         `Backend-selected contentFormatId: ${grammarContext.format.id}.`,
         `Backend-selected hookFamilyId: ${grammarContext.hookFamily.id}.`,
+        `Creative seed: ${input.creativeSeed}.`,
+        `Required emotion: ${input.emotion}.`,
         "",
         "Selection rules:",
-        "- Select exactly one audienceId, problemId, customerGoalId, and topicId from businessContext.",
-        "- Return those exact IDs. Do not create or paraphrase IDs.",
-        "- Align the topic and angle with the saved business model and campaign purposes when they are present.",
         "- contentFormatId and hookFamilyId must exactly match the backend-selected values.",
-        "- Create a fresh, specific angle that connects the selected audience, problem, goal, and topic.",
-        "- Avoid hooks, topics, and angles from recentHistory; do not merely reword them.",
+        "- Treat creativeSeed as an open starting point, not finished copy or a compulsory plot.",
+        "- Let the required emotion shape the voice without naming it mechanically on every slide.",
+        "- Avoid wording and close paraphrases from recentAcceptedCopy.",
         "- Follow every supplied slide role, slideType, allowed text mode, item count, and instruction exactly.",
         "- Slide 5 must be a useful takeaway. ctaText is optional and, when present, must be soft and concrete.",
         "",
@@ -1645,18 +1517,18 @@ function buildGrammarPlannerMessages(
         `- Body copy must be one complete sentence of ${TARGET_BODY_MIN_WORDS}-${TARGET_BODY_MAX_WORDS} words, at most ${MAX_BODY_LENGTH} characters, and normally no more than three visual lines.`,
         "- A headline must not repeat its body. If the body works alone, use body_only and set headline to null.",
         "- List slides must use the exact configured number of short listItems and normally set body to null.",
+        "- Every slide without a configured listItemCount must return listItems as an empty array.",
         "- Do not repeat the same information across slides.",
         "- Do not use generic phrases such as boost productivity, streamline your workflow, unlock efficiency, save time, work smarter, or next level.",
-        "- Do not invent exact calories, protein, grams, percentages, prices, time savings, user counts, or performance figures. A precise figure is allowed only when the exact figure appears in the supplied business analysis.",
-        "- Use only claims supported by the business analysis and respect claimsToAvoid.",
+        "- Do not invent exact calories, protein, grams, percentages, prices, time savings, user counts, or performance figures.",
         "- Never invent brands, customers, testimonials, rankings, or quantified social proof.",
         "- imageDirection must name one concrete object-only scene and useful text-safe space.",
         "- Do not write humans, people, faces, hands, bodies, silhouettes, teams, customers, or workers in imageDirection, even as exclusions.",
         "- formatRole must exactly match the configured role for its slide number.",
         "- ctaText must be null on slides 1-4.",
         "",
-        "Business context derived from the existing saved onboarding profile:",
-        JSON.stringify(grammarContext.businessContext),
+        "Minimal business context:",
+        JSON.stringify({ businessDescription: input.businessDescription }),
         "",
         "Selected format definition:",
         JSON.stringify(formatForPrompt),
@@ -1664,11 +1536,8 @@ function buildGrammarPlannerMessages(
         "Selected hook-family definition:",
         JSON.stringify(hookFamilyForPrompt),
         "",
-        "Recent compact history:",
+        "Last accepted Carousel copies (exact visible text):",
         JSON.stringify(recentHistory),
-        "",
-        "Full normalized business analysis for evidence checking:",
-        JSON.stringify(analysis),
       ].join("\n"),
     },
   ];
@@ -1682,8 +1551,9 @@ function buildBatchPlannerMessages(
     planInput: CarouselContentPlanInput;
   }>,
 ) {
-  const businessContext = requested[0]!.context.businessContext;
   const assignments = requested.map(({ context, item }) => ({
+    creativeSeed: item.creativeSeed,
+    emotion: item.emotion,
     format: {
       generationRules: context.format.generationRules,
       id: context.format.id,
@@ -1707,7 +1577,7 @@ function buildBatchPlannerMessages(
     {
       role: "system" as const,
       content:
-        "You are a senior Instagram carousel strategist. Produce one controlled batch of exactly five independent Carousels in one response. The backend selected every format and hook family; never change them. Every ready Carousel must choose exact saved business-context IDs, use a fresh angle and hook, contain exactly five renderer-safe slides, and avoid repetition both against history and within this batch. Return only the requested JSON. Use not_applicable only when the assigned format truly cannot be supported by the saved business context without inventing facts.",
+        "You are a senior Instagram carousel strategist. Produce one controlled batch of exactly five independent Carousels. Each slot has a broad creative seed, a required emotion, and a selected Structure 1 renderer format and hook family. Keep the required IDs and fields, but freely develop the idea and wording. Avoid repetition against exact accepted copy and within this batch. Return only the requested JSON.",
     },
     {
       role: "user" as const,
@@ -1716,24 +1586,23 @@ function buildBatchPlannerMessages(
         "For each slot, return status ready with a complete plan, or status not_applicable with plan null and a specific reason.",
         "Do not mark a format not_applicable merely because another format is easier.",
         "Every ready item must use the exact format and hook-family IDs assigned to that slot.",
-        "Choose exact audienceId, problemId, customerGoalId, and topicId values from businessContext.",
-        "Write fresh hooks, topics, and angles that do not copy recentHistory or another item in this response.",
+        "Develop each creativeSeed differently and let its emotion guide the tone without forcing a fixed story arc.",
+        "Write fresh hooks and slide copy that do not copy recentAcceptedCopy or another item in this response.",
         "Use simple, specific, natural copy. Prioritize useful information over promotion.",
         `Optional headlines must use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters.`,
         `Body copy must be one complete sentence of ${TARGET_BODY_MIN_WORDS}-${TARGET_BODY_MAX_WORDS} words and at most ${MAX_BODY_LENGTH} characters.`,
         "Never invent numbers, product capabilities, proof, customers, brands, health claims, financial claims, or guaranteed outcomes.",
         "Avoid generic copy such as boost productivity, streamline your workflow, save time, work smarter, unlock efficiency, or next level.",
         "Follow every format role, slide type, allowed text mode, and list-item count exactly.",
+        "Return listItems as an empty array whenever that slide role has no configured listItemCount.",
         "Slide 1 is the assigned hook. Slide 5 is a useful takeaway/CTA. ctaText must be null on slides 1-4.",
         "imageDirection must describe only concrete object-only scenes and text-safe space. Never mention humans, people, faces, hands, bodies, silhouettes, teams, customers, or workers, even as exclusions.",
-        "Saved businessContext:",
-        JSON.stringify(businessContext),
+        "Minimal business context:",
+        JSON.stringify({ businessDescription: input.businessDescription }),
         "Controlled slot assignments:",
         JSON.stringify(assignments),
-        "Recent compact history:",
+        "Last accepted Carousel copies (exact visible text):",
         JSON.stringify(normalizeRecentHistory(input.recentHistory)),
-        "Full saved business analysis for evidence checking:",
-        JSON.stringify(input.analysis),
       ].join("\n"),
     },
   ];
@@ -1786,7 +1655,6 @@ function buildCarouselContentBatchSchema(
 }
 
 async function buildSingleBatchItemRepair(params: {
-  allowDeterministicFallback: boolean;
   context: CarouselGrammarGenerationContext;
   input: CarouselContentPlanInput;
   issues: CarouselPlanValidationIssue[];
@@ -1833,21 +1701,17 @@ async function buildSingleBatchItemRepair(params: {
     repairRawResponse = completion.choices[0]?.message.content ?? null;
     if (!repairRawResponse) throw new Error("OpenAI returned no repaired batch item.");
 
-    const repaired = normalizeRepairedCarouselCopy(
-      parseCarouselContentPlanShape(
-        JSON.parse(repairRawResponse),
-        5,
-        params.context,
-      ),
+    const repaired = parseCarouselContentPlanShape(
+      JSON.parse(repairRawResponse),
+      5,
+      params.context,
     );
-    const finalIssues = [
-      ...validateCarouselContentPlan(repaired, params.input.analysis),
-      ...validateCarouselRecentContentRepetition(
-        repaired,
-        params.input.recentHistory,
-        params.context.businessContext.topics,
-      ),
-    ];
+    const repairedValidation = evaluateCarouselContentPlanForPublishing({
+      analysis: params.input.analysis,
+      plan: repaired,
+      recentHistory: params.input.recentHistory,
+    });
+    const finalIssues = repairedValidation.blockingIssues;
     if (finalIssues.length > 0) throw new Error(formatValidationIssues(finalIssues));
 
     return createContentPlan({
@@ -1860,6 +1724,7 @@ async function buildSingleBatchItemRepair(params: {
       },
       source: "llm",
       validationResult: {
+        advisoryIssues: repairedValidation.advisoryIssues,
         fallbackUsed: false,
         finalIssues: [],
         initialIssues: params.issues,
@@ -1869,22 +1734,9 @@ async function buildSingleBatchItemRepair(params: {
       },
     });
   } catch (error) {
-    if (!params.allowDeterministicFallback) {
-      throw new Error(
-        `Carousel Structure 1 isolated batch repair failed: ${getErrorMessage(error)}`,
-        { cause: error },
-      );
-    }
-    return buildFallbackPlan(
-      params.input,
-      params.context,
-      getErrorMessage(error),
-      {
-        initial: JSON.stringify(params.rawItem),
-        repair: repairRawResponse,
-      },
-      params.issues,
-      params.model,
+    throw new Error(
+      `Carousel Structure 1 isolated batch repair failed: ${getErrorMessage(error)}`,
+      { cause: error },
     );
   }
 }
@@ -1913,19 +1765,19 @@ export function selectCarouselBatchReplacement(
 
 function summarizeContentPlan(
   plan: CarouselContentPlan,
-): CarouselRecentContentSummaryInput {
+): CarouselRecentAcceptedCopy {
   return {
-    angle: plan.contentStrategy?.angle ?? plan.concept,
-    audienceId: plan.contentStrategy?.audienceId ?? null,
-    contentFormatId: plan.contentStrategy?.contentFormatId ?? null,
-    hook:
-      plan.slides[0]?.headline ??
-      plan.slides[0]?.body ??
-      plan.slides[0]?.listItems[0] ??
-      null,
-    hookFamilyId: plan.contentStrategy?.hookFamilyId ?? null,
-    topic: plan.contentStrategy?.topic ?? null,
-    topicId: plan.contentStrategy?.topicId ?? null,
+    contentPlanItemId: null,
+    formatId: plan.contentStrategy?.contentFormatId ?? null,
+    generationId: `current-batch-${plan.concept}`,
+    slides: plan.slides.map((slide) => ({
+      ctaText: slide.ctaText,
+      headline:
+        slide.headline ?? slide.body ?? slide.listItems[0] ?? slide.ctaText ?? "",
+      slideNumber: slide.slideNumber,
+      subtext: slide.subtext,
+    })),
+    structureId: "structure_1",
   };
 }
 
@@ -1936,45 +1788,33 @@ function getNullableBatchReason(value: unknown) {
 }
 
 function normalizeRecentHistory(
-  history: readonly CarouselRecentContentSummaryInput[] | undefined,
+  history: readonly CarouselRecentAcceptedCopy[] | undefined,
 ) {
   return (history ?? []).slice(0, 10).map((item) => ({
-    angle: cleanOptionalHistoryText(item.angle),
-    audienceId: cleanOptionalHistoryText(item.audienceId),
-    contentFormatId: isCarouselContentFormatId(item.contentFormatId)
-      ? item.contentFormatId
-      : null,
-    hook: cleanOptionalHistoryText(item.hook),
-    hookFamilyId: isCarouselHookFamilyId(item.hookFamilyId)
-      ? item.hookFamilyId
-      : null,
-    topic: cleanOptionalHistoryText(item.topic),
-    topicId: cleanOptionalHistoryText(item.topicId),
+    contentPlanItemId: item.contentPlanItemId,
+    formatId: item.formatId,
+    generationId: item.generationId,
+    slides: item.slides.map((slide) => ({
+      ctaText: slide.ctaText,
+      headline: slide.headline,
+      slideNumber: slide.slideNumber,
+      subtext: slide.subtext,
+    })),
+    structureId: item.structureId,
   }));
 }
 
 export function mergeCarouselRecentContentHistory(
-  ...sources: ReadonlyArray<readonly CarouselRecentContentSummaryInput[]>
+  ...sources: ReadonlyArray<readonly CarouselRecentAcceptedCopy[]>
 ) {
-  const merged: CarouselRecentContentSummaryInput[] = [];
+  const merged: CarouselRecentAcceptedCopy[] = [];
   const seen = new Set<string>();
 
   for (const source of sources) {
     for (const item of normalizeRecentHistory(source)) {
       const key = JSON.stringify(item);
 
-      if (
-        seen.has(key) ||
-        !(
-          item.angle ||
-          item.audienceId ||
-          item.contentFormatId ||
-          item.hook ||
-          item.hookFamilyId ||
-          item.topic ||
-          item.topicId
-        )
-      ) {
+      if (seen.has(key) || item.slides.length === 0) {
         continue;
       }
 
@@ -1990,18 +1830,15 @@ export function mergeCarouselRecentContentHistory(
   return merged;
 }
 
-function cleanOptionalHistoryText(value: unknown) {
-  return typeof value === "string" && value.trim()
-    ? value.trim().slice(0, 180)
-    : null;
-}
-
 function buildRepairMessages(params: {
-  analysis: WebsiteBusinessAnalysis;
+  analysis?: WebsiteBusinessAnalysis;
+  businessDescription?: string;
+  creativeSeed?: string;
+  emotion?: string;
   grammarContext: CarouselGrammarGenerationContext;
   issues: CarouselPlanValidationIssue[];
   rawResponse: string;
-  recentHistory: readonly CarouselRecentContentSummaryInput[] | undefined;
+  recentHistory: readonly CarouselRecentAcceptedCopy[] | undefined;
   slideCount: number;
 }) {
   const hasRecentRepetition = params.issues.some(
@@ -2013,38 +1850,37 @@ function buildRepairMessages(params: {
     {
       role: "system" as const,
       content:
-        "You repair social carousel JSON. Preserve the schema, selected content format, selected hook family, and supported business evidence. When recent repetition is reported, choose a genuinely different supplied topic, problem, goal, or audience and rebuild the angle and every slide around it. Return only repaired JSON and never invent claims.",
+        "You repair social carousel JSON. Preserve the schema, selected Structure 1 content format, selected hook family, creative seed, and required emotion. Correct structural or renderability failures without replacing valid AI copy unnecessarily. Return only repaired JSON and never invent precise claims.",
     },
     {
       role: "user" as const,
       content: [
         `Repair this ${params.slideCount}-slide carousel plan.`,
-        `Required businessName: ${params.analysis.businessName?.trim() || "unnamed business"}.`,
+        `Creative seed: ${params.creativeSeed}.`,
+        `Required emotion: ${params.emotion}.`,
         "Every headline is optional; when present it must be 3-8 words, at most 50 characters, and at most two visual lines.",
         "Every body must be one complete, specific sentence of 8-20 words and at most 120 characters.",
         "List modes may use at most four total visual lines.",
         "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors such as lead to missed leads.",
         "Do not repeat a connector within one short sentence, such as for better management for clearer decisions.",
-        "Remove quantified social proof unless it appears verbatim in the analysis, and remove growth, money, revenue, profit, sales, or conversion claims not supported by the analysis.",
-        "Use businessName exactly when naming the product. Never invent or substitute another product or brand in copy or imageDirection.",
+        "Remove invented quantified proof, guarantees, or precise performance claims.",
         "Never use abstract outcomes such as experience improved clarity, achieve better results, better management, or better organization.",
         "Never use these phrases: boost productivity, effectively, efficiently, effortlessly, enhance your marketing efforts, seamless, streamline your workflow, transform your campaign management, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
         "If a headline repeats its body, set headline to null and use body_only instead of paraphrasing it.",
         "The final slide must use slideType cta; ctaText may be null when the takeaway is complete without it.",
+        "Every role without a configured listItemCount must return listItems as an empty array.",
         hasRecentRepetition
-          ? "Preserve contentFormatId, hookFamilyId, formatRole, slideType, configured text modes, and list-item counts. Change audienceId, problemId, customerGoalId, or topicId only by choosing another exact ID from businessContext. The final ctaText may be null when the takeaway is complete without it."
-          : "Preserve the exact contentStrategy IDs, contentFormatId, hookFamilyId, formatRole, slideType, configured text modes, and list-item counts. The final ctaText may be null when the takeaway is complete without it.",
+          ? "Preserve contentFormatId, hookFamilyId, formatRole, slideType, configured text modes, list-item counts, seed, and emotion. Rewrite only enough to avoid close wording repetition."
+          : "Preserve contentFormatId, hookFamilyId, formatRole, slideType, configured text modes, list-item counts, seed, and emotion.",
         "Keep one coherent progression that follows the selected format definition.",
         hasRecentRepetition
-          ? "The repaired hook and angle must not paraphrase any hook or angle in recentHistory. Select a different evidence combination and rewrite all five slides."
+          ? "The repaired hook and visible copy must not closely paraphrase recentAcceptedCopy."
           : null,
         "A slide describing scattered work, missed steps, delays, or other consequences must use slideType problem, never solution.",
         "Validation failures:",
         JSON.stringify(params.issues),
-        "Business analysis:",
-        JSON.stringify(params.analysis),
-        "Business context derived from the existing saved onboarding profile:",
-        JSON.stringify(params.grammarContext.businessContext),
+        "Minimal business context:",
+        JSON.stringify({ businessDescription: params.businessDescription }),
         "Selected format definition:",
         JSON.stringify(params.grammarContext.format),
         "Selected hook-family definition:",
@@ -2058,157 +1894,6 @@ function buildRepairMessages(params: {
   ];
 }
 
-export function normalizeRepairedCarouselCopy<
-  T extends ReturnType<typeof parseCarouselContentPlanShape>,
->(
-  plan: T,
-) {
-  return {
-    ...plan,
-    slides: plan.slides.map((slide) => {
-      const body = slide.body
-        ? repairCopyText(slide.body, true, slide.slideType)
-        : null;
-      const repairedHeadline = slide.headline
-        ? repairCopyText(slide.headline, false)
-        : null;
-      const usableHeadline =
-        repairedHeadline &&
-        countWords(repairedHeadline) >= MIN_HEADLINE_WORDS &&
-        countWords(repairedHeadline) <= MAX_HEADLINE_WORDS &&
-        repairedHeadline.length <= MAX_HEADLINE_LENGTH
-          ? repairedHeadline
-          : null;
-      const headline =
-        usableHeadline && body && getTokenOverlap(usableHeadline, body) >= 0.6
-          ? null
-          : usableHeadline;
-      const slideType =
-        !slide.formatRole &&
-        slide.slideType === "solution" &&
-        isProblemFramedCopy(body)
-          ? "problem"
-          : slide.slideType;
-      const textMode =
-        slide.textMode === "question_list" || slide.textMode === "checklist"
-          ? slide.textMode
-          : slideType === "cta"
-            ? "cta_takeaway"
-            : headline
-              ? slide.textMode
-              : "body_only";
-
-      return {
-        ...slide,
-        ...getLayoutPreset(slideType, textMode),
-        body,
-        ctaText:
-          slideType === "cta" && (!slide.formatRole || slide.ctaText !== null)
-            ? repairCtaText(slide.ctaText)
-            : slide.ctaText,
-        headline,
-        slideType,
-        subtext: body,
-        textMode,
-      };
-    }),
-  };
-}
-
-function repairCtaText(value: string | null) {
-  const repaired = value
-    ?.replace(/([!?.,])\1+/g, "$1")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (
-    !repaired ||
-    /[a-z][A-Z]$/.test(repaired) ||
-    /\b(and|for|to|with)$/i.test(repaired)
-  ) {
-    return "Try this approach";
-  }
-
-  return repaired;
-}
-
-function repairCopyText(
-  value: string,
-  sentence: boolean,
-  slideType?: PlannedCarouselSlide["slideType"],
-) {
-  let repaired = value
-    .replace(/([!?.,])\1+/g, "$1")
-    .replace(/\bboost (?:your )?productivity\b/gi, "reduce repeated work")
-    .replace(/\bstreamline your workflow\b/gi, "keep related work connected")
-    .replace(/\bunlock efficiency\b/gi, "remove repeated manual steps")
-    .replace(/\btake (?:it|your business|your workflow) to the next level\b/gi, "make the next action clearer")
-    .replace(/\bwork smarter\b/gi, "reduce repeated work")
-    .replace(/\bone workspace for everything\b/gi, "related work in one place")
-    .replace(/\bseamless(?:ly)?\b/gi, "connected")
-    .replace(/\befficiently\b/gi, "with fewer handoffs")
-    .replace(/\beffectively\b/gi, "in one workflow")
-    .replace(/\benhance your marketing efforts\b/gi, "connect the relevant work")
-    .replace(/\bunify your (?:planning and reporting|workflow)\b/gi, "connect related plans and details")
-    .replace(/\bwith ease\b/gi, "with clear next steps")
-    .replace(/\blead to (?:missed|lost) leads\b/gi, "cause missed follow-ups")
-    .replace(/\bleads to (?:missed|lost) leads\b/gi, "causes missed follow-ups")
-    .replace(
-      /\b(planning and reporting\b(?:\s+[a-z'-]+){0,5})\s+creates\b/gi,
-      "$1 create",
-    )
-    .replace(
-      /\bfor better management(?: for clearer campaign decisions)?\b/gi,
-      "to keep related steps connected",
-    )
-    .replace(
-      /\bfor better organization\b/gi,
-      "to keep related details connected",
-    )
-    .replace(
-      /\btransform your campaign management\b/gi,
-      "organize the next related handoff",
-    )
-    .replace(
-      /\b(?:hinder|impact|limit|slow) growth\b/gi,
-      "create gaps in the next follow-up",
-    )
-    .replace(
-      /\bexperience improved clarity and organization\b/gi,
-      "keep related details in one clear flow",
-    )
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (sentence) {
-    repaired = repaired.charAt(0).toUpperCase() + repaired.slice(1);
-
-    if (!/[.?!]$/.test(repaired)) {
-      repaired = `${repaired}.`;
-    }
-
-    if (countWords(repaired) < MIN_REQUIRED_BODY_WORDS) {
-      const punctuation = repaired.match(/[.?!]$/)?.[0] ?? ".";
-      const stem = repaired.replace(/[.?!]+$/, "");
-      const suffix =
-        punctuation === "?"
-          ? "during the current review"
-          : slideType === "cta"
-            ? /\bwith\b/i.test(stem)
-              ? "and make the next step clear"
-              : "with clearer next steps"
-            : slideType === "solution"
-              ? "with the relevant details kept together"
-              : slideType === "hook"
-                ? "when the current routine gets harder"
-                : "in the current routine";
-      repaired = `${stem} ${suffix}${punctuation}`;
-    }
-  }
-
-  return repaired;
-}
-
 function buildCarouselContentPlanSchema(
   slideCount: number,
   grammarContext: CarouselGrammarGenerationContext | null,
@@ -2218,49 +1903,23 @@ function buildCarouselContentPlanSchema(
         additionalProperties: false,
         properties: {
           angle: { maxLength: 160, minLength: 1, type: "string" },
-          audienceId: {
-            enum: grammarContext.businessContext.audiences.map((item) => item.id),
-            type: "string",
-          },
           contentFormatId: {
             enum: [grammarContext.format.id],
-            type: "string",
-          },
-          customerGoalId: {
-            enum: grammarContext.businessContext.customerGoals.map(
-              (item) => item.id,
-            ),
             type: "string",
           },
           hookFamilyId: {
             enum: [grammarContext.hookFamily.id],
             type: "string",
           },
-          problemId: {
-            enum: grammarContext.businessContext.problems.map((item) => item.id),
-            type: "string",
-          },
-          topicId: {
-            enum: grammarContext.businessContext.topics.map((item) => item.id),
-            type: "string",
-          },
         },
         required: [
           "angle",
-          "audienceId",
           "contentFormatId",
-          "customerGoalId",
           "hookFamilyId",
-          "problemId",
-          "topicId",
         ],
         type: "object",
       }
     : { type: "null" };
-  const allowedFormatRoles = grammarContext
-    ? grammarContext.format.slides.map((slide) => slide.role)
-    : [];
-
   return {
     additionalProperties: false,
     properties: {
@@ -2273,94 +1932,7 @@ function buildCarouselContentPlanSchema(
       concept: { maxLength: 120, minLength: 1, type: "string" },
       contentStrategy: contentStrategySchema,
       slides: {
-        items: {
-          additionalProperties: false,
-          properties: {
-            ctaText: {
-              anyOf: [
-                { maxLength: MAX_CTA_LENGTH, minLength: 1, type: "string" },
-                { type: "null" },
-              ],
-            },
-            body: {
-              anyOf: [
-                {
-                  maxLength: MAX_BODY_LENGTH,
-                  minLength: 1,
-                  type: "string",
-                },
-                { type: "null" },
-              ],
-            },
-            headline: {
-              anyOf: [
-                {
-                  maxLength: MAX_HEADLINE_LENGTH,
-                  minLength: 1,
-                  type: "string",
-                },
-                { type: "null" },
-              ],
-            },
-            formatRole: grammarContext
-              ? { enum: allowedFormatRoles, type: "string" }
-              : {
-                  anyOf: [
-                    { maxLength: 80, minLength: 1, type: "string" },
-                    { type: "null" },
-                  ],
-                },
-            imageDirection: {
-              maxLength: MAX_IMAGE_DIRECTION_LENGTH,
-              minLength: 1,
-              type: "string",
-            },
-            listItems: {
-              items: {
-                maxLength: MAX_LIST_ITEM_LENGTH,
-                minLength: 1,
-                type: "string",
-              },
-              maxItems: 4,
-              type: "array",
-            },
-            slideNumber: { maximum: slideCount, minimum: 1, type: "integer" },
-            slideType: {
-              enum: [
-                "benefit",
-                "cta",
-                "differentiator",
-                "hook",
-                "problem",
-                "solution",
-              ],
-              type: "string",
-            },
-            textMode: {
-              enum: [
-                "body_only",
-                "checklist",
-                "cta_takeaway",
-                "headline_body",
-                "question_list",
-                "single_statement",
-              ],
-              type: "string",
-            },
-          },
-          required: [
-            "body",
-            "ctaText",
-            "formatRole",
-            "headline",
-            "imageDirection",
-            "listItems",
-            "slideNumber",
-            "slideType",
-            "textMode",
-          ],
-          type: "object",
-        },
+        items: buildCarouselContentSlideSchema(slideCount, grammarContext),
         maxItems: slideCount,
         minItems: slideCount,
         type: "array",
@@ -2371,124 +1943,130 @@ function buildCarouselContentPlanSchema(
   } as const;
 }
 
-function buildFallbackPlan(
-  input: CarouselContentPlanInput,
-  grammarContext: CarouselGrammarGenerationContext,
-  fallbackReason: string,
-  rawLlmResponse: CarouselContentPlan["rawLlmResponse"],
-  initialIssues: CarouselPlanValidationIssue[] = [],
-  model: string | null = null,
-): CarouselContentPlan {
-  const analysis = input.analysis;
-  const broadSituations = [
-    ...(analysis.painPoints ?? []),
-    ...(analysis.visualKeywords ?? []),
-    ...(analysis.pexelsImageQueries ?? []),
-    "daily friction",
-    "unclear next steps",
-    "busy routines",
-  ]
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .filter((value, index, values) => values.indexOf(value) === index)
-    .slice(0, 8);
-  const baseConcept =
-    input.selectedAngle?.trim() ||
-    analysis.carouselAngles?.[Math.max(0, input.candidateIndex ?? 0)]?.trim() ||
-    analysis.mainPromise?.trim() ||
-    "A clearer path from everyday friction to the next action";
-  let contentStrategy: ResolvedCarouselContentStrategy | null = null;
-  let concept = baseConcept;
-  let slides: PlannedCarouselSlide[];
-  let finalIssues: CarouselPlanValidationIssue[];
+function buildCarouselContentSlideSchema(
+  slideCount: number,
+  grammarContext: CarouselGrammarGenerationContext | null,
+) {
+  const buildSlideSchema = (
+    definition: CarouselContentFormatDefinition["slides"][number] | null,
+    index: number | null,
+  ) => {
+    const configuredListItemCount = definition?.listItemCount;
+    const finalSlide = index === slideCount - 1;
 
-  {
-    const slideSkeleton = buildCarouselSlidePlan(input);
-    let selectedPlan:
-      | {
-          contentStrategy: ResolvedCarouselContentStrategy;
-          issues: CarouselPlanValidationIssue[];
-          slides: PlannedCarouselSlide[];
-        }
-      | undefined;
+    return {
+      additionalProperties: false,
+      properties: {
+        ctaText:
+          index !== null && !finalSlide
+            ? { type: "null" }
+            : {
+                anyOf: [
+                  {
+                    maxLength: MAX_CTA_LENGTH,
+                    minLength: 1,
+                    type: "string",
+                  },
+                  { type: "null" },
+                ],
+              },
+        body: {
+          anyOf: [
+            {
+              maxLength: MAX_BODY_LENGTH,
+              minLength: 1,
+              type: "string",
+            },
+            { type: "null" },
+          ],
+        },
+        headline: {
+          anyOf: [
+            {
+              maxLength: MAX_HEADLINE_LENGTH,
+              minLength: 1,
+              type: "string",
+            },
+            { type: "null" },
+          ],
+        },
+        formatRole: definition
+          ? { enum: [definition.role], type: "string" }
+          : {
+              anyOf: [
+                { maxLength: 80, minLength: 1, type: "string" },
+                { type: "null" },
+              ],
+            },
+        imageDirection: {
+          maxLength: MAX_IMAGE_DIRECTION_LENGTH,
+          minLength: 1,
+          type: "string",
+        },
+        listItems: {
+          items: {
+            maxLength: MAX_LIST_ITEM_LENGTH,
+            minLength: 1,
+            type: "string",
+          },
+          maxItems:
+            configuredListItemCount ?? (definition ? 0 : 4),
+          minItems: configuredListItemCount ?? 0,
+          type: "array",
+        },
+        slideNumber:
+          index === null
+            ? { maximum: slideCount, minimum: 1, type: "integer" }
+            : { enum: [index + 1], type: "integer" },
+        slideType: {
+          enum: definition
+            ? [definition.slideType]
+            : [
+                "benefit",
+                "cta",
+                "differentiator",
+                "hook",
+                "problem",
+                "solution",
+              ],
+          type: "string",
+        },
+        textMode: {
+          enum: definition
+            ? definition.preferredTextModes
+            : [
+                "body_only",
+                "checklist",
+                "cta_takeaway",
+                "headline_body",
+                "question_list",
+                "single_statement",
+              ],
+          type: "string",
+        },
+      },
+      required: [
+        "body",
+        "ctaText",
+        "formatRole",
+        "headline",
+        "imageDirection",
+        "listItems",
+        "slideNumber",
+        "slideType",
+        "textMode",
+      ],
+      type: "object",
+    } as const;
+  };
 
-    for (const candidateStrategy of buildFallbackContentStrategies(
-      grammarContext,
-      input,
-      baseConcept,
-    )) {
-      const candidateSlides = applyGrammarToFallbackSlides(
-        slideSkeleton,
-        grammarContext,
-        candidateStrategy,
-      );
-      const candidatePlan = {
-        broadSituations,
-        concept: candidateStrategy.angle,
-        contentStrategy: candidateStrategy,
-        slides: candidateSlides,
-      };
-      const issues = [
-        ...validateCarouselContentPlan(candidatePlan, analysis),
-        ...validateCarouselRecentContentRepetition(
-          candidatePlan,
-          input.recentHistory,
-          grammarContext.businessContext.topics,
+  return grammarContext
+    ? {
+        anyOf: grammarContext.format.slides.map((definition, index) =>
+          buildSlideSchema(definition, index),
         ),
-      ];
-
-      if (issues.length === 0) {
-        selectedPlan = {
-          contentStrategy: candidateStrategy,
-          issues,
-          slides: candidateSlides,
-        };
-        break;
       }
-
-      if (!selectedPlan || issues.length < selectedPlan.issues.length) {
-        selectedPlan = {
-          contentStrategy: candidateStrategy,
-          issues,
-          slides: candidateSlides,
-        };
-      }
-    }
-
-    if (!selectedPlan) {
-      throw new Error("Deterministic carousel fallback could not select a content strategy.");
-    }
-
-    contentStrategy = selectedPlan.contentStrategy;
-    concept = contentStrategy.angle;
-    slides = selectedPlan.slides;
-    finalIssues = selectedPlan.issues;
-  }
-
-  if (finalIssues.length > 0) {
-    throw new Error(
-      `Deterministic carousel fallback failed validation: ${formatValidationIssues(finalIssues)}`,
-    );
-  }
-
-  return createContentPlan({
-    broadSituations,
-    concept,
-    contentStrategy,
-    fallbackReason: fallbackReason.slice(0, 500),
-    model,
-    rawLlmResponse,
-    slides,
-    source: "deterministic-fallback",
-    validationResult: {
-      fallbackUsed: true,
-      finalIssues: [],
-      initialIssues,
-      ok: true,
-      repairAttempted: Boolean(rawLlmResponse.initial),
-      repaired: false,
-    },
-  });
+    : buildSlideSchema(null, null);
 }
 
 function createContentPlan(params: Omit<CarouselContentPlan, "normalizedPlan" | "plannerVersion">) {
@@ -2648,759 +2226,6 @@ function getSlideType(value: unknown, label: string) {
 
 function clampSlideCount(value: number) {
   return Math.min(Math.max(Math.trunc(value), 1), 10);
-}
-
-function buildFallbackContentStrategies(
-  grammarContext: CarouselGrammarGenerationContext,
-  input: CarouselContentPlanInput,
-  baseConcept: string,
-): ResolvedCarouselContentStrategy[] {
-  const candidateIndex = Math.max(0, input.candidateIndex ?? 0);
-  const recentHistory = normalizeRecentHistory(input.recentHistory);
-  const unusedTopics = grammarContext.businessContext.topics.filter(
-    (option) =>
-      !recentHistory.some((previous) =>
-        isSameRecentTopic({
-          currentTopic: option.label,
-          currentTopicId: option.id,
-          previousTopic: previous.topic,
-          previousTopicId: previous.topicId,
-        }),
-      ),
-  );
-  const topics = rotateFallbackOptions(
-    unusedTopics.length > 0
-      ? unusedTopics
-      : grammarContext.businessContext.topics,
-    candidateIndex,
-  );
-  const problems = rotateFallbackOptions(
-    grammarContext.businessContext.problems,
-    candidateIndex,
-  );
-  const customerGoals = rotateFallbackOptions(
-    grammarContext.businessContext.customerGoals,
-    candidateIndex,
-  );
-  const audiences = rotateFallbackOptions(
-    grammarContext.businessContext.audiences,
-    candidateIndex,
-  );
-  const strategies: ResolvedCarouselContentStrategy[] = [];
-
-  for (const topic of topics) {
-    for (const problem of problems) {
-      for (const customerGoal of customerGoals) {
-        for (const audience of audiences) {
-          strategies.push({
-            angle: buildFallbackAngle({
-              audience: audience.label,
-              baseConcept,
-              customerGoal: customerGoal.label,
-              formatName: grammarContext.format.name,
-              problem: problem.label,
-              topic: topic.label,
-            }),
-            audience: audience.label,
-            audienceId: audience.id,
-            contentFormatId: grammarContext.format.id,
-            customerGoal: customerGoal.label,
-            customerGoalId: customerGoal.id,
-            hookFamilyId: grammarContext.hookFamily.id,
-            problem: problem.label,
-            problemId: problem.id,
-            topic: topic.label,
-            topicId: topic.id,
-          });
-        }
-      }
-    }
-  }
-
-  return strategies;
-}
-
-function rotateFallbackOptions(
-  options: readonly CarouselBusinessContentOption[],
-  candidateIndex: number,
-) {
-  const offset = candidateIndex % options.length;
-
-  return [...options.slice(offset), ...options.slice(0, offset)];
-}
-
-function buildFallbackAngle(params: {
-  audience: string;
-  baseConcept: string;
-  customerGoal: string;
-  formatName: string;
-  problem: string;
-  topic: string;
-}) {
-  const specificAngle = `${params.formatName} about ${params.topic} for ${params.audience}: ${params.problem} toward ${params.customerGoal}`
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return (specificAngle || params.baseConcept).slice(0, 160);
-}
-
-function applyGrammarToFallbackSlides(
-  slides: PlannedCarouselSlide[],
-  grammarContext: CarouselGrammarGenerationContext,
-  contentStrategy: ResolvedCarouselContentStrategy,
-) {
-  const listSource = buildFallbackListItemPool(
-    grammarContext.businessContext,
-    grammarContext.format.id,
-  );
-
-  return slides.map((slide, index) => {
-    const definition = grammarContext.format.slides[index]!;
-    const requestedTextMode = definition.preferredTextModes.includes(slide.textMode)
-      ? slide.textMode
-      : definition.preferredTextModes[0]!;
-    const listItems = definition.listItemCount
-      ? Array.from({ length: definition.listItemCount }, (_, itemIndex) => {
-          const priorItemCount = grammarContext.format.slides
-            .slice(0, index)
-            .reduce(
-              (total, priorDefinition) =>
-                total + (priorDefinition.listItemCount ?? 0),
-              0,
-            );
-          return listSource[priorItemCount + itemIndex]!.slice(
-            0,
-            MAX_LIST_ITEM_LENGTH,
-          );
-        })
-      : [];
-    let textMode = definition.listItemCount
-      ? requestedTextMode
-      : requestedTextMode === "single_statement"
-        ? "single_statement"
-        : requestedTextMode === "body_only"
-          ? "body_only"
-          : requestedTextMode;
-    let headline =
-      textMode === "body_only" || textMode === "single_statement"
-        ? null
-        : index === 0
-          ? buildFallbackHookHeadline(
-              contentStrategy,
-              grammarContext.hookFamily.id,
-              grammarContext.format.id,
-            )
-          : buildFormatAwareFallbackHeadline(
-              grammarContext.format.id,
-              index,
-              contentStrategy,
-            );
-    const body = definition.listItemCount
-      ? null
-      : buildFormatAwareFallbackBody(
-          grammarContext.format.id,
-          index,
-          contentStrategy,
-        );
-
-    if (definition.slideType === "cta") {
-      headline = null;
-    } else if (
-      headline &&
-      body &&
-      getTokenOverlap(headline, body) >= 0.6
-    ) {
-      if (definition.preferredTextModes.includes("body_only")) {
-        headline = null;
-        textMode = "body_only";
-      } else if (definition.preferredTextModes.includes("single_statement")) {
-        headline = null;
-        textMode = "single_statement";
-      }
-    }
-
-    return {
-      ...slide,
-      ...getLayoutPreset(definition.slideType, textMode),
-      body,
-      ctaText: null,
-      formatRole: definition.role,
-      headline,
-      listItems,
-      slideType: definition.slideType,
-      subtext: body,
-      textMode,
-    } satisfies PlannedCarouselSlide;
-  });
-}
-
-function buildFormatAwareFallbackHeadline(
-  formatId: CarouselContentFormatId,
-  slideIndex: number,
-  contentStrategy: ResolvedCarouselContentStrategy,
-) {
-  const topic = formatFallbackHeadlineTopic(contentStrategy.topic);
-  const headlines: Record<CarouselContentFormatId, string[]> = {
-    before_after: [
-      "Before and after",
-      "Before: context stays scattered",
-      "The change: connect one detail",
-      "After: review becomes simpler",
-      "Keep the useful lesson",
-    ],
-    beginner_roadmap: [
-      "A beginner roadmap",
-      "Start with one clear signal",
-      "Build the next small habit",
-      "Review before adding complexity",
-      "Keep the routine practical",
-    ],
-    breakdown: [
-      "A practical breakdown",
-      "Component one: the friction",
-      "Component two: the context",
-      "Component three: the goal",
-      "Use the full picture",
-    ],
-    cheat_sheet: [
-      "A quick reference",
-      "Reference section one",
-      "Reference section two",
-      "Reference section three",
-      "Keep this guide nearby",
-    ],
-    checklist: [
-      "A practical checklist",
-      "Checks one and two",
-      "Checks three and four",
-      "Checks five and six",
-      "Review before moving forward",
-    ],
-    comparison: [
-      "Compare two approaches",
-      "Option one: separate details",
-      "Option two: connected context",
-      "Focus on the difference",
-      "Choose for the routine",
-    ],
-    examples: [
-      "Three useful examples",
-      "Example one: find the friction",
-      "Example two: preserve context",
-      "Example three: review progress",
-      "Use the clearest example",
-    ],
-    framework: [
-      "A simple framework",
-      "Part one: name the friction",
-      "Part two: preserve context",
-      "Part three: check progress",
-      "Bring the parts together",
-    ],
-    how_to: [
-      "A practical process",
-      "Step one: mark the friction",
-      "Step two: organize context",
-      "Step three: compare progress",
-      "Repeat the useful steps",
-    ],
-    list: [
-      "Six useful ideas",
-      "Ideas one and two",
-      "Ideas three and four",
-      "Ideas five and six",
-      "Put one idea into practice",
-    ],
-    mistakes: [
-      "Three mistakes to avoid",
-      "Mistake one: changing too early",
-      "Mistake two: losing context",
-      "Mistake three: skipping review",
-      "Replace mistakes with checks",
-    ],
-    myth_fact: [
-      "Three myths worth checking",
-      "Myth one: more always helps",
-      "Myth two: routines stay fixed",
-      "Myth three: review can wait",
-      "Keep the careful takeaway",
-    ],
-    problem_solution: [
-      "A problem worth solving",
-      "Why the friction appears",
-      "What makes it continue",
-      "Change one useful mechanism",
-      "Take one practical action",
-    ],
-    resources: [
-      "Six useful resources",
-      "Resources one and two",
-      "Resources three and four",
-      "Resources five and six",
-      "Use the right reference",
-    ],
-    swap: [
-      "Three practical swaps",
-      "Swap one: capture sooner",
-      "Swap two: connect context",
-      "Swap three: review one change",
-      "Keep the useful swap",
-    ],
-  };
-  const headline = headlines[formatId][slideIndex] ?? `A useful ${topic} note`;
-
-  return headline
-    .split(/\s+/)
-    .slice(0, MAX_HEADLINE_WORDS)
-    .join(" ")
-    .slice(0, MAX_HEADLINE_LENGTH);
-}
-
-function buildFormatAwareFallbackBody(
-  formatId: CarouselContentFormatId,
-  slideIndex: number,
-  contentStrategy: ResolvedCarouselContentStrategy,
-) {
-  const topic = lowerFirst(
-    compactFallbackPhrase(contentStrategy.topic, 3, 28),
-  );
-  const problem = formatFallbackProblemPhrase(
-    compactFallbackPhrase(contentStrategy.problem, 4, 34),
-  );
-  const audience = lowerFirst(
-    compactFallbackPhrase(contentStrategy.audience, 4, 34),
-  );
-  const customerGoal = lowerFirst(
-    compactFallbackPhrase(contentStrategy.customerGoal, 8, 56),
-  );
-  const bodies: Record<CarouselContentFormatId, string[]> = {
-    before_after: [
-      `Follow how ${topic} can connect a recurring problem with the selected goal.`,
-      `Before the change, the routine contains ${problem} and leaves useful context scattered.`,
-      `The meaningful change connects one ${topic} detail with the next review.`,
-      `Afterward, the routine supports the selected goal with fewer disconnected details.`,
-      `Keep the change that makes the next review easier to understand.`,
-    ],
-    beginner_roadmap: [
-      `Use this beginner roadmap to move from current friction toward the selected goal.`,
-      `Start by marking where the routine reflects ${problem}.`,
-      `Next, keep one useful ${topic} detail beside the related entry.`,
-      `Then, compare the updated routine with the selected goal before adding more steps.`,
-      `Continue with the smallest habit that keeps the review practical.`,
-    ],
-    breakdown: [
-      `Break down ${topic} into the parts connecting current friction with the selected goal.`,
-      `The first component is the routine point connected to ${problem}.`,
-      `The second component keeps relevant ${topic} context available for review.`,
-      `The third component compares current details with the selected goal before adjustment.`,
-      `Use all three components together when reviewing the next routine.`,
-    ],
-    cheat_sheet: [
-      `Use this quick reference to review ${topic} while working toward the selected goal.`,
-      `The first section keeps the most useful ${topic} references together.`,
-      `The second section links current context with the selected goal for later review.`,
-      `The third section records one decision before the routine changes again.`,
-      `Keep the reference nearby and use only the section you need.`,
-    ],
-    checklist: [
-      `Verify six practical details before the routine moves to another decision.`,
-      `Review the first two checks before changing any part of the routine.`,
-      `Use the middle checks to connect current context with the selected goal.`,
-      `Finish with the final checks before choosing the next adjustment.`,
-      `Repeat the checklist whenever the current context becomes difficult to review.`,
-    ],
-    comparison: [
-      `Use the differences to choose a suitable approach for the current context.`,
-      `A separate approach keeps each detail isolated until a later review.`,
-      `A connected approach keeps related ${topic} context in the same review.`,
-      `The useful difference is how each approach responds when the routine reflects ${problem}.`,
-      `Choose the approach that fits ${audience} and the current routine.`,
-    ],
-    examples: [
-      `See three practical ${topic} examples connected to ${customerGoal}.`,
-      `${buildFallbackWhenClause(problem)}, start with one ${topic} detail worth reviewing.`,
-      `Keep that ${topic} detail beside the entry or decision it explains.`,
-      `Compare the saved detail with ${customerGoal} before making another adjustment.`,
-      `Choose the example connected to ${customerGoal}.`,
-    ],
-    framework: [
-      `Use this framework to organize current friction around a practical ${topic} review.`,
-      `Part one names where the routine begins to reflect ${problem}.`,
-      `Part two keeps the relevant ${topic} context beside each decision.`,
-      `Part three compares the current result with the selected goal before adjustment.`,
-      `Use the three parts together whenever the routine needs another review.`,
-    ],
-    how_to: [
-      `Use this short process to move from current friction toward the selected goal.`,
-      `Start by marking where the routine reflects ${problem}.`,
-      `Next, organize the details that matter most for ${topic}.`,
-      `Then, compare the updated routine with the selected goal before continuing.`,
-      `Repeat these steps whenever the routine becomes difficult to review.`,
-    ],
-    list: [
-      `Each idea links a saved business detail with one practical next action.`,
-      `The first ideas identify useful context before the routine changes again.`,
-      `The middle ideas connect current details with the next review.`,
-      `The final ideas keep one practical adjustment visible for later.`,
-      `Choose one idea that fits ${audience} and review it next.`,
-    ],
-    mistakes: [
-      `Avoid three patterns that allow ${problem} to remain in the routine.`,
-      `Changing the routine before naming the friction can hide useful context.`,
-      `Collecting details without connecting them to ${topic} makes review harder.`,
-      `Measuring progress without checking the selected goal can weaken the next decision.`,
-      `Replace each mistake with one small check before the next action.`,
-    ],
-    myth_fact: [
-      `Question three assumptions about ${topic} before changing the current routine.`,
-      `Relevant context matters more than collecting extra detail without a purpose.`,
-      `Changing circumstances can affect how the routine reflects ${problem} each day.`,
-      `A timely review can connect current details with the selected goal before adjustment.`,
-      `Keep the explanation that matches the current evidence and routine.`,
-    ],
-    problem_solution: [
-      `The current friction can make the next ${topic} decision difficult to review.`,
-      `The problem grows when useful context remains separate from each decision.`,
-      `Disconnected details make it harder to compare the routine with the selected goal.`,
-      `Connect one relevant ${topic} detail with the decision it affects.`,
-      `Start with the smallest change that makes the next review clearer.`,
-    ],
-    resources: [
-      `Save six practical references for ${customerGoal}.`,
-      `Start with the two references most useful for ${topic}.`,
-      `Use the next pair to connect saved details with ${customerGoal}.`,
-      `Keep the final pair ready for later questions and progress reviews.`,
-      `Choose the reference connected to ${customerGoal}.`,
-    ],
-    swap: [
-      `Try three practical swaps when the routine is slowed by ${problem}.`,
-      `Swap delayed notes for one immediate detail connected to ${topic}.`,
-      `Swap separate reminders for one review tied directly to the selected goal.`,
-      `Swap broad changes for one adjustment that can be inspected later.`,
-      `Keep the swap that makes the next review easier to understand.`,
-    ],
-  };
-
-  return bodies[formatId][slideIndex] ??
-    `Use ${topic} to connect the current context with the selected goal before continuing.`;
-}
-
-function compactFallbackPhrase(value: string, maxWords: number, maxLength: number) {
-  const danglingWords = new Set([
-    "a",
-    "an",
-    "and",
-    "at",
-    "by",
-    "for",
-    "from",
-    "in",
-    "of",
-    "on",
-    "or",
-    "the",
-    "to",
-    "with",
-  ]);
-  const words = value
-    .trim()
-    .replace(/[.!?,;:]+$/g, "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, maxWords);
-
-  while (
-    words.length > 1 &&
-    (words.join(" ").length > maxLength ||
-      danglingWords.has(words.at(-1)!.replace(/[,;:]+$/g, "").toLowerCase()))
-  ) {
-    words.pop();
-  }
-
-  return words.join(" ").replace(/[,;:]+$/g, "") || "the current topic";
-}
-
-function lowerFirst(value: string) {
-  if (/^[A-Z]{2,}(?:\b|-)/.test(value)) {
-    return value;
-  }
-
-  return value.charAt(0).toLowerCase() + value.slice(1);
-}
-
-function formatFallbackProblemPhrase(value: string) {
-  const normalized = lowerFirst(value);
-
-  if (/^(?:absence|challenge|difficulty|lack|need)\b/i.test(normalized)) {
-    return `the ${normalized}`;
-  }
-
-  return normalized;
-}
-
-function buildFallbackWhenClause(problem: string) {
-  if (/^(?:the )?(?:absence|challenge|difficulty|lack|need)\b/i.test(problem)) {
-    return `When ${problem} affects the decision`;
-  }
-
-  return `When ${problem}`;
-}
-
-function formatFallbackHeadlineTopic(value: string) {
-  const nounPhrase = value
-    .trim()
-    .replace(
-      /^(?:how to|ways to|tips for|speed up|build|create|improve|keep|make|organize|reduce|simplify|track|understand|use)\s+/i,
-      "",
-    )
-    .replace(/^(?:the|your)\s+/i, "");
-
-  return compactFallbackPhrase(nounPhrase || value, 4, 34);
-}
-
-function buildFallbackListItemPool(
-  businessContext: CarouselBusinessContentContext,
-  formatId: CarouselContentFormatId,
-) {
-  const guideLabel =
-    formatId === "resources"
-      ? "guide"
-      : formatId === "checklist"
-        ? "check"
-        : formatId === "cheat_sheet"
-          ? "reference"
-          : "idea";
-  const goalLabel =
-    formatId === "resources"
-      ? "checklist"
-      : formatId === "checklist"
-        ? "check"
-        : formatId === "cheat_sheet"
-          ? "prompt"
-          : "action";
-  const evidenceGroups = [
-    prioritizeSpecificFallbackOptions(businessContext.topics).map((option) =>
-      formatFallbackResourceLabel({
-        label: option.label,
-        type: guideLabel,
-      }),
-    ),
-    prioritizeSpecificFallbackOptions(businessContext.customerGoals).map((option) =>
-      formatFallbackResourceLabel({
-        label: option.label,
-        type: goalLabel,
-      }),
-    ),
-  ];
-  const evidenceLabels: string[] = [];
-  const largestGroup = Math.max(...evidenceGroups.map((group) => group.length));
-
-  for (let index = 0; index < largestGroup; index += 1) {
-    for (const group of evidenceGroups) {
-      const label = group[index];
-
-      if (label) {
-        evidenceLabels.push(label);
-      }
-    }
-  }
-  const genericReferences = [
-    "Checklist: Reusable reference",
-    "Review prompt: Practical question",
-    "Guide: Simple comparison note",
-    "Guide: Saved example",
-    "Checklist: Next-step reminder",
-    "Review prompt: Progress check-in",
-    "Review prompt: Useful question",
-    "Guide: Decision note",
-  ];
-  const seen = new Set<string>();
-  const selectedLabels: string[] = [];
-
-  return [...evidenceLabels, ...genericReferences].filter((label) => {
-    const key = normalizeValidationText(label);
-
-    if (
-      !key ||
-      isWeakStandaloneResourceLabel(label) ||
-      seen.has(key) ||
-      selectedLabels.some(
-        (selected) => getFallbackResourceLabelSimilarity(label, selected) >= 0.6,
-      )
-    ) {
-      return false;
-    }
-
-    seen.add(key);
-    selectedLabels.push(label);
-    return true;
-  });
-}
-
-function prioritizeSpecificFallbackOptions(
-  options: readonly CarouselBusinessContentOption[],
-) {
-  const specific: CarouselBusinessContentOption[] = [];
-  const compact: CarouselBusinessContentOption[] = [];
-
-  for (const option of options) {
-    const wordCount = option.label.trim().split(/\s+/).filter(Boolean).length;
-    (wordCount >= 2 ? specific : compact).push(option);
-  }
-
-  return [...specific, ...compact];
-}
-
-function isWeakStandaloneResourceLabel(value: string) {
-  const label = value.split(":").slice(1).join(":").trim().toLowerCase();
-
-  return new Set(["ai", "nutrition", "progress", "support"]).has(label);
-}
-
-function getFallbackResourceLabelSimilarity(left: string, right: string) {
-  const leftLabel = left.split(":").slice(1).join(":") || left;
-  const rightLabel = right.split(":").slice(1).join(":") || right;
-  const leftTokens = new Set(getNormalizedTokens(leftLabel));
-  const rightTokens = new Set(getNormalizedTokens(rightLabel));
-
-  if (leftTokens.size === 0 || rightTokens.size === 0) {
-    return 0;
-  }
-
-  let overlap = 0;
-
-  for (const token of leftTokens) {
-    if (rightTokens.has(token)) {
-      overlap += 1;
-    }
-  }
-
-  return overlap / Math.max(leftTokens.size, rightTokens.size);
-}
-
-function formatFallbackResourceLabel(params: {
-  label: string;
-  type: "action" | "check" | "checklist" | "guide" | "idea" | "prompt" | "reference";
-}) {
-  const prefix = {
-    action: "Action",
-    check: "Check",
-    checklist: "Checklist",
-    guide: "Guide",
-    idea: "Idea",
-    prompt: "Review prompt",
-    reference: "Reference",
-  }[params.type];
-  const danglingWords = new Set([
-    "a",
-    "an",
-    "and",
-    "are",
-    "at",
-    "by",
-    "for",
-    "from",
-    "in",
-    "is",
-    "of",
-    "on",
-    "or",
-    "the",
-    "to",
-    "was",
-    "were",
-    "with",
-  ]);
-  const maxEvidenceWords =
-    params.type === "checklist" || params.type === "check" ? 3 : 4;
-  const words = params.label
-    .trim()
-    .replace(/[.!?]+$/g, "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, maxEvidenceWords);
-
-  while (
-    words.length > 1 &&
-    (`${prefix}: ${words.join(" ")}`.length > MAX_LIST_ITEM_LENGTH ||
-      danglingWords.has(words.at(-1)!.toLowerCase()))
-  ) {
-    words.pop();
-  }
-
-  const label = words.join(" ") || "saved reference";
-
-  return `${prefix}: ${label}`.slice(0, MAX_LIST_ITEM_LENGTH);
-}
-
-function buildFallbackHookHeadline(
-  contentStrategy: ResolvedCarouselContentStrategy,
-  hookFamilyId: CarouselHookFamilyId,
-  formatId: CarouselContentFormatId,
-) {
-  const topic = formatFallbackHeadlineTopic(contentStrategy.topic);
-  const problem = lowerFirst(
-    compactFallbackPhrase(contentStrategy.problem, 4, 34),
-  );
-  const goal = lowerFirst(
-    formatFallbackHeadlineTopic(contentStrategy.customerGoal),
-  );
-  const formatSubject = buildFallbackFormatSubject(formatId, topic);
-  const familyCandidates: Record<CarouselHookFamilyId, string> = {
-    beginner: `New to ${topic}? Start here`,
-    comparison: `Compare these ${formatSubject}`,
-    contrarian: `More ${topic} detail is not always better`,
-    curiosity: `What do ${formatSubject} reveal?`,
-    mistake: `One ${topic} mistake worth correcting`,
-    problem_recognition: `When ${problem} keeps returning`,
-    question: `Which ${topic} approach fits better?`,
-    specific_outcome: `A ${topic} path toward ${goal}`,
-    surprise: `An overlooked pattern in ${formatSubject}`,
-    utility: `Save these ${formatSubject}`,
-  };
-  return fitFallbackHeadline(familyCandidates[hookFamilyId]);
-}
-
-function buildFallbackFormatSubject(
-  formatId: CarouselContentFormatId,
-  topic: string,
-) {
-  const subjects: Record<CarouselContentFormatId, string> = {
-    before_after: `two ${topic} states`,
-    beginner_roadmap: `three beginner ${topic} steps`,
-    breakdown: `three ${topic} components`,
-    cheat_sheet: `six ${topic} references`,
-    checklist: `six ${topic} checks`,
-    comparison: `two ${topic} approaches`,
-    examples: `three ${topic} examples`,
-    framework: `three ${topic} framework parts`,
-    how_to: `three ${topic} steps`,
-    list: `six ${topic} ideas`,
-    mistakes: `three ${topic} mistakes`,
-    myth_fact: `three ${topic} myths`,
-    problem_solution: `two sides of ${topic}`,
-    resources: `six ${topic} resources`,
-    swap: `three ${topic} swaps`,
-  };
-
-  return subjects[formatId];
-}
-
-function fitFallbackHeadline(value: string) {
-  const ending = value.trim().endsWith("?") ? "?" : "";
-  const words = value
-    .trim()
-    .replace(/[?]+$/g, "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, MAX_HEADLINE_WORDS);
-  const maximumLength = MAX_HEADLINE_LENGTH - ending.length;
-
-  while (words.length > MIN_HEADLINE_WORDS && words.join(" ").length > maximumLength) {
-    words.pop();
-  }
-
-  return `${words.join(" ").slice(0, maximumLength)}${ending}`;
 }
 
 function getErrorMessage(error: unknown) {

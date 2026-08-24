@@ -22,6 +22,10 @@ const structure2Runtime = readFileSync(
   "worker/src/lib/carousel-structure-2-generate.ts",
   "utf8",
 );
+const sharedSlideContract = readFileSync(
+  "worker/src/lib/carousel-slide-plan.ts",
+  "utf8",
+);
 
 test("persists requested and resolved Carousel structures separately", () => {
   assert.match(migration, /requested_structure_id text/i);
@@ -69,25 +73,39 @@ test("preserves global rotation while advancing Structure 2 format history", () 
   );
 });
 
-test("runtime retries Structure 1 twice and then reloads the whole batch as Structure 2", () => {
+test("runtime limits Structure 1 takeover to plan-backed automatic rotation", () => {
   assert.match(runtime, /while \(planningAttemptCount < 2 && !plannedItems\)/);
-  assert.match(runtime, /allowDeterministicFallback: false/);
+  assert.doesNotMatch(runtime, /allowDeterministicFallback/);
+  assert.match(runtime, /planAwareAutomaticRecovery/);
+  assert.match(runtime, /structure_mode_snapshot === "rotate"/);
+  assert.match(runtime, /structure_selection_mode === "rotation"/);
+  assert.match(
+    runtime,
+    /rows\.every\([\s\S]*generation\.content_plan_id[\s\S]*generation\.content_plan_item_id[\s\S]*generation\.content_plan_reservation_id/,
+  );
+  assert.match(
+    runtime,
+    /if \(!planAwareAutomaticRecovery\)[\s\S]*Carousel Structure 1 planning failed after two attempts/,
+  );
   assert.match(runtime, /takeOverCarouselExperimentBatchWithStructure2/);
   assert.match(runtime, /resolvedGenerations\.some/);
   assert.match(runtime, /generateCarouselStructure2Batch/);
 });
 
-test("Structure 1 fails closed while Structure 2 uses its validated dedicated fallback", () => {
-  assert.match(
+test("both structures keep hardcoded copy out of the publishing runtime", () => {
+  assert.doesNotMatch(
     structure1Planner,
-    /input\.allowDeterministicFallback === false[\s\S]*runtime fallback copy is not permitted/i,
+    /allowDeterministicFallback|buildFallbackPlan|deterministic-fallback|CAROUSEL_CONTENT_PLANNER_MODE|normalizeRepairedCarouselCopy|repairCopyText|Try this approach/,
   );
-  assert.match(
+  assert.doesNotMatch(
     structure2Planner,
-    /buildDeterministicCarouselStructure2StoryPlan/,
+    /buildDeterministic|deterministic-fallback|CAROUSEL_STRUCTURE_2_PLANNER_MODE|CAROUSEL_CONTENT_PLANNER_MODE/,
   );
-  assert.match(
-    structure2Runtime,
-    /buildCarouselStructure2StoryPlanBatch\(\{[\s\S]*allowDeterministicFallback: true/,
+  assert.doesNotMatch(structure2Runtime, /allowDeterministicFallback/);
+  assert.doesNotMatch(
+    sharedSlideContract,
+    /buildCarouselSlidePlan|FALLBACK_HEADLINES|fallback copy/i,
   );
+  assert.match(structure1Planner, /failed after validation repair/i);
+  assert.match(structure2Planner, /failed after isolated LLM repair/i);
 });

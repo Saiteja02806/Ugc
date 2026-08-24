@@ -26,23 +26,19 @@ import { getWallTextFormat } from "./wall-formats";
 
 const VIDEO_WIDTH = 1080;
 const VIDEO_HEIGHT = 1920;
+const ABSOLUTE_MAXIMUM_WORDS = 50;
+const MINIMUM_WORDS = 8;
 const FONT_SIZES: readonly WallTextFontSize[] = [52, 50, 48, 46, 44];
 const TEXT_WIDTHS = [660, 640, 620] as const;
 const INTERNAL_LINE_WIDTH_RATIO = 0.55;
 const MINIMUM_BALANCE_IMPROVEMENT = 0.04;
 const measurementCache = new Map<string, number>();
 
-export async function deriveWallTextReadabilityBudget(params: {
-  durationSeconds: number;
+export async function deriveWallTextSpatialBudget(params: {
   formatId: WallTextFormatId;
   layout: TrendingWallTextLayout;
 }) {
   const format = getWallTextFormat(params.formatId);
-  const temporalMaximum = clamp(
-    Math.floor(params.durationSeconds * 4.3),
-    8,
-    50,
-  );
   const lineHeight = 44 * WALL_TEXT_LINE_HEIGHT_FACTOR;
   const availableLines = clamp(
     Math.floor((params.layout.textBox.height * VIDEO_HEIGHT) / lineHeight),
@@ -62,26 +58,29 @@ export async function deriveWallTextReadabilityBudget(params: {
     3,
     7,
   );
-  const spatialMaximum = clamp(availableLines * wordsPerLine, 8, 50);
-  const maxWords = Math.min(
-    temporalMaximum,
-    spatialMaximum,
-    format.hardWordRange[1],
+  const spatialMaximum = clamp(
+    availableLines * wordsPerLine,
+    MINIMUM_WORDS,
+    ABSOLUTE_MAXIMUM_WORDS,
   );
-  const targetWords = Math.min(
-    maxWords,
-    Math.max(
-      8,
-      format.hardWordRange[0],
-      maxWords - Math.max(2, Math.round(maxWords * 0.14)),
-    ),
+  const preferredMinimum = Math.min(
+    format.preferredWordRange[0],
+    spatialMaximum,
+  );
+  const preferredMaximum = Math.min(
+    format.preferredWordRange[1],
+    spatialMaximum,
+  );
+  const targetWords = clamp(
+    Math.round((preferredMinimum + preferredMaximum) / 2),
+    MINIMUM_WORDS,
+    spatialMaximum,
   );
 
   return {
-    maxWords,
+    maxWords: ABSOLUTE_MAXIMUM_WORDS,
     spatialMaximum,
     targetWords,
-    temporalMaximum,
   };
 }
 
@@ -477,7 +476,7 @@ async function measureText(value: string, fontSize: WallTextFontSize) {
   const metadata = await sharp({
     text: {
       dpi: 72,
-      font: `Inter Bold ${fontSize}`,
+      font: `Inter Semi Bold ${fontSize}`,
       fontfile: getInterFontPath(),
       rgba: true,
       text: escapePangoMarkup(value),
@@ -514,7 +513,7 @@ function toCompatibilitySegments(blocks: WallTextLayoutBlock[]): WallTextSegment
 }
 
 function getInterFontPath() {
-  return join(process.cwd(), "node_modules", "@fontsource", "inter", "files", "inter-latin-700-normal.woff");
+  return join(process.cwd(), "node_modules", "@fontsource", "inter", "files", "inter-latin-600-normal.woff");
 }
 
 function normalizeText(value: string) {

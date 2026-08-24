@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Save,
   ScanText,
+  SlidersHorizontal,
   Sparkles,
   X,
 } from "lucide-react";
@@ -53,6 +54,7 @@ import {
 } from "@/components/trending/wall-text-detail-view";
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
 import { WallTextAudioPreview } from "@/components/trending/wall-text-audio-preview";
+import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
@@ -91,12 +93,22 @@ import type {
 import type { TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-contract";
 import { cn } from "@/lib/utils";
 
+import skeletonStyles from "./trending-post-skeleton.module.css";
+
 const TrendingCreativeEditor = dynamic(
   () =>
     import("@/components/trending/trending-creative-editor").then(
       (module) => module.TrendingCreativeEditor,
     ),
   { loading: TrendingCreativeEditorLoading },
+);
+
+const TrendingContentMixDialog = dynamic(
+  () =>
+    import("@/components/trending/trending-content-mix-dialog").then(
+      (module) => module.TrendingContentMixDialog,
+    ),
+  { loading: TrendingContentMixDialogLoading },
 );
 
 const HookVideoComposer = dynamic(
@@ -287,6 +299,10 @@ const decisionOutboxMemoryFallback = new Map<
 const SWIPE_THRESHOLD_PX = 90;
 const SWIPE_EXIT_DURATION_MS = 220;
 const MAX_ROTATION_DEGREES = 5;
+const CAROUSEL_REVIEW_CARD_WIDTH_CLASS =
+  "w-[min(88vw,420px,calc((100dvh-238px)*0.8))]";
+const VERTICAL_REVIEW_CARD_WIDTH_CLASS =
+  "w-[min(80vw,315px,calc((100dvh-238px)*0.5625))]";
 const DECK_CARD_STYLES: Record<
   DeckDepth,
   { opacity: number; scale: number; translateY: number; zIndex: number }
@@ -324,6 +340,24 @@ function TrendingCreativeEditorLoading() {
           aria-hidden="true"
         />
         Opening editor…
+      </div>
+    </div>
+  );
+}
+
+function TrendingContentMixDialogLoading() {
+  return (
+    <div
+      aria-live="polite"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4"
+      role="status"
+    >
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-4 text-sm font-semibold text-foreground">
+        <Loader2
+          className="size-4 animate-spin motion-reduce:animate-none"
+          aria-hidden="true"
+        />
+        Opening Adjust…
       </div>
     </div>
   );
@@ -510,6 +544,7 @@ export function TrendingWorkspace() {
     });
   const [headerActionsRoot, setHeaderActionsRoot] =
     useState<HTMLDivElement | null>(null);
+  const [contentMixOpen, setContentMixOpen] = useState(false);
   const [carouselHistoryError, setCarouselHistoryError] = useState<string | null>(
     null,
   );
@@ -771,7 +806,7 @@ export function TrendingWorkspace() {
 
   return (
     <section className="min-h-dvh flex-1 bg-background px-4 py-4 text-foreground sm:px-6 lg:px-8 lg:py-5 xl:px-10">
-      <div className="mx-auto flex min-h-full max-w-[1360px] flex-col">
+      <div className="mx-auto flex min-h-[calc(100dvh-2rem)] max-w-[1360px] flex-col lg:min-h-[calc(100dvh-2.5rem)]">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-balance text-[30px] font-semibold leading-9 text-foreground-strong sm:text-[32px] sm:leading-10">
@@ -782,14 +817,30 @@ export function TrendingWorkspace() {
               business profile.
             </p>
           </div>
-          <div
-            ref={setHeaderActionsRoot}
-            className="flex shrink-0 items-center"
-          />
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              data-trending-adjust-control
+              type="button"
+              variant="outline"
+              size="lg"
+              aria-label="Adjust Trending content mix"
+              title="Adjust content mix"
+              disabled={authLoading || !user}
+              onClick={() => setContentMixOpen(true)}
+              className="rounded-full hover:border-primary/35 hover:bg-primary/[0.04] hover:text-primary"
+            >
+              <SlidersHorizontal
+                data-icon="inline-start"
+                aria-hidden="true"
+              />
+              <span>Adjust</span>
+            </Button>
+            <div ref={setHeaderActionsRoot} className="flex items-center" />
+          </div>
         </header>
 
-        <section className="mt-3 min-h-[490px] sm:mt-4">
-          <div className="flex min-h-[482px] items-start py-1 sm:py-2">
+        <section className="mt-3 flex min-h-0 flex-1 sm:mt-4">
+          <div className="flex min-h-0 w-full flex-1 items-center py-2 sm:py-3">
             <TrendingFeedGallery
               enqueueDecision={enqueueDecision}
               headerActionsRoot={headerActionsRoot}
@@ -806,6 +857,17 @@ export function TrendingWorkspace() {
             />
           </div>
         </section>
+        {contentMixOpen ? (
+          <TrendingContentMixDialog
+            open
+            onApplied={(applied) => {
+              if (applied === "today") {
+                setCarouselHistoryRefreshKey((current) => current + 1);
+              }
+            }}
+            onOpenChange={setContentMixOpen}
+          />
+        ) : null}
       </div>
     </section>
   );
@@ -832,11 +894,9 @@ function TrendingFeedGallery({
   onRetryHistory: () => void;
   profile: CarouselProfileFeed | null;
 }) {
-  if (loading) {
-    return <TrendingPostSkeleton />;
-  }
+  const showSkeleton = loading || preparing;
 
-  if (error) {
+  if (!loading && error) {
     return (
       <CarouselFeedState
         actionIcon="refresh"
@@ -849,24 +909,42 @@ function TrendingFeedGallery({
     );
   }
 
-  if (profile?.state === "missing") {
+  if (!loading && profile?.state === "missing") {
     return <CarouselProfilePrompt onAction={onCompleteProfile} />;
   }
 
-  if (preparing) {
-    return <TrendingPostSkeleton />;
-  }
-
-  if (items.length === 0) {
+  if (!showSkeleton && items.length === 0) {
     return <TrendingReadyEmptyState />;
   }
 
   return (
-    <TrendingFeed
-      enqueueDecision={enqueueDecision}
-      headerActionsRoot={headerActionsRoot}
-      items={items}
-    />
+    <div data-trending-feed-transition className="grid w-full">
+      <div
+        aria-hidden={showSkeleton ? undefined : "true"}
+        className={cn(
+          "col-start-1 row-start-1 transition-opacity duration-200 ease-linear motion-reduce:transition-none",
+          showSkeleton ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+      >
+        <TrendingPostSkeleton active={showSkeleton} />
+      </div>
+      <div
+        aria-hidden={showSkeleton ? "true" : undefined}
+        inert={showSkeleton ? true : undefined}
+        className={cn(
+          "col-start-1 row-start-1 transition-opacity duration-200 ease-linear motion-reduce:transition-none",
+          showSkeleton ? "pointer-events-none opacity-0" : "opacity-100",
+        )}
+      >
+        {items.length > 0 ? (
+          <TrendingFeed
+            enqueueDecision={enqueueDecision}
+            headerActionsRoot={headerActionsRoot}
+            items={items}
+          />
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -1854,7 +1932,10 @@ function TrendingDeck({
   }
 
   return (
-    <section aria-label="Trending content ideas" className="relative w-full">
+    <section
+      aria-label="Trending content ideas"
+      className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center"
+    >
       {activeCandidate && headerActionsRoot
         ? createPortal(
             <CreativeEditAction
@@ -1873,50 +1954,64 @@ function TrendingDeck({
             tabIndex={0}
             aria-label={`Trending content deck. Showing idea ${activeItemIndex + 1} of ${visibleCandidates.length}. Press left arrow to reject or right arrow to accept this creative.`}
             onKeyDown={handleDeckKeyDown}
-            className="relative isolate mx-auto mt-2 h-[482px] w-full max-w-xl overflow-hidden rounded-[20px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-3"
+            className="relative isolate mx-auto flex w-full max-w-3xl flex-col items-center overflow-hidden rounded-[20px] px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <TrendingFormatPill
               candidate={activeCandidate}
               format={activeCandidate.format}
             />
-            {[...deckSlots].reverse().map((slot) => (
-              <TrendingDeckCard
-                key={slot.candidate.item.id}
-                activeSlideByCarouselId={activeSlideByCarouselId}
-                candidate={slot.candidate}
-                depth={slot.depth}
-                edit={editByCreativeId[slot.candidate.item.creativeId] ?? null}
-                dragX={slot.depth === 0 ? dragX : 0}
-                exitDirection={slot.depth === 0 ? exitDirection : null}
-                isDragging={slot.depth === 0 && isDragging}
-                itemCount={visibleCandidates.length}
-                itemIndex={slot.itemIndex}
-                onActiveSlideChange={onActiveSlideChange}
-                onHookPreviewStatusChange={handleHookPreviewStatusChange}
-                onPointerCancel={cancelPointerInteraction}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={finishPointerInteraction}
-                onExitTransitionEnd={handleExitTransitionEnd}
-              />
-            ))}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute left-4 top-4 z-20 rounded-full border border-success/70 bg-success/90 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-success-foreground"
-              style={{
-                opacity: Math.min(Math.max(dragX / SWIPE_THRESHOLD_PX, 0), 1),
-              }}
-            >
-              Accept
-            </div>
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute right-4 top-4 z-20 rounded-full border border-error/70 bg-error/90 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-error-foreground"
-              style={{
-                opacity: Math.min(Math.max(-dragX / SWIPE_THRESHOLD_PX, 0), 1),
-              }}
-            >
-              Reject
+            <div className="relative flex w-full items-center justify-center">
+              {[...deckSlots].reverse().map((slot) => (
+                <TrendingDeckCard
+                  key={slot.candidate.item.id}
+                  activeSlideByCarouselId={activeSlideByCarouselId}
+                  candidate={slot.candidate}
+                  depth={slot.depth}
+                  edit={editByCreativeId[slot.candidate.item.creativeId] ?? null}
+                  dragX={slot.depth === 0 ? dragX : 0}
+                  exitDirection={slot.depth === 0 ? exitDirection : null}
+                  isDragging={slot.depth === 0 && isDragging}
+                  itemCount={visibleCandidates.length}
+                  itemIndex={slot.itemIndex}
+                  onActiveSlideChange={onActiveSlideChange}
+                  onHookPreviewStatusChange={handleHookPreviewStatusChange}
+                  onPointerCancel={cancelPointerInteraction}
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={finishPointerInteraction}
+                  onExitTransitionEnd={handleExitTransitionEnd}
+                />
+              ))}
+              <div
+                aria-hidden="true"
+                className={cn(
+                  "pointer-events-none absolute inset-y-0 z-20",
+                  getTrendingReviewCardWidthClass(activeCandidate.format),
+                )}
+              >
+                <div
+                  className="absolute left-3 top-3 rounded-full border border-success/70 bg-success/90 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-success-foreground"
+                  style={{
+                    opacity: Math.min(
+                      Math.max(dragX / SWIPE_THRESHOLD_PX, 0),
+                      1,
+                    ),
+                  }}
+                >
+                  Accept
+                </div>
+                <div
+                  className="absolute right-3 top-3 rounded-full border border-error/70 bg-error/90 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-error-foreground"
+                  style={{
+                    opacity: Math.min(
+                      Math.max(-dragX / SWIPE_THRESHOLD_PX, 0),
+                      1,
+                    ),
+                  }}
+                >
+                  Reject
+                </div>
+              </div>
             </div>
           </div>
           <CreativeDecisionActions
@@ -2268,8 +2363,6 @@ function TrendingFormatPill({
   const activeFormat = candidate?.format ?? format ?? "carousel";
   const isHook = activeFormat === "hook_video";
   const isWallText = activeFormat === "wall_text";
-  const isCarousel = activeFormat === "carousel";
-
   const slideCount =
     candidate && candidate.format === "carousel"
       ? candidate.carousel.slideCount || candidate.slides.length || 5
@@ -2282,32 +2375,41 @@ function TrendingFormatPill({
       : `Slideshow · ${slideCount} Slides`;
 
   const Icon = isHook ? Clapperboard : isWallText ? ScanText : Images;
-  const colorBadge = isHook
-    ? "border-blue-500/25 bg-card/95 text-blue-500 ring-1 ring-blue-500/10"
+  const iconColor = isHook
+    ? "text-blue-500/75"
     : isWallText
-      ? "border-purple-500/25 bg-card/95 text-purple-500 ring-1 ring-purple-500/10"
-      : "border-primary/25 bg-card/95 text-primary ring-1 ring-primary/10";
+      ? "text-purple-500/75"
+      : "text-primary/75";
 
-  const cardWidthClass = isCarousel
-    ? "w-[min(78vw,270px)] sm:w-[270px]"
-    : "w-[min(76vw,248px)]";
+  const cardWidthClass = getTrendingReviewCardWidthClass(activeFormat);
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-1.5 z-40 flex h-[24px] items-center justify-center">
-      <div className={cn("flex items-center justify-start", cardWidthClass)}>
-        <span
-          data-trending-format-pill
-          className={cn(
-            "inline-flex h-[24px] items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-bold tracking-tight text-foreground-strong shadow-xs backdrop-blur-md",
-            colorBadge,
-          )}
-        >
-          <Icon className="size-3 shrink-0" aria-hidden="true" />
-          <span>{label}</span>
-        </span>
-      </div>
+    <div
+      className={cn(
+        "pointer-events-none z-10 mb-1.5 flex items-center justify-start",
+        cardWidthClass,
+      )}
+    >
+      <span
+        data-trending-format-pill
+        className="inline-flex h-5 items-center gap-1 rounded-full border border-border/60 bg-card/75 px-1.5 text-[9px] font-medium leading-none text-muted"
+      >
+        <Icon
+          className={cn("size-2.5 shrink-0", iconColor)}
+          aria-hidden="true"
+        />
+        <span>{label}</span>
+      </span>
     </div>
   );
+}
+
+function getTrendingReviewCardWidthClass(
+  format: TrendingCandidate["format"],
+) {
+  return format === "carousel"
+    ? CAROUSEL_REVIEW_CARD_WIDTH_CLASS
+    : VERTICAL_REVIEW_CARD_WIDTH_CLASS;
 }
 
 type TrendingDeckCardProps = {
@@ -2534,14 +2636,22 @@ function TrendingHookDeckCard({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-9"
+      data-trending-card-state={isActive ? "active" : "preload"}
+      inert={isActive ? undefined : true}
+      className={cn(
+        "flex items-center justify-center",
+        isActive
+          ? "relative"
+          : "pointer-events-none absolute left-0 top-0 size-px overflow-hidden opacity-0",
+      )}
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
         aria-label={`${creative.text.value}, Hook idea ${itemIndex + 1} of ${itemCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
-          "w-[min(76vw,248px)] origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
+          VERTICAL_REVIEW_CARD_WIDTH_CLASS,
+          "origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
             : "pointer-events-none",
@@ -2556,7 +2666,7 @@ function TrendingHookDeckCard({
         {edit ? (
           <div
             data-trending-edited-badge
-            className="pointer-events-none absolute right-2.5 top-2.5 z-30 inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-card/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-500 shadow-sm backdrop-blur-md"
+            className="pointer-events-none absolute right-2.5 top-2.5 z-30 inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-card/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-500"
           >
             <Check className="size-2.5 stroke-[3]" aria-hidden="true" />
             <span>Edited</span>
@@ -2686,14 +2796,22 @@ function TrendingWallTextDeckCard({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-9"
+      data-trending-card-state={isActive ? "active" : "preload"}
+      inert={isActive ? undefined : true}
+      className={cn(
+        "flex items-center justify-center",
+        isActive
+          ? "relative"
+          : "pointer-events-none absolute left-0 top-0 size-px overflow-hidden opacity-0",
+      )}
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
         aria-label={`${creative.title}, Wall-of-text idea ${itemIndex + 1} of ${itemCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
-          "w-[min(76vw,248px)] origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
+          VERTICAL_REVIEW_CARD_WIDTH_CLASS,
+          "origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
             : "pointer-events-none",
@@ -2708,20 +2826,13 @@ function TrendingWallTextDeckCard({
         {edit ? (
           <div
             data-trending-edited-badge
-            className="pointer-events-none absolute right-2.5 top-2.5 z-30 inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-card/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-500 shadow-sm backdrop-blur-md"
+            className="pointer-events-none absolute right-2.5 top-2.5 z-30 inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-card/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-500"
           >
             <Check className="size-2.5 stroke-[3]" aria-hidden="true" />
             <span>Edited</span>
           </div>
         ) : null}
-        <div
-          className={cn(
-            "relative aspect-[9/16] overflow-hidden rounded-[20px] bg-[#171717]",
-            isActive
-              ? "shadow-[0_10px_18px_rgb(9_9_11_/_0.28)]"
-              : "shadow-[0_6px_12px_rgb(9_9_11_/_0.18)]",
-          )}
-        >
+        <div className="relative aspect-[9/16] overflow-hidden rounded-[20px] bg-[#171717] ring-1 ring-white/10">
           <video
             ref={videoRef}
             src={previewUrl}
@@ -2832,14 +2943,22 @@ function CarouselDeckCard({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 flex items-start justify-center pt-9"
+      data-trending-card-state={isActive ? "active" : "preload"}
+      inert={isActive ? undefined : true}
+      className={cn(
+        "flex items-center justify-center",
+        isActive
+          ? "relative"
+          : "pointer-events-none absolute left-0 top-0 size-px overflow-hidden opacity-0",
+      )}
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
         aria-label={`${title}, idea ${carouselIndex + 1} of ${carouselCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
-          "w-[min(78vw,270px)] origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none sm:w-[270px]",
+          CAROUSEL_REVIEW_CARD_WIDTH_CLASS,
+          "origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
             : "pointer-events-none",
@@ -2854,20 +2973,13 @@ function CarouselDeckCard({
         {edit ? (
           <div
             data-trending-edited-badge
-            className="pointer-events-none absolute right-2.5 top-2.5 z-30 inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-card/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-500 shadow-sm backdrop-blur-md"
+            className="pointer-events-none absolute right-2.5 top-2.5 z-30 inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-card/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-500"
           >
             <Check className="size-2.5 stroke-[3]" aria-hidden="true" />
             <span>Edited</span>
           </div>
         ) : null}
-        <div
-          className={cn(
-            "relative aspect-[4/5] overflow-hidden rounded-[20px] bg-card",
-            isActive
-              ? "shadow-[0_10px_18px_rgb(9_9_11_/_0.2)]"
-              : "shadow-[0_6px_12px_rgb(9_9_11_/_0.14)]",
-          )}
-        >
+        <div className="relative aspect-[4/5] overflow-hidden rounded-[20px] bg-card ring-1 ring-black/5">
           {/* Rendered Carousel slides are immutable Cloud Storage creative assets. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -3007,19 +3119,38 @@ function CarouselFeedState({
   );
 }
 
-function TrendingPostSkeleton() {
+function TrendingPostSkeleton({ active = true }: { active?: boolean }) {
   return (
     <div
       role="status"
       aria-label="Loading trending content ideas"
-      className="relative isolate mx-auto mt-3 h-[482px] w-full max-w-xl overflow-hidden rounded-[20px] sm:mt-7"
+      className="relative isolate mx-auto flex w-full flex-col items-center justify-center"
     >
-      <div className="absolute inset-0 flex items-start justify-center pt-9">
+      <div
+        aria-hidden="true"
+        className={cn(VERTICAL_REVIEW_CARD_WIDTH_CLASS, "mb-1.5 h-5")}
+      />
+      <div className="flex w-full items-center justify-center px-2">
         <div
           aria-hidden="true"
-          className="aspect-[9/16] w-[min(76vw,248px)] animate-pulse rounded-[20px] border border-white/[0.06] bg-[#151517] shadow-[0_14px_30px_rgba(0,0,0,0.32)] [animation-duration:2.4s] motion-reduce:animate-none"
-        />
+          className={cn(
+            VERTICAL_REVIEW_CARD_WIDTH_CLASS,
+            skeletonStyles.base,
+            "aspect-[9/16] rounded-[20px] border border-white/[0.08]",
+          )}
+        >
+          <span
+            className={cn(
+              skeletonStyles.shimmer,
+              !active && skeletonStyles.paused,
+            )}
+          />
+        </div>
       </div>
+      <div
+        aria-hidden="true"
+        className="mt-3.5 h-14 sm:mt-4 sm:h-[86px]"
+      />
     </div>
   );
 }

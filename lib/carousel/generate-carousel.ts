@@ -2,7 +2,7 @@ import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
 import {
   getCarouselGeneration,
   getWebsiteAnalysisForCarousel,
-  listCarouselBatchContentHistory,
+  listRecentAcceptedCarouselCopy,
   reserveCarouselRoleAssets,
   updateCarouselGeneration,
   upsertCarouselSlides,
@@ -19,9 +19,8 @@ import {
 } from "@/lib/carousel/render-style";
 import {
   buildCarouselContentPlan,
-  mergeCarouselRecentContentHistory,
-  type CarouselRecentContentSummaryInput,
 } from "@/lib/carousel/llm-slide-plan";
+import { getCarouselCreativeBriefForGeneration } from "@/lib/carousel/content-plan-db";
 import type { PlannedCarouselSlide } from "@/lib/carousel/slide-plan";
 import { uploadRenderedCarouselSlide } from "@/lib/carousel/storage";
 import { resolveCarouselImageLibraryCategory } from "@/lib/carousel/image-library-category";
@@ -44,40 +43,19 @@ function truncateErrorMessage(message: string) {
 }
 
 function getLegacySlideHeadline(slide: PlannedCarouselSlide) {
-  return (
+  const headline =
     slide.headline ??
     slide.body ??
     slide.listItems[0] ??
-    slide.ctaText ??
-    `Slide ${slide.slideNumber}`
-  );
-}
+    slide.ctaText;
 
-function parseContentHistorySnapshot(
-  value: Json,
-): CarouselRecentContentSummaryInput[] {
-  if (!Array.isArray(value)) {
-    return [];
+  if (!headline) {
+    throw new Error(
+      `Carousel slide ${slide.slideNumber} has no AI-authored visible copy to persist.`,
+    );
   }
 
-  return value.slice(0, 10).flatMap((item) => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
-      return [];
-    }
-
-    const record = item as Record<string, Json | undefined>;
-    return [
-      {
-        angle: getOptionalString(record.angle),
-        audienceId: getOptionalString(record.audienceId),
-        contentFormatId: getOptionalString(record.contentFormatId),
-        hook: getOptionalString(record.hook),
-        hookFamilyId: getOptionalString(record.hookFamilyId),
-        topic: getOptionalString(record.topic),
-        topicId: getOptionalString(record.topicId),
-      },
-    ];
-  });
+  return headline;
 }
 
 async function getBusinessAnalysisForGeneration(params: {
@@ -130,10 +108,6 @@ async function assertBusinessProfileVersionIsCurrent(
       "Business profile changed before Carousel generation completed.",
     );
   }
-}
-
-function getOptionalString(value: Json | undefined) {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 export async function generateCarousel({
@@ -189,30 +163,43 @@ export async function generateCarousel({
         businessAnalysis.visualKeywords ?? websiteAnalysis.visualKeywords,
     });
 
-    const batchHistory = generation.businessProfileId
-      ? await listCarouselBatchContentHistory({
-          businessProfileId: generation.businessProfileId,
-          excludeCarouselId: generation.id,
-          generationBatchId: generation.generationBatchId,
-          limit: 10,
-          structureId: generation.structureId,
-        })
-      : [];
-    const recentHistory = mergeCarouselRecentContentHistory(
-      batchHistory,
-      parseContentHistorySnapshot(generation.contentHistorySnapshot),
-    );
+    if (
+      generation.businessProfileVersion === null ||
+      !generation.contentPlanId ||
+      !generation.contentPlanItemId ||
+      !generation.contentPlanReservationId
+    ) {
+      throw new Error("Carousel generation is missing content-plan provenance.");
+    }
+    const [creativeBrief, recentHistory] = await Promise.all([
+      getCarouselCreativeBriefForGeneration({
+        businessProfileId: generation.businessProfileId,
+        businessProfileVersion: generation.businessProfileVersion,
+        contentPlanId: generation.contentPlanId,
+        contentPlanItemId: generation.contentPlanItemId,
+        contentPlanReservationId: generation.contentPlanReservationId,
+        userId: generation.userId,
+      }),
+      listRecentAcceptedCarouselCopy({
+        businessProfileId: generation.businessProfileId,
+        excludeGenerationBatchId: generation.generationBatchId,
+        limit: 10,
+        userId: generation.userId,
+      }),
+    ]);
 
     await updateCarouselGeneration(carouselId, {
       content_history_snapshot: recentHistory as unknown as Json,
     });
 
     const contentPlan = await buildCarouselContentPlan({
-      allowDeterministicFallback: false,
       analysis: businessAnalysis,
+      businessDescription: creativeBrief.businessDescription,
       goal: generation.goal,
       candidateIndex,
       contentFormatId: generation.contentFormatId,
+      creativeSeed: creativeBrief.creativeSeed,
+      emotion: creativeBrief.emotion,
       hookFamilyId: generation.hookFamilyId,
       recentHistory,
       selectedAngle: generation.selectedAngle,

@@ -76,7 +76,7 @@ export function buildCarouselStructure2RenderSpecs(params: {
     }
     if (
       asset.asset_role === "product_asset" &&
-      (slide.slideNumber < 4 || slide.productVisualEligibility === "forbidden")
+      slide.productVisualEligibility === "forbidden"
     ) {
       throw new Error(
         `Structure 2 product assets are not eligible for slide ${slide.slideNumber}.`,

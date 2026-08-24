@@ -210,7 +210,7 @@ test("renders Structure 2 screenshot edits with the story-native renderer", asyn
             ctaFontSize: null,
             ctaLineCount: 0,
             layoutVariant: input.spec.layoutVariant,
-            rendererVersion: "story-native-renderer-v1-three-layouts",
+            rendererVersion: "story-native-renderer-v2-line-bubbles",
             safeAreaContained: true,
             storyBounds: { height: 100, width: 700, x: 100, y: 100 },
             storyFontSize: 64,
@@ -237,7 +237,7 @@ test("renders Structure 2 screenshot edits with the story-native renderer", asyn
   assert.equal(receivedSpec.visualRole, "product_asset");
   assert.deepEqual(readyOutput, {
     rendererVersion:
-      "story-native-renderer-v1-three-layouts-normalized-edit-v1",
+      "story-native-renderer-v2-line-bubbles-normalized-edit-v1",
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide-4.webp",

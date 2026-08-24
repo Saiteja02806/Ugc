@@ -63,7 +63,8 @@ test("the dedicated renderer produces all three native layouts inside the safe a
         CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
       );
       assert.equal(result.diagnostics.layoutVariant, spec.layoutVariant);
-      assert.ok(result.diagnostics.storyFontSize >= 40);
+      assert.ok(result.diagnostics.storyFontSize >= 36);
+      assert.ok(result.diagnostics.storyFontSize <= 60);
     }
   }
 });

@@ -5,6 +5,8 @@ import type {
   BackgroundJobRow,
   BackgroundJobUpdate,
   CategoryImageAssetRow,
+  CarouselContentPlanItemInsert,
+  CarouselGenerationRow,
   CarouselGenerationUpdate,
   CarouselExperimentAssignmentRow,
   CarouselExperimentBatchRow,
@@ -15,6 +17,10 @@ import type {
   Json,
   SocialPublishProviderOperationKind,
 } from "../types.js";
+import type {
+  CarouselCreativeBrief,
+  CarouselRecentAcceptedCopy,
+} from "./carousel-content-plan.js";
 import type { CarouselBusinessVisualProfileId } from "./carousel-business-visual-profile.js";
 import type { CarouselStructureId } from "./carousel-structure.js";
 import type { CarouselSlideImagePlan } from "./carousel-image-library-relevance.js";
@@ -27,6 +33,10 @@ import {
 
 const BACKGROUND_JOBS_TABLE = "background_jobs";
 const BUSINESS_PROFILES_TABLE = "business_profiles";
+const CAROUSEL_CONTENT_PLAN_ITEMS_TABLE = "carousel_content_plan_items";
+const CAROUSEL_CONTENT_PLAN_RESERVATIONS_TABLE =
+  "carousel_content_plan_reservations";
+const CAROUSEL_CONTENT_PLANS_TABLE = "carousel_content_plans";
 const CAROUSEL_GENERATIONS_TABLE = "carousel_generations";
 const CAROUSEL_EXPERIMENT_ASSIGNMENTS_TABLE =
   "carousel_experiment_assignments";
@@ -36,6 +46,7 @@ const CATEGORY_IMAGE_ASSETS_TABLE = "category_image_assets";
 const CATEGORY_IMAGE_ASSET_PAGE_SIZE = 1000;
 const GENERATION_PROVIDER_OPERATIONS_TABLE = "generation_provider_operations";
 const HOOK_VIDEO_DRAFTS_TABLE = "hook_video_drafts";
+const INSTAGRAM_ANALYTICS_CONTENT_TABLE = "instagram_analytics_content";
 const LIBRARY_CAROUSEL_SLIDES_TABLE = "library_carousel_slides";
 const LIBRARY_ITEMS_TABLE = "library_items";
 const MEDIA_ASSETS_TABLE = "media_assets";
@@ -1636,6 +1647,56 @@ export class SupabaseJobStore {
     return true;
   }
 
+  async registerInstagramAnalyticsPublication(params: {
+    accountName: string | null;
+    accountUsername: string | null;
+    caption: string | null;
+    connectionId: string;
+    contentType: "carousel" | "reel";
+    platformPostId: string;
+    platformPostUrl: string | null;
+    publishedAt: string;
+    userId: string;
+  }) {
+    const { error } = await this.client
+      .from(INSTAGRAM_ANALYTICS_CONTENT_TABLE)
+      .upsert(
+        {
+          account_name: params.accountName,
+          account_username: params.accountUsername,
+          caption: params.caption,
+          comments: null,
+          content_type: params.contentType,
+          interactions: null,
+          last_sync_error: null,
+          likes: null,
+          media_type:
+            params.contentType === "carousel" ? "CAROUSEL_ALBUM" : "VIDEO",
+          metrics_synced_at: null,
+          permalink: params.platformPostUrl,
+          platform_media_id: params.platformPostId,
+          published_at: params.publishedAt,
+          reach: null,
+          saves: null,
+          shares: null,
+          social_connection_id: params.connectionId,
+          thumbnail_url: null,
+          user_id: params.userId,
+          views: null,
+        },
+        {
+          ignoreDuplicates: true,
+          onConflict: "user_id,social_connection_id,platform_media_id",
+        },
+      );
+
+    if (error) {
+      throw new Error(
+        `Could not register Instagram analytics publication: ${error.message}`,
+      );
+    }
+  }
+
   async markSocialPublishTargetActionRequired(params: {
     errorCode: string;
     errorMessage: string;
@@ -1820,6 +1881,283 @@ export class SupabaseJobStore {
     }
 
     return data;
+  }
+
+  async getCarouselContentPlan(params: {
+    jobId: string;
+    planId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(CAROUSEL_CONTENT_PLANS_TABLE)
+      .select("*")
+      .eq("id", params.planId)
+      .eq("user_id", params.userId)
+      .eq("generation_job_id", params.jobId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not load Carousel content plan: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  async listCarouselContentPlanItems(params: {
+    planId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(CAROUSEL_CONTENT_PLAN_ITEMS_TABLE)
+      .select("*")
+      .eq("plan_id", params.planId)
+      .eq("user_id", params.userId)
+      .order("sequence_index", { ascending: true });
+
+    if (error) {
+      throw new Error(
+        `Could not load Carousel content-plan items: ${error.message}`,
+      );
+    }
+
+    return data ?? [];
+  }
+
+  async getCarouselCreativeBrief(
+    generation: CarouselGenerationRow,
+  ): Promise<CarouselCreativeBrief> {
+    if (
+      !generation.business_profile_id ||
+      generation.business_profile_version === null ||
+      !generation.content_plan_id ||
+      !generation.content_plan_item_id ||
+      !generation.content_plan_reservation_id
+    ) {
+      throw new Error(
+        "Carousel generation is missing its content-plan provenance.",
+      );
+    }
+
+    const [{ data: plan, error: planError }, { data: item, error: itemError }] =
+      await Promise.all([
+        this.client
+          .from(CAROUSEL_CONTENT_PLANS_TABLE)
+          .select("*")
+          .eq("id", generation.content_plan_id)
+          .eq("user_id", generation.user_id)
+          .eq("business_profile_id", generation.business_profile_id)
+          .eq("business_profile_version", generation.business_profile_version)
+          .eq("status", "active")
+          .maybeSingle(),
+        this.client
+          .from(CAROUSEL_CONTENT_PLAN_ITEMS_TABLE)
+          .select("*")
+          .eq("id", generation.content_plan_item_id)
+          .eq("plan_id", generation.content_plan_id)
+          .eq("user_id", generation.user_id)
+          .eq("reservation_token", generation.content_plan_reservation_id)
+          .eq("status", "reserved")
+          .maybeSingle(),
+      ]);
+
+    if (planError) {
+      throw new Error(`Could not load Carousel content plan: ${planError.message}`);
+    }
+    if (itemError) {
+      throw new Error(
+        `Could not load Carousel content-plan item: ${itemError.message}`,
+      );
+    }
+    if (!plan || !item) {
+      throw new Error(
+        "Carousel content-plan provenance is stale, inactive, or no longer reserved.",
+      );
+    }
+
+    return {
+      businessDescription: plan.business_description,
+      contentPlanId: plan.id,
+      contentPlanItemId: item.id,
+      creativeSeed: item.creative_seed,
+      emotion: item.emotion,
+    };
+  }
+
+  async listRecentAcceptedCarouselCopy(params: {
+    businessProfileId: string;
+    excludeGenerationBatchId: string;
+    limit?: number;
+    userId: string;
+  }): Promise<CarouselRecentAcceptedCopy[]> {
+    const limit = Math.min(Math.max(Math.trunc(params.limit ?? 10), 1), 10);
+    const { data: generations, error } = await this.client
+      .from(CAROUSEL_GENERATIONS_TABLE)
+      .select("*")
+      .eq("business_profile_id", params.businessProfileId)
+      .eq("user_id", params.userId)
+      .eq("status", "completed")
+      .neq("generation_batch_id", params.excludeGenerationBatchId)
+      .order("updated_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      throw new Error(
+        `Could not load recent accepted Carousel generations: ${error.message}`,
+      );
+    }
+
+    const rows = await Promise.all(
+      (generations ?? []).map(async (generation) => {
+        const slides = await this.listCarouselSlides(generation.id);
+
+        return {
+          contentPlanItemId: generation.content_plan_item_id,
+          formatId: generation.content_format_id,
+          generationId: generation.id,
+          slides: slides
+            .filter((slide) => slide.status === "ready")
+            .map((slide) => ({
+              ctaText: slide.cta_text,
+              headline: slide.headline,
+              slideNumber: slide.slide_number,
+              subtext: slide.subtext,
+            })),
+          structureId: generation.structure_id,
+        } satisfies CarouselRecentAcceptedCopy;
+      }),
+    );
+
+    return rows.filter((row) => row.slides.length > 0);
+  }
+
+  async insertCarouselContentPlanItems(rows: CarouselContentPlanItemInsert[]) {
+    if (rows.length === 0) return [];
+
+    const { data, error } = await this.client
+      .from(CAROUSEL_CONTENT_PLAN_ITEMS_TABLE)
+      .insert(rows)
+      .select("*");
+
+    if (error) {
+      throw new Error(
+        `Could not persist Carousel content-plan items: ${error.message}`,
+      );
+    }
+
+    return data ?? [];
+  }
+
+  async completeCarouselContentPlanGeneration(params: {
+    jobId: string;
+    planId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "complete_carousel_content_plan_generation",
+      {
+        p_job_id: params.jobId,
+        p_plan_id: params.planId,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not activate Carousel content plan: ${error.message}`,
+      );
+    }
+
+    return data;
+  }
+
+  async consumeCarouselContentPlanItem(params: {
+    carouselGenerationId: string;
+    planItemId: string;
+    reservationToken: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "consume_carousel_content_plan_item",
+      {
+        p_carousel_generation_id: params.carouselGenerationId,
+        p_plan_item_id: params.planItemId,
+        p_reservation_token: params.reservationToken,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not consume Carousel content-plan item: ${error.message}`,
+      );
+    }
+
+    return data;
+  }
+
+  async releaseCarouselContentPlanReservationByToken(params: {
+    reason: string;
+    reservationToken: string;
+    userId: string;
+  }) {
+    const { data: reservation, error: reservationError } = await this.client
+      .from(CAROUSEL_CONTENT_PLAN_RESERVATIONS_TABLE)
+      .select("*")
+      .eq("id", params.reservationToken)
+      .eq("user_id", params.userId)
+      .maybeSingle();
+
+    if (reservationError) {
+      throw new Error(
+        `Could not load Carousel content-plan reservation: ${reservationError.message}`,
+      );
+    }
+
+    if (!reservation || reservation.status !== "active") return 0;
+
+    const { data, error } = await this.client.rpc(
+      "release_carousel_content_plan_reservation",
+      {
+        p_release_reason: params.reason,
+        p_reservation_key: reservation.reservation_key,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not release Carousel content-plan reservation: ${error.message}`,
+      );
+    }
+
+    return data ?? 0;
+  }
+
+  async failCarouselContentPlanGeneration(params: {
+    errorMessage: string;
+    jobId: string;
+    planId: string;
+    userId: string;
+  }) {
+    const now = new Date().toISOString();
+    const { error } = await this.client
+      .from(CAROUSEL_CONTENT_PLANS_TABLE)
+      .update({
+        failed_at: now,
+        failure_reason: params.errorMessage.slice(0, 1_000),
+        status: "failed",
+        updated_at: now,
+      })
+      .eq("id", params.planId)
+      .eq("user_id", params.userId)
+      .eq("generation_job_id", params.jobId)
+      .eq("status", "generating");
+
+    if (error) {
+      throw new Error(
+        `Could not fail Carousel content plan: ${error.message}`,
+      );
+    }
   }
 
   async listCarouselBatchContentHistory(params: {

@@ -11,6 +11,9 @@ const jobQueueConfig = {
   analytics_sync: {
     queueName: "ai-generation",
   },
+  carousel_content_plan_generation: {
+    queueName: "ai-generation",
+  },
   carousel_generation: {
     queueName: "carousel",
   },

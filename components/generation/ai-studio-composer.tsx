@@ -276,29 +276,40 @@ export function AiStudioSetting({
 
 export function AiStudioSettingSelect<TValue extends string>({
   ariaLabel,
+  disabled = false,
   icon,
   onChange,
   options,
   value,
 }: {
   ariaLabel: string;
+  disabled?: boolean;
   icon?: ReactNode;
   onChange: (value: TValue) => void;
   options: readonly { label: string; value: TValue }[];
   value: TValue;
 }) {
   return (
-    <label className="relative inline-flex h-8 min-w-0 items-center rounded-full bg-card-muted/80 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-colors focus-within:ring-2 focus-within:ring-focus hover:bg-card">
+    <label
+      className={cn(
+        "relative inline-flex h-8 min-w-0 items-center rounded-full bg-card-muted/80 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-colors focus-within:ring-2 focus-within:ring-focus",
+        disabled
+          ? "cursor-not-allowed opacity-50"
+          : "hover:bg-card",
+      )}
+    >
       <span className="pointer-events-none absolute left-3 z-10 inline-flex items-center">
         {icon}
       </span>
       <span className="sr-only">{ariaLabel}</span>
       <select
         aria-label={ariaLabel}
+        disabled={disabled}
         value={value}
         onChange={(event) => onChange(event.target.value as TValue)}
         className={cn(
-          "h-full min-w-0 cursor-pointer appearance-none rounded-[inherit] bg-transparent py-0 pr-8 text-xs font-medium text-foreground outline-none",
+          "h-full min-w-0 appearance-none rounded-[inherit] bg-transparent py-0 pr-8 text-xs font-medium text-foreground outline-none disabled:cursor-not-allowed",
+          disabled ? "cursor-not-allowed" : "cursor-pointer",
           icon ? "pl-9" : "pl-3",
         )}
       >

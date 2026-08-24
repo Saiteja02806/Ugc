@@ -17,7 +17,6 @@ import {
 import {
   useCallback,
   useEffect,
-  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -62,6 +61,7 @@ import {
   createWallTextEditContent,
   type NormalizedTextPosition,
   type TrendingCarouselEditContent,
+  type TrendingCarouselEditSlide,
   type TrendingCreativeEditContent,
   type TrendingCreativeEditRecord,
   type TrendingHookEditContent,
@@ -76,11 +76,15 @@ import {
 import type { TrendingFeedItem } from "@/lib/trending/feed-items";
 import {
   createHookTextLayout,
+  HOOK_TEXT_BROWSER_FONT_FAMILY,
+  HOOK_TEXT_FONT_WEIGHT,
   HOOK_TEXT_MAXIMUM_CHARACTERS,
   HOOK_TEXT_MAXIMUM_LINES,
   HOOK_TEXT_MAXIMUM_WORDS,
   HOOK_TEXT_MINIMUM_CHARACTERS,
   HOOK_TEXT_MINIMUM_WORDS,
+  HOOK_TEXT_OUTLINE_COLOR,
+  HOOK_TEXT_OUTLINE_WIDTH,
   type HookTextLayout,
 } from "@/lib/trending/hook-text-layout";
 import {
@@ -89,6 +93,7 @@ import {
 } from "@/lib/trending/text-color";
 import {
   getWallTextFontSize,
+  WALL_TEXT_FONT_WEIGHT,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_OUTLINE_WIDTH,
 } from "@/lib/trending/wall-text-visual-style";
@@ -185,6 +190,8 @@ export function TrendingCreativeEditor({
   const [content, setContent] = useState<TrendingCreativeEditContent | null>(
     null,
   );
+  const [initialContent, setInitialContent] =
+    useState<TrendingCreativeEditContent | null>(null);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -257,6 +264,7 @@ export function TrendingCreativeEditor({
 
       setEdit(data.edit);
       setContent(data.edit.content);
+      setInitialContent(data.edit.content);
       setFolderView("folders");
       setActiveGroupId(null);
       setSourceChoice(toSourceChoice(data.edit));
@@ -264,6 +272,7 @@ export function TrendingCreativeEditor({
     } catch (loadError) {
       setEdit(null);
       setContent(null);
+      setInitialContent(null);
       setError(getErrorMessage(loadError, "Could not open this editor."));
     } finally {
       setLoading(false);
@@ -419,13 +428,13 @@ export function TrendingCreativeEditor({
         | null;
 
       if (!response.ok || data?.ok !== true) {
-        throw new Error(getApiError(data, "Could not load Hyper Hooks."));
+        throw new Error(getApiError(data, "Could not load the Hook library."));
       }
 
       setHyperHookAssets(data.assets);
     } catch (loadError) {
       setHyperHookAssetsError(
-        getErrorMessage(loadError, "Could not load Hyper Hooks."),
+        getErrorMessage(loadError, "Could not load the Hook library."),
       );
     } finally {
       setHyperHookAssetsLoading(false);
@@ -932,7 +941,7 @@ export function TrendingCreativeEditor({
           <DialogTitle>Edit creative</DialogTitle>
           <DialogDescription>
             Your current design and media stay unchanged unless you choose a
-            Hyper Hook, app screenshot, or Creative Assets video.
+            Hook library image, app screenshot, or Creative Assets video.
           </DialogDescription>
         </DialogHeader>
 
@@ -946,7 +955,9 @@ export function TrendingCreativeEditor({
               <div className="border-b border-border bg-muted/25 p-5 lg:border-b-0 lg:border-r sm:p-6">
                 <EditorPreview
                   content={content}
+                  edit={edit}
                   fallbackHookPreviewUrl={protectedHookPreviewUrl}
+                  initialContent={initialContent}
                   item={item}
                   sourcePreview={sourcePreview}
                   activeSlideIndex={activeSlideIndex}
@@ -954,7 +965,11 @@ export function TrendingCreativeEditor({
                 />
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
                   <Move className="size-3.5" aria-hidden="true" />
-                  Press the text and drag it anywhere in the frame.
+                  {content.format === "carousel" &&
+                  content.slides[activeSlideIndex]?.structureId ===
+                    "structure_2"
+                    ? "Press the text and drag it vertically in the frame."
+                    : "Press the text and drag it anywhere in the frame."}
                 </div>
               </div>
 
@@ -1080,14 +1095,18 @@ export function TrendingCreativeEditor({
 function EditorPreview({
   activeSlideIndex,
   content,
+  edit,
   fallbackHookPreviewUrl,
+  initialContent,
   item,
   onContentChange,
   sourcePreview,
 }: {
   activeSlideIndex: number;
   content: TrendingCreativeEditContent;
+  edit: TrendingCreativeEditRecord | null;
   fallbackHookPreviewUrl: string | null;
+  initialContent: TrendingCreativeEditContent | null;
   item: TrendingFeedItem;
   onContentChange: (content: TrendingCreativeEditContent) => void;
   sourcePreview: {
@@ -1106,42 +1125,104 @@ function EditorPreview({
       return null;
     }
 
+    const initialSlide =
+      initialContent?.format === "carousel"
+        ? initialContent.slides.find((entry) => entry.slideId === slide.slideId) ??
+          null
+        : null;
+    const exactRenderedUrl = getExactCarouselPreviewUrl({
+      edit,
+      initialSlide,
+      slideNumber: slide.slideNumber,
+    });
+    const showExactRender = Boolean(
+      exactRenderedUrl &&
+        initialSlide &&
+        !hasCarouselSlidePreviewChanged(initialSlide, slide),
+    );
+    const isStructure2 = slide.structureId === "structure_2";
+    const structure2Layout = isStructure2
+      ? createStructure2EditorLayout(slide)
+      : null;
+    const previewPosition =
+      structure2Layout?.storyPosition ?? slide.textPosition;
     const supportingText = slide.subtext || slide.ctaText;
 
     return (
-      <div className="relative mx-auto aspect-[4/5] w-full max-w-[340px] overflow-hidden rounded-xl border border-border bg-foreground-strong shadow-floating [container-type:inline-size]">
-        {/* Original background media is retained while edited text is composed. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={slide.backgroundUrl || slide.renderedUrl}
-          alt=""
-          draggable={false}
-          className="absolute inset-0 size-full object-cover"
-        />
+      <div
+        data-carousel-editor-preview={
+          showExactRender ? "exact-render" : "live-render"
+        }
+        className={cn(
+          "relative mx-auto w-full max-w-[340px] overflow-hidden rounded-xl border border-border bg-foreground-strong [container-type:inline-size]",
+          slide.renderFormat === "1:1" ? "aspect-square" : "aspect-[4/5]",
+        )}
+      >
+        {showExactRender ? (
+          // The immutable rendered asset is the source of truth until a field changes.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={exactRenderedUrl!}
+            alt={`Slide ${slide.slideNumber} rendered preview`}
+            draggable={false}
+            className="absolute inset-0 size-full object-contain"
+          />
+        ) : (
+          <CarouselEditorBackground slide={slide} />
+        )}
         <DraggableOverlay
           ariaLabel={`Move text for slide ${slide.slideNumber}`}
-          position={slide.textPosition}
+          bounds={
+            isStructure2
+              ? { maxX: 0.5, maxY: 0.88, minX: 0.5, minY: 0.12 }
+              : undefined
+          }
+          position={previewPosition}
           onPositionChange={(textPosition) =>
             onContentChange({
               ...content,
               slides: content.slides.map((entry) =>
                 entry.slideId === slide.slideId
-                  ? { ...entry, textPosition }
+                  ? {
+                      ...entry,
+                      textPosition: isStructure2
+                        ? { x: 0.5, y: textPosition.y }
+                        : textPosition,
+                    }
                   : entry,
               ),
             })
           }
         >
-          <div className="w-[82cqw] text-center">
-            <CarouselBubbleText
-              kind="headline"
-              text={slide.headline || "Add a headline"}
-            />
-            {supportingText ? (
-              <CarouselBubbleText kind="body" text={supportingText} />
-            ) : null}
-          </div>
+          {showExactRender ? (
+            <span
+              aria-hidden="true"
+              className="block h-[28cqw] w-[82cqw] opacity-0"
+            >
+              {slide.headline}
+            </span>
+          ) : structure2Layout ? (
+            <Structure2StoryText layout={structure2Layout} />
+          ) : (
+            <div className="w-[82cqw] text-center">
+              <CarouselBubbleText
+                kind="headline"
+                text={slide.headline || "Add a headline"}
+              />
+              {supportingText ? (
+                <CarouselBubbleText kind="body" text={supportingText} />
+              ) : null}
+            </div>
+          )}
         </DraggableOverlay>
+        {!showExactRender && structure2Layout?.cta ? (
+          <Structure2CtaText
+            layout={{
+              ...structure2Layout.cta,
+              renderHeight: structure2Layout.renderHeight,
+            }}
+          />
+        ) : null}
       </div>
     );
   }
@@ -1215,6 +1296,478 @@ function EditorPreview({
   return null;
 }
 
+const STRUCTURE_2_RENDER_WIDTH = 1080;
+const STRUCTURE_2_SAFE_X = 72;
+const STRUCTURE_2_SAFE_TOP = 84;
+const STRUCTURE_2_SAFE_BOTTOM = 92;
+const STRUCTURE_2_STORY_HORIZONTAL_PADDING = 34;
+const STRUCTURE_2_STORY_VERTICAL_PADDING = 10;
+
+type Structure2EditorTextLayout = {
+  blockHeight: number;
+  fontSize: number;
+  lineHeight: number;
+  lines: string[];
+  maximumLineWidth: number;
+};
+
+type Structure2EditorBounds = {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+};
+
+type Structure2EditorLayout = {
+  cta: {
+    bounds: Structure2EditorBounds;
+    text: Structure2EditorTextLayout;
+  } | null;
+  renderHeight: number;
+  story: Structure2EditorTextLayout;
+  storyBounds: Structure2EditorBounds;
+  storyPosition: NormalizedTextPosition;
+  treatment: "outlined_overlay" | "overlay" | "pill";
+};
+
+function getExactCarouselPreviewUrl({
+  edit,
+  initialSlide,
+  slideNumber,
+}: {
+  edit: TrendingCreativeEditRecord | null;
+  initialSlide: TrendingCarouselEditSlide | null;
+  slideNumber: number;
+}) {
+  if (!initialSlide) return null;
+
+  if ((edit?.revision ?? 0) === 0) {
+    return initialSlide.renderedUrl || null;
+  }
+
+  return (
+    edit?.renderOutput?.slides.find(
+      (slide) => slide.slideNumber === slideNumber,
+    )?.renderedUrl ?? null
+  );
+}
+
+function hasCarouselSlidePreviewChanged(
+  initial: TrendingCarouselEditSlide,
+  current: TrendingCarouselEditSlide,
+) {
+  return (
+    initial.backgroundAssetId !== current.backgroundAssetId ||
+    initial.backgroundUrl !== current.backgroundUrl ||
+    initial.ctaText !== current.ctaText ||
+    initial.headline !== current.headline ||
+    initial.subtext !== current.subtext ||
+    initial.textPosition.x !== current.textPosition.x ||
+    initial.textPosition.y !== current.textPosition.y ||
+    initial.visualRole !== current.visualRole
+  );
+}
+
+function CarouselEditorBackground({
+  slide,
+}: {
+  slide: TrendingCarouselEditSlide;
+}) {
+  if (slide.structureId === "structure_1") {
+    return (
+      // Structure 1 composes its connected text bubbles over the normalized image.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={slide.backgroundUrl || slide.renderedUrl}
+        alt=""
+        draggable={false}
+        className="absolute inset-0 size-full object-cover"
+      />
+    );
+  }
+
+  const isProduct = slide.visualRole === "product_asset";
+  const layoutVariant = isProduct
+    ? "story_product_reveal"
+    : slide.storyLayoutVariant ?? "story_overlay_only";
+  const position = getStructure2TextPosition(slide.textPosition.y);
+
+  return (
+    <>
+      {isProduct ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={slide.backgroundUrl || slide.renderedUrl}
+            alt=""
+            draggable={false}
+            className="absolute -inset-5 size-[calc(100%+2.5rem)] scale-110 object-cover blur-xl brightness-[.54] saturate-[.82]"
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={slide.backgroundUrl || slide.renderedUrl}
+            alt=""
+            draggable={false}
+            className="absolute inset-[4.5%] size-[91%] object-contain"
+          />
+        </>
+      ) : (
+        // Carousel library backgrounds are normalized to the render aspect ratio.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={slide.backgroundUrl || slide.renderedUrl}
+          alt=""
+          draggable={false}
+          className="absolute inset-0 size-full object-cover"
+        />
+      )}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: getStructure2ReadabilityBackground({
+            layoutVariant,
+            position,
+          }),
+        }}
+      />
+      {layoutVariant === "story_product_reveal" ? (
+        <div className="pointer-events-none absolute inset-[4%] rounded-[3cqw] border border-white/20" />
+      ) : null}
+    </>
+  );
+}
+
+function Structure2StoryText({ layout }: { layout: Structure2EditorLayout }) {
+  const isPill = layout.treatment === "pill";
+
+  return (
+    <div
+      className="text-center"
+      style={{
+        color: isPill ? "#141518" : "#ffffff",
+        fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
+        fontSize: `${layout.story.fontSize / 10.8}cqw`,
+        fontWeight: 720,
+        letterSpacing: `${-1.1 / 10.8}cqw`,
+        lineHeight: layout.story.lineHeight / layout.story.fontSize,
+        paddingBlock: isPill
+          ? `${STRUCTURE_2_STORY_VERTICAL_PADDING / 2 / 10.8}cqw`
+          : undefined,
+        textShadow:
+          layout.treatment === "overlay"
+            ? "0 0.28cqw 0.42cqw rgba(0,0,0,.42)"
+            : undefined,
+        WebkitTextStroke:
+          layout.treatment === "outlined_overlay"
+            ? "0.32cqw rgba(0,0,0,.78)"
+            : undefined,
+        paintOrder:
+          layout.treatment === "outlined_overlay" ? "stroke fill" : undefined,
+        width: `${layout.storyBounds.width / 10.8}cqw`,
+      }}
+    >
+      {layout.story.lines.map((line, index) => (
+        <span
+          key={`${index}:${line}`}
+          className={cn(
+            "mx-auto block w-fit whitespace-nowrap",
+            isPill && "rounded-[1.7cqw] bg-white/95",
+          )}
+          style={
+            isPill
+              ? {
+                  marginTop:
+                    index > 0
+                      ? `${-STRUCTURE_2_STORY_VERTICAL_PADDING / 10.8}cqw`
+                      : undefined,
+                  paddingBlock: `${STRUCTURE_2_STORY_VERTICAL_PADDING / 2 / 10.8}cqw`,
+                  width: `${Math.min(
+                    layout.storyBounds.width,
+                    Math.ceil(
+                      estimateStructure2EditorTextWidth(
+                        line,
+                        layout.story.fontSize,
+                      ) +
+                        STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
+                    ),
+                  ) / 10.8}cqw`,
+                }
+              : undefined
+          }
+        >
+          {line}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function Structure2CtaText({
+  layout,
+}: {
+  layout: NonNullable<Structure2EditorLayout["cta"]> & {
+    renderHeight: number;
+  };
+}) {
+  return (
+    <div
+      className="pointer-events-none absolute flex flex-col items-center justify-center rounded-[2.6cqw] bg-black/70 px-[3.3cqw] text-center text-white"
+      style={{
+        fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
+        fontSize: `${layout.text.fontSize / 10.8}cqw`,
+        fontWeight: 650,
+        height: `${(layout.bounds.height / layout.renderHeight) * 100}%`,
+        left: `${(layout.bounds.x / STRUCTURE_2_RENDER_WIDTH) * 100}%`,
+        letterSpacing: `${-0.4 / 10.8}cqw`,
+        lineHeight: layout.text.lineHeight / layout.text.fontSize,
+        top: `${(layout.bounds.y / layout.renderHeight) * 100}%`,
+        width: `${(layout.bounds.width / STRUCTURE_2_RENDER_WIDTH) * 100}%`,
+      }}
+    >
+      {layout.text.lines.map((line, index) => (
+        <span key={`${index}:${line}`} className="block whitespace-nowrap">
+          {line}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function createStructure2EditorLayout(
+  slide: TrendingCarouselEditSlide,
+): Structure2EditorLayout {
+  const height = getStructure2RenderHeight(slide.renderFormat);
+  const maximumTextWidth = STRUCTURE_2_RENDER_WIDTH - STRUCTURE_2_SAFE_X * 2;
+  const isProduct = slide.visualRole === "product_asset";
+  const layoutVariant = isProduct
+    ? "story_product_reveal"
+    : slide.storyLayoutVariant ?? "story_overlay_only";
+  const treatment = isProduct
+    ? "overlay"
+    : slide.storyTextTreatment ??
+      (layoutVariant === "story_pill_overlay" ? "pill" : "overlay");
+  const isPill = treatment === "pill";
+  const story = fitStructure2EditorText({
+    initialFontSize: layoutVariant === "story_pill_overlay" ? 56 : 54,
+    maximumFontSize: 60,
+    maximumLines: 6,
+    maximumWidth:
+      maximumTextWidth -
+      (isPill ? STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2 : 16),
+    minimumFontSize: 36,
+    value:
+      (slide.subtext
+        ? `${slide.headline} ${slide.subtext}`
+        : slide.headline) || "Add a headline",
+  });
+  const cta = slide.ctaText
+    ? fitStructure2EditorText({
+        initialFontSize: 36,
+        maximumFontSize: 38,
+        maximumLines: 3,
+        maximumWidth: maximumTextWidth - 72,
+        minimumFontSize: 28,
+        value: slide.ctaText,
+      })
+    : null;
+  const storyWidth = Math.min(
+    maximumTextWidth,
+    story.maximumLineWidth +
+      (isPill ? STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2 : 16),
+  );
+  const storyHeight =
+    story.blockHeight +
+    (isPill ? STRUCTURE_2_STORY_VERTICAL_PADDING * 2 : 0);
+  const ctaHeight = cta ? cta.blockHeight + 36 : 0;
+  const ctaBottom = height - STRUCTURE_2_SAFE_BOTTOM;
+  const ctaTop = cta ? ctaBottom - ctaHeight : null;
+  const maximumStoryBottom = ctaTop
+    ? ctaTop - 46
+    : height - STRUCTURE_2_SAFE_BOTTOM;
+  const storyTop = resolveStructure2StoryTop({
+    blockHeight: storyHeight,
+    height,
+    maximumBottom: maximumStoryBottom,
+    position: getStructure2TextPosition(slide.textPosition.y),
+  });
+  const storyBounds = {
+    height: storyHeight,
+    width: storyWidth,
+    x: Math.round((STRUCTURE_2_RENDER_WIDTH - storyWidth) / 2),
+    y: storyTop,
+  };
+
+  return {
+    cta:
+      cta && ctaTop !== null
+        ? {
+            bounds: {
+              height: ctaHeight,
+              width: maximumTextWidth,
+              x: STRUCTURE_2_SAFE_X,
+              y: ctaTop,
+            },
+            text: cta,
+          }
+        : null,
+    renderHeight: height,
+    story,
+    storyBounds,
+    storyPosition: {
+      x: 0.5,
+      y: (storyTop + storyHeight / 2) / height,
+    },
+    treatment,
+  };
+}
+
+function fitStructure2EditorText(params: {
+  initialFontSize: number;
+  maximumFontSize: number;
+  maximumLines: number;
+  maximumWidth: number;
+  minimumFontSize: number;
+  value: string;
+}): Structure2EditorTextLayout {
+  const value = params.value.trim().replace(/\s+/gu, " ");
+  let fallbackLines = [value || "Add a headline"];
+
+  for (
+    let fontSize = Math.min(params.initialFontSize, params.maximumFontSize);
+    fontSize >= params.minimumFontSize;
+    fontSize -= 2
+  ) {
+    const lines = wrapStructure2EditorWords(
+      value || "Add a headline",
+      params.maximumWidth,
+      fontSize,
+    );
+    fallbackLines = lines;
+
+    if (lines.length <= params.maximumLines) {
+      const lineHeight = Math.round(fontSize * 1.16);
+      return {
+        blockHeight: lineHeight * lines.length,
+        fontSize,
+        lineHeight,
+        lines,
+        maximumLineWidth: Math.ceil(
+          Math.max(
+            ...lines.map((line) =>
+              estimateStructure2EditorTextWidth(line, fontSize),
+            ),
+          ),
+        ),
+      };
+    }
+  }
+
+  const fontSize = params.minimumFontSize;
+  const lines = fallbackLines.slice(0, params.maximumLines);
+  const lineHeight = Math.round(fontSize * 1.16);
+  return {
+    blockHeight: lineHeight * lines.length,
+    fontSize,
+    lineHeight,
+    lines,
+    maximumLineWidth: Math.ceil(
+      Math.max(
+        ...lines.map((line) =>
+          estimateStructure2EditorTextWidth(line, fontSize),
+        ),
+      ),
+    ),
+  };
+}
+
+function wrapStructure2EditorWords(
+  value: string,
+  maximumWidth: number,
+  fontSize: number,
+) {
+  const words = value.split(" ").filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (
+      current &&
+      estimateStructure2EditorTextWidth(candidate, fontSize) > maximumWidth
+    ) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  }
+
+  if (current) lines.push(current);
+  return lines;
+}
+
+function estimateStructure2EditorTextWidth(value: string, fontSize: number) {
+  return Array.from(value).reduce((width, character) => {
+    if (character === " ") return width + fontSize * 0.29;
+    if (/[A-Z0-9]/u.test(character)) return width + fontSize * 0.61;
+    if (/[il.,'|:;]/u.test(character)) return width + fontSize * 0.27;
+    if (/[mwMW@%]/u.test(character)) return width + fontSize * 0.8;
+    return width + fontSize * 0.52;
+  }, 0);
+}
+
+function getStructure2TextPosition(y: number) {
+  return y < 0.42 ? "upper" : y > 0.58 ? "lower" : "center";
+}
+
+function getStructure2RenderHeight(format: TrendingCarouselEditSlide["renderFormat"]) {
+  return format === "1:1" ? 1080 : 1350;
+}
+
+function resolveStructure2StoryTop(params: {
+  blockHeight: number;
+  height: number;
+  maximumBottom: number;
+  position: ReturnType<typeof getStructure2TextPosition>;
+}) {
+  const availableBottom = Math.max(
+    STRUCTURE_2_SAFE_TOP + params.blockHeight,
+    params.maximumBottom,
+  );
+  const preferred =
+    params.position === "upper"
+      ? STRUCTURE_2_SAFE_TOP + 40
+      : params.position === "center"
+        ? Math.round((params.height - params.blockHeight) / 2)
+        : availableBottom - params.blockHeight;
+
+  return Math.max(
+    STRUCTURE_2_SAFE_TOP,
+    Math.min(preferred, availableBottom - params.blockHeight),
+  );
+}
+
+function getStructure2ReadabilityBackground({
+  layoutVariant,
+  position,
+}: {
+  layoutVariant: NonNullable<TrendingCarouselEditSlide["storyLayoutVariant"]>;
+  position: ReturnType<typeof getStructure2TextPosition>;
+}) {
+  if (layoutVariant === "story_pill_overlay") {
+    return "rgba(0,0,0,.10)";
+  }
+
+  if (layoutVariant === "story_product_reveal") {
+    return "linear-gradient(to bottom,rgba(0,0,0,.68),rgba(0,0,0,.04) 34%,rgba(0,0,0,.06) 70%,rgba(0,0,0,.70))";
+  }
+
+  const topOpacity = position === "upper" ? 0.66 : 0.2;
+  const bottomOpacity = position === "lower" ? 0.72 : 0.42;
+  return `linear-gradient(to bottom,rgba(0,0,0,${topOpacity}),rgba(0,0,0,.04) 48%,rgba(0,0,0,${bottomOpacity}))`;
+}
+
 type CarouselBubbleGeometry = {
   height: number;
   rects: Array<{
@@ -1236,7 +1789,6 @@ function CarouselBubbleText({
 }) {
   const containerRef = useRef<HTMLParagraphElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
-  const filterId = `carousel-bubble-shadow-${useId().replace(/:/g, "")}`;
   const [geometry, setGeometry] = useState<CarouselBubbleGeometry>({
     height: 0,
     rects: [],
@@ -1312,30 +1864,17 @@ function CarouselBubbleText({
           viewBox={`0 0 ${geometry.width} ${geometry.height}`}
           preserveAspectRatio="none"
         >
-          <defs>
-            <filter id={filterId} x="-25%" y="-35%" width="150%" height="170%">
-              <feDropShadow
-                dx="0"
-                dy="1.5"
-                stdDeviation="2.5"
-                floodColor="#000000"
-                floodOpacity="0.16"
-              />
-            </filter>
-          </defs>
-          <g filter={`url(#${filterId})`}>
-            {geometry.rects.map((rect, index) => (
-              <rect
-                key={index}
-                fill="#ffffff"
-                height={rect.height}
-                rx={rect.radius}
-                width={rect.width}
-                x={rect.x}
-                y={rect.y}
-              />
-            ))}
-          </g>
+          {geometry.rects.map((rect, index) => (
+            <rect
+              key={index}
+              fill="#ffffff"
+              height={rect.height}
+              rx={rect.radius}
+              width={rect.width}
+              x={rect.x}
+              y={rect.y}
+            />
+          ))}
         </svg>
       ) : null}
       <span ref={textRef}>{text}</span>
@@ -1380,14 +1919,7 @@ function getHookEditorLayout(
       lines: content.lines,
     });
   } catch {
-    try {
-      return createHookTextLayout(content.hookText, {
-        enforceMaximum: false,
-        enforceMinimum: false,
-      });
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 
@@ -1398,27 +1930,32 @@ function HookOverlayText({
   content: TrendingHookEditContent;
   layout: HookTextLayout | null;
 }) {
+  if (!layout) {
+    return null;
+  }
+
   return (
     <p
-      className="text-center font-semibold tracking-normal"
+      className="text-center tracking-normal"
       style={{
         color: content.textColor,
-        fontFamily:
-          'var(--font-edit-overlay), "Noto Sans CJK SC", "Noto Sans CJK JP", sans-serif',
-        fontSize: `${(layout?.fontSize ?? content.fontSize) / 10.8}cqw`,
+        fontFamily: HOOK_TEXT_BROWSER_FONT_FAMILY,
+        fontSize: `${layout.fontSize / 10.8}cqw`,
+        fontWeight: HOOK_TEXT_FONT_WEIGHT,
         lineHeight: 1,
-        textShadow: "0.185185cqw 0.185185cqw 0 rgba(0, 0, 0, 0.45)",
-        width: `${(layout?.containerWidth ?? 907) / 10.8}cqw`,
+        paintOrder: "stroke fill",
+        WebkitTextStroke: `${HOOK_TEXT_OUTLINE_WIDTH / 10.8}cqw ${HOOK_TEXT_OUTLINE_COLOR}`,
+        width: `${layout.containerWidth / 10.8}cqw`,
       }}
     >
-      {(layout?.lines ?? content.lines).map((line, index) => (
+      {layout.lines.map((line, index) => (
         <span
           key={`${index}:${line}`}
           className="block whitespace-nowrap"
           style={
             index > 0
               ? {
-                  marginTop: `${(layout?.lineSpacing ?? 14) / 10.8}cqw`,
+                  marginTop: `${layout.lineSpacing / 10.8}cqw`,
                 }
               : undefined
           }
@@ -1439,13 +1976,14 @@ function WallTextOverlayText({
 
   return (
     <div
-      className="flex flex-col justify-center text-center font-bold [paint-order:stroke_fill]"
+      className="flex flex-col justify-center text-center [paint-order:stroke_fill]"
       style={{
         WebkitTextStroke: `${WALL_TEXT_OUTLINE_WIDTH / 10.8}cqw #000`,
         color: content.textColor,
         fontFamily:
           'var(--font-wall-text), Inter, Arial, "Helvetica Neue", sans-serif',
         fontSize: `${getWallTextFontSize(content.content) / 10.8}cqw`,
+        fontWeight: WALL_TEXT_FONT_WEIGHT,
         letterSpacing: `${-0.2 / 10.8}cqw`,
         textShadow: "0 0.185185cqw 0.277778cqw rgba(0, 0, 0, 0.55)",
         width: `${content.layout.textBox.width * 100}cqw`,
@@ -1777,7 +2315,9 @@ function EditorFields({
               onChange={(event) => updateSlide("ctaText", event.target.value)}
             />
             <FieldDescription>
-              Rendered when Supporting text is empty.
+              {slide.structureId === "structure_2"
+                ? "Rendered as the bottom action label."
+                : "Rendered when Supporting text is empty."}
             </FieldDescription>
           </Field>
         </FieldGroup>
@@ -1843,9 +2383,9 @@ function EditorFields({
           className="min-h-32 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
         />
         <FieldDescription>
-          Use 12–50 words depending on the selected clip. Saving measures the
-          exact Inter text and recalculates the final lines inside the
-          export-safe area.
+          Use 8–50 words. Saving measures Inter SemiBold and creates the final
+          4–7 lines inside the export-safe area; clip duration does not change
+          the copy limit.
         </FieldDescription>
       </Field>
       <TextColorPicker
@@ -1935,40 +2475,37 @@ function HyperHookLibrarySection({
 }) {
   const hookSlide = content.slides[0] ?? null;
   const selectedAssetId = hookSlide?.backgroundAssetId ?? null;
-  const selectedHyperHook = assets.some(
+  const selectedHookImage = assets.some(
     (asset) => asset.id === selectedAssetId,
   );
   const hasCustomHook = Boolean(
     hookSlide &&
       hookSlide.backgroundAssetId !== hookSlide.originalBackgroundAssetId,
   );
-  const covers = assets.slice(0, 3);
-
   return (
     <section
-      aria-labelledby="carousel-hyper-hooks-heading"
+      aria-labelledby="carousel-hook-library-heading"
       className="mt-7 border-t pt-6"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h3
-              id="carousel-hyper-hooks-heading"
+              id="carousel-hook-library-heading"
               className="text-sm font-semibold text-foreground"
             >
-              Hook image library
+              Hook library
             </h3>
             <Badge variant="secondary">Slide 1 only</Badge>
           </div>
           <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">
-            Open the global folder and choose a high-attention background for
-            the first slide. Other slides stay unchanged.
+            Choose an image for the first slide. Other slides stay unchanged.
           </p>
         </div>
         {loading ? (
           <Loader2
             className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
-            aria-label="Loading Hyper Hooks"
+            aria-label="Loading Hook library"
           />
         ) : null}
       </div>
@@ -1991,46 +2528,25 @@ function HyperHookLibrarySection({
         </div>
       ) : !folderOpen ? (
         loading && assets.length === 0 ? (
-          <Skeleton className="mt-4 h-28 rounded-xl" />
+          <Skeleton className="mt-4 h-16 rounded-xl" />
         ) : (
           <button
             type="button"
             onClick={onOpen}
-            className="group mt-4 flex w-full items-center gap-4 rounded-xl border bg-card p-3 text-left shadow-xs transition-colors hover:border-foreground/30 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="group mt-4 flex w-full items-center gap-3 rounded-xl border border-border bg-card p-3 text-left transition-colors hover:border-foreground/30 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <span className="relative flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
-              {covers.map((asset, index) => (
-                <span
-                  key={asset.id}
-                  className={cn(
-                    "absolute h-14 w-11 overflow-hidden rounded-md border-2 border-background shadow-sm transition-transform group-hover:-translate-y-0.5 motion-reduce:transition-none",
-                    index === 0 && "-translate-x-5 -rotate-6",
-                    index === 1 && "z-10",
-                    index === 2 && "translate-x-5 rotate-6",
-                  )}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={asset.url}
-                    alt=""
-                    className="size-full object-cover"
-                    loading="lazy"
-                  />
-                </span>
-              ))}
-              <span className="absolute bottom-1.5 right-1.5 z-20 flex size-7 items-center justify-center rounded-md bg-background/90 text-foreground shadow-sm backdrop-blur-sm">
-                <Folder className="size-4" aria-hidden="true" />
-              </span>
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/60 text-muted-foreground">
+              <Folder className="size-4" aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2 text-sm font-semibold">
-                Hyper Hooks
-                {selectedHyperHook ? (
+                Hook library
+                {selectedHookImage ? (
                   <Check className="size-4 text-primary" aria-label="Selected" />
                 ) : null}
               </span>
               <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                {assets.length} curated attention images
+                {assets.length} {assets.length === 1 ? "image" : "images"}
               </span>
             </span>
             <ChevronRight
@@ -2044,7 +2560,7 @@ function HyperHookLibrarySection({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Button type="button" size="sm" variant="ghost" onClick={onBack}>
               <ChevronLeft />
-              Image folders
+              Back
             </Button>
             {hasCustomHook ? (
               <Button
@@ -2053,7 +2569,7 @@ function HyperHookLibrarySection({
                 variant="outline"
                 onClick={onRestore}
               >
-                Use original hook
+                Restore original image
               </Button>
             ) : null}
           </div>
@@ -2062,7 +2578,7 @@ function HyperHookLibrarySection({
               <FolderOpen className="size-4" aria-hidden="true" />
             </span>
             <div>
-              <p className="text-sm font-semibold">Hyper Hooks</p>
+              <p className="text-sm font-semibold">Hook library</p>
               <p className="text-xs text-muted-foreground">
                 Choosing an image applies it directly to Slide 1.
               </p>
@@ -2080,7 +2596,7 @@ function HyperHookLibrarySection({
                   aria-pressed={selected}
                   onClick={() => onAssign(asset)}
                   className={cn(
-                    "group relative aspect-[4/5] overflow-hidden rounded-lg border bg-muted shadow-xs transition-[border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "group relative aspect-[4/5] overflow-hidden rounded-lg border bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     selected
                       ? "border-foreground ring-2 ring-foreground/15"
                       : "border-border hover:border-foreground/30",
@@ -2097,7 +2613,7 @@ function HyperHookLibrarySection({
                     {asset.name}
                   </span>
                   {selected ? (
-                    <span className="absolute left-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-foreground text-background shadow-sm">
+                    <span className="absolute left-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-foreground text-background">
                       <Check className="size-3.5" aria-hidden="true" />
                     </span>
                   ) : null}
@@ -2877,7 +3393,10 @@ function validateContent(content: TrendingCreativeEditContent) {
 
   if (content.format === "hook_video") {
     try {
-      createHookTextLayout(content.hookText);
+      createHookTextLayout(content.hookText, {
+        fontSize: content.fontSize,
+        lines: content.lines,
+      });
     } catch (error) {
       return error instanceof Error
         ? error.message
@@ -2888,8 +3407,8 @@ function validateContent(content: TrendingCreativeEditContent) {
   if (content.format === "wall_text") {
     const normalized = content.content.fullText.replace(/\s+/gu, " ").trim();
     const wordCount = normalized.split(/\s+/u).filter(Boolean).length;
-    if (!normalized || wordCount < 12 || wordCount > 50) {
-      return "Wall-of-text copy must contain 12–50 words. The exact limit is checked against the selected clip when you save.";
+    if (!normalized || wordCount < 8 || wordCount > 50) {
+      return "Wall-of-text copy must contain 8–50 words and fit the measured 4–7-line layout.";
     }
   }
 

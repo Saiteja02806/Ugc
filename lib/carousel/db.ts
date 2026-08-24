@@ -211,6 +211,9 @@ type CarouselGenerationRow = {
   content_plan_raw_response: Json | null;
   content_plan_source: string | null;
   content_plan_validation: Json | null;
+  content_plan_id: string | null;
+  content_plan_item_id: string | null;
+  content_plan_reservation_id: string | null;
   content_planner_model: string | null;
   content_planner_version: string | null;
   content_problem_id: string | null;
@@ -261,6 +264,9 @@ type CarouselGenerationInsert = {
   content_plan_raw_response?: Json | null;
   content_plan_source?: string | null;
   content_plan_validation?: Json | null;
+  content_plan_id?: string | null;
+  content_plan_item_id?: string | null;
+  content_plan_reservation_id?: string | null;
   content_planner_model?: string | null;
   content_planner_version?: string | null;
   content_problem_id?: string | null;
@@ -674,6 +680,9 @@ export type CarouselGenerationRecord = {
   contentGrammarVersion: string | null;
   contentHistorySnapshot: Json;
   contentPlanNormalized: Json | null;
+  contentPlanId: string | null;
+  contentPlanItemId: string | null;
+  contentPlanReservationId: string | null;
   contentProblemId: string | null;
   contentSelectorVersion: string | null;
   contentTopic: string | null;
@@ -848,6 +857,9 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     contentGrammarVersion: row.content_grammar_version,
     contentHistorySnapshot: row.content_history_snapshot,
     contentPlanNormalized: row.content_plan_normalized,
+    contentPlanId: row.content_plan_id,
+    contentPlanItemId: row.content_plan_item_id,
+    contentPlanReservationId: row.content_plan_reservation_id,
     contentProblemId: row.content_problem_id,
     contentSelectorVersion: row.content_selector_version,
     contentTopic: row.content_topic,
@@ -1232,6 +1244,9 @@ export async function createCarouselGeneration(input: {
   candidateIndex: number;
   categorySlug: string;
   contentAssignment: CarouselStructureContentAssignment;
+  contentPlanId: string;
+  contentPlanItemId: string;
+  contentPlanReservationId: string;
   experimentAssignmentId: string;
   experimentBatchId: string;
   format: CarouselFormat;
@@ -1268,6 +1283,9 @@ export async function createCarouselGeneration(input: {
       content_grammar_version: assignment.grammarVersion,
       content_history_snapshot:
         assignment.historySnapshot as unknown as Json,
+      content_plan_id: input.contentPlanId,
+      content_plan_item_id: input.contentPlanItemId,
+      content_plan_reservation_id: input.contentPlanReservationId,
       content_selector_version: assignment.selectorVersion,
       format: input.format,
       generation_batch_id: input.generationBatchId,
@@ -2544,6 +2562,62 @@ export async function listCarouselBatchContentHistory(params: {
   return (data ?? []).map(mapRecentContentSummary).slice(0, limit);
 }
 
+export async function listRecentAcceptedCarouselCopy(params: {
+  businessProfileId: string;
+  excludeGenerationBatchId: string;
+  limit?: number;
+  userId: string;
+}) {
+  const limit = Math.min(Math.max(Math.trunc(params.limit ?? 10), 1), 10);
+  const { data: generations, error } = await getSupabaseServerClient()
+    .from(CAROUSEL_GENERATIONS_TABLE)
+    .select("*")
+    .eq("business_profile_id", params.businessProfileId)
+    .eq("user_id", params.userId)
+    .eq("status", "completed")
+    .neq("generation_batch_id", params.excludeGenerationBatchId)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(
+      `Could not load recent accepted Carousel generations: ${error.message}`,
+    );
+  }
+
+  const history = await Promise.all(
+    (generations ?? []).map(async (generation) => {
+      const { data: slides, error: slideError } = await getSupabaseServerClient()
+        .from(CAROUSEL_SLIDES_TABLE)
+        .select("*")
+        .eq("carousel_generation_id", generation.id)
+        .eq("status", "ready")
+        .order("slide_number", { ascending: true });
+
+      if (slideError) {
+        throw new Error(
+          `Could not load recent accepted Carousel copy: ${slideError.message}`,
+        );
+      }
+
+      return {
+        contentPlanItemId: generation.content_plan_item_id,
+        formatId: generation.content_format_id,
+        generationId: generation.id,
+        slides: (slides ?? []).map((slide) => ({
+          ctaText: slide.cta_text,
+          headline: slide.headline,
+          slideNumber: slide.slide_number,
+          subtext: slide.subtext,
+        })),
+        structureId: generation.structure_id,
+      };
+    }),
+  );
+
+  return history.filter((item) => item.slides.length > 0);
+}
+
 function mapRecentContentSummary(
   row: CarouselGenerationRow,
 ): CarouselRecentContentSummary {
@@ -2610,9 +2684,6 @@ function mapRecentCarouselStructure2History(
     hookIdea:
       getJsonString(historySummary?.hookIdea) ??
       getJsonString(firstSlide?.storyText),
-    productMechanism:
-      getJsonString(historySummary?.productMechanism) ??
-      getJsonString(strategy?.productMechanism),
     storyAngle:
       getJsonString(historySummary?.storyAngle) ??
       getJsonString(strategy?.angle),

@@ -164,7 +164,6 @@ export function HookVideoDeck({
             >
               <HookVideoCard
                 dragOffset={0}
-                className="shadow-[0_10px_26px_rgb(23_23_27_/_0.14)]"
                 previewError={null}
                 previewLoading={false}
                 previewUrl={null}

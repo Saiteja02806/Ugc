@@ -15,7 +15,14 @@ const jiti = createJiti(import.meta.url, {
 const workerPlanner = await jiti.import(
   "../worker/src/lib/carousel-llm-slide-plan.ts",
 );
+const structure2Planner = await jiti.import(
+  "../worker/src/lib/carousel-structure-2-planner.ts",
+);
+const structure2Formats = await jiti.import(
+  "../worker/src/lib/carousel-structure-2-formats.ts",
+);
 const fixture = createPlanFixture();
+const analysis = createAnalysisFixture();
 const workerParsed = workerPlanner.parseCarouselContentPlan(fixture, 5);
 const failures = [];
 
@@ -58,63 +65,33 @@ try {
   failures.push("Planner treated clock hands as a prohibited human subject.");
 }
 
-process.env.CAROUSEL_CONTENT_PLANNER_MODE = "deterministic";
-const analysis = createAnalysisFixture();
-const fallbackPlan = await workerPlanner.buildCarouselContentPlan({
-  analysis,
-  candidateIndex: 0,
-  contentFormatId: "problem_solution",
-  hookFamilyId: "problem_recognition",
-  recentHistory: [],
-  selectedAngle: "Why campaign work keeps leaking into the evening",
-  slideCount: 5,
-});
-
+const plannerSource = readFileSync(
+  path.resolve(workspaceRoot, "worker/src/lib/carousel-llm-slide-plan.ts"),
+  "utf8",
+);
 if (
-  fallbackPlan.source !== "deterministic-fallback" ||
-  fallbackPlan.slides.length !== 5 ||
-  fallbackPlan.plannerVersion !==
-    workerPlanner.CAROUSEL_CONTENT_PLANNER_VERSION ||
-  !fallbackPlan.validationResult.fallbackUsed ||
-  fallbackPlan.validationResult.repaired ||
-  !fallbackPlan.validationResult.ok
+  /allowDeterministicFallback|buildFallbackPlan|deterministic-fallback|CAROUSEL_CONTENT_PLANNER_MODE/.test(
+    plannerSource,
+  )
 ) {
-  failures.push("Deterministic planner fallback contract is invalid.");
-}
-
-const contaminatedFallbackPlan = await workerPlanner.buildCarouselContentPlan({
-  analysis: {
-    ...analysis,
-    ctaIdeas: ["Get Notion free", "Join millions of users"],
-  },
-  candidateIndex: 0,
-  contentFormatId: "problem_solution",
-  hookFamilyId: "problem_recognition",
-  recentHistory: [],
-  selectedAngle: "Why campaign work keeps leaking into the evening",
-  slideCount: 5,
-});
-const contaminatedFallbackCta =
-  contaminatedFallbackPlan.slides.at(-1)?.ctaText ?? "";
-
-if (
-  /notion|millions of users/i.test(contaminatedFallbackCta) ||
-  !contaminatedFallbackPlan.validationResult.ok
-) {
-  failures.push("Deterministic fallback retained a contaminated CTA idea.");
+  failures.push("Structure 1 still contains a runtime authored-copy fallback.");
 }
 
 const badCopyFixture = structuredClone(fixture);
 badCopyFixture.slides[1].body =
   "Traditional tracking lacks guidance.. Need for context in tracking";
 
-try {
-  workerPlanner.parseCarouselContentPlan(badCopyFixture, 5);
-  failures.push("Planner accepted repeated punctuation and an incomplete ending.");
-} catch (error) {
-  if (!String(error).includes("repeated punctuation")) {
-    failures.push("Planner rejected bad punctuation for the wrong reason.");
-  }
+const parsedBadCopy = workerPlanner.parseCarouselContentPlan(badCopyFixture, 5);
+const badCopyIssues = workerPlanner.partitionCarouselContentPlanValidationIssues(
+  workerPlanner.validateCarouselContentPlan(parsedBadCopy),
+);
+if (
+  badCopyIssues.blockingIssues.length !== 0 ||
+  !badCopyIssues.advisoryIssues.some(
+    (issue) => issue.code === "repeated_punctuation",
+  )
+) {
+  failures.push("Planner did not retain punctuation feedback as advisory-only.");
 }
 
 const qualityIssues = workerPlanner.validateCarouselContentPlan({
@@ -201,10 +178,10 @@ const normalizedRepeatedHeadline = workerPlanner.parseCarouselContentPlan(
 );
 
 if (
-  normalizedRepeatedHeadline.slides[3]?.headline !== null ||
-  normalizedRepeatedHeadline.slides[3]?.textMode !== "body_only"
+  normalizedRepeatedHeadline.slides[3]?.headline !== "Automate Workflows" ||
+  normalizedRepeatedHeadline.slides[3]?.textMode !== "headline_body"
 ) {
-  failures.push("Planner retained headline_body after dropping a repeated headline.");
+  failures.push("Planner changed a structurally valid repeated headline.");
 }
 
 const partialHeadlineRepeatFixture = structuredClone(fixture);
@@ -219,10 +196,11 @@ const normalizedPartialHeadlineRepeat = workerPlanner.parseCarouselContentPlan(
 );
 
 if (
-  normalizedPartialHeadlineRepeat.slides[0]?.headline !== null ||
-  normalizedPartialHeadlineRepeat.slides[0]?.textMode !== "body_only"
+  normalizedPartialHeadlineRepeat.slides[0]?.headline !==
+    "Tired of campaign chaos?" ||
+  normalizedPartialHeadlineRepeat.slides[0]?.textMode !== "headline_body"
 ) {
-  failures.push("Planner retained a partially repeated headline and body.");
+  failures.push("Planner changed a structurally valid overlapping headline.");
 }
 
 const repeatedWordFixture = structuredClone(workerParsed);
@@ -276,310 +254,22 @@ if (
   failures.push("Planner quality validation missed a repeated connector.");
 }
 
-const canaryRepairFixture = structuredClone(workerParsed);
-canaryRepairFixture.slides[2] = pluralRepeatedWordFixture.slides[2];
-canaryRepairFixture.slides[3] = repeatedConnectorFixture.slides[3];
-const normalizedCanaryRepair =
-  workerPlanner.normalizeRepairedCarouselCopy(canaryRepairFixture);
+const publishingIssuePartition =
+  workerPlanner.partitionCarouselContentPlanValidationIssues([
+    ...workerPlanner.validateCarouselContentPlan(repeatedConnectorFixture, analysis),
+    ...workerPlanner.validateCarouselRecentContentRepetition(
+      repeatedConnectorFixture,
+      [],
+    ),
+  ]);
 
 if (
-  normalizedCanaryRepair.slides[2]?.body !==
-    "Scattered tools cause missed follow-ups and delayed responses." ||
-  normalizedCanaryRepair.slides[3]?.body !==
-    "Automate workflows with CampaignFlow to keep related steps connected." ||
-  workerPlanner.validateCarouselContentPlan(normalizedCanaryRepair, analysis)
-    .length > 0
+  publishingIssuePartition.blockingIssues.length !== 0 ||
+  !publishingIssuePartition.advisoryIssues.some(
+    (issue) => issue.code === "grammar" || issue.code === "generic_copy",
+  )
 ) {
-  failures.push("Planner did not repair the exact v8 canary grammar regressions.");
-}
-
-const mislabeledConsequenceFixture = structuredClone(workerParsed);
-mislabeledConsequenceFixture.slides[2] = {
-  ...mislabeledConsequenceFixture.slides[2],
-  body:
-    "This scattered approach leads to missed deadlines and late-night checks.",
-  headline: null,
-  listItems: [],
-  slideType: "solution",
-  subtext:
-    "This scattered approach leads to missed deadlines and late-night checks.",
-  textMode: "body_only",
-};
-const mislabeledConsequenceIssues =
-  workerPlanner.validateCarouselContentPlan(mislabeledConsequenceFixture);
-const normalizedConsequence =
-  workerPlanner.normalizeRepairedCarouselCopy(mislabeledConsequenceFixture);
-
-if (
-  !mislabeledConsequenceIssues.some(
-    (issue) => issue.code === "story_structure",
-  ) ||
-  normalizedConsequence.slides[2]?.slideType !== "problem" ||
-  workerPlanner.validateCarouselContentPlan(normalizedConsequence).length > 0
-) {
-  failures.push("Planner did not repair a consequence mislabeled as a solution.");
-}
-
-const contextualRepairFixture = structuredClone(workerParsed);
-contextualRepairFixture.slides[1] = {
-  ...contextualRepairFixture.slides[1],
-  body: "Manual reporting wastes time and increases errors.",
-  subtext: "Manual reporting wastes time and increases errors.",
-};
-contextualRepairFixture.slides[2] = {
-  ...contextualRepairFixture.slides[2],
-  body: "Missed leads create frustration and lost opportunities.",
-  headline: null,
-  listItems: [],
-  slideType: "problem",
-  subtext: "Missed leads create frustration and lost opportunities.",
-  textMode: "body_only",
-};
-contextualRepairFixture.slides[3] = {
-  ...contextualRepairFixture.slides[3],
-  body: "Automate workflows and consolidate your marketing analytics.",
-  headline: null,
-  slideType: "solution",
-  subtext: "Automate workflows and consolidate your marketing analytics.",
-  textMode: "body_only",
-};
-contextualRepairFixture.slides[4] = {
-  ...contextualRepairFixture.slides[4],
-  body: "Try CampaignFlow today and transform your campaign management.",
-  subtext: "Try CampaignFlow today and transform your campaign management.",
-};
-const normalizedContextualRepair =
-  workerPlanner.normalizeRepairedCarouselCopy(contextualRepairFixture);
-
-if (
-  normalizedContextualRepair.slides[1]?.body !==
-    "Manual reporting wastes time and increases errors in the current routine." ||
-  normalizedContextualRepair.slides[2]?.body !==
-    "Missed leads create frustration and lost opportunities in the current routine." ||
-  normalizedContextualRepair.slides[3]?.body !==
-    "Automate workflows and consolidate your marketing analytics with the relevant details kept together." ||
-  normalizedContextualRepair.slides[4]?.body !==
-    "Try CampaignFlow today and organize the next related handoff." ||
-  workerPlanner.validateCarouselContentPlan(normalizedContextualRepair, analysis)
-    .length > 0
-) {
-  failures.push("Planner did not apply contextual short-copy repairs.");
-}
-
-const specificCopyFixture = structuredClone(workerParsed);
-specificCopyFixture.slides[2] = {
-  ...specificCopyFixture.slides[2],
-  body: "Missed leads and delayed decisions hinder growth.",
-  headline: null,
-  listItems: [],
-  slideType: "problem",
-  subtext: "Missed leads and delayed decisions hinder growth.",
-  textMode: "body_only",
-};
-specificCopyFixture.slides[3] = {
-  ...specificCopyFixture.slides[3],
-  body: "Automate workflows and consolidate analytics in one platform.",
-  headline: "Enhance your marketing efforts",
-  slideType: "solution",
-  subtext: "Automate workflows and consolidate analytics in one platform.",
-  textMode: "headline_body",
-};
-specificCopyFixture.slides[4] = {
-  ...specificCopyFixture.slides[4],
-  body: "Start planning campaigns effectively with CampaignFlow today!",
-  headline: null,
-  subtext: "Start planning campaigns effectively with CampaignFlow today!",
-};
-const normalizedSpecificCopy =
-  workerPlanner.normalizeRepairedCarouselCopy(specificCopyFixture);
-
-if (
-  normalizedSpecificCopy.slides[2]?.body !==
-    "Missed leads and delayed decisions create gaps in the next follow-up." ||
-  normalizedSpecificCopy.slides[3]?.headline !==
-    "connect the relevant work" ||
-  normalizedSpecificCopy.slides[4]?.body !==
-    "Start planning campaigns in one workflow with CampaignFlow today!" ||
-  workerPlanner.validateCarouselContentPlan(normalizedSpecificCopy, analysis)
-    .length > 0
-) {
-  failures.push("Planner did not replace the exact v10 generic copy regressions.");
-}
-
-const vagueOutcomeFixture = structuredClone(workerParsed);
-vagueOutcomeFixture.slides[3] = {
-  ...vagueOutcomeFixture.slides[3],
-  body:
-    "Centralize your campaigns with CampaignFlow for better organization.",
-  headline: null,
-  slideType: "solution",
-  subtext:
-    "Centralize your campaigns with CampaignFlow for better organization.",
-  textMode: "body_only",
-};
-const vagueOutcomeIssues =
-  workerPlanner.validateCarouselContentPlan(vagueOutcomeFixture, analysis);
-const normalizedVagueOutcome =
-  workerPlanner.normalizeRepairedCarouselCopy(vagueOutcomeFixture);
-
-if (
-  !vagueOutcomeIssues.some((issue) => issue.code === "generic_copy") ||
-  normalizedVagueOutcome.slides[3]?.body !==
-    "Centralize your campaigns with CampaignFlow to keep related details connected." ||
-  workerPlanner.validateCarouselContentPlan(normalizedVagueOutcome, analysis)
-    .length > 0
-) {
-  failures.push("Planner did not replace a vague better-organization outcome.");
-}
-
-const vagueCtaFixture = structuredClone(workerParsed);
-vagueCtaFixture.slides[4] = {
-  ...vagueCtaFixture.slides[4],
-  body:
-    "Begin with CampaignFlow and experience improved clarity and organization.",
-  headline: null,
-  subtext:
-    "Begin with CampaignFlow and experience improved clarity and organization.",
-};
-const vagueCtaIssues =
-  workerPlanner.validateCarouselContentPlan(vagueCtaFixture, analysis);
-const normalizedVagueCta =
-  workerPlanner.normalizeRepairedCarouselCopy(vagueCtaFixture);
-
-if (
-  !vagueCtaIssues.some((issue) => issue.code === "generic_copy") ||
-  normalizedVagueCta.slides[4]?.body !==
-    "Begin with CampaignFlow and keep related details in one clear flow." ||
-  workerPlanner.validateCarouselContentPlan(normalizedVagueCta, analysis)
-    .length > 0
-) {
-  failures.push("Planner did not replace an abstract improved-clarity CTA.");
-}
-
-const shortHookFixture = structuredClone(workerParsed);
-shortHookFixture.slides[0] = {
-  ...shortHookFixture.slides[0],
-  body: "Campaign work shouldn't spill into your evenings.",
-  headline: null,
-  subtext: "Campaign work shouldn't spill into your evenings.",
-  textMode: "body_only",
-};
-const normalizedShortHook =
-  workerPlanner.normalizeRepairedCarouselCopy(shortHookFixture);
-const repeatedHookFixture = structuredClone(normalizedShortHook);
-repeatedHookFixture.slides[0] = {
-  ...repeatedHookFixture.slides[0],
-  body:
-    "Campaign work shouldn't spill into your evenings during active campaign work.",
-  subtext:
-    "Campaign work shouldn't spill into your evenings during active campaign work.",
-};
-const repeatedHookIssues =
-  workerPlanner.validateCarouselContentPlan(repeatedHookFixture, analysis);
-
-if (
-  normalizedShortHook.slides[0]?.body !==
-    "Campaign work shouldn't spill into your evenings when the current routine gets harder." ||
-  !repeatedHookIssues.some((issue) => issue.code === "grammar") ||
-  workerPlanner.validateCarouselContentPlan(normalizedShortHook, analysis)
-    .length > 0
-) {
-  failures.push("Planner did not repair or reject repeated short-hook copy.");
-}
-
-const compoundSubjectFixture = structuredClone(workerParsed);
-compoundSubjectFixture.slides[1] = {
-  ...compoundSubjectFixture.slides[1],
-  body:
-    "Campaign planning and reporting scattered across tools creates chaos.",
-  subtext:
-    "Campaign planning and reporting scattered across tools creates chaos.",
-};
-const compoundSubjectIssues =
-  workerPlanner.validateCarouselContentPlan(compoundSubjectFixture, analysis);
-const normalizedCompoundSubject =
-  workerPlanner.normalizeRepairedCarouselCopy(compoundSubjectFixture);
-
-if (
-  !compoundSubjectIssues.some((issue) => issue.code === "grammar") ||
-  normalizedCompoundSubject.slides[1]?.body !==
-    "Campaign planning and reporting scattered across tools create chaos." ||
-  workerPlanner.validateCarouselContentPlan(normalizedCompoundSubject, analysis)
-    .length > 0
-) {
-  failures.push("Planner did not repair a compound-subject agreement error.");
-}
-
-const supportedSolutionFixture = structuredClone(workerParsed);
-supportedSolutionFixture.slides[3] = {
-  ...supportedSolutionFixture.slides[3],
-  body:
-    "CampaignFlow keeps planning and reporting in one workspace to end scattered work.",
-  headline: "One workspace for your campaigns",
-  slideType: "solution",
-  subtext:
-    "CampaignFlow keeps planning and reporting in one workspace to end scattered work.",
-  textMode: "headline_body",
-};
-const normalizedSupportedSolution =
-  workerPlanner.normalizeRepairedCarouselCopy(supportedSolutionFixture);
-
-if (
-  normalizedSupportedSolution.slides[3]?.slideType !== "solution" ||
-  workerPlanner.validateCarouselContentPlan(normalizedSupportedSolution, analysis)
-    .some((issue) => issue.code === "story_structure")
-) {
-  failures.push("Planner reclassified supported solution copy as a problem.");
-}
-
-const shortHeadlineFixture = structuredClone(workerParsed);
-shortHeadlineFixture.slides[3] = {
-  ...shortHeadlineFixture.slides[3],
-  headline: "Automated Workflows",
-  textMode: "headline_body",
-};
-const normalizedShortHeadline =
-  workerPlanner.normalizeRepairedCarouselCopy(shortHeadlineFixture);
-
-if (
-  normalizedShortHeadline.slides[3]?.headline !== null ||
-  normalizedShortHeadline.slides[3]?.textMode !== "body_only" ||
-  workerPlanner.validateCarouselContentPlan(normalizedShortHeadline).length > 0
-) {
-  failures.push("Planner did not drop an invalid optional repaired headline.");
-}
-
-const genericCtaFixture = structuredClone(workerParsed);
-genericCtaFixture.slides[4] = {
-  ...genericCtaFixture.slides[4],
-  body: "Start building your campaign with ease today.",
-  subtext: "Start building your campaign with ease today.",
-};
-const normalizedGenericCta =
-  workerPlanner.normalizeRepairedCarouselCopy(genericCtaFixture);
-
-if (
-  /\bwith ease\b/i.test(normalizedGenericCta.slides[4]?.body ?? "") ||
-  workerPlanner.validateCarouselContentPlan(normalizedGenericCta).length > 0
-) {
-  failures.push("Planner did not repair a generic short CTA body.");
-}
-
-const brandedCtaFixture = structuredClone(workerParsed);
-brandedCtaFixture.slides[4] = {
-  ...brandedCtaFixture.slides[4],
-  body: "Start building your campaign with CampaignFlow today!",
-  subtext: "Start building your campaign with CampaignFlow today!",
-};
-const normalizedBrandedCta =
-  workerPlanner.normalizeRepairedCarouselCopy(brandedCtaFixture);
-
-if (
-  /\bwith\b.*\bwith\b/i.test(normalizedBrandedCta.slides[4]?.body ?? "") ||
-  workerPlanner.validateCarouselContentPlan(normalizedBrandedCta, analysis)
-    .length > 0
-) {
-  failures.push("Planner created a repeated preposition in a short branded CTA.");
+  failures.push("Planner did not preserve structurally usable AI copy as advisory-only.");
 }
 
 const exactRegressionFixture = structuredClone(workerParsed);
@@ -604,10 +294,10 @@ if (
 }
 
 let livePlan = null;
+let liveStructure2Plans = null;
 
 if (process.argv.includes("--live")) {
   loadEnvFile(path.resolve(workspaceRoot, ".env.local"));
-  delete process.env.CAROUSEL_CONTENT_PLANNER_MODE;
   livePlan = await workerPlanner.buildCarouselContentPlan({
     analysis,
     candidateIndex: 1,
@@ -619,7 +309,35 @@ if (process.argv.includes("--live")) {
   });
 
   if (livePlan.source !== "llm") {
-    failures.push(`Live planner used fallback: ${livePlan.fallbackReason}`);
+    failures.push(`Live Structure 1 planner returned source ${livePlan.source}.`);
+  }
+  if (livePlan.model !== "gpt-4o-mini") {
+    failures.push(`Live Structure 1 planner used model ${livePlan.model}.`);
+  }
+
+  liveStructure2Plans =
+    await structure2Planner.buildCarouselStructure2StoryPlanBatch({
+      analysis,
+      assignments: structure2Formats.CAROUSEL_STRUCTURE_2_FORMAT_IDS
+        .slice(0, 5)
+        .map((storyFormatId, slotIndex) => ({
+          candidateIndex: slotIndex,
+          slotIndex,
+          storyFormatId,
+        })),
+      recentHistory: [],
+    });
+
+  if (
+    liveStructure2Plans.length !== 5 ||
+    liveStructure2Plans.some(
+      (item) =>
+        item.source !== "llm" ||
+        item.model !== "gpt-4o-mini" ||
+        item.validationResult.fallbackUsed,
+    )
+  ) {
+    failures.push("Live Structure 2 planner violated the LLM-only batch contract.");
   }
 }
 
@@ -643,6 +361,16 @@ console.log(
             source: livePlan.source,
             validationResult: livePlan.validationResult,
           }
+        : null,
+      liveStructure2Plans: liveStructure2Plans
+        ? liveStructure2Plans.map((item) => ({
+            advisoryIssues: item.validationResult.advisoryIssues,
+            model: item.model,
+            plannerVersion: item.plannerVersion,
+            slides: item.plan.slides,
+            source: item.source,
+            storyFormatId: item.assignedStoryFormatId,
+          }))
         : null,
       plannerVersion: workerPlanner.CAROUSEL_CONTENT_PLANNER_VERSION,
     },

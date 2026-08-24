@@ -33,7 +33,7 @@ export type WallTextRenderContent = {
     }>;
     fontFamily: "Inter";
     fontSizePx: 44 | 46 | 48 | 50 | 52;
-    fontWeight: 700;
+    fontWeight: 600 | 700;
     lineHeightPx: number;
     textBox: WallTextNormalizedBox;
     version: "wall-text-final-layout-v1" | "wall-text-final-layout-v2";
@@ -50,7 +50,7 @@ export type WallTextRenderLayout = {
   segments: Array<{
     centerX: number;
     fontSize: number;
-    fontWeight: 700;
+    fontWeight: 600;
     lineHeight: number;
     lines: string[];
     top: number;
@@ -71,6 +71,8 @@ export const WALL_TEXT_RENDER_MAX_LINES = 7;
 export const WALL_TEXT_DEFAULT_FONT_SIZE = 48;
 export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
 export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
+export const WALL_TEXT_FONT_WEIGHT = 600;
+export const LEGACY_WALL_TEXT_FONT_WEIGHT = 700;
 export const WALL_TEXT_LINE_HEIGHT_FACTOR = 52 / 48;
 export const WALL_TEXT_SECTION_GAP = 18;
 export const WALL_TEXT_OUTLINE_WIDTH = 4;
@@ -123,7 +125,7 @@ export function buildWallTextRenderLayout(params: {
   const segmentMetrics = renderBlocks.map((segment) => {
     return {
       fontSize,
-      fontWeight: 700 as const,
+      fontWeight: WALL_TEXT_FONT_WEIGHT as 600,
       lineHeight:
         content.finalLayout?.lineHeightPx ??
         fontSize * WALL_TEXT_LINE_HEIGHT_FACTOR,
@@ -294,7 +296,9 @@ function normalizeFinalLayout(
       value.version,
     ) ||
     value.fontFamily !== "Inter" ||
-    value.fontWeight !== 700 ||
+    ![WALL_TEXT_FONT_WEIGHT, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
+      value.fontWeight,
+    ) ||
     ![44, 46, 48, 50, 52].includes(value.fontSizePx) ||
     !Number.isFinite(value.lineHeightPx) ||
     value.lineHeightPx <= 0 ||
@@ -306,6 +310,7 @@ function normalizeFinalLayout(
 
   const normalized = {
     ...value,
+    fontWeight: WALL_TEXT_FONT_WEIGHT as 600,
     blocks: value.blocks.map((block) => {
       if (
         !["prose", "text", "title", "item"].includes(block.role) ||

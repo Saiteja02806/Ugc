@@ -251,7 +251,7 @@ test("frontend preview remains muted until the user plays synchronized Wall audi
   assert.match(frontendAudioSource, /await audioElement\.play\(\)/);
   assert.match(frontendAudioSource, /remainingVideoSeconds \/ audio\.fadeOutSeconds/);
   assert.match(frontendAudioSource, /TRENDING_LIBRARY_AUDIO_PLAYBACK_VOLUME \* fadeMultiplier/);
-  assert.match(frontendAudioSource, /size-9/);
+  assert.match(frontendAudioSource, /size-8/);
 });
 
 test("removes Wall replay controls so the media controls stay quiet", () => {

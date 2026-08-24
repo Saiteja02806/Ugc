@@ -14,6 +14,14 @@ import {
 } from "@/lib/carousel/automatic-candidate-count";
 import { buildCarouselBusinessContentContext } from "@/lib/carousel/business-content-context";
 import {
+  attachCarouselContentPlanItemsToJob,
+  releaseCarouselContentPlanReservation,
+  reserveCarouselContentPlanItems,
+  type CarouselContentPlanRecord,
+  type ReservedCarouselContentPlanItem,
+} from "@/lib/carousel/content-plan-db";
+import { ensureCarouselContentPlanGeneration } from "@/lib/carousel/content-plan-generation-job";
+import {
   CAROUSEL_EXPERIMENT_BATCH_SIZE,
   selectCarouselExperimentBatch,
   type CarouselContentAssignment,
@@ -51,6 +59,27 @@ import {
 } from "@/lib/carousel/structure-2-selector";
 
 export async function prepareBusinessProfileCarousels(profile: BusinessProfileRecord) {
+  const contentPlan = await ensureCarouselContentPlanGeneration({
+    profile,
+    timezone: profile.trendingTimezone ?? "UTC",
+  });
+  const pendingGenerationBatchId =
+    profile.latestGenerationBatchId ?? randomUUID();
+
+  if (contentPlan.status !== "active") {
+    await updateBusinessProfilePreparation({
+      generationBatchId: pendingGenerationBatchId,
+      profileId: profile.id,
+      status: "preparing",
+    });
+
+    return {
+      candidateCount: 0,
+      contentPlanStatus: contentPlan.status,
+      generationBatchId: pendingGenerationBatchId,
+    };
+  }
+
   const { analysis, businessContext, resolvedCategory } =
     await getPreparationContext(profile);
   const existing = (
@@ -66,6 +95,7 @@ export async function prepareBusinessProfileCarousels(profile: BusinessProfileRe
       businessContext,
       candidateCount: AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
       categorySlug: resolvedCategory.categorySlug,
+      contentPlan,
       generationBatchId,
       profile,
     });
@@ -113,6 +143,7 @@ export async function prepareDailyBusinessProfileCarousels(params: {
   originDailyFeedId: string;
   profile: BusinessProfileRecord;
   targetCandidateCount: number;
+  timezone: string;
 }) {
   const requestedCandidateCount = Math.min(
     Math.max(Math.trunc(params.targetCandidateCount), 0),
@@ -122,6 +153,19 @@ export async function prepareDailyBusinessProfileCarousels(params: {
   if (requestedCandidateCount === 0) {
     return {
       candidateCount: 0,
+      generationBatchId: params.generationBatchId,
+    };
+  }
+
+  const contentPlan = await ensureCarouselContentPlanGeneration({
+    profile: params.profile,
+    timezone: params.timezone,
+  });
+
+  if (contentPlan.status !== "active") {
+    return {
+      candidateCount: 0,
+      contentPlanStatus: contentPlan.status,
       generationBatchId: params.generationBatchId,
     };
   }
@@ -143,6 +187,7 @@ export async function prepareDailyBusinessProfileCarousels(params: {
     businessContext,
     candidateCount: requestedCandidateCount,
     categorySlug: resolvedCategory.categorySlug,
+    contentPlan,
     generationBatchId: params.generationBatchId,
     originDailyFeedId: params.originDailyFeedId,
     profile: params.profile,
@@ -166,6 +211,7 @@ async function prepareControlledGenerationBatch(params: {
   businessContext: BusinessProfileRecord["context"];
   candidateCount: number;
   categorySlug: string;
+  contentPlan: CarouselContentPlanRecord;
   generationBatchId: string;
   originDailyFeedId?: string | null;
   profile: BusinessProfileRecord;
@@ -181,6 +227,36 @@ async function prepareControlledGenerationBatch(params: {
     businessProfileVersion: params.profile.profileVersion,
     generationBatchId: params.generationBatchId,
   });
+  const contentPlanItemsByExperimentBatch = new Map<
+    string,
+    ReservedCarouselContentPlanItem[]
+  >();
+  const reservationKeys = new Set<string>();
+  let writerDispatchStarted = false;
+
+  try {
+  for (const experimentBatch of experimentBatches) {
+    const reservationKey = `carousel-experiment-batch:${experimentBatch.id}`;
+    const items = await reserveCarouselContentPlanItems({
+      businessProfileId: params.profile.id,
+      businessProfileVersion: params.profile.profileVersion,
+      requestedCount: CAROUSEL_EXPERIMENT_BATCH_SIZE,
+      reservationKey,
+      userId: params.profile.userId,
+    });
+
+    if (
+      items.length !== CAROUSEL_EXPERIMENT_BATCH_SIZE ||
+      new Set(items.map((item) => item.reservationToken)).size !== 1
+    ) {
+      throw new Error(
+        `Carousel experiment ${experimentBatch.id} did not reserve five content-plan items.`,
+      );
+    }
+
+    reservationKeys.add(reservationKey);
+    contentPlanItemsByExperimentBatch.set(experimentBatch.id, items);
+  }
 
   for (const experimentBatch of experimentBatches) {
     assertCarouselStructureRuntimeReady(experimentBatch.structureId);
@@ -251,6 +327,16 @@ async function prepareControlledGenerationBatch(params: {
     });
 
     for (const [slotIndex, assignment] of assignments.entries()) {
+      const contentPlanItem = contentPlanItemsByExperimentBatch.get(
+        experimentBatch.id,
+      )?.[slotIndex];
+
+      if (!contentPlanItem) {
+        throw new Error(
+          `Carousel experiment slot ${slotIndex} is missing its content-plan item.`,
+        );
+      }
+
       const candidateIndex =
         batchOffset * CAROUSEL_EXPERIMENT_BATCH_SIZE + slotIndex;
       let generations = await getCarouselGenerationsByBatchId(
@@ -293,6 +379,9 @@ async function prepareControlledGenerationBatch(params: {
             candidateIndex,
             categorySlug: params.categorySlug,
             contentAssignment: persistedContentAssignment,
+            contentPlanId: contentPlanItem.planId,
+            contentPlanItemId: contentPlanItem.id,
+            contentPlanReservationId: contentPlanItem.reservationToken,
             experimentAssignmentId: persistedAssignment.id,
             experimentBatchId: experimentBatch.id,
             format: "4:5",
@@ -331,6 +420,7 @@ async function prepareControlledGenerationBatch(params: {
     candidateCount,
     generationBatchId: params.generationBatchId,
   });
+  writerDispatchStarted = true;
   const activeCandidates = await enqueueProcessingCarouselCandidates(
     generations,
     params.profile,
@@ -338,6 +428,20 @@ async function prepareControlledGenerationBatch(params: {
   );
 
   return { activeCandidates, candidateCount, generations };
+  } catch (error) {
+    if (!writerDispatchStarted) {
+      await Promise.all(
+        [...reservationKeys].map((reservationKey) =>
+          releaseCarouselContentPlanReservation({
+            reason: "carousel_preparation_failed_before_writer_dispatch",
+            reservationKey,
+            userId: params.profile.userId,
+          }).catch(() => undefined),
+        ),
+      );
+    }
+    throw error;
+  }
 }
 
 function buildPersistedStructure1Assignment(params: {
@@ -518,6 +622,36 @@ export async function enqueueProcessingCarouselCandidates(
         throw new Error(`Carousel experiment ${experimentBatchId} has conflicting jobs.`);
       }
       const jobId = await enqueueCarouselExperimentBatchJob({
+        beforeDispatch: async (candidateJobId) => {
+          const itemIdsByReservation = new Map<string, string[]>();
+
+          for (const generation of orderedBatch) {
+            if (
+              !generation.contentPlanItemId ||
+              !generation.contentPlanReservationId
+            ) {
+              continue;
+            }
+
+            const itemIds =
+              itemIdsByReservation.get(generation.contentPlanReservationId) ??
+              [];
+            itemIds.push(generation.contentPlanItemId);
+            itemIdsByReservation.set(
+              generation.contentPlanReservationId,
+              itemIds,
+            );
+          }
+
+          for (const [reservationToken, planItemIds] of itemIdsByReservation) {
+            await attachCarouselContentPlanItemsToJob({
+              jobId: candidateJobId,
+              planItemIds,
+              reservationToken,
+              userId: profile.userId,
+            });
+          }
+        },
         carouselIds: orderedBatch.map((generation) => generation.id),
         existingJobId: existingJobIds[0] ?? null,
         experimentBatchId,

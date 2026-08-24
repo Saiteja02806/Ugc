@@ -746,6 +746,7 @@ async function reconcileDailyCarouselRefill(params: {
     originDailyFeedId: params.feed.id,
     profile: params.profile,
     targetCandidateCount: refillBatch.requested_count,
+    timezone: params.feed.timezone,
   });
 }
 

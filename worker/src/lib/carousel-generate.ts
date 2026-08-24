@@ -17,10 +17,8 @@ import {
 import {
   buildCarouselContentPlanBatch,
   buildCarouselContentPlan,
-  mergeCarouselRecentContentHistory,
   type CarouselBatchContentPlanItem,
   type CarouselContentPlan,
-  type CarouselRecentContentSummaryInput,
 } from "./carousel-llm-slide-plan.js";
 import { getCarouselContentFormat } from "./carousel-content-grammar.js";
 import { getPersistedCarouselSlideCopy } from "./carousel-slide-persistence.js";
@@ -44,82 +42,6 @@ function getErrorMessage(error: unknown) {
 
 function truncateErrorMessage(message: string) {
   return message.trim().slice(0, 900);
-}
-
-function parseContentHistorySnapshot(
-  value: Json,
-): CarouselRecentContentSummaryInput[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.slice(0, 10).flatMap((item) => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
-      return [];
-    }
-
-    const record = item as Record<string, Json | undefined>;
-    return [
-      {
-        angle: getOptionalString(record.angle),
-        audienceId: getOptionalString(record.audienceId),
-        contentFormatId: getOptionalString(record.contentFormatId),
-        hook: getOptionalString(record.hook),
-        hookFamilyId: getOptionalString(record.hookFamilyId),
-        topic: getOptionalString(record.topic),
-        topicId: getOptionalString(record.topicId),
-      },
-    ];
-  });
-}
-
-function getGenerationContentHistory(
-  generations: readonly CarouselGenerationRow[],
-): CarouselRecentContentSummaryInput[] {
-  return generations.flatMap((generation) => {
-    const normalizedPlan = getJsonRecord(generation.content_plan_normalized);
-    const strategy = getJsonRecord(normalizedPlan?.contentStrategy);
-    const slides = Array.isArray(normalizedPlan?.slides)
-      ? normalizedPlan.slides
-      : [];
-    const firstSlide = getJsonRecord(slides[0]);
-    const firstListItem = Array.isArray(firstSlide?.listItems)
-      ? firstSlide.listItems.find(
-          (item): item is string => typeof item === "string" && Boolean(item.trim()),
-        )
-      : null;
-    const hook = [
-      getOptionalString(firstSlide?.headline),
-      getOptionalString(firstSlide?.body),
-      firstListItem?.trim() ?? null,
-      getOptionalString(firstSlide?.ctaText),
-    ].find((item): item is string => Boolean(item));
-    const summary = {
-      angle:
-        generation.content_angle ??
-        getOptionalString(strategy?.angle) ??
-        getOptionalString(normalizedPlan?.concept),
-      audienceId:
-        generation.content_audience_id ??
-        getOptionalString(strategy?.audienceId),
-      contentFormatId:
-        generation.content_format_id ??
-        getOptionalString(strategy?.contentFormatId),
-      hook: hook ?? null,
-      hookFamilyId:
-        generation.hook_family_id ??
-        getOptionalString(strategy?.hookFamilyId),
-      topic:
-        generation.content_topic ??
-        getOptionalString(strategy?.topic) ??
-        getOptionalString(strategy?.topicLabel),
-      topicId:
-        generation.content_topic_id ??
-        getOptionalString(strategy?.topicId),
-    } satisfies CarouselRecentContentSummaryInput;
-
-    return summary.angle || summary.hook || summary.topic ? [summary] : [];
-  });
 }
 
 export async function generateCarouselBatch(params: {
@@ -171,21 +93,49 @@ export async function generateCarouselBatch(params: {
     store: params.store,
     websiteAnalysis,
   });
+  if (!first.business_profile_id) {
+    throw new Error("Carousel content-plan generation requires a business profile.");
+  }
+  const [creativeBriefs, recentHistory] = await Promise.all([
+    Promise.all(rows.map((generation) => params.store.getCarouselCreativeBrief(generation))),
+    params.store.listRecentAcceptedCarouselCopy({
+      businessProfileId: first.business_profile_id,
+      excludeGenerationBatchId: first.generation_batch_id,
+      limit: 10,
+      userId: first.user_id,
+    }),
+  ]);
+  const businessDescription = creativeBriefs[0]?.businessDescription;
+  if (
+    !businessDescription ||
+    creativeBriefs.some(
+      (brief) =>
+        brief.businessDescription !== businessDescription ||
+        brief.contentPlanId !== creativeBriefs[0]?.contentPlanId,
+    )
+  ) {
+    throw new Error("Carousel batch creative briefs do not belong to one content plan.");
+  }
+  await Promise.all(
+    rows.map((generation) =>
+      params.store.updateCarouselGeneration(generation.id, {
+        content_history_snapshot: recentHistory as unknown as Json,
+      }),
+    ),
+  );
 
   if (first.structure_id === "structure_2") {
     return generateCarouselStructure2Batch({
       businessAnalysis,
+      businessDescription,
+      creativeBriefs,
       experimentBatchId: params.experimentBatchId,
       generations: rows,
+      recentHistory,
       store: params.store,
       websiteAnalysis,
     });
   }
-  const recentHistory = mergeCarouselRecentContentHistory(
-    ...rows.map((generation) =>
-      parseContentHistorySnapshot(generation.content_history_snapshot),
-    ),
-  );
 
   await params.store.updateCarouselExperimentBatch(params.experimentBatchId, {
     status: "processing",
@@ -205,11 +155,13 @@ export async function generateCarouselBatch(params: {
   }
 
   const plannerInput = {
-    allowDeterministicFallback: false,
     analysis: businessAnalysis,
+    businessDescription,
     items: rows.map((generation, slotIndex) => ({
       candidateIndex: generation.candidate_index,
       contentFormatId: generation.content_format_id ?? "",
+      creativeSeed: creativeBriefs[slotIndex]!.creativeSeed,
+      emotion: creativeBriefs[slotIndex]!.emotion,
       hookFamilyId: generation.hook_family_id ?? "",
       slotIndex,
     })),
@@ -248,6 +200,23 @@ export async function generateCarouselBatch(params: {
       planningFailure?.message ??
         "Carousel Structure 1 planning attempts were exhausted before worker replay.",
     );
+    const planAwareAutomaticRecovery =
+      experimentBatch.structure_mode_snapshot === "rotate" &&
+      experimentBatch.structure_selection_mode === "rotation" &&
+      rows.every(
+        (generation) =>
+          generation.content_plan_id &&
+          generation.content_plan_item_id &&
+          generation.content_plan_reservation_id,
+      );
+
+    if (!planAwareAutomaticRecovery) {
+      throw new Error(
+        `Carousel Structure 1 planning failed after two attempts: ${failureReason}`,
+        { cause: planningFailure ?? undefined },
+      );
+    }
+
     await params.store.takeOverCarouselExperimentBatchWithStructure2({
       experimentBatchId: params.experimentBatchId,
       failureReason,
@@ -278,8 +247,11 @@ export async function generateCarouselBatch(params: {
     });
     return generateCarouselStructure2Batch({
       businessAnalysis,
+      businessDescription,
+      creativeBriefs,
       experimentBatchId: params.experimentBatchId,
       generations: resolvedGenerations as CarouselGenerationRow[],
+      recentHistory,
       store: params.store,
       websiteAnalysis,
     });
@@ -373,12 +345,6 @@ async function persistActualBatchAssignment(params: {
   });
 }
 
-function getJsonRecord(value: Json | undefined) {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, Json | undefined>)
-    : null;
-}
-
 async function getBusinessAnalysisForGeneration(params: {
   generation: CarouselGenerationRow;
   store: SupabaseJobStore;
@@ -434,10 +400,6 @@ async function assertBusinessProfileVersionIsCurrent(params: {
       "Business profile changed before Carousel generation completed.",
     );
   }
-}
-
-function getOptionalString(value: Json | undefined) {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 export async function generateCarousel({
@@ -497,21 +459,15 @@ export async function generateCarousel({
         businessAnalysis.visualKeywords ?? websiteAnalysis.visual_keywords,
     });
 
-    const batchHistory = generation.business_profile_id
-      ? getGenerationContentHistory(
-          await store.listCarouselBatchContentHistory({
-            businessProfileId: generation.business_profile_id,
-            excludeCarouselId: generation.id,
-            generationBatchId: generation.generation_batch_id,
-            limit: 10,
-            structureId: generation.structure_id,
-          }),
-        )
-      : [];
-    const recentHistory = mergeCarouselRecentContentHistory(
-      batchHistory,
-      parseContentHistorySnapshot(generation.content_history_snapshot),
-    );
+    const [creativeBrief, recentHistory] = await Promise.all([
+      store.getCarouselCreativeBrief(generation),
+      store.listRecentAcceptedCarouselCopy({
+        businessProfileId: generation.business_profile_id,
+        excludeGenerationBatchId: generation.generation_batch_id,
+        limit: 10,
+        userId: generation.user_id,
+      }),
+    ]);
 
     await store.updateCarouselGeneration(carouselId, {
       content_history_snapshot: recentHistory as unknown as Json,
@@ -520,10 +476,12 @@ export async function generateCarousel({
     const contentPlan =
       suppliedContentPlan ??
       (await buildCarouselContentPlan({
-        allowDeterministicFallback: false,
         analysis: businessAnalysis,
+        businessDescription: creativeBrief.businessDescription,
         candidateIndex,
         contentFormatId: generation.content_format_id,
+        creativeSeed: creativeBrief.creativeSeed,
+        emotion: creativeBrief.emotion,
         goal: generation.goal,
         hookFamilyId: generation.hook_family_id,
         recentHistory,

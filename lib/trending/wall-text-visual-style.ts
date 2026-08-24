@@ -1,6 +1,7 @@
 import type { TrendingWallTextContent } from "./wall-text-types.ts";
 
-export const WALL_TEXT_FONT_WEIGHT = 700;
+export const WALL_TEXT_FONT_WEIGHT = 600;
+export const LEGACY_WALL_TEXT_FONT_WEIGHT = 700;
 export const WALL_TEXT_LINE_HEIGHT_FACTOR = 52 / 48;
 export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
 export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;

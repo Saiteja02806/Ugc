@@ -70,7 +70,7 @@ export async function validateWallTextRenderFit(
         const metadata = await sharp({
           text: {
             dpi: 72,
-            font: `Inter Bold ${fontSize}`,
+            font: `Inter Semi Bold ${fontSize}`,
             fontfile: fontPath,
             rgba: true,
             text: escapePangoMarkup(line),
@@ -137,7 +137,7 @@ function getInterFontPath() {
     "@fontsource",
     "inter",
     "files",
-    "inter-latin-700-normal.woff",
+    "inter-latin-600-normal.woff",
   );
 }
 

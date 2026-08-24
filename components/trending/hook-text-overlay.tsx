@@ -2,6 +2,10 @@ import {
   clampHookTextPosition,
   createHookTextLayout,
   getDefaultHookTextPosition,
+  HOOK_TEXT_BROWSER_FONT_FAMILY,
+  HOOK_TEXT_FONT_WEIGHT,
+  HOOK_TEXT_OUTLINE_COLOR,
+  HOOK_TEXT_OUTLINE_WIDTH,
   type HookTextLayout,
 } from "@/lib/trending/hook-text-layout";
 import {
@@ -51,18 +55,17 @@ export function HookTextOverlay({
         data-overlay-size={size}
         style={{
           color,
-          fontFamily:
-            'var(--font-edit-overlay), Inter, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Noto Sans CJK SC", "Noto Sans CJK JP", sans-serif',
+          fontFamily: HOOK_TEXT_BROWSER_FONT_FAMILY,
           fontSize: `${layout.fontSize / 10.8}cqw`,
+          fontWeight: HOOK_TEXT_FONT_WEIGHT,
           left: `${resolvedPosition.x * 100}%`,
           lineHeight: 1,
           paintOrder: "stroke fill",
-          textShadow: "0 0 0.185185cqw rgba(0, 0, 0, 0.55)",
           top: `${resolvedPosition.y * 100}%`,
-          WebkitTextStroke: "0.462963cqw rgba(0, 0, 0, 0.82)",
+          WebkitTextStroke: `${HOOK_TEXT_OUTLINE_WIDTH / 10.8}cqw ${HOOK_TEXT_OUTLINE_COLOR}`,
           width: `${layout.containerWidth / 10.8}cqw`,
         }}
-        className="absolute -translate-x-1/2 -translate-y-1/2 text-center font-bold tracking-normal"
+        className="absolute -translate-x-1/2 -translate-y-1/2 text-center tracking-normal"
       >
         {layout.lines.map((line, index) => (
           <span
@@ -88,26 +91,35 @@ function getPreviewLayout(params: {
   text: string | null | undefined;
 }): HookTextLayout | null {
   const text = params.text?.trim() || params.lines?.join(" ").trim() || "";
+  const savedLines = params.lines?.filter((line) => line.trim()) ?? [];
+  const hasSavedLayout =
+    params.fontSize !== undefined || savedLines.length > 0;
 
   if (!text) return null;
+
+  if (hasSavedLayout) {
+    if (params.fontSize === undefined || savedLines.length === 0) {
+      return null;
+    }
+
+    try {
+      return createHookTextLayout(text, {
+        enforceMaximum: false,
+        enforceMinimum: false,
+        fontSize: params.fontSize,
+        lines: savedLines,
+      });
+    } catch {
+      return null;
+    }
+  }
 
   try {
     return createHookTextLayout(text, {
       enforceMaximum: false,
       enforceMinimum: false,
-      ...(params.fontSize === undefined ? {} : { fontSize: params.fontSize }),
-      ...(params.lines && params.lines.length > 0
-        ? { lines: params.lines }
-        : {}),
     });
   } catch {
-    try {
-      return createHookTextLayout(text, {
-        enforceMaximum: false,
-        enforceMinimum: false,
-      });
-    } catch {
-      return null;
-    }
+    return null;
   }
 }

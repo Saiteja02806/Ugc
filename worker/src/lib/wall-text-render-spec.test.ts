@@ -39,7 +39,7 @@ const fourLineContent = {
   ],
 };
 
-test("uses Inter Bold, center alignment, outline, and compact section rhythm", () => {
+test("uses Inter SemiBold, center alignment, outline, and compact section rhythm", () => {
   const layout = buildWallTextRenderLayout({
     content,
     textBox: {
@@ -62,14 +62,15 @@ test("uses Inter Bold, center alignment, outline, and compact section rhythm", (
   });
 
   assert.equal(layout.segments[0]?.fontSize, 48);
-  assert.equal(layout.segments[0]?.fontWeight, 700);
+  assert.equal(layout.segments[0]?.fontWeight, 600);
   assert.equal(layout.segments[1]?.fontSize, 48);
-  assert.equal(layout.segments[1]?.fontWeight, 700);
+  assert.equal(layout.segments[1]?.fontWeight, 600);
   assert.match(svg, /font-family="Inter, Arial/);
   assert.match(svg, /letter-spacing="-0\.2"/);
   assert.match(svg, /text-anchor="middle"/);
   assert.match(svg, /stroke-width="4"/);
   assert.match(svg, /fill="#67e8f9"/);
+  assert.match(svg, /font-weight="600"/);
   assert.doesNotMatch(svg, /wallTextScrim|radialGradient/);
 });
 
@@ -151,10 +152,12 @@ test("renders the saved v6 final layout without reflowing its lines", () => {
   });
 
   assert.equal(layout.segments[0]?.fontSize, 50);
+  assert.equal(layout.segments[0]?.fontWeight, 600);
   assert.equal(layout.segments[0]?.lineHeight, 54.17);
   assert.deepEqual(layout.segments[0]?.lines, finalLayoutContent.finalLayout.blocks[0]?.lines);
   assert.equal(layout.textBox.width, 640);
   assert.equal(svg.match(/<text /g)?.length, 3);
+  assert.doesNotMatch(svg, /font-weight="700"/);
 });
 
 test("renders V7 as one centered block with equal line rhythm and a short final line", () => {
@@ -172,7 +175,7 @@ test("renders V7 as one centered block with equal line rhythm and a short final 
       }],
       fontFamily: "Inter" as const,
       fontSizePx: 48 as const,
-      fontWeight: 700 as const,
+      fontWeight: 600 as const,
       lineHeightPx: 52,
       textBox: {
         height: 480 / 1920,

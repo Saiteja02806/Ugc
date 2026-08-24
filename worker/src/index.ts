@@ -17,6 +17,8 @@ import {
   getCarouselBroadMatcherMode,
 } from "./lib/carousel-broad-runtime-visual-matcher.js";
 import { CAROUSEL_CONTENT_PLANNER_VERSION } from "./lib/carousel-llm-slide-plan.js";
+import { CAROUSEL_STRUCTURE_2_PLANNER_VERSION } from "./lib/carousel-structure-2-planner.js";
+import { CAROUSEL_TEXT_MODEL } from "./lib/carousel-text-model.js";
 import { CAROUSEL_RENDERER_VERSION } from "./lib/carousel-render-slide.js";
 import { getCarouselFontRuntimeInfo } from "./lib/carousel-font-runtime.js";
 import {
@@ -72,9 +74,10 @@ async function main() {
       CAROUSEL_IMAGE_SAFETY_POLICY_VERSION,
     carouselBroadMatcherMode: getCarouselBroadMatcherMode(),
     carouselBroadMatcherVersion: CAROUSEL_BROAD_RUNTIME_MATCHER_VERSION,
-    carouselContentPlannerMode:
-      process.env.CAROUSEL_CONTENT_PLANNER_MODE?.trim() || "llm",
+    carouselContentPlannerMode: "llm-only",
     carouselContentPlannerVersion: CAROUSEL_CONTENT_PLANNER_VERSION,
+    carouselStructure2PlannerVersion: CAROUSEL_STRUCTURE_2_PLANNER_VERSION,
+    carouselTextModel: CAROUSEL_TEXT_MODEL,
     carouselFont: getCarouselFontRuntimeInfo(),
     carouselOpenAiConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
     carouselRuntimeMatcherVersion: CAROUSEL_RUNTIME_MATCHER_VERSION,

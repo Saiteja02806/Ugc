@@ -3,6 +3,7 @@ import "server-only";
 import { loadSavedTrendingCreativeEditForDownstream } from "@/lib/trending/creative-edit-service";
 import {
   getHookVideoSuggestionForUser,
+  parseHookSuggestionRenderLayout,
   saveHookVideoDraft,
 } from "@/lib/trending/hook-video-db";
 import { buildUserInfluencerId } from "@/lib/trending/hook-video-source-logic";
@@ -97,6 +98,19 @@ export async function persistHookVideoSelection(params: {
     creativeEdit?.content.format === "hook_video"
       ? creativeEdit.content
       : null;
+  const suggestionLayout = parseHookSuggestionRenderLayout({
+    hookText: suggestion.text,
+    openingLines: suggestion.opening_lines,
+    visualFit: suggestion.visual_fit,
+  });
+
+  if (!editedHookContent && !suggestionLayout) {
+    throw new HookVideoSelectionError(
+      "The validated Hook text layout is no longer available.",
+      409,
+    );
+  }
+
   const hookRenderSpec = createHookTextLayout(
     editedHookContent?.hookText ?? suggestion.text,
     editedHookContent
@@ -104,7 +118,12 @@ export async function persistHookVideoSelection(params: {
           fontSize: editedHookContent.fontSize,
           lines: editedHookContent.lines,
         }
-      : { enforceMaximum: false, enforceMinimum: false },
+      : {
+          enforceMaximum: false,
+          enforceMinimum: false,
+          fontSize: suggestionLayout!.fontSize,
+          lines: suggestionLayout!.lines,
+        },
   );
 
   const draft = await saveHookVideoDraft({

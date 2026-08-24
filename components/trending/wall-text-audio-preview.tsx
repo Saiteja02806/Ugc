@@ -146,7 +146,7 @@ export function WallTextAudioPreview({
           event.stopPropagation();
           void toggleSound();
         }}
-        className="absolute bottom-2 left-2 z-30 inline-flex size-9 items-center justify-center rounded-full border border-white/15 bg-black/72 text-white backdrop-blur-sm transition-colors hover:bg-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        className="absolute bottom-2 left-2 z-30 inline-flex size-8 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white/90 transition-colors hover:bg-black/75 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
       >
         {soundEnabled ? (
           <Volume2 className="size-3.5" aria-hidden="true" />

@@ -32,11 +32,11 @@ const aiStudioAccess = readProjectFile(
 const workspaceContentLoading = readProjectFile(
   "components/layout/workspace-content-loading.tsx",
 );
+const disabledViralLoading = readProjectFile("app/viral/loading.tsx");
 const workspaceLoadingRoutes = [
   "app/dashboard/loading.tsx",
   "app/ai-studio/loading.tsx",
   "app/analytics/loading.tsx",
-  "app/viral/loading.tsx",
   "app/library/loading.tsx",
   "app/scheduling/loading.tsx",
   "app/settings/loading.tsx",
@@ -95,11 +95,7 @@ test("the persistent workspace shell preserves the existing route access matrix"
     activeKey: "library",
     defaultSidebarCollapsed: true,
   });
-  assert.deepEqual(getWorkspaceRouteConfig("/viral"), {
-    access: "reviewer",
-    activeKey: "viral",
-    defaultSidebarCollapsed: false,
-  });
+  assert.equal(getWorkspaceRouteConfig("/viral"), null);
   assert.deepEqual(getWorkspaceRouteConfig("/avatars"), {
     access: "none",
     activeKey: "avatars",
@@ -161,6 +157,9 @@ test("workspace routes stream content loading UI beneath the persistent shell", 
     assert.match(loadingBoundary, /<WorkspaceContentLoading label=/);
     assert.doesNotMatch(loadingBoundary, /AppShell|AppSidebar|AuthGuard/);
   }
+
+  assert.match(disabledViralLoading, /return null/);
+  assert.doesNotMatch(disabledViralLoading, /Explore|WorkspaceContentLoading/);
 });
 
 function readProjectFile(relativePath: string) {

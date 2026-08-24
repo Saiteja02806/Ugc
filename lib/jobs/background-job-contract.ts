@@ -43,6 +43,7 @@ const canonicalTypeByImplementation: Record<
   CanonicalBackgroundJobType
 > = {
   analytics_sync: "analytics_sync",
+  carousel_content_plan_generation: "carousel_generation",
   carousel_generation: "carousel_generation",
   extract_video_metadata: "media_analysis",
   final_render: "final_render",

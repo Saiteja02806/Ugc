@@ -142,6 +142,7 @@ export async function enqueueCarouselGenerationJob(params: {
 }
 
 export async function enqueueCarouselExperimentBatchJob(params: {
+  beforeDispatch?: (jobId: string) => Promise<void>;
   carouselIds: readonly string[];
   existingJobId?: string | null;
   experimentBatchId: string;
@@ -175,6 +176,8 @@ export async function enqueueCarouselExperimentBatchJob(params: {
   if (existingJob && !isMatchingCarouselExperimentBatchJob(existingJob, params)) {
     throw new Error("Existing Carousel experiment job ownership does not match.");
   }
+
+  await params.beforeDispatch?.(job.id);
 
   if (job.status === "completed") return job.id;
 

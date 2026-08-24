@@ -7,7 +7,7 @@ import { z } from "zod";
 import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
 import {
   createAuthoritativeWallTextContent,
-  deriveWallTextReadabilityBudget,
+  deriveWallTextSpatialBudget,
 } from "@/lib/trending/wall-layout-engine";
 import {
   createWallTextDuplicateSignature,
@@ -24,6 +24,8 @@ import { buildWallTextGenerationPrompt } from "@/lib/trending/wall-prompt";
 import { createWallTextLayout } from "@/lib/trending/wall-text-feed-logic";
 import {
   buildWallTextBusinessContext,
+  MAX_CURRENT_WALL_TEXT_WORDS,
+  MIN_SHORT_WALL_TEXT_WORDS,
   normalizeWallTextGenerationCandidates,
   type WallTextGenerationCandidate,
 } from "@/lib/trending/wall-text-text-logic";
@@ -128,11 +130,12 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
       if (!assignment) throw new Error("Wall-of-text format assignment is missing.");
       const layout = input.layout ?? createWallTextLayout();
       const savedBudget = getSavedBudget(input);
-      const budget = savedBudget ?? await deriveWallTextReadabilityBudget({
-          durationSeconds: candidate.durationSeconds,
+      const budget =
+        savedBudget ??
+        (await deriveWallTextSpatialBudget({
           formatId: assignment.assignedFormatId,
           layout,
-        });
+        }));
       return {
         assignedFormatId: assignment.assignedFormatId,
         candidateIndex: candidate.candidateIndex,
@@ -268,7 +271,8 @@ function getSavedBudget(candidate: GenerationInputCandidate) {
     Number.isInteger(candidate.targetWords) &&
     Number.isInteger(candidate.maxWords) &&
     candidate.targetWords! > 0 &&
-    candidate.maxWords! >= candidate.targetWords!
+    candidate.maxWords! >= candidate.targetWords! &&
+    candidate.maxWords! <= MAX_CURRENT_WALL_TEXT_WORDS
   ) {
     return {
       maxWords: candidate.maxWords!,
@@ -320,8 +324,10 @@ async function validateCandidate(params: {
 }) {
   const text = normalizeText(params.text);
   const wordCount = countWords(text);
-  const minimumWords = Math.max(8, Math.min(params.candidate.targetWords - 4, params.candidate.maxWords));
-  if (wordCount < minimumWords || wordCount > params.candidate.maxWords) {
+  if (
+    wordCount < MIN_SHORT_WALL_TEXT_WORDS ||
+    wordCount > params.candidate.maxWords
+  ) {
     throw new CandidateValidationError("word_limit");
   }
   if (!/[.!?]["')]?$/u.test(text)) {

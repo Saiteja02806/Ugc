@@ -1,30 +1,28 @@
 import OpenAI from "openai";
 
-import type { WebsiteBusinessAnalysis } from "../types.js";
 import {
   assertCarouselStructure2StoryAssignments,
   buildCarouselStructure2BatchMessages,
   buildCarouselStructure2RepairMessages,
   buildCarouselStructure2StoryBatchSchema,
   buildCarouselStructure2StoryPlanSchema,
-  buildDeterministicCarouselStructure2StoryPlan,
   createCarouselStructure2InvalidPlanIssue,
   dedupeCarouselStructure2ValidationIssues,
   formatCarouselStructure2ValidationIssues,
   parseCarouselStructure2StoryPlan,
+  partitionCarouselStructure2ValidationIssues,
   validateCarouselStructure2StoryPlan,
   type CarouselStructure2RecentHistoryInput,
   type CarouselStructure2StoryAssignment,
-  type CarouselStructure2StoryHistorySummary,
   type CarouselStructure2StoryPlan,
   type CarouselStructure2StoryValidationIssue,
 } from "./carousel-structure-2-story-plan.js";
 import type { CarouselStructure2FormatId } from "./carousel-structure-2-formats.js";
+import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-story-planner-v1-isolated-repair";
+  "llm-carousel-structure-2-flexible-seed-writer-v4";
 
-const DEFAULT_MODEL = "gpt-4.1-mini";
 let openaiClient: OpenAI | null = null;
 
 export type CarouselStructure2StoryPlanResult = {
@@ -38,8 +36,9 @@ export type CarouselStructure2StoryPlanResult = {
     repair: string | null;
   };
   slotIndex: number;
-  source: "deterministic-fallback" | "llm";
+  source: "llm";
   validationResult: {
+    advisoryIssues: CarouselStructure2StoryValidationIssue[];
     fallbackUsed: boolean;
     finalIssues: CarouselStructure2StoryValidationIssue[];
     initialIssues: CarouselStructure2StoryValidationIssue[];
@@ -50,9 +49,8 @@ export type CarouselStructure2StoryPlanResult = {
 };
 
 export type CarouselStructure2StoryBatchInput = {
-  allowDeterministicFallback?: boolean;
-  analysis: WebsiteBusinessAnalysis;
   assignments: CarouselStructure2StoryAssignment[];
+  businessDescription: string;
   recentHistory?: CarouselStructure2RecentHistoryInput[];
 };
 
@@ -63,27 +61,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
   const assignments = [...input.assignments].sort(
     (left, right) => left.slotIndex - right.slotIndex,
   );
-  const model =
-    process.env.OPENAI_CAROUSEL_STRUCTURE_2_MODEL?.trim() ||
-    process.env.OPENAI_CAROUSEL_PLANNER_MODEL?.trim() ||
-    DEFAULT_MODEL;
-
-  if (
-    process.env.CAROUSEL_STRUCTURE_2_PLANNER_MODE?.trim() === "deterministic" ||
-    process.env.CAROUSEL_CONTENT_PLANNER_MODE?.trim() === "deterministic"
-  ) {
-    if (input.allowDeterministicFallback === false) {
-      throw new Error(
-        "Carousel Structure 2 LLM planning is disabled; runtime fallback copy is not permitted.",
-      );
-    }
-    return buildDeterministicBatch(
-      input,
-      assignments,
-      "Structure 2 LLM planning is disabled by planner mode.",
-      null,
-    );
-  }
+  const model = CAROUSEL_TEXT_MODEL;
 
   let initialBatchResponse: string | null = null;
   let rawPlans = new Map<number, unknown>();
@@ -125,18 +103,23 @@ export async function buildCarouselStructure2StoryPlanBatch(
     let initialIssues: CarouselStructure2StoryValidationIssue[] = batchFailure
       ? [batchFailure]
       : [];
+    let advisoryIssues: CarouselStructure2StoryValidationIssue[] = [];
     let parsedPlan: CarouselStructure2StoryPlan | null = null;
 
     if (!batchFailure) {
       try {
         parsedPlan = parseCarouselStructure2StoryPlan(rawPlan, {
-          analysis: input.analysis,
+          businessDescription: input.businessDescription,
           storyFormatId: assignment.storyFormatId,
         });
-        initialIssues = validateCarouselStructure2StoryPlan(parsedPlan, {
-          analysis: input.analysis,
-          recentHistory: acceptedHistory,
-        });
+        const validation = partitionCarouselStructure2ValidationIssues(
+          validateCarouselStructure2StoryPlan(parsedPlan, {
+            businessDescription: input.businessDescription,
+            recentHistory: acceptedHistory,
+          }),
+        );
+        initialIssues = validation.blockingIssues;
+        advisoryIssues = validation.advisoryIssues;
       } catch (error) {
         initialIssues = [createCarouselStructure2InvalidPlanIssue(error)];
       }
@@ -144,6 +127,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
 
     if (parsedPlan && initialIssues.length === 0) {
       const result = createLlmResult({
+        advisoryIssues,
         assignment,
         initialBatchResponse,
         initialIssues: [],
@@ -153,13 +137,13 @@ export async function buildCarouselStructure2StoryPlanBatch(
         repaired: false,
       });
       results.push(result);
-      acceptedHistory.push(toRecentHistory(parsedPlan.historySummary));
+      acceptedHistory.push(toRecentHistory(parsedPlan, assignment.slotIndex));
       continue;
     }
 
     const repaired = await attemptIsolatedRepair({
-      analysis: input.analysis,
       assignment,
+      businessDescription: input.businessDescription,
       initialBatchResponse,
       initialIssues,
       model,
@@ -169,60 +153,33 @@ export async function buildCarouselStructure2StoryPlanBatch(
 
     if (repaired) {
       results.push(repaired);
-      acceptedHistory.push(toRecentHistory(repaired.plan.historySummary));
+      acceptedHistory.push(
+        toRecentHistory(repaired.plan, assignment.slotIndex),
+      );
       continue;
     }
 
-    if (input.allowDeterministicFallback === false) {
-      throw new Error(
-        `Carousel Structure 2 planning failed after isolated repair for slot ${assignment.slotIndex}: ${formatCarouselStructure2ValidationIssues(
-          initialIssues.length > 0
-            ? initialIssues
-            : [
-                {
-                  code: "invalid_plan",
-                  message: "Structure 2 plan did not pass validation.",
-                  slideNumber: null,
-                },
-              ],
-        )}`,
-      );
-    }
-
-    const fallbackReason = formatCarouselStructure2ValidationIssues(
-      initialIssues.length > 0
-        ? initialIssues
-        : [
-            {
-              code: "invalid_plan",
-              message: "Structure 2 plan did not pass validation.",
-              slideNumber: null,
-            },
-          ],
+    throw new Error(
+      `Carousel Structure 2 planning failed after isolated LLM repair for slot ${assignment.slotIndex}: ${formatCarouselStructure2ValidationIssues(
+        initialIssues.length > 0
+          ? initialIssues
+          : [
+              {
+                code: "invalid_plan",
+                message: "Structure 2 plan did not pass validation.",
+                slideNumber: null,
+              },
+            ],
+      )}`,
     );
-    const fallbackPlan = buildDeterministicCarouselStructure2StoryPlan({
-      analysis: input.analysis,
-      assignment,
-      recentHistory: acceptedHistory,
-    });
-    const result = createFallbackResult({
-      assignment,
-      fallbackReason,
-      initialBatchResponse,
-      initialIssues,
-      model,
-      plan: fallbackPlan,
-    });
-    results.push(result);
-    acceptedHistory.push(toRecentHistory(fallbackPlan.historySummary));
   }
 
   return results;
 }
 
 async function attemptIsolatedRepair(params: {
-  analysis: WebsiteBusinessAnalysis;
   assignment: CarouselStructure2StoryAssignment;
+  businessDescription: string;
   initialBatchResponse: string | null;
   initialIssues: CarouselStructure2StoryValidationIssue[];
   model: string;
@@ -235,8 +192,8 @@ async function attemptIsolatedRepair(params: {
     const completion = await getOpenAIClient().chat.completions.create({
       max_completion_tokens: 1_800,
       messages: buildCarouselStructure2RepairMessages({
-        analysis: params.analysis,
         assignment: params.assignment,
+        businessDescription: params.businessDescription,
         issues: params.initialIssues,
         rawPlan: params.rawPlan,
         recentHistory: params.recentHistory,
@@ -247,7 +204,6 @@ async function attemptIsolatedRepair(params: {
         json_schema: {
           name: `carousel_structure_2_story_repair_${params.assignment.slotIndex}`,
           schema: buildCarouselStructure2StoryPlanSchema({
-            analysis: params.analysis,
             storyFormatId: params.assignment.storyFormatId,
           }),
           strict: true,
@@ -264,14 +220,17 @@ async function attemptIsolatedRepair(params: {
     const repairedPlan = parseCarouselStructure2StoryPlan(
       JSON.parse(repairResponse),
       {
-        analysis: params.analysis,
+        businessDescription: params.businessDescription,
         storyFormatId: params.assignment.storyFormatId,
       },
     );
-    const finalIssues = validateCarouselStructure2StoryPlan(repairedPlan, {
-      analysis: params.analysis,
-      recentHistory: params.recentHistory,
-    });
+    const validation = partitionCarouselStructure2ValidationIssues(
+      validateCarouselStructure2StoryPlan(repairedPlan, {
+        businessDescription: params.businessDescription,
+        recentHistory: params.recentHistory,
+      }),
+    );
+    const finalIssues = validation.blockingIssues;
 
     if (finalIssues.length > 0) {
       const combinedIssues = dedupeCarouselStructure2ValidationIssues([
@@ -287,6 +246,7 @@ async function attemptIsolatedRepair(params: {
     }
 
     return createLlmResult({
+      advisoryIssues: validation.advisoryIssues,
       assignment: params.assignment,
       initialBatchResponse: params.initialBatchResponse,
       initialIssues: params.initialIssues,
@@ -309,36 +269,8 @@ async function attemptIsolatedRepair(params: {
   }
 }
 
-function buildDeterministicBatch(
-  input: CarouselStructure2StoryBatchInput,
-  assignments: readonly CarouselStructure2StoryAssignment[],
-  fallbackReason: string,
-  model: string | null,
-) {
-  const history: CarouselStructure2RecentHistoryInput[] = [
-    ...(input.recentHistory ?? []),
-  ];
-
-  return assignments.map((assignment) => {
-    const plan = buildDeterministicCarouselStructure2StoryPlan({
-      analysis: input.analysis,
-      assignment,
-      recentHistory: history,
-    });
-    history.push(toRecentHistory(plan.historySummary));
-
-    return createFallbackResult({
-      assignment,
-      fallbackReason,
-      initialBatchResponse: null,
-      initialIssues: [],
-      model,
-      plan,
-    });
-  });
-}
-
 function createLlmResult(params: {
+  advisoryIssues: CarouselStructure2StoryValidationIssue[];
   assignment: CarouselStructure2StoryAssignment;
   initialBatchResponse: string | null;
   initialIssues: CarouselStructure2StoryValidationIssue[];
@@ -360,43 +292,13 @@ function createLlmResult(params: {
     slotIndex: params.assignment.slotIndex,
     source: "llm",
     validationResult: {
+      advisoryIssues: params.advisoryIssues,
       fallbackUsed: false,
       finalIssues: [],
       initialIssues: params.initialIssues,
       ok: true,
       repairAttempted: params.repaired,
       repaired: params.repaired,
-    },
-  };
-}
-
-function createFallbackResult(params: {
-  assignment: CarouselStructure2StoryAssignment;
-  fallbackReason: string;
-  initialBatchResponse: string | null;
-  initialIssues: CarouselStructure2StoryValidationIssue[];
-  model: string | null;
-  plan: CarouselStructure2StoryPlan;
-}): CarouselStructure2StoryPlanResult {
-  return {
-    assignedStoryFormatId: params.assignment.storyFormatId,
-    fallbackReason: params.fallbackReason,
-    model: params.model,
-    plan: params.plan,
-    plannerVersion: CAROUSEL_STRUCTURE_2_PLANNER_VERSION,
-    rawLlmResponse: {
-      initialBatch: params.initialBatchResponse,
-      repair: null,
-    },
-    slotIndex: params.assignment.slotIndex,
-    source: "deterministic-fallback",
-    validationResult: {
-      fallbackUsed: true,
-      finalIssues: [],
-      initialIssues: params.initialIssues,
-      ok: true,
-      repairAttempted: params.initialBatchResponse !== null,
-      repaired: false,
     },
   };
 }
@@ -432,9 +334,21 @@ function parseBatchEnvelope(value: unknown) {
 }
 
 function toRecentHistory(
-  summary: CarouselStructure2StoryHistorySummary,
+  plan: CarouselStructure2StoryPlan,
+  slotIndex: number,
 ): CarouselStructure2RecentHistoryInput {
-  return { ...summary };
+  return {
+    contentPlanItemId: null,
+    formatId: plan.strategy.storyFormatId,
+    generationId: `current-structure-2-slot-${slotIndex}`,
+    slides: plan.slides.map((slide) => ({
+      ctaText: slide.ctaText,
+      headline: slide.storyText,
+      slideNumber: slide.slideNumber,
+      subtext: null,
+    })),
+    structureId: "structure_2",
+  };
 }
 
 function asRecord(value: unknown, label: string): Record<string, unknown> {

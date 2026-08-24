@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, ImageIcon, Loader2, Sparkles } from "lucide-react";
+import { ImageIcon, Loader2, Sparkles } from "lucide-react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -9,12 +9,13 @@ import {
   AiStudioSettingSelect,
   AiStudioRatioPicker,
 } from "@/components/generation/ai-studio-composer";
-import { ReferenceImageAttachment } from "@/components/generation/reference-image-attachment";
 import {
   AiStudioResults,
   type AiStudioResultsStatus,
 } from "@/components/generation/ai-studio-results";
+import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
@@ -42,7 +43,9 @@ import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   persistJobIdInUrl,
   useBackgroundJobs,
+  useCancelBackgroundJob,
   usePersistedJobIdFromUrl,
+  useRetryBackgroundJob,
 } from "@/lib/jobs/background-job-client";
 import type { Json } from "@/lib/jobs/background-jobs";
 import { cn } from "@/lib/utils";
@@ -208,6 +211,7 @@ export function ImageGenerationStudioPanel({
   >([]);
   const [resultsLoading, setResultsLoading] = useState(true);
   const [resultsError, setResultsError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [storedJobIds, setStoredJobIds] = useState<string[]>([]);
   const [submittedJobIds, setSubmittedJobIds] = useState<string[]>([]);
@@ -230,6 +234,8 @@ export function ImageGenerationStudioPanel({
     ]),
   );
   const activeJobQueries = useBackgroundJobs(activeJobIds);
+  const cancelJob = useCancelBackgroundJob();
+  const retryJob = useRetryBackgroundJob();
   const queriedJobs = activeJobQueries.flatMap((query) =>
     query.data ? [query.data] : [],
   );
@@ -421,6 +427,7 @@ export function ImageGenerationStudioPanel({
           setLatestCompletedId(nextResult.id);
           setTimeout(() => setLatestCompletedId(null), 3500);
           setActivePrompt("");
+          setActionNotice(null);
           setActionError(null);
         }
       } catch (error) {
@@ -454,6 +461,7 @@ export function ImageGenerationStudioPanel({
 
     setIsSubmitting(true);
     setActivePrompt(trimmedPrompt);
+    setActionNotice(null);
     setActionError(null);
 
     try {
@@ -499,7 +507,7 @@ export function ImageGenerationStudioPanel({
       setStoredJobIds(jobIds);
       setSubmittedJobIds(jobIds);
       if (data.partial) {
-        setActionError(data.message);
+        setActionNotice(data.message);
       }
       submissionKeyRef.current = null;
       setPrompt("");
@@ -510,6 +518,49 @@ export function ImageGenerationStudioPanel({
       );
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleCancelGeneration() {
+    const cancellableJobIds = durableJobs
+      .filter((job) => activeJobStatuses.has(job.status))
+      .map((job) => job.id);
+
+    if (cancellableJobIds.length === 0 || cancelJob.isPending) {
+      return;
+    }
+
+    try {
+      for (const jobId of cancellableJobIds) {
+        await cancelJob.mutateAsync(jobId);
+      }
+      setActionError(null);
+      setActionNotice(
+        "Cancellation requested. The current checkpoint will stop safely.",
+      );
+    } catch (error) {
+      setActionError(
+        getErrorMessage(error, "Could not cancel this image job."),
+      );
+    }
+  }
+
+  async function handleRetryGeneration() {
+    const retryableJob = durableJobs.find(
+      (job) => job.status === "failed" && Boolean(job.error?.retryable),
+    );
+
+    if (!retryableJob || retryJob.isPending) {
+      return;
+    }
+
+    try {
+      resolvedJobIdsRef.current.delete(retryableJob.id);
+      await retryJob.mutateAsync(retryableJob.id);
+      setActionNotice(null);
+      setActionError(null);
+    } catch (error) {
+      setActionError(getErrorMessage(error, "Could not retry this image job."));
     }
   }
 
@@ -538,15 +589,21 @@ export function ImageGenerationStudioPanel({
   );
   const durableError = failedDurableJob
     ? failedDurableJob.error?.message || "Image generation failed. Try again."
-    : cancelledDurableJob
-      ? "Image generation was cancelled."
-      : null;
+    : null;
+  const durableNotice = cancelledDurableJob
+    ? "Image generation was cancelled."
+    : null;
   const resultsErrorMessage = actionError ?? jobQueryError ?? durableError ?? resultsError;
   const resultsStatus: AiStudioResultsStatus | null = resultsErrorMessage
     ? { label: resultsErrorMessage, tone: "error" }
     : isGenerating
       ? { label: "Creating your image…", tone: "progress" }
-      : null;
+      : actionNotice ?? durableNotice
+        ? { label: actionNotice ?? durableNotice ?? "", tone: "neutral" }
+        : null;
+  const canRetry = durableJobs.some(
+    (job) => job.status === "failed" && Boolean(job.error?.retryable),
+  );
 
   return (
     <div
@@ -597,8 +654,14 @@ export function ImageGenerationStudioPanel({
         isGenerating={isGenerating}
         layout="unified"
         leadingControl={
-          <ReferenceImageAttachment
+          <ReferenceMediaUpload
+            allowedKinds={["image"]}
             disabled={generationLocked || isGenerating}
+            selection={referenceImage}
+            onChange={(selection) => {
+              submissionKeyRef.current = null;
+              setReferenceImage(selection);
+            }}
           />
         }
         maxLength={AI_STUDIO_IMAGE_PROMPT_MAX_LENGTH}
@@ -612,6 +675,32 @@ export function ImageGenerationStudioPanel({
         }}
         onSubmit={handleSubmit}
         onTextareaKeyDown={handleTextareaKeyDown}
+        secondaryActions={
+          <>
+            {isGenerating ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                disabled={cancelJob.isPending}
+                onClick={() => void handleCancelGeneration()}
+              >
+                Cancel
+              </Button>
+            ) : null}
+            {canRetry ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                disabled={retryJob.isPending}
+                onClick={() => void handleRetryGeneration()}
+              >
+                Retry
+              </Button>
+            ) : null}
+          </>
+        }
         settings={
           <>
             <AiStudioRatioPicker
@@ -624,6 +713,7 @@ export function ImageGenerationStudioPanel({
             />
             <AiStudioSettingSelect
               ariaLabel="Number of images"
+              disabled={generationLocked || isGenerating}
               icon={<ImageIcon className="size-4" aria-hidden="true" />}
               options={AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({
                 label: `${count} image${count === 1 ? "" : "s"}`,
@@ -633,15 +723,6 @@ export function ImageGenerationStudioPanel({
               onChange={(value) => {
                 submissionKeyRef.current = null;
                 setQuantity(Number(value) as AIStudioGenerationQuantity)
-              }}
-            />
-            <ReferenceMediaUpload
-              allowedKinds={["image"]}
-              disabled={generationLocked || isGenerating}
-              selection={referenceImage}
-              onChange={(selection) => {
-                submissionKeyRef.current = null;
-                setReferenceImage(selection);
               }}
             />
           </>
@@ -728,16 +809,11 @@ function GeneratedAssetCard({
             {formatGeneratedAt(asset.createdAt)}
           </p>
         </div>
-        <a
-          href={asset.url}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`Open ${asset.title} in a new tab`}
-          title="Open image in a new tab"
-          className="inline-flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-muted-subtle transition-colors hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none"
-        >
-          <ExternalLink className="size-3.5" aria-hidden="true" />
-        </a>
+        <AiStudioResultActions
+          kind="image"
+          title={asset.title}
+          url={asset.url}
+        />
       </div>
     </article>
   );

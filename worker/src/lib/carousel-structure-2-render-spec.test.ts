@@ -9,26 +9,16 @@ import {
 } from "./carousel-structure-2-render-spec.js";
 import {
   CAROUSEL_STRUCTURE_2_FORMAT_IDS,
+  getCarouselStructure2Format,
   type CarouselStructure2FormatId,
 } from "./carousel-structure-2-formats.js";
-import { buildDeterministicCarouselStructure2StoryPlan } from "./carousel-structure-2-story-plan.js";
-
-const analysis = {
-  businessName: "Todaywise",
-  category: "productivity",
-  differentiators: ["prioritizes tasks around changing constraints"],
-  mainProblem: "constant task reprioritization",
-  mainPromise: "finish important work with fewer repeated decisions",
-  painPoints: ["rebuilding the task list whenever priorities change"],
-  productSummary: "Todaywise prioritizes a changing task list",
-  targetAudience: ["busy professionals"],
-  valueProps: ["automatic task prioritization"],
-};
+import {
+  parseCarouselStructure2StoryPlan,
+} from "./carousel-structure-2-story-plan.js";
 
 test("all eight Structure 2 formats resolve the same isolated three-layout contract", () => {
-  for (const [candidateIndex, storyFormatId] of
-    CAROUSEL_STRUCTURE_2_FORMAT_IDS.entries()) {
-    const specs = makeSpecs(storyFormatId, candidateIndex);
+  for (const storyFormatId of CAROUSEL_STRUCTURE_2_FORMAT_IDS) {
+    const specs = makeSpecs(storyFormatId);
 
     assert.equal(specs.length, 5);
     assert.deepEqual(
@@ -44,21 +34,16 @@ test("all eight Structure 2 formats resolve the same isolated three-layout contr
   }
 });
 
-test("the render adapter rejects a product asset before the story permits it", () => {
-  const storyPlan = buildDeterministicCarouselStructure2StoryPlan({
-    analysis,
-    assignment: { candidateIndex: 0, slotIndex: 0, storyFormatId: "wrong_belief" },
-  });
+test("the flexible story renderer accepts a product asset wherever reservation places it", () => {
+  const storyPlan = makeStoryPlan("wrong_belief");
   const assets = makeAssets(["hook", "product_asset", "human", "static", "human"]);
 
-  assert.throws(
-    () => buildCarouselStructure2RenderSpecs({ assets, storyPlan }),
-    /product assets are not eligible for slide 2/i,
-  );
+  const specs = buildCarouselStructure2RenderSpecs({ assets, storyPlan });
+  assert.equal(specs[1]!.layoutVariant, "story_product_reveal");
 });
 
 test("the persistence adapter stores Structure 2 identity without borrowing Structure 1 fields", () => {
-  const specs = makeSpecs("wrong_belief", 0);
+  const specs = makeSpecs("wrong_belief");
   const rows = createCarouselStructure2SlideInserts({
     carouselGenerationId: "00000000-0000-0000-0000-000000000001",
     renderedSlides: specs.map((spec) => ({
@@ -86,14 +71,43 @@ test("the persistence adapter stores Structure 2 identity without borrowing Stru
   assert.equal(rows[4]!.status, "ready");
 });
 
-function makeSpecs(storyFormatId: CarouselStructure2FormatId, candidateIndex: number) {
+function makeSpecs(storyFormatId: CarouselStructure2FormatId) {
   return buildCarouselStructure2RenderSpecs({
     assets: makeAssets(["hook", "human", "static", "human", "product_asset"]),
-    storyPlan: buildDeterministicCarouselStructure2StoryPlan({
-      analysis,
-      assignment: { candidateIndex, slotIndex: candidateIndex % 5, storyFormatId },
-    }),
+    storyPlan: makeStoryPlan(storyFormatId),
   });
+}
+
+function makeStoryPlan(storyFormatId: CarouselStructure2FormatId) {
+  const ctaPosition = getCarouselStructure2Format(storyFormatId)
+    .allowedCtaPositions[0]!;
+  const slides = [
+    { ctaText: null, slideNumber: 1, storyRole: "recognition", storyText: "i'd plan the perfect week every sunday night", visualContext: "a weekly plan" },
+    { ctaText: null, slideNumber: 2, storyRole: "failure_scene", storyText: "i mapped every task before monday, then one changing priority made me rebuild the schedule and second guess each choice.", visualContext: "a changing task list" },
+    { ctaText: null, slideNumber: 3, storyRole: "reframe", storyText: "i realized the plan needed flexibility instead of another complete rebuild whenever normal work changed during the week.", visualContext: "a flexible weekly plan" },
+    { ctaText: null, slideNumber: 4, storyRole: "product_turning_point", storyText: "then i tried Todaywise; it helped me work from the changing task list without rebuilding everything.", visualContext: "Todaywise with a task list" },
+    { ctaText: null, slideNumber: 5, storyRole: "proof_reflection_cta", storyText: "i'm still adjusting, but important work now feels easier to finish on ordinary days.", visualContext: "one clearer next task" },
+  ].map((slide) => ({
+    ...slide,
+    ctaText:
+      slide.slideNumber === ctaPosition
+        ? "if your priorities keep changing, test a smaller planning change."
+        : null,
+  }));
+
+  return parseCarouselStructure2StoryPlan(
+    {
+      slides,
+      strategy: {
+        angle: "a rigid weekly plan that could not adapt to real work",
+        storyFormatId,
+      },
+    },
+    {
+      businessDescription: "Todaywise is a productivity planning application.",
+      storyFormatId,
+    },
+  );
 }
 
 function makeAssets(

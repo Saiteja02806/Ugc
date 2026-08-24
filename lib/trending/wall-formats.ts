@@ -13,7 +13,7 @@ export type WallTextFormat = {
     requiresFirstPersonEvidence?: boolean;
   };
   example: string;
-  hardWordRange: readonly [minimum: number, maximum: number];
+  preferredWordRange: readonly [minimum: number, maximum: number];
   howToWrite: string;
   id: WallTextFormatId;
   mechanism: string;
@@ -69,13 +69,13 @@ function format(
   structure: readonly string[],
   howToWrite: string,
   example: string,
-  hardWordRange: readonly [number, number],
+  preferredWordRange: readonly [number, number],
   eligibility?: WallTextFormat["eligibility"],
 ): WallTextFormat {
   return {
     ...(eligibility ? { eligibility } : {}),
     example,
-    hardWordRange,
+    preferredWordRange,
     howToWrite,
     id,
     mechanism,

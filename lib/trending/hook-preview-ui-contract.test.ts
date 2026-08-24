@@ -12,6 +12,10 @@ const audioPreview = readProjectFile(
 const textOverlay = readProjectFile(
   "components/trending/hook-text-overlay.tsx",
 );
+const editor = readProjectFile(
+  "components/trending/trending-creative-editor.tsx",
+);
+const hookLayout = readProjectFile("lib/trending/hook-text-layout.ts");
 const composer = readProjectFile(
   "components/trending/hook-video-composer.tsx",
 );
@@ -66,16 +70,33 @@ test("previews approved Hook audio without exposing it to deck swipe gestures", 
   assert.match(audioPreview, /video\.currentTime - trimStart/);
   assert.match(audioPreview, /TRENDING_LIBRARY_AUDIO_PLAYBACK_VOLUME/);
   assert.match(audioPreview, /audioElement\.volume = TRENDING_LIBRARY_AUDIO_PLAYBACK_VOLUME/);
-  assert.match(audioPreview, /size-9/);
+  assert.match(audioPreview, /size-8/);
   assert.match(audioPreview, /aria-label=\{soundEnabled \? "Mute Hook audio" : "Play Hook audio"\}/);
 });
 
-test("keeps the Hook feed typography aligned with the final bold outlined render", () => {
+test("keeps Hook feed and editor typography aligned with the final semibold outlined render", () => {
+  const editorHookOverlay =
+    editor.match(/function HookOverlayText[\s\S]+?function WallTextOverlayText/)?.[0] ??
+    "";
+
   assert.match(card, /hookFontSize = 60/);
-  assert.match(textOverlay, /font-bold/);
-  assert.match(textOverlay, /WebkitTextStroke/);
-  assert.match(textOverlay, /"Segoe UI Emoji"/);
-  assert.match(textOverlay, /"Noto Color Emoji"/);
+  assert.match(hookLayout, /HOOK_TEXT_FONT_WEIGHT = 600/);
+  assert.match(hookLayout, /HOOK_TEXT_OUTLINE_WIDTH = 5/);
+  assert.match(hookLayout, /"Segoe UI Emoji"/);
+  assert.match(hookLayout, /"Noto Color Emoji"/);
+  assert.match(textOverlay, /fontWeight: HOOK_TEXT_FONT_WEIGHT/);
+  assert.match(textOverlay, /HOOK_TEXT_OUTLINE_WIDTH/);
+  assert.match(editorHookOverlay, /fontWeight: HOOK_TEXT_FONT_WEIGHT/);
+  assert.match(editorHookOverlay, /HOOK_TEXT_OUTLINE_WIDTH/);
+  assert.doesNotMatch(textOverlay, /font-bold|textShadow/);
+  assert.doesNotMatch(editorHookOverlay, /font-bold|font-semibold|textShadow/);
+});
+
+test("does not silently reflow an invalid saved Hook layout", () => {
+  assert.match(textOverlay, /const hasSavedLayout/);
+  assert.match(textOverlay, /if \(hasSavedLayout\)/);
+  assert.doesNotMatch(textOverlay, /catch \{\s*try \{/);
+  assert.match(textOverlay, /catch \{\s*return null;/);
 });
 
 test("uses protected custom controls in the Hook review instead of browser video controls", () => {

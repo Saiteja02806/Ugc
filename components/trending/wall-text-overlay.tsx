@@ -7,6 +7,7 @@ import type {
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import {
   getWallTextFontSize,
+  WALL_TEXT_FONT_WEIGHT,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_OUTLINE_WIDTH,
 } from "@/lib/trending/wall-text-visual-style";
@@ -45,7 +46,7 @@ export function WallTextOverlay({
           fontFamily:
             "var(--font-wall-text), Inter, Arial, 'Helvetica Neue', sans-serif",
           fontSize: `${fontSize / 10.8}cqw`,
-          fontWeight: 700,
+          fontWeight: WALL_TEXT_FONT_WEIGHT,
           letterSpacing: `${-0.2 / 10.8}cqw`,
           paintOrder: "stroke fill",
           textShadow:

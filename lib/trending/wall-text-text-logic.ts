@@ -9,6 +9,10 @@ import {
   type WallTextSegmentRole,
 } from "./wall-text-types.ts";
 import type { WebsiteBusinessAnalysis } from "../website-analysis/schema.ts";
+import {
+  MAX_WALL_TEXT_VIDEO_DURATION_SECONDS,
+  MIN_WALL_TEXT_VIDEO_DURATION_SECONDS,
+} from "./wall-text-feed-logic.ts";
 
 const MAX_WALL_TEXT_IDEA_COUNT = 50;
 export const WALL_TEXT_PREFERRED_MIN_WORDS = 18;
@@ -263,8 +267,8 @@ export function normalizeWallTextGenerationCandidates(
         candidate.candidateIndex < 0 ||
         !Number.isInteger(candidate.candidateIndex) ||
         !Number.isFinite(candidate.durationSeconds) ||
-        candidate.durationSeconds <= 0 ||
-        candidate.durationSeconds > 60,
+        candidate.durationSeconds < MIN_WALL_TEXT_VIDEO_DURATION_SECONDS ||
+        candidate.durationSeconds > MAX_WALL_TEXT_VIDEO_DURATION_SECONDS,
     ) ||
     new Set(normalized.map((candidate) => candidate.candidateIndex)).size !==
       normalized.length
@@ -344,23 +348,25 @@ export function validateWallTextContent(
 ) {
   const wordCount = countWords(content.fullText);
   if (content.layoutVersion === "wall-text-overlay-v6") {
-    const maximum = Math.min(
-      MAX_CURRENT_WALL_TEXT_WORDS,
-      Math.max(MIN_SHORT_WALL_TEXT_WORDS, Math.floor(durationSeconds * 4.3)),
-    );
     const blocks = content.finalLayout?.blocks;
     const lines = blocks?.flatMap((block) => block.lines) ?? [];
+    const authoritativeText = lines.join(" ");
 
-    if (wordCount < MIN_SHORT_WALL_TEXT_WORDS || wordCount > maximum) {
+    if (
+      wordCount < MIN_SHORT_WALL_TEXT_WORDS ||
+      wordCount > MAX_CURRENT_WALL_TEXT_WORDS
+    ) {
       throw new Error(
-        `Wall-of-text copy must contain ${MIN_SHORT_WALL_TEXT_WORDS}-${maximum} words for a ${durationSeconds.toFixed(1)}-second clip.`,
+        `Wall-of-text copy must contain ${MIN_SHORT_WALL_TEXT_WORDS}-${MAX_CURRENT_WALL_TEXT_WORDS} words.`,
       );
     }
     if (
       content.sourceContent?.kind !== "text" ||
       content.finalLayout?.version !== "wall-text-final-layout-v2" ||
       blocks?.length !== 1 ||
-      blocks[0]?.role !== "text"
+      blocks[0]?.role !== "text" ||
+      normalizeText(content.sourceContent.text) !== normalizeText(content.fullText) ||
+      normalizeText(authoritativeText) !== normalizeText(content.fullText)
     ) {
       throw new Error("Wall-of-text copy is missing its plain-text authoritative layout.");
     }
@@ -382,12 +388,6 @@ export function validateWallTextContent(
     }
     if (!/[.!?]["')]?$/u.test(content.fullText)) {
       throw new Error("Wall-of-text copy must end as a complete sentence.");
-    }
-    const readingSeconds = estimateWallTextReadingSeconds(content.fullText, 1);
-    if (readingSeconds > durationSeconds + 0.15) {
-      throw new Error(
-        `Wall-of-text copy needs about ${readingSeconds.toFixed(1)} seconds to read, longer than the ${durationSeconds.toFixed(1)}-second clip.`,
-      );
     }
     return;
   }

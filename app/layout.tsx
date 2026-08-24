@@ -45,10 +45,10 @@ const geistEditOverlay = localFont({
 });
 
 const interWallText = localFont({
-  src: "../node_modules/@fontsource/inter/files/inter-latin-700-normal.woff2",
+  src: "../node_modules/@fontsource/inter/files/inter-latin-600-normal.woff2",
   display: "swap",
   variable: "--font-wall-text",
-  weight: "700",
+  weight: "600",
 });
 
 export const metadata: Metadata = {

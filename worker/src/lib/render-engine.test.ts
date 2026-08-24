@@ -10,6 +10,7 @@ import {
   buildScheduleCombinationSegmentArgs,
   buildPreparedTextOverlaySvg,
   ensureEditOverlayFontRegistered,
+  ensureWallTextFontsRegistered,
   validateRenderedVideoProbe,
 } from "./render-engine.js";
 import {
@@ -190,7 +191,7 @@ test("rasterizes a reference-style three-line Hook with an emoji", async () => {
   assert.ok(png.length > 1_000);
 });
 
-test("renders six-second Wall copy with Inter Bold and no background box", () => {
+test("rasterizes six-second Wall copy with Inter SemiBold and no background box", async () => {
   const content = {
     fullText:
       "I logged every meal but skipped drinks oil and small bites. Those missing details quietly changed the final total.",
@@ -243,6 +244,13 @@ test("renders six-second Wall copy with Inter Bold and no background box", () =>
   assert.match(svg, /font-family="Inter, Arial/);
   assert.match(svg, /stroke-width="4"/);
   assert.equal(svg.match(/<text /g)?.length, 6);
+
+  await ensureWallTextFontsRegistered();
+  const png = await sharp(Buffer.from(svg)).png().toBuffer();
+  const metadata = await sharp(png).metadata();
+  assert.equal(metadata.width, 1080);
+  assert.equal(metadata.height, 1920);
+  assert.ok(png.length > 1_000);
 });
 
 test("renders Wall text with the selected library audio and ignores source audio", () => {

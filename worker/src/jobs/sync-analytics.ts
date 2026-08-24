@@ -29,7 +29,12 @@ function assertValidInput(job: BackgroundJobRow) {
   if (
     !job.user_id ||
     input?.userId !== job.user_id ||
-    !["instagram_content", "instagram_insights", "tiktok_videos"].includes(
+    ![
+      "instagram_attribution",
+      "instagram_content",
+      "instagram_insights",
+      "tiktok_videos",
+    ].includes(
       typeof input.operation === "string" ? input.operation : "",
     )
   ) {

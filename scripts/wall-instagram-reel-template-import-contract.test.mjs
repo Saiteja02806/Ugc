@@ -70,6 +70,10 @@ test("normalizes audio once and never loops a locked soundtrack", () => {
   assert.doesNotMatch(importerSource, /audioFitMode:\s*"loop"/);
 });
 
+test("rejects Instagram Wall source videos shorter than six seconds", () => {
+  assert.match(importerSource, /video\.durationSeconds < 6/);
+});
+
 test("is dry-run first, supports local preparation, and gates remote writes", () => {
   assert.match(importerSource, /const prepare = Boolean\(args\.prepare\)/);
   assert.match(importerSource, /if \(execute && !args\.yes\)/);

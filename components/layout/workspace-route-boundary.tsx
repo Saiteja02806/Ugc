@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { AppShell } from "@/components/layout/app-shell";
-import { ViralAccessGuard } from "@/components/viral/viral-access-guard";
 import { getWorkspaceRouteConfig } from "@/lib/navigation/workspace-route";
 
 export function WorkspaceRouteBoundary({ children }: { children: ReactNode }) {
@@ -16,13 +15,6 @@ export function WorkspaceRouteBoundary({ children }: { children: ReactNode }) {
     return children;
   }
 
-  const guardedContent =
-    route.access === "reviewer" ? (
-      <ViralAccessGuard>{children}</ViralAccessGuard>
-    ) : (
-      children
-    );
-
   return (
     <AuthGuard
       requireAuthentication={route.access !== "none"}
@@ -32,7 +24,7 @@ export function WorkspaceRouteBoundary({ children }: { children: ReactNode }) {
         activeKey={route.activeKey}
         defaultSidebarCollapsed={route.defaultSidebarCollapsed}
       >
-        {guardedContent}
+        {children}
       </AppShell>
     </AuthGuard>
   );

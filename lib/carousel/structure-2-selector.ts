@@ -22,7 +22,6 @@ export type CarouselStructure2RecentHistory = {
   centralProblem: string | null;
   ctaAngle: string | null;
   hookIdea: string | null;
-  productMechanism: string | null;
   storyAngle: string | null;
   storyFormatId: CarouselStructure2FormatId | null;
   summary: string | null;
@@ -216,7 +215,6 @@ function normalizeHistory(
     centralProblem: cleanOptional(item.centralProblem, 180),
     ctaAngle: cleanOptional(item.ctaAngle, 180),
     hookIdea: cleanOptional(item.hookIdea, 180),
-    productMechanism: cleanOptional(item.productMechanism, 180),
     storyAngle: cleanOptional(item.storyAngle, 180),
     storyFormatId: resolveCarouselStructure2FormatId(item.storyFormatId),
     summary: cleanOptional(item.summary, 360),

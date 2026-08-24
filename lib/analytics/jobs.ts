@@ -3,12 +3,14 @@ import "server-only";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 
 export type AnalyticsSyncOperation =
+  | "instagram_attribution"
   | "instagram_content"
   | "instagram_insights"
   | "tiktok_videos";
 
 export async function enqueueAnalyticsSyncJob(params: {
   days?: 7 | 30 | 90;
+  force?: boolean;
   idempotencyKey?: string | null;
   operation: AnalyticsSyncOperation;
   userId: string;
@@ -23,6 +25,7 @@ export async function enqueueAnalyticsSyncJob(params: {
     idempotencyKey: `analytics-sync:${scope}:${params.idempotencyKey || timeBucket}`,
     input: {
       ...(params.days ? { days: params.days } : {}),
+      ...(params.force ? { force: true } : {}),
       operation: params.operation,
       userId: params.userId,
     },

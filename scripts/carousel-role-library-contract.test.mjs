@@ -53,6 +53,23 @@ test("part folders preserve their batch while role-bucket version suffixes norma
   }
 });
 
+test("nested part-2 human-hook sources are first-slide hook assets", () => {
+  for (const [relativePath, category] of [
+    ["gym_part2/human_hook/new.png", "gym"],
+    ["productivity_humanhookpart-2/human/new.jpg", "productivity"],
+  ]) {
+    const classified = classifyCarouselRoleSourcePath(
+      sourceRoot,
+      path.join(sourceRoot, ...relativePath.split("/")),
+    );
+
+    assert.equal(classified.status, "included");
+    assert.equal(classified.category, category);
+    assert.equal(classified.role, "hook");
+    assert.equal(classified.sourceBatch, "part-2");
+  }
+});
+
 test("folder aliases normalize and marketing_static is excluded", () => {
   assert.equal(
     classifyCarouselRoleSourcePath(

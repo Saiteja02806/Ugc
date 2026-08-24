@@ -1,6 +1,6 @@
 {
-  "version": "carousel-structure-2-formats-v1",
-  "backboneVersion": "carousel-structure-2-story-backbone-v1",
+  "version": "carousel-structure-2-formats-v2-flexible-flow",
+  "backboneVersion": "carousel-structure-2-story-reference-v2",
   "formats": [
     {
       "id": "wrong_belief",
@@ -10,6 +10,11 @@
       "name": "Wrong Belief",
       "purpose": "Reveal how a reasonable-sounding belief caused a recognizable behavior and made the problem worse.",
       "selectionWeight": 1,
+      "allowedCtaPositions": [5],
+      "exampleFlows": [
+        ["recognition", "failure_scene", "reframe", "product_turning_point", "proof_reflection_cta"],
+        ["recognition", "reframe", "failure_scene", "product_turning_point", "proof_reflection_cta"]
+      ],
       "generationRules": [
         "Open with a believable first-person false belief, not a generic lesson.",
         "Show the behavior caused by that belief before correcting it.",
@@ -76,6 +81,11 @@
       "name": "Perfect Plan Breaks",
       "purpose": "Show an ideal plan colliding with ordinary life before the product adapts the plan to reality.",
       "selectionWeight": 1,
+      "allowedCtaPositions": [4],
+      "exampleFlows": [
+        ["recognition", "failure_scene", "reframe", "proof_reflection_cta", "product_turning_point"],
+        ["recognition", "failure_scene", "proof_reflection_cta", "reframe", "product_turning_point"]
+      ],
       "generationRules": [
         "Use at least one ordinary time or routine marker in the failure scene.",
         "Do not blame the narrator for lacking discipline.",
@@ -142,6 +152,11 @@
       "name": "I Stopped",
       "purpose": "Lead with an ordinary behavior the narrator stopped and replace it with a smaller, concrete rule.",
       "selectionWeight": 1,
+      "allowedCtaPositions": [3],
+      "exampleFlows": [
+        ["recognition", "failure_scene", "proof_reflection_cta", "product_turning_point", "reframe"],
+        ["recognition", "reframe", "proof_reflection_cta", "failure_scene", "product_turning_point"]
+      ],
       "generationRules": [
         "The stopped behavior must be ordinary and recognizable.",
         "The replacement must be a specific behavior, not an abstract benefit.",
@@ -208,6 +223,11 @@
       "name": "I Was Terrible At",
       "purpose": "Use mild vulnerability to make a normal problem visible without turning the narrator into a spokesperson.",
       "selectionWeight": 1,
+      "allowedCtaPositions": [5],
+      "exampleFlows": [
+        ["recognition", "failure_scene", "reframe", "product_turning_point", "proof_reflection_cta"],
+        ["recognition", "failure_scene", "product_turning_point", "reframe", "proof_reflection_cta"]
+      ],
       "generationRules": [
         "Keep the vulnerability ordinary and believable rather than dramatic.",
         "Show what being terrible at the task looked like in real behavior.",
@@ -274,6 +294,11 @@
       "name": "Result Without the Expected Sacrifice",
       "purpose": "Lead with a desired result achieved without the method or sacrifice people normally expect.",
       "selectionWeight": 1,
+      "allowedCtaPositions": [2],
+      "exampleFlows": [
+        ["recognition", "proof_reflection_cta", "failure_scene", "reframe", "product_turning_point"],
+        ["recognition", "proof_reflection_cta", "reframe", "failure_scene", "product_turning_point"]
+      ],
       "generationRules": [
         "The opening result must be supportable and modest.",
         "The expected sacrifice must be plausible for the stated audience.",
@@ -340,6 +365,11 @@
       "name": "Identity Transformation",
       "purpose": "Contrast an undesirable old identity with a concrete new behavior without exaggerating the transformation.",
       "selectionWeight": 1,
+      "allowedCtaPositions": [4],
+      "exampleFlows": [
+        ["recognition", "failure_scene", "reframe", "proof_reflection_cta", "product_turning_point"],
+        ["recognition", "reframe", "failure_scene", "proof_reflection_cta", "product_turning_point"]
+      ],
       "generationRules": [
         "Anchor both identities in observable behavior rather than labels alone.",
         "Do not pretend the product transformed the narrator instantly.",
@@ -406,6 +436,11 @@
       "name": "New Rule",
       "purpose": "Build the story around one exact behavioral rule that replaces recurring friction.",
       "selectionWeight": 1,
+      "allowedCtaPositions": [3],
+      "exampleFlows": [
+        ["recognition", "reframe", "proof_reflection_cta", "failure_scene", "product_turning_point"],
+        ["recognition", "failure_scene", "proof_reflection_cta", "reframe", "product_turning_point"]
+      ],
       "generationRules": [
         "The new rule must be simple enough to repeat in one sentence.",
         "Show the old behavior before explaining why the rule works.",
@@ -472,6 +507,11 @@
       "name": "Wrong Villain / Turns Out",
       "purpose": "Show why the obvious thing the narrator blamed was not the actual cause of the problem.",
       "selectionWeight": 1,
+      "allowedCtaPositions": [5],
+      "exampleFlows": [
+        ["recognition", "failure_scene", "reframe", "product_turning_point", "proof_reflection_cta"],
+        ["recognition", "failure_scene", "product_turning_point", "reframe", "proof_reflection_cta"]
+      ],
       "generationRules": [
         "Name one plausible surface problem the narrator blamed.",
         "The reframe must identify a different, specific underlying cause.",

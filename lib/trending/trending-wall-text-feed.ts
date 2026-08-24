@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import {
   createAuthoritativeWallTextContent,
-  deriveWallTextReadabilityBudget,
+  deriveWallTextSpatialBudget,
 } from "@/lib/trending/wall-layout-engine";
 import {
   getBackfillWallTextFormatId,
@@ -15,6 +15,7 @@ import {
   selectWallTextFormatAssignments,
   WALL_TEXT_FORMAT_SELECTOR_VERSION,
 } from "@/lib/trending/wall-format-selector";
+import { WALL_TEXT_PROMPT_VERSION } from "@/lib/trending/wall-prompt";
 import {
   generateBusinessTrendingWallTextIdeas,
   getTrendingWallTextModelName,
@@ -389,8 +390,7 @@ export async function prepareTrendingWallTextIdeas(
               selectorVersion: WALL_TEXT_FORMAT_SELECTOR_VERSION,
             }
           : ordinaryAssignmentByIndex.get(candidate.candidateIndex)!;
-      const budget = await deriveWallTextReadabilityBudget({
-        durationSeconds: candidate.durationSeconds,
+      const budget = await deriveWallTextSpatialBudget({
         formatId: assignment.assignedFormatId,
         layout: candidate.layout,
       });
@@ -455,7 +455,7 @@ export async function prepareTrendingWallTextIdeas(
     businessProfileVersion: profile.profileVersion,
     formatLibraryVersion: WALL_TEXT_FORMAT_REGISTRY_VERSION,
     generatorVersion: WALL_TEXT_GENERATOR_VERSION,
-    promptVersion: "wall-text-writer-prompt-v7",
+    promptVersion: WALL_TEXT_PROMPT_VERSION,
     requestHash,
     requestKey,
     selectorVersion: WALL_TEXT_FORMAT_SELECTOR_VERSION,

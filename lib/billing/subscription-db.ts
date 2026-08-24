@@ -6,6 +6,7 @@ import {
   getSubscriptionEntitlementPlanKey,
   MAX_BILLING_USAGE_ATTEMPTS,
   resolveDailyContentPieces,
+  resolveInstagramAccountLimit,
   type BillingPlanKey,
 } from "@/lib/billing/policy";
 
@@ -151,12 +152,7 @@ export function resolveSubscriptionEntitlements(
         : paidPlan === "starter"
           ? "Starter"
           : "Free",
-    instagramAccounts:
-      isActive && paidPlan === "growth"
-        ? 3
-        : isActive && paidPlan === "starter"
-          ? 1
-          : 0,
+    instagramAccounts: resolveInstagramAccountLimit(paidPlan, isActive),
     isActive: isActive && paidPlan !== "free",
     planKey: paidPlan,
     sharedMonthlyCredits,

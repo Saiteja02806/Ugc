@@ -3,9 +3,11 @@
 import {
   AlertCircle,
   ArrowUpRight,
+  Bug,
   CheckCircle2,
   CreditCard,
   Images,
+  Lightbulb,
   LoaderCircle,
   LogOut,
   Mail,
@@ -34,6 +36,7 @@ import { Separator } from "@/components/ui/separator";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { InstagramAccountManager } from "@/components/settings/instagram-account-manager";
 import { AppScreenshotsSettings } from "@/components/settings/app-screenshots-settings";
+import { SupportFeedbackSettings } from "@/components/settings/support-feedback-settings";
 import { useTheme } from "@/components/providers/theme-provider";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { useAuth } from "@/contexts/auth-context";
@@ -65,6 +68,16 @@ const SETTINGS_SECTIONS = [
     icon: Palette,
     id: "preferences",
     label: "Preferences",
+  },
+  {
+    icon: Bug,
+    id: "raised-ticket",
+    label: "Raised Ticket",
+  },
+  {
+    icon: Lightbulb,
+    id: "request-feature",
+    label: "Request Feature",
   },
   {
     icon: ShieldCheck,
@@ -447,7 +460,7 @@ export function SettingsWorkspace() {
                   <p className="mt-1 text-lg font-black text-foreground-strong font-mono">
                     {subscription?.connectedInstagramAccounts ?? 0}{" "}
                     <span className="text-xs font-normal text-muted">
-                      / {subscription?.instagramAccounts ?? 0} allowed
+                      / {subscription?.instagramAccounts ?? 1} allowed
                     </span>
                   </p>
                   <p className="mt-1 text-[11px] text-muted">Up to 3 on Growth</p>
@@ -553,6 +566,28 @@ export function SettingsWorkspace() {
                   : `Use ${theme === "light" ? "dark" : "light"} theme`}
               </Button>
             </div>
+          </SettingsSection>
+          ) : null}
+
+          {activeSection === "raised-ticket" ? (
+          <SettingsSection
+            id="raised-ticket"
+            description="Explain an issue so the UGC Pilot team can investigate it."
+            icon={<Bug className="size-5" aria-hidden="true" />}
+            title="Raised Ticket"
+          >
+            <SupportFeedbackSettings type="support_ticket" showOwnerInbox />
+          </SettingsSection>
+          ) : null}
+
+          {activeSection === "request-feature" ? (
+          <SettingsSection
+            id="request-feature"
+            description="Describe a feature you want UGC Pilot to build."
+            icon={<Lightbulb className="size-5" aria-hidden="true" />}
+            title="Request Feature"
+          >
+            <SupportFeedbackSettings type="feature_request" />
           </SettingsSection>
           ) : null}
 

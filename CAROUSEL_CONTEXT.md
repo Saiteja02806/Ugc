@@ -578,11 +578,11 @@ then existing Pexels/object-key identity.
 
 ### 2026-08-23 complete daily-pack delivery and Free allowance
 
-Free receives exactly 10 combined posts per user-local day: 3 Slideshows,
-4 Wall-of-text posts, and 3 Hooks. This is a fixed 30% / 40% / 30% product
-bundle rather than the paid-plan default mix. The Free content-mix endpoint is
-read-only and must not imply that a saved percentage can change this bundle.
-Starter remains 20 posts and Growth remains 50 posts.
+Free receives exactly 10 combined posts per user-local day and defaults to
+3 Slideshows, 4 Wall-of-text posts, and 3 Hooks until the user saves another
+valid mix. Free, Starter, and Growth may all adjust the percentage balance;
+Wall-of-text and Hook remain capped at 50%, and all three percentages must total
+100%. Starter remains 20 posts and Growth remains 50 posts.
 
 Migration `20260823130857_raise_free_trending_allowance.sql` raises the
 persisted Free entitlement to 10. If a smaller feed was already created for
@@ -634,13 +634,12 @@ Hooks are part of the daily entitlement and are enabled when
 `TRENDING_HOOK_VIDEOS_ENABLED` is true or absent. An explicit false value is an
 emergency kill switch; it is not the normal production configuration.
 
-There is currently no Trending-wide Adjust button mounted in the workspace.
-The authenticated content-mix API remains available for Starter and Growth,
-and the header control on an active card is Edit. Inside the accepted Hook
-composer, “Adjust opening clip” is the trim section for changing only the
+The Trending-wide Adjust button opens the authenticated content-mix API for
+Free, Starter, and Growth. The header control on an active card remains Edit.
+Inside the accepted Hook composer, “Adjust opening clip” changes only the
 opening video's start and end times; it does not change the daily content mix.
-Saving a paid content-mix preference never mutates an already-created daily
-pack, including its unbound positions. If today's pack exists, the preference
+Saving any content-mix preference never mutates an already-created daily pack,
+including its unbound positions. If today's pack exists, the preference
 starts with the next local-day pack; if no pack exists yet, it is used to create
 today's pack. This immutable boundary avoids discarding or duplicating work
 while an atomic pack is still preparing.
@@ -732,8 +731,8 @@ preparation fills only still-unbound slots; it is started during onboarding,
 the daily sweep, an Adjust save, or safe GET recovery, and it must never clear
 already visible items.
 
-The paid content-mix API stores preferences separately. Once a daily pack
-exists, saving a new mix does not replan any of its positions, including
+The content-mix API stores owner-scoped preferences for every plan separately.
+Once a daily pack exists, saving a new mix does not replan any of its positions, including
 `planned` or `failed` unbound slots. The preference applies on the next local
 day. A saved 0% for a format does not hide that format's posts that are already
 reserved today.
@@ -2829,12 +2828,36 @@ Name: **Verify v26 and replace the stale production assignment**
   Hook and Wall-of-Text previews use a compact responsive 9:16 width capped at
   230px. Both formats remain constrained by the available dynamic viewport
   height so decision controls stay visible on short screens.
+- Slideshow media covers the complete fixed 4:5 review frame. A source whose
+  aspect ratio does not match the frame may crop only its excess edges instead
+  of exposing empty left or right gutters; the card dimensions remain unchanged.
 - The format label is attached directly above the active card and uses a compact,
   flat treatment. Reject and Accept stay centered immediately below the active
   creative and do not use ambient elevation.
 - The format label uses a neutral 22px surface with 10px medium-weight copy. Only
   its small icon carries the format identity color; the pill itself has no glow,
   ring, shadow, blur, or format-colored background.
+- The active creative's own responsive frame is the geometric center of the
+  review area. The format pill and decision controls are positioned outside that
+  frame, so neither changes the card's horizontal or vertical center.
+- The pill stays visible above the complete prepared stack in reserved space.
+  It clears ordinary same-height stacks by 40px and clears a taller 9:16
+  background item behind an active 4:5 Slideshow by 72px, preventing the label
+  from covering any media or overlay copy.
+- The deck reserves 94px above the active frame for the pill/stack clearance
+  and 107px below it for Skip/Accept. These rails keep both control groups out
+  of the Trending subtitle and neighboring layout even at constrained desktop
+  heights.
+- Responsive card sizing subtracts the 348px page/deck chrome budget before
+  applying each format ratio. The normal desktop caps remain 270px for
+  Slideshow and 230px for 9:16 video, while shorter viewports reduce the media
+  instead of forcing the controls off-screen.
+- Keyboard focus is drawn around the active card-sized frame rather than a
+  full-width deck container. The Trending section retains horizontal clipping
+  for swipe exits without exposing a large empty focus outline.
+- Hook and Wall-of-Text share one authoritative responsive 9:16 frame class.
+  Their outer articles therefore have identical width and height at every
+  breakpoint; only their media and overlay content differ.
 - Swipe, keyboard, Edit, decision outbox, Carousel slide navigation, and feed
   ordering behavior are unchanged.
 - The shared `creative-reject`, `creative-accept`, and `creative-edit` button
@@ -2850,8 +2873,8 @@ Name: **Verify v26 and replace the stale production assignment**
   that format is represented: Slideshows use the existing primary orange,
   Wall-of-Text uses the existing product purple, and Hooks use the existing info
   blue. The composition segments, icon badges, percentages, slider progress,
-  and slider thumbs use that same mapping. Disabled Free-plan sliders remain
-  visibly read-only without losing their format identity.
+  and slider thumbs use that same mapping. The composition ribbon and slider
+  tracks use a slimmer six-pixel treatment for a quieter premium hierarchy.
 
 ## 2026-08-23 Carousel AI Copy Preservation and Model Pin
 
@@ -3025,12 +3048,31 @@ Name: **Verify v26 and replace the stale production assignment**
   respecting the existing backend caps. Changes to either video format trade
   against Slideshow; changing Slideshow proportionally redistributes the two
   capped video formats.
-- Free users can inspect their fixed 30/40/30 daily mix but cannot mutate it.
-  The dialog explains the entitlement and links to plans instead of hiding the
-  Adjust entry point.
+- Free, Starter/legacy Pro, and Growth users can all save a valid daily mix.
+  Free retains 30/40/30 only as its no-preference default; a saved Free
+  preference is authoritative for a newly created daily pack.
 - Saving does not rewrite a completed daily pack. The existing backend contract
   applies the preference today only when no daily feed exists; otherwise it
   starts with the next local day.
+
+## 2026-08-24 All-Plan Trending Mix Adjustment
+
+- Every authenticated plan may adjust the daily percentage split between
+  Slideshows, Wall-of-Text, and Hooks. This includes Free, Starter (the legacy
+  `pro` key), and Growth.
+- Free's ten-post allowance is unchanged. A Free user without a saved
+  preference still receives the 30% / 40% / 30% default; after a valid save,
+  that owner-scoped preference controls the next eligible daily pack.
+- The existing integrity rules are unchanged: all percentages total 100%,
+  Wall-of-Text and Hook are each capped at 50%, and an already-created daily
+  pack remains immutable. A save applies today only when no feed exists;
+  otherwise it starts on the next local day.
+- The Adjust dialog uses a restrained flat control-panel treatment with a 6px
+  composition ribbon, 6px slider tracks, and 14px thumbs. Format identity
+  colors and accessible keyboard/focus behavior remain intact.
+- This is an application and product-rule change only. The existing
+  service-role content-mix preference table and RPC already support every
+  owner, so no database migration or worker change is required.
 
 ## 2026-08-24 Sectioned Settings Navigation
 

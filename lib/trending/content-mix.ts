@@ -22,6 +22,12 @@ export type TrendingContentMix = Record<TrendingFeedFormat, number>;
 
 export type TrendingContentAllocation = Record<TrendingFeedFormat, number>;
 
+export type TrendingContentMixPreference = {
+  mix: TrendingContentMix;
+  preferenceVersion: number;
+  updatedAt: string | null;
+};
+
 const FORMATS = [
   "carousel",
   "wall_text",
@@ -39,6 +45,23 @@ export function validateTrendingContentMix(mix: TrendingContentMix) {
       mix[format] <= TRENDING_CONTENT_MIX_LIMITS[format]
     )
   );
+}
+
+export function resolveTrendingContentMixPreference(params: {
+  planKey: string;
+  preference: TrendingContentMixPreference;
+}): TrendingContentMixPreference {
+  if (params.planKey === "free" && params.preference.updatedAt === null) {
+    return {
+      ...params.preference,
+      mix: { ...FREE_TRENDING_CONTENT_MIX },
+    };
+  }
+
+  return {
+    ...params.preference,
+    mix: { ...params.preference.mix },
+  };
 }
 
 export function allocateTrendingContent(params: {

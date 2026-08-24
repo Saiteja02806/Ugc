@@ -300,9 +300,13 @@ const SWIPE_THRESHOLD_PX = 90;
 const SWIPE_EXIT_DURATION_MS = 220;
 const MAX_ROTATION_DEGREES = 5;
 const CAROUSEL_REVIEW_CARD_WIDTH_CLASS =
-  "w-[min(78vw,270px,calc((100dvh-238px)*0.8))]";
+  "w-[min(78vw,270px,calc((100dvh-348px)*0.8))]";
 const VERTICAL_REVIEW_CARD_WIDTH_CLASS =
-  "w-[min(76vw,230px,calc((100dvh-238px)*0.5625))]";
+  "w-[min(76vw,230px,calc((100dvh-348px)*0.5625))]";
+const CAROUSEL_REVIEW_CARD_FRAME_CLASS =
+  `${CAROUSEL_REVIEW_CARD_WIDTH_CLASS} aspect-[4/5]`;
+const VERTICAL_REVIEW_CARD_FRAME_CLASS =
+  `${VERTICAL_REVIEW_CARD_WIDTH_CLASS} aspect-[9/16]`;
 const DECK_CARD_STYLES: Record<
   DeckDepth,
   { opacity: number; scale: number; translateY: number; zIndex: number }
@@ -1999,7 +2003,7 @@ function TrendingDeck({
   return (
     <section
       aria-label="Trending content ideas"
-      className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center"
+      className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-x-clip overflow-y-visible pb-[107px] pt-[94px]"
     >
       {activeCandidate && headerActionsRoot
         ? createPortal(
@@ -2013,19 +2017,27 @@ function TrendingDeck({
       {activeCandidate ? (
         <>
           <div
+            data-trending-review-frame
             role="group"
             aria-roledescription="Trending content deck"
             aria-busy={Boolean(exitDirection)}
             tabIndex={0}
             aria-label={`Trending content deck. Showing idea ${activeItemIndex + 1} of ${visibleCandidates.length}. Press left arrow to reject or right arrow to accept this creative.`}
             onKeyDown={handleDeckKeyDown}
-            className="relative isolate mx-auto flex w-full max-w-3xl flex-col items-center overflow-x-clip overflow-y-visible rounded-[20px] px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className={cn(
+              "relative isolate mx-auto flex items-center justify-center overflow-visible rounded-[20px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              getTrendingReviewCardFrameClass(activeCandidate.format),
+            )}
           >
             <TrendingFormatPill
               candidate={activeCandidate}
               format={activeCandidate.format}
+              positionClassName={getTrendingFormatPillPositionClass(
+                activeCandidate.format,
+                deckSlots,
+              )}
             />
-            <div className="relative flex w-full items-center justify-center">
+            <div className="relative flex size-full items-center justify-center">
               {[...deckSlots].reverse().map((slot) => (
                 <TrendingDeckCard
                   key={slot.candidate.item.id}
@@ -2049,10 +2061,7 @@ function TrendingDeck({
               ))}
               <div
                 aria-hidden="true"
-                className={cn(
-                  "pointer-events-none absolute inset-y-0 z-20",
-                  getTrendingReviewCardWidthClass(activeCandidate.format),
-                )}
+                className="pointer-events-none absolute inset-0 z-20"
               >
                 <div
                   className="absolute left-3 top-3 rounded-full border border-success/70 bg-success/90 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-success-foreground"
@@ -2078,13 +2087,18 @@ function TrendingDeck({
                 </div>
               </div>
             </div>
+            <div className="absolute left-1/2 top-full z-40 w-max -translate-x-1/2">
+              <CreativeDecisionActions
+                acceptDisabled={
+                  activeHookPreviewStatus !== null &&
+                  activeHookPreviewStatus !== "ready"
+                }
+                disabled={Boolean(exitDirection)}
+                onAccept={() => requestCreativeDecision("accepted")}
+                onReject={() => requestCreativeDecision("rejected")}
+              />
+            </div>
           </div>
-          <CreativeDecisionActions
-            acceptDisabled={activeHookPreviewStatus !== null && activeHookPreviewStatus !== "ready"}
-            disabled={Boolean(exitDirection)}
-            onAccept={() => requestCreativeDecision("accepted")}
-            onReject={() => requestCreativeDecision("rejected")}
-          />
           <span className="sr-only" aria-live="polite">
             Showing {title}, idea {activeItemIndex + 1} of {visibleCandidates.length}
           </span>
@@ -2421,9 +2435,11 @@ function CarouselActionToast({ notice }: { notice: CarouselActionNotice }) {
 function TrendingFormatPill({
   candidate,
   format,
+  positionClassName,
 }: {
   candidate?: TrendingCandidate | null;
   format?: TrendingCandidate["format"];
+  positionClassName: string;
 }) {
   const activeFormat = candidate?.format ?? format ?? "carousel";
   const isHook = activeFormat === "hook_video";
@@ -2446,13 +2462,11 @@ function TrendingFormatPill({
       ? "text-accent-purple"
       : "text-primary";
 
-  const cardWidthClass = getTrendingReviewCardWidthClass(activeFormat);
-
   return (
     <div
       className={cn(
-        "pointer-events-none z-10 mb-1.5 flex items-center justify-start",
-        cardWidthClass,
+        "pointer-events-none absolute left-0 z-40 flex w-full items-center justify-start",
+        positionClassName,
       )}
     >
       <span
@@ -2469,12 +2483,28 @@ function TrendingFormatPill({
   );
 }
 
-function getTrendingReviewCardWidthClass(
+function getTrendingReviewCardFrameClass(
   format: TrendingCandidate["format"],
 ) {
   return format === "carousel"
-    ? CAROUSEL_REVIEW_CARD_WIDTH_CLASS
-    : VERTICAL_REVIEW_CARD_WIDTH_CLASS;
+    ? CAROUSEL_REVIEW_CARD_FRAME_CLASS
+    : VERTICAL_REVIEW_CARD_FRAME_CLASS;
+}
+
+function getTrendingFormatPillPositionClass(
+  activeFormat: TrendingCandidate["format"],
+  deckSlots: TrendingDeckSlot[],
+) {
+  const hasTallerVerticalBackground =
+    activeFormat === "carousel" &&
+    deckSlots.some(
+      ({ candidate, depth }) =>
+        depth > 0 && candidate.format !== "carousel",
+    );
+
+  return hasTallerVerticalBackground
+    ? "bottom-[calc(100%+72px)]"
+    : "bottom-[calc(100%+40px)]";
 }
 
 type TrendingDeckCardProps = {
@@ -2703,10 +2733,11 @@ function TrendingHookDeckCard({
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
+        data-trending-vertical-frame
         aria-label={`${creative.text.value}, Hook idea ${itemIndex + 1} of ${itemCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
-          VERTICAL_REVIEW_CARD_WIDTH_CLASS,
+          VERTICAL_REVIEW_CARD_FRAME_CLASS,
           "origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
@@ -2854,10 +2885,11 @@ function TrendingWallTextDeckCard({
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
+        data-trending-vertical-frame
         aria-label={`${creative.title}, Wall-of-text idea ${itemIndex + 1} of ${itemCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
-          VERTICAL_REVIEW_CARD_WIDTH_CLASS,
+          VERTICAL_REVIEW_CARD_FRAME_CLASS,
           "origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
@@ -2879,7 +2911,7 @@ function TrendingWallTextDeckCard({
             <span>Edited</span>
           </div>
         ) : null}
-        <div className="relative aspect-[9/16] overflow-hidden rounded-[20px] bg-[#171717] ring-1 ring-white/10">
+        <div className="relative size-full overflow-hidden rounded-[20px] bg-[#171717] ring-1 ring-white/10">
           <video
             ref={videoRef}
             src={previewUrl}
@@ -2995,7 +3027,7 @@ function CarouselDeckCard({
         aria-label={`${title}, idea ${carouselIndex + 1} of ${carouselCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
-          CAROUSEL_REVIEW_CARD_WIDTH_CLASS,
+          CAROUSEL_REVIEW_CARD_FRAME_CLASS,
           "origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
@@ -3017,7 +3049,7 @@ function CarouselDeckCard({
             <span>Edited</span>
           </div>
         ) : null}
-        <div className="relative aspect-[4/5] overflow-hidden rounded-[20px] bg-card ring-1 ring-black/5">
+        <div className="relative size-full overflow-hidden rounded-[20px] bg-card ring-1 ring-black/5">
           {/* Rendered Carousel slides are immutable Cloud Storage creative assets. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -3025,7 +3057,7 @@ function CarouselDeckCard({
             alt={isActive ? `${title}, slide ${activeSlide.slideNumber}` : ""}
             aria-hidden={isActive ? undefined : "true"}
             draggable={false}
-            className="size-full pointer-events-none object-contain"
+            className="size-full pointer-events-none object-cover"
           />
 
           {isActive && candidate.slides.length > 1 ? (

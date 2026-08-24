@@ -1315,8 +1315,11 @@ function InstagramScheduleAccessDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="pr-8">
-          <span className="mb-2 inline-flex size-11 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] text-white shadow-[0_10px_24px_rgb(214_41_118_/_0.18)]">
-            <SocialPlatformIcon className="size-5" platform="instagram" />
+          <span className="mb-2 inline-flex size-11 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] shadow-[0_10px_24px_rgb(214_41_118_/_0.18)]">
+            <SocialPlatformIcon
+              className="size-6 text-white"
+              platform="instagram"
+            />
           </span>
           <DialogTitle className="text-lg font-bold tracking-[-0.02em] text-foreground-strong">
             {reconnecting

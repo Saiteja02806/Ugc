@@ -7,7 +7,7 @@ const workspace = readFileSync(
   "utf8",
 );
 
-test("Settings exposes only the six approved customer sections in order", () => {
+test("Settings exposes the approved customer sections in order", () => {
   const labels = Array.from(
     workspace.matchAll(/label: "([^"]+)"/g),
     (match) => match[1],
@@ -19,6 +19,8 @@ test("Settings exposes only the six approved customer sections in order", () => 
     "App screenshots",
     "Connected accounts",
     "Preferences",
+    "Raised Ticket",
+    "Request Feature",
     "Privacy & data",
   ]);
   assert.doesNotMatch(workspace, /CarouselAdminSettings/);
@@ -31,6 +33,8 @@ test("Settings keeps existing deep links while rendering one active panel", () =
     "app-screenshots",
     "instagram-publishing",
     "preferences",
+    "raised-ticket",
+    "request-feature",
     "privacy-data",
   ]) {
     assert.match(workspace, new RegExp(`activeSection === "${sectionId}"`));

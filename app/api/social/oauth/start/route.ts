@@ -104,9 +104,9 @@ export async function POST(request: Request) {
         {
           code: "instagram_account_limit_reached",
           message:
-            subscription.instagramAccounts === 0
-              ? "Upgrade to Starter or Growth before connecting Instagram."
-              : `Your ${subscription.displayName} plan supports ${subscription.instagramAccounts} Instagram account${subscription.instagramAccounts === 1 ? "" : "s"}.`,
+            subscription.instagramAccounts === 1
+              ? `Your ${subscription.isActive ? subscription.displayName : "Free"} plan supports 1 Instagram account. Upgrade to Growth to connect multiple accounts.`
+              : `Your ${subscription.displayName} plan supports ${subscription.instagramAccounts} Instagram accounts. Disconnect an account before adding another.`,
           ok: false,
         },
         402,

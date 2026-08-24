@@ -8,7 +8,7 @@ import {
 } from "@/lib/trending/daily-feed";
 import {
   buildTrendingDailyFormatPlan,
-  FREE_TRENDING_CONTENT_MIX,
+  resolveTrendingContentMixPreference,
   type TrendingContentAllocation,
 } from "@/lib/trending/content-mix";
 import {
@@ -69,10 +69,10 @@ export async function readUnifiedTrendingDailyFeed(params: {
     getTrendingContentMixPreference(params.userId),
     getDailyTrendingFeedForDate({ localDate, userId: params.userId }),
   ]);
-  const effectivePreference =
-    entitlement.planKey === "free"
-      ? { ...preference, mix: { ...FREE_TRENDING_CONTENT_MIX } }
-      : preference;
+  const effectivePreference = resolveTrendingContentMixPreference({
+    planKey: entitlement.planKey,
+    preference,
+  });
   const dailyPlan = buildTrendingDailyFormatPlan({
     dailyLimit: entitlement.dailyLimit,
     localDate,
@@ -325,10 +325,10 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     getTrendingPlanEntitlement(params.userId),
     getTrendingContentMixPreference(params.userId),
   ]);
-  const effectivePreference =
-    entitlement.planKey === "free"
-      ? { ...preference, mix: { ...FREE_TRENDING_CONTENT_MIX } }
-      : preference;
+  const effectivePreference = resolveTrendingContentMixPreference({
+    planKey: entitlement.planKey,
+    preference,
+  });
   const dailyPlan = buildTrendingDailyFormatPlan({
     dailyLimit: entitlement.dailyLimit,
     localDate,

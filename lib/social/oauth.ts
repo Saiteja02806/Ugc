@@ -1654,6 +1654,15 @@ async function upsertSocialConnection(params: {
       databaseSaved: false,
     });
 
+    if (isInstagramAccountLimitDatabaseError(result.error)) {
+      throw new SocialOAuthError(
+        "Your Instagram account limit has been reached. Disconnect an account before adding another, or upgrade to Growth to connect multiple accounts.",
+        402,
+        "instagram_account_limit_reached",
+        "save_connected_account",
+      );
+    }
+
     throw new SocialOAuthError(
       "Could not save the account connection.",
       500,
@@ -1703,6 +1712,16 @@ async function upsertSocialConnection(params: {
   }
 
   return mapSocialConnection(verified.data);
+}
+
+function isInstagramAccountLimitDatabaseError(error: {
+  details?: string | null;
+  hint?: string | null;
+  message?: string | null;
+}) {
+  return [error.message, error.details, error.hint].some((value) =>
+    value?.includes("instagram_account_limit_reached"),
+  );
 }
 
 function buildTikTokAuthorizationUrl(params: {

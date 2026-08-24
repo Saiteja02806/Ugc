@@ -93,7 +93,12 @@ test("restores Adjust as the global content-mix action beside item-level Edit", 
   assert.match(contentMixDialog, />\s*Adjust content mix\s*</);
   assert.match(contentMixDialog, /Editing an individual creative remains under Edit/);
   assert.match(contentMixDialog, /type="range"/);
-  assert.match(contentMixDialog, /Your Free mix is fixed/);
+  assert.doesNotMatch(contentMixDialog, /Your Free mix is fixed/);
+  assert.doesNotMatch(contentMixDialog, /View plans/);
+  assert.match(contentMixDialog, /className="mt-4 flex h-1\.5/);
+  assert.match(contentMixDialog, /\[&::-webkit-slider-runnable-track\]:h-1\.5/);
+  assert.match(contentMixDialog, /\[&::-webkit-slider-thumb\]:size-3\.5/);
+  assert.match(contentMixDialog, /rounded-xl border border-border\/70 bg-card/);
   assert.match(contentMixDialog, /barClass: "bg-primary"/);
   assert.match(contentMixDialog, /barClass: "bg-accent-purple"/);
   assert.match(contentMixDialog, /barClass: "bg-info"/);
@@ -161,19 +166,22 @@ test("labels every Trending card with its content format above the creative", ()
   assert.match(workspace, /cn\("size-3 shrink-0", iconColor\)/);
 });
 
-test("centers the active creative over visible inert next-card layers", () => {
+test("centers a card-sized review frame over visible inert next-card layers", () => {
   assert.match(
     workspace,
-    /CAROUSEL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(78vw,270px,calc\(\(100dvh-238px\)\*0\.8\)\)\]"/,
+    /CAROUSEL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(78vw,270px,calc\(\(100dvh-348px\)\*0\.8\)\)\]"/,
   );
   assert.match(
     workspace,
-    /VERTICAL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,230px,calc\(\(100dvh-238px\)\*0\.5625\)\)\]"/,
+    /VERTICAL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,230px,calc\(\(100dvh-348px\)\*0\.5625\)\)\]"/,
   );
   assert.match(
     workspace,
-    /className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center"/,
+    /className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-x-clip overflow-y-visible pb-\[107px\] pt-\[94px\]"/,
   );
+  assert.match(workspace, /data-trending-review-frame/);
+  assert.match(workspace, /getTrendingReviewCardFrameClass\(activeCandidate\.format\)/);
+  assert.doesNotMatch(workspace, /w-full max-w-3xl flex-col items-center/);
   assert.match(
     workspace,
     /data-trending-card-state=\{getTrendingDeckCardState\(depth\)\}/,
@@ -182,7 +190,10 @@ test("centers the active creative over visible inert next-card layers", () => {
     workspace,
     /pointer-events-none absolute inset-0 overflow-visible/,
   );
-  assert.match(workspace, /overflow-x-clip overflow-y-visible/);
+  assert.match(
+    workspace,
+    /absolute left-1\/2 top-full z-40 w-max -translate-x-1\/2/,
+  );
   assert.equal(
     (workspace.match(/data-trending-card-state=/g) ?? []).length,
     3,
@@ -197,6 +208,17 @@ test("centers the active creative over visible inert next-card layers", () => {
   assert.match(workspace, /dragX=\{dragX\}/);
   assert.match(workspace, /isDragging=\{isDragging\}/);
   assert.doesNotMatch(workspace, /size-px overflow-hidden opacity-0/);
+});
+
+test("fills the fixed slideshow frame without side gutters", () => {
+  assert.match(
+    workspace,
+    /function CarouselDeckCard[\s\S]*className="size-full pointer-events-none object-cover"/,
+  );
+  assert.doesNotMatch(
+    workspace,
+    /function CarouselDeckCard[\s\S]*className="size-full pointer-events-none object-contain"/,
+  );
 });
 
 test("keeps actual upcoming media ready behind either swipe direction", () => {
@@ -223,11 +245,15 @@ test("keeps the Wall-of-Text accepted view compact and action-only", () => {
   assert.doesNotMatch(wallTextDetail, /getWallTextRenderBlocks/);
 });
 
-test("attaches a slightly larger but compact flat format label to the card", () => {
+test("keeps the compact format pill above the complete media stack", () => {
   assert.match(
     workspace,
-    /pointer-events-none z-10 mb-1\.5 flex items-center justify-start/,
+    /pointer-events-none absolute left-0 z-40 flex w-full items-center justify-start/,
   );
+  assert.match(workspace, /bottom-\[calc\(100%\+40px\)\]/);
+  assert.match(workspace, /bottom-\[calc\(100%\+72px\)\]/);
+  assert.match(workspace, /hasTallerVerticalBackground/);
+  assert.match(workspace, /pb-\[107px\] pt-\[94px\]/);
   assert.match(
     workspace,
     /inline-flex h-\[22px\][^\"]*border-border\/60 bg-card\/80[^\"]*text-\[10px\] font-medium/,
@@ -239,6 +265,25 @@ test("attaches a slightly larger but compact flat format label to the card", () 
     /data-trending-format-pill[\s\S]{0,400}(?:shadow-|drop-shadow|backdrop-blur|ring-)/,
   );
   assert.doesNotMatch(actions, /shadow-(?:none|xs|sm)/);
+});
+
+test("locks Hook and Wall-of-Text to the same responsive 9:16 frame", () => {
+  assert.match(
+    workspace,
+    /VERTICAL_REVIEW_CARD_FRAME_CLASS\s*=\s*\n\s*`\$\{VERTICAL_REVIEW_CARD_WIDTH_CLASS\} aspect-\[9\/16\]`/,
+  );
+  assert.equal(
+    (workspace.match(/data-trending-vertical-frame/g) ?? []).length,
+    2,
+  );
+  assert.equal(
+    (workspace.match(/VERTICAL_REVIEW_CARD_FRAME_CLASS,/g) ?? []).length,
+    2,
+  );
+  assert.match(
+    workspace,
+    /relative size-full overflow-hidden rounded-\[20px\] bg-\[#171717\]/,
+  );
 });
 
 test("keeps the outgoing card mounted until its transform transition finishes", () => {

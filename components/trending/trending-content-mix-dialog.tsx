@@ -8,7 +8,6 @@ import {
   RotateCcw,
   ScanText,
 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -104,7 +103,7 @@ const MIX_ROWS: Array<{
 ];
 
 const CONTENT_MIX_RANGE_CLASS =
-  "mt-2 h-2 w-full cursor-pointer appearance-none rounded-full outline-none transition-[filter,opacity] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-80 [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:-mt-1 [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-card [&::-webkit-slider-thumb]:bg-[var(--mix-accent)] [&::-webkit-slider-thumb]:shadow-[0_0_0_1px_var(--mix-accent)] [&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-card [&::-moz-range-thumb]:bg-[var(--mix-accent)]";
+  "mt-2.5 h-1.5 w-full cursor-pointer appearance-none rounded-full outline-none transition-[filter,opacity] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-70 [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:-mt-1 [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-card [&::-webkit-slider-thumb]:bg-[var(--mix-accent)] [&::-webkit-slider-thumb]:shadow-[0_0_0_1px_var(--mix-accent)] [&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-card [&::-moz-range-thumb]:bg-[var(--mix-accent)]";
 
 export function TrendingContentMixDialog({
   onApplied,
@@ -263,7 +262,7 @@ export function TrendingContentMixDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(760px,calc(100dvh-2rem))] gap-0 overflow-y-auto p-0 sm:max-w-[560px]">
+      <DialogContent className="max-h-[min(760px,calc(100dvh-2rem))] gap-0 overflow-y-auto p-0 sm:max-w-[540px]">
         <DialogHeader className="border-b border-border px-5 py-5 pr-14 sm:px-6">
           <DialogTitle className="text-lg font-semibold text-foreground-strong">
             Adjust content mix
@@ -304,56 +303,53 @@ export function TrendingContentMixDialog({
             </div>
           ) : payload ? (
             <>
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-subtle">
-                    Daily composition
-                  </p>
-                  <p className="mt-1 text-sm font-medium text-foreground">
-                    {payload.entitlement.displayName} ·{" "}
-                    {payload.entitlement.dailyLimit} ideas per day
-                  </p>
+              <div className="rounded-2xl border border-border/70 bg-card-muted/35 p-4">
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-subtle">
+                      Daily composition
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-foreground">
+                      {payload.entitlement.displayName} ·{" "}
+                      {payload.entitlement.dailyLimit} ideas per day
+                    </p>
+                  </div>
+                  {payload.editable && hasChanges ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setMix({ ...savedMix })}
+                    >
+                      <RotateCcw data-icon="inline-start" aria-hidden="true" />
+                      Undo
+                    </Button>
+                  ) : null}
                 </div>
-                {payload.editable && hasChanges ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setMix({ ...savedMix })}
-                  >
-                    <RotateCcw data-icon="inline-start" aria-hidden="true" />
-                    Undo
-                  </Button>
-                ) : null}
-              </div>
 
-              <div
-                aria-label="Selected daily content mix"
-                className="mt-4 flex h-2.5 w-full overflow-hidden rounded-full bg-card-muted"
-                role="img"
-              >
-                {MIX_ROWS.map(({ barClass, format }) => (
-                  <span
-                    key={format}
-                    className={cn("h-full transition-[width]", barClass)}
-                    style={{ width: `${mix[format]}%` }}
-                  />
-                ))}
+                <div
+                  aria-label="Selected daily content mix"
+                  className="mt-4 flex h-1.5 w-full overflow-hidden rounded-full bg-border/70"
+                  role="img"
+                >
+                  {MIX_ROWS.map(({ barClass, format }) => (
+                    <span
+                      key={format}
+                      className={cn("h-full transition-[width]", barClass)}
+                      style={{ width: `${mix[format]}%` }}
+                    />
+                  ))}
+                </div>
               </div>
 
               {!payload.editable ? (
-                <div className="mt-5 rounded-xl border border-border bg-card-muted px-4 py-3">
-                  <p className="text-sm font-semibold text-foreground-strong">
-                    Your Free mix is fixed
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-muted">
-                    Free includes 3 Slideshows, 4 Wall-of-Text posts, and 3
-                    Hooks each day. Upgrade to customize this balance.
-                  </p>
-                </div>
+                <p className="mt-4 rounded-xl border border-border bg-card-muted px-4 py-3 text-xs leading-5 text-muted">
+                  Content-mix adjustments are temporarily unavailable. Refresh
+                  and try again.
+                </p>
               ) : null}
 
-              <div className="mt-5 space-y-5">
+              <div className="mt-4 space-y-3">
                 {MIX_ROWS.map(
                   ({
                     accentColor,
@@ -368,56 +364,59 @@ export function TrendingContentMixDialog({
                       (mix[format] / Math.max(payload.limits[format], 1)) * 100;
 
                     return (
-                      <label key={format} className="block">
-                      <span className="flex items-center justify-between gap-3">
-                        <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                          <span
-                            className={cn(
-                              "flex size-7 shrink-0 items-center justify-center rounded-lg border",
-                              iconClass,
-                              iconSurfaceClass,
-                            )}
-                          >
-                            <Icon className="size-3.5" aria-hidden="true" />
-                          </span>
-                          {label}
-                        </span>
-                        <span className="flex items-baseline gap-2">
-                          <output
-                            className={cn(
-                              "min-w-10 text-right text-sm font-semibold tabular-nums",
-                              valueClass,
-                            )}
-                          >
-                            {mix[format]}%
-                          </output>
-                          {allocation ? (
-                            <span className="min-w-14 text-right text-xs tabular-nums text-muted-subtle">
-                              {allocation[format]}/day
+                      <label
+                        key={format}
+                        className="block rounded-xl border border-border/70 bg-card px-3.5 py-3 transition-colors focus-within:border-border-strong"
+                      >
+                        <span className="flex items-center justify-between gap-3">
+                          <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                            <span
+                              className={cn(
+                                "flex size-6 shrink-0 items-center justify-center rounded-md border",
+                                iconClass,
+                                iconSurfaceClass,
+                              )}
+                            >
+                              <Icon className="size-3" aria-hidden="true" />
                             </span>
-                          ) : null}
+                            {label}
+                          </span>
+                          <span className="flex items-baseline gap-2">
+                            <output
+                              className={cn(
+                                "min-w-10 text-right text-sm font-semibold tabular-nums",
+                                valueClass,
+                              )}
+                            >
+                              {mix[format]}%
+                            </output>
+                            {allocation ? (
+                              <span className="min-w-14 text-right text-xs tabular-nums text-muted-subtle">
+                                {allocation[format]}/day
+                              </span>
+                            ) : null}
+                          </span>
                         </span>
-                      </span>
-                      <input
-                        aria-label={`${label} percentage`}
-                        aria-valuetext={`${mix[format]} percent, ${allocation?.[format] ?? 0} per day`}
-                        className={CONTENT_MIX_RANGE_CLASS}
-                        disabled={!payload.editable || saving}
-                        max={payload.limits[format]}
-                        min={0}
-                        step={1}
-                        style={
-                          {
-                            "--mix-accent": accentColor,
-                            background: `linear-gradient(to right, ${accentColor} 0 ${sliderFillPercent}%, var(--card-muted) ${sliderFillPercent}% 100%)`,
-                          } as CSSProperties
-                        }
-                        type="range"
-                        value={mix[format]}
-                        onChange={(event) =>
-                          updateMix(format, Number(event.target.value))
-                        }
-                      />
+                        <input
+                          aria-label={`${label} percentage`}
+                          aria-valuetext={`${mix[format]} percent, ${allocation?.[format] ?? 0} per day`}
+                          className={CONTENT_MIX_RANGE_CLASS}
+                          disabled={!payload.editable || saving}
+                          max={payload.limits[format]}
+                          min={0}
+                          step={1}
+                          style={
+                            {
+                              "--mix-accent": accentColor,
+                              background: `linear-gradient(to right, ${accentColor} 0 ${sliderFillPercent}%, var(--card-muted) ${sliderFillPercent}% 100%)`,
+                            } as CSSProperties
+                          }
+                          type="range"
+                          value={mix[format]}
+                          onChange={(event) =>
+                            updateMix(format, Number(event.target.value))
+                          }
+                        />
                       </label>
                     );
                   },
@@ -459,14 +458,7 @@ export function TrendingContentMixDialog({
           >
             {payload?.editable ? "Cancel" : "Close"}
           </Button>
-          {payload && !payload.editable ? (
-            <Button
-              render={<Link href="/pricing" />}
-              onClick={() => onOpenChange(false)}
-            >
-              View plans
-            </Button>
-          ) : payload?.editable ? (
+          {payload?.editable ? (
             <Button
               type="button"
               disabled={!hasChanges || saving}

@@ -2,6 +2,12 @@ export type BillingPlanKey = "free" | "starter" | "growth";
 
 export const MAX_BILLING_USAGE_ATTEMPTS = 10;
 
+export const INSTAGRAM_ACCOUNT_LIMITS: Record<BillingPlanKey, number> = {
+  free: 1,
+  growth: 3,
+  starter: 1,
+};
+
 const MIN_BILLING_USAGE_RETRY_DELAY_MS = 5 * 60 * 1000;
 const MAX_BILLING_USAGE_RETRY_DELAY_MS = 6 * 60 * 60 * 1000;
 
@@ -27,6 +33,15 @@ export function resolveDailyContentPieces(
   const configured = toInteger(configuredValue, fallback);
 
   return configured > 0 ? configured : fallback;
+}
+
+export function resolveInstagramAccountLimit(
+  planKey: BillingPlanKey,
+  isActive: boolean,
+) {
+  const effectivePlanKey = isActive ? planKey : "free";
+
+  return INSTAGRAM_ACCOUNT_LIMITS[effectivePlanKey];
 }
 
 export function getBillingUsageRetryDelayMs(attemptCount: number) {

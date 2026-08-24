@@ -934,6 +934,10 @@ test("scheduling requires a selected account before any draft is stored", () => 
     /getInstagramSchedulingAccessState\(connections\)/,
   );
   assert.match(schedulingWorkspace, /Connect Instagram first/);
+  assert.match(
+    schedulingWorkspace,
+    /SocialPlatformIcon\s+className="size-6 text-white"\s+platform="instagram"/,
+  );
   assert.match(schedulingWorkspace, /target\.platform === "instagram"/);
   assert.doesNotMatch(
     schedulingWorkspace,

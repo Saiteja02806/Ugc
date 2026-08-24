@@ -7,6 +7,7 @@ import {
   buildTrendingDailyFormatPlan,
   DEFAULT_TRENDING_CONTENT_MIX,
   FREE_TRENDING_CONTENT_MIX,
+  resolveTrendingContentMixPreference,
   validateTrendingContentMix,
 } from "./content-mix.ts";
 
@@ -19,6 +20,32 @@ test("Free receives exactly 3 Slideshows, 4 Wall posts, and 3 Hooks", () => {
     }),
     { carousel: 3, hook_video: 3, wall_text: 4 },
   );
+});
+
+test("Free keeps its 3/4/3 default until the user saves a custom mix", () => {
+  const unsaved = resolveTrendingContentMixPreference({
+    planKey: "free",
+    preference: {
+      mix: DEFAULT_TRENDING_CONTENT_MIX,
+      preferenceVersion: 1,
+      updatedAt: null,
+    },
+  });
+  const saved = resolveTrendingContentMixPreference({
+    planKey: "free",
+    preference: {
+      mix: { carousel: 50, hook_video: 0, wall_text: 50 },
+      preferenceVersion: 2,
+      updatedAt: "2026-08-24T12:00:00.000Z",
+    },
+  });
+
+  assert.deepEqual(unsaved.mix, FREE_TRENDING_CONTENT_MIX);
+  assert.deepEqual(saved.mix, {
+    carousel: 50,
+    hook_video: 0,
+    wall_text: 50,
+  });
 });
 
 test("Starter default mix creates exactly 5 Carousel, 10 Wall, and 5 Hook posts", () => {

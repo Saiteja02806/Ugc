@@ -15,6 +15,7 @@ import {
   useState,
 } from "react";
 
+import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { InstagramAccountAvatar } from "@/components/social/instagram-account-avatar";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup";
@@ -74,6 +75,7 @@ export function InstagramAccountManager() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const accountId = user?.uid ?? "signed-out";
+  const subscriptionQuery = useBillingSubscription();
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -83,6 +85,14 @@ export function InstagramAccountManager() {
     useState<SocialConnection | null>(null);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
+
+  const refreshBillingSubscription = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: ["billing-subscription", accountId],
+      }),
+    [accountId, queryClient],
+  );
 
   const loadInstagramConnections = useCallback(
     async (
@@ -162,6 +172,7 @@ export function InstagramAccountManager() {
       );
 
       if (isConnected) {
+        await refreshBillingSubscription();
         setMessage("Instagram account connected.");
         return true;
       }
@@ -191,6 +202,7 @@ export function InstagramAccountManager() {
             (connection) => connection.id === result.connectionId,
           )
         : null;
+      await refreshBillingSubscription();
       setMessage(
         connectedAccount
           ? `${getInstagramAccountName(connectedAccount)} is connected.`
@@ -295,6 +307,7 @@ export function InstagramAccountManager() {
         current.filter((item) => item.id !== connection.id),
       );
       removeAccountSocialConnection(queryClient, accountId, connection.id);
+      await refreshBillingSubscription();
       setPendingDisconnect(null);
       setMessage("Instagram account disconnected.");
     } catch (error) {
@@ -310,6 +323,12 @@ export function InstagramAccountManager() {
 
   const isConnecting = connectingPlatform === INSTAGRAM_PLATFORM;
   const isAdding = isConnecting && connectingIntent === "add";
+  const instagramAccountLimit = subscriptionQuery.data?.instagramAccounts ?? 1;
+  const accountLimitReached = connections.length >= instagramAccountLimit;
+  const accountLimitMessage =
+    instagramAccountLimit === 1
+      ? "Free and Starter support 1 connected Instagram account. Upgrade to Growth to connect multiple accounts."
+      : `Your Growth plan supports up to ${instagramAccountLimit} connected Instagram accounts.`;
 
   return (
     <>
@@ -399,8 +418,11 @@ export function InstagramAccountManager() {
 
       <div className="flex flex-col gap-3 bg-card-muted/35 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p className="max-w-xl text-sm leading-6 text-muted">
-          To add another profile, switch to that professional account in the
-          Instagram authorization window.
+          {accountLimitReached
+            ? accountLimitMessage
+            : connections.length > 0
+              ? "To add another profile, switch to that professional account in the Instagram authorization window."
+              : "Connect an Instagram Professional account through Meta to get started."}
         </p>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <Button
@@ -422,7 +444,7 @@ export function InstagramAccountManager() {
             type="button"
             size="lg"
             onClick={() => void addInstagram()}
-            disabled={Boolean(connectingPlatform)}
+            disabled={Boolean(connectingPlatform) || accountLimitReached}
             className="w-full sm:w-auto"
           >
             {isAdding ? (
@@ -436,9 +458,11 @@ export function InstagramAccountManager() {
             )}
             {isAdding
               ? "Opening Instagram…"
-              : connections.length > 0
-                ? "Add another account"
-                : "Connect Instagram"}
+              : accountLimitReached
+                ? "Account limit reached"
+                : connections.length > 0
+                  ? "Add another account"
+                  : "Connect Instagram"}
           </Button>
         </div>
       </div>

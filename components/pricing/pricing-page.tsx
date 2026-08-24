@@ -60,7 +60,7 @@ const faqs = [
   {
     question: "How many Instagram accounts can I connect?",
     answer:
-      "The Starter plan allows 1 connected Instagram Professional account for direct in-app scheduling. The Growth plan unlocks up to 3 Instagram accounts, allowing you to manage and auto-publish across multiple brands.",
+      "Free and Starter each allow 1 connected Instagram Professional account. Growth unlocks up to 3 connected accounts for managing and auto-publishing across multiple brands.",
   },
   {
     question: "Can I upgrade, downgrade, or cancel anytime?",

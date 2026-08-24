@@ -55,6 +55,17 @@ test("plans expose the complete daily content allowance", () => {
   );
 });
 
+test("Free and Starter allow one Instagram account while Growth allows three", () => {
+  assert.deepEqual(
+    pricingPlans.map((plan) => [plan.slug, plan.instagramAccounts]),
+    [
+      ["free", 1],
+      ["starter", 1],
+      ["growth", 3],
+    ],
+  );
+});
+
 test("plans map slug to proper display name", () => {
   assert.deepEqual(
     pricingPlans.map((plan) => [plan.slug, plan.name]),

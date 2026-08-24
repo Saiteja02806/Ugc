@@ -406,6 +406,10 @@ function getFailureMessage(platform: SocialPlatform, errorCode: string) {
     return "Reconnect TikTok to grant publishing permission.";
   }
 
+  if (errorCode === "instagram_account_limit_reached") {
+    return "Your Instagram account limit has been reached. Disconnect an account before adding another, or upgrade to Growth to connect multiple accounts.";
+  }
+
   if (errorCode === "reconnect_account_mismatch") {
     return "You signed in to a different Instagram account. Sign in to the selected account, or add this account separately.";
   }

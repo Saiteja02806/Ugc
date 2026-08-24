@@ -54,8 +54,12 @@ test("raises Free to ten posts and expands an already-created smaller feed", () 
   );
 });
 
-test("plans Free at 3/4/3 and dispatches missing formats together", () => {
+test("uses each plan's effective saved mix and dispatches missing formats together", () => {
   assert.match(
+    unifiedFeed,
+    /resolveTrendingContentMixPreference\([\s\S]*planKey: entitlement\.planKey[\s\S]*preference/,
+  );
+  assert.doesNotMatch(
     unifiedFeed,
     /entitlement\.planKey === "free"[\s\S]*FREE_TRENDING_CONTENT_MIX/,
   );
@@ -170,8 +174,7 @@ test("keeps an existing daily pack immutable after an authenticated mix update",
   assert.doesNotMatch(contentMixRoute, /replanDailyTrendingUnboundSlots/);
   assert.match(contentMixRoute, /applied: currentFeed \? "next_day" : "today"/);
   assert.match(contentMixRoute, /Today's complete pack stays unchanged/);
-  assert.match(
-    contentMixRoute,
-    /entitlement\.planKey === "free"[\s\S]*3 Slideshows, 4 Wall-of-text posts, and 3 Hooks/,
-  );
+  assert.match(contentMixRoute, /editable: true/);
+  assert.doesNotMatch(contentMixRoute, /entitlement\.planKey === "free"/);
+  assert.doesNotMatch(contentMixRoute, /fixed daily mix/);
 });

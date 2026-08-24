@@ -8,7 +8,7 @@ import {
   requireFirebaseUser,
 } from "@/lib/firebase/server-auth";
 import {
-  FREE_TRENDING_CONTENT_MIX,
+  resolveTrendingContentMixPreference,
   type TrendingContentMix,
 } from "@/lib/trending/content-mix";
 import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
@@ -55,13 +55,13 @@ export async function GET(request: Request) {
       getTrendingContentMixPreference(auth.userId),
       getTrendingPlanEntitlement(auth.userId),
     ]);
-    const effectivePreference =
-      entitlement.planKey === "free"
-        ? { ...preference, mix: { ...FREE_TRENDING_CONTENT_MIX } }
-        : preference;
+    const effectivePreference = resolveTrendingContentMixPreference({
+      planKey: entitlement.planKey,
+      preference,
+    });
 
     return json({
-      editable: entitlement.planKey !== "free",
+      editable: true,
       entitlement,
       limits: { carousel: 100, hook_video: 50, wall_text: 50 },
       ok: true,
@@ -115,17 +115,6 @@ export async function PUT(request: Request) {
           ok: false,
         },
         onboardingGate?.status ?? 409,
-      );
-    }
-
-    if (entitlement.planKey === "free") {
-      return json(
-        {
-          message:
-            "Free includes a fixed daily mix of 3 Slideshows, 4 Wall-of-text posts, and 3 Hooks.",
-          ok: false,
-        },
-        403,
       );
     }
 

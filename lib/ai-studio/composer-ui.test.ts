@@ -17,6 +17,9 @@ const referenceUploader = readProjectFile(
 const resultSurface = readProjectFile(
   "components/generation/ai-studio-results.tsx",
 );
+const resultActions = readProjectFile(
+  "components/generation/ai-studio-result-actions.tsx",
+);
 const videoWorkspace = readProjectFile(
   "components/video/video-generation-workspace.tsx",
 );
@@ -88,6 +91,18 @@ test("image and video controls send selected settings to generation APIs", () =>
   assert.match(videoWorkspace, /AiStudioRatioPicker/);
   assert.match(videoWorkspace, /allowedRatios=\{\["9:16", "16:9"\]\}/);
   assert.match(videoWorkspace, /ariaLabel="Number of videos"/);
+});
+
+test("quantity controls lock with the rest of each generation composer", () => {
+  assert.match(
+    imageWorkspace,
+    /ariaLabel="Number of images"\s+disabled=\{generationLocked \|\| isGenerating\}/,
+  );
+  assert.match(
+    videoWorkspace,
+    /ariaLabel="Number of videos"\s+disabled=\{generationLocked \|\| isGenerating\}/,
+  );
+  assert.match(composer, /disabled=\{disabled\}\s+value=\{value\}/);
 });
 
 test("video references start empty without exposing competing pickers", () => {
@@ -174,6 +189,13 @@ test("video results keep the prompt visible with custom playback controls", () =
     videoResultCard,
     /aria-label=\{isMuted \? "Unmute video" : "Mute video"\}/,
   );
+});
+
+test("completed image and video results expose download and open actions", () => {
+  assert.match(imageWorkspace, /<AiStudioResultActions[\s\S]*?kind="image"/);
+  assert.match(videoWorkspace, /<AiStudioResultActions[\s\S]*?kind="video"/);
+  assert.match(resultActions, /download=\{fileName\}/);
+  assert.match(resultActions, /aria-label=\{`Open \$\{title\} in a new tab`\}/);
 });
 
 test("generation progress has a visible in-place loading state", () => {

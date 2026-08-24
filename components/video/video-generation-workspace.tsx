@@ -25,6 +25,7 @@ import {
   AiStudioResults,
   type AiStudioResultsStatus,
 } from "@/components/generation/ai-studio-results";
+import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
@@ -871,6 +872,7 @@ export function VideoGenerationStudioPanel({
             />
             <AiStudioSettingSelect
               ariaLabel="Number of videos"
+              disabled={generationLocked || isGenerating}
               icon={<Video className="size-4" aria-hidden="true" />}
               options={AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({
                 label: `${count} video${count === 1 ? "" : "s"}`,
@@ -1060,6 +1062,12 @@ function VideoResultCard({
             </span>
           ) : null}
           <span>{formatGeneratedAt(video.createdAt)}</span>
+          <AiStudioResultActions
+            className="ml-auto sm:ml-0"
+            kind="video"
+            title={video.title}
+            url={video.url}
+          />
         </div>
       </div>
 

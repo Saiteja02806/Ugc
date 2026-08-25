@@ -212,6 +212,14 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
     }
   }
+
+  # Always direct Cloud Tasks to the latest healthy worker revision. Without an
+  # explicit traffic target, an older revision pin can keep newly deployed
+  # worker code from receiving any jobs.
+  traffic {
+    percent = 100
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+  }
 }
 
 resource "google_cloud_run_v2_service_iam_member" "cloud_tasks_invoker" {

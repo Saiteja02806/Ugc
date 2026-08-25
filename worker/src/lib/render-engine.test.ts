@@ -191,7 +191,7 @@ test("rasterizes a reference-style three-line Hook with an emoji", async () => {
   assert.ok(png.length > 1_000);
 });
 
-test("rasterizes six-second Wall copy with Inter SemiBold and no background box", async () => {
+test("rasterizes six-second Wall copy with Inter Regular and no background box", async () => {
   const content = {
     fullText:
       "I logged every meal but skipped drinks oil and small bites. Those missing details quietly changed the final total.",
@@ -238,11 +238,11 @@ test("rasterizes six-second Wall copy with Inter SemiBold and no background box"
 
   assert.equal(layout.canvasWidth, 1080);
   assert.equal(layout.canvasHeight, 1920);
-  assert.equal(layout.segments[0]?.fontSize, 48);
-  assert.equal(layout.segments[1]?.fontSize, 48);
+  assert.equal(layout.segments[0]?.fontSize, 40);
+  assert.equal(layout.segments[1]?.fontSize, 40);
   assert.doesNotMatch(svg, /wallTextScrim|radialGradient/);
   assert.match(svg, /font-family="Inter, Arial/);
-  assert.match(svg, /stroke-width="4"/);
+  assert.match(svg, /stroke-width="2"/);
   assert.equal(svg.match(/<text /g)?.length, 6);
 
   await ensureWallTextFontsRegistered();

@@ -1943,7 +1943,7 @@ function WallTextOverlayText({
         fontSize: `${getWallTextFontSize(content.content) / 10.8}cqw`,
         fontWeight: WALL_TEXT_FONT_WEIGHT,
         letterSpacing: `${-0.2 / 10.8}cqw`,
-        textShadow: "0 0.185185cqw 0.277778cqw rgba(0, 0, 0, 0.55)",
+        textShadow: "0 0.111111cqw 0.185185cqw rgba(0, 0, 0, 0.45)",
         width: `${content.layout.textBox.width * 100}cqw`,
       }}
     >

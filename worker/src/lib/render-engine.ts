@@ -1278,7 +1278,7 @@ async function registerWallTextFonts() {
   const directText = await sharp({
     text: {
       dpi: 72,
-      font: "Inter Semi Bold 52",
+      font: "Inter Regular 46",
       fontfile: fontPath,
       rgba: true,
       text: "Wall text 0123",
@@ -1288,7 +1288,7 @@ async function registerWallTextFonts() {
 
   if (!directText.width || !directText.height) {
     throw new Error(
-      "Inter SemiBold could not be registered for Wall-of-text rendering.",
+      "Inter Regular could not be registered for Wall-of-text rendering.",
     );
   }
 }
@@ -1306,7 +1306,7 @@ async function validateWallTextRenderedLineWidths(
       const metadata = await sharp({
         text: {
           dpi: 72,
-          font: `Inter Semi Bold ${segment.fontSize}`,
+            font: `Inter Regular ${segment.fontSize}`,
           fontfile: fontPath,
           rgba: true,
           text: escapePangoMarkup(line),
@@ -1332,7 +1332,7 @@ async function getWallTextFontPath() {
     "@fontsource",
     "inter",
     "files",
-    "inter-latin-600-normal.woff",
+    "inter-latin-400-normal.woff",
   ];
   const candidatePaths = [
     join(process.cwd(), ...fontParts),
@@ -1349,7 +1349,7 @@ async function getWallTextFontPath() {
   }
 
   throw new Error(
-    "Inter SemiBold is unavailable; refusing to render with a fallback font.",
+    "Inter Regular is unavailable; refusing to render with a fallback font.",
   );
 }
 

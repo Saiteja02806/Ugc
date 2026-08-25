@@ -50,7 +50,7 @@ export function WallTextOverlay({
           letterSpacing: `${-0.2 / 10.8}cqw`,
           paintOrder: "stroke fill",
           textShadow:
-            "0 0.185185cqw 0.277778cqw rgb(0 0 0 / 0.55)",
+            "0 0.111111cqw 0.185185cqw rgb(0 0 0 / 0.45)",
           WebkitTextStroke: `${WALL_TEXT_OUTLINE_WIDTH / 10.8}cqw #000000`,
         }}
       >

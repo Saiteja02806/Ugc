@@ -39,7 +39,7 @@ const fourLineContent = {
   ],
 };
 
-test("uses Inter SemiBold, center alignment, outline, and compact section rhythm", () => {
+test("uses lighter Inter Regular, center alignment, outline, and compact section rhythm", () => {
   const layout = buildWallTextRenderLayout({
     content,
     textBox: {
@@ -61,16 +61,16 @@ test("uses Inter SemiBold, center alignment, outline, and compact section rhythm
     },
   });
 
-  assert.equal(layout.segments[0]?.fontSize, 48);
-  assert.equal(layout.segments[0]?.fontWeight, 600);
-  assert.equal(layout.segments[1]?.fontSize, 48);
-  assert.equal(layout.segments[1]?.fontWeight, 600);
+  assert.equal(layout.segments[0]?.fontSize, 40);
+  assert.equal(layout.segments[0]?.fontWeight, 400);
+  assert.equal(layout.segments[1]?.fontSize, 40);
+  assert.equal(layout.segments[1]?.fontWeight, 400);
   assert.match(svg, /font-family="Inter, Arial/);
   assert.match(svg, /letter-spacing="-0\.2"/);
   assert.match(svg, /text-anchor="middle"/);
-  assert.match(svg, /stroke-width="4"/);
+  assert.match(svg, /stroke-width="2"/);
   assert.match(svg, /fill="#67e8f9"/);
-  assert.match(svg, /font-weight="600"/);
+  assert.match(svg, /font-weight="400"/);
   assert.doesNotMatch(svg, /wallTextScrim|radialGradient/);
 });
 
@@ -102,7 +102,7 @@ test("accepts four-line compact Wall blocks", () => {
     },
   });
 
-  assert.equal(layout.segments[0]?.fontSize, 52);
+  assert.equal(layout.segments[0]?.fontSize, 42);
   assert.equal(svg.match(/<text /g)?.length, 4);
 });
 
@@ -151,13 +151,14 @@ test("renders the saved v6 final layout without reflowing its lines", () => {
     placement: "middle",
   });
 
-  assert.equal(layout.segments[0]?.fontSize, 50);
-  assert.equal(layout.segments[0]?.fontWeight, 600);
-  assert.equal(layout.segments[0]?.lineHeight, 54.17);
+  assert.equal(layout.segments[0]?.fontSize, 42);
+  assert.equal(layout.segments[0]?.fontWeight, 400);
+  assert.equal(layout.segments[0]?.lineHeight, 46.2);
   assert.deepEqual(layout.segments[0]?.lines, finalLayoutContent.finalLayout.blocks[0]?.lines);
   assert.equal(layout.textBox.width, 640);
   assert.equal(svg.match(/<text /g)?.length, 3);
   assert.doesNotMatch(svg, /font-weight="700"/);
+  assert.match(svg, /font-weight="400"/);
 });
 
 test("renders V7 as one centered block with equal line rhythm and a short final line", () => {
@@ -202,7 +203,7 @@ test("renders V7 as one centered block with equal line rhythm and a short final 
   const layout = buildWallTextRenderLayout({ content: v7 });
   const svg = buildWallTextOverlaySvg({ content: v7, placement: "middle" });
   assert.equal(layout.segments.length, 1);
-  assert.equal(layout.segments[0]?.lineHeight, 52);
+  assert.equal(layout.segments[0]?.lineHeight, 44);
   assert.equal(layout.textBox.width, 660);
   assert.equal(svg.match(/text-anchor="middle"/g)?.length, 5);
   assert.match(svg, />at once\.<\/text>/);

@@ -14,7 +14,6 @@ import type {
 } from "@/lib/trending/wall-text-types";
 import {
   WALL_TEXT_GENERATOR_VERSION,
-  LEGACY_WALL_TEXT_GENERATOR_VERSION,
   WALL_TEXT_FORMAT_IDS,
   WALL_TEXT_PATTERNS,
   WALL_TEXT_PLACEMENT_ZONES,
@@ -281,7 +280,7 @@ type WallTextDatabase = {
         };
         Returns: WallTextCreativeRow[];
       };
-      replace_wall_text_creative_copy_v6: {
+      replace_wall_text_creative_copy_v8: {
         Args: {
           p_business_profile_id: string;
           p_business_profile_version: number;
@@ -1238,7 +1237,7 @@ export async function replaceTrendingWallTextCreativeCopy(params: {
     text_content: creative.text,
   }));
   const { error } = await getClient().rpc(
-    "replace_wall_text_creative_copy_v6",
+    "replace_wall_text_creative_copy_v8",
     {
       p_business_profile_id: params.businessProfileId,
       p_business_profile_version: params.businessProfileVersion,
@@ -1412,10 +1411,7 @@ export async function listActiveTrendingWallTextIdeas(params: {
     .eq("business_profile_id", params.businessProfileId)
     .eq("business_profile_version", params.businessProfileVersion)
     .eq("status", "preview_ready")
-    .in("generator_version", [
-      LEGACY_WALL_TEXT_GENERATOR_VERSION,
-      WALL_TEXT_GENERATOR_VERSION,
-    ]);
+    .eq("generator_version", WALL_TEXT_GENERATOR_VERSION);
 
   if (params.backgroundAssetIds) {
     creativeQuery = creativeQuery.in(
@@ -2008,10 +2004,10 @@ function parseCurrentWallTextContent(
     finalLayout.version !==
       (isV7 ? "wall-text-final-layout-v2" : "wall-text-final-layout-v1") ||
     finalLayout.fontFamily !== "Inter" ||
-    ![WALL_TEXT_FONT_WEIGHT, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
+    ![WALL_TEXT_FONT_WEIGHT, 600, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
       Number(finalLayout.fontWeight),
     ) ||
-    ![44, 46, 48, 50, 52].includes(Number(finalLayout.fontSizePx)) ||
+    ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(Number(finalLayout.fontSizePx)) ||
     typeof finalLayout.lineHeightPx !== "number" ||
     finalLayout.lineHeightPx <= 0 ||
     !textBox ||
@@ -2064,9 +2060,10 @@ function parseCurrentWallTextContent(
     finalLayout: {
       blocks,
       fontFamily: "Inter",
-      fontSizePx: Number(finalLayout.fontSizePx) as 44 | 46 | 48 | 50 | 52,
+      fontSizePx: normalizeCurrentWallTextFontSize(Number(finalLayout.fontSizePx)),
       fontWeight: WALL_TEXT_FONT_WEIGHT,
-      lineHeightPx: finalLayout.lineHeightPx,
+      lineHeightPx:
+        normalizeCurrentWallTextFontSize(Number(finalLayout.fontSizePx)) * 1.1,
       textBox,
       version: isV7
         ? "wall-text-final-layout-v2"
@@ -2077,10 +2074,18 @@ function parseCurrentWallTextContent(
     kind: "wall_text",
     layoutVersion: isV7 ? "wall-text-overlay-v6" : "wall-text-overlay-v5",
     pattern: formatId,
-    renderFontSize: Number(finalLayout.fontSizePx) as 44 | 46 | 48 | 50 | 52,
+    renderFontSize: normalizeCurrentWallTextFontSize(Number(finalLayout.fontSizePx)),
     segments,
     sourceContent: parsedSource,
   };
+}
+
+function normalizeCurrentWallTextFontSize(value: number) {
+  if ([36, 38, 40, 42].includes(value)) {
+    return value as 36 | 38 | 40 | 42;
+  }
+  if (value === 44 || value === 46 || value === 48) return 40 as const;
+  return 42 as const;
 }
 
 function toCompatibilitySegments(lines: string[]) {

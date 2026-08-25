@@ -32,14 +32,14 @@ export type WallTextRenderContent = {
       role: "prose" | "text" | "title" | "item";
     }>;
     fontFamily: "Inter";
-    fontSizePx: 44 | 46 | 48 | 50 | 52;
-    fontWeight: 600 | 700;
+    fontSizePx: 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
+    fontWeight: 400 | 600 | 700;
     lineHeightPx: number;
     textBox: WallTextNormalizedBox;
     version: "wall-text-final-layout-v1" | "wall-text-final-layout-v2";
   };
   fullText: string;
-  renderFontSize?: 44 | 46 | 48 | 50 | 52;
+  renderFontSize?: 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
   segments: WallTextSegment[];
 };
 
@@ -50,7 +50,7 @@ export type WallTextRenderLayout = {
   segments: Array<{
     centerX: number;
     fontSize: number;
-    fontWeight: 600;
+    fontWeight: 400;
     lineHeight: number;
     lines: string[];
     top: number;
@@ -68,14 +68,14 @@ export const WALL_TEXT_RENDER_HEIGHT = 1920;
 export const WALL_TEXT_RENDER_MAX_CHARACTERS = 600;
 export const WALL_TEXT_RENDER_MIN_LINES = 4;
 export const WALL_TEXT_RENDER_MAX_LINES = 7;
-export const WALL_TEXT_DEFAULT_FONT_SIZE = 48;
-export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
-export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
-export const WALL_TEXT_FONT_WEIGHT = 600;
+export const WALL_TEXT_DEFAULT_FONT_SIZE = 40;
+export const WALL_TEXT_MINIMUM_FONT_SIZE = 36;
+export const WALL_TEXT_MAXIMUM_FONT_SIZE = 42;
+export const WALL_TEXT_FONT_WEIGHT = 400;
 export const LEGACY_WALL_TEXT_FONT_WEIGHT = 700;
-export const WALL_TEXT_LINE_HEIGHT_FACTOR = 52 / 48;
+export const WALL_TEXT_LINE_HEIGHT_FACTOR = 1.1;
 export const WALL_TEXT_SECTION_GAP = 18;
-export const WALL_TEXT_OUTLINE_WIDTH = 4;
+export const WALL_TEXT_OUTLINE_WIDTH = 2;
 export const WALL_TEXT_DEFAULT_SAFE_AREA: WallTextSafeArea = {
   bottom: 460 / 1920,
   left: 120 / 1080,
@@ -125,10 +125,10 @@ export function buildWallTextRenderLayout(params: {
   const segmentMetrics = renderBlocks.map((segment) => {
     return {
       fontSize,
-      fontWeight: WALL_TEXT_FONT_WEIGHT as 600,
+      fontWeight: WALL_TEXT_FONT_WEIGHT as 400,
       lineHeight:
         content.finalLayout?.lineHeightPx ??
-        fontSize * WALL_TEXT_LINE_HEIGHT_FACTOR,
+        getWallTextLineHeight(fontSize),
       lines: segment.lines,
     };
   });
@@ -185,7 +185,7 @@ export function buildWallTextOverlaySvg(params: {
     "Inter, Arial, Helvetica Neue, Noto Sans CJK SC, Noto Sans CJK JP, sans-serif";
   const shadowFilter = [
     '<filter id="wallTextShadow" x="-20%" y="-20%" width="140%" height="150%">',
-    '<feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.55"/>',
+    '<feDropShadow dx="0" dy="1.2" stdDeviation="1" flood-color="#000000" flood-opacity="0.45"/>',
     "</filter>",
   ].join("");
   const lines = layout.segments.flatMap((segment) =>
@@ -296,10 +296,10 @@ function normalizeFinalLayout(
       value.version,
     ) ||
     value.fontFamily !== "Inter" ||
-    ![WALL_TEXT_FONT_WEIGHT, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
+    ![WALL_TEXT_FONT_WEIGHT, 600, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
       value.fontWeight,
     ) ||
-    ![44, 46, 48, 50, 52].includes(value.fontSizePx) ||
+    ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(value.fontSizePx) ||
     !Number.isFinite(value.lineHeightPx) ||
     value.lineHeightPx <= 0 ||
     value.blocks.length < 1 ||
@@ -310,7 +310,9 @@ function normalizeFinalLayout(
 
   const normalized = {
     ...value,
-    fontWeight: WALL_TEXT_FONT_WEIGHT as 600,
+    fontSizePx: normalizeWallTextFontSize(value.fontSizePx),
+    fontWeight: WALL_TEXT_FONT_WEIGHT as 400,
+    lineHeightPx: getWallTextLineHeight(normalizeWallTextFontSize(value.fontSizePx)),
     blocks: value.blocks.map((block) => {
       if (
         !["prose", "text", "title", "item"].includes(block.role) ||
@@ -378,20 +380,14 @@ function getWallTextFontSize(
   content: WallTextRenderContent,
   lineCount: number,
 ) {
-  if (
-    content.renderFontSize === 44 ||
-    content.renderFontSize === 46 ||
-    content.renderFontSize === 48 ||
-    content.renderFontSize === 50 ||
-    content.renderFontSize === 52
-  ) {
-    return content.renderFontSize;
+  if (content.renderFontSize !== undefined) {
+    return normalizeWallTextFontSize(content.renderFontSize);
   }
 
   const wordCount = content.fullText.split(/\s+/u).filter(Boolean).length;
 
   if (wordCount <= 18 && lineCount <= 5) {
-    return 52;
+    return WALL_TEXT_MAXIMUM_FONT_SIZE;
   }
 
   if (wordCount <= 21 && lineCount <= 6) {
@@ -399,10 +395,21 @@ function getWallTextFontSize(
   }
 
   if (wordCount <= 23) {
-    return 46;
+    return 40;
   }
 
   return WALL_TEXT_MINIMUM_FONT_SIZE;
+}
+
+function normalizeWallTextFontSize(value: number) {
+  if ([36, 38, 40, 42].includes(value)) return value as 36 | 38 | 40 | 42;
+  if (value === 44 || value === 46 || value === 48) return 40 as const;
+  if (value === 50) return 42 as const;
+  return WALL_TEXT_MAXIMUM_FONT_SIZE;
+}
+
+function getWallTextLineHeight(fontSize: number) {
+  return Math.round(fontSize * WALL_TEXT_LINE_HEIGHT_FACTOR * 100) / 100;
 }
 
 function toComparisonKey(value: string) {

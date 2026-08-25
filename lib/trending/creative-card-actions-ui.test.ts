@@ -281,7 +281,13 @@ test("keeps the Carousel format pill above its centered media stack", () => {
 test("keeps Hook and Wall-of-Text pills close above their video frame", () => {
   assert.match(workspace, /type TrendingDeckPresentation = "centered" \| "video_peek"/);
   assert.match(workspace, /VIDEO_PEEK_CARD_STYLES/);
-  assert.match(workspace, /translateX: 178/);
+  assert.match(workspace, /translateX: 12/);
+  assert.doesNotMatch(workspace, /translateX: 178/);
+  assert.match(
+    workspace,
+    /interpolateDeckValue\(\s*inactiveTranslateX,\s*promotedTranslateX,\s*revealProgress,\s*\)/,
+  );
+  assert.match(workspace, /presentation === "video_peek" && !isActive/);
   assert.match(workspace, /activeFormat !== "carousel"/);
   assert.match(workspace, /nextCandidate && nextCandidate\.format !== "carousel"/);
   assert.equal(

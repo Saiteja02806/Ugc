@@ -16,6 +16,7 @@ import {
   getTrendingDailyPackReadiness,
   type TrendingDailyPackReadiness,
 } from "@/lib/trending/daily-pack-readiness";
+import { getAdditionalTrendingSlotsForUpgrade } from "@/lib/trending/plan-upgrade-grant";
 import {
   createCarouselTrendingFeedProvider,
   createUnavailableTrendingFeedProvider,
@@ -90,6 +91,11 @@ export async function readUnifiedTrendingDailyFeed(params: {
     });
   }
 
+  const upgradeSlots = getAdditionalTrendingSlotsForUpgrade({
+    currentPlanDailyLimit: entitlement.dailyLimit,
+    currentPlanKey: entitlement.planKey,
+    existingFeedPlanKey: existingPlan.feed.planKey,
+  });
   const reservedAllocation = countReservedSlots(existingPlan.slots);
   const [carouselFeed, hookProvider, wallTextProvider] = await Promise.all([
     reservedAllocation.carousel > 0
@@ -144,7 +150,19 @@ export async function readUnifiedTrendingDailyFeed(params: {
     resolvedAssignmentIds,
     slots: existingPlan.slots,
   });
-  const state = getPublicDailyFeedState({ items, readiness });
+  const responseReadiness =
+    upgradeSlots > 0
+      ? {
+          ...readiness,
+          pendingSlotCount: readiness.pendingSlotCount + upgradeSlots,
+          ready: false,
+          remainingCount: readiness.remainingCount + upgradeSlots,
+        }
+      : readiness;
+  const state = getPublicDailyFeedState({
+    items,
+    readiness: responseReadiness,
+  });
 
   return {
     ...buildUnifiedDailyFeedResponse({
@@ -155,7 +173,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
       localDate,
       mix: existingPlan.feed.mix,
       preferenceVersion: existingPlan.feed.preferenceVersion,
-      readiness,
+      readiness: responseReadiness,
       state,
       timezone,
     }),
@@ -164,7 +182,8 @@ export async function readUnifiedTrendingDailyFeed(params: {
       missingByFormat: unresolvedByFormat,
       preparationResults: new Map(),
     }),
-    requiresPreparation: shouldPrepareDailyFeed({ items, readiness }),
+    requiresPreparation:
+      upgradeSlots > 0 || shouldPrepareDailyFeed({ items, readiness }),
   };
 }
 
@@ -311,9 +330,10 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
   }
 
   const localDate = getTrendingLocalDate(timezone);
-  const [entitlement, preference] = await Promise.all([
+  const [entitlement, preference, existingPlan] = await Promise.all([
     getTrendingPlanEntitlement(params.userId),
     getTrendingContentMixPreference(params.userId),
+    getDailyTrendingFeedForDate({ localDate, userId: params.userId }),
   ]);
   const effectivePreference = resolveTrendingContentMixPreference({
     planKey: entitlement.planKey,
@@ -324,11 +344,29 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     localDate,
     mix: effectivePreference.mix,
   });
+  const upgradeSlots = existingPlan
+    ? getAdditionalTrendingSlotsForUpgrade({
+        currentPlanDailyLimit: entitlement.dailyLimit,
+        currentPlanKey: entitlement.planKey,
+        existingFeedPlanKey: existingPlan.feed.planKey,
+      })
+    : 0;
+  const plannedFormats =
+    existingPlan && upgradeSlots > 0
+      ? [...existingPlan.slots.map((slot) => slot.format), ...dailyPlan.formats]
+      : dailyPlan.formats;
+  const reservedEntitlement =
+    existingPlan && upgradeSlots > 0
+      ? {
+          ...entitlement,
+          dailyLimit: existingPlan.feed.dailyLimit + upgradeSlots,
+        }
+      : entitlement;
   const initialPlan = await ensureDailyTrendingFeedPlan({
     businessProfileId: params.profile.id,
     businessProfileVersion: params.profile.profileVersion,
-    entitlement,
-    formats: dailyPlan.formats,
+    entitlement: reservedEntitlement,
+    formats: plannedFormats,
     localDate,
     preference: effectivePreference,
     timezone,

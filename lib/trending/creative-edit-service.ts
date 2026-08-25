@@ -648,7 +648,7 @@ async function validateAndNormalizeSubmittedContent(params: {
       layout: relaid.layout,
       content: {
         ...contentWithoutFont,
-        renderFontSize: render.fontSize as 44 | 46 | 48 | 50 | 52,
+        renderFontSize: render.fontSize as 36 | 38 | 40 | 42 | 44 | 46,
       },
     };
   } catch (error) {

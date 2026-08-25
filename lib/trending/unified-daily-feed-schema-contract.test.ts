@@ -26,6 +26,10 @@ const freeAllowanceMigration = readFileSync(
   "supabase/migrations/20260823130857_raise_free_trending_allowance.sql",
   "utf8",
 );
+const planUpgradeGrant = readFileSync(
+  "lib/trending/plan-upgrade-grant.ts",
+  "utf8",
+);
 const unifiedFeed = readFileSync(
   "lib/trending/unified-daily-feed.ts",
   "utf8",
@@ -83,7 +87,7 @@ test("exposes ready content before every remaining daily slot resolves", () => {
   assert.match(unifiedFeed, /exposeTrendingDailyPackItems/);
   assert.match(
     unifiedFeed,
-    /const state = getPublicDailyFeedState\(\{ items, readiness \}\)/,
+    /const state = getPublicDailyFeedState\(\{[\s\S]*readiness: responseReadiness/,
   );
   assert.match(
     unifiedFeed,
@@ -91,11 +95,26 @@ test("exposes ready content before every remaining daily slot resolves", () => {
   );
   assert.match(
     unifiedFeed,
-    /requiresPreparation: shouldPrepareDailyFeed\(\{ items, readiness \}\)/,
+    /upgradeSlots > 0 \|\| shouldPrepareDailyFeed\(\{ items, readiness \}\)/,
   );
   assert.match(
     unifiedFeed,
     /params\.items\.length > 0[\s\S]*return "ready"/,
+  );
+});
+
+test("a same-day plan upgrade grants a full new plan pack exactly once", () => {
+  assert.match(
+    planUpgradeGrant,
+    /currentTier <= existingTier[\s\S]*return 0[\s\S]*currentPlanDailyLimit/,
+  );
+  assert.match(
+    unifiedFeed,
+    /upgradeSlots > 0 \|\| shouldPrepareDailyFeed/,
+  );
+  assert.match(
+    unifiedFeed,
+    /existingPlan\.slots\.map\(\(slot\) => slot\.format\)[\s\S]*dailyPlan\.formats/,
   );
 });
 

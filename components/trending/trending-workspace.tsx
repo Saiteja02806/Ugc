@@ -343,16 +343,16 @@ const VIDEO_PEEK_CARD_STYLES: Record<
   },
   1: {
     opacity: 0.7,
-    scale: 0.92,
-    translateX: 178,
-    translateY: 10,
+    scale: 0.965,
+    translateX: 12,
+    translateY: 4,
     zIndex: 1,
   },
   2: {
     opacity: 0,
-    scale: 0.9,
-    translateX: 200,
-    translateY: 16,
+    scale: 0.93,
+    translateX: 24,
+    translateY: 8,
     zIndex: 0,
   },
 };
@@ -406,13 +406,21 @@ function getTrendingDeckCardPresentation({
   );
   const inactiveTranslateX =
     presentation === "video_peek" ? VIDEO_PEEK_CARD_STYLES[depth].translateX : 0;
+  const promotedTranslateX =
+    presentation === "video_peek" && !isActive
+      ? VIDEO_PEEK_CARD_STYLES[(depth - 1) as DeckDepth].translateX
+      : 0;
   const translateX = isActive
     ? exitDirection
       ? exitDirection === "left"
         ? "-115vw"
         : "115vw"
       : `${dragX}px`
-    : `${inactiveTranslateX}px`;
+    : `${interpolateDeckValue(
+        inactiveTranslateX,
+        promotedTranslateX,
+        revealProgress,
+      )}px`;
 
   return {
     opacity,

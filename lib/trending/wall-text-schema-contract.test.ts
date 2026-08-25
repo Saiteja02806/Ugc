@@ -94,6 +94,13 @@ const semiboldTypographyMigration = readFileSync(
   ),
   "utf8",
 );
+const lighterTypographyMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260825130000_add_wall_text_lighter_typography_v8.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const generatorSource = readFileSync(
   new URL("./generate-trending-wall-text-ideas.ts", import.meta.url),
   "utf8",
@@ -204,7 +211,7 @@ test("requires every active Wall source video to be at least six seconds", () =>
   );
 });
 
-test("allows a rolling Wall transition from legacy 700 to current 600 weight", () => {
+test("preserves the historical 600/700 migration while the current renderer normalizes to 400", () => {
   assert.match(
     semiboldTypographyMigration,
     /layoutVersion' = 'wall-text-overlay-v6'[\s\S]+fontWeight'\)::integer in \(600, 700\)/i,
@@ -216,6 +223,25 @@ test("allows a rolling Wall transition from legacy 700 to current 600 weight", (
   assert.doesNotMatch(
     semiboldTypographyMigration,
     /update\s+public\.wall_text_creatives/i,
+  );
+});
+
+test("makes the lighter V8 Wall layout persistent and re-layoutable", () => {
+  assert.match(
+    lighterTypographyMigration,
+    /set default 'business-profile-wall-text-v8'/i,
+  );
+  assert.match(
+    lighterTypographyMigration,
+    /fontWeight'\)::integer in \(400, 600, 700\)/i,
+  );
+  assert.match(
+    lighterTypographyMigration,
+    /fontSizePx'\)::integer in \(36, 38, 40, 42, 44, 46, 48, 50, 52\)/i,
+  );
+  assert.match(
+    lighterTypographyMigration,
+    /replace_wall_text_creative_copy_v8[\s\S]+expected_count < 1 or expected_count > 50[\s\S]+generator_version = 'business-profile-wall-text-v8'/i,
   );
 });
 
@@ -501,14 +527,14 @@ test("measures final Wall lines with Inter before saving authoritative layout", 
   );
 });
 
-test("uses Inter SemiBold 600 everywhere while preserving the 44-52px range", () => {
-  assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 600/);
-  assert.match(visualStyleSource, /WALL_TEXT_MINIMUM_FONT_SIZE = 44/);
-  assert.match(visualStyleSource, /WALL_TEXT_MAXIMUM_FONT_SIZE = 52/);
-  assert.match(layoutEngineSource, /Inter Semi Bold \$\{fontSize\}/);
-  assert.match(layoutEngineSource, /inter-latin-600-normal\.woff/);
-  assert.match(renderValidationSource, /Inter Semi Bold \$\{fontSize\}/);
-  assert.match(renderValidationSource, /inter-latin-600-normal\.woff/);
+test("uses Inter Regular 400 with the lighter 36-42px Wall scale", () => {
+  assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 400/);
+  assert.match(visualStyleSource, /WALL_TEXT_MINIMUM_FONT_SIZE = 36/);
+  assert.match(visualStyleSource, /WALL_TEXT_MAXIMUM_FONT_SIZE = 42/);
+  assert.match(layoutEngineSource, /Inter Regular \$\{fontSize\}/);
+  assert.match(layoutEngineSource, /inter-latin-400-normal\.woff/);
+  assert.match(renderValidationSource, /Inter Regular \$\{fontSize\}/);
+  assert.match(renderValidationSource, /inter-latin-400-normal\.woff/);
   assert.match(overlaySource, /fontWeight: WALL_TEXT_FONT_WEIGHT/);
   assert.match(editorSource, /fontWeight: WALL_TEXT_FONT_WEIGHT/);
   assert.doesNotMatch(
@@ -517,7 +543,7 @@ test("uses Inter SemiBold 600 everywhere while preserving the 44-52px range", ()
   );
   assert.match(
     rootLayoutSource,
-    /inter-latin-600-normal\.woff2[\s\S]+variable: "--font-wall-text"[\s\S]+weight: "600"/,
+    /inter-latin-400-normal\.woff2[\s\S]+variable: "--font-wall-text"[\s\S]+weight: "400"/,
   );
 });
 
@@ -622,7 +648,7 @@ test("V7 accepts thirty words on a six-second source when measured layout fits",
 
   assert.equal(original.split(/\s+/u).length, 30);
   assert.equal(result.budget.maxWords, 50);
-  assert.equal(result.content.finalLayout.fontWeight, 600);
+  assert.equal(result.content.finalLayout.fontWeight, 400);
   assert.ok(result.budget.targetWords <= result.budget.spatialMaximum);
   assert.ok(lines.length >= 4 && lines.length <= 7);
 });
@@ -668,14 +694,13 @@ test("balances the reported Wall example into readable measured lines", () => {
   };
 
   assert.equal(layout.fontFamily, "Inter");
-  assert.equal(layout.lineHeightPx, 56.33);
+  assert.equal(layout.lineHeightPx, 46.2);
   assert.deepEqual(layout.blocks[0]?.lines, [
-    "People assume one program",
-    "fits every meal. But",
-    "personalized guidance",
-    "connects choices to goals.",
-    "Relevance matters more than",
-    "rigid rules.",
+    "People assume one program fits",
+    "every meal. But personalized",
+    "guidance connects choices to",
+    "goals. Relevance matters more",
+    "than rigid rules.",
   ]);
 });
 
@@ -807,7 +832,7 @@ test("upgrades stale Wall layout without sending existing copy back to AI", () =
   );
   assert.match(
     feedSource,
-    /content: \{ kind: "prose", text: existingContent\.fullText \}[\s\S]+formatId: getBackfillWallTextFormatId\(existingContent\.pattern\)/,
+    /content: \{ kind: "text", text: existingContent\.fullText \}[\s\S]+formatId: getBackfillWallTextFormatId\(existingContent\.pattern\)/,
   );
   assert.match(
     feedSource,
@@ -825,7 +850,7 @@ test("upgrades stale Wall layout without sending existing copy back to AI", () =
   );
   assert.match(
     databaseSource,
-    /\.in\("generator_version", \[[\s\S]+LEGACY_WALL_TEXT_GENERATOR_VERSION[\s\S]+WALL_TEXT_GENERATOR_VERSION/,
+    /\.eq\("generator_version", WALL_TEXT_GENERATOR_VERSION\)/,
   );
   assert.match(
     databaseSource,

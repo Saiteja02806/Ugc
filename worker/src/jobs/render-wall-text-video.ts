@@ -397,8 +397,8 @@ function getWallTextContent(value: Json | undefined): WallTextRenderContent {
   return {
     ...(finalLayout ? { finalLayout } : {}),
     fullText,
-    ...([44, 46, 48, 50, 52].includes(Number(content.renderFontSize))
-      ? { renderFontSize: Number(content.renderFontSize) as 44 | 46 | 48 | 50 | 52 }
+    ...([36, 38, 40, 42, 44, 46, 48, 50, 52].includes(Number(content.renderFontSize))
+      ? { renderFontSize: Number(content.renderFontSize) as 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52 }
       : {}),
     segments,
   };
@@ -411,10 +411,10 @@ function getFinalLayout(value: Json) {
       String(layout.version),
     ) ||
     layout.fontFamily !== "Inter" ||
-    ![WALL_TEXT_FONT_WEIGHT, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
+    ![WALL_TEXT_FONT_WEIGHT, 600, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
       Number(layout.fontWeight),
     ) ||
-    ![44, 46, 48, 50, 52].includes(Number(layout.fontSizePx)) ||
+    ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(Number(layout.fontSizePx)) ||
     typeof layout.lineHeightPx !== "number" ||
     !Array.isArray(layout.blocks) ||
     layout.blocks.length < 1 ||
@@ -456,14 +456,22 @@ function getFinalLayout(value: Json) {
   return {
     blocks,
     fontFamily: "Inter" as const,
-    fontSizePx: Number(layout.fontSizePx) as 44 | 46 | 48 | 50 | 52,
-    fontWeight: WALL_TEXT_FONT_WEIGHT as 600,
-    lineHeightPx: layout.lineHeightPx,
+    fontSizePx: normalizeWallTextFontSize(Number(layout.fontSizePx)),
+    fontWeight: WALL_TEXT_FONT_WEIGHT as 400,
+    lineHeightPx: Math.round(normalizeWallTextFontSize(Number(layout.fontSizePx)) * 1.1 * 100) / 100,
     textBox: getTextBoxFromRecord(layout.textBox, "text.finalLayout.textBox"),
     version: isV2
       ? ("wall-text-final-layout-v2" as const)
       : ("wall-text-final-layout-v1" as const),
   };
+}
+
+function normalizeWallTextFontSize(value: number) {
+  if ([36, 38, 40, 42].includes(value)) {
+    return value as 36 | 38 | 40 | 42;
+  }
+  if (value === 44 || value === 46 || value === 48) return 40 as const;
+  return 42 as const;
 }
 
 function getTextBoxFromRecord(value: Json | undefined, fieldName: string) {

@@ -125,11 +125,14 @@ export async function enqueueTrendingWallTextRefill(
       (template) => !usedBackgroundAssetIds.has(template.asset.id),
     );
 
+  const needsTypographyRefresh = existing.some(
+    (creative) => !isTrendingWallTextCreativeCurrent(creative),
+  );
   const job = await enqueueTrendingWallTextJob({
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,
     profile,
-    refillKey: String(existing.length),
+    ...(needsTypographyRefresh ? {} : { refillKey: String(existing.length) }),
     requestedCount: Math.max(targetActive - active.length, 1),
     userId: profile.userId,
   });
@@ -211,7 +214,7 @@ export async function prepareTrendingWallTextIdeas(
       userId: profile.userId,
     });
 
-    if (active.length === 0) {
+    if (active.length === 0 && areTrendingWallTextCreativesCurrent(existing)) {
       // Assignment upserts intentionally never reactivate rejected creatives.
       // Existing accounts that consumed their first batch therefore need a
       // new batch from unused backgrounds.
@@ -864,7 +867,9 @@ async function backfillExistingTrendingWallTextIdeas(
       }
 
       const upgraded = await createAuthoritativeWallTextContent({
-        content: { kind: "prose", text: existingContent.fullText },
+        // Rebuild saved copy with the current measured single-text layout.
+        // This preserves the words while replacing legacy, cramped line breaks.
+        content: { kind: "text", text: existingContent.fullText },
         formatId: getBackfillWallTextFormatId(existingContent.pattern),
         layout: createWallTextLayout(background),
       });

@@ -24,8 +24,6 @@ export const PREFERRED_WALL_TEXT_RENDERED_LINES = { maximum: 6, minimum: 5 };
 export const MIN_WALL_TEXT_WORDS = 16;
 export const MIN_SHORT_WALL_TEXT_WORDS = 8;
 export const MIN_WALL_TEXT_RENDERED_LINES = 4;
-export const MAX_WALL_TEXT_WORDS_PER_LINE = 6;
-export const MIN_WALL_TEXT_WORDS_PER_LINE = 2;
 export type WallTextLinePolicy = {
   ideal: number;
   maximum: number;
@@ -592,18 +590,6 @@ function validateSegmentRoles(segments: readonly WallTextSegment[]) {
 function validateSemanticLines(segments: readonly WallTextSegment[]) {
   for (const segment of segments) {
     for (const [index, line] of segment.lines.entries()) {
-      const wordCount = countWords(line);
-
-      if (wordCount < MIN_WALL_TEXT_WORDS_PER_LINE) {
-        throw new Error("Wall-of-text cannot contain one-word orphan lines.");
-      }
-
-      if (wordCount > MAX_WALL_TEXT_WORDS_PER_LINE) {
-        throw new Error(
-          `Wall-of-text lines cannot exceed ${MAX_WALL_TEXT_WORDS_PER_LINE} words.`,
-        );
-      }
-
       if (index < segment.lines.length - 1 && endsWithUnsafeBreakWord(line)) {
         throw new Error(
           "Wall-of-text line breaks cannot follow an article, conjunction, or preposition.",

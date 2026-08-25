@@ -73,6 +73,15 @@ test("the onboarding remains screen-by-screen without tab-like navigation", () =
   assert.doesNotMatch(onboarding, /const onboardingSteps/);
 });
 
+test("desktop onboarding uses available space before requiring the user to scroll", () => {
+  assert.match(onboarding, /max-w-\[1120px\]/);
+  assert.match(onboarding, /min-h-\[calc\(100dvh-68px\)\]/);
+  assert.match(onboarding, /lg:grid-cols-\[minmax\(0,1\.15fr\)_minmax\(18rem,0\.85fr\)\]/);
+  assert.match(onboarding, /lg:grid-cols-3/);
+  assert.match(onboarding, /lg:sticky/);
+  assert.match(onboarding, /lg:overflow-visible/);
+});
+
 test("the original three business-information routes keep their payloads", () => {
   assert.match(onboarding, /const payload = \{ aiIdeContext, intakeType, manual, websiteUrl \}/);
   assert.match(onboarding, /value: \"mobile_app_ai_prompt\"/);

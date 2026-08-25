@@ -44,7 +44,7 @@ export async function validateWallTextRenderFit(
   content: TrendingWallTextContent,
 ): Promise<WallTextRenderValidation> {
   const preferredFontSize = getWallTextFontSize(content);
-  const fontSizes = [preferredFontSize, 50, 48, 46, 44].filter(
+  const fontSizes = [preferredFontSize, 42, 40, 38, 36].filter(
     (fontSize, index, values) =>
       fontSize <= preferredFontSize && values.indexOf(fontSize) === index,
   );
@@ -70,7 +70,7 @@ export async function validateWallTextRenderFit(
         const metadata = await sharp({
           text: {
             dpi: 72,
-            font: `Inter Semi Bold ${fontSize}`,
+            font: `Inter Regular ${fontSize}`,
             fontfile: fontPath,
             rgba: true,
             text: escapePangoMarkup(line),
@@ -137,7 +137,7 @@ function getInterFontPath() {
     "@fontsource",
     "inter",
     "files",
-    "inter-latin-600-normal.woff",
+    "inter-latin-400-normal.woff",
   );
 }
 

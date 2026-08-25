@@ -9,11 +9,11 @@ export const WALL_TEXT_FINAL_LAYOUT_VERSION = "wall-text-final-layout-v2" as con
 export const LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION =
   "wall-text-final-layout-v1" as const;
 export const WALL_TEXT_GENERATOR_VERSION =
-  "business-profile-wall-text-v7" as const;
+  "business-profile-wall-text-v8" as const;
 export const LEGACY_WALL_TEXT_GENERATOR_VERSION =
-  "business-profile-wall-text-v6" as const;
+  "business-profile-wall-text-v7" as const;
 export const OLDER_WALL_TEXT_GENERATOR_VERSION =
-  "business-profile-wall-text-v5" as const;
+  "business-profile-wall-text-v6" as const;
 export const WALL_TEXT_READABLE_GENERATOR_VERSIONS = [
   OLDER_WALL_TEXT_GENERATOR_VERSION,
   LEGACY_WALL_TEXT_GENERATOR_VERSION,
@@ -103,7 +103,9 @@ export type LegacyWallTextFormatId =
 export type WallTextPattern = (typeof WALL_TEXT_PATTERNS)[number];
 export type WallTextSegmentRole = (typeof WALL_TEXT_SEGMENT_ROLES)[number];
 export type WallTextPlacementZone = (typeof WALL_TEXT_PLACEMENT_ZONES)[number];
-export type WallTextFontSize = 44 | 46 | 48 | 50 | 52;
+// 44-52 remain readable only so historical records can be parsed and
+// re-laid out. The current layout engine emits the lighter 36-42 range.
+export type WallTextFontSize = 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
 export type WallTextNormalizedBox = {
   height: number;
   width: number;
@@ -139,7 +141,7 @@ export type WallTextFinalLayout = {
   blocks: WallTextLayoutBlock[];
   fontFamily: "Inter";
   fontSizePx: WallTextFontSize;
-  fontWeight: 600;
+  fontWeight: 400;
   lineHeightPx: number;
   textBox: WallTextNormalizedBox;
   version:

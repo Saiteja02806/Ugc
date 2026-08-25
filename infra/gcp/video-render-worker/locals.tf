@@ -17,6 +17,7 @@ locals {
     WORKER_JOB_TYPES                  = var.worker_job_types
     WORKER_RUN_ONCE                   = "true"
     WORKER_RUNTIME_NAME               = "gcp-cloud-run-job"
+    WORKER_ID                         = "${var.job_name}:${var.worker_version}:${var.worker_git_commit}"
     WORKER_VERSION                    = var.worker_version
     WORKER_GIT_COMMIT                 = var.worker_git_commit
     WORKER_VISIBILITY_TIMEOUT_SECONDS = tostring(var.worker_visibility_timeout_seconds)

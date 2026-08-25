@@ -282,8 +282,6 @@ type CarouselActionNotice = {
   onAction?: () => void | Promise<void>;
 };
 
-const HISTORY_REPAIR_POLL_INTERVAL_MS = 60_000;
-
 function getSmartPreparingPollInterval(attemptCount: number): number {
   if (attemptCount <= 2) return 2_000;
   if (attemptCount <= 4) return 3_500;
@@ -722,8 +720,9 @@ export function TrendingWorkspace() {
         );
         setTrendingItems(nextVisibleItems);
         setTrendingFeedState(data.feed?.state ?? null);
-        loadedFeedFailed.current = data.feed?.state === "failed";
-        if (data.feed?.state === "failed") {
+        loadedFeedFailed.current =
+          data.feed?.state === "failed" && nextVisibleItems.length === 0;
+        if (loadedFeedFailed.current) {
           setCarouselHistoryError(
             "The complete daily pack could not be prepared. Try again to restart the failed work.",
           );
@@ -743,16 +742,10 @@ export function TrendingWorkspace() {
         };
 
         if ((data.feed?.pendingSlotCount ?? 0) > 0) {
-          const isPreparing = data.feed?.state === "preparing";
-          if (isPreparing) {
-            preparingPollAttemptsRef.current += 1;
-          } else {
-            preparingPollAttemptsRef.current = 0;
-          }
-
-          const pollInterval = isPreparing
-            ? getSmartPreparingPollInterval(preparingPollAttemptsRef.current)
-            : HISTORY_REPAIR_POLL_INTERVAL_MS;
+          preparingPollAttemptsRef.current += 1;
+          const pollInterval = getSmartPreparingPollInterval(
+            preparingPollAttemptsRef.current,
+          );
 
           pollTimer = window.setTimeout(() => {
             if (typeof document === "undefined" || document.visibilityState === "visible") {
@@ -963,9 +956,9 @@ function TrendingFeedGallery({
   onRetryHistory: () => void;
   profile: CarouselProfileFeed | null;
 }) {
-  const showSkeleton = loading || preparing;
+  const showSkeleton = loading || (preparing && items.length === 0);
 
-  if (!loading && error) {
+  if (!loading && error && items.length === 0) {
     return (
       <CarouselFeedState
         actionIcon="refresh"

@@ -5,17 +5,21 @@ export type TrendingDailyPackSlot = {
 
 export type TrendingDailyPackReadiness = {
   completedCount: number;
+  deliverableCount: number;
+  failedSlotCount: number;
   pendingSlotCount: number;
   ready: boolean;
   remainingCount: number;
 };
 
 /**
- * Computes the public daily-pack boundary.
+ * Computes the state of a daily pack.
  *
  * A slot is only deliverable when both the durable slot and its resolved feed
- * item exist. This prevents a nominally-ready database slot from leaking a
- * partial pack when a provider response is missing or stale.
+ * item exist. A reserved assignment without its provider item can still be
+ * rendering, so it remains background work. Only an explicitly failed slot is
+ * terminal. This lets the caller expose valid items without treating one
+ * unavailable slot as a failed whole pack.
  */
 export function getTrendingDailyPackReadiness(params: {
   dailyLimit: number;
@@ -25,6 +29,8 @@ export function getTrendingDailyPackReadiness(params: {
   const dailyLimit = Math.max(Math.trunc(params.dailyLimit), 0);
   let completedCount = 0;
   let deliverableCount = 0;
+  let failedSlotCount = 0;
+  let pendingSlotCount = 0;
 
   for (const slot of params.slots) {
     if (slot.state === "decided") {
@@ -38,23 +44,29 @@ export function getTrendingDailyPackReadiness(params: {
       params.resolvedAssignmentIds.has(slot.assignmentId)
     ) {
       deliverableCount += 1;
+    } else if (slot.state === "failed") {
+      failedSlotCount += 1;
+    } else {
+      pendingSlotCount += 1;
     }
   }
 
   const remainingCount = Math.max(dailyLimit - completedCount, 0);
-  const pendingSlotCount = Math.max(remainingCount - deliverableCount, 0);
 
   return {
     completedCount,
+    deliverableCount,
+    failedSlotCount,
     pendingSlotCount,
-    ready: remainingCount === 0 || pendingSlotCount === 0,
+    ready:
+      remainingCount === 0 ||
+      (pendingSlotCount === 0 && failedSlotCount === 0),
     remainingCount,
   };
 }
 
 export function exposeTrendingDailyPackItems<T>(params: {
   items: readonly T[];
-  readiness: TrendingDailyPackReadiness;
 }) {
-  return params.readiness.ready ? [...params.items] : [];
+  return [...params.items];
 }

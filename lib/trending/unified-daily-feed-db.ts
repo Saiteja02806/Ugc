@@ -275,40 +275,27 @@ export async function attachDailyTrendingAssignments(params: {
   }
 }
 
-export async function markDailyTrendingFeedPreparationFailed(params: {
+export async function markDailyTrendingFeedFormatsFailed(params: {
   feedId: string;
+  formats: Array<"hook_video" | "wall_text">;
   message: string;
-  userId: string;
 }) {
-  const now = new Date().toISOString();
-  const { error: feedError } = await getClient()
-    .from(DAILY_FEEDS_TABLE)
-    .update({
-      last_error: params.message,
-      status: "failed",
-      updated_at: now,
-    })
-    .eq("id", params.feedId)
-    .eq("user_id", params.userId);
-
-  if (feedError) {
-    throw new Error(
-      `Could not record the failed Trending preparation: ${feedError.message}`,
-    );
+  if (params.formats.length === 0) {
+    return;
   }
 
-  const { error: slotError } = await getClient()
-    .from(DAILY_SLOTS_TABLE)
-    .update({ state: "failed", updated_at: now })
-    .eq("feed_id", params.feedId)
-    .in("state", ["planned", "preparing"])
-    .is("carousel_assignment_id", null)
-    .is("hook_video_assignment_id", null)
-    .is("wall_text_assignment_id", null);
+  const { error } = await getClient().rpc(
+    "mark_daily_trending_feed_formats_failed",
+    {
+      p_feed_id: params.feedId,
+      p_formats: params.formats,
+      p_message: params.message,
+    },
+  );
 
-  if (slotError) {
+  if (error) {
     throw new Error(
-      `Could not record the failed Trending positions: ${slotError.message}`,
+      `Could not record the failed Trending positions: ${error.message}`,
     );
   }
 }

@@ -39,7 +39,7 @@ import {
   getTrendingContentMixPreference,
   getTrendingLocalDate,
   getTrendingPlanEntitlement,
-  markDailyTrendingFeedPreparationFailed,
+  markDailyTrendingFeedFormatsFailed,
   normalizeTrendingTimezone,
   type DailyTrendingFeedSlotRecord,
   type TrendingPlanEntitlement,
@@ -139,24 +139,12 @@ export async function readUnifiedTrendingDailyFeed(params: {
   });
   const items = exposeTrendingDailyPackItems({
     items: resolvedItems,
-    readiness,
   });
   const unresolvedByFormat = countUnresolvedSlots({
     resolvedAssignmentIds,
     slots: existingPlan.slots,
   });
-  const state: UnifiedTrendingDailyFeedState =
-    readiness.remainingCount === 0
-      ? "caught_up"
-      : existingPlan.feed.status === "failed" ||
-          hasUnresolvedReadyAssignment({
-            resolvedAssignmentIds,
-            slots: existingPlan.slots,
-          })
-        ? "failed"
-        : readiness.pendingSlotCount > 0
-          ? "preparing"
-          : "ready";
+  const state = getPublicDailyFeedState({ items, readiness });
 
   return {
     ...buildUnifiedDailyFeedResponse({
@@ -176,7 +164,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
       missingByFormat: unresolvedByFormat,
       preparationResults: new Map(),
     }),
-    requiresPreparation: state === "preparing" || state === "failed",
+    requiresPreparation: shouldPrepareDailyFeed({ items, readiness }),
   };
 }
 
@@ -220,6 +208,8 @@ function buildPreparingDailyFeed(params: {
 }) {
   const readiness: TrendingDailyPackReadiness = {
     completedCount: 0,
+    deliverableCount: 0,
+    failedSlotCount: 0,
     pendingSlotCount: params.entitlement.dailyLimit,
     ready: false,
     remainingCount: params.entitlement.dailyLimit,
@@ -392,18 +382,12 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
   });
   const items = exposeTrendingDailyPackItems({
     items: resolvedItems,
-    readiness,
   });
   const unresolvedByFormat = countUnresolvedSlots({
     resolvedAssignmentIds,
     slots: attachedPlan.slots,
   });
-  const preparationFailed =
-    hasUnresolvedReadyAssignment({
-      resolvedAssignmentIds,
-      slots: attachedPlan.slots,
-    }) ||
-    hasTerminalPreparationFailure({
+  const terminalFailureFormats = getTerminalPreparationFailureFormats({
       hookProvider,
       includeHookVideos: params.includeHookVideos,
       includeWallText: params.includeWallText,
@@ -412,21 +396,18 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
       unresolvedByFormat,
       wallTextProvider,
     });
-  const state: UnifiedTrendingDailyFeedState =
-    readiness.remainingCount === 0
-      ? "caught_up"
-      : preparationFailed
-        ? "failed"
-        : readiness.pendingSlotCount > 0
-          ? "preparing"
-          : "ready";
+  const state = getPublicDailyFeedState({
+    items,
+    readiness,
+    terminalFailure: terminalFailureFormats.length > 0,
+  });
 
-  if (state === "failed") {
-    await markDailyTrendingFeedPreparationFailed({
+  if (terminalFailureFormats.length > 0) {
+    await markDailyTrendingFeedFormatsFailed({
       feedId: attachedPlan.feed.id,
+      formats: terminalFailureFormats,
       message:
-        "One or more reserved formats could not be prepared for today's Trending pack.",
-      userId: params.userId,
+        "One or more reserved Trending formats could not be prepared.",
     });
   }
 
@@ -471,19 +452,37 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
   };
 }
 
-function hasUnresolvedReadyAssignment(params: {
-  resolvedAssignmentIds: ReadonlySet<string>;
-  slots: DailyTrendingFeedSlotRecord[];
+function getPublicDailyFeedState(params: {
+  items: readonly TrendingFeedItem[];
+  readiness: TrendingDailyPackReadiness;
+  terminalFailure?: boolean;
+}): UnifiedTrendingDailyFeedState {
+  if (params.readiness.remainingCount === 0) {
+    return "caught_up";
+  }
+
+  if (params.items.length > 0) {
+    return "ready";
+  }
+
+  if (params.terminalFailure || params.readiness.pendingSlotCount === 0) {
+    return "failed";
+  }
+
+  return "preparing";
+}
+
+function shouldPrepareDailyFeed(params: {
+  items: readonly TrendingFeedItem[];
+  readiness: TrendingDailyPackReadiness;
 }) {
-  return params.slots.some(
-    (slot) =>
-      slot.state === "ready" &&
-      slot.assignmentId !== null &&
-      !params.resolvedAssignmentIds.has(slot.assignmentId),
+  return (
+    params.readiness.pendingSlotCount > 0 ||
+    (params.items.length === 0 && params.readiness.failedSlotCount > 0)
   );
 }
 
-function hasTerminalPreparationFailure(params: {
+function getTerminalPreparationFailureFormats(params: {
   hookProvider: TrendingFeedProviderResult<TrendingHookVideoFeedItem>;
   includeHookVideos: boolean;
   includeWallText: boolean;
@@ -505,7 +504,10 @@ function hasTerminalPreparationFailure(params: {
       (params.missingByFormat.wall_text === 0 &&
         params.wallTextProvider.state === "unavailable"));
 
-  return hookFailed || wallTextFailed;
+  return [
+    ...(hookFailed ? ["hook_video" as const] : []),
+    ...(wallTextFailed ? ["wall_text" as const] : []),
+  ];
 }
 
 function countUnresolvedSlots(params: {
@@ -694,7 +696,7 @@ function buildSlotOrderedItems(params: {
         feedItemId: slot.id,
         id: `${item.format}:${slot.id}`,
         position: slot.position,
-        source: slot.source,
+        source: item.source,
       } satisfies TrendingFeedItem,
     ];
   });

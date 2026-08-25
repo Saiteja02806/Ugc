@@ -6,6 +6,10 @@ const migration = readFileSync(
   "supabase/migrations/20260820084842_create_unified_daily_trending_feed.sql",
   "utf8",
 );
+const progressiveDeliveryMigration = readFileSync(
+  "supabase/migrations/20260825090000_progressive_trending_daily_delivery.sql",
+  "utf8",
+);
 const decisionRoute = readFileSync(
   "app/api/trending/feed/decisions/route.ts",
   "utf8",
@@ -70,16 +74,24 @@ test("uses each plan's effective saved mix and dispatches missing formats togeth
   assert.match(unifiedFeed, /await Promise\.all\(tasks\)/);
 });
 
-test("exposes daily content only after the complete remaining pack resolves", () => {
+test("exposes ready content before every remaining daily slot resolves", () => {
   assert.match(unifiedFeed, /getTrendingDailyPackReadiness/);
   assert.match(unifiedFeed, /exposeTrendingDailyPackItems/);
+  assert.match(
+    unifiedFeed,
+    /const state = getPublicDailyFeedState\(\{ items, readiness \}\)/,
+  );
   assert.match(
     unifiedFeed,
     /const resolvedAssignmentIds = new Set\([\s\S]*resolvedItems\.map\(\(item\) => item\.assignmentId\)/,
   );
   assert.match(
     unifiedFeed,
-    /readiness\.remainingCount === 0[\s\S]*readiness\.pendingSlotCount > 0/,
+    /requiresPreparation: shouldPrepareDailyFeed\(\{ items, readiness \}\)/,
+  );
+  assert.match(
+    unifiedFeed,
+    /params\.items\.length > 0[\s\S]*return "ready"/,
   );
 });
 
@@ -95,9 +107,8 @@ test("serves a read-only feed fast path and prepares missing work after the resp
   assert.match(carouselDailyFeed, /inspectProcessingCandidates: false/);
 });
 
-test("surfaces terminal format preparation failures instead of polling forever", () => {
-  assert.match(unifiedFeed, /hasTerminalPreparationFailure/);
-  assert.match(unifiedFeed, /hasUnresolvedReadyAssignment/);
+test("isolates terminal format failures to their unbound slots", () => {
+  assert.match(unifiedFeed, /getTerminalPreparationFailureFormats/);
   assert.match(
     unifiedFeed,
     /preparationResults\.get\("hook_video"\) === "failed"/,
@@ -106,11 +117,44 @@ test("surfaces terminal format preparation failures instead of polling forever",
     unifiedFeed,
     /preparationResults\.get\("wall_text"\) === "failed"/,
   );
-  assert.match(unifiedFeed, /preparationFailed[\s\S]*\? "failed"/);
-  assert.match(unifiedFeed, /markDailyTrendingFeedPreparationFailed/);
+  assert.match(unifiedFeed, /markDailyTrendingFeedFormatsFailed/);
   assert.match(
     unifiedFeedDatabase,
-    /status: "failed"[\s\S]*\.in\("state", \["planned", "preparing"\]\)/,
+    /mark_daily_trending_feed_formats_failed/,
+  );
+  assert.match(
+    progressiveDeliveryMigration,
+    /and format = any\(p_formats\)[\s\S]*and state in \('planned', 'preparing'\)/,
+  );
+});
+
+test("allows an unused carried Carousel to bind once in each daily feed", () => {
+  assert.match(
+    progressiveDeliveryMigration,
+    /drop index if exists public\.daily_trending_feed_slots_carousel_assignment_uidx/,
+  );
+  assert.match(
+    progressiveDeliveryMigration,
+    /create unique index if not exists daily_trending_feed_slots_feed_carousel_assignment_uidx[\s\S]*\(feed_id, carousel_assignment_id\)/,
+  );
+  assert.match(
+    progressiveDeliveryMigration,
+    /used_slot\.feed_id = p_feed_id[\s\S]*used_slot\.carousel_assignment_id = candidate\.assignment_id/,
+  );
+  assert.match(
+    unifiedFeed,
+    /source: item\.source/,
+  );
+});
+
+test("derives feed status from slots so stale failure metadata cannot hide ready content", () => {
+  assert.match(
+    progressiveDeliveryMigration,
+    /when exists \([\s\S]*slot\.state = 'ready'[\s\S]*then 'ready'/,
+  );
+  assert.match(
+    progressiveDeliveryMigration,
+    /with derived_status as \([\s\S]*update public\.daily_trending_feeds as feed/,
   );
 });
 

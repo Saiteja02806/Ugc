@@ -440,13 +440,24 @@ test("shows one dark 9:16 post skeleton while Trending prepares content", () => 
   assert.doesNotMatch(sidebar, /Creating in background|jobs running|useActiveBackgroundJobs/);
 });
 
-test("holds partial daily results behind the skeleton until the pack is complete", () => {
+test("shows ready ideas while other daily slots are still preparing or failed", () => {
   assert.match(workspace, /setTrendingFeedState\(data\.feed\?\.state \?\? null\)/);
   assert.match(
     workspace,
     /preparing=\{trendingFeedState === "preparing"\}/,
   );
-  assert.match(workspace, /const showSkeleton = loading \|\| preparing/);
+  assert.match(
+    workspace,
+    /const showSkeleton = loading \|\| \(preparing && items\.length === 0\)/,
+  );
+  assert.match(
+    workspace,
+    /if \(!loading && error && items\.length === 0\)/,
+  );
+  assert.match(
+    workspace,
+    /data\.feed\?\.state === "failed" && nextVisibleItems\.length === 0/,
+  );
   assert.match(workspace, /<TrendingPostSkeleton active=\{showSkeleton\} \/>/);
   assert.match(workspace, /inert=\{showSkeleton \? true : undefined\}/);
   assert.match(workspace, /transition-opacity duration-200 ease-linear/);

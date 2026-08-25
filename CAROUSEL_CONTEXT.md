@@ -3409,3 +3409,25 @@ Name: **Verify v26 and replace the stale production assignment**
   `carousel-structure-2-formats-v3-optional-cta` identify this contract. These
   source changes are not live until the updated Carousel worker is deployed and
   a production Structure 2 batch is verified.
+
+## 2026-08-25 Progressive Trending Delivery and Carousel Carry Rebinding
+
+- Daily Trending slots remain the ordered, durable source of truth. A resolved
+  slot is public immediately; another slot being planned, preparing, failed, or
+  unavailable must not hide a ready Carousel, Hook, or Wall-of-Text idea.
+- The feed returns only resolved items, in the existing durable order. It uses a
+  whole-screen failure only when there are no usable ideas at all. A partial
+  failure is isolated to that slot, while planned/preparing slots may continue
+  through their normal background path.
+- The legacy Carousel inventory may carry an unused runtime-safe assignment
+  into a new local day. The unified feed may bind that same Carousel assignment
+  once per `feed_id`, so a carried idea is available today without generating a
+  duplicate. Hook and Wall assignments remain globally unique because they do
+  not have this carry-forward lifecycle.
+- Feed status is derived from durable slots under the same per-user/day
+  advisory lock used for assignment attachment. A delayed failure update cannot
+  overwrite a feed that already has ready slots, and the migration normalizes
+  legacy stale `failed` statuses without changing user content assignments.
+- This is a Trending availability and recovery decision only. It does not
+  change Carousel structures, CTA flexibility, source selection, rendering,
+  swipe decisions, plan allowance, or worker generation contracts.

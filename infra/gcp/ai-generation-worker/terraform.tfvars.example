@@ -31,7 +31,9 @@ gcp_storage_bucket          = "ugcsaas-media"
 gcp_storage_public_base_url = "https://storage.googleapis.com/ugcsaas-media"
 
 openai_api_key_secret_id = "openai-api-key"
-openai_image_model       = "gpt-image-1"
+openai_image_model       = "gpt-image-2"
+gemini_image_model       = "gemini-3.1-flash-image"
+gemini_omni_model        = "gemini-omni-flash-preview"
 gemini_api_key_secret_id = "gemini-api-key"
 runwayml_api_secret_id   = "runwayml-api-secret"
 runway_daily_credit_limit = 100

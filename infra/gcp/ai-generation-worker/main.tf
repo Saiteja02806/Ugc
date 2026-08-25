@@ -132,6 +132,16 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
 
       env {
+        name  = "GEMINI_IMAGE_MODEL"
+        value = var.gemini_image_model
+      }
+
+      env {
+        name  = "GEMINI_OMNI_MODEL"
+        value = var.gemini_omni_model
+      }
+
+      env {
         name  = "RUNWAY_DAILY_CREDIT_LIMIT"
         value = tostring(var.runway_daily_credit_limit)
       }

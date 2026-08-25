@@ -127,7 +127,19 @@ variable "openai_api_key_secret_id" {
 variable "openai_image_model" {
   description = "OpenAI image generation model used by generate_image and generate_avatar."
   type        = string
-  default     = "gpt-image-1"
+  default     = "gpt-image-2"
+}
+
+variable "gemini_image_model" {
+  description = "Gemini image generation model used by worker image-generation flows."
+  type        = string
+  default     = "gemini-3.1-flash-image"
+}
+
+variable "gemini_omni_model" {
+  description = "Gemini multimodal model used by worker analysis flows."
+  type        = string
+  default     = "gemini-omni-flash-preview"
 }
 
 variable "gemini_api_key_secret_id" {

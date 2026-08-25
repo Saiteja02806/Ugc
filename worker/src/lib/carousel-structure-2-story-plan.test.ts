@@ -26,7 +26,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 const businessDescription =
   "Todaywise is an application for planning work when priorities change.";
 
-test("Structure 2 receives only the minimal business description, seeds, emotions, formats, and exact copy history", () => {
+test("Structure 2 receives the private creative brief alongside seeds, formats, and exact copy history", () => {
   const messages = buildCarouselStructure2BatchMessages({
     assignments: makeAssignments(CAROUSEL_STRUCTURE_2_FORMAT_IDS.slice(0, 5)),
     businessDescription,
@@ -36,12 +36,15 @@ test("Structure 2 receives only the minimal business description, seeds, emotion
 
   assert.match(prompt, /creativeSeed/);
   assert.match(prompt, /emotion/);
+  assert.match(prompt, /privateCreativeBrief/);
+  assert.match(prompt, /An unexpected meeting moves the important work into the afternoon/);
   assert.match(prompt, /CTA is optional/i);
   assert.doesNotMatch(prompt, /allowedCtaPositions|exactly one CTA|CTA position is .*required/i);
   assert.match(prompt, /exact visible text/i);
   assert.match(prompt, /i kept rebuilding monday's list/);
   assert.doesNotMatch(prompt, /productMechanism/);
-  assert.doesNotMatch(prompt, /targetAudience|painPoints|valueProps|claimsToAvoid/);
+  assert.match(prompt, /preferredFormatFamily must never override/i);
+  assert.doesNotMatch(prompt, /productMechanism|claimsToAvoid/);
 });
 
 test("all eight formats keep five slides without requiring a CTA", () => {
@@ -250,6 +253,14 @@ function makeAssignments(formatIds: readonly CarouselStructure2FormatId[]) {
     candidateIndex: slotIndex,
     creativeSeed: `A different open creative starting point ${slotIndex + 1}`,
     emotion: slotIndex === 0 ? "quiet frustration" : `emotion ${slotIndex + 1}`,
+    planningBrief: {
+      audienceContext: "People managing changing priorities",
+      creativeSeed: "The plan starts to feel heavier than the work itself",
+      emotionalTension: "Frustration mixed with self-blame",
+      humanMoment: "An unexpected meeting moves the important work into the afternoon",
+      preferredFormatFamily: "relatable_situation",
+      supportedAngle: "A planning method that accounts for real capacity",
+    },
     slotIndex,
     storyFormatId: formatIds[slotIndex % formatIds.length]!,
   })) satisfies CarouselStructure2StoryAssignment[];

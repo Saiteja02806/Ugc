@@ -2,8 +2,6 @@ import "server-only";
 
 import { createHash, randomUUID } from "node:crypto";
 
-import sharp from "sharp";
-
 import {
   archiveCarouselProductAsset,
   CarouselProductAssetConflictError,
@@ -345,6 +343,9 @@ async function inspectUploadedScreenshot(storageKey: string) {
   const buffer = Buffer.from(
     await new Response(object.Body.transformToWebStream()).arrayBuffer(),
   );
+  // Screenshot listing must not depend on this native module. Load it only
+  // after a new upload reaches image verification.
+  const { default: sharp } = await import("sharp");
   const metadata = await sharp(buffer, {
     limitInputPixels: 80_000_000,
   }).metadata();

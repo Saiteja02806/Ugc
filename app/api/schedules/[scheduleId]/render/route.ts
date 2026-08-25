@@ -534,7 +534,12 @@ function isHookAsset(asset: MediaAssetRow) {
   return (
     asset.status === "ready" &&
     (asset.collection === "influencer" || asset.collection === "video") &&
-    ["influencer_upload", "upload", "generated_video"].includes(
+    [
+      "catalog_influencer",
+      "influencer_upload",
+      "upload",
+      "generated_video",
+    ].includes(
       asset.source_type,
     )
   );

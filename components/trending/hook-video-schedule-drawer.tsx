@@ -70,7 +70,6 @@ export type HookVideoScheduleSummary =
   | {
       demoTitle: string;
       hookText: string;
-      influencerName: string;
       kind?: "hook_video";
     }
   | {
@@ -641,12 +640,6 @@ function ScheduleReview({
           </dl>
         ) : (
           <dl className="mt-2 space-y-2 text-xs">
-            <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
-              <dt className="font-medium text-muted">Opening source</dt>
-              <dd className="truncate font-semibold text-foreground-strong">
-                {summary.influencerName}
-              </dd>
-            </div>
             <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
               <dt className="font-medium text-muted">Demo</dt>
               <dd className="truncate font-semibold text-foreground-strong">

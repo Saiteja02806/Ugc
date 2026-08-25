@@ -73,7 +73,7 @@ const SETTINGS_SECTIONS = [
   {
     icon: Bug,
     id: "raised-ticket",
-    label: "Raised Ticket",
+    label: "Raise Ticket",
   },
   {
     icon: Lightbulb,
@@ -590,7 +590,7 @@ export function SettingsWorkspace() {
             id="raised-ticket"
             description="Explain an issue so the UGC Pilot team can investigate it."
             icon={<Bug className="size-5" aria-hidden="true" />}
-            title="Raised Ticket"
+            title="Raise Ticket"
           >
             <SupportFeedbackSettings type="support_ticket" showOwnerInbox />
           </SettingsSection>

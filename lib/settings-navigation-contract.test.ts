@@ -19,7 +19,7 @@ test("Settings exposes the approved customer sections in order", () => {
     "App screenshots",
     "Connected accounts",
     "Preferences",
-    "Raised Ticket",
+    "Raise Ticket",
     "Request Feature",
     "Privacy & data",
   ]);

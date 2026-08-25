@@ -1,20 +1,13 @@
 import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
 
-export const CAROUSEL_CONTENT_PLAN_MODEL = "gpt-4o-mini";
-export const CAROUSEL_CONTENT_PLAN_PROMPT_VERSION =
-  "carousel-content-plan-creative-briefs-v3-explicit-definitions";
-export const CAROUSEL_CONTENT_PLAN_TARGET_COUNT = 150;
-export const CAROUSEL_CONTENT_PLAN_BRIEF_COUNT = 30;
-export const CAROUSEL_CONTENT_PLAN_ITEMS_PER_BRIEF = 5;
-export const CAROUSEL_CONTENT_PLAN_WRITER_BATCH_SIZE = 5;
-export const CAROUSEL_CONTENT_PLAN_GENERATION_CHUNK_SIZE = 25;
+export const WALL_TEXT_CONTENT_PLAN_MODEL = "gpt-5-mini";
+export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
+  "wall-text-content-plan-six-context-v2-explicit-definitions";
+export const WALL_TEXT_CONTENT_PLAN_TARGET_COUNT = 200;
+export const WALL_TEXT_CONTENT_PLAN_BRIEF_COUNT = 40;
+export const WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF = 5;
 
-export type CarouselContentPlanCreativeInput = {
-  creativeSeed: string;
-  emotion: string;
-};
-
-export type CarouselPlanningContext = {
+export type WallTextPlanningContext = {
   brandTone: string | null;
   campaignPurposes: string[];
   category: string | null;
@@ -26,7 +19,7 @@ export type CarouselPlanningContext = {
   valueProps: string[];
 };
 
-export function buildCarouselBusinessDescription(
+export function buildWallTextContentPlanDescription(
   analysis: WebsiteBusinessAnalysis,
 ) {
   const businessName = clean(analysis.businessName);
@@ -39,27 +32,20 @@ export function buildCarouselBusinessDescription(
   }
 
   const category = clean(analysis.category);
-
   if (businessName && category) {
-    return `${businessName} is a ${category} application or business.`;
+    return `${businessName} is a business in the ${category} category.`;
   }
-
-  if (businessName) {
-    return `${businessName} is an application or business.`;
-  }
-
-  if (category) {
-    return `An application or business in the ${category} category.`;
-  }
+  if (businessName) return `${businessName} is a business.`;
+  if (category) return `A business in the ${category} category.`;
 
   throw new Error(
-    "The business profile does not contain enough information for a minimal Carousel description.",
+    "The business profile does not contain enough information for a Wall-of-Text content plan.",
   );
 }
 
-export function buildCarouselPlanningContext(
+export function buildWallTextPlanningContext(
   analysis: WebsiteBusinessAnalysis,
-): CarouselPlanningContext {
+): WallTextPlanningContext {
   return {
     brandTone: clean(analysis.brandTone) || null,
     campaignPurposes: unique(analysis.campaignPurposes ?? []),

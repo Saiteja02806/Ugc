@@ -43,6 +43,19 @@ test("Settings manages the existing app screenshot records through one shared se
   assert.doesNotMatch(productAssetService, /saveBusinessProfile|updateBusinessProfile/);
 });
 
+test("loading the screenshot library cannot initialize image processing", () => {
+  assert.doesNotMatch(productAssetService, /^import sharp from "sharp";/m);
+  assert.match(
+    productAssetService,
+    /const \{ default: sharp \} = await import\("sharp"\)/,
+  );
+  assert.match(settingsComponent, /getAppScreenshotsLoadError/);
+  assert.match(
+    settingsComponent,
+    /We couldn't reach App Screenshots\. Check your connection or disable any request-blocking browser extension/,
+  );
+});
+
 test("Settings upload is reusable, validated, and does not create a second image library", () => {
   assert.match(settingsComponent, /\/api\/settings\/app-screenshots/);
   assert.match(settingsComponent, /image\/jpeg,image\/png,image\/webp/);

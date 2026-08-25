@@ -1,4 +1,7 @@
-import type { CarouselRecentAcceptedCopy } from "./carousel-content-plan.js";
+import type {
+  CarouselPlanningBrief,
+  CarouselRecentAcceptedCopy,
+} from "./carousel-content-plan.js";
 import {
   CAROUSEL_FIXED_FONT_SIZE,
   CAROUSEL_STRUCTURE_2_FIXED_TEXT_WIDTH,
@@ -59,6 +62,7 @@ export type CarouselStructure2StoryAssignment = {
   candidateIndex: number;
   creativeSeed: string;
   emotion: string;
+  planningBrief?: CarouselPlanningBrief | null;
   slotIndex: number;
   storyFormatId: CarouselStructure2FormatId;
 };
@@ -426,18 +430,20 @@ export function buildCarouselStructure2BatchMessages(params: {
       emotion: assignment.emotion,
       formatReference: getFormatReference(assignment.storyFormatId),
       outputKey: CAROUSEL_STRUCTURE_2_POSITION_KEYS[index],
+      privateCreativeBrief: assignment.planningBrief,
     }));
 
   return [
     {
       role: "system" as const,
       content:
-        "You write native Instagram story carousels for Structure 2. Create exactly five independent carousels with exactly five slides each. The format is a controlled creative reference, not a compulsory sentence-by-sentence backbone. A CTA is optional and is never required to complete a story. Return only the requested JSON.",
+        "You write native Instagram story carousels for Structure 2. Create exactly five independent carousels with exactly five slides each. The format is a controlled creative reference, not a compulsory sentence-by-sentence backbone. Private creative briefs add context but are not visible labels or compulsory plots. A CTA is optional and is never required to complete a story. Return only the requested JSON.",
     },
     {
       role: "user" as const,
       content: [
         "Use each creativeSeed as a broad starting point and its emotion as the emotional current. Do not treat either as finished copy or a complete plot.",
+        "Use privateCreativeBrief only as flexible human and factual context; its preferredFormatFamily must never override the backend-selected format reference.",
         "Return each plan under its assigned outputKey. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values.",
         "Develop genuinely different stories. Do not force every item through the same overwhelmed-to-easier arc.",
         "Use ctaText only when a natural invitation improves the story. Otherwise return null. CTA presence and slide position are your creative choice.",
@@ -477,6 +483,7 @@ export function buildCarouselStructure2RepairMessages(params: {
         JSON.stringify({
           creativeSeed: params.assignment.creativeSeed,
           emotion: params.assignment.emotion,
+          privateCreativeBrief: params.assignment.planningBrief,
         }),
         "Minimal business context:",
         JSON.stringify({ businessDescription: params.businessDescription }),

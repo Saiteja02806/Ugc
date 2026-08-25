@@ -50,6 +50,7 @@ export type BackgroundJobType =
   | "social_publish"
   | "test_worker_job"
   | "video_generation"
+  | "wall_text_content_plan_generation"
   | "wall_text_generation";
 
 export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
@@ -68,6 +69,7 @@ export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
   "render_trending_carousel_edit",
   "render_wall_text_video",
   "test_worker_job",
+  "wall_text_content_plan_generation",
   "wall_text_generation",
 ] as const satisfies readonly BackgroundJobType[];
 
@@ -548,6 +550,7 @@ export type CarouselContentPlanRow = {
   plan_version: number;
   planner_model: string;
   planner_prompt_version: string;
+  planning_context: Json;
   project_id: string;
   schema_version: number;
   status: "active" | "exhausted" | "failed" | "generating" | "superseded";
@@ -562,6 +565,7 @@ export type CarouselContentPlanRow = {
 export type CarouselContentPlanItemRow = {
   consumed_at: string | null;
   consumed_by_carousel_generation_id: string | null;
+  creative_brief_id: string | null;
   created_at: string;
   creative_seed: string;
   day_number: number;
@@ -585,6 +589,7 @@ export type CarouselContentPlanItemRow = {
 
 export type CarouselContentPlanItemInsert = Pick<
   CarouselContentPlanItemRow,
+  | "creative_brief_id"
   | "creative_seed"
   | "day_number"
   | "day_slot_index"
@@ -594,6 +599,66 @@ export type CarouselContentPlanItemInsert = Pick<
   | "sequence_index"
   | "user_id"
 > & { status?: "planned" };
+
+export type CarouselContentPlanBriefRow = {
+  audience_context: string;
+  brief_fingerprint: string;
+  brief_index: number;
+  created_at: string;
+  creative_seed: string;
+  emotional_tension: string;
+  human_moment: string;
+  id: string;
+  plan_id: string;
+  preferred_format_family: string;
+  supported_angle: string;
+  updated_at: string;
+  user_id: string;
+};
+
+export type WallTextContentPlanRow = {
+  business_description: string;
+  business_profile_id: string;
+  business_profile_version: number;
+  failed_at: string | null;
+  failure_reason: string | null;
+  generation_job_id: string | null;
+  id: string;
+  planner_model: string;
+  planner_prompt_version: string;
+  planning_context: Json;
+  project_id: string;
+  status: "active" | "failed" | "generating" | "superseded";
+  target_item_count: number;
+  updated_at: string;
+  user_id: string;
+};
+
+export type WallTextContentPlanItemRow = {
+  content_idea: string;
+  creative_brief_id: string;
+  feeling: string;
+  id: string;
+  idea_fingerprint: string;
+  plan_id: string;
+  sequence_index: number;
+  status: "available" | "consumed" | "reserved" | "retired";
+  user_id: string;
+};
+
+export type WallTextContentPlanBriefRow = {
+  audience_context: string;
+  brief_fingerprint: string;
+  brief_index: number;
+  creative_seed: string;
+  emotional_tension: string;
+  human_moment: string;
+  id: string;
+  plan_id: string;
+  preferred_format_family: string;
+  supported_angle: string;
+  user_id: string;
+};
 
 export type CarouselContentPlanReservationRow = {
   completed_at: string | null;
@@ -929,6 +994,14 @@ export type BackgroundJobsDatabase = {
         };
         Returns: CarouselContentPlanRow;
       };
+      complete_wall_text_content_plan_generation: {
+        Args: {
+          p_job_id: string;
+          p_plan_id: string;
+          p_user_id: string;
+        };
+        Returns: WallTextContentPlanRow;
+      };
       consume_carousel_content_plan_item: {
         Args: {
           p_carousel_generation_id: string;
@@ -937,6 +1010,24 @@ export type BackgroundJobsDatabase = {
           p_user_id: string;
         };
         Returns: CarouselContentPlanItemRow;
+      };
+      persist_carousel_content_plan_brief_chunk: {
+        Args: {
+          p_briefs: Json;
+          p_items: Json;
+          p_plan_id: string;
+          p_user_id: string;
+        };
+        Returns: CarouselContentPlanItemRow[];
+      };
+      persist_wall_text_content_plan_brief_chunk: {
+        Args: {
+          p_briefs: Json;
+          p_items: Json;
+          p_plan_id: string;
+          p_user_id: string;
+        };
+        Returns: WallTextContentPlanItemRow[];
       };
       finalize_edit_render: {
         Args: {
@@ -1151,6 +1242,12 @@ export type BackgroundJobsDatabase = {
         Row: CarouselContentPlanItemRow;
         Update: Partial<CarouselContentPlanItemRow>;
       };
+      carousel_content_plan_briefs: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: CarouselContentPlanBriefRow;
+        Update: Partial<CarouselContentPlanBriefRow>;
+      };
       carousel_content_plans: {
         Insert: Record<string, never>;
         Relationships: [];
@@ -1162,6 +1259,24 @@ export type BackgroundJobsDatabase = {
         Relationships: [];
         Row: CarouselContentPlanReservationRow;
         Update: Partial<CarouselContentPlanReservationRow>;
+      };
+      wall_text_content_plan_briefs: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: WallTextContentPlanBriefRow;
+        Update: Partial<WallTextContentPlanBriefRow>;
+      };
+      wall_text_content_plan_items: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: WallTextContentPlanItemRow;
+        Update: Partial<WallTextContentPlanItemRow>;
+      };
+      wall_text_content_plans: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: WallTextContentPlanRow;
+        Update: Partial<WallTextContentPlanRow>;
       };
       carousel_global_settings: {
         Insert: Record<string, never>;

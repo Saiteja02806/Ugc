@@ -19,6 +19,7 @@ import type {
 } from "../types.js";
 import type {
   CarouselCreativeBrief,
+  CarouselPlanningBrief,
   CarouselRecentAcceptedCopy,
 } from "./carousel-content-plan.js";
 import type { CarouselBusinessVisualProfileId } from "./carousel-business-visual-profile.js";
@@ -33,6 +34,7 @@ import {
 
 const BACKGROUND_JOBS_TABLE = "background_jobs";
 const BUSINESS_PROFILES_TABLE = "business_profiles";
+const CAROUSEL_CONTENT_PLAN_BRIEFS_TABLE = "carousel_content_plan_briefs";
 const CAROUSEL_CONTENT_PLAN_ITEMS_TABLE = "carousel_content_plan_items";
 const CAROUSEL_CONTENT_PLAN_RESERVATIONS_TABLE =
   "carousel_content_plan_reservations";
@@ -56,6 +58,8 @@ const SOCIAL_CONNECTIONS_TABLE = "social_connections";
 const SOCIAL_PUBLISH_OPERATIONS_TABLE = "social_publish_operations";
 const TRENDING_CREATIVE_EDITS_TABLE = "trending_creative_edits";
 const USER_WALL_TEXT_ASSIGNMENTS_TABLE = "user_wall_text_assignments";
+const WALL_TEXT_CONTENT_PLAN_ITEMS_TABLE = "wall_text_content_plan_items";
+const WALL_TEXT_CONTENT_PLANS_TABLE = "wall_text_content_plans";
 const CLAIM_BACKGROUND_JOB_FUNCTION = "claim_background_job";
 const CLAIM_SOCIAL_PUBLISH_OPERATION_FUNCTION =
   "claim_social_publish_operation";
@@ -1923,6 +1927,109 @@ export class SupabaseJobStore {
     return data ?? [];
   }
 
+  async getWallTextContentPlan(params: {
+    jobId: string;
+    planId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(WALL_TEXT_CONTENT_PLANS_TABLE)
+      .select("*")
+      .eq("id", params.planId)
+      .eq("user_id", params.userId)
+      .eq("generation_job_id", params.jobId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not load Wall-of-Text content plan: ${error.message}`);
+    }
+    return data;
+  }
+
+  async listWallTextContentPlanItems(params: {
+    planId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client
+      .from(WALL_TEXT_CONTENT_PLAN_ITEMS_TABLE)
+      .select("*")
+      .eq("plan_id", params.planId)
+      .eq("user_id", params.userId)
+      .order("sequence_index", { ascending: true });
+
+    if (error) {
+      throw new Error(
+        `Could not load Wall-of-Text content-plan items: ${error.message}`,
+      );
+    }
+    return data ?? [];
+  }
+
+  async persistWallTextContentPlanBriefChunk(params: {
+    briefs: Json;
+    items: Json;
+    planId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "persist_wall_text_content_plan_brief_chunk",
+      {
+        p_briefs: params.briefs,
+        p_items: params.items,
+        p_plan_id: params.planId,
+        p_user_id: params.userId,
+      },
+    );
+    if (error) {
+      throw new Error(
+        `Could not persist Wall-of-Text creative-brief chunk: ${error.message}`,
+      );
+    }
+    return data ?? [];
+  }
+
+  async completeWallTextContentPlanGeneration(params: {
+    jobId: string;
+    planId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "complete_wall_text_content_plan_generation",
+      {
+        p_job_id: params.jobId,
+        p_plan_id: params.planId,
+        p_user_id: params.userId,
+      },
+    );
+    if (error) {
+      throw new Error(`Could not activate Wall-of-Text content plan: ${error.message}`);
+    }
+    return data;
+  }
+
+  async failWallTextContentPlanGeneration(params: {
+    errorMessage: string;
+    jobId: string;
+    planId: string;
+    userId: string;
+  }) {
+    const { error } = await this.client
+      .from(WALL_TEXT_CONTENT_PLANS_TABLE)
+      .update({
+        failed_at: new Date().toISOString(),
+        failure_reason: params.errorMessage.slice(0, 1_000),
+        status: "failed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.planId)
+      .eq("user_id", params.userId)
+      .eq("generation_job_id", params.jobId)
+      .eq("status", "generating");
+    if (error) {
+      throw new Error(`Could not fail Wall-of-Text content plan: ${error.message}`);
+    }
+  }
+
   async getCarouselCreativeBrief(
     generation: CarouselGenerationRow,
   ): Promise<CarouselCreativeBrief> {
@@ -1974,12 +2081,21 @@ export class SupabaseJobStore {
       );
     }
 
+    const planningBrief = item.creative_brief_id
+      ? await this.getCarouselPlanningBrief({
+          briefId: item.creative_brief_id,
+          planId: generation.content_plan_id,
+          userId: generation.user_id,
+        })
+      : null;
+
     return {
       businessDescription: plan.business_description,
       contentPlanId: plan.id,
       contentPlanItemId: item.id,
       creativeSeed: item.creative_seed,
       emotion: item.emotion,
+      planningBrief,
     };
   }
 
@@ -2041,6 +2157,31 @@ export class SupabaseJobStore {
     if (error) {
       throw new Error(
         `Could not persist Carousel content-plan items: ${error.message}`,
+      );
+    }
+
+    return data ?? [];
+  }
+
+  async persistCarouselContentPlanBriefChunk(params: {
+    briefs: Json;
+    items: Json;
+    planId: string;
+    userId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "persist_carousel_content_plan_brief_chunk",
+      {
+        p_briefs: params.briefs,
+        p_items: params.items,
+        p_plan_id: params.planId,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not persist Carousel creative-brief chunk: ${error.message}`,
       );
     }
 
@@ -2561,6 +2702,36 @@ export class SupabaseJobStore {
         `Could not update category image usage counts: ${error.message}`,
       );
     }
+  }
+
+  private async getCarouselPlanningBrief(params: {
+    briefId: string;
+    planId: string;
+    userId: string;
+  }): Promise<CarouselPlanningBrief> {
+    const { data, error } = await this.client
+      .from(CAROUSEL_CONTENT_PLAN_BRIEFS_TABLE)
+      .select("*")
+      .eq("id", params.briefId)
+      .eq("plan_id", params.planId)
+      .eq("user_id", params.userId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not load Carousel creative brief: ${error.message}`);
+    }
+    if (!data) {
+      throw new Error("Carousel creative brief provenance is unavailable.");
+    }
+
+    return {
+      audienceContext: data.audience_context,
+      creativeSeed: data.creative_seed,
+      emotionalTension: data.emotional_tension,
+      humanMoment: data.human_moment,
+      preferredFormatFamily: data.preferred_format_family,
+      supportedAngle: data.supported_angle,
+    };
   }
 
   private async updateClaimedJob(params: {

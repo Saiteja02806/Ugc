@@ -51,7 +51,7 @@ export async function GET(
 
     const headers = new Headers({
       "Accept-Ranges": "bytes",
-      "Cache-Control": "private, no-store",
+      "Cache-Control": "private, max-age=60",
       "Content-Disposition": "inline",
       "Content-Type": object.ContentType || source.mimeType,
     });

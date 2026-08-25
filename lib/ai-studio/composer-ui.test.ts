@@ -108,6 +108,20 @@ test("image and video controls send selected settings to generation APIs", () =>
   assert.match(videoWorkspace, /ariaLabel="Number of videos"/);
 });
 
+test("model selectors are text-only", () => {
+  const imageModelSelect = imageWorkspace.slice(
+    imageWorkspace.indexOf('ariaLabel="Image model"'),
+    imageWorkspace.indexOf('ariaLabel="Number of images"'),
+  );
+  const videoModelSelect = videoWorkspace.slice(
+    videoWorkspace.indexOf('ariaLabel="Video model"'),
+    videoWorkspace.indexOf('ariaLabel="Video duration"'),
+  );
+
+  assert.doesNotMatch(imageModelSelect, /icon=\{<Sparkles/);
+  assert.doesNotMatch(videoModelSelect, /icon=\{<Sparkles/);
+});
+
 test("video duration displays and enforces three credits per second", () => {
   assert.match(
     videoWorkspace,

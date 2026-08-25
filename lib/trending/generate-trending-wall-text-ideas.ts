@@ -21,6 +21,7 @@ import {
   type WallTextFormatAssignment,
 } from "@/lib/trending/wall-format-selector";
 import { buildWallTextGenerationPrompt } from "@/lib/trending/wall-prompt";
+import type { WallTextPrivateCreativeContext } from "@/lib/trending/wall-text-db";
 import { createWallTextLayout } from "@/lib/trending/wall-text-feed-logic";
 import {
   buildWallTextBusinessContext,
@@ -64,6 +65,7 @@ type GenerationInputCandidate = WallTextGenerationCandidate & {
   maxWords?: number;
   referenceText?: string;
   targetWords?: number;
+  privateCreativeContext?: WallTextPrivateCreativeContext;
 };
 
 type PreparedCandidate = {
@@ -74,6 +76,7 @@ type PreparedCandidate = {
   maxWords: number;
   referenceText?: string;
   targetWords: number;
+  privateCreativeContext?: WallTextPrivateCreativeContext;
 };
 
 type WriterFailure = {
@@ -144,6 +147,9 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
         maxWords: budget.maxWords,
         ...(input.referenceText?.trim()
           ? { referenceText: normalizeText(input.referenceText) }
+          : {}),
+        ...(input.privateCreativeContext
+          ? { privateCreativeContext: input.privateCreativeContext }
           : {}),
         targetWords: budget.targetWords,
       };

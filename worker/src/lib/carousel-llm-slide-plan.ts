@@ -1,7 +1,10 @@
 import OpenAI from "openai";
 
 import type { WebsiteBusinessAnalysis } from "../types.js";
-import type { CarouselRecentAcceptedCopy } from "./carousel-content-plan.js";
+import type {
+  CarouselPlanningBrief,
+  CarouselRecentAcceptedCopy,
+} from "./carousel-content-plan.js";
 import {
   CAROUSEL_FIXED_FONT_SIZE,
   CAROUSEL_STRUCTURE_1_FIXED_TEXT_WIDTH,
@@ -22,7 +25,7 @@ import {
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v31-fixed-render-fit";
+  "llm-carousel-planner-v32-creative-brief-context";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly five slides plus a backend-selected content format and compatible hook family.";
 
@@ -136,6 +139,7 @@ export type CarouselContentPlanInput = {
   emotion?: string;
   goal?: string | null;
   hookFamilyId?: string | null;
+  planningBrief?: CarouselPlanningBrief | null;
   recentHistory?: CarouselRecentAcceptedCopy[];
   selectedAngle?: string | null;
   slideCount: number;
@@ -150,6 +154,7 @@ export type CarouselBatchContentPlanInput = {
     creativeSeed: string;
     emotion: string;
     hookFamilyId: string;
+    planningBrief: CarouselPlanningBrief | null;
     slotIndex: number;
   }>;
   recentHistory?: CarouselRecentAcceptedCopy[];
@@ -288,6 +293,7 @@ export async function buildCarouselContentPlan(
         emotion: input.emotion,
         grammarContext,
         issues: initialIssues,
+        planningBrief: input.planningBrief,
         rawResponse: initialRawResponse,
         recentHistory: input.recentHistory,
         slideCount,
@@ -375,6 +381,7 @@ export async function buildCarouselContentPlanBatch(
         creativeSeed: item.creativeSeed,
         emotion: item.emotion,
         hookFamilyId: item.hookFamilyId,
+        planningBrief: item.planningBrief,
         recentHistory: input.recentHistory,
         slideCount: 5,
       } satisfies CarouselContentPlanInput;
@@ -1556,7 +1563,7 @@ function buildGrammarPlannerMessages(
     {
       role: "system" as const,
       content:
-        "You are a senior Instagram carousel strategist. Use the broad creative seed and emotion to invent a fresh, coherent angle. The selected Structure 1 format and hook family are renderer contracts, so keep their IDs and required slide fields. Return only the requested JSON. Do not invent precise claims, metrics, proof, or guarantees. Visual directions must describe only objects, surfaces, rooms, food, devices, documents, or still-life details and must never contain human-related words, even as exclusions.",
+        "You are a senior Instagram carousel strategist. Use the broad creative seed, emotion, and optional private creative brief to invent a fresh, coherent angle. The private brief is context only: do not mention its labels or force every part into visible copy. The selected Structure 1 format and hook family are renderer contracts, so keep their IDs and required slide fields. Return only the requested JSON. Do not invent precise claims, metrics, proof, or guarantees. Visual directions must describe only objects, surfaces, rooms, food, devices, documents, or still-life details and must never contain human-related words, even as exclusions.",
     },
     {
       role: "user" as const,
@@ -1566,11 +1573,14 @@ function buildGrammarPlannerMessages(
         `Backend-selected hookFamilyId: ${grammarContext.hookFamily.id}.`,
         `Creative seed: ${input.creativeSeed}.`,
         `Required emotion: ${input.emotion}.`,
+        "Private creative brief (context only, never visible labels):",
+        JSON.stringify(input.planningBrief),
         "",
         "Selection rules:",
         "- contentFormatId and hookFamilyId must exactly match the backend-selected values.",
         "- Treat creativeSeed as an open starting point, not finished copy or a compulsory plot.",
         "- Let the required emotion shape the voice without naming it mechanically on every slide.",
+        "- Use the private creative brief as human specificity and factual direction, not as a fixed storyline or a replacement for the selected format.",
         "- Avoid wording and close paraphrases from recentAcceptedCopy.",
         "- Follow every supplied slide role, slideType, allowed text mode, item count, and instruction exactly.",
         "- Slide 5 must be a useful takeaway. ctaText is optional and, when present, must be soft and concrete.",
@@ -1621,6 +1631,7 @@ function buildBatchPlannerMessages(
   const assignments = requested.map(({ context, item }) => ({
     creativeSeed: item.creativeSeed,
     emotion: item.emotion,
+    privateCreativeBrief: item.planningBrief,
     format: {
       generationRules: context.format.generationRules,
       id: context.format.id,
@@ -1644,7 +1655,7 @@ function buildBatchPlannerMessages(
     {
       role: "system" as const,
       content:
-        "You are a senior Instagram carousel strategist. Produce one controlled batch of exactly five independent Carousels. Each slot has a broad creative seed, a required emotion, and a selected Structure 1 renderer format and hook family. Keep the required IDs and fields, but freely develop the idea and wording. Avoid repetition against exact accepted copy and within this batch. Return only the requested JSON.",
+        "You are a senior Instagram carousel strategist. Produce one controlled batch of exactly five independent Carousels. Each slot has a broad creative seed, a required emotion, an optional private creative brief, and a selected Structure 1 renderer format and hook family. Private briefs add human specificity but are not visible labels or compulsory scripts. Keep the required IDs and fields, but freely develop the idea and wording. Avoid repetition against exact accepted copy and within this batch. Return only the requested JSON.",
     },
     {
       role: "user" as const,
@@ -1654,6 +1665,7 @@ function buildBatchPlannerMessages(
         "Do not mark a format not_applicable merely because another format is easier.",
         "Every ready item must use the exact format and hook-family IDs assigned to that slot.",
         "Develop each creativeSeed differently and let its emotion guide the tone without forcing a fixed story arc.",
+        "Use each privateCreativeBrief as flexible background context; the backend-selected format and hook family remain authoritative.",
         "Write fresh hooks and slide copy that do not copy recentAcceptedCopy or another item in this response.",
         "Use simple, specific, natural copy. Prioritize useful information over promotion.",
         `Optional headlines must use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters.`,
@@ -1904,6 +1916,7 @@ function buildRepairMessages(params: {
   emotion?: string;
   grammarContext: CarouselGrammarGenerationContext;
   issues: CarouselPlanValidationIssue[];
+  planningBrief?: CarouselPlanningBrief | null;
   rawResponse: string;
   recentHistory: readonly CarouselRecentAcceptedCopy[] | undefined;
   slideCount: number;
@@ -1917,7 +1930,7 @@ function buildRepairMessages(params: {
     {
       role: "system" as const,
       content:
-        "You repair social carousel JSON. Preserve the schema, selected Structure 1 content format, selected hook family, creative seed, and required emotion. Correct structural or renderability failures without replacing valid AI copy unnecessarily. Return only repaired JSON and never invent precise claims.",
+        "You repair social carousel JSON. Preserve the schema, selected Structure 1 content format, selected hook family, creative seed, required emotion, and private creative-brief intent. The private brief is context only, not visible labels or a fixed script. Correct structural or renderability failures without replacing valid AI copy unnecessarily. Return only repaired JSON and never invent precise claims.",
     },
     {
       role: "user" as const,
@@ -1925,6 +1938,8 @@ function buildRepairMessages(params: {
         `Repair this ${params.slideCount}-slide carousel plan.`,
         `Creative seed: ${params.creativeSeed}.`,
         `Required emotion: ${params.emotion}.`,
+        "Private creative brief (context only):",
+        JSON.stringify(params.planningBrief),
         "Every headline is optional; when present it must be 3-8 words, at most 50 characters, and at most two visual lines.",
         "Every body must be one complete, specific sentence of 8-20 words and at most 120 characters.",
         "List modes may use at most four total visual lines.",

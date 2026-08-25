@@ -70,6 +70,7 @@ export async function POST(request: Request) {
     const job = await enqueueTrendingWallTextJob({
       businessProfileId: profile.id,
       businessProfileVersion: profile.profileVersion,
+      profile,
       requestedCount: body.data.requestedCount,
       userId,
     });

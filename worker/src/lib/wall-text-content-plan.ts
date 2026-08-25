@@ -2,17 +2,17 @@ import { createHash } from "node:crypto";
 
 import OpenAI from "openai";
 
-import type { CarouselContentPlanItemRow, Json } from "../types.js";
-import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
+import type { Json, WallTextContentPlanItemRow } from "../types.js";
 
-export const CAROUSEL_CONTENT_PLAN_PROMPT_VERSION =
-  "carousel-content-plan-creative-briefs-v3-explicit-definitions";
-export const CAROUSEL_CONTENT_PLAN_CHUNK_SIZE = 25;
-export const CAROUSEL_CONTENT_PLAN_BRIEF_COUNT = 30;
-export const CAROUSEL_CONTENT_PLAN_ITEMS_PER_BRIEF = 5;
+export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
+  "wall-text-content-plan-six-context-v2-explicit-definitions";
+export const WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE = 25;
+export const WALL_TEXT_CONTENT_PLAN_BRIEF_COUNT = 40;
+export const WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF = 5;
 
-const MAX_CREATIVE_SEED_LENGTH = 400;
-const MAX_EMOTION_LENGTH = 120;
+const DEFAULT_MODEL = "gpt-5-mini";
+const MAX_CONTENT_IDEA_LENGTH = 400;
+const MAX_FEELING_LENGTH = 120;
 const MAX_GENERATION_ATTEMPTS = 2;
 const PREFERRED_FORMAT_FAMILIES = [
   "common_problem",
@@ -25,7 +25,7 @@ const PREFERRED_FORMAT_FAMILIES = [
 
 let openaiClient: OpenAI | null = null;
 
-export type CarouselPlanningBrief = {
+export type WallTextPlanningBrief = {
   audienceContext: string;
   creativeSeed: string;
   emotionalTension: string;
@@ -34,57 +34,44 @@ export type CarouselPlanningBrief = {
   supportedAngle: string;
 };
 
-type GeneratedCarouselContentPlanBrief = CarouselPlanningBrief & {
+type GeneratedWallTextPlanningBrief = WallTextPlanningBrief & {
   briefSlotIndex: number;
 };
 
-export type GeneratedCarouselContentPlanItem = {
+export type GeneratedWallTextContentPlanItem = {
   briefSlotIndex: number;
-  creativeSeed: string;
-  emotion: string;
+  contentIdea: string;
+  feeling: string;
   itemSlotIndex: number;
 };
 
-export type GeneratedCarouselContentPlanChunk = {
-  briefs: GeneratedCarouselContentPlanBrief[];
-  items: GeneratedCarouselContentPlanItem[];
+export type GeneratedWallTextContentPlanChunk = {
+  briefs: GeneratedWallTextPlanningBrief[];
+  items: GeneratedWallTextContentPlanItem[];
 };
 
-export type CarouselCreativeBrief = {
-  businessDescription: string;
-  contentPlanId: string;
-  contentPlanItemId: string;
-  creativeSeed: string;
-  emotion: string;
-  planningBrief: CarouselPlanningBrief | null;
-};
+export function getWallTextContentPlanModel() {
+  return process.env.OPENAI_WALL_TEXT_PLAN_MODEL?.trim() || DEFAULT_MODEL;
+}
 
-export type CarouselRecentAcceptedCopy = {
-  contentPlanItemId: string | null;
-  formatId: string | null;
-  generationId: string;
-  slides: Array<{
-    ctaText: string | null;
-    headline: string;
-    slideNumber: number;
-    subtext: string | null;
-  }>;
-  structureId: "structure_1" | "structure_2";
-};
-
-export async function generateCarouselContentPlanChunk(params: {
+export async function generateWallTextContentPlanChunk(params: {
   businessDescription: string;
   count: number;
-  existingItems: Array<Pick<CarouselContentPlanItemRow, "creative_seed" | "emotion">>;
+  existingItems: Array<Pick<WallTextContentPlanItemRow, "content_idea" | "feeling">>;
   planningContext: Json;
 }) {
   const count = Math.trunc(params.count);
-
-  if (count < 5 || count > CAROUSEL_CONTENT_PLAN_CHUNK_SIZE || count % 5 !== 0) {
-    throw new Error("Carousel content-plan chunks must contain 5 to 25 items in groups of five.");
+  if (
+    count < WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF ||
+    count > WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE ||
+    count % WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF !== 0
+  ) {
+    throw new Error(
+      "Wall-of-Text content-plan chunks must contain 5 to 25 ideas in groups of five.",
+    );
   }
 
-  const briefCount = count / CAROUSEL_CONTENT_PLAN_ITEMS_PER_BRIEF;
+  const briefCount = count / WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF;
   let lastIssues: string[] = [];
 
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
@@ -93,14 +80,13 @@ export async function generateCarouselContentPlanChunk(params: {
       messages: buildMessages({
         ...params,
         briefCount,
-        count,
         issues: attempt === 0 ? [] : lastIssues,
       }),
-      model: CAROUSEL_TEXT_MODEL,
+      model: getWallTextContentPlanModel(),
       response_format: {
         type: "json_schema",
         json_schema: {
-          name: "carousel_content_plan_creative_brief_chunk",
+          name: "wall_text_content_plan_six_context_chunk",
           schema: buildSchema(briefCount),
           strict: true,
         },
@@ -108,19 +94,17 @@ export async function generateCarouselContentPlanChunk(params: {
       temperature: 0.75,
     });
     const content = completion.choices[0]?.message.content;
-
     if (!content) {
       lastIssues = ["The model returned no content."];
       continue;
     }
 
     try {
-      const parsed = parseCarouselContentPlanChunk(JSON.parse(content), briefCount);
-      const issues = validateCarouselContentPlanChunk({
+      const parsed = parseWallTextContentPlanChunk(JSON.parse(content), briefCount);
+      const issues = validateWallTextContentPlanChunk({
         existingItems: params.existingItems,
         items: parsed.items,
       });
-
       if (issues.length === 0) return parsed;
       lastIssues = issues;
     } catch (error) {
@@ -129,20 +113,19 @@ export async function generateCarouselContentPlanChunk(params: {
   }
 
   throw new Error(
-    `Carousel content-plan chunk failed validation: ${lastIssues.join(" ")}`,
+    `Wall-of-Text content-plan chunk failed validation: ${lastIssues.join(" ")}`,
   );
 }
 
-export function parseCarouselContentPlanChunk(value: unknown, briefCount: number) {
+export function parseWallTextContentPlanChunk(value: unknown, briefCount: number) {
   const envelope = asRecord(value, "content-plan response");
-
   if (!Array.isArray(envelope.briefs) || envelope.briefs.length !== briefCount) {
     throw new Error(`Content-plan response must contain exactly ${briefCount} briefs.`);
   }
 
   const seenBriefSlots = new Set<number>();
-  const briefs: GeneratedCarouselContentPlanBrief[] = [];
-  const items: GeneratedCarouselContentPlanItem[] = [];
+  const briefs: GeneratedWallTextPlanningBrief[] = [];
+  const items: GeneratedWallTextContentPlanItem[] = [];
 
   for (const [index, value] of envelope.briefs.entries()) {
     const brief = asRecord(value, `creative brief ${index + 1}`);
@@ -150,7 +133,6 @@ export function parseCarouselContentPlanChunk(value: unknown, briefCount: number
       brief.briefSlotIndex,
       `creative brief ${index + 1} briefSlotIndex`,
     );
-
     if (
       briefSlotIndex < 0 ||
       briefSlotIndex >= briefCount ||
@@ -160,18 +142,23 @@ export function parseCarouselContentPlanChunk(value: unknown, briefCount: number
     }
     seenBriefSlots.add(briefSlotIndex);
 
-    const parsedBrief = {
+    briefs.push({
       audienceContext: getString(brief.audienceContext, 240, `creative brief ${index + 1} audienceContext`),
       briefSlotIndex,
-      creativeSeed: getString(brief.creativeSeed, MAX_CREATIVE_SEED_LENGTH, `creative brief ${index + 1} creativeSeed`),
+      creativeSeed: getString(brief.creativeSeed, 400, `creative brief ${index + 1} creativeSeed`),
       emotionalTension: getString(brief.emotionalTension, 160, `creative brief ${index + 1} emotionalTension`),
       humanMoment: getString(brief.humanMoment, 400, `creative brief ${index + 1} humanMoment`),
-      preferredFormatFamily: getPreferredFormatFamily(brief.preferredFormatFamily, `creative brief ${index + 1} preferredFormatFamily`),
+      preferredFormatFamily: getPreferredFormatFamily(
+        brief.preferredFormatFamily,
+        `creative brief ${index + 1} preferredFormatFamily`,
+      ),
       supportedAngle: getString(brief.supportedAngle, 400, `creative brief ${index + 1} supportedAngle`),
-    } satisfies GeneratedCarouselContentPlanBrief;
-    briefs.push(parsedBrief);
+    });
 
-    if (!Array.isArray(brief.items) || brief.items.length !== CAROUSEL_CONTENT_PLAN_ITEMS_PER_BRIEF) {
+    if (
+      !Array.isArray(brief.items) ||
+      brief.items.length !== WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF
+    ) {
       throw new Error(`Creative brief ${index + 1} must contain exactly five ideas.`);
     }
 
@@ -182,16 +169,18 @@ export function parseCarouselContentPlanChunk(value: unknown, briefCount: number
         item.itemSlotIndex,
         `creative brief ${index + 1} idea ${itemIndex + 1} itemSlotIndex`,
       );
-
-      if (itemSlotIndex < 0 || itemSlotIndex >= 5 || seenItemSlots.has(itemSlotIndex)) {
+      if (
+        itemSlotIndex < 0 ||
+        itemSlotIndex >= WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF ||
+        seenItemSlots.has(itemSlotIndex)
+      ) {
         throw new Error("Creative brief idea slots must be unique and contiguous.");
       }
       seenItemSlots.add(itemSlotIndex);
-
       items.push({
         briefSlotIndex,
-        creativeSeed: getString(item.creativeSeed, MAX_CREATIVE_SEED_LENGTH, `creative brief ${index + 1} idea ${itemIndex + 1} creativeSeed`),
-        emotion: getString(item.emotion, MAX_EMOTION_LENGTH, `creative brief ${index + 1} idea ${itemIndex + 1} emotion`),
+        contentIdea: getString(item.contentIdea, MAX_CONTENT_IDEA_LENGTH, `creative brief ${index + 1} idea ${itemIndex + 1} contentIdea`),
+        feeling: getString(item.feeling, MAX_FEELING_LENGTH, `creative brief ${index + 1} idea ${itemIndex + 1} feeling`),
         itemSlotIndex,
       });
     }
@@ -204,49 +193,48 @@ export function parseCarouselContentPlanChunk(value: unknown, briefCount: number
         left.briefSlotIndex - right.briefSlotIndex ||
         left.itemSlotIndex - right.itemSlotIndex,
     ),
-  } satisfies GeneratedCarouselContentPlanChunk;
+  } satisfies GeneratedWallTextContentPlanChunk;
 }
 
-export function validateCarouselContentPlanChunk(params: {
-  existingItems: Array<{ creative_seed: string; emotion: string }>;
-  items: GeneratedCarouselContentPlanItem[];
+export function validateWallTextContentPlanChunk(params: {
+  existingItems: Array<{ content_idea: string; feeling: string }>;
+  items: GeneratedWallTextContentPlanItem[];
 }) {
   const issues: string[] = [];
-  const acceptedSeeds = params.existingItems.map((item) => item.creative_seed);
+  const acceptedIdeas = params.existingItems.map((item) => item.content_idea);
 
   for (const item of params.items) {
-    if (item.creativeSeed.length < 12) {
+    if (item.contentIdea.length < 12) {
       issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} is too vague.`);
     }
-    if (item.emotion.length < 2) {
-      issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} has a vague emotion.`);
+    if (item.feeling.length < 2) {
+      issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} has a vague feeling.`);
     }
-    if (/\b(?:slide\s*\d+|call[ -]?to[ -]?action|cta)\b/i.test(item.creativeSeed)) {
-      issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} prewrites slideshow structure instead of a broad seed.`);
+    if (/\b(?:slide\s*\d+|call[ -]?to[ -]?action|cta|line\s*\d+)\b/i.test(item.contentIdea)) {
+      issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} prewrites final video structure instead of an idea.`);
     }
 
-    const duplicate = acceptedSeeds.find(
-      (seed) =>
-        createCarouselContentPlanSeedFingerprint(seed) ===
-          createCarouselContentPlanSeedFingerprint(item.creativeSeed) ||
-        seedSimilarity(seed, item.creativeSeed) >= 0.82,
+    const duplicate = acceptedIdeas.find(
+      (existing) =>
+        createWallTextContentIdeaFingerprint(existing) ===
+          createWallTextContentIdeaFingerprint(item.contentIdea) ||
+        ideaSimilarity(existing, item.contentIdea) >= 0.82,
     );
-
     if (duplicate) {
-      issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} repeats an existing creative seed.`);
+      issues.push(`Brief ${item.briefSlotIndex} idea ${item.itemSlotIndex} repeats an existing content idea.`);
     } else {
-      acceptedSeeds.push(item.creativeSeed);
+      acceptedIdeas.push(item.contentIdea);
     }
   }
 
   return issues;
 }
 
-export function createCarouselContentPlanSeedFingerprint(seed: string) {
-  return createHash("sha256").update(normalize(seed)).digest("hex");
+export function createWallTextContentIdeaFingerprint(value: string) {
+  return createHash("sha256").update(normalize(value)).digest("hex");
 }
 
-export function createCarouselCreativeBriefFingerprint(brief: CarouselPlanningBrief) {
+export function createWallTextCreativeBriefFingerprint(brief: WallTextPlanningBrief) {
   return createHash("sha256")
     .update(
       normalize(
@@ -263,49 +251,28 @@ export function createCarouselCreativeBriefFingerprint(brief: CarouselPlanningBr
     .digest("hex");
 }
 
-export function getCarouselContentPlanDayPosition(sequenceIndex: number) {
-  if (!Number.isInteger(sequenceIndex) || sequenceIndex < 1) {
-    throw new Error("Carousel content-plan sequence index must be positive.");
-  }
-
-  const zeroBased = sequenceIndex - 1;
-  const cycle = Math.floor(zeroBased / 150);
-  const withinCycle = zeroBased % 150;
-
-  return {
-    dayNumber: Math.floor(withinCycle / 5) + 1,
-    daySlotIndex: cycle * 5 + (withinCycle % 5) + 1,
-  };
-}
-
 function buildMessages(params: {
   briefCount: number;
   businessDescription: string;
-  count: number;
-  existingItems: Array<Pick<CarouselContentPlanItemRow, "creative_seed" | "emotion">>;
+  existingItems: Array<Pick<WallTextContentPlanItemRow, "content_idea" | "feeling">>;
   issues: string[];
   planningContext: Json;
 }) {
-  const previousItems = params.existingItems.map((item) => ({
-    creativeSeed: item.creative_seed,
-    emotion: item.emotion,
-  }));
-
   return [
     {
       role: "system" as const,
       content: [
-        "You create private creative-brief context and broad starting points for Instagram carousels.",
-        "The supplied businessDescription and approvedPlanningContext are the only factual source. Do not invent audiences, capabilities, workflows, proof, metrics, guarantees, or outcomes.",
-        "Each private creative brief has six fields. They guide later writing but are never visible slide copy, headings, labels, or an imposed plot.",
+        "You create private creative-brief context and content ideas for Wall-of-Text short videos.",
+        "The supplied businessDescription and approvedPlanningContext are the only factual source. Do not invent audiences, capabilities, workflows, proof, metrics, guarantees, outcomes, or claims.",
+        "Every private brief has six fields. They guide later writing but are never visible overlay copy, labels, or a fixed script.",
         "creativeSeed: The central human observation or tension. It is not final copy.",
         "audienceContext: The supported audience segment experiencing that situation. It must not mean everyone.",
         "humanMoment: One concrete, recognisable everyday event or situation. For example, an unexpected meeting moving the afternoon's work.",
         "emotionalTension: The inner feeling or conflict created by that moment. For example, frustration mixed with self-blame.",
         "supportedAngle: The factual connection to the business, based only on approved facts. It is not a sales claim or a promise.",
-        "preferredFormatFamily: A soft storytelling direction, such as relatable situation or contrast. It gives variety, but never overrides the backend-selected Carousel format.",
-        "Use all six fields together to create exactly five different child ideas. Every child contains exactly creativeSeed and emotion. A child creativeSeed is a broad starting thought, tension, observation, ritual, contradiction, or real-life possibility—not a hook, slide outline, CTA, product mechanism, complete story, or finished copy. The children are not generated from the parent creativeSeed alone.",
-        "Create meaningfully different briefs and ideas, not paraphrases or the same emotional arc with different wording.",
+        "preferredFormatFamily: A soft storytelling direction, such as relatable situation or contrast. It gives variety, but never overrides the backend-selected Wall format or creates a CTA requirement.",
+        "Use all six fields together to create exactly five different child ideas. Each child has contentIdea and feeling. contentIdea is a specific angle that a later Wall writer may turn into one complete post; feeling is that child idea's emotional direction. The children are not generated from creativeSeed alone.",
+        "Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script. Create grounded, recognisable situations with natural human tension. Make every brief and child idea meaningfully distinct.",
       ].join(" "),
     },
     {
@@ -313,9 +280,12 @@ function buildMessages(params: {
       content: JSON.stringify({
         approvedPlanningContext: params.planningContext,
         businessDescription: params.businessDescription,
-        instruction: `Generate exactly ${params.briefCount} creative briefs, each with exactly 5 ideas, for ${params.count} new ideas total. briefSlotIndex values must be 0 through ${params.briefCount - 1}; every itemSlotIndex must be 0 through 4.`,
+        instruction: `Generate exactly ${params.briefCount} private creative briefs. Every brief must contain exactly five child ideas. briefSlotIndex values must be 0 through ${params.briefCount - 1}; itemSlotIndex values must be 0 through 4 for each brief.`,
         preferredFormatFamilyOptions: PREFERRED_FORMAT_FAMILIES,
-        previousItems,
+        previousItems: params.existingItems.map((item) => ({
+          contentIdea: item.content_idea,
+          feeling: item.feeling,
+        })),
         ...(params.issues.length > 0
           ? {
               rejectedAttemptIssues: params.issues,
@@ -337,18 +307,18 @@ function buildSchema(briefCount: number) {
           properties: {
             audienceContext: { maxLength: 240, minLength: 1, type: "string" },
             briefSlotIndex: { maximum: briefCount - 1, minimum: 0, type: "integer" },
-            creativeSeed: { maxLength: MAX_CREATIVE_SEED_LENGTH, minLength: 1, type: "string" },
+            creativeSeed: { maxLength: 400, minLength: 1, type: "string" },
             emotionalTension: { maxLength: 160, minLength: 1, type: "string" },
             humanMoment: { maxLength: 400, minLength: 1, type: "string" },
             items: {
               items: {
                 additionalProperties: false,
                 properties: {
-                  creativeSeed: { maxLength: MAX_CREATIVE_SEED_LENGTH, minLength: 1, type: "string" },
-                  emotion: { maxLength: MAX_EMOTION_LENGTH, minLength: 1, type: "string" },
+                  contentIdea: { maxLength: MAX_CONTENT_IDEA_LENGTH, minLength: 1, type: "string" },
+                  feeling: { maxLength: MAX_FEELING_LENGTH, minLength: 1, type: "string" },
                   itemSlotIndex: { maximum: 4, minimum: 0, type: "integer" },
                 },
-                required: ["creativeSeed", "emotion", "itemSlotIndex"],
+                required: ["contentIdea", "feeling", "itemSlotIndex"],
                 type: "object",
               },
               maxItems: 5,
@@ -380,20 +350,17 @@ function buildSchema(briefCount: number) {
   } as const;
 }
 
-function seedSimilarity(left: string, right: string) {
+function ideaSimilarity(left: string, right: string) {
   const leftTokens = new Set(tokenize(left));
   const rightTokens = new Set(tokenize(right));
   const union = new Set([...leftTokens, ...rightTokens]);
   if (union.size === 0) return 0;
-
   let intersection = 0;
-  for (const token of leftTokens) {
-    if (rightTokens.has(token)) intersection += 1;
-  }
-
-  const containment =
-    intersection / Math.max(1, Math.min(leftTokens.size, rightTokens.size));
-  return Math.max(intersection / union.size, containment);
+  for (const token of leftTokens) if (rightTokens.has(token)) intersection += 1;
+  return Math.max(
+    intersection / union.size,
+    intersection / Math.max(1, Math.min(leftTokens.size, rightTokens.size)),
+  );
 }
 
 function tokenize(value: string) {
@@ -411,8 +378,10 @@ function normalize(value: string) {
 
 function getOpenAIClient() {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) throw new Error("OPENAI_API_KEY is required for Carousel content planning.");
-  if (!openaiClient) openaiClient = new OpenAI({ apiKey, maxRetries: 2, timeout: 60_000 });
+  if (!apiKey) throw new Error("OPENAI_API_KEY is required for Wall-of-Text content planning.");
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey, maxRetries: 2, timeout: 60_000 });
+  }
   return openaiClient;
 }
 

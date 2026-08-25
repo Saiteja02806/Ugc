@@ -7,6 +7,7 @@ import { runRenderTrendingCarouselEditJob } from "./render-trending-carousel-edi
 import { runRenderWallTextVideoJob } from "./render-wall-text-video.js";
 import { runGenerateCarouselJob } from "./generate-carousel.js";
 import { runGenerateCarouselContentPlanJob } from "./generate-carousel-content-plan.js";
+import { runGenerateWallTextContentPlanJob } from "./generate-wall-text-content-plan.js";
 import { runGenerateHookVideoJob } from "./generate-hook-video.js";
 import { runGenerateImageJob } from "./generate-image.js";
 import { runGenerateTrendingHookCopyJob } from "./generate-trending-hook-copy.js";
@@ -56,6 +57,10 @@ export async function runWorkerJob(
 
   if (job.job_type === "carousel_content_plan_generation") {
     return runGenerateCarouselContentPlanJob(job, context);
+  }
+
+  if (job.job_type === "wall_text_content_plan_generation") {
+    return runGenerateWallTextContentPlanJob(job, context);
   }
 
   if (job.job_type === "generate_hook_video") {

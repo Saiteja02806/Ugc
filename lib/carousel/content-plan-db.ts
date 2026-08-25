@@ -7,6 +7,8 @@ import {
   CAROUSEL_CONTENT_PLAN_PROMPT_VERSION,
   CAROUSEL_CONTENT_PLAN_TARGET_COUNT,
   buildCarouselBusinessDescription,
+  buildCarouselPlanningContext,
+  type CarouselPlanningContext,
 } from "@/lib/carousel/content-plan";
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 
@@ -39,6 +41,7 @@ type CarouselContentPlanRow = {
   plan_version: number;
   planner_model: string;
   planner_prompt_version: string;
+  planning_context: CarouselPlanningContext;
   project_id: string;
   schema_version: number;
   status: CarouselContentPlanStatus;
@@ -69,6 +72,7 @@ export type CarouselContentPlanRecord = {
 type CarouselContentPlanItemRow = {
   consumed_at: string | null;
   consumed_by_carousel_generation_id: string | null;
+  creative_brief_id: string | null;
   created_at: string;
   creative_seed: string;
   day_number: number;
@@ -87,6 +91,18 @@ type CarouselContentPlanItemRow = {
   sequence_index: number;
   status: "available" | "consumed" | "planned" | "reserved" | "retired";
   updated_at: string;
+  user_id: string;
+};
+
+type CarouselContentPlanBriefRow = {
+  audience_context: string;
+  creative_seed: string;
+  emotional_tension: string;
+  human_moment: string;
+  id: string;
+  plan_id: string;
+  preferred_format_family: string;
+  supported_angle: string;
   user_id: string;
 };
 
@@ -111,6 +127,7 @@ type CarouselContentPlanDatabase = {
       ensure_carousel_content_plan: {
         Args: {
           p_business_description: string;
+          p_planning_context: CarouselPlanningContext;
           p_business_profile_id: string;
           p_business_profile_version: number;
           p_planner_model: string;
@@ -158,6 +175,12 @@ type CarouselContentPlanDatabase = {
         Row: CarouselContentPlanItemRow;
         Update: Partial<CarouselContentPlanItemRow>;
       };
+      carousel_content_plan_briefs: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: CarouselContentPlanBriefRow;
+        Update: Partial<CarouselContentPlanBriefRow>;
+      };
       carousel_content_plans: {
         Insert: Record<string, never>;
         Relationships: [];
@@ -181,6 +204,7 @@ export async function ensureCurrentCarouselContentPlan(params: {
       p_business_description: buildCarouselBusinessDescription(
         params.profile.context,
       ),
+      p_planning_context: buildCarouselPlanningContext(params.profile.context),
       p_business_profile_id: params.profile.id,
       p_business_profile_version: params.profile.profileVersion,
       p_planner_model: CAROUSEL_CONTENT_PLAN_MODEL,
@@ -280,10 +304,49 @@ export async function getCarouselCreativeBriefForGeneration(params: {
     );
   }
 
+  const planningBrief = item.creative_brief_id
+    ? await getCarouselPlanningBrief({
+        briefId: item.creative_brief_id,
+        planId: params.contentPlanId,
+        userId: params.userId,
+      })
+    : null;
+
   return {
     businessDescription: plan.business_description,
     creativeSeed: item.creative_seed,
     emotion: item.emotion,
+    planningBrief,
+  };
+}
+
+async function getCarouselPlanningBrief(params: {
+  briefId: string;
+  planId: string;
+  userId: string;
+}) {
+  const { data, error } = await getClient()
+    .from("carousel_content_plan_briefs")
+    .select("*")
+    .eq("id", params.briefId)
+    .eq("plan_id", params.planId)
+    .eq("user_id", params.userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load Carousel creative brief: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error("Carousel creative brief provenance is unavailable.");
+  }
+
+  return {
+    audienceContext: data.audience_context,
+    creativeSeed: data.creative_seed,
+    emotionalTension: data.emotional_tension,
+    humanMoment: data.human_moment,
+    preferredFormatFamily: data.preferred_format_family,
+    supportedAngle: data.supported_angle,
   };
 }
 

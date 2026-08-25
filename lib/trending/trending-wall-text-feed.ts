@@ -28,6 +28,7 @@ import {
   ensureTrendingWallTextAssignments,
   getWallTextPerformanceSignals,
   getWallTextGenerationReservation,
+  getWallTextPrivateCreativeContexts,
   isTrendingWallTextCreativeCurrent,
   listActiveWallTextInstagramReelTemplates,
   listActiveTrendingWallTextIdeas,
@@ -127,6 +128,7 @@ export async function enqueueTrendingWallTextRefill(
   const job = await enqueueTrendingWallTextJob({
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,
+    profile,
     refillKey: String(existing.length),
     requestedCount: Math.max(targetActive - active.length, 1),
     userId: profile.userId,
@@ -507,6 +509,10 @@ async function completeReservedWallTextGeneration(params: {
   );
 
   if (unfinished.length > 0) {
+    const privateContextsByAssignment = await getWallTextPrivateCreativeContexts({
+      assignments: unfinished,
+      userId: params.profile.userId,
+    });
     const assets = await listWallTextOverlayAssetsByIds(
       unfinished.map((assignment) => assignment.overlay_media_asset_id),
     );
@@ -560,6 +566,13 @@ async function completeReservedWallTextGeneration(params: {
             }
             return {
               candidateIndex: assignment.batch_candidate_index,
+              ...(privateContextsByAssignment.get(assignment.id)
+                ? {
+                    privateCreativeContext: privateContextsByAssignment.get(
+                      assignment.id,
+                    ),
+                  }
+                : {}),
               durationSeconds: Number(assignment.duration_seconds),
               layout,
               maxWords: assignment.max_words,

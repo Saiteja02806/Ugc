@@ -83,6 +83,9 @@ const jobQueueConfig = {
   wall_text_generation: {
     queueName: "ai-generation",
   },
+  wall_text_content_plan_generation: {
+    queueName: "ai-generation",
+  },
 } satisfies Record<BackgroundJobType, QueueConfig>;
 
 export function getQueueProviderName(

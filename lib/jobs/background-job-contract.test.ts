@@ -15,6 +15,10 @@ test("normalizes implementation job aliases to the public contract", () => {
   assert.equal(getCanonicalBackgroundJobType("generate_hook_video"), "video_generation");
   assert.equal(getCanonicalBackgroundJobType("render_edit_video"), "final_render");
   assert.equal(getCanonicalBackgroundJobType("publish_social_post"), "social_publish");
+  assert.equal(
+    getCanonicalBackgroundJobType("wall_text_content_plan_generation"),
+    "wall_text_generation",
+  );
 });
 
 test("classifies active and terminal states", () => {

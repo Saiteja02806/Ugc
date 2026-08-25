@@ -115,7 +115,7 @@ export function AppScreenshotsSettings() {
 
       setAssets(data.assets);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not load app screenshots."));
+      setErrorMessage(getAppScreenshotsLoadError(error));
     } finally {
       setIsLoading(false);
     }
@@ -484,4 +484,15 @@ function getApiError(value: unknown, fallback: string) {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function getAppScreenshotsLoadError(error: unknown) {
+  if (
+    error instanceof TypeError &&
+    /(?:failed to fetch|load failed|networkerror)/i.test(error.message)
+  ) {
+    return "We couldn't reach App Screenshots. Check your connection or disable any request-blocking browser extension for this site, then try again.";
+  }
+
+  return getErrorMessage(error, "Could not load app screenshots.");
 }

@@ -77,6 +77,10 @@ test("maps all active production job types to migrated GCP queues", () => {
         "generate_trending_hook_copy",
         getQueueNameForJobType("generate_trending_hook_copy"),
       ],
+      [
+        "wall_text_content_plan_generation",
+        getQueueNameForJobType("wall_text_content_plan_generation"),
+      ],
       ["wall_text_generation", getQueueNameForJobType("wall_text_generation")],
       ["media_analysis", getQueueNameForJobType("media_analysis")],
       ["analytics_sync", getQueueNameForJobType("analytics_sync")],
@@ -94,6 +98,7 @@ test("maps all active production job types to migrated GCP queues", () => {
       ["generate_image", "ai-generation"],
       ["generate_hook_video", "ai-generation"],
       ["generate_trending_hook_copy", "ai-generation"],
+      ["wall_text_content_plan_generation", "ai-generation"],
       ["wall_text_generation", "ai-generation"],
       ["media_analysis", "ai-generation"],
       ["analytics_sync", "ai-generation"],

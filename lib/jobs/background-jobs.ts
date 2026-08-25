@@ -52,6 +52,7 @@ export type BackgroundJobType =
   | "social_publish"
   | "test_worker_job"
   | "video_generation"
+  | "wall_text_content_plan_generation"
   | "wall_text_generation";
 
 type BackgroundJobInsert = {

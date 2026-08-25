@@ -7,6 +7,7 @@ import type {
 
 export const CANONICAL_BACKGROUND_JOB_TYPES = [
   "hook_text_generation",
+  "wall_text_content_plan_generation",
   "wall_text_generation",
   "carousel_generation",
   "image_generation",
@@ -66,6 +67,7 @@ const canonicalTypeByImplementation: Record<
   social_publish: "social_publish",
   test_worker_job: "media_analysis",
   video_generation: "video_generation",
+  wall_text_content_plan_generation: "wall_text_generation",
   wall_text_generation: "wall_text_generation",
 };
 

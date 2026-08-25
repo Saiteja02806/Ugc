@@ -3,6 +3,7 @@ import {
   listMediaAssets,
   serializeMediaAsset,
 } from "@/lib/media/media-storage";
+import { isMediaAssetVisibleInCreativeLibrary } from "@/lib/media/media-library-visibility";
 import {
   isMediaCollection,
   isMediaSourceType,
@@ -45,7 +46,12 @@ export async function GET(request: Request) {
       {
         ok: true,
         assets: rows
-          .filter(isVisibleInFrontendMediaLibrary)
+          .filter((row) =>
+            isMediaAssetVisibleInCreativeLibrary({
+              metadata: row.metadata,
+              sourceType: row.source_type,
+            }),
+          )
           .map(serializeMediaAsset),
       },
       { headers: { "Cache-Control": "no-store" } },
@@ -53,21 +59,6 @@ export async function GET(request: Request) {
   } catch (error) {
     return mediaErrorResponse(error, "Could not load your media.");
   }
-}
-
-function isVisibleInFrontendMediaLibrary(
-  row: Awaited<ReturnType<typeof listMediaAssets>>[number],
-) {
-  if (row.source_type === "catalog_influencer") {
-    return false;
-  }
-
-  const metadata =
-    row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
-      ? row.metadata
-      : null;
-
-  return metadata?.libraryVisibility !== "hook_videos_only";
 }
 
 function parseSourceTypes(value: string | null): MediaSourceType[] | null {

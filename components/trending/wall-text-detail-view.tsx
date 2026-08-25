@@ -3,6 +3,7 @@
 import {
   ArrowLeft,
   CalendarClock,
+  ChevronRight,
   Loader2,
   Save,
 } from "lucide-react";
@@ -85,7 +86,7 @@ export function WallTextDetailView({
         Back to ideas
       </button>
 
-      <div className="mx-auto mt-3 grid w-full max-w-2xl items-center gap-5 rounded-[20px] border border-border bg-card p-4 sm:grid-cols-[minmax(160px,220px)_minmax(0,1fr)] sm:gap-6 sm:p-5">
+      <div className="mx-auto mt-3 grid w-full max-w-2xl items-start gap-5 rounded-[20px] border border-border bg-card p-4 sm:grid-cols-[minmax(160px,220px)_minmax(0,1fr)] sm:gap-6 sm:p-5">
         <div className="relative mx-auto w-full max-w-[220px]">
           <div className="relative aspect-[9/16] overflow-hidden rounded-panel bg-[#171717] ring-1 ring-inset ring-border">
             <video
@@ -113,7 +114,10 @@ export function WallTextDetailView({
           </div>
         </div>
 
-        <div className="min-w-0">
+        <div
+          data-wall-text-action-rail
+          className="min-w-0 self-start"
+        >
           {actionState.status === "error" ? (
             <p
               role="alert"
@@ -123,43 +127,83 @@ export function WallTextDetailView({
             </p>
           ) : null}
 
-          <div className="flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => void onSchedule()}
-              disabled={busy}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-55"
-            >
-              {actionState.status === "scheduling" ? (
-                <Loader2
-                  className="size-4 animate-spin motion-reduce:animate-none"
+          <div className="overflow-hidden rounded-[16px] border border-border bg-background/35">
+            <div className="border-b border-border px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+                Next step
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-foreground-strong">
+                Keep this Reel moving
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 p-2.5">
+              <button
+                type="button"
+                onClick={() => void onSchedule()}
+                disabled={busy}
+                className="group inline-flex min-h-[68px] w-full items-center justify-between gap-3 rounded-[12px] bg-primary px-4 py-3 text-left text-primary-foreground transition-[background-color,transform] hover:bg-primary-hover active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-55"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-primary-foreground/12">
+                    {actionState.status === "scheduling" ? (
+                      <Loader2
+                        className="size-4 animate-spin motion-reduce:animate-none"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <CalendarClock className="size-4" aria-hidden="true" />
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">
+                      {actionState.status === "scheduling"
+                        ? "Preparing schedule…"
+                        : "Create a Schedule"}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-primary-foreground/72">
+                      Choose an account and publish time
+                    </span>
+                  </span>
+                </span>
+                <ChevronRight
+                  className="size-4 shrink-0 opacity-75 transition-transform duration-150 group-hover:translate-x-0.5"
                   aria-hidden="true"
                 />
-              ) : (
-                <CalendarClock className="size-4" aria-hidden="true" />
-              )}
-              {actionState.status === "scheduling"
-                ? "Preparing schedule…"
-                : "Create a Schedule"}
-            </button>
-            <button
-              type="button"
-              onClick={() => void onSave()}
-              disabled={busy}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-control border border-border-strong bg-card px-5 text-sm font-semibold text-foreground-strong transition-colors hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-55"
-            >
-              {actionState.status === "saving" ? (
-                <Loader2
-                  className="size-4 animate-spin motion-reduce:animate-none"
+              </button>
+              <button
+                type="button"
+                onClick={() => void onSave()}
+                disabled={busy}
+                className="group inline-flex min-h-[68px] w-full items-center justify-between gap-3 rounded-[12px] border border-border-strong bg-card px-4 py-3 text-left text-foreground-strong transition-[background-color,border-color,transform] hover:border-foreground/20 hover:bg-card-muted active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-55"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-border bg-background/45 text-muted transition-colors group-hover:text-foreground-strong">
+                    {actionState.status === "saving" ? (
+                      <Loader2
+                        className="size-4 animate-spin motion-reduce:animate-none"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <Save className="size-4" aria-hidden="true" />
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">
+                      {actionState.status === "saving"
+                        ? "Saving and preparing…"
+                        : "Save to Creative Assets"}
+                    </span>
+                    <span className="mt-0.5 block text-xs font-normal text-muted">
+                      Keep it ready for later
+                    </span>
+                  </span>
+                </span>
+                <ChevronRight
+                  className="size-4 shrink-0 text-muted transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-foreground-strong"
                   aria-hidden="true"
                 />
-              ) : (
-                <Save className="size-4" aria-hidden="true" />
-              )}
-              {actionState.status === "saving"
-                ? "Saving and preparing…"
-                : "Save to Creative Assets"}
-            </button>
+              </button>
+            </div>
           </div>
         </div>
       </div>

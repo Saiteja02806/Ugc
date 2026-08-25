@@ -91,7 +91,7 @@ test("keeps the owner inbox behind the verified email allowlist", () => {
 
 test("adds two separate Settings sections and an owner-only request inbox", () => {
   assert.match(settings, /id: "raised-ticket"/);
-  assert.match(settings, /label: "Raised Ticket"/);
+  assert.match(settings, /label: "Raise Ticket"/);
   assert.match(settings, /id: "request-feature"/);
   assert.match(settings, /label: "Request Feature"/);
   assert.doesNotMatch(settings, /Support & feedback/);
@@ -103,7 +103,7 @@ test("adds two separate Settings sections and an owner-only request inbox", () =
     settings,
     /<SupportFeedbackSettings type="feature_request" \/>/,
   );
-  assert.match(support, /isTicket \? "Raised Ticket" : "Request Feature"/);
+  assert.match(support, /isTicket \? "Raise Ticket" : "Request Feature"/);
   assert.match(support, /What went wrong\?/);
   assert.match(support, /Describe the feature/);
   assert.match(support, /Customer requests/);

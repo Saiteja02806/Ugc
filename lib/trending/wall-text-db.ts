@@ -158,6 +158,43 @@ type WallTextGenerationAssignmentRow = {
   status: "pending" | "processing" | "retry_pending" | "completed" | "failed";
   target_words: number;
   wall_text_creative_id: string | null;
+  wall_text_content_plan_id: string | null;
+  wall_text_content_plan_item_id: string | null;
+};
+
+type WallTextContentPlanBriefRow = {
+  audience_context: string;
+  creative_seed: string;
+  emotional_tension: string;
+  human_moment: string;
+  id: string;
+  plan_id: string;
+  preferred_format_family: string;
+  supported_angle: string;
+  user_id: string;
+};
+
+type WallTextContentPlanItemRow = {
+  content_idea: string;
+  creative_brief_id: string;
+  feeling: string;
+  id: string;
+  plan_id: string;
+  status: "available" | "consumed" | "reserved" | "retired";
+  user_id: string;
+};
+
+export type WallTextPrivateCreativeContext = {
+  contentIdea: string;
+  feeling: string;
+  planningBrief: {
+    audienceContext: string;
+    creativeSeed: string;
+    emotionalTension: string;
+    humanMoment: string;
+    preferredFormatFamily: string;
+    supportedAngle: string;
+  };
 };
 
 type WallTextPersistedFormatAssignment = Omit<
@@ -364,6 +401,18 @@ type WallTextDatabase = {
         Relationships: [];
         Row: WallTextCreativeRow;
         Update: Partial<WallTextCreativeRow>;
+      };
+      wall_text_content_plan_briefs: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: WallTextContentPlanBriefRow;
+        Update: Partial<WallTextContentPlanBriefRow>;
+      };
+      wall_text_content_plan_items: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: WallTextContentPlanItemRow;
+        Update: Partial<WallTextContentPlanItemRow>;
       };
       wall_text_content_history: {
         Insert: never;
@@ -843,6 +892,95 @@ export async function getWallTextGenerationReservation(params: {
     throw new Error(`Could not resume Wall-of-text assignments: ${assignmentError.message}`);
   }
   return { assignments, batch };
+}
+
+export async function getWallTextPrivateCreativeContexts(params: {
+  assignments: readonly Pick<
+    WallTextGenerationAssignmentRow,
+    | "id"
+    | "wall_text_content_plan_id"
+    | "wall_text_content_plan_item_id"
+  >[];
+  userId: string;
+}) {
+  const plannedAssignments = params.assignments.filter(
+    (assignment) =>
+      Boolean(assignment.wall_text_content_plan_id) &&
+      Boolean(assignment.wall_text_content_plan_item_id),
+  );
+  if (plannedAssignments.length === 0) {
+    return new Map<string, WallTextPrivateCreativeContext>();
+  }
+
+  if (
+    plannedAssignments.some(
+      (assignment) =>
+        !assignment.wall_text_content_plan_id ||
+        !assignment.wall_text_content_plan_item_id,
+    )
+  ) {
+    throw new Error("Wall-of-Text planned context linkage is incomplete.");
+  }
+
+  const itemIds = plannedAssignments.map(
+    (assignment) => assignment.wall_text_content_plan_item_id!,
+  );
+  const { data: items, error: itemError } = await getClient()
+    .from("wall_text_content_plan_items")
+    .select("*")
+    .eq("user_id", params.userId)
+    .in("id", itemIds);
+  if (itemError) {
+    throw new Error(`Could not load Wall-of-Text planned ideas: ${itemError.message}`);
+  }
+
+  const itemById = new Map((items ?? []).map((item) => [item.id, item]));
+  if (
+    plannedAssignments.some((assignment) => {
+      const item = itemById.get(assignment.wall_text_content_plan_item_id!);
+      return (
+        !item ||
+        item.plan_id !== assignment.wall_text_content_plan_id ||
+        item.status !== "reserved"
+      );
+    })
+  ) {
+    throw new Error("Wall-of-Text planned idea is unavailable or stale.");
+  }
+
+  const briefIds = [...new Set((items ?? []).map((item) => item.creative_brief_id))];
+  const { data: briefs, error: briefError } = await getClient()
+    .from("wall_text_content_plan_briefs")
+    .select("*")
+    .eq("user_id", params.userId)
+    .in("id", briefIds);
+  if (briefError) {
+    throw new Error(`Could not load Wall-of-Text private briefs: ${briefError.message}`);
+  }
+
+  const briefById = new Map((briefs ?? []).map((brief) => [brief.id, brief]));
+  const contexts = new Map<string, WallTextPrivateCreativeContext>();
+  for (const assignment of plannedAssignments) {
+    const item = itemById.get(assignment.wall_text_content_plan_item_id!)!;
+    const brief = briefById.get(item.creative_brief_id);
+    if (!brief || brief.plan_id !== item.plan_id) {
+      throw new Error("Wall-of-Text planned idea is missing its private brief.");
+    }
+    contexts.set(assignment.id, {
+      contentIdea: item.content_idea,
+      feeling: item.feeling,
+      planningBrief: {
+        audienceContext: brief.audience_context,
+        creativeSeed: brief.creative_seed,
+        emotionalTension: brief.emotional_tension,
+        humanMoment: brief.human_moment,
+        preferredFormatFamily: brief.preferred_format_family,
+        supportedAngle: brief.supported_angle,
+      },
+    });
+  }
+
+  return contexts;
 }
 
 export async function claimWallTextGenerationChunk(params: {

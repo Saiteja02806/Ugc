@@ -10,6 +10,10 @@ const progressiveDeliveryMigration = readFileSync(
   "supabase/migrations/20260825090000_progressive_trending_daily_delivery.sql",
   "utf8",
 );
+const hookAssignmentIntegrityMigration = readFileSync(
+  "supabase/migrations/20260825054213_preserve_bound_trending_hook_assignments.sql",
+  "utf8",
+);
 const decisionRoute = readFileSync(
   "app/api/trending/feed/decisions/route.ts",
   "utf8",
@@ -155,6 +159,29 @@ test("derives feed status from slots so stale failure metadata cannot hide ready
   assert.match(
     progressiveDeliveryMigration,
     /with derived_status as \([\s\S]*update public\.daily_trending_feeds as feed/,
+  );
+});
+
+test("preserves a current ready Hook during refills and reopens only stale current slots", () => {
+  assert.match(
+    hookAssignmentIntegrityMigration,
+    /create trigger preserve_current_daily_hook_assignment_on_supersede/i,
+  );
+  assert.match(
+    hookAssignmentIntegrityMigration,
+    /old\.state = 'active'[\s\S]*new\.state = 'superseded'[\s\S]*slot\.hook_video_assignment_id = old\.id[\s\S]*slot\.state = 'ready'/i,
+  );
+  assert.match(
+    hookAssignmentIntegrityMigration,
+    /feed\.local_date = \(now\(\) at time zone feed\.timezone\)::date/i,
+  );
+  assert.match(
+    hookAssignmentIntegrityMigration,
+    /update public\.daily_trending_feed_slots as slot[\s\S]*hook_video_assignment_id = null,[\s\S]*state = 'planned'[\s\S]*assignment\.state = 'superseded'/i,
+  );
+  assert.doesNotMatch(
+    hookAssignmentIntegrityMigration,
+    /delete from public\.user_hook_video_assignments/i,
   );
 });
 

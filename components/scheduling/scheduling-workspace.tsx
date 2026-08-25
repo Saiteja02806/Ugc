@@ -121,6 +121,7 @@ const ScheduleEditor = dynamic(
 );
 
 const creativeAssetHookVideoSourceTypes: MediaSourceType[] = [
+  "catalog_influencer",
   "upload",
   "influencer_upload",
   "generated_video",

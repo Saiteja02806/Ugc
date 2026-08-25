@@ -37,7 +37,7 @@ test("blocks Hook acceptance until the protected video preview is playable", () 
     /const started = requestCreativeDecision[\s\S]+if \(!started\) \{[\s\S]+resetDrag\(\)/,
   );
   assert.match(workspace, /onPreviewReady=\{\(\) => \{[\s\S]+"ready"/);
-  assert.match(workspace, /acceptDisabled=\{activeHookPreviewStatus/);
+  assert.match(workspace, /acceptDisabled=\{\s*activeHookPreviewStatus/);
 });
 
 test("does not block the deck while a decision is being saved", () => {
@@ -60,6 +60,22 @@ test("keeps protected preview sessions independent so upcoming Hooks can prefetc
   assert.match(workspace, /previewUrl=\{previewUrl\}/);
   assert.match(card, /preload="auto"/);
   assert.match(card, /autoPlay=\{active\}/);
+});
+
+test("keeps Hook source metadata private while reusing the protected preview", () => {
+  const composerOpening =
+    composer.match(/function ComposerOpeningPreview[\s\S]+?function HookTextStage/)?.[0] ??
+    "";
+  const scheduleReview = readProjectFile(
+    "components/trending/hook-video-schedule-drawer.tsx",
+  );
+
+  assert.doesNotMatch(composerOpening, /influencer\.name|video\.title\}<\/p>/);
+  assert.match(composerOpening, /poster=\{video\.thumbnailUrl \?\? undefined\}/);
+  assert.match(composerOpening, /preload="auto"/);
+  assert.doesNotMatch(scheduleReview, /Opening source|influencerName/);
+  assert.doesNotMatch(workspace, /previewUrl\?session=/);
+  assert.match(previewStream, /Cache-Control": "private, max-age=60"/);
 });
 
 test("previews approved Hook audio without exposing it to deck swipe gestures", () => {

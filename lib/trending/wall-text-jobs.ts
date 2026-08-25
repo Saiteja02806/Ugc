@@ -4,15 +4,28 @@ import {
   createAndDispatchBackgroundJob,
   retryAndDispatchBackgroundJob,
 } from "@/lib/jobs/background-job-service";
+import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
+import { ensureWallTextContentPlanGeneration } from "@/lib/trending/wall-text-content-plan-generation-job";
 import { WALL_TEXT_GENERATOR_VERSION } from "@/lib/trending/wall-text-types";
 
 export async function enqueueTrendingWallTextJob(params: {
   businessProfileId: string;
   businessProfileVersion: number;
+  profile?: BusinessProfileRecord;
   refillKey?: string | null;
   requestedCount?: number;
   userId: string;
 }) {
+  if (params.profile) {
+    await ensureWallTextContentPlanGeneration({ profile: params.profile }).catch(
+      (error) => {
+        // The plan is an additive quality layer. A queue or migration rollout
+        // issue must never prevent the established Wall generation fallback.
+        console.error("Could not start Wall-of-Text content planning:", error);
+      },
+    );
+  }
+
   const idempotencyKey = [
     "trending-wall-text",
     params.businessProfileId,

@@ -152,7 +152,7 @@ test("button, keyboard, and physical swipe decisions converge on one handler", (
   assert.match(workspace, /data-trending-edited-badge/);
 });
 
-test("labels every Trending card with its content format above the creative", () => {
+test("labels every Trending card with its content format", () => {
   assert.match(workspace, /function TrendingFormatPill/);
   assert.match(workspace, /<TrendingFormatPill/);
   assert.match(workspace, /data-trending-format-pill/);
@@ -245,14 +245,25 @@ test("keeps the Wall-of-Text accepted view compact and action-only", () => {
   assert.doesNotMatch(wallTextDetail, /getWallTextRenderBlocks/);
 });
 
-test("keeps the compact format pill above the complete media stack", () => {
+test("anchors Wall-of-Text actions at the top of the accepted Reel", () => {
+  assert.match(wallTextDetail, /grid w-full max-w-2xl items-start/);
+  assert.match(wallTextDetail, /data-wall-text-action-rail/);
+  assert.match(wallTextDetail, /className="min-w-0 self-start"/);
+  assert.match(wallTextDetail, /Next step[\s\S]*Keep this Reel moving/);
+  assert.match(
+    wallTextDetail,
+    /Create a Schedule[\s\S]*Choose an account and publish time/,
+  );
+});
+
+test("keeps the Carousel format pill above its centered media stack", () => {
   assert.match(
     workspace,
     /pointer-events-none absolute left-0 z-40 flex w-full items-center justify-start/,
   );
   assert.match(workspace, /bottom-\[calc\(100%\+40px\)\]/);
-  assert.match(workspace, /bottom-\[calc\(100%\+72px\)\]/);
-  assert.match(workspace, /hasTallerVerticalBackground/);
+  assert.doesNotMatch(workspace, /bottom-\[calc\(100%\+72px\)\]/);
+  assert.doesNotMatch(workspace, /hasTallerVerticalBackground/);
   assert.match(workspace, /pb-\[107px\] pt-\[94px\]/);
   assert.match(
     workspace,
@@ -265,6 +276,25 @@ test("keeps the compact format pill above the complete media stack", () => {
     /data-trending-format-pill[\s\S]{0,400}(?:shadow-|drop-shadow|backdrop-blur|ring-)/,
   );
   assert.doesNotMatch(actions, /shadow-(?:none|xs|sm)/);
+});
+
+test("keeps Hook and Wall-of-Text pills close above their video frame", () => {
+  assert.match(workspace, /type TrendingDeckPresentation = "centered" \| "video_peek"/);
+  assert.match(workspace, /VIDEO_PEEK_CARD_STYLES/);
+  assert.match(workspace, /translateX: 178/);
+  assert.match(workspace, /activeFormat !== "carousel"/);
+  assert.match(workspace, /nextCandidate && nextCandidate\.format !== "carousel"/);
+  assert.equal(
+    (
+      workspace.match(
+        /positionClassName="left-0 bottom-\[calc\(100%\+14px\)\]"/g,
+      ) ?? []
+    ).length,
+    2,
+  );
+  assert.doesNotMatch(workspace, /positionClassName="left-2\.5 top-2\.5 w-auto"/);
+  assert.match(workspace, /data-trending-video-peek=\{[\s\S]*presentation === "video_peek"/);
+  assert.match(workspace, /activeCandidate\.format === "carousel" \? \(/);
 });
 
 test("locks Hook and Wall-of-Text to the same responsive 9:16 frame", () => {

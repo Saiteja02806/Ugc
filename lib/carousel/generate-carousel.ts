@@ -201,6 +201,7 @@ export async function generateCarousel({
       creativeSeed: creativeBrief.creativeSeed,
       emotion: creativeBrief.emotion,
       hookFamilyId: generation.hookFamilyId,
+      planningBrief: creativeBrief.planningBrief,
       recentHistory,
       selectedAngle: generation.selectedAngle,
       slideCount: generation.slideCount,

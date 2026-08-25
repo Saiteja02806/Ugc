@@ -480,7 +480,6 @@ export function HookVideoLibraryTab({
           summary={{
             demoTitle: pendingScheduleItem.demoTitle,
             hookText: pendingScheduleItem.hookText,
-            influencerName: pendingScheduleItem.influencerName,
           }}
         />
       ) : null}

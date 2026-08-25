@@ -3,7 +3,7 @@ import { getWallTextFormat } from "./wall-formats";
 import type { WallTextFormatId } from "./wall-text-types";
 
 export const WALL_TEXT_PROMPT_VERSION =
-  "wall-text-writer-prompt-v8-spatial-fit" as const;
+  "wall-text-writer-prompt-v9-private-context" as const;
 
 export type WallTextPromptCandidate = {
   assignedFormatId: WallTextFormatId;
@@ -13,6 +13,18 @@ export type WallTextPromptCandidate = {
   retryFeedback?: {
     avoidOpening?: string;
     reason: string;
+  };
+  privateCreativeContext?: {
+    contentIdea: string;
+    feeling: string;
+    planningBrief: {
+      audienceContext: string;
+      creativeSeed: string;
+      emotionalTension: string;
+      humanMoment: string;
+      preferredFormatFamily: string;
+      supportedAngle: string;
+    };
   };
   targetWords: number;
 };
@@ -26,6 +38,7 @@ const GLOBAL_WALL_RULES = [
   "Do not copy wording from the examples; examples demonstrate structure only.",
   "Avoid slogans, calls to action, and advertisement language.",
   "Use no more than one supported product capability in one idea.",
+  "When privateCreativeContext is present, use its contentIdea, feeling, and all six planningBrief fields together as private guidance. Do not print field names or treat creativeSeed as finished copy. The code-assigned Wall format remains authoritative; preferredFormatFamily is only a soft direction.",
   "Make every candidate a distinct idea with a distinct opening.",
   "For a community prompt, stop immediately after one clear question.",
   "Return one continuous message per candidate: no title, bullets, list object, sections, or visual line breaks.",
@@ -60,6 +73,9 @@ export function buildWallTextGenerationPrompt(params: {
       ? { referenceTextForThisCandidateOnly: candidate.referenceText }
       : {}),
     ...(candidate.retryFeedback ? { retryFeedback: candidate.retryFeedback } : {}),
+    ...(candidate.privateCreativeContext
+      ? { privateCreativeContext: candidate.privateCreativeContext }
+      : {}),
     targetWords: candidate.targetWords,
   }));
 
@@ -80,6 +96,7 @@ export function buildWallTextGenerationPrompt(params: {
     "",
     "TASK",
     "For each candidate, use its assignedFormatId and return only candidateIndex plus one complete text string.",
+    "When privateCreativeContext is present, write from the complete private context, not from contentIdea alone.",
     "Treat targetWords as a soft writing target, not a required minimum. maxWords is only the absolute safety ceiling; the layout engine will decide final acceptance from measured 4-7 line fit.",
     "A referenceTextForThisCandidateOnly belongs only to that candidate. Use it only as structural and emotional inspiration, adapt it to the Business Profile, and do not copy its wording.",
     "Reference text is not evidence. Never repeat its numbers, psychology statements, factual claims, product names, or promises unless the Business Profile independently supports them.",

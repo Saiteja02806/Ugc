@@ -12,6 +12,10 @@ const hookLibrary = readProjectFile(
   "components/library/hook-video-library-tab.tsx",
 );
 const mediaRoute = readProjectFile("app/api/media/route.ts");
+const mediaGroupStorage = readProjectFile("lib/media/creative-asset-groups.ts");
+const mediaLibraryVisibility = readProjectFile(
+  "lib/media/media-library-visibility.ts",
+);
 const scheduleRoute = readProjectFile(
   "app/api/trending/hook-videos/drafts/schedule/route.ts",
 );
@@ -32,8 +36,10 @@ test("raw company Hook clips are excluded from the frontend media library", () =
   );
 
   assert.doesNotMatch(sourceTypes, /catalog_influencer/);
-  assert.match(mediaRoute, /row\.source_type === "catalog_influencer"/);
-  assert.match(mediaRoute, /libraryVisibility !== "hook_videos_only"/);
+  assert.match(mediaRoute, /isMediaAssetVisibleInCreativeLibrary/);
+  assert.match(mediaGroupStorage, /isMediaAssetVisibleInCreativeLibrary/);
+  assert.match(mediaLibraryVisibility, /asset\.sourceType === "catalog_influencer"/);
+  assert.match(mediaLibraryVisibility, /libraryVisibility !== "hook_videos_only"/);
 });
 
 test("only explicit Save queues the finished Hook library render", () => {

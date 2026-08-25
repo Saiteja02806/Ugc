@@ -922,7 +922,6 @@ export function VideoGenerationStudioPanel({
             <AiStudioSettingSelect
               ariaLabel="Video model"
               disabled={generationLocked || isGenerating}
-              icon={<Sparkles className="size-4" aria-hidden="true" />}
               options={AI_STUDIO_VIDEO_MODELS.map((value) => ({
                 label: "Google Omni",
                 value,

@@ -72,7 +72,7 @@ export function SupportFeedbackSettings({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const isTicket = type === "support_ticket";
-  const actionLabel = isTicket ? "Raised Ticket" : "Request Feature";
+  const actionLabel = isTicket ? "Raise Ticket" : "Request Feature";
 
   function chooseAttachment(file: File) {
     if (!ATTACHMENT_CONTENT_TYPES.has(file.type)) {

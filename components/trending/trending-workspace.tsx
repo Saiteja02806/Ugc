@@ -185,6 +185,8 @@ type TrendingDeckSlot = {
   depth: DeckDepth;
 };
 
+type TrendingDeckPresentation = "centered" | "video_peek";
+
 type CarouselProfileFeed = {
   error?: string | null;
   id?: string;
@@ -328,6 +330,32 @@ const DECK_CARD_STYLES: Record<
     zIndex: 1,
   },
 };
+const VIDEO_PEEK_CARD_STYLES: Record<
+  DeckDepth,
+  { opacity: number; scale: number; translateX: number; translateY: number; zIndex: number }
+> = {
+  0: {
+    opacity: 1,
+    scale: 1,
+    translateX: 0,
+    translateY: 0,
+    zIndex: 3,
+  },
+  1: {
+    opacity: 0.7,
+    scale: 0.92,
+    translateX: 178,
+    translateY: 10,
+    zIndex: 1,
+  },
+  2: {
+    opacity: 0,
+    scale: 0.9,
+    translateX: 200,
+    translateY: 16,
+    zIndex: 0,
+  },
+};
 
 function getTrendingDeckCardState(depth: DeckDepth) {
   return depth === 0 ? "active" : depth === 1 ? "next" : "preload";
@@ -338,18 +366,22 @@ function getTrendingDeckCardPresentation({
   dragX,
   exitDirection,
   isDragging,
+  presentation = "centered",
 }: {
   depth: DeckDepth;
   dragX: number;
   exitDirection: "left" | "right" | null;
   isDragging: boolean;
+  presentation?: TrendingDeckPresentation;
 }): CSSProperties {
   const isActive = depth === 0;
-  const deckStyle = DECK_CARD_STYLES[depth];
+  const deckStyles =
+    presentation === "video_peek" ? VIDEO_PEEK_CARD_STYLES : DECK_CARD_STYLES;
+  const deckStyle = deckStyles[depth];
   const promotedStyle =
     depth === 0
       ? deckStyle
-      : DECK_CARD_STYLES[(depth - 1) as DeckDepth];
+      : deckStyles[(depth - 1) as DeckDepth];
   const revealProgress = isActive
     ? 0
     : Math.min(Math.abs(dragX) / SWIPE_THRESHOLD_PX, 1);
@@ -372,16 +404,20 @@ function getTrendingDeckCardPresentation({
     -MAX_ROTATION_DEGREES,
     Math.min(MAX_ROTATION_DEGREES, dragX / 28),
   );
-  const translateX = exitDirection
-    ? exitDirection === "left"
-      ? "-115vw"
-      : "115vw"
-    : `${dragX}px`;
+  const inactiveTranslateX =
+    presentation === "video_peek" ? VIDEO_PEEK_CARD_STYLES[depth].translateX : 0;
+  const translateX = isActive
+    ? exitDirection
+      ? exitDirection === "left"
+        ? "-115vw"
+        : "115vw"
+      : `${dragX}px`
+    : `${inactiveTranslateX}px`;
 
   return {
     opacity,
     touchAction: isActive ? "pan-y" : undefined,
-    transform: `translateX(${isActive ? translateX : "0px"}) translateY(${translateY}px) rotate(${isActive ? clampedRotation : 0}deg) scale(${scale})`,
+    transform: `translateX(${translateX}) translateY(${translateY}px) rotate(${isActive ? clampedRotation : 0}deg) scale(${scale})`,
     transition: isDragging ? "none" : undefined,
   };
 }
@@ -1215,7 +1251,7 @@ function TrendingHookComposer({
           data?.ok === true &&
           !controller.signal.aborted
         ) {
-          setPreviewUrl(`${data.previewUrl}?session=${Date.now()}`);
+          setPreviewUrl(data.previewUrl);
         }
       } catch {
         if (!controller.signal.aborted) {
@@ -1332,7 +1368,10 @@ function TrendingDeck({
   const deckSlots = getTrendingDeckSlots(
     visibleCandidates,
     activeItemIndex,
+    activeCandidate?.format ?? "carousel",
   );
+  const deckPresentation: TrendingDeckPresentation =
+    activeCandidate?.format === "carousel" ? "centered" : "video_peek";
   const handleHookPreviewStatusChange = useCallback(
     (creativeId: string, status: HookPreviewStatus) => {
       setHookPreviewStatusByCreativeId((current) =>
@@ -2022,14 +2061,13 @@ function TrendingDeck({
               getTrendingReviewCardFrameClass(activeCandidate.format),
             )}
           >
-            <TrendingFormatPill
-              candidate={activeCandidate}
-              format={activeCandidate.format}
-              positionClassName={getTrendingFormatPillPositionClass(
-                activeCandidate.format,
-                deckSlots,
-              )}
-            />
+            {activeCandidate.format === "carousel" ? (
+              <TrendingFormatPill
+                candidate={activeCandidate}
+                format={activeCandidate.format}
+                positionClassName={getTrendingFormatPillPositionClass()}
+              />
+            ) : null}
             <div className="relative flex size-full items-center justify-center">
               {[...deckSlots].reverse().map((slot) => (
                 <TrendingDeckCard
@@ -2041,6 +2079,7 @@ function TrendingDeck({
                   dragX={dragX}
                   exitDirection={slot.depth === 0 ? exitDirection : null}
                   isDragging={isDragging}
+                  presentation={deckPresentation}
                   itemCount={visibleCandidates.length}
                   itemIndex={slot.itemIndex}
                   onActiveSlideChange={onActiveSlideChange}
@@ -2484,20 +2523,8 @@ function getTrendingReviewCardFrameClass(
     : VERTICAL_REVIEW_CARD_FRAME_CLASS;
 }
 
-function getTrendingFormatPillPositionClass(
-  activeFormat: TrendingCandidate["format"],
-  deckSlots: TrendingDeckSlot[],
-) {
-  const hasTallerVerticalBackground =
-    activeFormat === "carousel" &&
-    deckSlots.some(
-      ({ candidate, depth }) =>
-        depth > 0 && candidate.format !== "carousel",
-    );
-
-  return hasTallerVerticalBackground
-    ? "bottom-[calc(100%+72px)]"
-    : "bottom-[calc(100%+40px)]";
+function getTrendingFormatPillPositionClass() {
+  return "bottom-[calc(100%+40px)]";
 }
 
 type TrendingDeckCardProps = {
@@ -2520,6 +2547,7 @@ type TrendingDeckCardProps = {
   onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
   onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
   onExitTransitionEnd: (event: ReactTransitionEvent<HTMLElement>) => void;
+  presentation: TrendingDeckPresentation;
 };
 
 function TrendingDeckCard({
@@ -2558,6 +2586,7 @@ function TrendingDeckCard({
           onPointerMove={props.onPointerMove}
           onPointerUp={props.onPointerUp}
           onExitTransitionEnd={props.onExitTransitionEnd}
+          presentation={props.presentation}
         />
       );
     case "wall_text":
@@ -2576,6 +2605,7 @@ function TrendingDeckCard({
           onPointerMove={props.onPointerMove}
           onPointerUp={props.onPointerUp}
           onExitTransitionEnd={props.onExitTransitionEnd}
+          presentation={props.presentation}
         />
       );
   }
@@ -2596,6 +2626,7 @@ function TrendingHookDeckCard({
   onPointerUp,
   onExitTransitionEnd,
   onPreviewStatusChange,
+  presentation,
 }: {
   candidate: CompleteHookVideo;
   depth: DeckDepth;
@@ -2614,6 +2645,7 @@ function TrendingHookDeckCard({
     creativeId: string,
     status: HookPreviewStatus,
   ) => void;
+  presentation: TrendingDeckPresentation;
 }) {
   const isActive = depth === 0;
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
@@ -2632,6 +2664,7 @@ function TrendingHookDeckCard({
     dragX,
     exitDirection,
     isDragging,
+    presentation,
   });
 
   useEffect(() => {
@@ -2687,7 +2720,7 @@ function TrendingHookDeckCard({
 
         if (!controller.signal.aborted) {
           setPreviewAudio(data.hookAudio ?? null);
-          setPreviewUrl(`${data.previewUrl}?session=${Date.now()}`);
+          setPreviewUrl(data.previewUrl);
         }
       } catch (error) {
         if (!controller.signal.aborted) {
@@ -2726,12 +2759,15 @@ function TrendingHookDeckCard({
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
+        data-trending-video-peek={
+          presentation === "video_peek" ? "true" : undefined
+        }
         data-trending-vertical-frame
         aria-label={`${creative.text.value}, Hook idea ${itemIndex + 1} of ${itemCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           VERTICAL_REVIEW_CARD_FRAME_CLASS,
-          "origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
+          "relative origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
             : "pointer-events-none",
@@ -2743,6 +2779,12 @@ function TrendingHookDeckCard({
         onTransitionEnd={isActive ? onExitTransitionEnd : undefined}
         style={cardStyle}
       >
+        {isActive ? (
+          <TrendingFormatPill
+            candidate={candidate}
+            positionClassName="left-0 bottom-[calc(100%+14px)]"
+          />
+        ) : null}
         {edit ? (
           <div
             data-trending-edited-badge
@@ -2819,6 +2861,7 @@ function TrendingWallTextDeckCard({
   onPointerMove,
   onPointerUp,
   onExitTransitionEnd,
+  presentation,
 }: {
   candidate: CompleteWallText;
   depth: DeckDepth;
@@ -2833,6 +2876,7 @@ function TrendingWallTextDeckCard({
   onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
   onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
   onExitTransitionEnd: (event: ReactTransitionEvent<HTMLElement>) => void;
+  presentation: TrendingDeckPresentation;
 }) {
   const isActive = depth === 0;
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -2848,6 +2892,7 @@ function TrendingWallTextDeckCard({
     dragX,
     exitDirection,
     isDragging,
+    presentation,
   });
   useEffect(() => {
     const video = videoRef.current;
@@ -2878,12 +2923,15 @@ function TrendingWallTextDeckCard({
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
+        data-trending-video-peek={
+          presentation === "video_peek" ? "true" : undefined
+        }
         data-trending-vertical-frame
         aria-label={`${creative.title}, Wall-of-text idea ${itemIndex + 1} of ${itemCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           VERTICAL_REVIEW_CARD_FRAME_CLASS,
-          "origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
+          "relative origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
             ? "pointer-events-auto cursor-grab active:cursor-grabbing"
             : "pointer-events-none",
@@ -2895,6 +2943,12 @@ function TrendingWallTextDeckCard({
         onTransitionEnd={isActive ? onExitTransitionEnd : undefined}
         style={cardStyle}
       >
+        {isActive ? (
+          <TrendingFormatPill
+            candidate={candidate}
+            positionClassName="left-0 bottom-[calc(100%+14px)]"
+          />
+        ) : null}
         {edit ? (
           <div
             data-trending-edited-badge
@@ -3113,7 +3167,31 @@ function CarouselDeckCard({
 function getTrendingDeckSlots(
   candidates: TrendingCandidate[],
   activeItemIndex: number,
+  activeFormat: TrendingCandidate["format"],
 ): TrendingDeckSlot[] {
+  const activeCandidate = candidates[activeItemIndex];
+
+  if (!activeCandidate) {
+    return [];
+  }
+
+  if (activeFormat !== "carousel") {
+    const nextCandidate = candidates[activeItemIndex + 1];
+
+    return [
+      { candidate: activeCandidate, itemIndex: activeItemIndex, depth: 0 },
+      ...(nextCandidate && nextCandidate.format !== "carousel"
+        ? [
+            {
+              candidate: nextCandidate,
+              itemIndex: activeItemIndex + 1,
+              depth: 1 as const,
+            },
+          ]
+        : []),
+    ];
+  }
+
   return ([0, 1, 2] as DeckDepth[]).flatMap((depth) => {
     const itemIndex = activeItemIndex + depth;
     const candidate = candidates[itemIndex];

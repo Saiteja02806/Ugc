@@ -2989,6 +2989,46 @@ Name: **Verify v26 and replace the stale production assignment**
   through `20260824153000`. They must be applied before deploying the app and
   worker revisions that use the plan-first contract.
 
+## 2026-08-25 Private Carousel Creative-Brief Layer
+
+- Carousel remains a 150-item, 30-day inventory: five usable ideas per
+  organizational day. Wall-of-Text is explicitly outside this plan and must
+  receive its own future planning architecture.
+- New Carousel plans create 30 private creative briefs, each producing exactly
+  five durable `creativeSeed + emotion` items. The six brief fields are
+  `creativeSeed`, `audienceContext`, `humanMoment`, `emotionalTension`,
+  `supportedAngle`, and `preferredFormatFamily`. They are internal AI context,
+  never frontend labels, slide fields, or user-visible output JSON.
+- The planner receives an explicit definition for every private brief field:
+  `creativeSeed` is a human observation rather than final copy;
+  `audienceContext` is a supported, non-universal audience segment;
+  `humanMoment` is a concrete everyday event; `emotionalTension` is the
+  resulting inner conflict; `supportedAngle` is an approved-fact-only business
+  connection rather than a sales claim or promise; and
+  `preferredFormatFamily` is a soft storytelling direction. All six fields are
+  used together for each set of five child ideas. The selected Carousel format
+  remains authoritative.
+- Brief generation receives an approved business-profile context snapshot
+  (audience, pain points, differentiators, value, tone, purpose, category, and
+  stated problem/promise) alongside the minimal business description. It must
+  not invent factual support, audience segments, capabilities, evidence, or
+  guarantees.
+- A final Carousel writer receives its one durable idea plus its parent brief.
+  The brief supplies human specificity but does not impose a story. The
+  backend-selected Structure 1 format and hook family, or the selected
+  Structure 2 format reference, remain authoritative.
+- `preferredFormatFamily` is only a soft variety direction; it is not a
+  renderer ID, cannot override a selected Carousel format, and cannot create a
+  CTA requirement. Existing optional-CTA behavior remains unchanged.
+- Each parent brief and its five child items persist atomically. The existing
+  item reservation, release, provenance, and one-time consumption contract is
+  unchanged. Legacy items have no parent brief and continue with their original
+  seed-plus-emotion behavior.
+- The additive rollout is migration
+  `20260825110000_add_carousel_creative_briefs.sql`. It must be applied before
+  the app and worker revisions. Existing active plans are not rewritten or
+  invalidated; a new plan uses the richer brief layer once it is created.
+
 ## 2026-08-24 Carousel Human-Hook Library Reconciliation
 
 - Source paths under `gym_part2/human_hook` classify as Gym hook assets, and
@@ -3431,3 +3471,30 @@ Name: **Verify v26 and replace the stale production assignment**
 - This is a Trending availability and recovery decision only. It does not
   change Carousel structures, CTA flexibility, source selection, rendering,
   swipe decisions, plan allowance, or worker generation contracts.
+
+## 2026-08-25 Trending Video Deck Presentation Boundary
+
+- In Trending review, Hook and Wall-of-Text use an in-media format pill and
+  may show one inert, subtle right-side preview of the next video card. This
+  is a visual cue only; the existing horizontal swipe decisions, preloading,
+  and accessibility boundaries remain unchanged.
+- A next Carousel is never shown in that video-side preview. When Carousel is
+  active, it retains the existing centered multi-layer review treatment and
+  its external format pill. Carousel generation, source data, slide controls,
+  editing, scheduling, and readiness behavior are unchanged.
+
+## 2026-08-25 Bound Hook Assignment Integrity
+
+- A current-day Hook assignment that is bound to a `ready` daily Trending slot
+  is part of that user's durable pack. A later Hook refill may supersede only
+  unbound active Hook assignments; it cannot retire an assignment that the
+  daily-feed reader still needs to display.
+- The database enforces this boundary for every Hook writer through the
+  assignment-state transition itself, rather than relying on one refill caller
+  to remember the rule. The rule applies equally to Free, Starter, and Growth
+  plans.
+- The rolling repair reopens only today's `ready` Hook slots whose linked
+  assignment was already superseded. It leaves the old assignment as history,
+  preserves every decided slot, and lets the normal prepared-feed attachment
+  path bind an eligible active Hook. It neither deletes user content nor adds
+  posts beyond the plan's existing durable slot count.

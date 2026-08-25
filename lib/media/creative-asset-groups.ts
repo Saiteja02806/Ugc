@@ -6,6 +6,7 @@ import {
   serializeMediaAsset,
   type MediaAssetRow,
 } from "@/lib/media/media-storage";
+import { isMediaAssetVisibleInCreativeLibrary } from "@/lib/media/media-library-visibility";
 import type { MediaAsset } from "@/lib/media/types";
 
 const CREATIVE_ASSET_GROUPS_TABLE = "creative_asset_groups";
@@ -423,7 +424,14 @@ export async function listCreativeAssetGroupAssets(input: {
   }
 
   const assetsById = new Map(
-    data.map((row) => [row.id, serializeMediaAsset(row)]),
+    data
+      .filter((row) =>
+        isMediaAssetVisibleInCreativeLibrary({
+          metadata: row.metadata,
+          sourceType: row.source_type,
+        }),
+      )
+      .map((row) => [row.id, serializeMediaAsset(row)]),
   );
   const assets = result.items.flatMap((item) => {
     const asset = assetsById.get(item.mediaAssetId);

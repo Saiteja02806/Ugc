@@ -87,6 +87,7 @@ test("the worker implements every newly migrated Slice 6 job type", () => {
     "analytics_sync",
     "hook_text_generation",
     "media_analysis",
+    "wall_text_content_plan_generation",
     "wall_text_generation",
   ]) {
     assert.match(types, new RegExp(`"${jobType}"`));

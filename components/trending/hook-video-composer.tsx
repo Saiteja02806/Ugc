@@ -608,7 +608,6 @@ export function HookVideoComposer({
           <div className="grid items-start gap-7 md:grid-cols-[168px_minmax(0,1fr)] lg:gap-10">
             <ComposerOpeningPreview
               hookText={selectedHook}
-              influencer={influencer}
               openingPreviewUrl={openingPreviewUrl}
               overlayFontSize={overlayFontSize}
               overlayLines={overlayLines}
@@ -768,7 +767,6 @@ export function HookVideoComposer({
           summary={{
             demoTitle: selectedDemo.title,
             hookText: selectedHook,
-            influencerName: influencer.name,
           }}
         />
       ) : null}
@@ -778,7 +776,6 @@ export function HookVideoComposer({
 
 function ComposerOpeningPreview({
   hookText,
-  influencer,
   openingPreviewUrl,
   overlayFontSize,
   overlayLines,
@@ -787,7 +784,6 @@ function ComposerOpeningPreview({
   video,
 }: {
   hookText: string | null;
-  influencer: HookInfluencerSummary;
   openingPreviewUrl: string | null;
   overlayFontSize: number;
   overlayLines: readonly string[] | null;
@@ -810,12 +806,13 @@ function ComposerOpeningPreview({
         {openingPreviewUrl ? (
           <video
             src={openingPreviewUrl}
+            poster={video.thumbnailUrl ?? undefined}
             aria-label={video.title}
             autoPlay
             loop
             muted
             playsInline
-            preload="metadata"
+            preload="auto"
             className="size-full object-cover"
           />
         ) : (
@@ -832,12 +829,6 @@ function ComposerOpeningPreview({
           text={hookText}
         />
       </div>
-      <p className="mt-3 truncate text-center text-sm font-semibold text-foreground-strong md:text-left">
-        {influencer.name}
-      </p>
-      <p className="mt-0.5 truncate text-center text-xs font-medium text-muted md:text-left">
-        {video.title}
-      </p>
     </section>
   );
 }
@@ -882,6 +873,7 @@ function HookTextStage({
           label="Opening"
           mediaUrl={openingPreviewUrl}
           posterUrl={video.thumbnailUrl}
+          preload="auto"
         />
         <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden="true" />
         <MediaSequencePreview
@@ -898,10 +890,12 @@ function MediaSequencePreview({
   label,
   mediaUrl,
   posterUrl,
+  preload = "metadata",
 }: {
   label: string;
   mediaUrl: string | null;
   posterUrl: string | null;
+  preload?: "auto" | "metadata";
 }) {
   return (
     <div className="min-w-0 text-center">
@@ -915,7 +909,7 @@ function MediaSequencePreview({
             loop
             muted
             playsInline
-            preload="metadata"
+            preload={preload}
             className="size-full object-cover"
           />
         ) : posterUrl ? (
@@ -1361,6 +1355,7 @@ function ReviewComposition({
             <ProtectedReviewVideo
               videoRef={openingVideoRef}
               key={openingPreviewUrl}
+              preload="auto"
               src={openingPreviewUrl}
               trimEnd={effectiveEnd}
               trimStart={trimStart}
@@ -1408,7 +1403,6 @@ function ReviewComposition({
         </div>
 
         <div className="grid gap-4 border-b border-border py-5 sm:grid-cols-2">
-          <ReviewAsset icon={UserRound} label="Opening" title={video.title} />
           <ReviewAsset icon={Film} label="Product demo" title={demo.title} />
         </div>
 
@@ -1513,12 +1507,14 @@ function ReviewComposition({
 
 function ProtectedReviewVideo({
   onLoadedMetadata,
+  preload = "metadata",
   src,
   trimEnd,
   trimStart,
   videoRef,
 }: {
   onLoadedMetadata?: React.ReactEventHandler<HTMLVideoElement>;
+  preload?: "auto" | "metadata";
   src: string;
   trimEnd: number | null;
   trimStart: number;
@@ -1560,7 +1556,7 @@ function ProtectedReviewVideo({
         disablePictureInPicture
         disableRemotePlayback
         playsInline
-        preload="metadata"
+        preload={preload}
         draggable={false}
         className="size-full select-none object-contain [-webkit-touch-callout:none]"
         onContextMenu={(event) => event.preventDefault()}

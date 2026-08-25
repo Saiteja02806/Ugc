@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildCarouselBusinessDescription } from "./content-plan.ts";
+import {
+  buildCarouselBusinessDescription,
+  buildCarouselPlanningContext,
+} from "./content-plan.ts";
 
 test("projects rich analysis into only one minimal business description", () => {
   const description = buildCarouselBusinessDescription({
@@ -57,4 +60,43 @@ test("does not duplicate a business name already present in the summary", () => 
   });
 
   assert.equal(description, "CampaignFlow helps organize campaign work.");
+});
+
+test("keeps approved profile facts available for private creative briefs", () => {
+  const context = buildCarouselPlanningContext({
+    brandTone: "warm and direct",
+    businessName: "CampaignFlow",
+    businessModel: "b2b",
+    campaignPurposes: ["education", "conversion"],
+    carouselAngles: [],
+    categories: ["campaign management"],
+    category: "campaign management",
+    claimsToAvoid: [],
+    confidence: "high",
+    confidenceReason: null,
+    ctaIdeas: [],
+    differentiators: ["one workspace"],
+    mainProblem: "fragmented campaign work",
+    mainPromise: "organized campaigns",
+    missingInfo: [],
+    painPoints: ["switching tools"],
+    pexelsImageQueries: [],
+    productSummary: "An application for planning campaign work.",
+    recommendedCarouselStructure: [],
+    targetAudience: ["campaign managers"],
+    valueProps: ["less switching"],
+    visualKeywords: [],
+  });
+
+  assert.deepEqual(context, {
+    brandTone: "warm and direct",
+    campaignPurposes: ["education", "conversion"],
+    category: "campaign management",
+    differentiators: ["one workspace"],
+    mainProblem: "fragmented campaign work",
+    mainPromise: "organized campaigns",
+    painPoints: ["switching tools"],
+    targetAudience: ["campaign managers"],
+    valueProps: ["less switching"],
+  });
 });

@@ -96,6 +96,7 @@ const directScheduledVideoSourceTypes = new Set([
 ]);
 const directScheduledVideoCollections = new Set(["influencer", "video"]);
 const creativeAssetHookVideoSourceTypes = new Set([
+  "catalog_influencer",
   "influencer_upload",
   "upload",
   "generated_video",

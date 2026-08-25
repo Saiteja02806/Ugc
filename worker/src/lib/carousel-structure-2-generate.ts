@@ -67,6 +67,7 @@ export async function generateCarouselStructure2Batch(params: {
         candidateIndex: generation.candidate_index,
         creativeSeed: params.creativeBriefs[slotIndex]!.creativeSeed,
         emotion: params.creativeBriefs[slotIndex]!.emotion,
+        planningBrief: params.creativeBriefs[slotIndex]!.planningBrief,
         slotIndex,
         storyFormatId: requireStructure2FormatId(
           generation.content_format_id ?? generation.content_assigned_format_id,

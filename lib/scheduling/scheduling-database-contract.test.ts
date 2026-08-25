@@ -1036,12 +1036,12 @@ test("the main scheduler uses compact role-based clip and time controls", () => 
   assert.doesNotMatch(schedulingWorkspace, /\/api\/avatars/);
   assert.doesNotMatch(scheduleEditor, /Presenter catalog/);
   assert.doesNotMatch(scheduleEditor, /onPrepareCatalogInfluencer/);
-  assert.doesNotMatch(schedulingService, /"catalog_influencer"/);
+  assert.match(schedulingService, /"catalog_influencer"/);
   assert.match(schedulingService, /assertSelectedHookIsCreativeAsset/);
   assert.match(schedulingService, /hook_creative_asset_required/);
   assert.match(
     renderRoute,
-    /\["influencer_upload", "upload", "generated_video"\]/,
+    /\[\s*"catalog_influencer",\s*"influencer_upload",\s*"upload",\s*"generated_video",\s*\]/,
   );
   assert.match(schedulingService, /directScheduledVideoCollections/);
 });

@@ -762,7 +762,6 @@ export function ImageGenerationStudioPanel({
             <AiStudioSettingSelect
               ariaLabel="Image model"
               disabled={generationLocked || isGenerating}
-              icon={<Sparkles className="size-4" aria-hidden="true" />}
               options={AI_STUDIO_IMAGE_MODELS.map((value) => ({
                 label: value === "nano_banana_2" ? "Nano Banana 2" : "GPT Image",
                 value,

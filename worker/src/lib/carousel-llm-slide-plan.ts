@@ -29,7 +29,7 @@ import {
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v34-heading-bubble-only";
+  "llm-carousel-planner-v35-plain-white-structure-parity";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly five slides plus a backend-selected content format and compatible hook family.";
 
@@ -1622,7 +1622,7 @@ function buildGrammarPlannerMessages(
         "- Hook wording must be completely fresh and must follow the selected hook family without copying examples or history.",
         `- Headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than four visual lines.`,
         `- Body copy must be one complete sentence of ${TARGET_BODY_MIN_WORDS}-${TARGET_BODY_MAX_WORDS} words, at most ${MAX_BODY_LENGTH} characters, and normally no more than six visual lines.`,
-        `- Every visible text group uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px type. Only a headline uses a connected white SVG background; body copy, list items, and CTA copy render as normal white text directly on the image. Headlines must fit within four lines; body copy within eight; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
+        `- Every visible text group uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px white type directly on the image, with no white text background. Headlines must fit within four lines; body copy within eight; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
         "- A headline must not repeat its body. If the body works alone, use body_only and set headline to null.",
         "- List slides must use the exact configured number of short listItems and normally set body to null.",
         "- Every slide without a configured listItemCount must return listItems as an empty array.",

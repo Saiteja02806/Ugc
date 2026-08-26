@@ -1089,18 +1089,12 @@ Balanced carousel copy rules:
   the production font stack, actual font size, available width, padding, and
   card dimensions, then keep headings to at most four rendered lines and body
   text to at most eight rendered lines.
-- A headline and its supporting copy remain two distinct text groups. Only a
-  Structure 1 headline uses one backend-generated connected white SVG path
-  derived from its measured line widths. Structure 1 body, list, and CTA copy
-  renders as ordinary white text directly on the image. Structure 2 has no
-  separate headline field, so its story and CTA copy also render as ordinary
-  white text directly on the image; neither receives a white SVG background.
-- Reserve horizontal corner safety of at least `radius + 6px` on each side in
-  addition to normal padding for a headline bubble. For all plain text, retain
-  measured wrapping and safe-area containment with white type plus a restrained
-  dark outline/shadow for legibility. Never shrink, truncate, add an ellipsis,
-  or substitute fallback copy. Reject the render if a headline text-mask pixel
-  falls outside its white-background mask.
+- A headline and its supporting copy remain two distinct text groups. Structure
+  1 and Structure 2 both render every visible group as ordinary white SVG text
+  directly on the image. Neither structure receives a white SVG background.
+- Both structures retain measured wrapping and safe-area containment with
+  fixed-size white type plus a restrained dark outline/shadow for legibility.
+  Never shrink, truncate, add an ellipsis, or substitute fallback copy.
 - JSON/schema validity, the backend-selected format, exact slide order and
   roles, required fields, renderer character limits, product timing, prohibited
   visual subjects, and unsupported/prohibited claims are publishing gates.
@@ -3380,10 +3374,11 @@ Name: **Verify v26 and replace the stale production assignment**
   Pre-render validation checks Structure 1 headline/body/list groups and
   Structure 2 story/CTA groups against their fixed-size line capacities. A
   failing AI plan gets the existing one isolated repair and then fails closed.
-- Structure 1 renderer `social-bubble-renderer-v14-heading-bubble-only` preserves its
-  headline text-pixel containment retry, but that retry may only increase
-  headline-bubble safety; it may not reduce typography. Supporting text is
-  direct white text with no SVG background.
+- Structure 1 renderer `social-plain-text-renderer-v15-structure-parity`
+  renders headline, body, list, and CTA groups as direct white text with the
+  same fixed 44px type, dark outline, and no-background SVG treatment as
+  Structure 2. Its former headline-bubble containment retry is retired because
+  there is no longer a white background shape to contain.
 - Structure 2 renderer
   `story-native-renderer-v5-plain-white-story-text` renders story and CTA copy
   as direct white text with a restrained dark outline. Stored legacy treatment
@@ -3582,12 +3577,11 @@ Name: **Verify v26 and replace the stale production assignment**
   travels with its story as one centered text block instead of remaining
   bottom-anchored. Existing immutable renders are not rewritten, and an
   explicit editor placement remains user-controlled.
-- Fixed typography, measured wrapping, heading-only white connected bubbles,
-  direct white body/story/CTA text, no-shrink, no-truncation, headline
-  containment, human-image safety, and all five-slide format contracts remain
+- Fixed typography, measured wrapping, direct white headline/body/list/story/CTA
+  text, no-shrink, no-truncation, human-image safety, and all five-slide format contracts remain
   unchanged. New versions are
-  `llm-carousel-planner-v34-heading-bubble-only`,
-  `social-bubble-renderer-v14-heading-bubble-only`,
+  `llm-carousel-planner-v35-plain-white-structure-parity`,
+  `social-plain-text-renderer-v15-structure-parity`,
   `llm-carousel-structure-2-flexible-seed-writer-v9-plain-white-story-text`,
   `carousel-structure-2-flexible-story-v5-plain-white-story-text`,
   `carousel-structure-2-formats-v4-expanded-copy-centered`, and
@@ -3596,22 +3590,21 @@ Name: **Verify v26 and replace the stale production assignment**
   and new Structure 1 and Structure 2 output is verified through the
   authenticated production Trending flow on `https://www.getugcpilot.com`.
 
-## 2026-08-26 Heading-Only Connected SVG Treatment
+## 2026-08-26 Unified Plain SVG Text Treatment
 
-- A white connected SVG background is a headline treatment, not a default text
-  container. Structure 1 uses it only when a slide contains a headline. Its
-  body, list, and CTA text render directly in white with a subtle dark outline
-  and shadow for image contrast. A body-only Structure 1 slide intentionally
-  has no white SVG group.
-- Structure 2 stores story and CTA copy rather than a separate headline field.
-  Both groups therefore render as normal white overlay text, never as a white
-  connected SVG path. This applies to automatic output and screenshot-editor
-  re-renders, so the rule cannot be bypassed by an old presentation label.
-- The fixed 44px font, measured wrapping, doubled line capacities, centered
-  automatic placement, no-shrink/no-truncation policy, and headline mask
-  containment guard remain in force. Existing rendered images are immutable;
-  the change applies to newly rendered or edited Carousel slides after worker
-  deployment and production verification.
+- Structure 1 and Structure 2 now use the same direct-white-text SVG
+  treatment: fixed 44px Geist SemiBold type, a restrained black outline, and no
+  white text background. Structure 1 retains separate headline/body/list/CTA
+  groups and Structure 2 retains its story/CTA groups; this changes only their
+  visual treatment.
+- Structure 1's connected white headline bubble, black headline text, bubble
+  shadow, and text-pixel containment retry are retired for new renders. Both
+  structures preserve their existing measured wrapping, line caps, safe areas,
+  centered automatic placement, no-shrink/no-truncation policy, and explicit
+  editor positioning.
+- Existing rendered images are immutable. The new renderer applies only to new
+  Structure 1 generations and explicit Structure 1 edit re-renders after the
+  worker deployment and production verification.
 
 ## 2026-08-26 GCP Worker Demand Scaling Boundary
 

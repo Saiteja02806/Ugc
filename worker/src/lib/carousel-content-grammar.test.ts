@@ -99,13 +99,13 @@ test("every Structure 1 format accepts the exact assigned five-slide grammar", (
   );
 });
 
-test("Structure 1 reserves the white SVG background for headings only", async () => {
+test("Structure 1 uses Structure 2's plain white SVG text treatment", async () => {
   const headlineAndBody = await inspectCarouselSlideLayout({
     format: "1:1",
     slide: {
       body: "Supporting copy stays plain white over the image instead of receiving a second SVG bubble.",
       ctaText: null,
-      headline: "The headline keeps the white background",
+      headline: "The headline uses the same direct white text treatment",
       imageDirection: "An object-only workspace with clear centered space.",
       layoutPreset: "middle-statement",
       listItems: [],
@@ -137,7 +137,7 @@ test("Structure 1 reserves the white SVG background for headings only", async ()
     slide: {
       body: null,
       ctaText: null,
-      headline: "Only this heading receives a bubble",
+      headline: "This heading has no white background bubble",
       imageDirection: "An object-only workspace with clear centered space.",
       layoutPreset: "interactive-list",
       listItems: ["First normal list item", "Second normal list item"],
@@ -149,12 +149,14 @@ test("Structure 1 reserves the white SVG background for headings only", async ()
     },
   });
 
-  assert.equal(headlineAndBody.whiteBackgroundGroupCount, 1);
-  assert.equal(headingAndList.whiteBackgroundGroupCount, 1);
+  assert.equal(headlineAndBody.whiteBackgroundGroupCount, 0);
+  assert.equal(headingAndList.whiteBackgroundGroupCount, 0);
   assert.equal(bodyOnly.whiteBackgroundGroupCount, 0);
-  assert.equal(bodyOnly.lines.length, 0);
-  assert.equal(bodyOnly.textPixels, 0);
-  assert.equal(bodyOnly.textPixelContainmentPassed, true);
+  assert.equal(
+    headlineAndBody.bubbleShapeStrategy,
+    "plain-white-text-with-shadow",
+  );
+  assert.equal(headlineAndBody.fontFamily, "Geist, Arial, Helvetica, sans-serif");
 });
 
 test("Structure 1 preserves structurally valid AI copy verbatim", () => {

@@ -84,15 +84,10 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
         return {
           buffer: Buffer.from("rendered"),
           diagnostics: {
-            bubbleShapeStrategy: "hybrid-soft-union-connected-path",
-            escapedTextPixels: 0,
+            bubbleShapeStrategy: "plain-white-text-with-shadow",
             fontFamily: "Geist",
-            lines: [],
-            maxBubbleWidth: 700,
-            repaired: false,
-            textPixelContainmentPassed: true,
-            textPixels: 10,
-            whiteBackgroundGroupCount: 1,
+            maxTextWidth: 700,
+            whiteBackgroundGroupCount: 0,
           },
         };
       },
@@ -108,7 +103,7 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
   assert.equal(receivedTextStyle, "plain");
   assert.deepEqual(readyOutput, {
     rendererVersion:
-      "social-bubble-renderer-v14-heading-bubble-only-normalized-edit-v1",
+      "social-plain-text-renderer-v15-structure-parity-normalized-edit-v1",
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide.webp",

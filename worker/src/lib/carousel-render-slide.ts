@@ -48,60 +48,11 @@ type RegionSignal = {
   contrast: number;
 };
 
-type BubbleLineMetrics = {
-  baselineOffset: number;
-  bubbleWidth: number;
-  groupHeight: number;
-  lineOverlap: number;
-  lineStep: number;
-  rectHeight: number;
-  rects: Array<{
-    estimatedTextWidth: number;
-    measuredTextWidth: number;
-    requiredWidth: number;
-    visualWidth: number;
-  }>;
-};
-
-type ConnectedBubbleLine = {
-  centerY: number;
-  left: number;
-  right: number;
-  width: number;
-};
-
-type ConnectedBubbleTransition =
-  | "none"
-  | "soft-curve"
-  | "rounded-shoulder";
-
-export type CarouselBubbleLineDiagnostic = {
-  cornerSafety: number;
-  estimatedTextWidth: number;
-  fontFamily: string;
-  fontSize: number;
-  measuredTextWidth: number;
-  paddingX: number;
-  radius: number;
-  rectangleWidth: number;
-  requiredWidth: number;
-  stepRadius: number;
-  text: string;
-  transitionToNext: ConnectedBubbleTransition;
-  visualWidth: number;
-  widthSnapSideThreshold: number;
-};
-
 export type CarouselRenderDiagnostics = {
-  bubbleShapeStrategy: "hybrid-soft-union-connected-path";
-  escapedTextPixels: number;
+  bubbleShapeStrategy: "plain-white-text-with-shadow";
   fontFamily: string;
-  maxBubbleWidth: number;
-  repaired: boolean;
-  textPixels: number;
-  textPixelContainmentPassed: boolean;
+  maxTextWidth: number;
   whiteBackgroundGroupCount: number;
-  lines: CarouselBubbleLineDiagnostic[];
 };
 
 type BalancedLines = {
@@ -110,7 +61,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-bubble-renderer-v14-heading-bubble-only";
+  "social-plain-text-renderer-v15-structure-parity";
 export const CAROUSEL_FIXED_FONT_SIZE = 44;
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
@@ -118,14 +69,10 @@ const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number 
   "4:5": { height: 1350, width: 1080 },
 };
 
-const DARK_TEXT = "#111316";
 const BODY_TEXT = "#ffffff";
-const HEADLINE_BUBBLE_FILL = "#ffffff";
 const TEXT_FONT_FAMILY = "Geist, Arial, Helvetica, sans-serif";
-const HEADLINE_FONT_WEIGHT = 700;
 const BODY_FONT_WEIGHT = 600;
 const MIN_CORNER_SAFETY = 6;
-const CONNECTED_BUBBLE_SIDE_SNAP = 3;
 
 function getMeasuredLineWidths(value: WrappedText) {
   return "measuredLineWidths" in value &&
@@ -691,336 +638,6 @@ function getBodyText(slide: PlannedCarouselSlide) {
   return "";
 }
 
-function measureBubbleLines(params: {
-  cornerSafety: number;
-  fontSize: number;
-  lineHeight: number;
-  lines: string[];
-  maxBubbleWidth: number;
-  measuredLineExtents?: RenderedTextExtents[];
-  measuredLineWidths?: number[];
-  mode: "connected" | "single";
-  paddingX: number;
-  paddingY: number;
-  lineOverlap?: number;
-  radius: number;
-}): BubbleLineMetrics {
-  const rectHeight = Math.round(params.fontSize + params.paddingY * 2);
-  const lineOverlap =
-    params.lineOverlap ??
-    (params.mode === "connected"
-      ? clamp(Math.round(params.fontSize * 0.22), 7, 11)
-      : 0);
-  const lineStep =
-    params.mode === "connected"
-      ? rectHeight - lineOverlap
-      : Math.round(params.lineHeight);
-  const rects = params.lines.map((line, index) => {
-    const measuredExtents = params.measuredLineExtents?.[index];
-    const measuredLineWidth = params.measuredLineWidths?.[index];
-    const lineWidth =
-      typeof measuredLineWidth === "number"
-        ? measuredLineWidth
-        : estimateTextWidth(line, params.fontSize);
-    const symmetricTextWidth = measuredExtents
-      ? Math.max(measuredExtents.left, measuredExtents.right) * 2
-      : lineWidth;
-    const requiredWidth = Math.ceil(
-      symmetricTextWidth +
-        2 * (params.paddingX + params.cornerSafety),
-    );
-
-    if (requiredWidth > params.maxBubbleWidth) {
-      throw new Error(
-        `Carousel bubble needs ${requiredWidth}px for visible text but maxBubbleWidth is ${params.maxBubbleWidth}px.`,
-      );
-    }
-
-    return {
-      estimatedTextWidth: Math.round(estimateTextWidth(line, params.fontSize)),
-      measuredTextWidth: Math.round(lineWidth),
-      requiredWidth,
-      visualWidth: requiredWidth,
-    };
-  });
-  const maxLineWidth = rects.reduce(
-    (widestLine, rect) => Math.max(widestLine, rect.visualWidth),
-    0,
-  );
-
-  return {
-    baselineOffset: Math.round(params.paddingY + params.fontSize * 0.78),
-    bubbleWidth: maxLineWidth,
-    groupHeight:
-      params.lines.length > 0
-        ? Math.round(rectHeight + (params.lines.length - 1) * lineStep)
-        : 0,
-    lineOverlap,
-    lineStep,
-    rectHeight,
-    rects,
-  };
-}
-
-export function snapConnectedBubbleVisualWidths(params: {
-  requiredWidths: number[];
-  sideThreshold?: number;
-}) {
-  const sideThreshold = Math.max(
-    0,
-    params.sideThreshold ?? CONNECTED_BUBBLE_SIDE_SNAP,
-  );
-  const visualWidths = params.requiredWidths.map((width) => Math.round(width));
-  let groupStart = 0;
-
-  for (let index = 1; index <= visualWidths.length; index += 1) {
-    const staysInGroup =
-      index < visualWidths.length &&
-      Math.abs(
-        params.requiredWidths[index] - params.requiredWidths[index - 1],
-      ) /
-        2 <
-        sideThreshold;
-
-    if (staysInGroup) {
-      continue;
-    }
-
-    const groupWidth = Math.max(...visualWidths.slice(groupStart, index));
-
-    for (let groupIndex = groupStart; groupIndex < index; groupIndex += 1) {
-      visualWidths[groupIndex] = groupWidth;
-    }
-
-    groupStart = index;
-  }
-
-  return visualWidths;
-}
-
-function formatPathCoordinate(value: number) {
-  const rounded = Math.round(value * 100) / 100;
-
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
-}
-
-function classifyConnectedBubbleTransition(params: {
-  fromX: number;
-  softCurveSideThreshold: number;
-  toX: number;
-}): ConnectedBubbleTransition {
-  const sideChange = Math.abs(params.toX - params.fromX);
-
-  if (sideChange === 0) {
-    return "none";
-  }
-
-  return sideChange <= params.softCurveSideThreshold
-    ? "soft-curve"
-    : "rounded-shoulder";
-}
-
-function appendConnectedBubbleTransition(params: {
-  boundaryY: number;
-  commands: string[];
-  direction: "down" | "up";
-  fromX: number;
-  lineStep: number;
-  softCurveSideThreshold: number;
-  stepRadius: number;
-  toX: number;
-}) {
-  const transition = classifyConnectedBubbleTransition(params);
-
-  if (transition === "none") {
-    return transition;
-  }
-
-  const directionSign = params.direction === "down" ? 1 : -1;
-  const availableHalfHeight = Math.max(1, Math.floor(params.lineStep / 2) - 1);
-
-  if (transition === "soft-curve") {
-    const curveHalfHeight = Math.min(params.stepRadius, availableHalfHeight);
-    const startY = params.boundaryY - directionSign * curveHalfHeight;
-    const endY = params.boundaryY + directionSign * curveHalfHeight;
-
-    params.commands.push(
-      `L ${formatPathCoordinate(params.fromX)} ${formatPathCoordinate(startY)}`,
-      `C ${formatPathCoordinate(params.fromX)} ${formatPathCoordinate(params.boundaryY)} ${formatPathCoordinate(params.toX)} ${formatPathCoordinate(params.boundaryY)} ${formatPathCoordinate(params.toX)} ${formatPathCoordinate(endY)}`,
-    );
-
-    return transition;
-  }
-
-  const sideChange = Math.abs(params.toX - params.fromX);
-  const horizontalSign = Math.sign(params.toX - params.fromX);
-  const radius = Math.min(
-    params.stepRadius,
-    availableHalfHeight,
-    sideChange / 2,
-  );
-  const startY = params.boundaryY - directionSign * radius;
-  const endY = params.boundaryY + directionSign * radius;
-  const firstShoulderX = params.fromX + horizontalSign * radius;
-  const secondShoulderX = params.toX - horizontalSign * radius;
-
-  params.commands.push(
-    `L ${formatPathCoordinate(params.fromX)} ${formatPathCoordinate(startY)}`,
-    `Q ${formatPathCoordinate(params.fromX)} ${formatPathCoordinate(params.boundaryY)} ${formatPathCoordinate(firstShoulderX)} ${formatPathCoordinate(params.boundaryY)}`,
-  );
-
-  if (firstShoulderX !== secondShoulderX) {
-    params.commands.push(
-      `L ${formatPathCoordinate(secondShoulderX)} ${formatPathCoordinate(params.boundaryY)}`,
-    );
-  }
-
-  params.commands.push(
-    `Q ${formatPathCoordinate(params.toX)} ${formatPathCoordinate(params.boundaryY)} ${formatPathCoordinate(params.toX)} ${formatPathCoordinate(endY)}`,
-  );
-
-  return transition;
-}
-
-function buildHybridConnectedBubblePath(params: {
-  bottom: number;
-  lineStep: number;
-  lines: ConnectedBubbleLine[];
-  outerRadius: number;
-  softCurveSideThreshold: number;
-  stepRadius: number;
-  top: number;
-}) {
-  const firstLine = params.lines[0];
-  const lastLine = params.lines.at(-1);
-
-  if (!firstLine || !lastLine) {
-    return { pathData: "", transitions: [] as ConnectedBubbleTransition[] };
-  }
-
-  const boundaries = params.lines.slice(0, -1).map((line, index) => {
-    const nextLine = params.lines[index + 1];
-
-    return Math.round((line.centerY + nextLine.centerY) / 2);
-  });
-  const topRadius = Math.max(
-    0,
-    Math.min(
-      params.outerRadius,
-      firstLine.width / 2,
-      (params.bottom - params.top) / 2,
-    ),
-  );
-  const bottomRadius = Math.max(
-    0,
-    Math.min(
-      params.outerRadius,
-      lastLine.width / 2,
-      (params.bottom - params.top) / 2,
-    ),
-  );
-  const commands = [
-    `M ${formatPathCoordinate(firstLine.left + topRadius)} ${formatPathCoordinate(params.top)}`,
-    `L ${formatPathCoordinate(firstLine.right - topRadius)} ${formatPathCoordinate(params.top)}`,
-    `Q ${formatPathCoordinate(firstLine.right)} ${formatPathCoordinate(params.top)} ${formatPathCoordinate(firstLine.right)} ${formatPathCoordinate(params.top + topRadius)}`,
-  ];
-  const transitions: ConnectedBubbleTransition[] = [];
-
-  for (let index = 0; index < boundaries.length; index += 1) {
-    transitions.push(
-      appendConnectedBubbleTransition({
-        boundaryY: boundaries[index],
-        commands,
-        direction: "down",
-        fromX: params.lines[index].right,
-        lineStep: params.lineStep,
-        softCurveSideThreshold: params.softCurveSideThreshold,
-        stepRadius: params.stepRadius,
-        toX: params.lines[index + 1].right,
-      }),
-    );
-  }
-
-  commands.push(
-    `L ${formatPathCoordinate(lastLine.right)} ${formatPathCoordinate(params.bottom - bottomRadius)}`,
-    `Q ${formatPathCoordinate(lastLine.right)} ${formatPathCoordinate(params.bottom)} ${formatPathCoordinate(lastLine.right - bottomRadius)} ${formatPathCoordinate(params.bottom)}`,
-    `L ${formatPathCoordinate(lastLine.left + bottomRadius)} ${formatPathCoordinate(params.bottom)}`,
-    `Q ${formatPathCoordinate(lastLine.left)} ${formatPathCoordinate(params.bottom)} ${formatPathCoordinate(lastLine.left)} ${formatPathCoordinate(params.bottom - bottomRadius)}`,
-  );
-
-  for (let index = boundaries.length - 1; index >= 0; index -= 1) {
-    appendConnectedBubbleTransition({
-      boundaryY: boundaries[index],
-      commands,
-      direction: "up",
-      fromX: params.lines[index + 1].left,
-      lineStep: params.lineStep,
-      softCurveSideThreshold: params.softCurveSideThreshold,
-      stepRadius: params.stepRadius,
-      toX: params.lines[index].left,
-    });
-  }
-
-  commands.push(
-    `L ${formatPathCoordinate(firstLine.left)} ${formatPathCoordinate(params.top + topRadius)}`,
-    `Q ${formatPathCoordinate(firstLine.left)} ${formatPathCoordinate(params.top)} ${formatPathCoordinate(firstLine.left + topRadius)} ${formatPathCoordinate(params.top)}`,
-    "Z",
-  );
-
-  return { pathData: commands.join(" "), transitions };
-}
-
-export function buildConnectedBubblePath(params: {
-  centerX: number;
-  groupHeight: number;
-  groupY: number;
-  lineCenterOffset: number;
-  lineStep: number;
-  outerRadius: number;
-  stepRadius: number;
-  widths: number[];
-}) {
-  if (params.widths.length === 0) {
-    return {
-      pathData: "",
-      transitions: [] as ConnectedBubbleTransition[],
-      widths: [],
-    };
-  }
-
-  const widths = params.widths.map((width) => Math.round(width));
-  // Visual band centers keep taller glyphs inside when adjacent widths change.
-  const lines = widths.map((width, index): ConnectedBubbleLine => ({
-    centerY:
-      params.groupY + params.lineCenterOffset + index * params.lineStep,
-    left: Math.round(params.centerX - width / 2),
-    right: Math.round(params.centerX + width / 2),
-    width,
-  }));
-  const geometry = buildHybridConnectedBubblePath({
-    bottom: params.groupY + params.groupHeight,
-    lineStep: params.lineStep,
-    lines,
-    outerRadius: params.outerRadius,
-    softCurveSideThreshold: params.stepRadius,
-    stepRadius: params.stepRadius,
-    top: params.groupY,
-  });
-
-  return {
-    pathData: geometry.pathData,
-    transitions: geometry.transitions,
-    widths,
-  };
-}
-
-type BubbleMarkup = {
-  bubble: string;
-  diagnostics: CarouselBubbleLineDiagnostic[];
-  mask: string;
-  text: string;
-};
-
 type PlainTextMetrics = {
   groupHeight: number;
   maximumTextWidth: number;
@@ -1066,98 +683,7 @@ function buildPlainWhiteText(params: {
     )
     .join("");
 
-  return `<g filter="url(#bodyTextShadow)">${lines}</g>`;
-}
-
-function buildBubbleText(params: {
-  className: string;
-  cornerSafety: number;
-  fill: string;
-  fontSize: number;
-  lineHeight: number;
-  lines: string[];
-  maxBubbleWidth: number;
-  measuredLineExtents?: RenderedTextExtents[];
-  measuredLineWidths?: number[];
-  mode: "connected" | "single";
-  paddingX: number;
-  paddingY: number;
-  lineOverlap?: number;
-  radius: number;
-  shadow?: boolean;
-  x: number;
-  y: number;
-}): BubbleMarkup {
-  const metrics = measureBubbleLines({
-    cornerSafety: params.cornerSafety,
-    fontSize: params.fontSize,
-    lineHeight: params.lineHeight,
-    lines: params.lines,
-    maxBubbleWidth: params.maxBubbleWidth,
-    measuredLineExtents: params.measuredLineExtents,
-    measuredLineWidths: params.measuredLineWidths,
-    mode: params.mode,
-    paddingX: params.paddingX,
-    paddingY: params.paddingY,
-    lineOverlap: params.lineOverlap,
-    radius: params.radius,
-  });
-
-  if (params.lines.length === 0) {
-    return { bubble: "", diagnostics: [], mask: "", text: "" };
-  }
-
-  const groupY = Math.round(params.y);
-  const stepRadius = clamp(Math.round(params.fontSize * 0.5), 18, 24);
-  const visualWidths = snapConnectedBubbleVisualWidths({
-    requiredWidths: metrics.rects.map((rect) => rect.requiredWidth),
-  });
-
-  metrics.rects.forEach((rect, index) => {
-    rect.visualWidth = visualWidths[index];
-  });
-
-  const bubbleGeometry = buildConnectedBubblePath({
-    centerX: params.x,
-    groupHeight: metrics.groupHeight,
-    groupY,
-    lineCenterOffset: metrics.rectHeight / 2,
-    lineStep: metrics.lineStep,
-    outerRadius: params.radius,
-    stepRadius,
-    widths: metrics.rects.map((rect) => rect.visualWidth),
-  });
-  const bubblePath = `<path d="${bubbleGeometry.pathData}" fill="${params.fill}"/>`;
-  const maskPath = `<path d="${bubbleGeometry.pathData}" fill="#ffffff"/>`;
-  const textLines = params.lines
-    .map((line, index) => {
-      const textY = groupY + metrics.baselineOffset + index * metrics.lineStep;
-
-      return `<text x="${params.x}" y="${textY}" class="${params.className}" font-size="${params.fontSize}" text-anchor="middle">${escapeXml(line)}</text>`;
-    })
-    .join("");
-
-  return {
-    bubble: `<g${params.shadow ? ' filter="url(#bubbleShadow)"' : ""}>${bubblePath}</g>`,
-    diagnostics: params.lines.map((line, index) => ({
-      cornerSafety: params.cornerSafety,
-      estimatedTextWidth: metrics.rects[index].estimatedTextWidth,
-      fontFamily: TEXT_FONT_FAMILY,
-      fontSize: params.fontSize,
-      measuredTextWidth: metrics.rects[index].measuredTextWidth,
-      paddingX: params.paddingX,
-      radius: params.radius,
-      rectangleWidth: bubbleGeometry.widths[index],
-      requiredWidth: metrics.rects[index].requiredWidth,
-      stepRadius,
-      text: line,
-      transitionToNext: bubbleGeometry.transitions[index] ?? "none",
-      visualWidth: bubbleGeometry.widths[index],
-      widthSnapSideThreshold: CONNECTED_BUBBLE_SIDE_SNAP,
-    })),
-    mask: maskPath,
-    text: textLines,
-  };
+  return `<g>${lines}</g>`;
 }
 
 function getPreferredCenterRatio(position: PlannedCarouselSlide["textPosition"]) {
@@ -1187,32 +713,12 @@ function getImageBrightness(signal: RegionSignal, textStyle: CarouselRenderStyle
 }
 
 type OverlayLayers = {
-  bubbleMask: Buffer;
-  diagnostics: Omit<
-    CarouselRenderDiagnostics,
-    | "escapedTextPixels"
-    | "repaired"
-    | "textPixelContainmentPassed"
-    | "textPixels"
-  >;
+  diagnostics: CarouselRenderDiagnostics;
   overlay: Buffer;
-  textMask: Buffer;
 };
-
-function getHeadlineRadius(fontSize: number) {
-  return clamp(Math.round(fontSize * 0.42), 18, 22);
-}
-
-function getHeadlineWrapCornerSafety(fontSize: number) {
-  return clamp(Math.round(fontSize * 0.28), 14, 16) + MIN_CORNER_SAFETY;
-}
 
 function getBodyWrapCornerSafety(fontSize: number) {
   return clamp(Math.round(fontSize * 0.3), 14, 16) + MIN_CORNER_SAFETY;
-}
-
-function getBubbleCornerSafety(radius: number, safetyBoost: number) {
-  return clamp(Math.round(radius * 0.45), 8, 10) + safetyBoost;
 }
 
 function buildSvgDocument(params: {
@@ -1234,14 +740,13 @@ async function buildOverlaySvg(params: {
   format: CarouselFormat;
   height: number;
   normalizedTextPosition?: CarouselNormalizedTextPosition;
-  safetyBoost: number;
   slide: PlannedCarouselSlide;
   width: number;
 }): Promise<OverlayLayers> {
   const isSquare = params.format === "1:1";
   const safeMarginX = isSquare ? 108 : 96;
   const safeMarginY = isSquare ? 112 : 136;
-  const maxBubbleWidth = Math.min(
+  const maxTextWidth = Math.min(
     params.width - safeMarginX * 2,
     Math.round(params.width * 0.78),
   );
@@ -1258,32 +763,27 @@ async function buildOverlaySvg(params: {
   const bodyText =
     shouldRenderHeadline || rawBodyText ? rawBodyText : rawHeadlineText;
   const bodyOnlyMode = !headlineText;
-  const headlinePaddingX = 18;
-  const headlinePaddingY = 7;
-  const headlineLineOverlap = 8;
   const bodyPaddingX = 18;
   const headline = await fitMeasuredText(headlineText, {
     fontSize: CAROUSEL_FIXED_FONT_SIZE,
     fontFamily: TEXT_FONT_FAMILY,
-    fontWeight: HEADLINE_FONT_WEIGHT,
-    getCornerSafety: (fontSize) =>
-      getHeadlineWrapCornerSafety(fontSize) + params.safetyBoost,
+    fontWeight: BODY_FONT_WEIGHT,
+    getCornerSafety: getBodyWrapCornerSafety,
     lineHeightRatio: 1.04,
     maxLines: CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES,
-    maxWidth: maxBubbleWidth,
-    paddingX: headlinePaddingX,
+    maxWidth: maxTextWidth,
+    paddingX: bodyPaddingX,
   });
   const body = hasStackedBody
     ? await fitStackedText(stackedBodyLines, {
         fontSize: CAROUSEL_FIXED_FONT_SIZE,
         fontFamily: TEXT_FONT_FAMILY,
         fontWeight: BODY_FONT_WEIGHT,
-        getCornerSafety: (fontSize) =>
-          getBodyWrapCornerSafety(fontSize) + params.safetyBoost,
+        getCornerSafety: getBodyWrapCornerSafety,
         lineHeightRatio: 1.04,
         maxLines: CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES,
         maxLinesPerValue: CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES,
-        maxWidth: maxBubbleWidth,
+        maxWidth: maxTextWidth,
         paddingX: bodyPaddingX,
       })
     : bodyText
@@ -1291,11 +791,10 @@ async function buildOverlaySvg(params: {
           fontSize: CAROUSEL_FIXED_FONT_SIZE,
           fontFamily: TEXT_FONT_FAMILY,
           fontWeight: BODY_FONT_WEIGHT,
-          getCornerSafety: (fontSize) =>
-            getBodyWrapCornerSafety(fontSize) + params.safetyBoost,
+          getCornerSafety: getBodyWrapCornerSafety,
           lineHeightRatio: bodyOnlyMode ? 1.04 : 1.05,
           maxLines: CAROUSEL_STRUCTURE_1_BODY_MAX_LINES,
-          maxWidth: maxBubbleWidth,
+          maxWidth: maxTextWidth,
           paddingX: bodyPaddingX,
         })
       : {
@@ -1305,24 +804,11 @@ async function buildOverlaySvg(params: {
           measuredLineExtents: [],
           measuredLineWidths: [],
         };
-  const headlineRadius = getHeadlineRadius(headline.fontSize);
-  const headlineCornerSafety = getBubbleCornerSafety(
-    headlineRadius,
-    params.safetyBoost,
-  );
-  const headlineMetrics = measureBubbleLines({
-    cornerSafety: headlineCornerSafety,
-    fontSize: headline.fontSize,
+  const headlineMetrics = measurePlainText({
     lineHeight: headline.lineHeight,
     lines: headline.lines,
-    maxBubbleWidth,
     measuredLineExtents: headline.measuredLineExtents,
     measuredLineWidths: headline.measuredLineWidths,
-    mode: "connected",
-    paddingX: headlinePaddingX,
-    paddingY: headlinePaddingY,
-    lineOverlap: headlineLineOverlap,
-    radius: headlineRadius,
   });
   const bodyMetrics = measurePlainText({
     lineHeight: body.lineHeight,
@@ -1345,8 +831,7 @@ async function buildOverlaySvg(params: {
     params.height - safeMarginY - blockHeight,
   );
   const widestTextGroup = Math.max(
-    0,
-    ...headlineMetrics.rects.map((rect) => rect.visualWidth),
+    headlineMetrics.maximumTextWidth,
     bodyMetrics.maximumTextWidth,
   );
   const textX = params.normalizedTextPosition
@@ -1360,27 +845,16 @@ async function buildOverlaySvg(params: {
     : Math.round(params.width / 2);
   const headlineY = blockTop;
   const bodyY = headlineY + headlineMetrics.groupHeight + blockGap;
-  const headlineMarkup = buildBubbleText({
-    className: "headline",
-    cornerSafety: headlineCornerSafety,
-    fill: HEADLINE_BUBBLE_FILL,
+  const headlineMarkup = buildPlainWhiteText({
+    className: "text",
     fontSize: headline.fontSize,
     lineHeight: headline.lineHeight,
     lines: headline.lines,
-    maxBubbleWidth,
-    measuredLineExtents: headline.measuredLineExtents,
-    measuredLineWidths: headline.measuredLineWidths,
-    mode: "connected",
-    paddingX: headlinePaddingX,
-    paddingY: headlinePaddingY,
-    lineOverlap: headlineLineOverlap,
-    radius: headlineRadius,
-    shadow: true,
     x: textX,
     y: headlineY,
   });
   const bodyMarkup = buildPlainWhiteText({
-    className: "body",
+    className: "text",
     fontSize: body.fontSize,
     lineHeight: body.lineHeight,
     lines: body.lines,
@@ -1388,73 +862,23 @@ async function buildOverlaySvg(params: {
     y: bodyY,
   });
   const style = `
-    .headline { fill: ${DARK_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${HEADLINE_FONT_WEIGHT}; letter-spacing: 0; }
-    .body { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; paint-order: stroke fill; stroke: #000000; stroke-linejoin: round; stroke-opacity: 0.72; stroke-width: 2px; }
-  `;
-  const definitions = `
-    <filter id="bubbleShadow" x="-25%" y="-35%" width="150%" height="170%">
-      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000000" flood-opacity="0.16"/>
-    </filter>
-    <filter id="bodyTextShadow" x="-20%" y="-30%" width="140%" height="160%">
-      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.72"/>
-    </filter>
+    .text { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; paint-order: stroke fill; stroke: #000000; stroke-linejoin: round; stroke-opacity: 0.72; stroke-width: 2px; }
   `;
 
   return {
-    bubbleMask: buildSvgDocument({
-      content: headlineMarkup.mask,
-      height: params.height,
-      width: params.width,
-    }),
     diagnostics: {
-      bubbleShapeStrategy: "hybrid-soft-union-connected-path",
+      bubbleShapeStrategy: "plain-white-text-with-shadow",
       fontFamily: TEXT_FONT_FAMILY,
-      lines: headlineMarkup.diagnostics,
-      maxBubbleWidth,
-      whiteBackgroundGroupCount: headline.lines.length > 0 ? 1 : 0,
+      maxTextWidth,
+      whiteBackgroundGroupCount: 0,
     },
     overlay: buildSvgDocument({
-      content: `${headlineMarkup.bubble}${headlineMarkup.text}${bodyMarkup}`,
-      definitions,
-      height: params.height,
-      style,
-      width: params.width,
-    }),
-    textMask: buildSvgDocument({
-      content: headlineMarkup.text,
+      content: `${headlineMarkup}${bodyMarkup}`,
       height: params.height,
       style,
       width: params.width,
     }),
   };
-}
-
-async function validateHeadlineTextPixelContainment(layers: OverlayLayers) {
-  const [bubble, text] = await Promise.all([
-    sharp(layers.bubbleMask).ensureAlpha().raw().toBuffer({ resolveWithObject: true }),
-    sharp(layers.textMask).ensureAlpha().raw().toBuffer({ resolveWithObject: true }),
-  ]);
-  let escapedTextPixels = 0;
-  let textPixels = 0;
-
-  for (let index = 3; index < text.data.length; index += text.info.channels) {
-    const textAlpha = text.data[index] ?? 0;
-
-    if (textAlpha <= 8) {
-      continue;
-    }
-
-    textPixels += 1;
-    const pixelIndex = Math.floor(index / text.info.channels);
-    const bubbleAlpha =
-      bubble.data[pixelIndex * bubble.info.channels + 3] ?? 0;
-
-    if (bubbleAlpha <= 8) {
-      escapedTextPixels += 1;
-    }
-  }
-
-  return { escapedTextPixels, textPixels };
 }
 
 async function buildValidatedOverlay(params: {
@@ -1464,34 +888,12 @@ async function buildValidatedOverlay(params: {
   slide: PlannedCarouselSlide;
   width: number;
 }) {
-  const attempts = [
-    { safetyBoost: 0 },
-    { safetyBoost: 8 },
-  ];
-  let lastContainment = { escapedTextPixels: 0, textPixels: 0 };
+  const layers = await buildOverlaySvg(params);
 
-  for (const [attemptIndex, attempt] of attempts.entries()) {
-    const layers = await buildOverlaySvg({ ...params, ...attempt });
-    const containment = await validateHeadlineTextPixelContainment(layers);
-
-    lastContainment = containment;
-
-    if (containment.escapedTextPixels === 0) {
-      return {
-        diagnostics: {
-          ...layers.diagnostics,
-          ...containment,
-          repaired: attemptIndex > 0,
-          textPixelContainmentPassed: true,
-        } satisfies CarouselRenderDiagnostics,
-        overlay: layers.overlay,
-      };
-    }
-  }
-
-  throw new Error(
-    `Carousel headline containment failed after repair: ${lastContainment.escapedTextPixels} visible text pixels escaped the bubble.`,
-  );
+  return {
+    diagnostics: layers.diagnostics,
+    overlay: layers.overlay,
+  };
 }
 
 export async function inspectCarouselSlideLayout(input: {

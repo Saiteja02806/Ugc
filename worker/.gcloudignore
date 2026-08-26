@@ -1,0 +1,7 @@
+# Cloud Build installs dependencies and compiles the worker inside its Dockerfile.
+# Do not upload local/generated files as part of the build source archive.
+node_modules
+dist
+.env
+.env.*
+npm-debug.log*

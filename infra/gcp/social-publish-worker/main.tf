@@ -239,6 +239,13 @@ resource "google_cloud_run_v2_service" "social_publish_worker" {
       }
     }
   }
+
+  # Scheduled posts must run on the latest healthy worker revision. Keep this
+  # explicit so a prior manual traffic pin cannot retain old publish logic.
+  traffic {
+    percent = 100
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+  }
 }
 
 resource "google_cloud_run_v2_service_iam_member" "cloud_tasks_invoker" {

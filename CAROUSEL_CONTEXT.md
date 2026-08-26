@@ -3621,6 +3621,10 @@ Name: **Verify v26 and replace the stale production assignment**
   Cloud Tasks dispatch. Its idea/assignment reservation is not yet safe for
   parallel Carousel writers; scaling it above one would risk duplicate or
   conflicting Carousel assignments.
+- Every task-serving Cloud Run service explicitly sends 100% of traffic to its
+  latest healthy revision. This prevents a historical revision pin from
+  leaving a successful Carousel, social-publish, or video compatibility-worker
+  deployment ready but unable to receive new Cloud Tasks jobs.
 - Long video rendering is authoritative only through `ugc-video-render-job`.
   Each Cloud Run Job execution starts for one durable render and exits when it
   finishes. The legacy video HTTP service remains a request-based,

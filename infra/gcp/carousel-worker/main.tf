@@ -195,6 +195,14 @@ resource "google_cloud_run_v2_service" "carousel_worker" {
       }
     }
   }
+
+  # Cloud Tasks must always reach the latest healthy worker revision. Without
+  # this explicit target, a historical revision pin can leave a new deployment
+  # ready but receiving no Carousel jobs.
+  traffic {
+    percent = 100
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+  }
 }
 
 resource "google_cloud_run_v2_service_iam_member" "cloud_tasks_invoker" {

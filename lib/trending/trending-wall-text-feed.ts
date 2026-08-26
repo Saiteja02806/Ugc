@@ -8,14 +8,7 @@ import {
   createAuthoritativeWallTextContent,
   deriveWallTextSpatialBudget,
 } from "@/lib/trending/wall-layout-engine";
-import {
-  getBackfillWallTextFormatId,
-  WALL_TEXT_FORMAT_REGISTRY_VERSION,
-} from "@/lib/trending/wall-formats";
-import {
-  selectWallTextFormatAssignments,
-  WALL_TEXT_FORMAT_SELECTOR_VERSION,
-} from "@/lib/trending/wall-format-selector";
+import { getBackfillWallTextFormatId } from "@/lib/trending/wall-formats";
 import { WALL_TEXT_PROMPT_VERSION } from "@/lib/trending/wall-prompt";
 import {
   generateBusinessTrendingWallTextIdeas,
@@ -27,7 +20,6 @@ import {
   claimWallTextGenerationChunk,
   ensureWallTextOverlayAssetsForMediaAssets,
   ensureTrendingWallTextAssignments,
-  getWallTextPerformanceSignals,
   getWallTextGenerationReservation,
   getWallTextPrivateCreativeContexts,
   isTrendingWallTextCreativeCurrent,
@@ -48,9 +40,9 @@ import {
   type WallTextCreativeRow,
 } from "@/lib/trending/wall-text-db";
 import {
-  WALL_TEXT_FORMAT_IDS,
+  WALL_TEXT_FREEFORM_FORMAT_LIBRARY_VERSION,
+  WALL_TEXT_FREEFORM_SELECTOR_VERSION,
   WALL_TEXT_GENERATOR_VERSION,
-  type WallTextFormatId,
 } from "@/lib/trending/wall-text-types";
 import {
   createUnavailableTrendingFeedProvider,
@@ -351,61 +343,34 @@ export async function prepareTrendingWallTextIdeas(
     );
   }
 
-  const [performanceSignals, historicalSignatures] = await Promise.all([
-    getWallTextPerformanceSignals({
-      businessProfileId: profile.id,
-      userId: profile.userId,
-    }),
-    listWallTextDuplicateSignatures({
-      businessProfileId: profile.id,
-      userId: profile.userId,
-    }),
-  ]);
-  const ordinarySources = generationSources.filter(
-    (candidate) => candidate.sourceKind !== "instagram_reel",
-  );
-  const ordinaryFormatAssignments = selectWallTextFormatAssignments({
-    batchSequence: Math.floor(
-      existing.length / Math.max(generationSources.length, 1),
-    ),
-    candidateCount: ordinarySources.length,
-    performanceSignals,
-    selectionKey: `${profile.id}:${profile.profileVersion}:${mode}:${existing.length}`,
-  }).map((assignment, index) => ({
-    ...assignment,
-    candidateIndex: ordinarySources[index]!.candidateIndex,
-  }));
-  const ordinaryAssignmentByIndex = new Map(
-    ordinaryFormatAssignments.map((assignment) => [
-      assignment.candidateIndex,
-      assignment,
-    ]),
-  );
+  const historicalSignatures = await listWallTextDuplicateSignatures({
+    businessProfileId: profile.id,
+    userId: profile.userId,
+  });
   const candidateBudgets = await Promise.all(
     generationSources.map(async (candidate) => {
       const assignment =
         candidate.sourceKind === "instagram_reel"
           ? {
+              // This is a source-integrity snapshot for an imported Instagram
+              // template only. It is never sent to the Wall writer.
               assignedFormatId: candidate.writerFormatId,
-              candidateIndex: candidate.candidateIndex,
-              formatRegistryVersion: WALL_TEXT_FORMAT_REGISTRY_VERSION,
-              formatVersion: 1 as const,
-              rotationCandidateFormatId: candidate.writerFormatId,
               selectionMode: "instagram_template" as const,
               selectionWeight: 1,
-              selectorVersion: WALL_TEXT_FORMAT_SELECTOR_VERSION,
             }
-          : ordinaryAssignmentByIndex.get(candidate.candidateIndex)!;
+          : {
+              assignedFormatId: null,
+              selectionMode: "freeform" as const,
+              selectionWeight: 1,
+            };
       const budget = await deriveWallTextSpatialBudget({
-        formatId: assignment.assignedFormatId,
         layout: candidate.layout,
       });
       return { assignment, budget, candidate };
     }),
   );
-  const requestDescriptor = candidateBudgets.map(({ assignment, budget, candidate }) => ({
+  const requestDescriptor = candidateBudgets.map(({ budget, candidate }) => ({
     assetId: candidate.entry.id,
-    formatId: assignment.assignedFormatId,
     instagramReelTemplateId:
       "instagramReelTemplateId" in candidate
         ? candidate.instagramReelTemplateId
@@ -459,12 +424,12 @@ export async function prepareTrendingWallTextIdeas(
     })),
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,
-    formatLibraryVersion: WALL_TEXT_FORMAT_REGISTRY_VERSION,
+    formatLibraryVersion: WALL_TEXT_FREEFORM_FORMAT_LIBRARY_VERSION,
     generatorVersion: WALL_TEXT_GENERATOR_VERSION,
     promptVersion: WALL_TEXT_PROMPT_VERSION,
     requestHash,
     requestKey,
-    selectorVersion: WALL_TEXT_FORMAT_SELECTOR_VERSION,
+    selectorVersion: WALL_TEXT_FREEFORM_SELECTOR_VERSION,
     userId: profile.userId,
   });
   try {
@@ -561,7 +526,6 @@ async function completeReservedWallTextGeneration(params: {
 
       try {
         await generateBusinessTrendingWallTextIdeas({
-          assignments: chunk.map(toReservedFormatAssignment),
           business: params.profile.context,
           candidates: chunk.map((assignment) => {
             const layout = parseWallTextLayout(assignment.layout_json);
@@ -614,7 +578,6 @@ async function completeReservedWallTextGeneration(params: {
               ...ideas.map((idea) => idea.duplicateSignature),
             );
           },
-          selectionKey: `${params.requestKey}:${chunkId}`,
         });
       } catch (error) {
         const retryable = !(error instanceof WallTextCandidateRepairExhaustedError);
@@ -676,45 +639,6 @@ function rotateEntries<T>(entries: readonly T[], offset: number) {
     ...entries.slice(normalizedOffset),
     ...entries.slice(0, normalizedOffset),
   ];
-}
-
-function toReservedFormatAssignment(
-  assignment: NonNullable<
-    Awaited<ReturnType<typeof getWallTextGenerationReservation>>
-  >["assignments"][number],
-) {
-  if (
-    !isWallTextFormatId(assignment.assigned_format_id) ||
-    assignment.format_version !== 1 ||
-    (assignment.source_kind === "instagram_reel") !==
-      (assignment.selection_mode === "instagram_template")
-  ) {
-    throw new Error("Reserved Wall-of-text format is not supported by this generator.");
-  }
-  const selectionMode =
-    assignment.source_kind === "instagram_reel"
-      ? ("controlled_rotation" as const)
-      : assignment.selection_mode;
-  if (selectionMode === "instagram_template") {
-    throw new Error("Reserved Wall-of-text selection mode is invalid.");
-  }
-  return {
-    assignedFormatId: assignment.assigned_format_id,
-    candidateIndex: assignment.batch_candidate_index,
-    formatRegistryVersion: WALL_TEXT_FORMAT_REGISTRY_VERSION,
-    formatVersion: 1 as const,
-    rotationCandidateFormatId: assignment.assigned_format_id,
-    selectionMode,
-    selectionWeight: Number(assignment.selection_weight_snapshot),
-    selectorVersion: WALL_TEXT_FORMAT_SELECTOR_VERSION,
-  };
-}
-
-function isWallTextFormatId(value: string | null): value is WallTextFormatId {
-  return (
-    typeof value === "string" &&
-    (WALL_TEXT_FORMAT_IDS as readonly string[]).includes(value)
-  );
 }
 
 export async function getTrendingWallTextFeedProvider(

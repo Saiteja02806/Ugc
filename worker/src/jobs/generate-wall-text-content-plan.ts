@@ -68,7 +68,9 @@ export async function runGenerateWallTextContentPlanJob(
           creative_seed: brief.creativeSeed,
           emotional_tension: brief.emotionalTension,
           human_moment: brief.humanMoment,
-          preferred_format_family: brief.preferredFormatFamily,
+          // The existing database column is retained for legacy plans only.
+          // New freeform plans do not send this value to the Wall writer.
+          preferred_format_family: "freeform",
           supported_angle: brief.supportedAngle,
         })),
         items: generated.items.map((item) => ({

@@ -1,3 +1,4 @@
+import { WALL_TEXT_FREEFORM_PATTERN } from "./wall-text-types.ts";
 import type {
   LegacyWallTextFormatId,
   WallTextFormatId,
@@ -109,7 +110,10 @@ const LEGACY_WALL_TEXT_FORMAT_MAP = {
   recognizable_moment: "relatable_situation",
   situation_discovery: "relatable_situation",
 } as const satisfies Record<
-  Exclude<WallTextPattern, WallTextFormatId>,
+  Exclude<
+    WallTextPattern,
+    WallTextFormatId | typeof WALL_TEXT_FREEFORM_PATTERN
+  >,
   WallTextFormatId
 >;
 
@@ -145,10 +149,10 @@ export function getEligibleWallTextFormatIds(): [
 
 export function getBackfillWallTextFormatId(
   pattern: WallTextPattern | LegacyWallTextFormatId,
-): WallTextFormatId {
+): WallTextPattern {
   return pattern in LEGACY_WALL_TEXT_FORMAT_MAP
     ? LEGACY_WALL_TEXT_FORMAT_MAP[
         pattern as keyof typeof LEGACY_WALL_TEXT_FORMAT_MAP
       ]
-    : (pattern as WallTextFormatId);
+    : pattern;
 }

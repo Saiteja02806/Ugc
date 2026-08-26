@@ -11,8 +11,8 @@ import {
   type TrendingWallTextLayout,
   type WallTextFinalLayout,
   type WallTextFontSize,
-  type WallTextFormatId,
   type WallTextLayoutBlock,
+  type WallTextPattern,
   type WallTextSegment,
   type WallTextSourceContent,
 } from "./wall-text-types";
@@ -22,12 +22,11 @@ import {
   WALL_TEXT_OUTLINE_WIDTH,
   WALL_TEXT_SECTION_GAP,
 } from "./wall-text-visual-style";
-import { getWallTextFormat } from "./wall-formats";
-
 const VIDEO_WIDTH = 1080;
 const VIDEO_HEIGHT = 1920;
 const ABSOLUTE_MAXIMUM_WORDS = 50;
 const MINIMUM_WORDS = 8;
+const FREEFORM_TARGET_WORDS = 18;
 const FONT_SIZES: readonly WallTextFontSize[] = [52, 50, 48, 46, 44];
 const TEXT_WIDTHS = [660, 640, 620] as const;
 const INTERNAL_LINE_WIDTH_RATIO = 0.55;
@@ -35,10 +34,8 @@ const MINIMUM_BALANCE_IMPROVEMENT = 0.04;
 const measurementCache = new Map<string, number>();
 
 export async function deriveWallTextSpatialBudget(params: {
-  formatId: WallTextFormatId;
   layout: TrendingWallTextLayout;
 }) {
-  const format = getWallTextFormat(params.formatId);
   const lineHeight = 44 * WALL_TEXT_LINE_HEIGHT_FACTOR;
   const availableLines = clamp(
     Math.floor((params.layout.textBox.height * VIDEO_HEIGHT) / lineHeight),
@@ -63,16 +60,8 @@ export async function deriveWallTextSpatialBudget(params: {
     MINIMUM_WORDS,
     ABSOLUTE_MAXIMUM_WORDS,
   );
-  const preferredMinimum = Math.min(
-    format.preferredWordRange[0],
-    spatialMaximum,
-  );
-  const preferredMaximum = Math.min(
-    format.preferredWordRange[1],
-    spatialMaximum,
-  );
   const targetWords = clamp(
-    Math.round((preferredMinimum + preferredMaximum) / 2),
+    FREEFORM_TARGET_WORDS,
     MINIMUM_WORDS,
     spatialMaximum,
   );
@@ -86,7 +75,7 @@ export async function deriveWallTextSpatialBudget(params: {
 
 export async function createAuthoritativeWallTextContent(params: {
   content: WallTextSourceContent;
-  formatId: WallTextFormatId;
+  formatId: WallTextPattern;
   layout: TrendingWallTextLayout;
 }) {
   const sourceContent = normalizeSourceContent(params.content);

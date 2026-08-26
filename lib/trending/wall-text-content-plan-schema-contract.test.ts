@@ -9,6 +9,13 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const freeformMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260826101500_disable_forced_wall_text_formats.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const planner = readFileSync(
   new URL("../../worker/src/lib/wall-text-content-plan.ts", import.meta.url),
   "utf8",
@@ -95,20 +102,19 @@ test("creates a separate private 30-day Wall plan with forty briefs and two hund
   );
 });
 
-test("uses all six parent fields for five child ideas without prewriting Wall copy", () => {
+test("uses five parent fields for five child ideas without prewriting Wall copy", () => {
   for (const definition of [
     /creativeSeed: The central human observation or tension\. It is not final copy/i,
     /audienceContext: The supported audience segment experiencing that situation\. It must not mean everyone/i,
     /humanMoment: One concrete, recognisable everyday event or situation/i,
     /emotionalTension: The inner feeling or conflict created by that moment/i,
     /supportedAngle: The factual connection to the business, based only on approved facts\. It is not a sales claim or a promise/i,
-    /preferredFormatFamily: A soft storytelling direction, such as relatable situation or contrast\. It gives variety, but never overrides the backend-selected Wall format/i,
   ]) {
     assert.match(planner, definition);
   }
   assert.match(
     planner,
-    /Use all six fields together to create exactly five different child ideas/i,
+    /Use all five fields together to create exactly five different child ideas/i,
   );
   assert.match(
     planner,
@@ -120,11 +126,11 @@ test("uses all six parent fields for five child ideas without prewriting Wall co
   );
   assert.match(
     planner,
-    /wall-text-content-plan-six-context-v2-explicit-definitions/i,
+    /wall-text-content-plan-five-context-v3-freeform/i,
   );
   assert.match(
     appPlan,
-    /wall-text-content-plan-six-context-v2-explicit-definitions/i,
+    /wall-text-content-plan-five-context-v3-freeform/i,
   );
 });
 
@@ -170,14 +176,38 @@ test("connects the complete planned Wall flow without exposing private context t
   assert.doesNotMatch(feed, /creativeSeed|audienceContext|humanMoment|emotionalTension|supportedAngle|preferredFormatFamily/);
 });
 
-test("keeps planning context private and leaves the backend-selected Wall format in control", () => {
+test("keeps planning context private and removes format pressure from the Wall writer", () => {
   assert.match(
     finalWriter,
-    /use its contentIdea, feeling, and all six planningBrief fields together as private guidance/i,
+    /use its contentIdea, feeling, and all five planningBrief fields together as private guidance/i,
   );
   assert.match(finalWriter, /Do not print field names or treat creativeSeed as finished copy/i);
-  assert.match(finalWriter, /code-assigned Wall format remains authoritative/i);
-  assert.match(finalWriter, /preferredFormatFamily is only a soft direction/i);
-  assert.match(finalWriter, /return only candidateIndex plus one complete text string/i);
+  assert.match(finalWriter, /Do not force it into a named writing format, template, list, or formula/i);
+  assert.doesNotMatch(finalWriter, /preferredFormatFamily|assignedFormatId|APPROVED WALL FORMATS/);
+  assert.doesNotMatch(feed, /selectWallTextFormatAssignments|getWallTextPerformanceSignals/);
+  assert.match(feed, /assignedFormatId: null,[\s\S]*selectionMode: "freeform"/);
+  assert.match(
+    finalWriter,
+    /Return exactly one result for every candidate\. Do not return formatId, duration, coordinates, or final visual lines\./i,
+  );
   assert.match(finalWriter, /measured 4-7 line fit/i);
+});
+
+test("stores new Wall copy as freeform and excludes it from format learning", () => {
+  assert.match(
+    freeformMigration,
+    /selection_mode in \([\s\S]*'freeform'/i,
+  );
+  assert.match(
+    freeformMigration,
+    /if new\.format_id is null then[\s\S]*new\.performance_eligible := false/i,
+  );
+  assert.match(
+    freeformMigration,
+    /freeform_copy_has_no_format_learning/i,
+  );
+  assert.match(
+    storage,
+    /formatLearningEligible:[\s\S]*assignment\.assigned_format_id !== null/i,
+  );
 });

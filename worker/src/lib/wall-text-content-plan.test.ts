@@ -41,13 +41,12 @@ function oneBrief(overrides: Record<string, unknown> = {}) {
         itemSlotIndex: 4,
       },
     ],
-    preferredFormatFamily: "relatable_situation",
     supportedAngle: "A planning method that accounts for real capacity",
     ...overrides,
   };
 }
 
-test("parses one six-field private Wall brief with five contentIdea and feeling children", () => {
+test("parses one five-field private Wall brief with five contentIdea and feeling children", () => {
   const parsed = parseWallTextContentPlanChunk({ briefs: [oneBrief()] }, 1);
 
   assert.equal(parsed.briefs.length, 1);
@@ -57,7 +56,6 @@ test("parses one six-field private Wall brief with five contentIdea and feeling 
     creativeSeed: "The plan starts to feel heavier than the work itself",
     emotionalTension: "Frustration mixed with self-blame",
     humanMoment: "An unexpected meeting moves every important task into the afternoon",
-    preferredFormatFamily: "relatable_situation",
     supportedAngle: "A planning method that accounts for real capacity",
   });
   assert.equal(parsed.items.length, 5);

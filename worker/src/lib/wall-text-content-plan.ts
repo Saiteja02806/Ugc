@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import type { Json, WallTextContentPlanItemRow } from "../types.js";
 
 export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
-  "wall-text-content-plan-six-context-v2-explicit-definitions";
+  "wall-text-content-plan-five-context-v3-freeform";
 export const WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE = 25;
 export const WALL_TEXT_CONTENT_PLAN_BRIEF_COUNT = 40;
 export const WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF = 5;
@@ -14,15 +14,6 @@ const DEFAULT_MODEL = "gpt-5-mini";
 const MAX_CONTENT_IDEA_LENGTH = 400;
 const MAX_FEELING_LENGTH = 120;
 const MAX_GENERATION_ATTEMPTS = 2;
-const PREFERRED_FORMAT_FAMILIES = [
-  "common_problem",
-  "contrast",
-  "emotional_observation",
-  "practical_reframe",
-  "relatable_situation",
-  "small_story",
-] as const;
-
 let openaiClient: OpenAI | null = null;
 
 export type WallTextPlanningBrief = {
@@ -30,7 +21,6 @@ export type WallTextPlanningBrief = {
   creativeSeed: string;
   emotionalTension: string;
   humanMoment: string;
-  preferredFormatFamily: string;
   supportedAngle: string;
 };
 
@@ -86,7 +76,7 @@ export async function generateWallTextContentPlanChunk(params: {
       response_format: {
         type: "json_schema",
         json_schema: {
-          name: "wall_text_content_plan_six_context_chunk",
+          name: "wall_text_content_plan_five_context_chunk",
           schema: buildSchema(briefCount),
           strict: true,
         },
@@ -147,10 +137,6 @@ export function parseWallTextContentPlanChunk(value: unknown, briefCount: number
       creativeSeed: getString(brief.creativeSeed, 400, `creative brief ${index + 1} creativeSeed`),
       emotionalTension: getString(brief.emotionalTension, 160, `creative brief ${index + 1} emotionalTension`),
       humanMoment: getString(brief.humanMoment, 400, `creative brief ${index + 1} humanMoment`),
-      preferredFormatFamily: getPreferredFormatFamily(
-        brief.preferredFormatFamily,
-        `creative brief ${index + 1} preferredFormatFamily`,
-      ),
       supportedAngle: getString(brief.supportedAngle, 400, `creative brief ${index + 1} supportedAngle`),
     });
 
@@ -243,7 +229,6 @@ export function createWallTextCreativeBriefFingerprint(brief: WallTextPlanningBr
           brief.humanMoment,
           brief.emotionalTension,
           brief.supportedAngle,
-          brief.preferredFormatFamily,
         ].join(" "),
       ),
     )
@@ -263,14 +248,13 @@ function buildMessages(params: {
       content: [
         "You create private creative-brief context and content ideas for Wall-of-Text short videos.",
         "The supplied businessDescription and approvedPlanningContext are the only factual source. Do not invent audiences, capabilities, workflows, proof, metrics, guarantees, outcomes, or claims.",
-        "Every private brief has six fields. They guide later writing but are never visible overlay copy, labels, or a fixed script.",
+        "Every private brief has five fields. They guide later writing but are never visible overlay copy, labels, or a fixed script.",
         "creativeSeed: The central human observation or tension. It is not final copy.",
         "audienceContext: The supported audience segment experiencing that situation. It must not mean everyone.",
         "humanMoment: One concrete, recognisable everyday event or situation. For example, an unexpected meeting moving the afternoon's work.",
         "emotionalTension: The inner feeling or conflict created by that moment. For example, frustration mixed with self-blame.",
         "supportedAngle: The factual connection to the business, based only on approved facts. It is not a sales claim or a promise.",
-        "preferredFormatFamily: A soft storytelling direction, such as relatable situation or contrast. It gives variety, but never overrides the backend-selected Wall format or creates a CTA requirement.",
-        "Use all six fields together to create exactly five different child ideas. Each child has contentIdea and feeling. contentIdea is a specific angle that a later Wall writer may turn into one complete post; feeling is that child idea's emotional direction. The children are not generated from creativeSeed alone.",
+        "Use all five fields together to create exactly five different child ideas. Each child has contentIdea and feeling. contentIdea is a specific angle that a later Wall writer may turn into one complete post; feeling is that child idea's emotional direction. The children are not generated from creativeSeed alone.",
         "Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script. Create grounded, recognisable situations with natural human tension. Make every brief and child idea meaningfully distinct.",
       ].join(" "),
     },
@@ -280,7 +264,6 @@ function buildMessages(params: {
         approvedPlanningContext: params.planningContext,
         businessDescription: params.businessDescription,
         instruction: `Generate exactly ${params.briefCount} private creative briefs. Every brief must contain exactly five child ideas. briefSlotIndex values must be 0 through ${params.briefCount - 1}; itemSlotIndex values must be 0 through 4 for each brief.`,
-        preferredFormatFamilyOptions: PREFERRED_FORMAT_FAMILIES,
         previousItems: params.existingItems.map((item) => ({
           contentIdea: item.content_idea,
           feeling: item.feeling,
@@ -324,7 +307,6 @@ function buildSchema(briefCount: number) {
               minItems: 5,
               type: "array",
             },
-            preferredFormatFamily: { enum: [...PREFERRED_FORMAT_FAMILIES], type: "string" },
             supportedAngle: { maxLength: 400, minLength: 1, type: "string" },
           },
           required: [
@@ -334,7 +316,6 @@ function buildSchema(briefCount: number) {
             "emotionalTension",
             "humanMoment",
             "items",
-            "preferredFormatFamily",
             "supportedAngle",
           ],
           type: "object",
@@ -405,14 +386,6 @@ function getString(value: unknown, maxLength: number, label: string) {
   const normalized = value.trim().replace(/\s+/g, " ");
   if (normalized.length > maxLength) throw new Error(`${label} exceeds ${maxLength} characters.`);
   return normalized;
-}
-
-function getPreferredFormatFamily(value: unknown, label: string) {
-  const family = getString(value, 80, label);
-  if (!PREFERRED_FORMAT_FAMILIES.includes(family as (typeof PREFERRED_FORMAT_FAMILIES)[number])) {
-    throw new Error(`${label} is invalid.`);
-  }
-  return family;
 }
 
 function getErrorMessage(error: unknown) {

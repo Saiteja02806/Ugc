@@ -28,9 +28,10 @@ Last updated: 2026-08-26
 - A Wall idea carries one central thought, one turn, and one matching payoff.
   It has no CTA, includes at most one product feature and one natural product
   mention, and must be understood during one native play.
-- Each candidate is assigned one stable universal pattern:
-  `problem_change_result`, `mistake_correction`, `situation_discovery`,
-  `before_after`, `belief_reframe`, or `action_benefit`.
+- New Wall generation is freeform. The writer receives the private plan idea
+  and Business Profile facts, but no required writing format, format rotation,
+  or preferred-format direction. The older format registry is kept only so
+  historical cards remain readable; it does not guide new Wall copy.
 - Generic AI marketing language and claims unsupported by the Business Profile
   are rejected.
 - The Wall generator receives only Wall-relevant Business Profile fields. It
@@ -147,8 +148,8 @@ and skipped all 64 existing rows without creating duplicates.
    Profile version has no active Wall assignments.
 2. The client calls the authenticated Wall preparation route.
 3. The backend selects reviewed, placement-validated, group-diverse videos.
-4. The dedicated Wall v5 prompt assigns one of the six universal patterns and
-   generates semantic segments plus `fullText` using `gpt-5-mini`.
+4. The dedicated freeform Wall prompt uses the private plan idea and Business
+   Profile facts to generate one natural `fullText` message using `gpt-5-mini`.
 5. Deterministic validation checks native-duration word limits and the 4-7
    line limits, CTA and
    generic-language rejection, two-to-three-sentence structure, common grammar
@@ -195,6 +196,22 @@ Existing v1-v4 payloads and v1 placement metadata can still be read for
 migration compatibility, but stale copy is regenerated in place as
 `business-profile-wall-text-v5`. Creative IDs, background videos, and user
 assignments are preserved.
+
+## 2026-08-26 Freeform Wall Writing
+
+- The 30-day plan remains the source of idea variety, duplicate avoidance,
+  audience context, human moments, emotional tension, and supported angles.
+- The five-field private brief no longer contains or sends a preferred format
+  family to the final writer.
+- New ordinary Wall assignments have no `assigned_format_id` and use the
+  `freeform` selection mode. Their copy is stored as the `freeform` pattern.
+- Freeform Wall copy is excluded from format-performance learning. It must
+  never be attributed to one of the dormant 30 formats.
+- Imported Instagram template metadata remains stored only to keep the exact
+  source, safe box, and locked audio together. Its format metadata is not sent
+  to the Wall writer and does not control the text.
+- This change requires applying
+  `20260826101500_disable_forced_wall_text_formats.sql` before deployment.
 
 ## 2026-08-02 Edit-to-render Contract
 

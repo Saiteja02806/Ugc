@@ -39,7 +39,6 @@ import {
   deriveWallTextPerformanceSignals,
   type WallTextPerformanceSignals,
 } from "@/lib/trending/wall-format-performance-logic";
-import type { WallTextFormatAssignment } from "@/lib/trending/wall-format-selector";
 
 type Json =
   | boolean
@@ -151,7 +150,7 @@ type WallTextGenerationAssignmentRow = {
   layout_json: Json;
   max_words: number;
   overlay_media_asset_id: string;
-  selection_mode: WallTextFormatAssignment["selectionMode"] | "instagram_template";
+  selection_mode: WallTextPersistedFormatAssignment["selectionMode"];
   selection_weight_snapshot: number;
   source_kind: "creative_asset" | "instagram_reel" | "ugcpilot";
   status: "pending" | "processing" | "retry_pending" | "completed" | "failed";
@@ -191,16 +190,19 @@ export type WallTextPrivateCreativeContext = {
     creativeSeed: string;
     emotionalTension: string;
     humanMoment: string;
-    preferredFormatFamily: string;
     supportedAngle: string;
   };
 };
 
-type WallTextPersistedFormatAssignment = Omit<
-  WallTextFormatAssignment,
-  "selectionMode"
-> & {
-  selectionMode: WallTextFormatAssignment["selectionMode"] | "instagram_template";
+export type WallTextPersistedFormatAssignment = {
+  assignedFormatId: string | null;
+  selectionMode:
+    | "controlled_rotation"
+    | "freeform"
+    | "instagram_template"
+    | "performance_exploration"
+    | "performance_weighted";
+  selectionWeight: number;
 };
 
 type WallTextContentHistoryRow = {
@@ -973,7 +975,6 @@ export async function getWallTextPrivateCreativeContexts(params: {
         creativeSeed: brief.creative_seed,
         emotionalTension: brief.emotional_tension,
         humanMoment: brief.human_moment,
-        preferredFormatFamily: brief.preferred_format_family,
         supportedAngle: brief.supported_angle,
       },
     });
@@ -1165,6 +1166,9 @@ export async function getWallTextGenerationAttribution(params: {
   if (!batch) return null;
   return {
     formatId: assignment.assigned_format_id,
+    formatLearningEligible:
+      assignment.assigned_format_id !== null &&
+      assignment.source_kind !== "instagram_reel",
     formatVersion: assignment.format_version,
     instagramReelTemplateId: assignment.instagram_reel_template_id,
     lockedAudioAssetId: assignment.instagram_locked_audio_asset_id,

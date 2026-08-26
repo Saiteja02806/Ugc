@@ -14,12 +14,6 @@ import {
   findWallTextDuplicate,
   type WallTextDuplicateSignature,
 } from "@/lib/trending/wall-text-duplicate-logic";
-import type { WallTextPerformanceSignals } from "@/lib/trending/wall-format-performance-logic";
-import {
-  chunkWallTextAssignments,
-  selectWallTextFormatAssignments,
-  type WallTextFormatAssignment,
-} from "@/lib/trending/wall-format-selector";
 import { buildWallTextGenerationPrompt } from "@/lib/trending/wall-prompt";
 import type { WallTextPrivateCreativeContext } from "@/lib/trending/wall-text-db";
 import { createWallTextLayout } from "@/lib/trending/wall-text-feed-logic";
@@ -30,9 +24,9 @@ import {
   normalizeWallTextGenerationCandidates,
   type WallTextGenerationCandidate,
 } from "@/lib/trending/wall-text-text-logic";
-import type {
-  TrendingWallTextLayout,
-  WallTextFormatId,
+import {
+  WALL_TEXT_FREEFORM_PATTERN,
+  type TrendingWallTextLayout,
 } from "@/lib/trending/wall-text-types";
 
 const DEFAULT_MODEL = "gpt-5-mini";
@@ -60,7 +54,6 @@ const PROMOTIONAL_OR_CTA_PATTERNS = [
 ] as const;
 
 type GenerationInputCandidate = WallTextGenerationCandidate & {
-  assignedFormatId?: WallTextFormatId;
   layout?: TrendingWallTextLayout;
   maxWords?: number;
   referenceText?: string;
@@ -69,7 +62,6 @@ type GenerationInputCandidate = WallTextGenerationCandidate & {
 };
 
 type PreparedCandidate = {
-  assignedFormatId: WallTextFormatId;
   candidateIndex: number;
   durationSeconds: number;
   layout: TrendingWallTextLayout;
@@ -86,7 +78,6 @@ type WriterFailure = {
 };
 
 export type GeneratedBusinessTrendingWallTextIdea = {
-  assignment: WallTextFormatAssignment;
   candidateIndex: number;
   content: Awaited<ReturnType<typeof validateCandidate>>["content"];
   duplicateSignature: WallTextDuplicateSignature;
@@ -102,45 +93,28 @@ export function getTrendingWallTextModelName() {
 }
 
 export async function generateBusinessTrendingWallTextIdeas(params: {
-  assignments?: readonly WallTextFormatAssignment[];
   business: WebsiteBusinessAnalysis;
   candidates: GenerationInputCandidate[];
   historicalSignatures?: readonly WallTextDuplicateSignature[];
   onChunkAccepted?: (
     ideas: readonly GeneratedBusinessTrendingWallTextIdea[],
   ) => Promise<void> | void;
-  performanceSignals?: WallTextPerformanceSignals;
-  selectionKey?: string;
 }) {
   const normalized = normalizeWallTextGenerationCandidates(params.candidates);
   const inputByIndex = new Map(
     params.candidates.map((candidate) => [candidate.candidateIndex, candidate]),
   );
-  const assignments = resolveAssignments({
-    assignments: params.assignments,
-    business: params.business,
-    candidateIndexes: normalized.map((candidate) => candidate.candidateIndex),
-    performanceSignals: params.performanceSignals,
-    selectionKey: params.selectionKey,
-  });
-  const assignmentByIndex = new Map(
-    assignments.map((assignment) => [assignment.candidateIndex, assignment]),
-  );
   const candidates = await Promise.all(
     normalized.map(async (candidate): Promise<PreparedCandidate> => {
       const input = inputByIndex.get(candidate.candidateIndex)!;
-      const assignment = assignmentByIndex.get(candidate.candidateIndex);
-      if (!assignment) throw new Error("Wall-of-text format assignment is missing.");
       const layout = input.layout ?? createWallTextLayout();
       const savedBudget = getSavedBudget(input);
       const budget =
         savedBudget ??
         (await deriveWallTextSpatialBudget({
-          formatId: assignment.assignedFormatId,
           layout,
         }));
       return {
-        assignedFormatId: assignment.assignedFormatId,
         candidateIndex: candidate.candidateIndex,
         durationSeconds: candidate.durationSeconds,
         layout,
@@ -162,10 +136,7 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
   const accepted = new Map<number, Awaited<ReturnType<typeof validateCandidate>>>();
   const acceptedSignatures = [...(params.historicalSignatures ?? [])];
 
-  for (const assignmentChunk of chunkWallTextAssignments(assignments)) {
-    const chunk = assignmentChunk.map((assignment) =>
-      candidateByIndex.get(assignment.candidateIndex)!,
-    );
+  for (const chunk of chunkCandidates(candidates)) {
     let pending = chunk;
     let retryFeedback = new Map<number, WriterFailure>();
 
@@ -213,7 +184,6 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
           newlyAccepted.map((candidate) =>
             buildGeneratedIdea({
               accepted,
-              assignmentByIndex,
               candidate,
             }),
           ),
@@ -240,7 +210,7 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
   }
 
   return candidates.map((candidate) =>
-    buildGeneratedIdea({ accepted, assignmentByIndex, candidate }),
+    buildGeneratedIdea({ accepted, candidate }),
   );
 }
 
@@ -253,16 +223,13 @@ export class WallTextCandidateRepairExhaustedError extends Error {
 
 function buildGeneratedIdea(params: {
   accepted: ReadonlyMap<number, Awaited<ReturnType<typeof validateCandidate>>>;
-  assignmentByIndex: ReadonlyMap<number, WallTextFormatAssignment>;
   candidate: PreparedCandidate;
 }): GeneratedBusinessTrendingWallTextIdea {
   const result = params.accepted.get(params.candidate.candidateIndex);
-  const assignment = params.assignmentByIndex.get(params.candidate.candidateIndex);
-  if (!result || !assignment) {
+  if (!result) {
     throw new Error("A Wall-of-text candidate was not completed.");
   }
   return {
-    assignment,
     candidateIndex: params.candidate.candidateIndex,
     content: result.content,
     duplicateSignature: result.duplicateSignature,
@@ -342,12 +309,6 @@ async function validateCandidate(params: {
   if (PROMOTIONAL_OR_CTA_PATTERNS.some((pattern) => pattern.test(text))) {
     throw new CandidateValidationError("promotional_or_cta");
   }
-  if (params.candidate.assignedFormatId === "community_question") {
-    const questionCount = [...text].filter((character) => character === "?").length;
-    if (questionCount !== 1 || !text.endsWith("?")) {
-      throw new CandidateValidationError("community_question_shape");
-    }
-  }
   const normalizedComparison = normalizeComparison(text);
   for (const avoidedClaim of params.business.claimsToAvoid) {
     const normalizedClaim = normalizeComparison(avoidedClaim);
@@ -374,42 +335,13 @@ async function validateCandidate(params: {
   try {
     const authoritative = await createAuthoritativeWallTextContent({
       content: { kind: "text", text },
-      formatId: params.candidate.assignedFormatId,
+      formatId: WALL_TEXT_FREEFORM_PATTERN,
       layout: params.candidate.layout,
     });
     return { ...authoritative, duplicateSignature };
   } catch {
     throw new CandidateValidationError("layout_fit");
   }
-}
-
-function resolveAssignments(params: {
-  assignments?: readonly WallTextFormatAssignment[];
-  business: WebsiteBusinessAnalysis;
-  candidateIndexes: readonly number[];
-  performanceSignals?: WallTextPerformanceSignals;
-  selectionKey?: string;
-}) {
-  if (params.assignments) {
-    const requested = new Set(params.candidateIndexes);
-    if (
-      params.assignments.length !== requested.size ||
-      params.assignments.some((assignment) => !requested.has(assignment.candidateIndex))
-    ) {
-      throw new Error("Wall-of-text assignments do not match the video candidates.");
-    }
-    return [...params.assignments];
-  }
-  const selected = selectWallTextFormatAssignments({
-    candidateCount: params.candidateIndexes.length,
-    performanceSignals: params.performanceSignals,
-    selectionKey:
-      params.selectionKey ?? params.business.businessName ?? "wall-text",
-  });
-  return selected.map((assignment, index) => ({
-    ...assignment,
-    candidateIndex: params.candidateIndexes[index]!,
-  }));
 }
 
 function groupIdeasByIndex(
@@ -422,6 +354,14 @@ function groupIdeasByIndex(
     grouped.set(idea.candidateIndex, current);
   }
   return grouped;
+}
+
+function chunkCandidates(candidates: readonly PreparedCandidate[]) {
+  const chunks: PreparedCandidate[][] = [];
+  for (let start = 0; start < candidates.length; start += 10) {
+    chunks.push(candidates.slice(start, start + 10));
+  }
+  return chunks;
 }
 
 class CandidateValidationError extends Error {

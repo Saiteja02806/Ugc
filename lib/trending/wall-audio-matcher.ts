@@ -83,6 +83,11 @@ const LEGACY_INTENT_BY_PATTERN: Record<
   Exclude<WallTextPattern, WallTextFormatId>,
   WallAudioIntent
 > = {
+  freeform: {
+    energy: "medium",
+    messageTypes: ["story", "curiosity"],
+    moods: ["calm", "curious"],
+  },
   problem_change_result: {
     energy: "medium",
     messageTypes: ["problem", "transformation", "benefit"],
@@ -211,12 +216,14 @@ const CURRENT_INTENT_BY_FORMAT: Record<WallTextFormatId, WallAudioIntent> = {
 export function buildWallAudioIntent(
   content: Pick<TrendingWallTextContent, "pattern">,
 ): WallAudioIntent {
+  const legacyIntent = LEGACY_INTENT_BY_PATTERN[
+    content.pattern as Exclude<WallTextPattern, WallTextFormatId>
+  ];
   const intent =
-    content.pattern in CURRENT_INTENT_BY_FORMAT
-      ? CURRENT_INTENT_BY_FORMAT[content.pattern as WallTextFormatId]
-      : LEGACY_INTENT_BY_PATTERN[
-          content.pattern as Exclude<WallTextPattern, WallTextFormatId>
-        ] ?? CURRENT_INTENT_BY_FORMAT[getBackfillWallTextFormatId(content.pattern)];
+    legacyIntent ??
+    CURRENT_INTENT_BY_FORMAT[
+      getBackfillWallTextFormatId(content.pattern) as WallTextFormatId
+    ];
   return {
     energy: intent.energy,
     messageTypes: [...intent.messageTypes],

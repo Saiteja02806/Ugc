@@ -62,6 +62,33 @@ test("keeps protected preview sessions independent so upcoming Hooks can prefetc
   assert.match(card, /autoPlay=\{active\}/);
 });
 
+test("does not restart a loaded Hook preview when feed polling recreates its data", () => {
+  const hookDeckCard =
+    workspace.match(
+      /function TrendingHookDeckCard\([\s\S]+?\r?\n}\r?\n\r?\nfunction TrendingWallTextDeckCard/,
+    )?.[0] ?? "";
+
+  assert.match(
+    hookDeckCard,
+    /const previewSessionEndpoint = creative\.previewSessionEndpoint/,
+  );
+  assert.match(
+    hookDeckCard,
+    /const previewInfluencerId = creative\.influencerId/,
+  );
+  assert.match(
+    hookDeckCard,
+    /const previewSourceKind = creative\.sourceKind/,
+  );
+  assert.doesNotMatch(hookDeckCard, /\[\s*creative,/);
+  assert.match(
+    hookDeckCard,
+    /setPreviewLoadKey\(\(current\) => current \+ 1\)/,
+  );
+  assert.match(hookDeckCard, /previewLoadKey=\{previewLoadKey\}/);
+  assert.match(card, /key=\{`\$\{previewUrl\}:\$\{previewLoadKey\}`\}/);
+});
+
 test("keeps Hook source metadata private while reusing the protected preview", () => {
   const composerOpening =
     composer.match(/function ComposerOpeningPreview[\s\S]+?function HookTextStage/)?.[0] ??

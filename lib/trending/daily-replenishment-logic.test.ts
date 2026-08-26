@@ -47,7 +47,7 @@ test("requests ten new carousels when all ten were completed before the new day"
   );
 });
 
-test("carries five and requests only the five-carousel shortfall", () => {
+test("uses five existing current-day slots and requests only the five-carousel shortfall", () => {
   const plan = getDailyCarouselRefillPlan({
     dailyLimit: 10,
     existingBatchCandidateCount: 0,
@@ -61,7 +61,7 @@ test("carries five and requests only the five-carousel shortfall", () => {
   assert.equal(plan.requestedBatchCandidateCount, 5);
 });
 
-test("carries all ten and requests no new generation", () => {
+test("uses a full current-day feed and requests no new generation", () => {
   const plan = getDailyCarouselRefillPlan({
     dailyLimit: 10,
     existingBatchCandidateCount: 0,

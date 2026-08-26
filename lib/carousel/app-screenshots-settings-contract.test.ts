@@ -17,6 +17,9 @@ const trendingRoute = readProjectFile(
 const productAssetService = readProjectFile(
   "lib/carousel/product-asset-service.ts",
 );
+const storageFoundation = readProjectFile(
+  "infra/gcp/foundation/storage-cdn.tf",
+);
 const carouselDb = readProjectFile("lib/carousel/db.ts");
 
 test("adds a dedicated Settings section without changing the Business Profile UI", () => {
@@ -65,6 +68,21 @@ test("Settings upload is reusable, validated, and does not create a second image
   assert.match(carouselDb, /asset_role: "product_asset"/);
   assert.match(carouselDb, /source_folder: "carousel-product-assets"/);
   assert.doesNotMatch(settingsRoute, /media_assets|creative_asset_groups/);
+});
+
+test("browser uploads use the bucket's CORS-safe signed PUT contract", () => {
+  assert.match(
+    productAssetService,
+    /requiredHeaders:\s*\{\s*"Content-Type": target\.contentType,?\s*\}/,
+  );
+  assert.doesNotMatch(
+    productAssetService,
+    /createSignedPutUrl\(\{[\s\S]*?cacheControl:/,
+  );
+  assert.match(
+    storageFoundation,
+    /response_header\s*=\s*\[[^\]]*"Cache-Control"[^\]]*\]/,
+  );
 });
 
 test("the Settings library can exist before a Carousel and keeps generation selection intact", () => {

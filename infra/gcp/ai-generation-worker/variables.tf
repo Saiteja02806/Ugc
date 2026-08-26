@@ -65,15 +65,15 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Minimum Cloud Run instances for the AI-generation worker. Keep 1 for active queue consumption after cutover."
+  description = "Minimum request-based Cloud Run instances. Use 0 to eliminate idle worker CPU cost; Cloud Run starts instances when Cloud Tasks delivers work."
   type        = number
-  default     = 1
+  default     = 0
 }
 
 variable "max_instance_count" {
-  description = "Maximum Cloud Run instances for the AI-generation worker."
+  description = "Maximum concurrent single-job AI worker instances. Keep this aligned with the ai-generation Cloud Tasks concurrent-dispatch limit and provider quotas."
   type        = number
-  default     = 4
+  default     = 10
 }
 
 variable "request_timeout_seconds" {

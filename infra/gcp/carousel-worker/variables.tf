@@ -65,13 +65,13 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Minimum Cloud Run instances for the Carousel worker."
+  description = "Minimum request-based Cloud Run instances. Use 0 to eliminate idle worker CPU cost."
   type        = number
-  default     = 1
+  default     = 0
 }
 
 variable "max_instance_count" {
-  description = "Maximum Cloud Run instances for the Carousel worker."
+  description = "Maximum concurrent Carousel workers. Keep at 1 until Carousel idea reservation is transactionally safe for parallel writers."
   type        = number
   default     = 1
 }
@@ -140,6 +140,18 @@ variable "carousel_disable_category_fallback" {
   description = "Disables unrelated Carousel category fallback."
   type        = bool
   default     = true
+}
+
+variable "internal_app_url" {
+  description = "Production app base URL used for authenticated Trending reconciliation calls."
+  type        = string
+  default     = "https://www.getugcpilot.com"
+}
+
+variable "scheduling_secret_id" {
+  description = "Secret Manager secret ID used to authenticate internal worker calls."
+  type        = string
+  default     = "ugc-internal-scheduling-secret"
 }
 
 variable "worker_version" {

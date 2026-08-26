@@ -467,11 +467,10 @@ function getFinalLayout(value: Json) {
 }
 
 function normalizeWallTextFontSize(value: number) {
-  if ([36, 38, 40, 42].includes(value)) {
-    return value as 36 | 38 | 40 | 42;
+  if ([36, 38, 40, 42, 44, 46, 48, 50, 52].includes(value)) {
+    return value as 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
   }
-  if (value === 44 || value === 46 || value === 48) return 40 as const;
-  return 42 as const;
+  return 52 as const;
 }
 
 function getTextBoxFromRecord(value: Json | undefined, fieldName: string) {

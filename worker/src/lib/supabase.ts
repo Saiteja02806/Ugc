@@ -280,6 +280,60 @@ export class SupabaseJobStore {
     return data?.[0] ?? null;
   }
 
+  async claimTrendingFeedReconciliation(params: { sourceJobId: string }) {
+    const { data, error } = await this.client.rpc(
+      "claim_due_trending_feed_reconciliations",
+      {
+        p_limit: 1,
+        p_source_job_id: params.sourceJobId,
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not claim durable Trending reconciliation work: ${error.message}`,
+      );
+    }
+
+    return data?.[0] ?? null;
+  }
+
+  async completeTrendingFeedReconciliation(params: { sourceJobId: string }) {
+    const { data, error } = await this.client.rpc(
+      "complete_trending_feed_reconciliation",
+      { p_source_job_id: params.sourceJobId },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not complete durable Trending reconciliation work: ${error.message}`,
+      );
+    }
+
+    return data === true;
+  }
+
+  async rescheduleTrendingFeedReconciliation(params: {
+    message: string;
+    sourceJobId: string;
+  }) {
+    const { data, error } = await this.client.rpc(
+      "reschedule_trending_feed_reconciliation",
+      {
+        p_error_message: params.message,
+        p_source_job_id: params.sourceJobId,
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not reschedule durable Trending reconciliation work: ${error.message}`,
+      );
+    }
+
+    return data === true;
+  }
+
   async reserveGenerationProviderOperation(params: {
     jobId: string;
     metadata?: Record<string, Json | undefined>;

@@ -509,7 +509,7 @@ async function populateDailyFeed(params: {
   if (existingAssignmentIds.length > 0) {
     // Repairs the only non-atomic boundary in feed population: a prior request
     // may have committed feed items and failed before advancing assignment
-    // carry metadata.
+    // linkage metadata.
     await updateAssignmentsLastAssignedDate(
       existingAssignmentIds,
       params.localDate,
@@ -525,56 +525,38 @@ async function populateDailyFeed(params: {
     return;
   }
 
-  const [currentDayOrphans, carryCandidates] = await Promise.all([
-    listUnpersistedCurrentDayAssignments({
-      existingAssignmentIds,
-      localDate: params.localDate,
-      profile: params.profile,
-      userId: params.userId,
-    }),
-    listCarryAssignments({
-      localDate: params.localDate,
-      profile: params.profile,
-      userId: params.userId,
-    }),
-  ]);
-  const existingAssignmentIdSet = new Set(existingAssignmentIds);
-  const candidateAssignments = [
-    ...currentDayOrphans,
-    ...carryCandidates.filter(
-      (assignment) => !existingAssignmentIdSet.has(assignment.id),
-    ),
-  ];
-  const carryStatuses = await getCarouselGenerationStatusesByIds(
-    candidateAssignments.map((assignment) => assignment.carouselId),
+  // A new local day receives new Carousel assignments. Only recover an
+  // assignment that was already created for this same day but was not attached
+  // because an earlier request stopped between those two durable writes.
+  const currentDayOrphans = await listUnpersistedCurrentDayAssignments({
+    existingAssignmentIds,
+    localDate: params.localDate,
+    profile: params.profile,
+    userId: params.userId,
+  });
+  const candidateStatuses = await getCarouselGenerationStatusesByIds(
+    currentDayOrphans.map((assignment) => assignment.carouselId),
   );
   const runtimeSafeCarouselIds = new Set(
-    carryStatuses
+    candidateStatuses
       .filter(isCompleteReadyCarouselForCurrentStorage)
       .map((status) => status.generation.id),
   );
-  const { invalid: invalidCarries, valid: validCarries } =
+  const { invalid: invalidAssignments, valid: validAssignments } =
     partitionRuntimeSafeAssignments({
-      assignments: candidateAssignments,
+      assignments: currentDayOrphans,
       getCarouselId: (assignment) => assignment.carouselId,
       runtimeSafeCarouselIds,
     });
 
   await markAssignmentsFailed(
-    invalidCarries.map((assignment) => assignment.id),
+    invalidAssignments.map((assignment) => assignment.id),
   );
 
-  const orphanIds = new Set(
-    currentDayOrphans.map((assignment) => assignment.id),
-  );
-  const recovered = validCarries
-    .filter((assignment) => orphanIds.has(assignment.id))
+  const recovered = validAssignments
     .slice(0, topUpPlan.remainingSlotCount);
-  const carried = validCarries
-    .filter((assignment) => !orphanIds.has(assignment.id))
-    .slice(0, topUpPlan.remainingSlotCount - recovered.length);
   const remainingSlotCount = Math.max(
-    topUpPlan.remainingSlotCount - recovered.length - carried.length,
+    topUpPlan.remainingSlotCount - recovered.length,
     0,
   );
   const fresh = await createFreshAssignments({
@@ -586,17 +568,10 @@ async function populateDailyFeed(params: {
   const selected = [
     ...recovered.map((assignment) => ({
       assignment,
-      carriedFromDate: null,
       source: "new" as const,
-    })),
-    ...carried.map((assignment) => ({
-      assignment,
-      carriedFromDate: assignment.lastAssignedLocalDate,
-      source: "carried" as const,
     })),
     ...fresh.map(({ assignment }) => ({
       assignment,
-      carriedFromDate: null,
       source: "new" as const,
     })),
   ].slice(0, topUpPlan.remainingSlotCount);
@@ -606,7 +581,7 @@ async function populateDailyFeed(params: {
   }
 
   const feedItemRows: DailyCarouselFeedItemInsert[] = selected.map(
-    ({ assignment, carriedFromDate, source }, index) => {
+    ({ assignment, source }, index) => {
       const position = topUpPlan.availablePositions[index];
 
       if (!position) {
@@ -615,8 +590,9 @@ async function populateDailyFeed(params: {
 
       return {
         assignment_id: assignment.id,
-        carried_from_date:
-          source === "carried" && carriedFromDate ? carriedFromDate : null,
+        // Kept for historical rows and schema compatibility. New daily feed
+        // items never carry an assignment from a previous local date.
+        carried_from_date: null,
         feed_id: params.feed.id,
         position,
         source,
@@ -1223,31 +1199,6 @@ async function listFeedItems(feedId: string) {
   }
 
   return data ?? [];
-}
-
-async function listCarryAssignments(params: {
-  localDate: string;
-  profile: BusinessProfileRecord;
-  userId: string;
-}) {
-  const { data, error } = await getClient()
-    .from(USER_CAROUSEL_ASSIGNMENTS_TABLE)
-    .select("*")
-    .eq("user_id", params.userId)
-    .eq("project_id", params.profile.projectId)
-    .eq("business_profile_id", params.profile.id)
-    .eq("business_profile_version", params.profile.profileVersion)
-    .in("state", [...ACTIVE_ASSIGNMENT_STATES])
-    .order("first_assigned_at", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    throw new Error(`Could not load unfinished Trending items: ${error.message}`);
-  }
-
-  return (data ?? [])
-    .filter((row) => row.last_assigned_local_date !== params.localDate)
-    .map(mapAssignment);
 }
 
 async function listUnpersistedCurrentDayAssignments(params: {

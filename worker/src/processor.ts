@@ -16,12 +16,14 @@ import type {
 } from "./lib/queue-types.js";
 import type { SupabaseJobStore } from "./lib/supabase.js";
 import { RetryableJobError } from "./retryable-job-error.js";
+import { reconcileTrendingFeedInApp } from "./lib/trending-feed-reconciliation.js";
 import type { BackgroundJobRow } from "./types.js";
 
 type ProcessMessageParams = {
   config: WorkerConfig;
   dependencies?: {
     heartbeatIntervalMs?: number;
+    reconcileTrendingFeed?: typeof reconcileTrendingFeedInApp;
     runJob?: typeof runWorkerJob;
   };
   message: WorkerDeliveryMessage;
@@ -331,6 +333,13 @@ async function processClaimableJob(params: {
       throw new Error("Background job claim was lost before completion.");
     }
 
+    await reconcileCompletedTrendingFeed({
+      job: completedJob,
+      reconcileTrendingFeed:
+        dependencies?.reconcileTrendingFeed ?? reconcileTrendingFeedInApp,
+      store,
+    });
+
     await deleteDeliveryMessage({ config, message, queue });
 
     logger.info("Worker job completed", {
@@ -400,6 +409,88 @@ async function processClaimableJob(params: {
       store,
     });
     return false;
+  }
+}
+
+const trendingDeliveryJobTypes = new Set<BackgroundJobRow["job_type"]>([
+  "carousel_content_plan_generation",
+  "generate_carousel",
+  "generate_trending_hook_copy",
+  "wall_text_content_plan_generation",
+  "wall_text_generation",
+]);
+
+async function reconcileCompletedTrendingFeed(params: {
+  job: BackgroundJobRow;
+  reconcileTrendingFeed: typeof reconcileTrendingFeedInApp;
+  store: SupabaseJobStore;
+}) {
+  if (!params.job.user_id || !trendingDeliveryJobTypes.has(params.job.job_type)) {
+    return;
+  }
+
+  let reconciliation;
+
+  try {
+    reconciliation = await params.store.claimTrendingFeedReconciliation({
+      sourceJobId: params.job.id,
+    });
+  } catch (error) {
+    // complete_background_job atomically creates the outbox record. If this
+    // immediate claim cannot be read, scheduled recovery will claim it later
+    // without depending on a browser request.
+    logger.error("Could not claim durable Trending reconciliation work", {
+      error: getErrorMessage(error),
+      jobId: params.job.id,
+      jobType: params.job.job_type,
+      userId: params.job.user_id,
+    });
+    return;
+  }
+
+  if (!reconciliation) {
+    return;
+  }
+
+  try {
+    await params.reconcileTrendingFeed({
+      sourceJobId: params.job.id,
+      userId: params.job.user_id,
+    });
+    const completed = await params.store.completeTrendingFeedReconciliation({
+      sourceJobId: params.job.id,
+    });
+
+    if (!completed) {
+      logger.warn("Trending reconciliation claim was no longer active", {
+        jobId: params.job.id,
+        userId: params.job.user_id,
+      });
+    }
+  } catch (error) {
+    const message = getErrorMessage(error);
+
+    try {
+      await params.store.rescheduleTrendingFeedReconciliation({
+        message,
+        sourceJobId: params.job.id,
+      });
+    } catch (rescheduleError) {
+      logger.error("Could not reschedule durable Trending reconciliation", {
+        error: getErrorMessage(rescheduleError),
+        jobId: params.job.id,
+        userId: params.job.user_id,
+      });
+    }
+
+    // The source content remains completed; only its idempotent follow-up is
+    // retried from the durable outbox.
+    logger.error("Could not reconcile completed Trending job", {
+      error: message,
+      jobId: params.job.id,
+      jobType: params.job.job_type,
+      userId: params.job.user_id,
+    });
   }
 }
 
@@ -522,6 +613,69 @@ async function reconcileDurableOutputJobFailure(
 ) {
   await reconcileRenderEditVideoJobFailure(job, store, errorMessage);
   await reconcileTrendingCarouselEditJobFailure(job, store, errorMessage);
+  await reconcileContentPlanGenerationFailure(job, store, errorMessage);
+}
+
+async function reconcileContentPlanGenerationFailure(
+  job: BackgroundJobRow,
+  store: SupabaseJobStore,
+  errorMessage: string,
+) {
+  const input = getContentPlanFailureInput(job);
+
+  if (!input) {
+    return;
+  }
+
+  if (job.job_type === "carousel_content_plan_generation") {
+    await store.failCarouselContentPlanGeneration({
+      errorMessage,
+      jobId: job.id,
+      planId: input.planId,
+      userId: input.userId,
+    });
+    return;
+  }
+
+  await store.failWallTextContentPlanGeneration({
+    errorMessage,
+    jobId: job.id,
+    planId: input.planId,
+    userId: input.userId,
+  });
+}
+
+function getContentPlanFailureInput(job: BackgroundJobRow) {
+  if (
+    job.job_type !== "carousel_content_plan_generation" &&
+    job.job_type !== "wall_text_content_plan_generation"
+  ) {
+    return null;
+  }
+
+  const value = job.input_json;
+
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    typeof value.planId !== "string" ||
+    !value.planId.trim() ||
+    typeof value.userId !== "string" ||
+    !value.userId.trim() ||
+    value.userId !== job.user_id
+  ) {
+    logger.warn("Could not reconcile malformed content-plan job input", {
+      jobId: job.id,
+      jobType: job.job_type,
+    });
+    return null;
+  }
+
+  return {
+    planId: value.planId,
+    userId: value.userId,
+  };
 }
 
 async function deleteDeliveryMessage(params: {

@@ -570,7 +570,7 @@ function createStructure2EditRenderSpec(
         : edited.textPosition.y > 0.58
           ? "lower"
           : "center",
-    textTreatment: "pill",
+    textTreatment: "overlay",
     visualContext: original.image_direction ?? "",
     visualRole,
   };

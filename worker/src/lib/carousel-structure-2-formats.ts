@@ -221,7 +221,7 @@ function parseSlide(
     record.maximumWords,
     `${label} maximum words`,
     minimumWords,
-    60,
+    64,
   );
 
   if (!STORY_ROLES.has(storyRole)) {

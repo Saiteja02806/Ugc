@@ -1372,12 +1372,23 @@ export async function ensureTrendingWallTextAssignments(params: {
 }
 
 export async function listActiveTrendingWallTextIdeas(params: {
+  availableSourceMediaAssetIds?: readonly string[];
   backgroundAssetIds?: string[] | null;
   businessProfileId: string;
   businessProfileVersion: number;
+  pinnedAssignmentIds?: readonly string[];
   userId: string;
 }): Promise<TrendingWallTextIdeaRecord[]> {
-  if (params.backgroundAssetIds && params.backgroundAssetIds.length === 0) {
+  const pinnedAssignmentIds = new Set(params.pinnedAssignmentIds ?? []);
+  const availableSourceMediaAssetIds = params.availableSourceMediaAssetIds
+    ? new Set(params.availableSourceMediaAssetIds)
+    : null;
+
+  if (
+    params.backgroundAssetIds &&
+    params.backgroundAssetIds.length === 0 &&
+    pinnedAssignmentIds.size === 0
+  ) {
     return [];
   }
 
@@ -1410,10 +1421,16 @@ export async function listActiveTrendingWallTextIdeas(params: {
     .eq("user_id", params.userId)
     .eq("business_profile_id", params.businessProfileId)
     .eq("business_profile_version", params.businessProfileVersion)
-    .eq("status", "preview_ready")
-    .eq("generator_version", WALL_TEXT_GENERATOR_VERSION);
+    .eq("status", "preview_ready");
 
-  if (params.backgroundAssetIds) {
+  if (pinnedAssignmentIds.size === 0) {
+    creativeQuery = creativeQuery.eq(
+      "generator_version",
+      WALL_TEXT_GENERATOR_VERSION,
+    );
+  }
+
+  if (params.backgroundAssetIds && pinnedAssignmentIds.size === 0) {
     creativeQuery = creativeQuery.in(
       "overlay_media_asset_id",
       params.backgroundAssetIds,
@@ -1474,7 +1491,16 @@ export async function listActiveTrendingWallTextIdeas(params: {
       !audio ||
       !asset.preview_url ||
       !selectionAsset ||
-      !isEligibleWallTextVideo(selectionAsset)
+      !isEligibleWallTextVideo(selectionAsset) ||
+      (availableSourceMediaAssetIds &&
+        asset.source_media_asset_id &&
+        !availableSourceMediaAssetIds.has(asset.source_media_asset_id)) ||
+      (!pinnedAssignmentIds.has(assignment.id) &&
+        (creative.generator_version !== WALL_TEXT_GENERATOR_VERSION ||
+          (params.backgroundAssetIds != null &&
+            !params.backgroundAssetIds.includes(
+              creative.overlay_media_asset_id,
+            ))))
     ) {
       return [];
     }
@@ -2081,11 +2107,10 @@ function parseCurrentWallTextContent(
 }
 
 function normalizeCurrentWallTextFontSize(value: number) {
-  if ([36, 38, 40, 42].includes(value)) {
-    return value as 36 | 38 | 40 | 42;
+  if ([36, 38, 40, 42, 44, 46, 48, 50, 52].includes(value)) {
+    return value as 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
   }
-  if (value === 44 || value === 46 || value === 48) return 40 as const;
-  return 42 as const;
+  return 52 as const;
 }
 
 function toCompatibilitySegments(lines: string[]) {

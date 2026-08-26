@@ -170,7 +170,6 @@ export async function prepareCarouselProductAssetUpload(input: {
 
   const target = targetResult.target;
   const uploadUrl = await createSignedPutUrl({
-    cacheControl: "public, max-age=31536000, immutable",
     contentType: target.contentType,
     expiresInSeconds: CAROUSEL_PRODUCT_ASSET_UPLOAD_EXPIRES_SECONDS,
     key: target.storageKey,
@@ -192,7 +191,6 @@ export async function prepareCarouselProductAssetUpload(input: {
     assetId: target.assetId,
     expiresInSeconds: CAROUSEL_PRODUCT_ASSET_UPLOAD_EXPIRES_SECONDS,
     requiredHeaders: {
-      "Cache-Control": "public, max-age=31536000, immutable",
       "Content-Type": target.contentType,
     },
     storageKey: target.storageKey,

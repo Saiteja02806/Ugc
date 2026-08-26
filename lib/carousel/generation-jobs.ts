@@ -13,6 +13,7 @@ import {
   attachQueueMessageToBackgroundJob,
   claimBackgroundJobDelivery,
   createBackgroundJobWithCreationResult,
+  createOrGetCarouselExperimentBatchJob,
   getBackgroundJobById,
   getMissingBackgroundJobStorageEnvVars,
   markBackgroundJobFailed,
@@ -142,7 +143,6 @@ export async function enqueueCarouselGenerationJob(params: {
 }
 
 export async function enqueueCarouselExperimentBatchJob(params: {
-  beforeDispatch?: (jobId: string) => Promise<void>;
   carouselIds: readonly string[];
   existingJobId?: string | null;
   experimentBatchId: string;
@@ -154,30 +154,25 @@ export async function enqueueCarouselExperimentBatchJob(params: {
     throw new Error("A Carousel experiment job requires exactly five unique Carousel IDs.");
   }
 
-  const existingJob = params.existingJobId
-    ? await getBackgroundJobById(params.existingJobId)
-    : null;
-  const creationResult = existingJob
-    ? { created: false as const, job: existingJob }
-    : await createBackgroundJobWithCreationResult({
-        idempotencyKey: `carousel-experiment-batch:${params.experimentBatchId}`,
-        input: {
-          carouselIds: [...params.carouselIds],
-          experimentBatchId: params.experimentBatchId,
-          textStyle: params.textStyle,
-        },
-        jobType: CAROUSEL_JOB_TYPE,
-        projectId: params.projectId,
-        queueName: getQueueNameForJobType(CAROUSEL_JOB_TYPE),
-        userId: params.userId,
-      });
+  const creationResult = await createOrGetCarouselExperimentBatchJob({
+    carouselIds: [...params.carouselIds],
+    experimentBatchId: params.experimentBatchId,
+    projectId: params.projectId,
+    textStyle: params.textStyle,
+    userId: params.userId,
+  });
   const job = creationResult.job;
 
-  if (existingJob && !isMatchingCarouselExperimentBatchJob(existingJob, params)) {
+  if (
+    params.existingJobId &&
+    params.existingJobId !== job.id
+  ) {
     throw new Error("Existing Carousel experiment job ownership does not match.");
   }
 
-  await params.beforeDispatch?.(job.id);
+  if (!isMatchingCarouselExperimentBatchJob(job, params)) {
+    throw new Error("Carousel experiment job ownership does not match.");
+  }
 
   if (job.status === "completed") return job.id;
 

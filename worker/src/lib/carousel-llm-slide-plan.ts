@@ -7,7 +7,11 @@ import type {
 } from "./carousel-content-plan.js";
 import {
   CAROUSEL_FIXED_FONT_SIZE,
+  CAROUSEL_STRUCTURE_1_BODY_MAX_LINES,
   CAROUSEL_STRUCTURE_1_FIXED_TEXT_WIDTH,
+  CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES,
+  CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES,
+  CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES,
   inspectCarouselFixedTextFit,
   type CarouselTextMode,
   type PlannedCarouselSlide,
@@ -25,21 +29,21 @@ import {
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v32-creative-brief-context";
+  "llm-carousel-planner-v34-heading-bubble-only";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly five slides plus a backend-selected content format and compatible hook family.";
 
-const MAX_BODY_LENGTH = 120;
-const MAX_HEADLINE_LENGTH = 50;
-const MAX_CTA_LENGTH = 34;
+const MAX_BODY_LENGTH = 240;
+const MAX_HEADLINE_LENGTH = 100;
+const MAX_CTA_LENGTH = 68;
 const MAX_IMAGE_DIRECTION_LENGTH = 180;
-const MAX_LIST_ITEM_LENGTH = 44;
+const MAX_LIST_ITEM_LENGTH = 88;
 const TARGET_BODY_MIN_WORDS = 8;
-const TARGET_BODY_MAX_WORDS = 20;
+const TARGET_BODY_MAX_WORDS = 40;
 const MIN_REQUIRED_BODY_WORDS = 8;
-const MAX_ALLOWED_BODY_WORDS = 20;
+const MAX_ALLOWED_BODY_WORDS = 40;
 const MIN_HEADLINE_WORDS = 3;
-const MAX_HEADLINE_WORDS = 8;
+const MAX_HEADLINE_WORDS = 16;
 const VISUAL_SUBJECT_TERMS =
   "(?:human|humans|person|people|face|faces|hand|hands|body|bodies|silhouette|silhouettes|man|men|woman|women|child|children|team|customer|customers|worker|workers)";
 const PROHIBITED_VISUAL_SUBJECT_PATTERN =
@@ -1064,11 +1068,19 @@ function validateStructure1FixedTextFit(
     maximumLines: number;
     value: string;
   }> = [
-    { label: "Headline", maximumLines: 2, value: headline },
-    { label: "Body", maximumLines: 4, value: body },
+    {
+      label: "Headline",
+      maximumLines: CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES,
+      value: headline,
+    },
+    {
+      label: "Body",
+      maximumLines: CAROUSEL_STRUCTURE_1_BODY_MAX_LINES,
+      value: body,
+    },
     ...listLines.map((value, index) => ({
       label: `List line ${index + 1}`,
-      maximumLines: 1,
+      maximumLines: CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES,
       value,
     })),
   ];
@@ -1087,6 +1099,25 @@ function validateStructure1FixedTextFit(
         slideNumber: slide.slideNumber,
       });
     }
+  }
+
+  const listLineCount = listLines.reduce(
+    (total, value) =>
+      total +
+      inspectCarouselFixedTextFit({
+        maximumLines: CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES,
+        maximumWidth: CAROUSEL_STRUCTURE_1_FIXED_TEXT_WIDTH,
+        value,
+      }).lines.length,
+    0,
+  );
+
+  if (listLineCount > CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES) {
+    issues.push({
+      code: "render_fit",
+      message: `List copy needs ${listLineCount} lines but the fixed layout allows ${CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES}.`,
+      slideNumber: slide.slideNumber,
+    });
   }
 
   return issues;
@@ -1229,7 +1260,7 @@ export function validateCarouselContentPlan(
     ) {
       issues.push({
         code: "body_length",
-        message: "List modes may use at most four visual text lines.",
+        message: "List modes may use at most eight visual text lines.",
         slideNumber: slide.slideNumber,
       });
     }
@@ -1589,9 +1620,9 @@ function buildGrammarPlannerMessages(
         "- Use simple, natural language and one main idea per slide.",
         "- Prioritize useful content over promotion. Do not turn the carousel into an advertisement.",
         "- Hook wording must be completely fresh and must follow the selected hook family without copying examples or history.",
-        `- Headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than two visual lines.`,
-        `- Body copy must be one complete sentence of ${TARGET_BODY_MIN_WORDS}-${TARGET_BODY_MAX_WORDS} words, at most ${MAX_BODY_LENGTH} characters, and normally no more than three visual lines.`,
-        `- Every visible text group uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px type over a connected white SVG background. Headlines must fit within two lines; body copy within four; each list item must fit one line. The renderer will not shrink or truncate copy.`,
+        `- Headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than four visual lines.`,
+        `- Body copy must be one complete sentence of ${TARGET_BODY_MIN_WORDS}-${TARGET_BODY_MAX_WORDS} words, at most ${MAX_BODY_LENGTH} characters, and normally no more than six visual lines.`,
+        `- Every visible text group uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px type. Only a headline uses a connected white SVG background; body copy, list items, and CTA copy render as normal white text directly on the image. Headlines must fit within four lines; body copy within eight; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
         "- A headline must not repeat its body. If the body works alone, use body_only and set headline to null.",
         "- List slides must use the exact configured number of short listItems and normally set body to null.",
         "- Every slide without a configured listItemCount must return listItems as an empty array.",
@@ -1940,9 +1971,9 @@ function buildRepairMessages(params: {
         `Required emotion: ${params.emotion}.`,
         "Private creative brief (context only):",
         JSON.stringify(params.planningBrief),
-        "Every headline is optional; when present it must be 3-8 words, at most 50 characters, and at most two visual lines.",
-        "Every body must be one complete, specific sentence of 8-20 words and at most 120 characters.",
-        "List modes may use at most four total visual lines.",
+        "Every headline is optional; when present it must be 3-16 words, at most 100 characters, and at most four visual lines.",
+        "Every body must be one complete, specific sentence of 8-40 words and at most 240 characters.",
+        "List modes may use at most eight total visual lines, with at most two lines per item.",
         "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors such as lead to missed leads.",
         "Do not repeat a connector within one short sentence, such as for better management for clearer decisions.",
         "Remove invented quantified proof, guarantees, or precise performance claims.",
@@ -2183,7 +2214,7 @@ function getLayoutPreset(
   textMode: CarouselTextMode,
 ): Pick<PlannedCarouselSlide, "layoutPreset" | "textPosition"> {
   if (textMode === "question_list" || textMode === "checklist") {
-    return { layoutPreset: "interactive-list", textPosition: "top" };
+    return { layoutPreset: "interactive-list", textPosition: "center" };
   }
 
   if (textMode === "body_only" || textMode === "single_statement") {
@@ -2191,14 +2222,14 @@ function getLayoutPreset(
   }
 
   if (slideType === "hook") {
-    return { layoutPreset: "top-hook", textPosition: "top" };
+    return { layoutPreset: "top-hook", textPosition: "center" };
   }
 
   if (slideType === "cta" || slideType === "solution") {
     return { layoutPreset: "middle-statement", textPosition: "center" };
   }
 
-  return { layoutPreset: "bottom-message", textPosition: "bottom" };
+  return { layoutPreset: "bottom-message", textPosition: "center" };
 }
 
 function getTextMode(

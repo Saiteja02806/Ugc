@@ -22,25 +22,23 @@ function job(
   };
 }
 
-test("delivers a newly persisted queued job without a queue message", () => {
+test("delivers any persisted queued job that has never reached the queue", () => {
   assert.equal(
     shouldDeliverCarouselJobMessage({
       job: job({ queueMessageId: null }),
       now: NOW,
-      wasJustCreated: true,
     }),
     true,
   );
 });
 
-test("a concurrent observer leaves a fresh creator-owned delivery alone", () => {
+test("a concurrent observer may attempt an undelivered job, but only one delivery claim can win", () => {
   assert.equal(
     shouldDeliverCarouselJobMessage({
       job: job({ queueMessageId: null }),
       now: NOW,
-      wasJustCreated: false,
     }),
-    false,
+    true,
   );
 });
 

@@ -185,6 +185,7 @@ test("daily inventory walks stable filtered pages instead of stopping at 50 rows
   );
   assert.match(
     dailyFeed,
-    /existingAssignmentIds[\s\S]+updateAssignmentsLastAssignedDate[\s\S]+carryCandidates\.filter/,
+    /existingAssignmentIds[\s\S]+updateAssignmentsLastAssignedDate[\s\S]+currentDayOrphans[\s\S]+listUnpersistedCurrentDayAssignments/,
   );
+  assert.doesNotMatch(dailyFeed, /listCarryAssignments/);
 });

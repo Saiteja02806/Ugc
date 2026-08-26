@@ -21,6 +21,7 @@ import {
   createCarouselTrendingFeedProvider,
   createUnavailableTrendingFeedProvider,
   type TrendingCarouselFeedItem,
+  type TrendingFeedFormat,
   type TrendingFeedItem,
   type TrendingFeedProviderAvailability,
   type TrendingFeedProviderResult,
@@ -42,6 +43,8 @@ import {
   getTrendingPlanEntitlement,
   markDailyTrendingFeedFormatsFailed,
   normalizeTrendingTimezone,
+  reconcileDailyTrendingFeedSlotIntegrity,
+  type DailyTrendingFeedRecord,
   type DailyTrendingFeedSlotRecord,
   type TrendingPlanEntitlement,
 } from "@/lib/trending/unified-daily-feed-db";
@@ -97,6 +100,14 @@ export async function readUnifiedTrendingDailyFeed(params: {
     existingFeedPlanKey: existingPlan.feed.planKey,
   });
   const reservedAllocation = countReservedSlots(existingPlan.slots);
+  const pinnedHookAssignmentIds = getReadyAssignmentIds({
+    format: "hook_video",
+    slots: existingPlan.slots,
+  });
+  const pinnedWallTextAssignmentIds = getReadyAssignmentIds({
+    format: "wall_text",
+    slots: existingPlan.slots,
+  });
   const [carouselFeed, hookProvider, wallTextProvider] = await Promise.all([
     reservedAllocation.carousel > 0
       ? readTrendingDailyFeed({
@@ -107,7 +118,9 @@ export async function readUnifiedTrendingDailyFeed(params: {
         })
       : Promise.resolve(null),
     params.includeHookVideos && reservedAllocation.hook_video > 0
-      ? getTrendingHookFeedProvider(params.profile)
+      ? getTrendingHookFeedProvider(params.profile, {
+          pinnedAssignmentIds: pinnedHookAssignmentIds,
+        })
       : Promise.resolve(
           createUnavailableTrendingFeedProvider<TrendingHookVideoFeedItem>(
             "hook_video",
@@ -117,7 +130,9 @@ export async function readUnifiedTrendingDailyFeed(params: {
           ),
         ),
     params.includeWallText && reservedAllocation.wall_text > 0
-      ? getTrendingWallTextFeedProvider(params.profile)
+      ? getTrendingWallTextFeedProvider(params.profile, {
+          pinnedAssignmentIds: pinnedWallTextAssignmentIds,
+        })
       : Promise.resolve(
           createUnavailableTrendingFeedProvider<TrendingWallTextFeedItem>(
             "wall_text",
@@ -183,7 +198,13 @@ export async function readUnifiedTrendingDailyFeed(params: {
       preparationResults: new Map(),
     }),
     requiresPreparation:
-      upgradeSlots > 0 || shouldPrepareDailyFeed({ items, readiness }),
+      upgradeSlots > 0 ||
+      shouldPrepareDailyFeed({
+        dailyLimit: existingPlan.feed.dailyLimit,
+        items,
+        readiness,
+        slots: existingPlan.slots,
+      }),
   };
 }
 
@@ -351,10 +372,17 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
         existingFeedPlanKey: existingPlan.feed.planKey,
       })
     : 0;
-  const plannedFormats =
-    existingPlan && upgradeSlots > 0
-      ? [...existingPlan.slots.map((slot) => slot.format), ...dailyPlan.formats]
-      : dailyPlan.formats;
+  const existingFormats = existingPlan
+    ? getStoredDailyFeedFormats({
+        localDate,
+        plan: existingPlan,
+      })
+    : [];
+  const plannedFormats = existingPlan
+    ? upgradeSlots > 0
+      ? [...existingFormats, ...dailyPlan.formats]
+      : existingFormats
+    : dailyPlan.formats;
   const reservedEntitlement =
     existingPlan && upgradeSlots > 0
       ? {
@@ -379,8 +407,17 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     includeWallText: params.includeWallText,
     markItemsShown: params.markItemsShown,
     profile: params.profile,
+    slots: initialPlan.slots,
     timezone,
     userId: params.userId,
+  });
+
+  await reconcileDailyTrendingFeedSlotIntegrity({
+    feedId: initialPlan.feed.id,
+    hookVideoAssignmentIds: hookProvider.items.map((item) => item.assignmentId),
+    hookVideoProviderResolved: hookProvider.state === "ready",
+    wallTextAssignmentIds: wallTextProvider.items.map((item) => item.assignmentId),
+    wallTextProviderResolved: wallTextProvider.state === "ready",
   });
 
   await attachDailyTrendingAssignments({
@@ -511,10 +548,13 @@ function getPublicDailyFeedState(params: {
 }
 
 function shouldPrepareDailyFeed(params: {
+  dailyLimit: number;
   items: readonly TrendingFeedItem[];
   readiness: TrendingDailyPackReadiness;
+  slots: readonly DailyTrendingFeedSlotRecord[];
 }) {
   return (
+    params.slots.length !== params.dailyLimit ||
     params.readiness.pendingSlotCount > 0 ||
     (params.items.length === 0 && params.readiness.failedSlotCount > 0)
   );
@@ -589,15 +629,56 @@ function countReservedSlots(slots: DailyTrendingFeedSlotRecord[]) {
   return counts;
 }
 
+function getReadyAssignmentIds(params: {
+  format: TrendingFeedFormat;
+  slots: readonly DailyTrendingFeedSlotRecord[];
+}) {
+  return params.slots.flatMap((slot) =>
+    slot.format === params.format && slot.state === "ready" && slot.assignmentId
+      ? [slot.assignmentId]
+      : [],
+  );
+}
+
+function getStoredDailyFeedFormats(params: {
+  localDate: string;
+  plan: {
+    feed: Pick<DailyTrendingFeedRecord, "dailyLimit" | "mix">;
+    slots: readonly DailyTrendingFeedSlotRecord[];
+  };
+}) {
+  const fallback = buildTrendingDailyFormatPlan({
+    dailyLimit: params.plan.feed.dailyLimit,
+    localDate: params.localDate,
+    mix: params.plan.feed.mix,
+  }).formats;
+  const formatByPosition = new Map(
+    params.plan.slots.map((slot) => [slot.position, slot.format]),
+  );
+
+  return fallback.map(
+    (format, index) => formatByPosition.get(index + 1) ?? format,
+  );
+}
+
 async function loadProviders(params: {
   allocation: TrendingContentAllocation;
   includeHookVideos: boolean;
   includeWallText: boolean;
   markItemsShown?: boolean;
   profile: BusinessProfileRecord;
+  slots: DailyTrendingFeedSlotRecord[];
   timezone: string;
   userId: string;
 }) {
+  const pinnedHookAssignmentIds = getReadyAssignmentIds({
+    format: "hook_video",
+    slots: params.slots,
+  });
+  const pinnedWallTextAssignmentIds = getReadyAssignmentIds({
+    format: "wall_text",
+    slots: params.slots,
+  });
   const [carouselDailyFeed, hookProvider, wallTextProvider] = await Promise.all([
     params.allocation.carousel > 0
       ? ensureTrendingDailyFeed({
@@ -609,7 +690,9 @@ async function loadProviders(params: {
         })
       : Promise.resolve(null),
     params.includeHookVideos && params.allocation.hook_video > 0
-      ? getTrendingHookFeedProvider(params.profile)
+      ? getTrendingHookFeedProvider(params.profile, {
+          pinnedAssignmentIds: pinnedHookAssignmentIds,
+        })
       : Promise.resolve(
           createUnavailableTrendingFeedProvider<TrendingHookVideoFeedItem>(
             "hook_video",
@@ -619,7 +702,9 @@ async function loadProviders(params: {
           ),
         ),
     params.includeWallText && params.allocation.wall_text > 0
-      ? getTrendingWallTextFeedProvider(params.profile)
+      ? getTrendingWallTextFeedProvider(params.profile, {
+          pinnedAssignmentIds: pinnedWallTextAssignmentIds,
+        })
       : Promise.resolve(
           createUnavailableTrendingFeedProvider<TrendingWallTextFeedItem>(
             "wall_text",
@@ -629,7 +714,6 @@ async function loadProviders(params: {
           ),
         ),
   ]);
-
   return [
     carouselDailyFeed
       ? createCarouselTrendingFeedProvider(carouselDailyFeed.carousels)

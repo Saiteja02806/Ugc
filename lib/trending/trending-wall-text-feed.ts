@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
+import { listMediaAssets } from "@/lib/media/media-storage";
 import {
   createAuthoritativeWallTextContent,
   deriveWallTextSpatialBudget,
@@ -718,12 +719,19 @@ function isWallTextFormatId(value: string | null): value is WallTextFormatId {
 
 export async function getTrendingWallTextFeedProvider(
   profile: BusinessProfileRecord,
+  options: {
+    pinnedAssignmentIds?: readonly string[];
+  } = {},
 ): Promise<TrendingFeedProviderResult<TrendingWallTextFeedItem>> {
   try {
-    const source = await resolveTrendingVideoSource({
-      format: "wall_text",
-      userId: profile.userId,
-    });
+    const pinnedAssignmentIds = new Set(options.pinnedAssignmentIds ?? []);
+    const [source, readyMediaAssets] = await Promise.all([
+      resolveTrendingVideoSource({
+        format: "wall_text",
+        userId: profile.userId,
+      }),
+      listMediaAssets({ userId: profile.userId }),
+    ]);
     const selectedInventory = source.selection
       ? await listWallTextOverlayAssetsForMediaAssetIds({
           mediaAssetIds: source.assets.map((asset) => asset.id),
@@ -731,6 +739,9 @@ export async function getTrendingWallTextFeedProvider(
         })
       : null;
     const backgroundAssetIds = selectedInventory?.map((asset) => asset.id);
+    const availableSourceMediaAssetIds = readyMediaAssets
+      .filter((asset) => asset.mime_type.startsWith("video/"))
+      .map((asset) => asset.id);
     const [creatives, ideas] = await Promise.all([
       listTrendingWallTextCreatives({
         backgroundAssetIds,
@@ -739,14 +750,20 @@ export async function getTrendingWallTextFeedProvider(
         userId: profile.userId,
       }),
       listActiveTrendingWallTextIdeas({
+        availableSourceMediaAssetIds,
         backgroundAssetIds,
         businessProfileId: profile.id,
         businessProfileVersion: profile.profileVersion,
+        pinnedAssignmentIds: options.pinnedAssignmentIds,
         userId: profile.userId,
       }),
     ]);
 
-    if (source.selection && source.assets.length === 0) {
+    if (
+      source.selection &&
+      source.assets.length === 0 &&
+      pinnedAssignmentIds.size === 0
+    ) {
       return createUnavailableTrendingFeedProvider<TrendingWallTextFeedItem>(
         "wall_text",
         "The selected Creative Assets source has no available videos.",

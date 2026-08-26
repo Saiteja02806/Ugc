@@ -29,6 +29,10 @@ export type PlannedCarouselSlide = {
 export const CAROUSEL_FIXED_FONT_SIZE = 44;
 export const CAROUSEL_STRUCTURE_1_FIXED_TEXT_WIDTH = 786;
 export const CAROUSEL_STRUCTURE_2_FIXED_TEXT_WIDTH = 868;
+export const CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES = 4;
+export const CAROUSEL_STRUCTURE_1_BODY_MAX_LINES = 8;
+export const CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES = 2;
+export const CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES = 8;
 
 export type CarouselFixedTextFit = {
   fits: boolean;

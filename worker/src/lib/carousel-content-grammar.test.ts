@@ -15,6 +15,7 @@ import {
   validateCarouselContentPlan,
 } from "./carousel-llm-slide-plan.js";
 import { buildCarouselBusinessContentContext } from "./carousel-business-content-context.js";
+import { inspectCarouselSlideLayout } from "./carousel-render-slide.js";
 
 const analysis: WebsiteBusinessAnalysis = {
   brandTone: "clear and practical",
@@ -72,6 +73,10 @@ test("every Structure 1 format accepts the exact assigned five-slide grammar", (
     assert.equal(result.plan.contentStrategy?.contentFormatId, format.id);
     assert.equal(result.plan.contentStrategy?.hookFamilyId, hookFamilyId);
     assert.equal(result.plan.slides.length, 5, format.id);
+    assert.ok(
+      result.plan.slides.every((slide) => slide.textPosition === "center"),
+      `${format.id} should keep every automatic text group centered`,
+    );
 
     for (const [slideIndex, definition] of format.slides.entries()) {
       const slide = result.plan.slides[slideIndex]!;
@@ -94,6 +99,64 @@ test("every Structure 1 format accepts the exact assigned five-slide grammar", (
   );
 });
 
+test("Structure 1 reserves the white SVG background for headings only", async () => {
+  const headlineAndBody = await inspectCarouselSlideLayout({
+    format: "1:1",
+    slide: {
+      body: "Supporting copy stays plain white over the image instead of receiving a second SVG bubble.",
+      ctaText: null,
+      headline: "The headline keeps the white background",
+      imageDirection: "An object-only workspace with clear centered space.",
+      layoutPreset: "middle-statement",
+      listItems: [],
+      slideNumber: 1,
+      slideType: "hook",
+      subtext: null,
+      textMode: "headline_body",
+      textPosition: "center",
+    },
+  });
+  const bodyOnly = await inspectCarouselSlideLayout({
+    format: "1:1",
+    slide: {
+      body: "This normal body copy remains white text directly on the image with no SVG background.",
+      ctaText: null,
+      headline: null,
+      imageDirection: "An object-only workspace with clear centered space.",
+      layoutPreset: "caption-cluster",
+      listItems: [],
+      slideNumber: 2,
+      slideType: "problem",
+      subtext: null,
+      textMode: "body_only",
+      textPosition: "center",
+    },
+  });
+  const headingAndList = await inspectCarouselSlideLayout({
+    format: "1:1",
+    slide: {
+      body: null,
+      ctaText: null,
+      headline: "Only this heading receives a bubble",
+      imageDirection: "An object-only workspace with clear centered space.",
+      layoutPreset: "interactive-list",
+      listItems: ["First normal list item", "Second normal list item"],
+      slideNumber: 3,
+      slideType: "problem",
+      subtext: null,
+      textMode: "question_list",
+      textPosition: "center",
+    },
+  });
+
+  assert.equal(headlineAndBody.whiteBackgroundGroupCount, 1);
+  assert.equal(headingAndList.whiteBackgroundGroupCount, 1);
+  assert.equal(bodyOnly.whiteBackgroundGroupCount, 0);
+  assert.equal(bodyOnly.lines.length, 0);
+  assert.equal(bodyOnly.textPixels, 0);
+  assert.equal(bodyOnly.textPixelContainmentPassed, true);
+});
+
 test("Structure 1 preserves structurally valid AI copy verbatim", () => {
   const fixture = createAssignedStructure1Fixture(
     "comparison",
@@ -114,6 +177,27 @@ test("Structure 1 preserves structurally valid AI copy verbatim", () => {
 
   assert.equal(result.plan.slides[0]?.body, exactCopy);
   assert.equal(result.plan.slides[0]?.subtext, exactCopy);
+  assert.deepEqual(result.blockingIssues, []);
+});
+
+test("Structure 1 accepts expanded fixed-size copy without changing its centered placement", () => {
+  const fixture = createAssignedStructure1Fixture("comparison", "question");
+  const expandedBody =
+    "Each review keeps campaign details connected so the next handoff starts with the current owner, agreed timing, known approval, visible reporting context, and one calm decision for the team.";
+  fixture.slides[1]!.body = expandedBody;
+
+  const result = parseCarouselContentPlanForAssignment(fixture, {
+    analysis,
+    candidateIndex: 0,
+    contentFormatId: "comparison",
+    hookFamilyId: "question",
+    recentHistory: [],
+    slideCount: 5,
+  });
+
+  assert.ok(expandedBody.length > 120);
+  assert.equal(result.plan.slides[1]!.body, expandedBody);
+  assert.equal(result.plan.slides[1]!.textPosition, "center");
   assert.deepEqual(result.blockingIssues, []);
 });
 

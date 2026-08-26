@@ -91,7 +91,6 @@ export async function generateWallTextContentPlanChunk(params: {
           strict: true,
         },
       },
-      temperature: 0.75,
     });
     const content = completion.choices[0]?.message.content;
     if (!content) {

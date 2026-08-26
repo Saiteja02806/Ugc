@@ -25,7 +25,10 @@ resource "google_cloud_run_v2_service" "carousel_worker" {
       }
 
       resources {
-        cpu_idle          = false
+        # Carousel work is HTTP-request based. It may scale to zero when there
+        # is no work; its one-instance maximum is retained until its database
+        # reservation is explicitly made safe for parallel writers.
+        cpu_idle          = true
         startup_cpu_boost = true
 
         limits = {
@@ -127,6 +130,11 @@ resource "google_cloud_run_v2_service" "carousel_worker" {
       }
 
       env {
+        name  = "UGC_INTERNAL_APP_URL"
+        value = var.internal_app_url
+      }
+
+      env {
         name  = "CAROUSEL_BROAD_MATCHER_MODE"
         value = var.carousel_broad_matcher_mode
       }
@@ -171,6 +179,16 @@ resource "google_cloud_run_v2_service" "carousel_worker" {
         value_source {
           secret_key_ref {
             secret  = "openai-api-key"
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "UGC_INTERNAL_SCHEDULING_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = var.scheduling_secret_id
             version = "latest"
           }
         }

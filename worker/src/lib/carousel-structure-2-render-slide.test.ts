@@ -67,13 +67,10 @@ test("the dedicated renderer keeps all layouts fixed and inside the safe area", 
       assert.equal(result.diagnostics.ctaFontSize, spec.ctaText ? 44 : null);
       assert.equal(
         result.diagnostics.bubbleShapeStrategy,
-        "hybrid-soft-union-connected-path",
+        "plain-white-text-with-shadow",
       );
-      assert.equal(
-        result.diagnostics.whiteBackgroundGroupCount,
-        spec.ctaText ? 2 : 1,
-      );
-      assert.equal(result.diagnostics.textTreatment, "pill");
+      assert.equal(result.diagnostics.whiteBackgroundGroupCount, 0);
+      assert.equal(result.diagnostics.textTreatment, "overlay");
     }
   }
 });

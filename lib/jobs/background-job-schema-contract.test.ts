@@ -18,13 +18,17 @@ const geminiProviderMigration = readMigration(
   "supabase/migrations/20260824120500_add_gemini_generation_provider.sql",
 );
 
-test("identifies deployed workers and lets independent AI jobs run concurrently", () => {
+test("uses demand-scaled request workers for independent AI jobs", () => {
   const aiWorkerMain = readFileSync(
     "infra/gcp/ai-generation-worker/main.tf",
     "utf8",
   );
   const aiWorkerVariables = readFileSync(
     "infra/gcp/ai-generation-worker/variables.tf",
+    "utf8",
+  );
+  const cloudTasks = readFileSync(
+    "infra/gcp/foundation/cloud-tasks.tf",
     "utf8",
   );
 
@@ -34,7 +38,46 @@ test("identifies deployed workers and lets independent AI jobs run concurrently"
   );
   assert.match(
     aiWorkerVariables,
-    /variable "max_instance_count"[\s\S]*default\s+= 4/,
+    /variable "min_instance_count"[\s\S]*default\s+= 0/,
+  );
+  assert.match(
+    aiWorkerVariables,
+    /variable "max_instance_count"[\s\S]*default\s+= 10/,
+  );
+  assert.match(aiWorkerMain, /cpu_idle\s+= true/);
+  assert.match(
+    cloudTasks,
+    /ai-generation = \{[\s\S]*concurrent_dispatches = 10[\s\S]*dispatches_per_second = 5/,
+  );
+});
+
+test("keeps services idle-cost-safe and video rendering one-shot", () => {
+  for (const workerPath of [
+    "infra/gcp/carousel-worker/main.tf",
+    "infra/gcp/social-publish-worker/main.tf",
+    "infra/gcp/video-render-worker/main.tf",
+  ]) {
+    assert.match(readFileSync(workerPath, "utf8"), /cpu_idle\s+= true/);
+  }
+
+  const videoWorker = readFileSync(
+    "infra/gcp/video-render-worker/main.tf",
+    "utf8",
+  );
+  const videoJobEnv = readFileSync(
+    "infra/gcp/video-render-worker/locals.tf",
+    "utf8",
+  );
+  const videoVariables = readFileSync(
+    "infra/gcp/video-render-worker/variables.tf",
+    "utf8",
+  );
+
+  assert.match(videoWorker, /resource "google_cloud_run_v2_job" "video_render_worker"/);
+  assert.match(videoJobEnv, /WORKER_RUN_ONCE\s+= "true"/);
+  assert.match(
+    videoVariables,
+    /variable "min_instance_count"[\s\S]*default\s+= 0/,
   );
 });
 

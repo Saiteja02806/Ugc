@@ -22,7 +22,7 @@ import type { CarouselStructure2FormatId } from "./carousel-structure-2-formats.
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-flexible-seed-writer-v7-optional-cta";
+  "llm-carousel-structure-2-flexible-seed-writer-v9-plain-white-story-text";
 
 let openaiClient: OpenAI | null = null;
 

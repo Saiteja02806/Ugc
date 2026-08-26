@@ -302,9 +302,11 @@ export async function listTrendingHookVideoSuggestions(params: {
 export async function listActiveTrendingHookIdeas(params: {
   businessProfileId: string;
   businessProfileVersion: number;
+  pinnedAssignmentIds?: readonly string[];
   promptVersion?: string;
   userId: string;
 }): Promise<TrendingHookIdeaRecord[]> {
+  const pinnedAssignmentIds = new Set(params.pinnedAssignmentIds ?? []);
   const { data: assignments, error: assignmentError } = await getClient()
     .from("user_hook_video_assignments")
     .select("*")
@@ -334,7 +336,7 @@ export async function listActiveTrendingHookIdeas(params: {
     .eq("user_id", params.userId)
     .eq("suggestion_context", "trending");
 
-  if (params.promptVersion) {
+  if (params.promptVersion && pinnedAssignmentIds.size === 0) {
     suggestionQuery = suggestionQuery.eq(
       "prompt_version",
       params.promptVersion,
@@ -375,6 +377,9 @@ export async function listActiveTrendingHookIdeas(params: {
       suggestion.business_profile_id !== params.businessProfileId ||
       suggestion.business_profile_version !==
         params.businessProfileVersion ||
+      (params.promptVersion &&
+        suggestion.prompt_version !== params.promptVersion &&
+        !pinnedAssignmentIds.has(assignment.id)) ||
       !isCompleteTrendingHookSuggestion(suggestion) ||
       !openingLines ||
       !renderLayout ||

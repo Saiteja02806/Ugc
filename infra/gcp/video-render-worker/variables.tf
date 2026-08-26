@@ -89,9 +89,9 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Minimum Cloud Run instances for the video-render worker."
+  description = "Minimum compatibility HTTP receiver instances. Use 0: long renders run in the one-shot Cloud Run Job and exit when complete."
   type        = number
-  default     = 1
+  default     = 0
 }
 
 variable "max_instance_count" {

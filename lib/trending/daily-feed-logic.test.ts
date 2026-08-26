@@ -62,7 +62,7 @@ test("does not populate a feed that already reached its daily limit", () => {
   );
 });
 
-test("separates runtime-unsafe carry assignments for invalidation", () => {
+test("separates runtime-unsafe assignments for invalidation", () => {
   const result = partitionRuntimeSafeAssignments({
     assignments: [
       { carouselId: "complete-safe", id: "assignment-1" },

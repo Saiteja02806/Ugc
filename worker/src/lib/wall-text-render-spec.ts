@@ -68,9 +68,9 @@ export const WALL_TEXT_RENDER_HEIGHT = 1920;
 export const WALL_TEXT_RENDER_MAX_CHARACTERS = 600;
 export const WALL_TEXT_RENDER_MIN_LINES = 4;
 export const WALL_TEXT_RENDER_MAX_LINES = 7;
-export const WALL_TEXT_DEFAULT_FONT_SIZE = 40;
-export const WALL_TEXT_MINIMUM_FONT_SIZE = 36;
-export const WALL_TEXT_MAXIMUM_FONT_SIZE = 42;
+export const WALL_TEXT_DEFAULT_FONT_SIZE = 48;
+export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
+export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
 export const WALL_TEXT_FONT_WEIGHT = 400;
 export const LEGACY_WALL_TEXT_FONT_WEIGHT = 700;
 export const WALL_TEXT_LINE_HEIGHT_FACTOR = 1.1;
@@ -402,9 +402,9 @@ function getWallTextFontSize(
 }
 
 function normalizeWallTextFontSize(value: number) {
-  if ([36, 38, 40, 42].includes(value)) return value as 36 | 38 | 40 | 42;
-  if (value === 44 || value === 46 || value === 48) return 40 as const;
-  if (value === 50) return 42 as const;
+  if ([36, 38, 40, 42, 44, 46, 48, 50, 52].includes(value)) {
+    return value as 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
+  }
   return WALL_TEXT_MAXIMUM_FONT_SIZE;
 }
 

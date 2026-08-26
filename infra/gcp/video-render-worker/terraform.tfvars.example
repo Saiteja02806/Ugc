@@ -21,7 +21,8 @@ queue_name                   = "video-render"
 worker_job_types             = "render_edit_video,render_schedule_combination,render_wall_text_video"
 
 worker_visibility_timeout_seconds = 900
-min_instance_count                = 1
+# The one-shot Cloud Run Job performs long renders and exits on completion.
+min_instance_count                = 0
 max_instance_count                = 1
 request_timeout_seconds           = 300
 job_timeout_seconds               = 3600

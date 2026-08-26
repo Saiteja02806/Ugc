@@ -28,7 +28,7 @@ const VIDEO_WIDTH = 1080;
 const VIDEO_HEIGHT = 1920;
 const ABSOLUTE_MAXIMUM_WORDS = 50;
 const MINIMUM_WORDS = 8;
-const FONT_SIZES: readonly WallTextFontSize[] = [42, 40, 38, 36];
+const FONT_SIZES: readonly WallTextFontSize[] = [52, 50, 48, 46, 44];
 const TEXT_WIDTHS = [660, 640, 620] as const;
 const INTERNAL_LINE_WIDTH_RATIO = 0.55;
 const MINIMUM_BALANCE_IMPROVEMENT = 0.04;
@@ -39,7 +39,7 @@ export async function deriveWallTextSpatialBudget(params: {
   layout: TrendingWallTextLayout;
 }) {
   const format = getWallTextFormat(params.formatId);
-  const lineHeight = 40 * WALL_TEXT_LINE_HEIGHT_FACTOR;
+  const lineHeight = 44 * WALL_TEXT_LINE_HEIGHT_FACTOR;
   const availableLines = clamp(
     Math.floor((params.layout.textBox.height * VIDEO_HEIGHT) / lineHeight),
     4,
@@ -220,9 +220,7 @@ async function wrapPlainWallText(
   if (words.length < 8) {
     throw new Error("Wall-of-text copy needs enough words to form four readable lines.");
   }
-  // Prefer fuller rows without outlawing a short word or phrase when it is
-  // the natural emphasis at the end of a Wall.
-  const idealLineCount = clamp(Math.round(words.length / 6), 4, 7);
+  const idealLineCount = clamp(Math.round(words.length / 4.5), 4, 7);
   const lineCounts = [...new Set([
     idealLineCount,
     idealLineCount - 1,
@@ -231,7 +229,7 @@ async function wrapPlainWallText(
     5,
     6,
     7,
-  ])].filter((count) => count >= 4 && count <= 7 && words.length >= count);
+  ])].filter((count) => count >= 4 && count <= 7 && words.length >= count * 2);
 
   for (const lineCount of lineCounts) {
     const lines = await partitionMeasuredLines({
@@ -274,7 +272,7 @@ async function partitionMeasuredLines(params: {
     const key = `${start}:${linesRemaining}`;
     if (memo.has(key)) return memo.get(key)!;
     const wordsRemaining = params.words.length - start;
-    if (wordsRemaining < linesRemaining) return null;
+    if (wordsRemaining < linesRemaining * 2) return null;
     if (linesRemaining === 1) {
       const width = await measure(start, params.words.length);
       if (width > params.maximumWidth) return null;
@@ -285,8 +283,8 @@ async function partitionMeasuredLines(params: {
     }
 
     let best: { lines: string[]; score: number } | null = null;
-    const maximumEnd = params.words.length - (linesRemaining - 1);
-    for (let end = start + 1; end <= maximumEnd; end += 1) {
+    const maximumEnd = params.words.length - (linesRemaining - 1) * 2;
+    for (let end = start + 2; end <= maximumEnd; end += 1) {
       const width = await measure(start, end);
       if (width > params.maximumWidth) break;
       const rest = await solve(end, linesRemaining - 1);

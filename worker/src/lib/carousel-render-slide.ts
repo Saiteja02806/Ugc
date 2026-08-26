@@ -2,7 +2,13 @@ import sharp from "sharp";
 
 import type { CarouselFormat } from "../types.js";
 import type { CarouselRenderStyle } from "./carousel-render-style.js";
-import type { PlannedCarouselSlide } from "./carousel-slide-plan.js";
+import {
+  CAROUSEL_STRUCTURE_1_BODY_MAX_LINES,
+  CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES,
+  CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES,
+  CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES,
+  type PlannedCarouselSlide,
+} from "./carousel-slide-plan.js";
 
 export type CarouselNormalizedTextPosition = {
   x: number;
@@ -94,6 +100,7 @@ export type CarouselRenderDiagnostics = {
   repaired: boolean;
   textPixels: number;
   textPixelContainmentPassed: boolean;
+  whiteBackgroundGroupCount: number;
   lines: CarouselBubbleLineDiagnostic[];
 };
 
@@ -103,7 +110,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-bubble-renderer-v12-fixed-type";
+  "social-bubble-renderer-v14-heading-bubble-only";
 export const CAROUSEL_FIXED_FONT_SIZE = 44;
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
@@ -112,9 +119,8 @@ const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number 
 };
 
 const DARK_TEXT = "#111316";
-const BODY_TEXT = "#15171a";
+const BODY_TEXT = "#ffffff";
 const HEADLINE_BUBBLE_FILL = "#ffffff";
-const BODY_BUBBLE_FILL = "#ffffff";
 const TEXT_FONT_FAMILY = "Geist, Arial, Helvetica, sans-serif";
 const HEADLINE_FONT_WEIGHT = 700;
 const BODY_FONT_WEIGHT = 600;
@@ -518,6 +524,7 @@ async function fitStackedText(values: string[], params: {
   getCornerSafety: (fontSize: number) => number;
   lineHeightRatio: number;
   maxLines: number;
+  maxLinesPerValue: number;
   maxWidth: number;
   paddingX: number;
 }): Promise<MeasuredWrappedText> {
@@ -533,12 +540,6 @@ async function fitStackedText(values: string[], params: {
     };
   }
 
-  if (cleanValues.length > params.maxLines) {
-    throw new Error(
-      `Carousel list needs ${cleanValues.length} visual lines but only ${params.maxLines} are allowed.`,
-    );
-  }
-
   const cornerSafety = params.getCornerSafety(params.fontSize);
   const maxTextWidth =
     params.maxWidth - 2 * (params.paddingX + cornerSafety);
@@ -550,19 +551,25 @@ async function fitStackedText(values: string[], params: {
       fontFamily: params.fontFamily,
       fontSize: params.fontSize,
       fontWeight: params.fontWeight,
-      maxLines: 1,
+      maxLines: params.maxLinesPerValue,
       maxTextWidth,
       value,
     });
 
-    if (wrapped.truncated || !wrapped.fits || wrapped.lines.length !== 1) {
+    if (wrapped.truncated || !wrapped.fits) {
       throw new Error(
-        `Carousel list text could not fit at the fixed ${params.fontSize}px font size.`,
+        `Carousel list text could not fit within ${params.maxLinesPerValue} lines at the fixed ${params.fontSize}px font size.`,
       );
     }
 
-    lines.push(wrapped.lines[0]);
-    extents.push(wrapped.extents[0]);
+    if (lines.length + wrapped.lines.length > params.maxLines) {
+      throw new Error(
+        `Carousel list needs more than ${params.maxLines} visual lines at the fixed ${params.fontSize}px font size.`,
+      );
+    }
+
+    lines.push(...wrapped.lines);
+    extents.push(...wrapped.extents);
   }
 
   return {
@@ -1014,6 +1021,54 @@ type BubbleMarkup = {
   text: string;
 };
 
+type PlainTextMetrics = {
+  groupHeight: number;
+  maximumTextWidth: number;
+};
+
+function measurePlainText(params: {
+  lineHeight: number;
+  lines: string[];
+  measuredLineExtents?: RenderedTextExtents[];
+  measuredLineWidths?: number[];
+}): PlainTextMetrics {
+  const maximumTextWidth = params.lines.reduce((widest, line, index) => {
+    const extents = params.measuredLineExtents?.[index];
+    const measuredWidth = params.measuredLineWidths?.[index];
+    const visibleWidth = extents
+      ? Math.max(Math.abs(extents.left), Math.abs(extents.right)) * 2
+      : (measuredWidth ?? 0);
+
+    return Math.max(widest, Math.ceil(visibleWidth));
+  }, 0);
+
+  return {
+    groupHeight: params.lines.length * params.lineHeight,
+    maximumTextWidth,
+  };
+}
+
+function buildPlainWhiteText(params: {
+  className: string;
+  fontSize: number;
+  lineHeight: number;
+  lines: string[];
+  x: number;
+  y: number;
+}) {
+  if (params.lines.length === 0) return "";
+
+  const baselineStart = Math.round(params.y + params.fontSize * 0.78);
+  const lines = params.lines
+    .map(
+      (line, index) =>
+        `<text x="${params.x}" y="${baselineStart + index * params.lineHeight}" class="${params.className}" font-size="${params.fontSize}" text-anchor="middle">${escapeXml(line)}</text>`,
+    )
+    .join("");
+
+  return `<g filter="url(#bodyTextShadow)">${lines}</g>`;
+}
+
 function buildBubbleText(params: {
   className: string;
   cornerSafety: number;
@@ -1148,10 +1203,6 @@ function getHeadlineRadius(fontSize: number) {
   return clamp(Math.round(fontSize * 0.42), 18, 22);
 }
 
-function getBodyRadius(fontSize: number) {
-  return clamp(Math.round(fontSize * 0.45), 18, 22);
-}
-
 function getHeadlineWrapCornerSafety(fontSize: number) {
   return clamp(Math.round(fontSize * 0.28), 14, 16) + MIN_CORNER_SAFETY;
 }
@@ -1211,8 +1262,6 @@ async function buildOverlaySvg(params: {
   const headlinePaddingY = 7;
   const headlineLineOverlap = 8;
   const bodyPaddingX = 18;
-  const bodyPaddingY = 6;
-  const bodyLineOverlap = 9;
   const headline = await fitMeasuredText(headlineText, {
     fontSize: CAROUSEL_FIXED_FONT_SIZE,
     fontFamily: TEXT_FONT_FAMILY,
@@ -1220,7 +1269,7 @@ async function buildOverlaySvg(params: {
     getCornerSafety: (fontSize) =>
       getHeadlineWrapCornerSafety(fontSize) + params.safetyBoost,
     lineHeightRatio: 1.04,
-    maxLines: 2,
+    maxLines: CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES,
     maxWidth: maxBubbleWidth,
     paddingX: headlinePaddingX,
   });
@@ -1232,7 +1281,8 @@ async function buildOverlaySvg(params: {
         getCornerSafety: (fontSize) =>
           getBodyWrapCornerSafety(fontSize) + params.safetyBoost,
         lineHeightRatio: 1.04,
-        maxLines: 4,
+        maxLines: CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES,
+        maxLinesPerValue: CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES,
         maxWidth: maxBubbleWidth,
         paddingX: bodyPaddingX,
       })
@@ -1244,7 +1294,7 @@ async function buildOverlaySvg(params: {
           getCornerSafety: (fontSize) =>
             getBodyWrapCornerSafety(fontSize) + params.safetyBoost,
           lineHeightRatio: bodyOnlyMode ? 1.04 : 1.05,
-          maxLines: 4,
+          maxLines: CAROUSEL_STRUCTURE_1_BODY_MAX_LINES,
           maxWidth: maxBubbleWidth,
           paddingX: bodyPaddingX,
         })
@@ -1258,11 +1308,6 @@ async function buildOverlaySvg(params: {
   const headlineRadius = getHeadlineRadius(headline.fontSize);
   const headlineCornerSafety = getBubbleCornerSafety(
     headlineRadius,
-    params.safetyBoost,
-  );
-  const bodyRadius = getBodyRadius(body.fontSize);
-  const bodyCornerSafety = getBubbleCornerSafety(
-    bodyRadius,
     params.safetyBoost,
   );
   const headlineMetrics = measureBubbleLines({
@@ -1279,19 +1324,11 @@ async function buildOverlaySvg(params: {
     lineOverlap: headlineLineOverlap,
     radius: headlineRadius,
   });
-  const bodyMetrics = measureBubbleLines({
-    cornerSafety: bodyCornerSafety,
-    fontSize: body.fontSize,
+  const bodyMetrics = measurePlainText({
     lineHeight: body.lineHeight,
     lines: body.lines,
-    maxBubbleWidth,
     measuredLineExtents: getMeasuredLineExtents(body),
     measuredLineWidths: getMeasuredLineWidths(body),
-    mode: "connected",
-    paddingX: bodyPaddingX,
-    paddingY: bodyPaddingY,
-    lineOverlap: bodyLineOverlap,
-    radius: bodyRadius,
   });
   const blockGap =
     body.lines.length > 0 ? clamp(Math.round(body.fontSize * 0.56), 20, 28) : 0;
@@ -1307,17 +1344,17 @@ async function buildOverlaySvg(params: {
     safeMarginY,
     params.height - safeMarginY - blockHeight,
   );
-  const widestBubble = Math.max(
+  const widestTextGroup = Math.max(
     0,
     ...headlineMetrics.rects.map((rect) => rect.visualWidth),
-    ...bodyMetrics.rects.map((rect) => rect.visualWidth),
+    bodyMetrics.maximumTextWidth,
   );
   const textX = params.normalizedTextPosition
     ? Math.round(
         clamp(
           params.width * clamp(params.normalizedTextPosition.x, 0.1, 0.9),
-          safeMarginX + widestBubble / 2,
-          params.width - safeMarginX - widestBubble / 2,
+          safeMarginX + widestTextGroup / 2,
+          params.width - safeMarginX - widestTextGroup / 2,
         ),
       )
     : Math.round(params.width / 2);
@@ -1342,56 +1379,49 @@ async function buildOverlaySvg(params: {
     x: textX,
     y: headlineY,
   });
-  const bodyMarkup = buildBubbleText({
+  const bodyMarkup = buildPlainWhiteText({
     className: "body",
-    cornerSafety: bodyCornerSafety,
-    fill: BODY_BUBBLE_FILL,
     fontSize: body.fontSize,
     lineHeight: body.lineHeight,
     lines: body.lines,
-    maxBubbleWidth,
-    measuredLineExtents: getMeasuredLineExtents(body),
-    measuredLineWidths: getMeasuredLineWidths(body),
-    mode: "connected",
-    paddingX: bodyPaddingX,
-    paddingY: bodyPaddingY,
-    lineOverlap: bodyLineOverlap,
-    radius: bodyRadius,
-    shadow: true,
     x: textX,
     y: bodyY,
   });
   const style = `
     .headline { fill: ${DARK_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${HEADLINE_FONT_WEIGHT}; letter-spacing: 0; }
-    .body { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; }
+    .body { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; paint-order: stroke fill; stroke: #000000; stroke-linejoin: round; stroke-opacity: 0.72; stroke-width: 2px; }
   `;
   const definitions = `
     <filter id="bubbleShadow" x="-25%" y="-35%" width="150%" height="170%">
       <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000000" flood-opacity="0.16"/>
     </filter>
+    <filter id="bodyTextShadow" x="-20%" y="-30%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.72"/>
+    </filter>
   `;
 
   return {
     bubbleMask: buildSvgDocument({
-      content: `${headlineMarkup.mask}${bodyMarkup.mask}`,
+      content: headlineMarkup.mask,
       height: params.height,
       width: params.width,
     }),
     diagnostics: {
       bubbleShapeStrategy: "hybrid-soft-union-connected-path",
       fontFamily: TEXT_FONT_FAMILY,
-      lines: [...headlineMarkup.diagnostics, ...bodyMarkup.diagnostics],
+      lines: headlineMarkup.diagnostics,
       maxBubbleWidth,
+      whiteBackgroundGroupCount: headline.lines.length > 0 ? 1 : 0,
     },
     overlay: buildSvgDocument({
-      content: `${headlineMarkup.bubble}${bodyMarkup.bubble}${headlineMarkup.text}${bodyMarkup.text}`,
+      content: `${headlineMarkup.bubble}${headlineMarkup.text}${bodyMarkup}`,
       definitions,
       height: params.height,
       style,
       width: params.width,
     }),
     textMask: buildSvgDocument({
-      content: `${headlineMarkup.text}${bodyMarkup.text}`,
+      content: headlineMarkup.text,
       height: params.height,
       style,
       width: params.width,
@@ -1399,7 +1429,7 @@ async function buildOverlaySvg(params: {
   };
 }
 
-async function validateTextPixelContainment(layers: OverlayLayers) {
+async function validateHeadlineTextPixelContainment(layers: OverlayLayers) {
   const [bubble, text] = await Promise.all([
     sharp(layers.bubbleMask).ensureAlpha().raw().toBuffer({ resolveWithObject: true }),
     sharp(layers.textMask).ensureAlpha().raw().toBuffer({ resolveWithObject: true }),
@@ -1442,7 +1472,7 @@ async function buildValidatedOverlay(params: {
 
   for (const [attemptIndex, attempt] of attempts.entries()) {
     const layers = await buildOverlaySvg({ ...params, ...attempt });
-    const containment = await validateTextPixelContainment(layers);
+    const containment = await validateHeadlineTextPixelContainment(layers);
 
     lastContainment = containment;
 
@@ -1460,7 +1490,7 @@ async function buildValidatedOverlay(params: {
   }
 
   throw new Error(
-    `Carousel text containment failed after repair: ${lastContainment.escapedTextPixels} visible text pixels escaped the bubble.`,
+    `Carousel headline containment failed after repair: ${lastContainment.escapedTextPixels} visible text pixels escaped the bubble.`,
   );
 }
 

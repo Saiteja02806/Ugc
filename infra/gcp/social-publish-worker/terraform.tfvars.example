@@ -18,7 +18,8 @@ queue_name                   = "social-publish"
 worker_job_types             = "publish_social_post"
 
 worker_visibility_timeout_seconds = 300
-min_instance_count                = 1
+# Scheduled Cloud Tasks wake this request-based service when a post is due.
+min_instance_count                = 0
 max_instance_count                = 1
 request_timeout_seconds           = 300
 cpu                               = "1"

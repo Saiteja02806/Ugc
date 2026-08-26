@@ -22,14 +22,19 @@ resource "google_cloud_tasks_queue" "social_publish_scheduler" {
 locals {
   background_job_task_queues = {
     ai-generation = {
-      concurrent_dispatches = 4
-      dispatches_per_second = 2
+      # One request occupies one Cloud Run instance. This matches the AI
+      # worker's initial max_instance_count of 10, so a burst can grow instead
+      # of being artificially held at four concurrent jobs.
+      concurrent_dispatches = 10
+      dispatches_per_second = 5
       max_attempts          = 5
       max_retry_duration    = "3600s"
     }
     carousel = {
-      concurrent_dispatches = 4
-      dispatches_per_second = 2
+      # Do not dispatch parallel Carousel writers until the durable Carousel
+      # assignment reservation is made safe for more than one worker.
+      concurrent_dispatches = 1
+      dispatches_per_second = 1
       max_attempts          = 5
       max_retry_duration    = "3600s"
     }
@@ -40,12 +45,16 @@ locals {
       max_retry_duration    = "3600s"
     }
     social-publish = {
-      concurrent_dispatches = 10
-      dispatches_per_second = 5
+      # The current social-publish worker has a single safe execution slot.
+      concurrent_dispatches = 1
+      dispatches_per_second = 1
       max_attempts          = 5
       max_retry_duration    = "3600s"
     }
     video-render = {
+      # This limits launcher requests only. It is not an active Cloud Run Job
+      # concurrency guard; add a durable render-slot gate before increasing
+      # the number of simultaneously launched render jobs.
       concurrent_dispatches = 2
       dispatches_per_second = 1
       max_attempts          = 4

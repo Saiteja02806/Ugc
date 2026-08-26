@@ -14,7 +14,6 @@ import {
 } from "@/lib/carousel/automatic-candidate-count";
 import { buildCarouselBusinessContentContext } from "@/lib/carousel/business-content-context";
 import {
-  attachCarouselContentPlanItemsToJob,
   releaseCarouselContentPlanReservation,
   reserveCarouselContentPlanItems,
   type CarouselContentPlanRecord,
@@ -327,6 +326,7 @@ async function prepareControlledGenerationBatch(params: {
     });
 
     for (const [slotIndex, assignment] of assignments.entries()) {
+      const persistedAssignment = persistedAssignments[slotIndex];
       const contentPlanItem = contentPlanItemsByExperimentBatch.get(
         experimentBatch.id,
       )?.[slotIndex];
@@ -347,7 +347,6 @@ async function prepareControlledGenerationBatch(params: {
       );
 
       if (!generation) {
-        const persistedAssignment = persistedAssignments[slotIndex];
         if (!persistedAssignment) {
           throw new Error(`Carousel experiment slot ${slotIndex} was not persisted.`);
         }
@@ -409,6 +408,35 @@ async function prepareControlledGenerationBatch(params: {
           );
           if (!generation) throw error;
         }
+      }
+
+      // A process may have stopped after the generation row was created but
+      // before its assignment link was persisted. Repair that exact durable
+      // link before the batch-job transaction validates ownership.
+      generations = await getCarouselGenerationsByBatchId(
+        params.generationBatchId,
+      );
+      generation = generations.find(
+        (candidate) => candidate.candidateIndex === candidateIndex,
+      );
+      if (!generation || !persistedAssignment) {
+        throw new Error(
+          `Carousel experiment slot ${slotIndex} is missing durable generation ownership.`,
+        );
+      }
+      if (
+        generation.carouselExperimentAssignmentId &&
+        generation.carouselExperimentAssignmentId !== persistedAssignment.id
+      ) {
+        throw new Error(
+          `Carousel experiment slot ${slotIndex} is linked to another assignment.`,
+        );
+      }
+      if (generation.carouselExperimentAssignmentId !== persistedAssignment.id) {
+        await linkCarouselExperimentAssignment({
+          assignmentId: persistedAssignment.id,
+          carouselId: generation.id,
+        });
       }
     }
   }
@@ -622,36 +650,6 @@ export async function enqueueProcessingCarouselCandidates(
         throw new Error(`Carousel experiment ${experimentBatchId} has conflicting jobs.`);
       }
       const jobId = await enqueueCarouselExperimentBatchJob({
-        beforeDispatch: async (candidateJobId) => {
-          const itemIdsByReservation = new Map<string, string[]>();
-
-          for (const generation of orderedBatch) {
-            if (
-              !generation.contentPlanItemId ||
-              !generation.contentPlanReservationId
-            ) {
-              continue;
-            }
-
-            const itemIds =
-              itemIdsByReservation.get(generation.contentPlanReservationId) ??
-              [];
-            itemIds.push(generation.contentPlanItemId);
-            itemIdsByReservation.set(
-              generation.contentPlanReservationId,
-              itemIds,
-            );
-          }
-
-          for (const [reservationToken, planItemIds] of itemIdsByReservation) {
-            await attachCarouselContentPlanItemsToJob({
-              jobId: candidateJobId,
-              planItemIds,
-              reservationToken,
-              userId: profile.userId,
-            });
-          }
-        },
         carouselIds: orderedBatch.map((generation) => generation.id),
         existingJobId: existingJobIds[0] ?? null,
         experimentBatchId,

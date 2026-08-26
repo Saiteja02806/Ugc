@@ -4,14 +4,19 @@ import type { CarouselFormat } from "../types.js";
 import type {
   CarouselStructure2RenderSpec,
 } from "./carousel-structure-2-render-spec.js";
+import { CAROUSEL_FIXED_FONT_SIZE } from "./carousel-render-slide.js";
 import {
-  buildConnectedBubblePath,
-  CAROUSEL_FIXED_FONT_SIZE,
-  snapConnectedBubbleVisualWidths,
-} from "./carousel-render-slide.js";
+  CAROUSEL_STRUCTURE_2_CTA_MAX_LINES,
+  CAROUSEL_STRUCTURE_2_SAFE_BOTTOM,
+  CAROUSEL_STRUCTURE_2_SAFE_TOP,
+  CAROUSEL_STRUCTURE_2_SAFE_X,
+  CAROUSEL_STRUCTURE_2_STORY_MAX_LINES,
+  CAROUSEL_STRUCTURE_2_TEXT_GROUP_GAP,
+  CAROUSEL_STRUCTURE_2_TEXT_LINE_HEIGHT,
+} from "./carousel-structure-2-layout.js";
 
 export const CAROUSEL_STRUCTURE_2_RENDERER_VERSION =
-  "story-native-renderer-v3-fixed-connected-white";
+  "story-native-renderer-v5-plain-white-story-text";
 
 const FORMAT_DIMENSIONS: Record<
   CarouselFormat,
@@ -21,23 +26,14 @@ const FORMAT_DIMENSIONS: Record<
   "4:5": { height: 1350, width: 1080 },
 };
 const FONT_FAMILY = "Geist, Arial, Helvetica, sans-serif";
-const SAFE_X = 72;
-const SAFE_TOP = 84;
-const SAFE_BOTTOM = 92;
-const BUBBLE_HORIZONTAL_PADDING = 34;
-const BUBBLE_VERTICAL_PADDING = 8;
-const BUBBLE_LINE_OVERLAP = 8;
-const BUBBLE_RADIUS = 18;
+const DIRECT_TEXT_SIDE_BUFFER = 34;
 
 type TextLayout = {
   blockHeight: number;
-  bubbleWidths: number[];
   fontSize: number;
   lineHeight: number;
-  lineStep: number;
   lines: string[];
   maximumLineWidth: number;
-  rectHeight: number;
 };
 
 type Bounds = {
@@ -48,7 +44,7 @@ type Bounds = {
 };
 
 export type CarouselStructure2RenderDiagnostics = {
-  bubbleShapeStrategy: "hybrid-soft-union-connected-path";
+  bubbleShapeStrategy: "plain-white-text-with-shadow";
   ctaBounds: Bounds | null;
   ctaFontSize: number | null;
   ctaLineCount: number;
@@ -130,32 +126,37 @@ function buildCarouselStructure2Overlay(params: {
   spec: CarouselStructure2RenderSpec;
   width: number;
 }) {
-  const maximumTextWidth = params.width - SAFE_X * 2;
+  const maximumTextWidth = params.width - CAROUSEL_STRUCTURE_2_SAFE_X * 2;
+  const maximumRenderableTextWidth =
+    maximumTextWidth - DIRECT_TEXT_SIDE_BUFFER * 2;
   const story = fitText({
-    maximumLines: 6,
-    maximumWidth: maximumTextWidth - BUBBLE_HORIZONTAL_PADDING * 2,
+    maximumLines: CAROUSEL_STRUCTURE_2_STORY_MAX_LINES,
+    maximumWidth: maximumRenderableTextWidth,
     value: params.spec.storyText,
   });
   const cta = params.spec.ctaText
     ? fitText({
-        maximumLines: 3,
-        maximumWidth: maximumTextWidth - BUBBLE_HORIZONTAL_PADDING * 2,
+        maximumLines: CAROUSEL_STRUCTURE_2_CTA_MAX_LINES,
+        maximumWidth: maximumRenderableTextWidth,
         value: params.spec.ctaText,
       })
     : null;
-  const storyWidth = Math.max(...story.bubbleWidths);
+  const storyWidth = story.maximumLineWidth;
   const storyHeight = story.blockHeight;
-  const ctaWidth = cta ? Math.max(...cta.bubbleWidths) : 0;
+  const ctaWidth = cta?.maximumLineWidth ?? 0;
   const ctaHeight = cta ? cta.blockHeight : 0;
-  const ctaBottom = params.height - SAFE_BOTTOM;
-  const ctaTop = cta ? ctaBottom - ctaHeight : null;
-  const maximumStoryBottom = ctaTop ? ctaTop - 46 : params.height - SAFE_BOTTOM;
+  const textBlockHeight =
+    storyHeight +
+    (cta ? CAROUSEL_STRUCTURE_2_TEXT_GROUP_GAP + ctaHeight : 0);
   const storyTop = resolveStoryTop({
-    blockHeight: storyHeight,
+    blockHeight: textBlockHeight,
     height: params.height,
-    maximumBottom: maximumStoryBottom,
+    maximumBottom: params.height - CAROUSEL_STRUCTURE_2_SAFE_BOTTOM,
     position: params.spec.textPosition,
   });
+  const ctaTop = cta
+    ? storyTop + storyHeight + CAROUSEL_STRUCTURE_2_TEXT_GROUP_GAP
+    : null;
   const storyLeft = Math.round((params.width - storyWidth) / 2);
   const storyBounds: Bounds = {
     height: storyHeight,
@@ -176,10 +177,11 @@ function buildCarouselStructure2Overlay(params: {
     .filter((bounds): bounds is Bounds => bounds !== null)
     .every(
       (bounds) =>
-        bounds.x >= SAFE_X &&
-        bounds.x + bounds.width <= params.width - SAFE_X &&
-        bounds.y >= SAFE_TOP &&
-        bounds.y + bounds.height <= params.height - SAFE_BOTTOM,
+        bounds.x >= CAROUSEL_STRUCTURE_2_SAFE_X &&
+        bounds.x + bounds.width <= params.width - CAROUSEL_STRUCTURE_2_SAFE_X &&
+        bounds.y >= CAROUSEL_STRUCTURE_2_SAFE_TOP &&
+        bounds.y + bounds.height <=
+          params.height - CAROUSEL_STRUCTURE_2_SAFE_BOTTOM,
     );
 
   if (!safeAreaContained) {
@@ -189,7 +191,7 @@ function buildCarouselStructure2Overlay(params: {
   }
 
   const diagnostics: CarouselStructure2RenderDiagnostics = {
-    bubbleShapeStrategy: "hybrid-soft-union-connected-path",
+    bubbleShapeStrategy: "plain-white-text-with-shadow",
     ctaBounds,
     ctaFontSize: cta?.fontSize ?? null,
     ctaLineCount: cta?.lines.length ?? 0,
@@ -199,9 +201,9 @@ function buildCarouselStructure2Overlay(params: {
     storyBounds,
     storyFontSize: story.fontSize,
     storyLineCount: story.lines.length,
-    textTreatment: "pill",
+    textTreatment: "overlay",
     visualRole: params.spec.visualRole,
-    whiteBackgroundGroupCount: cta ? 2 : 1,
+    whiteBackgroundGroupCount: 0,
   };
   const gradient = buildReadabilityGradient({
     height: params.height,
@@ -209,12 +211,14 @@ function buildCarouselStructure2Overlay(params: {
     position: params.spec.textPosition,
     width: params.width,
   });
-  const storyMarkup = buildStoryTextMarkup({
+  const storyMarkup = buildPlainWhiteTextMarkup({
     bounds: storyBounds,
     layout: story,
   });
   const ctaMarkup =
-    cta && ctaBounds ? buildCtaMarkup({ bounds: ctaBounds, layout: cta }) : "";
+    cta && ctaBounds
+      ? buildPlainWhiteTextMarkup({ bounds: ctaBounds, layout: cta })
+      : "";
 
   return {
     diagnostics,
@@ -235,7 +239,7 @@ function buildReadabilityGradient(params: {
   width: number;
 }) {
   if (params.layoutVariant === "story_pill_overlay") {
-    return `<rect width="${params.width}" height="${params.height}" fill="rgba(0,0,0,0.10)" />`;
+    return `<rect width="${params.width}" height="${params.height}" fill="rgba(0,0,0,0.18)" />`;
   }
 
   if (params.layoutVariant === "story_product_reveal") {
@@ -313,44 +317,21 @@ async function buildStructure2Background(params: {
     .toBuffer();
 }
 
-function buildStoryTextMarkup(params: {
-  bounds: Bounds;
-  layout: TextLayout;
-}) {
-  return buildConnectedWhiteTextMarkup(params);
-}
-
-function buildCtaMarkup(params: { bounds: Bounds; layout: TextLayout }) {
-  return buildConnectedWhiteTextMarkup(params);
-}
-
-function buildConnectedWhiteTextMarkup(params: {
+function buildPlainWhiteTextMarkup(params: {
   bounds: Bounds;
   layout: TextLayout;
 }) {
   const centerX = params.bounds.x + params.bounds.width / 2;
-  const bubble = buildConnectedBubblePath({
-    centerX,
-    groupHeight: params.layout.blockHeight,
-    groupY: params.bounds.y,
-    lineCenterOffset: params.layout.rectHeight / 2,
-    lineStep: params.layout.lineStep,
-    outerRadius: BUBBLE_RADIUS,
-    stepRadius: 22,
-    widths: params.layout.bubbleWidths,
-  });
   const baselineStart =
-    params.bounds.y +
-    BUBBLE_VERTICAL_PADDING +
-    params.layout.fontSize * 0.78;
+    params.bounds.y + params.layout.fontSize * 0.78;
   const lines = params.layout.lines
     .map(
       (line, index) =>
-        `<text x="${centerX}" y="${baselineStart + index * params.layout.lineStep}" fill="#141518" font-family="${FONT_FAMILY}" font-size="${params.layout.fontSize}" font-weight="600" letter-spacing="0" text-anchor="middle">${escapeXml(line)}</text>`,
+        `<text x="${centerX}" y="${baselineStart + index * params.layout.lineHeight}" fill="#ffffff" font-family="${FONT_FAMILY}" font-size="${params.layout.fontSize}" font-weight="600" letter-spacing="0" paint-order="stroke fill" stroke="#000000" stroke-linejoin="round" stroke-opacity="0.72" stroke-width="2" text-anchor="middle">${escapeXml(line)}</text>`,
     )
     .join("");
 
-  return `<path d="${bubble.pathData}" fill="#ffffff" />${lines}`;
+  return lines;
 }
 
 function resolveStoryTop(params: {
@@ -359,16 +340,19 @@ function resolveStoryTop(params: {
   maximumBottom: number;
   position: CarouselStructure2RenderSpec["textPosition"];
 }) {
-  const availableBottom = Math.max(SAFE_TOP + params.blockHeight, params.maximumBottom);
+  const availableBottom = Math.max(
+    CAROUSEL_STRUCTURE_2_SAFE_TOP + params.blockHeight,
+    params.maximumBottom,
+  );
   const preferred =
     params.position === "upper"
-      ? SAFE_TOP + 40
+      ? CAROUSEL_STRUCTURE_2_SAFE_TOP + 40
       : params.position === "center"
         ? Math.round((params.height - params.blockHeight) / 2)
         : availableBottom - params.blockHeight;
 
   return Math.max(
-    SAFE_TOP,
+    CAROUSEL_STRUCTURE_2_SAFE_TOP,
     Math.min(preferred, availableBottom - params.blockHeight),
   );
 }
@@ -392,27 +376,17 @@ function fitText(params: {
       `Structure 2 copy exceeds ${params.maximumLines} lines at the fixed ${fontSize}px font size.`,
     );
   }
-  const lineHeight = Math.round(fontSize * 1.16);
-  const rectHeight = fontSize + BUBBLE_VERTICAL_PADDING * 2;
-  const lineStep = rectHeight - BUBBLE_LINE_OVERLAP;
-  const requiredWidths = lines.map((line) =>
-    Math.ceil(
-      estimateTextWidth(line, fontSize) + BUBBLE_HORIZONTAL_PADDING * 2,
-    ),
+  const lineHeight = CAROUSEL_STRUCTURE_2_TEXT_LINE_HEIGHT;
+  const maximumLineWidth = Math.ceil(
+    Math.max(...lines.map((line) => estimateTextWidth(line, fontSize))),
   );
-  const bubbleWidths = snapConnectedBubbleVisualWidths({ requiredWidths });
 
   return {
-    blockHeight: rectHeight + Math.max(0, lines.length - 1) * lineStep,
-    bubbleWidths,
+    blockHeight: lines.length * lineHeight,
     fontSize,
     lineHeight,
-    lineStep,
     lines,
-    maximumLineWidth: Math.ceil(
-      Math.max(...lines.map((line) => estimateTextWidth(line, fontSize))),
-    ),
-    rectHeight,
+    maximumLineWidth,
   };
 }
 

@@ -25,10 +25,14 @@ must never be used as frontend state.
 - `bootstrap/`: Terraform remote-state bucket.
 - `foundation/`: APIs, service accounts, secrets, GCS/CDN, Cloud Tasks queues,
   and the optional recovery scheduler.
-- `ai-generation-worker/`: AI generation, Hook/Wall copy, media analysis, and
-  analytics synchronization jobs.
+- `ai-generation-worker/`: request-based AI generation, Hook/Wall copy, media
+  analysis, and analytics synchronization jobs. It scales from zero to its
+  Terraform maximum only while Cloud Tasks has work to deliver.
 - `carousel-worker/`: Carousel generation jobs.
-- `video-render-worker/`: edit, schedule-combination, and wall-text renders.
+- `video-render-worker/`: a request-based compatibility receiver plus the
+  authoritative one-shot `ugc-video-render-job` for edit,
+  schedule-combination, and wall-text renders. A Job starts for one render and
+  exits when that render ends; it has no idle minimum instance.
 - `social-publish-worker/`: social publish jobs.
 - `carousel-scheduler/`: scheduled Carousel replenishment.
 
@@ -64,7 +68,9 @@ GCP_AI_GENERATION_TASK_URL=<Cloud Run service URL>
 GCP_CAROUSEL_TASK_URL=<Cloud Run service URL>
 GCP_MEDIA_PROCESSING_TASK_URL=<Cloud Run service URL>
 GCP_SOCIAL_PUBLISH_TASK_URL=<Cloud Run service URL>
-GCP_VIDEO_RENDER_TASK_URL=<Cloud Run service URL>
+# Must be the internal app launcher, not the legacy video worker service.
+# It starts the one-shot ugc-video-render-job for each render.
+GCP_VIDEO_RENDER_TASK_URL=https://www.getugcpilot.com/api/internal/jobs/launch-render
 GCP_STORAGE_BUCKET=ugcsaas-media
 GCP_STORAGE_PUBLIC_BASE_URL=https://storage.googleapis.com/ugcsaas-media
 ```
@@ -78,7 +84,10 @@ Never commit credentials.
 1. Apply the Supabase migrations in timestamp order.
 2. Plan and apply `foundation/` to create Cloud Tasks queues.
 3. Build and push the worker image with `npm run worker:gcp:image:push`.
-4. Apply each enabled Cloud Run worker stack. The stacks set
+4. Apply each enabled Cloud Run worker stack. Service workers use request-based
+   billing and scale from their configured minimum only while a request is
+   active. The video Job is different: it is a one-shot instance that exits
+   after its render. The stacks set
    `WORKER_TRANSPORT=cloud-tasks` and grant the scheduler service account
    `roles/run.invoker`.
 5. Configure the worker URLs in the app environment and deploy the app.

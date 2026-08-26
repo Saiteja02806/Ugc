@@ -65,9 +65,9 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Minimum Cloud Run instances for the social-publish worker."
+  description = "Minimum request-based Cloud Run instances. Use 0 to avoid idle CPU cost between scheduled publishes."
   type        = number
-  default     = 1
+  default     = 0
 }
 
 variable "max_instance_count" {

@@ -92,6 +92,7 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
             repaired: false,
             textPixelContainmentPassed: true,
             textPixels: 10,
+            whiteBackgroundGroupCount: 1,
           },
         };
       },
@@ -107,7 +108,7 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
   assert.equal(receivedTextStyle, "plain");
   assert.deepEqual(readyOutput, {
     rendererVersion:
-      "social-bubble-renderer-v12-fixed-type-normalized-edit-v1",
+      "social-bubble-renderer-v14-heading-bubble-only-normalized-edit-v1",
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide.webp",
@@ -206,19 +207,19 @@ test("renders Structure 2 screenshot edits with the story-native renderer", asyn
         return {
           buffer: Buffer.from("story-rendered"),
           diagnostics: {
-            bubbleShapeStrategy: "hybrid-soft-union-connected-path",
+            bubbleShapeStrategy: "plain-white-text-with-shadow",
             ctaBounds: null,
             ctaFontSize: null,
             ctaLineCount: 0,
             layoutVariant: input.spec.layoutVariant,
-            rendererVersion: "story-native-renderer-v3-fixed-connected-white",
+            rendererVersion: "story-native-renderer-v5-plain-white-story-text",
             safeAreaContained: true,
             storyBounds: { height: 100, width: 700, x: 100, y: 100 },
             storyFontSize: 44,
             storyLineCount: 2,
             textTreatment: input.spec.textTreatment,
             visualRole: input.spec.visualRole,
-            whiteBackgroundGroupCount: 1,
+            whiteBackgroundGroupCount: 0,
           },
         };
       },
@@ -234,12 +235,12 @@ test("renders Structure 2 screenshot edits with the story-native renderer", asyn
   assert.ok(receivedSpec);
   assert.equal(receivedSpec.assetId, "product-asset-1");
   assert.equal(receivedSpec.layoutVariant, "story_product_reveal");
-  assert.equal(receivedSpec.textTreatment, "pill");
+  assert.equal(receivedSpec.textTreatment, "overlay");
   assert.equal(receivedSpec.textPosition, "upper");
   assert.equal(receivedSpec.visualRole, "product_asset");
   assert.deepEqual(readyOutput, {
     rendererVersion:
-      "story-native-renderer-v3-fixed-connected-white-normalized-edit-v1",
+      "story-native-renderer-v5-plain-white-story-text-normalized-edit-v1",
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide-4.webp",

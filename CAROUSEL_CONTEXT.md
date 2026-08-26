@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-08-25
+Last updated: 2026-08-26
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -786,7 +786,8 @@ response and must not hardcode plan limits.
 The daily limit is an inventory target, not a one-time lifetime batch. On each
 new user-local date, the feed must:
 
-1. carry unfinished, runtime-safe assignments from earlier dates;
+1. recover only an assignment already created for that same date but not yet
+   attached because an earlier request stopped between durable writes;
 2. assign already-ready, unassigned eligible inventory;
 3. count viable unassigned processing inventory; and
 4. reserve and enqueue only the remaining shortfall to the persisted daily
@@ -795,8 +796,8 @@ new user-local date, the feed must:
 Examples for a daily limit of ten:
 
 - ten completed yesterday -> generate ten for the new day;
-- five completed and five unfinished -> carry five and generate five;
-- none completed -> carry all ten and generate zero.
+- five current-day assignments already attached -> generate five;
+- no current-day assignments -> generate ten.
 
 Completing an item does not refill its occupied position during the same local
 day. The shortfall is calculated only against a new day's feed. Daily refill
@@ -1071,13 +1072,13 @@ structure.
 
 Balanced carousel copy rules:
 
-- A heading or hook is optional. When present, it must be 3-8 words, at most 50
-  characters, use no more than two visual lines, and must not be forced into a
+- A heading or hook is optional. When present, it must be 3-16 words, at most 100
+  characters, use no more than four visual lines, and must not be forced into a
   single line by over-shrinking.
-- Supporting content must be one complete sentence of 8-20 words, at most 120
-  characters, normally render as no more than three visual lines, explain one
-  specific idea, and avoid repeating the heading. List modes may use four total
-  visual lines.
+- Supporting content must be one complete sentence of 8-40 words, at most 240
+  characters, normally render as no more than six visual lines, explain one
+  specific idea, and avoid repeating the heading. List items may use up to two
+  visual lines each, with an eight-line total group cap.
 - Previously generated legacy rows without a reserved content format retain
   their stored five-slide Hook, Problem, Consequence, Solution, and Result/CTA
   story for read/edit compatibility. The planner no longer creates that legacy
@@ -1086,19 +1087,20 @@ Balanced carousel copy rules:
   for renderer and matcher compatibility.
 - The renderer is the final source of truth for line limits. It must wrap using
   the production font stack, actual font size, available width, padding, and
-  card dimensions, then keep headings to at most two rendered lines and body
-  text to at most four rendered lines.
-- A headline and its supporting copy remain two distinct text groups. Each
-  group uses one backend-generated connected white SVG path derived from its
-  measured line widths. Structure 2 uses the same connected-path engine for
-  story copy and for its separate CTA group; it does not switch to outlined
-  white text or a dark CTA panel.
+  card dimensions, then keep headings to at most four rendered lines and body
+  text to at most eight rendered lines.
+- A headline and its supporting copy remain two distinct text groups. Only a
+  Structure 1 headline uses one backend-generated connected white SVG path
+  derived from its measured line widths. Structure 1 body, list, and CTA copy
+  renders as ordinary white text directly on the image. Structure 2 has no
+  separate headline field, so its story and CTA copy also render as ordinary
+  white text directly on the image; neither receives a white SVG background.
 - Reserve horizontal corner safety of at least `radius + 6px` on each side in
-  addition to normal padding. Never cap a line rectangle below its required
-  visible text width. Rewrap at the fixed size and reject the plan/render when
-  it does not fit. Never shrink, truncate, add an ellipsis, or substitute
-  fallback copy. Reject the render if a text-mask pixel falls outside the
-  white-background mask.
+  addition to normal padding for a headline bubble. For all plain text, retain
+  measured wrapping and safe-area containment with white type plus a restrained
+  dark outline/shadow for legibility. Never shrink, truncate, add an ellipsis,
+  or substitute fallback copy. Reject the render if a headline text-mask pixel
+  falls outside its white-background mask.
 - JSON/schema validity, the backend-selected format, exact slide order and
   roles, required fields, renderer character limits, product timing, prohibited
   visual subjects, and unsupported/prohibited claims are publishing gates.
@@ -3326,8 +3328,8 @@ Name: **Verify v26 and replace the stale production assignment**
   generation link are additive, service-role-only database changes. Deploy the
   five ordered `2026082415*` migrations before application and worker code.
 - Structure 2 format metadata is versioned as
-  `carousel-structure-2-formats-v3-optional-cta` with story reference version
-  `carousel-structure-2-story-reference-v3`. Each format still uses the same
+  `carousel-structure-2-formats-v4-expanded-copy-centered` with story reference
+  version `carousel-structure-2-story-reference-v4`. Each format still uses the same
   five known roles exactly once, but their order is no longer a fixed runtime
   backbone. Format-specific example flows guide the writer, while only the
   format ID and five-slide output shape remain structural requirements. CTA
@@ -3378,15 +3380,15 @@ Name: **Verify v26 and replace the stale production assignment**
   Pre-render validation checks Structure 1 headline/body/list groups and
   Structure 2 story/CTA groups against their fixed-size line capacities. A
   failing AI plan gets the existing one isolated repair and then fails closed.
-- Structure 1 renderer `social-bubble-renderer-v12-fixed-type` preserves its
-  text-pixel containment retry, but that retry may only increase bubble safety;
-  it may not reduce typography.
+- Structure 1 renderer `social-bubble-renderer-v14-heading-bubble-only` preserves its
+  headline text-pixel containment retry, but that retry may only increase
+  headline-bubble safety; it may not reduce typography. Supporting text is
+  direct white text with no SVG background.
 - Structure 2 renderer
-  `story-native-renderer-v3-fixed-connected-white` uses the same backend
-  connected-path geometry as Structure 1. Every story group is black text on
-  an opaque white connected SVG path. A separate CTA creates a second white
-  connected path. Stored legacy treatment labels remain readable, but new
-  Structure 2 specs normalize the effective treatment to the white bubble.
+  `story-native-renderer-v5-plain-white-story-text` renders story and CTA copy
+  as direct white text with a restrained dark outline. Stored legacy treatment
+  labels remain readable, but new Structure 2 specs normalize the effective
+  treatment to the plain overlay.
 - Existing rendered Carousel WebPs and Hook videos are immutable. The new
   renderer/layout versions apply only to new generations and explicit
   re-renders after the application and worker are deployed.
@@ -3444,13 +3446,13 @@ Name: **Verify v26 and replace the stale production assignment**
   boundaries remain unchanged. This removes a copy-format rigidity, not the
   publishing and safety boundaries that protect usable output.
 - Planner version
-  `llm-carousel-structure-2-flexible-seed-writer-v7-optional-cta`, story schema
-  `carousel-structure-2-flexible-story-v3-optional-cta`, and format metadata
-  `carousel-structure-2-formats-v3-optional-cta` identify this contract. These
+  `llm-carousel-structure-2-flexible-seed-writer-v9-plain-white-story-text`, story schema
+  `carousel-structure-2-flexible-story-v5-plain-white-story-text`, and format metadata
+  `carousel-structure-2-formats-v4-expanded-copy-centered` identify this contract. These
   source changes are not live until the updated Carousel worker is deployed and
   a production Structure 2 batch is verified.
 
-## 2026-08-25 Progressive Trending Delivery and Carousel Carry Rebinding
+## 2026-08-25 Progressive Trending Delivery and Carousel Assignment Binding
 
 - Daily Trending slots remain the ordered, durable source of truth. A resolved
   slot is public immediately; another slot being planned, preparing, failed, or
@@ -3459,11 +3461,12 @@ Name: **Verify v26 and replace the stale production assignment**
   whole-screen failure only when there are no usable ideas at all. A partial
   failure is isolated to that slot, while planned/preparing slots may continue
   through their normal background path.
-- The legacy Carousel inventory may carry an unused runtime-safe assignment
-  into a new local day. The unified feed may bind that same Carousel assignment
-  once per `feed_id`, so a carried idea is available today without generating a
-  duplicate. Hook and Wall assignments remain globally unique because they do
-  not have this carry-forward lifecycle.
+- A new local day does not reuse a Carousel assignment from an earlier date.
+  The legacy Carousel feed may recover only a same-day assignment that was
+  created but not attached during an interrupted request. The unified feed's
+  per-`feed_id` Carousel binding index remains compatible with historic rows;
+  new work does not use it to carry an idea into another day. Hook and Wall
+  assignments remain globally unique.
 - Feed status is derived from durable slots under the same per-user/day
   advisory lock used for assignment attachment. A delayed failure update cannot
   overwrite a feed that already has ready slots, and the migration normalizes
@@ -3498,3 +3501,167 @@ Name: **Verify v26 and replace the stale production assignment**
   preserves every decided slot, and lets the normal prepared-feed attachment
   path bind an eligible active Hook. It neither deletes user content nor adds
   posts beyond the plan's existing durable slot count.
+
+## 2026-08-25 App Screenshot Signed Upload CORS Contract
+
+- Settings and the Trending Carousel editor upload app screenshots directly to
+  the configured GCS media bucket through a V4 signed `PUT` URL.
+- Browser uploads send only the signed `Content-Type` header. They do not send
+  `Cache-Control`; production bucket CORS did not authorize that request header,
+  so its preflight omitted CORS response headers and the browser surfaced only
+  `TypeError: Failed to fetch` after the API had already created a pending row.
+- The GCP foundation CORS contract includes `Cache-Control` as an allowed shared
+  header for forward compatibility, while the current screenshot upload keeps
+  the smallest required request-header surface. Failed uploads continue to
+  archive their pending owner-scoped database row.
+
+## 2026-08-25 Durable Trending Delivery Reconciliation
+
+- The `daily_trending_feed_slots` table is the immutable delivery ledger. A
+  feed is complete only when it has exactly `daily_limit` physical positions
+  and every one is decided. Re-entering the daily-plan reservation is therefore
+  an idempotent repair for a missing position; it preserves formats already
+  promised at existing positions and never deletes or recreates decided work.
+- A `ready` Hook or Wall assignment is pinned to its daily slot across safe
+  mutable-source changes (prompt/version or Creative Assets selection). A
+  genuinely retired assignment, deleted/ineligible source asset, or missing
+  provider item reopens only that undecided slot for normal replacement. A
+  provider outage cannot reopen a slot because reconciliation requires a
+  successful provider read.
+- Every successful Hook, Wall, Carousel-plan, and Carousel worker completion
+  atomically writes a durable Trending-reconciliation outbox record in the
+  same database transaction that marks the source job complete. The worker
+  attempts the signed internal application call immediately; a failed call is
+  rescheduled from that durable record with capped exponential backoff and is
+  drained by the authenticated background-job recovery scheduler. Browser
+  polling is only a read mechanism, never the trigger that advances completed
+  backend work.
+- The recovery scheduler also finds current feeds whose physical slot count is
+  not exactly `daily_limit`. This repairs a historical interrupted 9/10 (or
+  analogous 19/20 and 49/50) feed even after its last existing card is swiped,
+  without marking it complete or waiting for another browser refresh.
+- A content-plan record is marked failed only after its owning background job
+  reaches a terminal failed state. Retriable worker errors leave the plan
+  generating. The Wall-of-Text content planner also uses the supported model
+  defaults rather than sending an unsupported temperature override.
+- Deploy this as one compatibility slice: apply migrations
+  `20260825140000_harden_trending_daily_delivery.sql` and
+  `20260825153000_make_trending_delivery_reconciliation_durable.sql`, deploy
+  the app route, then deploy both AI-generation and Carousel workers (the
+  latter requires the internal URL and secret environment variables). Enable
+  the authenticated background-job recovery scheduler only after its deployed
+  route passes a production check; it is required for durable retry when all
+  immediate callback attempts fail. Verify a Free canary plus Starter and
+  Growth canaries on the authenticated production Trending flow. Existing
+  content remains untouched; only unresolved current slots can be repaired.
+
+## 2026-08-26 Carousel Expanded Copy Capacity and Centered Placement
+
+- The automatic Carousel writers now treat more complete copy as permissible,
+  rather than forcing the short one-to-two-line output that had become the
+  common result. This doubles the maximum capacity only; it does not double a
+  minimum or force every slide to be longer.
+- Structure 1 accepts up to 100 headline characters / 16 words, 240 body
+  characters / 40 words, 68 CTA characters, and 88 characters per list item.
+  At the fixed 44px type size, the rendering caps are four headline lines,
+  eight body lines, two lines per list item, and eight lines for a complete
+  list group.
+- Structure 2 accepts up to 720 story characters and 360 CTA characters. Its
+  fixed 44px caps are twelve story lines and six CTA lines. When both groups
+  are present, the stricter square-canvas combined-safe-area calculation is
+  also a publishing gate, so the doubled independent caps cannot create an
+  unsafe or clipped slide.
+- Structure 2 format word maxima now provide the doubled advisory reference:
+  28 words on the opening slide, 60 words on slides two through four, and 64
+  words on slide five. The existing lower word targets remain unchanged and
+  word ranges remain writing guidance rather than a copy-replacement rule.
+- New automatic Structure 1 and Structure 2 slides place text in the vertical
+  center. Structure 1 no longer selects top/bottom placement from text mode or
+  slide type, and Structure 2 no longer selects upper/lower placement from
+  story role, asset role, or slide number. In Structure 2, an optional CTA
+  travels with its story as one centered text block instead of remaining
+  bottom-anchored. Existing immutable renders are not rewritten, and an
+  explicit editor placement remains user-controlled.
+- Fixed typography, measured wrapping, heading-only white connected bubbles,
+  direct white body/story/CTA text, no-shrink, no-truncation, headline
+  containment, human-image safety, and all five-slide format contracts remain
+  unchanged. New versions are
+  `llm-carousel-planner-v34-heading-bubble-only`,
+  `social-bubble-renderer-v14-heading-bubble-only`,
+  `llm-carousel-structure-2-flexible-seed-writer-v9-plain-white-story-text`,
+  `carousel-structure-2-flexible-story-v5-plain-white-story-text`,
+  `carousel-structure-2-formats-v4-expanded-copy-centered`, and
+  `story-native-renderer-v5-plain-white-story-text`.
+- This is a local source decision. It is not live until the worker is deployed
+  and new Structure 1 and Structure 2 output is verified through the
+  authenticated production Trending flow on `https://www.getugcpilot.com`.
+
+## 2026-08-26 Heading-Only Connected SVG Treatment
+
+- A white connected SVG background is a headline treatment, not a default text
+  container. Structure 1 uses it only when a slide contains a headline. Its
+  body, list, and CTA text render directly in white with a subtle dark outline
+  and shadow for image contrast. A body-only Structure 1 slide intentionally
+  has no white SVG group.
+- Structure 2 stores story and CTA copy rather than a separate headline field.
+  Both groups therefore render as normal white overlay text, never as a white
+  connected SVG path. This applies to automatic output and screenshot-editor
+  re-renders, so the rule cannot be bypassed by an old presentation label.
+- The fixed 44px font, measured wrapping, doubled line capacities, centered
+  automatic placement, no-shrink/no-truncation policy, and headline mask
+  containment guard remain in force. Existing rendered images are immutable;
+  the change applies to newly rendered or edited Carousel slides after worker
+  deployment and production verification.
+
+## 2026-08-26 GCP Worker Demand Scaling Boundary
+
+- All HTTP Cloud Run workers use request-based CPU allocation. Their instances
+  start only when Cloud Tasks delivers an HTTP job and may scale to zero when
+  the queue is idle; a minimum instance count of zero is intentional for the
+  current testing/early-production cost boundary.
+- AI generation has an initial ceiling of ten single-concurrency instances and
+  its Cloud Tasks queue may dispatch up to ten jobs concurrently. This is a
+  controlled burst limit, not a guarantee that every provider generation will
+  finish within two minutes. Any increase requires provider-quota and
+  production latency verification.
+- Carousel remains request-based but fixed at one concurrent worker and one
+  Cloud Tasks dispatch. Its idea/assignment reservation is not yet safe for
+  parallel Carousel writers; scaling it above one would risk duplicate or
+  conflicting Carousel assignments.
+- Long video rendering is authoritative only through `ugc-video-render-job`.
+  Each Cloud Run Job execution starts for one durable render and exits when it
+  finishes. The legacy video HTTP service remains a request-based,
+  zero-minimum compatibility receiver until the deployed task URL is verified
+  to use the internal Job launcher. It must not be configured with idle,
+  always-allocated CPU.
+- Cloud Tasks' video-render limits throttle app launcher requests, not active
+  Cloud Run Job executions. Before increasing parallel video launch capacity,
+  introduce a durable database render-slot gate so a burst cannot create an
+  unbounded number of paid Job executions.
+
+## 2026-08-26 Atomic Carousel Batch Ownership
+
+- A `generate_carousel` background job remains one five-Carousel experiment
+  batch; no second Carousel job type or duplicate job table is introduced.
+- Before Cloud Tasks can deliver that job, one service-role database transaction
+  creates or reuses its deterministic job record, binds the exact five existing
+  generation rows, their experiment assignments, and their five already-reserved
+  content-plan items. The job ID is recorded on every one of those records in
+  the same commit.
+- The transaction locks only its own experiment batch. Different users and
+  different batches remain free to prepare concurrently. A second request for
+  the same batch returns the original job instead of taking ideas a second time.
+- If the app stops before Cloud Tasks delivery, the database still shows the
+  complete owner/job relationship. Recovery can redeliver that same job; it
+  cannot create duplicate Carousel ideas or attach a different batch's ideas.
+- A queued job with no recorded delivery is immediately eligible for a safe
+  send on the next preparation attempt. The delivery claim is compare-and-set,
+  so two observers may race to recover it but only one can send the task.
+- The preparation path also repairs the narrow interrupted-write case where a
+  generation row exists but its experiment-assignment link was not yet written.
+  A conflicting existing link fails closed.
+- This removes the database-ownership blocker for later controlled parallel
+  Carousel workers. The deployed/local Terraform concurrency remains one until
+  this migration, app code, worker compatibility, and a concurrency load test
+  are deployed and verified together. Scaling is a separate rollout, not part
+  of this database change.

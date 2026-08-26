@@ -31,6 +31,8 @@ test("all eight Structure 2 formats resolve the same isolated three-layout contr
     assert.equal(specs[4]!.visualRole, "product_asset");
     assert.equal(specs[4]!.productVisualEligibility, "allowed");
     assert.ok(specs.every((spec) => spec.storyFormatId === storyFormatId));
+    assert.ok(specs.every((spec) => spec.textPosition === "center"));
+    assert.ok(specs.every((spec) => spec.textTreatment === "overlay"));
   }
 });
 

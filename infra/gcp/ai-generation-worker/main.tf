@@ -25,7 +25,11 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
 
       resources {
-        cpu_idle          = false
+        # Request-based billing: Cloud Run starts instances for queued HTTP work
+        # and can scale back to zero after it completes. Each worker request is
+        # deliberately single-concurrency because an AI/provider call owns the
+        # full job lifetime.
+        cpu_idle          = true
         startup_cpu_boost = true
 
         limits = {

@@ -238,8 +238,8 @@ test("rasterizes six-second Wall copy with Inter Regular and no background box",
 
   assert.equal(layout.canvasWidth, 1080);
   assert.equal(layout.canvasHeight, 1920);
-  assert.equal(layout.segments[0]?.fontSize, 40);
-  assert.equal(layout.segments[1]?.fontSize, 40);
+  assert.equal(layout.segments[0]?.fontSize, 48);
+  assert.equal(layout.segments[1]?.fontSize, 48);
   assert.doesNotMatch(svg, /wallTextScrim|radialGradient/);
   assert.match(svg, /font-family="Inter, Arial/);
   assert.match(svg, /stroke-width="2"/);

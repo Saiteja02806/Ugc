@@ -25,6 +25,7 @@ export function HookVideoCard({
   hookText = null,
   previewError,
   previewLoading,
+  previewLoadKey = 0,
   previewUrl,
   style,
   trimEnd = null,
@@ -46,6 +47,7 @@ export function HookVideoCard({
   hookText?: string | null;
   previewError: string | null;
   previewLoading: boolean;
+  previewLoadKey?: number;
   previewUrl: string | null;
   style?: CSSProperties;
   trimEnd?: number | null;
@@ -111,7 +113,7 @@ export function HookVideoCard({
       {previewUrl ? (
         <video
           ref={videoRef}
-          key={previewUrl}
+          key={`${previewUrl}:${previewLoadKey}`}
           src={previewUrl}
           poster={video.thumbnailUrl ?? undefined}
           aria-label={video.title}

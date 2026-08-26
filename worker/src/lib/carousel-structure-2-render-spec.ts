@@ -84,7 +84,6 @@ export function buildCarouselStructure2RenderSpecs(params: {
     }
 
     const presentation = resolvePresentation({
-      slideNumber: slide.slideNumber,
       storyRole: slide.storyRole,
       visualRole: asset.asset_role,
     });
@@ -108,7 +107,6 @@ export function buildCarouselStructure2RenderSpecs(params: {
 }
 
 function resolvePresentation(params: {
-  slideNumber: number;
   storyRole: CarouselStructure2StoryRole;
   visualRole: CarouselStructure2VisualRole;
 }): Pick<
@@ -119,30 +117,30 @@ function resolvePresentation(params: {
     return {
       layoutVariant: "story_pill_overlay",
       textPosition: "center",
-      textTreatment: "pill",
+      textTreatment: "overlay",
     };
   }
 
   if (params.visualRole === "product_asset") {
     return {
       layoutVariant: "story_product_reveal",
-      textPosition: "upper",
-      textTreatment: "pill",
+      textPosition: "center",
+      textTreatment: "overlay",
     };
   }
 
   if (params.storyRole === "product_turning_point") {
     return {
       layoutVariant: "story_pill_overlay",
-      textPosition: "lower",
-      textTreatment: "pill",
+      textPosition: "center",
+      textTreatment: "overlay",
     };
   }
 
   return {
     layoutVariant: "story_overlay_only",
-    textPosition: params.slideNumber === 3 ? "upper" : "lower",
-    textTreatment: "pill",
+    textPosition: "center",
+    textTreatment: "overlay",
   };
 }
 

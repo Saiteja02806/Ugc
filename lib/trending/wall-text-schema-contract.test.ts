@@ -527,10 +527,10 @@ test("measures final Wall lines with Inter before saving authoritative layout", 
   );
 });
 
-test("uses Inter Regular 400 with the lighter 36-42px Wall scale", () => {
+test("uses Inter Regular 400 with the restored 44-52px Wall scale", () => {
   assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 400/);
-  assert.match(visualStyleSource, /WALL_TEXT_MINIMUM_FONT_SIZE = 36/);
-  assert.match(visualStyleSource, /WALL_TEXT_MAXIMUM_FONT_SIZE = 42/);
+  assert.match(visualStyleSource, /WALL_TEXT_MINIMUM_FONT_SIZE = 44/);
+  assert.match(visualStyleSource, /WALL_TEXT_MAXIMUM_FONT_SIZE = 52/);
   assert.match(layoutEngineSource, /Inter Regular \$\{fontSize\}/);
   assert.match(layoutEngineSource, /inter-latin-400-normal\.woff/);
   assert.match(renderValidationSource, /Inter Regular \$\{fontSize\}/);
@@ -593,7 +593,7 @@ test("V7 uses soft copy targets and measured fit instead of clip-time limits", (
   assert.match(feedSource, /promptVersion: WALL_TEXT_PROMPT_VERSION/);
 });
 
-test("V7 accepts thirty words on a six-second source when measured layout fits", () => {
+test("V7 rejects thirty long words that no longer fit the restored 44px floor", () => {
   const loaderPath = new URL(
     "../../scripts/next-server-only-test-loader.mjs",
     import.meta.url,
@@ -622,35 +622,24 @@ test("V7 accepts thirty words on a six-second source when measured layout fits",
     });
     process.stdout.write(JSON.stringify({ budget, content: result.content }));
   `;
-  const output = execFileSync(
-    process.execPath,
-    [
-      "--import",
-      loaderPath,
-      "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
-      "--experimental-strip-types",
-      "--input-type=module",
-      "--eval",
-      script,
-    ],
-    { encoding: "utf8" },
-  );
-  const result = JSON.parse(output) as {
-    budget: { maxWords: number; spatialMaximum: number; targetWords: number };
-    content: {
-      finalLayout: {
-        blocks: Array<{ lines: string[] }>;
-        fontWeight: number;
-      };
-    };
-  };
-  const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
-
   assert.equal(original.split(/\s+/u).length, 30);
-  assert.equal(result.budget.maxWords, 50);
-  assert.equal(result.content.finalLayout.fontWeight, 400);
-  assert.ok(result.budget.targetWords <= result.budget.spatialMaximum);
-  assert.ok(lines.length >= 4 && lines.length <= 7);
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        [
+          "--import",
+          loaderPath,
+          "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+          "--experimental-strip-types",
+          "--input-type=module",
+          "--eval",
+          script,
+        ],
+        { encoding: "utf8", stdio: "pipe" },
+      ),
+    /Wall-of-text copy cannot be arranged into four to seven balanced lines/,
+  );
 });
 
 test("balances the reported Wall example into readable measured lines", () => {
@@ -694,13 +683,14 @@ test("balances the reported Wall example into readable measured lines", () => {
   };
 
   assert.equal(layout.fontFamily, "Inter");
-  assert.equal(layout.lineHeightPx, 46.2);
+  assert.equal(layout.lineHeightPx, 57.2);
   assert.deepEqual(layout.blocks[0]?.lines, [
-    "People assume one program fits",
-    "every meal. But personalized",
-    "guidance connects choices to",
-    "goals. Relevance matters more",
-    "than rigid rules.",
+    "People assume one program",
+    "fits every meal. But",
+    "personalized guidance",
+    "connects choices to",
+    "goals. Relevance matters",
+    "more than rigid rules.",
   ]);
 });
 
@@ -850,7 +840,7 @@ test("upgrades stale Wall layout without sending existing copy back to AI", () =
   );
   assert.match(
     databaseSource,
-    /\.eq\("generator_version", WALL_TEXT_GENERATOR_VERSION\)/,
+    /pinnedAssignmentIds\.size === 0[\s\S]*\.eq\([\s\S]*"generator_version",[\s\S]*WALL_TEXT_GENERATOR_VERSION/,
   );
   assert.match(
     databaseSource,

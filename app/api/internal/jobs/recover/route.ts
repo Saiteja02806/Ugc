@@ -8,9 +8,20 @@ import {
 } from "@/lib/jobs/background-jobs";
 import { enqueueBackgroundJobCloudTask } from "@/lib/jobs/gcp-cloud-tasks";
 import {
+  getMissingBusinessProfileEnvVars,
+} from "@/lib/business-profiles/db";
+import {
   getMissingCloudTasksOidcEnvVars,
   verifyCloudTasksOidcRequest,
 } from "@/lib/scheduling/cloud-tasks-oidc-auth";
+import { reconcileCompletedTrendingFeedForUser } from "@/lib/trending/reconcile-completed-feed";
+import {
+  claimDueTrendingFeedReconciliations,
+  completeTrendingFeedReconciliation,
+  getMissingUnifiedTrendingFeedEnvVars,
+  listCurrentTrendingFeedIntegrityRepairs,
+  rescheduleTrendingFeedReconciliation,
+} from "@/lib/trending/unified-daily-feed-db";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,6 +55,12 @@ export async function POST(request: Request) {
     60,
     43_200,
   );
+  const trendingMissing = [
+    ...new Set([
+      ...getMissingBusinessProfileEnvVars(),
+      ...getMissingUnifiedTrendingFeedEnvVars(),
+    ]),
+  ];
 
   try {
     const staleJobs = await listRecoverableBackgroundJobs({
@@ -102,15 +119,137 @@ export async function POST(request: Request) {
       }
     }
 
+    const trendingResults =
+      trendingMissing.length > 0
+        ? {
+            error: "Trending reconciliation is not configured.",
+            inspected: 0,
+            results: [],
+          }
+        : await reconcileDurableTrendingFeeds({
+            limit: Math.min(limit, 25),
+          });
+
+    if (trendingMissing.length > 0) {
+      console.error("Durable Trending reconciliation is not configured", {
+        missing: trendingMissing,
+      });
+    }
+
+    const integrityResults =
+      trendingMissing.length > 0
+        ? {
+            error: "Trending integrity repair is not configured.",
+            inspected: 0,
+            results: [],
+          }
+        : await repairIncompleteTrendingFeeds({
+            limit: Math.min(limit, 25),
+          });
+
     return json({
       inspected: staleJobs.length,
       ok: true,
       results,
+      trendingIntegrityRepair: integrityResults,
+      trendingReconciliation: trendingResults,
     });
   } catch (error) {
     console.error("Background job recovery scan failed:", error);
     return json({ ok: false, error: "Recovery scan failed." }, 500);
   }
+}
+
+async function repairIncompleteTrendingFeeds(params: { limit: number }) {
+  const repairs = await listCurrentTrendingFeedIntegrityRepairs({
+    limit: params.limit,
+  });
+  const results: Array<Record<string, string | null>> = [];
+
+  for (const repair of repairs) {
+    try {
+      const reconciliation = await reconcileCompletedTrendingFeedForUser(
+        repair.user_id,
+      );
+      results.push({
+        feedId: repair.feed_id,
+        result: reconciliation.skipped ? "skipped" : "repaired",
+        userId: repair.user_id,
+      });
+    } catch (error) {
+      console.error("Incomplete Trending feed repair failed", {
+        error: getErrorMessage(error),
+        feedId: repair.feed_id,
+        userId: repair.user_id,
+      });
+      results.push({
+        feedId: repair.feed_id,
+        result: "retry_next_recovery",
+        userId: repair.user_id,
+      });
+    }
+  }
+
+  return {
+    inspected: repairs.length,
+    results,
+  };
+}
+
+async function reconcileDurableTrendingFeeds(params: { limit: number }) {
+  const claims = await claimDueTrendingFeedReconciliations({
+    limit: params.limit,
+  });
+  const results: Array<Record<string, string | number | boolean | null>> = [];
+
+  for (const claim of claims) {
+    try {
+      const reconciliation = await reconcileCompletedTrendingFeedForUser(
+        claim.userId,
+      );
+      const completed = await completeTrendingFeedReconciliation({
+        sourceJobId: claim.sourceJobId,
+      });
+
+      results.push({
+        attemptCount: claim.attemptCount,
+        feedId: reconciliation.feedId,
+        result: completed ? "completed" : "claim_lost",
+        skipped: reconciliation.skipped,
+        sourceJobId: claim.sourceJobId,
+      });
+    } catch (error) {
+      const message = getErrorMessage(error);
+
+      try {
+        await rescheduleTrendingFeedReconciliation({
+          message,
+          sourceJobId: claim.sourceJobId,
+        });
+      } catch (rescheduleError) {
+        console.error("Could not reschedule durable Trending reconciliation", {
+          error: getErrorMessage(rescheduleError),
+          sourceJobId: claim.sourceJobId,
+        });
+      }
+
+      console.error("Durable Trending reconciliation failed", {
+        error: message,
+        sourceJobId: claim.sourceJobId,
+        userId: claim.userId,
+      });
+      results.push({
+        attemptCount: claim.attemptCount,
+        result: "rescheduled",
+        sourceJobId: claim.sourceJobId,
+      });
+    }
+  }
+
+  return {
+    inspected: claims.length,
+    results,
+  };
 }
 
 function clampInteger(

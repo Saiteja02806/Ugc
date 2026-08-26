@@ -3,6 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
+import { listMediaAssets } from "@/lib/media/media-storage";
 import { listReadyAvatarAssets } from "@/lib/avatars/avatar-storage";
 import {
   listActiveTrendingHookIdeas,
@@ -197,12 +198,17 @@ function createSourceSelectionKey(
 
 export async function getTrendingHookFeedProvider(
   profile: BusinessProfileRecord,
+  options: {
+    pinnedAssignmentIds?: readonly string[];
+  } = {},
 ): Promise<TrendingFeedProviderResult<TrendingHookVideoFeedItem>> {
   try {
-    const [allIdeas, source, catalogAssets] = await Promise.all([
+    const pinnedAssignmentIds = new Set(options.pinnedAssignmentIds ?? []);
+    const [allIdeas, source, catalogAssets, readyMediaAssets] = await Promise.all([
       listActiveTrendingHookIdeas({
         businessProfileId: profile.id,
         businessProfileVersion: profile.profileVersion,
+        pinnedAssignmentIds: options.pinnedAssignmentIds,
         promptVersion: TRENDING_HOOK_PROMPT_VERSION,
         userId: profile.userId,
       }),
@@ -211,6 +217,7 @@ export async function getTrendingHookFeedProvider(
         userId: profile.userId,
       }),
       listReadyAvatarAssets(),
+      listMediaAssets({ userId: profile.userId }),
     ]);
     const textPositionByVideoId = new Map(
       catalogAssets.map((asset) => [
@@ -223,12 +230,28 @@ export async function getTrendingHookFeedProvider(
     const selectedAssetIds = source.selection
       ? new Set(source.assets.map((asset) => asset.id))
       : null;
+    const availableVideoIds = new Set([
+      ...catalogAssets.map((asset) => asset.id),
+      ...readyMediaAssets
+        .filter(
+          (asset) =>
+            (asset.collection === "influencer" || asset.collection === "video") &&
+            asset.mime_type.startsWith("video/"),
+        )
+        .map((asset) => asset.id),
+    ]);
     const ideas = filterHookIdeasBySelectedAssets(
       allIdeas,
       selectedAssetIds,
+      pinnedAssignmentIds,
+      availableVideoIds,
     );
 
-    if (source.selection && selectedAssetIds?.size === 0) {
+    if (
+      source.selection &&
+      selectedAssetIds?.size === 0 &&
+      pinnedAssignmentIds.size === 0
+    ) {
       return createUnavailableTrendingFeedProvider<TrendingHookVideoFeedItem>(
         "hook_video",
         "The selected Creative Assets source has no available videos.",
@@ -262,14 +285,20 @@ export async function getTrendingHookFeedProvider(
 }
 
 function filterHookIdeasBySelectedAssets<
-  T extends { influencerVideoId: string },
+  T extends { assignmentId: string; influencerVideoId: string },
 >(
   ideas: T[],
   selectedAssetIds: Set<string> | null,
+  pinnedAssignmentIds: Set<string> = new Set(),
+  availableVideoIds: Set<string> | null = null,
 ) {
-  return selectedAssetIds
-    ? ideas.filter((idea) => selectedAssetIds.has(idea.influencerVideoId))
-    : ideas;
+  return ideas.filter(
+    (idea) =>
+      (!availableVideoIds || availableVideoIds.has(idea.influencerVideoId)) &&
+      (!selectedAssetIds ||
+        selectedAssetIds.has(idea.influencerVideoId) ||
+        pinnedAssignmentIds.has(idea.assignmentId)),
+  );
 }
 
 export class TrendingHookPreparationError extends Error {

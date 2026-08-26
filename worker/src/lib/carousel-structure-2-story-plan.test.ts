@@ -21,6 +21,7 @@ import {
   CAROUSEL_STRUCTURE_2_FORMAT_IDS,
   type CarouselStructure2FormatId,
 } from "./carousel-structure-2-formats.js";
+import { doesCarouselStructure2TextFitSafeArea } from "./carousel-structure-2-layout.js";
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 const businessDescription =
@@ -186,7 +187,7 @@ test("valid AI copy is preserved and writing-quality warnings stay advisory", ()
 test("Structure 2 blocks copy that cannot fit at the fixed slideshow font size", () => {
   const plan = makeStoryPlan("wrong_belief");
   plan.slides[0]!.storyText = Array.from(
-    { length: 32 },
+    { length: 80 },
     (_, index) => `wideword${index + 1}`,
   ).join(" ");
 
@@ -196,6 +197,49 @@ test("Structure 2 blocks copy that cannot fit at the fixed slideshow font size",
 
   assert.ok(
     partitioned.blockingIssues.some((issue) => issue.code === "render_fit"),
+  );
+});
+
+test("Structure 2 accepts the doubled story and CTA capacities when their combined layout is safe", () => {
+  const rawPlan = makeRawStoryPlan();
+  rawPlan.slides.second!.storyText = Array.from(
+    { length: 60 },
+    () => "context",
+  ).join(" ");
+  rawPlan.slides.fifth!.ctaText = Array.from(
+    { length: 30 },
+    () => "context",
+  ).join(" ");
+
+  const plan = parseCarouselStructure2StoryPlan(rawPlan, {
+    businessDescription,
+    storyFormatId: "wrong_belief",
+  });
+  const partitioned = partitionCarouselStructure2ValidationIssues(
+    validateCarouselStructure2StoryPlan(plan, { businessDescription }),
+  );
+
+  assert.ok(plan.slides[1]!.storyText.length > 360);
+  assert.ok(plan.slides[4]!.ctaText!.length > 180);
+  assert.deepEqual(partitioned.blockingIssues, []);
+});
+
+test("Structure 2 refuses a doubled story and CTA pair that cannot coexist safely", () => {
+  assert.equal(
+    doesCarouselStructure2TextFitSafeArea({
+      ctaLineCount: 4,
+      height: 1080,
+      storyLineCount: 12,
+    }),
+    true,
+  );
+  assert.equal(
+    doesCarouselStructure2TextFitSafeArea({
+      ctaLineCount: 6,
+      height: 1080,
+      storyLineCount: 12,
+    }),
+    false,
   );
 });
 

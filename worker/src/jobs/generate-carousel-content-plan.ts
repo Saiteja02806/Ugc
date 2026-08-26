@@ -131,15 +131,6 @@ export async function runGenerateCarouselContentPlanJob(
       status: activated.status,
     };
   } catch (error) {
-    if (job.attempt_count >= job.max_attempts) {
-      await context.store.failCarouselContentPlanGeneration({
-        errorMessage: getErrorMessage(error),
-        jobId: job.id,
-        planId: plan.id,
-        userId: plan.user_id,
-      });
-    }
-
     throw error;
   }
 }
@@ -175,10 +166,4 @@ function assertContiguousItems(sequenceIndexes: number[]) {
       throw new Error("Carousel content-plan items are not contiguous.");
     }
   }
-}
-
-function getErrorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message.slice(0, 1_000)
-    : "Carousel content-plan generation failed.";
 }

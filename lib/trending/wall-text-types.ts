@@ -103,8 +103,8 @@ export type LegacyWallTextFormatId =
 export type WallTextPattern = (typeof WALL_TEXT_PATTERNS)[number];
 export type WallTextSegmentRole = (typeof WALL_TEXT_SEGMENT_ROLES)[number];
 export type WallTextPlacementZone = (typeof WALL_TEXT_PLACEMENT_ZONES)[number];
-// 44-52 remain readable only so historical records can be parsed and
-// re-laid out. The current layout engine emits the lighter 36-42 range.
+// Existing 36-42px layouts remain readable without reflow. The current layout
+// engine emits the restored 44-52px range.
 export type WallTextFontSize = 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
 export type WallTextNormalizedBox = {
   height: number;

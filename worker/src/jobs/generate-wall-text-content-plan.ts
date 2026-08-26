@@ -114,14 +114,6 @@ export async function runGenerateWallTextContentPlanJob(
       status: activated.status,
     };
   } catch (error) {
-    if (job.attempt_count >= job.max_attempts) {
-      await context.store.failWallTextContentPlanGeneration({
-        errorMessage: getErrorMessage(error),
-        jobId: job.id,
-        planId: plan.id,
-        userId: plan.user_id,
-      });
-    }
     throw error;
   }
 }
@@ -154,10 +146,4 @@ function assertContiguousItems(sequenceIndexes: number[]) {
       throw new Error("Wall-of-Text content-plan items are not contiguous.");
     }
   }
-}
-
-function getErrorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message.slice(0, 1_000)
-    : "Wall-of-Text content-plan generation failed.";
 }

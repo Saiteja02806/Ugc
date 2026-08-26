@@ -1,6 +1,6 @@
 # Wall-of-text Context
 
-Last updated: 2026-08-12
+Last updated: 2026-08-26
 
 ## Product Definition
 
@@ -153,7 +153,7 @@ and skipped all 64 existing rows without creating duplicates.
    line limits, CTA and
    generic-language rejection, two-to-three-sentence structure, common grammar
    failures, unsupported mechanisms and outcomes, semantic line breaks,
-   clip-duration reading comfort, and real Inter Bold measurements at the
+   clip-duration reading comfort, and real Inter Regular measurements at the
    final dynamic size.
 6. Only after deterministic render validation succeeds, an AI reviewer checks
    readability, one-idea focus, claim grounding, and Wall-format suitability.
@@ -177,15 +177,19 @@ and skipped all 64 existing rows without creating duplicates.
     not enter the Hook-plus-demo combination renderer.
 
 The Wall card uses the public GCP video URL and renders the exact semantic
-lines without truncating or browser rewrapping. Preview and export use pinned
-Inter Bold 700 at 52px for up to 18 words/5 lines, 48px for 19-21 words/6
-lines, 46px for 22-23 words, and 44px for 24 words. The line-height ratio is
-1.08 for every line, tracking is -0.2px, there is no additional segment gap,
-alignment is centered, and
-the 620px text block is horizontally centered. Generated copy defaults to white
-text with a 4px black outline and a subtle shadow; there is no scrim,
+lines without truncating or browser rewrapping. Preview and export use Inter
+Regular 400. The layout engine tries the restored 52/50/48/46/44px range in
+that order and persists the largest size that fits the existing 4-7-line rule.
+The line-height ratio is 1.1 for every line, tracking is -0.2px, there is no
+additional segment gap, alignment is centered, and the text block is up to
+660px wide. Generated copy defaults to white text with a 2px black outline and
+a subtle shadow; there is no scrim,
 background box, gradient, highlighted word, or mixed font weight. The active
 card starts from time zero and has no loop behavior.
+
+Existing 36-42px layouts keep their persisted size until they are regenerated
+or manually reflowed; scaling their already-measured lines up would risk
+overflowing the unchanged seven-line text box.
 
 Existing v1-v4 payloads and v1 placement metadata can still be read for
 migration compatibility, but stale copy is regenerated in place as
@@ -202,11 +206,11 @@ assignments are preserved.
   native-duration word limits,
   4-7-line, two-or-three-sentence, source-duration reading-time,
   semantic-break, and measured Inter fit checks used by generated Wall copy.
-  The measured 44/46/48/52px font size is stored with the edit instead of
+  The measured 44/46/48/50/52px font size is stored with the edit instead of
   retaining the pre-edit font size.
-- The Wall edit preview uses the export renderer's Inter Bold face, 620px text
-  width, 52/48 line-height ratio on every line with no extra segment gap, 4px
-  outline, shadow, and
+- The Wall edit preview uses the export renderer's Inter Regular face, up to
+  660px text width, 1.1 line-height ratio on every line with no extra segment
+  gap, 2px outline, shadow, and
   persisted safe area. Pointer, touch, and keyboard dragging clamp the whole
   text box to that safe area.
 - Manual Hook and Wall edits may select one color from the shared, renderer-safe

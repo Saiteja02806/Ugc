@@ -221,6 +221,100 @@ test("recovers and completes a due database job without a queue delivery", async
   assert.equal(job.status, "completed");
 });
 
+test("reconciles a completed Trending job without waiting for a browser request", async () => {
+  const job = createJob();
+  const reconciled: Array<{ sourceJobId: string; userId: string }> = [];
+  job.job_type = "generate_trending_hook_copy";
+
+  await processWorkerMessage({
+    config: createConfig(["generate_trending_hook_copy"]),
+    dependencies: {
+      async reconcileTrendingFeed(params) {
+        reconciled.push(params);
+      },
+      async runJob() {
+        return { ok: true };
+      },
+    },
+    message: createMessage("generate_trending_hook_copy"),
+    queue: createQueue([]),
+    store: createJobStore(job),
+  });
+
+  assert.equal(job.status, "completed");
+  assert.deepEqual(reconciled, [{ sourceJobId: job.id, userId: "user-test" }]);
+});
+
+test("keeps a completed Trending source job complete and reschedules its durable follow-up", async () => {
+  const job = createJob();
+  const store = createJobStore(job);
+  const rescheduled: Array<{ message: string; sourceJobId: string }> = [];
+  job.job_type = "generate_trending_hook_copy";
+  store.rescheduleTrendingFeedReconciliation = (async (params) => {
+    rescheduled.push(params);
+    return true;
+  }) as SupabaseJobStore["rescheduleTrendingFeedReconciliation"];
+
+  await processWorkerMessage({
+    config: createConfig(["generate_trending_hook_copy"]),
+    dependencies: {
+      async reconcileTrendingFeed() {
+        throw new Error("app temporarily unavailable");
+      },
+      async runJob() {
+        return { ok: true };
+      },
+    },
+    message: createMessage("generate_trending_hook_copy"),
+    queue: createQueue([]),
+    store,
+  });
+
+  assert.equal(job.status, "completed");
+  assert.deepEqual(rescheduled, [
+    {
+      message: "app temporarily unavailable",
+      sourceJobId: job.id,
+    },
+  ]);
+});
+
+test("marks a failed content plan terminally failed only after the worker job fails", async () => {
+  const job = createJob();
+  const store = createJobStore(job);
+  const failures: Array<{ planId: string; userId: string }> = [];
+  job.job_type = "carousel_content_plan_generation";
+  job.input_json = {
+    operation: "carousel_content_plan_generation",
+    planId: "plan-test",
+    userId: "user-test",
+  };
+
+  store.markFailed = (async () => {
+    job.claim_token = null;
+    job.status = "failed";
+    return { ...job };
+  }) as SupabaseJobStore["markFailed"];
+  store.failCarouselContentPlanGeneration = (async (params) => {
+    failures.push({ planId: params.planId, userId: params.userId });
+  }) as SupabaseJobStore["failCarouselContentPlanGeneration"];
+
+  await processWorkerMessage({
+    config: createConfig(["carousel_content_plan_generation"]),
+    dependencies: {
+      async runJob() {
+        throw new Error("provider rejected request");
+      },
+    },
+    message: createMessage("carousel_content_plan_generation"),
+    queue: createQueue([]),
+    store,
+  });
+
+  assert.equal(job.status, "failed");
+  assert.deepEqual(failures, [{ planId: "plan-test", userId: "user-test" }]);
+});
+
 function createJob(): BackgroundJobRow {
   const now = new Date().toISOString();
 
@@ -311,6 +405,21 @@ function createJobStore(job: BackgroundJobRow) {
       job.status = "completed";
       return { ...job };
     },
+    async claimTrendingFeedReconciliation(params: { sourceJobId: string }) {
+      return params.sourceJobId === job.id
+        ? {
+            attempt_count: 1,
+            source_job_id: job.id,
+            user_id: job.user_id ?? "",
+          }
+        : null;
+    },
+    async completeTrendingFeedReconciliation() {
+      return true;
+    },
+    async rescheduleTrendingFeedReconciliation() {
+      return true;
+    },
     async updateJobStage(params: {
       claimToken: string;
       jobId: string;
@@ -364,9 +473,11 @@ function createJobStore(job: BackgroundJobRow) {
   return store as unknown as SupabaseJobStore;
 }
 
-function createConfig(): WorkerConfig {
+function createConfig(
+  allowedJobTypes: WorkerConfig["allowedJobTypes"] = ["test_worker_job"],
+): WorkerConfig {
   return {
-    allowedJobTypes: ["test_worker_job"],
+    allowedJobTypes,
     queueName: "test",
     socialReconciliationBatchSize: 10,
     socialReconciliationEnabled: true,
@@ -381,11 +492,11 @@ function createConfig(): WorkerConfig {
   };
 }
 
-function createMessage() {
+function createMessage(jobType: BackgroundJobRow["job_type"] = "test_worker_job") {
   return {
     body: JSON.stringify({
       jobId: "d8187032-2774-4aa6-9a8a-f3c46f8e0c7a",
-      jobType: "test_worker_job",
+      jobType,
     }),
     id: "message-test",
     ackId: "ack-test",

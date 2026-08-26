@@ -1,6 +1,6 @@
 {
-  "version": "carousel-structure-2-formats-v3-optional-cta",
-  "backboneVersion": "carousel-structure-2-story-reference-v3",
+  "version": "carousel-structure-2-formats-v4-expanded-copy-centered",
+  "backboneVersion": "carousel-structure-2-story-reference-v4",
   "formats": [
     {
       "id": "wrong_belief",
@@ -25,7 +25,7 @@
           "storyRole": "recognition",
           "instruction": "State the reasonable-sounding false belief as a short first-person recognition hook.",
           "minimumWords": 6,
-          "maximumWords": 14,
+          "maximumWords": 28,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -35,7 +35,7 @@
           "storyRole": "failure_scene",
           "instruction": "Show the specific repeated behavior that belief caused and one visible consequence.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -45,7 +45,7 @@
           "storyRole": "reframe",
           "instruction": "Explain why the belief kept failing and reveal the corrected understanding without selling the product.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -55,7 +55,7 @@
           "storyRole": "product_turning_point",
           "instruction": "Introduce the product naturally, show one understandable interaction, and state the immediate behavior change.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "required",
           "ctaPolicy": "none"
@@ -65,7 +65,7 @@
           "storyRole": "proof_reflection_cta",
           "instruction": "Give modest proof, correct the opening belief, and invite the viewer to test the same mechanism.",
           "minimumWords": 18,
-          "maximumWords": 32,
+          "maximumWords": 64,
           "perspective": "first_person_then_viewer",
           "productMention": "optional",
           "ctaPolicy": "native_experiment"
@@ -95,7 +95,7 @@
           "storyRole": "recognition",
           "instruction": "Open with the first-person ritual of building the perfect day, week, plan, or routine.",
           "minimumWords": 6,
-          "maximumWords": 14,
+          "maximumWords": 28,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -105,7 +105,7 @@
           "storyRole": "failure_scene",
           "instruction": "Show the specific planning ritual and the ordinary moment when real life broke it.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -115,7 +115,7 @@
           "storyRole": "reframe",
           "instruction": "Reveal that the problem was the rigid plan rather than the narrator, job, schedule, or life.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -125,7 +125,7 @@
           "storyRole": "product_turning_point",
           "instruction": "Show one product interaction that adapts the plan to the narrator's actual constraints.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "required",
           "ctaPolicy": "none"
@@ -135,7 +135,7 @@
           "storyRole": "proof_reflection_cta",
           "instruction": "Show that real life stayed imperfect while the result became easier, then offer a matching experiment CTA.",
           "minimumWords": 18,
-          "maximumWords": 32,
+          "maximumWords": 64,
           "perspective": "first_person_then_viewer",
           "productMention": "optional",
           "ctaPolicy": "native_experiment"
@@ -165,7 +165,7 @@
           "storyRole": "recognition",
           "instruction": "Open with 'i stopped' or an equivalent first-person behavior-change confession.",
           "minimumWords": 6,
-          "maximumWords": 14,
+          "maximumWords": 28,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -175,7 +175,7 @@
           "storyRole": "failure_scene",
           "instruction": "Explain why the narrator used to do it and show the concrete friction or cost it created.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -185,7 +185,7 @@
           "storyRole": "reframe",
           "instruction": "State the small replacement rule and why it addresses the actual problem.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -195,7 +195,7 @@
           "storyRole": "product_turning_point",
           "instruction": "Show how one product interaction makes the replacement rule easier or automatic.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "required",
           "ctaPolicy": "none"
@@ -205,7 +205,7 @@
           "storyRole": "proof_reflection_cta",
           "instruction": "Describe the modest behavior change and invite viewers with the same habit to try the rule.",
           "minimumWords": 18,
-          "maximumWords": 32,
+          "maximumWords": 64,
           "perspective": "first_person_then_viewer",
           "productMention": "optional",
           "ctaPolicy": "native_experiment"
@@ -235,7 +235,7 @@
           "storyRole": "recognition",
           "instruction": "Open with a first-person admission about being terrible at one specific normal task.",
           "minimumWords": 6,
-          "maximumWords": 14,
+          "maximumWords": 28,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -245,7 +245,7 @@
           "storyRole": "failure_scene",
           "instruction": "Show exactly what the difficulty looked like in an ordinary moment and its consequence.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -255,7 +255,7 @@
           "storyRole": "reframe",
           "instruction": "Reveal the mistaken assumption or repeated decision underneath that behavior.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -265,7 +265,7 @@
           "storyRole": "product_turning_point",
           "instruction": "Show the product handling one difficult decision and the immediate relief that followed.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "required",
           "ctaPolicy": "none"
@@ -275,7 +275,7 @@
           "storyRole": "proof_reflection_cta",
           "instruction": "Underclaim the improvement, reflect on the simpler decision, and offer a matching experiment CTA.",
           "minimumWords": 18,
-          "maximumWords": 32,
+          "maximumWords": 64,
           "perspective": "first_person_then_viewer",
           "productMention": "optional",
           "ctaPolicy": "native_experiment"
@@ -305,7 +305,7 @@
           "storyRole": "recognition",
           "instruction": "Open with 'how i' achieved a supported result without the expected method or sacrifice.",
           "minimumWords": 6,
-          "maximumWords": 14,
+          "maximumWords": 28,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -315,7 +315,7 @@
           "storyRole": "failure_scene",
           "instruction": "Show the old method the narrator kept trying and the specific friction it created.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -325,7 +325,7 @@
           "storyRole": "reframe",
           "instruction": "Explain why the expected method was not the real requirement and identify the smaller mechanism that mattered.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -335,7 +335,7 @@
           "storyRole": "product_turning_point",
           "instruction": "Show the product enabling the alternative through one concrete interaction.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "required",
           "ctaPolicy": "none"
@@ -345,7 +345,7 @@
           "storyRole": "proof_reflection_cta",
           "instruction": "Restate the restrained result without the sacrifice and invite the viewer to test the alternative.",
           "minimumWords": 18,
-          "maximumWords": 32,
+          "maximumWords": 64,
           "perspective": "first_person_then_viewer",
           "productMention": "optional",
           "ctaPolicy": "native_experiment"
@@ -375,7 +375,7 @@
           "storyRole": "recognition",
           "instruction": "Open with the old identity or a first-person statement about stopping being that kind of person.",
           "minimumWords": 6,
-          "maximumWords": 14,
+          "maximumWords": 28,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -385,7 +385,7 @@
           "storyRole": "failure_scene",
           "instruction": "Show the most recognizable repeated behavior that made the old identity feel true.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -395,7 +395,7 @@
           "storyRole": "reframe",
           "instruction": "Reveal the practical realization that made a different behavior possible.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -405,7 +405,7 @@
           "storyRole": "product_turning_point",
           "instruction": "Show one product-assisted change that supports the new behavior without claiming instant transformation.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "required",
           "ctaPolicy": "none"
@@ -415,7 +415,7 @@
           "storyRole": "proof_reflection_cta",
           "instruction": "Describe the observable new behavior or identity and invite viewers to try the same small change.",
           "minimumWords": 18,
-          "maximumWords": 32,
+          "maximumWords": 64,
           "perspective": "first_person_then_viewer",
           "productMention": "optional",
           "ctaPolicy": "native_experiment"
@@ -445,7 +445,7 @@
           "storyRole": "recognition",
           "instruction": "Open with the exact new first-person rule or behavior change.",
           "minimumWords": 6,
-          "maximumWords": 14,
+          "maximumWords": 28,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -455,7 +455,7 @@
           "storyRole": "failure_scene",
           "instruction": "Show what the narrator used to do and the concrete disruption it repeatedly caused.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -465,7 +465,7 @@
           "storyRole": "reframe",
           "instruction": "Explain the exact rule, why it addresses the real friction, and what decision it changes.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -475,7 +475,7 @@
           "storyRole": "product_turning_point",
           "instruction": "Show how one product interaction helps the narrator follow the rule in ordinary life.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "required",
           "ctaPolicy": "none"
@@ -485,7 +485,7 @@
           "storyRole": "proof_reflection_cta",
           "instruction": "Show the modest result of following the rule and invite the viewer to test it with their own inputs.",
           "minimumWords": 18,
-          "maximumWords": 32,
+          "maximumWords": 64,
           "perspective": "first_person_then_viewer",
           "productMention": "optional",
           "ctaPolicy": "native_experiment"
@@ -515,7 +515,7 @@
           "storyRole": "recognition",
           "instruction": "Open with the first-person thing the narrator kept blaming.",
           "minimumWords": 6,
-          "maximumWords": 14,
+          "maximumWords": 28,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -525,7 +525,7 @@
           "storyRole": "failure_scene",
           "instruction": "Show the ordinary evidence that made the blamed surface problem look like the obvious cause.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -535,7 +535,7 @@
           "storyRole": "reframe",
           "instruction": "Reveal that the blamed thing was not the real problem and identify the actual mechanism underneath it.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "forbidden",
           "ctaPolicy": "none"
@@ -545,7 +545,7 @@
           "storyRole": "product_turning_point",
           "instruction": "Show the product removing or improving the actual underlying problem through one concrete interaction.",
           "minimumWords": 18,
-          "maximumWords": 30,
+          "maximumWords": 60,
           "perspective": "first_person",
           "productMention": "required",
           "ctaPolicy": "none"
@@ -555,7 +555,7 @@
           "storyRole": "proof_reflection_cta",
           "instruction": "Close with an earned 'turns out' lesson, a restrained result, and a CTA that mirrors the opening blame.",
           "minimumWords": 18,
-          "maximumWords": 32,
+          "maximumWords": 64,
           "perspective": "first_person_then_viewer",
           "productMention": "optional",
           "ctaPolicy": "native_experiment"

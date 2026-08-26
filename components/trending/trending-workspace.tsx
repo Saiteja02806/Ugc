@@ -290,6 +290,23 @@ function getSmartPreparingPollInterval(attemptCount: number): number {
   if (attemptCount <= 7) return 6_000;
   return 10_000;
 }
+
+const TRENDING_FEED_REQUEST_TIMEOUT_MS = 20_000;
+
+class TrendingFeedRequestError extends Error {
+  constructor(
+    message: string,
+    readonly retryable: boolean,
+  ) {
+    super(message);
+    this.name = "TrendingFeedRequestError";
+  }
+}
+
+function isRetryableTrendingFeedStatus(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500;
+}
+
 const DECISION_OUTBOX_RETRY_MIN_MS = 2_000;
 const DECISION_OUTBOX_RETRY_MAX_MS = 30_000;
 const decisionOutboxMemoryFallback = new Map<
@@ -696,6 +713,21 @@ export function TrendingWorkspace() {
     const controller = new AbortController();
     let pollTimer: number | null = null;
 
+    function scheduleFeedRefresh(delayMs: number) {
+      if (pollTimer !== null) {
+        window.clearTimeout(pollTimer);
+      }
+
+      pollTimer = window.setTimeout(() => {
+        if (
+          !controller.signal.aborted &&
+          (typeof document === "undefined" || document.visibilityState === "visible")
+        ) {
+          setCarouselHistoryRefreshKey((current) => current + 1);
+        }
+      }, delayMs);
+    }
+
     async function loadCarouselHistory() {
       const currentLocalDate = getBrowserLocalDate();
       const validMemoryCache = getInMemoryTrendingFeed(userId, currentLocalDate);
@@ -721,23 +753,50 @@ export function TrendingWorkspace() {
 
         const timezone =
           Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-        const response = await fetch(
-          `/api/trending/feed?timezone=${encodeURIComponent(timezone)}`,
-          {
-            cache: "no-store",
-            headers: { Authorization: `Bearer ${idToken}` },
-            signal: controller.signal,
-          },
-        );
-        const data = (await response.json().catch(() => null)) as
-          | CarouselHistoryResponse
-          | null;
+        const requestController = new AbortController();
+        let requestTimedOut = false;
+        const abortRequest = () => requestController.abort();
+        const requestTimeout = window.setTimeout(() => {
+          requestTimedOut = true;
+          requestController.abort();
+        }, TRENDING_FEED_REQUEST_TIMEOUT_MS);
+        controller.signal.addEventListener("abort", abortRequest, { once: true });
+
+        let response: Response;
+        let data: CarouselHistoryResponse | null;
+
+        try {
+          response = await fetch(
+            `/api/trending/feed?timezone=${encodeURIComponent(timezone)}`,
+            {
+              cache: "no-store",
+              headers: { Authorization: `Bearer ${idToken}` },
+              signal: requestController.signal,
+            },
+          );
+          data = (await response.json().catch(() => null)) as
+            | CarouselHistoryResponse
+            | null;
+        } catch (error) {
+          if (requestTimedOut) {
+            throw new TrendingFeedRequestError(
+              "The Trending feed request timed out. Retrying…",
+              true,
+            );
+          }
+
+          throw error;
+        } finally {
+          window.clearTimeout(requestTimeout);
+          controller.signal.removeEventListener("abort", abortRequest);
+        }
 
         if (!response.ok || !data?.ok) {
-          throw new Error(
+          throw new TrendingFeedRequestError(
             data && !data.ok
               ? data.message
               : "Generated carousels are unavailable.",
+            !data || isRetryableTrendingFeedStatus(response.status),
           );
         }
 
@@ -787,15 +846,9 @@ export function TrendingWorkspace() {
 
         if ((data.feed?.pendingSlotCount ?? 0) > 0) {
           preparingPollAttemptsRef.current += 1;
-          const pollInterval = getSmartPreparingPollInterval(
-            preparingPollAttemptsRef.current,
+          scheduleFeedRefresh(
+            getSmartPreparingPollInterval(preparingPollAttemptsRef.current),
           );
-
-          pollTimer = window.setTimeout(() => {
-            if (typeof document === "undefined" || document.visibilityState === "visible") {
-              setCarouselHistoryRefreshKey((current) => current + 1);
-            }
-          }, pollInterval);
         } else {
           preparingPollAttemptsRef.current = 0;
         }
@@ -816,6 +869,18 @@ export function TrendingWorkspace() {
             ),
           );
           setCarouselHistoryState("error");
+        }
+
+        const retryable =
+          error instanceof TrendingFeedRequestError
+            ? error.retryable
+            : error instanceof TypeError;
+
+        if (retryable) {
+          preparingPollAttemptsRef.current += 1;
+          scheduleFeedRefresh(
+            getSmartPreparingPollInterval(preparingPollAttemptsRef.current),
+          );
         }
       }
     }
@@ -2657,6 +2722,7 @@ function TrendingHookDeckCard({
 }) {
   const isActive = depth === 0;
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
+  const [previewLoadKey, setPreviewLoadKey] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewAudio, setPreviewAudio] = useState<HookPreviewAudio | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -2666,6 +2732,10 @@ function TrendingHookDeckCard({
   const editedContent =
     edit?.content.format === "hook_video" ? edit.content : null;
   const editedSource = edit?.source ?? null;
+  const editedSourceUrl = editedSource?.resolvedAssetUrl ?? null;
+  const previewSessionEndpoint = creative.previewSessionEndpoint;
+  const previewInfluencerId = creative.influencerId;
+  const previewSourceKind = creative.sourceKind;
   const deckStyle = DECK_CARD_STYLES[depth];
   const cardStyle = getTrendingDeckCardPresentation({
     depth,
@@ -2684,8 +2754,9 @@ function TrendingHookDeckCard({
       setPreviewError(null);
       onPreviewStatusChange(creativeId, "loading");
 
-      if (editedSource) {
-        setPreviewUrl(editedSource.resolvedAssetUrl);
+      if (editedSourceUrl) {
+        setPreviewUrl(editedSourceUrl);
+        setPreviewLoadKey((current) => current + 1);
         return;
       }
 
@@ -2696,10 +2767,10 @@ function TrendingHookDeckCard({
           throw new Error("Sign in before previewing Hook ideas.");
         }
 
-        const response = await fetch(creative.previewSessionEndpoint, {
+        const response = await fetch(previewSessionEndpoint, {
           body: JSON.stringify({
-            influencerId: creative.influencerId,
-            sourceKind: creative.sourceKind,
+            influencerId: previewInfluencerId,
+            sourceKind: previewSourceKind,
           }),
           cache: "no-store",
           headers: {
@@ -2729,6 +2800,9 @@ function TrendingHookDeckCard({
         if (!controller.signal.aborted) {
           setPreviewAudio(data.hookAudio ?? null);
           setPreviewUrl(data.previewUrl);
+          // A renewed protected session can return the same URL. Remount the
+          // video in that case so it emits loadedmetadata again.
+          setPreviewLoadKey((current) => current + 1);
         }
       } catch (error) {
         if (!controller.signal.aborted) {
@@ -2747,11 +2821,13 @@ function TrendingHookDeckCard({
 
     return () => controller.abort();
   }, [
-    creative,
     creativeId,
-    editedSource,
+    editedSourceUrl,
     onPreviewStatusChange,
+    previewInfluencerId,
     previewRetryKey,
+    previewSessionEndpoint,
+    previewSourceKind,
   ]);
 
   return (
@@ -2813,6 +2889,7 @@ function TrendingHookDeckCard({
           hookText={editedContent?.hookText ?? creative.text.value}
           previewError={isActive ? previewError : null}
           previewLoading={isActive && previewLoading}
+          previewLoadKey={previewLoadKey}
           previewUrl={previewUrl}
           trimEnd={creative.trimEnd}
           trimStart={creative.trimStart}

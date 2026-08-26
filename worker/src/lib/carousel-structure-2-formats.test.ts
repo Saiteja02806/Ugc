@@ -33,11 +33,11 @@ test("defines exactly the eight canonical Structure 2 formats", () => {
   );
   assert.equal(
     CAROUSEL_STRUCTURE_2_FORMATS_VERSION,
-    "carousel-structure-2-formats-v3-optional-cta",
+    "carousel-structure-2-formats-v4-expanded-copy-centered",
   );
   assert.equal(
     CAROUSEL_STRUCTURE_2_BACKBONE_VERSION,
-    "carousel-structure-2-story-reference-v3",
+    "carousel-structure-2-story-reference-v4",
   );
 });
 
@@ -79,11 +79,11 @@ test("keeps five-role references while allowing format-specific story flow", () 
     assert.deepEqual(
       format.slides.map((slide) => [slide.minimumWords, slide.maximumWords]),
       [
-        [6, 14],
-        [18, 30],
-        [18, 30],
-        [18, 30],
-        [18, 32],
+        [6, 28],
+        [18, 60],
+        [18, 60],
+        [18, 60],
+        [18, 64],
       ],
     );
     assert.ok(format.exampleFlows.length > 0);

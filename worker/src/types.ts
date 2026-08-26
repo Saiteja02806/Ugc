@@ -977,6 +977,17 @@ export type BackgroundJobsDatabase = {
         };
         Returns: BackgroundJobRow[];
       };
+      claim_due_trending_feed_reconciliations: {
+        Args: {
+          p_limit?: number;
+          p_source_job_id?: string | null;
+        };
+        Returns: Array<{
+          attempt_count: number;
+          source_job_id: string;
+          user_id: string;
+        }>;
+      };
       complete_background_job: {
         Args: {
           p_claim_token: string;
@@ -985,6 +996,10 @@ export type BackgroundJobsDatabase = {
           p_output_reference: string | null;
         };
         Returns: BackgroundJobRow[];
+      };
+      complete_trending_feed_reconciliation: {
+        Args: { p_source_job_id: string };
+        Returns: boolean;
       };
       complete_carousel_content_plan_generation: {
         Args: {
@@ -1083,6 +1098,13 @@ export type BackgroundJobsDatabase = {
           p_user_id: string;
         };
         Returns: number;
+      };
+      reschedule_trending_feed_reconciliation: {
+        Args: {
+          p_error_message: string;
+          p_source_job_id: string;
+        };
+        Returns: boolean;
       };
       increment_category_image_asset_usage: {
         Args: { asset_ids: string[] };

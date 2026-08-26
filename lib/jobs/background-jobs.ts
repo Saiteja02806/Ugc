@@ -139,6 +139,16 @@ type BackgroundJobsDatabase = {
         };
         Returns: string;
       };
+      create_or_get_carousel_experiment_batch_job: {
+        Args: {
+          p_carousel_ids: string[];
+          p_experiment_batch_id: string;
+          p_project_id: string;
+          p_text_style: string;
+          p_user_id: string;
+        };
+        Returns: Array<{ created: boolean; job_id: string }>;
+      };
       list_recoverable_background_jobs: {
         Args: {
           p_limit?: number;
@@ -354,6 +364,48 @@ export async function getBackgroundJobById(jobId: string) {
   }
 
   return data ? mapBackgroundJob(data) : null;
+}
+
+/**
+ * Creates a five-Carousel writer job only after the database has atomically
+ * attached the exact five reserved ideas and generation rows to it. Cloud
+ * Tasks is intentionally called later, after this durable transaction commits.
+ */
+export async function createOrGetCarouselExperimentBatchJob(params: {
+  carouselIds: string[];
+  experimentBatchId: string;
+  projectId: string;
+  textStyle: string;
+  userId: string;
+}) {
+  const { data, error } = await getSupabaseServerClient().rpc(
+    "create_or_get_carousel_experiment_batch_job",
+    {
+      p_carousel_ids: params.carouselIds,
+      p_experiment_batch_id: params.experimentBatchId,
+      p_project_id: params.projectId,
+      p_text_style: params.textStyle,
+      p_user_id: params.userId,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `Could not reserve the Carousel experiment writer job: ${error.message}`,
+    );
+  }
+
+  const result = data?.[0];
+  if (!result?.job_id) {
+    throw new Error("Could not reserve the Carousel experiment writer job.");
+  }
+
+  const job = await getBackgroundJobById(result.job_id);
+  if (!job) {
+    throw new Error("Carousel experiment writer job disappeared after reservation.");
+  }
+
+  return { created: result.created, job };
 }
 
 export async function getBackgroundJobForUser(params: {

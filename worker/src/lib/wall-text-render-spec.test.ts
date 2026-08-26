@@ -39,7 +39,7 @@ const fourLineContent = {
   ],
 };
 
-test("uses lighter Inter Regular, center alignment, outline, and compact section rhythm", () => {
+test("uses the restored readable Wall scale with center alignment and compact section rhythm", () => {
   const layout = buildWallTextRenderLayout({
     content,
     textBox: {
@@ -61,9 +61,9 @@ test("uses lighter Inter Regular, center alignment, outline, and compact section
     },
   });
 
-  assert.equal(layout.segments[0]?.fontSize, 40);
+  assert.equal(layout.segments[0]?.fontSize, 48);
   assert.equal(layout.segments[0]?.fontWeight, 400);
-  assert.equal(layout.segments[1]?.fontSize, 40);
+  assert.equal(layout.segments[1]?.fontSize, 48);
   assert.equal(layout.segments[1]?.fontWeight, 400);
   assert.match(svg, /font-family="Inter, Arial/);
   assert.match(svg, /letter-spacing="-0\.2"/);
@@ -102,7 +102,7 @@ test("accepts four-line compact Wall blocks", () => {
     },
   });
 
-  assert.equal(layout.segments[0]?.fontSize, 42);
+  assert.equal(layout.segments[0]?.fontSize, 52);
   assert.equal(svg.match(/<text /g)?.length, 4);
 });
 
@@ -151,9 +151,9 @@ test("renders the saved v6 final layout without reflowing its lines", () => {
     placement: "middle",
   });
 
-  assert.equal(layout.segments[0]?.fontSize, 42);
+  assert.equal(layout.segments[0]?.fontSize, 50);
   assert.equal(layout.segments[0]?.fontWeight, 400);
-  assert.equal(layout.segments[0]?.lineHeight, 46.2);
+  assert.equal(layout.segments[0]?.lineHeight, 55);
   assert.deepEqual(layout.segments[0]?.lines, finalLayoutContent.finalLayout.blocks[0]?.lines);
   assert.equal(layout.textBox.width, 640);
   assert.equal(svg.match(/<text /g)?.length, 3);
@@ -203,7 +203,7 @@ test("renders V7 as one centered block with equal line rhythm and a short final 
   const layout = buildWallTextRenderLayout({ content: v7 });
   const svg = buildWallTextOverlaySvg({ content: v7, placement: "middle" });
   assert.equal(layout.segments.length, 1);
-  assert.equal(layout.segments[0]?.lineHeight, 44);
+  assert.equal(layout.segments[0]?.lineHeight, 52.8);
   assert.equal(layout.textBox.width, 660);
   assert.equal(svg.match(/text-anchor="middle"/g)?.length, 5);
   assert.match(svg, />at once\.<\/text>/);

@@ -8,6 +8,11 @@ import {
   inspectCarouselFixedTextFit,
 } from "./carousel-slide-plan.js";
 import {
+  CAROUSEL_STRUCTURE_2_CTA_MAX_LINES,
+  CAROUSEL_STRUCTURE_2_STORY_MAX_LINES,
+  doesCarouselStructure2TextFitSafeArea,
+} from "./carousel-structure-2-layout.js";
+import {
   CAROUSEL_STRUCTURE_2_STORY_ROLES,
   getCarouselStructure2Format,
   isCarouselStructure2FormatId,
@@ -16,7 +21,7 @@ import {
 } from "./carousel-structure-2-formats.js";
 
 export const CAROUSEL_STRUCTURE_2_STORY_SCHEMA_VERSION =
-  "carousel-structure-2-flexible-story-v3-optional-cta";
+  "carousel-structure-2-flexible-story-v5-plain-white-story-text";
 export const CAROUSEL_STRUCTURE_2_STORY_HISTORY_LIMIT = 10;
 export const CAROUSEL_STRUCTURE_2_POSITION_KEYS = [
   "first",
@@ -27,8 +32,8 @@ export const CAROUSEL_STRUCTURE_2_POSITION_KEYS = [
 ] as const;
 
 const MAX_ANGLE_LENGTH = 180;
-const MAX_CTA_TEXT_LENGTH = 180;
-const MAX_STORY_TEXT_LENGTH = 360;
+const MAX_CTA_TEXT_LENGTH = 360;
+const MAX_STORY_TEXT_LENGTH = 720;
 const MAX_VISUAL_CONTEXT_LENGTH = 220;
 const GENERIC_COPY_PATTERN =
   /\b(boost productivity|streamline your workflow|unlock efficiency|work smarter|next level|seamless|one platform|one workspace for everything)\b/i;
@@ -179,7 +184,7 @@ export function validateCarouselStructure2StoryPlan(
     );
     const wordCount = countWords(copy);
     const storyFit = inspectCarouselFixedTextFit({
-      maximumLines: 6,
+      maximumLines: CAROUSEL_STRUCTURE_2_STORY_MAX_LINES,
       maximumWidth: CAROUSEL_STRUCTURE_2_FIXED_TEXT_WIDTH,
       value: slide.storyText,
     });
@@ -187,25 +192,42 @@ export function validateCarouselStructure2StoryPlan(
     if (!storyFit.fits) {
       issues.push({
         code: "render_fit",
-        message: `Story copy must fit within six lines at the fixed ${CAROUSEL_FIXED_FONT_SIZE}px font size. ${storyFit.reason ?? ""}`.trim(),
+        message: `Story copy must fit within ${CAROUSEL_STRUCTURE_2_STORY_MAX_LINES} lines at the fixed ${CAROUSEL_FIXED_FONT_SIZE}px font size. ${storyFit.reason ?? ""}`.trim(),
         slideNumber: slide.slideNumber,
       });
     }
 
-    if (slide.ctaText) {
-      const ctaFit = inspectCarouselFixedTextFit({
-        maximumLines: 3,
+    const ctaFit = slide.ctaText
+      ? inspectCarouselFixedTextFit({
+        maximumLines: CAROUSEL_STRUCTURE_2_CTA_MAX_LINES,
         maximumWidth: CAROUSEL_STRUCTURE_2_FIXED_TEXT_WIDTH,
         value: slide.ctaText,
-      });
+      })
+      : null;
 
+    if (ctaFit) {
       if (!ctaFit.fits) {
         issues.push({
           code: "render_fit",
-          message: `CTA copy must fit within three lines at the fixed ${CAROUSEL_FIXED_FONT_SIZE}px font size. ${ctaFit.reason ?? ""}`.trim(),
+          message: `CTA copy must fit within ${CAROUSEL_STRUCTURE_2_CTA_MAX_LINES} lines at the fixed ${CAROUSEL_FIXED_FONT_SIZE}px font size. ${ctaFit.reason ?? ""}`.trim(),
           slideNumber: slide.slideNumber,
         });
       }
+    }
+
+    if (
+      !doesCarouselStructure2TextFitSafeArea({
+        ctaLineCount: ctaFit?.lines.length ?? 0,
+        height: 1080,
+        storyLineCount: storyFit.lines.length,
+      })
+    ) {
+      issues.push({
+        code: "render_fit",
+        message:
+          "Story and CTA copy do not fit together inside the fixed 1:1 safe area at the fixed font size.",
+        slideNumber: slide.slideNumber,
+      });
     }
 
     if (
@@ -447,7 +469,7 @@ export function buildCarouselStructure2BatchMessages(params: {
         "Return each plan under its assigned outputKey. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values.",
         "Develop genuinely different stories. Do not force every item through the same overwhelmed-to-easier arc.",
         "Use ctaText only when a natural invitation improves the story. Otherwise return null. CTA presence and slide position are your creative choice.",
-        `Every story uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px type over a connected white SVG background. Keep storyText within six visual lines and CTA text within three; the renderer will not shrink or truncate copy.`,
+        `Every story uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px white text directly on the image; do not expect a white SVG background for storyText or ctaText. Keep storyText within ${CAROUSEL_STRUCTURE_2_STORY_MAX_LINES} visual lines and CTA text within ${CAROUSEL_STRUCTURE_2_CTA_MAX_LINES}; when both are present, they must fit together inside the square safe area. The renderer will not shrink or truncate copy.`,
         "Use exampleFlows and roleGuidance as inspiration. You may choose another ordering of the known story roles when it better serves the seed.",
         "Keep product connections natural and grounded only in businessDescription. Do not force a product sentence onto Slide 4.",
         "Do not invent precise features, proof, metrics, customers, guarantees, health outcomes, financial outcomes, or performance claims.",

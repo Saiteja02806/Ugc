@@ -13,7 +13,7 @@ const structure1Formats = JSON.parse(
 ) as { formats: Array<{ id: string }> };
 
 test("Structure 2 owns exactly eight global format ids", () => {
-  assert.equal(config.version, "carousel-structure-2-formats-v3-optional-cta");
+  assert.equal(config.version, "carousel-structure-2-formats-v4-expanded-copy-centered");
   assert.deepEqual(
     config.formats.map((format) => format.id),
     [

@@ -25,7 +25,10 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
       }
 
       resources {
-        cpu_idle          = false
+        # Compatibility receiver only. Long renders are launched as the
+        # one-shot Cloud Run Job below, so this HTTP service must never keep an
+        # always-allocated CPU running while the queue is empty.
+        cpu_idle          = true
         startup_cpu_boost = true
 
         limits = {

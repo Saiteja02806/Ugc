@@ -21,9 +21,10 @@ export function shouldDeliverCarouselJobMessage(params: {
 
   if (params.job.status === "queued") {
     return (
-      (params.wasJustCreated &&
-        !params.job.queueMessageId &&
-        !params.job.lastDeliveryAt) ||
+      // A database transaction may have committed the job before the process
+      // reached Cloud Tasks. The compare-and-set delivery claim ensures that
+      // concurrent observers cannot both send it.
+      (!params.job.queueMessageId && !params.job.lastDeliveryAt) ||
       isStaleTimestamp(
         params.job.lastDeliveryAt ?? params.job.updatedAt,
         now,

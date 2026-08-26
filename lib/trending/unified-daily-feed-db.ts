@@ -54,6 +54,12 @@ export type DailyTrendingFeedSlotRecord = {
   state: "decided" | "failed" | "planned" | "preparing" | "ready";
 };
 
+export type TrendingFeedReconciliationClaim = {
+  attemptCount: number;
+  sourceJobId: string;
+  userId: string;
+};
+
 type DailyFeedRow = {
   business_profile_id: string;
   business_profile_version: number;
@@ -273,6 +279,130 @@ export async function attachDailyTrendingAssignments(params: {
   if (error) {
     throw new Error(`Could not attach ready Trending content: ${error.message}`);
   }
+}
+
+/**
+ * A daily slot is a promise to the user, not a view of the mutable creative
+ * library. This repairs a ready slot only when its assignment can no longer be
+ * resolved, then lets the normal attachment path fill it with eligible work.
+ */
+export async function reconcileDailyTrendingFeedSlotIntegrity(params: {
+  feedId: string;
+  hookVideoAssignmentIds: string[];
+  hookVideoProviderResolved: boolean;
+  wallTextAssignmentIds: string[];
+  wallTextProviderResolved: boolean;
+}) {
+  const { error } = await getClient().rpc(
+    "reconcile_daily_trending_feed_slot_integrity",
+    {
+      p_feed_id: params.feedId,
+      p_hook_video_assignment_ids: params.hookVideoAssignmentIds,
+      p_hook_video_provider_resolved: params.hookVideoProviderResolved,
+      p_wall_text_assignment_ids: params.wallTextAssignmentIds,
+      p_wall_text_provider_resolved: params.wallTextProviderResolved,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `Could not reconcile promised Trending content: ${error.message}`,
+    );
+  }
+}
+
+/**
+ * Claims durable post-generation checks. The outbox is written atomically
+ * when a Trending worker job completes, so this work survives app outages and
+ * does not depend on a browser requesting the feed again.
+ */
+export async function claimDueTrendingFeedReconciliations(params?: {
+  limit?: number;
+  sourceJobId?: string | null;
+}): Promise<TrendingFeedReconciliationClaim[]> {
+  const { data, error } = await getClient().rpc(
+    "claim_due_trending_feed_reconciliations",
+    {
+      p_limit: Math.max(1, Math.min(params?.limit ?? 25, 100)),
+      p_source_job_id: params?.sourceJobId ?? null,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `Could not claim durable Trending reconciliation work: ${error.message}`,
+    );
+  }
+
+  return ((data ?? []) as Array<{
+    attempt_count: number;
+    source_job_id: string;
+    user_id: string;
+  }>).map((row) => ({
+    attemptCount: row.attempt_count,
+    sourceJobId: row.source_job_id,
+    userId: row.user_id,
+  }));
+}
+
+export async function completeTrendingFeedReconciliation(params: {
+  sourceJobId: string;
+}) {
+  const { data, error } = await getClient().rpc(
+    "complete_trending_feed_reconciliation",
+    { p_source_job_id: params.sourceJobId },
+  );
+
+  if (error) {
+    throw new Error(
+      `Could not complete durable Trending reconciliation work: ${error.message}`,
+    );
+  }
+
+  return data === true;
+}
+
+export async function rescheduleTrendingFeedReconciliation(params: {
+  message: string;
+  sourceJobId: string;
+}) {
+  const { data, error } = await getClient().rpc(
+    "reschedule_trending_feed_reconciliation",
+    {
+      p_error_message: params.message,
+      p_source_job_id: params.sourceJobId,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `Could not reschedule durable Trending reconciliation work: ${error.message}`,
+    );
+  }
+
+  return data === true;
+}
+
+/**
+ * Finds only today's feeds whose physical slot count no longer matches the
+ * saved entitlement. The recovery scheduler re-enters normal preparation for
+ * these feeds; it never creates a replacement for decided content.
+ */
+export async function listCurrentTrendingFeedIntegrityRepairs(params?: {
+  limit?: number;
+}) {
+  const { data, error } = await getClient().rpc(
+    "list_current_trending_feed_integrity_repairs",
+    { p_limit: Math.max(1, Math.min(params?.limit ?? 25, 100)) },
+  );
+
+  if (error) {
+    throw new Error(
+      `Could not list incomplete Trending feed repairs: ${error.message}`,
+    );
+  }
+
+  return (data ?? []) as Array<{ feed_id: string; user_id: string }>;
 }
 
 export async function markDailyTrendingFeedFormatsFailed(params: {

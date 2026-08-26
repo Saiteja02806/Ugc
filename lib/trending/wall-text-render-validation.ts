@@ -44,7 +44,7 @@ export async function validateWallTextRenderFit(
   content: TrendingWallTextContent,
 ): Promise<WallTextRenderValidation> {
   const preferredFontSize = getWallTextFontSize(content);
-  const fontSizes = [preferredFontSize, 42, 40, 38, 36].filter(
+  const fontSizes = [preferredFontSize, 52, 50, 48, 46, 44].filter(
     (fontSize, index, values) =>
       fontSize <= preferredFontSize && values.indexOf(fontSize) === index,
   );

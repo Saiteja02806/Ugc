@@ -211,7 +211,12 @@ assignments are preserved.
   source, safe box, and locked audio together. Its format metadata is not sent
   to the Wall writer and does not control the text.
 - This change requires applying
-  `20260826101500_disable_forced_wall_text_formats.sql` before deployment.
+  `20260826101500_disable_forced_wall_text_formats.sql` and
+  `20260826113000_allow_freeform_wall_text_plan_briefs.sql` before deployment.
+  The second migration keeps both the legacy private-plan column and the V6
+  creative JSON constraint compatible with the `freeform` sentinel, then
+  durably reopens reconciliation for current feeds whose Wall slots were
+  stranded by either older constraint.
 
 ## 2026-08-02 Edit-to-render Contract
 

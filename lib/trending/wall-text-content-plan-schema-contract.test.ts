@@ -16,6 +16,13 @@ const freeformMigration = readFileSync(
   ),
   "utf8",
 );
+const freeformPlanCompatibilityMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260826113000_allow_freeform_wall_text_plan_briefs.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const planner = readFileSync(
   new URL("../../worker/src/lib/wall-text-content-plan.ts", import.meta.url),
   "utf8",
@@ -209,5 +216,25 @@ test("stores new Wall copy as freeform and excludes it from format learning", ()
   assert.match(
     storage,
     /formatLearningEligible:[\s\S]*assignment\.assigned_format_id !== null/i,
+  );
+  assert.match(
+    freeformPlanCompatibilityMigration,
+    /wall_text_content_plan_briefs_preferred_format_family_check[\s\S]*'freeform'/i,
+  );
+  assert.match(
+    freeformPlanCompatibilityMigration,
+    /wall_text_creatives_text_content_chk[\s\S]*layoutVersion' = 'wall-text-overlay-v6'[\s\S]*formatId' in \([\s\S]*'freeform'/i,
+  );
+  assert.match(
+    freeformPlanCompatibilityMigration,
+    /add constraint wall_text_creatives_text_content_chk[\s\S]*not valid[\s\S]*validate constraint wall_text_creatives_text_content_chk/i,
+  );
+  assert.match(
+    freeformPlanCompatibilityMigration,
+    /daily_trending_feed_slots[\s\S]*slot\.format = 'wall_text'[\s\S]*wall_text_assignment_id is null/i,
+  );
+  assert.match(
+    freeformPlanCompatibilityMigration,
+    /trending_feed_reconciliation_outbox[\s\S]*on conflict \(source_job_id\) do update[\s\S]*status = 'pending'/i,
   );
 });

@@ -28,6 +28,34 @@ export function getAdditionalTrendingSlotsForUpgrade(params: {
   return Math.max(Math.trunc(params.currentPlanDailyLimit), 0);
 }
 
+/**
+ * Once a daily feed has promised slots, later reconciliation must never shrink
+ * that promise back to the current plan's base allowance. A genuine same-day
+ * upgrade appends one new plan pack; every later ensure preserves the resulting
+ * stored feed size.
+ */
+export function getReservedTrendingDailyLimit(params: {
+  currentPlanDailyLimit: number;
+  existingFeedDailyLimit?: number | null;
+  upgradeSlots: number;
+}) {
+  const currentPlanDailyLimit = Math.max(
+    Math.trunc(params.currentPlanDailyLimit),
+    0,
+  );
+  const existingFeedDailyLimit = Math.max(
+    Math.trunc(params.existingFeedDailyLimit ?? 0),
+    0,
+  );
+  const upgradeSlots = Math.max(Math.trunc(params.upgradeSlots), 0);
+
+  if (existingFeedDailyLimit === 0) {
+    return currentPlanDailyLimit;
+  }
+
+  return existingFeedDailyLimit + upgradeSlots;
+}
+
 function getPlanTier(planKey: string) {
   return PLAN_TIER_BY_KEY[planKey.trim().toLowerCase()] ?? 0;
 }

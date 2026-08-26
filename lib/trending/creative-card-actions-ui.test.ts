@@ -484,7 +484,11 @@ test("shows ready ideas while other daily slots are still preparing or failed", 
   );
   assert.match(
     workspace,
-    /const showSkeleton = loading \|\| \(preparing && items\.length === 0\)/,
+    /const showSkeleton = loading/,
+  );
+  assert.match(
+    workspace,
+    /items\.length === 0 && \(preparing \|\| pendingSlotCount > 0\)[\s\S]*TrendingPreparingEmptyState/,
   );
   assert.match(
     workspace,

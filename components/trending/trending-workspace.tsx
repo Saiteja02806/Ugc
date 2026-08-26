@@ -86,6 +86,7 @@ import {
   type HookVideoFlowState,
 } from "@/lib/trending/hook-video-flow";
 import { buildUserInfluencerId } from "@/lib/trending/hook-video-source-logic";
+import { getHookPreviewRenewalDelay } from "@/lib/trending/hook-preview-renewal";
 import type {
   HookInfluencerSummary,
   HookInfluencerVideoSummary,
@@ -142,6 +143,12 @@ type TrendingDailyFeedState =
   | "failed"
   | "preparing"
   | "ready";
+
+type TrendingFeedProgress = {
+  completedCount: number;
+  pendingSlotCount: number;
+  remainingCount: number;
+};
 
 type GeneratedCarouselSlide = TrendingCarouselSlide;
 
@@ -204,9 +211,11 @@ type CarouselHistoryResponse =
       } | null;
       feed: {
         assignedCount: number;
+        completedCount: number;
         id: string;
         localDate: string;
         pendingSlotCount: number;
+        remainingCount: number;
         state: TrendingDailyFeedState;
         timezone: string;
       } | null;
@@ -619,6 +628,7 @@ function useTrendingDecisionOutbox(userId: string | null) {
 
 type TrendingFeedMemoryCache = {
   cachedAt: number;
+  feedProgress: TrendingFeedProgress | null;
   feedState: TrendingDailyFeedState | null;
   items: TrendingFeedItem[];
   localDate: string;
@@ -670,6 +680,10 @@ export function TrendingWorkspace() {
     useState<TrendingDailyFeedState | null>(() => {
       return existingMemoryCache ? existingMemoryCache.feedState : null;
     });
+  const [trendingFeedProgress, setTrendingFeedProgress] =
+    useState<TrendingFeedProgress | null>(() => {
+      return existingMemoryCache ? existingMemoryCache.feedProgress : null;
+    });
   const [headerActionsRoot, setHeaderActionsRoot] =
     useState<HTMLDivElement | null>(null);
   const [contentMixOpen, setContentMixOpen] = useState(false);
@@ -684,7 +698,22 @@ export function TrendingWorkspace() {
     return existingMemoryCache ? existingMemoryCache.profile : null;
   });
   const [carouselHistoryRefreshKey, setCarouselHistoryRefreshKey] = useState(0);
-  const enqueueDecision = useTrendingDecisionOutbox(user?.uid ?? null);
+  const persistDecision = useTrendingDecisionOutbox(user?.uid ?? null);
+  const enqueueDecision = useCallback(
+    (entry: TrendingDecisionOutboxEntry) => {
+      setTrendingFeedProgress((current) =>
+        current
+          ? {
+              ...current,
+              completedCount: current.completedCount + 1,
+              remainingCount: Math.max(current.remainingCount - 1, 0),
+            }
+          : current,
+      );
+      persistDecision(entry);
+    },
+    [persistDecision],
+  );
 
   const hasAuthenticatedUser = Boolean(user);
   const visibleTrendingItems = useMemo(
@@ -740,6 +769,7 @@ export function TrendingWorkspace() {
       if (isInitialUserLoad || isNewLocalDate || loadedFeedFailed.current) {
         setTrendingItems([]);
         setTrendingFeedState(null);
+        setTrendingFeedProgress(null);
         setCarouselHistoryState("loading");
       }
       setCarouselHistoryError(null);
@@ -818,11 +848,29 @@ export function TrendingWorkspace() {
         const pendingDecisionAssignmentIds = getPendingDecisionAssignmentIds(
           userId,
         );
+        const pendingLocalDecisionCount = receivedItems.reduce(
+          (count, item) =>
+            count +
+            (pendingDecisionAssignmentIds.has(item.assignmentId) ? 1 : 0),
+          0,
+        );
         const nextVisibleItems = receivedItems.filter(
           (item) => !pendingDecisionAssignmentIds.has(item.assignmentId),
         );
         setTrendingItems(nextVisibleItems);
         setTrendingFeedState(data.feed?.state ?? null);
+        const nextFeedProgress = data.feed
+          ? {
+              completedCount:
+                data.feed.completedCount + pendingLocalDecisionCount,
+              pendingSlotCount: data.feed.pendingSlotCount,
+              remainingCount: Math.max(
+                data.feed.remainingCount - pendingLocalDecisionCount,
+                0,
+              ),
+            }
+          : null;
+        setTrendingFeedProgress(nextFeedProgress);
         loadedFeedFailed.current =
           data.feed?.state === "failed" && nextVisibleItems.length === 0;
         if (loadedFeedFailed.current) {
@@ -837,6 +885,7 @@ export function TrendingWorkspace() {
 
         inMemoryTrendingFeed = {
           cachedAt: Date.now(),
+          feedProgress: nextFeedProgress,
           feedState: data.feed?.state ?? null,
           items: receivedItems,
           localDate: data.feed?.localDate ?? getBrowserLocalDate(),
@@ -860,6 +909,7 @@ export function TrendingWorkspace() {
         if (!validMemoryCache) {
           setTrendingItems([]);
           setTrendingFeedState(null);
+          setTrendingFeedProgress(null);
           setCarouselProfile(null);
           setCarouselHistoryError(
             toCarouselDisplayCopy(
@@ -1018,7 +1068,9 @@ export function TrendingWorkspace() {
               items={orderedTrendingItems}
               error={visibleCarouselHistoryError}
               loading={carouselFeedLoading}
+              pendingSlotCount={trendingFeedProgress?.pendingSlotCount ?? 0}
               preparing={trendingFeedState === "preparing"}
+              remainingCount={trendingFeedProgress?.remainingCount ?? 0}
               profile={carouselFeedProfile}
               onCompleteProfile={openBusinessProfile}
               onRetryHistory={() => {
@@ -1050,7 +1102,9 @@ function TrendingFeedGallery({
   headerActionsRoot,
   items,
   loading,
+  pendingSlotCount,
   preparing,
+  remainingCount,
   onCompleteProfile,
   onRetryHistory,
   profile,
@@ -1060,12 +1114,14 @@ function TrendingFeedGallery({
   headerActionsRoot: HTMLDivElement | null;
   items: TrendingFeedItem[];
   loading: boolean;
+  pendingSlotCount: number;
   preparing: boolean;
+  remainingCount: number;
   onCompleteProfile: () => void;
   onRetryHistory: () => void;
   profile: CarouselProfileFeed | null;
 }) {
-  const showSkeleton = loading || (preparing && items.length === 0);
+  const showSkeleton = loading;
 
   if (!loading && error && items.length === 0) {
     return (
@@ -1082,6 +1138,14 @@ function TrendingFeedGallery({
 
   if (!loading && profile?.state === "missing") {
     return <CarouselProfilePrompt onAction={onCompleteProfile} />;
+  }
+
+  if (!showSkeleton && items.length === 0 && (preparing || pendingSlotCount > 0)) {
+    return <TrendingPreparingEmptyState pendingSlotCount={pendingSlotCount} />;
+  }
+
+  if (!showSkeleton && items.length === 0 && remainingCount > 0) {
+    return <TrendingIncompleteEmptyState onRetry={onRetryHistory} />;
   }
 
   if (!showSkeleton && items.length === 0) {
@@ -1112,10 +1176,53 @@ function TrendingFeedGallery({
             enqueueDecision={enqueueDecision}
             headerActionsRoot={headerActionsRoot}
             items={items}
+            pendingSlotCount={pendingSlotCount}
+            remainingCount={remainingCount}
+            onRetry={onRetryHistory}
           />
         ) : null}
       </div>
     </div>
+  );
+}
+
+function TrendingIncompleteEmptyState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <CarouselFeedState
+      actionIcon="refresh"
+      actionLabel="Try again"
+      icon="failed"
+      message="We could not prepare every daily idea yet. Try again to continue the missing work."
+      onAction={onRetry}
+      title="More ideas are still due"
+    />
+  );
+}
+
+function TrendingPreparingEmptyState({
+  pendingSlotCount,
+}: {
+  pendingSlotCount: number;
+}) {
+  const remainingLabel =
+    pendingSlotCount > 0
+      ? `${pendingSlotCount} remaining ${pendingSlotCount === 1 ? "idea is" : "ideas are"}`
+      : "Your remaining ideas are";
+
+  return (
+    <Empty role="status" className="min-h-[360px] text-foreground">
+      <EmptyHeader>
+        <Loader2
+          aria-hidden="true"
+          className="mx-auto size-5 animate-spin text-primary motion-reduce:animate-none"
+        />
+        <EmptyTitle>Generating for you</EmptyTitle>
+        <EmptyDescription>
+          {remainingLabel} being prepared. New ideas will appear here
+          automatically.
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   );
 }
 
@@ -1158,10 +1265,16 @@ function TrendingFeed({
   enqueueDecision,
   headerActionsRoot,
   items,
+  pendingSlotCount,
+  remainingCount,
+  onRetry,
 }: {
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   headerActionsRoot: HTMLDivElement | null;
   items: TrendingFeedItem[];
+  pendingSlotCount: number;
+  remainingCount: number;
+  onRetry: () => void;
 }) {
   const [activeSlideByCarouselId, setActiveSlideByCarouselId] = useState<
     Record<string, number>
@@ -1217,6 +1330,9 @@ function TrendingFeed({
           candidates={candidates}
           enqueueDecision={enqueueDecision}
           headerActionsRoot={headerActionsRoot}
+          pendingSlotCount={pendingSlotCount}
+          remainingCount={remainingCount}
+          onRetry={onRetry}
           onActiveSlideChange={setActiveSlide}
           onHookCompose={(item, edit) => setHookComposition({ edit, item })}
         />
@@ -1258,6 +1374,10 @@ function TrendingHookComposer({
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     editedSource?.resolvedAssetUrl ?? null,
   );
+  const [previewRenewAt, setPreviewRenewAt] = useState<number | null>(null);
+  const previewSessionEndpoint = creative.previewSessionEndpoint;
+  const previewInfluencerId = creative.influencerId;
+  const previewSourceKind = creative.sourceKind;
   const influencer: HookInfluencerSummary = {
     id: influencerId,
     name: editedSource?.resolvedAssetTitle ?? creative.influencerName,
@@ -1290,6 +1410,7 @@ function TrendingHookComposer({
 
     async function loadPreview() {
       if (editedSource) {
+        setPreviewRenewAt(null);
         setPreviewUrl(editedSource.resolvedAssetUrl);
         return;
       }
@@ -1301,10 +1422,10 @@ function TrendingHookComposer({
           return;
         }
 
-        const response = await fetch(creative.previewSessionEndpoint, {
+        const response = await fetch(previewSessionEndpoint, {
           body: JSON.stringify({
-            influencerId: creative.influencerId,
-            sourceKind: creative.sourceKind,
+            influencerId: previewInfluencerId,
+            sourceKind: previewSourceKind,
           }),
           cache: "no-store",
           headers: {
@@ -1315,7 +1436,7 @@ function TrendingHookComposer({
           signal: controller.signal,
         });
         const data = (await response.json().catch(() => null)) as
-          | { ok: true; previewUrl: string }
+          | { expiresAt: string; ok: true; previewUrl: string }
           | { ok?: false }
           | null;
 
@@ -1324,10 +1445,14 @@ function TrendingHookComposer({
           data?.ok === true &&
           !controller.signal.aborted
         ) {
+          setPreviewRenewAt(
+            Date.now() + getHookPreviewRenewalDelay(data.expiresAt),
+          );
           setPreviewUrl(data.previewUrl);
         }
       } catch {
         if (!controller.signal.aborted) {
+          setPreviewRenewAt(null);
           setPreviewUrl(null);
         }
       }
@@ -1336,7 +1461,79 @@ function TrendingHookComposer({
     void loadPreview();
 
     return () => controller.abort();
-  }, [creative, editedSource]);
+  }, [
+    editedSource,
+    previewInfluencerId,
+    previewSessionEndpoint,
+    previewSourceKind,
+  ]);
+
+  useEffect(() => {
+    if (editedSource || previewRenewAt === null) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const renewalTimer = window.setTimeout(
+      () => {
+        async function renewPreviewSession() {
+          try {
+            const token = await getCurrentUserIdToken();
+
+            if (!token) {
+              throw new Error("Sign in before previewing Hook ideas.");
+            }
+
+            const response = await fetch(previewSessionEndpoint, {
+              body: JSON.stringify({
+                influencerId: previewInfluencerId,
+                sourceKind: previewSourceKind,
+              }),
+              cache: "no-store",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              method: "POST",
+              signal: controller.signal,
+            });
+            const data = (await response.json().catch(() => null)) as
+              | { expiresAt: string; ok: true }
+              | { ok?: false }
+              | null;
+
+            if (!response.ok || data?.ok !== true) {
+              throw new Error("Could not renew this Hook preview.");
+            }
+
+            if (!controller.signal.aborted) {
+              setPreviewRenewAt(
+                Date.now() + getHookPreviewRenewalDelay(data.expiresAt),
+              );
+            }
+          } catch {
+            if (!controller.signal.aborted) {
+              setPreviewRenewAt(Date.now() + 10_000);
+            }
+          }
+        }
+
+        void renewPreviewSession();
+      },
+      Math.max(previewRenewAt - Date.now(), 0),
+    );
+
+    return () => {
+      window.clearTimeout(renewalTimer);
+      controller.abort();
+    };
+  }, [
+    editedSource,
+    previewInfluencerId,
+    previewRenewAt,
+    previewSessionEndpoint,
+    previewSourceKind,
+  ]);
 
   return (
     <HookVideoComposer
@@ -1362,6 +1559,9 @@ function TrendingDeck({
   headerActionsRoot,
   onActiveSlideChange,
   onHookCompose,
+  onRetry,
+  pendingSlotCount,
+  remainingCount,
 }: {
   activeSlideByCarouselId: Record<string, number>;
   candidates: TrendingCandidate[];
@@ -1372,6 +1572,9 @@ function TrendingDeck({
     item: TrendingHookVideoFeedItem,
     edit: TrendingCreativeEditRecord | null,
   ) => void;
+  onRetry: () => void;
+  pendingSlotCount: number;
+  remainingCount: number;
 }) {
   const swipeTimerRef = useRef<number | null>(null);
   const swipeCompletionRef = useRef<(() => void) | null>(null);
@@ -2208,6 +2411,10 @@ function TrendingDeck({
             Showing {title}, idea {activeItemIndex + 1} of {visibleCandidates.length}
           </span>
         </>
+      ) : pendingSlotCount > 0 ? (
+        <TrendingPreparingEmptyState pendingSlotCount={pendingSlotCount} />
+      ) : remainingCount > 0 ? (
+        <TrendingIncompleteEmptyState onRetry={onRetry} />
       ) : (
         <TrendingReadyEmptyState />
       )}
@@ -2723,10 +2930,12 @@ function TrendingHookDeckCard({
   const isActive = depth === 0;
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
   const [previewLoadKey, setPreviewLoadKey] = useState(0);
+  const [previewRenewAt, setPreviewRenewAt] = useState<number | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewAudio, setPreviewAudio] = useState<HookPreviewAudio | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const automaticPreviewRecoveryAttemptedRef = useRef(false);
   const creativeId = candidate.item.creativeId;
   const creative = candidate.item.creative;
   const editedContent =
@@ -2750,6 +2959,7 @@ function TrendingHookDeckCard({
 
     async function loadPreview() {
       setPreviewAudio(null);
+      setPreviewRenewAt(null);
       setPreviewLoading(true);
       setPreviewError(null);
       onPreviewStatusChange(creativeId, "loading");
@@ -2783,6 +2993,7 @@ function TrendingHookDeckCard({
         const data = (await response.json().catch(() => null)) as
           | {
               hookAudio?: HookPreviewAudio | null;
+              expiresAt: string;
               ok: true;
               previewUrl: string;
             }
@@ -2799,6 +3010,9 @@ function TrendingHookDeckCard({
 
         if (!controller.signal.aborted) {
           setPreviewAudio(data.hookAudio ?? null);
+          setPreviewRenewAt(
+            Date.now() + getHookPreviewRenewalDelay(data.expiresAt),
+          );
           setPreviewUrl(data.previewUrl);
           // A renewed protected session can return the same URL. Remount the
           // video in that case so it emits loadedmetadata again.
@@ -2808,6 +3022,7 @@ function TrendingHookDeckCard({
         if (!controller.signal.aborted) {
           setPreviewUrl(null);
           setPreviewAudio(null);
+          setPreviewRenewAt(null);
           setPreviewLoading(false);
           setPreviewError(
             getErrorMessage(error, "Could not load this Hook preview."),
@@ -2826,6 +3041,76 @@ function TrendingHookDeckCard({
     onPreviewStatusChange,
     previewInfluencerId,
     previewRetryKey,
+    previewSessionEndpoint,
+    previewSourceKind,
+  ]);
+
+  useEffect(() => {
+    if (editedSourceUrl || previewRenewAt === null) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const renewalTimer = window.setTimeout(
+      () => {
+        async function renewPreviewSession() {
+          try {
+            const token = await getCurrentUserIdToken();
+
+            if (!token) {
+              throw new Error("Sign in before previewing Hook ideas.");
+            }
+
+            const response = await fetch(previewSessionEndpoint, {
+              body: JSON.stringify({
+                influencerId: previewInfluencerId,
+                sourceKind: previewSourceKind,
+              }),
+              cache: "no-store",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              method: "POST",
+              signal: controller.signal,
+            });
+            const data = (await response.json().catch(() => null)) as
+              | { expiresAt: string; ok: true; previewUrl: string }
+              | { ok?: false }
+              | null;
+
+            if (!response.ok || data?.ok !== true) {
+              throw new Error("Could not renew this Hook preview.");
+            }
+
+            if (!controller.signal.aborted) {
+              setPreviewRenewAt(
+                Date.now() + getHookPreviewRenewalDelay(data.expiresAt),
+              );
+            }
+          } catch {
+            if (!controller.signal.aborted) {
+              // Keep the current playable media mounted and try the protected
+              // session again shortly. A temporary renewal failure should not
+              // replace a valid preview with an error screen.
+              setPreviewRenewAt(Date.now() + 10_000);
+            }
+          }
+        }
+
+        void renewPreviewSession();
+      },
+      Math.max(previewRenewAt - Date.now(), 0),
+    );
+
+    return () => {
+      window.clearTimeout(renewalTimer);
+      controller.abort();
+    };
+  }, [
+    editedSourceUrl,
+    previewInfluencerId,
+    previewRenewAt,
     previewSessionEndpoint,
     previewSourceKind,
   ]);
@@ -2914,18 +3199,35 @@ function TrendingHookDeckCard({
             visualGroup: null,
           }}
           onPreviewError={() => {
+            if (
+              !editedSourceUrl &&
+              !automaticPreviewRecoveryAttemptedRef.current
+            ) {
+              automaticPreviewRecoveryAttemptedRef.current = true;
+              setPreviewLoading(true);
+              setPreviewError(null);
+              onPreviewStatusChange(creativeId, "loading");
+              setPreviewRetryKey((current) => current + 1);
+              return;
+            }
+
             setPreviewUrl(null);
             setPreviewAudio(null);
+            setPreviewRenewAt(null);
             setPreviewLoading(false);
             setPreviewError("Could not load this Hook preview.");
             onPreviewStatusChange(creativeId, "error");
           }}
           onPreviewReady={() => {
+            automaticPreviewRecoveryAttemptedRef.current = false;
             setPreviewLoading(false);
             setPreviewError(null);
             onPreviewStatusChange(creativeId, "ready");
           }}
-          onRetryPreview={() => setPreviewRetryKey((current) => current + 1)}
+          onRetryPreview={() => {
+            automaticPreviewRecoveryAttemptedRef.current = false;
+            setPreviewRetryKey((current) => current + 1);
+          }}
         />
       </article>
     </div>

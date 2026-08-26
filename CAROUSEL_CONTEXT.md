@@ -1075,10 +1075,12 @@ Balanced carousel copy rules:
 - A heading or hook is optional. When present, it must be 3-16 words, at most 100
   characters, use no more than four visual lines, and must not be forced into a
   single line by over-shrinking.
-- Supporting content must be one complete sentence of 8-40 words, at most 240
-  characters, normally render as no more than six visual lines, explain one
-  specific idea, and avoid repeating the heading. List items may use up to two
-  visual lines each, with an eight-line total group cap.
+- Slide 1 supporting content must be one complete sentence of 8-40 words, at
+  most 240 characters, and fit within eight visual lines. Supporting content
+  on Slides 2-5 may use 8-50 words, at most 300 characters, and must fit within
+  ten visual lines. Each body explains one specific idea and avoids repeating
+  the heading. List items may use up to two visual lines each, with an
+  eight-line total group cap.
 - Previously generated legacy rows without a reserved content format retain
   their stored five-slide Hook, Problem, Consequence, Solution, and Result/CTA
   story for read/edit compatibility. The planner no longer creates that legacy
@@ -1087,8 +1089,9 @@ Balanced carousel copy rules:
   for renderer and matcher compatibility.
 - The renderer is the final source of truth for line limits. It must wrap using
   the production font stack, actual font size, available width, padding, and
-  card dimensions, then keep headings to at most four rendered lines and body
-  text to at most eight rendered lines.
+  card dimensions, then keep headings to at most four rendered lines, Slide 1
+  body text to at most eight rendered lines, and body text on Slides 2-5 to at
+  most ten rendered lines.
 - A headline and its supporting copy remain two distinct text groups. Structure
   1 and Structure 2 both render every visible group as ordinary white SVG text
   directly on the image. Neither structure receives a white SVG background.
@@ -1100,10 +1103,11 @@ Balanced carousel copy rules:
   visual subjects, and unsupported/prohibited claims are publishing gates.
   A failing item may receive one isolated LLM repair; a second failure remains
   failed instead of receiving hardcoded replacement copy.
-- Word-count preferences, perspective quality, CTA phrasing, generic wording,
+- Word-count minimums, perspective quality, CTA phrasing, generic wording,
   grammar style, headline/body overlap, and recent repetition remain prompt
-  guidance and persisted advisory diagnostics. They do not rewrite or reject
-  otherwise contract-valid AI copy.
+  guidance and persisted advisory diagnostics. Structure 1's absolute body
+  maximum is a publishing gate: 40 words on Slide 1 and 50 words on each of
+  Slides 2-5. These rules do not rewrite accepted AI copy.
 - The application does not run a hardcoded post-LLM copy normalizer. Accepted
   headline, body, list, story, and CTA strings are preserved apart from the
   whitespace normalization required to parse and render their JSON fields.
@@ -3556,11 +3560,14 @@ Name: **Verify v26 and replace the stale production assignment**
   rather than forcing the short one-to-two-line output that had become the
   common result. This doubles the maximum capacity only; it does not double a
   minimum or force every slide to be longer.
-- Structure 1 accepts up to 100 headline characters / 16 words, 240 body
-  characters / 40 words, 68 CTA characters, and 88 characters per list item.
-  At the fixed 44px type size, the rendering caps are four headline lines,
-  eight body lines, two lines per list item, and eight lines for a complete
-  list group.
+- Structure 1 accepts up to 100 headline characters / 16 words on every slide.
+  Slide 1 body copy accepts up to 240 characters / 40 words, while each body on
+  Slides 2-5 accepts up to 300 characters / 50 words. The body word ceilings
+  are publishing gates; lower word targets remain guidance. CTA copy remains
+  capped at 68 characters and each list item at 88 characters. At the fixed
+  44px type size, the rendering caps are four headline lines, eight Slide 1
+  body lines, ten body lines on Slides 2-5, two lines per list item, and eight
+  lines for a complete list group.
 - Structure 2 accepts up to 720 story characters and 360 CTA characters. Its
   fixed 44px caps are twelve story lines and six CTA lines. When both groups
   are present, the stricter square-canvas combined-safe-area calculation is
@@ -3580,12 +3587,16 @@ Name: **Verify v26 and replace the stale production assignment**
 - Fixed typography, measured wrapping, direct white headline/body/list/story/CTA
   text, no-shrink, no-truncation, human-image safety, and all five-slide format contracts remain
   unchanged. New versions are
-  `llm-carousel-planner-v35-plain-white-structure-parity`,
-  `social-plain-text-renderer-v15-structure-parity`,
+  `llm-carousel-planner-v36-followup-copy-50`,
+  `social-plain-text-renderer-v16-followup-copy-50`,
   `llm-carousel-structure-2-flexible-seed-writer-v9-plain-white-story-text`,
   `carousel-structure-2-flexible-story-v5-plain-white-story-text`,
   `carousel-structure-2-formats-v4-expanded-copy-centered`, and
   `story-native-renderer-v5-plain-white-story-text`.
+- Structure 1's balanced line selection uses bounded dynamic programming with
+  the same rag and short-final-line scoring. This prevents a valid 50-word
+  follow-up body from causing exponential render time while preserving the
+  renderer's measured-fit decision.
 - This is a local source decision. It is not live until the worker is deployed
   and new Structure 1 and Structure 2 output is verified through the
   authenticated production Trending flow on `https://www.getugcpilot.com`.
@@ -3662,3 +3673,14 @@ Name: **Verify v26 and replace the stale production assignment**
   this migration, app code, worker compatibility, and a concurrency load test
   are deployed and verified together. Scaling is a separate rollout, not part
   of this database change.
+
+## 2026-08-26 Same-day Upgrade Reconciliation
+
+- A same-day paid upgrade appends the complete paid pack to the feed already
+  promised for that day. Free-to-Starter therefore reserves 30 total slots and
+  Free-to-Growth reserves 60 total slots under the current product rule.
+- After that append, the stored daily feed size is authoritative for every
+  later ensure and worker reconciliation. The current plan's base allowance
+  must not shrink a 30-slot feed back to 20 or a 60-slot feed back to 50.
+- Reconciliation preserves the stored formats and physical positions, repairs
+  only unresolved work, and does not grant the paid pack a second time.

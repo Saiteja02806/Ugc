@@ -7,11 +7,11 @@ import type {
 } from "./carousel-content-plan.js";
 import {
   CAROUSEL_FIXED_FONT_SIZE,
-  CAROUSEL_STRUCTURE_1_BODY_MAX_LINES,
   CAROUSEL_STRUCTURE_1_FIXED_TEXT_WIDTH,
   CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES,
   CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES,
   CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES,
+  getCarouselStructure1BodyMaxLines,
   inspectCarouselFixedTextFit,
   type CarouselTextMode,
   type PlannedCarouselSlide,
@@ -29,19 +29,20 @@ import {
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v35-plain-white-structure-parity";
+  "llm-carousel-planner-v36-followup-copy-50";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly five slides plus a backend-selected content format and compatible hook family.";
 
-const MAX_BODY_LENGTH = 240;
+const FIRST_SLIDE_MAX_BODY_LENGTH = 240;
+const FOLLOWUP_SLIDE_MAX_BODY_LENGTH = 300;
+const MAX_BODY_LENGTH = FOLLOWUP_SLIDE_MAX_BODY_LENGTH;
 const MAX_HEADLINE_LENGTH = 100;
 const MAX_CTA_LENGTH = 68;
 const MAX_IMAGE_DIRECTION_LENGTH = 180;
 const MAX_LIST_ITEM_LENGTH = 88;
-const TARGET_BODY_MIN_WORDS = 8;
-const TARGET_BODY_MAX_WORDS = 40;
 const MIN_REQUIRED_BODY_WORDS = 8;
-const MAX_ALLOWED_BODY_WORDS = 40;
+const FIRST_SLIDE_MAX_BODY_WORDS = 40;
+const FOLLOWUP_SLIDE_MAX_BODY_WORDS = 50;
 const MIN_HEADLINE_WORDS = 3;
 const MAX_HEADLINE_WORDS = 16;
 const VISUAL_SUBJECT_TERMS =
@@ -107,6 +108,7 @@ export type CarouselContentPlan = {
 export type CarouselPlanValidationIssue = {
   code:
     | "body_length"
+    | "body_word_limit"
     | "generic_copy"
     | "grammar"
     | "headline_body_repetition"
@@ -148,6 +150,18 @@ export type CarouselContentPlanInput = {
   selectedAngle?: string | null;
   slideCount: number;
 };
+
+function getStructure1BodyCopyLimits(slideNumber: number) {
+  return slideNumber === 1
+    ? {
+        maximumCharacters: FIRST_SLIDE_MAX_BODY_LENGTH,
+        maximumWords: FIRST_SLIDE_MAX_BODY_WORDS,
+      }
+    : {
+        maximumCharacters: FOLLOWUP_SLIDE_MAX_BODY_LENGTH,
+        maximumWords: FOLLOWUP_SLIDE_MAX_BODY_WORDS,
+      };
+}
 
 export type CarouselBatchContentPlanInput = {
   analysis?: WebsiteBusinessAnalysis;
@@ -644,6 +658,7 @@ function parseCarouselContentPlanShape(
   const seenHeadlines = new Set<string>();
   const slides = record.slides.map((slideValue, index) => {
     const slide = asRecord(slideValue, `slide ${index + 1}`);
+    const bodyCopyLimits = getStructure1BodyCopyLimits(index + 1);
     const slideNumber = getInteger(slide.slideNumber, `slide ${index + 1} number`);
     const slideType = getSlideType(slide.slideType, `slide ${index + 1} type`);
     const expectedFormatSlide = grammarContext?.format.slides[index] ?? null;
@@ -664,7 +679,7 @@ function parseCarouselContentPlanShape(
     );
     const parsedBody = getOptionalNullableString(
       slide.body ?? slide.subtext,
-      MAX_BODY_LENGTH,
+      bodyCopyLimits.maximumCharacters,
       `slide ${index + 1} body`,
     );
     const listItems = getOptionalStringList(
@@ -1075,7 +1090,7 @@ function validateStructure1FixedTextFit(
     },
     {
       label: "Body",
-      maximumLines: CAROUSEL_STRUCTURE_1_BODY_MAX_LINES,
+      maximumLines: getCarouselStructure1BodyMaxLines(slide.slideNumber),
       value: body,
     },
     ...listLines.map((value, index) => ({
@@ -1189,15 +1204,23 @@ export function validateCarouselContentPlan(
 
     if (slide.body) {
       const bodyWords = countWords(slide.body);
+      const bodyCopyLimits = getStructure1BodyCopyLimits(slide.slideNumber);
 
       if (
         bodyWords < MIN_REQUIRED_BODY_WORDS ||
-        bodyWords > MAX_ALLOWED_BODY_WORDS ||
-        slide.body.length > MAX_BODY_LENGTH
+        slide.body.length > bodyCopyLimits.maximumCharacters
       ) {
         issues.push({
           code: "body_length",
-          message: `Body must be ${MIN_REQUIRED_BODY_WORDS}-${MAX_ALLOWED_BODY_WORDS} words and at most ${MAX_BODY_LENGTH} characters.`,
+          message: `Body must use at least ${MIN_REQUIRED_BODY_WORDS} words and at most ${bodyCopyLimits.maximumCharacters} characters.`,
+          slideNumber: slide.slideNumber,
+        });
+      }
+
+      if (bodyWords > bodyCopyLimits.maximumWords) {
+        issues.push({
+          code: "body_word_limit",
+          message: `Slide ${slide.slideNumber} body must not exceed ${bodyCopyLimits.maximumWords} words.`,
           slideNumber: slide.slideNumber,
         });
       }
@@ -1456,7 +1479,11 @@ export function partitionCarouselContentPlanValidationIssues(
   const advisoryIssues: CarouselPlanValidationIssue[] = [];
 
   for (const issue of dedupeValidationIssues([...issues])) {
-    if (issue.code === "invalid_plan" || issue.code === "render_fit") {
+    if (
+      issue.code === "body_word_limit" ||
+      issue.code === "invalid_plan" ||
+      issue.code === "render_fit"
+    ) {
       blockingIssues.push(issue);
     } else {
       advisoryIssues.push(issue);
@@ -1621,8 +1648,9 @@ function buildGrammarPlannerMessages(
         "- Prioritize useful content over promotion. Do not turn the carousel into an advertisement.",
         "- Hook wording must be completely fresh and must follow the selected hook family without copying examples or history.",
         `- Headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than four visual lines.`,
-        `- Body copy must be one complete sentence of ${TARGET_BODY_MIN_WORDS}-${TARGET_BODY_MAX_WORDS} words, at most ${MAX_BODY_LENGTH} characters, and normally no more than six visual lines.`,
-        `- Every visible text group uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px white type directly on the image, with no white text background. Headlines must fit within four lines; body copy within eight; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
+        `- Slide 1 body copy must be one complete sentence of ${MIN_REQUIRED_BODY_WORDS}-${FIRST_SLIDE_MAX_BODY_WORDS} words and at most ${FIRST_SLIDE_MAX_BODY_LENGTH} characters.`,
+        `- Slides 2-5 body copy must each be one complete sentence of ${MIN_REQUIRED_BODY_WORDS}-${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words and at most ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
+        `- Every visible text group uses fixed ${CAROUSEL_FIXED_FONT_SIZE}px white type directly on the image, with no white text background. Headlines must fit within four lines; Slide 1 body copy within ${getCarouselStructure1BodyMaxLines(1)} lines; Slides 2-5 body copy within ${getCarouselStructure1BodyMaxLines(2)} lines; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
         "- A headline must not repeat its body. If the body works alone, use body_only and set headline to null.",
         "- List slides must use the exact configured number of short listItems and normally set body to null.",
         "- Every slide without a configured listItemCount must return listItems as an empty array.",
@@ -1700,7 +1728,8 @@ function buildBatchPlannerMessages(
         "Write fresh hooks and slide copy that do not copy recentAcceptedCopy or another item in this response.",
         "Use simple, specific, natural copy. Prioritize useful information over promotion.",
         `Optional headlines must use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters.`,
-        `Body copy must be one complete sentence of ${TARGET_BODY_MIN_WORDS}-${TARGET_BODY_MAX_WORDS} words and at most ${MAX_BODY_LENGTH} characters.`,
+        `Slide 1 body copy must be one complete sentence of ${MIN_REQUIRED_BODY_WORDS}-${FIRST_SLIDE_MAX_BODY_WORDS} words and at most ${FIRST_SLIDE_MAX_BODY_LENGTH} characters.`,
+        `Slides 2-5 body copy must each be one complete sentence of ${MIN_REQUIRED_BODY_WORDS}-${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words and at most ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters.`,
         "Never invent numbers, product capabilities, proof, customers, brands, health claims, financial claims, or guaranteed outcomes.",
         "Avoid generic copy such as boost productivity, streamline your workflow, save time, work smarter, unlock efficiency, or next level.",
         "Follow every format role, slide type, allowed text mode, and list-item count exactly.",
@@ -1972,7 +2001,8 @@ function buildRepairMessages(params: {
         "Private creative brief (context only):",
         JSON.stringify(params.planningBrief),
         "Every headline is optional; when present it must be 3-16 words, at most 100 characters, and at most four visual lines.",
-        "Every body must be one complete, specific sentence of 8-40 words and at most 240 characters.",
+        "Slide 1 body must be one complete, specific sentence of 8-40 words, at most 240 characters, and at most eight visual lines.",
+        "Each body on Slides 2-5 must be one complete, specific sentence of 8-50 words, at most 300 characters, and at most ten visual lines.",
         "List modes may use at most eight total visual lines, with at most two lines per item.",
         "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors such as lead to missed leads.",
         "Do not repeat a connector within one short sentence, such as for better management for clearer decisions.",

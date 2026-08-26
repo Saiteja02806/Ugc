@@ -16,7 +16,10 @@ import {
   getTrendingDailyPackReadiness,
   type TrendingDailyPackReadiness,
 } from "@/lib/trending/daily-pack-readiness";
-import { getAdditionalTrendingSlotsForUpgrade } from "@/lib/trending/plan-upgrade-grant";
+import {
+  getAdditionalTrendingSlotsForUpgrade,
+  getReservedTrendingDailyLimit,
+} from "@/lib/trending/plan-upgrade-grant";
 import {
   createCarouselTrendingFeedProvider,
   createUnavailableTrendingFeedProvider,
@@ -383,13 +386,14 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
       ? [...existingFormats, ...dailyPlan.formats]
       : existingFormats
     : dailyPlan.formats;
-  const reservedEntitlement =
-    existingPlan && upgradeSlots > 0
-      ? {
-          ...entitlement,
-          dailyLimit: existingPlan.feed.dailyLimit + upgradeSlots,
-        }
-      : entitlement;
+  const reservedEntitlement = {
+    ...entitlement,
+    dailyLimit: getReservedTrendingDailyLimit({
+      currentPlanDailyLimit: entitlement.dailyLimit,
+      existingFeedDailyLimit: existingPlan?.feed.dailyLimit,
+      upgradeSlots,
+    }),
+  };
   const initialPlan = await ensureDailyTrendingFeedPlan({
     businessProfileId: params.profile.id,
     businessProfileVersion: params.profile.profileVersion,

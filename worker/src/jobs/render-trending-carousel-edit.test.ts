@@ -103,7 +103,7 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
   assert.equal(receivedTextStyle, "plain");
   assert.deepEqual(readyOutput, {
     rendererVersion:
-      "social-plain-text-renderer-v15-structure-parity-normalized-edit-v1",
+      "social-plain-text-renderer-v16-followup-copy-50-normalized-edit-v1",
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide.webp",

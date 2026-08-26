@@ -182,10 +182,10 @@ test("Structure 1 preserves structurally valid AI copy verbatim", () => {
   assert.deepEqual(result.blockingIssues, []);
 });
 
-test("Structure 1 accepts expanded fixed-size copy without changing its centered placement", () => {
+test("Structure 1 accepts a 50-word follow-up body without changing its centered placement", async () => {
   const fixture = createAssignedStructure1Fixture("comparison", "question");
   const expandedBody =
-    "Each review keeps campaign details connected so the next handoff starts with the current owner, agreed timing, known approval, visible reporting context, and one calm decision for the team.";
+    "Each review keeps the plan clear so the next handoff starts with the right owner, timing, notes, goals, tasks, risks, facts, and next steps, giving the team enough context to keep work moving without repeating old talks or losing track of what must happen next today for everyone right now.";
   fixture.slides[1]!.body = expandedBody;
 
   const result = parseCarouselContentPlanForAssignment(fixture, {
@@ -197,10 +197,62 @@ test("Structure 1 accepts expanded fixed-size copy without changing its centered
     slideCount: 5,
   });
 
-  assert.ok(expandedBody.length > 120);
+  assert.equal(expandedBody.split(/\s+/).length, 50);
+  assert.ok(expandedBody.length > 240);
+  assert.ok(expandedBody.length <= 300);
   assert.equal(result.plan.slides[1]!.body, expandedBody);
   assert.equal(result.plan.slides[1]!.textPosition, "center");
   assert.deepEqual(result.blockingIssues, []);
+  await inspectCarouselSlideLayout({
+    format: "4:5",
+    slide: result.plan.slides[1]!,
+  });
+});
+
+test("Structure 1 keeps Slide 1 at 40 words and blocks more than 50 words on Slides 2-5", () => {
+  const fiftyWordBody =
+    "Each review keeps the plan clear so the next handoff starts with the right owner, timing, notes, goals, tasks, risks, facts, and next steps, giving the team enough context to keep work moving without repeating old talks or losing track of what must happen next today for everyone right now.";
+  const fortyOneWordBody =
+    "Keep each plan clear so the next handoff has the right owner, time, notes, goals, tasks, risks, facts, and steps, giving the full team enough context to move work forward without repeating old talks or losing track of key decisions today.";
+  const slideOneFixture = createAssignedStructure1Fixture("comparison", "question");
+  slideOneFixture.slides[0]!.body = fortyOneWordBody;
+
+  assert.equal(fortyOneWordBody.split(/\s+/).length, 41);
+  assert.ok(fortyOneWordBody.length <= 240);
+
+  assert.throws(
+    () =>
+      parseCarouselContentPlanForAssignment(slideOneFixture, {
+        analysis,
+        candidateIndex: 0,
+        contentFormatId: "comparison",
+        hookFamilyId: "question",
+        recentHistory: [],
+        slideCount: 5,
+      }),
+    /Slide 1 body must not exceed 40 words/,
+  );
+
+  const fiftyOneWordFixture = createAssignedStructure1Fixture(
+    "comparison",
+    "question",
+  );
+  fiftyOneWordFixture.slides[1]!.body = fiftyWordBody.replace(
+    "right now.",
+    "right now together.",
+  );
+  assert.throws(
+    () =>
+      parseCarouselContentPlanForAssignment(fiftyOneWordFixture, {
+        analysis,
+        candidateIndex: 0,
+        contentFormatId: "comparison",
+        hookFamilyId: "question",
+        recentHistory: [],
+        slideCount: 5,
+      }),
+    /Slide 2 body must not exceed 50 words/,
+  );
 });
 
 test("Structure 1 rejects a changed format, role order, or required field", () => {

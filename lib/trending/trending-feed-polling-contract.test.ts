@@ -26,3 +26,35 @@ test("retries a timed out or transient Trending feed request without relying on 
     /if \(retryable\) \{[\s\S]*?scheduleFeedRefresh\([\s\S]*?getSmartPreparingPollInterval/,
   );
 });
+
+test("shows generation progress instead of caught-up while daily slots remain pending", () => {
+  assert.match(
+    workspace,
+    /setTrendingFeedProgress\(nextFeedProgress\)/,
+  );
+  assert.match(
+    workspace,
+    /pendingSlotCount=\{trendingFeedProgress\?\.pendingSlotCount \?\? 0\}/,
+  );
+  assert.match(
+    workspace,
+    /items\.length === 0 && \(preparing \|\| pendingSlotCount > 0\)[\s\S]*TrendingPreparingEmptyState/,
+  );
+  assert.match(
+    workspace,
+    /\) : pendingSlotCount > 0 \? \([\s\S]*TrendingPreparingEmptyState[\s\S]*TrendingReadyEmptyState/,
+  );
+  assert.match(workspace, /<EmptyTitle>Generating for you<\/EmptyTitle>/);
+  assert.match(
+    workspace,
+    /remainingCount > 0[\s\S]*TrendingIncompleteEmptyState/,
+  );
+  assert.match(
+    workspace,
+    /remainingCount: Math\.max\(current\.remainingCount - 1, 0\)/,
+  );
+  assert.match(
+    workspace,
+    /data\.feed\.remainingCount - pendingLocalDecisionCount/,
+  );
+});

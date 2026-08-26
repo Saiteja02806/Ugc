@@ -3,10 +3,10 @@ import sharp from "sharp";
 import type { CarouselFormat } from "../types.js";
 import type { CarouselRenderStyle } from "./carousel-render-style.js";
 import {
-  CAROUSEL_STRUCTURE_1_BODY_MAX_LINES,
   CAROUSEL_STRUCTURE_1_HEADLINE_MAX_LINES,
   CAROUSEL_STRUCTURE_1_LIST_ITEM_MAX_LINES,
   CAROUSEL_STRUCTURE_1_LIST_TOTAL_MAX_LINES,
+  getCarouselStructure1BodyMaxLines,
   type PlannedCarouselSlide,
 } from "./carousel-slide-plan.js";
 
@@ -61,7 +61,7 @@ type BalancedLines = {
 };
 
 export const CAROUSEL_RENDERER_VERSION =
-  "social-plain-text-renderer-v15-structure-parity";
+  "social-plain-text-renderer-v16-followup-copy-50";
 export const CAROUSEL_FIXED_FONT_SIZE = 44;
 
 const FORMAT_DIMENSIONS: Record<CarouselFormat, { height: number; width: number }> = {
@@ -239,71 +239,67 @@ function buildBalancedLines(params: {
 
   const maxLines = Math.min(params.maxLines, words.length);
   let best: { lines: string[]; penalty: number } | null = null;
-
-  function search(
-    startIndex: number,
-    remainingLines: number,
-    currentLines: string[],
-    currentPenalty: number,
-  ) {
-    if (remainingLines === 0) {
-      if (startIndex === words.length) {
-        const lineCountPenalty = currentLines.length * params.maxWidth * 18;
-        const candidate = {
-          lines: currentLines,
-          penalty: currentPenalty + lineCountPenalty,
-        };
-
-        if (!best || candidate.penalty < best.penalty) {
-          best = candidate;
-        }
-      }
-
-      return;
-    }
-
-    const wordsLeft = words.length - startIndex;
-
-    if (wordsLeft < remainingLines) {
-      return;
-    }
-
-    const maxEndIndex = words.length - remainingLines + 1;
-
-    for (let endIndex = startIndex + 1; endIndex <= maxEndIndex; endIndex += 1) {
-      const lineWidth = getLineWidth(
-        words,
-        startIndex,
-        endIndex,
-        params.fontSize,
-      );
-
-      if (lineWidth > params.maxWidth) {
-        if (endIndex === startIndex + 1) {
-          continue;
-        }
-
-        break;
-      }
-
-      const rag = params.maxWidth - lineWidth;
-      const isLastLine = remainingLines === 1;
-      const shortLastLinePenalty =
-        isLastLine && lineWidth < params.maxWidth * 0.34
-          ? params.maxWidth * params.maxWidth * 0.16
-          : 0;
-
-      search(
-        endIndex,
-        remainingLines - 1,
-        [...currentLines, words.slice(startIndex, endIndex).join(" ")],
-        currentPenalty + rag * rag + shortLastLinePenalty,
-      );
-    }
-  }
+  let states = new Map<number, { lines: string[]; penalty: number }>([
+    [0, { lines: [], penalty: 0 }],
+  ]);
 
   for (let lineCount = 1; lineCount <= maxLines; lineCount += 1) {
-    search(0, lineCount, [], 0);
+    const nextStates = new Map<
+      number,
+      { lines: string[]; penalty: number }
+    >();
+
+    for (const [startIndex, state] of states) {
+      for (let endIndex = startIndex + 1; endIndex <= words.length; endIndex += 1) {
+        const lineWidth = getLineWidth(
+          words,
+          startIndex,
+          endIndex,
+          params.fontSize,
+        );
+
+        if (lineWidth > params.maxWidth) {
+          if (endIndex === startIndex + 1) {
+            continue;
+          }
+
+          break;
+        }
+
+        const rag = params.maxWidth - lineWidth;
+        const shortLastLinePenalty =
+          endIndex === words.length && lineWidth < params.maxWidth * 0.34
+            ? params.maxWidth * params.maxWidth * 0.16
+            : 0;
+        const candidate = {
+          lines: [
+            ...state.lines,
+            words.slice(startIndex, endIndex).join(" "),
+          ],
+          penalty: state.penalty + rag * rag + shortLastLinePenalty,
+        };
+        const existing = nextStates.get(endIndex);
+
+        if (!existing || candidate.penalty < existing.penalty) {
+          nextStates.set(endIndex, candidate);
+        }
+      }
+    }
+
+    states = nextStates;
+    const complete = states.get(words.length);
+
+    if (complete) {
+      const candidate = {
+        lines: complete.lines,
+        penalty:
+          complete.penalty + complete.lines.length * params.maxWidth * 18,
+      };
+
+      if (!best || candidate.penalty < best.penalty) {
+        best = candidate;
+      }
+    }
   }
 
   const bestCandidate = best as { lines: string[]; penalty: number } | null;
@@ -793,7 +789,7 @@ async function buildOverlaySvg(params: {
           fontWeight: BODY_FONT_WEIGHT,
           getCornerSafety: getBodyWrapCornerSafety,
           lineHeightRatio: bodyOnlyMode ? 1.04 : 1.05,
-          maxLines: CAROUSEL_STRUCTURE_1_BODY_MAX_LINES,
+          maxLines: getCarouselStructure1BodyMaxLines(params.slide.slideNumber),
           maxWidth: maxTextWidth,
           paddingX: bodyPaddingX,
         })

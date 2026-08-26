@@ -149,6 +149,14 @@ test("a same-day plan upgrade grants a full new plan pack exactly once", () => {
     unifiedFeed,
     /getStoredDailyFeedFormats[\s\S]*\[\.\.\.existingFormats, \.\.\.dailyPlan\.formats\]/,
   );
+  assert.match(
+    unifiedFeed,
+    /getReservedTrendingDailyLimit\(\{[\s\S]*existingFeedDailyLimit: existingPlan\?\.feed\.dailyLimit[\s\S]*upgradeSlots/,
+  );
+  assert.match(
+    planUpgradeGrant,
+    /return existingFeedDailyLimit \+ upgradeSlots/,
+  );
 });
 
 test("serves a read-only feed fast path and prepares missing work after the response", () => {

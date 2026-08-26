@@ -89,6 +89,27 @@ test("does not restart a loaded Hook preview when feed polling recreates its dat
   assert.match(card, /key=\{`\$\{previewUrl\}:\$\{previewLoadKey\}`\}/);
 });
 
+test("renews protected Hook preview access before the five-minute session expires", () => {
+  const hookDeckCard =
+    workspace.match(
+      /function TrendingHookDeckCard\([\s\S]+?\r?\n}\r?\n\r?\nfunction TrendingWallTextDeckCard/,
+    )?.[0] ?? "";
+
+  assert.match(hookDeckCard, /expiresAt: string/);
+  assert.match(hookDeckCard, /getHookPreviewRenewalDelay\(data\.expiresAt\)/);
+  assert.match(hookDeckCard, /const renewalTimer = window\.setTimeout/);
+  assert.match(hookDeckCard, /setPreviewRenewAt\(Date\.now\(\) \+ 10_000\)/);
+  assert.match(hookDeckCard, /automaticPreviewRecoveryAttemptedRef/);
+  assert.match(
+    hookDeckCard,
+    /onPreviewError=\{\(\) => \{[\s\S]*setPreviewRetryKey\(\(current\) => current \+ 1\)/,
+  );
+  assert.match(
+    workspace,
+    /function TrendingHookComposer[\s\S]*expiresAt: string[\s\S]*getHookPreviewRenewalDelay\(data\.expiresAt\)/,
+  );
+});
+
 test("keeps Hook source metadata private while reusing the protected preview", () => {
   const composerOpening =
     composer.match(/function ComposerOpeningPreview[\s\S]+?function HookTextStage/)?.[0] ??

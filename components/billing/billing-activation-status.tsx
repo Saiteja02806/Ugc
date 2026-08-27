@@ -1,12 +1,13 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, LoaderCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, LoaderCircle, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
+import { getSubscriptionActivationFailure } from "@/lib/billing/activation-state";
 
 const ACTIVATION_WAIT_MS = 60_000;
 
@@ -15,6 +16,9 @@ export function BillingActivationStatus() {
   const subscriptionQuery = useBillingSubscription({
     activationPolling: !timedOut,
   });
+  const activationFailure = getSubscriptionActivationFailure(
+    subscriptionQuery.data?.status,
+  );
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setTimedOut(true), ACTIVATION_WAIT_MS);
@@ -37,6 +41,33 @@ export function BillingActivationStatus() {
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link href="/ai-studio" className={buttonVariants({ size: "lg" })}>
             Open AI Studio
+          </Link>
+          <Link
+            href="/settings#subscription-billing"
+            className={buttonVariants({ size: "lg", variant: "outline" })}
+          >
+            View billing
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (activationFailure) {
+    return (
+      <div className="flex flex-col items-center text-center">
+        <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <XCircle aria-hidden="true" />
+        </span>
+        <h1 className="mt-5 text-2xl font-bold text-foreground-strong">
+          {activationFailure.title}
+        </h1>
+        <p className="mt-2 max-w-md text-sm leading-6 text-muted">
+          {activationFailure.description}
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link href="/pricing" className={buttonVariants({ size: "lg" })}>
+            Try again
           </Link>
           <Link
             href="/settings#subscription-billing"

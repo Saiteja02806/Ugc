@@ -226,6 +226,87 @@ export class SupabaseJobStore {
     return data ?? 0;
   }
 
+  async persistTrendingHookGenerationRunChunk(params: {
+    businessProfileId: string;
+    businessProfileVersion: number;
+    candidates: Json;
+    chunkId: string;
+    generatorModel: string;
+    jobId: string;
+    promptVersion: string;
+    runId: string;
+    selectionVersion: string;
+    userId: string;
+  }) {
+    const rpc = this.client.rpc as unknown as (
+      fn: string,
+      args: Record<string, Json>,
+    ) => Promise<{
+      data: Array<{
+        accepted_count: number;
+        already_persisted: boolean;
+        completed_valid_count: number;
+        remaining_valid_count: number;
+        run_status: string;
+      }> | null;
+      error: { message: string } | null;
+    }>;
+    const { data, error } = await rpc(
+      "persist_trending_hook_generation_chunk_v1",
+      {
+        p_business_profile_id: params.businessProfileId,
+        p_business_profile_version: params.businessProfileVersion,
+        p_candidates: params.candidates,
+        p_chunk_id: params.chunkId,
+        p_generator_model: params.generatorModel,
+        p_job_id: params.jobId,
+        p_prompt_version: params.promptVersion,
+        p_run_id: params.runId,
+        p_selection_version: params.selectionVersion,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not persist Trending Hook generation run chunk: ${error.message}`,
+      );
+    }
+
+    const result = data?.[0];
+
+    if (!result) {
+      throw new Error("Trending Hook generation run persistence returned no result.");
+    }
+
+    return result;
+  }
+
+  async failTrendingHookGenerationRunChunk(params: {
+    errorMessage: string;
+    jobId: string;
+  }) {
+    const rpc = this.client.rpc as unknown as (
+      fn: string,
+      args: Record<string, Json>,
+    ) => Promise<{ data: boolean | null; error: { message: string } | null }>;
+    const { data, error } = await rpc(
+      "fail_trending_hook_generation_chunk_v1",
+      {
+        p_error_message: params.errorMessage,
+        p_job_id: params.jobId,
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not recover failed Trending Hook generation run chunk: ${error.message}`,
+      );
+    }
+
+    return data === true;
+  }
+
   async persistValidatedHookCompositionGeneration(params: {
     businessProfileId: string;
     businessProfileVersion: number;

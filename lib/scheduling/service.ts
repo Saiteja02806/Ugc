@@ -5,6 +5,10 @@ import {
   deleteSocialPublishSchedule,
 } from "@/lib/scheduling/social-scheduler";
 import {
+  assertFreeTrialInstagramSchedulingAccess,
+  FreeTrialAccessError,
+} from "@/lib/billing/free-trial";
+import {
   getQueueNameForJobType,
   sendJobMessage,
 } from "@/lib/queues/job-queue";
@@ -62,6 +66,7 @@ import {
   validateTimeZone,
 } from "@/lib/scheduling/schedule-time";
 import { getScheduleEditBlockReason } from "@/lib/scheduling/schedule-action-policy";
+import { SchedulingRequestError } from "@/lib/scheduling/errors";
 import { getConnectionPublishingBlock } from "@/lib/scheduling/social-connection-policy";
 import {
   hasScheduleTargetSelection,
@@ -119,15 +124,7 @@ export type FinalizeRenderedScheduleInput = {
   userId: string;
 };
 
-export class SchedulingRequestError extends Error {
-  constructor(
-    message: string,
-    public readonly status = 400,
-    public readonly code = "invalid_schedule_request",
-  ) {
-    super(message);
-  }
-}
+export { SchedulingRequestError } from "@/lib/scheduling/errors";
 
 export function getMissingSchedulingRuntimeEnvVars() {
   return [
@@ -211,6 +208,13 @@ export async function createUserSchedule(params: {
       : trustedMetadata;
   const isDraft = targetConnections.length === 0;
   const mediaMode = getScheduleMediaMode(metadata);
+
+  if (
+    !isDraft &&
+    targetConnections.some((connection) => connection.platform === "instagram")
+  ) {
+    await assertInstagramTrialScheduleAccess(params.userId);
+  }
 
   await assertSelectedHookIsCreativeAsset({
     mediaMode,
@@ -394,6 +398,10 @@ export async function scheduleRenderedPost(params: {
       409,
       "schedule_targets_required",
     );
+  }
+
+  if (targetConnections.some((connection) => connection.platform === "instagram")) {
+    await assertInstagramTrialScheduleAccess(params.userId);
   }
 
   if (existing.sourceKind === "library_item") {
@@ -2209,6 +2217,18 @@ function getPostStatusFromSchedulerCounts({
   }
 
   return "scheduled";
+}
+
+async function assertInstagramTrialScheduleAccess(userId: string) {
+  try {
+    await assertFreeTrialInstagramSchedulingAccess(userId);
+  } catch (error) {
+    if (error instanceof FreeTrialAccessError) {
+      throw new SchedulingRequestError(error.message, error.status, error.code);
+    }
+
+    throw error;
+  }
 }
 
 function getMetadataString(value: unknown) {

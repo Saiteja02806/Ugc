@@ -19,11 +19,13 @@ export const WALL_TEXT_PREFERRED_MIN_WORDS = 18;
 export const WALL_TEXT_PREFERRED_MAX_WORDS = 21;
 export const MAX_WALL_TEXT_WORDS = 24;
 export const MAX_CURRENT_WALL_TEXT_WORDS = 50;
-export const MAX_WALL_TEXT_RENDERED_LINES = 7;
-export const PREFERRED_WALL_TEXT_RENDERED_LINES = { maximum: 6, minimum: 5 };
+export const MAX_WALL_TEXT_RENDERED_LINES = 8;
+export const PREFERRED_WALL_TEXT_RENDERED_LINES = { maximum: 7, minimum: 5 };
 export const MIN_WALL_TEXT_WORDS = 16;
-export const MIN_SHORT_WALL_TEXT_WORDS = 8;
-export const MIN_WALL_TEXT_RENDERED_LINES = 4;
+// Five visual lines need at least three words each. This prevents otherwise
+// valid short copy from becoming five cramped two-word rows.
+export const MIN_SHORT_WALL_TEXT_WORDS = 15;
+export const MIN_WALL_TEXT_RENDERED_LINES = 5;
 export type WallTextLinePolicy = {
   ideal: number;
   maximum: number;
@@ -52,7 +54,7 @@ const WALL_TEXT_PATTERN_LINE_POLICIES: Partial<Record<
     ...DEFAULT_WALL_TEXT_LINE_POLICY,
     ideal: 5,
     preferredMaximum: 5,
-    preferredMinimum: 4,
+    preferredMinimum: 5,
   },
   before_after: DEFAULT_WALL_TEXT_LINE_POLICY,
   belief_reframe: DEFAULT_WALL_TEXT_LINE_POLICY,
@@ -62,7 +64,7 @@ const WALL_TEXT_PATTERN_LINE_POLICIES: Partial<Record<
     ...DEFAULT_WALL_TEXT_LINE_POLICY,
     ideal: 5,
     preferredMaximum: 5,
-    preferredMinimum: 4,
+    preferredMinimum: 5,
   },
 };
 const MAX_EXCLAMATION_MARKS = 1;

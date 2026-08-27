@@ -2,6 +2,7 @@ import type { SupabaseJobStore } from "../lib/supabase.js";
 import {
   generateValidatedTrendingHookCopies,
   TRENDING_HOOK_PROMPT_VERSION,
+  TRENDING_HOOK_REACTION_SELECTION_VERSION,
   TRENDING_HOOK_SELECTION_VERSION,
   type TrendingHookCopyCandidate,
 } from "../lib/trending-hook-copy.js";
@@ -34,31 +35,70 @@ export async function runGenerateTrendingHookCopyJob(
     candidates: input.candidates,
     model,
     performanceSignals: input.performanceSignals,
+    selectionStrategy: input.selectionStrategy,
   });
-  const persistedCount =
-    await context.store.persistTrendingHookCopyGeneration({
-      businessProfileId: input.businessProfileId,
-      businessProfileVersion: input.businessProfileVersion,
-      candidates: copies as unknown as Json,
-      generatorModel: model,
-      jobId: job.id,
-      promptVersion: input.promptVersion,
-      selectionVersion: input.selectionVersion,
-      userId: input.userId,
-    });
+  // The parent run owns the exact number of valid Hooks still needed. A final
+  // chunk may validate more candidates than are still required, so only save
+  // the remaining promised amount.
+  const copiesToPersist = input.generationRun
+    ? copies.slice(0, input.generationRun.remainingValidCount)
+    : copies;
+  const runProgress = input.generationRun
+    ? await context.store.persistTrendingHookGenerationRunChunk({
+        businessProfileId: input.businessProfileId,
+        businessProfileVersion: input.businessProfileVersion,
+        candidates: copiesToPersist as unknown as Json,
+        chunkId: input.generationRun.chunkId,
+        generatorModel: model,
+        jobId: job.id,
+        promptVersion: input.promptVersion,
+        runId: input.generationRun.id,
+        selectionVersion: input.selectionVersion,
+        userId: input.userId,
+      })
+    : null;
+  const persistedCount = runProgress
+    ? runProgress.accepted_count
+    : await context.store.persistTrendingHookCopyGeneration({
+        businessProfileId: input.businessProfileId,
+        businessProfileVersion: input.businessProfileVersion,
+        candidates: copiesToPersist as unknown as Json,
+        generatorModel: model,
+        jobId: job.id,
+        promptVersion: input.promptVersion,
+        selectionVersion: input.selectionVersion,
+        userId: input.userId,
+      });
 
-  if (persistedCount !== copies.length) {
+  // A worker can retry after this chunk was saved but before its background
+  // job was marked complete. The database then returns the saved count; do
+  // not reject valid existing Hooks if the repeated AI call differs.
+  if (
+    persistedCount !== copiesToPersist.length &&
+    runProgress?.already_persisted !== true
+  ) {
     throw new Error(
       "Trending Hook copy persistence returned an unexpected count.",
     );
   }
 
   return {
-    ideaCount: copies.length,
+    ideaCount: copiesToPersist.length,
+    generationRun: runProgress
+      ? {
+          completedValidCount: runProgress.completed_valid_count,
+          id: input.generationRun!.id,
+          remainingValidCount: runProgress.remaining_valid_count,
+          status: runProgress.run_status,
+          targetValidCount:
+            runProgress.completed_valid_count +
+            runProgress.remaining_valid_count,
+        }
+      : null,
     model,
     promptVersion: input.promptVersion,
-    rejectedCandidateCount: input.candidates.length - copies.length,
-    repairedCount: copies.filter(
+    rejectedCandidateCount: input.candidates.length - copiesToPersist.length,
+    repairedCount: copiesToPersist.filter(
       (copy) => copy.readabilityReview.repairApplied,
     ).length,
     selectionVersion: input.selectionVersion,
@@ -86,12 +126,14 @@ function parseInput(job: BackgroundJobRow) {
   );
   const businessProfile = getRecord(input?.businessProfile);
   const rawCandidates = input?.candidates;
+  const generationRun = parseGenerationRun(input);
 
   if (
     !job.user_id ||
     job.user_id !== userId ||
     promptVersion !== TRENDING_HOOK_PROMPT_VERSION ||
-    selectionVersion !== TRENDING_HOOK_SELECTION_VERSION ||
+    (selectionVersion !== TRENDING_HOOK_SELECTION_VERSION &&
+      selectionVersion !== TRENDING_HOOK_REACTION_SELECTION_VERSION) ||
     !businessProfile ||
     !Array.isArray(rawCandidates)
   ) {
@@ -107,8 +149,40 @@ function parseInput(job: BackgroundJobRow) {
     candidates: rawCandidates.map(parseCandidate),
     performanceSignals: parsePerformanceSignals(input?.performanceSignals),
     promptVersion,
+    selectionStrategy:
+      selectionVersion === TRENDING_HOOK_REACTION_SELECTION_VERSION
+        ? ("reaction_mapped" as const)
+        : ("legacy_rotation" as const),
     selectionVersion,
+    generationRun,
     userId,
+  };
+}
+
+function parseGenerationRun(
+  value: { [key: string]: Json | undefined } | null,
+) {
+  const runId = getOptionalString(value?.generationRunId);
+  const chunkId = getOptionalString(value?.generationRunChunkId);
+  const remainingValidCount = value?.generationRunRemainingValidCount;
+
+  if (!runId && !chunkId && (remainingValidCount === null || remainingValidCount === undefined)) {
+    return null;
+  }
+
+  if (!runId || !chunkId) {
+    throw new Error(
+      "generate_trending_hook_copy has an incomplete durable generation run input.",
+    );
+  }
+
+  return {
+    chunkId,
+    id: runId,
+    remainingValidCount: getPositiveInteger(
+      remainingValidCount,
+      "generationRunRemainingValidCount",
+    ),
   };
 }
 
@@ -123,7 +197,7 @@ function parsePerformanceSignals(
     ? signals.preferredPurposes.filter(isTrendingHookCampaignPurpose)
     : [];
 
-  if (formatSignals.length > 18 || purposes.length > 3) {
+  if (formatSignals.length > 20 || purposes.length > 3) {
     throw new Error(
       "generate_trending_hook_copy performance signals exceed the bounded contract.",
     );

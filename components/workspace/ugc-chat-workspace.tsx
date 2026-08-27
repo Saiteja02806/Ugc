@@ -70,6 +70,15 @@ type GenerateResponse =
 const IMAGE_JOB_STORAGE_PREFIX = "ugc-ai-studio.latest-image-job.v2.";
 const IMAGE_JOB_METADATA_PREFIX = "ugc-ai-studio.image-job.v2.";
 const IMAGE_JOB_URL_PARAMETER = "imageJob";
+const IMAGE_PREVIEW_WIDTH_CLASS_NAMES: Record<
+  AIStudioImageAspectRatio,
+  string
+> = {
+  "4:5": "max-w-[min(320px,38dvh)]",
+  "1:1": "max-w-[min(360px,46dvh)]",
+  "9:16": "max-w-[min(240px,26dvh)]",
+  "16:9": "max-w-[min(560px,82dvh)]",
+};
 const activeJobStatuses = new Set([
   "cancel_requested",
   "created",
@@ -809,7 +818,12 @@ function OptimisticImageCard({
   prompt?: string;
 }) {
   return (
-    <article className="group min-w-0 animate-in fade-in-0 duration-300">
+    <article
+      className={cn(
+        "group w-full min-w-0 justify-self-start animate-in fade-in-0 duration-300",
+        getImagePreviewWidthClassName(aspectRatio),
+      )}
+    >
       <div
         className="relative overflow-hidden rounded-[var(--radius-card)] bg-card-muted/70 ring-1 ring-primary/30"
         style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
@@ -850,7 +864,8 @@ function GeneratedAssetCard({
   return (
     <article
       className={cn(
-        "group min-w-0 transition-[transform,box-shadow] duration-300",
+        "group w-full min-w-0 justify-self-start transition-[transform,box-shadow] duration-300",
+        getImagePreviewWidthClassName(asset.aspectRatio),
         isNew &&
           "animate-in fade-in-50 zoom-in-[0.98] duration-500 rounded-[var(--radius-card)] ring-2 ring-emerald-500/40 ring-offset-2 ring-offset-background",
       )}
@@ -886,6 +901,12 @@ function GeneratedAssetCard({
       </div>
     </article>
   );
+}
+
+function getImagePreviewWidthClassName(
+  aspectRatio: AIStudioImageAspectRatio,
+) {
+  return IMAGE_PREVIEW_WIDTH_CLASS_NAMES[aspectRatio];
 }
 
 function getGeneratedImageHeight(

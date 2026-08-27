@@ -268,8 +268,9 @@ export function TrendingContentMixDialog({
             Adjust content mix
           </DialogTitle>
           <DialogDescription className="leading-5">
-            Choose the balance of formats prepared for your daily Trending
-            feed. Editing an individual creative remains under Edit.
+            Choose how your daily Trending content is distributed. You can set
+            any format to 100%. Editing an individual creative remains under
+            Edit.
           </DialogDescription>
         </DialogHeader>
 
@@ -311,7 +312,7 @@ export function TrendingContentMixDialog({
                     </p>
                     <p className="mt-1 text-sm font-medium text-foreground">
                       {payload.entitlement.displayName} ·{" "}
-                      {payload.entitlement.dailyLimit} ideas per day
+                      {payload.entitlement.dailyLimit} pieces of content per day
                     </p>
                   </div>
                   {payload.editable && hasChanges ? (

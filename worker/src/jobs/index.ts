@@ -15,6 +15,7 @@ import { runGenerateWallTextJob } from "./generate-wall-text.js";
 import { runGenerateHookSuggestionsJob } from "./generate-hook-suggestions.js";
 import { runAnalyticsSyncJob } from "./sync-analytics.js";
 import { runMediaAnalysisJob } from "./process-media-analysis.js";
+import { runPreparePaidTrendingJob } from "./prepare-paid-trending.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import {
   EXECUTABLE_BACKGROUND_JOB_TYPES,
@@ -81,6 +82,10 @@ export async function runWorkerJob(
 
   if (job.job_type === "media_analysis") {
     return runMediaAnalysisJob(job, context);
+  }
+
+  if (job.job_type === "paid_trending_prebuild") {
+    return runPreparePaidTrendingJob(job, context);
   }
 
   if (job.job_type === "hook_text_generation") {

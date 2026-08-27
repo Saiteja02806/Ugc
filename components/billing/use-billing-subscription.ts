@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/contexts/auth-context";
+import { shouldPollForSubscriptionActivation } from "@/lib/billing/activation-state";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
 export type BillingSubscription = {
@@ -30,6 +31,19 @@ export type BillingSubscription = {
     | "on_hold"
     | "paused"
     | "pending";
+  trial: {
+    contentDaysLimit: number;
+    contentDaysRemaining: number;
+    contentDaysUsed: number;
+    dailyContentPieces: number;
+    daysRemaining: number;
+    expiresAt: string | null;
+    instagramSchedulesLimit: number;
+    instagramSchedulesRemaining: number;
+    instagramSchedulesUsed: number;
+    startedAt: string | null;
+    status: "active" | "expired" | "unavailable";
+  };
   updatedAt: string | null;
   userId: string;
   videoGenerationCreditsPerSecond: number;
@@ -46,7 +60,10 @@ export function useBillingSubscription(options?: {
     queryFn: fetchBillingSubscription,
     queryKey: ["billing-subscription", user?.uid ?? "signed-out"],
     refetchInterval: (query) =>
-      options?.activationPolling && !query.state.data?.isActive ? 2_000 : false,
+      options?.activationPolling &&
+      shouldPollForSubscriptionActivation(query.state.data?.status)
+        ? 2_000
+        : false,
     refetchOnWindowFocus: false,
     retry: 1,
     staleTime: options?.activationPolling ? 0 : 30 * 60 * 1_000,

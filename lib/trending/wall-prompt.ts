@@ -1,7 +1,10 @@
-import type { WallTextBusinessContext } from "./wall-text-text-logic";
+import {
+  MIN_SHORT_WALL_TEXT_WORDS,
+  type WallTextBusinessContext,
+} from "./wall-text-text-logic";
 
 export const WALL_TEXT_PROMPT_VERSION =
-  "wall-text-writer-prompt-v10-freeform-plan" as const;
+  "wall-text-writer-prompt-v11-freeform-balanced-layout" as const;
 
 export type WallTextPromptCandidate = {
   candidateIndex: number;
@@ -27,6 +30,7 @@ export type WallTextPromptCandidate = {
 
 const GLOBAL_WALL_RULES = [
   "Write natural continuous Wall-of-Text language, not chopped Hook-style fragments.",
+  `Write at least ${MIN_SHORT_WALL_TEXT_WORDS} words so the layout can form five readable lines.`,
   "Use only information supported by the Business Profile.",
   "Do not invent numbers, statistics, studies, research, customer results, product features, guarantees, or medical claims.",
   "Do not decide visual line breaks and do not insert newline characters.",
@@ -70,7 +74,7 @@ export function buildWallTextGenerationPrompt(params: {
     "TASK",
     "For each candidate, write the strongest complete natural message from the supplied idea and business facts. Do not force it into a named writing format, template, list, or formula.",
     "When privateCreativeContext is present, write from the complete private context, not from contentIdea alone.",
-    "Treat targetWords as a soft writing target, not a required minimum. maxWords is only the absolute safety ceiling; the layout engine will decide final acceptance from measured 4-7 line fit.",
+    "Treat targetWords as a soft writing target, not a required minimum. maxWords is only the absolute safety ceiling; the layout engine will decide final acceptance from measured 5-8 line fit.",
     "A referenceTextForThisCandidateOnly belongs only to that candidate. Use it only as structural and emotional inspiration, adapt it to the Business Profile, and do not copy its wording.",
     "Reference text is not evidence. Never repeat its numbers, psychology statements, factual claims, product names, or promises unless the Business Profile independently supports them.",
     "Return exactly one result for every candidate. Do not return formatId, duration, coordinates, or final visual lines.",

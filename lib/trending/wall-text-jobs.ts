@@ -6,12 +6,14 @@ import {
 } from "@/lib/jobs/background-job-service";
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import { ensureWallTextContentPlanGeneration } from "@/lib/trending/wall-text-content-plan-generation-job";
+import { WALL_TEXT_PERSISTENCE_REJECTED } from "@/lib/trending/wall-text-generation-failure";
 import { WALL_TEXT_GENERATOR_VERSION } from "@/lib/trending/wall-text-types";
 
 export async function enqueueTrendingWallTextJob(params: {
   businessProfileId: string;
   businessProfileVersion: number;
   profile?: BusinessProfileRecord;
+  recoveryKey?: string | null;
   refillKey?: string | null;
   requestedCount?: number;
   userId: string;
@@ -32,6 +34,7 @@ export async function enqueueTrendingWallTextJob(params: {
     `v${params.businessProfileVersion}`,
     WALL_TEXT_GENERATOR_VERSION,
     ...(params.refillKey ? [`refill-${params.refillKey}`] : []),
+    ...(params.recoveryKey ? [`recovery-${params.recoveryKey}`] : []),
     `count-${Math.min(Math.max(Math.trunc(params.requestedCount ?? 6), 1), 50)}`,
   ].join(":");
 
@@ -45,6 +48,10 @@ export async function enqueueTrendingWallTextJob(params: {
   // This keeps normal requests idempotent while allowing a user to recover
   // from an earlier infrastructure failure without changing their profile.
   for (let recoveryDepth = 0; job.status === "failed" && recoveryDepth < 3; recoveryDepth += 1) {
+    if (job.errorCode === WALL_TEXT_PERSISTENCE_REJECTED) {
+      return job;
+    }
+
     if (job.attemptCount < job.maxAttempts) {
       const retried = await retryAndDispatchBackgroundJob({
         jobId: job.id,
@@ -67,6 +74,7 @@ function createWallTextBackgroundJob(params: {
   businessProfileId: string;
   businessProfileVersion: number;
   idempotencyKey: string;
+  recoveryKey?: string | null;
   refillKey?: string | null;
   requestedCount?: number;
   userId: string;
@@ -76,6 +84,7 @@ function createWallTextBackgroundJob(params: {
     input: {
       businessProfileId: params.businessProfileId,
       businessProfileVersion: params.businessProfileVersion,
+      recoveryKey: params.recoveryKey ?? null,
       refillKey: params.refillKey ?? null,
       requestedCount: Math.min(
         Math.max(Math.trunc(params.requestedCount ?? 6), 1),

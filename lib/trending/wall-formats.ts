@@ -26,7 +26,7 @@ export type WallTextFormat = {
 };
 
 // Every v7 format returns one continuous message. The examples demonstrate
-// meaning only; the layout engine, never the model, creates the final 4-7 lines.
+// meaning only; the layout engine, never the model, creates the final 5-8 lines.
 export const WALL_TEXT_FORMATS: readonly WallTextFormat[] = [
   format(1, "hidden_alternative", "Hidden Alternative Discovery", "Social proof, curiosity and alternative discovery.", "When the business genuinely replaces or improves an existing tool, workflow, habit or workaround.", ["audience", "current solution or behavior", "supported alternative or capability"], ["recognizable audience", "different solution", "old solution", "surprise"], "Reveal that the audience uses a different supported solution. Vary the opening and normally hide the product name.", "People in this niche stopped rebuilding the same process once they found a simpler way to handle it.", [8, 26]),
   format(2, "manual_automatic", "Manual to Automatic Surprise", "Surprise that a frustrating manual task can happen automatically.", "When the Business Profile proves that the manual task is genuinely automated.", ["manual task", "supported automated capability"], ["manual frustration", "automation reveal", "disbelief"], "Contrast the real manual task with the supported automation. Never invent automation.", "The part people still do by hand can now happen automatically without adding another complicated step.", [8, 22]),

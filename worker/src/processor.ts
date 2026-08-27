@@ -582,10 +582,19 @@ async function failKnownJobAndDeleteMessage(params: {
     }
 
     await reconcileDurableOutputJobFailure(
-      params.job,
+      failedJob,
       params.store,
       params.errorMessage,
     );
+
+    // A durable Hook run must continue from its saved count after a terminal
+    // physical-job failure. The database trigger creates the same durable
+    // reconciliation outbox used for successful Trending jobs.
+    await reconcileCompletedTrendingFeed({
+      job: failedJob,
+      reconcileTrendingFeed: reconcileTrendingFeedInApp,
+      store: params.store,
+    });
 
     await deleteDeliveryMessage(params);
 
@@ -611,6 +620,13 @@ async function reconcileDurableOutputJobFailure(
   store: SupabaseJobStore,
   errorMessage: string,
 ) {
+  if (job.job_type === "generate_trending_hook_copy") {
+    await store.failTrendingHookGenerationRunChunk({
+      errorMessage,
+      jobId: job.id,
+    });
+  }
+
   await reconcileRenderEditVideoJobFailure(job, store, errorMessage);
   await reconcileTrendingCarouselEditJobFailure(job, store, errorMessage);
   await reconcileContentPlanGenerationFailure(job, store, errorMessage);

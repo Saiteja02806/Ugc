@@ -109,18 +109,43 @@ test("the planned feed is interleaved and preserves exact totals", () => {
   );
 });
 
-test("mix validation enforces the 100% total and generated-video caps", () => {
+test("mix validation accepts a full daily pack of any format", () => {
   assert.equal(validateTrendingContentMix(DEFAULT_TRENDING_CONTENT_MIX), true);
   assert.equal(
     validateTrendingContentMix({ carousel: 0, hook_video: 50, wall_text: 50 }),
     true,
   );
   assert.equal(
-    validateTrendingContentMix({ carousel: 0, hook_video: 51, wall_text: 49 }),
-    false,
+    validateTrendingContentMix({ carousel: 0, hook_video: 100, wall_text: 0 }),
+    true,
   );
   assert.equal(
-    validateTrendingContentMix({ carousel: 20, hook_video: 20, wall_text: 50 }),
+    validateTrendingContentMix({ carousel: 0, hook_video: 0, wall_text: 100 }),
+    true,
+  );
+  assert.equal(
+    validateTrendingContentMix({ carousel: 0, hook_video: 101, wall_text: -1 }),
     false,
   );
+});
+
+test("allocates the complete daily allowance to a selected format", () => {
+  for (const mix of [
+    { carousel: 100, hook_video: 0, wall_text: 0 },
+    { carousel: 0, hook_video: 100, wall_text: 0 },
+    { carousel: 0, hook_video: 0, wall_text: 100 },
+  ]) {
+    assert.deepEqual(
+      allocateTrendingContent({
+        dailyLimit: 50,
+        localDate: "2026-08-27",
+        mix,
+      }),
+      {
+        carousel: mix.carousel === 100 ? 50 : 0,
+        hook_video: mix.hook_video === 100 ? 50 : 0,
+        wall_text: mix.wall_text === 100 ? 50 : 0,
+      },
+    );
+  }
 });

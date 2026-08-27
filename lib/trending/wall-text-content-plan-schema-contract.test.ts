@@ -197,7 +197,7 @@ test("keeps planning context private and removes format pressure from the Wall w
     finalWriter,
     /Return exactly one result for every candidate\. Do not return formatId, duration, coordinates, or final visual lines\./i,
   );
-  assert.match(finalWriter, /measured 4-7 line fit/i);
+  assert.match(finalWriter, /measured 5-8 line fit/i);
 });
 
 test("stores new Wall copy as freeform and excludes it from format learning", () => {

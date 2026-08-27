@@ -18,13 +18,15 @@ export function rebalanceTrendingContentMix(
   if (changedFormat === "wall_text" || changedFormat === "hook_video") {
     const otherVideoFormat =
       changedFormat === "wall_text" ? "hook_video" : "wall_text";
+    const carousel = Math.max(100 - nextValue - current[otherVideoFormat], 0);
+    const otherVideoShare = 100 - nextValue - carousel;
 
     return {
-      carousel: 100 - nextValue - current[otherVideoFormat],
+      carousel,
       hook_video:
-        changedFormat === "hook_video" ? nextValue : current.hook_video,
+        changedFormat === "hook_video" ? nextValue : otherVideoShare,
       wall_text:
-        changedFormat === "wall_text" ? nextValue : current.wall_text,
+        changedFormat === "wall_text" ? nextValue : otherVideoShare,
     };
   }
 

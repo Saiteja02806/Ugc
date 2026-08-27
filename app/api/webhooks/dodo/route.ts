@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import type { UnwrapWebhookEvent } from "dodopayments/resources/webhooks/webhooks";
 
 import {
@@ -11,6 +11,9 @@ import {
   processDodoSubscriptionEvent,
   recordIgnoredDodoWebhookEvent,
 } from "@/lib/billing/subscription-db";
+import { getPaidTrendingPrebuildIdempotencyKey } from "@/lib/billing/paid-trending-prebuild";
+import { getBackgroundJobByIdempotencyKey } from "@/lib/jobs/background-jobs";
+import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-job-service";
 
 export const runtime = "nodejs";
 
@@ -137,6 +140,21 @@ export async function POST(request: Request) {
       webhookId,
     });
 
+    // The subscription transaction has already saved the prebuild job. Queue
+    // delivery is deliberately best-effort here: Dodo gets its fast 200, and
+    // the durable queued job remains available to recovery if Cloud Tasks is
+    // briefly unavailable.
+    if (event.data.status === "active") {
+      after(() =>
+        dispatchPaidTrendingPrebuild({
+          periodStart: event.data.previous_billing_date ?? null,
+          planKey: product.planSlug,
+          subscriptionId: event.data.subscription_id,
+          userId,
+        }),
+      );
+    }
+
     return NextResponse.json({ received: true, result });
   } catch (error) {
     console.error("Dodo webhook processing error:", {
@@ -148,6 +166,30 @@ export async function POST(request: Request) {
       { error: "Webhook processing failed." },
       { status: 500 },
     );
+  }
+}
+
+async function dispatchPaidTrendingPrebuild(params: {
+  periodStart: string | null;
+  planKey: "starter" | "growth";
+  subscriptionId: string;
+  userId: string;
+}) {
+  try {
+    const job = await getBackgroundJobByIdempotencyKey(
+      getPaidTrendingPrebuildIdempotencyKey(params),
+      { jobType: "paid_trending_prebuild", userId: params.userId },
+    );
+
+    if (job) {
+      await dispatchQueuedBackgroundJobForRecovery(job);
+    }
+  } catch (error) {
+    console.error("Paid Trending prebuild dispatch was deferred to recovery:", {
+      error: error instanceof Error ? error.message : "Unknown dispatch error",
+      subscriptionId: params.subscriptionId,
+      userId: params.userId,
+    });
   }
 }
 

@@ -24,6 +24,8 @@ export const HOOK_TEXT_FORMAT_IDS = [
   "GF_016",
   "GF_017",
   "GF_018",
+  "GF_019",
+  "GF_020",
 ] as const;
 
 export type HookTextFormatId =
@@ -31,12 +33,30 @@ export type HookTextFormatId =
 export type HookTextFormatTier = "tier_a" | "tier_b" | "tier_c";
 export type HookTextEvidenceRequirement =
   | "audience"
+  | "business_signal"
+  | "capability"
   | "comparison"
   | "outcome"
   | "pain"
   | "person_or_source"
   | "time_or_number"
   | "two_distinct_ideas";
+
+export const HOOK_REACTION_TYPES = [
+  "shock_surprise",
+  "curiosity_discovery",
+  "secret_reveal",
+  "confidence_approval",
+  "amusement_laughter",
+  "concern_anxiety",
+  "confusion_skepticism",
+  "focused_attention",
+] as const;
+
+export type HookReactionType = (typeof HOOK_REACTION_TYPES)[number];
+export type HookTextSelectionStrategy =
+  | "legacy_rotation"
+  | "reaction_mapped";
 
 export type HookTextVariantDefinition = {
   id: string;
@@ -85,6 +105,7 @@ export type HookTextEligibilityContext = {
     mainProblem?: string | null;
     painPoints?: readonly string[];
     primaryAudience?: string | null;
+    productSummary?: string | null;
     targetAudience?: readonly string[];
     valueProps?: readonly string[];
   };
@@ -592,6 +613,54 @@ export const HOOK_TEXT_FORMATS = [
       },
     ],
   },
+  {
+    allowedTones: ["casual", "clear", "playful"],
+    canonicalTemplate: "Wait, what? {SURPRISING CAPABILITY}?",
+    family: "clear_playful_surprise",
+    id: "GF_019",
+    initialConfidence: "tier_b",
+    instruction:
+      "Express a clear, playful surprise about one supplied capability. Use the full words 'Wait, what?' and never use abbreviations, slang, or a generic compliment.",
+    name: "Clear playful surprise",
+    preferredPurposes: ["product_discovery", "app_install"],
+    preferredReactions: ["amusement_laughter"],
+    psychology: ["playful_surprise", "clarity", "curiosity"],
+    requiredEvidence: ["capability"],
+    restrictedForSensitiveBusinesses: false,
+    rhetoricalFirstPersonAllowed: false,
+    variants: [
+      {
+        id: "GF_019_A",
+        instruction:
+          "Use the complete, plain-language surprise before one verified capability.",
+        template: "Wait, what? {verified_capability}?",
+      },
+    ],
+  },
+  {
+    allowedTones: ["casual", "clear", "serious"],
+    canonicalTemplate: "Why are we still {OLD METHOD}?",
+    family: "skeptical_challenge",
+    id: "GF_020",
+    initialConfidence: "tier_b",
+    instruction:
+      "Voice a clear, human doubt about one supplied old method or workflow pain. Do not add a threat, slang, a result claim, or a second idea.",
+    name: "Skeptical challenge",
+    preferredPurposes: ["education", "retargeting", "conversion"],
+    preferredReactions: ["confusion_skepticism"],
+    psychology: ["skepticism", "recognition", "curiosity"],
+    requiredEvidence: ["pain"],
+    restrictedForSensitiveBusinesses: false,
+    rhetoricalFirstPersonAllowed: false,
+    variants: [
+      {
+        id: "GF_020_A",
+        instruction:
+          "Ask why the supplied old method or workflow pain is still accepted.",
+        template: "Why are we still {verified_old_method}?",
+      },
+    ],
+  },
 ] as const satisfies readonly HookTextFormatDefinition[];
 
 export function getHookTextFormat(
@@ -609,6 +678,73 @@ export function getHookTextVariant(
   return format.variants.find((variant) => variant.id === value) ?? null;
 }
 
+/**
+ * Historical formats remain readable because generated suggestions store their
+ * format ids. They are intentionally excluded only from new generation.
+ */
+const RETIRED_HOOK_TEXT_FORMAT_IDS = new Set<HookTextFormatId>([
+  "GF_013",
+  "GF_017",
+]);
+
+/**
+ * These formats are selected only by the reaction map. The legacy composition
+ * workflow must not start choosing them through its broad rotation.
+ */
+const REACTION_MAPPED_ONLY_FORMAT_IDS = new Set<HookTextFormatId>([
+  "GF_019",
+  "GF_020",
+]);
+
+export const HOOK_REACTION_FORMAT_RULES = {
+  amusement_laughter: {
+    formatId: "GF_019",
+    requiredEvidence: ["capability"],
+  },
+  concern_anxiety: {
+    formatId: "GF_002",
+    requiredEvidence: ["pain"],
+  },
+  confidence_approval: {
+    formatId: "GF_006",
+    requiredEvidence: ["business_signal"],
+  },
+  confusion_skepticism: {
+    formatId: "GF_020",
+    requiredEvidence: ["pain"],
+  },
+  curiosity_discovery: {
+    formatId: "GF_015",
+    requiredEvidence: ["capability"],
+  },
+  focused_attention: {
+    formatId: "GF_009",
+    requiredEvidence: ["two_distinct_ideas"],
+  },
+  secret_reveal: {
+    formatId: "GF_005",
+    requiredEvidence: ["audience"],
+  },
+  shock_surprise: {
+    formatId: "GF_012",
+    requiredEvidence: ["capability"],
+  },
+} as const satisfies Record<
+  HookReactionType,
+  {
+    formatId: HookTextFormatId;
+    requiredEvidence: readonly HookTextEvidenceRequirement[];
+  }
+>;
+
+export function getHookReactionFormatRule(value: string | null) {
+  const reaction = normalizeReaction(value);
+
+  return isHookReactionType(reaction)
+    ? HOOK_REACTION_FORMAT_RULES[reaction]
+    : null;
+}
+
 export function selectHookTextFormats(params: {
   campaignPurpose: TrendingHookCampaignPurpose;
   candidateIndex: number;
@@ -617,8 +753,33 @@ export function selectHookTextFormats(params: {
   excludedFormatIds?: ReadonlySet<HookTextFormatId>;
   performanceSignals?: HookTextPerformanceSignals;
   reactionType: string | null;
+  selectionStrategy?: HookTextSelectionStrategy;
 }) {
+  if (params.selectionStrategy === "reaction_mapped") {
+    const rule = getHookReactionFormatRule(params.reactionType);
+    if (!rule) {
+      return [];
+    }
+
+    const format = getHookTextFormat(rule.formatId);
+
+    if (
+      !format ||
+      !isHookTextFormatEligible(
+        format,
+        params.eligibility,
+        rule.requiredEvidence,
+      )
+    ) {
+      return [];
+    }
+
+    return [format];
+  }
+
   const allEligible = HOOK_TEXT_FORMATS.filter((format) =>
+    !RETIRED_HOOK_TEXT_FORMAT_IDS.has(format.id) &&
+    !REACTION_MAPPED_ONLY_FORMAT_IDS.has(format.id) &&
     isHookTextFormatEligible(format, params.eligibility),
   );
   const notRepeated = allEligible.filter(
@@ -725,6 +886,7 @@ export function selectHookTextFormats(params: {
 export function isHookTextFormatEligible(
   format: HookTextFormatDefinition,
   context: HookTextEligibilityContext,
+  additionalRequiredEvidence: readonly HookTextEvidenceRequirement[] = [],
 ) {
   const evidenceText = context.evidence.map((item) => item.text).join(" ");
   const businessText = [
@@ -749,6 +911,15 @@ export function isHookTextFormatEligible(
     context.businessContext.desiredOutcome?.trim() ||
       context.businessContext.valueProps?.some((item) => item.trim()),
   );
+  const hasCapability = Boolean(
+    context.businessContext.differentiator?.trim() ||
+      context.businessContext.differentiators?.some((item) => item.trim()) ||
+      context.businessContext.valueProps?.some((item) => item.trim()) ||
+      context.businessContext.productSummary?.trim() ||
+      context.businessContext.desiredOutcome?.trim(),
+  );
+  const hasBusinessSignal =
+    hasAudience || hasPain || hasOutcome || hasCapability;
   const distinctIdeaCount = new Set(
     [
       context.businessContext.mainProblem,
@@ -780,10 +951,17 @@ export function isHookTextFormatEligible(
     return false;
   }
 
-  return format.requiredEvidence.every((requirement) => {
+  return [...new Set([
+    ...format.requiredEvidence,
+    ...additionalRequiredEvidence,
+  ])].every((requirement) => {
     switch (requirement) {
       case "audience":
         return hasAudience;
+      case "business_signal":
+        return hasBusinessSignal;
+      case "capability":
+        return hasCapability;
       case "comparison":
         return hasComparison;
       case "outcome":
@@ -802,6 +980,10 @@ export function isHookTextFormatEligible(
 
 function normalizeReaction(value: string | null) {
   return value?.trim().toLowerCase() || "unspecified";
+}
+
+function isHookReactionType(value: string): value is HookReactionType {
+  return (HOOK_REACTION_TYPES as readonly string[]).includes(value);
 }
 
 function circularDistance(

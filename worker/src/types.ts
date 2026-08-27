@@ -40,6 +40,7 @@ export type BackgroundJobType =
   | "hook_text_generation"
   | "image_generation"
   | "media_analysis"
+  | "paid_trending_prebuild"
   | "preview_render"
   | "publish_social_post"
   | "render_demo_video"
@@ -63,6 +64,7 @@ export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
   "generate_trending_hook_copy",
   "hook_text_generation",
   "media_analysis",
+  "paid_trending_prebuild",
   "publish_social_post",
   "render_edit_video",
   "render_schedule_combination",

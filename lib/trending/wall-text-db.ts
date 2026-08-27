@@ -292,6 +292,16 @@ type WallTextDatabase = {
         };
         Returns: WallTextCreativeRow[];
       };
+      replace_wall_text_creative_copy_v9: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_generator_model: string;
+          p_updates: Json;
+          p_user_id: string;
+        };
+        Returns: WallTextCreativeRow[];
+      };
       claim_wall_text_render: {
         Args: {
           p_assignment_id: string;
@@ -1134,7 +1144,12 @@ export async function saveWallTextGenerationCandidate(params: {
     },
   );
   if (error) {
-    throw new Error(`Could not save Wall-of-text generation candidate: ${error.message}`);
+    throw Object.assign(
+      new Error(
+        `Could not save Wall-of-text generation candidate: ${error.message}`,
+      ),
+      { code: error.code },
+    );
   }
   const creative = data?.[0];
   if (!creative) throw new Error("Wall-of-text candidate storage returned no row.");
@@ -1241,7 +1256,7 @@ export async function replaceTrendingWallTextCreativeCopy(params: {
     text_content: creative.text,
   }));
   const { error } = await getClient().rpc(
-    "replace_wall_text_creative_copy_v8",
+    "replace_wall_text_creative_copy_v9",
     {
       p_business_profile_id: params.businessProfileId,
       p_business_profile_version: params.businessProfileVersion,
@@ -1427,12 +1442,13 @@ export async function listActiveTrendingWallTextIdeas(params: {
     .eq("business_profile_version", params.businessProfileVersion)
     .eq("status", "preview_ready");
 
-  if (pinnedAssignmentIds.size === 0) {
-    creativeQuery = creativeQuery.eq(
-      "generator_version",
-      WALL_TEXT_GENERATOR_VERSION,
-    );
-  }
+  // A daily slot may keep its current background source, but it must never
+  // keep an older text-layout version. Otherwise a V8 assignment can stay
+  // pinned forever and bypass the V9 measured reflow.
+  creativeQuery = creativeQuery.eq(
+    "generator_version",
+    WALL_TEXT_GENERATOR_VERSION,
+  );
 
   if (params.backgroundAssetIds && pinnedAssignmentIds.size === 0) {
     creativeQuery = creativeQuery.in(
@@ -2074,8 +2090,11 @@ function parseCurrentWallTextContent(
     (isV7 &&
       (blocks.length !== 1 ||
         blocks[0]?.role !== "text" ||
+        // Four-line V2 records remain readable so selected historical drafts
+        // still open. New V9 writes are restricted to 5–8 lines by the
+        // generator and database constraint.
         lines.length < 4 ||
-        lines.length > 7 ||
+        lines.length > 8 ||
         parsedSource.kind !== "text" ||
         parsedSource.text !== normalizedFullText ||
         finalLayoutText !== normalizedFullText))

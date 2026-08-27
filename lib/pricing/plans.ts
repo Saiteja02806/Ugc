@@ -48,7 +48,7 @@ export function getPlanPricing(
   if (plan.prices.monthly === 0) {
     return {
       billedAmount: 0,
-      billingSummary: "Free forever",
+      billingSummary: "3-day free trial",
       monthlyEquivalent: 0,
       savings: 0,
     };
@@ -78,18 +78,19 @@ export const pricingPlans: PricingPlan[] = [
     slug: "free",
     name: "Free",
     bestFor: "Test the waters",
-    description: "Explore proven viral formats and preview ready-to-post concepts.",
+    description: "Try daily ready-to-post content before choosing a paid plan.",
     prices: {
       monthly: 0,
       yearly: 0,
     },
     sharedMonthlyCredits: 0,
-    dailyContentPieces: 10,
+    dailyContentPieces: "10/day for 3 days",
     instagramAccounts: 1,
-    capacityLabel: "10 daily ready-to-post concepts, with no AI generation credits",
+    capacityLabel: "3-day trial: 10 daily concepts and 5 Instagram schedules total",
     features: [
       "No credit card required",
-      "10 ready-to-post pieces daily",
+      "10 ready-to-post pieces daily for 3 days",
+      "Schedule up to 5 Instagram posts total, including future dates",
       "Format discovery mode",
       "Preview ready-to-post concepts",
       "1 connected Instagram account",

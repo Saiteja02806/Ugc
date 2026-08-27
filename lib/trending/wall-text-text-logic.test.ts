@@ -45,7 +45,7 @@ test("rejects Wall generation candidates shorter than six seconds", () => {
   );
 });
 
-test("accepts four-line Wall copy and rejects Hook-sized or oversized blocks", () => {
+test("accepts five-line Wall copy and rejects Hook-sized or oversized blocks", () => {
   const compactText =
     "Reviewing weekly progress shows where effort actually went. The next choice feels less like a guess.";
   const compactIdea = {
@@ -54,11 +54,11 @@ test("accepts four-line Wall copy and rejects Hook-sized or oversized blocks", (
     pattern: "action_benefit" as const,
     segments: [
       {
-        lines: ["Reviewing weekly progress shows", "where effort actually went."],
+        lines: ["Reviewing weekly", "progress shows where"],
         role: "lead" as const,
       },
       {
-        lines: ["The next choice feels", "less like a guess."],
+        lines: ["effort actually went.", "The next choice", "feels less like a guess."],
         role: "closing" as const,
       },
     ],
@@ -94,7 +94,7 @@ test("accepts four-line Wall copy and rejects Hook-sized or oversized blocks", (
           },
         ],
       }),
-    /4–7 semantic lines/,
+    /5–8 semantic lines/,
   );
 
   assert.throws(
@@ -107,22 +107,25 @@ test("accepts four-line Wall copy and rejects Hook-sized or oversized blocks", (
             segments: [
               {
                 lines: [
-                  "Reviewing weekly",
-                  "progress shows",
-                  "where effort",
-                  "actually went.",
+                  "Reviewing",
+                  "weekly",
+                  "progress",
                 ],
                 role: "lead",
               },
               {
-                lines: ["The next", "choice feels", "less like", "a guess."],
+                lines: ["shows", "where", "effort"],
+                role: "support",
+              },
+              {
+                lines: ["actually", "went.", "The next choice feels less like a guess."],
                 role: "closing",
               },
             ],
           },
         ],
       }),
-    /4–7 semantic lines/,
+    /5–8 semantic lines/,
   );
 });
 

@@ -7,6 +7,7 @@ import type {
 
 export const CANONICAL_BACKGROUND_JOB_TYPES = [
   "hook_text_generation",
+  "trending_prebuild",
   "wall_text_content_plan_generation",
   "wall_text_generation",
   "carousel_generation",
@@ -15,6 +16,7 @@ export const CANONICAL_BACKGROUND_JOB_TYPES = [
   "preview_render",
   "final_render",
   "media_analysis",
+  "paid_trending_prebuild",
   "social_publish",
   "analytics_sync",
 ] as const;
@@ -57,6 +59,7 @@ const canonicalTypeByImplementation: Record<
   hook_text_generation: "hook_text_generation",
   image_generation: "image_generation",
   media_analysis: "media_analysis",
+  paid_trending_prebuild: "trending_prebuild",
   preview_render: "preview_render",
   publish_social_post: "social_publish",
   render_demo_video: "final_render",

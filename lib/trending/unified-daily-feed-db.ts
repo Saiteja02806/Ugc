@@ -3,6 +3,10 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  assertFreeTrialContentAccess,
+  FreeTrialAccessError,
+} from "@/lib/billing/free-trial";
+import {
   DEFAULT_TRENDING_CONTENT_MIX,
   type TrendingContentMix,
   validateTrendingContentMix,
@@ -13,7 +17,6 @@ const CONTENT_MIX_TABLE = "trending_content_mix_preferences";
 const DAILY_FEEDS_TABLE = "daily_trending_feeds";
 const DAILY_SLOTS_TABLE = "daily_trending_feed_slots";
 const ENTITLEMENTS_TABLE = "subscription_entitlements";
-const USER_PLANS_TABLE = "user_subscription_plans";
 
 export type TrendingPlanEntitlement = {
   dailyLimit: number;
@@ -42,6 +45,7 @@ export type DailyTrendingFeedRecord = {
   timezone: string;
   updatedAt: string;
   userId: string;
+  wallTextRetryKey: string | null;
 };
 
 export type DailyTrendingFeedSlotRecord = {
@@ -76,6 +80,7 @@ type DailyFeedRow = {
   timezone: string;
   updated_at: string;
   user_id: string;
+  wall_text_retry_key: string | null;
   wall_text_percent: number;
 };
 
@@ -110,26 +115,17 @@ export function getMissingUnifiedTrendingFeedEnvVars() {
 export async function getTrendingPlanEntitlement(
   userId: string,
 ): Promise<TrendingPlanEntitlement> {
-  const { data: activePlan, error: planError } = await getClient()
-    .from(USER_PLANS_TABLE)
-    .select("plan_key")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (planError) {
-    throw new Error(`Could not load the active Trending plan: ${planError.message}`);
-  }
-
-  const requestedPlanKey = normalizePlanKey(
-    activePlan?.plan_key ?? "free",
-  );
+  const freeTrialAccess = await assertFreeTrialContentAccess(userId);
+  const effectivePlanKey =
+    freeTrialAccess.paid
+      ? freeTrialAccess.planKey === "growth"
+        ? "creator"
+        : "pro"
+      : "free";
   const { data: entitlement, error: entitlementError } = await getClient()
     .from(ENTITLEMENTS_TABLE)
     .select("daily_trending_limit,display_name,plan_key")
-    .eq("plan_key", requestedPlanKey)
+    .eq("plan_key", effectivePlanKey)
     .maybeSingle();
 
   if (entitlementError) {
@@ -138,18 +134,18 @@ export async function getTrendingPlanEntitlement(
     );
   }
 
-  const fallback = getFallbackEntitlement(requestedPlanKey);
+  const fallback = getFallbackEntitlement(effectivePlanKey);
 
   return {
     dailyLimit:
-      requestedPlanKey === "free"
-        ? fallback.dailyLimit
+      effectivePlanKey === "free"
+        ? freeTrialAccess.trial?.dailyContentPieces ?? fallback.dailyLimit
         : typeof entitlement?.daily_trending_limit === "number" &&
             entitlement.daily_trending_limit > 0
         ? Math.trunc(entitlement.daily_trending_limit)
         : fallback.dailyLimit,
     displayName: fallback.displayName,
-    planKey: requestedPlanKey,
+    planKey: effectivePlanKey,
   };
 }
 
@@ -250,6 +246,27 @@ export async function ensureDailyTrendingFeedPlan(params: {
       p_wall_text_percent: params.preference.mix.wall_text,
     },
   );
+
+  if (error) {
+    const databaseMessage = error.message.toLowerCase();
+
+    if (databaseMessage.includes("free_trial_content_expired")) {
+      throw new FreeTrialAccessError(
+        "Your 3-day free trial has ended. Upgrade to generate more content.",
+        "free_trial_content_expired",
+      );
+    }
+
+    if (
+      databaseMessage.includes("free_trial_content_days_exhausted") ||
+      databaseMessage.includes("free_trial_daily_content_limit_exceeded")
+    ) {
+      throw new FreeTrialAccessError(
+        "Your 3-day free trial content allowance has been used. Upgrade to generate more content.",
+        "free_trial_content_days_exhausted",
+      );
+    }
+  }
 
   if (error || typeof feedId !== "string") {
     throw new Error(
@@ -430,6 +447,29 @@ export async function markDailyTrendingFeedFormatsFailed(params: {
   }
 }
 
+/**
+ * A retry is explicit. It reopens only unassigned terminal slots and gives the
+ * next Wall job a durable, one-time idempotency key.
+ */
+export async function restartFailedDailyTrendingFeedSlots(params: {
+  feedId: string;
+  userId: string;
+}) {
+  const { data, error } = await getClient().rpc(
+    "restart_failed_daily_trending_feed_slots",
+    {
+      p_feed_id: params.feedId,
+      p_user_id: params.userId,
+    },
+  );
+
+  if (error) {
+    throw new Error(`Could not restart failed Trending positions: ${error.message}`);
+  }
+
+  return typeof data === "string" && data.trim() ? data : null;
+}
+
 export async function getDailyTrendingFeed(feedId: string, userId: string) {
   const [feedResult, slotResult] = await Promise.all([
     getClient()
@@ -560,16 +600,6 @@ export function getTrendingLocalDate(timezone: string, now = new Date()) {
     : now.toISOString().slice(0, 10);
 }
 
-function normalizePlanKey(value: string): TrendingPlanEntitlement["planKey"] {
-  const planKey = value.trim().toLowerCase();
-
-  if (planKey === "creator" || planKey === "ultra_pro") {
-    return planKey;
-  }
-
-  return planKey === "pro" ? "pro" : "free";
-}
-
 function getFallbackEntitlement(
   planKey: TrendingPlanEntitlement["planKey"],
 ): TrendingPlanEntitlement {
@@ -602,6 +632,7 @@ function mapFeed(row: DailyFeedRow): DailyTrendingFeedRecord {
     timezone: row.timezone,
     updatedAt: row.updated_at,
     userId: row.user_id,
+    wallTextRetryKey: row.wall_text_retry_key,
   };
 }
 

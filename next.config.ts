@@ -5,6 +5,7 @@ const firebaseAuthHelperDomain =
   process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["127.0.0.1"],
   images: {
     remotePatterns: [
       {

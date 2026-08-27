@@ -10,6 +10,7 @@ import {
   ProviderOperationTerminalError,
   ProviderRequestNotSubmittedError,
 } from "./generation-provider.js";
+import { getRequiredProviderEnv } from "./provider-env.js";
 
 type GenerateRunwayHookVideoParams = {
   aspectRatio?: RunwayAspectRatio;
@@ -122,7 +123,7 @@ function getRunwayRatio(aspectRatio: RunwayAspectRatio) {
 function getRunwayClient() {
   if (!runwayClient) {
     runwayClient = new RunwayML({
-      apiKey: getRequiredEnv("RUNWAYML_API_SECRET"),
+      apiKey: getRequiredProviderEnv("RUNWAYML_API_SECRET"),
       maxRetries: 0,
     });
   }
@@ -181,14 +182,4 @@ function sleep(ms: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
-}
-
-function getRequiredEnv(name: string) {
-  const value = process.env[name]?.trim();
-
-  if (!value) {
-    throw new ProviderRequestNotSubmittedError(`Missing ${name}`);
-  }
-
-  return value;
 }

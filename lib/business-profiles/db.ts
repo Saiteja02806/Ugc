@@ -57,6 +57,7 @@ type BusinessProfileRow = {
   source_context: string | null;
   source_url: string | null;
   trending_timezone: string | null;
+  trending_walkthrough_completed_at: string | null;
   updated_at: string;
   user_id: string;
 };
@@ -99,6 +100,7 @@ export type BusinessProfileRecord = {
   profileVersion: number;
   projectId: string;
   trendingTimezone: string | null;
+  trendingWalkthroughCompletedAt: string | null;
   userId: string;
 };
 
@@ -231,6 +233,26 @@ export async function saveBusinessProfile(input: {
     .single();
   if (error) throw new Error(`Could not save business profile: ${error.message}`);
   return { changed: true, profile: mapProfile(data) };
+}
+
+export async function completeTrendingWalkthroughForUser(userId: string) {
+  const completedAt = new Date().toISOString();
+  const { data, error } = await getClient()
+    .from(BUSINESS_PROFILES_TABLE)
+    .update({
+      trending_walkthrough_completed_at: completedAt,
+      updated_at: completedAt,
+    })
+    .eq("user_id", userId)
+    .is("trending_walkthrough_completed_at", null)
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not complete the Trending walkthrough: ${error.message}`);
+  }
+
+  return data ? mapProfile(data) : getBusinessProfileForUser(userId);
 }
 
 export async function completeBusinessProfileOnboarding(params: {
@@ -510,6 +532,8 @@ function mapProfile(row: BusinessProfileRow): BusinessProfileRecord {
     profileVersion: row.profile_version,
     projectId: row.project_id,
     trendingTimezone: row.trending_timezone,
+    trendingWalkthroughCompletedAt:
+      row.trending_walkthrough_completed_at ?? null,
     userId: row.user_id,
   };
 }

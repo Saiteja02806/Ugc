@@ -19,6 +19,10 @@ test("normalizes implementation job aliases to the public contract", () => {
     getCanonicalBackgroundJobType("wall_text_content_plan_generation"),
     "wall_text_generation",
   );
+  assert.equal(
+    getCanonicalBackgroundJobType("paid_trending_prebuild"),
+    "trending_prebuild",
+  );
 });
 
 test("classifies active and terminal states", () => {

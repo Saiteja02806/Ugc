@@ -74,6 +74,12 @@ type GeneratedVideo = AIStudioVideoResult;
 const VIDEO_JOB_STORAGE_PREFIX = "ugc-ai-studio.latest-video-job.v2.";
 const VIDEO_JOB_METADATA_PREFIX = "ugc-ai-studio.video-job.v2.";
 const VIDEO_JOB_URL_PARAMETER = "videoJob";
+const VIDEO_PREVIEW_WIDTH_CLASS_NAMES: Record<GeneratedVideo["ratio"], string> = {
+  "4:5": "max-w-[min(216px,30dvh)]",
+  "1:1": "max-w-[min(216px,36dvh)]",
+  "9:16": "max-w-[min(216px,24dvh)]",
+  "16:9": "max-w-[216px]",
+};
 
 type GenerateVideoResponse =
   | {
@@ -1022,7 +1028,12 @@ function OptimisticVideoCard({
         </div>
       </div>
 
-      <div className="order-1 w-full max-w-[216px] justify-self-start lg:order-2 lg:justify-self-end">
+      <div
+        className={cn(
+          "order-1 w-full justify-self-start lg:order-2 lg:justify-self-end",
+          getVideoPreviewWidthClassName(aspectRatio),
+        )}
+      >
         <div
           className="relative overflow-hidden rounded-[20px] bg-card-muted ring-1 ring-primary/30 shadow-sm"
           style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
@@ -1156,7 +1167,12 @@ function VideoResultCard({
         </div>
       </div>
 
-      <div className="order-1 w-full max-w-[216px] justify-self-start lg:order-2 lg:justify-self-end">
+      <div
+        className={cn(
+          "order-1 w-full justify-self-start lg:order-2 lg:justify-self-end",
+          getVideoPreviewWidthClassName(video.ratio),
+        )}
+      >
         <div
           className="relative overflow-hidden rounded-[20px] bg-black shadow-sm"
           style={{ aspectRatio: video.ratio.replace(":", " / ") }}
@@ -1233,6 +1249,12 @@ function VideoResultCard({
       </div>
     </article>
   );
+}
+
+function getVideoPreviewWidthClassName(
+  aspectRatio: GeneratedVideo["ratio"],
+) {
+  return VIDEO_PREVIEW_WIDTH_CLASS_NAMES[aspectRatio];
 }
 
 function formatVideoDuration(durationSeconds: number) {

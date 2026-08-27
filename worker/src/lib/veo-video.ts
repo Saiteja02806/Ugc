@@ -15,6 +15,7 @@ import {
   ProviderOperationTerminalError,
   ProviderRequestNotSubmittedError,
 } from "./generation-provider.js";
+import { getRequiredProviderEnv } from "./provider-env.js";
 
 type GenerateVeoHookVideoParams = {
   aspectRatio?: VeoAspectRatio;
@@ -145,7 +146,7 @@ export function buildVeoGenerationConfig(
 function getGoogleClient() {
   if (!googleClient) {
     googleClient = new GoogleGenAI({
-      apiKey: getRequiredEnv("GEMINI_API_KEY"),
+      apiKey: getRequiredProviderEnv("GEMINI_API_KEY"),
       // A generation submission is fenced in Supabase. Retrying this POST
       // inside the SDK could create another paid operation before its ID is saved.
       httpOptions: { retryOptions: { attempts: 1 } },
@@ -218,14 +219,4 @@ function sleep(ms: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
-}
-
-function getRequiredEnv(name: string) {
-  const value = process.env[name]?.trim();
-
-  if (!value) {
-    throw new ProviderRequestNotSubmittedError(`Missing ${name}`);
-  }
-
-  return value;
 }

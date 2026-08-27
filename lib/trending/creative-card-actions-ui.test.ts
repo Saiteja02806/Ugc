@@ -30,6 +30,13 @@ const wallTextDetail = readProjectFile(
   "components/trending/wall-text-detail-view.tsx",
 );
 const sidebar = readProjectFile("components/layout/app-sidebar.tsx");
+const firstVisitGuide = readProjectFile(
+  "components/trending/trending-first-visit-walkthrough.tsx",
+);
+const firstVisitPreview = readProjectFile(
+  "app/e2e/trending-walkthrough-preview/page.tsx",
+);
+const nextConfig = readProjectFile("next.config.ts");
 
 test("places Edit in the page header and keeps circular decisions below the card", () => {
   assert.match(actions, /export function CreativeDecisionActions/);
@@ -91,7 +98,10 @@ test("restores Adjust as the global content-mix action beside item-level Edit", 
   assert.match(contentMixDialog, /fetch\("\/api\/trending\/content-mix"/);
   assert.match(contentMixDialog, /method: "PUT"/);
   assert.match(contentMixDialog, />\s*Adjust content mix\s*</);
-  assert.match(contentMixDialog, /Editing an individual creative remains under Edit/);
+  assert.match(
+    contentMixDialog,
+    /Editing an individual creative remains under\s+Edit/,
+  );
   assert.match(contentMixDialog, /type="range"/);
   assert.doesNotMatch(contentMixDialog, /Your Free mix is fixed/);
   assert.doesNotMatch(contentMixDialog, /View plans/);
@@ -108,6 +118,80 @@ test("restores Adjust as the global content-mix action beside item-level Edit", 
     contentMixDialog,
     /mix\[format\] \/ Math\.max\(payload\.limits\[format\], 1\)/,
   );
+});
+
+test("teaches new Trending users the difference between editing one post and adjusting future content", () => {
+  assert.match(actions, /data-trending-edit-control/);
+  assert.match(firstVisitGuide, /type WalkthroughPhase = "preview" \| "controls"/);
+  assert.match(firstVisitGuide, /selector: "\[data-trending-edit-control\]"/);
+  assert.match(firstVisitGuide, /selector: "\[data-trending-adjust-control\]"/);
+  assert.match(firstVisitGuide, /trending-walkthrough-control-highlight/);
+  assert.match(firstVisitGuide, /WALKTHROUGH_DEMO_SOURCE = "\/marketing\/showcase-part2\/demo-preview\.mp4"/);
+  assert.match(firstVisitGuide, /src=\{WALKTHROUGH_DEMO_SOURCE\}/);
+  assert.match(firstVisitGuide, /data-trending-walkthrough-skip/);
+  assert.match(firstVisitGuide, /aria-label="Skip walkthrough"/);
+  assert.match(firstVisitGuide, /WALKTHROUGH_DESKTOP_QUERY = "\(min-width: 1024px\)"/);
+  assert.match(firstVisitGuide, /window\.matchMedia\(WALKTHROUGH_DESKTOP_QUERY\)/);
+  assert.match(firstVisitGuide, /if \(preview \|\| !desktopEligible\) return/);
+  assert.match(
+    firstVisitGuide,
+    /if \(!desktopEligible \|\| visibility !== "visible"\) return null/,
+  );
+  assert.match(firstVisitGuide, /onClick=\{\(\) => void onSkip\(\)\}/);
+  assert.match(firstVisitGuide, /How our Trending feed works/);
+  assert.match(firstVisitGuide, /border-b border-white\/\[0\.08\]/);
+  assert.match(firstVisitGuide, /data-walkthrough-stage/);
+  assert.doesNotMatch(firstVisitGuide, /data-walkthrough-generation-progress/);
+  assert.match(
+    firstVisitGuide,
+    /absolute bottom-\[-0\.75rem\] right-\[-1rem\] z-40 flex w-\[640px\] items-end justify-end/,
+  );
+  assert.match(firstVisitGuide, /h-8 shrink-0 items-center/);
+  assert.match(firstVisitGuide, /data-walkthrough-floating-panel/);
+  assert.doesNotMatch(firstVisitGuide, /width: "min\(640px, 48%\)"/);
+  assert.match(
+    firstVisitGuide,
+    /left:76%;top:74\.5%;transform:scale\(\.82\)/,
+  );
+  assert.match(
+    firstVisitGuide,
+    /height: "min\(500px, calc\(100dvh - 10rem\)\)"/,
+  );
+  assert.doesNotMatch(firstVisitGuide, /relative aspect-video w-full/);
+  assert.match(firstVisitGuide, /setPhase\("controls"\)/);
+  assert.doesNotMatch(firstVisitGuide, /backdrop-blur-\[0\.5px\]/);
+  assert.doesNotMatch(firstVisitGuide, /0 0 0 100vmax/);
+  assert.match(firstVisitGuide, /w-\[640px\]/);
+  assert.match(firstVisitGuide, /size-full object-contain/);
+  assert.match(firstVisitGuide, /data-walkthrough-next-action=\{nextAction\}/);
+  assert.match(firstVisitGuide, /format === "hook" \? "Add demo" : "Schedule post"/);
+  assert.match(firstVisitGuide, /trendingWalkthroughSceneEnter/);
+  assert.match(firstVisitGuide, /trendingWalkthroughSceneExit/);
+  assert.match(firstVisitGuide, /for \(const source of SLIDES\)/);
+  assert.match(firstVisitGuide, /loading="eager"/);
+  assert.match(firstVisitGuide, /trendingWalkthroughMediaFade/);
+  assert.match(firstVisitGuide, /You&apos;re ready/);
+  assert.match(firstVisitPreview, /h-dvh min-h-0 flex-col overflow-hidden/);
+  assert.match(firstVisitPreview, /data-trending-feed-transition/);
+  assert.match(firstVisitPreview, /Generating for you/);
+  assert.match(
+    firstVisitPreview,
+    /4 content pieces are being prepared\. New content will appear/,
+  );
+  assert.match(
+    workspace,
+    /<div className="min-w-0 flex-1">[\s\S]*<TrendingFeedGallery[\s\S]*<TrendingFirstVisitWalkthrough/,
+  );
+  assert.match(
+    firstVisitGuide,
+    /data-walkthrough-format-label[\s\S]*data-walkthrough-media-frame/,
+  );
+  assert.match(firstVisitGuide, /setReducedMotion\(!preview && query\.matches\)/);
+  assert.match(firstVisitGuide, /trending-walkthrough-reduced-motion/);
+  assert.match(firstVisitGuide, /const scheduleNextStep = \(\) =>/);
+  assert.match(firstVisitGuide, /data-walkthrough-step=\{step\.kind\}/);
+  assert.match(nextConfig, /allowedDevOrigins: \["127\.0\.0\.1"\]/);
+  assert.match(firstVisitGuide, /method: "POST"/);
 });
 
 test("keeps review cards, audio controls, and creative actions flat", () => {
@@ -164,6 +248,33 @@ test("labels every Trending card with its content format", () => {
     /h-\[22px\][^"]*px-2[^"]*text-\[10px\]/,
   );
   assert.match(workspace, /cn\("size-3 shrink-0", iconColor\)/);
+});
+
+test("keeps swiped cards dismissed when the Hook composer temporarily replaces the deck", () => {
+  assert.match(workspace, /excludeDecidedTrendingFeedItems/);
+  assert.match(
+    workspace,
+    /const enqueueDecision = useCallback\([\s\S]*setTrendingItems\([\s\S]*excludeDecidedTrendingFeedItems[\s\S]*item\.assignmentId/,
+  );
+  assert.match(
+    workspace,
+    /inMemoryTrendingFeed = \{[\s\S]*items: excludeDecidedTrendingFeedItems/,
+  );
+});
+
+test("raises only the Slideshow label above its stacked preview", () => {
+  assert.match(
+    workspace,
+    /function getTrendingFormatPillPositionClass\(\)\s*\{[\s\S]*bottom-\[calc\(100%\+72px\)\]/,
+  );
+  assert.equal(
+    (
+      workspace.match(
+        /positionClassName="left-0 bottom-\[calc\(100%\+14px\)\]"/g,
+      ) ?? []
+    ).length,
+    2,
+  );
 });
 
 test("centers a card-sized review frame over visible inert next-card layers", () => {
@@ -261,8 +372,8 @@ test("keeps the Carousel format pill above its centered media stack", () => {
     workspace,
     /pointer-events-none absolute left-0 z-40 flex w-full items-center justify-start/,
   );
-  assert.match(workspace, /bottom-\[calc\(100%\+40px\)\]/);
-  assert.doesNotMatch(workspace, /bottom-\[calc\(100%\+72px\)\]/);
+  assert.match(workspace, /bottom-\[calc\(100%\+72px\)\]/);
+  assert.doesNotMatch(workspace, /bottom-\[calc\(100%\+40px\)\]/);
   assert.doesNotMatch(workspace, /hasTallerVerticalBackground/);
   assert.match(workspace, /pb-\[107px\] pt-\[94px\]/);
   assert.match(
@@ -454,7 +565,7 @@ test("shows one dark 9:16 post skeleton while Trending prepares content", () => 
     /VERTICAL_REVIEW_CARD_WIDTH_CLASS, "mb-1\.5 h-5"/,
   );
   assert.match(workspace, /className="mt-3\.5 h-14 sm:mt-4 sm:h-\[86px\]"/);
-  assert.match(workspace, /aria-label="Loading trending content ideas"/);
+  assert.match(workspace, /aria-label="Loading trending content"/);
   assert.doesNotMatch(workspace, /CarouselLoadingStackVisual/);
   assert.doesNotMatch(workspace, /LOADING_STACK_PLACEHOLDERS/);
   assert.doesNotMatch(workspace, /Preparing ideas/);

@@ -187,7 +187,7 @@ function parsePerformanceSignals(
     ? signals.preferredPurposes.filter(isTrendingHookCampaignPurpose)
     : [];
 
-  if (formatSignals.length > 18 || preferredPurposes.length > 3) {
+  if (formatSignals.length > 20 || preferredPurposes.length > 3) {
     throw new Error(
       "hook_text_generation performance signals exceed the bounded contract.",
     );

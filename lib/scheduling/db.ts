@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { SchedulingRequestError } from "@/lib/scheduling/errors";
 import type {
   ScheduledPost,
   ScheduledPostStatus,
@@ -388,6 +389,24 @@ export async function insertScheduledPostTargets(
     .select("*");
 
   if (error) {
+    const databaseMessage = error.message.toLowerCase();
+
+    if (databaseMessage.includes("free_trial_schedule_limit_reached")) {
+      throw new SchedulingRequestError(
+        "Your free trial allows up to 5 Instagram posts in total, including future dates. Upgrade to schedule more.",
+        402,
+        "free_trial_schedule_limit_reached",
+      );
+    }
+
+    if (databaseMessage.includes("free_trial_schedule_expired")) {
+      throw new SchedulingRequestError(
+        "Your 3-day free trial has ended. Upgrade to schedule another Instagram post.",
+        402,
+        "free_trial_schedule_expired",
+      );
+    }
+
     throw new Error(`Could not create schedule targets: ${error.message}`);
   }
 

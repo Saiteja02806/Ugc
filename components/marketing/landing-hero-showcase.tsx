@@ -100,15 +100,19 @@ export function LandingHeroShowcase() {
               <video
                 src={
                   shouldLoadVideoPreviews
-                    ? "/marketing/showcase/hook-preview-v2.mp4"
+                    ? "/marketing/showcase/hook-preview-v3.mp4"
                     : undefined
                 }
                 autoPlay
                 muted
                 loop
                 playsInline
-                poster="/marketing/showcase/hook-preview-poster-v2.webp"
+                poster="/marketing/showcase/hook-preview-poster-v3.webp"
                 preload="metadata"
+                onLoadedMetadata={(event) => {
+                  // Always begin the hero preview at its influencer cover frame.
+                  event.currentTarget.currentTime = 0;
+                }}
                 className="size-full object-cover"
               />
 

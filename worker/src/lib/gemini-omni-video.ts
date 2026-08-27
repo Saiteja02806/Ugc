@@ -9,6 +9,7 @@ import {
   ProviderOperationTerminalError,
   ProviderRequestNotSubmittedError,
 } from "./generation-provider.js";
+import { getRequiredProviderEnv } from "./provider-env.js";
 
 type GenerateGeminiOmniVideoParams = {
   aspectRatio: "9:16" | "16:9";
@@ -141,7 +142,7 @@ export async function generateGeminiOmniVideoBuffer({
 function getGoogleClient() {
   if (!googleClient) {
     googleClient = new GoogleGenAI({
-      apiKey: getRequiredEnv("GEMINI_API_KEY"),
+      apiKey: getRequiredProviderEnv("GEMINI_API_KEY"),
       httpOptions: { retryOptions: { attempts: 1 } },
     });
   }
@@ -187,14 +188,4 @@ function sleep(ms: number) {
 
 function getHttpUrl(value: string | undefined) {
   return value && /^https?:\/\//i.test(value) ? value : undefined;
-}
-
-function getRequiredEnv(name: string) {
-  const value = process.env[name]?.trim();
-
-  if (!value) {
-    throw new ProviderRequestNotSubmittedError(`Missing ${name}.`);
-  }
-
-  return value;
 }

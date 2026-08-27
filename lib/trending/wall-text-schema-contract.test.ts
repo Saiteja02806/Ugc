@@ -101,6 +101,13 @@ const lighterTypographyMigration = readFileSync(
   ),
   "utf8",
 );
+const balancedLayoutMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260826160000_add_wall_text_balanced_layout_v9.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const generatorSource = readFileSync(
   new URL("./generate-trending-wall-text-ideas.ts", import.meta.url),
   "utf8",
@@ -243,6 +250,26 @@ test("makes the lighter V8 Wall layout persistent and re-layoutable", () => {
     lighterTypographyMigration,
     /replace_wall_text_creative_copy_v8[\s\S]+expected_count < 1 or expected_count > 50[\s\S]+generator_version = 'business-profile-wall-text-v8'/i,
   );
+});
+
+test("stores the balanced V9 layout while preserving old selected drafts", () => {
+  assert.match(
+    balancedLayoutMigration,
+    /set default 'business-profile-wall-text-v9'/i,
+  );
+  assert.match(
+    balancedLayoutMigration,
+    /generator_version = 'business-profile-wall-text-v9'[\s\S]+between 5 and 8/i,
+  );
+  assert.match(
+    balancedLayoutMigration,
+    /generator_version <> 'business-profile-wall-text-v9'[\s\S]+between 4 and 7/i,
+  );
+  assert.match(
+    balancedLayoutMigration,
+    /replace_wall_text_creative_copy_v9[\s\S]+generator_version = 'business-profile-wall-text-v9'/i,
+  );
+  assert.match(databaseSource, /replace_wall_text_creative_copy_v9/);
 });
 
 test("stores one visual group, source batch, and SHA-256 per source video", () => {
@@ -547,15 +574,16 @@ test("uses Inter Regular 400 with the restored 44-52px Wall scale", () => {
   );
 });
 
-test("keeps the Wall editor save gate aligned with the 8-50 word contract", () => {
-  assert.match(editorSource, /wordCount < 8 \|\| wordCount > 50/);
-  assert.match(editorSource, /8–50 words and fit the measured 4–7-line layout/);
-  assert.doesNotMatch(editorSource, /wordCount < 12/);
+test("keeps the Wall editor save gate aligned with the 15-50 word contract", () => {
+  assert.match(editorSource, /wordCount < MIN_SHORT_WALL_TEXT_WORDS \|\|[\s\S]+wordCount > 50/);
+  assert.match(editorSource, /MIN_SHORT_WALL_TEXT_WORDS\}–50 words and fit the measured 5–8-line layout/);
+  assert.match(textLogicSource, /MIN_SHORT_WALL_TEXT_WORDS = 15/);
   assert.doesNotMatch(editorSource, /exact limit is checked against the selected clip/);
 });
 
 test("keeps measured finalLayout lines as the current Wall source of truth", () => {
   assert.match(promptSource, /do not insert newline characters/i);
+  assert.match(promptSource, /at least \$\{MIN_SHORT_WALL_TEXT_WORDS\} words/i);
   assert.match(promptSource, /Do not return[\s\S]+final visual lines/i);
   assert.match(layoutEngineSource, /createWallTextFinalLayout[\s\S]+blocks,/);
   assert.match(overlaySource, /getWallTextRenderBlocks\(content\)/);
@@ -569,7 +597,7 @@ test("keeps measured finalLayout lines as the current Wall source of truth", () 
   );
 });
 
-test("V7 uses soft copy targets and measured fit instead of clip-time limits", () => {
+test("V9 uses soft copy targets and measured fit instead of clip-time limits", () => {
   const currentValidation = textLogicSource.match(
     /if \(content\.layoutVersion === "wall-text-overlay-v6"\)[\s\S]+?\n    return;/,
   )?.[0] ?? "";
@@ -581,7 +609,7 @@ test("V7 uses soft copy targets and measured fit instead of clip-time limits", (
   assert.doesNotMatch(formatsSource, /hardWordRange/);
   assert.match(
     promptSource,
-    /soft writing target, not a required minimum[\s\S]+absolute safety ceiling[\s\S]+measured 4-7 line fit/i,
+    /soft writing target, not a required minimum[\s\S]+absolute safety ceiling[\s\S]+measured 5-8 line fit/i,
   );
   assert.doesNotMatch(promptSource, /CODE-DERIVED READABILITY BUDGETS/);
   assert.doesNotMatch(generatorSource, /targetWords\s*-\s*4/);
@@ -593,7 +621,7 @@ test("V7 uses soft copy targets and measured fit instead of clip-time limits", (
   assert.match(feedSource, /promptVersion: WALL_TEXT_PROMPT_VERSION/);
 });
 
-test("V7 rejects thirty long words that no longer fit the restored 44px floor", () => {
+test("V9 fits thirty natural words in the wider measured reading column", () => {
   const loaderPath = new URL(
     "../../scripts/next-server-only-test-loader.mjs",
     import.meta.url,
@@ -623,23 +651,25 @@ test("V7 rejects thirty long words that no longer fit the restored 44px floor", 
     process.stdout.write(JSON.stringify({ budget, content: result.content }));
   `;
   assert.equal(original.split(/\s+/u).length, 30);
-  assert.throws(
-    () =>
-      execFileSync(
-        process.execPath,
-        [
-          "--import",
-          loaderPath,
-          "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
-          "--experimental-strip-types",
-          "--input-type=module",
-          "--eval",
-          script,
-        ],
-        { encoding: "utf8", stdio: "pipe" },
-      ),
-    /Wall-of-text copy cannot be arranged into four to seven balanced lines/,
+  const output = execFileSync(
+    process.execPath,
+    [
+      "--import",
+      loaderPath,
+      "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+      "--experimental-strip-types",
+      "--input-type=module",
+      "--eval",
+      script,
+    ],
+    { encoding: "utf8", stdio: "pipe" },
   );
+  const result = JSON.parse(output) as {
+    content: { finalLayout: { blocks: Array<{ lines: string[] }> } };
+  };
+  const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
+  assert.ok(lines.length >= 5 && lines.length <= 8);
+  assert.equal(lines.join(" "), original);
 });
 
 test("balances the reported Wall example into readable measured lines", () => {
@@ -685,16 +715,15 @@ test("balances the reported Wall example into readable measured lines", () => {
   assert.equal(layout.fontFamily, "Inter");
   assert.equal(layout.lineHeightPx, 57.2);
   assert.deepEqual(layout.blocks[0]?.lines, [
-    "People assume one program",
-    "fits every meal. But",
-    "personalized guidance",
-    "connects choices to",
-    "goals. Relevance matters",
-    "more than rigid rules.",
+    "People assume one program fits",
+    "every meal. But personalized",
+    "guidance connects choices to",
+    "goals. Relevance matters more",
+    "than rigid rules.",
   ]);
 });
 
-test("V7 keeps every word in one measured 4-7 line block", () => {
+test("V9 keeps every word in one measured 5-8 line block", () => {
   const loaderPath = new URL(
     "../../scripts/next-server-only-test-loader.mjs",
     import.meta.url,
@@ -745,9 +774,61 @@ test("V7 keeps every word in one measured 4-7 line block", () => {
   assert.equal(result.content.finalLayout.version, "wall-text-final-layout-v2");
   assert.equal(result.content.finalLayout.blocks.length, 1);
   assert.equal(result.content.finalLayout.blocks[0]?.role, "text");
-  assert.ok(lines.length >= 4 && lines.length <= 7);
+  assert.ok(lines.length >= 5 && lines.length <= 8);
   assert.equal(lines.join(" "), original);
-  assert.equal(Math.round(result.content.finalLayout.textBox.width * 1080), 660);
+  assert.equal(Math.round(result.content.finalLayout.textBox.width * 1080), 780);
+});
+
+test("V9 fixes the two reported narrow Wall layouts", () => {
+  const loaderPath = new URL(
+    "../../scripts/next-server-only-test-loader.mjs",
+    import.meta.url,
+  ).href;
+  const engineUrl = new URL("wall-layout-engine.ts", import.meta.url).href;
+  const feedLogicUrl = new URL("wall-text-feed-logic.ts", import.meta.url).href;
+  const samples = [
+    "Between classes, meetings, and errands, integrating your schedule with calendars so tasks appear alongside appointments helps reduce the mental load of planning.",
+    "Lately everything feels chaotic, and a clear, user-friendly interface that shows tasks at a glance can make organizing your day feel possible again.",
+  ];
+  const script = `
+    const [engine, feed] = await Promise.all([
+      import(${JSON.stringify(engineUrl)}),
+      import(${JSON.stringify(feedLogicUrl)}),
+    ]);
+    const results = [];
+    for (const text of ${JSON.stringify(samples)}) {
+      results.push(await engine.createAuthoritativeWallTextContent({
+        content: { kind: "text", text },
+        formatId: "freeform",
+        layout: feed.createWallTextLayout(),
+      }));
+    }
+    process.stdout.write(JSON.stringify(results));
+  `;
+  const output = execFileSync(
+    process.execPath,
+    [
+      "--import",
+      loaderPath,
+      "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+      "--experimental-strip-types",
+      "--input-type=module",
+      "--eval",
+      script,
+    ],
+    { encoding: "utf8" },
+  );
+  const results = JSON.parse(output) as Array<{
+    content: { finalLayout: { blocks: Array<{ lines: string[] }>; textBox: { width: number } } };
+  }>;
+
+  results.forEach((result, index) => {
+    const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
+    assert.equal(lines.length, 5);
+    assert.equal(lines.join(" "), samples[index]);
+    assert.ok(lines.every((line) => line.split(/\s+/u).length >= 3));
+    assert.equal(Math.round(result.content.finalLayout.textBox.width * 1080), 780);
+  });
 });
 
 test("stores semantic Wall v3 content and face-aware placement metadata", () => {
@@ -840,21 +921,27 @@ test("upgrades stale Wall layout without sending existing copy back to AI", () =
   );
   assert.match(
     databaseSource,
-    /pinnedAssignmentIds\.size === 0[\s\S]*\.eq\([\s\S]*"generator_version",[\s\S]*WALL_TEXT_GENERATOR_VERSION/,
-  );
-  assert.match(
-    databaseSource,
     /creative\.generator_version === WALL_TEXT_GENERATOR_VERSION[\s\S]+finalLayout !== undefined/,
   );
 });
 
-test("serves ready Wall assignments before considering stale historical inventory", () => {
-  const readyCheck = feedSource.indexOf("if (ideas.length > 0)");
-  const staleCheck = feedSource.indexOf("!areTrendingWallTextCreativesCurrent(creatives)");
-
-  assert.notEqual(readyCheck, -1);
-  assert.notEqual(staleCheck, -1);
-  assert.ok(readyCheck < staleCheck);
+test("reopens a ready slot that is pinned to stale Wall layout instead of serving it forever", () => {
+  assert.match(
+    databaseSource,
+    /creativeQuery = creativeQuery\.eq\([\s\S]*"generator_version",[\s\S]*WALL_TEXT_GENERATOR_VERSION/,
+  );
+  assert.match(
+    feedSource,
+    /pinnedAssignmentIds\.size > 0[\s\S]*!areTrendingWallTextCreativesCurrent\(creatives\)[\s\S]*createWallTextTrendingFeedProvider\(\[\]\)/,
+  );
+  assert.match(
+    balancedLayoutMigration,
+    /update public\.daily_trending_feed_slots as slot[\s\S]*wall_text_assignment_id = null,[\s\S]*state = 'planned'[\s\S]*slot\.state = 'ready'[\s\S]*creative\.generator_version <> 'business-profile-wall-text-v9'/i,
+  );
+  assert.match(
+    balancedLayoutMigration,
+    /update public\.daily_trending_feeds as feed[\s\S]*status = 'preparing'[\s\S]*reopened_slots/i,
+  );
 });
 
 test("accepts the previous Wall worker payload during rolling deployments", () => {

@@ -581,7 +581,7 @@ then existing Pexels/object-key identity.
 Free receives exactly 10 combined posts per user-local day and defaults to
 3 Slideshows, 4 Wall-of-text posts, and 3 Hooks until the user saves another
 valid mix. Free, Starter, and Growth may all adjust the percentage balance;
-Wall-of-text and Hook remain capped at 50%, and all three percentages must total
+each format may range from 0% to 100%, and all three percentages must total
 100%. Starter remains 20 posts and Growth remains 50 posts.
 
 Migration `20260823130857_raise_free_trending_allowance.sql` raises the
@@ -701,8 +701,8 @@ intuitive. Runtime entitlement resolution and pricing display must use the
 exact mapping above.
 
 The paid-plan default daily mix is 25% Carousel, 50% Wall-of-text, and 25% Hook Video.
-Wall-of-text and Hook Video are each capped at 50%; Carousel may range from 0%
-to 100%; all three integer percentages must total exactly 100%. Largest
+Each format may range from 0% to 100%; all three integer percentages must total
+exactly 100%. Largest
 remainder allocation produces whole posts. Starter therefore receives
 5 Carousel / 10 Wall / 5 Hook by default. Growth receives
 13 Carousel / 25 Wall / 12 Hook. Keeping the half-post remainder on Carousel
@@ -2860,6 +2860,10 @@ Name: **Verify v26 and replace the stale production assignment**
   breakpoint; only their media and overlay content differ.
 - Swipe, keyboard, Edit, decision outbox, Carousel slide navigation, and feed
   ordering behavior are unchanged.
+- User-facing Trending language calls the generated outputs `content`, never
+  `ideas`. This applies to preparation, empty and failure states, card labels,
+  and accessibility text; internal candidate and idea naming remains an
+  implementation detail.
 - The shared `creative-reject`, `creative-accept`, and `creative-edit` button
   variants are shadowless by default. Their separation comes from a quiet border,
   semantic icon color, hover fill, and the existing keyboard focus ring.
@@ -3103,16 +3107,17 @@ Name: **Verify v26 and replace the stale production assignment**
 - Free's ten-post allowance is unchanged. A Free user without a saved
   preference still receives the 30% / 40% / 30% default; after a valid save,
   that owner-scoped preference controls the next eligible daily pack.
-- The existing integrity rules are unchanged: all percentages total 100%,
-  Wall-of-Text and Hook are each capped at 50%, and an already-created daily
-  pack remains immutable. A save applies today only when no feed exists;
+- The existing integrity rules are unchanged: all percentages total 100%, each
+  format may use the full daily allowance, and an already-created daily pack
+  remains immutable. A save applies today only when no feed exists;
   otherwise it starts on the next local day.
 - The Adjust dialog uses a restrained flat control-panel treatment with a 6px
   composition ribbon, 6px slider tracks, and 14px thumbs. Format identity
   colors and accessible keyboard/focus behavior remain intact.
-- This is an application and product-rule change only. The existing
-  service-role content-mix preference table and RPC already support every
-  owner, so no database migration or worker change is required.
+- Migration `20260827180000_allow_full_format_content_mixes.sql` widens the
+  persisted preference and daily-feed validation to 0-100 for every format.
+  Hook and Wall-of-Text generation already support the 50-post maximum daily
+  plan, so workers do not need to change.
 
 ## 2026-08-24 Sectioned Settings Navigation
 
@@ -3684,3 +3689,125 @@ Name: **Verify v26 and replace the stale production assignment**
   must not shrink a 30-slot feed back to 20 or a 60-slot feed back to 50.
 - Reconciliation preserves the stored formats and physical positions, repairs
   only unresolved work, and does not grant the paid pack a second time.
+
+## 2026-08-26 Paid Activation Prebuild
+
+- A successful Starter or Growth subscription activation now writes one
+  idempotent `paid_trending_prebuild` background job in the same database
+  transaction as the billing subscription. Cloud Tasks delivery happens only
+  after that transaction commits, so a Dodo retry cannot create a second paid
+  pack.
+- The prebuild worker re-reads the current subscription and profile before
+  calling the existing unified daily-feed preparation. A cancelled or replaced
+  plan is skipped; a valid same-day Free-to-Starter or Free-to-Growth upgrade
+  still uses the existing 30- or 60-slot reconciliation rule.
+- This does not enable the daily replenishment scheduler. It prepares the
+  current paid pack immediately after payment activation; future-day prebuild
+  remains a separate, explicitly controlled rollout.
+
+## 2026-08-27 First-Visit Trending Walkthrough
+
+- After a completed business onboarding, an owner who has not yet completed
+  the Trending walkthrough sees one visual-only, auto-playing desktop canvas
+  at the top of the real Trending feed area on their first visit. Its compact
+  internal header reads `How our Trending feed works` and keeps the Skip
+  control at the right, separated from the visual stage by one quiet
+  divider. It has no surrounding tutorial copy. The walkthrough is an
+  independently positioned right-hand video panel instead of a normal layout
+  column or a full-feed overlay. The underlying Trending state remains fully
+  visible and usable without a blur, tint, or black scrim. The completion
+  timestamp is
+  owner-scoped on `business_profiles`; once the animation completes it records
+  idempotently, so it is not a browser-only or global preference.
+- The guide reuses the real Hook and Wall-of-Text preview media from the
+  landing-page swipe demo, plus its Slideshow imagery. The distinct landing
+  `DEMO.mp4` screen recording is used only for the dragged Hook demo and its
+  resulting composition preview; it must never reuse the Hook source. It uses a
+  desktop-native visible gesture sequence: a natural hand pointer swipes the
+  review card right without decorative motion lines or placeholder destination
+  cards. The canvas deliberately omits the mock browser chrome, sidebar, and
+  empty side regions, keeping only the media and the contextually relevant
+  action surface; for Hook a cursor drags
+  demo footage into the composition slot; then the cursor tip lands inside the
+  Schedule button, clicks it, and the scheduled post appears. The Wall-of-Text
+  and Slideshow formats visibly swipe right and schedule in the same canvas.
+- Once that visual sequence completes, the real Trending `Adjust` control and
+  any available item-level `Edit` control receive a short sequential visual
+  highlight without tutorial copy or a blocking overlay. Content preparation
+  continues through the normal Trending feed request while both the canvas and
+  the control highlight are running.
+- The walkthrough is absolutely anchored to the right edge of the feed and
+  occupies zero layout width. It never adds a second or duplicated generation
+  status card. The real feed retains its full-width layout, so its loading or
+  `Generating for you` state and real pending-slot count remain centered at the
+  exact same page position they use without the walkthrough. The walkthrough
+  canvas stays 640px wide; on narrower viewports the page may clip its outside
+  edge instead of shifting or shrinking the real feed. It disappears after
+  completion or Skip. It is mounted above the feed's loading, empty, and
+  preparing branches so progress refreshes cannot unmount or restart it.
+- The visual canvas has a fixed internal heading strip and divider so the Skip
+  action and the walkthrough purpose remain stable while scenes change. The
+  media, gesture, demo, and scheduling surfaces are centered as one composition
+  inside the taller stage below that header. Skip immediately records the
+  walkthrough as complete and removes only the guide; it must not abort, pause,
+  or replace the background Trending feed request or its generation work.
+- The walkthrough is anchored to the bottom-right edge of the available feed
+  viewport as an independent video-like surface. It is not vertically centered
+  or top-aligned beside `Generating for you`: its lower edge meets the end of
+  the real feed area and bleeds 12px downward and 16px rightward through the
+  feed's inner gutter, while the generation state stays centered in that full
+  area. Its developer preview preserves the same relationship. The page stays
+  locked to the dynamic viewport so any allowed edge clipping cannot create a
+  stray document scrollbar.
+- The walkthrough is eligible only at a viewport width of at least 1024 CSS
+  pixels. Phone-sized viewports do not fetch, mount, animate, or record the
+  guide as complete; the same owner can therefore receive the first-visit guide
+  later on a laptop. On supported laptop widths the canvas is pinned by its
+  right edge, and the fixed header's Skip button cannot shrink, so any permitted
+  narrow-width clipping occurs on the canvas's left side rather than cutting
+  off Skip.
+- The desktop canvas remains capped at 640px wide so the walkthrough stays
+  focused instead of spanning the workspace, but its height may grow to 500px
+  when the viewport permits. The visual stage uses all remaining height beneath
+  the fixed header and re-centers each scene within it, rather than stretching
+  the canvas width or leaving the media crowded against the top. Its main
+  dropped-demo frame uses contain fitting so the complete supplied demo stays
+  visible instead of being cropped. Hook, Wall-of-Text, and Slideshow labels
+  occupy a separate compact row above their 9:16 media frame and must never
+  overlap creator captions inside the media. The developer preview always runs
+  the complete swipe gesture; the authenticated walkthrough still respects an
+  owner's reduced-motion preference. One continuous sequence clock advances
+  every preview, swipe, demo, and schedule scene so a frame render cannot reset
+  or stall the walkthrough.
+- An accepted swipe never ends on a context-free tick. The Hook acceptance cue
+  pairs its check with `Add demo`, while Wall-of-Text and Slideshow pair theirs
+  with `Schedule post`, matching the action shown immediately afterward. Scene
+  layers crossfade for 420ms so the prior result remains visible while the next
+  action arrives. Slideshow frames preload when the walkthrough mounts and each
+  image fades into the fixed media frame, preventing a black first frame or a
+  hard cut between slides. The final confirmation reads `You're ready` instead
+  of displaying an unexplained check alone.
+- This is product education only. It does not fetch, decide, save, edit,
+  upload, create a draft for, or schedule a real Trending creative. The daily
+  feed continues preparing normally behind the guide, and the user reaches the
+  unchanged real Trending workspace as soon as the animation completes.
+
+## 2026-08-27 Free Trial Entitlements
+
+- Free access is a one-time three-day trial that begins when a user completes
+  the current business onboarding. It reserves at most ten Trending content
+  slots on each of at most three daily packs. Paid Starter and Growth access
+  bypasses this trial ledger and retains the existing same-day upgrade rules.
+- Existing product profiles are backfilled with an expired trial, including
+  incomplete profiles so they cannot receive a fresh trial by resuming old
+  onboarding. Their existing feed items and scheduled posts are not deleted or
+  cancelled, but new free preparation is blocked until they upgrade.
+- A free trial may create no more than five Instagram schedule targets in total
+  during its active window. The schedule target is counted when it is created,
+  including when its publication date is in the future; cancelling it does not
+  restore the trial slot. The database locks the user's trial record while
+  counting, so concurrent schedule requests cannot exceed five.
+- Entitlement checks occur before normal app preparation and again in database
+  triggers for daily feed creation and Instagram schedule target insertion.
+  Existing ready content remains readable, but an expired trial may not trigger
+  more background preparation.

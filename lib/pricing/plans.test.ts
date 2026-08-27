@@ -48,7 +48,7 @@ test("plans expose the complete daily content allowance", () => {
   assert.deepEqual(
     pricingPlans.map((plan) => [plan.slug, plan.dailyContentPieces]),
     [
-      ["free", 10],
+      ["free", "10/day for 3 days"],
       ["starter", 20],
       ["growth", 50],
     ],

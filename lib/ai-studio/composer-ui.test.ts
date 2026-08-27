@@ -154,7 +154,47 @@ test("quantity controls lock with the rest of each generation composer", () => {
     videoWorkspace,
     /ariaLabel="Number of videos"\s+disabled=\{generationLocked \|\| isGenerating\}/,
   );
-  assert.match(composer, /disabled=\{disabled\}\s+value=\{value\}/);
+  assert.match(composer, /disabled=\{disabled\}[\s\S]*?aria-expanded=\{open\}/);
+});
+
+test("setting pills use themed popovers instead of native select menus", () => {
+  const settingSelect = composer.slice(
+    composer.indexOf("export function AiStudioSettingSelect"),
+    composer.indexOf("export type AIStudioAspectRatio"),
+  );
+
+  assert.doesNotMatch(settingSelect, /<select|<option/);
+  assert.match(settingSelect, /<Popover open=\{open\} onOpenChange=\{setOpen\}>/);
+  assert.match(settingSelect, /role="listbox"/);
+  assert.match(settingSelect, /role="option"/);
+  assert.match(settingSelect, /aria-selected=\{isSelected\}/);
+  assert.match(settingSelect, /bg-brand-soft font-semibold text-primary/);
+});
+
+test("every image and video settings dropdown uses the shared themed pill", () => {
+  assert.equal(
+    imageWorkspace.match(/<AiStudioSettingSelect\b/g)?.length,
+    2,
+  );
+  assert.equal(
+    videoWorkspace.match(/<AiStudioSettingSelect\b/g)?.length,
+    3,
+  );
+
+  for (const ariaLabel of ["Image model", "Number of images"]) {
+    assert.match(imageWorkspace, new RegExp(`ariaLabel="${ariaLabel}"`));
+  }
+
+  for (const ariaLabel of [
+    "Video model",
+    "Video duration",
+    "Number of videos",
+  ]) {
+    assert.match(videoWorkspace, new RegExp(`ariaLabel="${ariaLabel}"`));
+  }
+
+  assert.doesNotMatch(imageWorkspace, /<select|<option/);
+  assert.doesNotMatch(videoWorkspace, /<select|<option/);
 });
 
 test("video references start empty without exposing competing pickers", () => {
@@ -254,6 +294,33 @@ test("generation progress has a visible in-place loading state", () => {
   assert.match(resultSurface, /status\?\.tone === "progress"/);
   assert.match(resultSurface, /<EmptyMedia variant="icon"/);
   assert.match(resultSurface, /animate-spin/);
+});
+
+test("image and video previews stay compact enough for the active viewport", () => {
+  assert.match(
+    imageWorkspace,
+    /"9:16": "max-w-\[min\(240px,26dvh\)\]"/,
+  );
+  assert.match(
+    imageWorkspace,
+    /getImagePreviewWidthClassName\(aspectRatio\)/,
+  );
+  assert.match(
+    imageWorkspace,
+    /getImagePreviewWidthClassName\(asset\.aspectRatio\)/,
+  );
+  assert.match(
+    videoWorkspace,
+    /"9:16": "max-w-\[min\(216px,24dvh\)\]"/,
+  );
+  assert.match(
+    videoWorkspace,
+    /getVideoPreviewWidthClassName\(aspectRatio\)/,
+  );
+  assert.match(
+    videoWorkspace,
+    /getVideoPreviewWidthClassName\(video\.ratio\)/,
+  );
 });
 
 test("access guidance appears once inside the composer", () => {

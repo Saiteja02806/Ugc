@@ -79,6 +79,7 @@ export function CreativeEditAction({
   return (
     <Button
       data-deck-control
+      data-trending-edit-control
       type="button"
       variant="creative-edit"
       size="creative-edit"

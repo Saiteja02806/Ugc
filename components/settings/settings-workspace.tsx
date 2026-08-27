@@ -391,13 +391,23 @@ export function SettingsWorkspace() {
                             : "Active"
                           : subscription?.status === "on_hold"
                             ? "Payment required"
-                            : "Free tier"}
+                            : subscription?.trial.status === "active" &&
+                                subscription.trial.contentDaysRemaining > 0
+                              ? `${subscription.trial.daysRemaining} day trial left`
+                              : subscription?.trial.status === "active"
+                                ? "Content used"
+                                : "Trial ended"}
                       </Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted">
                       {subscription?.isActive
                         ? `Your ${subscription.displayName} subscription includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits.`
-                        : "Free includes 10 daily ready-to-post concepts and no AI generation credits."}
+                        : subscription?.trial.status === "active" &&
+                            subscription.trial.contentDaysRemaining > 0
+                          ? `Your 3-day trial includes 10 daily ready-to-post concepts. You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining, including future dates.`
+                          : subscription?.trial.status === "active"
+                            ? `Your trial content allowance is used. You still have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining until the trial ends.`
+                            : "Your 3-day free trial has ended. Upgrade to generate content or schedule more Instagram posts."}
                     </p>
                   </div>
                 </div>
@@ -466,7 +476,14 @@ export function SettingsWorkspace() {
                   <p className="mt-1 text-lg font-black text-foreground-strong font-mono">
                     {subscription ? subscription.dailyContentPieces : "Limited"}
                   </p>
-                  <p className="mt-1 text-[11px] text-muted">Up to 50 daily on Growth</p>
+                  <p className="mt-1 text-[11px] text-muted">
+                    {subscription?.isActive
+                      ? "Up to 50 daily on Growth"
+                      : subscription?.trial.status === "active" &&
+                          subscription.trial.contentDaysRemaining > 0
+                        ? `${subscription.trial.daysRemaining} trial day${subscription.trial.daysRemaining === 1 ? "" : "s"} remaining`
+                        : "Upgrade to resume daily drops"}
+                  </p>
                 </div>
 
                 <div className="border-t border-border py-4 sm:border-t-0 sm:pl-5">

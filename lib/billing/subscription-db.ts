@@ -2,6 +2,11 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { ingestDodoUsageEvent } from "@/lib/billing/dodo";
 import {
+  getFreeTrialEntitlement,
+  unavailableFreeTrialEntitlement,
+  type FreeTrialEntitlement,
+} from "@/lib/billing/free-trial";
+import {
   calculateVideoGenerationCreditCost,
   DEFAULT_IMAGE_GENERATION_CREDITS,
   DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND,
@@ -43,6 +48,7 @@ export type UserSubscriptionInfo = {
   planKey: BillingPlanKey;
   sharedMonthlyCredits: number;
   status: BillingSubscriptionStatus;
+  trial: FreeTrialEntitlement;
   updatedAt: string | null;
   userId: string;
   videoGenerationCreditsPerSecond: number;
@@ -165,6 +171,7 @@ export function resolveSubscriptionEntitlements(
     planKey: paidPlan,
     sharedMonthlyCredits,
     status: paidPlan === "free" ? "free" : isActive ? "active" : "pending",
+    trial: unavailableFreeTrialEntitlement(),
     updatedAt: updatedAt ?? null,
     userId,
     videoGenerationCreditsPerSecond: getVideoGenerationCreditsPerSecond(),
@@ -195,6 +202,7 @@ export async function getUserSubscription(
     creditsResult,
     accountsResult,
     entitlementsResult,
+    trialResult,
   ] = await Promise.all([
     db
       .from("billing_subscriptions")
@@ -220,6 +228,10 @@ export async function getUserSubscription(
       .from("subscription_entitlements")
       .select("daily_trending_limit,plan_key")
       .in("plan_key", ["free", "pro", "creator"]),
+    getFreeTrialEntitlement(userId).catch((error: unknown) => {
+      console.error("Could not load free trial entitlement:", error);
+      return unavailableFreeTrialEntitlement();
+    }),
   ]);
 
   if (subscriptionResult.error) {
@@ -280,8 +292,12 @@ export async function getUserSubscription(
     creditsUsed: base.isActive ? creditsUsed : 0,
     currentPeriodEnd: row?.current_period_end ?? null,
     currentPeriodStart: row?.current_period_start ?? null,
+    dailyContentPieces: base.isActive
+      ? base.dailyContentPieces
+      : trialResult.dailyContentPieces,
     sharedMonthlyCredits: base.isActive ? creditLimit : 0,
     status,
+    trial: trialResult,
   };
 }
 

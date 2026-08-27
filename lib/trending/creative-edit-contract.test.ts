@@ -83,7 +83,7 @@ test("wall edits remain a renderable two-to-three segment payload", () => {
     (total, segment) => total + segment.lines.length,
     0,
   );
-  assert.equal(lineCount >= 4 && lineCount <= 7, true);
+  assert.equal(lineCount >= 5 && lineCount <= 8, true);
   assert.equal(
     content.segments.every((segment) =>
       segment.lines.every((line) => {
@@ -100,7 +100,7 @@ test("wall edits remain a renderable two-to-three segment payload", () => {
   );
 });
 
-test("compact Wall edit patterns prefer four or five lines", () => {
+test("compact Wall edit patterns use the five-line minimum", () => {
   const content = createWallTextEditContent(
     "Reviewing weekly progress shows where effort actually went. The next choice feels less like a guess.",
     {
@@ -113,7 +113,7 @@ test("compact Wall edit patterns prefer four or five lines", () => {
     0,
   );
 
-  assert.equal(lineCount >= 4 && lineCount <= 5, true);
+  assert.equal(lineCount, 5);
   assert.doesNotThrow(() => validateWallTextContent(content, 6));
 });
 

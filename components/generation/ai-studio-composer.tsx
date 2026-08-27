@@ -289,41 +289,114 @@ export function AiStudioSettingSelect<TValue extends string>({
   options: readonly { label: string; value: TValue }[];
   value: TValue;
 }) {
+  const [open, setOpen] = useState(false);
+  const currentOption =
+    options.find((option) => option.value === value) ?? options[0];
+
+  if (!currentOption) {
+    return null;
+  }
+
+  function handleOptionKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    optionIndex: number,
+  ) {
+    if (
+      event.key !== "ArrowDown" &&
+      event.key !== "ArrowUp" &&
+      event.key !== "Home" &&
+      event.key !== "End"
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    const optionButtons = Array.from(
+      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+        "[data-ai-studio-setting-option]",
+      ) ?? [],
+    );
+
+    if (optionButtons.length === 0) {
+      return;
+    }
+
+    const nextIndex =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? optionButtons.length - 1
+          : event.key === "ArrowDown"
+            ? (optionIndex + 1) % optionButtons.length
+            : (optionIndex - 1 + optionButtons.length) % optionButtons.length;
+
+    optionButtons[nextIndex]?.focus();
+  }
+
   return (
-    <label
-      className={cn(
-        "relative inline-flex h-8 min-w-0 items-center rounded-full bg-card-muted/80 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-colors focus-within:ring-2 focus-within:ring-focus",
-        disabled
-          ? "cursor-not-allowed opacity-50"
-          : "hover:bg-card",
-      )}
-    >
-      <span className="pointer-events-none absolute left-3 z-10 inline-flex items-center">
-        {icon}
-      </span>
-      <span className="sr-only">{ariaLabel}</span>
-      <select
-        aria-label={ariaLabel}
-        disabled={disabled}
-        value={value}
-        onChange={(event) => onChange(event.target.value as TValue)}
-        className={cn(
-          "h-full min-w-0 appearance-none rounded-[inherit] bg-transparent py-0 pr-8 text-xs font-medium text-foreground outline-none disabled:cursor-not-allowed",
-          disabled ? "cursor-not-allowed" : "cursor-pointer",
-          icon ? "pl-9" : "pl-3",
-        )}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            disabled={disabled}
+            aria-label={`${ariaLabel}, currently ${currentOption.label}`}
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            className="inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        }
       >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        aria-hidden="true"
-        className="pointer-events-none absolute right-2.5 size-3 text-muted"
-      />
-    </label>
+        {icon ? <span className="inline-flex shrink-0 items-center">{icon}</span> : null}
+        <span className="truncate">{currentOption.label}</span>
+        <ChevronDown
+          aria-hidden="true"
+          className={cn(
+            "size-3 shrink-0 text-muted transition-transform duration-200 motion-reduce:transition-none",
+            open && "rotate-180",
+          )}
+        />
+      </PopoverTrigger>
+
+      <PopoverContent
+        side="top"
+        align="start"
+        sideOffset={6}
+        className="w-max min-w-40 max-w-[min(20rem,calc(100vw-1rem))] p-1.5"
+      >
+        <div role="listbox" aria-label={ariaLabel} className="flex flex-col gap-0.5">
+          {options.map((option, optionIndex) => {
+            const isSelected = option.value === value;
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                data-ai-studio-setting-option
+                onKeyDown={(event) => handleOptionKeyDown(event, optionIndex)}
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                  isSelected
+                    ? "bg-brand-soft font-semibold text-primary"
+                    : "text-foreground hover:bg-card-muted",
+                )}
+              >
+                <span>{option.label}</span>
+                {isSelected ? (
+                  <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

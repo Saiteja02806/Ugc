@@ -9,7 +9,7 @@ export const WALL_TEXT_FINAL_LAYOUT_VERSION = "wall-text-final-layout-v2" as con
 export const LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION =
   "wall-text-final-layout-v1" as const;
 export const WALL_TEXT_GENERATOR_VERSION =
-  "business-profile-wall-text-v8" as const;
+  "business-profile-wall-text-v9" as const;
 // Freeform is the current Wall writing mode. It is deliberately separate from
 // the dormant 30-format registry so new copy is never mislabeled as a format
 // it was not asked to follow.
@@ -18,6 +18,8 @@ export const WALL_TEXT_FREEFORM_FORMAT_LIBRARY_VERSION =
   "wall-text-formats-disabled-v1" as const;
 export const WALL_TEXT_FREEFORM_SELECTOR_VERSION =
   "wall-text-freeform-selection-v1" as const;
+export const PREVIOUS_WALL_TEXT_GENERATOR_VERSION =
+  "business-profile-wall-text-v8" as const;
 export const LEGACY_WALL_TEXT_GENERATOR_VERSION =
   "business-profile-wall-text-v7" as const;
 export const OLDER_WALL_TEXT_GENERATOR_VERSION =
@@ -25,6 +27,7 @@ export const OLDER_WALL_TEXT_GENERATOR_VERSION =
 export const WALL_TEXT_READABLE_GENERATOR_VERSIONS = [
   OLDER_WALL_TEXT_GENERATOR_VERSION,
   LEGACY_WALL_TEXT_GENERATOR_VERSION,
+  PREVIOUS_WALL_TEXT_GENERATOR_VERSION,
   WALL_TEXT_GENERATOR_VERSION,
 ] as const;
 

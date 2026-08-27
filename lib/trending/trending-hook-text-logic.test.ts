@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   TRENDING_HOOK_PROMPT_VERSION,
+  TRENDING_HOOK_REACTION_SELECTION_VERSION,
   TRENDING_HOOK_SELECTION_VERSION,
 } from "./trending-hook-copy-contract.ts";
 import {
@@ -45,6 +46,15 @@ test("the app and worker share the same Hook generation contract versions", () =
     workerSource,
     new RegExp(
       `TRENDING_HOOK_SELECTION_VERSION\\s*=\\s*\\n?\\s*"${TRENDING_HOOK_SELECTION_VERSION}"`,
+    ),
+  );
+});
+
+test("the worker recognises the strict Trending reaction-map selection version", () => {
+  assert.match(
+    workerSource,
+    new RegExp(
+      `TRENDING_HOOK_REACTION_SELECTION_VERSION\\s*=\\s*\\n?\\s*"${TRENDING_HOOK_REACTION_SELECTION_VERSION}"`,
     ),
   );
 });

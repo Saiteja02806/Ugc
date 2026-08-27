@@ -60,12 +60,14 @@ export function WallTextOverlay({
             className="m-0 whitespace-nowrap"
             style={{
               lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR,
+              whiteSpace: "nowrap",
             }}
           >
             {segment.lines.map((line, lineIndex) => (
               <span
                 key={`${lineIndex}-${line}`}
                 className="block"
+                style={{ whiteSpace: "nowrap" }}
               >
                 {line}
               </span>

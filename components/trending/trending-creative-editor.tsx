@@ -97,6 +97,7 @@ import {
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_OUTLINE_WIDTH,
 } from "@/lib/trending/wall-text-visual-style";
+import { MIN_SHORT_WALL_TEXT_WORDS } from "@/lib/trending/wall-text-text-logic";
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import { cn } from "@/lib/utils";
 
@@ -1957,10 +1958,15 @@ function WallTextOverlayText({
           className="m-0"
           style={{
             lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR,
+            whiteSpace: "nowrap",
           }}
         >
           {segment.lines.map((line, lineIndex) => (
-            <span key={`${lineIndex}:${line}`} className="block whitespace-nowrap">
+            <span
+              key={`${lineIndex}:${line}`}
+              className="block whitespace-nowrap"
+              style={{ whiteSpace: "nowrap" }}
+            >
               {line}
             </span>
           ))}
@@ -2341,8 +2347,8 @@ function EditorFields({
           className="min-h-32 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
         />
         <FieldDescription>
-          Use 8–50 words. Saving measures Inter SemiBold and creates the final
-          4–7 lines inside the export-safe area; clip duration does not change
+          Use {MIN_SHORT_WALL_TEXT_WORDS}–50 words. Saving measures Inter Regular and creates the final
+          5–8 lines inside the export-safe area; clip duration does not change
           the copy limit.
         </FieldDescription>
       </Field>
@@ -3366,8 +3372,12 @@ function validateContent(content: TrendingCreativeEditContent) {
   if (content.format === "wall_text") {
     const normalized = content.content.fullText.replace(/\s+/gu, " ").trim();
     const wordCount = normalized.split(/\s+/u).filter(Boolean).length;
-    if (!normalized || wordCount < 8 || wordCount > 50) {
-      return "Wall-of-text copy must contain 8–50 words and fit the measured 4–7-line layout.";
+    if (
+      !normalized ||
+      wordCount < MIN_SHORT_WALL_TEXT_WORDS ||
+      wordCount > 50
+    ) {
+      return `Wall-of-text copy must contain ${MIN_SHORT_WALL_TEXT_WORDS}–50 words and fit the measured 5–8-line layout.`;
     }
   }
 

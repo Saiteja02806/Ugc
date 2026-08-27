@@ -14,8 +14,8 @@ export const FREE_TRENDING_CONTENT_MIX = {
 
 export const TRENDING_CONTENT_MIX_LIMITS = {
   carousel: 100,
-  hook_video: 50,
-  wall_text: 50,
+  hook_video: 100,
+  wall_text: 100,
 } as const satisfies TrendingContentMix;
 
 export type TrendingContentMix = Record<TrendingFeedFormat, number>;

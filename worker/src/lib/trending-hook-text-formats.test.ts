@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   HOOK_TEXT_FORMATS,
   HOOK_TEXT_FORMAT_IDS,
+  HOOK_REACTION_FORMAT_RULES,
   isHookTextFormatEligible,
   selectHookTextFormats,
 } from "./trending-hook-text-formats.js";
@@ -26,8 +27,8 @@ const baseEligibility = {
   ],
 };
 
-test("Global V1 contains exactly 18 permanent formats and unique variants", () => {
-  assert.equal(HOOK_TEXT_FORMATS.length, 18);
+test("Global V1 retains 20 format definitions and unique variants", () => {
+  assert.equal(HOOK_TEXT_FORMATS.length, 20);
   assert.deepEqual(
     HOOK_TEXT_FORMATS.map((format) => format.id),
     [...HOOK_TEXT_FORMAT_IDS],
@@ -41,6 +42,102 @@ test("Global V1 contains exactly 18 permanent formats and unique variants", () =
       0,
     ),
   );
+});
+
+test("the Trending reaction map selects the exact compatible format", () => {
+  const expectedFormats = {
+    amusement_laughter: "GF_019",
+    concern_anxiety: "GF_002",
+    confidence_approval: "GF_006",
+    confusion_skepticism: "GF_020",
+    curiosity_discovery: "GF_015",
+    focused_attention: "GF_009",
+    secret_reveal: "GF_005",
+    shock_surprise: "GF_012",
+  } as const;
+
+  assert.deepEqual(
+    Object.fromEntries(
+      Object.keys(HOOK_REACTION_FORMAT_RULES).map((reactionType) => [
+        reactionType,
+        selectHookTextFormats({
+          campaignPurpose: "product_discovery",
+          candidateIndex: 0,
+          eligibility: baseEligibility,
+          excludedFormatIds: new Set(["GF_012"]),
+          performanceSignals: {
+            formatSignals: [
+              {
+                formatId: "GF_001",
+                publishedResultCount: 100,
+                selectionWeight: 1.3,
+                temporaryBoost: 0.12,
+                timesGenerated: 0,
+              },
+            ],
+          },
+          reactionType,
+          selectionStrategy: "reaction_mapped",
+        })[0]?.id,
+      ]),
+    ),
+    expectedFormats,
+  );
+});
+
+test("the strict map rejects unknown reactions and missing required evidence", () => {
+  assert.deepEqual(
+    selectHookTextFormats({
+      campaignPurpose: "product_discovery",
+      candidateIndex: 0,
+      eligibility: baseEligibility,
+      reactionType: "unreviewed",
+      selectionStrategy: "reaction_mapped",
+    }),
+    [],
+  );
+
+  assert.deepEqual(
+    selectHookTextFormats({
+      campaignPurpose: "product_discovery",
+      candidateIndex: 0,
+      eligibility: {
+        ...baseEligibility,
+        businessContext: {
+          ...baseEligibility.businessContext,
+          differentiator: null,
+          desiredOutcome: null,
+          productSummary: null,
+          valueProps: [],
+        },
+      },
+      reactionType: "amusement_laughter",
+      selectionStrategy: "reaction_mapped",
+    }),
+    [],
+  );
+});
+
+test("legacy rotation never selects retired or reaction-mapped-only formats", () => {
+  const selectedIds = new Set(
+    Array.from({ length: 500 }, (_, candidateIndex) =>
+      selectHookTextFormats({
+        campaignPurpose: "product_discovery",
+        candidateIndex,
+        eligibility: baseEligibility,
+        reactionType: "shock_surprise",
+      })[0]?.id,
+    ),
+  );
+
+  for (const formatId of [
+    "GF_013",
+    "GF_017",
+    "GF_019",
+    "GF_020",
+  ] as const) {
+    assert.equal(selectedIds.has(formatId), false);
+  }
 });
 
 test("claim-sensitive formats are unavailable without supplied evidence", () => {
@@ -82,23 +179,19 @@ test("forbidden framing is excluded for sensitive businesses", () => {
   );
 });
 
-test("cold start rotates broadly instead of locking a visual reaction to one text format", () => {
-  const shock = selectHookTextFormats({
-    campaignPurpose: "product_discovery",
-    candidateIndex: 0,
-    eligibility: baseEligibility,
-    reactionType: "shock_surprise",
-  })[0];
-  const approval = selectHookTextFormats({
-    campaignPurpose: "product_discovery",
-    candidateIndex: 1,
-    eligibility: baseEligibility,
-    reactionType: "confidence_approval",
-  })[0];
+test("legacy rotation still explores multiple formats across a cold start", () => {
+  const selectedIds = new Set(
+    Array.from({ length: 20 }, (_, candidateIndex) =>
+      selectHookTextFormats({
+        campaignPurpose: "product_discovery",
+        candidateIndex,
+        eligibility: baseEligibility,
+        reactionType: "shock_surprise",
+      })[0]?.id,
+    ),
+  );
 
-  assert.ok(shock);
-  assert.ok(approval);
-  assert.notEqual(shock?.id, approval?.id);
+  assert.ok(selectedIds.size > 1);
 });
 
 test("one strong result creates a bounded chance increase while exploration remains", () => {

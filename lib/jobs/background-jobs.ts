@@ -42,6 +42,7 @@ export type BackgroundJobType =
   | "hook_text_generation"
   | "image_generation"
   | "media_analysis"
+  | "paid_trending_prebuild"
   | "preview_render"
   | "publish_social_post"
   | "render_demo_video"

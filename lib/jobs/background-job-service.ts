@@ -59,6 +59,30 @@ export async function retryAndDispatchBackgroundJob(params: {
   return dispatchBackgroundJob(job);
 }
 
+/**
+ * Payment activation has already committed by the time this is called. Keep a
+ * failed queue delivery queued for the recovery scheduler instead of making the
+ * payment webhook fail or losing the paid Trending prebuild request.
+ */
+export async function dispatchQueuedBackgroundJobForRecovery(
+  job: BackgroundJobRecord,
+) {
+  if (job.status !== "queued" || job.queueMessageId) {
+    return job;
+  }
+
+  try {
+    return await dispatchBackgroundJob(job, { preserveForRecovery: true });
+  } catch (error) {
+    console.error("Durable background job could not be dispatched immediately:", {
+      error: getInternalErrorMessage(error),
+      jobId: job.id,
+      jobType: job.jobType,
+    });
+    return job;
+  }
+}
+
 export async function cancelBackgroundJobForUser(params: {
   jobId: string;
   userId: string;
@@ -81,17 +105,20 @@ export function isPubliclyCreatableJobType(
 
 async function dispatchBackgroundJob(
   job: BackgroundJobRecord,
+  options?: { preserveForRecovery?: boolean },
 ) {
   let delivery;
 
   try {
     delivery = await enqueueBackgroundJobCloudTask(job);
   } catch (error) {
-    await markBackgroundJobFailed({
-      errorCode: "QUEUE_DELIVERY_FAILED",
-      errorMessage: getInternalErrorMessage(error),
-      jobId: job.id,
-    });
+    if (!options?.preserveForRecovery) {
+      await markBackgroundJobFailed({
+        errorCode: "QUEUE_DELIVERY_FAILED",
+        errorMessage: getInternalErrorMessage(error),
+        jobId: job.id,
+      });
+    }
     throw error;
   }
 

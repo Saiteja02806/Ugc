@@ -74,11 +74,11 @@ test("uses the restored readable Wall scale with center alignment and compact se
   assert.doesNotMatch(svg, /wallTextScrim|radialGradient/);
 });
 
-test("uses the widened centered 660px production text box by default", () => {
+test("uses the widened centered 780px production text box by default", () => {
   const layout = buildWallTextRenderLayout({ content });
 
-  assert.equal(layout.textBox.left, 210);
-  assert.equal(layout.textBox.width, 660);
+  assert.equal(layout.textBox.left, 150);
+  assert.equal(layout.textBox.width, 780);
 });
 
 test("accepts four-line compact Wall blocks", () => {
@@ -209,20 +209,24 @@ test("renders V7 as one centered block with equal line rhythm and a short final 
   assert.match(svg, />at once\.<\/text>/);
 });
 
-test("never truncates and rejects more than seven semantic lines", () => {
+test("never truncates and rejects more than eight semantic lines", () => {
   assert.throws(
     () =>
       buildWallTextRenderLayout({
         content: {
           fullText:
-            "One two three four five six seven eight nine ten eleven twelve more words closing words.",
+            "One two three four five six seven eight nine ten eleven twelve more words closing words final row.",
           segments: [
             {
-              lines: ["One two", "three four", "five six", "seven eight"],
+              lines: ["One two", "three four", "five six"],
               role: "lead",
             },
             {
-              lines: ["nine ten", "eleven twelve", "more words", "closing words"],
+              lines: ["seven eight", "nine ten", "eleven twelve"],
+              role: "support",
+            },
+            {
+              lines: ["more words", "closing words", "final row."],
               role: "closing",
             },
           ],
@@ -234,6 +238,6 @@ test("never truncates and rejects more than seven semantic lines", () => {
           y: 660 / 1920,
         },
       }),
-    /must contain 4–7 rendered lines/,
+    /must contain 4–8 rendered lines/,
   );
 });

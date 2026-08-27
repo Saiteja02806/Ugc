@@ -25,6 +25,10 @@ test("retries a timed out or transient Trending feed request without relying on 
     workspace,
     /if \(retryable\) \{[\s\S]*?scheduleFeedRefresh\([\s\S]*?getSmartPreparingPollInterval/,
   );
+  assert.match(
+    workspace,
+    /data\.feed\?\.state === "preparing"[\s\S]*data\.feed\.pendingSlotCount/,
+  );
 });
 
 test("shows generation progress instead of caught-up while daily slots remain pending", () => {

@@ -3,12 +3,14 @@ import { z } from "zod";
 
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
 import { getBusinessProfileOnboardingGate } from "@/lib/business-profiles/onboarding-access";
+import { FreeTrialAccessError } from "@/lib/billing/free-trial";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
 } from "@/lib/firebase/server-auth";
 import {
   resolveTrendingContentMixPreference,
+  TRENDING_CONTENT_MIX_LIMITS,
   type TrendingContentMix,
 } from "@/lib/trending/content-mix";
 import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
@@ -29,9 +31,9 @@ export const dynamic = "force-dynamic";
 const ContentMixSchema = z
   .object({
     carousel: z.number().int().min(0).max(100),
-    hook_video: z.number().int().min(0).max(50),
+    hook_video: z.number().int().min(0).max(100),
     timezone: z.string().trim().min(1).max(100).optional(),
-    wall_text: z.number().int().min(0).max(50),
+    wall_text: z.number().int().min(0).max(100),
   })
   .strict()
   .superRefine((value, context) => {
@@ -63,11 +65,23 @@ export async function GET(request: Request) {
     return json({
       editable: true,
       entitlement,
-      limits: { carousel: 100, hook_video: 50, wall_text: 50 },
+      limits: { ...TRENDING_CONTENT_MIX_LIMITS },
       ok: true,
       preference: effectivePreference,
     });
   } catch (error) {
+    if (error instanceof FreeTrialAccessError) {
+      return json(
+        {
+          code: error.code,
+          message: error.message,
+          ok: false,
+          upgradeRequired: true,
+        },
+        error.status,
+      );
+    }
+
     console.error("Could not load the Trending content mix:", error);
     return json(
       { message: "Could not load your content mix right now.", ok: false },
@@ -157,6 +171,18 @@ export async function PUT(request: Request) {
       preference: savedPreference,
     });
   } catch (error) {
+    if (error instanceof FreeTrialAccessError) {
+      return json(
+        {
+          code: error.code,
+          message: error.message,
+          ok: false,
+          upgradeRequired: true,
+        },
+        error.status,
+      );
+    }
+
     console.error("Could not save the Trending content mix:", error);
     return json(
       { message: "Could not save your content mix right now.", ok: false },

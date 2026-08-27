@@ -66,8 +66,12 @@ export type WallTextRenderLayout = {
 export const WALL_TEXT_RENDER_WIDTH = 1080;
 export const WALL_TEXT_RENDER_HEIGHT = 1920;
 export const WALL_TEXT_RENDER_MAX_CHARACTERS = 600;
-export const WALL_TEXT_RENDER_MIN_LINES = 4;
-export const WALL_TEXT_RENDER_MAX_LINES = 7;
+export const WALL_TEXT_RENDER_MIN_LINES = 5;
+export const WALL_TEXT_RENDER_MAX_LINES = 8;
+// The worker may receive a previously selected V2 draft that was saved under
+// the old 4–7 rule. New V9 generation starts at five lines, while rendering
+// keeps the four-line lower bound only for backward compatibility.
+export const WALL_TEXT_LEGACY_RENDER_MIN_LINES = 4;
 export const WALL_TEXT_DEFAULT_FONT_SIZE = 48;
 export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
 export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
@@ -78,14 +82,14 @@ export const WALL_TEXT_SECTION_GAP = 18;
 export const WALL_TEXT_OUTLINE_WIDTH = 2;
 export const WALL_TEXT_DEFAULT_SAFE_AREA: WallTextSafeArea = {
   bottom: 460 / 1920,
-  left: 120 / 1080,
-  right: 200 / 1080,
+  left: 140 / 1080,
+  right: 140 / 1080,
   top: 280 / 1920,
 };
 export const WALL_TEXT_DEFAULT_TEXT_BOX: WallTextNormalizedBox = {
   height: 480 / 1920,
-  width: 660 / 1080,
-  x: 210 / 1080,
+  width: 780 / 1080,
+  x: 150 / 1080,
   y: 660 / 1920,
 };
 
@@ -114,10 +118,10 @@ export function buildWallTextRenderLayout(params: {
 
   if (
     !content.finalLayout &&
-    (totalLineCount < WALL_TEXT_RENDER_MIN_LINES ||
+    (totalLineCount < WALL_TEXT_LEGACY_RENDER_MIN_LINES ||
       totalLineCount > WALL_TEXT_RENDER_MAX_LINES)
   ) {
-    throw new Error("Wall-of-text must contain 4–7 rendered lines.");
+    throw new Error("Wall-of-text must contain 4–8 rendered lines.");
   }
 
   const fontSize = content.finalLayout?.fontSizePx ??
@@ -335,10 +339,10 @@ function normalizeFinalLayout(
     normalized.version === "wall-text-final-layout-v2" &&
     (normalized.blocks.length !== 1 ||
       normalized.blocks[0]?.role !== "text" ||
-      lineCount < WALL_TEXT_RENDER_MIN_LINES ||
+      lineCount < WALL_TEXT_LEGACY_RENDER_MIN_LINES ||
       lineCount > WALL_TEXT_RENDER_MAX_LINES)
   ) {
-    throw new Error("Wall-of-text V2 must contain one 4-7 line text block.");
+    throw new Error("Wall-of-text V2 must contain one 4-8 line text block.");
   }
   return normalized;
 }
@@ -352,7 +356,7 @@ function normalizeTextBox(
   if (
     entries.some((entry) => !Number.isFinite(entry) || entry < 0 || entry > 1) ||
     value.width < 620 / WALL_TEXT_RENDER_WIDTH ||
-    value.width > 660 / WALL_TEXT_RENDER_WIDTH ||
+    value.width > 780 / WALL_TEXT_RENDER_WIDTH ||
     value.x < safeArea.left ||
     value.y < safeArea.top ||
     value.x + value.width > 1 - safeArea.right + 0.001 ||

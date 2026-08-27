@@ -215,6 +215,23 @@ export function excludeDismissedTrendingFeedItems<Item>(
   return items.filter((item) => !dismissedItemIds.has(getItemId(item)));
 }
 
+/**
+ * Removes items whose decision has already been made in this browser.
+ *
+ * This belongs to the feed state, rather than only the visible card deck:
+ * opening a Hook composer temporarily unmounts the deck, but must never make
+ * a previously swiped item visible again.
+ */
+export function excludeDecidedTrendingFeedItems<Item>(
+  items: readonly Item[],
+  decidedAssignmentIds: ReadonlySet<string>,
+  getAssignmentId: (item: Item) => string,
+) {
+  return items.filter(
+    (item) => !decidedAssignmentIds.has(getAssignmentId(item)),
+  );
+}
+
 export function createCarouselTrendingFeedProvider(
   carousels: readonly TrendingCarouselSourceRecord[],
 ): TrendingFeedProviderResult<TrendingCarouselFeedItem> {

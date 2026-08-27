@@ -22,6 +22,14 @@ const durableReconciliationMigration = readFileSync(
   "supabase/migrations/20260825153000_make_trending_delivery_reconciliation_durable.sql",
   "utf8",
 );
+const wallTextFailureRecoveryMigration = readFileSync(
+  "supabase/migrations/20260827170000_repair_wall_text_persistence_failures.sql",
+  "utf8",
+);
+const fullFormatMixMigration = readFileSync(
+  "supabase/migrations/20260827180000_allow_full_format_content_mixes.sql",
+  "utf8",
+);
 const decisionRoute = readFileSync(
   "app/api/trending/feed/decisions/route.ts",
   "utf8",
@@ -72,7 +80,7 @@ const recoveryRoute = readFileSync(
   "utf8",
 );
 
-test("raises Free to ten posts and repairs an already-created smaller feed", () => {
+test("uses the ten-piece free-trial allowance and repairs an already-created smaller feed", () => {
   assert.match(
     freeAllowanceMigration,
     /daily_trending_limit = 10[\s\S]*where plan_key = 'free'/,
@@ -87,7 +95,7 @@ test("raises Free to ten posts and repairs an already-created smaller feed", () 
   );
   assert.match(
     unifiedFeedDatabase,
-    /requestedPlanKey === "free"[\s\S]*fallback\.dailyLimit/,
+    /assertFreeTrialContentAccess\(userId\)[\s\S]*freeTrialAccess\.trial\?\.dailyContentPieces/,
   );
 });
 
@@ -197,6 +205,33 @@ test("does not select a prior-day Carousel assignment for a new daily feed", () 
   assert.match(
     carouselDailyFeed,
     /Only recover an\s+\/\/ assignment that was already created for this same day/,
+  );
+});
+
+test("turns a terminal Wall persistence rejection into a visible retry state", () => {
+  assert.match(
+    unifiedFeed,
+    /params\.terminalFailure \|\| params\.readiness\.failedSlotCount > 0[\s\S]*return "failed"/,
+  );
+  assert.match(
+    unifiedFeed,
+    /result\.status === "failed" \? "failed" : "scheduled"/,
+  );
+  assert.match(
+    unifiedFeedDatabase,
+    /restartFailedDailyTrendingFeedSlots[\s\S]*restart_failed_daily_trending_feed_slots/,
+  );
+  assert.match(
+    wallTextFailureRecoveryMigration,
+    /wall_text_retry_key uuid/,
+  );
+  assert.match(
+    wallTextFailureRecoveryMigration,
+    /wall_text_creatives_text_content_chk[\s\S]*status = 'failed'/,
+  );
+  assert.match(
+    wallTextFailureRecoveryMigration,
+    /create or replace function public\.restart_failed_daily_trending_feed_slots/,
   );
 });
 
@@ -377,8 +412,8 @@ test("stores an exact combined daily allowance for the renamed billing plans", (
 
 test("enforces the content mix and protects its server-only tables", () => {
   assert.match(
-    migration,
-    /wall_text_percent between 0 and 50[\s\S]*hook_video_percent between 0 and 50[\s\S]*carousel_percent \+ wall_text_percent \+ hook_video_percent = 100/,
+    fullFormatMixMigration,
+    /wall_text_percent between 0 and 100[\s\S]*hook_video_percent between 0 and 100[\s\S]*carousel_percent \+ wall_text_percent \+ hook_video_percent = 100/,
   );
   for (const table of [
     "trending_content_mix_preferences",
@@ -408,8 +443,8 @@ test("retires a daily slot after a swipe and never schedules a replacement", () 
 
 test("keeps an existing daily pack immutable after an authenticated mix update", () => {
   assert.match(contentMixRoute, /requireFirebaseUser\(request\)/);
-  assert.match(contentMixRoute, /wall_text: z\.number\(\)\.int\(\)\.min\(0\)\.max\(50\)/);
-  assert.match(contentMixRoute, /hook_video: z\.number\(\)\.int\(\)\.min\(0\)\.max\(50\)/);
+  assert.match(contentMixRoute, /wall_text: z\.number\(\)\.int\(\)\.min\(0\)\.max\(100\)/);
+  assert.match(contentMixRoute, /hook_video: z\.number\(\)\.int\(\)\.min\(0\)\.max\(100\)/);
   assert.doesNotMatch(contentMixRoute, /allocateUnboundTrendingSlots/);
   assert.doesNotMatch(contentMixRoute, /replanDailyTrendingUnboundSlots/);
   assert.match(contentMixRoute, /applied: currentFeed \? "next_day" : "today"/);

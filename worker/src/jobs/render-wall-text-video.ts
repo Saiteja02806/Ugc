@@ -449,9 +449,9 @@ function getFinalLayout(value: Json) {
     (blocks.length !== 1 ||
       blocks[0]?.role !== "text" ||
       lineCount < 4 ||
-      lineCount > 7)
+      lineCount > 8)
   ) {
-    throw new Error("text.finalLayout V2 must contain one 4-7 line text block.");
+    throw new Error("text.finalLayout V2 must contain one 4-8 line text block.");
   }
   return {
     blocks,

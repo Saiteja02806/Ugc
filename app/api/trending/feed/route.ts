@@ -4,6 +4,7 @@ import {
   getBusinessProfileForUser,
   getMissingBusinessProfileEnvVars,
 } from "@/lib/business-profiles/db";
+import { FreeTrialAccessError } from "@/lib/billing/free-trial";
 import { getBusinessProfileOnboardingGate } from "@/lib/business-profiles/onboarding-access";
 import {
   FirebaseAuthRequestError,
@@ -20,7 +21,10 @@ import {
   prepareUnifiedTrendingDailyFeed,
   readUnifiedTrendingDailyFeed,
 } from "@/lib/trending/unified-daily-feed";
-import { getMissingUnifiedTrendingFeedEnvVars } from "@/lib/trending/unified-daily-feed-db";
+import {
+  getMissingUnifiedTrendingFeedEnvVars,
+  restartFailedDailyTrendingFeedSlots,
+} from "@/lib/trending/unified-daily-feed-db";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -101,14 +105,31 @@ export async function GET(request: Request) {
       );
     }
 
+    const requestUrl = new URL(request.url);
     const preparationParams = {
       includeHookVideos: hookVideosEnabled,
       includeWallText: isWallTextEnabled(),
       profile,
-      timezone: new URL(request.url).searchParams.get("timezone"),
+      timezone: requestUrl.searchParams.get("timezone"),
       userId,
     };
-    const dailyFeed = await readUnifiedTrendingDailyFeed(preparationParams);
+    let dailyFeed = await readUnifiedTrendingDailyFeed(preparationParams);
+
+    const failedFeed = dailyFeed.feed;
+    if (
+      requestUrl.searchParams.get("retryFailed") === "1" &&
+      failedFeed?.state === "failed" &&
+      failedFeed.id
+    ) {
+      const retryKey = await restartFailedDailyTrendingFeedSlots({
+        feedId: failedFeed.id,
+        userId,
+      });
+
+      if (retryKey) {
+        dailyFeed = await readUnifiedTrendingDailyFeed(preparationParams);
+      }
+    }
     const { requiresPreparation, ...publicDailyFeed } = dailyFeed;
 
     if (requiresPreparation) {
@@ -138,6 +159,18 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof FreeTrialAccessError) {
+      return jsonResponse(
+        {
+          code: error.code,
+          message: error.message,
+          ok: false,
+          upgradeRequired: true,
+        },
+        error.status,
+      );
+    }
+
     console.error("Failed to load Trending feed:", error);
     return jsonResponse(
       {

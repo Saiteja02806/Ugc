@@ -13,6 +13,7 @@ import {
   prepareTrendingWallTextIdeas,
   TrendingWallTextPreparationError,
 } from "@/lib/trending/trending-wall-text-feed";
+import { classifyWallTextGenerationFailure } from "@/lib/trending/wall-text-generation-failure";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -75,11 +76,22 @@ export async function POST(request: Request) {
     return json({ ideaCount: ideas.length, ok: true });
   } catch (error) {
     if (error instanceof TrendingWallTextPreparationError) {
-      return json({ ok: false, error: error.message }, error.status);
+      return json(
+        { error: error.message, errorCode: error.code, ok: false },
+        error.status,
+      );
     }
 
     console.error("Background Wall-of-text preparation failed:", error);
-    return json({ ok: false, error: "Wall-of-text preparation failed." }, 500);
+    const failure = classifyWallTextGenerationFailure(error);
+    return json(
+      {
+        error: failure.publicMessage,
+        errorCode: failure.errorCode,
+        ok: false,
+      },
+      500,
+    );
   }
 }
 

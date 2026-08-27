@@ -2,6 +2,7 @@ import "server-only";
 
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import { updateBusinessProfileTrendingTimezone } from "@/lib/business-profiles/db";
+import { FreeTrialAccessError } from "@/lib/billing/free-trial";
 import {
   ensureTrendingDailyFeed,
   readTrendingDailyFeed,
@@ -9,6 +10,7 @@ import {
 import {
   buildTrendingDailyFormatPlan,
   resolveTrendingContentMixPreference,
+  TRENDING_CONTENT_MIX_LIMITS,
   type TrendingContentAllocation,
 } from "@/lib/trending/content-mix";
 import {
@@ -71,11 +73,25 @@ export async function readUnifiedTrendingDailyFeed(params: {
     params.timezone ?? params.profile.trendingTimezone,
   );
   const localDate = getTrendingLocalDate(timezone);
-  const [entitlement, preference, existingPlan] = await Promise.all([
-    getTrendingPlanEntitlement(params.userId),
+  const [preference, existingPlan] = await Promise.all([
     getTrendingContentMixPreference(params.userId),
     getDailyTrendingFeedForDate({ localDate, userId: params.userId }),
   ]);
+  let entitlement: TrendingPlanEntitlement;
+  let trialAccessBlocked = false;
+
+  try {
+    entitlement = await getTrendingPlanEntitlement(params.userId);
+  } catch (error) {
+    if (!(error instanceof FreeTrialAccessError) || !existingPlan) {
+      throw error;
+    }
+
+    // A trial ending stops new preparation, without hiding content that was
+    // already generated in the current daily pack.
+    entitlement = getExistingFeedEntitlement(existingPlan.feed);
+    trialAccessBlocked = true;
+  }
   const effectivePreference = resolveTrendingContentMixPreference({
     planKey: entitlement.planKey,
     preference,
@@ -201,13 +217,37 @@ export async function readUnifiedTrendingDailyFeed(params: {
       preparationResults: new Map(),
     }),
     requiresPreparation:
-      upgradeSlots > 0 ||
-      shouldPrepareDailyFeed({
-        dailyLimit: existingPlan.feed.dailyLimit,
-        items,
-        readiness,
-        slots: existingPlan.slots,
-      }),
+      !trialAccessBlocked &&
+      (upgradeSlots > 0 ||
+        shouldPrepareDailyFeed({
+          dailyLimit: existingPlan.feed.dailyLimit,
+          items,
+          readiness,
+          slots: existingPlan.slots,
+        })),
+    upgradeRequired: trialAccessBlocked,
+  };
+}
+
+function getExistingFeedEntitlement(
+  feed: DailyTrendingFeedRecord,
+): TrendingPlanEntitlement {
+  const planKey =
+    feed.planKey === "creator" ||
+    feed.planKey === "pro" ||
+    feed.planKey === "ultra_pro"
+      ? feed.planKey
+      : "free";
+
+  return {
+    dailyLimit: feed.dailyLimit,
+    displayName:
+      planKey === "creator" || planKey === "ultra_pro"
+        ? "Growth"
+        : planKey === "pro"
+          ? "Starter"
+          : "Free",
+    planKey,
   };
 }
 
@@ -310,7 +350,7 @@ function buildUnifiedDailyFeedResponse(params: {
       })),
     contentMix: {
       allocation: params.allocation,
-      limits: { carousel: 100, hook_video: 50, wall_text: 50 },
+      limits: { ...TRENDING_CONTENT_MIX_LIMITS },
       preferenceVersion: params.preferenceVersion,
       percentages: params.mix,
     },
@@ -446,6 +486,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     includeWallText: params.includeWallText,
     missingByFormat,
     profile: params.profile,
+    wallTextRecoveryKey: attachedPlan.feed.wallTextRetryKey,
   });
   const resolvedItems = buildSlotOrderedItems({
     providers: [carouselProvider, hookProvider, wallTextProvider],
@@ -502,7 +543,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
       })),
     contentMix: {
       allocation: reservedAllocation,
-      limits: { carousel: 100, hook_video: 50, wall_text: 50 },
+      limits: { ...TRENDING_CONTENT_MIX_LIMITS },
       preferenceVersion: effectivePreference.preferenceVersion,
       percentages: attachedPlan.feed.mix,
     },
@@ -540,11 +581,15 @@ function getPublicDailyFeedState(params: {
     return "caught_up";
   }
 
+  if (params.terminalFailure || params.readiness.failedSlotCount > 0) {
+    return "failed";
+  }
+
   if (params.items.length > 0) {
     return "ready";
   }
 
-  if (params.terminalFailure || params.readiness.pendingSlotCount === 0) {
+  if (params.readiness.pendingSlotCount === 0) {
     return "failed";
   }
 
@@ -733,6 +778,7 @@ async function prepareMissingFormats(params: {
   includeWallText: boolean;
   missingByFormat: TrendingContentAllocation;
   profile: BusinessProfileRecord;
+  wallTextRecoveryKey?: string | null;
 }) {
   const results = new Map<"hook_video" | "wall_text", "failed" | "scheduled">();
   const tasks: Promise<void>[] = [];
@@ -757,11 +803,15 @@ async function prepareMissingFormats(params: {
   if (params.includeWallText && params.missingByFormat.wall_text > 0) {
     tasks.push(
       enqueueTrendingWallTextRefill(params.profile, {
+        recoveryKey: params.wallTextRecoveryKey,
         targetActive:
           params.currentCounts.wall_text + params.missingByFormat.wall_text,
       })
-        .then(() => {
-          results.set("wall_text", "scheduled");
+        .then((result) => {
+          results.set(
+            "wall_text",
+            result.status === "failed" ? "failed" : "scheduled",
+          );
         })
         .catch((error) => {
           console.error("Could not prepare reserved Wall-of-text positions:", error);

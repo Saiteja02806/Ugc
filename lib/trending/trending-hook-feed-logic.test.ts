@@ -79,6 +79,51 @@ test("uses the actual trimmed duration and ignores unsuitable sources", () => {
   assert.equal(candidates[0]?.sourceDurationSeconds, 8);
 });
 
+test("does not queue a Trending source whose reaction is not reviewed", () => {
+  const candidates = selectTrendingHookCandidates([
+    createEntry({ durationSeconds: 4, id: "reviewed" }),
+    createEntry({
+      durationSeconds: 4,
+      id: "unreviewed",
+      reactionType: "unreviewed",
+    }),
+  ]);
+
+  assert.deepEqual(
+    candidates.map((candidate) => candidate.entry.video.id),
+    ["reviewed"],
+  );
+});
+
+test("does not queue a source when its reaction needs missing business evidence", () => {
+  const candidates = selectTrendingHookCandidates(
+    [
+      createEntry({
+        durationSeconds: 4,
+        id: "missing-capability",
+        reactionType: "amusement_laughter",
+      }),
+      createEntry({
+        durationSeconds: 4,
+        id: "missing-audience",
+        reactionType: "secret_reveal",
+      }),
+      createEntry({
+        durationSeconds: 4,
+        id: "supported-pain",
+        reactionType: "concern_anxiety",
+      }),
+    ],
+    6,
+    { mainProblem: "Manual tracking takes too much time." },
+  );
+
+  assert.deepEqual(
+    candidates.map((candidate) => candidate.entry.video.id),
+    ["supported-pain"],
+  );
+});
+
 test("prefers different influencers, reactions, and visual groups", () => {
   const candidates = selectTrendingHookCandidates([
     createEntry({

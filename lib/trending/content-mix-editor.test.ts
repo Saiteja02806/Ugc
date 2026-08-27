@@ -19,7 +19,7 @@ test("adjusting a video format trades against Slideshow and preserves 100%", () 
   assert.equal(validateTrendingContentMix(next), true);
 });
 
-test("adjusting Slideshow proportionally redistributes the two capped formats", () => {
+test("adjusting Slideshow proportionally redistributes the other formats", () => {
   const next = rebalanceTrendingContentMix(
     { carousel: 25, hook_video: 25, wall_text: 50 },
     "carousel",
@@ -34,17 +34,32 @@ test("adjusting Slideshow proportionally redistributes the two capped formats", 
   assert.equal(validateTrendingContentMix(next), true);
 });
 
-test("adjustments clamp to backend limits without creating an invalid mix", () => {
+test("adjusting Wall-of-Text to 100% clears the other formats", () => {
   const next = rebalanceTrendingContentMix(
     { carousel: 25, hook_video: 25, wall_text: 50 },
     "wall_text",
-    90,
+    100,
   );
 
   assert.deepEqual(next, {
-    carousel: 25,
-    hook_video: 25,
-    wall_text: 50,
+    carousel: 0,
+    hook_video: 0,
+    wall_text: 100,
+  });
+  assert.equal(validateTrendingContentMix(next), true);
+});
+
+test("adjusting Hooks to 100% clears the other formats", () => {
+  const next = rebalanceTrendingContentMix(
+    { carousel: 25, hook_video: 25, wall_text: 50 },
+    "hook_video",
+    100,
+  );
+
+  assert.deepEqual(next, {
+    carousel: 0,
+    hook_video: 100,
+    wall_text: 0,
   });
   assert.equal(validateTrendingContentMix(next), true);
 });

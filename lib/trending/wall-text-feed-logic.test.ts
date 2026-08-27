@@ -147,14 +147,14 @@ test("uses face-aware zones and a visual-group fallback", () => {
   assert.equal(analyzed.version, "wall-text-layout-v4");
   assert.deepEqual(analyzed.safeArea, {
     bottom: 460 / 1920,
-    left: 120 / 1080,
-    right: 200 / 1080,
+    left: 140 / 1080,
+    right: 140 / 1080,
     top: 280 / 1920,
   });
   assert.deepEqual(analyzed.textBox, {
     height: 480 / 1920,
-    width: 660 / 1080,
-    x: 210 / 1080,
+    width: 780 / 1080,
+    x: 150 / 1080,
     y: 560 / 1920,
   });
 });

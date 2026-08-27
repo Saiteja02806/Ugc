@@ -25,10 +25,12 @@ import {
 const VIDEO_WIDTH = 1080;
 const VIDEO_HEIGHT = 1920;
 const ABSOLUTE_MAXIMUM_WORDS = 50;
-const MINIMUM_WORDS = 8;
+const MINIMUM_WORDS = 10;
 const FREEFORM_TARGET_WORDS = 18;
 const FONT_SIZES: readonly WallTextFontSize[] = [52, 50, 48, 46, 44];
-const TEXT_WIDTHS = [660, 640, 620] as const;
+// The reference treatment uses a wider reading column. Keep the legacy widths
+// as fallbacks for imported templates whose safe area is still narrower.
+const TEXT_WIDTHS = [780, 760, 740, 660, 640, 620] as const;
 const INTERNAL_LINE_WIDTH_RATIO = 0.55;
 const MINIMUM_BALANCE_IMPROVEMENT = 0.04;
 const measurementCache = new Map<string, number>();
@@ -39,16 +41,16 @@ export async function deriveWallTextSpatialBudget(params: {
   const lineHeight = 44 * WALL_TEXT_LINE_HEIGHT_FACTOR;
   const availableLines = clamp(
     Math.floor((params.layout.textBox.height * VIDEO_HEIGHT) / lineHeight),
-    4,
-    7,
+    5,
+    8,
   );
   const widthPx = clamp(
     Math.round(params.layout.textBox.width * VIDEO_WIDTH),
     620,
-    660,
+    780,
   );
   const sampleWords = "people notice the quiet details";
-  const sampleWidth = (await measureText(sampleWords, 40)) +
+  const sampleWidth = (await measureText(sampleWords, 44)) +
     WALL_TEXT_OUTLINE_WIDTH * 2;
   const wordsPerLine = clamp(
     Math.floor((5 * widthPx * 0.9) / sampleWidth),
@@ -112,58 +114,76 @@ export async function createWallTextFinalLayout(params: {
   const centerX = params.layout.textBox.x + params.layout.textBox.width / 2;
   const maximumHeight = params.layout.textBox.height * VIDEO_HEIGHT;
 
-  for (const fontSize of FONT_SIZES) {
-    for (const widthPx of TEXT_WIDTHS) {
-      const width = widthPx / VIDEO_WIDTH;
-      const x = centerX - width / 2;
-      if (
-        x < params.layout.safeArea.left ||
-        x + width > 1 - params.layout.safeArea.right + 0.001
-      ) {
-        continue;
-      }
+  const preferredLineCounts =
+    params.content.kind === "text"
+      ? getPreferredPlainTextLineCounts(params.content.text)
+      : [null];
 
-      const blocks: WallTextLayoutBlock[] = [];
-      for (const block of sourceBlocks) {
-        blocks.push({
-          lines:
+  // For plain Wall copy, line density is the primary decision. The old code
+  // picked the largest font first, so a 52px seven-line layout could win over
+  // a much more readable 46px five-line layout. Try the preferred line count
+  // first, then choose the largest measured font that fits it.
+  for (const preferredLineCount of preferredLineCounts) {
+    for (const fontSize of FONT_SIZES) {
+      for (const widthPx of TEXT_WIDTHS) {
+        const width = widthPx / VIDEO_WIDTH;
+        const x = centerX - width / 2;
+        if (
+          x < params.layout.safeArea.left ||
+          x + width > 1 - params.layout.safeArea.right + 0.001
+        ) {
+          continue;
+        }
+
+        const blocks: WallTextLayoutBlock[] = [];
+        let failed = false;
+        for (const block of sourceBlocks) {
+          const lines =
             block.role === "text"
-              ? await wrapPlainWallText(block.text, widthPx, fontSize)
-              : await wrapMeasuredText(block.text, widthPx, fontSize),
-          role: block.role,
-        });
-      }
+              ? await wrapPlainWallText(
+                  block.text,
+                  widthPx,
+                  fontSize,
+                  preferredLineCount ?? undefined,
+                )
+              : await wrapMeasuredText(block.text, widthPx, fontSize);
+          if (!lines) {
+            failed = true;
+            break;
+          }
+          blocks.push({ lines, role: block.role });
+        }
+        if (failed) continue;
 
-      const lineHeightPx = Math.round(fontSize * WALL_TEXT_LINE_HEIGHT_FACTOR * 100) / 100;
-      const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
-      const blockHeight =
-        lineCount * lineHeightPx +
-        Math.max(0, blocks.length - 1) * WALL_TEXT_SECTION_GAP;
+        const lineHeightPx = Math.round(fontSize * WALL_TEXT_LINE_HEIGHT_FACTOR * 100) / 100;
+        const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
+        const blockHeight =
+          lineCount * lineHeightPx +
+          Math.max(0, blocks.length - 1) * WALL_TEXT_SECTION_GAP;
 
-      if (
-        blockHeight <= maximumHeight &&
-        (params.content.kind !== "text" ||
-          (lineCount >= 4 && lineCount <= 7))
-      ) {
-        return {
-          blocks,
-          fontFamily: "Inter",
-          fontSizePx: fontSize,
-          fontWeight: WALL_TEXT_FONT_WEIGHT,
-          lineHeightPx,
-          textBox: {
-            ...params.layout.textBox,
-            width,
-            x,
-          },
-          version: WALL_TEXT_FINAL_LAYOUT_VERSION,
-        };
+        if (blockHeight <= maximumHeight) {
+          return {
+            blocks,
+            fontFamily: "Inter",
+            fontSizePx: fontSize,
+            fontWeight: WALL_TEXT_FONT_WEIGHT,
+            lineHeightPx,
+            textBox: {
+              ...params.layout.textBox,
+              width,
+              x,
+            },
+            version: WALL_TEXT_FINAL_LAYOUT_VERSION,
+          };
+        }
       }
     }
   }
 
   throw new Error(
-    "Wall-of-text copy does not fit the publishing safe area at the minimum supported font size.",
+    params.content.kind === "text"
+      ? "Wall-of-text copy cannot be arranged into five to eight balanced lines."
+      : "Wall-of-text copy does not fit the publishing safe area at the minimum supported font size.",
   );
 }
 
@@ -204,21 +224,24 @@ async function wrapPlainWallText(
   value: string,
   maximumWidth: number,
   fontSize: WallTextFontSize,
+  preferredLineCount?: number,
 ) {
   const words = value.split(/\s+/u).filter(Boolean);
-  if (words.length < 8) {
-    throw new Error("Wall-of-text copy needs enough words to form four readable lines.");
+  if (words.length < MINIMUM_WORDS) {
+    throw new Error("Wall-of-text copy needs enough words to form five readable lines.");
   }
-  const idealLineCount = clamp(Math.round(words.length / 4.5), 4, 7);
-  const lineCounts = [...new Set([
-    idealLineCount,
-    idealLineCount - 1,
-    idealLineCount + 1,
-    4,
-    5,
-    6,
-    7,
-  ])].filter((count) => count >= 4 && count <= 7 && words.length >= count * 2);
+  const idealLineCount = clamp(Math.round(words.length / 4.5), 5, 8);
+  const lineCounts = preferredLineCount
+    ? [preferredLineCount]
+    : [...new Set([
+        idealLineCount,
+        idealLineCount - 1,
+        idealLineCount + 1,
+        5,
+        6,
+        7,
+        8,
+      ])].filter((count) => count >= 5 && count <= 8 && words.length >= count * 2);
 
   for (const lineCount of lineCounts) {
     const lines = await partitionMeasuredLines({
@@ -229,9 +252,23 @@ async function wrapPlainWallText(
     });
     if (lines) return lines;
   }
+  return null;
+}
 
-  throw new Error(
-    "Wall-of-text copy cannot be arranged into four to seven balanced lines.",
+function getPreferredPlainTextLineCounts(value: string) {
+  const wordCount = value.split(/\s+/u).filter(Boolean).length;
+  const idealLineCount = clamp(Math.round(wordCount / 4.5), 5, 8);
+
+  return [...new Set([
+    idealLineCount,
+    idealLineCount - 1,
+    idealLineCount + 1,
+    5,
+    6,
+    7,
+    8,
+  ])].filter(
+    (count) => count >= 5 && count <= 8 && wordCount >= count * 2,
   );
 }
 
@@ -253,6 +290,8 @@ async function partitionMeasuredLines(params: {
     return width;
   };
   const memo = new Map<string, { lines: string[]; score: number } | null>();
+  const minimumWordsPerLine =
+    params.words.length >= params.lineCount * 3 ? 3 : 2;
 
   const solve = async (
     start: number,
@@ -261,7 +300,7 @@ async function partitionMeasuredLines(params: {
     const key = `${start}:${linesRemaining}`;
     if (memo.has(key)) return memo.get(key)!;
     const wordsRemaining = params.words.length - start;
-    if (wordsRemaining < linesRemaining * 2) return null;
+    if (wordsRemaining < linesRemaining * minimumWordsPerLine) return null;
     if (linesRemaining === 1) {
       const width = await measure(start, params.words.length);
       if (width > params.maximumWidth) return null;
@@ -272,8 +311,13 @@ async function partitionMeasuredLines(params: {
     }
 
     let best: { lines: string[]; score: number } | null = null;
-    const maximumEnd = params.words.length - (linesRemaining - 1) * 2;
-    for (let end = start + 2; end <= maximumEnd; end += 1) {
+    const maximumEnd =
+      params.words.length - (linesRemaining - 1) * minimumWordsPerLine;
+    for (
+      let end = start + minimumWordsPerLine;
+      end <= maximumEnd;
+      end += 1
+    ) {
       const width = await measure(start, end);
       if (width > params.maximumWidth) break;
       const rest = await solve(end, linesRemaining - 1);

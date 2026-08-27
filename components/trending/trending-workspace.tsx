@@ -40,6 +40,10 @@ import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/contexts/auth-context";
 import {
+  type BillingSubscription,
+  useBillingSubscription,
+} from "@/components/billing/use-billing-subscription";
+import {
   CreativeDecisionActions,
   CreativeEditAction,
 } from "@/components/trending/creative-card-actions";
@@ -71,6 +75,7 @@ import {
 import {
   compareTrendingFeedItems,
   createCarouselTrendingFeedProvider,
+  excludeDecidedTrendingFeedItems,
   excludeDismissedTrendingFeedItems,
   getTrendingFeedActiveItemIndex,
   type TrendingCarouselCreative,
@@ -110,6 +115,14 @@ const TrendingContentMixDialog = dynamic(
       (module) => module.TrendingContentMixDialog,
     ),
   { loading: TrendingContentMixDialogLoading },
+);
+
+const TrendingFirstVisitWalkthrough = dynamic(
+  () =>
+    import("@/components/trending/trending-first-visit-walkthrough").then(
+      (module) => module.TrendingFirstVisitWalkthrough,
+    ),
+  { ssr: false },
 );
 
 const HookVideoComposer = dynamic(
@@ -310,6 +323,51 @@ class TrendingFeedRequestError extends Error {
     super(message);
     this.name = "TrendingFeedRequestError";
   }
+}
+
+type TrendingTrialPill = {
+  href: string;
+  label: string;
+  title: string;
+};
+
+function getTrendingTrialPill(
+  subscription: BillingSubscription | undefined,
+): TrendingTrialPill | null {
+  if (
+    !subscription ||
+    subscription.isActive ||
+    subscription.planKey !== "free"
+  ) {
+    return null;
+  }
+
+  if (subscription.trial.status === "active") {
+    if (subscription.trial.contentDaysRemaining > 0) {
+      const daysRemaining = subscription.trial.daysRemaining;
+      return {
+        href: "/settings#subscription-billing",
+        label: `Free \u00b7 ${daysRemaining} day${daysRemaining === 1 ? "" : "s"} left`,
+        title: "View your free-trial details",
+      };
+    }
+
+    return {
+      href: "/pricing",
+      label: "Free \u00b7 Content used",
+      title: "Your free-trial content is used. Upgrade to keep creating.",
+    };
+  }
+
+  if (subscription.trial.status === "expired") {
+    return {
+      href: "/pricing",
+      label: "Trial ended \u00b7 Upgrade",
+      title: "Your free trial has ended. Upgrade to keep creating.",
+    };
+  }
+
+  return null;
 }
 
 function isRetryableTrendingFeedStatus(status: number): boolean {
@@ -652,6 +710,7 @@ export function getInMemoryTrendingFeed(userId: string, localDate: string) {
 export function TrendingWorkspace() {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
+  const subscriptionQuery = useBillingSubscription();
   const currentBrowserLocalDate = getBrowserLocalDate();
   const existingMemoryCache = user
     ? getInMemoryTrendingFeed(user.uid, currentBrowserLocalDate)
@@ -698,9 +757,33 @@ export function TrendingWorkspace() {
     return existingMemoryCache ? existingMemoryCache.profile : null;
   });
   const [carouselHistoryRefreshKey, setCarouselHistoryRefreshKey] = useState(0);
+  const retryFailedFeedRef = useRef(false);
   const persistDecision = useTrendingDecisionOutbox(user?.uid ?? null);
   const enqueueDecision = useCallback(
     (entry: TrendingDecisionOutboxEntry) => {
+      const decidedAssignmentIds = new Set([entry.assignmentId]);
+
+      // The Hook composer replaces the deck while a user chooses or uploads a
+      // demo. Keep this removal in the parent feed state, so closing that
+      // composer cannot recreate the deck with cards the user already swiped.
+      setTrendingItems((current) =>
+        excludeDecidedTrendingFeedItems(
+          current,
+          decidedAssignmentIds,
+          (item) => item.assignmentId,
+        ),
+      );
+      const activeMemoryFeed = inMemoryTrendingFeed;
+      if (activeMemoryFeed && activeMemoryFeed.userId === user?.uid) {
+        inMemoryTrendingFeed = {
+          ...activeMemoryFeed,
+          items: excludeDecidedTrendingFeedItems(
+            activeMemoryFeed.items,
+            decidedAssignmentIds,
+            (item) => item.assignmentId,
+          ),
+        };
+      }
       setTrendingFeedProgress((current) =>
         current
           ? {
@@ -712,7 +795,7 @@ export function TrendingWorkspace() {
       );
       persistDecision(entry);
     },
-    [persistDecision],
+    [persistDecision, user?.uid],
   );
 
   const hasAuthenticatedUser = Boolean(user);
@@ -732,6 +815,7 @@ export function TrendingWorkspace() {
     authLoading ||
     (Boolean(user) &&
       (carouselHistoryState === "idle" || carouselHistoryState === "loading"));
+  const trialPill = getTrendingTrialPill(subscriptionQuery.data);
 
   useEffect(() => {
     if (!user) {
@@ -783,6 +867,12 @@ export function TrendingWorkspace() {
 
         const timezone =
           Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+        const retryFailed = retryFailedFeedRef.current;
+        retryFailedFeedRef.current = false;
+        const feedSearchParams = new URLSearchParams({ timezone });
+        if (retryFailed) {
+          feedSearchParams.set("retryFailed", "1");
+        }
         const requestController = new AbortController();
         let requestTimedOut = false;
         const abortRequest = () => requestController.abort();
@@ -797,7 +887,7 @@ export function TrendingWorkspace() {
 
         try {
           response = await fetch(
-            `/api/trending/feed?timezone=${encodeURIComponent(timezone)}`,
+            `/api/trending/feed?${feedSearchParams.toString()}`,
             {
               cache: "no-store",
               headers: { Authorization: `Bearer ${idToken}` },
@@ -893,7 +983,10 @@ export function TrendingWorkspace() {
           userId,
         };
 
-        if ((data.feed?.pendingSlotCount ?? 0) > 0) {
+        if (
+          data.feed?.state === "preparing" &&
+          (data.feed.pendingSlotCount ?? 0) > 0
+        ) {
           preparingPollAttemptsRef.current += 1;
           scheduleFeedRefresh(
             getSmartPreparingPollInterval(preparingPollAttemptsRef.current),
@@ -1030,11 +1123,22 @@ export function TrendingWorkspace() {
       <div className="mx-auto flex min-h-[calc(100dvh-2rem)] max-w-[1360px] flex-col lg:min-h-[calc(100dvh-2.5rem)]">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-balance text-[30px] font-semibold leading-9 text-foreground-strong sm:text-[32px] sm:leading-10">
-              Trending
-            </h1>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <h1 className="text-balance text-[30px] font-semibold leading-9 text-foreground-strong sm:text-[32px] sm:leading-10">
+                Trending
+              </h1>
+              {trialPill ? (
+                <Link
+                  href={trialPill.href}
+                  title={trialPill.title}
+                  className="inline-flex h-6 items-center rounded-full border border-primary/25 bg-primary/[0.08] px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/[0.15] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  {trialPill.label}
+                </Link>
+              ) : null}
+            </div>
             <p className="mt-1 max-w-2xl text-[14px] leading-[20px] text-muted sm:text-[15px] sm:leading-[22px]">
-              Explore Carousel, Hook, and Wall-of-text ideas made from your
+              Explore Carousel, Hook, and Wall-of-text content made from your
               business profile.
             </p>
           </div>
@@ -1061,23 +1165,35 @@ export function TrendingWorkspace() {
         </header>
 
         <section className="mt-3 flex min-h-0 flex-1 sm:mt-4">
-          <div className="flex min-h-0 w-full flex-1 items-center py-2 sm:py-3">
-            <TrendingFeedGallery
-              enqueueDecision={enqueueDecision}
-              headerActionsRoot={headerActionsRoot}
-              items={orderedTrendingItems}
-              error={visibleCarouselHistoryError}
-              loading={carouselFeedLoading}
-              pendingSlotCount={trendingFeedProgress?.pendingSlotCount ?? 0}
-              preparing={trendingFeedState === "preparing"}
-              remainingCount={trendingFeedProgress?.remainingCount ?? 0}
-              profile={carouselFeedProfile}
-              onCompleteProfile={openBusinessProfile}
-              onRetryHistory={() => {
-                setCarouselHistoryState("loading");
-                setCarouselHistoryRefreshKey((current) => current + 1);
-              }}
-            />
+          <div
+            className="relative flex min-h-0 w-full flex-1 items-center py-2 sm:py-3"
+            data-trending-feed-transition
+          >
+            <div className="min-w-0 flex-1">
+              <TrendingFeedGallery
+                enqueueDecision={enqueueDecision}
+                headerActionsRoot={headerActionsRoot}
+                items={orderedTrendingItems}
+                error={visibleCarouselHistoryError}
+                loading={carouselFeedLoading}
+                pendingSlotCount={trendingFeedProgress?.pendingSlotCount ?? 0}
+                preparing={trendingFeedState === "preparing"}
+                remainingCount={trendingFeedProgress?.remainingCount ?? 0}
+                profile={carouselFeedProfile}
+                onCompleteProfile={openBusinessProfile}
+                onRetryHistory={() => {
+                  retryFailedFeedRef.current = trendingFeedState === "failed";
+                  setCarouselHistoryState("loading");
+                  setCarouselHistoryRefreshKey((current) => current + 1);
+                }}
+              />
+            </div>
+            {user?.uid ? (
+              <TrendingFirstVisitWalkthrough
+                key={user.uid}
+                userId={user.uid}
+              />
+            ) : null}
           </div>
         </section>
         {contentMixOpen ? (
@@ -1131,7 +1247,7 @@ function TrendingFeedGallery({
         icon="failed"
         message={error}
         onAction={onRetryHistory}
-        title="Could not load ideas"
+        title="Could not load content"
       />
     );
   }
@@ -1153,7 +1269,7 @@ function TrendingFeedGallery({
   }
 
   return (
-    <div data-trending-feed-transition className="grid w-full">
+    <div data-trending-feed-transition className="relative grid w-full">
       <div
         aria-hidden={showSkeleton ? undefined : "true"}
         className={cn(
@@ -1192,9 +1308,9 @@ function TrendingIncompleteEmptyState({ onRetry }: { onRetry: () => void }) {
       actionIcon="refresh"
       actionLabel="Try again"
       icon="failed"
-      message="We could not prepare every daily idea yet. Try again to continue the missing work."
+      message="We could not prepare every daily content piece yet. Try again to continue the missing work."
       onAction={onRetry}
-      title="More ideas are still due"
+      title="More content is still due"
     />
   );
 }
@@ -1206,8 +1322,8 @@ function TrendingPreparingEmptyState({
 }) {
   const remainingLabel =
     pendingSlotCount > 0
-      ? `${pendingSlotCount} remaining ${pendingSlotCount === 1 ? "idea is" : "ideas are"}`
-      : "Your remaining ideas are";
+      ? `${pendingSlotCount} ${pendingSlotCount === 1 ? "piece" : "pieces"} of content ${pendingSlotCount === 1 ? "is" : "are"}`
+      : "Your remaining content is";
 
   return (
     <Empty role="status" className="min-h-[360px] text-foreground">
@@ -1218,7 +1334,7 @@ function TrendingPreparingEmptyState({
         />
         <EmptyTitle>Generating for you</EmptyTitle>
         <EmptyDescription>
-          {remainingLabel} being prepared. New ideas will appear here
+          {remainingLabel} being prepared. New content will appear here
           automatically.
         </EmptyDescription>
       </EmptyHeader>
@@ -1232,7 +1348,7 @@ function TrendingReadyEmptyState() {
       <EmptyHeader>
         <EmptyTitle>You&apos;re all caught up</EmptyTitle>
         <EmptyDescription>
-          Check back tomorrow for fresh daily hooks and carousel ideas.
+          Check back tomorrow for fresh daily hooks and carousel content.
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
@@ -1247,7 +1363,7 @@ function CarouselProfilePrompt({ onAction }: { onAction: () => void }) {
       </h2>
       <p className="mt-2 text-sm leading-6 text-muted">
         Add your business details to prepare personalized Carousel, Hook, and
-        Wall-of-text ideas.
+        Wall-of-text content.
       </p>
       <button
         type="button"
@@ -1481,7 +1597,7 @@ function TrendingHookComposer({
             const token = await getCurrentUserIdToken();
 
             if (!token) {
-              throw new Error("Sign in before previewing Hook ideas.");
+              throw new Error("Sign in before previewing Hook content.");
             }
 
             const response = await fetch(previewSessionEndpoint, {
@@ -2310,7 +2426,7 @@ function TrendingDeck({
 
   return (
     <section
-      aria-label="Trending content ideas"
+      aria-label="Trending content"
       className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-x-clip overflow-y-visible pb-[107px] pt-[94px]"
     >
       {activeCandidate && headerActionsRoot
@@ -2330,7 +2446,7 @@ function TrendingDeck({
             aria-roledescription="Trending content deck"
             aria-busy={Boolean(exitDirection)}
             tabIndex={0}
-            aria-label={`Trending content deck. Showing idea ${activeItemIndex + 1} of ${visibleCandidates.length}. Press left arrow to reject or right arrow to accept this creative.`}
+            aria-label={`Trending content deck. Showing content ${activeItemIndex + 1} of ${visibleCandidates.length}. Press left arrow to reject or right arrow to accept this creative.`}
             onKeyDown={handleDeckKeyDown}
             className={cn(
               "relative isolate mx-auto flex items-center justify-center overflow-visible rounded-[20px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background",
@@ -2804,7 +2920,9 @@ function getTrendingReviewCardFrameClass(
 }
 
 function getTrendingFormatPillPositionClass() {
-  return "bottom-[calc(100%+40px)]";
+  // The Slideshow deck can reveal a taller card behind its 4:5 active frame.
+  // Keep this label above that stack without changing Hook or Wall-of-Text spacing.
+  return "bottom-[calc(100%+72px)]";
 }
 
 type TrendingDeckCardProps = {
@@ -2974,7 +3092,7 @@ function TrendingHookDeckCard({
         const token = await getCurrentUserIdToken();
 
         if (!token) {
-          throw new Error("Sign in before previewing Hook ideas.");
+          throw new Error("Sign in before previewing Hook content.");
         }
 
         const response = await fetch(previewSessionEndpoint, {
@@ -3058,7 +3176,7 @@ function TrendingHookDeckCard({
             const token = await getCurrentUserIdToken();
 
             if (!token) {
-              throw new Error("Sign in before previewing Hook ideas.");
+              throw new Error("Sign in before previewing Hook content.");
             }
 
             const response = await fetch(previewSessionEndpoint, {
@@ -3132,7 +3250,7 @@ function TrendingHookDeckCard({
           presentation === "video_peek" ? "true" : undefined
         }
         data-trending-vertical-frame
-        aria-label={`${creative.text.value}, Hook idea ${itemIndex + 1} of ${itemCount}`}
+        aria-label={`${creative.text.value}, Hook content ${itemIndex + 1} of ${itemCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           VERTICAL_REVIEW_CARD_FRAME_CLASS,
@@ -3314,7 +3432,7 @@ function TrendingWallTextDeckCard({
           presentation === "video_peek" ? "true" : undefined
         }
         data-trending-vertical-frame
-        aria-label={`${creative.title}, Wall-of-text idea ${itemIndex + 1} of ${itemCount}`}
+        aria-label={`${creative.title}, Wall-of-text content ${itemIndex + 1} of ${itemCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           VERTICAL_REVIEW_CARD_FRAME_CLASS,
@@ -3458,7 +3576,7 @@ function CarouselDeckCard({
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
-        aria-label={`${title}, idea ${carouselIndex + 1} of ${carouselCount}`}
+        aria-label={`${title}, content ${carouselIndex + 1} of ${carouselCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           CAROUSEL_REVIEW_CARD_FRAME_CLASS,
@@ -3651,7 +3769,7 @@ function TrendingPostSkeleton({ active = true }: { active?: boolean }) {
   return (
     <div
       role="status"
-      aria-label="Loading trending content ideas"
+      aria-label="Loading trending content"
       className="relative isolate mx-auto flex w-full flex-col items-center justify-center"
     >
       <div
@@ -4120,8 +4238,8 @@ function toCarouselDisplayCopy(message: string) {
     .replace(/\bTrending carousel\b/g, "Instagram carousel")
     .replace(/\bgenerated slideshows\b/g, "generated carousels")
     .replace(/\bGenerated slideshows\b/g, "Generated carousels")
-    .replace(/\bslideshow ideas\b/g, "carousel ideas")
-    .replace(/\bSlideshow ideas\b/g, "Carousel ideas")
+    .replace(/\bslideshow ideas\b/g, "carousel content")
+    .replace(/\bSlideshow ideas\b/g, "Carousel content")
     .replace(/\bslideshow preparation\b/g, "carousel preparation")
     .replace(/\bSlideshow preparation\b/g, "Carousel preparation")
     .replace(/\bslideshows\b/g, "carousels")
@@ -4143,7 +4261,7 @@ function getCarouselTitle(carousel: GeneratedCarousel) {
   return (
     carousel.selectedAngle?.trim() ||
     titleCaseSlug(carousel.categorySlug) ||
-    `Carousel idea ${carousel.candidateIndex + 1}`
+    `Carousel content ${carousel.candidateIndex + 1}`
   );
 }
 

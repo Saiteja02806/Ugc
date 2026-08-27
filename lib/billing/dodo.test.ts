@@ -19,6 +19,7 @@ import {
   calculateVideoGenerationCreditCost,
   DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND,
 } from "./generation-credit-policy.ts";
+import { getPaidTrendingPrebuildIdempotencyKey } from "./paid-trending-prebuild.ts";
 
 const migration = readFileSync(
   new URL(
@@ -29,6 +30,20 @@ const migration = readFileSync(
 );
 const webhookRoute = readFileSync(
   new URL("../../app/api/webhooks/dodo/route.ts", import.meta.url),
+  "utf8",
+);
+const paidTrendingPrebuildMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260826140336_add_paid_trending_prebuild_on_subscription_activation.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const paidTrendingPrebuildRoute = readFileSync(
+  new URL(
+    "../../app/api/internal/jobs/prepare-paid-trending/route.ts",
+    import.meta.url,
+  ),
   "utf8",
 );
 const billingActivationStatus = readFileSync(
@@ -114,6 +129,11 @@ test("subscription activation stops its two-second polling after the bounded wai
     billingActivationStatus,
     /activationPolling: !timedOut/,
   );
+  assert.match(
+    billingActivationStatus,
+    /getSubscriptionActivationFailure/,
+  );
+  assert.match(subscriptionDb, /status,\n\s*trial: trialResult/);
 });
 
 test("purchase intent survives authentication using validated values only", () => {
@@ -159,6 +179,61 @@ test("usage delivery matches the configured Dodo meter aggregation", () => {
   assert.match(subscriptionDb, /flushPendingBillingUsageEvents/);
   assert.match(usageFlushRoute, /verifyCloudTasksOidcRequest/);
   assert.match(usageFlushRoute, /Cache-Control": "no-store"/);
+});
+
+test("an active paid subscription atomically saves one prebuild job before webhook delivery", () => {
+  assert.match(
+    paidTrendingPrebuildMigration,
+    /create trigger billing_subscriptions_enqueue_paid_trending_prebuild[\s\S]*after insert or update/i,
+  );
+  assert.match(
+    paidTrendingPrebuildMigration,
+    /new\.status <> 'active'[\s\S]*new\.plan_key not in \('starter', 'growth'\)/i,
+  );
+  assert.match(
+    paidTrendingPrebuildMigration,
+    /'paid_trending_prebuild'[\s\S]*'ai-generation'[\s\S]*on conflict do nothing/i,
+  );
+  assert.match(
+    webhookRoute,
+    /processDodoSubscriptionEvent\([\s\S]*after\(\(\) =>[\s\S]*dispatchPaidTrendingPrebuild[\s\S]*return NextResponse\.json/,
+  );
+  assert.match(
+    webhookRoute,
+    /dispatchQueuedBackgroundJobForRecovery/,
+  );
+});
+
+test("paid prebuild uses one stable period key for duplicate webhook deliveries", () => {
+  assert.equal(
+    getPaidTrendingPrebuildIdempotencyKey({
+      periodStart: "2026-08-26T11:04:45.567Z",
+      planKey: "starter",
+      subscriptionId: "sub_123",
+    }),
+    "paid-trending-prebuild:v1:sub_123:starter:20260826T110445Z",
+  );
+  assert.equal(
+    getPaidTrendingPrebuildIdempotencyKey({
+      periodStart: null,
+      planKey: "growth",
+      subscriptionId: "sub_123",
+    }),
+    "paid-trending-prebuild:v1:sub_123:growth:subscription",
+  );
+});
+
+test("paid prebuild rechecks the current plan before preparing the existing feed", () => {
+  assert.match(paidTrendingPrebuildRoute, /getUserSubscription\(input\.userId\)/);
+  assert.match(
+    paidTrendingPrebuildRoute,
+    /subscription\.planKey !== input\.expectedPlanKey[\s\S]*subscription_is_no_longer_current/,
+  );
+  assert.match(
+    paidTrendingPrebuildRoute,
+    /ensureUnifiedTrendingDailyFeed\([\s\S]*markItemsShown: false/,
+  );
+  assert.match(paidTrendingPrebuildRoute, /isBusinessProfileOnboardingComplete/);
 });
 
 test("video generation charges three credits for every selected second", () => {

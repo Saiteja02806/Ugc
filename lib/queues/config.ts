@@ -50,6 +50,9 @@ const jobQueueConfig = {
   media_analysis: {
     queueName: "ai-generation",
   },
+  paid_trending_prebuild: {
+    queueName: "ai-generation",
+  },
   preview_render: {
     queueName: "video-render",
   },

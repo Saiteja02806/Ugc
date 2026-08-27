@@ -67,6 +67,24 @@ const fixedTypeValidationMigration = readFileSync(
   ),
   "utf8",
 );
+const reactionMappedFormatsMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260827110000_add_reaction_mapped_hook_formats.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const durableHookRunMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260827130000_add_durable_trending_hook_generation_runs.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const hookRunSource = readFileSync(
+  new URL("./trending-hook-generation-runs.ts", import.meta.url),
+  "utf8",
+);
 const globalFormatsRegistry = readFileSync(
   new URL(
     "../../worker/src/lib/trending-hook-text-formats.ts",
@@ -121,7 +139,7 @@ test("keeps validated Hook results when one source candidate fails review", () =
   );
   assert.match(
     hookFeedSource,
-    /Math\.max\(targetActive - activeCount, 6\)/,
+    /candidatePoolCount[\s\S]*Math\.max\(targetValidCount \* 6, 12\)[\s\S]*600/,
   );
 });
 
@@ -298,14 +316,43 @@ test("V7 stores Global writing formats without changing visual or audio format r
     new Set(globalFormatsMigration.match(/GF_\d{3}_[A-Z]/g) ?? []).size,
     31,
   );
-  assert.deepEqual(
-    [...new Set(globalFormatsMigration.match(/GF_\d{3}_[A-Z]/g) ?? [])]
-      .sort(),
-    [...new Set(globalFormatsRegistry.match(/GF_\d{3}_[A-Z]/g) ?? [])]
-      .sort(),
+  const initialVariantIds = new Set(
+    globalFormatsMigration.match(/GF_\d{3}_[A-Z]/g) ?? [],
+  );
+  const registryVariantIds = new Set(
+    globalFormatsRegistry.match(/GF_\d{3}_[A-Z]/g) ?? [],
+  );
+  assert.ok(
+    [...initialVariantIds].every((variantId) =>
+      registryVariantIds.has(variantId),
+    ),
   );
   assert.doesNotMatch(globalFormatsMigration, /alter table public\.hook_formats/);
   assert.doesNotMatch(globalFormatsMigration, /update public\.hook_audio_assets/);
+});
+
+test("reaction-mapped Trending formats preserve history and accept V2 jobs", () => {
+  assert.match(
+    reactionMappedFormatsMigration,
+    /enabled = false,[\s\S]*global_status = 'retired',[\s\S]*where id in \('GF_013', 'GF_017'\)/i,
+  );
+  assert.match(reactionMappedFormatsMigration, /'GF_019'/);
+  assert.match(reactionMappedFormatsMigration, /'GF_020'/);
+  assert.match(reactionMappedFormatsMigration, /'GF_019_A'/);
+  assert.match(reactionMappedFormatsMigration, /'GF_020_A'/);
+  assert.match(reactionMappedFormatsMigration, /reaction-format-map-v2/);
+  assert.match(
+    reactionMappedFormatsMigration,
+    /p_selection_version not in \([\s\S]*global-format-rotation-v1[\s\S]*reaction-format-map-v2/i,
+  );
+  assert.match(
+    hookFeedSource,
+    /TRENDING_HOOK_REACTION_SELECTION_VERSION/,
+  );
+  assert.match(
+    hookWorkerJobSource,
+    /selectionStrategy:[\s\S]*selectionVersion === TRENDING_HOOK_REACTION_SELECTION_VERSION[\s\S]*reaction_mapped/,
+  );
 });
 
 test("fixed-type Hook provenance is accepted as a matched rolling-safe pair", () => {
@@ -348,7 +395,7 @@ test("does not repeat a Hook job that failed a deterministic persistence contrac
   );
 });
 
-test("refills Hook ideas from unused videos with one deduplicated batch", () => {
+test("continues one durable Hook run with unused videos instead of completing a partial batch", () => {
   assert.match(
     hookFeedSource,
     /mode\?: "initial" \| "refill"[\s\S]+active\.length >= targetActive/,
@@ -363,14 +410,69 @@ test("refills Hook ideas from unused videos with one deduplicated batch", () => 
   );
   assert.match(
     hookFeedSource,
-    /refillKey: mode === "refill" \? String\(existing\.length\) : null/,
+    /createOrResumeTrendingHookGenerationRun[\s\S]+targetValidCount/,
+  );
+  assert.match(
+    hookFeedSource,
+    /findActiveLegacyTrendingHookCopyJob[\s\S]+activeLegacyJob/,
   );
   assert.match(
     hookJobsSource,
-    /refillKey\?: string \| null[\s\S]+refill-\$\{params\.refillKey\}/,
+    /trending-hook-copy-run[\s\S]+chunk-\$\{params\.generationRun\.chunkId\}/,
   );
   assert.match(
-    hookJobsSource,
-    /job\.status === "failed" \|\| job\.status === "cancelled"[\s\S]+replacement:\$\{job\.id\}/,
+    hookWorkerJobSource,
+    /persistTrendingHookGenerationRunChunk[\s\S]+remainingValidCount/,
+  );
+});
+
+test("durably tracks the target, each reserved chunk, and the next continuation", () => {
+  assert.match(
+    durableHookRunMigration,
+    /create table if not exists public\.trending_hook_generation_runs/i,
+  );
+  assert.match(
+    durableHookRunMigration,
+    /target_valid_count integer not null[\s\S]*completed_valid_count integer not null/i,
+  );
+  assert.match(
+    durableHookRunMigration,
+    /create table if not exists public\.trending_hook_generation_run_candidates/i,
+  );
+  assert.match(
+    durableHookRunMigration,
+    /create table if not exists public\.trending_hook_generation_run_chunks/i,
+  );
+  assert.match(
+    durableHookRunMigration,
+    /reserve_trending_hook_generation_chunk_v1[\s\S]*state = 'pending'/i,
+  );
+  assert.match(
+    durableHookRunMigration,
+    /v_candidate_count < 1 or v_candidate_count > 600/i,
+  );
+  assert.match(
+    durableHookRunMigration,
+    /persist_trending_hook_generation_chunk_v1[\s\S]*status = 'continuation_pending'/i,
+  );
+  assert.match(
+    durableHookRunMigration,
+    /completed_valid_count \+ v_accepted_count >= target_valid_count then 'completed'/i,
+  );
+  assert.match(
+    durableHookRunMigration,
+    /already_persisted boolean[\s\S]*v_chunk\.status = 'completed'[\s\S]*true/i,
+  );
+  assert.match(
+    durableHookRunMigration,
+    /new\.status in \('failed', 'cancelled'\)[\s\S]*fail_trending_hook_generation_chunk_v1[\s\S]*insert into public\.trending_feed_reconciliation_outbox/i,
+  );
+  assert.match(
+    durableHookRunMigration,
+    /create or replace function public\.release_unattached_trending_hook_generation_chunk_v1[\s\S]*v_chunk\.status <> 'reserved'[\s\S]*v_chunk\.background_job_id is not null[\s\S]*status = 'continuation_pending'/i,
+  );
+  assert.match(
+    hookRunSource,
+    /reserveTrendingHookGenerationChunk[\s\S]*p_chunk_size: HOOK_GENERATION_CHUNK_SIZE/,
   );
 });

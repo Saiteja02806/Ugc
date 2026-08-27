@@ -2,6 +2,7 @@ import {
   createWorkerScheduleFinalizationSignature,
   deriveWorkerScheduleFinalizationSecret,
 } from "./schedule-finalization.js";
+import { RetryableJobError } from "../retryable-job-error.js";
 
 const PREPARATION_PATH = "/api/internal/jobs/prepare-wall-text";
 const SIGNATURE_HEADER = "x-ugc-finalization-signature";
@@ -38,6 +39,7 @@ export async function prepareWallTextInApp(params: {
     });
     const result = (await response.json().catch(() => null)) as {
       error?: unknown;
+      errorCode?: unknown;
       ideaCount?: unknown;
       ok?: unknown;
     } | null;
@@ -51,8 +53,23 @@ export async function prepareWallTextInApp(params: {
         typeof result?.error === "string" && result.error.trim()
           ? ` ${result.error.trim().slice(0, 240)}`
           : "";
-      throw new Error(
-        `Wall-of-text preparation request failed with HTTP ${response.status}.${detail}`,
+      const errorCode =
+        typeof result?.errorCode === "string" && result.errorCode.trim()
+          ? result.errorCode.trim().slice(0, 120)
+          : "wall_text_preparation_failed";
+
+      if (errorCode === "infrastructure_error") {
+        throw new RetryableJobError(
+          `Wall-of-text preparation request failed with HTTP ${response.status}.${detail}`,
+          { code: errorCode, retryAfterSeconds: 30 },
+        );
+      }
+
+      throw Object.assign(
+        new Error(
+          `Wall-of-text preparation request failed with HTTP ${response.status}.${detail}`,
+        ),
+        { code: errorCode },
       );
     }
 

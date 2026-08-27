@@ -45,6 +45,9 @@ import {
   WALL_TEXT_GENERATOR_VERSION,
 } from "@/lib/trending/wall-text-types";
 import {
+  classifyWallTextGenerationFailure,
+} from "@/lib/trending/wall-text-generation-failure";
+import {
   createUnavailableTrendingFeedProvider,
   createWallTextTrendingFeedProvider,
   type TrendingFeedProviderResult,
@@ -64,7 +67,7 @@ const DEFAULT_WALL_TEXT_ACTIVE_TARGET = 6;
 
 export async function enqueueTrendingWallTextRefill(
   profile: BusinessProfileRecord,
-  options: { targetActive?: number } = {},
+  options: { recoveryKey?: string | null; targetActive?: number } = {},
 ) {
   const targetActive = Math.max(
     Math.trunc(options.targetActive ?? DEFAULT_WALL_TEXT_ACTIVE_TARGET),
@@ -126,6 +129,7 @@ export async function enqueueTrendingWallTextRefill(
     businessProfileVersion: profile.profileVersion,
     profile,
     ...(needsTypographyRefresh ? {} : { refillKey: String(existing.length) }),
+    recoveryKey: options.recoveryKey,
     requestedCount: Math.max(targetActive - active.length, 1),
     userId: profile.userId,
   });
@@ -134,7 +138,12 @@ export async function enqueueTrendingWallTextRefill(
     activeCount: active.length,
     jobId: job.id,
     rotatedLibrary: !hasUnusedBackground,
-    status: job.status === "completed" ? ("ready" as const) : ("scheduled" as const),
+    status:
+      job.status === "completed"
+        ? ("ready" as const)
+        : job.status === "failed"
+          ? ("failed" as const)
+          : ("scheduled" as const),
   };
 }
 
@@ -580,14 +589,20 @@ async function completeReservedWallTextGeneration(params: {
           },
         });
       } catch (error) {
-        const retryable = !(error instanceof WallTextCandidateRepairExhaustedError);
+        const failure =
+          error instanceof WallTextCandidateRepairExhaustedError
+            ? {
+                errorCode: "content_retry_exhausted",
+                retryable: false,
+              }
+            : classifyWallTextGenerationFailure(error);
         try {
           await recordWallTextGenerationChunkFailure({
             claimToken,
             chunkId,
-            errorCode: retryable ? "infrastructure_error" : "content_retry_exhausted",
+            errorCode: failure.errorCode,
             errorMessage: error instanceof Error ? error.message : String(error),
-            retryable,
+            retryable: failure.retryable,
             userId: params.profile.userId,
           });
         } catch (recordError) {
@@ -694,13 +709,22 @@ export async function getTrendingWallTextFeedProvider(
       );
     }
 
-    // Active assignments already passed the current read contract. Historical
-    // preview-ready creatives from an older generator version must not hide
-    // those ready ideas while stale inventory is refreshed in the background.
+    // Active assignments can stay pinned across a mutable source-library
+    // change, but never across a text-layout version change. Report an empty,
+    // resolved provider here so the daily-feed integrity step detaches the
+    // stale pin and schedules its measured V9 refresh.
     if (ideas.length > 0) {
       return createWallTextTrendingFeedProvider(
         ideas.map(toWallTextSourceRecord),
       );
+    }
+
+    if (
+      pinnedAssignmentIds.size > 0 &&
+      creatives.length > 0 &&
+      !areTrendingWallTextCreativesCurrent(creatives)
+    ) {
+      return createWallTextTrendingFeedProvider([]);
     }
 
     if (
@@ -732,6 +756,7 @@ export class TrendingWallTextPreparationError extends Error {
   constructor(
     message: string,
     readonly status = 400,
+    readonly code = "wall_text_preparation_rejected",
   ) {
     super(message);
     this.name = "TrendingWallTextPreparationError";

@@ -140,8 +140,8 @@ export function createWallTextLayout(
       : "visual-group-fallback",
     safeArea: {
       bottom: 460 / 1920,
-      left: 120 / 1080,
-      right: 200 / 1080,
+      left: 140 / 1080,
+      right: 140 / 1080,
       top: 280 / 1920,
     },
     textBox,
@@ -153,7 +153,7 @@ export function getWallTextZoneBox(
   placement: WallTextPlacementZone,
 ): TrendingWallTextLayout["textBox"] {
   const height = 480 / 1920;
-  const textBoxWidth = 660;
+  const textBoxWidth = 780;
   const width = textBoxWidth / 1080;
   const centerY =
     placement === "upper-middle"

@@ -2,11 +2,16 @@ export const TRENDING_HOOK_PROMPT_VERSION =
   "trending-hook-copy-v7";
 export const TRENDING_HOOK_SELECTION_VERSION =
   "global-format-rotation-v1";
+// Trending-feed Hooks use a strict reaction-to-format map. Keep the legacy
+// rotation version above for the separate, user-driven composition workflow.
+export const TRENDING_HOOK_REACTION_SELECTION_VERSION =
+  "reaction-format-map-v2";
 export const TRENDING_HOOK_COPY_JOB_TYPE =
   "generate_trending_hook_copy" as const;
 
 const TERMINAL_TRENDING_HOOK_COPY_ERROR_MARKERS = [
   "trending_hook_generation_invalid_",
+  "trending_hook_generation_run_",
   "trending_hook_generation_v7_persistence_mismatch",
   "trending_hook_generation_scope_mismatch",
   "hook_video_suggestions_v5_metadata_check",
@@ -59,6 +64,8 @@ export const HOOK_TEXT_FORMAT_IDS = [
   "GF_016",
   "GF_017",
   "GF_018",
+  "GF_019",
+  "GF_020",
 ] as const;
 
 export type HookTextFormatId =

@@ -5,6 +5,7 @@ import {
   buildUnifiedTrendingFeed,
   createCarouselTrendingFeedProvider,
   createCurrentTrendingFeedProviders,
+  excludeDecidedTrendingFeedItems,
   excludeDismissedTrendingFeedItems,
   getTrendingFeedActiveItemIndex,
   getTrendingFeedProviderAvailability,
@@ -48,6 +49,25 @@ test("keeps the next active creative stable when a decided item disappears durin
       (item) => item.id,
     ),
     0,
+  );
+});
+
+test("keeps decided cards out of the parent feed when the swipe deck is replaced", () => {
+  const feedBeforeOpeningHookComposer = [
+    { assignmentId: "assignment-1", id: "item-1" },
+    { assignmentId: "assignment-2", id: "item-2" },
+    { assignmentId: "assignment-3", id: "item-3" },
+  ];
+
+  const feedAfterReturningFromHookComposer = excludeDecidedTrendingFeedItems(
+    feedBeforeOpeningHookComposer,
+    new Set(["assignment-1", "assignment-2"]),
+    (item) => item.assignmentId,
+  );
+
+  assert.deepEqual(
+    feedAfterReturningFromHookComposer.map((item) => item.id),
+    ["item-3"],
   );
 });
 

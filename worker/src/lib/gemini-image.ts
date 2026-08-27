@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
 import type { AIStudioImageRatio } from "./image-output.js";
+import { getRequiredProviderEnv } from "./provider-env.js";
 
 const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image";
 const MAX_REFERENCE_IMAGE_BYTES = 25 * 1024 * 1024;
@@ -59,7 +60,7 @@ export async function generateGeminiImageBuffer(
 function getGoogleClient() {
   if (!googleClient) {
     googleClient = new GoogleGenAI({
-      apiKey: getRequiredEnv("GEMINI_API_KEY"),
+      apiKey: getRequiredProviderEnv("GEMINI_API_KEY"),
       httpOptions: { retryOptions: { attempts: 1 } },
     });
   }
@@ -100,14 +101,4 @@ async function downloadReferenceImage(url: string) {
   }
 
   return { data: buffer.toString("base64"), mimeType };
-}
-
-function getRequiredEnv(name: string) {
-  const value = process.env[name]?.trim();
-
-  if (!value) {
-    throw new ProviderRequestNotSubmittedError(`Missing ${name}.`);
-  }
-
-  return value;
 }

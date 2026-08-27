@@ -23,6 +23,7 @@ import {
   type HookTextFormatDefinition,
   type HookTextFormatId,
   type HookTextPerformanceSignals,
+  type HookTextSelectionStrategy,
 } from "./trending-hook-text-formats.js";
 
 const DEFAULT_MODEL = "gpt-5.6-terra";
@@ -42,6 +43,8 @@ export const TRENDING_HOOK_PROMPT_VERSION =
   "trending-hook-copy-v7";
 export const TRENDING_HOOK_SELECTION_VERSION =
   "global-format-rotation-v1";
+export const TRENDING_HOOK_REACTION_SELECTION_VERSION =
+  "reaction-format-map-v2";
 export const TRENDING_HOOK_OVERLAY_VERSION =
   "hook-overlay-v4-fixed-type";
 export const TRENDING_HOOK_VALIDATOR_VERSION =
@@ -98,6 +101,8 @@ const DEFAULT_HOOK_AUDIO_INTENT_BY_FORMAT: Record<
   GF_016: { energy: "high", hookType: "warning", mood: "urgent" },
   GF_017: { energy: "high", hookType: "warning", mood: "playful" },
   GF_018: { energy: "high", hookType: "transformation", mood: "urgent" },
+  GF_019: { energy: "medium", hookType: "curiosity", mood: "playful" },
+  GF_020: { energy: "medium", hookType: "problem", mood: "serious" },
 };
 
 const BANNED_MARKETING_PHRASES = [
@@ -115,6 +120,8 @@ const BANNED_MARKETING_PHRASES = [
   "level up",
   "need help",
   "stop scrolling",
+  "wdym",
+  "are we cooked",
 ] as const;
 
 const AI_LIKE_LANGUAGE_PHRASES = [
@@ -405,6 +412,7 @@ export async function generateValidatedTrendingHookCopies(params: {
   client?: StructuredResponseClient;
   model?: string;
   performanceSignals?: HookTextPerformanceSignals;
+  selectionStrategy?: HookTextSelectionStrategy;
 }) {
   const candidates = normalizeCandidates(params.candidates);
   const businessContext = extractBusinessContext(
@@ -416,6 +424,7 @@ export async function generateValidatedTrendingHookCopies(params: {
   const performanceSignals = normalizePerformanceSignals(
     params.performanceSignals,
   );
+  const selectionStrategy = params.selectionStrategy ?? "legacy_rotation";
 
   if (evidenceCatalog.length === 0) {
     throw new Error(
@@ -428,6 +437,7 @@ export async function generateValidatedTrendingHookCopies(params: {
     candidates,
     evidenceCatalog,
     performanceSignals,
+    selectionStrategy,
   });
   const model =
     params.model?.trim() ||
@@ -438,7 +448,11 @@ export async function generateValidatedTrendingHookCopies(params: {
     businessContext,
     candidates,
     performanceSignals,
+    selectionStrategy,
   });
+  if (specs.length === 0) {
+    return [];
+  }
   let finalDrafts = await writeHookDrafts({
     businessContext,
     client,
@@ -860,6 +874,7 @@ function buildDraftSpecs(params: {
   businessContext: ReturnType<typeof extractBusinessContext>;
   candidates: TrendingHookCopyCandidate[];
   performanceSignals: HookTextPerformanceSignals;
+  selectionStrategy: HookTextSelectionStrategy;
 }) {
   const purposes = buildTrendingHookCampaignPurposeSequence({
     count: params.candidates.length,
@@ -879,12 +894,18 @@ function buildDraftSpecs(params: {
         businessContext: params.businessContext,
         evidence: buildBusinessEvidenceCatalog(params.businessContext),
       },
-      excludedFormatIds: selectedInBatch,
+      excludedFormatIds:
+        params.selectionStrategy === "legacy_rotation"
+          ? selectedInBatch
+          : undefined,
       performanceSignals: params.performanceSignals,
       reactionType: candidate.reactionType,
+      selectionStrategy: params.selectionStrategy,
     });
 
-    formats.forEach((format) => selectedInBatch.add(format.id));
+    if (params.selectionStrategy === "legacy_rotation") {
+      formats.forEach((format) => selectedInBatch.add(format.id));
+    }
 
     return formats.map(
       (format): HookDraftSpec => ({

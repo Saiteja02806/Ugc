@@ -12,10 +12,20 @@ import {
 } from "@/lib/trending/hook-video-db";
 import {
   TRENDING_HOOK_PROMPT_VERSION,
+  TRENDING_HOOK_REACTION_SELECTION_VERSION,
   type TrendingHookPreparationStatus,
 } from "@/lib/trending/trending-hook-copy-contract";
+import {
+  enqueueTrendingHookCopyJob,
+  findActiveLegacyTrendingHookCopyJob,
+} from "@/lib/trending/trending-hook-copy-jobs";
+import {
+  attachTrendingHookGenerationChunkJob,
+  createOrResumeTrendingHookGenerationRun,
+  releaseUnattachedTrendingHookGenerationChunk,
+  reserveTrendingHookGenerationChunk,
+} from "@/lib/trending/trending-hook-generation-runs";
 import { getHookPerformanceSignals } from "@/lib/trending/hook-performance";
-import { enqueueTrendingHookCopyJob } from "@/lib/trending/trending-hook-copy-jobs";
 import { listHookVideoBrowseInventory } from "@/lib/trending/hook-video-sources";
 import {
   getHookVideoTextPosition,
@@ -107,11 +117,21 @@ export async function prepareTrendingHookIdeas(
     mode === "refill" && unusedInventory.length > 0
       ? unusedInventory
       : fullInventory;
-  const requestedCount = Math.min(
-    Math.max(targetActive - activeCount, 6),
-    12,
+  const targetValidCount = Math.max(targetActive - activeCount, 1);
+  // Store enough unused candidates for six attempts per promised Hook. This
+  // is durable source metadata only: each worker still receives just six
+  // videos, and generation stops as soon as the promised count is reached.
+  // A smaller pool could wrongly report source exhaustion for a paid account
+  // even though it still had untried eligible videos.
+  const candidatePoolCount = Math.min(
+    Math.max(targetValidCount * 6, 12),
+    600,
   );
-  const candidates = selectTrendingHookCandidates(inventory, requestedCount);
+  const candidates = selectTrendingHookCandidates(
+    inventory,
+    candidatePoolCount,
+    profile.context,
+  );
 
   if (candidates.length === 0) {
     if (mode === "refill") {
@@ -134,8 +154,66 @@ export async function prepareTrendingHookIdeas(
     }
 
     throw new TrendingHookPreparationError(
-      "No vertical Hook videos with valid duration metadata are available.",
+      "No reviewed Hook videos with enough business evidence are available.",
       409,
+    );
+  }
+
+  const sourceSelectionKey = source.selection
+    ? createSourceSelectionKey(
+        source.selection.selectionKind,
+        source.assets.map((asset) => asset.id),
+      )
+    : null;
+  const activeLegacyJob = await findActiveLegacyTrendingHookCopyJob({
+    businessProfileId: profile.id,
+    businessProfileVersion: profile.profileVersion,
+    userId: profile.userId,
+  });
+
+  if (activeLegacyJob) {
+    return {
+      exhausted: false,
+      ideaCount: activeCount,
+      jobId: activeLegacyJob.id,
+      status:
+        activeLegacyJob.status === "created" || activeLegacyJob.status === "queued"
+          ? "queued"
+          : "processing",
+    };
+  }
+  const run = await createOrResumeTrendingHookGenerationRun({
+    businessProfileId: profile.id,
+    businessProfileVersion: profile.profileVersion,
+    candidatePool: candidates.map(toHookCopyJobCandidate),
+    promptVersion: TRENDING_HOOK_PROMPT_VERSION,
+    selectionVersion: TRENDING_HOOK_REACTION_SELECTION_VERSION,
+    sourceSelectionKey,
+    targetValidCount,
+    userId: profile.userId,
+  });
+  const chunk = await reserveTrendingHookGenerationChunk({ runId: run.id });
+
+  if (chunk.status === "source_exhausted") {
+    throw new TrendingHookPreparationError(
+      "No unused eligible Hook videos remain to complete this feed.",
+      409,
+    );
+  }
+
+  if (chunk.status === "completed") {
+    return {
+      exhausted: false,
+      ideaCount: activeCount + chunk.completedValidCount,
+      jobId: null,
+      status: "ready" as const,
+    };
+  }
+
+  if (!chunk.chunkId || chunk.candidates.length === 0) {
+    throw new TrendingHookPreparationError(
+      "The Hook generation run could not reserve its next video chunk.",
+      503,
     );
   }
 
@@ -143,19 +221,53 @@ export async function prepareTrendingHookIdeas(
     businessProfileId: profile.id,
     userId: profile.userId,
   });
+
   const job = await enqueueTrendingHookCopyJob({
     businessProfile: profile.context,
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,
-    candidates: candidates.map(toHookCopyJobCandidate),
+    beforeDispatch: async (backgroundJob) => {
+      try {
+        const attached = await attachTrendingHookGenerationChunkJob({
+          backgroundJobId: backgroundJob.id,
+          chunkId: chunk.chunkId!,
+        });
+
+        if (attached) {
+          return;
+        }
+
+        throw new Error(
+          "The Hook generation run no longer owns this background job.",
+        );
+      } catch (error) {
+        // This is safe after an uncertain RPC result: the database releases
+        // only a reservation that has no physical job attached to it.
+        await releaseUnattachedTrendingHookGenerationChunk({
+          chunkId: chunk.chunkId!,
+          errorMessage:
+            error instanceof Error
+              ? error.message
+              : "Could not attach the Hook generation task.",
+        }).catch((releaseError) => {
+          console.error(
+            "Could not release an unattached Hook generation chunk:",
+            releaseError,
+          );
+        });
+
+        throw error;
+      }
+    },
+    candidates: chunk.candidates,
+    generationRun: {
+      chunkId: chunk.chunkId,
+      id: run.id,
+      remainingValidCount: chunk.remainingValidCount,
+    },
     performanceSignals,
-    sourceSelectionKey: source.selection
-      ? createSourceSelectionKey(
-          source.selection.selectionKind,
-          source.assets.map((asset) => asset.id),
-        )
-      : null,
-    refillKey: mode === "refill" ? String(existing.length) : null,
+    sourceSelectionKey,
+    selectionVersion: TRENDING_HOOK_REACTION_SELECTION_VERSION,
     userId: profile.userId,
   });
 

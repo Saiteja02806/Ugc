@@ -1,6 +1,7 @@
 import "server-only";
 
 import { listBusinessProfilesForDailyReplenishment } from "@/lib/business-profiles/db";
+import { FreeTrialAccessError } from "@/lib/billing/free-trial";
 import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
 import { ensureUnifiedTrendingDailyFeed } from "@/lib/trending/unified-daily-feed";
 import { isWallTextEnabled } from "@/lib/trending/wall-text-access";
@@ -91,6 +92,17 @@ export async function replenishTrendingCarouselFeedPage(params: {
         userId: profile.userId,
       };
     } catch (error) {
+      if (error instanceof FreeTrialAccessError) {
+        return {
+          assignedCount: 0,
+          localDate: null,
+          ok: true as const,
+          pendingSlotCount: 0,
+          state: "caught_up" as const,
+          userId: profile.userId,
+        };
+      }
+
       return {
         error:
           error instanceof Error

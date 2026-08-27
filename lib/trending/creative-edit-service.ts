@@ -677,7 +677,7 @@ function validateWallTextPlacement(params: {
     textBox.y,
   ];
   const minimumWidth = 620 / WALL_TEXT_RENDER_WIDTH;
-  const maximumWidth = 660 / WALL_TEXT_RENDER_WIDTH;
+  const maximumWidth = 780 / WALL_TEXT_RENDER_WIDTH;
 
   if (
     validNumbers.some(

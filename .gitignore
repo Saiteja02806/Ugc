@@ -45,6 +45,7 @@
 /ugcpilot_logo__1.png
 
 # local visual QA and generated review artifacts
+/.codex-artifacts/
 /.codex-audits/
 /artifacts/
 /edit-screen-audit/

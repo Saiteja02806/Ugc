@@ -22,6 +22,11 @@ import {
   listCurrentTrendingFeedIntegrityRepairs,
   rescheduleTrendingFeedReconciliation,
 } from "@/lib/trending/unified-daily-feed-db";
+import {
+  claimDueTrendingHookGenerationChunkDispatches,
+  completeTrendingHookGenerationChunkDispatch,
+  rescheduleTrendingHookGenerationChunkDispatch,
+} from "@/lib/trending/trending-hook-generation-runs";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -130,6 +135,17 @@ export async function POST(request: Request) {
             limit: Math.min(limit, 25),
           });
 
+    const hookDispatchRecovery =
+      trendingMissing.length > 0
+        ? {
+            error: "Trending Hook dispatch recovery is not configured.",
+            inspected: 0,
+            results: [],
+          }
+        : await recoverUnattachedTrendingHookChunks({
+            limit: Math.min(limit, 25),
+          });
+
     if (trendingMissing.length > 0) {
       console.error("Durable Trending reconciliation is not configured", {
         missing: trendingMissing,
@@ -151,6 +167,7 @@ export async function POST(request: Request) {
       inspected: staleJobs.length,
       ok: true,
       results,
+      hookDispatchRecovery,
       trendingIntegrityRepair: integrityResults,
       trendingReconciliation: trendingResults,
     });
@@ -158,6 +175,99 @@ export async function POST(request: Request) {
     console.error("Background job recovery scan failed:", error);
     return json({ ok: false, error: "Recovery scan failed." }, 500);
   }
+}
+
+/**
+ * Repairs the only pre-job crash window in the durable Hook flow. A row here
+ * exists only when Postgres reserved candidates but no physical job was
+ * attached. Normal requests never wait for this scanner.
+ */
+async function recoverUnattachedTrendingHookChunks(params: { limit: number }) {
+  const claims = await claimDueTrendingHookGenerationChunkDispatches({
+    limit: params.limit,
+  });
+  const results: Array<Record<string, string | number | boolean | null>> = [];
+
+  for (const claim of claims) {
+    try {
+      const reconciliation = await reconcileCompletedTrendingFeedForUser(
+        claim.userId,
+      );
+      const completed = await completeTrendingHookGenerationChunkDispatch({
+        claimToken: claim.claimToken,
+        dispatchId: claim.dispatchId,
+      });
+
+      if (completed) {
+        results.push({
+          attemptCount: claim.attemptCount,
+          chunkId: claim.chunkId,
+          feedId: reconciliation.feedId,
+          result: "dispatched",
+          runId: claim.runId,
+          targetValidCount: claim.targetValidCount,
+          userId: claim.userId,
+        });
+        continue;
+      }
+
+      // The normal dispatcher may have attached the job while this recovery
+      // request was running. If it did not, leave this durable row due again
+      // rather than pretending a worker was created.
+      const rescheduled = await rescheduleTrendingHookGenerationChunkDispatch({
+        claimToken: claim.claimToken,
+        dispatchId: claim.dispatchId,
+        errorMessage:
+          "The Hook dispatch recovery did not observe a physical worker job attachment.",
+      });
+
+      results.push({
+        attemptCount: claim.attemptCount,
+        chunkId: claim.chunkId,
+        feedId: reconciliation.feedId,
+        result: rescheduled ? "waiting_for_attachment" : "already_resolved",
+        runId: claim.runId,
+        targetValidCount: claim.targetValidCount,
+        userId: claim.userId,
+      });
+    } catch (error) {
+      const message = getErrorMessage(error);
+
+      try {
+        await rescheduleTrendingHookGenerationChunkDispatch({
+          claimToken: claim.claimToken,
+          dispatchId: claim.dispatchId,
+          errorMessage: message,
+        });
+      } catch (rescheduleError) {
+        console.error("Could not reschedule durable Hook dispatch recovery", {
+          chunkId: claim.chunkId,
+          error: getErrorMessage(rescheduleError),
+          runId: claim.runId,
+        });
+      }
+
+      console.error("Durable Hook dispatch recovery failed", {
+        chunkId: claim.chunkId,
+        error: message,
+        runId: claim.runId,
+        userId: claim.userId,
+      });
+      results.push({
+        attemptCount: claim.attemptCount,
+        chunkId: claim.chunkId,
+        result: "rescheduled",
+        runId: claim.runId,
+        targetValidCount: claim.targetValidCount,
+        userId: claim.userId,
+      });
+    }
+  }
+
+  return {
+    inspected: claims.length,
+    results,
+  };
 }
 
 async function repairIncompleteTrendingFeeds(params: { limit: number }) {

@@ -81,6 +81,20 @@ const durableHookRunMigration = readFileSync(
   ),
   "utf8",
 );
+const durableHookReservationFixMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260828140000_fix_trending_hook_chunk_reservation_ambiguity.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const durableHookDispatchOutboxMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260828150000_add_durable_trending_hook_dispatch_outbox.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const hookRunSource = readFileSync(
   new URL("./trending-hook-generation-runs.ts", import.meta.url),
   "utf8",
@@ -110,6 +124,13 @@ const hookWorkerJobSource = readFileSync(
 const hookWorkerCopySource = readFileSync(
   new URL(
     "../../worker/src/lib/trending-hook-copy.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const jobRecoveryRouteSource = readFileSync(
+  new URL(
+    "../../app/api/internal/jobs/recover/route.ts",
     import.meta.url,
   ),
   "utf8",
@@ -477,6 +498,21 @@ test("durably tracks the target, each reserved chunk, and the next continuation"
   );
 });
 
+test("qualifies reservation run IDs so RETURNS TABLE output cannot block a chunk", () => {
+  assert.match(
+    durableHookReservationFixMigration,
+    /trending_hook_generation_run_candidates as candidate[\s\S]*candidate\.run_id = v_run\.id/i,
+  );
+  assert.match(
+    durableHookReservationFixMigration,
+    /trending_hook_generation_run_chunks as chunk[\s\S]*chunk\.run_id = v_run\.id/i,
+  );
+  assert.doesNotMatch(
+    durableHookReservationFixMigration,
+    /\bwhere\s+run_id\s*=\s*v_run\.id/i,
+  );
+});
+
 test("calls the durable Hook RPC with its Supabase client context intact", () => {
   assert.match(
     hookRunSource,
@@ -485,5 +521,36 @@ test("calls the durable Hook RPC with its Supabase client context intact", () =>
   assert.doesNotMatch(
     hookRunSource,
     /const rpc = getClient\(\)\.rpc/,
+  );
+});
+
+test("keeps a crash between Hook reservation and job creation durably recoverable", () => {
+  assert.match(
+    durableHookDispatchOutboxMigration,
+    /create table if not exists public\.trending_hook_generation_dispatch_outbox/i,
+  );
+  assert.match(
+    durableHookDispatchOutboxMigration,
+    /after insert on public\.trending_hook_generation_run_chunks[\s\S]*new\.status = 'reserved'[\s\S]*enqueue_trending_hook_generation_chunk_dispatch_v1/i,
+  );
+  assert.match(
+    durableHookDispatchOutboxMigration,
+    /from public\.trending_hook_generation_run_chunks as chunk[\s\S]*chunk\.status = 'reserved'[\s\S]*chunk\.background_job_id is null/i,
+  );
+  assert.match(
+    durableHookDispatchOutboxMigration,
+    /claim_due_trending_hook_generation_chunk_dispatches_v1[\s\S]*chunk\.background_job_id is null[\s\S]*for update of dispatch skip locked/i,
+  );
+  assert.match(
+    durableHookDispatchOutboxMigration,
+    /after update of background_job_id, status[\s\S]*new\.background_job_id is not null[\s\S]*status = 'completed'/i,
+  );
+  assert.match(
+    hookRunSource,
+    /claimDueTrendingHookGenerationChunkDispatches[\s\S]*claim_due_trending_hook_generation_chunk_dispatches_v1/,
+  );
+  assert.match(
+    jobRecoveryRouteSource,
+    /recoverUnattachedTrendingHookChunks[\s\S]*claimDueTrendingHookGenerationChunkDispatches[\s\S]*reconcileCompletedTrendingFeedForUser/,
   );
 });

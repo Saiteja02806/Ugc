@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import type { Json } from "@/lib/jobs/background-jobs";
@@ -29,6 +31,15 @@ type ChunkRow = RunRow & {
   remaining_valid_count: number;
 };
 
+type DispatchRecoveryRow = {
+  attempt_count: number;
+  chunk_id: string;
+  dispatch_id: string;
+  run_id: string;
+  target_valid_count: number;
+  user_id: string;
+};
+
 type TrendingHookGenerationRpcClient = {
   rpc<T>(
     name: string,
@@ -51,6 +62,16 @@ export type TrendingHookGenerationChunk = TrendingHookGenerationRun & {
   chunkId: string | null;
   chunkNumber: number | null;
   remainingValidCount: number;
+};
+
+export type TrendingHookGenerationDispatchRecoveryClaim = {
+  attemptCount: number;
+  chunkId: string;
+  dispatchId: string;
+  runId: string;
+  targetValidCount: number;
+  userId: string;
+  claimToken: string;
 };
 
 let client: SupabaseClient | null = null;
@@ -152,6 +173,80 @@ export async function releaseUnattachedTrendingHookGenerationChunk(params: {
   return row === true;
 }
 
+/**
+ * Claims chunks that were reserved but never received a physical background
+ * job. This is an emergency repair path only: normal preparation dispatches
+ * the job in the same request without waiting for the scheduler.
+ */
+export async function claimDueTrendingHookGenerationChunkDispatches(params: {
+  limit: number;
+  staleAfterSeconds?: number;
+}) {
+  const claimToken = randomUUID();
+  const supabase = getClient() as unknown as TrendingHookGenerationRpcClient;
+  const { data, error } = await supabase.rpc<DispatchRecoveryRow>(
+    "claim_due_trending_hook_generation_chunk_dispatches_v1",
+    {
+      p_claim_token: claimToken,
+      p_limit: params.limit,
+      p_stale_after_seconds: params.staleAfterSeconds ?? 300,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `Could not claim Trending Hook generation dispatches: ${error.message}`,
+    );
+  }
+
+  const records = Array.isArray(data) ? data : [];
+
+  return records.map((row) => ({
+    attemptCount: toNonNegativeInteger(row.attempt_count, "attempt_count"),
+    chunkId: requireUuid(row.chunk_id, "chunk_id"),
+    claimToken,
+    dispatchId: requireUuid(row.dispatch_id, "dispatch_id"),
+    runId: requireUuid(row.run_id, "run_id"),
+    targetValidCount: toPositiveInteger(
+      row.target_valid_count,
+      "target_valid_count",
+    ),
+    userId: requireText(row.user_id, "user_id"),
+  })) satisfies TrendingHookGenerationDispatchRecoveryClaim[];
+}
+
+export async function completeTrendingHookGenerationChunkDispatch(params: {
+  claimToken: string;
+  dispatchId: string;
+}) {
+  const row = await callRpc<boolean>(
+    "complete_trending_hook_generation_chunk_dispatch_v1",
+    {
+      p_claim_token: params.claimToken,
+      p_dispatch_id: params.dispatchId,
+    },
+  );
+
+  return row === true;
+}
+
+export async function rescheduleTrendingHookGenerationChunkDispatch(params: {
+  claimToken: string;
+  dispatchId: string;
+  errorMessage: string;
+}) {
+  const row = await callRpc<boolean>(
+    "reschedule_trending_hook_generation_chunk_dispatch_v1",
+    {
+      p_claim_token: params.claimToken,
+      p_dispatch_id: params.dispatchId,
+      p_error_message: params.errorMessage,
+    },
+  );
+
+  return row === true;
+}
+
 function toRun(row: RunRow): TrendingHookGenerationRun {
   if (!row || typeof row.run_id !== "string" || !row.run_id.trim()) {
     throw new Error("Trending Hook generation run returned no id.");
@@ -215,7 +310,7 @@ async function callRpc<T>(name: string, args: Record<string, unknown>) {
     throw new Error("Trending Hook generation run returned no result.");
   }
 
-  return row;
+  return row as T;
 }
 
 function getClient() {
@@ -266,4 +361,25 @@ function toNonNegativeInteger(value: unknown, field: string) {
   }
 
   return value;
+}
+
+function requireUuid(value: unknown, field: string) {
+  if (
+    typeof value !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(
+      value,
+    )
+  ) {
+    throw new Error(`Trending Hook generation dispatch returned invalid ${field}.`);
+  }
+
+  return value;
+}
+
+function requireText(value: unknown, field: string) {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`Trending Hook generation dispatch returned invalid ${field}.`);
+  }
+
+  return value.trim();
 }

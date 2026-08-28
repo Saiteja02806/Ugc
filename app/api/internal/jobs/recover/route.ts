@@ -234,6 +234,27 @@ async function recoverUnattachedTrendingHookChunks(params: { limit: number }) {
       const message = getErrorMessage(error);
 
       try {
+        // Reconciliation can attach the physical job before a later response
+        // parsing step throws. Confirm the durable state before putting the
+        // dispatch back on the retry queue; otherwise a successful handoff is
+        // logged as a false failure.
+        const completed = await completeTrendingHookGenerationChunkDispatch({
+          claimToken: claim.claimToken,
+          dispatchId: claim.dispatchId,
+        });
+
+        if (completed) {
+          results.push({
+            attemptCount: claim.attemptCount,
+            chunkId: claim.chunkId,
+            result: "dispatched_after_reconciliation_error",
+            runId: claim.runId,
+            targetValidCount: claim.targetValidCount,
+            userId: claim.userId,
+          });
+          continue;
+        }
+
         await rescheduleTrendingHookGenerationChunkDispatch({
           claimToken: claim.claimToken,
           dispatchId: claim.dispatchId,

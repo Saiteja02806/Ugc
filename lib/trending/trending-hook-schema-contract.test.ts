@@ -560,6 +560,10 @@ test("keeps a crash between Hook reservation and job creation durably recoverabl
     jobRecoveryRouteSource,
     /recoverUnattachedTrendingHookChunks[\s\S]*claimDueTrendingHookGenerationChunkDispatches[\s\S]*reconcileCompletedTrendingFeedForUser/,
   );
+  assert.match(
+    jobRecoveryRouteSource,
+    /catch \(error\)[\s\S]*completeTrendingHookGenerationChunkDispatch[\s\S]*dispatched_after_reconciliation_error[\s\S]*rescheduleTrendingHookGenerationChunkDispatch/,
+  );
 });
 
 test("qualifies completed Hook progress while a worker persists its chunk", () => {

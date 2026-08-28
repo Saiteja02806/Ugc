@@ -3679,6 +3679,31 @@ Name: **Verify v26 and replace the stale production assignment**
   are deployed and verified together. Scaling is a separate rollout, not part
   of this database change.
 
+## 2026-08-28 Controlled Demand-Scaling Safeguards (local, not deployed)
+
+- The future scaling target is up to ten concurrent demand-driven workers for
+  Carousel, long video rendering, and social publishing. This is a capacity
+  ceiling, not ten permanently running servers: Cloud Run remains at zero when
+  there is no work.
+- Before any queue or Cloud Run limit is increased, long video rendering uses a
+  database-backed pool of ten render slots. A launcher must hold one durable
+  slot before it starts a Cloud Run Job; a duplicate task sees the existing
+  lease instead of starting a second render. Slots are released only when a
+  launch fails or the durable background job leaves active processing.
+- Social publishing remains parallel across different connected accounts, but
+  each platform/connection pair has one durable account lane. A second post for
+  the same account waits and retries without consuming a provider-failure
+  attempt. This supplements—not replaces—the existing per-target publish
+  idempotency operation.
+- Carousel batch ownership remains the existing transaction keyed by experiment
+  batch. A ten-way database concurrency canary must prove that one batch gets
+  one job and its exact five ideas, while ten distinct batches get ten separate
+  jobs. The local contract tests validate the transaction shape only; the
+  database canary is a deployment gate, not proof from a unit test.
+- Planned rollout after deployment and canaries: retain capacity 1 initially,
+  then raise queue and service limits together to 2, then 5, then 10 while
+  monitoring duplicate ownership claims, provider errors, queue age, and cost.
+
 ## 2026-08-28 Immediate Terminal Carousel Replacement
 
 - A terminal `generate_carousel` failure for daily Trending inventory writes a

@@ -150,6 +150,30 @@ type BackgroundJobsDatabase = {
         };
         Returns: Array<{ created: boolean; job_id: string }>;
       };
+      claim_video_render_execution_slot: {
+        Args: {
+          p_claim_token: string;
+          p_job_id: string;
+          p_stale_after_seconds?: number;
+        };
+        Returns: Array<{
+          is_launched: boolean;
+          should_launch: boolean;
+          slot_number: number;
+        }>;
+      };
+      attach_video_render_execution_slot: {
+        Args: {
+          p_claim_token: string;
+          p_job_id: string;
+          p_worker_execution_id: string;
+        };
+        Returns: boolean;
+      };
+      release_video_render_execution_slot: {
+        Args: { p_claim_token: string; p_job_id: string };
+        Returns: boolean;
+      };
       list_recoverable_background_jobs: {
         Args: {
           p_limit?: number;
@@ -682,6 +706,64 @@ export async function attachWorkerExecutionToBackgroundJob(params: {
   }
 
   return data ? mapBackgroundJob(data) : null;
+}
+
+export async function claimVideoRenderExecutionSlot(params: {
+  claimToken: string;
+  jobId: string;
+  staleAfterSeconds?: number;
+}) {
+  const { data, error } = await getSupabaseServerClient().rpc(
+    "claim_video_render_execution_slot",
+    {
+      p_claim_token: params.claimToken,
+      p_job_id: params.jobId,
+      p_stale_after_seconds: params.staleAfterSeconds ?? 300,
+    },
+  );
+
+  if (error) {
+    throw new Error(`Could not claim video render execution slot: ${error.message}`);
+  }
+
+  return data?.[0] ?? null;
+}
+
+export async function attachVideoRenderExecutionSlot(params: {
+  claimToken: string;
+  jobId: string;
+  workerExecutionId: string;
+}) {
+  const { data, error } = await getSupabaseServerClient().rpc(
+    "attach_video_render_execution_slot",
+    {
+      p_claim_token: params.claimToken,
+      p_job_id: params.jobId,
+      p_worker_execution_id: params.workerExecutionId,
+    },
+  );
+
+  if (error) {
+    throw new Error(`Could not attach video render execution slot: ${error.message}`);
+  }
+
+  return data;
+}
+
+export async function releaseVideoRenderExecutionSlot(params: {
+  claimToken: string;
+  jobId: string;
+}) {
+  const { data, error } = await getSupabaseServerClient().rpc(
+    "release_video_render_execution_slot",
+    { p_claim_token: params.claimToken, p_job_id: params.jobId },
+  );
+
+  if (error) {
+    throw new Error(`Could not release video render execution slot: ${error.message}`);
+  }
+
+  return data;
 }
 
 export async function claimBackgroundJobDelivery(

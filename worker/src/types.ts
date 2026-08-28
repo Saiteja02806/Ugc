@@ -282,6 +282,22 @@ type UserWallTextAssignmentUpdate = Partial<{
   updated_at: string;
 }>;
 
+export type SocialPublishAccountLaneRow = {
+  active_claim_token: string | null;
+  active_job_id: string | null;
+  claimed_at: string | null;
+  platform: SchedulePlatform;
+  social_connection_id: string;
+  updated_at: string;
+};
+
+export type SocialPublishAccountLaneUpdate = Partial<{
+  active_claim_token: string | null;
+  active_job_id: string | null;
+  claimed_at: string | null;
+  updated_at: string;
+}>;
+
 export type GenerationProvider = "gemini" | "openai" | "runway" | "veo";
 
 export type GenerationProviderOperationStatus =
@@ -1070,6 +1086,17 @@ export type BackgroundJobsDatabase = {
         };
         Returns: SocialPublishOperationRow[];
       };
+      claim_social_publish_operation_with_account_lane: {
+        Args: {
+          p_claim_token: string;
+          p_job_id: string;
+          p_platform: SchedulePlatform;
+          p_stale_after_seconds: number;
+          p_target_id: string;
+          p_user_id: string;
+        };
+        Returns: SocialPublishOperationRow[];
+      };
       list_due_social_publish_jobs: {
         Args: {
           p_limit: number;
@@ -1487,6 +1514,12 @@ export type BackgroundJobsDatabase = {
         Relationships: [];
         Row: SocialPublishOperationRow;
         Update: SocialPublishOperationUpdate;
+      };
+      social_publish_account_lanes: {
+        Insert: Record<string, never>;
+        Relationships: [];
+        Row: SocialPublishAccountLaneRow;
+        Update: SocialPublishAccountLaneUpdate;
       };
       social_connections: {
         Insert: Record<string, never>;

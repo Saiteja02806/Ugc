@@ -9,7 +9,7 @@ import {
 } from "./processor.js";
 import type { WorkerQueueTransport } from "./lib/queue-types.js";
 import type { SupabaseJobStore } from "./lib/supabase.js";
-import { RetryableJobError } from "./retryable-job-error.js";
+import { DeferredJobError, RetryableJobError } from "./retryable-job-error.js";
 import type { BackgroundJobRow } from "./types.js";
 
 test("only one delivery can claim and execute a background job", async () => {
@@ -130,6 +130,49 @@ test("persists retry state and keeps the queue delivery", async () => {
   assert.equal(
     commands.filter((name) => name === "DeleteMessageCommand").length,
     0,
+  );
+});
+
+test("defers expected lane backpressure without consuming a retry attempt", async () => {
+  const job = createJob();
+  const commands: string[] = [];
+  const store = createJobStore(job);
+
+  store.deferJob = (async (params) => {
+    if (job.claim_token !== params.claimToken || job.status !== "processing") {
+      return null;
+    }
+
+    job.claim_token = null;
+    job.error_message = params.errorMessage;
+    job.next_attempt_at = params.retryAt;
+    job.status = "queued";
+    return { ...job };
+  }) as SupabaseJobStore["deferJob"];
+
+  await processWorkerMessage({
+    config: createConfig(),
+    dependencies: {
+      heartbeatIntervalMs: 1_000,
+      async runJob() {
+        throw new DeferredJobError("Another post is publishing.", {
+          code: "social_publish_account_lane_busy",
+          now: 0,
+          retryAfterSeconds: 30,
+        });
+      },
+    },
+    message: createMessage(),
+    queue: createQueue(commands),
+    store,
+  });
+
+  assert.equal(job.status, "queued");
+  assert.equal(job.attempt_count, 0);
+  assert.equal(job.next_attempt_at, "1970-01-01T00:00:30.000Z");
+  assert.equal(
+    commands.filter((name) => name === "ChangeMessageVisibilityCommand").length,
+    1,
   );
 });
 

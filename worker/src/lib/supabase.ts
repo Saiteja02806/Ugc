@@ -62,7 +62,7 @@ const WALL_TEXT_CONTENT_PLAN_ITEMS_TABLE = "wall_text_content_plan_items";
 const WALL_TEXT_CONTENT_PLANS_TABLE = "wall_text_content_plans";
 const CLAIM_BACKGROUND_JOB_FUNCTION = "claim_background_job";
 const CLAIM_SOCIAL_PUBLISH_OPERATION_FUNCTION =
-  "claim_social_publish_operation";
+  "claim_social_publish_operation_with_account_lane";
 const INCREMENT_CATEGORY_IMAGE_USAGE_FUNCTION =
   "increment_category_image_asset_usage";
 const VIDEO_RENDER_JOBS_TABLE = "video_render_jobs";
@@ -797,6 +797,33 @@ export class SupabaseJobStore {
     }
 
     return data;
+  }
+
+  async deferJob(params: {
+    claimToken: string;
+    errorMessage: string;
+    job: BackgroundJobRow;
+    retryAt: string;
+  }) {
+    return this.updateClaimedJob({
+      claimToken: params.claimToken,
+      jobId: params.job.id,
+      patch: {
+        claim_token: null,
+        completed_at: null,
+        error_code: null,
+        error_message: params.errorMessage.slice(0, 1_000),
+        failed_at: null,
+        last_heartbeat_at: null,
+        locked_at: null,
+        next_attempt_at: params.retryAt,
+        progress: null,
+        stage: "queued",
+        status: "queued",
+        worker_execution_id: null,
+        worker_id: null,
+      },
+    });
   }
 
   async markCancelled(params: {
@@ -1884,6 +1911,24 @@ export class SupabaseJobStore {
     }
 
     return data?.[0] ?? null;
+  }
+
+  async getSocialPublishAccountLane(params: {
+    connectionId: string;
+    platform: "instagram" | "tiktok" | "youtube";
+  }) {
+    const { data, error } = await this.client
+      .from("social_publish_account_lanes")
+      .select("*")
+      .eq("platform", params.platform)
+      .eq("social_connection_id", params.connectionId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Could not load social publish account lane: ${error.message}`);
+    }
+
+    return data;
   }
 
   async completeSocialConnectionTokenRefresh(params: {

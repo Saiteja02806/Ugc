@@ -46,7 +46,10 @@ import type {
   SocialPublishOperationRow,
   SocialPublishProviderOperationKind,
 } from "../types.js";
-import { RetryableJobError } from "../retryable-job-error.js";
+import {
+  DeferredJobError,
+  RetryableJobError,
+} from "../retryable-job-error.js";
 
 const requiredInstagramScopes = new Set([
   "instagram_business_content_publish",
@@ -70,6 +73,7 @@ const publishableVideoSourceTypes = new Set([
 const ACCESS_TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
 const SOCIAL_TOKEN_REFRESH_STALE_SECONDS = 120;
 const SOCIAL_PUBLISH_OPERATION_STALE_SECONDS = 900;
+const SOCIAL_PUBLISH_ACCOUNT_LANE_RETRY_SECONDS = 30;
 const DEFAULT_SOCIAL_PUBLISH_MAX_ATTEMPTS = 4;
 const DEFAULT_SOCIAL_PUBLISH_RETRY_BASE_SECONDS = 30;
 const DEFAULT_SOCIAL_PUBLISH_RETRY_MAX_SECONDS = 900;
@@ -271,6 +275,25 @@ export async function runPublishSocialPostJob(
           platformPostUrl: existingOperation.platform_post_url,
           targetId: payload.targetId,
         });
+      }
+
+      const accountLane = await context.store.getSocialPublishAccountLane({
+        connectionId: latestContext.connection.id,
+        platform: latestContext.target.platform,
+      });
+
+      if (
+        accountLane?.active_job_id &&
+        (accountLane.active_job_id !== job.id ||
+          accountLane.active_claim_token !== claimToken)
+      ) {
+        throw new DeferredJobError(
+          "Another post for this social account is publishing.",
+          {
+            code: "social_publish_account_lane_busy",
+            retryAfterSeconds: SOCIAL_PUBLISH_ACCOUNT_LANE_RETRY_SECONDS,
+          },
+        );
       }
 
       logger.info("Social publish operation is already active", {
@@ -595,6 +618,12 @@ export async function runPublishSocialPostJob(
       scheduledAt,
     };
   } catch (error) {
+    if (error instanceof DeferredJobError) {
+      // Account-lane backpressure is expected when the service is scaled. It
+      // must not mark a target failed or spend one of its provider attempts.
+      throw error;
+    }
+
     const errorMessage =
       error instanceof Error && error.message
         ? error.message

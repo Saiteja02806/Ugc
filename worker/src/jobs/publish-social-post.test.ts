@@ -12,7 +12,10 @@ import { InstagramPublishError } from "../lib/instagram-publisher.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import { TikTokPublishError } from "../lib/tiktok-publisher.js";
 import { YouTubePublishError } from "../lib/youtube-publisher.js";
-import { RetryableJobError } from "../retryable-job-error.js";
+import {
+  DeferredJobError,
+  RetryableJobError,
+} from "../retryable-job-error.js";
 import type {
   BackgroundJobRow,
   Json,
@@ -388,6 +391,39 @@ test("does not retry permanent provider errors", async () => {
       "claim-operation",
       "release-operation",
       "target-failed",
+    ]);
+  });
+});
+
+test("defers a second post for the same social account without calling a provider", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), {
+      accountLaneBusy: true,
+      denyClaim: true,
+    });
+    let providerCalls = 0;
+
+    await assert.rejects(
+      runPublishSocialPostJob(createPublishJob(), {
+        publishers: {
+          async instagram() {
+            providerCalls += 1;
+            throw new Error("Provider must not be called while the lane is busy.");
+          },
+        },
+        store: fixture.store,
+      }),
+      (error) =>
+        error instanceof DeferredJobError &&
+        error.code === "social_publish_account_lane_busy" &&
+        error.retryAfterSeconds === 30,
+    );
+
+    assert.equal(providerCalls, 0);
+    assert.deepEqual(fixture.calls, [
+      "claim-operation",
+      "get-operation",
+      "get-account-lane",
     ]);
   });
 });
@@ -803,6 +839,7 @@ test("treats missing social publish records as permanent failures", () => {
 function createPublishStore(
   initialOperation: SocialPublishOperationRow,
   options: {
+    accountLaneBusy?: boolean;
     allowFailure?: boolean;
     cancelAfterClaimDenied?: boolean;
     carousel?: boolean;
@@ -853,6 +890,20 @@ function createPublishStore(
     async getSocialPublishOperation() {
       calls.push("get-operation");
       return { ...operation };
+    },
+    async getSocialPublishAccountLane() {
+      calls.push("get-account-lane");
+
+      return options.accountLaneBusy
+        ? {
+            active_claim_token: "be3a3d75-d5e7-496c-99b3-7fcd0c2ee705",
+            active_job_id: "d1a3f0bd-07f3-4624-a75c-f8ccd7a0f35a",
+            claimed_at: new Date().toISOString(),
+            platform: context.target.platform,
+            social_connection_id: context.connection.id,
+            updated_at: new Date().toISOString(),
+          }
+        : null;
     },
     async markSocialPublishOperationPublished(params: {
       platformPostId: string;

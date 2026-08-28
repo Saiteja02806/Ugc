@@ -15,7 +15,7 @@ import type {
   WorkerQueueTransport,
 } from "./lib/queue-types.js";
 import type { SupabaseJobStore } from "./lib/supabase.js";
-import { RetryableJobError } from "./retryable-job-error.js";
+import { DeferredJobError, RetryableJobError } from "./retryable-job-error.js";
 import { reconcileTrendingFeedInApp } from "./lib/trending-feed-reconciliation.js";
 import type { BackgroundJobRow } from "./types.js";
 
@@ -371,6 +371,19 @@ async function processClaimableJob(params: {
       return false;
     }
 
+    if (error instanceof DeferredJobError) {
+      await deferKnownJob({
+        claimToken,
+        config,
+        error,
+        job: processingJob,
+        message,
+        queue,
+        store,
+      });
+      return false;
+    }
+
     if (error instanceof RetryableJobError) {
       if (processingJob.attempt_count + 1 >= processingJob.max_attempts) {
         await failKnownJobAndDeleteMessage({
@@ -410,6 +423,49 @@ async function processClaimableJob(params: {
     });
     return false;
   }
+}
+
+async function deferKnownJob(params: {
+  claimToken: string;
+  config: WorkerConfig;
+  error: DeferredJobError;
+  job: BackgroundJobRow;
+  message?: WorkerDeliveryMessage;
+  queue?: WorkerQueueTransport;
+  store: SupabaseJobStore;
+}) {
+  const messageId = params.message?.id ?? "database-recovery";
+  const deferredJob = await params.store.deferJob({
+    claimToken: params.claimToken,
+    errorMessage: params.error.message,
+    job: params.job,
+    retryAt: params.error.retryAt,
+  });
+
+  if (!deferredJob) {
+    logger.warn("Could not defer job because its claim is no longer active", {
+      jobId: params.job.id,
+      jobType: params.job.job_type,
+      messageId,
+    });
+    return;
+  }
+
+  if (params.message && params.queue) {
+    await params.queue.changeMessageVisibility(
+      params.message,
+      params.error.retryAfterSeconds,
+    );
+  }
+
+  logger.info("Worker job deferred without consuming a retry attempt", {
+    error: params.error.message,
+    errorCode: params.error.code,
+    jobId: params.job.id,
+    jobType: params.job.job_type,
+    messageId,
+    retryAt: params.error.retryAt,
+  });
 }
 
 const trendingDeliveryJobTypes = new Set<BackgroundJobRow["job_type"]>([

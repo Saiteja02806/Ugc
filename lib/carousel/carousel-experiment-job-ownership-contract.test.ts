@@ -67,6 +67,21 @@ test("the app dispatches only an already-owned Carousel job", () => {
   assert.doesNotMatch(preparation, /attachCarouselContentPlanItemsToJob\(/);
 });
 
+test("the ownership transaction has the prerequisites for a ten-way concurrency canary", () => {
+  // This is a local contract test. The real ten-way race is run against the
+  // deployed SQL function before increasing the Carousel worker limit.
+  assert.match(
+    migration,
+    /pg_advisory_xact_lock[\s\S]*carousel-experiment-job:/i,
+  );
+  assert.match(
+    migration,
+    /carousel-experiment-batch:' \|\| p_experiment_batch_id::text/i,
+  );
+  assert.match(migration, /coalesce\(array_length\(p_carousel_ids, 1\), 0\) <> 5/i);
+  assert.match(migration, /reserved_by_job_id = v_job\.id/i);
+});
+
 test("an interrupted generation-to-assignment link is repaired but a conflict fails closed", () => {
   assert.match(
     preparation,

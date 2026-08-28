@@ -23,3 +23,20 @@ export class RetryableJobError extends Error {
     ).toISOString();
   }
 }
+
+// A durable wait is different from a provider failure. The job should go back
+// to the queue at a known time without using one of its provider retry
+// attempts (for example, while another post is publishing to the same account).
+export class DeferredJobError extends RetryableJobError {
+  constructor(
+    message: string,
+    params: {
+      code: string;
+      now?: number;
+      retryAfterSeconds: number;
+    },
+  ) {
+    super(message, params);
+    this.name = "DeferredJobError";
+  }
+}

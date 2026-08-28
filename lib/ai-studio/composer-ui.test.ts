@@ -122,12 +122,15 @@ test("model selectors are text-only", () => {
   assert.doesNotMatch(videoModelSelect, /icon=\{<Sparkles/);
 });
 
-test("video duration displays and enforces three credits per second", () => {
+test("video duration displays and enforces four credits per second", () => {
   assert.match(
     videoWorkspace,
     /label: `\$\{duration\} sec · \$\{duration \* creditsPerSecond\} credits`/,
   );
-  assert.match(videoWorkspace, /creditsPerSecond = 3/);
+  assert.match(
+    videoWorkspace,
+    /creditsPerSecond = DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND/,
+  );
   assert.match(videoWorkspace, /hasInsufficientCredits/);
   assert.match(imageWorkspace, /hasInsufficientCredits/);
   assert.match(

@@ -136,6 +136,14 @@ const renderValidationSource = readFileSync(
   new URL("./wall-text-render-validation.ts", import.meta.url),
   "utf8",
 );
+const workerRenderSpecSource = readFileSync(
+  new URL("../../worker/src/lib/wall-text-render-spec.ts", import.meta.url),
+  "utf8",
+);
+const workerRenderEngineSource = readFileSync(
+  new URL("../../worker/src/lib/render-engine.ts", import.meta.url),
+  "utf8",
+);
 const fontMeasurementSource = readFileSync(
   new URL("./wall-text-font.ts", import.meta.url),
   "utf8",
@@ -551,14 +559,27 @@ test("measures final Wall lines with Inter before saving authoritative layout", 
   assert.match(layoutEngineSource, /blocks,/);
   assert.match(layoutEngineSource, /fontSizePx: fontSize/);
   assert.match(layoutEngineSource, /lineHeightPx,/);
-  assert.match(layoutEngineSource, /textBox: \{/);
+  assert.match(layoutEngineSource, /textBox: params\.layout\.textBox/);
+  assert.match(layoutEngineSource, /maximumWidth = getWallTextSafeLineWidth\(textBoxWidth\)/);
+  assert.match(visualStyleSource, /WALL_TEXT_INLINE_SAFE_PADDING = 24/);
+  assert.match(
+    renderValidationSource,
+    /maximumTextWidth = getWallTextSafeLineWidth\(textBoxWidth\)/,
+  );
+  assert.match(workerRenderSpecSource, /WALL_TEXT_INLINE_SAFE_PADDING = 24/);
+  assert.match(
+    workerRenderEngineSource,
+    /textBox\.width \* WALL_TEXT_RENDER_WIDTH\)[\s\S]+WALL_TEXT_INLINE_SAFE_PADDING \* 2/,
+  );
+  assert.match(overlaySource, /boxSizing: "border-box"[\s\S]+paddingInline/);
+  assert.match(editorSource, /boxSizing: "border-box"[\s\S]+paddingInline/);
   assert.match(
     layoutEngineSource,
     /rebalanceInternalLines[\s\S]+measureLines[\s\S]+getLineBalanceScore/,
   );
   assert.match(
     layoutEngineSource,
-    /widths\.some\(\(width\) => width > maximumWidth\)/,
+    /widths\.some\(\(width\) => width >= maximumWidth\)/,
   );
 });
 
@@ -581,7 +602,24 @@ test("runs the final render-fit gate before generated Wall copy reaches storage"
   assert.ok(applyIndex > validateIndex);
   assert.match(
     saveFunction,
-    /validateWallTextRenderFit\(params\.text\)[\s\S]+applyWallTextRenderFit\(params\.text, render\)[\s\S]+p_text_content: toJson\(renderSafeText\)/,
+    /prepareWallTextForPersistence\([\s\S]+p_text_content: toJson\(renderSafeText\)/,
+  );
+  assert.match(
+    databaseSource,
+    /replaceTrendingWallTextCreativeCopy[\s\S]+prepareWallTextForPersistence\(/,
+  );
+  assert.match(
+    databaseSource,
+    /createTrendingWallTextCreatives[\s\S]+prepareWallTextForPersistence\(/,
+  );
+  assert.match(layoutEngineSource, /renderSafetyVersion: WALL_TEXT_RENDER_SAFETY_VERSION/);
+  assert.match(
+    databaseSource,
+    /content\??\.renderSafetyVersion === WALL_TEXT_RENDER_SAFETY_VERSION/,
+  );
+  assert.match(
+    databaseSource,
+    /text\.renderSafetyVersion !== WALL_TEXT_RENDER_SAFETY_VERSION/,
   );
 });
 
@@ -721,7 +759,7 @@ test("rejects the reported overflow and synchronizes a safe fallback font", () =
   assert.equal(result.rejected, true);
   assert.equal(result.fit.valid, true);
   assert.ok(result.fit.fontSize < 52);
-  assert.ok(result.fit.maximumLineWidth <= 780);
+  assert.ok(result.fit.maximumLineWidth + 4 < 732);
   assert.equal(result.appliedRenderFont, result.fit.fontSize);
   assert.equal(result.appliedFinalFont, result.fit.fontSize);
   assert.equal(result.appliedLineHeight, result.fit.lineHeight);
@@ -898,13 +936,13 @@ test("balances the reported Wall example into readable measured lines", () => {
 
   assert.equal(layout.fontFamily, "Inter");
   assert.equal(layout.lineHeightPx, 57.2);
-  assert.deepEqual(layout.blocks[0]?.lines, [
-    "People assume one program fits",
-    "every meal. But personalized",
-    "guidance connects choices to",
-    "goals. Relevance matters more",
-    "than rigid rules.",
-  ]);
+  const lines = layout.blocks.flatMap((block) => block.lines);
+  assert.ok(lines.length >= 5 && lines.length <= 8);
+  assert.equal(
+    lines.join(" "),
+    "People assume one program fits every meal. But personalized guidance connects choices to goals. Relevance matters more than rigid rules.",
+  );
+  assert.ok(!lines.every((line) => line.split(/\s+/u).length <= 2));
 });
 
 test("V9 keeps every word in one measured 5-8 line block", () => {
@@ -1008,7 +1046,7 @@ test("V9 fixes the two reported narrow Wall layouts", () => {
 
   results.forEach((result, index) => {
     const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
-    assert.equal(lines.length, 5);
+    assert.ok(lines.length >= 5 && lines.length <= 8);
     assert.equal(lines.join(" "), samples[index]);
     assert.ok(
       lines.reduce(

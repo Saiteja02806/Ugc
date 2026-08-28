@@ -31,6 +31,7 @@ import { ReferenceMediaUpload } from "@/components/generation/reference-media-up
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
+import { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND } from "@/lib/billing/generation-credit-policy";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import {
   AI_STUDIO_GENERATION_QUANTITIES,
@@ -215,7 +216,7 @@ export function VideoGenerationStudioPanel({
   accessMessage,
   accessState = "locked",
   active = true,
-  creditsPerSecond = 3,
+  creditsPerSecond = DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND,
   creditsRemaining = null,
 }: {
   accessMessage?: string | null;

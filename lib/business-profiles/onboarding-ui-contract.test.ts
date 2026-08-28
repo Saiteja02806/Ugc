@@ -78,7 +78,7 @@ test("desktop onboarding uses available space before requiring the user to scrol
   assert.match(onboarding, /min-h-\[calc\(100dvh-69px\)\]/);
   assert.match(
     onboarding,
-    /text-\[clamp\(1\.75rem,2\.5vw,2\.125rem\)\][\s\S]*Help Trending understand your business/,
+    /text-\[clamp\(2rem,3vw,2\.5rem\)\][\s\S]*Help Trending understand your business/,
   );
   assert.doesNotMatch(
     onboarding,
@@ -91,7 +91,7 @@ test("desktop onboarding uses available space before requiring the user to scrol
   ]) {
     assert.doesNotMatch(onboarding, new RegExp(escapeRegExp(removedSubtext)));
   }
-  assert.match(onboarding, /lg:min-h-\[60px\]/);
+  assert.match(onboarding, /lg:min-h-\[68px\]/);
   assert.match(onboarding, /lg:grid-cols-\[minmax\(0,1\.15fr\)_minmax\(18rem,0\.85fr\)\]/);
   assert.match(onboarding, /lg:grid-cols-3/);
   assert.match(onboarding, /lg:sticky/);

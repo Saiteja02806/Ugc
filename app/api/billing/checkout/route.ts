@@ -1,7 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createDodoCheckoutSession } from "@/lib/billing/dodo";
+import {
+  getPendingCheckoutSessionIds,
+  PENDING_CHECKOUT_COOKIE_NAME,
+  PENDING_CHECKOUT_MAX_AGE_SECONDS,
+  serializePendingCheckoutSessionIds,
+} from "@/lib/billing/pending-checkout";
 import { getBillingCustomerId } from "@/lib/billing/subscription-db";
 import {
   FirebaseAuthRequestError,
@@ -15,7 +21,7 @@ const checkoutInputSchema = z.object({
   planSlug: z.enum(["starter", "growth"]),
 }).strict();
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const user = await requireFirebaseUser(request);
     const body = await request.json().catch(() => ({}));
@@ -33,7 +39,15 @@ export async function POST(request: Request) {
 
     const { billingInterval, planSlug } = parseResult.data;
 
-    const userEmail = user.email || `${user.uid}@getugcpilot.com`;
+    const userEmail = user.email?.trim();
+
+    if (!userEmail) {
+      return NextResponse.json(
+        { error: "Add a real email address to your account before subscribing." },
+        { status: 400 },
+      );
+    }
+
     const customerId = await getBillingCustomerId(user.uid);
     const session = await createDodoCheckoutSession({
       billingInterval,
@@ -44,12 +58,29 @@ export async function POST(request: Request) {
       userName: user.displayName,
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       checkoutUrl: session.checkoutUrl,
       productId: session.productId,
       sessionId: session.sessionId,
       status: "ready",
     });
+    const pendingCheckoutSessionIds = [
+      session.sessionId,
+      ...getPendingCheckoutSessionIds(
+        request.cookies.get(PENDING_CHECKOUT_COOKIE_NAME)?.value,
+      ),
+    ];
+    response.cookies.set({
+      httpOnly: true,
+      maxAge: PENDING_CHECKOUT_MAX_AGE_SECONDS,
+      name: PENDING_CHECKOUT_COOKIE_NAME,
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      value: serializePendingCheckoutSessionIds(pendingCheckoutSessionIds),
+    });
+
+    return response;
   } catch (error) {
     if (error instanceof FirebaseAuthRequestError) {
       return NextResponse.json(

@@ -32,6 +32,17 @@ const webhookRoute = readFileSync(
   new URL("../../app/api/webhooks/dodo/route.ts", import.meta.url),
   "utf8",
 );
+const checkoutActivationRoute = readFileSync(
+  new URL(
+    "../../app/api/billing/checkout/activate/route.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const paidTrendingPrebuildDispatch = readFileSync(
+  new URL("./paid-trending-prebuild-dispatch.ts", import.meta.url),
+  "utf8",
+);
 const paidTrendingPrebuildMigration = readFileSync(
   new URL(
     "../../supabase/migrations/20260826140336_add_paid_trending_prebuild_on_subscription_activation.sql",
@@ -199,8 +210,12 @@ test("an active paid subscription atomically saves one prebuild job before webho
     /processDodoSubscriptionEvent\([\s\S]*after\(\(\) =>[\s\S]*dispatchPaidTrendingPrebuild[\s\S]*return NextResponse\.json/,
   );
   assert.match(
-    webhookRoute,
+    paidTrendingPrebuildDispatch,
     /dispatchQueuedBackgroundJobForRecovery/,
+  );
+  assert.match(
+    checkoutActivationRoute,
+    /prebuildDispatch[\s\S]*after\(\(\) => dispatchPaidTrendingPrebuild/,
   );
 });
 
@@ -236,13 +251,13 @@ test("paid prebuild rechecks the current plan before preparing the existing feed
   assert.match(paidTrendingPrebuildRoute, /isBusinessProfileOnboardingComplete/);
 });
 
-test("video generation charges three credits for every selected second", () => {
-  assert.equal(DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND, 3);
+test("video generation charges four credits for every selected second", () => {
+  assert.equal(DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND, 4);
   assert.deepEqual(
     [3, 4, 5, 6, 7, 8, 9, 10].map((seconds) =>
       calculateVideoGenerationCreditCost(seconds),
     ),
-    [9, 12, 15, 18, 21, 24, 27, 30],
+    [12, 16, 20, 24, 28, 32, 36, 40],
   );
   assert.match(
     subscriptionDb,

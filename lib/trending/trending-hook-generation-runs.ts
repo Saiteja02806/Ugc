@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import type { Json } from "@/lib/jobs/background-jobs";
@@ -29,6 +31,21 @@ type ChunkRow = RunRow & {
   remaining_valid_count: number;
 };
 
+type DispatchRecoveryRow = {
+  attempt_count: number;
+  chunk_id: string;
+  dispatch_id: string;
+  run_id: string;
+  target_valid_count: number;
+  user_id: string;
+};
+
+type InitialRunRepairRow = {
+  chunk_id: string;
+  run_id: string;
+  user_id: string;
+};
+
 type TrendingHookGenerationRpcClient = {
   rpc<T>(
     name: string,
@@ -51,6 +68,16 @@ export type TrendingHookGenerationChunk = TrendingHookGenerationRun & {
   chunkId: string | null;
   chunkNumber: number | null;
   remainingValidCount: number;
+};
+
+export type TrendingHookGenerationDispatchRecoveryClaim = {
+  attemptCount: number;
+  chunkId: string;
+  dispatchId: string;
+  runId: string;
+  targetValidCount: number;
+  userId: string;
+  claimToken: string;
 };
 
 let client: SupabaseClient | null = null;
@@ -99,6 +126,42 @@ export async function createOrResumeTrendingHookGenerationRun(params: {
   return toRun(row);
 }
 
+/**
+ * Creates or resumes the durable run and reserves its next chunk through one
+ * Postgres RPC. A successful response means the run, reserved chunk, and its
+ * dispatch-outbox row committed together; a failed response commits none of
+ * the new setup work.
+ */
+export async function createOrResumeAndReserveTrendingHookGenerationChunk(
+  params: {
+    businessProfileId: string;
+    businessProfileVersion: number;
+    candidatePool: Array<Record<string, Json>>;
+    promptVersion: string;
+    selectionVersion: string;
+    sourceSelectionKey: string | null;
+    targetValidCount: number;
+    userId: string;
+  },
+) {
+  const row = await callRpc<ChunkRow>(
+    "create_or_resume_and_reserve_trending_hook_generation_chunk_v1",
+    {
+      p_business_profile_id: params.businessProfileId,
+      p_business_profile_version: params.businessProfileVersion,
+      p_candidate_pool: params.candidatePool,
+      p_chunk_size: HOOK_GENERATION_CHUNK_SIZE,
+      p_prompt_version: params.promptVersion,
+      p_selection_version: params.selectionVersion,
+      p_source_selection_key: params.sourceSelectionKey ?? "",
+      p_target_valid_count: params.targetValidCount,
+      p_user_id: params.userId,
+    },
+  );
+
+  return toChunk(row);
+}
+
 export async function reserveTrendingHookGenerationChunk(params: {
   runId: string;
 }) {
@@ -110,16 +173,35 @@ export async function reserveTrendingHookGenerationChunk(params: {
     },
   );
 
-  return {
-    ...toRun(row),
-    candidates: toCandidateArray(row.candidate_payloads),
-    chunkId: row.chunk_id,
-    chunkNumber: row.chunk_number,
-    remainingValidCount: toNonNegativeInteger(
-      row.remaining_valid_count,
-      "remaining_valid_count",
-    ),
-  } satisfies TrendingHookGenerationChunk;
+  return toChunk(row);
+}
+
+/**
+ * Repairs historical runs created by the old two-RPC setup. New runs should
+ * never match this shape because their initial chunk is created atomically.
+ */
+export async function reserveMissingInitialTrendingHookGenerationChunks(params: {
+  limit: number;
+}) {
+  const supabase = getClient() as unknown as TrendingHookGenerationRpcClient;
+  const { data, error } = await supabase.rpc<InitialRunRepairRow>(
+    "reserve_missing_initial_trending_hook_generation_chunks_v1",
+    { p_limit: params.limit },
+  );
+
+  if (error) {
+    throw new Error(
+      `Could not repair initial Trending Hook generation chunks: ${error.message}`,
+    );
+  }
+
+  const records = Array.isArray(data) ? data : [];
+
+  return records.map((row) => ({
+    chunkId: requireUuid(row.chunk_id, "chunk_id"),
+    runId: requireUuid(row.run_id, "run_id"),
+    userId: requireText(row.user_id, "user_id"),
+  }));
 }
 
 export async function attachTrendingHookGenerationChunkJob(params: {
@@ -145,6 +227,80 @@ export async function releaseUnattachedTrendingHookGenerationChunk(params: {
     "release_unattached_trending_hook_generation_chunk_v1",
     {
       p_chunk_id: params.chunkId,
+      p_error_message: params.errorMessage,
+    },
+  );
+
+  return row === true;
+}
+
+/**
+ * Claims chunks that were reserved but never received a physical background
+ * job. This is an emergency repair path only: normal preparation dispatches
+ * the job in the same request without waiting for the scheduler.
+ */
+export async function claimDueTrendingHookGenerationChunkDispatches(params: {
+  limit: number;
+  staleAfterSeconds?: number;
+}) {
+  const claimToken = randomUUID();
+  const supabase = getClient() as unknown as TrendingHookGenerationRpcClient;
+  const { data, error } = await supabase.rpc<DispatchRecoveryRow>(
+    "claim_due_trending_hook_generation_chunk_dispatches_v1",
+    {
+      p_claim_token: claimToken,
+      p_limit: params.limit,
+      p_stale_after_seconds: params.staleAfterSeconds ?? 300,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `Could not claim Trending Hook generation dispatches: ${error.message}`,
+    );
+  }
+
+  const records = Array.isArray(data) ? data : [];
+
+  return records.map((row) => ({
+    attemptCount: toNonNegativeInteger(row.attempt_count, "attempt_count"),
+    chunkId: requireUuid(row.chunk_id, "chunk_id"),
+    claimToken,
+    dispatchId: requireUuid(row.dispatch_id, "dispatch_id"),
+    runId: requireUuid(row.run_id, "run_id"),
+    targetValidCount: toPositiveInteger(
+      row.target_valid_count,
+      "target_valid_count",
+    ),
+    userId: requireText(row.user_id, "user_id"),
+  })) satisfies TrendingHookGenerationDispatchRecoveryClaim[];
+}
+
+export async function completeTrendingHookGenerationChunkDispatch(params: {
+  claimToken: string;
+  dispatchId: string;
+}) {
+  const row = await callRpc<boolean>(
+    "complete_trending_hook_generation_chunk_dispatch_v1",
+    {
+      p_claim_token: params.claimToken,
+      p_dispatch_id: params.dispatchId,
+    },
+  );
+
+  return row === true;
+}
+
+export async function rescheduleTrendingHookGenerationChunkDispatch(params: {
+  claimToken: string;
+  dispatchId: string;
+  errorMessage: string;
+}) {
+  const row = await callRpc<boolean>(
+    "reschedule_trending_hook_generation_chunk_dispatch_v1",
+    {
+      p_claim_token: params.claimToken,
+      p_dispatch_id: params.dispatchId,
       p_error_message: params.errorMessage,
     },
   );
@@ -182,6 +338,19 @@ function toRun(row: RunRow): TrendingHookGenerationRun {
   };
 }
 
+function toChunk(row: ChunkRow) {
+  return {
+    ...toRun(row),
+    candidates: toCandidateArray(row.candidate_payloads),
+    chunkId: row.chunk_id,
+    chunkNumber: row.chunk_number,
+    remainingValidCount: toNonNegativeInteger(
+      row.remaining_valid_count,
+      "remaining_valid_count",
+    ),
+  } satisfies TrendingHookGenerationChunk;
+}
+
 function toCandidateArray(value: Json) {
   if (!Array.isArray(value)) {
     throw new Error("Trending Hook generation chunk returned invalid candidates.");
@@ -215,7 +384,7 @@ async function callRpc<T>(name: string, args: Record<string, unknown>) {
     throw new Error("Trending Hook generation run returned no result.");
   }
 
-  return row;
+  return row as T;
 }
 
 function getClient() {
@@ -266,4 +435,25 @@ function toNonNegativeInteger(value: unknown, field: string) {
   }
 
   return value;
+}
+
+function requireUuid(value: unknown, field: string) {
+  if (
+    typeof value !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(
+      value,
+    )
+  ) {
+    throw new Error(`Trending Hook generation dispatch returned invalid ${field}.`);
+  }
+
+  return value;
+}
+
+function requireText(value: unknown, field: string) {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`Trending Hook generation dispatch returned invalid ${field}.`);
+  }
+
+  return value.trim();
 }

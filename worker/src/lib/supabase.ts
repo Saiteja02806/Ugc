@@ -238,7 +238,7 @@ export class SupabaseJobStore {
     selectionVersion: string;
     userId: string;
   }) {
-    const rpc = this.client.rpc as unknown as (
+    const rpc = this.client.rpc.bind(this.client) as unknown as (
       fn: string,
       args: Record<string, Json>,
     ) => Promise<{
@@ -286,7 +286,7 @@ export class SupabaseJobStore {
     errorMessage: string;
     jobId: string;
   }) {
-    const rpc = this.client.rpc as unknown as (
+    const rpc = this.client.rpc.bind(this.client) as unknown as (
       fn: string,
       args: Record<string, Json>,
     ) => Promise<{ data: boolean | null; error: { message: string } | null }>;

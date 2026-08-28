@@ -7,9 +7,16 @@ export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
 export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
 export const WALL_TEXT_OUTLINE_WIDTH = 2;
 export const WALL_TEXT_SECTION_GAP = 18;
+// The text box is the outer placement rectangle. Keep a real visual gap
+// inside it so the rendered glyphs and their outline never touch its edges.
+export const WALL_TEXT_INLINE_SAFE_PADDING = 24;
 // A wider reading column prevents already-measured lines from being visually
 // rewrapped into two- or three-word rows on the 9:16 canvas.
 export const WALL_TEXT_TEXT_WIDTH = 780;
+
+export function getWallTextSafeLineWidth(textBoxWidth: number) {
+  return Math.max(0, textBoxWidth - WALL_TEXT_INLINE_SAFE_PADDING * 2);
+}
 
 export function getWallTextFontSize(content: TrendingWallTextContent) {
   const declaredSize = Number(

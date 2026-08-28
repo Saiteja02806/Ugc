@@ -30,6 +30,7 @@ import {
 import {
   buildWallTextRenderLayout,
   buildWallTextOverlaySvg,
+  WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_OUTLINE_WIDTH,
   WALL_TEXT_RENDER_WIDTH,
   type WallTextNormalizedBox,
@@ -1297,7 +1298,9 @@ async function validateWallTextRenderedLineWidths(
   content: WallTextRenderContent,
   textBox: WallTextNormalizedBox,
 ) {
-  const maximumWidth = Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH);
+  const maximumWidth =
+    Math.round(textBox.width * WALL_TEXT_RENDER_WIDTH) -
+    WALL_TEXT_INLINE_SAFE_PADDING * 2;
   const layout = buildWallTextRenderLayout({ content, textBox });
   const fontPath = await getWallTextFontPath();
 
@@ -1316,7 +1319,7 @@ async function validateWallTextRenderedLineWidths(
 
       if (
         !metadata.width ||
-        metadata.width + WALL_TEXT_OUTLINE_WIDTH * 2 > maximumWidth
+        metadata.width + WALL_TEXT_OUTLINE_WIDTH * 2 >= maximumWidth
       ) {
         throw new Error(
           `Wall-of-text line exceeds the measured Inter text width: "${line}"`,

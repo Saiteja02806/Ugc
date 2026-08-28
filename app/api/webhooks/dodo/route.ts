@@ -11,9 +11,7 @@ import {
   processDodoSubscriptionEvent,
   recordIgnoredDodoWebhookEvent,
 } from "@/lib/billing/subscription-db";
-import { getPaidTrendingPrebuildIdempotencyKey } from "@/lib/billing/paid-trending-prebuild";
-import { getBackgroundJobByIdempotencyKey } from "@/lib/jobs/background-jobs";
-import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-job-service";
+import { dispatchPaidTrendingPrebuild } from "@/lib/billing/paid-trending-prebuild-dispatch";
 
 export const runtime = "nodejs";
 
@@ -166,30 +164,6 @@ export async function POST(request: Request) {
       { error: "Webhook processing failed." },
       { status: 500 },
     );
-  }
-}
-
-async function dispatchPaidTrendingPrebuild(params: {
-  periodStart: string | null;
-  planKey: "starter" | "growth";
-  subscriptionId: string;
-  userId: string;
-}) {
-  try {
-    const job = await getBackgroundJobByIdempotencyKey(
-      getPaidTrendingPrebuildIdempotencyKey(params),
-      { jobType: "paid_trending_prebuild", userId: params.userId },
-    );
-
-    if (job) {
-      await dispatchQueuedBackgroundJobForRecovery(job);
-    }
-  } catch (error) {
-    console.error("Paid Trending prebuild dispatch was deferred to recovery:", {
-      error: error instanceof Error ? error.message : "Unknown dispatch error",
-      subscriptionId: params.subscriptionId,
-      userId: params.userId,
-    });
   }
 }
 

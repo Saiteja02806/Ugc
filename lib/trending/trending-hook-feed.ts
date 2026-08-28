@@ -21,9 +21,8 @@ import {
 } from "@/lib/trending/trending-hook-copy-jobs";
 import {
   attachTrendingHookGenerationChunkJob,
-  createOrResumeTrendingHookGenerationRun,
+  createOrResumeAndReserveTrendingHookGenerationChunk,
   releaseUnattachedTrendingHookGenerationChunk,
-  reserveTrendingHookGenerationChunk,
 } from "@/lib/trending/trending-hook-generation-runs";
 import { getHookPerformanceSignals } from "@/lib/trending/hook-performance";
 import { listHookVideoBrowseInventory } from "@/lib/trending/hook-video-sources";
@@ -182,7 +181,7 @@ export async function prepareTrendingHookIdeas(
           : "processing",
     };
   }
-  const run = await createOrResumeTrendingHookGenerationRun({
+  const chunk = await createOrResumeAndReserveTrendingHookGenerationChunk({
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,
     candidatePool: candidates.map(toHookCopyJobCandidate),
@@ -192,7 +191,7 @@ export async function prepareTrendingHookIdeas(
     targetValidCount,
     userId: profile.userId,
   });
-  const chunk = await reserveTrendingHookGenerationChunk({ runId: run.id });
+  const run = chunk;
 
   if (chunk.status === "source_exhausted") {
     throw new TrendingHookPreparationError(

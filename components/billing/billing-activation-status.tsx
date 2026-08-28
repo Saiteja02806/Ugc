@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
+import { useCheckoutSubscriptionActivation } from "@/components/billing/use-checkout-subscription-activation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { getSubscriptionActivationFailure } from "@/lib/billing/activation-state";
@@ -13,6 +14,7 @@ const ACTIVATION_WAIT_MS = 60_000;
 
 export function BillingActivationStatus() {
   const [timedOut, setTimedOut] = useState(false);
+  useCheckoutSubscriptionActivation({ activationPolling: !timedOut });
   const subscriptionQuery = useBillingSubscription({
     activationPolling: !timedOut,
   });
@@ -90,8 +92,9 @@ export function BillingActivationStatus() {
         Confirming your subscription
       </h1>
       <p className="mt-2 max-w-md text-sm leading-6 text-muted">
-        We are waiting for Dodo Payments to confirm the subscription. Access is
-        enabled only after the signed payment webhook is verified.
+        We are securely checking your completed payment with Dodo Payments.
+        Access is enabled as soon as the payment is verified; the signed webhook
+        remains a backup confirmation.
       </p>
 
       {subscriptionQuery.isError || timedOut ? (
@@ -99,8 +102,8 @@ export function BillingActivationStatus() {
           <AlertCircle aria-hidden="true" />
           <AlertTitle>Activation is taking longer than expected</AlertTitle>
           <AlertDescription>
-            Refresh this page in a moment. If payment completed, your account will
-            activate automatically when the verified webhook arrives.
+            Refresh this page in a moment. If payment completed, we will activate
+            your account automatically after securely verifying it with Dodo.
           </AlertDescription>
         </Alert>
       ) : null}

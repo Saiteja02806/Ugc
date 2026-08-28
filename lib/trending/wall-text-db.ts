@@ -17,6 +17,7 @@ import {
   WALL_TEXT_FORMAT_IDS,
   WALL_TEXT_PATTERNS,
   WALL_TEXT_PLACEMENT_ZONES,
+  WALL_TEXT_RENDER_SAFETY_VERSION,
 } from "@/lib/trending/wall-text-types";
 import {
   createWallTextLayout,
@@ -25,6 +26,7 @@ import {
   MIN_WALL_TEXT_VIDEO_DURATION_SECONDS,
   type WallTextAssetSelectionInput,
 } from "@/lib/trending/wall-text-feed-logic";
+import { createAuthoritativeWallTextContent } from "@/lib/trending/wall-layout-engine";
 import {
   ensureBaseWallTextAudioSelections,
   listBaseWallTextAudioSelections,
@@ -757,21 +759,29 @@ export async function createTrendingWallTextCreatives(params: {
     0,
     Math.trunc(params.candidateIndexOffset ?? 0),
   );
-  const rows = params.candidates.map((candidate) => ({
-    business_profile_id: params.businessProfileId,
-    business_profile_version: params.businessProfileVersion,
-    candidate_index: candidateIndexOffset + candidate.candidateIndex,
-    duration_seconds: candidate.durationSeconds,
-    generation_id: generationId,
-    generator_model: params.generatorModel,
-    generator_version: WALL_TEXT_GENERATOR_VERSION,
-    id: crypto.randomUUID(),
-    layout: toJson(candidate.layout),
-    overlay_media_asset_id: candidate.backgroundAssetId,
-    status: "preview_ready" as const,
-    text_content: toJson(candidate.text),
-    user_id: params.userId,
-  }));
+  const rows = await Promise.all(
+    params.candidates.map(async (candidate) => {
+      const { layout, text } = await prepareWallTextForPersistence({
+        layout: candidate.layout,
+        text: candidate.text,
+      });
+      return {
+        business_profile_id: params.businessProfileId,
+        business_profile_version: params.businessProfileVersion,
+        candidate_index: candidateIndexOffset + candidate.candidateIndex,
+        duration_seconds: candidate.durationSeconds,
+        generation_id: generationId,
+        generator_model: params.generatorModel,
+        generator_version: WALL_TEXT_GENERATOR_VERSION,
+        id: crypto.randomUUID(),
+        layout: toJson(layout),
+        overlay_media_asset_id: candidate.backgroundAssetId,
+        status: "preview_ready" as const,
+        text_content: toJson(text),
+        user_id: params.userId,
+      };
+    }),
+  );
   const { error } = await getClient()
     .from("wall_text_creatives")
     .upsert(rows, {
@@ -1132,11 +1142,15 @@ export async function saveWallTextGenerationCandidate(params: {
   text: TrendingWallTextContent;
   userId: string;
 }) {
-  // This is the final persistence boundary. Generation normally validates
-  // earlier so the writer can repair a bad candidate, but no caller may save
-  // Wall lines that have not passed the exact render-area measurement.
-  const render = await validateWallTextRenderFit(params.text);
-  const renderSafeText = applyWallTextRenderFit(params.text, render);
+  // This is the final persistence boundary. Rebuild the line breaks from the
+  // complete copy here as well as validating it. That means a caller cannot
+  // accidentally save stale or edge-touching lines by skipping an earlier
+  // layout step.
+  const { layout: persistedLayout, text: renderSafeText } =
+    await prepareWallTextForPersistence({
+      layout: params.layout,
+      text: params.text,
+    });
   const { data, error } = await getClient().rpc(
     "save_wall_text_generation_candidate_v1",
     {
@@ -1145,7 +1159,7 @@ export async function saveWallTextGenerationCandidate(params: {
       p_content_hash: params.contentHash,
       p_creative_id: params.creativeId,
       p_generator_model: params.generatorModel,
-      p_layout: toJson(params.layout),
+      p_layout: toJson(persistedLayout),
       p_normalized_text: params.normalizedText,
       p_similarity_signature: toJson(params.similaritySignature),
       p_text_content: toJson(renderSafeText),
@@ -1239,9 +1253,11 @@ export function areTrendingWallTextCreativesCurrent(
 export function isTrendingWallTextCreativeCurrent(
   creative: WallTextCreativeRow,
 ) {
+  const content = parseWallTextContent(creative.text_content);
   return (
     creative.generator_version === WALL_TEXT_GENERATOR_VERSION &&
-    parseWallTextContent(creative.text_content)?.finalLayout !== undefined &&
+    content?.renderSafetyVersion === WALL_TEXT_RENDER_SAFETY_VERSION &&
+    content.finalLayout !== undefined &&
     parseWallTextLayout(creative.layout) !== null
   );
 }
@@ -1258,12 +1274,20 @@ export async function replaceTrendingWallTextCreativeCopy(params: {
   generatorModel: string;
   userId: string;
 }) {
-  const updates = params.creatives.map((creative) => ({
-    candidate_index: creative.candidateIndex,
-    id: creative.id,
-    layout: creative.layout,
-    text_content: creative.text,
-  }));
+  const updates = await Promise.all(
+    params.creatives.map(async (creative) => {
+      const { layout, text } = await prepareWallTextForPersistence({
+        layout: creative.layout,
+        text: creative.text,
+      });
+      return {
+        candidate_index: creative.candidateIndex,
+        id: creative.id,
+        layout,
+        text_content: text,
+      };
+    }),
+  );
   const { error } = await getClient().rpc(
     "replace_wall_text_creative_copy_v9",
     {
@@ -1286,6 +1310,23 @@ export async function replaceTrendingWallTextCreativeCopy(params: {
     businessProfileVersion: params.businessProfileVersion,
     userId: params.userId,
   });
+}
+
+async function prepareWallTextForPersistence(params: {
+  layout: TrendingWallTextLayout;
+  text: TrendingWallTextContent;
+}) {
+  const authoritative = await createAuthoritativeWallTextContent({
+    content: { kind: "text", text: params.text.fullText },
+    formatId: params.text.formatId ?? params.text.pattern,
+    layout: params.layout,
+  });
+  const render = await validateWallTextRenderFit(authoritative.content);
+
+  return {
+    layout: authoritative.layout,
+    text: applyWallTextRenderFit(authoritative.content, render),
+  };
 }
 
 export async function listTrendingWallTextCreatives(params: {
@@ -1537,7 +1578,11 @@ export async function listActiveTrendingWallTextIdeas(params: {
     const text = parseWallTextContent(creative.text_content);
     const layout = parseWallTextLayout(creative.layout);
 
-    if (!text || !layout) {
+    if (
+      !text ||
+      text.renderSafetyVersion !== WALL_TEXT_RENDER_SAFETY_VERSION ||
+      !layout
+    ) {
       return [];
     }
 
@@ -2132,6 +2177,9 @@ function parseCurrentWallTextContent(
     kind: "wall_text",
     layoutVersion: isV7 ? "wall-text-overlay-v6" : "wall-text-overlay-v5",
     pattern: formatId,
+    ...(value.renderSafetyVersion === WALL_TEXT_RENDER_SAFETY_VERSION
+      ? { renderSafetyVersion: WALL_TEXT_RENDER_SAFETY_VERSION }
+      : {}),
     renderFontSize: normalizeCurrentWallTextFontSize(Number(finalLayout.fontSizePx)),
     segments,
     sourceContent: parsedSource,

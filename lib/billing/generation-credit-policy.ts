@@ -1,5 +1,5 @@
 export const DEFAULT_IMAGE_GENERATION_CREDITS = 1;
-export const DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND = 3;
+export const DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND = 4;
 
 export function calculateVideoGenerationCreditCost(
   durationSeconds: number,

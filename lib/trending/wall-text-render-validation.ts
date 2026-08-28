@@ -9,8 +9,10 @@ import type {
 } from "./wall-text-types";
 import { getWallTextRenderBlocks } from "./wall-text-types";
 import {
+  getWallTextSafeLineWidth,
   getWallTextFontSize,
   WALL_TEXT_FONT_WEIGHT,
+  WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_MAXIMUM_FONT_SIZE,
   WALL_TEXT_MINIMUM_FONT_SIZE,
@@ -24,8 +26,10 @@ export const WALL_TEXT_RENDER_HEIGHT = 1920;
 export const WALL_TEXT_MAXIMUM_BLOCK_HEIGHT = 420;
 const lineWidthCache = new Map<string, number>();
 export {
+  getWallTextSafeLineWidth,
   getWallTextFontSize,
   WALL_TEXT_FONT_WEIGHT,
+  WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_MAXIMUM_FONT_SIZE,
   WALL_TEXT_MINIMUM_FONT_SIZE,
@@ -64,9 +68,11 @@ export async function validateWallTextRenderFit(
       fontSize <= preferredFontSize && values.indexOf(fontSize) === index,
   ) as WallTextFontSize[];
   const fontPath = await getVerifiedWallTextInterFontPath();
-  const maximumTextWidth =
-    (content.finalLayout?.textBox.width ?? WALL_TEXT_TEXT_WIDTH / WALL_TEXT_RENDER_WIDTH) *
+  const textBoxWidth =
+    (content.finalLayout?.textBox.width ??
+      WALL_TEXT_TEXT_WIDTH / WALL_TEXT_RENDER_WIDTH) *
     WALL_TEXT_RENDER_WIDTH;
+  const maximumTextWidth = getWallTextSafeLineWidth(textBoxWidth);
   const maximumBlockHeight =
     (content.finalLayout?.textBox.height ??
       WALL_TEXT_MAXIMUM_BLOCK_HEIGHT / WALL_TEXT_RENDER_HEIGHT) *
@@ -90,7 +96,7 @@ export async function validateWallTextRenderFit(
 
         if (
           !width ||
-          width + WALL_TEXT_OUTLINE_WIDTH * 2 > maximumTextWidth
+          width + WALL_TEXT_OUTLINE_WIDTH * 2 >= maximumTextWidth
         ) {
           failedLine = { line, width };
           break;

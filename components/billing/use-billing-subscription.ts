@@ -49,6 +49,10 @@ export type BillingSubscription = {
   videoGenerationCreditsPerSecond: number;
 };
 
+export function getBillingSubscriptionQueryKey(userId: string) {
+  return ["billing-subscription", userId] as const;
+}
+
 export function useBillingSubscription(options?: {
   activationPolling?: boolean;
 }) {
@@ -58,7 +62,7 @@ export function useBillingSubscription(options?: {
     enabled: !loading && Boolean(user),
     gcTime: 60 * 60 * 1_000,
     queryFn: fetchBillingSubscription,
-    queryKey: ["billing-subscription", user?.uid ?? "signed-out"],
+    queryKey: getBillingSubscriptionQueryKey(user?.uid ?? "signed-out"),
     refetchInterval: (query) =>
       options?.activationPolling &&
       shouldPollForSubscriptionActivation(query.state.data?.status)

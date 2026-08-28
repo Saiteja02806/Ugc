@@ -14,6 +14,7 @@ import {
   getAIStudioAccessMessage,
   type AIStudioAccessState,
 } from "@/lib/ai-studio/access-policy";
+import { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND } from "@/lib/billing/generation-credit-policy";
 import { cn } from "@/lib/utils";
 
 export type AIStudioMode = "images" | "videos";
@@ -96,7 +97,8 @@ export function AIStudioWorkspace({
             accessMessage={accessMessage}
             active={mode === "videos"}
             creditsPerSecond={
-              subscription?.videoGenerationCreditsPerSecond ?? 3
+              subscription?.videoGenerationCreditsPerSecond ??
+              DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND
             }
             creditsRemaining={subscription?.creditsRemaining ?? null}
           />

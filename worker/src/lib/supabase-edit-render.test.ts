@@ -3,6 +3,64 @@ import test from "node:test";
 
 import { SupabaseJobStore } from "./supabase.js";
 
+test("keeps durable Hook run RPC calls bound to the Supabase client", async () => {
+  const calls: Array<{ args: unknown; name: string }> = [];
+  const client = {
+    rest: { available: true },
+    async rpc(this: { rest?: { available: boolean } }, name: string, args: unknown) {
+      // Supabase's rpc implementation reads `this.rest`; this catches a
+      // detached method before it can strand a failed Hook run in production.
+      assert.equal(this.rest?.available, true);
+      calls.push({ args, name });
+
+      if (name === "persist_trending_hook_generation_chunk_v1") {
+        return {
+          data: [
+            {
+              accepted_count: 1,
+              already_persisted: false,
+              completed_valid_count: 1,
+              remaining_valid_count: 0,
+              run_status: "completed",
+            },
+          ],
+          error: null,
+        };
+      }
+
+      return { data: true, error: null };
+    },
+  };
+  const store = new SupabaseJobStore(client as never);
+
+  const persisted = await store.persistTrendingHookGenerationRunChunk({
+    businessProfileId: "profile-1",
+    businessProfileVersion: 1,
+    candidates: [],
+    chunkId: "chunk-1",
+    generatorModel: "gpt-4o-mini",
+    jobId: "job-1",
+    promptVersion: "trending-hook-copy-v7",
+    runId: "run-1",
+    selectionVersion: "reaction-format-map-v2",
+    userId: "user-1",
+  });
+  const recovered = await store.failTrendingHookGenerationRunChunk({
+    errorMessage: "quality validation rejected every candidate",
+    jobId: "job-1",
+  });
+
+  assert.equal(persisted.accepted_count, 1);
+  assert.equal(recovered, true);
+  assert.deepEqual(
+    calls.map((call) => call.name),
+    [
+      "persist_trending_hook_generation_chunk_v1",
+      "fail_trending_hook_generation_chunk_v1",
+    ],
+  );
+});
+
 test("starting an Edit render is idempotent for a worker retry", async () => {
   const filters: Array<{ column: string; values: unknown[] }> = [];
   const builder = {

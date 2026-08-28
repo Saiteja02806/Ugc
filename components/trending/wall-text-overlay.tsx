@@ -8,6 +8,7 @@ import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import {
   getWallTextFontSize,
   WALL_TEXT_FONT_WEIGHT,
+  WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_OUTLINE_WIDTH,
 } from "@/lib/trending/wall-text-visual-style";
@@ -42,6 +43,7 @@ export function WallTextOverlay({
         className="absolute flex flex-col justify-center overflow-visible text-center"
         style={{
           ...textBoxStyle,
+          boxSizing: "border-box",
           color: textColor,
           fontFamily:
             "var(--font-wall-text), Inter, Arial, 'Helvetica Neue', sans-serif",
@@ -49,6 +51,7 @@ export function WallTextOverlay({
           fontWeight: WALL_TEXT_FONT_WEIGHT,
           letterSpacing: `${-0.2 / 10.8}cqw`,
           paintOrder: "stroke fill",
+          paddingInline: `${WALL_TEXT_INLINE_SAFE_PADDING / 10.8}cqw`,
           textShadow:
             "0 0.111111cqw 0.185185cqw rgb(0 0 0 / 0.45)",
           WebkitTextStroke: `${WALL_TEXT_OUTLINE_WIDTH / 10.8}cqw #000000`,

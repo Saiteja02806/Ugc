@@ -94,6 +94,7 @@ import {
 import {
   getWallTextFontSize,
   WALL_TEXT_FONT_WEIGHT,
+  WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_OUTLINE_WIDTH,
 } from "@/lib/trending/wall-text-visual-style";
@@ -1937,6 +1938,7 @@ function WallTextOverlayText({
     <div
       className="flex flex-col justify-center text-center [paint-order:stroke_fill]"
       style={{
+        boxSizing: "border-box",
         WebkitTextStroke: `${WALL_TEXT_OUTLINE_WIDTH / 10.8}cqw #000`,
         color: content.textColor,
         fontFamily:
@@ -1944,6 +1946,7 @@ function WallTextOverlayText({
         fontSize: `${getWallTextFontSize(content.content) / 10.8}cqw`,
         fontWeight: WALL_TEXT_FONT_WEIGHT,
         letterSpacing: `${-0.2 / 10.8}cqw`,
+        paddingInline: `${WALL_TEXT_INLINE_SAFE_PADDING / 10.8}cqw`,
         textShadow: "0 0.111111cqw 0.185185cqw rgba(0, 0, 0, 0.45)",
         width: `${content.layout.textBox.width * 100}cqw`,
       }}

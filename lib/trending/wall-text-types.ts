@@ -10,6 +10,11 @@ export const LEGACY_WALL_TEXT_FINAL_LAYOUT_VERSION =
   "wall-text-final-layout-v1" as const;
 export const WALL_TEXT_GENERATOR_VERSION =
   "business-profile-wall-text-v9" as const;
+// Version the measured inner text boundary separately from the generator.
+// This lets the feed recognize older V9 rows that were saved before the
+// boundary was enforced and send them through the existing backfill path.
+export const WALL_TEXT_RENDER_SAFETY_VERSION =
+  "wall-text-inner-safe-v1" as const;
 // Freeform is the current Wall writing mode. It is deliberately separate from
 // the dormant 30-format registry so new copy is never mislabeled as a format
 // it was not asked to follow.
@@ -180,6 +185,7 @@ export type TrendingWallTextContent = {
     | typeof LEGACY_WALL_TEXT_CONTENT_LAYOUT_VERSION;
   pattern: WallTextPattern;
   renderFontSize?: WallTextFontSize;
+  renderSafetyVersion?: typeof WALL_TEXT_RENDER_SAFETY_VERSION;
   segments: WallTextSegment[];
   sourceContent?: WallTextSourceContent;
 };

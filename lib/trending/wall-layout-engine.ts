@@ -7,6 +7,7 @@ import { getVerifiedWallTextInterFontPath } from "./wall-text-font";
 import {
   WALL_TEXT_CONTENT_LAYOUT_VERSION,
   WALL_TEXT_FINAL_LAYOUT_VERSION,
+  WALL_TEXT_RENDER_SAFETY_VERSION,
   type TrendingWallTextContent,
   type TrendingWallTextLayout,
   type WallTextFinalLayout,
@@ -17,6 +18,7 @@ import {
   type WallTextSourceContent,
 } from "./wall-text-types";
 import {
+  getWallTextSafeLineWidth,
   WALL_TEXT_FONT_WEIGHT,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
   WALL_TEXT_OUTLINE_WIDTH,
@@ -28,9 +30,6 @@ const ABSOLUTE_MAXIMUM_WORDS = 50;
 const MINIMUM_WORDS = 10;
 const FREEFORM_TARGET_WORDS = 18;
 const FONT_SIZES: readonly WallTextFontSize[] = [52, 50, 48, 46, 44];
-// The reference treatment uses a wider reading column. Keep the legacy widths
-// as fallbacks for imported templates whose safe area is still narrower.
-const TEXT_WIDTHS = [780, 760, 740, 660, 640, 620] as const;
 const INTERNAL_LINE_WIDTH_RATIO = 0.55;
 const MINIMUM_BALANCE_IMPROVEMENT = 0.04;
 const measurementCache = new Map<string, number>();
@@ -44,11 +43,12 @@ export async function deriveWallTextSpatialBudget(params: {
     5,
     8,
   );
-  const widthPx = clamp(
+  const textBoxWidth = clamp(
     Math.round(params.layout.textBox.width * VIDEO_WIDTH),
     620,
     780,
   );
+  const widthPx = getWallTextSafeLineWidth(textBoxWidth);
   const sampleWords = "people notice the quiet details";
   const sampleWidth = (await measureText(sampleWords, 44)) +
     WALL_TEXT_OUTLINE_WIDTH * 2;
@@ -95,6 +95,7 @@ export async function createAuthoritativeWallTextContent(params: {
       kind: "wall_text",
       layoutVersion: WALL_TEXT_CONTENT_LAYOUT_VERSION,
       pattern: params.formatId,
+      renderSafetyVersion: WALL_TEXT_RENDER_SAFETY_VERSION,
       renderFontSize: finalLayout.fontSizePx,
       segments: toCompatibilitySegments(finalLayout.blocks),
       sourceContent,
@@ -111,8 +112,13 @@ export async function createWallTextFinalLayout(params: {
   layout: TrendingWallTextLayout;
 }): Promise<WallTextFinalLayout> {
   const sourceBlocks = toSourceBlocks(params.content);
-  const centerX = params.layout.textBox.x + params.layout.textBox.width / 2;
   const maximumHeight = params.layout.textBox.height * VIDEO_HEIGHT;
+  const textBoxWidth = Math.round(params.layout.textBox.width * VIDEO_WIDTH);
+  const maximumWidth = getWallTextSafeLineWidth(textBoxWidth);
+
+  if (maximumWidth <= 0) {
+    throw new Error("Wall-of-text placement has no usable inner text width.");
+  }
 
   const preferredLineCounts =
     params.content.kind === "text"
@@ -125,57 +131,42 @@ export async function createWallTextFinalLayout(params: {
   // first, then choose the largest measured font that fits it.
   for (const preferredLineCount of preferredLineCounts) {
     for (const fontSize of FONT_SIZES) {
-      for (const widthPx of TEXT_WIDTHS) {
-        const width = widthPx / VIDEO_WIDTH;
-        const x = centerX - width / 2;
-        if (
-          x < params.layout.safeArea.left ||
-          x + width > 1 - params.layout.safeArea.right + 0.001
-        ) {
-          continue;
+      const blocks: WallTextLayoutBlock[] = [];
+      let failed = false;
+      for (const block of sourceBlocks) {
+        const lines =
+          block.role === "text"
+            ? await wrapPlainWallText(
+                block.text,
+                maximumWidth,
+                fontSize,
+                preferredLineCount ?? undefined,
+              )
+            : await wrapMeasuredText(block.text, maximumWidth, fontSize);
+        if (!lines) {
+          failed = true;
+          break;
         }
+        blocks.push({ lines, role: block.role });
+      }
+      if (failed) continue;
 
-        const blocks: WallTextLayoutBlock[] = [];
-        let failed = false;
-        for (const block of sourceBlocks) {
-          const lines =
-            block.role === "text"
-              ? await wrapPlainWallText(
-                  block.text,
-                  widthPx,
-                  fontSize,
-                  preferredLineCount ?? undefined,
-                )
-              : await wrapMeasuredText(block.text, widthPx, fontSize);
-          if (!lines) {
-            failed = true;
-            break;
-          }
-          blocks.push({ lines, role: block.role });
-        }
-        if (failed) continue;
+      const lineHeightPx = Math.round(fontSize * WALL_TEXT_LINE_HEIGHT_FACTOR * 100) / 100;
+      const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
+      const blockHeight =
+        lineCount * lineHeightPx +
+        Math.max(0, blocks.length - 1) * WALL_TEXT_SECTION_GAP;
 
-        const lineHeightPx = Math.round(fontSize * WALL_TEXT_LINE_HEIGHT_FACTOR * 100) / 100;
-        const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
-        const blockHeight =
-          lineCount * lineHeightPx +
-          Math.max(0, blocks.length - 1) * WALL_TEXT_SECTION_GAP;
-
-        if (blockHeight <= maximumHeight) {
-          return {
-            blocks,
-            fontFamily: "Inter",
-            fontSizePx: fontSize,
-            fontWeight: WALL_TEXT_FONT_WEIGHT,
-            lineHeightPx,
-            textBox: {
-              ...params.layout.textBox,
-              width,
-              x,
-            },
-            version: WALL_TEXT_FINAL_LAYOUT_VERSION,
-          };
-        }
+      if (blockHeight <= maximumHeight) {
+        return {
+          blocks,
+          fontFamily: "Inter",
+          fontSizePx: fontSize,
+          fontWeight: WALL_TEXT_FONT_WEIGHT,
+          lineHeightPx,
+          textBox: params.layout.textBox,
+          version: WALL_TEXT_FINAL_LAYOUT_VERSION,
+        };
       }
     }
   }
@@ -305,7 +296,7 @@ async function partitionMeasuredLines(params: {
     if (wordsRemaining < linesRemaining * minimumWordsPerLine) return null;
     if (linesRemaining === 1) {
       const width = await measure(start, params.words.length);
-      if (width > params.maximumWidth) return null;
+      if (width >= params.maximumWidth) return null;
       return {
         lines: [params.words.slice(start).join(" ")],
         score: Math.pow(width / params.maximumWidth - 0.72, 2) * 0.35,
@@ -321,7 +312,7 @@ async function partitionMeasuredLines(params: {
       end += 1
     ) {
       const width = await measure(start, end);
-      if (width > params.maximumWidth) break;
+      if (width >= params.maximumWidth) break;
       const rest = await solve(end, linesRemaining - 1);
       if (!rest) continue;
       const fill = width / params.maximumWidth;
@@ -369,13 +360,13 @@ async function wrapMeasuredText(
     const candidateWidth =
       (await measureText(candidate, fontSize)) + WALL_TEXT_OUTLINE_WIDTH * 2;
 
-    if (!current && candidateWidth > maximumWidth) {
+    if (!current && candidateWidth >= maximumWidth) {
       throw new Error(
         "Wall-of-text contains a word that cannot fit the publishing text box.",
       );
     }
 
-    if (candidateWidth <= maximumWidth) {
+    if (candidateWidth < maximumWidth) {
       current = candidate;
     } else {
       lines.push(current);
@@ -416,7 +407,7 @@ async function rebalanceInternalLines(
     for (const candidate of candidates) {
       const widths = await measureLines(candidate, fontSize);
 
-      if (widths.some((width) => width > maximumWidth)) {
+      if (widths.some((width) => width >= maximumWidth)) {
         continue;
       }
 
@@ -499,7 +490,7 @@ async function rebalanceLastLine(
   const lastLineWidth =
     (await measureText(lastLine, fontSize)) + WALL_TEXT_OUTLINE_WIDTH * 2;
 
-  return lastLineWidth <= maximumWidth
+  return lastLineWidth < maximumWidth
     ? [...lines.slice(0, -2), previousLine, lastLine]
     : lines;
 }

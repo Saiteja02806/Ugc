@@ -826,19 +826,15 @@ export function BusinessInformationStep({
 
   return (
     <>
-      <div className="px-5 py-6 sm:px-8 sm:py-7 lg:px-8 lg:py-[clamp(1.25rem,2.5vh,1.75rem)] xl:px-10">
+      <div className="px-5 py-6 sm:px-8 sm:py-7 lg:px-8 lg:py-[clamp(1rem,2vh,1.25rem)] xl:px-10">
         <header>
           <Badge variant="secondary">Source details</Badge>
-          <h2 className="mt-4 max-w-2xl text-balance text-2xl font-bold tracking-[-0.025em] text-foreground-strong sm:text-[30px] lg:mt-3 lg:text-[28px]">
+          <h2 className="mt-3 max-w-2xl text-balance text-[1.375rem] font-bold tracking-[-0.025em] text-foreground-strong sm:text-[28px] lg:mt-2 lg:text-2xl">
             Choose the source you trust most
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted sm:text-[15px] lg:leading-5">
-            Start with the place that already explains your product clearly.
-            UGC Pilot turns it into one reusable creative brief.
-          </p>
         </header>
 
-        <FieldSet className="mt-7 lg:mt-5">
+        <FieldSet className="mt-7 lg:mt-4">
           <FieldLegend className="sr-only">Business context source</FieldLegend>
           <div className="grid gap-3.5 sm:grid-cols-3 lg:gap-3">
             {intakeOptions.map((option) => {
@@ -1040,17 +1036,14 @@ export function BusinessIdentityStep({
   const logoInputId = useId();
 
   return (
-    <div className="px-5 py-7 sm:px-8 sm:py-7 lg:px-8 lg:py-[clamp(1.25rem,2.5vh,1.75rem)] xl:px-10">
+    <div className="px-5 py-7 sm:px-8 sm:py-7 lg:px-8 lg:py-[clamp(1rem,2vh,1.25rem)] xl:px-10">
       <Badge variant="secondary">Step 2 of 3</Badge>
-      <h2 ref={headingRef} tabIndex={-1} className="mt-4 text-2xl font-bold tracking-[-0.03em] text-foreground-strong outline-none sm:text-[32px] lg:mt-3 lg:text-[28px]">
+      <h2 ref={headingRef} tabIndex={-1} className="mt-3 text-[1.375rem] font-bold tracking-[-0.03em] text-foreground-strong outline-none sm:text-[28px] lg:mt-2 lg:text-2xl">
         Add your business name
       </h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted sm:text-base lg:leading-5">
-        Enter the name customers know. You can also add a logo now, or skip it and continue.
-      </p>
 
       {profile?.analysisSummary ? (
-        <div className="mt-6 rounded-2xl border border-border/80 bg-card-muted/45 p-4.5 shadow-xs lg:mt-4 lg:p-3.5">
+        <div className="mt-6 rounded-2xl border border-border/80 bg-card-muted/45 p-4.5 shadow-xs lg:mt-3 lg:p-3.5">
           <div className="flex items-start gap-3.5">
             <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-success/15 text-success border border-success/20 shadow-xs lg:size-7"><Check className="size-4 stroke-[2.5]" aria-hidden="true" /></span>
             <div>
@@ -1062,7 +1055,7 @@ export function BusinessIdentityStep({
       ) : null}
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:items-start lg:gap-6">
-        <FormField className="mt-7 lg:mt-5" data-invalid={Boolean(error)}>
+        <FormField className="mt-7 lg:mt-4" data-invalid={Boolean(error)}>
           <FieldLabel htmlFor="business-name">Business name</FieldLabel>
           <input
             id="business-name"
@@ -1082,7 +1075,7 @@ export function BusinessIdentityStep({
           <FieldDescription id="business-name-help">Enter the name you want UGC Pilot to use in personalized content.</FieldDescription>
         </FormField>
 
-        <FormField className="mt-6 lg:mt-5">
+        <FormField className="mt-6 lg:mt-4">
           <FieldLabel htmlFor={logoInputId}>Business logo <span className="font-normal text-muted-subtle">(optional)</span></FieldLabel>
           <div className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-card-muted/45 p-5 shadow-xs sm:flex-row sm:items-center lg:gap-3 lg:p-3.5">
             <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-border-strong/70 bg-card text-muted shadow-xs lg:size-16 lg:rounded-xl">
@@ -1117,7 +1110,7 @@ export function BusinessIdentityStep({
 
       {error ? <FieldError className="mt-4">{error}</FieldError> : null}
 
-      <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row lg:sticky lg:bottom-0 lg:z-10 lg:mt-5 lg:border-t lg:border-border/70 lg:bg-card/95 lg:py-3 lg:shadow-[0_-12px_24px_rgba(0,0,0,0.12)]">
+      <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row lg:sticky lg:bottom-0 lg:z-10 lg:mt-4 lg:border-t lg:border-border/70 lg:bg-card/95 lg:py-2.5 lg:shadow-[0_-12px_24px_rgba(0,0,0,0.12)]">
         <Button type="button" variant="outline" size="lg" className="h-12 rounded-xl px-6 font-semibold sm:w-auto hover:bg-card-muted" onClick={onBack} disabled={isSaving}>
           <ArrowLeft data-icon="inline-start" aria-hidden="true" />Back
         </Button>
@@ -1146,18 +1139,15 @@ export function PrimaryGoalStep({
   primaryGoals: PrimaryGoal[];
 }) {
   return (
-    <div className="px-5 py-7 sm:px-8 sm:py-7 lg:px-8 lg:py-[clamp(1.25rem,2.5vh,1.75rem)] xl:px-10">
+    <div className="px-5 py-7 sm:px-8 sm:py-7 lg:px-8 lg:py-[clamp(1rem,2vh,1.25rem)] xl:px-10">
       <Badge variant="secondary">Step 3 of 3</Badge>
-      <h2 ref={headingRef} tabIndex={-1} className="mt-4 text-2xl font-bold tracking-[-0.03em] text-foreground-strong outline-none sm:text-[32px] lg:mt-3 lg:text-[28px]">
+      <h2 ref={headingRef} tabIndex={-1} className="mt-3 text-[1.375rem] font-bold tracking-[-0.03em] text-foreground-strong outline-none sm:text-[28px] lg:mt-2 lg:text-2xl">
         What do you want to achieve?
       </h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted sm:text-base lg:leading-5">
-        Select every goal that matters. We will use the complete set to personalize your hooks.
-      </p>
 
-      <FieldSet className="mt-7 lg:mt-5">
+      <FieldSet className="mt-7 lg:mt-4">
         <FieldLegend className="sr-only">Content goals</FieldLegend>
-        <div className="mb-3.5 flex items-center justify-between gap-4">
+        <div className="mb-3.5 flex items-center justify-between gap-4 lg:mb-2.5">
           <p className="text-sm font-semibold text-foreground-strong">Content goals</p>
           <span className={cn(
             "rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors",
@@ -1170,13 +1160,13 @@ export function PrimaryGoalStep({
               : `${primaryGoals.length} selected`}
           </span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-2.5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-2">
           {goalOptions.map((option) => {
             const Icon = option.icon;
             const selected = primaryGoals.includes(option.value);
             return (
               <label key={option.value} className={cn(
-                "group relative flex min-h-[80px] cursor-pointer items-center gap-3.5 rounded-2xl border px-4.5 py-3.5 text-left transition-all duration-200 focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-card motion-reduce:transition-none lg:min-h-[68px] lg:gap-3 lg:rounded-xl lg:px-3.5 lg:py-2.5",
+                "group relative flex min-h-[80px] cursor-pointer items-center gap-3.5 rounded-2xl border px-4.5 py-3.5 text-left transition-all duration-200 focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-card motion-reduce:transition-none lg:min-h-[60px] lg:gap-3 lg:rounded-xl lg:px-3.5 lg:py-2",
                 selected
                   ? "border-primary/60 bg-selected/90 shadow-[0_8px_24px_rgba(201,71,22,0.1)] ring-1 ring-primary/20"
                   : "border-border/80 bg-card hover:-translate-y-0.5 hover:border-border-strong hover:bg-card-muted/40 shadow-xs",
@@ -1218,7 +1208,7 @@ export function PrimaryGoalStep({
 
       {error ? <FieldError className="mt-4">{error}</FieldError> : null}
 
-      <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between lg:sticky lg:bottom-0 lg:z-10 lg:mt-5 lg:border-t lg:border-border/70 lg:bg-card/95 lg:py-3 lg:shadow-[0_-12px_24px_rgba(0,0,0,0.12)]">
+      <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between lg:sticky lg:bottom-0 lg:z-10 lg:mt-4 lg:border-t lg:border-border/70 lg:bg-card/95 lg:py-2.5 lg:shadow-[0_-12px_24px_rgba(0,0,0,0.12)]">
         <Button type="button" variant="outline" size="lg" className="h-12 rounded-xl px-6 font-semibold sm:min-w-28 hover:bg-card-muted" onClick={onBack} disabled={isSaving}>
           <ArrowLeft data-icon="inline-start" aria-hidden="true" />Back
         </Button>
@@ -1251,17 +1241,14 @@ export function OnboardingFrame({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <div className="relative mx-auto min-h-[calc(100dvh-68px)] w-full max-w-[1120px] px-4 py-[clamp(1.25rem,4vh,3rem)] sm:px-6 lg:px-8">
+      <div className="relative mx-auto min-h-[calc(100dvh-69px)] w-full max-w-[1120px] px-4 py-[clamp(1rem,3vh,2rem)] sm:px-6 lg:px-8">
         <header className="max-w-[760px]">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Set up Trending</p>
-          <h1 className="mt-[clamp(0.75rem,1.5vh,1.25rem)] text-[clamp(2rem,3vw,2.5rem)] font-bold leading-[1.12] tracking-[-0.04em] text-foreground-strong">
+          <h1 className="mt-[clamp(0.625rem,1.25vh,1rem)] text-[clamp(1.75rem,2.5vw,2.125rem)] font-bold leading-[1.08] tracking-[-0.04em] text-foreground-strong">
             Help Trending understand your business
           </h1>
-          <p className="mt-[clamp(0.75rem,1.5vh,1.25rem)] max-w-xl text-sm leading-6 text-muted sm:text-base sm:leading-7 lg:leading-6">
-            Add the essential details once so every hook starts with the right business context.
-          </p>
         </header>
-        <div id="business-profile-content" className="mt-[clamp(1.25rem,3vh,2rem)] scroll-mt-24">{children}</div>
+        <div id="business-profile-content" className="mt-[clamp(1rem,2.25vh,1.5rem)] scroll-mt-24">{children}</div>
       </div>
     </main>
   );

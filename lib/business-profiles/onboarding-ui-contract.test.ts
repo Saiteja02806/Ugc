@@ -75,7 +75,23 @@ test("the onboarding remains screen-by-screen without tab-like navigation", () =
 
 test("desktop onboarding uses available space before requiring the user to scroll", () => {
   assert.match(onboarding, /max-w-\[1120px\]/);
-  assert.match(onboarding, /min-h-\[calc\(100dvh-68px\)\]/);
+  assert.match(onboarding, /min-h-\[calc\(100dvh-69px\)\]/);
+  assert.match(
+    onboarding,
+    /text-\[clamp\(1\.75rem,2\.5vw,2\.125rem\)\][\s\S]*Help Trending understand your business/,
+  );
+  assert.doesNotMatch(
+    onboarding,
+    /Add the essential details once so every hook starts with the right business context\./,
+  );
+  for (const removedSubtext of [
+    "Start with the place that already explains your product clearly.",
+    "Enter the name customers know. You can also add a logo now, or skip it and continue.",
+    "Select every goal that matters. We will use the complete set to personalize your hooks.",
+  ]) {
+    assert.doesNotMatch(onboarding, new RegExp(escapeRegExp(removedSubtext)));
+  }
+  assert.match(onboarding, /lg:min-h-\[60px\]/);
   assert.match(onboarding, /lg:grid-cols-\[minmax\(0,1\.15fr\)_minmax\(18rem,0\.85fr\)\]/);
   assert.match(onboarding, /lg:grid-cols-3/);
   assert.match(onboarding, /lg:sticky/);

@@ -155,7 +155,10 @@ test("teaches new Trending users the difference between editing one post and adj
     firstVisitGuide,
     /if \(!desktopEligible \|\| visibility !== "visible"\) return null/,
   );
-  assert.match(firstVisitGuide, /onClick=\{\(\) => void onSkip\(\)\}/);
+  assert.match(firstVisitGuide, /onClick=\{onSkip\}/);
+  assert.match(firstVisitGuide, /const showControlGuide = useCallback\(\(\) => \{\s*setPhase\("controls"\);\s*\}, \[\]\);/);
+  assert.match(firstVisitGuide, /<WalkthroughCanvas[\s\S]*onSkip=\{showControlGuide\}/);
+  assert.doesNotMatch(firstVisitGuide, /<WalkthroughCanvas[\s\S]*onSkip=\{finish\}/);
   assert.match(firstVisitGuide, /How our Trending feed works/);
   assert.match(firstVisitGuide, /border-b border-white\/\[0\.08\]/);
   assert.match(firstVisitGuide, /data-walkthrough-stage/);

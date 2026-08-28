@@ -188,6 +188,10 @@ export function TrendingFirstVisitWalkthrough({
     }
   }, [preview]);
 
+  const showControlGuide = useCallback(() => {
+    setPhase("controls");
+  }, []);
+
   useEffect(() => {
     if (!desktopEligible || visibility !== "visible" || phase !== "preview") return;
     let active = true;
@@ -233,7 +237,7 @@ export function TrendingFirstVisitWalkthrough({
     >
       <div className="pointer-events-auto w-full">
         <WalkthroughCanvas
-          onSkip={finish}
+          onSkip={showControlGuide}
           reducedMotion={reducedMotion}
           step={step}
         />
@@ -247,7 +251,7 @@ function WalkthroughCanvas({
   reducedMotion,
   step,
 }: {
-  onSkip: () => Promise<void>;
+  onSkip: () => void;
   reducedMotion: boolean;
   step: Step;
 }) {
@@ -304,7 +308,7 @@ function WalkthroughCanvas({
           aria-label="Skip walkthrough"
           className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-white/[0.13] bg-[#1b1f23] px-3 text-xs font-semibold text-white/75 transition-colors hover:border-white/25 hover:bg-[#22272e] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
           data-trending-walkthrough-skip
-          onClick={() => void onSkip()}
+          onClick={onSkip}
           type="button"
         >
           Skip

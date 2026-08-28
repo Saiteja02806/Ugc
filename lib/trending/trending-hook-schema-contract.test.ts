@@ -102,6 +102,13 @@ const atomicInitialHookDispatchMigration = readFileSync(
   ),
   "utf8",
 );
+const durableHookPersistenceFixMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260828163000_fix_trending_hook_chunk_persistence_ambiguity.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const hookRunSource = readFileSync(
   new URL("./trending-hook-generation-runs.ts", import.meta.url),
   "utf8",
@@ -567,6 +574,10 @@ test("keeps a crash between Hook reservation and job creation durably recoverabl
     jobRecoveryRouteSource,
     /recoverUnattachedTrendingHookChunks[\s\S]*claimDueTrendingHookGenerationChunkDispatches[\s\S]*reconcileCompletedTrendingFeedForUser/,
   );
+  assert.match(
+    jobRecoveryRouteSource,
+    /catch \(error\)[\s\S]*completeTrendingHookGenerationChunkDispatch[\s\S]*dispatched_after_reconciliation_error[\s\S]*rescheduleTrendingHookGenerationChunkDispatch/,
+  );
 });
 
 test("commits an initial Hook run, chunk, and dispatch record as one database action", () => {
@@ -593,5 +604,16 @@ test("commits an initial Hook run, chunk, and dispatch record as one database ac
   assert.match(
     reactionMappedCanarySource,
     /create_or_resume_and_reserve_trending_hook_generation_chunk_v1[\s\S]*p_chunk_size: 6/i,
+  );
+});
+
+test("qualifies completed Hook progress while a worker persists its chunk", () => {
+  assert.match(
+    durableHookPersistenceFixMigration,
+    /update public\.trending_hook_generation_runs as run[\s\S]*completed_valid_count = run\.completed_valid_count \+ v_accepted_count/i,
+  );
+  assert.match(
+    durableHookPersistenceFixMigration,
+    /when run\.completed_valid_count \+ v_accepted_count >= run\.target_valid_count then 'completed'/i,
   );
 });

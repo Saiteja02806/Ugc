@@ -25,6 +25,10 @@ import {
   type WallTextGenerationCandidate,
 } from "@/lib/trending/wall-text-text-logic";
 import {
+  applyWallTextRenderFit,
+  validateWallTextRenderFit,
+} from "@/lib/trending/wall-text-render-validation";
+import {
   WALL_TEXT_FREEFORM_PATTERN,
   type TrendingWallTextLayout,
 } from "@/lib/trending/wall-text-types";
@@ -338,7 +342,12 @@ async function validateCandidate(params: {
       formatId: WALL_TEXT_FREEFORM_PATTERN,
       layout: params.candidate.layout,
     });
-    return { ...authoritative, duplicateSignature };
+    const render = await validateWallTextRenderFit(authoritative.content);
+    return {
+      ...authoritative,
+      content: applyWallTextRenderFit(authoritative.content, render),
+      duplicateSignature,
+    };
   } catch {
     throw new CandidateValidationError("layout_fit");
   }

@@ -1,5 +1,7 @@
 export const WALL_TEXT_PERSISTENCE_REJECTED =
   "wall_text_persistence_rejected";
+export const WALL_TEXT_RENDER_FIT_REJECTED =
+  "wall_text_render_fit_rejected";
 
 export type WallTextGenerationFailure = {
   errorCode: string;
@@ -15,6 +17,15 @@ export type WallTextGenerationFailure = {
 export function classifyWallTextGenerationFailure(
   error: unknown,
 ): WallTextGenerationFailure {
+  if (getErrorCode(error) === WALL_TEXT_RENDER_FIT_REJECTED) {
+    return {
+      errorCode: WALL_TEXT_RENDER_FIT_REJECTED,
+      publicMessage:
+        "Wall-of-text could not be arranged safely inside the video.",
+      retryable: false,
+    };
+  }
+
   if (isWallTextPersistenceRejection(error)) {
     return {
       errorCode: WALL_TEXT_PERSISTENCE_REJECTED,

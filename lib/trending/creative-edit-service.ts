@@ -60,6 +60,7 @@ import { createAuthoritativeWallTextContent } from "@/lib/trending/wall-layout-e
 import { getBackfillWallTextFormatId } from "@/lib/trending/wall-formats";
 import { classifyWallTextEdit } from "@/lib/trending/wall-text-edit-attribution";
 import {
+  applyWallTextRenderFit,
   WALL_TEXT_RENDER_HEIGHT,
   WALL_TEXT_RENDER_WIDTH,
   validateWallTextRenderFit,
@@ -646,10 +647,7 @@ async function validateAndNormalizeSubmittedContent(params: {
     return {
       ...params.content,
       layout: relaid.layout,
-      content: {
-        ...contentWithoutFont,
-        renderFontSize: render.fontSize as 44 | 46 | 48 | 50 | 52,
-      },
+      content: applyWallTextRenderFit(contentWithoutFont, render),
     };
   } catch (error) {
     throw new TrendingCreativeEditAccessError(

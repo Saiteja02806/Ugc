@@ -28,6 +28,10 @@ export type BuildUgcVideoPromptInput = {
   productName?: string;
 };
 
+export type BuildVideoGenerationPromptInput =
+  | (BuildUgcVideoPromptInput & { promptMode?: "ugc_template" })
+  | { hookIdea: string; promptMode: "direct" };
+
 const cameraStyleLabels: Record<HookVideoCameraStyle, string> = {
   desk_setup: "creator desk setup product demo video",
   home_office: "modern home office creator video",
@@ -70,4 +74,12 @@ No robotic expression.
 No unnatural mouth movement unless dialogue is explicitly requested.
 The video should feel like real UGC footage, not a cinematic movie trailer.
 `.trim();
+}
+
+export function buildVideoGenerationPrompt(
+  input: BuildVideoGenerationPromptInput,
+) {
+  return input.promptMode === "direct"
+    ? input.hookIdea.trim()
+    : buildUgcVideoPrompt(input);
 }

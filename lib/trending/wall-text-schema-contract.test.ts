@@ -136,6 +136,10 @@ const renderValidationSource = readFileSync(
   new URL("./wall-text-render-validation.ts", import.meta.url),
   "utf8",
 );
+const fontMeasurementSource = readFileSync(
+  new URL("./wall-text-font.ts", import.meta.url),
+  "utf8",
+);
 const overlaySource = readFileSync(
   new URL("../../components/trending/wall-text-overlay.tsx", import.meta.url),
   "utf8",
@@ -146,6 +150,10 @@ const editorSource = readFileSync(
 );
 const rootLayoutSource = readFileSync(
   new URL("../../app/layout.tsx", import.meta.url),
+  "utf8",
+);
+const nextConfigSource = readFileSync(
+  new URL("../../next.config.ts", import.meta.url),
   "utf8",
 );
 const feedSource = readFileSync(
@@ -554,14 +562,190 @@ test("measures final Wall lines with Inter before saving authoritative layout", 
   );
 });
 
+test("runs the final render-fit gate before generated Wall copy reaches storage", () => {
+  const arrangeIndex = generatorSource.indexOf(
+    "createAuthoritativeWallTextContent({",
+  );
+  const validateIndex = generatorSource.indexOf(
+    "validateWallTextRenderFit(authoritative.content)",
+  );
+  const applyIndex = generatorSource.indexOf(
+    "applyWallTextRenderFit(authoritative.content, render)",
+  );
+  const saveFunction = databaseSource.match(
+    /export async function saveWallTextGenerationCandidate[\s\S]+?return creative;/,
+  )?.[0] ?? "";
+
+  assert.ok(arrangeIndex >= 0);
+  assert.ok(validateIndex > arrangeIndex);
+  assert.ok(applyIndex > validateIndex);
+  assert.match(
+    saveFunction,
+    /validateWallTextRenderFit\(params\.text\)[\s\S]+applyWallTextRenderFit\(params\.text, render\)[\s\S]+p_text_content: toJson\(renderSafeText\)/,
+  );
+});
+
+test("rejects the reported overflow and synchronizes a safe fallback font", () => {
+  const loaderPath = new URL(
+    "../../scripts/next-server-only-test-loader.mjs",
+    import.meta.url,
+  ).href;
+  const engineUrl = new URL("wall-layout-engine.ts", import.meta.url).href;
+  const validationUrl = new URL(
+    "wall-text-render-validation.ts",
+    import.meta.url,
+  ).href;
+  const original =
+    "Working with classmates or teammates becomes calmer when real-time collaboration lets everyone update tasks together, keeping conversations focused and responsibilities clearly shared across the group.";
+  const script = `
+    const [engine, validation] = await Promise.all([
+      import(${JSON.stringify(engineUrl)}),
+      import(${JSON.stringify(validationUrl)}),
+    ]);
+    const textBox = {
+      x: 150 / 1080,
+      y: 800 / 1920,
+      width: 780 / 1080,
+      height: 480 / 1920,
+    };
+    const unsafe = {
+      kind: "wall_text",
+      pattern: "freeform",
+      formatId: "freeform",
+      fullText: ${JSON.stringify(original)},
+      layoutVersion: "wall-text-overlay-v6",
+      renderFontSize: 52,
+      sourceContent: { kind: "text", text: ${JSON.stringify(original)} },
+      segments: [{
+        role: "lead",
+        lines: [
+          "Working with classmates or teammates",
+          "becomes calmer when real-time",
+          "collaboration lets everyone update tasks",
+          "together, keeping conversations focused",
+          "and responsibilities clearly shared",
+          "across the group.",
+        ],
+      }],
+      finalLayout: {
+        blocks: [{
+          role: "text",
+          lines: [
+            "Working with classmates or teammates",
+            "becomes calmer when real-time",
+            "collaboration lets everyone update tasks",
+            "together, keeping conversations focused",
+            "and responsibilities clearly shared",
+            "across the group.",
+          ],
+        }],
+        fontFamily: "Inter",
+        fontSizePx: 52,
+        fontWeight: 400,
+        lineHeightPx: 57.2,
+        textBox,
+        version: "wall-text-final-layout-v2",
+      },
+    };
+    let rejected = false;
+    try {
+      await validation.validateWallTextRenderFit(unsafe);
+    } catch (error) {
+      rejected = error?.code === validation.WALL_TEXT_RENDER_FIT_REJECTED;
+    }
+    const layout = {
+      alignment: "center",
+      placement: "middle",
+      placementSource: "visual-group-fallback",
+      safeArea: {
+        top: 280 / 1920,
+        left: 140 / 1080,
+        right: 140 / 1080,
+        bottom: 460 / 1920,
+      },
+      textBox,
+      version: "wall-text-layout-v4",
+    };
+    const rebuilt = await engine.createAuthoritativeWallTextContent({
+      content: { kind: "text", text: ${JSON.stringify(original)} },
+      formatId: "freeform",
+      layout,
+    });
+    const forcedLarge = {
+      ...rebuilt.content,
+      renderFontSize: 52,
+      finalLayout: {
+        ...rebuilt.content.finalLayout,
+        fontSizePx: 52,
+        lineHeightPx: 57.2,
+      },
+    };
+    const fit = await validation.validateWallTextRenderFit(forcedLarge);
+    const applied = validation.applyWallTextRenderFit(forcedLarge, fit);
+    process.stdout.write(JSON.stringify({
+      appliedFinalFont: applied.finalLayout.fontSizePx,
+      appliedLineHeight: applied.finalLayout.lineHeightPx,
+      appliedRenderFont: applied.renderFontSize,
+      fit,
+      lines: applied.finalLayout.blocks[0].lines,
+      rejected,
+    }));
+  `;
+  const output = execFileSync(
+    process.execPath,
+    [
+      "--import",
+      loaderPath,
+      "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+      "--experimental-strip-types",
+      "--input-type=module",
+      "--eval",
+      script,
+    ],
+    { encoding: "utf8", stdio: "pipe" },
+  );
+  const result = JSON.parse(output) as {
+    appliedFinalFont: number;
+    appliedLineHeight: number;
+    appliedRenderFont: number;
+    fit: {
+      fontSize: number;
+      lineHeight: number;
+      maximumLineWidth: number;
+      valid: true;
+    };
+    lines: string[];
+    rejected: boolean;
+  };
+
+  assert.equal(result.rejected, true);
+  assert.equal(result.fit.valid, true);
+  assert.ok(result.fit.fontSize < 52);
+  assert.ok(result.fit.maximumLineWidth <= 780);
+  assert.equal(result.appliedRenderFont, result.fit.fontSize);
+  assert.equal(result.appliedFinalFont, result.fit.fontSize);
+  assert.equal(result.appliedLineHeight, result.fit.lineHeight);
+  assert.equal(result.lines.join(" "), original);
+  assert.ok(result.lines.length >= 5 && result.lines.length <= 8);
+});
+
 test("uses Inter Regular 400 with the restored 44-52px Wall scale", () => {
   assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 400/);
   assert.match(visualStyleSource, /WALL_TEXT_MINIMUM_FONT_SIZE = 44/);
   assert.match(visualStyleSource, /WALL_TEXT_MAXIMUM_FONT_SIZE = 52/);
   assert.match(layoutEngineSource, /Inter Regular \$\{fontSize\}/);
-  assert.match(layoutEngineSource, /inter-latin-400-normal\.woff/);
-  assert.match(renderValidationSource, /Inter Regular \$\{fontSize\}/);
-  assert.match(renderValidationSource, /inter-latin-400-normal\.woff/);
+  assert.match(layoutEngineSource, /getVerifiedWallTextInterFontPath/);
+  assert.match(renderValidationSource, /Inter Regular \$\{params\.fontSize\}/);
+  assert.match(renderValidationSource, /getVerifiedWallTextInterFontPath/);
+  assert.match(fontMeasurementSource, /inter-latin-400-normal\.woff/);
+  assert.match(
+    fontMeasurementSource,
+    /stat\(INTER_REGULAR_FONT_PATH\)[\s\S]+font\.size === 0[\s\S]+packaged Inter Regular font is unavailable/,
+  );
+  assert.match(
+    nextConfigSource,
+    /outputFileTracingIncludes[\s\S]+inter-latin-400-normal\.woff/,
+  );
   assert.match(overlaySource, /fontWeight: WALL_TEXT_FONT_WEIGHT/);
   assert.match(editorSource, /fontWeight: WALL_TEXT_FONT_WEIGHT/);
   assert.doesNotMatch(
@@ -826,7 +1010,15 @@ test("V9 fixes the two reported narrow Wall layouts", () => {
     const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
     assert.equal(lines.length, 5);
     assert.equal(lines.join(" "), samples[index]);
-    assert.ok(lines.every((line) => line.split(/\s+/u).length >= 3));
+    assert.ok(
+      lines.reduce(
+        (total, line) => total + line.split(/\s+/u).length,
+        0,
+      ) / lines.length >= 3,
+    );
+    assert.ok(
+      !lines.every((line) => line.split(/\s+/u).length === 2),
+    );
     assert.equal(Math.round(result.content.finalLayout.textBox.width * 1080), 780);
   });
 });

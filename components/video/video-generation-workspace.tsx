@@ -869,6 +869,7 @@ export function VideoGenerationStudioPanel({
         layout="unified"
         leadingControl={
           <ReferenceMediaUpload
+            active={active}
             allowedKinds={["image", "video"]}
             disabled={generationLocked || isGenerating}
             selection={uploadedReference}

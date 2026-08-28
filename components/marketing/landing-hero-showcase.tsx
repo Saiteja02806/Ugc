@@ -93,7 +93,7 @@ export function LandingHeroShowcase() {
               {/* Format pill with accent */}
               <div className="absolute left-3.5 top-3.5 z-20 flex items-center gap-1.5 rounded-full border border-white/25 bg-black/70 px-3.5 py-1 text-xs font-semibold tracking-wide text-white backdrop-blur-md shadow-md">
                 <Sparkles className="size-3.5 text-amber-400" aria-hidden="true" />
-                <span>Hook Video</span>
+                <span>Hook+Demo</span>
               </div>
 
               {/* Real Hook Video playback */}

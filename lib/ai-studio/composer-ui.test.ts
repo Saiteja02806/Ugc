@@ -290,6 +290,21 @@ test("completed image and video results expose download and open actions", () =>
   assert.match(resultActions, /aria-label=\{`Open \$\{title\} in a new tab`\}/);
 });
 
+test("the active reference control accepts a pasted image into the composer", () => {
+  assert.match(
+    referenceUploader,
+    /composerForm\.addEventListener\("paste", handlePaste\)/,
+  );
+  assert.match(referenceUploader, /clipboardData\?\.items/);
+  assert.doesNotMatch(referenceUploader, /event\.preventDefault\(\)/);
+  assert.match(referenceUploader, /active = true/);
+  assert.match(referenceUploader, /src=\{selection\.asset\.url\}/);
+  assert.match(referenceUploader, /width=\{36\}[\s\S]*?height=\{36\}/);
+  assert.match(referenceUploader, /Image reference/);
+  assert.match(imageWorkspace, /<ReferenceMediaUpload[\s\S]*?active=\{active\}/);
+  assert.match(videoWorkspace, /<ReferenceMediaUpload[\s\S]*?active=\{active\}/);
+});
+
 test("generation progress has a visible in-place loading state", () => {
   assert.match(resultSurface, /status\?\.tone === "progress"/);
   assert.match(resultSurface, /<EmptyMedia variant="icon"/);

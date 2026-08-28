@@ -720,6 +720,7 @@ export function ImageGenerationStudioPanel({
         layout="unified"
         leadingControl={
           <ReferenceMediaUpload
+            active={active}
             allowedKinds={["image"]}
             disabled={generationLocked || isGenerating}
             selection={referenceImage}

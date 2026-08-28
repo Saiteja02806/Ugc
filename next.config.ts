@@ -6,6 +6,14 @@ const firebaseAuthHelperDomain =
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
+  outputFileTracingIncludes: {
+    "/api/internal/jobs/prepare-wall-text": [
+      "./node_modules/@fontsource/inter/files/inter-latin-400-normal.woff",
+    ],
+    "/api/trending/creatives/*": [
+      "./node_modules/@fontsource/inter/files/inter-latin-400-normal.woff",
+    ],
+  },
   images: {
     remotePatterns: [
       {

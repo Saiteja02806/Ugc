@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-08-26
+Last updated: 2026-08-28
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -3679,6 +3679,25 @@ Name: **Verify v26 and replace the stale production assignment**
   are deployed and verified together. Scaling is a separate rollout, not part
   of this database change.
 
+## 2026-08-28 Immediate Terminal Carousel Replacement
+
+- A terminal `generate_carousel` failure for daily Trending inventory writes a
+  durable reconciliation-outbox record immediately. Manual and non-daily
+  Carousel failures do not start Trending preparation.
+- A partially completed five-Carousel experiment job is never replayed as a
+  whole. Completed generations remain immutable and failed generations remain
+  diagnostic history; reconciliation calculates the true remaining daily-feed
+  shortfall and reserves fresh candidate indexes for that shortfall.
+- A confirmed terminal background-job state bypasses the older 15-minute refill
+  repair cooldown. The cooldown remains for ambiguous queued or processing work
+  so a slow healthy worker is not mistaken for a failure.
+- Repeated failure notifications remain idempotent through one outbox row per
+  source job, the locked daily-refill reservation, batch-local candidate-index
+  uniqueness, atomic experiment-job ownership, deterministic Cloud Tasks, and
+  the worker claim token. This changes recovery latency only; it does not change
+  daily allowances, content formats, Carousel structures, rendering, or visible
+  completed work.
+
 ## 2026-08-26 Same-day Upgrade Reconciliation
 
 - A same-day paid upgrade appends the complete paid pack to the feed already
@@ -3708,7 +3727,7 @@ Name: **Verify v26 and replace the stale production assignment**
 ## 2026-08-27 First-Visit Trending Walkthrough
 
 - After a completed business onboarding, an owner who has not yet completed
-  the Trending walkthrough sees one visual-only, auto-playing desktop canvas
+  the Trending walkthrough sees one auto-playing desktop canvas
   at the top of the real Trending feed area on their first visit. Its compact
   internal header reads `How our Trending feed works` and keeps the Skip
   control at the right, separated from the visual stage by one quiet
@@ -3731,11 +3750,24 @@ Name: **Verify v26 and replace the stale production assignment**
   demo footage into the composition slot; then the cursor tip lands inside the
   Schedule button, clicks it, and the scheduled post appears. The Wall-of-Text
   and Slideshow formats visibly swipe right and schedule in the same canvas.
-- Once that visual sequence completes, the real Trending `Adjust` control and
-  any available item-level `Edit` control receive a short sequential visual
-  highlight without tutorial copy or a blocking overlay. Content preparation
-  continues through the normal Trending feed request while both the canvas and
-  the control highlight are running.
+- Once that visual sequence completes, it keeps the real Trending workspace
+  unblocked and starts a two-step coach mark rather than only flashing the
+  controls. First, a small pointer card anchored to the real item-level `Edit`
+  control says `Edit this post` and explains that it changes the copy, media,
+  or layout of the post being viewed only. Then a matching card anchored to
+  `Adjust` says `Adjust future content` and explains that it changes the mix
+  of future Trending posts, not the current post. The active control receives
+  the existing restrained glow, and the customer advances with `Next` then
+  `Got it`; there is no dimmer, scrim, layout change, or replacement
+  walkthrough container. A fresh feed can still be preparing when the canvas
+  finishes, so the coach mark waits for a real active `Edit` button instead of
+  silently timing out before its explanation can be shown. Content preparation
+  continues through the normal Trending feed request throughout.
+- Migration `20260828113000_backfill_existing_trending_walkthroughs.sql` marks
+  profiles that existed at this release as complete. Profiles created after
+  that migration retain the null completion timestamp and are the first users
+  eligible for this education. The completion remains owner-scoped and
+  idempotent after `Got it` or Skip.
 - The walkthrough is absolutely anchored to the right edge of the feed and
   occupies zero layout width. It never adds a second or duplicated generation
   status card. The real feed retains its full-width layout, so its loading or
@@ -3790,7 +3822,8 @@ Name: **Verify v26 and replace the stale production assignment**
 - This is product education only. It does not fetch, decide, save, edit,
   upload, create a draft for, or schedule a real Trending creative. The daily
   feed continues preparing normally behind the guide, and the user reaches the
-  unchanged real Trending workspace as soon as the animation completes.
+  unchanged real Trending workspace as soon as the canvas completes; the
+  unobtrusive coach mark remains only until they acknowledge the two controls.
 
 ## 2026-08-27 Free Trial Entitlements
 

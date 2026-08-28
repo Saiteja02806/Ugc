@@ -10,6 +10,7 @@ import {
   canExtendDailyCarouselRefill,
   getDailyCarouselRefillPlan,
   getMissingDailyCarouselCandidateIndexes,
+  hasTerminalDailyCarouselGenerationFailure,
   isCarouselGenerationAvailableOnDate,
   rotateDailyCarouselAngles,
   selectAssignableDailyCarouselCandidates,
@@ -175,6 +176,54 @@ test("replacement extension starts exactly at the repair cooldown boundary", () 
         now - DAILY_CAROUSEL_REFILL_REPAIR_INTERVAL_MS,
       ).toISOString(),
       now,
+    }),
+    true,
+  );
+});
+
+test("a terminal Carousel job bypasses the replacement cooldown", () => {
+  const now = Date.parse("2026-07-17T12:00:00.000Z");
+
+  assert.equal(
+    canExtendDailyCarouselRefill({
+      currentRequestedCount: 5,
+      hasExistingBatch: true,
+      hasTerminalFailure: true,
+      lastUpdatedAt: new Date(now - 1_000).toISOString(),
+      now,
+      requestedCount: 6,
+    }),
+    true,
+  );
+});
+
+test("a failed row does not replace a Carousel while its shared job is active", () => {
+  assert.equal(
+    hasTerminalDailyCarouselGenerationFailure({
+      generations: [{ status: "failed", triggerRunId: "job-1" }],
+      jobs: [{ id: "job-1", status: "processing" }],
+    }),
+    false,
+  );
+});
+
+test("failed and cancelled Carousel jobs are terminal replacement signals", () => {
+  for (const status of ["failed", "cancelled"]) {
+    assert.equal(
+      hasTerminalDailyCarouselGenerationFailure({
+        generations: [{ status: "processing", triggerRunId: "job-1" }],
+        jobs: [{ id: "job-1", status }],
+      }),
+      true,
+    );
+  }
+});
+
+test("an orphaned failed Carousel generation is terminal", () => {
+  assert.equal(
+    hasTerminalDailyCarouselGenerationFailure({
+      generations: [{ status: "failed", triggerRunId: null }],
+      jobs: [],
     }),
     true,
   );

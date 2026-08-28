@@ -1,8 +1,8 @@
 import "server-only";
 
-import { join } from "node:path";
-
 import sharp from "sharp";
+
+import { getVerifiedWallTextInterFontPath } from "./wall-text-font";
 
 import {
   WALL_TEXT_CONTENT_LAYOUT_VERSION,
@@ -290,8 +290,10 @@ async function partitionMeasuredLines(params: {
     return width;
   };
   const memo = new Map<string, { lines: string[]; score: number } | null>();
-  const minimumWordsPerLine =
-    params.words.length >= params.lineCount * 3 ? 3 : 2;
+  // Width and balance decide the natural break. Do not force a fixed number
+  // of words into every row; short emphasis is valid when the measured layout
+  // still reads as a balanced 5–8-line Wall.
+  const minimumWordsPerLine = 1;
 
   const solve = async (
     start: number,
@@ -510,7 +512,7 @@ async function measureText(value: string, fontSize: WallTextFontSize) {
     text: {
       dpi: 72,
       font: `Inter Regular ${fontSize}`,
-      fontfile: getInterFontPath(),
+      fontfile: await getVerifiedWallTextInterFontPath(),
       rgba: true,
       text: escapePangoMarkup(value),
       wrap: "none",
@@ -543,10 +545,6 @@ function toCompatibilitySegments(blocks: WallTextLayoutBlock[]): WallTextSegment
     { lines: lines.slice(1, 1 + split), role: "support" },
     { lines: lines.slice(1 + split), role: "closing" },
   ].filter((segment) => segment.lines.length > 0) as WallTextSegment[];
-}
-
-function getInterFontPath() {
-  return join(process.cwd(), "node_modules", "@fontsource", "inter", "files", "inter-latin-400-normal.woff");
 }
 
 function normalizeText(value: string) {

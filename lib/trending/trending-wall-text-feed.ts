@@ -59,6 +59,10 @@ import {
   selectTrendingWallTextCandidates,
 } from "@/lib/trending/wall-text-feed-logic";
 import { getWallTextPreviewTitle } from "@/lib/trending/wall-text-text-logic";
+import {
+  applyWallTextRenderFit,
+  validateWallTextRenderFit,
+} from "@/lib/trending/wall-text-render-validation";
 import { resolveTrendingVideoSource } from "@/lib/trending/video-source-selection";
 import { enqueueTrendingWallTextJob } from "@/lib/trending/wall-text-jobs";
 import { selectWallTextGenerationSources } from "@/lib/trending/wall-text-source-selector";
@@ -839,12 +843,13 @@ async function backfillExistingTrendingWallTextIdeas(
         formatId: getBackfillWallTextFormatId(existingContent.pattern),
         layout: createWallTextLayout(background),
       });
+      const render = await validateWallTextRenderFit(upgraded.content);
 
       return {
         candidateIndex: creative.candidate_index,
         id: creative.id,
         layout: upgraded.layout,
-        text: upgraded.content,
+        text: applyWallTextRenderFit(upgraded.content, render),
       };
     }),
   );

@@ -1,11 +1,36 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DEFAULT_HOOK_VIDEO_PROVIDER } from "./ugc-video-prompt.js";
+import {
+  buildVideoGenerationPrompt,
+  DEFAULT_HOOK_VIDEO_PROVIDER,
+} from "./ugc-video-prompt.js";
 import { shouldFallbackToRunway } from "./video-provider-fallback.js";
 
 test("uses Runway as the default Hook video provider", () => {
   assert.equal(DEFAULT_HOOK_VIDEO_PROVIDER, "runway");
+});
+
+test("AI Studio direct mode sends only the user's video prompt", () => {
+  assert.equal(
+    buildVideoGenerationPrompt({
+      hookIdea: "  A paper boat crossing a rain puddle at sunset.  ",
+      promptMode: "direct",
+    }),
+    "A paper boat crossing a rain puddle at sunset.",
+  );
+});
+
+test("legacy Hook generation keeps its UGC template", () => {
+  const prompt = buildVideoGenerationPrompt({
+    cameraStyle: "iphone_selfie",
+    emotion: "curious",
+    hookIdea: "Show the result before explaining it.",
+    promptMode: "ugc_template",
+  });
+
+  assert.match(prompt, /UGC-style short video/);
+  assert.match(prompt, /Show the result before explaining it\./);
 });
 
 test("does not fall back for an invalid Gemini Developer API parameter", () => {

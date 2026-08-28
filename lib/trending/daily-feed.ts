@@ -39,6 +39,7 @@ import {
 import {
   canExtendDailyCarouselRefill,
   getDailyCarouselRefillPlan,
+  hasTerminalDailyCarouselGenerationFailure,
   selectAssignableDailyCarouselCandidates,
 } from "@/lib/trending/daily-replenishment-logic";
 import type {
@@ -682,8 +683,12 @@ async function reconcileDailyCarouselRefill(params: {
     return;
   }
 
+  const hasTerminalFailure = await hasTerminalDailyCarouselFailure(
+    existingBatchCandidates,
+  );
   const mayExtendForRepair = canExtendDailyCarouselRefill({
     currentRequestedCount: refillBatch?.requested_count ?? 0,
+    hasTerminalFailure,
     hasExistingBatch: Boolean(refillBatch),
     lastUpdatedAt: refillBatch?.updated_at ?? null,
     requestedCount: plan.requestedBatchCandidateCount,
@@ -723,6 +728,25 @@ async function reconcileDailyCarouselRefill(params: {
     profile: params.profile,
     targetCandidateCount: refillBatch.requested_count,
     timezone: params.feed.timezone,
+  });
+}
+
+async function hasTerminalDailyCarouselFailure(
+  generations: readonly CarouselGenerationRecord[],
+) {
+  if (generations.length === 0) {
+    return false;
+  }
+
+  const jobs = await getBackgroundJobsByIds(
+    generations
+      .map((generation) => generation.triggerRunId)
+      .filter((jobId): jobId is string => Boolean(jobId)),
+  );
+
+  return hasTerminalDailyCarouselGenerationFailure({
+    generations,
+    jobs,
   });
 }
 

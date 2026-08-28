@@ -36,6 +36,9 @@ const firstVisitGuide = readProjectFile(
 const firstVisitPreview = readProjectFile(
   "app/e2e/trending-walkthrough-preview/page.tsx",
 );
+const existingWalkthroughBackfill = readProjectFile(
+  "supabase/migrations/20260828113000_backfill_existing_trending_walkthroughs.sql",
+);
 const nextConfig = readProjectFile("next.config.ts");
 
 test("places Edit in the page header and keeps circular decisions below the card", () => {
@@ -125,7 +128,22 @@ test("teaches new Trending users the difference between editing one post and adj
   assert.match(firstVisitGuide, /type WalkthroughPhase = "preview" \| "controls"/);
   assert.match(firstVisitGuide, /selector: "\[data-trending-edit-control\]"/);
   assert.match(firstVisitGuide, /selector: "\[data-trending-adjust-control\]"/);
+  assert.match(firstVisitGuide, /Edit this post/);
+  assert.match(firstVisitGuide, /This affects this post only\./);
+  assert.match(firstVisitGuide, /Adjust future content/);
+  assert.match(firstVisitGuide, /This shapes future posts and does not change this one\./);
+  assert.match(firstVisitGuide, /waiting_for_edit/);
+  assert.match(firstVisitGuide, /new MutationObserver\(sync\)/);
+  assert.match(firstVisitGuide, /createPortal\(/);
+  assert.match(firstVisitGuide, /data-trending-walkthrough-control-guide/);
+  assert.match(firstVisitGuide, /data-trending-walkthrough-control-step=\{step\}/);
+  assert.doesNotMatch(firstVisitGuide, /setTimeout\(onComplete, 3_800\)/);
   assert.match(firstVisitGuide, /trending-walkthrough-control-highlight/);
+  assert.match(existingWalkthroughBackfill, /update public\.business_profiles/i);
+  assert.match(
+    existingWalkthroughBackfill,
+    /set trending_walkthrough_completed_at = now\(\)[\s\S]+where trending_walkthrough_completed_at is null/i,
+  );
   assert.match(firstVisitGuide, /WALKTHROUGH_DEMO_SOURCE = "\/marketing\/showcase-part2\/demo-preview\.mp4"/);
   assert.match(firstVisitGuide, /src=\{WALKTHROUGH_DEMO_SOURCE\}/);
   assert.match(firstVisitGuide, /data-trending-walkthrough-skip/);

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  FileImage,
   FileVideo,
   Loader2,
   Plus,
@@ -9,7 +8,7 @@ import {
   X,
 } from "lucide-react";
 import type { ChangeEvent } from "react";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,11 +18,13 @@ import {
 } from "@/lib/ai-studio/reference-media-upload";
 
 export function ReferenceMediaUpload({
+  active = true,
   allowedKinds,
   disabled = false,
   selection,
   onChange,
 }: {
+  active?: boolean;
   allowedKinds: readonly AIStudioReferenceKind[];
   disabled?: boolean;
   selection: AIStudioReferenceMedia | null;
@@ -33,7 +34,7 @@ export function ReferenceMediaUpload({
   const [uploadingKind, setUploadingKind] = useState<AIStudioReferenceKind | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function selectFile(kind: AIStudioReferenceKind, file: File) {
+  const selectFile = useCallback(async (kind: AIStudioReferenceKind, file: File) => {
     setErrorMessage(null);
     setUploadingKind(kind);
 
@@ -48,7 +49,7 @@ export function ReferenceMediaUpload({
     } finally {
       setUploadingKind(null);
     }
-  }
+  }, [onChange]);
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
@@ -70,8 +71,49 @@ export function ReferenceMediaUpload({
   const accepts = allowedKinds.flatMap((kind) => REFERENCE_ACCEPTS[kind]).join(",");
   const allowedLabel = allowedKinds.length > 1 ? "image or video" : allowedKinds[0];
   const buttonLabel = selection
-    ? `Replace reference ${selection.kind}`
-    : `Add reference ${allowedLabel}`;
+    ? `Replace reference ${selection.kind} or paste an image`
+    : `Add reference ${allowedLabel} or paste an image`;
+
+  useEffect(() => {
+    if (!active || disabled || busy) {
+      return;
+    }
+
+    const composerForm = inputRef.current?.closest("form");
+
+    if (!composerForm) {
+      return;
+    }
+
+    function handlePaste(event: ClipboardEvent) {
+      const clipboardData = event.clipboardData;
+      const itemFile = Array.from(clipboardData?.items ?? [])
+        .find(
+          (item) => item.kind === "file" && item.type.startsWith("image/"),
+        )
+        ?.getAsFile();
+      const file =
+        itemFile ??
+        Array.from(clipboardData?.files ?? []).find((candidate) =>
+          candidate.type.startsWith("image/"),
+        );
+
+      if (!file) {
+        return;
+      }
+
+      if (!allowedKinds.includes("image")) {
+        setErrorMessage(`Choose a reference ${allowedKinds.join(" or ")}.`);
+        return;
+      }
+
+      void selectFile("image", file);
+    }
+
+    composerForm.addEventListener("paste", handlePaste);
+
+    return () => composerForm.removeEventListener("paste", handlePaste);
+  }, [active, allowedKinds, busy, disabled, selectFile]);
 
   return (
     <>
@@ -111,11 +153,26 @@ export function ReferenceMediaUpload({
           aria-live="polite"
         >
           {selection ? (
-            <div className="inline-flex max-w-full items-center gap-2 rounded-lg border border-border bg-card-muted px-2.5 py-1 text-xs">
+            <div className="inline-flex max-w-full items-center gap-2 rounded-xl border border-border bg-card-muted/80 p-1.5 pr-2.5 text-xs shadow-xs">
               {selection.kind === "image" ? (
-                <FileImage className="size-4 shrink-0 text-primary" aria-hidden="true" />
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selection.asset.url}
+                    alt=""
+                    width={36}
+                    height={36}
+                    className="size-9 shrink-0 rounded-lg object-cover ring-1 ring-border/80"
+                  />
+                  <span className="shrink-0 font-medium text-muted">Image reference</span>
+                </>
               ) : (
-                <FileVideo className="size-4 shrink-0 text-primary" aria-hidden="true" />
+                <>
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+                    <FileVideo className="size-4" aria-hidden="true" />
+                  </span>
+                  <span className="shrink-0 font-medium text-muted">Video reference</span>
+                </>
               )}
               <span className="min-w-0 truncate font-medium text-foreground">
                 {selection.asset.fileName || selection.asset.title}

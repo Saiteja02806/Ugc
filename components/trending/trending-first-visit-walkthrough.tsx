@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,8 @@ type StepKind =
 
 type Step = { durationMs: number; kind: StepKind };
 type WalkthroughPhase = "preview" | "controls";
+type ControlGuideStep = "waiting_for_edit" | "edit" | "adjust";
+type ControlGuidePosition = { arrowLeft: number; left: number; top: number };
 
 const SCENE_TRANSITION_MS = 420;
 
@@ -51,10 +54,26 @@ const STEPS: readonly Step[] = [
   { durationMs: 900, kind: "complete" },
 ];
 
-const WALKTHROUGH_CONTROL_SEQUENCE = [
-  { delayMs: 0, selector: "[data-trending-edit-control]" },
-  { delayMs: 850, selector: "[data-trending-adjust-control]" },
-] as const;
+const CONTROL_GUIDE = {
+  adjust: {
+    action: "Got it",
+    description:
+      "Choose which content types you want more or less of. This shapes future posts and does not change this one.",
+    heading: "Adjust future content",
+    selector: "[data-trending-adjust-control]",
+    step: "2 of 2",
+  },
+  edit: {
+    action: "Next",
+    description:
+      "Change the copy, media, or layout of the post you are viewing. This affects this post only.",
+    heading: "Edit this post",
+    selector: "[data-trending-edit-control]",
+    step: "1 of 2",
+  },
+} as const;
+
+const CONTROL_GUIDE_WIDTH = 284;
 
 const SLIDES = [
   "/marketing/showcase-part2/slideshow/image_0.jpg",
@@ -535,41 +554,120 @@ function CompletionMark() {
 }
 
 function ControlsHighlight({ onComplete }: { onComplete: () => void }) {
+  const [step, setStep] = useState<ControlGuideStep>("waiting_for_edit");
+  const [position, setPosition] = useState<ControlGuidePosition | null>(null);
+
   useEffect(() => {
     const activeControls = new Set<HTMLElement>();
-    const highlight = (selector: string) => {
-      const control = document.querySelector<HTMLElement>(selector);
-      if (!control || activeControls.has(control)) return;
+    const guide = step === "waiting_for_edit" ? null : CONTROL_GUIDE[step];
+
+    const sync = () => {
+      const editControl = document.querySelector<HTMLElement>(
+        CONTROL_GUIDE.edit.selector,
+      );
+
+      if (step === "waiting_for_edit") {
+        if (editControl) setStep("edit");
+        return;
+      }
+
+      const control = document.querySelector<HTMLElement>(guide!.selector);
+      if (!control) {
+        setPosition(null);
+        return;
+      }
+
       activeControls.add(control);
       control.classList.add("trending-walkthrough-control-highlight");
+
+      const rect = control.getBoundingClientRect();
+      const left = Math.min(
+        Math.max(16, rect.left),
+        Math.max(16, window.innerWidth - CONTROL_GUIDE_WIDTH - 16),
+      );
+      setPosition({
+        arrowLeft: Math.min(
+          CONTROL_GUIDE_WIDTH - 28,
+          Math.max(28, rect.left + rect.width / 2 - left),
+        ),
+        left,
+        top: rect.bottom + 12,
+      });
     };
-    const timers = WALKTHROUGH_CONTROL_SEQUENCE.map(({ delayMs, selector }) =>
-      window.setTimeout(() => highlight(selector), delayMs),
-    );
-    const retry = window.setInterval(
-      () => WALKTHROUGH_CONTROL_SEQUENCE.forEach(({ selector }) => highlight(selector)),
-      250,
-    );
-    const complete = window.setTimeout(onComplete, 3_800);
+
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener("resize", sync);
+    window.addEventListener("scroll", sync, true);
 
     return () => {
-      timers.forEach(window.clearTimeout);
-      window.clearInterval(retry);
-      window.clearTimeout(complete);
+      observer.disconnect();
+      window.removeEventListener("resize", sync);
+      window.removeEventListener("scroll", sync, true);
       activeControls.forEach((control) =>
         control.classList.remove("trending-walkthrough-control-highlight"),
       );
     };
-  }, [onComplete]);
+  }, [step]);
 
-  return <style>{`
-    @keyframes trendingWalkthroughControlHighlight {
-      0%,100% { border-color: rgb(255 255 255 / 0.14); box-shadow: none; transform: translateY(0); }
-      45% { border-color: rgb(255 90 31 / 0.78); box-shadow: 0 0 0 4px rgb(255 90 31 / 0.16), 0 0 28px rgb(255 90 31 / 0.28); transform: translateY(-1px); }
-    }
-    .trending-walkthrough-control-highlight { animation: trendingWalkthroughControlHighlight 1.25s ease-in-out 2; }
-    @media (prefers-reduced-motion: reduce) { .trending-walkthrough-control-highlight { animation-duration: 1ms; } }
-  `}</style>;
+  const guide = step === "waiting_for_edit" ? null : CONTROL_GUIDE[step];
+
+  return (
+    <>
+      <style>{`
+        @keyframes trendingWalkthroughControlHighlight {
+          0%,100% { border-color: rgb(255 255 255 / 0.14); box-shadow: none; transform: translateY(0); }
+          45% { border-color: rgb(255 90 31 / 0.78); box-shadow: 0 0 0 4px rgb(255 90 31 / 0.16), 0 0 28px rgb(255 90 31 / 0.28); transform: translateY(-1px); }
+        }
+        .trending-walkthrough-control-highlight { animation: trendingWalkthroughControlHighlight 1.25s ease-in-out 2; }
+        @media (prefers-reduced-motion: reduce) { .trending-walkthrough-control-highlight { animation-duration: 1ms; } }
+      `}</style>
+      {guide && position
+        ? createPortal(
+            <aside
+              aria-label={guide.heading}
+              className="fixed z-[70] w-[284px] rounded-[16px] border border-white/[0.14] bg-[#101316] p-4 text-white shadow-[0_18px_48px_rgb(0_0_0_/_0.32)]"
+              data-trending-walkthrough-control-guide
+              data-trending-walkthrough-control-step={step}
+              role="dialog"
+              style={{ left: position.left, top: position.top }}
+            >
+              <span
+                aria-hidden="true"
+                className="absolute -top-1.5 size-3 rotate-45 border-l border-t border-white/[0.14] bg-[#101316]"
+                style={{ left: position.arrowLeft - 6 }}
+              />
+              <div className="relative">
+                <p className="text-sm font-bold tracking-[-0.01em] text-white">
+                  {guide.heading}
+                </p>
+                <p className="mt-1.5 text-sm leading-5 text-white/72">
+                  {guide.description}
+                </p>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold text-white/45">{guide.step}</span>
+                  <button
+                    className="inline-flex h-8 items-center rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#101316]"
+                    onClick={() => {
+                      if (step === "edit") {
+                        setStep("adjust");
+                        return;
+                      }
+                      void onComplete();
+                    }}
+                    type="button"
+                  >
+                    {guide.action}
+                  </button>
+                </div>
+              </div>
+            </aside>,
+            document.body,
+          )
+        : null}
+    </>
+  );
 }
 
 function WalkthroughKeyframes() {

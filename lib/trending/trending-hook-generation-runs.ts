@@ -29,6 +29,16 @@ type ChunkRow = RunRow & {
   remaining_valid_count: number;
 };
 
+type TrendingHookGenerationRpcClient = {
+  rpc<T>(
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<{
+    data: T[] | T | null;
+    error: { message: string } | null;
+  }>;
+};
+
 export type TrendingHookGenerationRun = {
   completedValidCount: number;
   id: string;
@@ -190,11 +200,10 @@ function toCandidateArray(value: Json) {
 }
 
 async function callRpc<T>(name: string, args: Record<string, unknown>) {
-  const rpc = getClient().rpc as unknown as (
-    fn: string,
-    params: Record<string, unknown>,
-  ) => Promise<{ data: T[] | T | null; error: { message: string } | null }>;
-  const { data, error } = await rpc(name, args);
+  // Keep the method attached to its Supabase client. Calling a detached
+  // `client.rpc` function loses `this`, which Supabase needs for `this.rest`.
+  const supabase = getClient() as unknown as TrendingHookGenerationRpcClient;
+  const { data, error } = await supabase.rpc<T>(name, args);
 
   if (error) {
     throw new Error(`Could not update Trending Hook generation run: ${error.message}`);

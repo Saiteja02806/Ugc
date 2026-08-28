@@ -36,6 +36,10 @@ import {
   WALL_TEXT_FONT_WEIGHT,
 } from "@/lib/trending/wall-text-visual-style";
 import {
+  applyWallTextRenderFit,
+  validateWallTextRenderFit,
+} from "@/lib/trending/wall-text-render-validation";
+import {
   deriveWallTextPerformanceSignals,
   type WallTextPerformanceSignals,
 } from "@/lib/trending/wall-format-performance-logic";
@@ -1128,6 +1132,11 @@ export async function saveWallTextGenerationCandidate(params: {
   text: TrendingWallTextContent;
   userId: string;
 }) {
+  // This is the final persistence boundary. Generation normally validates
+  // earlier so the writer can repair a bad candidate, but no caller may save
+  // Wall lines that have not passed the exact render-area measurement.
+  const render = await validateWallTextRenderFit(params.text);
+  const renderSafeText = applyWallTextRenderFit(params.text, render);
   const { data, error } = await getClient().rpc(
     "save_wall_text_generation_candidate_v1",
     {
@@ -1139,7 +1148,7 @@ export async function saveWallTextGenerationCandidate(params: {
       p_layout: toJson(params.layout),
       p_normalized_text: params.normalizedText,
       p_similarity_signature: toJson(params.similaritySignature),
-      p_text_content: toJson(params.text),
+      p_text_content: toJson(renderSafeText),
       p_user_id: params.userId,
     },
   );

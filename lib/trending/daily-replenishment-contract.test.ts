@@ -9,6 +9,13 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const terminalCarouselRecoveryMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260828100000_reconcile_terminal_carousel_generation_failures.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const businessProfileDatabase = readFileSync(
   new URL("../business-profiles/db.ts", import.meta.url),
   "utf8",
@@ -188,4 +195,23 @@ test("daily inventory walks stable filtered pages instead of stopping at 50 rows
     /existingAssignmentIds[\s\S]+updateAssignmentsLastAssignedDate[\s\S]+currentDayOrphans[\s\S]+listUnpersistedCurrentDayAssignments/,
   );
   assert.doesNotMatch(dailyFeed, /listCarryAssignments/);
+});
+
+test("terminal daily Carousel failures wake durable reconciliation immediately", () => {
+  assert.match(
+    terminalCarouselRecoveryMigration,
+    /new\.status in \('failed', 'cancelled'\)[\s\S]+new\.job_type = 'generate_carousel'/i,
+  );
+  assert.match(
+    terminalCarouselRecoveryMigration,
+    /carousel_generations[\s\S]+trigger_run_id = new\.id::text[\s\S]+origin_daily_feed_id is not null/i,
+  );
+  assert.match(
+    terminalCarouselRecoveryMigration,
+    /insert into public\.trending_feed_reconciliation_outbox[\s\S]+on conflict \(source_job_id\) do nothing/i,
+  );
+  assert.match(
+    dailyFeed,
+    /hasTerminalFailure\s*=\s*await hasTerminalDailyCarouselFailure[\s\S]+canExtendDailyCarouselRefill\(\{[\s\S]+hasTerminalFailure/,
+  );
 });

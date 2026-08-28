@@ -1,10 +1,12 @@
 import "server-only";
 
-import { join } from "node:path";
-
 import sharp from "sharp";
 
-import type { TrendingWallTextContent } from "./wall-text-types";
+import { getVerifiedWallTextInterFontPath } from "./wall-text-font";
+import type {
+  TrendingWallTextContent,
+  WallTextFontSize,
+} from "./wall-text-types";
 import { getWallTextRenderBlocks } from "./wall-text-types";
 import {
   getWallTextFontSize,
@@ -20,6 +22,7 @@ import {
 export const WALL_TEXT_RENDER_WIDTH = 1080;
 export const WALL_TEXT_RENDER_HEIGHT = 1920;
 export const WALL_TEXT_MAXIMUM_BLOCK_HEIGHT = 420;
+const lineWidthCache = new Map<string, number>();
 export {
   getWallTextFontSize,
   WALL_TEXT_FONT_WEIGHT,
@@ -32,13 +35,25 @@ export {
 };
 
 export type WallTextRenderValidation = {
-  fontSize: number;
+  fontSize: WallTextFontSize;
   height: number;
   lineHeight: number;
   lineWidths: number[];
   maximumLineWidth: number;
   valid: true;
 };
+
+export const WALL_TEXT_RENDER_FIT_REJECTED =
+  "wall_text_render_fit_rejected";
+
+export class WallTextRenderFitError extends Error {
+  readonly code = WALL_TEXT_RENDER_FIT_REJECTED;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "WallTextRenderFitError";
+  }
+}
 
 export async function validateWallTextRenderFit(
   content: TrendingWallTextContent,
@@ -47,8 +62,8 @@ export async function validateWallTextRenderFit(
   const fontSizes = [preferredFontSize, 52, 50, 48, 46, 44].filter(
     (fontSize, index, values) =>
       fontSize <= preferredFontSize && values.indexOf(fontSize) === index,
-  );
-  const fontPath = getInterFontPath();
+  ) as WallTextFontSize[];
+  const fontPath = await getVerifiedWallTextInterFontPath();
   const maximumTextWidth =
     (content.finalLayout?.textBox.width ?? WALL_TEXT_TEXT_WIDTH / WALL_TEXT_RENDER_WIDTH) *
     WALL_TEXT_RENDER_WIDTH;
@@ -67,17 +82,11 @@ export async function validateWallTextRenderFit(
     const blocks = getWallTextRenderBlocks(content);
     for (const [segmentIndex, segment] of blocks.entries()) {
       for (const line of segment.lines) {
-        const metadata = await sharp({
-          text: {
-            dpi: 72,
-            font: `Inter Regular ${fontSize}`,
-            fontfile: fontPath,
-            rgba: true,
-            text: escapePangoMarkup(line),
-            wrap: "none",
-          },
-        }).metadata();
-        const width = metadata.width ?? 0;
+        const width = await measureWallTextLine({
+          fontPath,
+          fontSize,
+          line,
+        });
 
         if (
           !width ||
@@ -120,25 +129,57 @@ export async function validateWallTextRenderFit(
   }
 
   if (widestFailure) {
-    throw new Error(
+    throw new WallTextRenderFitError(
       `Wall-of-text line does not fit the ${maximumTextWidth}px Inter text area at the ${WALL_TEXT_MINIMUM_FONT_SIZE}px minimum: "${widestFailure.line}"`,
     );
   }
 
-  throw new Error(
+  throw new WallTextRenderFitError(
     "Wall-of-text semantic lines do not fit the supported placement zones.",
   );
 }
 
-function getInterFontPath() {
-  return join(
-    process.cwd(),
-    "node_modules",
-    "@fontsource",
-    "inter",
-    "files",
-    "inter-latin-400-normal.woff",
-  );
+export function applyWallTextRenderFit(
+  content: TrendingWallTextContent,
+  render: WallTextRenderValidation,
+): TrendingWallTextContent {
+  return {
+    ...content,
+    ...(content.finalLayout
+      ? {
+          finalLayout: {
+            ...content.finalLayout,
+            fontSizePx: render.fontSize,
+            lineHeightPx: render.lineHeight,
+          },
+        }
+      : {}),
+    renderFontSize: render.fontSize,
+  };
+}
+
+async function measureWallTextLine(params: {
+  fontPath: string;
+  fontSize: WallTextFontSize;
+  line: string;
+}) {
+  const cacheKey = `${params.fontPath}:${params.fontSize}:${params.line}`;
+  const cached = lineWidthCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const metadata = await sharp({
+    text: {
+      dpi: 72,
+      font: `Inter Regular ${params.fontSize}`,
+      fontfile: params.fontPath,
+      rgba: true,
+      text: escapePangoMarkup(params.line),
+      wrap: "none",
+    },
+  }).metadata();
+  const width = metadata.width ?? 0;
+  if (width > 0) lineWidthCache.set(cacheKey, width);
+  return width;
 }
 
 function escapePangoMarkup(value: string) {

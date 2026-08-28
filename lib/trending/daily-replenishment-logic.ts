@@ -63,6 +63,7 @@ export function getMissingDailyCarouselCandidateIndexes(params: {
 
 export function canExtendDailyCarouselRefill(params: {
   currentRequestedCount: number;
+  hasTerminalFailure?: boolean;
   hasExistingBatch: boolean;
   lastUpdatedAt: string | null;
   now?: number;
@@ -70,6 +71,7 @@ export function canExtendDailyCarouselRefill(params: {
 }) {
   if (
     !params.hasExistingBatch ||
+    params.hasTerminalFailure ||
     toNonNegativeInteger(params.requestedCount) <=
       toNonNegativeInteger(params.currentRequestedCount)
   ) {
@@ -85,6 +87,33 @@ export function canExtendDailyCarouselRefill(params: {
     (params.now ?? Date.now()) - lastUpdatedAt >=
       DAILY_CAROUSEL_REFILL_REPAIR_INTERVAL_MS
   );
+}
+
+export function hasTerminalDailyCarouselGenerationFailure(params: {
+  generations: readonly {
+    status: string;
+    triggerRunId: string | null;
+  }[];
+  jobs: readonly {
+    id: string;
+    status: string;
+  }[];
+}) {
+  const jobById = new Map(params.jobs.map((job) => [job.id, job]));
+
+  return params.generations.some((generation) => {
+    const job = generation.triggerRunId
+      ? jobById.get(generation.triggerRunId)
+      : null;
+
+    if (job?.status === "failed" || job?.status === "cancelled") {
+      return true;
+    }
+
+    // A failed generation with no surviving job record cannot make progress.
+    // A failed row inside a still-active shared batch is not terminal yet.
+    return generation.status === "failed" && !job;
+  });
 }
 
 export function isCarouselGenerationAvailableOnDate(params: {

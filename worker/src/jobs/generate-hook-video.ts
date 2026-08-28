@@ -11,7 +11,7 @@ import { generateRunwayHookVideoBuffer } from "../lib/runway-video.js";
 import { generateGeminiOmniVideoBuffer } from "../lib/gemini-omni-video.js";
 import { getStoredObject, uploadBufferToStorage } from "../lib/storage.js";
 import {
-  buildUgcVideoPrompt,
+  buildVideoGenerationPrompt,
   DEFAULT_HOOK_VIDEO_PROVIDER,
   hookVideoCameraStyles,
   hookVideoEmotions,
@@ -27,16 +27,12 @@ import { RetryableJobError } from "../retryable-job-error.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext, WorkerJobOutput } from "./index.js";
 
-type GenerateHookVideoInput = {
+type GenerateHookVideoBaseInput = {
   aspectRatio: HookVideoAspectRatio;
   avatarImageUrl?: string;
-  cameraStyle: HookVideoCameraStyle;
   durationSeconds: number;
-  emotion: HookVideoEmotion;
   hookIdea: string;
   model?: "google_omni";
-  productDescription?: string;
-  productName?: string;
   projectId: string;
   provider?: HookVideoProvider;
   referenceVideoDurationSeconds?: number;
@@ -44,6 +40,18 @@ type GenerateHookVideoInput = {
   userId: string;
   videoId: string;
 };
+
+type GenerateHookVideoInput = GenerateHookVideoBaseInput &
+  (
+    | { promptMode: "direct" }
+    | {
+        cameraStyle: HookVideoCameraStyle;
+        emotion: HookVideoEmotion;
+        productDescription?: string;
+        productName?: string;
+        promptMode: "ugc_template";
+      }
+  );
 
 const hookVideoAspectRatios = ["9:16", "16:9"] as const;
 type HookVideoAspectRatio = (typeof hookVideoAspectRatios)[number];
@@ -57,7 +65,7 @@ export async function runGenerateHookVideoJob(
   context: WorkerJobContext,
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
-  const prompt = buildUgcVideoPrompt(input);
+  const prompt = buildVideoGenerationPrompt(input);
   const outputKey = `videos/hooks/${input.userId}/${input.projectId}/${input.videoId}.mp4`;
   const existingOutput = await getStoredObject(outputKey);
 
@@ -390,28 +398,16 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     throw new Error("generate_hook_video input_json must be an object.");
   }
 
-  return {
+  const promptMode =
+    job.input_json.promptMode === "direct" ? "direct" : "ugc_template";
+  const sharedInput: GenerateHookVideoBaseInput = {
     aspectRatio:
       getOptionalChoice(job.input_json.aspectRatio, hookVideoAspectRatios) ??
       "9:16",
     avatarImageUrl: getOptionalHttpsUrl(job.input_json.avatarImageUrl),
-    cameraStyle: getChoice(
-      job.input_json.cameraStyle,
-      hookVideoCameraStyles,
-      "cameraStyle",
-    ),
-    emotion: getChoice(job.input_json.emotion, hookVideoEmotions, "emotion"),
     durationSeconds: getGenerationDurationSeconds(job.input_json.durationSeconds),
     hookIdea: getText(job.input_json.hookIdea, "hookIdea", MAX_HOOK_LENGTH),
     model: job.input_json.model === "google_omni" ? "google_omni" : undefined,
-    productDescription: getOptionalText(
-      job.input_json.productDescription,
-      MAX_PRODUCT_DESCRIPTION_LENGTH,
-    ),
-    productName: getOptionalText(
-      job.input_json.productName,
-      MAX_PRODUCT_NAME_LENGTH,
-    ),
     projectId: getPathSegment(job.input_json.projectId, "projectId"),
     provider: getOptionalChoice(job.input_json.provider, hookVideoProviders),
     referenceVideoDurationSeconds: getOptionalDurationSeconds(
@@ -420,6 +416,29 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     referenceVideoUrl: getOptionalHttpsUrl(job.input_json.referenceVideoUrl),
     userId: getPathSegment(job.input_json.userId, "userId"),
     videoId: getPathSegment(job.input_json.videoId, "videoId"),
+  };
+
+  if (promptMode === "direct") {
+    return { ...sharedInput, promptMode: "direct" };
+  }
+
+  return {
+    ...sharedInput,
+    cameraStyle: getChoice(
+      job.input_json.cameraStyle,
+      hookVideoCameraStyles,
+      "cameraStyle",
+    ),
+    emotion: getChoice(job.input_json.emotion, hookVideoEmotions, "emotion"),
+    productDescription: getOptionalText(
+      job.input_json.productDescription,
+      MAX_PRODUCT_DESCRIPTION_LENGTH,
+    ),
+    productName: getOptionalText(
+      job.input_json.productName,
+      MAX_PRODUCT_NAME_LENGTH,
+    ),
+    promptMode: "ugc_template",
   };
 }
 

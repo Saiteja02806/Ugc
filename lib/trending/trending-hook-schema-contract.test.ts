@@ -476,3 +476,14 @@ test("durably tracks the target, each reserved chunk, and the next continuation"
     /reserveTrendingHookGenerationChunk[\s\S]*p_chunk_size: HOOK_GENERATION_CHUNK_SIZE/,
   );
 });
+
+test("calls the durable Hook RPC with its Supabase client context intact", () => {
+  assert.match(
+    hookRunSource,
+    /const supabase = getClient\(\)[\s\S]*await supabase\.rpc<T>\(name, args\)/,
+  );
+  assert.doesNotMatch(
+    hookRunSource,
+    /const rpc = getClient\(\)\.rpc/,
+  );
+});

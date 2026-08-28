@@ -38,6 +38,18 @@ test("prompt-only generation remains valid", () => {
   assert.doesNotMatch(videoApi, /Add a reference video before generating/);
 });
 
+test("AI Studio video generation sends the user's prompt without a UGC template", () => {
+  assert.match(videoApi, /hookIdea: prompt,[\s\S]*?promptMode: "direct"/);
+  assert.doesNotMatch(videoApi, /productName: "UGCPilot"/);
+  assert.doesNotMatch(videoApi, /productDescription: "Short-form creator content\."/);
+  assert.doesNotMatch(videoApi, /cameraStyle: "iphone_selfie"/);
+  assert.doesNotMatch(videoApi, /emotion: "confident"/);
+  assert.match(
+    videoWorker,
+    /const prompt = buildVideoGenerationPrompt\(input\)/,
+  );
+});
+
 function readProjectFile(relativePath: string) {
   return readFileSync(new URL(`../../${relativePath}`, import.meta.url), "utf8");
 }

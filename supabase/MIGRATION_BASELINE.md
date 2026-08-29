@@ -38,11 +38,16 @@ not active Supabase migration directories.
 ## Existing production database
 
 Do **not** execute the baseline SQL on the existing production database. Its
-objects already exist. The production cutover is ledger-only: after an exact
-read-only ledger backup and a successful disposable-project rehearsal, the old
-ledger records are replaced by one applied record for the baseline version.
-That changes Supabase's migration bookkeeping only; it does not rerun the
-baseline or modify application tables.
+objects already exist. On 2026-08-29, after an exact read-only ledger backup
+and successful disposable-project and production rollback rehearsals, the old
+production ledger records were replaced by one applied record for baseline
+version `20260829093001`. The baseline SQL was not executed.
 
-Keep `MIGRATION_RECONCILIATION_LOCK.md` until both test and production dry runs
-are clean and production's schema has been reverified.
+The transition reverified the complete public-schema fingerprint and static
+reference counts before and after the transaction. A final production
+`supabase migration list` matched the local baseline and
+`supabase db push --dry-run` reported the database was up to date with no
+pending migrations, seeds, or roles.
+
+All future schema changes must be new, forward-only migrations with versions
+later than `20260829093001`.

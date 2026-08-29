@@ -43,6 +43,9 @@ const carouselPublishRetryMigration = readProjectFile(
 const hookVideoScheduleMigration = readProjectFile(
   "supabase/migrations/20260717190000_link_hook_video_schedules.sql",
 );
+const hookVideoScheduleRecoveryMigration = readProjectFile(
+  "supabase/migrations/20260829093000_restore_hook_video_schedule_uniqueness_guards.sql",
+);
 const hookVideoScheduleRoute = readProjectFile(
   "app/api/trending/hook-videos/drafts/schedule/route.ts",
 );
@@ -1198,6 +1201,19 @@ test("each saved Hook video links to at most one valid schedule", () => {
     hookVideoScheduleRoute,
     /existingDraft\?\.scheduledPostId[\s\S]*existingSchedule\.idempotencyKey === requestedIdempotencyKey[\s\S]*hook_video_already_scheduled/,
   );
+});
+
+test("the forward recovery migration restores missing Hook-video schedule guards", () => {
+  assert.match(hookVideoScheduleRecoveryMigration, /set lock_timeout = '5s'/);
+  assert.match(
+    hookVideoScheduleRecoveryMigration,
+    /create unique index if not exists hook_video_drafts_unique_schedule_idx[\s\S]*where scheduled_post_id is not null/,
+  );
+  assert.match(
+    hookVideoScheduleRecoveryMigration,
+    /create unique index if not exists scheduled_posts_active_hook_video_draft_idx[\s\S]*metadata \? 'hookVideoDraftId'[\s\S]*status <> 'cancelled'/,
+  );
+  assert.match(hookVideoScheduleRecoveryMigration, /reset lock_timeout/);
 });
 
 function getSection(source: string, start: string, end: string) {

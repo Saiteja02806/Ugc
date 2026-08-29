@@ -42,6 +42,26 @@ test("Instagram connection limits are enforced atomically in Postgres", () => {
   assert.doesNotMatch(migration, /security definer/i);
 });
 
+test("the forward recovery migration restores the database guard if history drift skipped it", () => {
+  const migration = readFileSync(
+    projectFile(
+      "supabase/migrations/20260829091500_restore_instagram_connection_limit_guard.sql",
+    ),
+    "utf8",
+  );
+
+  assert.match(
+    migration,
+    /create or replace function public\.enforce_instagram_connection_limit\(\)/,
+  );
+  assert.match(
+    migration,
+    /drop trigger if exists enforce_instagram_connection_limit[\s\S]*create trigger enforce_instagram_connection_limit/,
+  );
+  assert.match(migration, /security invoker/);
+  assert.doesNotMatch(migration, /security definer/i);
+});
+
 test("the OAuth callback translates the database guard into a safe user error", () => {
   const oauthSource = readFileSync(projectFile("lib/social/oauth.ts"), "utf8");
   const callbackSource = readFileSync(

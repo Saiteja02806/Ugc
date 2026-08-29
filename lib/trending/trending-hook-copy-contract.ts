@@ -8,6 +8,8 @@ export const TRENDING_HOOK_REACTION_SELECTION_VERSION =
   "reaction-format-map-v2";
 export const TRENDING_HOOK_COPY_JOB_TYPE =
   "generate_trending_hook_copy" as const;
+export const TRENDING_HOOK_FEED_GENERATION_MODE =
+  "reaction_mapped_lean_v1" as const;
 
 const TERMINAL_TRENDING_HOOK_COPY_ERROR_MARKERS = [
   "trending_hook_generation_invalid_",

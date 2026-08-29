@@ -1742,6 +1742,10 @@ function TrendingDeck({
       ),
     [candidates, optimisticallyDismissedItemIds],
   );
+  const deckProgressLabel = getTrendingDeckProgressLabel({
+    readyCount: visibleCandidates.length,
+    remainingCount,
+  });
   const activeItemIndex = getTrendingFeedActiveItemIndex(
     visibleCandidates,
     activeItemId,
@@ -2446,7 +2450,7 @@ function TrendingDeck({
             aria-roledescription="Trending content deck"
             aria-busy={Boolean(exitDirection)}
             tabIndex={0}
-            aria-label={`Trending content deck. Showing content ${activeItemIndex + 1} of ${visibleCandidates.length}. Press left arrow to reject or right arrow to accept this creative.`}
+            aria-label={`Trending content deck. Showing ready content ${activeItemIndex + 1} of ${visibleCandidates.length}. ${deckProgressLabel}. Press left arrow to reject or right arrow to accept this creative.`}
             onKeyDown={handleDeckKeyDown}
             className={cn(
               "relative isolate mx-auto flex items-center justify-center overflow-visible rounded-[20px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background",
@@ -2511,7 +2515,7 @@ function TrendingDeck({
                 </div>
               </div>
             </div>
-            <div className="absolute left-1/2 top-full z-40 w-max -translate-x-1/2">
+            <div className="absolute left-1/2 top-full z-40 flex w-max -translate-x-1/2 flex-col items-center">
               <CreativeDecisionActions
                 acceptDisabled={
                   activeHookPreviewStatus !== null &&
@@ -2521,10 +2525,17 @@ function TrendingDeck({
                 onAccept={() => requestCreativeDecision("accepted")}
                 onReject={() => requestCreativeDecision("rejected")}
               />
+              <p
+                data-trending-deck-progress
+                className="mt-2 whitespace-nowrap text-center text-xs text-muted"
+              >
+                {deckProgressLabel}
+              </p>
             </div>
           </div>
           <span className="sr-only" aria-live="polite">
-            Showing {title}, idea {activeItemIndex + 1} of {visibleCandidates.length}
+            Showing {title}, ready content {activeItemIndex + 1} of{" "}
+            {visibleCandidates.length}. {deckProgressLabel}.
           </span>
         </>
       ) : pendingSlotCount > 0 ? (
@@ -2909,6 +2920,26 @@ function TrendingFormatPill({
       </span>
     </div>
   );
+}
+
+function getTrendingDeckProgressLabel({
+  readyCount,
+  remainingCount,
+}: {
+  readyCount: number;
+  remainingCount: number;
+}) {
+  const safeReadyCount = Math.max(Math.trunc(readyCount), 0);
+  const safeRemainingCount = Math.max(
+    Math.trunc(remainingCount),
+    safeReadyCount,
+  );
+
+  if (safeRemainingCount > safeReadyCount) {
+    return `${safeReadyCount} ready now · ${safeRemainingCount} total remaining`;
+  }
+
+  return `${safeRemainingCount} content ${safeRemainingCount === 1 ? "piece" : "pieces"} remaining`;
 }
 
 function getTrendingReviewCardFrameClass(

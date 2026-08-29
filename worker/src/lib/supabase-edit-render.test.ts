@@ -13,7 +13,22 @@ test("keeps durable Hook run RPC calls bound to the Supabase client", async () =
       assert.equal(this.rest?.available, true);
       calls.push({ args, name });
 
-      if (name === "persist_trending_hook_generation_chunk_v1") {
+      if (name === "get_trending_hook_generation_chunk_progress_v1") {
+        return {
+          data: [
+            {
+              accepted_count: 0,
+              already_persisted: false,
+              completed_valid_count: 0,
+              remaining_valid_count: 1,
+              run_status: "processing",
+            },
+          ],
+          error: null,
+        };
+      }
+
+      if (name === "persist_trending_hook_generation_chunk_v2") {
         return {
           data: [
             {
@@ -33,7 +48,14 @@ test("keeps durable Hook run RPC calls bound to the Supabase client", async () =
   };
   const store = new SupabaseJobStore(client as never);
 
+  const progress = await store.getTrendingHookGenerationRunChunkProgress({
+    chunkId: "chunk-1",
+    jobId: "job-1",
+    runId: "run-1",
+  });
+
   const persisted = await store.persistTrendingHookGenerationRunChunk({
+    appendOnly: true,
     businessProfileId: "profile-1",
     businessProfileVersion: 1,
     candidates: [],
@@ -50,12 +72,14 @@ test("keeps durable Hook run RPC calls bound to the Supabase client", async () =
     jobId: "job-1",
   });
 
+  assert.equal(progress.already_persisted, false);
   assert.equal(persisted.accepted_count, 1);
   assert.equal(recovered, true);
   assert.deepEqual(
     calls.map((call) => call.name),
     [
-      "persist_trending_hook_generation_chunk_v1",
+      "get_trending_hook_generation_chunk_progress_v1",
+      "persist_trending_hook_generation_chunk_v2",
       "fail_trending_hook_generation_chunk_v1",
     ],
   );

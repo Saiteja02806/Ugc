@@ -3,19 +3,19 @@
 import {
   AlertCircle,
   Clapperboard,
-  Images,
-  LoaderCircle,
+  LockKeyhole,
+  Pause,
+  Play,
   RefreshCw,
-  ScanText,
-  Video,
+  Sparkles,
 } from "lucide-react";
-import Script from "next/script";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { HookReviewCard } from "@/components/viral/hook-review-card";
-import type { InstagramEmbedSdkState } from "@/components/viral/instagram-embed";
+import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Empty,
   EmptyDescription,
@@ -24,262 +24,79 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import type {
-  ViralReviewItem,
-  ViralReviewPage,
-} from "@/lib/viral/hook-review";
+import type { ExploreHookVideo } from "@/lib/explore/hook-video-types";
 
-type ExploreSection = "hook-videos" | "wall-of-text" | "slideshows";
+type ExploreLoadState = "error" | "loading" | "ready";
 
-const SECTION_CONFIG: Record<
-  ExploreSection,
-  {
-    backendSection: "hook_video" | "wall_of_text" | "slideshow";
-    emptyDescription: string;
-    emptyTitle: string;
-    label: string;
-    subtitle: string;
-  }
-> = {
-  "hook-videos": {
-    backendSection: "hook_video",
-    emptyDescription: "Newly imported Hook videos will appear here automatically.",
-    emptyTitle: "No Hook videos yet",
-    label: "Hook Videos",
-    subtitle: "Watch each reference video and find the hook you want to use.",
-  },
-  "wall-of-text": {
-    backendSection: "wall_of_text",
-    emptyDescription:
-      "Newly imported Wall of Text references will appear here automatically.",
-    emptyTitle: "No Wall of Text posts yet",
-    label: "Wall of Text",
-    subtitle:
-      "Browse viral text overlay references and see how creators format on-screen copy.",
-  },
-  slideshows: {
-    backendSection: "slideshow",
-    emptyDescription:
-      "Newly imported Slideshow carousel references will appear here automatically.",
-    emptyTitle: "No Slideshow posts yet",
-    label: "Slideshows",
-    subtitle:
-      "Explore viral multi-slide carousel posts and discover high-performing slide formats.",
-  },
-};
-
-const PAGE_SIZE = 12;
-
-type ReviewPageResponse = ViralReviewPage & {
+type HookVideoResponse = {
+  items?: unknown;
   message?: unknown;
   ok?: unknown;
+  preview?: unknown;
+};
+
+type ExploreHookVideoLibrary = {
+  items: Array<ExploreHookVideo>;
+  preview: ExploreHookVideo | null;
 };
 
 export function ViralWorkspace() {
-  const [activeSection, setActiveSection] =
-    useState<ExploreSection>("hook-videos");
-  const [items, setItems] = useState<Array<ViralReviewItem>>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loadState, setLoadState] = useState<"error" | "loading" | "ready">(
-    "loading",
-  );
+  const [items, setItems] = useState<Array<ExploreHookVideo>>([]);
+  const [previewItem, setPreviewItem] = useState<ExploreHookVideo | null>(null);
+  const [loadState, setLoadState] = useState<ExploreLoadState>("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [sdkRevision, setSdkRevision] = useState(0);
-  const [sdkState, setSdkState] =
-    useState<InstagramEmbedSdkState>("loading");
-  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
-  const loadingMoreRef = useRef(false);
+  const subscriptionQuery = useBillingSubscription();
+  const isProUser = subscriptionQuery.data?.isActive === true;
 
-  const currentSectionConfig = SECTION_CONFIG[activeSection];
-
-  const loadFirstPage = useCallback(
-    async (section: ExploreSection, signal?: AbortSignal) => {
-      try {
-        setLoadState("loading");
-        setLoadError(null);
-        const backendSection = SECTION_CONFIG[section].backendSection;
-        const page = await fetchReviewPage(backendSection, null, signal);
-        setItems(page.items);
-        setNextCursor(page.nextCursor);
-        setLoadState("ready");
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setLoadError(
-          error instanceof Error
-            ? error.message
-            : "Could not load the Explore review queue.",
-        );
-        setLoadState("error");
-      }
-    },
-    [],
-  );
-
-  const loadMore = useCallback(async () => {
-    if (!nextCursor || loadingMoreRef.current) return;
-
-    loadingMoreRef.current = true;
-    setIsLoadingMore(true);
-
+  const loadHookVideos = useCallback(async (signal?: AbortSignal) => {
     try {
-      const backendSection = SECTION_CONFIG[activeSection].backendSection;
-      const page = await fetchReviewPage(backendSection, nextCursor);
-      setItems((current) => mergeReviewItems(current, page.items));
-      setNextCursor(page.nextCursor);
+      setLoadState("loading");
+      setLoadError(null);
+      const library = await fetchHookVideos(signal);
+      setItems(library.items);
+      setPreviewItem(library.preview);
+      setLoadState("ready");
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+
       setLoadError(
         error instanceof Error
           ? error.message
-          : "Could not load more Explore references.",
+          : "Could not load the Explore Hook library.",
       );
-    } finally {
-      loadingMoreRef.current = false;
-      setIsLoadingMore(false);
+      setLoadState("error");
     }
-  }, [activeSection, nextCursor]);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
     const frame = window.requestAnimationFrame(() => {
-      void loadFirstPage(activeSection, controller.signal);
+      void loadHookVideos(controller.signal);
     });
 
     return () => {
       window.cancelAnimationFrame(frame);
       controller.abort();
     };
-  }, [activeSection, loadFirstPage]);
-
-  useEffect(() => {
-    const sentinel = loadMoreSentinelRef.current;
-    if (!sentinel || !nextCursor || loadState !== "ready") return;
-
-    if (!("IntersectionObserver" in window)) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          void loadMore();
-        }
-      },
-      { rootMargin: "600px 0px" },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [loadMore, loadState, nextCursor]);
+  }, [loadHookVideos]);
 
   return (
     <section className="min-h-dvh min-w-0 flex-1 bg-background px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <Script
-        id="instagram-embed-sdk"
-        src="https://www.instagram.com/embed.js"
-        strategy="lazyOnload"
-        onError={() => setSdkState("error")}
-        onReady={() => {
-          setSdkState("ready");
-          setSdkRevision((revision) => revision + 1);
-        }}
-      />
-
       <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-7">
-        <header className="flex flex-col gap-2">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2.5">
-              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-primary">
-                Private review queue
-              </p>
-              {loadState === "ready" && items.length > 0 ? (
-                <span className="inline-flex items-center rounded-full bg-card-muted px-2.5 py-0.5 text-xs font-medium text-muted">
-                  {items.length} {items.length === 1 ? "reference" : "references"}
-                </span>
-              ) : null}
-            </div>
-            <h1 className="text-[32px] font-semibold tracking-[-0.035em] text-foreground-strong sm:text-[36px]">
-              Explore
-            </h1>
-            <p className="max-w-2xl text-sm leading-6 text-muted sm:text-[15px]">
-              {currentSectionConfig.subtitle}
-            </p>
-          </div>
+        <header className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-primary">
+            Explore
+          </p>
+          <h1 className="mt-2 text-[32px] font-semibold tracking-[-0.035em] text-foreground-strong sm:text-[36px]">
+            Hook Videos
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-muted sm:text-[15px]">
+            Watch proven Hook references, then bring one into AI Studio to create in your own style.
+          </p>
         </header>
 
-        <ToggleGroup
-          aria-label="Explore content sections"
-          value={[activeSection]}
-          onValueChange={(val) => {
-            const next = val[0] as ExploreSection | undefined;
-            if (next && next !== activeSection) {
-              setItems([]);
-              setNextCursor(null);
-              setActiveSection(next);
-            }
-          }}
-          variant="outline"
-          className="inline-flex w-fit max-w-full items-center gap-1 rounded-full border border-border bg-card-muted p-1 sm:w-fit"
-        >
-          <ToggleGroupItem
-            value="hook-videos"
-            aria-label="Hook Videos"
-            className="inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold data-[state=on]:bg-card data-[state=on]:text-foreground-strong data-[state=on]:shadow-sm transition-[background-color,color,box-shadow]"
-          >
-            <Video className="size-3.5 text-primary" aria-hidden="true" />
-            Hook Videos
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="wall-of-text"
-            aria-label="Wall of Text"
-            className="inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold data-[state=on]:bg-card data-[state=on]:text-foreground-strong data-[state=on]:shadow-sm transition-[background-color,color,box-shadow]"
-          >
-            <ScanText className="size-3.5 text-primary" aria-hidden="true" />
-            Wall of Text
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="slideshows"
-            aria-label="Slideshows"
-            className="inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold data-[state=on]:bg-card data-[state=on]:text-foreground-strong data-[state=on]:shadow-sm transition-[background-color,color,box-shadow]"
-          >
-            <Images className="size-3.5 text-primary" aria-hidden="true" />
-            Slideshows
-          </ToggleGroupItem>
-        </ToggleGroup>
-
-        {loadError && loadState === "ready" ? (
-          <Alert variant="destructive">
-            <AlertCircle aria-hidden="true" />
-            <AlertTitle>Some references could not be loaded</AlertTitle>
-            <AlertDescription>{loadError}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        {sdkState === "error" && loadState === "ready" ? (
-          <Alert variant="destructive" className="max-w-2xl">
-            <AlertCircle aria-hidden="true" />
-            <AlertTitle>Video previews could not load</AlertTitle>
-            <AlertDescription>
-              Instagram did not provide the video player. Check your connection
-              or content-blocking settings, then refresh Explore.
-            </AlertDescription>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              onClick={() => window.location.reload()}
-              className="mt-2 w-fit"
-            >
-              <RefreshCw data-icon="inline-start" aria-hidden="true" />
-              Refresh Explore
-            </Button>
-          </Alert>
-        ) : null}
-
-        {loadState === "loading" ? <ReviewGridSkeleton /> : null}
+        {loadState === "loading" ? <HookVideoGridSkeleton /> : null}
 
         {loadState === "error" ? (
           <Alert variant="destructive" className="max-w-2xl">
@@ -290,9 +107,7 @@ export function ViralWorkspace() {
               type="button"
               variant="outline"
               size="lg"
-              onClick={() => {
-                void loadFirstPage(activeSection);
-              }}
+              onClick={() => void loadHookVideos()}
               className="mt-2 w-fit"
             >
               <RefreshCw data-icon="inline-start" aria-hidden="true" />
@@ -302,8 +117,8 @@ export function ViralWorkspace() {
         ) : null}
 
         {loadState === "ready" && items.length === 0 ? (
-          <div className="min-h-[420px] rounded-xl border border-border bg-card shadow-card">
-            <Empty className="min-h-[420px] border-0 px-6 py-12">
+          <div className="min-h-[360px] rounded-xl border border-border bg-card shadow-card">
+            <Empty className="min-h-[360px] border-0 px-6 py-12">
               <EmptyHeader>
                 <EmptyMedia
                   variant="icon"
@@ -312,130 +127,294 @@ export function ViralWorkspace() {
                   <Clapperboard className="size-5" aria-hidden="true" />
                 </EmptyMedia>
                 <EmptyTitle className="text-base font-semibold text-foreground-strong">
-                  {currentSectionConfig.emptyTitle}
+                  No Hook videos yet
                 </EmptyTitle>
                 <EmptyDescription>
-                  {currentSectionConfig.emptyDescription}
+                  Hook videos will appear here after they are imported to Explore.
                 </EmptyDescription>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    void loadFirstPage(activeSection);
-                  }}
-                  className="mt-3 gap-1.5"
-                >
-                  <RefreshCw data-icon="inline-start" className="size-3.5" aria-hidden="true" />
-                  Refresh queue
-                </Button>
               </EmptyHeader>
             </Empty>
           </div>
         ) : null}
 
         {loadState === "ready" && items.length > 0 ? (
-          <div className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(220px,290px))] items-start justify-start gap-x-5 gap-y-8">
-            {items.map((item) => (
-              <HookReviewCard
-                key={item.id}
-                item={item}
-                sdkRevision={sdkRevision}
-                sdkState={sdkState}
-              />
-            ))}
-          </div>
-        ) : null}
-
-        <div ref={loadMoreSentinelRef} className="flex min-h-10 justify-center">
-          {isLoadingMore ? (
-            <div
-              role="status"
-              className="flex items-center gap-2 text-sm font-medium text-muted"
-            >
-              <LoaderCircle
-                className="size-4 animate-spin motion-reduce:animate-none"
-                aria-hidden="true"
-              />
-              Loading more references...
+          isProUser ? (
+            <div className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(220px,280px))] items-start justify-start gap-5">
+              {items.map((item) => (
+                <ExploreHookVideoCard key={item.id} item={item} />
+              ))}
             </div>
-          ) : nextCursor ? (
-            <Button type="button" variant="outline" onClick={() => void loadMore()}>
-              Load more
-            </Button>
-          ) : null}
+          ) : previewItem ? (
+            <ExploreProPreview
+              checkingPlan={subscriptionQuery.isPending}
+              item={previewItem}
+              previewItems={items}
+            />
+          ) : (
+            <Alert variant="destructive" className="max-w-2xl">
+              <AlertCircle aria-hidden="true" />
+              <AlertTitle>Explore preview is unavailable</AlertTitle>
+              <AlertDescription>
+                Refresh Explore to load the Pro preview.
+              </AlertDescription>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={() => void loadHookVideos()}
+                className="mt-2 w-fit"
+              >
+                <RefreshCw data-icon="inline-start" aria-hidden="true" />
+                Try again
+              </Button>
+            </Alert>
+          )
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function ExploreProPreview({
+  checkingPlan,
+  item,
+  previewItems,
+}: {
+  checkingPlan: boolean;
+  item: ExploreHookVideo;
+  previewItems: Array<ExploreHookVideo>;
+}) {
+  return (
+    <section
+      aria-label="Explore Pro preview"
+      className="relative isolate overflow-hidden rounded-2xl border border-border bg-card px-4 py-8 shadow-card sm:px-8 sm:py-10"
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden opacity-60"
+      >
+        <div className="grid min-w-[920px] grid-cols-4 gap-4 p-5 blur-[9px] sm:min-w-[1120px]">
+          {previewItems.map((previewItem) => (
+            <div
+              key={previewItem.id}
+              className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+            >
+              <video
+                aria-hidden="true"
+                className="aspect-[9/16] w-full object-cover"
+                muted
+                playsInline
+                preload="metadata"
+                src={previewItem.videoUrl}
+                tabIndex={-1}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="absolute inset-0 bg-background/55 backdrop-blur-[2px]" />
+      </div>
+
+      <div className="relative mx-auto flex w-full max-w-[560px] flex-col items-center">
+        <div className="w-full max-w-[220px]">
+          <ExploreHookVideoCard item={item} autoPlay />
+        </div>
+
+        <div className="mt-6 text-center sm:mt-7">
+          <Badge variant="pro" className="mx-auto">
+            <LockKeyhole data-icon="inline-start" aria-hidden="true" />
+            Pro access
+          </Badge>
+          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-foreground-strong sm:text-[28px]">
+            Turn a high-performing Hook into your next video.
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            This Hook performed well on Instagram. With Pro, you can watch the
+            full library, select the right reference, and generate a version in
+            your own style.
+          </p>
+          <ul className="mx-auto mt-4 w-fit space-y-2 text-left text-sm leading-5 text-foreground sm:text-[15px]">
+            <li>Watch proven opening moments.</li>
+            <li>Bring any Hook into AI Studio as your context.</li>
+            <li>Generate, refine, and publish your own version.</li>
+          </ul>
+          {checkingPlan ? (
+            <p className="mt-5 text-sm font-medium text-muted">
+              Checking your plan…
+            </p>
+          ) : (
+            <Link
+              href="/pricing"
+              className={buttonVariants({ size: "lg", className: "mt-5" })}
+            >
+              Upgrade to Pro
+            </Link>
+          )}
         </div>
       </div>
     </section>
   );
 }
 
-function ReviewGridSkeleton() {
+function ExploreHookVideoCard({
+  item,
+  autoPlay = false,
+}: {
+  item: ExploreHookVideo;
+  autoPlay?: boolean;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [hasEnded, setHasEnded] = useState(false);
+
+  function handlePlayToggle() {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (video.paused) {
+      if (video.ended) {
+        video.currentTime = 0;
+      }
+
+      void video.play().catch(() => {
+        setIsPlaying(false);
+      });
+    } else {
+      video.pause();
+    }
+  }
+
+  return (
+    <article className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-border-strong hover:shadow-md">
+      <div className="relative aspect-[9/16] overflow-hidden bg-card-muted">
+        <video
+          ref={videoRef}
+          aria-label="Explore Hook video"
+          className="size-full object-cover"
+          autoPlay={autoPlay}
+          muted
+          playsInline
+          preload={autoPlay ? "auto" : "metadata"}
+          src={item.videoUrl}
+          onEnded={() => {
+            setHasEnded(true);
+            setIsPlaying(false);
+          }}
+          onPause={() => setIsPlaying(false)}
+          onPlay={() => {
+            setHasEnded(false);
+            setIsPlaying(true);
+          }}
+        />
+        <button
+          type="button"
+          onClick={handlePlayToggle}
+          aria-label={
+            isPlaying
+              ? "Pause Hook video"
+              : hasEnded
+                ? "Replay Hook video"
+                : "Play Hook video"
+          }
+          className={`absolute inset-0 flex items-center justify-center bg-black/0 transition-[background-color,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/90 hover:bg-black/10 ${
+            autoPlay && isPlaying
+              ? "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
+              : "opacity-100"
+          }`}
+        >
+          <span className="flex size-12 items-center justify-center rounded-full border border-white/70 bg-black/30 text-white shadow-sm backdrop-blur-sm transition-transform duration-150 group-hover:scale-105">
+            {isPlaying ? (
+              <Pause className="size-5" aria-hidden="true" />
+            ) : (
+              <Play className="ml-0.5 size-5 fill-current" aria-hidden="true" />
+            )}
+          </span>
+        </button>
+      </div>
+      <div className="border-t border-border bg-card p-2">
+        <Link
+          href={getHookStudioHref(item)}
+          className={buttonVariants({
+            size: "lg",
+            className: "w-full font-semibold",
+          })}
+        >
+          <Sparkles data-icon="inline-start" className="size-3.5" aria-hidden="true" />
+          Use This Hook
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+function getHookStudioHref(item: ExploreHookVideo) {
+  const params = new URLSearchParams({
+    mode: "videos",
+    refId: item.id,
+    refType: "hook",
+    sourceUrl: item.videoUrl,
+  });
+
+  return `/ai-studio?${params.toString()}`;
+}
+
+function HookVideoGridSkeleton() {
   return (
     <div
-      className="grid grid-cols-[repeat(auto-fill,minmax(220px,290px))] items-start justify-start gap-x-5 gap-y-8"
+      className="grid grid-cols-[repeat(auto-fill,minmax(220px,280px))] items-start justify-start gap-5"
       aria-busy="true"
     >
-      {[0, 1, 2, 3, 4, 5, 6, 7].map((index) => (
+      {[0, 1, 2, 3, 4, 5].map((index) => (
         <div
           key={index}
-          className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+          className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
         >
           <Skeleton className="aspect-[9/16] w-full rounded-none" />
-          <div className="border-t border-border bg-card p-2">
-            <Skeleton className="h-7 w-full rounded-md" />
+          <div className="border-t border-border p-2">
+            <Skeleton className="h-9 w-full rounded-lg" />
           </div>
         </div>
       ))}
-      <span className="sr-only">Loading the Explore Hook review queue.</span>
+      <span className="sr-only">Loading Explore Hook videos.</span>
     </div>
   );
 }
 
-async function fetchReviewPage(
-  section: "hook_video" | "wall_of_text" | "slideshow",
-  cursor: string | null,
+async function fetchHookVideos(
   signal?: AbortSignal,
-): Promise<ViralReviewPage> {
+): Promise<ExploreHookVideoLibrary> {
   const token = await getCurrentUserIdToken();
   if (!token) {
     throw new Error("Your sign-in session is unavailable. Refresh and try again.");
   }
 
-  const searchParams = new URLSearchParams({
-    limit: String(PAGE_SIZE),
-    section,
-  });
-  if (cursor) searchParams.set("cursor", cursor);
-
-  const response = await fetch(`/api/admin/viral/review?${searchParams}`, {
+  const response = await fetch("/api/explore/hook-videos", {
     cache: "no-store",
     headers: { Authorization: `Bearer ${token}` },
     signal,
   });
-  const data = (await response.json().catch(() => null)) as
-    | ReviewPageResponse
-    | null;
+  const data = (await response.json().catch(() => null)) as HookVideoResponse | null;
 
   if (!response.ok || data?.ok !== true || !Array.isArray(data.items)) {
     throw new Error(
       typeof data?.message === "string"
         ? data.message
-        : "Could not load the Explore review queue.",
+        : "Could not load the Explore Hook library.",
     );
   }
 
   return {
-    items: data.items,
-    nextCursor: typeof data.nextCursor === "string" ? data.nextCursor : null,
+    items: data.items.filter(isExploreHookVideo),
+    preview: isExploreHookVideo(data.preview) ? data.preview : null,
   };
 }
 
-function mergeReviewItems(
-  current: Array<ViralReviewItem>,
-  incoming: Array<ViralReviewItem>,
-) {
-  const byId = new Map(current.map((item) => [item.id, item]));
-  for (const item of incoming) byId.set(item.id, item);
-  return Array.from(byId.values());
+function isExploreHookVideo(value: unknown): value is ExploreHookVideo {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof value.id === "string" &&
+    "videoUrl" in value &&
+    typeof value.videoUrl === "string"
+  );
 }

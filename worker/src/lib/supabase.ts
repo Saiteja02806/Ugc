@@ -226,7 +226,50 @@ export class SupabaseJobStore {
     return data ?? 0;
   }
 
+  async getTrendingHookGenerationRunChunkProgress(params: {
+    chunkId: string;
+    jobId: string;
+    runId: string;
+  }) {
+    const rpc = this.client.rpc.bind(this.client) as unknown as (
+      fn: string,
+      args: Record<string, Json>,
+    ) => Promise<{
+      data: Array<{
+        accepted_count: number;
+        already_persisted: boolean;
+        completed_valid_count: number;
+        remaining_valid_count: number;
+        run_status: string;
+      }> | null;
+      error: { message: string } | null;
+    }>;
+    const { data, error } = await rpc(
+      "get_trending_hook_generation_chunk_progress_v1",
+      {
+        p_chunk_id: params.chunkId,
+        p_job_id: params.jobId,
+        p_run_id: params.runId,
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Could not read Trending Hook generation run chunk: ${error.message}`,
+      );
+    }
+
+    const result = data?.[0];
+
+    if (!result) {
+      throw new Error("Trending Hook generation run chunk returned no progress.");
+    }
+
+    return result;
+  }
+
   async persistTrendingHookGenerationRunChunk(params: {
+    appendOnly?: boolean;
     businessProfileId: string;
     businessProfileVersion: number;
     candidates: Json;
@@ -252,7 +295,9 @@ export class SupabaseJobStore {
       error: { message: string } | null;
     }>;
     const { data, error } = await rpc(
-      "persist_trending_hook_generation_chunk_v1",
+      params.appendOnly
+        ? "persist_trending_hook_generation_chunk_v2"
+        : "persist_trending_hook_generation_chunk_v1",
       {
         p_business_profile_id: params.businessProfileId,
         p_business_profile_version: params.businessProfileVersion,

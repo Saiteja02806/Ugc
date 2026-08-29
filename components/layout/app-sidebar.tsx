@@ -29,6 +29,7 @@ import { useBillingSubscription } from "@/components/billing/use-billing-subscri
 
 export type AppSidebarActiveKey =
   | "trending"
+  | "explore"
   | "ai-studio"
   | "library"
   | "avatars"
@@ -69,6 +70,13 @@ const primaryNavigationItems: SidebarItem[] = [
     icon: "analytics",
   },
 ];
+
+const exploreNavigationItem: SidebarItem = {
+  key: "explore",
+  label: "Explore",
+  href: "/viral",
+  icon: "viral",
+};
 
 const libraryNavigationItems: SidebarItem[] = [
   {
@@ -355,6 +363,11 @@ function SidebarNavigation({
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
+  const visiblePrimaryNavigationItems = [
+    ...primaryNavigationItems,
+    exploreNavigationItem,
+  ];
+
   return (
     <nav
       aria-label="Primary navigation"
@@ -365,7 +378,7 @@ function SidebarNavigation({
       )}
     >
       <div className="flex flex-col gap-1">
-        {primaryNavigationItems.map((item) => (
+        {visiblePrimaryNavigationItems.map((item) => (
           <SidebarLink
             key={item.key}
             active={item.key === activeKey}

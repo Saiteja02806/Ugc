@@ -17,6 +17,7 @@ import {
 } from "@/lib/jobs/background-jobs";
 import {
   TRENDING_HOOK_COPY_JOB_TYPE,
+  TRENDING_HOOK_FEED_GENERATION_MODE,
   TRENDING_HOOK_PROMPT_VERSION,
   TRENDING_HOOK_SELECTION_VERSION,
   getTrendingHookPerformanceSignalKey,
@@ -74,6 +75,9 @@ export async function enqueueTrendingHookCopyJob(params: {
         generationRunId: params.generationRun?.id ?? null,
         generationRunRemainingValidCount:
           params.generationRun?.remainingValidCount ?? null,
+        generationMode: params.generationRun
+          ? TRENDING_HOOK_FEED_GENERATION_MODE
+          : null,
         performanceSignals: toJson(params.performanceSignals ?? {}),
         promptVersion: TRENDING_HOOK_PROMPT_VERSION,
         selectionVersion,
@@ -106,6 +110,9 @@ export async function enqueueTrendingHookCopyJob(params: {
         generationRunId: params.generationRun?.id ?? null,
         generationRunRemainingValidCount:
           params.generationRun?.remainingValidCount ?? null,
+        generationMode: params.generationRun
+          ? TRENDING_HOOK_FEED_GENERATION_MODE
+          : null,
         performanceSignals: toJson(params.performanceSignals ?? {}),
         promptVersion: TRENDING_HOOK_PROMPT_VERSION,
         selectionVersion,

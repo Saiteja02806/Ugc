@@ -6,8 +6,6 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import type { Json } from "@/lib/jobs/background-jobs";
 
-const HOOK_GENERATION_CHUNK_SIZE = 6;
-
 type RunStatus =
   | "queued"
   | "processing"
@@ -145,12 +143,11 @@ export async function createOrResumeAndReserveTrendingHookGenerationChunk(
   },
 ) {
   const row = await callRpc<ChunkRow>(
-    "create_or_resume_and_reserve_trending_hook_generation_chunk_v1",
+    "create_or_resume_and_reserve_trending_hook_generation_chunk_v2",
     {
       p_business_profile_id: params.businessProfileId,
       p_business_profile_version: params.businessProfileVersion,
       p_candidate_pool: params.candidatePool,
-      p_chunk_size: HOOK_GENERATION_CHUNK_SIZE,
       p_prompt_version: params.promptVersion,
       p_selection_version: params.selectionVersion,
       p_source_selection_key: params.sourceSelectionKey ?? "",
@@ -166,9 +163,8 @@ export async function reserveTrendingHookGenerationChunk(params: {
   runId: string;
 }) {
   const row = await callRpc<ChunkRow>(
-    "reserve_trending_hook_generation_chunk_v1",
+    "reserve_trending_hook_generation_chunk_v2",
     {
-      p_chunk_size: HOOK_GENERATION_CHUNK_SIZE,
       p_run_id: params.runId,
     },
   );
@@ -185,7 +181,7 @@ export async function reserveMissingInitialTrendingHookGenerationChunks(params: 
 }) {
   const supabase = getClient() as unknown as TrendingHookGenerationRpcClient;
   const { data, error } = await supabase.rpc<InitialRunRepairRow>(
-    "reserve_missing_initial_trending_hook_generation_chunks_v1",
+    "reserve_missing_initial_trending_hook_generation_chunks_v2",
     { p_limit: params.limit },
   );
 

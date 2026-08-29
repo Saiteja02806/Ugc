@@ -109,6 +109,13 @@ const durableHookPersistenceFixMigration = readFileSync(
   ),
   "utf8",
 );
+const simplifiedHookFlowMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260829124811_simplify_trending_hook_feed_generation.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const hookRunSource = readFileSync(
   new URL("./trending-hook-generation-runs.ts", import.meta.url),
   "utf8",
@@ -170,18 +177,18 @@ test("stores pre-demo Hook text separately from demo-based composition text", ()
   );
 });
 
-test("keeps validated Hook results when one source candidate fails review", () => {
+test("keeps independently valid Hook results when one source fails lean checks", () => {
   assert.match(
     hookWorkerJobSource,
-    /allowPartialCandidates: true/,
+    /generateReactionMappedTrendingHooks/,
   );
   assert.match(
     hookWorkerCopySource,
-    /if \(params\.allowPartialCandidates\)[\s\S]*failures\.push\(message\)[\s\S]*return \[\]/,
+    /There is no second AI reviewer in this path/,
   );
   assert.match(
     hookFeedSource,
-    /candidatePoolCount[\s\S]*Math\.max\(targetValidCount \* 6, 12\)[\s\S]*600/,
+    /candidatePoolCount = 600/,
   );
 });
 
@@ -515,8 +522,9 @@ test("durably tracks the target, each reserved chunk, and the next continuation"
   );
   assert.match(
     hookRunSource,
-    /reserveTrendingHookGenerationChunk[\s\S]*p_chunk_size: HOOK_GENERATION_CHUNK_SIZE/,
+    /reserveTrendingHookGenerationChunk[\s\S]*reserve_trending_hook_generation_chunk_v2/,
   );
+  assert.doesNotMatch(hookRunSource, /HOOK_GENERATION_CHUNK_SIZE/);
 });
 
 test("qualifies reservation run IDs so RETURNS TABLE output cannot block a chunk", () => {
@@ -591,7 +599,7 @@ test("commits an initial Hook run, chunk, and dispatch record as one database ac
   );
   assert.match(
     hookRunSource,
-    /createOrResumeAndReserveTrendingHookGenerationChunk[\s\S]*create_or_resume_and_reserve_trending_hook_generation_chunk_v1[\s\S]*p_chunk_size: HOOK_GENERATION_CHUNK_SIZE/i,
+    /createOrResumeAndReserveTrendingHookGenerationChunk[\s\S]*create_or_resume_and_reserve_trending_hook_generation_chunk_v2/i,
   );
   assert.match(
     hookFeedSource,
@@ -604,6 +612,69 @@ test("commits an initial Hook run, chunk, and dispatch record as one database ac
   assert.match(
     reactionMappedCanarySource,
     /create_or_resume_and_reserve_trending_hook_generation_chunk_v1[\s\S]*p_chunk_size: 6/i,
+  );
+});
+
+test("simplified Hook flow reserves the exact missing target and appends continuations", () => {
+  assert.match(
+    simplifiedHookFlowMigration,
+    /greatest\(1, least\(v_remaining, 12\)\)/i,
+  );
+  assert.match(
+    simplifiedHookFlowMigration,
+    /create_or_resume_and_reserve_trending_hook_generation_chunk_v2[\s\S]*create_or_resume_trending_hook_generation_run_v1[\s\S]*reserve_trending_hook_generation_chunk_v2/i,
+  );
+  assert.match(
+    simplifiedHookFlowMigration,
+    /target_valid_count = greatest\([\s\S]*run\.completed_valid_count \+ p_target_valid_count/i,
+  );
+  assert.match(
+    simplifiedHookFlowMigration,
+    /persist_trending_hook_generation_chunk_v2[\s\S]*persist_trending_hook_copy_generation_append_v1/i,
+  );
+  assert.doesNotMatch(
+    simplifiedHookFlowMigration.match(
+      /CREATE OR REPLACE FUNCTION public\.persist_trending_hook_copy_generation_append_v1[\s\S]*?REVOKE ALL ON FUNCTION public\.persist_trending_hook_copy_generation_append_v1/i,
+    )?.[0] ?? "",
+    /state\s*=\s*'superseded'/i,
+  );
+  assert.match(
+    hookWorkerJobSource,
+    /appendOnly:[\s\S]*TRENDING_HOOK_FEED_GENERATION_MODE/,
+  );
+});
+
+test("simplified Hook internal RPCs deny browser roles and keep service-worker access", () => {
+  const internalFunctions = [
+    "create_or_resume_trending_hook_generation_run_v1",
+    "reserve_trending_hook_generation_chunk_v2",
+    "create_or_resume_and_reserve_trending_hook_generation_chunk_v2",
+    "get_trending_hook_generation_chunk_progress_v1",
+    "persist_trending_hook_copy_generation_append_v1",
+    "persist_trending_hook_generation_chunk_v2",
+    "reserve_missing_initial_trending_hook_generation_chunks_v2",
+  ];
+
+  for (const functionName of internalFunctions) {
+    assert.match(
+      simplifiedHookFlowMigration,
+      new RegExp(
+        `GRANT EXECUTE ON FUNCTION public\\.${functionName}\\([\\s\\S]*?TO postgres, service_role;[\\s\\S]*?REVOKE ALL ON FUNCTION public\\.${functionName}\\([\\s\\S]*?FROM PUBLIC, anon, authenticated;`,
+        "i",
+      ),
+      `${functionName} must be callable only by trusted worker/database roles`,
+    );
+  }
+});
+
+test("Hook workers can read completed chunk progress before contacting AI", () => {
+  assert.match(
+    simplifiedHookFlowMigration,
+    /get_trending_hook_generation_chunk_progress_v1[\s\S]*chunk\.background_job_id = p_job_id[\s\S]*v_chunk\.status = 'completed'/i,
+  );
+  assert.match(
+    hookWorkerJobSource,
+    /getTrendingHookGenerationRunChunkProgress[\s\S]*already_persisted[\s\S]*const copies =/i,
   );
 });
 

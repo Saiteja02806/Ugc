@@ -5,7 +5,10 @@ export const LEGACY_WALL_TEXT_FONT_WEIGHT = 700;
 export const WALL_TEXT_LINE_HEIGHT_FACTOR = 1.1;
 export const WALL_TEXT_MAXIMUM_FONT_SIZE = 52;
 export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
-export const WALL_TEXT_OUTLINE_WIDTH = 2;
+// The reference Wall treatment needs a clear border over bright video areas.
+// At the 1080px render size, 4px remains readable at 44px type without
+// closing the counters inside letters such as a, e, and o.
+export const WALL_TEXT_OUTLINE_WIDTH = 4;
 export const WALL_TEXT_SECTION_GAP = 18;
 // The text box is the outer placement rectangle. Keep a real visual gap
 // inside it so the rendered glyphs and their outline never touch its edges.

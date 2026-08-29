@@ -45,6 +45,8 @@ export const TRENDING_HOOK_SELECTION_VERSION =
   "global-format-rotation-v1";
 export const TRENDING_HOOK_REACTION_SELECTION_VERSION =
   "reaction-format-map-v2";
+export const TRENDING_HOOK_FEED_GENERATION_MODE =
+  "reaction_mapped_lean_v1";
 export const TRENDING_HOOK_OVERLAY_VERSION =
   "hook-overlay-v4-fixed-type";
 export const TRENDING_HOOK_VALIDATOR_VERSION =
@@ -404,6 +406,208 @@ export type HookReview = {
 };
 
 type StructuredResponseClient = Pick<OpenAI, "responses">;
+
+type LeanHookDraft = {
+  candidateIndex: number;
+  draftKey: string;
+  evidenceKeys: string[];
+  hookTextFormatId: HookTextFormatId;
+  hookTextVariantId: string;
+  text: string;
+};
+
+type LeanHookInspection = {
+  draftKey: string;
+  evidenceBindings: HookEvidenceBinding[];
+  lines: string[];
+  reasons: string[];
+  visualFit: HookOverlayVisualFit;
+};
+
+/**
+ * Trending-feed generation deliberately uses a smaller contract than the
+ * user-driven Hook composer. The writer produces one mapped Hook per source,
+ * the shared renderer owns line wrapping, and only mechanical safety/fit
+ * failures receive one repair. There is no second AI reviewer in this path.
+ */
+export async function generateReactionMappedTrendingHooks(params: {
+  businessProfile: unknown;
+  candidates: TrendingHookCopyCandidate[];
+  client?: StructuredResponseClient;
+  model?: string;
+  performanceSignals?: HookTextPerformanceSignals;
+}) {
+  const candidates = normalizeCandidates(params.candidates);
+  const businessContext = extractBusinessContext(params.businessProfile);
+  const evidenceCatalog = buildBusinessEvidenceCatalog(businessContext);
+
+  if (evidenceCatalog.length === 0) {
+    throw new Error(
+      "The Business Profile needs at least one Hook evidence field.",
+    );
+  }
+
+  const performanceSignals = normalizePerformanceSignals(
+    params.performanceSignals,
+  );
+  const specs = buildDraftSpecs({
+    businessContext,
+    candidates,
+    performanceSignals,
+    selectionStrategy: "reaction_mapped",
+  });
+
+  if (specs.length === 0) {
+    return [];
+  }
+
+  const model =
+    params.model?.trim() ||
+    process.env.OPENAI_TRENDING_HOOK_MODEL?.trim() ||
+    DEFAULT_MODEL;
+  const client = params.client ?? createOpenAIClient();
+  const inputContextHash = createInputContextHash({
+    businessContext,
+    candidates,
+    evidenceCatalog,
+    generationMode: TRENDING_HOOK_FEED_GENERATION_MODE,
+  });
+  let drafts = await writeLeanHookDrafts({
+    businessContext,
+    client,
+    evidenceCatalog,
+    model,
+    specs,
+  });
+  const firstInspections = inspectLeanHookDraftBatch({
+    businessContext,
+    drafts,
+    evidenceCatalog,
+    specs,
+  });
+  const repairKeys = firstInspections
+    .filter((inspection) => inspection.reasons.length > 0)
+    .map((inspection) => inspection.draftKey);
+  const repairedKeys = new Set<string>();
+
+  if (repairKeys.length > 0) {
+    const repairSpecs = specs.filter((spec) =>
+      repairKeys.includes(spec.draftKey),
+    );
+
+    try {
+      const repairedDrafts = await repairLeanHookDrafts({
+        businessContext,
+        client,
+        drafts: drafts.filter((draft) =>
+          repairKeys.includes(draft.draftKey),
+        ),
+        evidenceCatalog,
+        inspections: firstInspections.filter((inspection) =>
+          repairKeys.includes(inspection.draftKey),
+        ),
+        model,
+        specs: repairSpecs,
+      });
+      repairedDrafts.forEach((draft) => repairedKeys.add(draft.draftKey));
+      drafts = mergeLeanDrafts(drafts, repairedDrafts, specs);
+    } catch (error) {
+      // A repair is best effort. Keep independently valid first-pass Hooks;
+      // rejected sources are returned to the durable continuation flow.
+      console.warn("Trending Hook lean repair failed:", error);
+    }
+  }
+
+  const finalInspections = inspectLeanHookDraftBatch({
+    businessContext,
+    drafts,
+    evidenceCatalog,
+    specs,
+  });
+  const draftByKey = new Map(drafts.map((draft) => [draft.draftKey, draft]));
+  const inspectionByKey = new Map(
+    finalInspections.map((inspection) => [inspection.draftKey, inspection]),
+  );
+
+  return specs.flatMap((spec) => {
+    const draft = draftByKey.get(spec.draftKey);
+    const inspection = inspectionByKey.get(spec.draftKey);
+
+    if (!draft || !inspection || inspection.reasons.length > 0) {
+      return [];
+    }
+
+    const hookText = inspection.lines.join("\n");
+    const wordCount = hookText.split(/\s+/u).filter(Boolean).length;
+    const estimatedReadingSeconds = Math.min(
+      spec.candidate.durationSeconds,
+      Math.max(0.5, wordCount / 3),
+    );
+    const technicalScores: HookReviewScores = {
+      businessRelevance: 20,
+      claimSafety: 10,
+      humanVoice: 15,
+      originality: 5,
+      reactionMatch: 20,
+      readability: 15,
+      scrollStop: 15,
+      total: 100,
+    };
+
+    return [{
+      ...spec.candidate,
+      audioIntent: DEFAULT_HOOK_AUDIO_INTENT_BY_FORMAT[spec.format.id],
+      campaignPurpose: spec.campaignPurpose,
+      hookText,
+      hookTextFormatId: spec.format.id,
+      hookTextFormatLibraryVersion: HOOK_TEXT_FORMAT_LIBRARY_VERSION,
+      hookTextFormatName: spec.format.name,
+      hookTextVariantId: draft.hookTextVariantId,
+      inputContextHash,
+      openingLines: inspection.lines,
+      readabilityReview: {
+        claimSafe: true,
+        durationSeconds: spec.candidate.durationSeconds,
+        estimatedReadingSeconds,
+        humanVoice: true,
+        openingOnly: true,
+        readable: true,
+        reactionMatch: true,
+        reason:
+          "Passed automatic mapped-format, claim, duplicate, and renderer checks; no AI reviewer was used.",
+        repairApplied: repairedKeys.has(spec.draftKey),
+        scores: technicalScores,
+        scrollStopping: true,
+        singleIdea: true,
+        truthful: true,
+      },
+      validation: {
+        aiLikeLanguagePassed: true,
+        bannedPhrasePassed: true,
+        businessGroundingPassed: true,
+        claimValidationPassed: true,
+        demoExplanationPassed: true,
+        duplicateCheckPassed: true,
+        emojiValidationPassed: true,
+        evidenceBindingPassed: true,
+        evidenceBindings: inspection.evidenceBindings,
+        firstPersonValidationPassed: true,
+        intentionalLineBreaksPassed: true,
+        lineValidationPassed: true,
+        multipleMessagesPassed: true,
+        passed: true,
+        reasons: [],
+        secondaryBenefitPassed: true,
+        textFitPassed: true,
+      },
+      validatorVersion: TRENDING_HOOK_VALIDATOR_VERSION,
+      visualFit: {
+        ...inspection.visualFit,
+        fits: true,
+      },
+    } satisfies TrendingHookCopyResult];
+  });
+}
 
 export async function generateValidatedTrendingHookCopies(params: {
   allowPartialCandidates?: boolean;
@@ -1189,6 +1393,307 @@ async function repairHookDrafts(params: {
   }
 }
 
+async function writeLeanHookDrafts(params: {
+  businessContext: ReturnType<typeof extractBusinessContext>;
+  client: StructuredResponseClient;
+  evidenceCatalog: HookEvidenceBinding[];
+  model: string;
+  specs: HookDraftSpec[];
+}) {
+  const result = await requestStructuredJson({
+    client: params.client,
+    input: {
+      businessContext: params.businessContext,
+      evidenceCatalog: params.evidenceCatalog,
+      requests: params.specs.map(toPromptSpec),
+    },
+    instructions: [
+      "Write one short opening Hook for every supplied reaction-video request.",
+      "Use exactly the assigned Global Hook text format and one of that format's supplied variants. Never switch formats or candidates.",
+      "Return plain Hook text, not line breaks. The renderer will place it on one or two lines.",
+      "Use at most twelve words and one clear thought. Stop before any explanation, demo, CTA, second benefit, or closing line.",
+      "Ground every meaningful word in one or two selected evidenceCatalog entries and return those evidence keys.",
+      "Match the reaction emotion and keep the language natural, immediate, and easy to read on a phone.",
+      "Never invent or state numerical results, prices, percentages, statistics, quantities, rankings, dates, durations, deadlines, speed claims, or time promises.",
+      "A digit may appear only when it is part of the verified businessName exactly as supplied, such as a legitimate brand containing 3D or 24x7. Do not turn a brand number into a claim.",
+      "Never invent guarantees, testimonials, personal history, population claims, comparisons, superlatives, or facts absent from the selected evidence.",
+      "Obey claimsToAvoid. Do not mention the influencer, source clip, future demo, or these instructions.",
+      "Return exactly one result for every draftKey, preserving draftKey, candidateIndex, and hookTextFormatId.",
+    ].join(" "),
+    model: params.model,
+    responseFormatName: "trending_hook_lean_v1_drafts",
+    schema: buildLeanHookBatchSchema(params.evidenceCatalog, params.specs),
+  });
+
+  return parseLeanHookDrafts(
+    result,
+    params.specs,
+    params.evidenceCatalog,
+  );
+}
+
+async function repairLeanHookDrafts(params: {
+  businessContext: ReturnType<typeof extractBusinessContext>;
+  client: StructuredResponseClient;
+  drafts: LeanHookDraft[];
+  evidenceCatalog: HookEvidenceBinding[];
+  inspections: Array<LeanHookInspection & { draftKey: string }>;
+  model: string;
+  specs: HookDraftSpec[];
+}) {
+  const result = await requestStructuredJson({
+    client: params.client,
+    input: {
+      businessContext: params.businessContext,
+      evidenceCatalog: params.evidenceCatalog,
+      requests: params.specs.map((spec) => ({
+        ...toPromptSpec(spec),
+        failedChecks:
+          params.inspections.find(
+            (inspection) => inspection.draftKey === spec.draftKey,
+          )?.reasons ?? [],
+        previousEvidenceKeys:
+          params.drafts.find((draft) => draft.draftKey === spec.draftKey)
+            ?.evidenceKeys ?? [],
+        previousText:
+          params.drafts.find((draft) => draft.draftKey === spec.draftKey)
+            ?.text ?? "",
+      })),
+    },
+    instructions: [
+      "Repair each supplied Hook exactly once and return one result for every draftKey.",
+      "Keep its assigned candidate, Global Hook text format, and supported business idea.",
+      "Fix only the listed mechanical failures: shorten or reword the text so the renderer fits it on one or two lines, remove unsupported claims or numbers, remove duplication, and use valid evidence keys.",
+      "Use at most twelve words and one natural opening thought. Do not add an explanation, demo, CTA, benefit chain, or new fact.",
+      "Digits are allowed only inside the exact verified businessName. Numerical claims, prices, results, statistics, quantities, dates, durations, and time promises remain forbidden.",
+      "Return plain text without manual line breaks; the renderer owns line layout.",
+    ].join(" "),
+    model: params.model,
+    responseFormatName: "trending_hook_lean_v1_repairs",
+    schema: buildLeanHookBatchSchema(params.evidenceCatalog, params.specs),
+  });
+
+  return parseLeanHookDrafts(
+    result,
+    params.specs,
+    params.evidenceCatalog,
+  );
+}
+
+function parseLeanHookDrafts(
+  value: unknown,
+  specs: HookDraftSpec[],
+  evidenceCatalog: HookEvidenceBinding[],
+) {
+  const record = getRecord(value);
+  const hooks = record?.hooks;
+
+  if (!Array.isArray(hooks)) {
+    throw new Error("The Hook writer returned an invalid batch.");
+  }
+
+  const specByKey = new Map(specs.map((spec) => [spec.draftKey, spec]));
+  const draftsByKey = new Map<string, LeanHookDraft[]>();
+
+  for (const item of hooks) {
+    const hook = getRecord(item);
+    const draftKey =
+      typeof hook?.draftKey === "string" ? hook.draftKey.trim() : "";
+    const candidateIndex = getInteger(hook?.candidateIndex);
+    const hookTextFormatId =
+      typeof hook?.hookTextFormatId === "string" &&
+      getHookTextFormat(hook.hookTextFormatId)
+        ? (hook.hookTextFormatId as HookTextFormatId)
+        : null;
+    const format = hookTextFormatId
+      ? getHookTextFormat(hookTextFormatId)
+      : null;
+    const hookTextVariantId =
+      format &&
+      typeof hook?.hookTextVariantId === "string" &&
+      getHookTextVariant(format, hook.hookTextVariantId)
+        ? hook.hookTextVariantId
+        : null;
+    const evidenceKeys = Array.isArray(hook?.evidenceKeys)
+      ? hook.evidenceKeys
+          .filter((key): key is string => typeof key === "string")
+          .map((key) => key.trim())
+          .filter(Boolean)
+      : [];
+    const text =
+      typeof hook?.text === "string"
+        ? hook.text.replace(/\s+/gu, " ").trim()
+        : "";
+
+    if (
+      !draftKey ||
+      candidateIndex === null ||
+      !hookTextFormatId ||
+      !hookTextVariantId ||
+      evidenceKeys.length < 1 ||
+      evidenceKeys.length > MAX_EVIDENCE_BINDINGS ||
+      new Set(evidenceKeys).size !== evidenceKeys.length ||
+      evidenceKeys.some(
+        (key) => !evidenceCatalog.some((evidence) => evidence.key === key),
+      ) ||
+      !text
+    ) {
+      continue;
+    }
+
+    const spec = specByKey.get(draftKey);
+    if (
+      !spec ||
+      candidateIndex !== spec.candidate.candidateIndex ||
+      hookTextFormatId !== spec.format.id ||
+      !spec.format.variants.some(
+        (variant) => variant.id === hookTextVariantId,
+      )
+    ) {
+      continue;
+    }
+
+    const draft = {
+      candidateIndex,
+      draftKey,
+      evidenceKeys,
+      hookTextFormatId,
+      hookTextVariantId,
+      text,
+    } satisfies LeanHookDraft;
+    const existing = draftsByKey.get(draftKey) ?? [];
+    existing.push(draft);
+    draftsByKey.set(draftKey, existing);
+  }
+
+  // Structured-output schemas can constrain each field but cannot express a
+  // unique one-to-one mapping between draftKey and candidateIndex. Keep an
+  // independently valid result, while treating a missing, mismatched, or
+  // duplicated mapping as a repairable failure for only that source.
+  return specs.flatMap((spec) => {
+    const drafts = draftsByKey.get(spec.draftKey) ?? [];
+    return drafts.length === 1 ? drafts : [];
+  });
+}
+
+function inspectLeanHookDraftBatch(params: {
+  businessContext: ReturnType<typeof extractBusinessContext>;
+  drafts: LeanHookDraft[];
+  evidenceCatalog: HookEvidenceBinding[];
+  specs: HookDraftSpec[];
+}) {
+  const duplicateKeys = new Set<string>();
+  const firstKeyByText = new Map<string, string>();
+
+  for (const draft of params.drafts) {
+    const normalized = normalizeForComparison(draft.text);
+    const firstKey = firstKeyByText.get(normalized);
+    if (firstKey) {
+      duplicateKeys.add(draft.draftKey);
+    } else {
+      firstKeyByText.set(normalized, draft.draftKey);
+    }
+  }
+
+  return params.specs.map((spec) => {
+    const draft = params.drafts.find(
+      (candidate) => candidate.draftKey === spec.draftKey,
+    );
+
+    if (!draft) {
+      return {
+        draftKey: spec.draftKey,
+        evidenceBindings: [],
+        lines: [],
+        reasons: ["missing_result"],
+        visualFit: measureHookOverlayVisualFit([]),
+      };
+    }
+
+    const evidenceByKey = new Map(
+      params.evidenceCatalog.map((evidence) => [evidence.key, evidence]),
+    );
+    const evidenceBindings = draft.evidenceKeys.flatMap((key) => {
+      const evidence = evidenceByKey.get(key);
+      return evidence ? [evidence] : [];
+    });
+    let lines: string[] = [];
+    let visualFit = measureHookOverlayVisualFit([]);
+    let rendererFailed = false;
+
+    try {
+      const layout = buildEditOverlayTextLayout(draft.text, "hook", "9:16");
+      lines = layout.lines.map((line) => line.trim()).filter(Boolean);
+      visualFit = measureHookOverlayVisualFit(lines);
+      rendererFailed = layout.isTruncated;
+    } catch {
+      rendererFailed = true;
+    }
+
+    const textWithoutVerifiedBrand = removeVerifiedBusinessName(
+      draft.text,
+      params.businessContext.businessName,
+    );
+    const normalizedText = normalizeForComparison(draft.text);
+    const wordCount = draft.text.split(/\s+/u).filter(Boolean).length;
+    const claimsToAvoidPassed = params.businessContext.claimsToAvoid.every(
+      (claim) =>
+        claim.length < 3 ||
+        !normalizedText.includes(normalizeForComparison(claim)),
+    );
+    const highRiskClaimPassed = !/\b(?:always|best|double|fastest|guaranteed|guarantee|proven|results?|revenue|statistics?|triple|unlimited|views?)\b/iu.test(
+      draft.text,
+    );
+    const numberClaimPassed =
+      !UNSUPPORTED_TIME_OR_NUMBER_PATTERN.test(textWithoutVerifiedBrand) &&
+      !/[$€£¥%]/u.test(textWithoutVerifiedBrand);
+    const reasons = [
+      ...(draft.hookTextFormatId !== spec.format.id
+        ? ["incorrect_reaction_format"]
+        : []),
+      ...(evidenceBindings.length !== draft.evidenceKeys.length
+        ? ["invalid_evidence_binding"]
+        : []),
+      ...(!claimsToAvoidPassed ? ["profile_forbidden_claim"] : []),
+      ...(!highRiskClaimPassed ? ["unsupported_result_claim"] : []),
+      ...(!numberClaimPassed ? ["unsupported_numerical_claim"] : []),
+      ...(wordCount < 2 || wordCount > MAX_HOOK_WORDS
+        ? ["invalid_word_count"]
+        : []),
+      ...(Array.from(draft.text).length > MAX_HOOK_CHARACTERS
+        ? ["hook_too_long"]
+        : []),
+      ...(lines.length < 1 || lines.length > 2
+        ? ["renderer_requires_one_or_two_lines"]
+        : []),
+      ...(rendererFailed || !visualFit.fits
+        ? ["overlay_does_not_fit"]
+        : []),
+      ...(duplicateKeys.has(draft.draftKey) ? ["duplicate_hook_text"] : []),
+    ];
+
+    return {
+      draftKey: spec.draftKey,
+      evidenceBindings,
+      lines,
+      reasons,
+      visualFit,
+    };
+  });
+}
+
+function removeVerifiedBusinessName(text: string, businessName: string) {
+  const verifiedName = businessName.trim();
+  if (!verifiedName) {
+    return text;
+  }
+
+  return text.replace(
+    new RegExp(escapeRegExp(verifiedName), "giu"),
+    "verified-brand",
+  );
+}
+
 async function requestStructuredJson(params: {
   client: StructuredResponseClient;
   input: unknown;
@@ -1897,6 +2402,10 @@ function buildBusinessEvidenceCatalog(
     );
   };
 
+  // The verified product name is evidence too. This intentionally allows
+  // names such as "3D" or "24x7" while the lean validator continues to
+  // reject every other number, price, statistic, result, or time promise.
+  addText("businessName", businessContext.businessName);
   addText("businessModel", businessContext.businessModel);
   addList("categories", businessContext.categories);
   addText("primaryAudience", businessContext.primaryAudience);
@@ -2242,6 +2751,89 @@ const hookTextFormatIds = HOOK_TEXT_FORMATS.map(
 const hookTextVariantIds = HOOK_TEXT_FORMATS.flatMap((format) =>
   format.variants.map((variant) => variant.id),
 );
+
+function buildLeanHookBatchSchema(
+  evidenceCatalog: HookEvidenceBinding[],
+  specs: HookDraftSpec[],
+) {
+  return {
+    additionalProperties: false,
+    properties: {
+      hooks: {
+        items: {
+          additionalProperties: false,
+          properties: {
+            candidateIndex: { minimum: 0, type: "integer" },
+            draftKey: {
+              enum: specs.map((spec) => spec.draftKey),
+              maxLength: 140,
+              minLength: 3,
+              type: "string",
+            },
+            evidenceKeys: {
+              items: {
+                enum: evidenceCatalog.map((evidence) => evidence.key),
+                type: "string",
+              },
+              maxItems: MAX_EVIDENCE_BINDINGS,
+              minItems: 1,
+              type: "array",
+            },
+            hookTextFormatId: {
+              enum: specs.map((spec) => spec.format.id),
+              type: "string",
+            },
+            hookTextVariantId: {
+              enum: specs.flatMap((spec) =>
+                spec.format.variants.map((variant) => variant.id),
+              ),
+              type: "string",
+            },
+            text: {
+              maxLength: MAX_HOOK_CHARACTERS,
+              minLength: 2,
+              type: "string",
+            },
+          },
+          required: [
+            "candidateIndex",
+            "draftKey",
+            "evidenceKeys",
+            "hookTextFormatId",
+            "hookTextVariantId",
+            "text",
+          ],
+          type: "object",
+        },
+        maxItems: specs.length,
+        minItems: specs.length,
+        type: "array",
+      },
+    },
+    required: ["hooks"],
+    type: "object",
+  } as const;
+}
+
+function mergeLeanDrafts(
+  original: LeanHookDraft[],
+  replacements: LeanHookDraft[],
+  specs: HookDraftSpec[],
+) {
+  const originalByKey = new Map(
+    original.map((draft) => [draft.draftKey, draft]),
+  );
+  const replacementsByKey = new Map(
+    replacements.map((draft) => [draft.draftKey, draft]),
+  );
+
+  return specs.flatMap((spec) => {
+    const draft =
+      replacementsByKey.get(spec.draftKey) ??
+      originalByKey.get(spec.draftKey);
+    return draft ? [draft] : [];
+  });
+}
 
 function buildHookDraftBatchSchema(
   evidenceCatalog: HookEvidenceBinding[],

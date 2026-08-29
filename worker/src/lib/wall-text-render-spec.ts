@@ -79,7 +79,10 @@ export const WALL_TEXT_FONT_WEIGHT = 400;
 export const LEGACY_WALL_TEXT_FONT_WEIGHT = 700;
 export const WALL_TEXT_LINE_HEIGHT_FACTOR = 1.1;
 export const WALL_TEXT_SECTION_GAP = 18;
-export const WALL_TEXT_OUTLINE_WIDTH = 2;
+// Keep this in sync with the browser Wall treatment. A 4px outline is strong
+// enough to separate white text from bright video without making 44px copy
+// look heavy.
+export const WALL_TEXT_OUTLINE_WIDTH = 4;
 // Keep this in sync with the application layout gate. This is inside the
 // selected text box, not an extra video-frame safe area.
 export const WALL_TEXT_INLINE_SAFE_PADDING = 24;

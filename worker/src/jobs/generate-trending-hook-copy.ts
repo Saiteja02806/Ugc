@@ -1,6 +1,8 @@
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import {
+  generateReactionMappedTrendingHooks,
   generateValidatedTrendingHookCopies,
+  TRENDING_HOOK_FEED_GENERATION_MODE,
   TRENDING_HOOK_PROMPT_VERSION,
   TRENDING_HOOK_REACTION_SELECTION_VERSION,
   TRENDING_HOOK_SELECTION_VERSION,
@@ -29,14 +31,55 @@ export async function runGenerateTrendingHookCopyJob(
   const model =
     process.env.OPENAI_TRENDING_HOOK_MODEL?.trim() ||
     "gpt-5.6-terra";
-  const copies = await generateValidatedTrendingHookCopies({
-    allowPartialCandidates: true,
-    businessProfile: input.businessProfile,
-    candidates: input.candidates,
-    model,
-    performanceSignals: input.performanceSignals,
-    selectionStrategy: input.selectionStrategy,
-  });
+  const existingProgress = input.generationRun
+    ? await context.store.getTrendingHookGenerationRunChunkProgress({
+        chunkId: input.generationRun.chunkId,
+        jobId: job.id,
+        runId: input.generationRun.id,
+      })
+    : null;
+
+  // Persistence and background-job completion are separate durable actions.
+  // If a retry arrives between them, return the saved progress before making
+  // another paid model request.
+  if (existingProgress?.already_persisted) {
+    return {
+      ideaCount: existingProgress.accepted_count,
+      generationRun: {
+        completedValidCount: existingProgress.completed_valid_count,
+        id: input.generationRun!.id,
+        remainingValidCount: existingProgress.remaining_valid_count,
+        status: existingProgress.run_status,
+        targetValidCount:
+          existingProgress.completed_valid_count +
+          existingProgress.remaining_valid_count,
+      },
+      model,
+      promptVersion: input.promptVersion,
+      rejectedCandidateCount: Math.max(
+        input.candidates.length - existingProgress.accepted_count,
+        0,
+      ),
+      repairedCount: 0,
+      selectionVersion: input.selectionVersion,
+    };
+  }
+  const copies =
+    input.generationMode === TRENDING_HOOK_FEED_GENERATION_MODE
+      ? await generateReactionMappedTrendingHooks({
+          businessProfile: input.businessProfile,
+          candidates: input.candidates,
+          model,
+          performanceSignals: input.performanceSignals,
+        })
+      : await generateValidatedTrendingHookCopies({
+          allowPartialCandidates: true,
+          businessProfile: input.businessProfile,
+          candidates: input.candidates,
+          model,
+          performanceSignals: input.performanceSignals,
+          selectionStrategy: input.selectionStrategy,
+        });
   // The parent run owns the exact number of valid Hooks still needed. A final
   // chunk may validate more candidates than are still required, so only save
   // the remaining promised amount.
@@ -45,6 +88,8 @@ export async function runGenerateTrendingHookCopyJob(
     : copies;
   const runProgress = input.generationRun
     ? await context.store.persistTrendingHookGenerationRunChunk({
+        appendOnly:
+          input.generationMode === TRENDING_HOOK_FEED_GENERATION_MODE,
         businessProfileId: input.businessProfileId,
         businessProfileVersion: input.businessProfileVersion,
         candidates: copiesToPersist as unknown as Json,
@@ -127,6 +172,7 @@ function parseInput(job: BackgroundJobRow) {
   const businessProfile = getRecord(input?.businessProfile);
   const rawCandidates = input?.candidates;
   const generationRun = parseGenerationRun(input);
+  const generationMode = getOptionalString(input?.generationMode);
 
   if (
     !job.user_id ||
@@ -134,6 +180,11 @@ function parseInput(job: BackgroundJobRow) {
     promptVersion !== TRENDING_HOOK_PROMPT_VERSION ||
     (selectionVersion !== TRENDING_HOOK_SELECTION_VERSION &&
       selectionVersion !== TRENDING_HOOK_REACTION_SELECTION_VERSION) ||
+    (generationMode !== null &&
+      generationMode !== TRENDING_HOOK_FEED_GENERATION_MODE) ||
+    (generationMode === TRENDING_HOOK_FEED_GENERATION_MODE &&
+      (!generationRun ||
+        selectionVersion !== TRENDING_HOOK_REACTION_SELECTION_VERSION)) ||
     !businessProfile ||
     !Array.isArray(rawCandidates)
   ) {
@@ -155,6 +206,7 @@ function parseInput(job: BackgroundJobRow) {
         : ("legacy_rotation" as const),
     selectionVersion,
     generationRun,
+    generationMode,
     userId,
   };
 }

@@ -68,7 +68,7 @@ test("uses the restored readable Wall scale with center alignment and compact se
   assert.match(svg, /font-family="Inter, Arial/);
   assert.match(svg, /letter-spacing="-0\.2"/);
   assert.match(svg, /text-anchor="middle"/);
-  assert.match(svg, /stroke-width="2"/);
+  assert.match(svg, /stroke-width="4"/);
   assert.match(svg, /fill="#67e8f9"/);
   assert.match(svg, /font-weight="400"/);
   assert.doesNotMatch(svg, /wallTextScrim|radialGradient/);

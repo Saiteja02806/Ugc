@@ -324,7 +324,7 @@ test("centers a card-sized review frame over visible inert next-card layers", ()
   );
   assert.match(
     workspace,
-    /absolute left-1\/2 top-full z-40 w-max -translate-x-1\/2/,
+    /absolute left-1\/2 top-full z-40 flex w-max -translate-x-1\/2 flex-col items-center/,
   );
   assert.equal(
     (workspace.match(/data-trending-card-state=/g) ?? []).length,
@@ -498,6 +498,22 @@ test("advances locally and sends decisions through a durable background outbox",
   );
   assert.doesNotMatch(workspace, /setActiveItemIndex\(/);
   assert.match(workspace, /disabled=\{Boolean\(exitDirection\)\}/);
+});
+
+test("distinguishes ready cards from the complete remaining daily pack", () => {
+  assert.match(
+    workspace,
+    /getTrendingDeckProgressLabel\(\{[\s\S]*readyCount: visibleCandidates\.length,[\s\S]*remainingCount/,
+  );
+  assert.match(
+    workspace,
+    /safeRemainingCount > safeReadyCount[\s\S]*ready now · \$\{safeRemainingCount\} total remaining/,
+  );
+  assert.match(workspace, /data-trending-deck-progress/);
+  assert.match(
+    workspace,
+    /Showing ready content \$\{activeItemIndex \+ 1\} of \$\{visibleCandidates\.length\}/,
+  );
 });
 
 test("Edit opens the real editor and the tick persists text and drag position", () => {

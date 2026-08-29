@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  generateReactionMappedTrendingHooks,
   generateValidatedTrendingHookCopies,
   isPassingHookReview,
   measureHookOverlayVisualFit,
@@ -66,6 +67,297 @@ const businessContext = {
   targetAudience: ["people who track meals"],
   valueProps: ["quicker meal logging"],
 };
+
+test("simplified Trending generation writes once with no AI reviewer", async () => {
+  let requestCount = 0;
+  const client = {
+    responses: {
+      create: async () => {
+        requestCount += 1;
+        return {
+          output_text: JSON.stringify({
+            hooks: [{
+              candidateIndex: 0,
+              draftKey: "0:GF_012",
+              evidenceKeys: ["mainProblem"],
+              hookTextFormatId: "GF_012",
+              hookTextVariantId: "GF_012_A",
+              text: "Why does meal logging interrupt everything?",
+            }],
+          }),
+        };
+      },
+    },
+  };
+
+  const result = await generateReactionMappedTrendingHooks({
+    businessProfile: businessContext,
+    candidates: [candidate],
+    client: client as never,
+    model: "test-model",
+  });
+
+  assert.equal(requestCount, 1);
+  assert.equal(result.length, 1);
+  assert.equal(result[0]?.hookTextFormatId, "GF_012");
+  assert.equal(result[0]?.openingLines.length >= 1, true);
+  assert.equal(result[0]?.openingLines.length <= 2, true);
+  assert.equal(result[0]?.visualFit.fits, true);
+  assert.equal(result[0]?.readabilityReview.repairApplied, false);
+  assert.match(
+    result[0]?.readabilityReview.reason ?? "",
+    /no AI reviewer was used/u,
+  );
+});
+
+test("simplified Trending generation allows digits only in the verified brand name", async () => {
+  const client = {
+    responses: {
+      create: async () => ({
+        output_text: JSON.stringify({
+          hooks: [{
+            candidateIndex: 0,
+            draftKey: "0:GF_012",
+            evidenceKeys: ["businessName"],
+            hookTextFormatId: "GF_012",
+            hookTextVariantId: "GF_012_A",
+            text: "Have you seen 24x7 Coach?",
+          }],
+        }),
+      }),
+    },
+  };
+
+  const result = await generateReactionMappedTrendingHooks({
+    businessProfile: {
+      ...businessContext,
+      businessName: "24x7 Coach",
+    },
+    candidates: [candidate],
+    client: client as never,
+    model: "test-model",
+  });
+
+  assert.equal(result.length, 1);
+  assert.match(result[0]?.hookText ?? "", /24x7 Coach/u);
+});
+
+test("simplified Trending generation repairs a technical failure only once", async () => {
+  const outputs = [
+    {
+      hooks: [{
+        candidateIndex: 0,
+        draftKey: "0:GF_012",
+        evidenceKeys: ["mainProblem"],
+        hookTextFormatId: "GF_012",
+        hookTextVariantId: "GF_012_A",
+        text: "Guaranteed results in 3 days",
+      }],
+    },
+    {
+      hooks: [{
+        candidateIndex: 0,
+        draftKey: "0:GF_012",
+        evidenceKeys: ["mainProblem"],
+        hookTextFormatId: "GF_012",
+        hookTextVariantId: "GF_012_A",
+        text: "Why does meal logging interrupt everything?",
+      }],
+    },
+  ];
+  let requestCount = 0;
+  const client = {
+    responses: {
+      create: async () => {
+        requestCount += 1;
+        return { output_text: JSON.stringify(outputs.shift()) };
+      },
+    },
+  };
+
+  const result = await generateReactionMappedTrendingHooks({
+    businessProfile: businessContext,
+    candidates: [candidate],
+    client: client as never,
+    model: "test-model",
+  });
+
+  assert.equal(requestCount, 2);
+  assert.equal(outputs.length, 0);
+  assert.equal(result.length, 1);
+  assert.equal(result[0]?.readabilityReview.repairApplied, true);
+  assert.doesNotMatch(result[0]?.hookText ?? "", /3|guaranteed|results/iu);
+});
+
+test("simplified Trending generation repairs one mismapped item without losing a valid sibling", async () => {
+  const secondCandidate = {
+    ...candidate,
+    candidateIndex: 1,
+    influencerId: "catalog:creator-002",
+    influencerKey: "creator_002",
+    influencerName: "Creator 002",
+    influencerVideoId: "video-2",
+    influencerVideoTitle: "Creator 002 - Shock Surprise",
+  } satisfies TrendingHookCopyCandidate;
+  let requestCount = 0;
+  const client = {
+    responses: {
+      create: async (request: { input?: unknown }) => {
+        requestCount += 1;
+        const requests = (
+          JSON.parse(String(request.input)) as {
+            requests: Array<{
+              candidateIndex: number;
+              draftKey: string;
+              hookTextFormat: {
+                id: string;
+                surfaceVariants: Array<{ id: string }>;
+              };
+            }>;
+          }
+        ).requests;
+        const toHook = (
+          item: (typeof requests)[number],
+          text: string,
+        ) => ({
+          candidateIndex: item.candidateIndex,
+          draftKey: item.draftKey,
+          evidenceKeys: ["mainProblem"],
+          hookTextFormatId: item.hookTextFormat.id,
+          hookTextVariantId: item.hookTextFormat.surfaceVariants[0]?.id,
+          text,
+        });
+
+        return {
+          output_text: JSON.stringify({
+            hooks: requestCount === 1
+              ? [
+                  toHook(
+                    requests[0]!,
+                    "Why does meal logging interrupt everything?",
+                  ),
+                  {
+                    ...toHook(
+                      requests[1]!,
+                      "Why does meal tracking break your focus?",
+                    ),
+                    draftKey: requests[0]!.draftKey,
+                    hookTextFormatId: requests[0]!.hookTextFormat.id,
+                    hookTextVariantId:
+                      requests[0]!.hookTextFormat.surfaceVariants[0]?.id,
+                  },
+                ]
+              : [
+                  toHook(
+                    requests[0]!,
+                    "Meal logging interrupts again?",
+                  ),
+                ],
+          }),
+        };
+      },
+    },
+  };
+
+  const result = await generateReactionMappedTrendingHooks({
+    businessProfile: businessContext,
+    candidates: [candidate, secondCandidate],
+    client: client as never,
+    model: "test-model",
+  });
+
+  assert.equal(requestCount, 2);
+  assert.equal(result.length, 2);
+  assert.deepEqual(
+    result.map((copy) => copy.influencerVideoId),
+    ["video-1", "video-2"],
+  );
+  assert.equal(result[0]?.readabilityReview.repairApplied, false);
+  assert.equal(result[1]?.readabilityReview.repairApplied, true);
+});
+
+test("simplified Trending generation keeps a valid item when its sibling repair is still invalid", async () => {
+  const secondCandidate = {
+    ...candidate,
+    candidateIndex: 1,
+    influencerId: "catalog:creator-002",
+    influencerKey: "creator_002",
+    influencerName: "Creator 002",
+    influencerVideoId: "video-2",
+    influencerVideoTitle: "Creator 002 - Shock Surprise",
+  } satisfies TrendingHookCopyCandidate;
+  let requestCount = 0;
+  const client = {
+    responses: {
+      create: async (request: { input?: unknown }) => {
+        requestCount += 1;
+        const requests = (
+          JSON.parse(String(request.input)) as {
+            requests: Array<{
+              candidateIndex: number;
+              draftKey: string;
+              hookTextFormat: {
+                id: string;
+                surfaceVariants: Array<{ id: string }>;
+              };
+            }>;
+          }
+        ).requests;
+        const toHook = (
+          item: (typeof requests)[number],
+          text: string,
+        ) => ({
+          candidateIndex: item.candidateIndex,
+          draftKey: item.draftKey,
+          evidenceKeys: ["mainProblem"],
+          hookTextFormatId: item.hookTextFormat.id,
+          hookTextVariantId: item.hookTextFormat.surfaceVariants[0]?.id,
+          text,
+        });
+
+        return {
+          output_text: JSON.stringify({
+            hooks: requestCount === 1
+              ? [
+                  toHook(
+                    requests[0]!,
+                    "Why does meal logging interrupt everything?",
+                  ),
+                  {
+                    ...toHook(
+                      requests[1]!,
+                      "Why does meal tracking break your focus?",
+                    ),
+                    draftKey: requests[0]!.draftKey,
+                    hookTextFormatId: requests[0]!.hookTextFormat.id,
+                    hookTextVariantId:
+                      requests[0]!.hookTextFormat.surfaceVariants[0]?.id,
+                  },
+                ]
+              : [{
+                  ...toHook(
+                    requests[0]!,
+                    "This repair still belongs to the wrong source",
+                  ),
+                  candidateIndex: 0,
+                }],
+          }),
+        };
+      },
+    },
+  };
+
+  const result = await generateReactionMappedTrendingHooks({
+    businessProfile: businessContext,
+    candidates: [candidate, secondCandidate],
+    client: client as never,
+    model: "test-model",
+  });
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0]?.influencerVideoId, "video-1");
+  assert.equal(result[0]?.readabilityReview.repairApplied, false);
+});
 
 test("campaign purpose follows the business choice and never adds an unselected goal", () => {
   assert.deepEqual(

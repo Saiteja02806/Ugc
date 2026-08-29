@@ -1,6 +1,6 @@
 # Carousel System Context
 
-Last updated: 2026-08-28
+Last updated: 2026-08-29
 
 This document is the source of truth for Carousel product rules, architecture,
 image safety, matching, readiness, rollout, and current implementation status.
@@ -599,19 +599,19 @@ two preparation polls use a two-second interval, then back off through 3.5 and
 6 seconds to a ten-second maximum; a hidden tab does not poll. This avoids both
 the former request-time orchestration delay and a fixed tight polling loop.
 
-The client does not expose a partially ready daily pack. The unified feed API
-returns an empty `items` array until every remaining reserved slot has both a
-durable ready assignment and its resolved provider item. It then returns the
-complete remaining ordered pack in one response. The client keeps that whole
-response in memory and shows one blank dark 9:16 skeleton in the first-card
-position until the atomic boundary opens. This prevents a user from consuming
-one ready item and seeing an empty state while another format worker finishes.
-The skeleton contains no fake text, internal placeholders, spinner, or loading
-message.
+The unified feed exposes preview-ready assignments while unresolved format
+slots continue in background work, so Carousel, Wall-of-text, and Hook results
+may enter the review queue at different times even though their preparation is
+dispatched concurrently. The client distinguishes the number of cards ready
+now from the complete number of daily content pieces still remaining. One
+Carousel card occupies exactly one daily feed slot regardless of whether that
+Carousel contains five or another supported number of internal slides; slides
+must never be counted as separate daily posts. The blank dark 9:16 skeleton is
+used only when no preview-ready assignment is available yet.
 
-After the atomic response arrives, left and right swipes only dismiss the
-current in-memory item and select the next in-memory item. Swipe completion no
-longer waits for the decision API or refreshes the feed. Decisions enter an
+After a response includes preview-ready items, left and right swipes only
+dismiss the current in-memory item and select the next in-memory item. Swipe
+completion no longer waits for the decision API or refreshes the feed. Decisions enter an
 account-scoped browser outbox first, are retried in the background with bounded
 backoff, and are filtered from a reload while still pending. The server remains
 the durable source of truth and its idempotent decision route still retires the

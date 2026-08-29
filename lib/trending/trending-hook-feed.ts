@@ -117,15 +117,11 @@ export async function prepareTrendingHookIdeas(
       ? unusedInventory
       : fullInventory;
   const targetValidCount = Math.max(targetActive - activeCount, 1);
-  // Store enough unused candidates for six attempts per promised Hook. This
-  // is durable source metadata only: each worker still receives just six
-  // videos, and generation stops as soon as the promised count is reached.
-  // A smaller pool could wrongly report source exhaustion for a paid account
-  // even though it still had untried eligible videos.
-  const candidatePoolCount = Math.min(
-    Math.max(targetValidCount * 6, 12),
-    600,
-  );
+  // Keep eligible source metadata available to the durable run, but send only
+  // the exact outstanding target to a worker. Backup metadata is not an AI
+  // generation attempt; it lets a continuation choose a fresh source if one
+  // result still fails the lean technical checks.
+  const candidatePoolCount = 600;
   const candidates = selectTrendingHookCandidates(
     inventory,
     candidatePoolCount,

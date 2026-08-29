@@ -17,10 +17,6 @@ const reviewCard = readFileSync(
   "components/viral/hook-review-card.tsx",
   "utf8",
 );
-const instagramEmbed = readFileSync(
-  "components/viral/instagram-embed.tsx",
-  "utf8",
-);
 
 test("protects every private Viral review endpoint with approved-email access", () => {
   assert.match(accessRoute, /requireViralReviewer\(request\)/);
@@ -48,38 +44,27 @@ test("saves only the fixed-zero Hook ending boundary", () => {
   assert.doesNotMatch(saveRoute, /publish_status.*published/);
 });
 
-test("renders trusted stored embeds lazily with one future action", () => {
-  assert.match(workspace, /https:\/\/www\.instagram\.com\/embed\.js/);
-  assert.match(workspace, /onError=\{\(\) => setSdkState\("error"\)\}/);
-  assert.match(instagramEmbed, /IntersectionObserver/);
-  assert.match(instagramEmbed, /EMBED_LOAD_TIMEOUT_MS/);
-  assert.match(instagramEmbed, /Video preview did not load/);
-  assert.match(instagramEmbed, /dangerouslySetInnerHTML/);
-  assert.match(reviewCard, /Use This Hook/);
-  assert.match(reviewCard, /Use It/);
-  assert.match(reviewCard, /handleUseReference/);
-  assert.doesNotMatch(reviewCard, /Hook timing|Needs timing|Hook ends at/);
-  assert.doesNotMatch(reviewCard, /Save ending time|More options/);
+test("renders direct Explore videos with the existing Hook action", () => {
+  assert.match(workspace, /\/api\/explore\/hook-videos/);
+  assert.match(workspace, /<video/);
+  assert.match(workspace, /object-cover/);
+  assert.match(workspace, /Use This Hook/);
+  assert.match(workspace, /sourceUrl: item\.videoUrl/);
+  assert.doesNotMatch(
+    workspace,
+    /instagram\.com\/embed\.js|InstagramEmbed|dangerouslySetInnerHTML/i,
+  );
+  assert.doesNotMatch(workspace, /Hook timing|Needs timing|Hook ends at/);
+  assert.doesNotMatch(workspace, /Save ending time|More options/);
 });
 
-test("presents Hook references as plain video-first review cards", () => {
-  assert.doesNotMatch(reviewCard, /getInstagramReelShortcode/);
-  assert.doesNotMatch(reviewCard, /Open on Instagram/);
-  assert.doesNotMatch(reviewCard, /Reel \{shortcode\}/);
-  assert.match(instagramEmbed, /aspect-\[9\/16\]/);
-  assert.match(instagramEmbed, /VIDEO_HORIZONTAL_CROP/);
+test("keeps the direct video and Hook action inside one compact card", () => {
   assert.match(
-    instagramEmbed,
-    /\(EMBED_STAGE_WIDTH - VIDEO_VIEWPORT_WIDTH \/ VIDEO_OVERSCAN\) \/ 2/,
-  );
-  assert.doesNotMatch(instagramEmbed, /VIDEO_HORIZONTAL_CROP = 80/);
-  assert.doesNotMatch(instagramEmbed, /bg-card-muted px-4 py-4/);
-  assert.doesNotMatch(instagramEmbed, /ring-black/);
-  assert.match(
-    reviewCard,
+    workspace,
     /overflow-hidden rounded-xl border border-border bg-card shadow-sm/,
   );
-  assert.match(reviewCard, /border-t border-border bg-card p-2/);
+  assert.match(workspace, /relative aspect-\[9\/16\] overflow-hidden bg-card-muted/);
+  assert.match(workspace, /border-t border-border bg-card p-2/);
 });
 
 test("keeps the review implementation outside Trending and generation systems", () => {

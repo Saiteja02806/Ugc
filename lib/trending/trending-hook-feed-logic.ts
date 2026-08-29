@@ -1,8 +1,8 @@
 import type { HookVideoBrowseEntry } from "@/lib/trending/hook-video-types";
 
 const DEFAULT_TRENDING_HOOK_IDEA_COUNT = 6;
-// A worker still processes at most six candidates per chunk. The larger cap is
-// only the durable source pool from which later chunks are reserved.
+// This is the durable source-metadata cap. The database reserves only the
+// exact outstanding target for each worker attempt.
 const MAX_TRENDING_HOOK_IDEA_COUNT = 600;
 // This mirrors the worker's strict reaction map. Keep unknown/unreviewed
 // sources out of the queue rather than spending a generation attempt on them.

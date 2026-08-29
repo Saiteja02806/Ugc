@@ -1,0 +1,26 @@
+name: Migration reconciliation guard
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/supabase/migrations/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/supabase/migrations/**"
+
+permissions:
+  contents: read
+
+jobs:
+  block-migration-release-until-reconciled:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-migration-reconciliation-freeze.mjs

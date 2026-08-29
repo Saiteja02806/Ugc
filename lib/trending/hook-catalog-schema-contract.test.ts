@@ -4,7 +4,7 @@ import test from "node:test";
 
 const migration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260729055156_add_hook_catalog_safety_fields.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260729055156_add_hook_catalog_safety_fields.sql",
     import.meta.url,
   ),
   "utf8",
@@ -19,7 +19,7 @@ const avatarStorage = readFileSync(
 );
 const placementMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260819132229_add_per_hook_video_text_placement.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260819132229_add_per_hook_video_text_placement.sql",
     import.meta.url,
   ),
   "utf8",

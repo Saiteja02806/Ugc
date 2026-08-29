@@ -5,7 +5,7 @@ import test from "node:test";
 
 const workspaceRoot = process.cwd();
 const migration = read(
-  "supabase/migrations/20260826100000_atomically_own_carousel_experiment_jobs.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260826100000_atomically_own_carousel_experiment_jobs.sql",
 );
 const jobStore = read("lib/jobs/background-jobs.ts");
 const jobDispatch = read("lib/carousel/generation-jobs.ts");

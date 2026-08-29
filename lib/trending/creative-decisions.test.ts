@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const migration = readProjectFile(
-  "supabase/migrations/20260802044000_create_trending_creative_decisions.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260802044000_create_trending_creative_decisions.sql",
 );
 const route = readProjectFile(
   "app/api/trending/feed/decisions/route.ts",

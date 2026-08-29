@@ -23,7 +23,7 @@ test("Instagram OAuth checks the plan limit before authorization starts", () => 
 test("Instagram connection limits are enforced atomically in Postgres", () => {
   const migration = readFileSync(
     projectFile(
-      "supabase/migrations/20260824120641_enforce_instagram_account_limits.sql",
+      "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824120641_enforce_instagram_account_limits.sql",
     ),
     "utf8",
   );
@@ -45,7 +45,7 @@ test("Instagram connection limits are enforced atomically in Postgres", () => {
 test("the forward recovery migration restores the database guard if history drift skipped it", () => {
   const migration = readFileSync(
     projectFile(
-      "supabase/migrations/20260829091500_restore_instagram_connection_limit_guard.sql",
+      "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260829091500_restore_instagram_connection_limit_guard.sql",
     ),
     "utf8",
   );

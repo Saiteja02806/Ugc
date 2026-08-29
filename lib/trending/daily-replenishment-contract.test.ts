@@ -4,14 +4,14 @@ import test from "node:test";
 
 const migration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260717100000_add_daily_carousel_replenishment.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260717100000_add_daily_carousel_replenishment.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const terminalCarouselRecoveryMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260828100000_reconcile_terminal_carousel_generation_failures.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828100000_reconcile_terminal_carousel_generation_failures.sql",
     import.meta.url,
   ),
   "utf8",

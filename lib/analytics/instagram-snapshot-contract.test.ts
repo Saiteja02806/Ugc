@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const migration = readFileSync(
-  "supabase/migrations/20260824120000_add_instagram_analytics_snapshots.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824120000_add_instagram_analytics_snapshots.sql",
   "utf8",
 );
 const contentSync = readFileSync(

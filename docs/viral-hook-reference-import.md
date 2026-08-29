@@ -6,7 +6,7 @@ Reel videos, and does not connect references to generation or replication.
 
 ## Before the first import
 
-1. Apply `supabase/migrations/20260812112037_create_viral_hook_data_foundation.sql`.
+1. Apply `supabase/migration_archive/pre_baseline_20260829/canonical_history/20260812112037_create_viral_hook_data_foundation.sql`.
 2. Keep `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` only. Never expose it through
    a `NEXT_PUBLIC_` variable or client-side code.
 3. Copy `scripts/data/viral-hook-reels.example.txt` to a private working file and

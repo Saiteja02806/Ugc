@@ -4,7 +4,7 @@ import test from "node:test";
 
 const migration = readFileSync(
   new URL(
-    "../supabase/migrations/20260809114126_create_hook_audio_library.sql",
+    "../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260809114126_create_hook_audio_library.sql",
     import.meta.url,
   ),
   "utf8",

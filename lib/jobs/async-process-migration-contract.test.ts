@@ -64,7 +64,7 @@ test("Analytics is available to every signed-in user without a paid-plan gate", 
 
 test("analysis retries restore provider output from a job-scoped database row", () => {
   const migration = readFileSync(
-    "supabase/migrations/20260801103000_add_website_analysis_job_idempotency.sql",
+    "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260801103000_add_website_analysis_job_idempotency.sql",
     "utf8",
   );
   const storage = readFileSync("lib/website-analysis/supabase.ts", "utf8");
@@ -114,7 +114,7 @@ test("Hook text generation has one validated worker path", () => {
 
 test("validated demo Hook suggestions do not collide with Trending candidate slots", () => {
   const migration = readFileSync(
-    "supabase/migrations/20260808114916_add_validated_hook_composition_v5.sql",
+    "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260808114916_add_validated_hook_composition_v5.sql",
     "utf8",
   );
 

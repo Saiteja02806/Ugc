@@ -23,7 +23,7 @@ import { getPaidTrendingPrebuildIdempotencyKey } from "./paid-trending-prebuild.
 
 const migration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260822120000_create_production_billing_state.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260822120000_create_production_billing_state.sql",
     import.meta.url,
   ),
   "utf8",
@@ -45,7 +45,7 @@ const paidTrendingPrebuildDispatch = readFileSync(
 );
 const paidTrendingPrebuildMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260826140336_add_paid_trending_prebuild_on_subscription_activation.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260826140336_add_paid_trending_prebuild_on_subscription_activation.sql",
     import.meta.url,
   ),
   "utf8",
@@ -77,7 +77,7 @@ const usageFlushRoute = readFileSync(
 );
 const hardeningMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260823130914_harden_billing_credit_cycles_and_usage_retry.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260823130914_harden_billing_credit_cycles_and_usage_retry.sql",
     import.meta.url,
   ),
   "utf8",

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const migration = readProjectFile(
-  "supabase/migrations/20260729192337_create_trending_video_source_selections.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260729192337_create_trending_video_source_selections.sql",
 );
 const route = readProjectFile(
   "app/api/trending/video-source-selection/route.ts",

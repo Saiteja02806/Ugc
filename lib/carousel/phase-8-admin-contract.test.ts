@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const migration = read(
-  "supabase/migrations/20260817203000_add_carousel_phase8_admin_analytics.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260817203000_add_carousel_phase8_admin_analytics.sql",
 );
 const route = read("app/api/admin/carousel/route.ts");
 const serverAccess = read("lib/carousel/server-admin-access.ts");

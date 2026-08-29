@@ -4,7 +4,7 @@ import test from "node:test";
 
 const migration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260812112037_create_viral_hook_data_foundation.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260812112037_create_viral_hook_data_foundation.sql",
     import.meta.url,
   ),
   "utf8",
@@ -12,7 +12,7 @@ const migration = readFileSync(
 
 const viewCountMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260822152648_add_viral_references_view_count.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260822152648_add_viral_references_view_count.sql",
     import.meta.url,
   ),
   "utf8",

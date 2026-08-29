@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const migration = read(
-  "supabase/migrations/20260813122724_add_carousel_performance_learning.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260813122724_add_carousel_performance_learning.sql",
 );
 const analyticsWorker = read("app/api/internal/jobs/sync-analytics/route.ts");
 const performanceLogic = read("lib/carousel/performance-logic.ts");

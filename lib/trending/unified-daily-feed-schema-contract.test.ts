@@ -3,31 +3,31 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const migration = readFileSync(
-  "supabase/migrations/20260820084842_create_unified_daily_trending_feed.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260820084842_create_unified_daily_trending_feed.sql",
   "utf8",
 );
 const progressiveDeliveryMigration = readFileSync(
-  "supabase/migrations/20260825090000_progressive_trending_daily_delivery.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260825090000_progressive_trending_daily_delivery.sql",
   "utf8",
 );
 const hookAssignmentIntegrityMigration = readFileSync(
-  "supabase/migrations/20260825054213_preserve_bound_trending_hook_assignments.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260825054213_preserve_bound_trending_hook_assignments.sql",
   "utf8",
 );
 const deliveryHardeningMigration = readFileSync(
-  "supabase/migrations/20260825140000_harden_trending_daily_delivery.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260825140000_harden_trending_daily_delivery.sql",
   "utf8",
 );
 const durableReconciliationMigration = readFileSync(
-  "supabase/migrations/20260825153000_make_trending_delivery_reconciliation_durable.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260825153000_make_trending_delivery_reconciliation_durable.sql",
   "utf8",
 );
 const wallTextFailureRecoveryMigration = readFileSync(
-  "supabase/migrations/20260827170000_repair_wall_text_persistence_failures.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260827170000_repair_wall_text_persistence_failures.sql",
   "utf8",
 );
 const fullFormatMixMigration = readFileSync(
-  "supabase/migrations/20260827180000_allow_full_format_content_mixes.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260827180000_allow_full_format_content_mixes.sql",
   "utf8",
 );
 const decisionRoute = readFileSync(
@@ -39,7 +39,7 @@ const contentMixRoute = readFileSync(
   "utf8",
 );
 const freeAllowanceMigration = readFileSync(
-  "supabase/migrations/20260823130857_raise_free_trending_allowance.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260823130857_raise_free_trending_allowance.sql",
   "utf8",
 );
 const planUpgradeGrant = readFileSync(

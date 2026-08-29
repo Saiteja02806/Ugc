@@ -3,10 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const activationMigration = read(
-  "supabase/migrations/20260817193000_activate_carousel_structure_2_runtime.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260817193000_activate_carousel_structure_2_runtime.sql",
 );
 const constraintRepairMigration = read(
-  "supabase/migrations/20260822032756_repair_carousel_structure_2_generation_constraint.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260822032756_repair_carousel_structure_2_generation_constraint.sql",
 );
 const appPreparation = read("lib/carousel/prepare-business-profile.ts");
 const appDatabase = read("lib/carousel/db.ts");

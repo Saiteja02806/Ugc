@@ -4,14 +4,14 @@ import test from "node:test";
 
 const migration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260808114912_create_hook_performance_observations.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260808114912_create_hook_performance_observations.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const globalFormatsMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260813150000_add_global_hook_text_formats_v1.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260813150000_add_global_hook_text_formats_v1.sql",
     import.meta.url,
   ),
   "utf8",

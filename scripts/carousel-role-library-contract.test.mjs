@@ -144,7 +144,7 @@ test("summary keeps independent category and role counts", () => {
 test("migration reserves exactly one hook, two human, and two non-human slots", () => {
   const migration = readFileSync(
     path.resolve(
-      "supabase/migrations/20260817123000_add_carousel_role_image_library_v1.sql",
+      "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260817123000_add_carousel_role_image_library_v1.sql",
     ),
     "utf8",
   );

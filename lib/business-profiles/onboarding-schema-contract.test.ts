@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const migration = readFileSync(
-  "supabase/migrations/20260808114907_add_required_business_profile_onboarding.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260808114907_add_required_business_profile_onboarding.sql",
   "utf8",
 );
 const storage = readFileSync("lib/business-profiles/db.ts", "utf8");
@@ -14,19 +14,19 @@ const logoUploadRoute = readFileSync(
   "utf8",
 );
 const v3Migration = readFileSync(
-  "supabase/migrations/20260808114924_add_business_identity_and_primary_goal.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260808114924_add_business_identity_and_primary_goal.sql",
   "utf8",
 );
 const multiGoalMigration = readFileSync(
-  "supabase/migrations/20260809114404_add_multiple_business_profile_goals.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260809114404_add_multiple_business_profile_goals.sql",
   "utf8",
 );
 const progressMigration = readFileSync(
-  "supabase/migrations/20260824183000_add_business_profile_onboarding_step.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824183000_add_business_profile_onboarding_step.sql",
   "utf8",
 );
 const legacyProgressCorrection = readFileSync(
-  "supabase/migrations/20260824184500_restart_stale_business_profile_onboarding.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824184500_restart_stale_business_profile_onboarding.sql",
   "utf8",
 );
 

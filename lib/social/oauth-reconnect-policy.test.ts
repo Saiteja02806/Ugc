@@ -91,7 +91,7 @@ test("reconnect accepts the exact account selected by the user", () => {
 test("OAuth session migration persists a constrained reconnect target", () => {
   const migration = readFileSync(
     projectFile(
-      "supabase/migrations/20260728110910_add_account_specific_social_oauth.sql",
+      "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260728110910_add_account_specific_social_oauth.sql",
     ),
     "utf8",
   );

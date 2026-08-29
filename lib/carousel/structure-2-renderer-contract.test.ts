@@ -7,7 +7,7 @@ const root = process.cwd();
 
 test("Structure 2 renderer metadata is additive and the isolated runtime is active", async () => {
   const [migration, runtimeStructure, generator, packageJson] = await Promise.all([
-    read("supabase/migrations/20260817190000_add_carousel_structure_2_render_metadata.sql"),
+    read("supabase/migration_archive/pre_baseline_20260829/canonical_history/20260817190000_add_carousel_structure_2_render_metadata.sql"),
     read("worker/src/lib/carousel-structure.ts"),
     read("worker/src/lib/carousel-generate.ts"),
     read("package.json"),

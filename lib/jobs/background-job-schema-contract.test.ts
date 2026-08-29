@@ -3,19 +3,19 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const expandMigration = readMigration(
-  "supabase/migrations/20260801100000_expand_background_jobs.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260801100000_expand_background_jobs.sql",
 );
 const eventsMigration = readMigration(
-  "supabase/migrations/20260801101000_create_background_job_events.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260801101000_create_background_job_events.sql",
 );
 const transitionsMigration = readMigration(
-  "supabase/migrations/20260801102000_add_background_job_transition_functions.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260801102000_add_background_job_transition_functions.sql",
 );
 const generatedMediaPersistenceMigration = readMigration(
-  "supabase/migrations/20260801104000_harden_generated_media_persistence.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260801104000_harden_generated_media_persistence.sql",
 );
 const geminiProviderMigration = readMigration(
-  "supabase/migrations/20260824120500_add_gemini_generation_provider.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824120500_add_gemini_generation_provider.sql",
 );
 
 test("uses demand-scaled request workers for independent AI jobs", () => {

@@ -17,7 +17,7 @@ const files = {
   mediaRoute: read("app/api/media/[assetId]/route.ts"),
   renderRoute: read("app/api/edit/render/route.ts"),
   renderTerminalMigration: read(
-    "supabase/migrations/20260802213000_finalize_edit_render_atomically.sql",
+    "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260802213000_finalize_edit_render_atomically.sql",
   ),
   renderWorker: read("worker/src/jobs/render-edit-video.ts"),
   renderEngine: read("worker/src/lib/render-engine.ts"),

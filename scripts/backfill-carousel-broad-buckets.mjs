@@ -126,7 +126,7 @@ async function assertBroadBucketColumnsExist() {
     throw new Error(
       [
         "Broad bucket columns are not queryable yet.",
-        "Apply supabase/migrations/20260706145805_add_carousel_broad_bucket_metadata.sql first.",
+        "Apply supabase/migration_archive/pre_baseline_20260829/canonical_history/20260706145805_add_carousel_broad_bucket_metadata.sql first.",
         `Supabase returned: ${error.message}`,
       ].join(" "),
     );

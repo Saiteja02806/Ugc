@@ -7,10 +7,10 @@ function readProjectFile(path: string) {
 }
 
 const migration = readProjectFile(
-  "supabase/migrations/20260824123801_create_product_feedback.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824123801_create_product_feedback.sql",
 );
 const attachmentMigration = readProjectFile(
-  "supabase/migrations/20260824155001_add_product_feedback_attachments.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824155001_add_product_feedback_attachments.sql",
 );
 const submissionRoute = readProjectFile("app/api/feedback/route.ts");
 const attachmentUploadRoute = readProjectFile(

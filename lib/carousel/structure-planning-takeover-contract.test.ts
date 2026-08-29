@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const migration = readFileSync(
-  "supabase/migrations/20260818100000_add_carousel_structure_planning_takeover.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260818100000_add_carousel_structure_planning_takeover.sql",
   "utf8",
 );
 const runtime = readFileSync(

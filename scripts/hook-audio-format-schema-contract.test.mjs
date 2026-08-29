@@ -4,7 +4,7 @@ import test from "node:test";
 
 const migration = readFileSync(
   new URL(
-    "../supabase/migrations/20260809143646_add_hook_audio_format_foundation.sql",
+    "../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260809143646_add_hook_audio_format_foundation.sql",
     import.meta.url,
   ),
   "utf8",
@@ -12,7 +12,7 @@ const migration = readFileSync(
 
 const privilegeMigration = readFileSync(
   new URL(
-    "../supabase/migrations/20260809143921_restrict_hook_audio_format_foundation_privileges.sql",
+    "../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260809143921_restrict_hook_audio_format_foundation_privileges.sql",
     import.meta.url,
   ),
   "utf8",
@@ -20,7 +20,7 @@ const privilegeMigration = readFileSync(
 
 const indexMigration = readFileSync(
   new URL(
-    "../supabase/migrations/20260809144201_index_hook_audio_format_foundation_foreign_keys.sql",
+    "../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260809144201_index_hook_audio_format_foundation_foreign_keys.sql",
     import.meta.url,
   ),
   "utf8",

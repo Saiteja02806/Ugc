@@ -8,7 +8,7 @@ const importerSource = readFileSync(
 );
 const migrationSource = readFileSync(
   new URL(
-    "../supabase/migrations/20260814141455_add_wall_text_generation_v7_architecture.sql",
+    "../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260814141455_add_wall_text_generation_v7_architecture.sql",
     import.meta.url,
   ),
   "utf8",

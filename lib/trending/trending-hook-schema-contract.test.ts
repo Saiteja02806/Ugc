@@ -6,105 +6,105 @@ import { isTerminalTrendingHookCopyFailure } from "./trending-hook-copy-contract
 
 const migration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260728183858_add_trending_hook_ideas.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260728183858_add_trending_hook_ideas.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const indexMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260728184236_index_trending_hook_foreign_keys.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260728184236_index_trending_hook_foreign_keys.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const copyWorkerMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260729113000_add_validated_trending_hook_copy_worker.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260729113000_add_validated_trending_hook_copy_worker.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const legacyCompatibilityMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260729114500_preserve_legacy_trending_hook_candidate_contract.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260729114500_preserve_legacy_trending_hook_candidate_contract.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const patternedCopyMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260729191556_add_patterned_trending_hook_copy_v3.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260729191556_add_patterned_trending_hook_copy_v3.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const tightenedHookMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260730120000_tighten_trending_hook_opening_v4.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260730120000_tighten_trending_hook_opening_v4.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const threeLineOverlayMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260811120000_expand_hook_overlay_to_three_lines.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260811120000_expand_hook_overlay_to_three_lines.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const globalFormatsMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260813150000_add_global_hook_text_formats_v1.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260813150000_add_global_hook_text_formats_v1.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const fixedTypeValidationMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260824180000_align_hook_fixed_type_validation.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824180000_align_hook_fixed_type_validation.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const reactionMappedFormatsMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260827110000_add_reaction_mapped_hook_formats.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260827110000_add_reaction_mapped_hook_formats.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const durableHookRunMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260827130000_add_durable_trending_hook_generation_runs.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260827130000_add_durable_trending_hook_generation_runs.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const durableHookReservationFixMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260828140000_fix_trending_hook_chunk_reservation_ambiguity.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828140000_fix_trending_hook_chunk_reservation_ambiguity.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const durableHookDispatchOutboxMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260828150000_add_durable_trending_hook_dispatch_outbox.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828150000_add_durable_trending_hook_dispatch_outbox.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const atomicInitialHookDispatchMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260828162000_make_initial_trending_hook_dispatch_atomic.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828162000_make_initial_trending_hook_dispatch_atomic.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const durableHookPersistenceFixMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260828163000_fix_trending_hook_chunk_persistence_ambiguity.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828163000_fix_trending_hook_chunk_persistence_ambiguity.sql",
     import.meta.url,
   ),
   "utf8",

@@ -4,14 +4,14 @@ import test from "node:test";
 
 const migration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260824151000_add_carousel_content_plan_lifecycle.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824151000_add_carousel_content_plan_lifecycle.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const provenanceMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260824153000_link_carousel_generations_to_content_plan.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824153000_link_carousel_generations_to_content_plan.sql",
     import.meta.url,
   ),
   "utf8",

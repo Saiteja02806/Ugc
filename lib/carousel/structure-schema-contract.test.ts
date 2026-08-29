@@ -13,7 +13,7 @@ import {
 } from "./structure.ts";
 
 const migration = read(
-  "supabase/migrations/20260817180000_add_carousel_structure_source_of_truth.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260817180000_add_carousel_structure_source_of_truth.sql",
 );
 const appStore = read("lib/carousel/db.ts");
 const workerTypes = read("worker/src/types.ts");

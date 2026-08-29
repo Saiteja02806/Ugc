@@ -37,7 +37,7 @@ const firstVisitPreview = readProjectFile(
   "app/e2e/trending-walkthrough-preview/page.tsx",
 );
 const existingWalkthroughBackfill = readProjectFile(
-  "supabase/migrations/20260828113000_backfill_existing_trending_walkthroughs.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828113000_backfill_existing_trending_walkthroughs.sql",
 );
 const nextConfig = readProjectFile("next.config.ts");
 

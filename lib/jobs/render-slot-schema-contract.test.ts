@@ -5,7 +5,7 @@ import test from "node:test";
 
 const workspaceRoot = process.cwd();
 const migration = read(
-  "supabase/migrations/20260828160000_add_durable_video_render_slots.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828160000_add_durable_video_render_slots.sql",
 );
 const launcher = read("app/api/internal/jobs/launch-render/route.ts");
 const jobs = read("lib/jobs/background-jobs.ts");

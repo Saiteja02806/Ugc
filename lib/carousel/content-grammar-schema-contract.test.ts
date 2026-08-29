@@ -4,8 +4,8 @@ import path from "node:path";
 import test from "node:test";
 
 const workspaceRoot = process.cwd();
-const migration = read("supabase/migrations/20260810174540_add_carousel_content_grammar.sql");
-const experimentMigration = read("supabase/migrations/20260813110309_add_controlled_carousel_experiment_batches.sql");
+const migration = read("supabase/migration_archive/pre_baseline_20260829/canonical_history/20260810174540_add_carousel_content_grammar.sql");
+const experimentMigration = read("supabase/migration_archive/pre_baseline_20260829/canonical_history/20260813110309_add_controlled_carousel_experiment_batches.sql");
 const preparation = read("lib/carousel/prepare-business-profile.ts");
 const appGenerator = read("lib/carousel/generate-carousel.ts");
 const generationDb = read("lib/carousel/db.ts");

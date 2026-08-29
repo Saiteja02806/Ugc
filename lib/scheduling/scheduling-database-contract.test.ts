@@ -23,28 +23,28 @@ import {
 } from "./account-data-query-cache.ts";
 
 const recoveryMigration = readProjectFile(
-  "supabase/migrations/20260715191340_harden_schedule_recovery.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260715191340_harden_schedule_recovery.sql",
 );
 const reconciliationFixMigration = readProjectFile(
-  "supabase/migrations/20260716081546_fix_social_schedule_reconciliation.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260716081546_fix_social_schedule_reconciliation.sql",
 );
 const tiktokHardeningMigration = readProjectFile(
-  "supabase/migrations/20260716135333_harden_tiktok_oauth_and_publishing.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260716135333_harden_tiktok_oauth_and_publishing.sql",
 );
 const publishRetryMigration = readProjectFile(
-  "supabase/migrations/20260716142500_add_social_publish_target_retry.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260716142500_add_social_publish_target_retry.sql",
 );
 const instagramRenewalMigration = readProjectFile(
-  "supabase/migrations/20260716151500_support_instagram_token_renewal.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260716151500_support_instagram_token_renewal.sql",
 );
 const carouselPublishRetryMigration = readProjectFile(
-  "supabase/migrations/20260717183000_support_carousel_publish_retry.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260717183000_support_carousel_publish_retry.sql",
 );
 const hookVideoScheduleMigration = readProjectFile(
-  "supabase/migrations/20260717190000_link_hook_video_schedules.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260717190000_link_hook_video_schedules.sql",
 );
 const hookVideoScheduleRecoveryMigration = readProjectFile(
-  "supabase/migrations/20260829093000_restore_hook_video_schedule_uniqueness_guards.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260829093000_restore_hook_video_schedule_uniqueness_guards.sql",
 );
 const hookVideoScheduleRoute = readProjectFile(
   "app/api/trending/hook-videos/drafts/schedule/route.ts",

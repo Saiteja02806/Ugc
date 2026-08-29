@@ -4,21 +4,21 @@ import test from "node:test";
 
 const migration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260825120000_add_wall_text_content_plan.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260825120000_add_wall_text_content_plan.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const freeformMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260826101500_disable_forced_wall_text_formats.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260826101500_disable_forced_wall_text_formats.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const freeformPlanCompatibilityMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260826113000_allow_freeform_wall_text_plan_briefs.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260826113000_allow_freeform_wall_text_plan_briefs.sql",
     import.meta.url,
   ),
   "utf8",

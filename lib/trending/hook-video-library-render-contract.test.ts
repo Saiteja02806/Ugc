@@ -26,7 +26,7 @@ const workerJob = readProjectFile(
   "worker/src/jobs/render-schedule-combination.ts",
 );
 const migration = readProjectFile(
-  "supabase/migrations/20260822130444_add_saved_hook_video_rendering.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260822130444_add_saved_hook_video_rendering.sql",
 );
 
 test("raw company Hook clips are excluded from the frontend media library", () => {

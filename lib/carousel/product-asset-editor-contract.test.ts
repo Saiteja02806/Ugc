@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const migration = readProjectFile(
-  "supabase/migrations/20260817200000_add_carousel_product_asset_editor.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260817200000_add_carousel_product_asset_editor.sql",
 );
 const productAssetRoute = readProjectFile(
   "app/api/trending/carousel-product-assets/route.ts",

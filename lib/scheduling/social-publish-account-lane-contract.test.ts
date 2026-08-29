@@ -5,7 +5,7 @@ import test from "node:test";
 
 const workspaceRoot = process.cwd();
 const migration = read(
-  "supabase/migrations/20260828161000_add_social_publish_account_lanes.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828161000_add_social_publish_account_lanes.sql",
 );
 const store = read("worker/src/lib/supabase.ts");
 const worker = read("worker/src/jobs/publish-social-post.ts");

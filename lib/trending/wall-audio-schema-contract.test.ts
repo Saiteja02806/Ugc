@@ -4,14 +4,14 @@ import test from "node:test";
 
 const migration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260809114446_create_wall_audio_library.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260809114446_create_wall_audio_library.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const generationV7Migration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260814141455_add_wall_text_generation_v7_architecture.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260814141455_add_wall_text_generation_v7_architecture.sql",
     import.meta.url,
   ),
   "utf8",

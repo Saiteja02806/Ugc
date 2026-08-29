@@ -5,105 +5,105 @@ import test from "node:test";
 
 const creativeMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260726100000_create_trending_wall_text_creatives.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260726100000_create_trending_wall_text_creatives.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const catalogMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260728104054_add_wall_text_video_catalog_metadata.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260728104054_add_wall_text_video_catalog_metadata.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const unifiedCopyMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260728183932_wall_text_unified_copy_v2.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260728183932_wall_text_unified_copy_v2.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const renderingMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260729100000_add_wall_text_content_rendering.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260729100000_add_wall_text_content_rendering.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const renderSchemaRepairMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260808072043_repair_wall_text_render_schema.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260808072043_repair_wall_text_render_schema.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const renderEditIndexMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260808072642_index_wall_text_render_edit.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260808072642_index_wall_text_render_edit.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const semanticOverlayMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260730061012_wall_text_semantic_overlay_v3.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260730061012_wall_text_semantic_overlay_v3.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const sixSecondMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260730192903_wall_text_six_second_v4.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260730192903_wall_text_six_second_v4.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const qualityMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260730201500_wall_text_prompt_quality_v5.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260730201500_wall_text_prompt_quality_v5.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const oneCallFormatsMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260812135048_wall_text_one_call_formats_v6.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260812135048_wall_text_one_call_formats_v6.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const generationV7Migration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260814141455_add_wall_text_generation_v7_architecture.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260814141455_add_wall_text_generation_v7_architecture.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const sixSecondSourceMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260824160000_enforce_wall_text_six_second_sources.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824160000_enforce_wall_text_six_second_sources.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const semiboldTypographyMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260824170000_allow_wall_text_semibold_typography.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260824170000_allow_wall_text_semibold_typography.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const lighterTypographyMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260825130000_add_wall_text_lighter_typography_v8.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260825130000_add_wall_text_lighter_typography_v8.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const balancedLayoutMigration = readFileSync(
   new URL(
-    "../../supabase/migrations/20260826160000_add_wall_text_balanced_layout_v9.sql",
+    "../../supabase/migration_archive/pre_baseline_20260829/canonical_history/20260826160000_add_wall_text_balanced_layout_v9.sql",
     import.meta.url,
   ),
   "utf8",
@@ -562,11 +562,13 @@ test("measures final Wall lines with Inter before saving authoritative layout", 
   assert.match(layoutEngineSource, /textBox: params\.layout\.textBox/);
   assert.match(layoutEngineSource, /maximumWidth = getWallTextSafeLineWidth\(textBoxWidth\)/);
   assert.match(visualStyleSource, /WALL_TEXT_INLINE_SAFE_PADDING = 24/);
+  assert.match(visualStyleSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
   assert.match(
     renderValidationSource,
     /maximumTextWidth = getWallTextSafeLineWidth\(textBoxWidth\)/,
   );
   assert.match(workerRenderSpecSource, /WALL_TEXT_INLINE_SAFE_PADDING = 24/);
+  assert.match(workerRenderSpecSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
   assert.match(
     workerRenderEngineSource,
     /textBox\.width \* WALL_TEXT_RENDER_WIDTH\)[\s\S]+WALL_TEXT_INLINE_SAFE_PADDING \* 2/,

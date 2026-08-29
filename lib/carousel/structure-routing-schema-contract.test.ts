@@ -3,10 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const routingMigration = read(
-  "supabase/migrations/20260817183000_route_carousel_structures_by_batch.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260817183000_route_carousel_structures_by_batch.sql",
 );
 const roleLibraryMigration = read(
-  "supabase/migrations/20260817123000_add_carousel_role_image_library_v1.sql",
+  "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260817123000_add_carousel_role_image_library_v1.sql",
 );
 const preparation = read("lib/carousel/prepare-business-profile.ts");
 const appGeneration = read("lib/carousel/generate-carousel.ts");

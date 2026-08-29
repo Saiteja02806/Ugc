@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 
@@ -7,7 +8,7 @@ const [pgModuleRootArg, expectedProjectRef, baselineVersion, mode = "rollback"] 
 
 if (!pgModuleRootArg || !expectedProjectRef || !baselineVersion) {
   throw new Error(
-    "Usage: node scripts/reconcile-supabase-migration-ledger.mjs <pg-module-root> <expected-project-ref> <baseline-version> [rollback|commit-disposable]",
+    "Usage: node scripts/reconcile-supabase-migration-ledger.mjs <pg-module-root> <expected-project-ref> <baseline-version> [rollback|commit-disposable|commit-production]",
   );
 }
 
@@ -15,13 +16,17 @@ if (!/^\d{14}$/u.test(baselineVersion)) {
   throw new Error("Safety stop: the baseline version must be a 14-digit timestamp.");
 }
 
-if (!new Set(["rollback", "commit-disposable"]).has(mode)) {
+if (!new Set(["rollback", "commit-disposable", "commit-production"]).has(mode)) {
   throw new Error("Safety stop: unsupported reconciliation mode.");
 }
 
 const productionProjectRef = "kltxwijhluawgveykfbt";
 if (mode === "commit-disposable" && expectedProjectRef === productionProjectRef) {
   throw new Error("Safety stop: this script cannot commit against production.");
+}
+
+if (mode === "commit-production" && expectedProjectRef !== productionProjectRef) {
+  throw new Error("Safety stop: production mode requires the exact production project.");
 }
 
 if (
@@ -36,6 +41,50 @@ if (
 const connectionString = process.env.UGC_MIGRATION_LEDGER_DB_URL;
 if (!connectionString || !process.env.PGPASSWORD) {
   throw new Error("The database URL and process-only password are required.");
+}
+
+async function verifyProductionBackup(beforeLedger) {
+  if (mode !== "commit-production") return;
+
+  const confirmation = `${expectedProjectRef}:${baselineVersion}`;
+  if (process.env.UGC_PRODUCTION_LEDGER_CONFIRMATION !== confirmation) {
+    throw new Error("Safety stop: production ledger confirmation does not match.");
+  }
+
+  const backupFile = process.env.UGC_PRODUCTION_LEDGER_BACKUP_FILE;
+  const expectedBackupSha256 = process.env.UGC_PRODUCTION_LEDGER_BACKUP_SHA256;
+  const expectedSchemaSha256 = process.env.UGC_EXPECTED_PUBLIC_SCHEMA_SHA256;
+  if (!backupFile || !expectedBackupSha256 || !expectedSchemaSha256) {
+    throw new Error("Safety stop: production backup and schema proof are required.");
+  }
+
+  const resolvedBackupFile = path.resolve(backupFile);
+  const tempRoot = path.resolve(process.env.TEMP ?? process.env.TMP ?? "");
+  if (
+    !tempRoot ||
+    !resolvedBackupFile.startsWith(`${tempRoot}${path.sep}`)
+  ) {
+    throw new Error("Safety stop: production ledger backup must be in the temp recovery area.");
+  }
+
+  const backupBytes = await readFile(resolvedBackupFile);
+  const actualBackupSha256 = createHash("sha256").update(backupBytes).digest("hex");
+  if (actualBackupSha256 !== expectedBackupSha256) {
+    throw new Error("Safety stop: production ledger backup hash does not match.");
+  }
+
+  const backup = JSON.parse(backupBytes.toString("utf8"));
+  const backupVersions = backup.migrations?.map((migration) => migration.version);
+  const liveVersions = beforeLedger.rows.map((migration) => migration.version);
+  if (
+    backup.format !== "ugc-supabase-migration-ledger-v1" ||
+    backup.expectedProjectRef !== expectedProjectRef ||
+    JSON.stringify(backupVersions) !== JSON.stringify(liveVersions)
+  ) {
+    throw new Error("Safety stop: production ledger changed after the verified backup.");
+  }
+
+  return expectedSchemaSha256;
 }
 
 const databaseUrl = new URL(connectionString);
@@ -158,6 +207,13 @@ async function main() {
     if (beforeLedger.rowCount === 0) {
       throw new Error("Safety stop: the existing migration ledger is empty.");
     }
+    const expectedSchemaSha256 = await verifyProductionBackup(beforeLedger);
+    if (
+      expectedSchemaSha256 &&
+      before.schemaSha256 !== expectedSchemaSha256
+    ) {
+      throw new Error("Safety stop: production public schema changed after rehearsal.");
+    }
 
     await client.query("begin");
     await client.query("set local lock_timeout = '5s'");
@@ -214,10 +270,10 @@ async function main() {
       throw new Error("Safety stop: rollback did not restore the original ledger count.");
     }
     if (
-      mode === "commit-disposable" &&
+      mode !== "rollback" &&
       (afterLedger.rowCount !== 1 || afterLedger.rows[0].version !== baselineVersion)
     ) {
-      throw new Error("Safety stop: disposable ledger commit did not persist the baseline.");
+      throw new Error("Safety stop: ledger commit did not persist the baseline.");
     }
 
     process.stdout.write(

@@ -239,6 +239,17 @@ test("turns a terminal Wall persistence rejection into a visible retry state", (
   );
 });
 
+test("scopes ordinary Wall-of-Text refill idempotency to the current daily feed", () => {
+  assert.match(
+    unifiedFeed,
+    /wallTextDailyFeedKey: attachedPlan\.feed\.id/,
+  );
+  assert.match(
+    unifiedFeed,
+    /recoveryKey:\s*params\.wallTextRecoveryKey\s*\?\?\s*params\.wallTextDailyFeedKey/,
+  );
+});
+
 test("keeps the per-feed Carousel binding index for historic-row compatibility", () => {
   assert.match(
     progressiveDeliveryMigration,

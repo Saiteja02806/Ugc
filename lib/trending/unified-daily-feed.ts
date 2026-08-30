@@ -486,6 +486,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     includeWallText: params.includeWallText,
     missingByFormat,
     profile: params.profile,
+    wallTextDailyFeedKey: attachedPlan.feed.id,
     wallTextRecoveryKey: attachedPlan.feed.wallTextRetryKey,
   });
   const resolvedItems = buildSlotOrderedItems({
@@ -786,6 +787,7 @@ async function prepareMissingFormats(params: {
   includeWallText: boolean;
   missingByFormat: TrendingContentAllocation;
   profile: BusinessProfileRecord;
+  wallTextDailyFeedKey: string;
   wallTextRecoveryKey?: string | null;
 }) {
   const results = new Map<"hook_video" | "wall_text", "failed" | "scheduled">();
@@ -811,7 +813,11 @@ async function prepareMissingFormats(params: {
   if (params.includeWallText && params.missingByFormat.wall_text > 0) {
     tasks.push(
       enqueueTrendingWallTextRefill(params.profile, {
-        recoveryKey: params.wallTextRecoveryKey,
+        // A regular refill needs a stable key for this daily feed. Without it,
+        // the same profile/count key can resolve to a completed job from an
+        // earlier day and leave this feed's reserved slots unassigned.
+        recoveryKey:
+          params.wallTextRecoveryKey ?? params.wallTextDailyFeedKey,
         targetActive:
           params.currentCounts.wall_text + params.missingByFormat.wall_text,
       })

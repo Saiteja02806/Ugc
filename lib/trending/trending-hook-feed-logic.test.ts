@@ -95,32 +95,28 @@ test("does not queue a Trending source whose reaction is not reviewed", () => {
   );
 });
 
-test("does not queue a source when its reaction needs missing business evidence", () => {
-  const candidates = selectTrendingHookCandidates(
-    [
-      createEntry({
-        durationSeconds: 4,
-        id: "missing-capability",
-        reactionType: "amusement_laughter",
-      }),
-      createEntry({
-        durationSeconds: 4,
-        id: "missing-audience",
-        reactionType: "secret_reveal",
-      }),
-      createEntry({
-        durationSeconds: 4,
-        id: "supported-pain",
-        reactionType: "concern_anxiety",
-      }),
-    ],
-    6,
-    { mainProblem: "Manual tracking takes too much time." },
-  );
+test("queues every technically valid reviewed source for every business", () => {
+  const candidates = selectTrendingHookCandidates([
+    createEntry({
+      durationSeconds: 4,
+      id: "amusement",
+      reactionType: "amusement_laughter",
+    }),
+    createEntry({
+      durationSeconds: 4,
+      id: "reveal",
+      reactionType: "secret_reveal",
+    }),
+    createEntry({
+      durationSeconds: 4,
+      id: "concern",
+      reactionType: "concern_anxiety",
+    }),
+  ]);
 
   assert.deepEqual(
     candidates.map((candidate) => candidate.entry.video.id),
-    ["supported-pain"],
+    ["amusement", "reveal", "concern"],
   );
 });
 

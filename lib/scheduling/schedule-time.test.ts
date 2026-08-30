@@ -108,7 +108,7 @@ test("reconstructs calendar values in the schedule timezone", () => {
   );
 });
 
-test("uses a five-minute social scheduling lead with minute-aligned tolerance", () => {
+test("uses a full five-minute social scheduling lead on whole-minute slots", () => {
   const now = Date.UTC(2026, 6, 20, 12, 0, 20);
 
   assert.equal(
@@ -125,7 +125,7 @@ test("uses a five-minute social scheduling lead with minute-aligned tolerance", 
       now,
       scheduledFor: Date.UTC(2026, 6, 20, 12, 5, 0),
     }).valid,
-    true,
+    false,
   );
   assert.equal(
     validateScheduleLeadTime({
@@ -142,7 +142,7 @@ test("returns an arbitrary-minute earliest slot without quarter-hour rounding", 
 
   assert.equal(
     getEarliestScheduleTimestamp({ minimumLeadMinutes: 5, now }),
-    Date.UTC(2026, 6, 20, 12, 7, 0),
+    Date.UTC(2026, 6, 20, 12, 8, 0),
   );
 });
 

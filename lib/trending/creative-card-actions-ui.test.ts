@@ -666,6 +666,21 @@ test("shows ready ideas while other daily slots are still preparing or failed", 
   );
 });
 
+test("offers to restart Hook generation when the legacy selector never started it", () => {
+  assert.match(workspace, /failure=\{trendingFeedFailure\}/);
+  assert.match(workspace, /failure\?\.code === "hook_generation_restart_required"/);
+  assert.match(
+    workspace,
+    /actionLabel=\{\s*restartRequired \? "Generate Hook videos" : "Try again"\s*\}/,
+  );
+  assert.match(workspace, /title=\{restartRequired \? "Hook videos are ready to generate"/);
+  assert.match(
+    workspace,
+    /function openBusinessProfile\(\) \{[\s\S]*router\.push\(`\/onboarding\$\{query \? `\?\$\{query\}` : ""\}`\)/,
+  );
+  assert.match(workspace, /\) : failure \? \([\s\S]*TrendingFeedFailureState/);
+});
+
 function readProjectFile(relativePath: string) {
   return readFileSync(
     new URL(`../../${relativePath}`, import.meta.url),

@@ -50,6 +50,10 @@ const unifiedFeed = readFileSync(
   "lib/trending/unified-daily-feed.ts",
   "utf8",
 );
+const trendingHookFeed = readFileSync(
+  "lib/trending/trending-hook-feed.ts",
+  "utf8",
+);
 const unifiedFeedDatabase = readFileSync(
   "lib/trending/unified-daily-feed-db.ts",
   "utf8",
@@ -187,11 +191,11 @@ test("isolates terminal format failures to their unbound slots", () => {
   assert.match(unifiedFeed, /getTerminalPreparationFailureFormats/);
   assert.match(
     unifiedFeed,
-    /preparationResults\.get\("hook_video"\) === "failed"/,
+    /preparationResults\.get\("hook_video"\)\?\.status === "failed"/,
   );
   assert.match(
     unifiedFeed,
-    /preparationResults\.get\("wall_text"\) === "failed"/,
+    /preparationResults\.get\("wall_text"\)\?\.status === "failed"/,
   );
   assert.match(unifiedFeed, /markDailyTrendingFeedFormatsFailed/);
   assert.match(
@@ -212,6 +216,30 @@ test("does not select a prior-day Carousel assignment for a new daily feed", () 
   );
 });
 
+test("uses reviewed Hook clips for every business and exposes a recovery for old blocked feeds", () => {
+  assert.match(
+    trendingHookFeed,
+    /if \(candidates\.length === 0\) \{[\s\S]*throw new TrendingHookPreparationError\([\s\S]*No reviewed vertical Hook video sources are available/,
+  );
+  assert.doesNotMatch(
+    trendingHookFeed,
+    /if \(candidates\.length === 0\) \{[\s\S]*mode === "refill"[\s\S]*status: "ready"/,
+  );
+  assert.match(
+    unifiedFeed,
+    /getPublicDailyFeedFailure\(\{[\s\S]*error: existingPlan\.feed\.lastError,[\s\S]*slots: existingPlan\.slots/,
+  );
+  assert.match(
+    unifiedFeed,
+    /code: "hook_generation_restart_required"/,
+  );
+  assert.match(
+    unifiedFeed,
+    /LEGACY_HOOK_SELECTION_ERROR_MESSAGE[\s\S]*LEGACY_PENDING_SOURCE_JOBS_MESSAGE/,
+  );
+  assert.doesNotMatch(trendingHookFeed, /business evidence/);
+});
+
 test("turns a terminal Wall persistence rejection into a visible retry state", () => {
   assert.match(
     unifiedFeed,
@@ -219,7 +247,7 @@ test("turns a terminal Wall persistence rejection into a visible retry state", (
   );
   assert.match(
     unifiedFeed,
-    /result\.status === "failed" \? "failed" : "scheduled"/,
+    /result\.status === "failed"[\s\S]*status: "failed"[\s\S]*status: "scheduled"/,
   );
   assert.match(
     unifiedFeedDatabase,

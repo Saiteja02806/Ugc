@@ -56,6 +56,7 @@ import {
   type ScheduleTargetSettings,
 } from "@/lib/scheduling/platform-settings";
 import {
+  getEarliestScheduleTimestamp,
   getZonedDateTimeParts,
   parseSchedulingTaskCreationBufferSeconds,
   parseSocialSchedulingMinimumLeadMinutes,
@@ -1302,17 +1303,19 @@ async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
   const targets = normalizeTargets(input.targets);
   const plannedTargets = normalizeTargets(input.plannedTargets);
   const rawMetadata = normalizeScheduleMetadata(input.metadata);
-  const scheduleTime = normalizeScheduleTime(
-    {
-      scheduledDate: input.scheduledDate,
-      scheduledFor: input.scheduledFor,
-      scheduledTime: input.scheduledTime,
-      timezone,
-    },
-    targets.length > 0 ||
-      plannedTargets.length > 0 ||
-      Boolean(getMetadataString(rawMetadata.plannedConnectionIds)),
-  );
+  const scheduleTime = input.useDefaultScheduleTime === true
+    ? getDefaultScheduleTime(timezone)
+    : normalizeScheduleTime(
+        {
+          scheduledDate: input.scheduledDate,
+          scheduledFor: input.scheduledFor,
+          scheduledTime: input.scheduledTime,
+          timezone,
+        },
+        targets.length > 0 ||
+          plannedTargets.length > 0 ||
+          Boolean(getMetadataString(rawMetadata.plannedConnectionIds)),
+      );
   const metadata = applyTrustedScheduleTimeMetadata(rawMetadata, scheduleTime);
 
   return {
@@ -1803,6 +1806,19 @@ type NormalizedScheduleTime = {
   scheduledFor: string;
   scheduledTime: string;
 };
+
+function getDefaultScheduleTime(timezone: string): NormalizedScheduleTime {
+  const scheduledTimestamp = getEarliestScheduleTimestamp({
+    minimumLeadMinutes: getSocialSchedulingMinimumLeadMinutes(),
+  });
+  const parts = getZonedDateTimeParts(scheduledTimestamp, timezone);
+
+  return {
+    scheduledDate: parts.date,
+    scheduledFor: new Date(scheduledTimestamp).toISOString(),
+    scheduledTime: parts.time,
+  };
+}
 
 function normalizeScheduleTime(
   input: ScheduleTimeInput,

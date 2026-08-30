@@ -178,11 +178,10 @@ export function HookVideoScheduleDrawer({
   const connectedCount = visibleConnections.filter(
     (connection) => connection.status === "connected",
   ).length;
-  // Wall-text schedules continue to use the displayed time. Hook videos can
-  // opt into a server-resolved default so an untouched value never expires
-  // while the user is reviewing the schedule.
-  const useDefaultScheduleTime =
-    summary.kind !== "wall_text" && !hasManualScheduleTime;
+  // Resolve the untouched "post right away" choice on the server at final
+  // confirmation. The displayed preview can become stale while a Wall-of-text
+  // Reel renders or while the user reviews either type of video.
+  const useDefaultScheduleTime = !hasManualScheduleTime;
 
   async function loadTikTokCapabilities(connectionId: string) {
     setTikTokCapabilities((current) => ({

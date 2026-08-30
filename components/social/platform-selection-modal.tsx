@@ -692,6 +692,7 @@ export function PlatformSelectionModal({
             getDefaultPublishingSettings(connection.platform),
         })),
         timezone,
+        useDefaultScheduleTime: mode === "asap",
       });
       void invalidateAccountSchedules(queryClient, accountId);
       resetModal();

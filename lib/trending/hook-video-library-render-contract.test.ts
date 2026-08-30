@@ -19,8 +19,12 @@ const mediaLibraryVisibility = readProjectFile(
 const scheduleRoute = readProjectFile(
   "app/api/trending/hook-videos/drafts/schedule/route.ts",
 );
+const schedulingService = readProjectFile("lib/scheduling/service.ts");
 const scheduleDrawer = readProjectFile(
   "components/trending/hook-video-schedule-drawer.tsx",
+);
+const trendingWorkspace = readProjectFile(
+  "components/trending/trending-workspace.tsx",
 );
 const hookComposer = readProjectFile(
   "components/trending/hook-video-composer.tsx",
@@ -102,6 +106,52 @@ test("untouched Hook schedule times resolve at confirmation and always confirm t
   );
 });
 
+test("Wall-of-text post right away resolves at final confirmation instead of using a stale preview", () => {
+  assert.match(scheduleDrawer, /const useDefaultScheduleTime = !hasManualScheduleTime;/);
+  assert.match(
+    trendingWorkspace,
+    /useDefaultScheduleTime: params\.selection\.useDefaultScheduleTime/,
+  );
+  assert.match(trendingWorkspace, /\? "post-right-away"/);
+  assert.match(
+    schedulingService,
+    /input\.useDefaultScheduleTime === true[\s\S]*getDefaultScheduleTime\(timezone\)/,
+  );
+  assert.match(schedulingService, /function getDefaultScheduleTime\(timezone: string\)/);
+  assert.match(schedulingService, /getEarliestScheduleTimestamp\(/);
+
+  const wallSchedulePreparation = getSection(
+    trendingWorkspace,
+    "async function handleScheduleWallText",
+    "async function confirmWallTextSchedule",
+  );
+  const wallScheduleConfirmation = getSection(
+    trendingWorkspace,
+    "async function confirmWallTextSchedule",
+    "const wallTextActionCandidate",
+  );
+
+  assert.match(
+    wallSchedulePreparation,
+    /await waitForWallTextRender\(savedDraft\.assignmentId\)/,
+  );
+  assert.ok(
+    wallSchedulePreparation.indexOf("waitForWallTextRender") <
+      wallSchedulePreparation.indexOf("setPendingWallTextDraft"),
+  );
+  assert.doesNotMatch(wallScheduleConfirmation, /waitForWallTextRender/);
+});
+
 function readProjectFile(relativePath: string) {
   return readFileSync(new URL(`../../${relativePath}`, import.meta.url), "utf8");
+}
+
+function getSection(source: string, startMarker: string, endMarker: string) {
+  const startIndex = source.indexOf(startMarker);
+  const endIndex = source.indexOf(endMarker, startIndex + startMarker.length);
+
+  assert.notEqual(startIndex, -1, `Missing ${startMarker}`);
+  assert.notEqual(endIndex, -1, `Missing ${endMarker}`);
+
+  return source.slice(startIndex, endIndex);
 }

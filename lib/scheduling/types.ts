@@ -142,6 +142,8 @@ export type ScheduleCreateInput = {
   targets?: ScheduleCreateTargetInput[];
   timezone?: string;
   title?: string;
+  /** Resolve the five-minute "post right away" time at API confirmation. */
+  useDefaultScheduleTime?: boolean;
 };
 
 export type ScheduleUpdateInput = ScheduleCreateInput & {

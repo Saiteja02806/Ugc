@@ -38,6 +38,12 @@ test("the onboarding screen resumes only from persisted verified progress", () =
   );
 });
 
+test("a completed profile continues to the dashboard", () => {
+  assert.match(onboarding, /if \(loadedProfile\?\.onboardingComplete\) \{/);
+  assert.match(onboarding, /router\.replace\("\/dashboard"\)/);
+  assert.doesNotMatch(onboarding, /reanalysis/);
+});
+
 test("the final approved flow has exactly information, identity, and goal", () => {
   for (const requiredCopy of [
     "Choose the source you trust most",

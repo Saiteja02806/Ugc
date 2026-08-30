@@ -97,6 +97,7 @@ export type HookTextPerformanceSignals = {
 
 export type HookTextEligibilityContext = {
   businessContext: {
+    businessName?: string | null;
     categories?: readonly string[];
     category?: string | null;
     desiredOutcome?: string | null;
@@ -763,15 +764,27 @@ export function selectHookTextFormats(params: {
 
     const format = getHookTextFormat(rule.formatId);
 
+    if (!format) {
+      return [];
+    }
+
     if (
-      !format ||
       !isHookTextFormatEligible(
         format,
         params.eligibility,
         rule.requiredEvidence,
       )
     ) {
-      return [];
+      // A completed business profile always has a verified name. When that
+      // is the only supplied business fact, use the name-grounded discovery
+      // format rather than dropping a reviewed Hook video before generation.
+      // The copy contract still prohibits invented product claims.
+      if (!params.eligibility.businessContext.businessName?.trim()) {
+        return [];
+      }
+
+      const brandDiscoveryFormat = getHookTextFormat("GF_015");
+      return brandDiscoveryFormat ? [brandDiscoveryFormat] : [];
     }
 
     return [format];

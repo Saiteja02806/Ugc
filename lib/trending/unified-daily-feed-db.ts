@@ -36,6 +36,7 @@ export type DailyTrendingFeedRecord = {
   createdAt: string;
   dailyLimit: number;
   id: string;
+  lastError: string | null;
   localDate: string;
   mix: TrendingContentMix;
   planDisplayName: string;
@@ -72,6 +73,7 @@ type DailyFeedRow = {
   daily_limit: number;
   hook_video_percent: number;
   id: string;
+  last_error: string | null;
   local_date: string;
   plan_display_name: string;
   plan_key: string;
@@ -683,6 +685,7 @@ function mapFeed(row: DailyFeedRow): DailyTrendingFeedRecord {
     createdAt: row.created_at,
     dailyLimit: row.daily_limit,
     id: row.id,
+    lastError: row.last_error?.trim() || null,
     localDate: row.local_date,
     mix: {
       carousel: row.carousel_percent,

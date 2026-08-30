@@ -122,34 +122,11 @@ export async function prepareTrendingHookIdeas(
   // generation attempt; it lets a continuation choose a fresh source if one
   // result still fails the lean technical checks.
   const candidatePoolCount = 600;
-  const candidates = selectTrendingHookCandidates(
-    inventory,
-    candidatePoolCount,
-    profile.context,
-  );
+  const candidates = selectTrendingHookCandidates(inventory, candidatePoolCount);
 
   if (candidates.length === 0) {
-    if (mode === "refill") {
-      const active = await listActiveTrendingHookIdeas({
-        businessProfileId: profile.id,
-        businessProfileVersion: profile.profileVersion,
-        promptVersion: TRENDING_HOOK_PROMPT_VERSION,
-        userId: profile.userId,
-      });
-
-      return {
-        exhausted: true,
-        ideaCount: filterHookIdeasBySelectedAssets(
-          active,
-          selectedAssetIds,
-        ).length,
-        jobId: null,
-        status: "ready" as const,
-      };
-    }
-
     throw new TrendingHookPreparationError(
-      "No reviewed Hook videos with enough business evidence are available.",
+      "No reviewed vertical Hook video sources are available.",
       409,
     );
   }

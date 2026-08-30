@@ -33,7 +33,11 @@ import {
   type TrendingHookVideoFeedItem,
   type TrendingWallTextFeedItem,
 } from "@/lib/trending/feed-items";
-import { getTrendingHookFeedProvider, prepareTrendingHookIdeas } from "@/lib/trending/trending-hook-feed";
+import {
+  getTrendingHookFeedProvider,
+  prepareTrendingHookIdeas,
+  TrendingHookPreparationError,
+} from "@/lib/trending/trending-hook-feed";
 import {
   enqueueTrendingWallTextRefill,
   getTrendingWallTextFeedProvider,
@@ -61,6 +65,27 @@ export type UnifiedTrendingDailyFeedState =
   | "ready";
 
 const inFlightDailyPackPreparations = new Map<string, Promise<void>>();
+
+const NO_REVIEWED_HOOK_VIDEO_SOURCES_ERROR =
+  "No reviewed vertical Hook video sources are available.";
+const HOOK_SOURCE_UNAVAILABLE_MESSAGE =
+  "The reviewed Hook video library has no usable vertical clips right now. Try again shortly.";
+const LEGACY_HOOK_SELECTION_ERROR_MESSAGE =
+  "No reviewed Hook videos with enough business evidence are available.";
+const LEGACY_PENDING_SOURCE_JOBS_MESSAGE =
+  "The daily pack is still waiting for one or more source jobs.";
+const HOOK_GENERATION_RESTART_REQUIRED_MESSAGE =
+  "Hook videos were not started. Generate them now to use the reviewed Hook video library.";
+
+type MissingFormatPreparationResult = {
+  failureMessage?: string;
+  status: "failed" | "scheduled";
+};
+
+type PublicTrendingDailyFeedFailure = {
+  code: "hook_generation_restart_required" | "hook_source_unavailable";
+  message: string;
+};
 
 export async function readUnifiedTrendingDailyFeed(params: {
   includeHookVideos: boolean;
@@ -197,6 +222,13 @@ export async function readUnifiedTrendingDailyFeed(params: {
     items,
     readiness: responseReadiness,
   });
+  const failure =
+    state === "failed"
+      ? getPublicDailyFeedFailure({
+          error: existingPlan.feed.lastError,
+          slots: existingPlan.slots,
+        })
+      : null;
 
   return {
     ...buildUnifiedDailyFeedResponse({
@@ -210,6 +242,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
       readiness: responseReadiness,
       state,
       timezone,
+      failure,
     }),
     formatAvailability: buildFormatAvailability({
       allocation: reservedAllocation,
@@ -324,6 +357,7 @@ function buildUnifiedDailyFeedResponse(params: {
   allocation: TrendingContentAllocation;
   entitlement: TrendingPlanEntitlement;
   feedId: string | null;
+  failure?: PublicTrendingDailyFeedFailure | null;
   items: TrendingFeedItem[];
   localDate: string;
   mix: {
@@ -363,6 +397,7 @@ function buildUnifiedDailyFeedResponse(params: {
     feed: {
       assignedCount: params.items.length + params.readiness.completedCount,
       completedCount: params.readiness.completedCount,
+      failure: params.failure ?? null,
       id: params.feedId,
       localDate: params.localDate,
       pendingSlotCount: params.readiness.pendingSlotCount,
@@ -527,8 +562,10 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     await markDailyTrendingFeedFormatsFailed({
       feedId: attachedPlan.feed.id,
       formats: terminalFailureFormats,
-      message:
-        "One or more reserved Trending formats could not be prepared.",
+      message: getTerminalPreparationFailureMessage({
+        formats: terminalFailureFormats,
+        preparationResults,
+      }),
     });
   }
 
@@ -623,20 +660,23 @@ function getTerminalPreparationFailureFormats(params: {
   includeHookVideos: boolean;
   includeWallText: boolean;
   missingByFormat: TrendingContentAllocation;
-  preparationResults: Map<"hook_video" | "wall_text", "failed" | "scheduled">;
+  preparationResults: Map<
+    "hook_video" | "wall_text",
+    MissingFormatPreparationResult
+  >;
   unresolvedByFormat: TrendingContentAllocation;
   wallTextProvider: TrendingFeedProviderResult<TrendingWallTextFeedItem>;
 }) {
   const hookFailed =
-    params.unresolvedByFormat.hook_video > 0 &&
+      params.unresolvedByFormat.hook_video > 0 &&
     (!params.includeHookVideos ||
-      params.preparationResults.get("hook_video") === "failed" ||
+      params.preparationResults.get("hook_video")?.status === "failed" ||
       (params.missingByFormat.hook_video === 0 &&
         params.hookProvider.state === "unavailable"));
   const wallTextFailed =
-    params.unresolvedByFormat.wall_text > 0 &&
+      params.unresolvedByFormat.wall_text > 0 &&
     (!params.includeWallText ||
-      params.preparationResults.get("wall_text") === "failed" ||
+      params.preparationResults.get("wall_text")?.status === "failed" ||
       (params.missingByFormat.wall_text === 0 &&
         params.wallTextProvider.state === "unavailable"));
 
@@ -685,6 +725,24 @@ function countReservedSlots(slots: DailyTrendingFeedSlotRecord[]) {
   }
 
   return counts;
+}
+
+function getTerminalPreparationFailureMessage(params: {
+  formats: Array<"hook_video" | "wall_text">;
+  preparationResults: Map<
+    "hook_video" | "wall_text",
+    MissingFormatPreparationResult
+  >;
+}) {
+  for (const format of params.formats) {
+    const message = params.preparationResults.get(format)?.failureMessage;
+
+    if (message) {
+      return message;
+    }
+  }
+
+  return "One or more reserved Trending formats could not be prepared.";
 }
 
 function getReadyAssignmentIds(params: {
@@ -790,7 +848,10 @@ async function prepareMissingFormats(params: {
   wallTextDailyFeedKey: string;
   wallTextRecoveryKey?: string | null;
 }) {
-  const results = new Map<"hook_video" | "wall_text", "failed" | "scheduled">();
+  const results = new Map<
+    "hook_video" | "wall_text",
+    MissingFormatPreparationResult
+  >();
   const tasks: Promise<void>[] = [];
 
   if (params.includeHookVideos && params.missingByFormat.hook_video > 0) {
@@ -801,11 +862,14 @@ async function prepareMissingFormats(params: {
           params.currentCounts.hook_video + params.missingByFormat.hook_video,
       })
         .then(() => {
-          results.set("hook_video", "scheduled");
+          results.set("hook_video", { status: "scheduled" });
         })
         .catch((error) => {
           console.error("Could not prepare reserved Hook Video positions:", error);
-          results.set("hook_video", "failed");
+          results.set("hook_video", {
+            failureMessage: getHookPreparationFailureMessage(error),
+            status: "failed",
+          });
         }),
     );
   }
@@ -824,18 +888,78 @@ async function prepareMissingFormats(params: {
         .then((result) => {
           results.set(
             "wall_text",
-            result.status === "failed" ? "failed" : "scheduled",
+            result.status === "failed"
+              ? {
+                  failureMessage:
+                    "Wall-of-text content could not be prepared. Try again shortly.",
+                  status: "failed",
+                }
+              : { status: "scheduled" },
           );
         })
         .catch((error) => {
           console.error("Could not prepare reserved Wall-of-text positions:", error);
-          results.set("wall_text", "failed");
+          results.set("wall_text", {
+            failureMessage:
+              "Wall-of-text content could not be prepared. Try again shortly.",
+            status: "failed",
+          });
         }),
     );
   }
 
   await Promise.all(tasks);
   return results;
+}
+
+function getHookPreparationFailureMessage(error: unknown) {
+  if (error instanceof TrendingHookPreparationError) {
+    if (error.message === NO_REVIEWED_HOOK_VIDEO_SOURCES_ERROR) {
+      return HOOK_SOURCE_UNAVAILABLE_MESSAGE;
+    }
+
+    return error.message;
+  }
+
+  return "Hook videos could not be prepared. Try again shortly.";
+}
+
+function getPublicDailyFeedFailure(params: {
+  error: string | null;
+  slots: readonly DailyTrendingFeedSlotRecord[];
+}): PublicTrendingDailyFeedFailure | null {
+  const hasUnstartedFailedHookSlots = hasUnassignedFailedHookSlot(params.slots);
+
+  if (
+    hasUnstartedFailedHookSlots &&
+    (params.error === LEGACY_PENDING_SOURCE_JOBS_MESSAGE ||
+      params.error === LEGACY_HOOK_SELECTION_ERROR_MESSAGE)
+  ) {
+    return {
+      code: "hook_generation_restart_required",
+      message: HOOK_GENERATION_RESTART_REQUIRED_MESSAGE,
+    };
+  }
+
+  if (params.error === HOOK_SOURCE_UNAVAILABLE_MESSAGE) {
+    return {
+      code: "hook_source_unavailable",
+      message: HOOK_SOURCE_UNAVAILABLE_MESSAGE,
+    };
+  }
+
+  return null;
+}
+
+function hasUnassignedFailedHookSlot(
+  slots: readonly DailyTrendingFeedSlotRecord[],
+) {
+  return slots.some(
+    (slot) =>
+      slot.format === "hook_video" &&
+      slot.state === "failed" &&
+      !slot.assignmentId,
+  );
 }
 
 function countMissingSlots(slots: DailyTrendingFeedSlotRecord[]) {
@@ -895,7 +1019,10 @@ function buildSlotOrderedItems(params: {
 function buildFormatAvailability(params: {
   allocation: TrendingContentAllocation;
   missingByFormat: TrendingContentAllocation;
-  preparationResults: Map<"hook_video" | "wall_text", "failed" | "scheduled">;
+  preparationResults: Map<
+    "hook_video" | "wall_text",
+    MissingFormatPreparationResult
+  >;
 }): TrendingFeedProviderAvailability[] {
   return (["carousel", "wall_text", "hook_video"] as const).map((format) => {
     if (params.allocation[format] === 0) {
@@ -906,11 +1033,14 @@ function buildFormatAvailability(params: {
       return { format, state: "ready" as const };
     }
 
-    const failed = format !== "carousel" && params.preparationResults.get(format) === "failed";
+    const preparation =
+      format === "carousel" ? undefined : params.preparationResults.get(format);
+    const failed = preparation?.status === "failed";
     return {
       format,
       reason: failed
-        ? "Reserved content could not be prepared. Try again shortly."
+        ? preparation.failureMessage ??
+          "Reserved content could not be prepared. Try again shortly."
         : "Reserved content is being prepared in the background.",
       state: "unavailable" as const,
     };

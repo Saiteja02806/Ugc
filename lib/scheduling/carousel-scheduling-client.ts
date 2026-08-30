@@ -12,6 +12,7 @@ export type CarouselScheduleSubmission = {
   scheduledTime: string;
   targets: ScheduleCreateTargetInput[];
   timezone: string;
+  useDefaultScheduleTime?: boolean;
 };
 
 export type CreateCarouselScheduleInput = {
@@ -194,6 +195,7 @@ export function buildCarouselScheduleRequest(
     targets: [],
     timezone: submission.timezone,
     title: input.title.slice(0, 160),
+    useDefaultScheduleTime: submission.useDefaultScheduleTime,
   };
 }
 

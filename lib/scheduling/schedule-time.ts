@@ -117,10 +117,13 @@ export function getEarliestScheduleTimestamp(params: {
   const minimumLeadMinutes = normalizeLeadMinutes(params.minimumLeadMinutes);
   const now = params.now ?? Date.now();
 
-  return (
-    getCurrentMinuteTimestamp(now) +
-    minimumLeadMinutes * MILLISECONDS_PER_MINUTE
-  );
+  // Schedule times are whole minutes, but the promised lead is elapsed time.
+  // Round the result up after adding the lead so a request at 12:00:45 with a
+  // five-minute lead is never assigned 12:05 (only 4m15s away).
+  return Math.ceil(
+    (now + minimumLeadMinutes * MILLISECONDS_PER_MINUTE) /
+      MILLISECONDS_PER_MINUTE,
+  ) * MILLISECONDS_PER_MINUTE;
 }
 
 export function validateSchedulingTaskCreationBuffer(params: {

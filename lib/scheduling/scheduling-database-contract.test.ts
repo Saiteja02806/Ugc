@@ -925,6 +925,15 @@ test("Post Right away calculates its lead time at final submission, not when the
     /mode === "asap"\s*\? getEarliestScheduleSlot\(\s*submittedAt,\s*minimumLeadMinutes,\s*timezone,\s*\)/,
   );
   assert.doesNotMatch(submitSchedule, /mode === "asap" \? earliestSlot/);
+  assert.match(submitSchedule, /useDefaultScheduleTime: mode === "asap"/);
+  assert.match(
+    carouselScheduleClient,
+    /useDefaultScheduleTime: submission\.useDefaultScheduleTime/,
+  );
+  assert.match(
+    schedulingService,
+    /input\.useDefaultScheduleTime === true[\s\S]*getDefaultScheduleTime\(timezone\)/,
+  );
 });
 
 test("inline carousel submission persists a recoverable draft before publishing", () => {

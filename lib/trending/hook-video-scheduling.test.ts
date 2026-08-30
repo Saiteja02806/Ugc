@@ -117,7 +117,7 @@ test("the automatic Hook time is resolved from the current server minute", () =>
     }),
     {
       scheduledDate: "2026-07-21",
-      scheduledTime: "00:04",
+      scheduledTime: "00:05",
     },
   );
 });

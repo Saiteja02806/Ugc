@@ -52,10 +52,10 @@ Drafts list and do not appear as timed calendar entries.
 Social scheduling uses one server-owned five-minute minimum lead for ready
 media, including ready Library carousels. Date/time controls use one-minute
 steps and must not round choices or defaults to quarter-hour boundaries. The
-lead check aligns `now` to the current minute so a whole-minute selection such
-as 15:05 remains valid when the request reaches the server a few seconds after
-15:00. The API exposes the configured minimum to all scheduling clients, while
-the server remains authoritative. A combined-video render may reuse the
+server adds the full lead before rounding up to the next whole minute: a user
+who confirms at 15:00:45 with a five-minute lead gets 15:06, never 15:05. The
+API exposes the configured minimum to all scheduling clients, while the server
+remains authoritative. A combined-video render may reuse the
 originally validated publish time only when enough time remains to create its
 exact-time Cloud Task; otherwise finalization fails clearly and requires a new
 future time. The delayed GCP Cloud Task architecture and atomic publish claim

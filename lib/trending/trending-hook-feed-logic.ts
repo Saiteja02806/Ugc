@@ -17,23 +17,9 @@ const REVIEWED_TRENDING_HOOK_REACTIONS = new Set([
   "focused_attention",
 ]);
 
-type HookBusinessEvidence = {
-  desiredOutcome?: string | null;
-  differentiator?: string | null;
-  differentiators?: readonly string[];
-  mainProblem?: string | null;
-  mainPromise?: string | null;
-  painPoints?: readonly string[];
-  primaryAudience?: string | null;
-  productSummary?: string | null;
-  targetAudience?: readonly string[];
-  valueProps?: readonly string[];
-};
-
 export function selectTrendingHookCandidates(
   inventory: readonly HookVideoBrowseEntry[],
   requestedCount = DEFAULT_TRENDING_HOOK_IDEA_COUNT,
-  businessEvidence?: HookBusinessEvidence,
 ) {
   const seenVideoIds = new Set<string>();
   const validEntries = inventory.flatMap((entry) => {
@@ -43,10 +29,6 @@ export function selectTrendingHookCandidates(
       entry.video.ratio !== "9:16" ||
       durationSeconds === null ||
       !REVIEWED_TRENDING_HOOK_REACTIONS.has(entry.video.reactionType ?? "") ||
-      !hasRequiredEvidenceForReaction(
-        entry.video.reactionType,
-        businessEvidence,
-      ) ||
       seenVideoIds.has(entry.video.id)
     ) {
       return [];
@@ -73,68 +55,6 @@ export function selectTrendingHookCandidates(
       ...candidate,
       candidateIndex,
     }));
-}
-
-function hasRequiredEvidenceForReaction(
-  reactionType: string | null,
-  businessEvidence: HookBusinessEvidence | undefined,
-) {
-  // Callers without business context retain the selector's source-only
-  // behavior. The Trending feed always supplies it and therefore avoids
-  // queuing a video that the strict writer cannot truthfully complete.
-  if (!businessEvidence) {
-    return true;
-  }
-
-  const hasText = (value: string | null | undefined) => Boolean(value?.trim());
-  const hasListText = (values: readonly string[] | undefined) =>
-    Boolean(values?.some((value) => value.trim()));
-  const desiredOutcome =
-    businessEvidence.desiredOutcome ?? businessEvidence.mainPromise;
-  const differentiator =
-    businessEvidence.differentiator ?? businessEvidence.differentiators?.[0];
-  const hasPain =
-    hasText(businessEvidence.mainProblem) ||
-    hasListText(businessEvidence.painPoints);
-  const hasCapability =
-    hasText(businessEvidence.productSummary) ||
-    hasText(desiredOutcome) ||
-    hasText(differentiator) ||
-    hasListText(businessEvidence.differentiators) ||
-    hasListText(businessEvidence.valueProps);
-  const hasAudience =
-    hasText(businessEvidence.primaryAudience) ||
-    hasListText(businessEvidence.targetAudience);
-  const distinctEvidenceCount = new Set(
-    [
-      businessEvidence.mainProblem,
-      desiredOutcome,
-      differentiator,
-      ...(businessEvidence.painPoints ?? []),
-      ...(businessEvidence.differentiators ?? []),
-      ...(businessEvidence.valueProps ?? []),
-    ]
-      .filter((value): value is string => hasText(value))
-      .map((value) => value.trim().toLowerCase()),
-  ).size;
-
-  switch (reactionType) {
-    case "amusement_laughter":
-    case "curiosity_discovery":
-    case "shock_surprise":
-      return hasCapability;
-    case "concern_anxiety":
-    case "confusion_skepticism":
-      return hasPain;
-    case "confidence_approval":
-      return hasAudience || hasPain || hasCapability;
-    case "focused_attention":
-      return distinctEvidenceCount >= 2;
-    case "secret_reveal":
-      return hasAudience;
-    default:
-      return false;
-  }
 }
 
 function selectDiverseCandidates<T extends {

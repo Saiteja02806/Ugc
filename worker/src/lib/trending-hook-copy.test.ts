@@ -142,6 +142,38 @@ test("simplified Trending generation allows digits only in the verified brand na
   assert.match(result[0]?.hookText ?? "", /24x7 Coach/u);
 });
 
+test("simplified Trending generation can use the verified business name by itself", async () => {
+  const client = {
+    responses: {
+      create: async () => ({
+        output_text: JSON.stringify({
+          hooks: [{
+            candidateIndex: 0,
+            draftKey: "0:GF_015",
+            evidenceKeys: ["businessName"],
+            hookTextFormatId: "GF_015",
+            hookTextVariantId: "GF_015_A",
+            text: "I just found Calorie Fit",
+          }],
+        }),
+      }),
+    },
+  };
+
+  const result = await generateReactionMappedTrendingHooks({
+    businessProfile: { businessName: "Calorie Fit" },
+    candidates: [candidate],
+    client: client as never,
+    model: "test-model",
+  });
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0]?.hookText, "I just found Calorie Fit");
+  assert.deepEqual(result[0]?.validation.evidenceBindings, [
+    { key: "businessName", text: "Calorie Fit" },
+  ]);
+});
+
 test("simplified Trending generation repairs a technical failure only once", async () => {
   const outputs = [
     {

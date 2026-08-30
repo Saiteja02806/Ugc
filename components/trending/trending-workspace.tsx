@@ -160,6 +160,11 @@ type TrendingFeedProgress = {
   remainingCount: number;
 };
 
+type TrendingFeedFailure = {
+  code: "hook_generation_restart_required" | "hook_source_unavailable";
+  message: string;
+};
+
 type GeneratedCarouselSlide = TrendingCarouselSlide;
 
 type ReadyCarouselSlide = GeneratedCarouselSlide & { renderedUrl: string };
@@ -222,6 +227,7 @@ type CarouselHistoryResponse =
       feed: {
         assignedCount: number;
         completedCount: number;
+        failure?: TrendingFeedFailure | null;
         id: string;
         localDate: string;
         pendingSlotCount: number;
@@ -688,6 +694,7 @@ function useTrendingDecisionOutbox(userId: string | null) {
 
 type TrendingFeedMemoryCache = {
   cachedAt: number;
+  failure: TrendingFeedFailure | null;
   feedProgress: TrendingFeedProgress | null;
   feedState: TrendingDailyFeedState | null;
   items: TrendingFeedItem[];
@@ -745,6 +752,10 @@ export function TrendingWorkspace() {
   const [trendingFeedProgress, setTrendingFeedProgress] =
     useState<TrendingFeedProgress | null>(() => {
       return existingMemoryCache ? existingMemoryCache.feedProgress : null;
+    });
+  const [trendingFeedFailure, setTrendingFeedFailure] =
+    useState<TrendingFeedFailure | null>(() => {
+      return existingMemoryCache?.failure ?? null;
     });
   const [trendingUpgradeRequired, setTrendingUpgradeRequired] = useState(
     () => existingMemoryCache?.upgradeRequired ?? false,
@@ -858,6 +869,7 @@ export function TrendingWorkspace() {
 
       if (isInitialUserLoad || isNewLocalDate || loadedFeedFailed.current) {
         setTrendingItems([]);
+        setTrendingFeedFailure(null);
         setTrendingFeedState(null);
         setTrendingFeedProgress(null);
         setTrendingUpgradeRequired(false);
@@ -955,6 +967,7 @@ export function TrendingWorkspace() {
           (item) => !pendingDecisionAssignmentIds.has(item.assignmentId),
         );
         setTrendingItems(nextVisibleItems);
+        setTrendingFeedFailure(data.feed?.failure ?? null);
         setTrendingFeedState(data.feed?.state ?? null);
         setTrendingUpgradeRequired(Boolean(data.upgradeRequired));
         const nextFeedProgress = data.feed
@@ -973,7 +986,8 @@ export function TrendingWorkspace() {
           data.feed?.state === "failed" && nextVisibleItems.length === 0;
         if (loadedFeedFailed.current) {
           setCarouselHistoryError(
-            "The complete daily pack could not be prepared. Try again to restart the failed work.",
+            data.feed?.failure?.message ??
+              "The complete daily pack could not be prepared. Try again to restart the failed work.",
           );
         }
         setCarouselProfile(data.profile);
@@ -983,6 +997,7 @@ export function TrendingWorkspace() {
 
         inMemoryTrendingFeed = {
           cachedAt: Date.now(),
+          failure: data.feed?.failure ?? null,
           feedProgress: nextFeedProgress,
           feedState: data.feed?.state ?? null,
           items: receivedItems,
@@ -1007,6 +1022,7 @@ export function TrendingWorkspace() {
 
         if (!validMemoryCache) {
           setTrendingItems([]);
+          setTrendingFeedFailure(null);
           setTrendingFeedState(null);
           setTrendingFeedProgress(null);
           setTrendingUpgradeRequired(false);
@@ -1116,13 +1132,16 @@ export function TrendingWorkspace() {
   }, [user]);
 
   function openBusinessProfile() {
-    const previewSuffix =
+    const params = new URLSearchParams();
+    if (
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search).get("preview") === "1"
-        ? "?preview=1"
-        : "";
+    ) {
+      params.set("preview", "1");
+    }
 
-    router.push(`/onboarding${previewSuffix}`);
+    const query = params.toString();
+    router.push(`/onboarding${query ? `?${query}` : ""}`);
   }
 
   return (
@@ -1179,6 +1198,7 @@ export function TrendingWorkspace() {
             <div className="min-w-0 flex-1">
               <TrendingFeedGallery
                 enqueueDecision={enqueueDecision}
+                failure={trendingFeedFailure}
                 headerActionsRoot={headerActionsRoot}
                 items={orderedTrendingItems}
                 error={visibleCarouselHistoryError}
@@ -1223,6 +1243,7 @@ export function TrendingWorkspace() {
 function TrendingFeedGallery({
   enqueueDecision,
   error,
+  failure,
   headerActionsRoot,
   items,
   loading,
@@ -1236,6 +1257,7 @@ function TrendingFeedGallery({
 }: {
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   error: string | null;
+  failure: TrendingFeedFailure | null;
   headerActionsRoot: HTMLDivElement | null;
   items: TrendingFeedItem[];
   loading: boolean;
@@ -1251,13 +1273,10 @@ function TrendingFeedGallery({
 
   if (!loading && error && items.length === 0) {
     return (
-      <CarouselFeedState
-        actionIcon="refresh"
-        actionLabel="Try again"
-        icon="failed"
-        message={error}
-        onAction={onRetryHistory}
-        title="Could not load content"
+      <TrendingFeedFailureState
+        failure={failure}
+        fallbackMessage={error}
+        onRetry={onRetryHistory}
       />
     );
   }
@@ -1302,11 +1321,12 @@ function TrendingFeedGallery({
         )}
       >
         {items.length > 0 ? (
-          <TrendingFeed
-            enqueueDecision={enqueueDecision}
-            headerActionsRoot={headerActionsRoot}
-            items={items}
-            pendingSlotCount={pendingSlotCount}
+        <TrendingFeed
+          enqueueDecision={enqueueDecision}
+          failure={failure}
+          headerActionsRoot={headerActionsRoot}
+          items={items}
+          pendingSlotCount={pendingSlotCount}
             remainingCount={remainingCount}
             onRetry={onRetryHistory}
             upgradeRequired={upgradeRequired}
@@ -1326,6 +1346,36 @@ function TrendingIncompleteEmptyState({ onRetry }: { onRetry: () => void }) {
       message="We could not prepare every daily content piece yet. Try again to continue the missing work."
       onAction={onRetry}
       title="More content is still due"
+    />
+  );
+}
+
+function TrendingFeedFailureState({
+  failure,
+  fallbackMessage,
+  onRetry,
+}: {
+  failure: TrendingFeedFailure | null;
+  fallbackMessage?: string;
+  onRetry: () => void;
+}) {
+  const restartRequired =
+    failure?.code === "hook_generation_restart_required";
+
+  return (
+    <CarouselFeedState
+      actionIcon="refresh"
+      actionLabel={
+        restartRequired ? "Generate Hook videos" : "Try again"
+      }
+      icon="failed"
+      message={
+        failure?.message ??
+        fallbackMessage ??
+        "We could not prepare every daily content piece yet. Try again to continue the missing work."
+      }
+      onAction={onRetry}
+      title={restartRequired ? "Hook videos are ready to generate" : "More content is still due"}
     />
   );
 }
@@ -1413,6 +1463,7 @@ function CarouselProfilePrompt({ onAction }: { onAction: () => void }) {
 
 function TrendingFeed({
   enqueueDecision,
+  failure,
   headerActionsRoot,
   items,
   pendingSlotCount,
@@ -1421,6 +1472,7 @@ function TrendingFeed({
   upgradeRequired,
 }: {
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
+  failure: TrendingFeedFailure | null;
   headerActionsRoot: HTMLDivElement | null;
   items: TrendingFeedItem[];
   pendingSlotCount: number;
@@ -1503,6 +1555,7 @@ function TrendingFeed({
           activeSlideByCarouselId={activeSlideByCarouselId}
           candidates={candidates}
           enqueueDecision={enqueueDecision}
+          failure={failure}
           headerActionsRoot={headerActionsRoot}
           pendingSlotCount={pendingSlotCount}
           remainingCount={remainingCount}
@@ -1732,6 +1785,7 @@ function TrendingDeck({
   activeSlideByCarouselId,
   candidates,
   enqueueDecision,
+  failure,
   headerActionsRoot,
   onActiveSlideChange,
   onActiveSlideMove,
@@ -1744,6 +1798,7 @@ function TrendingDeck({
   activeSlideByCarouselId: Record<string, number>;
   candidates: TrendingCandidate[];
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
+  failure: TrendingFeedFailure | null;
   headerActionsRoot: HTMLDivElement | null;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
   onActiveSlideMove: (
@@ -2391,8 +2446,17 @@ function TrendingDeck({
     setWallTextActionState({ status: "scheduling" });
 
     try {
-      const draft = await saveWallTextDraft(wallTextCandidate.item);
-      setPendingWallTextDraft(draft);
+      const savedDraft = await saveWallTextDraft(wallTextCandidate.item);
+      const readyDraft =
+        savedDraft.renderStatus === "ready" && savedDraft.renderedMediaAssetId
+          ? savedDraft
+          : await waitForWallTextRender(savedDraft.assignmentId);
+
+      if (!readyDraft.renderedMediaAssetId) {
+        throw new Error("The Wall-of-text Reel is not ready to schedule yet.");
+      }
+
+      setPendingWallTextDraft(readyDraft);
       setPendingWallTextScheduleCandidate(wallTextCandidate);
       setWallTextCandidate(null);
       setWallTextActionState({ status: "idle" });
@@ -2417,19 +2481,16 @@ function TrendingDeck({
       throw new Error("Choose a Wall-of-text video before scheduling.");
     }
 
-    const readyDraft =
-      currentDraft.renderStatus === "ready" &&
-      currentDraft.renderedMediaAssetId
-        ? currentDraft
-        : await waitForWallTextRender(currentDraft.assignmentId);
-
-    if (!readyDraft.renderedMediaAssetId) {
+    if (
+      currentDraft.renderStatus !== "ready" ||
+      !currentDraft.renderedMediaAssetId
+    ) {
       throw new Error("The Wall-of-text Reel is not ready to schedule yet.");
     }
 
     await createWallTextSchedule({
       candidate,
-      draft: readyDraft,
+      draft: currentDraft,
       selection,
     });
 
@@ -2567,6 +2628,11 @@ function TrendingDeck({
         </>
       ) : upgradeRequired ? (
         <TrendingUpgradeRequiredEmptyState />
+      ) : failure ? (
+        <TrendingFeedFailureState
+          failure={failure}
+          onRetry={onRetry}
+        />
       ) : pendingSlotCount > 0 ? (
         <TrendingPreparingEmptyState pendingSlotCount={pendingSlotCount} />
       ) : remainingCount > 0 ? (
@@ -4242,8 +4308,12 @@ async function createWallTextSchedule(params: {
       idempotencyKey: [
         "wall-text-schedule",
         params.draft.assignmentId,
-        params.selection.scheduledDate,
-        params.selection.scheduledTime,
+        params.selection.useDefaultScheduleTime
+          ? "post-right-away"
+          : params.selection.scheduledDate,
+        params.selection.useDefaultScheduleTime
+          ? "post-right-away"
+          : params.selection.scheduledTime,
         params.selection.timezone,
       ].join(":"),
       metadata: {
@@ -4266,6 +4336,7 @@ async function createWallTextSchedule(params: {
       })),
       timezone: params.selection.timezone,
       title: params.candidate.item.creative.title,
+      useDefaultScheduleTime: params.selection.useDefaultScheduleTime,
     }),
     cache: "no-store",
     headers: {

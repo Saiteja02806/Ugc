@@ -118,6 +118,26 @@ test("the strict map rejects unknown reactions and missing required evidence", (
   );
 });
 
+test("the reaction map uses name-grounded discovery for every reviewed reaction when only a business name exists", () => {
+  const eligibility = {
+    businessContext: { businessName: "Calorie Fit" },
+    evidence: [{ key: "businessName", text: "Calorie Fit" }],
+  };
+
+  for (const reactionType of Object.keys(HOOK_REACTION_FORMAT_RULES)) {
+    assert.deepEqual(
+      selectHookTextFormats({
+        campaignPurpose: "product_discovery",
+        candidateIndex: 0,
+        eligibility,
+        reactionType,
+        selectionStrategy: "reaction_mapped",
+      }).map((format) => format.id),
+      ["GF_015"],
+    );
+  }
+});
+
 test("legacy rotation never selects retired or reaction-mapped-only formats", () => {
   const selectedIds = new Set(
     Array.from({ length: 500 }, (_, candidateIndex) =>

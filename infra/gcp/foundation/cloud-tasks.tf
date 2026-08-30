@@ -23,9 +23,9 @@ locals {
   background_job_task_queues = {
     ai-generation = {
       # One request occupies one Cloud Run instance. This matches the AI
-      # worker's initial max_instance_count of 10, so a burst can grow instead
+      # worker's max_instance_count of 20, so a burst can grow instead
       # of being artificially held at four concurrent jobs.
-      concurrent_dispatches = 10
+      concurrent_dispatches = 20
       dispatches_per_second = 5
       max_attempts          = 5
       max_retry_duration    = "3600s"

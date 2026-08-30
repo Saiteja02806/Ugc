@@ -19,10 +19,10 @@ queue_name                   = "ai-generation"
 worker_job_types             = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,test_worker_job"
 
 worker_visibility_timeout_seconds = 1800
-# Start only when Cloud Tasks has work. Ten is the initial burst ceiling; keep
+# Start only when Cloud Tasks has work. Twenty is the burst ceiling; keep
 # it aligned with foundation/cloud-tasks.tf and confirmed AI provider quotas.
 min_instance_count                = 0
-max_instance_count                = 10
+max_instance_count                = 20
 request_timeout_seconds           = 1800
 cpu                               = "2"
 memory                            = "4Gi"

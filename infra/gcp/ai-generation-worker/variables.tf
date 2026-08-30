@@ -73,7 +73,7 @@ variable "min_instance_count" {
 variable "max_instance_count" {
   description = "Maximum concurrent single-job AI worker instances. Keep this aligned with the ai-generation Cloud Tasks concurrent-dispatch limit and provider quotas."
   type        = number
-  default     = 10
+  default     = 20
 }
 
 variable "request_timeout_seconds" {

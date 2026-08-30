@@ -47,7 +47,7 @@ test("uses demand-scaled request workers for independent AI jobs", () => {
   assert.match(aiWorkerMain, /cpu_idle\s+= true/);
   assert.match(
     cloudTasks,
-    /ai-generation = \{[\s\S]*concurrent_dispatches = 10[\s\S]*dispatches_per_second = 5/,
+    /ai-generation = \{[\s\S]*concurrent_dispatches = 20[\s\S]*dispatches_per_second = 5/,
   );
 });
 

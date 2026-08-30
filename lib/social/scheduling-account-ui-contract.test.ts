@@ -42,6 +42,13 @@ test("Carousel scheduling keeps the header text-only without a redundant Instagr
   assert.match(carouselModal, /<SocialAccountAvatar connection=\{connection\}/);
 });
 
+test("the Instagram empty-state icon remains white over its gradient tile", () => {
+  assert.match(
+    carouselModal,
+    /<SocialPlatformIcon\s+platform="instagram"\s+className="size-6 !text-white"/,
+  );
+});
+
 function readProjectFile(relativePath: string) {
   return readFileSync(
     new URL(`../../${relativePath}`, import.meta.url),

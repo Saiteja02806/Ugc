@@ -260,7 +260,6 @@ test("removes Wall replay controls so the media controls stay quiet", () => {
 });
 
 test("does not preview stale base audio after a Wall creative is edited", () => {
-  assert.match(trendingWorkspaceSource, /audioPreviewEnabled=\{!wallTextEdit\}/);
   assert.match(
     trendingWorkspaceSource,
     /\{!edit \? \([\s\S]+<WallTextAudioPreview/,

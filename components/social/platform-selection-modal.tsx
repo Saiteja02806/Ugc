@@ -646,7 +646,26 @@ export function PlatformSelectionModal({
       return;
     }
 
-    const scheduleTime = mode === "asap" ? earliestSlot : laterValidation;
+    // The schedule screen can stay open while the user connects an account or
+    // finishes reviewing their post. Always calculate from the instant they
+    // press the final button, rather than using the displayed slot from an
+    // earlier render.
+    const submittedAt = Date.now();
+    setCurrentTime(submittedAt);
+    const scheduleTime =
+      mode === "asap"
+        ? getEarliestScheduleSlot(
+            submittedAt,
+            minimumLeadMinutes,
+            timezone,
+          )
+        : validateLaterSchedule({
+            date: scheduledDate,
+            minimumLeadMinutes,
+            now: submittedAt,
+            time: scheduledTime,
+            timezone,
+          });
 
     if (!scheduleTime.scheduledFor || scheduleTime.error) {
       setConfirmError(
@@ -1107,7 +1126,10 @@ function AccountsStep({
         ) : (
           <div className="rounded-card border border-dashed border-border bg-card px-5 py-8 text-center">
             <span className="mx-auto flex size-12 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] text-white shadow-[0_10px_24px_rgb(214_41_118_/_0.16)]">
-              <SocialPlatformIcon platform="instagram" className="size-6" />
+              <SocialPlatformIcon
+                platform="instagram"
+                className="size-6 !text-white"
+              />
             </span>
             <p className="mt-4 text-sm font-semibold text-foreground">
               Connect Instagram to continue
@@ -1454,7 +1476,7 @@ function ScheduleChoiceStep({
         <ScheduleChoice
           description={`Earliest available: ${earliestLabel}. Uses the configured ${minimumLeadMinutes}-minute lead time.`}
           icon={<Zap className="size-5" aria-hidden="true" />}
-          label="Post ASAP"
+          label="Post Right away"
           onClick={onPostAsap}
         />
         <ScheduleChoice

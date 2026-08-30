@@ -52,10 +52,7 @@ import type { SchedulePlatformContext } from "@/components/social/platform-selec
 import { HookVideoCard } from "@/components/trending/hook-video-card";
 import type { HookPreviewAudio } from "@/components/trending/hook-audio-preview";
 import type { HookVideoScheduleSelection } from "@/components/trending/hook-video-schedule-drawer";
-import {
-  WallTextDetailView,
-  type WallTextDetailActionState,
-} from "@/components/trending/wall-text-detail-view";
+import type { WallTextDetailActionState } from "@/components/trending/wall-text-detail-view";
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
 import { WallTextAudioPreview } from "@/components/trending/wall-text-audio-preview";
 import { Button } from "@/components/ui/button";
@@ -2326,6 +2323,7 @@ function TrendingDeck({
       const draft = await saveWallTextDraft(wallTextCandidate.item);
       setPendingWallTextDraft(draft);
       setPendingWallTextScheduleCandidate(wallTextCandidate);
+      setWallTextCandidate(null);
       setWallTextActionState({ status: "idle" });
     } catch (error) {
       setWallTextActionState({
@@ -2375,58 +2373,15 @@ function TrendingDeck({
     });
   }
 
-  const wallTextEdit = wallTextCandidate
-    ? editByCreativeId[wallTextCandidate.item.creativeId] ?? null
+  const wallTextActionCandidate =
+    wallTextCandidate ?? pendingWallTextScheduleCandidate;
+  const wallTextEdit = wallTextActionCandidate
+    ? editByCreativeId[wallTextActionCandidate.item.creativeId] ?? null
     : null;
   const wallTextEditContent =
     wallTextEdit?.content.format === "wall_text"
       ? wallTextEdit.content
       : null;
-
-  if (wallTextCandidate) {
-    return (
-      <section
-        aria-label="Wall-text Reel preview"
-        className="relative w-full"
-      >
-        <WallTextDetailView
-          actionState={wallTextActionState}
-          audioPreviewEnabled={!wallTextEdit}
-          content={wallTextEditContent?.content}
-          item={wallTextCandidate.item}
-          layout={wallTextEditContent?.layout}
-          textColor={wallTextEditContent?.textColor}
-          previewUrl={wallTextEdit?.source?.resolvedAssetUrl}
-          thumbnailUrl={wallTextEdit?.source?.resolvedThumbnailUrl}
-          onBack={() => {
-            if (!pendingWallTextScheduleCandidate) {
-              setWallTextActionState({ status: "idle" });
-              setWallTextCandidate(null);
-            }
-          }}
-          onSave={handleSaveWallText}
-          onSchedule={handleScheduleWallText}
-        />
-        {pendingWallTextScheduleCandidate ? (
-          <HookVideoScheduleDrawer
-            summary={{
-              backgroundTitle:
-                pendingWallTextScheduleCandidate.item.creative.title,
-              kind: "wall_text",
-              text:
-                wallTextEditContent?.content.fullText ??
-                pendingWallTextScheduleCandidate.item.creative.text.fullText,
-            }}
-            onClose={() => {
-              setPendingWallTextDraft(null);
-              setPendingWallTextScheduleCandidate(null);
-            }}
-            onConfirm={confirmWallTextSchedule}
-          />
-        ) : null}
-      </section>
-    );
-  }
 
   return (
     <section
@@ -2548,13 +2503,41 @@ function TrendingDeck({
       {actionCandidate ? (
         <CarouselActionDialog
           actionState={actionState}
-          candidate={actionCandidate}
+          title={getCarouselTitle(actionCandidate.carousel)}
           onClose={() => {
             setActionState({ status: "idle" });
             setActionCandidate(null);
           }}
           onSaveToLibrary={handleSaveToLibrary}
           onSchedulePost={handleSchedulePost}
+        />
+      ) : null}
+      {wallTextCandidate ? (
+        <CarouselActionDialog
+          actionState={wallTextActionState}
+          title={wallTextCandidate.item.creative.title}
+          onClose={() => {
+            setWallTextActionState({ status: "idle" });
+            setWallTextCandidate(null);
+          }}
+          onSaveToLibrary={handleSaveWallText}
+          onSchedulePost={handleScheduleWallText}
+        />
+      ) : null}
+      {pendingWallTextScheduleCandidate ? (
+        <HookVideoScheduleDrawer
+          summary={{
+            backgroundTitle: pendingWallTextScheduleCandidate.item.creative.title,
+            kind: "wall_text",
+            text:
+              wallTextEditContent?.content.fullText ??
+              pendingWallTextScheduleCandidate.item.creative.text.fullText,
+          }}
+          onClose={() => {
+            setPendingWallTextDraft(null);
+            setPendingWallTextScheduleCandidate(null);
+          }}
+          onConfirm={confirmWallTextSchedule}
         />
       ) : null}
       {editorCandidate ? (
@@ -2630,19 +2613,18 @@ function TrendingDeck({
 
 function CarouselActionDialog({
   actionState,
-  candidate,
   onClose,
   onSaveToLibrary,
   onSchedulePost,
+  title,
 }: {
-  actionState: CarouselActionState;
-  candidate: CompleteCarousel;
+  actionState: CarouselActionState | WallTextDetailActionState;
   onClose: () => void;
   onSaveToLibrary: () => void | Promise<void>;
   onSchedulePost: () => void | Promise<void>;
+  title: string;
 }) {
   const firstActionRef = useRef<HTMLButtonElement>(null);
-  const title = getCarouselTitle(candidate.carousel);
   const isSaving = actionState.status === "saving";
   const isScheduling = actionState.status === "scheduling";
   const isBusy = isSaving || isScheduling;

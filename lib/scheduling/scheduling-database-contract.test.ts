@@ -899,13 +899,29 @@ test("the inline carousel modal implements exact-account content and time steps"
     carouselScheduleModal,
     /self-start overflow-hidden rounded-card border border-border bg-card/,
   );
-  assert.match(carouselScheduleModal, /label="Post ASAP"/);
+  assert.match(carouselScheduleModal, /label="Post Right away"/);
   assert.match(carouselScheduleModal, /label="Schedule for later"/);
   assert.match(carouselScheduleModal, /type="date"/);
   assert.match(carouselScheduleModal, /type="time"/);
   assert.match(carouselScheduleModal, /Choose who can view the TikTok post\./);
   assert.doesNotMatch(carouselScheduleModal, /Connect Instagram or TikTok above/);
   assert.doesNotMatch(carouselScheduleModal, /Also show the Reel/);
+});
+
+test("Post Right away calculates its lead time at final submission, not when the screen rendered", () => {
+  const submitSchedule = getSection(
+    carouselScheduleModal,
+    'async function submitSchedule(mode: "asap" | "later")',
+    "function applyQuickSlot",
+  );
+
+  assert.match(submitSchedule, /const submittedAt = Date\.now\(\);/);
+  assert.match(submitSchedule, /setCurrentTime\(submittedAt\);/);
+  assert.match(
+    submitSchedule,
+    /mode === "asap"\s*\? getEarliestScheduleSlot\(\s*submittedAt,\s*minimumLeadMinutes,\s*timezone,\s*\)/,
+  );
+  assert.doesNotMatch(submitSchedule, /mode === "asap" \? earliestSlot/);
 });
 
 test("inline carousel submission persists a recoverable draft before publishing", () => {

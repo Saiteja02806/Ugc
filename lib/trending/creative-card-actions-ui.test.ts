@@ -26,9 +26,6 @@ const hookAudio = readProjectFile(
 const wallAudio = readProjectFile(
   "components/trending/wall-text-audio-preview.tsx",
 );
-const wallTextDetail = readProjectFile(
-  "components/trending/wall-text-detail-view.tsx",
-);
 const sidebar = readProjectFile("components/layout/app-sidebar.tsx");
 const firstVisitGuide = readProjectFile(
   "components/trending/trending-first-visit-walkthrough.tsx",
@@ -364,28 +361,28 @@ test("keeps actual upcoming media ready behind either swipe direction", () => {
   assert.doesNotMatch(workspace, /dragX > 0 \?/);
 });
 
-test("keeps the Wall-of-Text accepted view compact and action-only", () => {
-  assert.match(wallTextDetail, /max-w-\[220px\]/);
+test("uses the same action-choice modal after accepting a Wall-of-Text Reel", () => {
   assert.match(
-    wallTextDetail,
-    /"Create a Schedule"[\s\S]*"Save to Creative Assets"/,
+    workspace,
+    /candidate\.format === "wall_text"[\s\S]*setWallTextCandidate\(candidate\)/,
   );
-  assert.match(wallTextDetail, /onClick=\{\(\) => void onSchedule\(\)\}/);
-  assert.doesNotMatch(wallTextDetail, /Review the complete overlay/);
-  assert.doesNotMatch(wallTextDetail, /Wall-text Reel<\/p>/);
-  assert.doesNotMatch(wallTextDetail, /Overlay copy/);
-  assert.doesNotMatch(wallTextDetail, /getWallTextRenderBlocks/);
-});
-
-test("anchors Wall-of-Text actions at the top of the accepted Reel", () => {
-  assert.match(wallTextDetail, /grid w-full max-w-2xl items-start/);
-  assert.match(wallTextDetail, /data-wall-text-action-rail/);
-  assert.match(wallTextDetail, /className="min-w-0 self-start"/);
-  assert.match(wallTextDetail, /Next step[\s\S]*Keep this Reel moving/);
   assert.match(
-    wallTextDetail,
-    /Create a Schedule[\s\S]*Choose an account and publish time/,
+    workspace,
+    /\{wallTextCandidate \? \([\s\S]*?<CarouselActionDialog[\s\S]*?actionState=\{wallTextActionState\}[\s\S]*?onSaveToLibrary=\{handleSaveWallText\}[\s\S]*?onSchedulePost=\{handleScheduleWallText\}/,
   );
+  assert.match(
+    workspace,
+    /setPendingWallTextScheduleCandidate\(wallTextCandidate\);[\s\S]*setWallTextCandidate\(null\)/,
+  );
+  assert.match(
+    workspace,
+    /const wallTextActionCandidate =\s*wallTextCandidate \?\? pendingWallTextScheduleCandidate;/,
+  );
+  assert.match(
+    workspace,
+    /editByCreativeId\[wallTextActionCandidate\.item\.creativeId\]/,
+  );
+  assert.doesNotMatch(workspace, /<WallTextDetailView/);
 });
 
 test("keeps the Carousel format pill above its centered media stack", () => {

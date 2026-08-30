@@ -723,7 +723,7 @@ export function BusinessProfileOnboarding() {
   }
 
   return (
-    <OnboardingFrame>
+    <OnboardingFrame compact={step === 1 || step === 2}>
       <form
         onSubmit={submit}
         className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-floating transition-all duration-300 lg:overflow-visible"
@@ -826,7 +826,7 @@ export function BusinessInformationStep({
 
   return (
     <>
-      <div className="px-5 py-6 sm:px-8 sm:py-7 lg:px-8 lg:py-[clamp(1.25rem,2.5vh,1.75rem)] xl:px-10">
+      <div className="px-5 py-6 sm:px-8 sm:py-7 lg:px-8 lg:py-[clamp(1.25rem,2.5vh,1.75rem)] xl:px-8">
         <header>
           <Badge variant="secondary">Source details</Badge>
           <h2 className="mt-4 max-w-2xl text-balance text-2xl font-bold tracking-[-0.025em] text-foreground-strong sm:text-[30px] lg:mt-3 lg:text-[28px]">
@@ -836,7 +836,7 @@ export function BusinessInformationStep({
 
         <FieldSet className="mt-7 lg:mt-5">
           <FieldLegend className="sr-only">Business context source</FieldLegend>
-          <div className="grid gap-3.5 sm:grid-cols-3 lg:gap-3">
+          <div className="grid gap-3.5 sm:grid-cols-3 lg:gap-2.5">
             {intakeOptions.map((option) => {
               const Icon = option.icon;
               const selected = intakeType === option.value;
@@ -889,9 +889,9 @@ export function BusinessInformationStep({
 
       <Separator />
 
-      <div className="px-5 py-7 sm:px-8 sm:py-7 lg:px-8 lg:py-[clamp(1.25rem,2.5vh,1.75rem)] xl:px-10">
+      <div className="px-5 py-7 sm:px-8 sm:py-7 lg:px-8 lg:py-[clamp(1.25rem,2.5vh,1.75rem)] xl:px-8">
         {intakeType === "website" ? (
-          <section aria-labelledby="website-source-title" className="lg:grid lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-end lg:gap-8">
+          <section aria-labelledby="website-source-title" className="lg:grid lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:items-end lg:gap-7">
             <div>
               <h3 id="website-source-title" className="text-lg font-bold text-foreground-strong">Website details</h3>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted lg:leading-5">
@@ -1036,7 +1036,7 @@ export function BusinessIdentityStep({
   const logoInputId = useId();
 
   return (
-    <div className="px-5 py-7 sm:px-8 sm:py-7 lg:px-8 lg:py-[clamp(1.25rem,2.5vh,1.75rem)] xl:px-10">
+    <div className="px-5 py-7 sm:px-8 sm:py-7 lg:px-8 lg:py-[clamp(1.25rem,2.5vh,1.75rem)] xl:px-8">
       <Badge variant="secondary">Step 2 of 3</Badge>
       <h2 ref={headingRef} tabIndex={-1} className="mt-4 text-2xl font-bold tracking-[-0.03em] text-foreground-strong outline-none sm:text-[32px] lg:mt-3 lg:text-[28px]">
         Add your business name
@@ -1054,7 +1054,7 @@ export function BusinessIdentityStep({
         </div>
       ) : null}
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:items-start lg:gap-6">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.95fr)] lg:items-start lg:gap-5">
         <FormField className="mt-7 lg:mt-5" data-invalid={Boolean(error)}>
           <FieldLabel htmlFor="business-name">Business name</FieldLabel>
           <input
@@ -1114,7 +1114,7 @@ export function BusinessIdentityStep({
         <Button type="button" variant="outline" size="lg" className="h-12 rounded-xl px-6 font-semibold sm:w-auto hover:bg-card-muted" onClick={onBack} disabled={isSaving}>
           <ArrowLeft data-icon="inline-start" aria-hidden="true" />Back
         </Button>
-        <Button type="submit" size="lg" className="h-12 flex-1 rounded-xl font-semibold shadow-sm transition-transform active:scale-[0.99]" disabled={isSaving || !businessName.trim()}>
+        <Button type="submit" size="lg" className="h-12 rounded-xl px-8 font-semibold shadow-sm transition-transform active:scale-[0.99] sm:ml-auto sm:min-w-60" disabled={isSaving || !businessName.trim()}>
           {isSaving ? <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <ArrowRight data-icon="inline-end" aria-hidden="true" />}
           {isSaving ? "Saving identity…" : "Continue"}
         </Button>
@@ -1221,7 +1221,15 @@ export function PrimaryGoalStep({
   );
 }
 
-export function OnboardingFrame({ children }: { children: React.ReactNode }) {
+export function OnboardingFrame({
+  children,
+  compact = false,
+}: {
+  children: React.ReactNode;
+  compact?: boolean;
+}) {
+  const shellWidth = compact ? "max-w-[960px]" : "max-w-[1120px]";
+
   return (
     <main className="instagram-theme relative min-h-dvh overflow-x-hidden bg-background text-foreground">
       <div
@@ -1230,7 +1238,7 @@ export function OnboardingFrame({ children }: { children: React.ReactNode }) {
       />
       <a href="#business-profile-content" className="sr-only rounded-lg bg-card px-3 py-2 text-sm font-semibold text-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus-visible:ring-2 focus-visible:ring-focus">Skip to business setup</a>
       <header className="relative border-b border-border/80 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-[68px] w-full max-w-[1120px] items-center justify-between gap-4 px-5 sm:px-6 lg:px-8">
+        <div className={cn("mx-auto flex h-[68px] w-full items-center justify-between gap-4 px-5 sm:px-6 lg:px-8", shellWidth)}>
           <div className="flex items-center gap-2.5" aria-label="UGC Pilot">
             <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary p-1.5 shadow-sm">
               <ProductLogoMark className="size-full" imageClassName="brightness-0 invert" sizes="36px" />
@@ -1241,7 +1249,7 @@ export function OnboardingFrame({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <div className="relative mx-auto min-h-[calc(100dvh-69px)] w-full max-w-[1120px] px-4 py-[clamp(1.25rem,4vh,3rem)] sm:px-6 lg:px-8">
+      <div className={cn("relative mx-auto min-h-[calc(100dvh-69px)] w-full px-4 py-[clamp(1.25rem,4vh,3rem)] sm:px-6 lg:px-8", shellWidth)}>
         <header className="max-w-[760px]">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Set up Trending</p>
           <h1 className="mt-[clamp(0.75rem,1.5vh,1.25rem)] text-[clamp(2rem,3vw,2.5rem)] font-bold leading-[1.12] tracking-[-0.04em] text-foreground-strong">

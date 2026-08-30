@@ -75,6 +75,11 @@ test("the onboarding remains screen-by-screen without tab-like navigation", () =
 
 test("desktop onboarding uses available space before requiring the user to scroll", () => {
   assert.match(onboarding, /max-w-\[1120px\]/);
+  assert.match(onboarding, /compact=\{step === 1 \|\| step === 2\}/);
+  assert.match(
+    onboarding,
+    /const shellWidth = compact \? "max-w-\[960px\]" : "max-w-\[1120px\]"/,
+  );
   assert.match(onboarding, /min-h-\[calc\(100dvh-69px\)\]/);
   assert.match(
     onboarding,
@@ -92,7 +97,7 @@ test("desktop onboarding uses available space before requiring the user to scrol
     assert.doesNotMatch(onboarding, new RegExp(escapeRegExp(removedSubtext)));
   }
   assert.match(onboarding, /lg:min-h-\[68px\]/);
-  assert.match(onboarding, /lg:grid-cols-\[minmax\(0,1\.15fr\)_minmax\(18rem,0\.85fr\)\]/);
+  assert.match(onboarding, /lg:grid-cols-\[minmax\(0,1\.05fr\)_minmax\(18rem,0\.95fr\)\]/);
   assert.match(onboarding, /lg:grid-cols-3/);
   assert.match(onboarding, /lg:sticky/);
   assert.match(onboarding, /lg:overflow-visible/);

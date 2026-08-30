@@ -1,14 +1,19 @@
 import {
   createUserSchedule,
+  getSocialSchedulingMinimumLeadMinutes,
   SchedulingRequestError,
 } from "@/lib/scheduling/service";
+import { ScheduleTimeError } from "@/lib/scheduling/schedule-time";
 import {
   authenticateHookVideoRequest,
   hookVideoErrorResponse,
   hookVideoJson,
 } from "@/lib/trending/hook-video-api";
 import { attachScheduleDraftToHookVideo } from "@/lib/trending/hook-video-db";
-import { createHookVideoScheduleIdempotencyKey } from "@/lib/trending/hook-video-scheduling";
+import {
+  createHookVideoScheduleIdempotencyKey,
+  getDefaultHookVideoScheduleTime,
+} from "@/lib/trending/hook-video-scheduling";
 import { persistHookVideoSelection } from "@/lib/trending/hook-video-service";
 import { prepareOwnedHookMediaAsset } from "@/lib/trending/hook-video-sources";
 import { getHookVideoTextPosition } from "@/lib/trending/hook-video-text-placement";
@@ -47,10 +52,20 @@ export async function POST(request: Request) {
       userId: auth.user.uid,
       videoId: composition.source.id,
     });
+    const scheduleTime = parsed.data.useDefaultScheduleTime
+      ? resolveDefaultScheduleTime(parsed.data.timezone)
+      : {
+          scheduledDate: parsed.data.scheduledDate,
+          scheduledTime: parsed.data.scheduledTime,
+        };
+    const scheduleInput = {
+      ...parsed.data,
+      ...scheduleTime,
+    };
     const scheduleResult = await createUserSchedule({
       input: {
         idempotencyKey: createHookVideoScheduleIdempotencyKey({
-          ...parsed.data,
+          ...scheduleInput,
           draftId: composition.draft.id,
           influencerId: composition.source.influencerId,
           influencerVideoId: composition.source.id,
@@ -89,12 +104,12 @@ export async function POST(request: Request) {
           selectedHookId: composition.draft.selectedHookId,
           useOpeningClip: true,
         },
-        plannedTargets: parsed.data.targets,
-        scheduledDate: parsed.data.scheduledDate,
-        scheduledTime: parsed.data.scheduledTime,
+        plannedTargets: scheduleInput.targets,
+        scheduledDate: scheduleInput.scheduledDate,
+        scheduledTime: scheduleInput.scheduledTime,
         source: { id: composition.demo.id, kind: "media_asset" },
         targets: [],
-        timezone: parsed.data.timezone,
+        timezone: scheduleInput.timezone,
         title: `${composition.influencer.name} + ${composition.demo.title}`.slice(
           0,
           140,
@@ -119,5 +134,20 @@ export async function POST(request: Request) {
     }
 
     return hookVideoErrorResponse(error, "Could not prepare this schedule.");
+  }
+}
+
+function resolveDefaultScheduleTime(timeZone: string) {
+  try {
+    return getDefaultHookVideoScheduleTime({
+      minimumLeadMinutes: getSocialSchedulingMinimumLeadMinutes(),
+      timeZone,
+    });
+  } catch (error) {
+    if (error instanceof ScheduleTimeError) {
+      throw new SchedulingRequestError(error.message);
+    }
+
+    throw error;
   }
 }

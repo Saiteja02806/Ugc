@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createHookVideoScheduleIdempotencyKey } from "./hook-video-scheduling.ts";
+import {
+  createHookVideoScheduleIdempotencyKey,
+  getDefaultHookVideoScheduleTime,
+} from "./hook-video-scheduling.ts";
 
 const baseInput: Parameters<
   typeof createHookVideoScheduleIdempotencyKey
@@ -102,5 +105,31 @@ test("Hook schedule idempotency changes with the requested publish time", () => 
       ...baseInput,
       scheduledTime: "15:00",
     }),
+  );
+});
+
+test("the automatic Hook time is resolved from the current server minute", () => {
+  assert.deepEqual(
+    getDefaultHookVideoScheduleTime({
+      minimumLeadMinutes: 5,
+      now: Date.UTC(2026, 6, 20, 18, 29, 45),
+      timeZone: "Asia/Calcutta",
+    }),
+    {
+      scheduledDate: "2026-07-21",
+      scheduledTime: "00:04",
+    },
+  );
+});
+
+test("the automatic Hook time rejects an invalid timezone", () => {
+  assert.throws(
+    () =>
+      getDefaultHookVideoScheduleTime({
+        minimumLeadMinutes: 5,
+        now: Date.UTC(2026, 6, 20, 18, 29, 45),
+        timeZone: "not-a-timezone",
+      }),
+    /Choose a valid timezone/,
   );
 });

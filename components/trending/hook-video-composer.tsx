@@ -470,7 +470,6 @@ export function HookVideoComposer({
     setScheduling(true);
     setActionError(null);
     setActionNotice(null);
-    let scheduleCreated = false;
 
     try {
       const token = await requireToken();
@@ -497,33 +496,41 @@ export function HookVideoComposer({
         throw new Error(getApiError(data, "Could not prepare this schedule."));
       }
 
-      scheduleCreated = true;
       onStateChange({
         ...flowState,
         draft: { ...flowState.draft, id: data.draft.id },
       });
-
-      const renderResponse = await fetch(
-        `/api/schedules/${encodeURIComponent(data.scheduleId)}/render`,
-        {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${token}` },
-          method: "POST",
-        },
-      );
-      const renderData = (await renderResponse.json().catch(() => null)) as
-        | RenderMutationResponse
-        | null;
-
-      if (!renderResponse.ok || !renderData || renderData.ok !== true) {
-        throw new Error(
-          getApiMessage(renderData, "Could not start preparing this video."),
-        );
-      }
-
+      // A saved schedule is a success even if the follow-up render dispatch
+      // needs a retry. Make that durable result visible immediately.
       setScheduledPostId(data.scheduleId);
       setScheduleDrawerOpen(false);
-      setActionNotice("Schedule saved. Video preparation is queued.");
+      setActionNotice("Your video has been scheduled. Video preparation is starting.");
+
+      try {
+        const renderResponse = await fetch(
+          `/api/schedules/${encodeURIComponent(data.scheduleId)}/render`,
+          {
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${token}` },
+            method: "POST",
+          },
+        );
+        const renderData = (await renderResponse.json().catch(() => null)) as
+          | RenderMutationResponse
+          | null;
+
+        if (!renderResponse.ok || !renderData || renderData.ok !== true) {
+          throw new Error(
+            getApiMessage(renderData, "Could not start preparing this video."),
+          );
+        }
+
+        setActionNotice("Your video has been scheduled. Video preparation is queued.");
+      } catch {
+        setActionNotice(
+          "Your video has been scheduled. Video preparation needs to be retried in Scheduling.",
+        );
+      }
 
       try {
         await recordCommittedSelection();
@@ -537,11 +544,7 @@ export function HookVideoComposer({
       }
     } catch (error) {
       const message = getErrorMessage(error, "Could not prepare this schedule.");
-      setActionError(
-        scheduleCreated
-          ? `The schedule was saved, but video preparation did not start. Open Scheduling to retry it. ${message}`
-          : message,
-      );
+      setActionError(message);
       throw error;
     } finally {
       setScheduling(false);
@@ -670,7 +673,14 @@ export function HookVideoComposer({
             className="mt-5 flex flex-col gap-1 border-l-2 border-success px-3 py-1 text-sm font-semibold text-success sm:flex-row sm:items-center sm:justify-between"
           >
             <span>{actionNotice}</span>
-            {actionNotice.startsWith("Saved to Creative Assets") ? (
+            {scheduledPostId ? (
+              <Link
+                href={`/scheduling?draft=${encodeURIComponent(scheduledPostId)}`}
+                className="shrink-0 underline underline-offset-4"
+              >
+                View Scheduling
+              </Link>
+            ) : actionNotice.startsWith("Saved to Creative Assets") ? (
               <Link
                 href="/avatars?tab=saved"
                 className="shrink-0 underline underline-offset-4"
@@ -707,7 +717,7 @@ export function HookVideoComposer({
                 className={primaryButtonClass}
               >
                 <CalendarClock className="size-4" aria-hidden="true" />
-                View schedule
+                View Scheduling
               </Link>
             ) : (
               <button

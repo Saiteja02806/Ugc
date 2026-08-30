@@ -37,6 +37,10 @@ export const HookVideoDraftRequestSchema = HookSuggestionRequestSchema.extend({
 export const HookVideoScheduleRequestSchema = HookVideoDraftRequestSchema.extend({
   scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   scheduledTime: z.string().regex(/^\d{2}:\d{2}$/),
+  // The fields above remain required for compatibility with existing clients.
+  // When this is true, the route deliberately ignores their stale display
+  // values and resolves the actual time from its server clock.
+  useDefaultScheduleTime: z.boolean().optional(),
   targets: z
     .array(
       z

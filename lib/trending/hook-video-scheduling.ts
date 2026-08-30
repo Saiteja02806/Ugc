@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 
+import {
+  getEarliestScheduleTimestamp,
+  getZonedDateTimeParts,
+} from "../scheduling/schedule-time.ts";
 import type { HookVideoScheduleRequest } from "./hook-video-validation.ts";
 
 type HookVideoScheduleIdentity = Omit<
@@ -42,6 +46,29 @@ export function createHookVideoScheduleIdempotencyKey(
     .slice(0, 24);
 
   return `hook-video:${input.draftId}:${input.scheduledDate}:${input.scheduledTime}:${identityHash}`;
+}
+
+/**
+ * Resolve the automatic Hook scheduling choice as late as possible on the
+ * server. A timestamp calculated when a client-side drawer opens can become
+ * invalid while the user reviews the composition; this uses the same lead-time
+ * policy as the scheduling service at the moment the schedule is created.
+ */
+export function getDefaultHookVideoScheduleTime(params: {
+  minimumLeadMinutes: number;
+  now?: number;
+  timeZone: string;
+}) {
+  const scheduledFor = getEarliestScheduleTimestamp({
+    minimumLeadMinutes: params.minimumLeadMinutes,
+    now: params.now,
+  });
+  const parts = getZonedDateTimeParts(scheduledFor, params.timeZone);
+
+  return {
+    scheduledDate: parts.date,
+    scheduledTime: parts.time,
+  };
 }
 
 function sortRecord(

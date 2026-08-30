@@ -64,6 +64,7 @@ export type HookVideoScheduleSelection = {
     settings: PublishingSettings;
   }>;
   timezone: string;
+  useDefaultScheduleTime: boolean;
 };
 
 export type HookVideoScheduleSummary =
@@ -110,6 +111,7 @@ export function HookVideoScheduleDrawer({
   >({});
   const [scheduledDate, setScheduledDate] = useState(initialDateTime.date);
   const [scheduledTime, setScheduledTime] = useState(initialDateTime.time);
+  const [hasManualScheduleTime, setHasManualScheduleTime] = useState(false);
   const [minimumScheduleLeadMinutes, setMinimumScheduleLeadMinutes] = useState(
     DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   );
@@ -176,6 +178,11 @@ export function HookVideoScheduleDrawer({
   const connectedCount = visibleConnections.filter(
     (connection) => connection.status === "connected",
   ).length;
+  // Wall-text schedules continue to use the displayed time. Hook videos can
+  // opt into a server-resolved default so an untouched value never expires
+  // while the user is reviewing the schedule.
+  const useDefaultScheduleTime =
+    summary.kind !== "wall_text" && !hasManualScheduleTime;
 
   async function loadTikTokCapabilities(connectionId: string) {
     setTikTokCapabilities((current) => ({
@@ -267,6 +274,7 @@ export function HookVideoScheduleDrawer({
       tiktokCapabilities,
       minimumScheduleLeadMinutes,
       timezone,
+      useDefaultScheduleTime,
     });
 
     if (validationError) {
@@ -290,6 +298,7 @@ export function HookVideoScheduleDrawer({
           getDefaultScheduleTargetSettings(connection.platform),
       })),
       timezone,
+      useDefaultScheduleTime,
     };
 
     setSubmitting(true);
@@ -347,7 +356,7 @@ export function HookVideoScheduleDrawer({
               <DialogDescription className="mt-1 text-xs">
                 {stage === "review"
                   ? "Confirm the destination and publish time."
-                  : "Choose an account, date, and time."}
+                  : "Choose an account and optionally a publish time."}
               </DialogDescription>
             </div>
           </div>
@@ -439,7 +448,10 @@ export function HookVideoScheduleDrawer({
                       autoComplete="off"
                       min={getLocalDate(new Date())}
                       value={scheduledDate}
-                      onChange={(event) => setScheduledDate(event.target.value)}
+                      onChange={(event) => {
+                        setHasManualScheduleTime(true);
+                        setScheduledDate(event.target.value);
+                      }}
                       className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                     />
                   </label>
@@ -451,15 +463,22 @@ export function HookVideoScheduleDrawer({
                       autoComplete="off"
                       step={SOCIAL_SCHEDULING_TIME_STEP_SECONDS}
                       value={scheduledTime}
-                      onChange={(event) => setScheduledTime(event.target.value)}
+                      onChange={(event) => {
+                        setHasManualScheduleTime(true);
+                        setScheduledTime(event.target.value);
+                      }}
                       className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                     />
                   </label>
                 </div>
                 <p className="mt-2 text-[11px] font-medium leading-4 text-muted">
-                  {timezone}. Schedule at least {minimumScheduleLeadMinutes}{" "}
-                  {minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"}{" "}
-                  ahead.
+                  {useDefaultScheduleTime
+                    ? `Leave these unchanged to schedule ${minimumScheduleLeadMinutes} ${
+                        minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
+                      } after you confirm. Edit either value to choose a specific time.`
+                    : `${timezone}. Schedule at least ${minimumScheduleLeadMinutes} ${
+                        minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
+                      } ahead.`}
                 </p>
               </section>
             </>
@@ -470,6 +489,8 @@ export function HookVideoScheduleDrawer({
               scheduledTime={scheduledTime}
               summary={summary}
               timezone={timezone}
+              minimumScheduleLeadMinutes={minimumScheduleLeadMinutes}
+              useDefaultScheduleTime={useDefaultScheduleTime}
             />
           )}
 
@@ -599,23 +620,31 @@ function ConnectionRow({
 
 function ScheduleReview({
   connections,
+  minimumScheduleLeadMinutes,
   scheduledDate,
   scheduledTime,
   summary,
   timezone,
+  useDefaultScheduleTime,
 }: {
   connections: SocialConnection[];
+  minimumScheduleLeadMinutes: number;
   scheduledDate: string;
   scheduledTime: string;
   summary: HookVideoScheduleSummary;
   timezone: string;
+  useDefaultScheduleTime: boolean;
 }) {
   return (
     <div>
       <div className="border-b border-border pb-4">
         <p className="text-xs font-semibold text-muted">Publish time</p>
         <p className="mt-1 text-base font-semibold text-foreground-strong">
-          {formatScheduleDate(scheduledDate)} at {scheduledTime}
+          {useDefaultScheduleTime
+            ? `${minimumScheduleLeadMinutes} ${
+                minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
+              } after confirmation`
+            : `${formatScheduleDate(scheduledDate)} at ${scheduledTime}`}
         </p>
         <p className="mt-1 text-xs font-medium text-muted">
           {timezone}
@@ -687,12 +716,16 @@ function getValidationError(params: {
   settings: Record<string, PublishingSettings>;
   tiktokCapabilities: Record<string, TikTokScheduleCapabilityState>;
   timezone: string;
+  useDefaultScheduleTime: boolean;
 }) {
   if (params.selectedConnections.length === 0) {
     return "Choose at least one connected account.";
   }
 
-  if (!params.scheduledDate || !params.scheduledTime) {
+  if (
+    !params.useDefaultScheduleTime &&
+    (!params.scheduledDate || !params.scheduledTime)
+  ) {
     return "Choose a date and time.";
   }
 
@@ -704,6 +737,10 @@ function getValidationError(params: {
 
   if (settingsError) {
     return settingsError;
+  }
+
+  if (params.useDefaultScheduleTime) {
+    return null;
   }
 
   try {

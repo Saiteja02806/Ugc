@@ -82,4 +82,11 @@ test("requires exact connected accounts and time for Hook scheduling", () => {
     }).success,
     false,
   );
+  assert.equal(
+    HookVideoScheduleRequestSchema.safeParse({
+      ...schedule,
+      useDefaultScheduleTime: true,
+    }).success,
+    true,
+  );
 });

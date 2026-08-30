@@ -19,6 +19,12 @@ const mediaLibraryVisibility = readProjectFile(
 const scheduleRoute = readProjectFile(
   "app/api/trending/hook-videos/drafts/schedule/route.ts",
 );
+const scheduleDrawer = readProjectFile(
+  "components/trending/hook-video-schedule-drawer.tsx",
+);
+const hookComposer = readProjectFile(
+  "components/trending/hook-video-composer.tsx",
+);
 const savedRender = readProjectFile(
   "lib/trending/hook-video-library-render.ts",
 );
@@ -76,6 +82,24 @@ test("new saved and scheduled Hook renders carry the authoritative layout versio
   );
   assert.match(workerJob, /The authoritative Hook text layout is incomplete/);
   assert.match(workerJob, /hookTextLines must match hookText exactly/);
+});
+
+test("untouched Hook schedule times resolve at confirmation and always confirm the saved schedule", () => {
+  assert.match(scheduleDrawer, /useDefaultScheduleTime/);
+  assert.match(scheduleDrawer, /setHasManualScheduleTime\(true\)/);
+  assert.match(
+    scheduleDrawer,
+    /Leave these unchanged to schedule[\s\S]*after you confirm/,
+  );
+  assert.match(scheduleRoute, /parsed\.data\.useDefaultScheduleTime/);
+  assert.match(scheduleRoute, /getDefaultHookVideoScheduleTime/);
+  assert.match(scheduleRoute, /error instanceof ScheduleTimeError/);
+  assert.match(hookComposer, /Your video has been scheduled\./);
+  assert.match(hookComposer, />\s*View Scheduling\s*</);
+  assert.match(
+    hookComposer,
+    /setScheduledPostId\(data\.scheduleId\);[\s\S]*setScheduleDrawerOpen\(false\);[\s\S]*fetch\([\s\S]*\/render/,
+  );
 });
 
 function readProjectFile(relativePath: string) {

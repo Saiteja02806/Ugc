@@ -16,6 +16,13 @@ const provenanceMigration = readFileSync(
   ),
   "utf8",
 );
+const retryMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260830193000_reuse_unconsumed_carousel_content_plan_reservations.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 test("activates only complete 30-day plans", () => {
   assert.match(migration, /create or replace function public\.activate_carousel_content_plan/i);
@@ -55,6 +62,53 @@ test("supports five-item writer job partitions and safe release", () => {
   assert.match(
     migration,
     /status = 'available'[\s\S]*reservation_token = null[\s\S]*reserved_by_job_id = null/i,
+  );
+});
+
+test("reopens only an unconsumed released or expired reservation for the same plan", () => {
+  assert.match(
+    retryMigration,
+    /v_existing\.status not in \('released', 'expired'\)[\s\S]*v_existing\.consumed_count <> 0[\s\S]*carousel_content_plan_reservation_idempotency_conflict/i,
+  );
+  assert.match(
+    retryMigration,
+    /v_reopen_existing_reservation and v_existing\.plan_id <> v_plan\.id[\s\S]*carousel_content_plan_reservation_idempotency_conflict/i,
+  );
+  assert.match(
+    retryMigration,
+    /update public\.carousel_content_plan_reservations as reservation[\s\S]*status = 'active'[\s\S]*released_at = null[\s\S]*release_reason = null/i,
+  );
+  assert.match(
+    retryMigration,
+    /v_existing\.status = 'active' and v_existing\.expires_at <= v_now[\s\S]*v_existing\.consumed_count <> 0[\s\S]*status = 'expired'/i,
+  );
+  assert.match(
+    retryMigration,
+    /generation\.content_plan_reservation_id = v_existing\.id[\s\S]*generation\.content_plan_item_id is not null[\s\S]*item\.id = any\(v_existing_generation_item_ids\)[\s\S]*item\.status = 'available'/i,
+  );
+  assert.match(
+    retryMigration,
+    /array_length\(v_existing_generation_item_ids, 1\)[\s\S]*carousel_content_plan_reservation_idempotency_conflict/i,
+  );
+  assert.match(
+    retryMigration,
+    /v_expected_reopen_item_count not in \(0, p_requested_count\)[\s\S]*carousel_content_plan_reservation_idempotency_conflict/i,
+  );
+  assert.match(
+    retryMigration,
+    /v_expected_reopen_item_count = p_requested_count[\s\S]*item\.id = any\(v_existing_generation_item_ids\)/i,
+  );
+  assert.match(
+    retryMigration,
+    /generation\.trigger_run_id is not null[\s\S]*carousel_content_plan_reservation_idempotency_conflict/i,
+  );
+  assert.match(
+    retryMigration,
+    /update public\.carousel_generations as generation[\s\S]*status = 'processing'[\s\S]*generation\.status = 'failed'[\s\S]*generation\.trigger_run_id is null/i,
+  );
+  assert.match(
+    retryMigration,
+    /update public\.carousel_experiment_assignments as assignment[\s\S]*status = 'reserved'[\s\S]*batch\.planner_job_id is null/i,
   );
 });
 

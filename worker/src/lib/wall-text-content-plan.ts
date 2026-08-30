@@ -95,6 +95,24 @@ export async function generateWallTextContentPlanChunk(params: {
         items: parsed.items,
       });
       if (issues.length === 0) return parsed;
+
+      if (issues.every((issue) => issue.includes("repeats an existing content idea"))) {
+        const repaired = await regenerateDuplicateWallTextBriefs({
+          ...params,
+          issues,
+          parsed,
+        });
+        if (repaired) {
+          const repairedIssues = validateWallTextContentPlanChunk({
+            existingItems: params.existingItems,
+            items: repaired.items,
+          });
+          if (repairedIssues.length === 0) return repaired;
+          lastIssues = repairedIssues;
+          continue;
+        }
+      }
+
       lastIssues = issues;
     } catch (error) {
       lastIssues = [getErrorMessage(error)];
@@ -104,6 +122,88 @@ export async function generateWallTextContentPlanChunk(params: {
   throw new Error(
     `Wall-of-Text content-plan chunk failed validation: ${lastIssues.join(" ")}`,
   );
+}
+
+async function regenerateDuplicateWallTextBriefs(params: {
+  businessDescription: string;
+  count: number;
+  existingItems: Array<Pick<WallTextContentPlanItemRow, "content_idea" | "feeling">>;
+  issues: string[];
+  parsed: GeneratedWallTextContentPlanChunk;
+  planningContext: Json;
+}) {
+  const affectedBriefs = new Set<number>();
+  for (const issue of params.issues) {
+    const match = issue.match(/^Brief (\d+) idea /);
+    if (match) affectedBriefs.add(Number.parseInt(match[1], 10));
+  }
+  if (affectedBriefs.size === 0) return null;
+
+  const unaffectedBriefs = params.parsed.briefs.filter(
+    (brief) => !affectedBriefs.has(brief.briefSlotIndex),
+  );
+  const unaffectedItems = params.parsed.items.filter(
+    (item) => !affectedBriefs.has(item.briefSlotIndex),
+  );
+  const replacementBriefs: GeneratedWallTextPlanningBrief[] = [];
+  const replacementItems: GeneratedWallTextContentPlanItem[] = [];
+
+  for (const briefSlotIndex of affectedBriefs) {
+    const completion = await getOpenAIClient().chat.completions.create({
+      max_completion_tokens: 2_000,
+      messages: buildMessages({
+        businessDescription: params.businessDescription,
+        briefCount: 1,
+        existingItems: [
+          ...params.existingItems,
+          ...unaffectedItems.map((item) => ({
+            content_idea: item.contentIdea,
+            feeling: item.feeling,
+          })),
+          ...replacementItems.map((item) => ({
+            content_idea: item.contentIdea,
+            feeling: item.feeling,
+          })),
+        ],
+        issues: ["Regenerate this five-item brief with five new, distinct content ideas."],
+        planningContext: params.planningContext,
+      }),
+      model: getWallTextContentPlanModel(),
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "wall_text_content_plan_brief_shortfall",
+          schema: buildSchema(1),
+          strict: true,
+        },
+      },
+    });
+    const content = completion.choices[0]?.message.content;
+    if (!content) return null;
+
+    try {
+      const replacement = parseWallTextContentPlanChunk(JSON.parse(content), 1);
+      const brief = replacement.briefs[0];
+      if (!brief) return null;
+      replacementBriefs.push({ ...brief, briefSlotIndex });
+      replacementItems.push(
+        ...replacement.items.map((item) => ({ ...item, briefSlotIndex })),
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  return {
+    briefs: [...unaffectedBriefs, ...replacementBriefs].sort(
+      (left, right) => left.briefSlotIndex - right.briefSlotIndex,
+    ),
+    items: [...unaffectedItems, ...replacementItems].sort(
+      (left, right) =>
+        left.briefSlotIndex - right.briefSlotIndex ||
+        left.itemSlotIndex - right.itemSlotIndex,
+    ),
+  } satisfies GeneratedWallTextContentPlanChunk;
 }
 
 export function parseWallTextContentPlanChunk(value: unknown, briefCount: number) {

@@ -42,6 +42,18 @@ export function getDailyCarouselRefillPlan(params: {
   };
 }
 
+// A partial reservation has already consumed some immutable plan items. Its
+// replacement must be a new batch for the live feed deficit, not an extension
+// of the old generation batch (which would retry its partial reservation key).
+export function getDailyCarouselReplacementBatchRequestedCount(params: {
+  generationDeficit: number;
+}) {
+  return Math.min(
+    Math.max(toNonNegativeInteger(params.generationDeficit), 1),
+    MAX_REFILL_BATCH_CANDIDATES,
+  );
+}
+
 export function getMissingDailyCarouselCandidateIndexes(params: {
   existingCandidateIndexes: readonly number[];
   targetCandidateCount: number;

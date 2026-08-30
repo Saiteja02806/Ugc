@@ -18,7 +18,9 @@ import { reconcileCompletedTrendingFeedForUser } from "@/lib/trending/reconcile-
 import {
   claimDueTrendingFeedReconciliations,
   completeTrendingFeedReconciliation,
+  finishTrendingFeedRepair,
   getMissingUnifiedTrendingFeedEnvVars,
+  listDueTrendingFeedRepairs,
   listCurrentTrendingFeedIntegrityRepairs,
   rescheduleTrendingFeedReconciliation,
 } from "@/lib/trending/unified-daily-feed-db";
@@ -174,6 +176,7 @@ export async function POST(request: Request) {
           }
         : await repairIncompleteTrendingFeeds({
             limit: Math.min(limit, 25),
+            staleAfterSeconds,
           });
 
     return json({
@@ -305,23 +308,62 @@ async function recoverUnattachedTrendingHookChunks(params: { limit: number }) {
   };
 }
 
-async function repairIncompleteTrendingFeeds(params: { limit: number }) {
-  const repairs = await listCurrentTrendingFeedIntegrityRepairs({
+async function repairIncompleteTrendingFeeds(params: {
+  limit: number;
+  staleAfterSeconds: number;
+}) {
+  // Claim stale feeds first. This catches the important case where the slot
+  // count is correct but one or more planned slots have no live source job.
+  // Keep the older count-mismatch scan as a compatibility net for rows made by
+  // a pre-recovery deployment.
+  const dueRepairs = await listDueTrendingFeedRepairs({
+    limit: params.limit,
+    staleAfterSeconds: params.staleAfterSeconds,
+  });
+  const claimedFeedIds = new Set(dueRepairs.map((repair) => repair.feed_id));
+  const countRepairs = await listCurrentTrendingFeedIntegrityRepairs({
     limit: params.limit,
   });
-  const results: Array<Record<string, string | null>> = [];
+  const repairs = countRepairs.filter(
+    (repair) => !claimedFeedIds.has(repair.feed_id),
+  );
+  const results: Array<Record<string, string | number | null>> = [];
 
-  for (const repair of repairs) {
+  for (const repair of dueRepairs) {
     try {
       const reconciliation = await reconcileCompletedTrendingFeedForUser(
         repair.user_id,
       );
-      results.push({
+      const repairResult = await finishTrendingFeedRepair({
         feedId: repair.feed_id,
-        result: reconciliation.skipped ? "skipped" : "repaired",
+        pendingSlotCount: reconciliation.pendingSlotCount,
+        staleAfterSeconds: params.staleAfterSeconds,
+        errorMessage:
+          reconciliation.pendingSlotCount > 0
+            ? "The daily pack is still waiting for one or more source jobs."
+            : null,
+      });
+      results.push({
+        attemptCount: repair.attempt_count,
+        feedId: repair.feed_id,
+        pendingSlotCount: reconciliation.pendingSlotCount,
+        result: reconciliation.skipped ? "skipped" : repairResult,
         userId: repair.user_id,
       });
     } catch (error) {
+      try {
+        await finishTrendingFeedRepair({
+          errorMessage: getErrorMessage(error),
+          feedId: repair.feed_id,
+          pendingSlotCount: repair.pending_slot_count,
+          staleAfterSeconds: params.staleAfterSeconds,
+        });
+      } catch (finishError) {
+        console.error("Could not persist Trending feed repair outcome", {
+          error: getErrorMessage(finishError),
+          feedId: repair.feed_id,
+        });
+      }
       console.error("Incomplete Trending feed repair failed", {
         error: getErrorMessage(error),
         feedId: repair.feed_id,
@@ -335,8 +377,32 @@ async function repairIncompleteTrendingFeeds(params: { limit: number }) {
     }
   }
 
+  for (const repair of repairs) {
+    try {
+      const reconciliation = await reconcileCompletedTrendingFeedForUser(
+        repair.user_id,
+      );
+      results.push({
+        feedId: repair.feed_id,
+        result: reconciliation.skipped ? "skipped" : "repaired",
+        userId: repair.user_id,
+      });
+    } catch (error) {
+      console.error("Incomplete Trending feed integrity repair failed", {
+        error: getErrorMessage(error),
+        feedId: repair.feed_id,
+        userId: repair.user_id,
+      });
+      results.push({
+        feedId: repair.feed_id,
+        result: "retry_next_recovery",
+        userId: repair.user_id,
+      });
+    }
+  }
+
   return {
-    inspected: repairs.length,
+    inspected: dueRepairs.length + repairs.length,
     results,
   };
 }

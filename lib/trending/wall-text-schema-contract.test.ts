@@ -108,6 +108,13 @@ const balancedLayoutMigration = readFileSync(
   ),
   "utf8",
 );
+const reservationCollisionMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260830200000_prevent_wall_text_background_reservation_collisions.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const generatorSource = readFileSync(
   new URL("./generate-trending-wall-text-ideas.ts", import.meta.url),
   "utf8",
@@ -454,6 +461,33 @@ test("persists stable batches, original chunks, assignments, budgets, and placem
   assert.match(
     feedSource,
     /groupReservedAssignmentsByChunk[\s\S]+claimWallTextGenerationChunk[\s\S]+onChunkAccepted[\s\S]+saveWallTextGenerationCandidate/,
+  );
+});
+
+test("prevents concurrent Wall refills from reserving an already-used background", () => {
+  assert.match(
+    databaseSource,
+    /export async function listReservedWallTextBackgroundAssetIds[\s\S]+\.in\("status", \["pending", "processing"\]\)[\s\S]+\.neq\("status", "completed"\)/,
+  );
+  assert.match(
+    feedSource,
+    /listReservedWallTextBackgroundAssetIds[\s\S]+reservedBackgroundAssetIds[\s\S]+unavailableBackgroundAssetIds/,
+  );
+  assert.match(
+    feedSource,
+    /const inventory = fullInventory\.filter\([\s\S]+!unavailableBackgroundAssetIds\.has\(asset\.id\)/,
+  );
+  assert.match(
+    reservationCollisionMigration,
+    /create or replace function public\.enforce_wall_text_generation_assignment_background_uniqueness\(\)[\s\S]+pg_advisory_xact_lock[\s\S]+wall_text_background_already_used[\s\S]+wall_text_background_already_reserved/i,
+  );
+  assert.match(
+    reservationCollisionMigration,
+    /create trigger enforce_wall_text_generation_assignment_background_uniqueness_trigger[\s\S]+before insert or update of batch_id, overlay_media_asset_id/i,
+  );
+  assert.match(
+    reservationCollisionMigration,
+    /revoke all on function public\.enforce_wall_text_generation_assignment_background_uniqueness\(\) from public/i,
   );
 });
 

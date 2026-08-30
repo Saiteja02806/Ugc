@@ -3892,3 +3892,31 @@ Name: **Verify v26 and replace the stale production assignment**
   isolated from the deck swipe gesture, so an edited Carousel can navigate
   immediately while its immutable edited slide URLs are displayed only after
   the render state is ready.
+
+## 2026-08-30 Daily Feed Recovery and Planner Shortfall Handling
+
+- A unified daily feed remains `preparing` while any reserved slot is pending,
+  even when earlier positions are already visible. The client continues
+  polling until the pending count reaches zero, then backs off to a one-minute
+  cadence aligned with the server recovery scanner. A partial pack is useful
+  content, but it is not a terminally ready pack.
+- The recovery scanner claims feeds with stale unassigned `planned`,
+  `preparing`, or `failed` slots even when the physical slot count equals the
+  daily allowance. It re-enters the existing idempotent Carousel, Hook, and
+  Wall preparation paths; it never replaces `ready` or `decided` assignments.
+  Claims are bounded and, after repeated stale passes, only still-unassigned
+  stale slots become `failed` with a durable diagnostic instead of spinning
+  forever.
+- Carousel and Wall content-plan duplicate validation is shortfall-aware. When
+  a model response contains only duplicate ideas, the affected five-item
+  brief(s) are regenerated while valid briefs in the same chunk remain intact.
+  Structural or safety validation errors still reject the chunk for normal
+  retry handling. This preserves complete five-item brief groups and does not
+  alter the writer queue's concurrency-one guard.
+- A completely unconsumed Carousel reservation may reopen only when its five
+  original generation rows never received a writer job. It re-leases those
+  exact five plan items and returns the jobless failed rows to `processing`;
+  it never substitutes different ideas or restarts a durable writer job.
+  A partially consumed daily refill is never reopened. Its completed items
+  remain immutable and a terminal shortfall creates a fresh successor refill
+  batch for the missing feed positions only.

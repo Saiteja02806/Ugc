@@ -74,6 +74,10 @@ const completedFeedReconciliation = readFileSync(
   "lib/trending/reconcile-completed-feed.ts",
   "utf8",
 );
+const recoveryMigration = readFileSync(
+  "supabase/migrations/20260830120123_harden_daily_trending_feed_recovery.sql",
+  "utf8",
+);
 const workerProcessor = readFileSync("worker/src/processor.ts", "utf8");
 const recoveryRoute = readFileSync(
   "app/api/internal/jobs/recover/route.ts",
@@ -386,6 +390,32 @@ test("never marks a daily feed complete when a promised position is missing", ()
   assert.match(
     recoveryRoute,
     /listCurrentTrendingFeedIntegrityRepairs[\s\S]*repairIncompleteTrendingFeeds[\s\S]*reconcileCompletedTrendingFeedForUser/,
+  );
+});
+
+test("claims stale unassigned slots even when the physical slot count is correct", () => {
+  assert.match(recoveryMigration, /list_due_daily_trending_feed_repairs/);
+  assert.match(
+    recoveryMigration,
+    /state in \('planned', 'preparing', 'failed'\)[\s\S]*carousel_assignment_id is null[\s\S]*updated_at < now\(\)/,
+  );
+  assert.match(recoveryMigration, /for update skip locked/);
+  assert.match(recoveryMigration, /recovery_attempt_count < greatest/);
+  assert.match(unifiedFeedDatabase, /listDueTrendingFeedRepairs/);
+  assert.match(recoveryRoute, /listDueTrendingFeedRepairs[\s\S]*finishTrendingFeedRepair/);
+});
+
+test("bounds repeated recovery and preserves a terminal diagnostic", () => {
+  assert.match(recoveryMigration, /finish_daily_trending_feed_repair/);
+  assert.match(recoveryMigration, /recovery_attempt_count >= greatest/);
+  assert.match(recoveryMigration, /list_current_trending_feed_integrity_repairs[\s\S]*recovery_attempt_count < 3/);
+  assert.match(recoveryMigration, /reset_daily_trending_feed_recovery_on_slot_change/);
+  assert.match(recoveryMigration, /old\.state = 'failed' and new\.state = 'planned'/);
+  assert.match(recoveryMigration, /state = 'failed'/);
+  assert.match(recoveryMigration, /last_recovery_error/);
+  assert.match(
+    recoveryMigration,
+    /last_error = case[\s\S]*stale_count > 0[\s\S]*Daily Trending preparation stopped/,
   );
 });
 

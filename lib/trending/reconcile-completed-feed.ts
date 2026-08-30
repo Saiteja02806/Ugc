@@ -9,7 +9,9 @@ import { ensureUnifiedTrendingDailyFeed } from "@/lib/trending/unified-daily-fee
 import { isWallTextEnabled } from "@/lib/trending/wall-text-access";
 
 export type CompletedTrendingFeedReconciliation = {
+  feedState: "caught_up" | "failed" | "preparing" | "ready" | null;
   feedId: string | null;
+  pendingSlotCount: number;
   skipped: boolean;
 };
 
@@ -24,7 +26,7 @@ export async function reconcileCompletedTrendingFeedForUser(
   const profile = await getBusinessProfileForUser(userId);
 
   if (!profile || !profile.trendingTimezone) {
-    return { feedId: null, skipped: true };
+    return { feedId: null, feedState: null, pendingSlotCount: 0, skipped: true };
   }
 
   const dailyFeed = await ensureUnifiedTrendingDailyFeed({
@@ -36,7 +38,9 @@ export async function reconcileCompletedTrendingFeedForUser(
   });
 
   return {
+    feedState: dailyFeed.feed.state,
     feedId: dailyFeed.feed.id,
+    pendingSlotCount: dailyFeed.feed.pendingSlotCount,
     skipped: false,
   };
 }

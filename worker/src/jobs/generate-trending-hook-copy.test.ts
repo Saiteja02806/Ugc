@@ -8,7 +8,26 @@ import {
   TRENDING_HOOK_REACTION_SELECTION_VERSION,
 } from "../lib/trending-hook-copy.js";
 import type { BackgroundJobRow } from "../types.js";
-import { runGenerateTrendingHookCopyJob } from "./generate-trending-hook-copy.js";
+import { RetryableJobError } from "../retryable-job-error.js";
+import {
+  ensureTrendingHookChunkMakesProgress,
+  runGenerateTrendingHookCopyJob,
+} from "./generate-trending-hook-copy.js";
+
+test("a durable Hook chunk rejects zero progress as retryable", () => {
+  assert.throws(
+    () => ensureTrendingHookChunkMakesProgress(3, 0),
+    (error: unknown) =>
+      error instanceof RetryableJobError &&
+      error.code === "trending_hook_generation_zero_progress" &&
+      error.retryAfterSeconds === 15,
+  );
+});
+
+test("a durable Hook chunk accepts progress and completed runs", () => {
+  assert.doesNotThrow(() => ensureTrendingHookChunkMakesProgress(3, 1));
+  assert.doesNotThrow(() => ensureTrendingHookChunkMakesProgress(0, 0));
+});
 
 test("a completed durable Hook chunk skips model generation on worker retry", async () => {
   let progressReads = 0;

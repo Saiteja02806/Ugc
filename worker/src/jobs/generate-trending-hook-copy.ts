@@ -20,6 +20,7 @@ import type {
   BackgroundJobRow,
   Json,
 } from "../types.js";
+import { RetryableJobError } from "../retryable-job-error.js";
 
 export async function runGenerateTrendingHookCopyJob(
   job: BackgroundJobRow,
@@ -86,6 +87,20 @@ export async function runGenerateTrendingHookCopyJob(
   const copiesToPersist = input.generationRun
     ? copies.slice(0, input.generationRun.remainingValidCount)
     : copies;
+
+  // A durable run must make forward progress. Persisting an empty V2 chunk
+  // marks the chunk complete while leaving its reserved candidates stranded;
+  // the run then has no pending candidates to reserve and can sit in
+  // continuation_pending forever. Treat an all-rejected chunk as retryable so
+  // the physical job is retried and, if it remains impossible, the normal
+  // terminal-failure path releases the reservation and schedules recovery.
+  if (input.generationRun) {
+    ensureTrendingHookChunkMakesProgress(
+      input.generationRun.remainingValidCount,
+      copiesToPersist.length,
+    );
+  }
+
   const runProgress = input.generationRun
     ? await context.store.persistTrendingHookGenerationRunChunk({
         appendOnly:
@@ -148,6 +163,23 @@ export async function runGenerateTrendingHookCopyJob(
     ).length,
     selectionVersion: input.selectionVersion,
   };
+}
+
+export function ensureTrendingHookChunkMakesProgress(
+  remainingValidCount: number,
+  persistedCandidateCount: number,
+) {
+  if (remainingValidCount <= 0 || persistedCandidateCount > 0) {
+    return;
+  }
+
+  throw new RetryableJobError(
+    "Trending Hook generation produced no valid copies for its reserved chunk.",
+    {
+      code: "trending_hook_generation_zero_progress",
+      retryAfterSeconds: 15,
+    },
+  );
 }
 
 function parseInput(job: BackgroundJobRow) {

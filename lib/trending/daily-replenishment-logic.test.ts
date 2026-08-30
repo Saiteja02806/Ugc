@@ -8,6 +8,7 @@ import {
 import {
   DAILY_CAROUSEL_REFILL_REPAIR_INTERVAL_MS,
   canExtendDailyCarouselRefill,
+  getDailyCarouselReplacementBatchRequestedCount,
   getDailyCarouselRefillPlan,
   getMissingDailyCarouselCandidateIndexes,
   hasTerminalDailyCarouselGenerationFailure,
@@ -114,7 +115,7 @@ test("repeated reconciliation keeps the same batch target", () => {
   assert.equal(plan.requestedBatchCandidateCount, 5);
 });
 
-test("a failed reserved candidate extends the batch by one replacement", () => {
+test("a failed reserved candidate exposes a one-slot replacement deficit", () => {
   const plan = getDailyCarouselRefillPlan({
     dailyLimit: 10,
     existingBatchCandidateCount: 5,
@@ -125,6 +126,12 @@ test("a failed reserved candidate extends the batch by one replacement", () => {
 
   assert.equal(plan.generationDeficit, 1);
   assert.equal(plan.requestedBatchCandidateCount, 6);
+  assert.equal(
+    getDailyCarouselReplacementBatchRequestedCount({
+      generationDeficit: plan.generationDeficit,
+    }),
+    1,
+  );
 });
 
 test("daily candidate indexes extend a batch without recreating existing rows", () => {

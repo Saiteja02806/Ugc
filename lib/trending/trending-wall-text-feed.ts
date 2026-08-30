@@ -30,6 +30,7 @@ import {
   listWallTextDuplicateSignatures,
   listWallTextOverlayAssetsByIds,
   listWallTextOverlayAssetsForMediaAssetIds,
+  listReservedWallTextBackgroundAssetIds,
   listWallTextVideoAssetInventory,
   parseWallTextContent,
   parseWallTextLayout,
@@ -254,23 +255,34 @@ export async function prepareTrendingWallTextIdeas(
     );
   }
 
-  const [fullInventory, recentBackgrounds, activeInstagramTemplates] = await Promise.all([
+  const [
+    fullInventory,
+    recentBackgrounds,
+    activeInstagramTemplates,
+    reservedBackgroundAssetIds,
+  ] = await Promise.all([
     selectedInventory ?? listWallTextVideoAssetInventory(),
     listRecentWallTextBackgroundAssetIds({ userId: profile.userId }),
     source.selection
       ? Promise.resolve([])
       : listActiveWallTextInstagramReelTemplates(),
+    listReservedWallTextBackgroundAssetIds({
+      businessProfileId: profile.id,
+      businessProfileVersion: profile.profileVersion,
+      userId: profile.userId,
+    }),
   ]);
-  const existingBackgroundAssetIds = new Set(
-    existing.map((creative) => creative.overlay_media_asset_id),
+  const unavailableBackgroundAssetIds = new Set([
+    ...existing.map((creative) => creative.overlay_media_asset_id),
+    ...reservedBackgroundAssetIds,
+  ]);
+  // A profile/version may have one persisted creative per overlay asset. Do
+  // not rotate back to an old asset after the unused pool is exhausted: it
+  // would fail at persistence and leave the feed waiting. A smaller batch is
+  // preferable; recovery can then surface a terminal, diagnosable shortfall.
+  const inventory = fullInventory.filter(
+    (asset) => !unavailableBackgroundAssetIds.has(asset.id),
   );
-  const unusedInventory =
-    mode === "refill"
-      ? fullInventory.filter(
-          (asset) => !existingBackgroundAssetIds.has(asset.id),
-        )
-      : fullInventory;
-  const inventory = unusedInventory.length > 0 ? unusedInventory : fullInventory;
   const groupFreshInventory = inventory.filter(
     (asset) =>
       !recentBackgrounds.assetIds.has(asset.id) &&
@@ -289,14 +301,9 @@ export async function prepareTrendingWallTextIdeas(
       : assetFreshCandidates.length > 0
         ? assetFreshCandidates
         : selectTrendingWallTextCandidates(inventory, requestedCount);
-  const unusedInstagramTemplates = activeInstagramTemplates.filter(
-    (template) =>
-      mode !== "refill" || !existingBackgroundAssetIds.has(template.asset.id),
+  const availableInstagramTemplates = activeInstagramTemplates.filter(
+    (template) => !unavailableBackgroundAssetIds.has(template.asset.id),
   );
-  const availableInstagramTemplates =
-    unusedInstagramTemplates.length > 0
-      ? unusedInstagramTemplates
-      : activeInstagramTemplates;
   const freshInstagramTemplates = availableInstagramTemplates.filter(
     (template) => !recentBackgrounds.assetIds.has(template.asset.id),
   );

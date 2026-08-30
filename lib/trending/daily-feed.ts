@@ -38,6 +38,7 @@ import {
 } from "@/lib/trending/daily-feed-logic";
 import {
   canExtendDailyCarouselRefill,
+  getDailyCarouselReplacementBatchRequestedCount,
   getDailyCarouselRefillPlan,
   hasTerminalDailyCarouselGenerationFailure,
   selectAssignableDailyCarouselCandidates,
@@ -141,7 +142,10 @@ type DailyCarouselRefillBatchRow = {
   generation_batch_id: string;
   id: string;
   local_date: string;
+  replacement_sequence: number;
   requested_count: number;
+  superseded_at: string | null;
+  superseded_by_batch_id: string | null;
   updated_at: string;
   user_id: string;
 };
@@ -207,6 +211,17 @@ type TrendingFeedDatabase = {
           p_user_id: string;
         };
         Returns: DailyCarouselRefillBatchRow;
+      };
+      replace_partial_daily_carousel_refill_batch_if_profile_current: {
+        Args: {
+          p_business_profile_id: string;
+          p_business_profile_version: number;
+          p_expected_generation_batch_id: string;
+          p_feed_id: string;
+          p_requested_count: number;
+          p_user_id: string;
+        };
+        Returns: DailyCarouselRefillBatchRow | null;
       };
     };
     Tables: {
@@ -671,7 +686,7 @@ async function reconcileDailyCarouselRefill(params: {
     );
   }
 
-  const plan = getDailyCarouselRefillPlan({
+  let plan = getDailyCarouselRefillPlan({
     dailyLimit: params.feed.daily_limit,
     existingBatchCandidateCount: existingBatchCandidates.length,
     existingRequestedCount: refillBatch?.requested_count ?? 0,
@@ -683,9 +698,55 @@ async function reconcileDailyCarouselRefill(params: {
     return;
   }
 
-  const hasTerminalFailure = await hasTerminalDailyCarouselFailure(
+  let hasTerminalFailure = await hasTerminalDailyCarouselFailure(
     existingBatchCandidates,
   );
+  let replacedPartialBatch = false;
+
+  if (refillBatch && hasTerminalFailure && plan.generationDeficit > 0) {
+    const replacement = await replacePartialDailyCarouselRefillBatch({
+      expectedGenerationBatchId: refillBatch.generation_batch_id,
+      feed: params.feed,
+      profile: params.profile,
+      requestedCount: getDailyCarouselReplacementBatchRequestedCount({
+        generationDeficit: plan.generationDeficit,
+      }),
+      userId: params.userId,
+    });
+
+    if (replacement) {
+      refillBatch = replacement;
+      existingBatchCandidates = [];
+      replacedPartialBatch = true;
+    } else {
+      // A concurrent reconciliation may already have replaced the batch.
+      // Reload its active successor before making any cumulative target math.
+      const activeRefillBatch = await findDailyCarouselRefillBatch({
+        feedId: params.feed.id,
+        profile: params.profile,
+      });
+      if (
+        activeRefillBatch &&
+        activeRefillBatch.generation_batch_id !== refillBatch.generation_batch_id
+      ) {
+        refillBatch = activeRefillBatch;
+        existingBatchCandidates = await getCarouselGenerationsByBatchId(
+          refillBatch.generation_batch_id,
+        );
+        plan = getDailyCarouselRefillPlan({
+          dailyLimit: params.feed.daily_limit,
+          existingBatchCandidateCount: existingBatchCandidates.length,
+          existingRequestedCount: refillBatch.requested_count,
+          feedItemCount: params.feedItems.length,
+          viableUnassignedGenerationCount: viableInventory.totalCount,
+        });
+        hasTerminalFailure = await hasTerminalDailyCarouselFailure(
+          existingBatchCandidates,
+        );
+      }
+    }
+  }
+
   const mayExtendForRepair = canExtendDailyCarouselRefill({
     currentRequestedCount: refillBatch?.requested_count ?? 0,
     hasTerminalFailure,
@@ -693,7 +754,9 @@ async function reconcileDailyCarouselRefill(params: {
     lastUpdatedAt: refillBatch?.updated_at ?? null,
     requestedCount: plan.requestedBatchCandidateCount,
   });
-  const requestedCount = mayExtendForRepair
+  const requestedCount = replacedPartialBatch
+    ? refillBatch!.requested_count
+    : mayExtendForRepair
     ? plan.requestedBatchCandidateCount
     : refillBatch?.requested_count ?? 0;
 
@@ -855,6 +918,7 @@ async function findDailyCarouselRefillBatch(params: {
     .eq("feed_id", params.feedId)
     .eq("business_profile_id", params.profile.id)
     .eq("business_profile_version", params.profile.profileVersion)
+    .is("superseded_at", null)
     .maybeSingle();
 
   if (error) {
@@ -862,6 +926,58 @@ async function findDailyCarouselRefillBatch(params: {
   }
 
   return data ?? null;
+}
+
+async function replacePartialDailyCarouselRefillBatch(params: {
+  expectedGenerationBatchId: string;
+  feed: DailyCarouselFeedRow;
+  profile: BusinessProfileRecord;
+  requestedCount: number;
+  userId: string;
+}): Promise<DailyCarouselRefillBatchRow | null> {
+  const { data, error } = await getClient().rpc(
+    "replace_partial_daily_carousel_refill_batch_if_profile_current",
+    {
+      p_business_profile_id: params.profile.id,
+      p_business_profile_version: params.profile.profileVersion,
+      p_expected_generation_batch_id: params.expectedGenerationBatchId,
+      p_feed_id: params.feed.id,
+      p_requested_count: params.requestedCount,
+      p_user_id: params.userId,
+    },
+  );
+
+  if (error) {
+    if (isBusinessProfileVersionChangedError(error)) {
+      throw new Error(
+        "The business profile changed while replacing partial daily Carousel refill inventory. Refresh to use the latest profile.",
+      );
+    }
+
+    throw new Error(
+      `Could not replace partial daily Carousel refill: ${error.message}`,
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  assertDailyCarouselRefillOwnership({
+    feed: params.feed,
+    profile: params.profile,
+    refillBatch: data,
+    userId: params.userId,
+  });
+
+  if (
+    data.generation_batch_id === params.expectedGenerationBatchId ||
+    data.superseded_at !== null
+  ) {
+    throw new Error("Partial daily Carousel refill replacement is not a new active batch.");
+  }
+
+  return data;
 }
 
 async function reserveDailyCarouselRefillBatch(params: {
@@ -942,7 +1058,8 @@ function assertDailyCarouselRefillOwnership(params: {
     params.refillBatch.local_date !== params.feed.local_date ||
     params.refillBatch.user_id !== params.userId ||
     params.refillBatch.business_profile_id !== params.profile.id ||
-    params.refillBatch.business_profile_version !== params.profile.profileVersion
+    params.refillBatch.business_profile_version !== params.profile.profileVersion ||
+    params.refillBatch.superseded_at !== null
   ) {
     throw new Error("Daily Carousel refill ownership does not match its feed.");
   }

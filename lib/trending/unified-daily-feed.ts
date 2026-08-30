@@ -585,6 +585,14 @@ function getPublicDailyFeedState(params: {
     return "failed";
   }
 
+  // A partial pack is useful, but it is not ready: callers must keep polling
+  // while any reserved slot is unresolved. Previously a few ready items made
+  // this return "ready", which stopped the browser poll and left the remaining
+  // positions stranded until a manual reload.
+  if (params.readiness.pendingSlotCount > 0) {
+    return "preparing";
+  }
+
   if (params.items.length > 0) {
     return "ready";
   }

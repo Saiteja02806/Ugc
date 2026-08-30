@@ -422,9 +422,73 @@ export async function listCurrentTrendingFeedIntegrityRepairs(params?: {
   return (data ?? []) as Array<{ feed_id: string; user_id: string }>;
 }
 
+export type DueTrendingFeedRepair = {
+  attempt_count: number;
+  feed_id: string;
+  oldest_pending_at: string | null;
+  pending_slot_count: number;
+  user_id: string;
+};
+
+/**
+ * Claims today's feeds whose slot count is wrong or whose unassigned slots
+ * have been stale long enough to indicate a lost/terminal source job.
+ */
+export async function listDueTrendingFeedRepairs(params?: {
+  limit?: number;
+  maxAttempts?: number;
+  staleAfterSeconds?: number;
+}) {
+  const { data, error } = await getClient().rpc(
+    "list_due_daily_trending_feed_repairs",
+    {
+      p_limit: Math.max(1, Math.min(params?.limit ?? 25, 100)),
+      p_max_attempts: Math.max(1, Math.min(params?.maxAttempts ?? 3, 10)),
+      p_stale_after_seconds: Math.max(
+        60,
+        Math.min(params?.staleAfterSeconds ?? 900, 43_200),
+      ),
+    },
+  );
+
+  if (error) {
+    throw new Error(`Could not claim due Trending feed repairs: ${error.message}`);
+  }
+
+  return (data ?? []) as DueTrendingFeedRepair[];
+}
+
+export async function finishTrendingFeedRepair(params: {
+  errorMessage?: string | null;
+  feedId: string;
+  pendingSlotCount: number;
+  maxAttempts?: number;
+  staleAfterSeconds?: number;
+}) {
+  const { data, error } = await getClient().rpc(
+    "finish_daily_trending_feed_repair",
+    {
+      p_error_message: params.errorMessage ?? null,
+      p_feed_id: params.feedId,
+      p_max_attempts: Math.max(1, Math.min(params.maxAttempts ?? 3, 10)),
+      p_pending_slot_count: Math.max(0, Math.trunc(params.pendingSlotCount)),
+      p_stale_after_seconds: Math.max(
+        60,
+        Math.min(params.staleAfterSeconds ?? 900, 43_200),
+      ),
+    },
+  );
+
+  if (error) {
+    throw new Error(`Could not finish Trending feed repair: ${error.message}`);
+  }
+
+  return typeof data === "string" ? data : "retry";
+}
+
 export async function markDailyTrendingFeedFormatsFailed(params: {
   feedId: string;
-  formats: Array<"hook_video" | "wall_text">;
+  formats: Array<"carousel" | "hook_video" | "wall_text">;
   message: string;
 }) {
   if (params.formats.length === 0) {

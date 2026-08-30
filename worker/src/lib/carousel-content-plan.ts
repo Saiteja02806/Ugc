@@ -122,6 +122,27 @@ export async function generateCarouselContentPlanChunk(params: {
       });
 
       if (issues.length === 0) return parsed;
+
+      // Duplicate seeds are a local shortfall, not a reason to throw away a
+      // whole 25-item chunk. Regenerate only the affected five-item briefs so
+      // valid work can still be persisted and the plan can keep progressing.
+      if (issues.every((issue) => issue.includes("repeats an existing creative seed"))) {
+        const repaired = await regenerateDuplicateCarouselBriefs({
+          ...params,
+          parsed,
+          issues,
+        });
+        if (repaired) {
+          const repairedIssues = validateCarouselContentPlanChunk({
+            existingItems: params.existingItems,
+            items: repaired.items,
+          });
+          if (repairedIssues.length === 0) return repaired;
+          lastIssues = repairedIssues;
+          continue;
+        }
+      }
+
       lastIssues = issues;
     } catch (error) {
       lastIssues = [getErrorMessage(error)];
@@ -131,6 +152,90 @@ export async function generateCarouselContentPlanChunk(params: {
   throw new Error(
     `Carousel content-plan chunk failed validation: ${lastIssues.join(" ")}`,
   );
+}
+
+async function regenerateDuplicateCarouselBriefs(params: {
+  businessDescription: string;
+  count: number;
+  existingItems: Array<Pick<CarouselContentPlanItemRow, "creative_seed" | "emotion">>;
+  issues: string[];
+  parsed: GeneratedCarouselContentPlanChunk;
+  planningContext: Json;
+}) {
+  const affectedBriefs = new Set<number>();
+  for (const issue of params.issues) {
+    const match = issue.match(/^Brief (\d+) idea /);
+    if (match) affectedBriefs.add(Number.parseInt(match[1], 10));
+  }
+  if (affectedBriefs.size === 0) return null;
+
+  const unaffectedBriefs = params.parsed.briefs.filter(
+    (brief) => !affectedBriefs.has(brief.briefSlotIndex),
+  );
+  const unaffectedItems = params.parsed.items.filter(
+    (item) => !affectedBriefs.has(item.briefSlotIndex),
+  );
+  const replacementBriefs: GeneratedCarouselContentPlanBrief[] = [];
+  const replacementItems: GeneratedCarouselContentPlanItem[] = [];
+
+  for (const briefSlotIndex of affectedBriefs) {
+    const completion = await getOpenAIClient().chat.completions.create({
+      max_completion_tokens: 2_000,
+      messages: buildMessages({
+        businessDescription: params.businessDescription,
+        briefCount: 1,
+        count: CAROUSEL_CONTENT_PLAN_ITEMS_PER_BRIEF,
+        existingItems: [
+          ...params.existingItems,
+          ...unaffectedItems.map((item) => ({
+            creative_seed: item.creativeSeed,
+            emotion: item.emotion,
+          })),
+          ...replacementItems.map((item) => ({
+            creative_seed: item.creativeSeed,
+            emotion: item.emotion,
+          })),
+        ],
+        issues: ["Regenerate this five-item brief with five new, distinct creative seeds."],
+        planningContext: params.planningContext,
+      }),
+      model: CAROUSEL_TEXT_MODEL,
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "carousel_content_plan_creative_brief_shortfall",
+          schema: buildSchema(1),
+          strict: true,
+        },
+      },
+      temperature: 0.75,
+    });
+    const content = completion.choices[0]?.message.content;
+    if (!content) return null;
+
+    try {
+      const replacement = parseCarouselContentPlanChunk(JSON.parse(content), 1);
+      const brief = replacement.briefs[0];
+      if (!brief) return null;
+      replacementBriefs.push({ ...brief, briefSlotIndex });
+      replacementItems.push(
+        ...replacement.items.map((item) => ({ ...item, briefSlotIndex })),
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  return {
+    briefs: [...unaffectedBriefs, ...replacementBriefs].sort(
+      (left, right) => left.briefSlotIndex - right.briefSlotIndex,
+    ),
+    items: [...unaffectedItems, ...replacementItems].sort(
+      (left, right) =>
+        left.briefSlotIndex - right.briefSlotIndex ||
+        left.itemSlotIndex - right.itemSlotIndex,
+    ),
+  } satisfies GeneratedCarouselContentPlanChunk;
 }
 
 export function parseCarouselContentPlanChunk(value: unknown, briefCount: number) {

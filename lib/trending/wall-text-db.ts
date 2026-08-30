@@ -894,6 +894,47 @@ export async function reserveWallTextGenerationBatch(params: {
   return { assignments, batch };
 }
 
+/**
+ * Background selection happens before the reservation transaction. Exclude
+ * work that has already been reserved by another live batch so a retry can
+ * choose a different background instead of retrying a write that the
+ * profile/asset uniqueness constraint must reject.
+ */
+export async function listReservedWallTextBackgroundAssetIds(params: {
+  businessProfileId: string;
+  businessProfileVersion: number;
+  userId: string;
+}) {
+  const { data: batches, error: batchError } = await getClient()
+    .from("wall_text_generation_batches")
+    .select("id")
+    .eq("user_id", params.userId)
+    .eq("business_profile_id", params.businessProfileId)
+    .eq("business_profile_version", params.businessProfileVersion)
+    .in("status", ["pending", "processing"]);
+  if (batchError) {
+    throw new Error(
+      `Could not load reserved Wall-of-text backgrounds: ${batchError.message}`,
+    );
+  }
+
+  const batchIds = batches.map((batch) => batch.id);
+  if (batchIds.length === 0) return new Set<string>();
+
+  const { data: assignments, error: assignmentError } = await getClient()
+    .from("wall_text_generation_assignments")
+    .select("overlay_media_asset_id")
+    .in("batch_id", batchIds)
+    .neq("status", "completed");
+  if (assignmentError) {
+    throw new Error(
+      `Could not load reserved Wall-of-text assignments: ${assignmentError.message}`,
+    );
+  }
+
+  return new Set(assignments.map((assignment) => assignment.overlay_media_asset_id));
+}
+
 export async function getWallTextGenerationReservation(params: {
   requestKey: string;
   userId: string;

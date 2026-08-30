@@ -307,7 +307,11 @@ function getSmartPreparingPollInterval(attemptCount: number): number {
   if (attemptCount <= 2) return 2_000;
   if (attemptCount <= 4) return 3_500;
   if (attemptCount <= 7) return 6_000;
-  return 10_000;
+  if (attemptCount <= 10) return 10_000;
+  // Once the normal worker latency window has elapsed, continue checking at
+  // the same cadence as the server recovery scanner. This avoids a permanent
+  // spinner while avoiding a tight request loop during a provider outage.
+  return 60_000;
 }
 
 const TRENDING_FEED_REQUEST_TIMEOUT_MS = 20_000;
@@ -980,10 +984,7 @@ export function TrendingWorkspace() {
           userId,
         };
 
-        if (
-          data.feed?.state === "preparing" &&
-          (data.feed.pendingSlotCount ?? 0) > 0
-        ) {
+        if ((data.feed?.pendingSlotCount ?? 0) > 0) {
           preparingPollAttemptsRef.current += 1;
           scheduleFeedRefresh(
             getSmartPreparingPollInterval(preparingPollAttemptsRef.current),

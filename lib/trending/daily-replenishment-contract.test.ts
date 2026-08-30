@@ -16,6 +16,13 @@ const terminalCarouselRecoveryMigration = readFileSync(
   ),
   "utf8",
 );
+const partialRefillReplacementMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260830194000_replace_partial_daily_carousel_refill_batches.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const businessProfileDatabase = readFileSync(
   new URL("../business-profiles/db.ts", import.meta.url),
   "utf8",
@@ -213,5 +220,44 @@ test("terminal daily Carousel failures wake durable reconciliation immediately",
   assert.match(
     dailyFeed,
     /hasTerminalFailure\s*=\s*await hasTerminalDailyCarouselFailure[\s\S]+canExtendDailyCarouselRefill\(\{[\s\S]+hasTerminalFailure/,
+  );
+});
+
+test("a partial Carousel reservation gets a new refill batch without recycling provenance", () => {
+  assert.match(
+    partialRefillReplacementMigration,
+    /drop constraint if exists daily_carousel_refill_batches_feed_id_business_profile_id_b_key/i,
+  );
+  assert.match(
+    partialRefillReplacementMigration,
+    /create unique index if not exists daily_carousel_refill_batches_active_uidx[\s\S]+where superseded_at is null/i,
+  );
+  assert.match(
+    partialRefillReplacementMigration,
+    /create or replace function public\.replace_partial_daily_carousel_refill_batch_if_profile_current[\s\S]+reservation\.status in \('released_partial', 'expired_partial'\)[\s\S]+reservation\.consumed_count > 0/i,
+  );
+  assert.match(
+    partialRefillReplacementMigration,
+    /generation\.status = 'processing'[\s\S]+coalesce\(job\.status, 'processing'\) not in \('failed', 'cancelled'\)[\s\S]+return null/i,
+  );
+  assert.match(
+    partialRefillReplacementMigration,
+    /superseded_at = v_now[\s\S]+insert into public\.daily_carousel_refill_batches[\s\S]+superseded_by_batch_id = v_replacement\.id/i,
+  );
+  assert.doesNotMatch(
+    partialRefillReplacementMigration,
+    /released_partial[\s\S]{0,900}status\s*=\s*'active'/i,
+  );
+  assert.match(
+    dailyFeed,
+    /\.rpc\(\s*"replace_partial_daily_carousel_refill_batch_if_profile_current"/,
+  );
+  assert.match(
+    dailyFeed,
+    /getDailyCarouselReplacementBatchRequestedCount\([\s\S]+generationDeficit: plan\.generationDeficit/i,
+  );
+  assert.match(
+    dailyFeed,
+    /\.is\("superseded_at", null\)[\s\S]+\.maybeSingle\(\)/,
   );
 });

@@ -27,8 +27,10 @@ test("retries a timed out or transient Trending feed request without relying on 
   );
   assert.match(
     workspace,
-    /data\.feed\?\.state === "preparing"[\s\S]*data\.feed\.pendingSlotCount/,
+    /if \(\(data\.feed\?\.pendingSlotCount \?\? 0\) > 0\)[\s\S]*scheduleFeedRefresh/,
   );
+  assert.match(workspace, /if \(attemptCount <= 10\) return 10_000/);
+  assert.match(workspace, /return 60_000/);
 });
 
 test("shows generation progress instead of caught-up while daily slots remain pending", () => {

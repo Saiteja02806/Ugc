@@ -11,8 +11,9 @@ export const WALL_TEXT_MINIMUM_FONT_SIZE = 44;
 export const WALL_TEXT_OUTLINE_WIDTH = 4;
 export const WALL_TEXT_SECTION_GAP = 18;
 // The text box is the outer placement rectangle. Keep a real visual gap
-// inside it so the rendered glyphs and their outline never touch its edges.
-export const WALL_TEXT_INLINE_SAFE_PADDING = 24;
+// inside it so rendered glyphs, outline, and shadow never touch its edges.
+// At the 780px production box this leaves a 750px inner writing area.
+export const WALL_TEXT_INLINE_SAFE_PADDING = 15;
 // A wider reading column prevents already-measured lines from being visually
 // rewrapped into two- or three-word rows on the 9:16 canvas.
 export const WALL_TEXT_TEXT_WIDTH = 780;

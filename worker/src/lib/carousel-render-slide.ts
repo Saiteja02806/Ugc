@@ -858,7 +858,7 @@ async function buildOverlaySvg(params: {
     y: bodyY,
   });
   const style = `
-    .text { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; paint-order: stroke fill; stroke: #000000; stroke-linejoin: round; stroke-opacity: 0.72; stroke-width: 2px; }
+    .text { fill: ${BODY_TEXT}; font-family: ${TEXT_FONT_FAMILY}; font-weight: ${BODY_FONT_WEIGHT}; letter-spacing: 0; paint-order: stroke fill; stroke: #000000; stroke-linejoin: round; stroke-opacity: 0.72; stroke-width: 3px; }
   `;
 
   return {

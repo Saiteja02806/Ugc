@@ -561,13 +561,13 @@ test("measures final Wall lines with Inter before saving authoritative layout", 
   assert.match(layoutEngineSource, /lineHeightPx,/);
   assert.match(layoutEngineSource, /textBox: params\.layout\.textBox/);
   assert.match(layoutEngineSource, /maximumWidth = getWallTextSafeLineWidth\(textBoxWidth\)/);
-  assert.match(visualStyleSource, /WALL_TEXT_INLINE_SAFE_PADDING = 24/);
+  assert.match(visualStyleSource, /WALL_TEXT_INLINE_SAFE_PADDING = 15/);
   assert.match(visualStyleSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
   assert.match(
     renderValidationSource,
     /maximumTextWidth = getWallTextSafeLineWidth\(textBoxWidth\)/,
   );
-  assert.match(workerRenderSpecSource, /WALL_TEXT_INLINE_SAFE_PADDING = 24/);
+  assert.match(workerRenderSpecSource, /WALL_TEXT_INLINE_SAFE_PADDING = 15/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
   assert.match(
     workerRenderEngineSource,
@@ -761,7 +761,7 @@ test("rejects the reported overflow and synchronizes a safe fallback font", () =
   assert.equal(result.rejected, true);
   assert.equal(result.fit.valid, true);
   assert.ok(result.fit.fontSize < 52);
-  assert.ok(result.fit.maximumLineWidth + 4 < 732);
+  assert.ok(result.fit.maximumLineWidth + 8 < 750);
   assert.equal(result.appliedRenderFont, result.fit.fontSize);
   assert.equal(result.appliedFinalFont, result.fit.fontSize);
   assert.equal(result.appliedLineHeight, result.fit.lineHeight);

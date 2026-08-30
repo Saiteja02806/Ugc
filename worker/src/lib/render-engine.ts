@@ -32,6 +32,7 @@ import {
   buildWallTextOverlaySvg,
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_OUTLINE_WIDTH,
+  WALL_TEXT_RENDER_HEIGHT,
   WALL_TEXT_RENDER_WIDTH,
   type WallTextNormalizedBox,
   type WallTextPlacementZone,
@@ -440,13 +441,8 @@ export async function renderWallTextVideoToStorage(
   const outputPath = join(workDir, "wall-text-video.mp4");
 
   try {
-    const [sourceBuffer, audioBuffer] = await Promise.all([
-      downloadVideoToBuffer(payload.sourceVideoUrl),
-      downloadAudioToBuffer(payload.audio.audioUrl, {
-        maxBytes: 50 * 1024 * 1024,
-      }),
-    ]);
     await ensureWallTextFontsRegistered();
+    assertWallTextTextBoxMatchesPayload(payload.text, payload.textBox);
     await validateWallTextRenderedLineWidths(payload.text, payload.textBox);
     const overlaySvg = buildWallTextOverlaySvg({
       content: payload.text,
@@ -455,13 +451,21 @@ export async function renderWallTextVideoToStorage(
       textColor: payload.textColor,
       textBox: payload.textBox,
     });
+    const overlayPng = await rasterizeWallTextOverlay({
+      overlaySvg,
+      textBox: payload.textBox,
+    });
+    const [sourceBuffer, audioBuffer] = await Promise.all([
+      downloadVideoToBuffer(payload.sourceVideoUrl),
+      downloadAudioToBuffer(payload.audio.audioUrl, {
+        maxBytes: 50 * 1024 * 1024,
+      }),
+    ]);
 
     await Promise.all([
       writeFile(audioPath, audioBuffer),
       writeFile(inputPath, sourceBuffer),
-      sharp(Buffer.from(overlaySvg))
-        .png({ compressionLevel: 9 })
-        .toFile(overlayPath),
+      writeFile(overlayPath, overlayPng),
     ]);
 
     await runFfmpegCommand({
@@ -1327,6 +1331,140 @@ async function validateWallTextRenderedLineWidths(
       }
     }
   }
+}
+
+export function assertWallTextTextBoxMatchesPayload(
+  content: WallTextRenderContent,
+  payloadTextBox: WallTextNormalizedBox,
+) {
+  const savedTextBox = content.finalLayout?.textBox;
+
+  if (!savedTextBox) {
+    return;
+  }
+
+  const fields = ["height", "width", "x", "y"] as const;
+  const matches = fields.every(
+    (field) => Math.abs(savedTextBox[field] - payloadTextBox[field]) < 0.000001,
+  );
+
+  if (!matches) {
+    throw new Error(
+      "Wall-of-text final layout text box does not match the render payload.",
+    );
+  }
+}
+
+type WallTextPixelBounds = {
+  bottom: number;
+  left: number;
+  right: number;
+  top: number;
+};
+
+export function assertWallTextOverlayPixelsInsideTextBox(params: {
+  channels: number;
+  height: number;
+  pixels: Buffer;
+  textBox: {
+    height: number;
+    left: number;
+    top: number;
+    width: number;
+  };
+  width: number;
+}) {
+  const bounds = getWallTextPixelBounds(params);
+
+  if (!bounds) {
+    throw new Error("Wall-of-text overlay did not draw any visible pixels.");
+  }
+
+  const innerLeft = params.textBox.left + WALL_TEXT_INLINE_SAFE_PADDING;
+  const innerRight =
+    params.textBox.left + params.textBox.width - WALL_TEXT_INLINE_SAFE_PADDING - 1;
+  const innerTop = params.textBox.top;
+  const innerBottom = params.textBox.top + params.textBox.height - 1;
+
+  // The inner fence itself is not usable text space. A fully transparent
+  // pixel remains between the visible outline/shadow and every fence edge.
+  if (
+    bounds.left <= innerLeft ||
+    bounds.right >= innerRight ||
+    bounds.top <= innerTop ||
+    bounds.bottom >= innerBottom
+  ) {
+    throw new Error(
+      "Wall-of-text overlay crosses the protected inner text fence.",
+    );
+  }
+
+  return bounds;
+}
+
+async function rasterizeWallTextOverlay(params: {
+  overlaySvg: string;
+  textBox: WallTextNormalizedBox;
+}) {
+  const raster = await sharp(Buffer.from(params.overlaySvg))
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  assertWallTextOverlayPixelsInsideTextBox({
+    channels: raster.info.channels,
+    height: raster.info.height,
+    pixels: raster.data,
+    textBox: {
+      height: Math.round(params.textBox.height * WALL_TEXT_RENDER_HEIGHT),
+      left: Math.round(params.textBox.x * WALL_TEXT_RENDER_WIDTH),
+      top: Math.round(params.textBox.y * WALL_TEXT_RENDER_HEIGHT),
+      width: Math.round(params.textBox.width * WALL_TEXT_RENDER_WIDTH),
+    },
+    width: raster.info.width,
+  });
+
+  return sharp(raster.data, {
+    raw: {
+      channels: raster.info.channels,
+      height: raster.info.height,
+      width: raster.info.width,
+    },
+  })
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+}
+
+function getWallTextPixelBounds(params: {
+  channels: number;
+  height: number;
+  pixels: Buffer;
+  width: number;
+}): WallTextPixelBounds | null {
+  if (params.channels < 4) {
+    throw new Error("Wall-of-text overlay must contain an alpha channel.");
+  }
+
+  let left = params.width;
+  let right = -1;
+  let top = params.height;
+  let bottom = -1;
+
+  for (let y = 0; y < params.height; y += 1) {
+    for (let x = 0; x < params.width; x += 1) {
+      const alphaOffset = (y * params.width + x) * params.channels + 3;
+      if (params.pixels[alphaOffset] === 0) {
+        continue;
+      }
+
+      left = Math.min(left, x);
+      right = Math.max(right, x);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+    }
+  }
+
+  return right < left || bottom < top ? null : { bottom, left, right, top };
 }
 
 async function getWallTextFontPath() {

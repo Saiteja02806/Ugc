@@ -611,7 +611,7 @@ test("commits an initial Hook run, chunk, and dispatch record as one database ac
   );
   assert.match(
     reactionMappedCanarySource,
-    /create_or_resume_and_reserve_trending_hook_generation_chunk_v1[\s\S]*p_chunk_size: 6/i,
+    /create_or_resume_and_reserve_trending_hook_generation_chunk_v2[\s\S]*p_target_valid_count: 1/i,
   );
 });
 

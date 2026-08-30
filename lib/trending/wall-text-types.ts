@@ -14,7 +14,7 @@ export const WALL_TEXT_GENERATOR_VERSION =
 // This lets the feed recognize older V9 rows that were saved before the
 // boundary was enforced and send them through the existing backfill path.
 export const WALL_TEXT_RENDER_SAFETY_VERSION =
-  "wall-text-inner-safe-v1" as const;
+  "wall-text-inner-safe-v2" as const;
 // Freeform is the current Wall writing mode. It is deliberately separate from
 // the dormant 30-format registry so new copy is never mislabeled as a format
 // it was not asked to follow.

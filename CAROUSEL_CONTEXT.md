@@ -3613,6 +3613,9 @@ Name: **Verify v26 and replace the stale production assignment**
   white text background. Structure 1 retains separate headline/body/list/CTA
   groups and Structure 2 retains its story/CTA groups; this changes only their
   visual treatment.
+- The shared Carousel text outline is 3px black at 72% opacity with rounded
+  joins. It is deliberately stronger than the former 2px treatment while
+  remaining lighter than the 4px Wall-of-Text outline.
 - Structure 1's connected white headline bubble, black headline text, bubble
   shadow, and text-pixel containment retry are retired for new renders. Both
   structures preserve their existing measured wrapping, line caps, safe areas,

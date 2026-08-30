@@ -9,6 +9,9 @@ const EXPECTED_REACTION = "confusion_skepticism";
 const EXPECTED_FORMAT = "GF_020";
 const PROMPT_VERSION = "trending-hook-copy-v7";
 const SELECTION_VERSION = "reaction-format-map-v2";
+const GENERATION_MODE = "reaction_mapped_lean_v1";
+const COMPLETION_TIMEOUT_MS = 180_000;
+const COMPLETION_POLL_INTERVAL_MS = 5_000;
 const execute = process.argv.includes("--execute");
 const confirmed = process.argv.includes("--yes");
 
@@ -103,12 +106,11 @@ const sourceSelectionKey = `reaction-map-production-canary:${traceId}`;
 // This must exercise the same atomic path as the app: no committed run is
 // allowed to exist without its first reserved chunk and durable outbox entry.
 const { data: initialChunkRows, error: initialChunkError } = await supabase.rpc(
-  "create_or_resume_and_reserve_trending_hook_generation_chunk_v1",
+  "create_or_resume_and_reserve_trending_hook_generation_chunk_v2",
   {
     p_business_profile_id: profile.id,
     p_business_profile_version: profile.profile_version,
     p_candidate_pool: [candidate],
-    p_chunk_size: 6,
     p_prompt_version: PROMPT_VERSION,
     p_selection_version: SELECTION_VERSION,
     p_source_selection_key: sourceSelectionKey,
@@ -123,6 +125,23 @@ if (initialChunkError || !chunk?.run_id || !chunk?.chunk_id || !Array.isArray(ch
 }
 const run = { id: chunk.run_id };
 
+const { data: outbox, error: outboxError } = await supabase
+  .from("trending_hook_generation_dispatch_outbox")
+  .select("id,run_id,chunk_id,status")
+  .eq("chunk_id", chunk.chunk_id)
+  .single();
+
+if (
+  outboxError ||
+  !outbox?.id ||
+  outbox.run_id !== run.id ||
+  outbox.status !== "pending"
+) {
+  throw new Error(
+    `The atomic canary setup did not create a pending dispatch outbox record: ${outboxError?.message || "invalid record"}`,
+  );
+}
+
 const jobId = randomUUID();
 const now = new Date().toISOString();
 const input = {
@@ -131,7 +150,8 @@ const input = {
   businessProfileVersion: profile.profile_version,
   candidates: chunk.candidate_payloads,
   generationRunChunkId: chunk.chunk_id,
-  generationRunId: run.run_id,
+  generationMode: GENERATION_MODE,
+  generationRunId: run.id,
   generationRunRemainingValidCount: chunk.remaining_valid_count,
   performanceSignals: {},
   promptVersion: PROMPT_VERSION,
@@ -208,12 +228,21 @@ try {
     throw new Error(`The task was created but queue metadata could not be stored: ${queueUpdateError.message}`);
   }
 
+  const completion = await waitForCompletion(supabase, {
+    chunkId: chunk.chunk_id,
+    jobId,
+    runId: run.id,
+  });
+
   console.log(JSON.stringify({
     canary: "reaction-mapped-trending-hook-copy",
+    chunkId: chunk.chunk_id,
+    completion,
     expectedFormatId: EXPECTED_FORMAT,
+    generationMode: GENERATION_MODE,
     jobId,
     reactionType,
-    runId: run.run_id,
+    runId: run.id,
     selectionVersion: SELECTION_VERSION,
     taskName,
     workerUrl,
@@ -269,4 +298,73 @@ function requireEnv(name) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`Missing ${name}.`);
   return value;
+}
+
+async function waitForCompletion(supabase, { chunkId, jobId, runId }) {
+  const deadline = Date.now() + COMPLETION_TIMEOUT_MS;
+
+  while (Date.now() < deadline) {
+    const [{ data: job, error: jobError }, { data: chunk, error: chunkError }, { data: run, error: runError }, { data: outbox, error: outboxError }] = await Promise.all([
+      supabase
+        .from("background_jobs")
+        .select("status,stage,started_at,completed_at,error_message,output_json")
+        .eq("id", jobId)
+        .single(),
+      supabase
+        .from("trending_hook_generation_run_chunks")
+        .select("status,accepted_count,background_job_id")
+        .eq("id", chunkId)
+        .single(),
+      supabase
+        .from("trending_hook_generation_runs")
+        .select("status,completed_valid_count,target_valid_count")
+        .eq("id", runId)
+        .single(),
+      supabase
+        .from("trending_hook_generation_dispatch_outbox")
+        .select("status")
+        .eq("chunk_id", chunkId)
+        .single(),
+    ]);
+
+    if (jobError || chunkError || runError || outboxError) {
+      throw new Error(
+        `Could not verify canary completion: ${jobError?.message || chunkError?.message || runError?.message || outboxError?.message}`,
+      );
+    }
+
+    if (job?.status === "failed" || job?.status === "cancelled") {
+      throw new Error(`The Hook canary worker job ${job.status}: ${job.error_message || "no error recorded"}`);
+    }
+
+    if (
+      job?.status === "completed" &&
+      job.started_at &&
+      job.completed_at &&
+      job.output_json?.ideaCount === 1 &&
+      chunk?.status === "completed" &&
+      chunk.accepted_count === 1 &&
+      chunk.background_job_id === jobId &&
+      run?.status === "completed" &&
+      run.completed_valid_count === 1 &&
+      run.target_valid_count === 1 &&
+      outbox?.status === "completed"
+    ) {
+      return {
+        acceptedCount: chunk.accepted_count,
+        jobStatus: job.status,
+        outboxStatus: outbox.status,
+        runStatus: run.status,
+        workerId: job.worker_id,
+      };
+    }
+
+    await sleep(COMPLETION_POLL_INTERVAL_MS);
+  }
+
+  throw new Error("Timed out waiting for the canary Hook job to complete.");
+}
+
+function sleep(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

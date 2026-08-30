@@ -6,6 +6,8 @@ import sharp from "sharp";
 
 import { buildEditOverlayTextLayout } from "./edit-overlay-render-spec.js";
 import {
+  assertWallTextOverlayPixelsInsideTextBox,
+  assertWallTextTextBoxMatchesPayload,
   buildWallTextVideoArgs,
   buildScheduleCombinationSegmentArgs,
   buildPreparedTextOverlaySvg,
@@ -16,6 +18,7 @@ import {
 import {
   buildWallTextOverlaySvg,
   buildWallTextRenderLayout,
+  WALL_TEXT_INLINE_SAFE_PADDING,
 } from "./wall-text-render-spec.js";
 
 test("applies Hook trim and text only to the opening segment", () => {
@@ -251,6 +254,101 @@ test("rasterizes six-second Wall copy with Inter Regular and no background box",
   assert.equal(metadata.width, 1080);
   assert.equal(metadata.height, 1920);
   assert.ok(png.length > 1_000);
+});
+
+test("keeps the final painted Wall overlay inside the 15px inner fence", async () => {
+  const content = {
+    fullText:
+      "I logged every meal but skipped drinks oil and small bites. Those missing details quietly changed the final total.",
+    segments: [
+      { lines: ["I logged every meal"], role: "lead" as const },
+      {
+        lines: ["but skipped drinks", "oil and small bites."],
+        role: "support" as const,
+      },
+      {
+        lines: ["Those missing details", "quietly changed", "the final total."],
+        role: "closing" as const,
+      },
+    ],
+  };
+  const layout = buildWallTextRenderLayout({ content });
+  const svg = buildWallTextOverlaySvg({ content, placement: "middle" });
+  const raster = await sharp(Buffer.from(svg))
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const bounds = assertWallTextOverlayPixelsInsideTextBox({
+    channels: raster.info.channels,
+    height: raster.info.height,
+    pixels: raster.data,
+    textBox: layout.textBox,
+    width: raster.info.width,
+  });
+
+  assert.equal(layout.textBox.width - WALL_TEXT_INLINE_SAFE_PADDING * 2, 750);
+  assert.ok(bounds.left > layout.textBox.left + WALL_TEXT_INLINE_SAFE_PADDING);
+  assert.ok(
+    bounds.right <
+      layout.textBox.left + layout.textBox.width - WALL_TEXT_INLINE_SAFE_PADDING - 1,
+  );
+});
+
+test("treats a painted fence edge as outside the usable Wall text space", () => {
+  const width = 20;
+  const height = 20;
+  const pixels = Buffer.alloc(width * height * 4);
+  const textBox = { height: 20, left: 0, top: 0, width: 20 };
+  const edgeX = WALL_TEXT_INLINE_SAFE_PADDING;
+  const pixelOffset = (10 * width + edgeX) * 4 + 3;
+  pixels[pixelOffset] = 255;
+
+  assert.throws(
+    () =>
+      assertWallTextOverlayPixelsInsideTextBox({
+        channels: 4,
+        height,
+        pixels,
+        textBox,
+        width,
+      }),
+    /crosses the protected inner text fence/,
+  );
+});
+
+test("rejects a Wall render when its saved text box differs from the payload text box", () => {
+  const textBox = {
+    height: 480 / 1920,
+    width: 780 / 1080,
+    x: 150 / 1080,
+    y: 660 / 1920,
+  };
+  const content = {
+    finalLayout: {
+      blocks: [{ lines: ["One", "two", "three", "four", "five"], role: "text" as const }],
+      fontFamily: "Inter" as const,
+      fontSizePx: 44 as const,
+      fontWeight: 400 as const,
+      lineHeightPx: 48.4,
+      textBox,
+      version: "wall-text-final-layout-v2" as const,
+    },
+    fullText: "One two three four five",
+    segments: [
+      { lines: ["One"], role: "lead" as const },
+      { lines: ["two", "three"], role: "support" as const },
+      { lines: ["four", "five"], role: "closing" as const },
+    ],
+  };
+
+  assert.throws(
+    () =>
+      assertWallTextTextBoxMatchesPayload(content, {
+        ...textBox,
+        x: 160 / 1080,
+      }),
+    /does not match the render payload/,
+  );
 });
 
 test("renders Wall text with the selected library audio and ignores source audio", () => {

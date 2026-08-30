@@ -64,3 +64,21 @@ test("shows generation progress instead of caught-up while daily slots remain pe
     /data\.feed\.remainingCount - pendingLocalDecisionCount/,
   );
 });
+
+test("stops the generation spinner when an existing free-trial feed requires an upgrade", () => {
+  assert.match(workspace, /upgradeRequired\?: boolean/);
+  assert.match(
+    workspace,
+    /setTrendingUpgradeRequired\(Boolean\(data\.upgradeRequired\)\)/,
+  );
+  assert.match(
+    workspace,
+    /items\.length === 0 && upgradeRequired[\s\S]*TrendingUpgradeRequiredEmptyState/,
+  );
+  assert.match(
+    workspace,
+    /\) : upgradeRequired \? \([\s\S]*TrendingUpgradeRequiredEmptyState[\s\S]*\) : pendingSlotCount > 0/,
+  );
+  assert.match(workspace, /Your free trial has ended/);
+  assert.match(workspace, /Upgrade to generate the remaining daily content pieces/);
+});

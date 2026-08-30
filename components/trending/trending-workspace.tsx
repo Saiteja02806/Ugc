@@ -231,6 +231,7 @@ type CarouselHistoryResponse =
       } | null;
       items?: TrendingFeedItem[];
       profile: CarouselProfileFeed;
+      upgradeRequired?: boolean;
     }
   | {
       ok: false;
@@ -692,6 +693,7 @@ type TrendingFeedMemoryCache = {
   items: TrendingFeedItem[];
   localDate: string;
   profile: CarouselProfileFeed | null;
+  upgradeRequired: boolean;
   userId: string;
 };
 
@@ -744,6 +746,9 @@ export function TrendingWorkspace() {
     useState<TrendingFeedProgress | null>(() => {
       return existingMemoryCache ? existingMemoryCache.feedProgress : null;
     });
+  const [trendingUpgradeRequired, setTrendingUpgradeRequired] = useState(
+    () => existingMemoryCache?.upgradeRequired ?? false,
+  );
   const [headerActionsRoot, setHeaderActionsRoot] =
     useState<HTMLDivElement | null>(null);
   const [contentMixOpen, setContentMixOpen] = useState(false);
@@ -855,6 +860,7 @@ export function TrendingWorkspace() {
         setTrendingItems([]);
         setTrendingFeedState(null);
         setTrendingFeedProgress(null);
+        setTrendingUpgradeRequired(false);
         setCarouselHistoryState("loading");
       }
       setCarouselHistoryError(null);
@@ -950,6 +956,7 @@ export function TrendingWorkspace() {
         );
         setTrendingItems(nextVisibleItems);
         setTrendingFeedState(data.feed?.state ?? null);
+        setTrendingUpgradeRequired(Boolean(data.upgradeRequired));
         const nextFeedProgress = data.feed
           ? {
               completedCount:
@@ -981,6 +988,7 @@ export function TrendingWorkspace() {
           items: receivedItems,
           localDate: data.feed?.localDate ?? getBrowserLocalDate(),
           profile: data.profile,
+          upgradeRequired: Boolean(data.upgradeRequired),
           userId,
         };
 
@@ -1001,6 +1009,7 @@ export function TrendingWorkspace() {
           setTrendingItems([]);
           setTrendingFeedState(null);
           setTrendingFeedProgress(null);
+          setTrendingUpgradeRequired(false);
           setCarouselProfile(null);
           setCarouselHistoryError(
             toCarouselDisplayCopy(
@@ -1178,6 +1187,7 @@ export function TrendingWorkspace() {
                 preparing={trendingFeedState === "preparing"}
                 remainingCount={trendingFeedProgress?.remainingCount ?? 0}
                 profile={carouselFeedProfile}
+                upgradeRequired={trendingUpgradeRequired}
                 onCompleteProfile={openBusinessProfile}
                 onRetryHistory={() => {
                   retryFailedFeedRef.current = trendingFeedState === "failed";
@@ -1222,6 +1232,7 @@ function TrendingFeedGallery({
   onCompleteProfile,
   onRetryHistory,
   profile,
+  upgradeRequired,
 }: {
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   error: string | null;
@@ -1234,6 +1245,7 @@ function TrendingFeedGallery({
   onCompleteProfile: () => void;
   onRetryHistory: () => void;
   profile: CarouselProfileFeed | null;
+  upgradeRequired: boolean;
 }) {
   const showSkeleton = loading;
 
@@ -1252,6 +1264,10 @@ function TrendingFeedGallery({
 
   if (!loading && profile?.state === "missing") {
     return <CarouselProfilePrompt onAction={onCompleteProfile} />;
+  }
+
+  if (!showSkeleton && items.length === 0 && upgradeRequired) {
+    return <TrendingUpgradeRequiredEmptyState />;
   }
 
   if (!showSkeleton && items.length === 0 && (preparing || pendingSlotCount > 0)) {
@@ -1293,6 +1309,7 @@ function TrendingFeedGallery({
             pendingSlotCount={pendingSlotCount}
             remainingCount={remainingCount}
             onRetry={onRetryHistory}
+            upgradeRequired={upgradeRequired}
           />
         ) : null}
       </div>
@@ -1310,6 +1327,25 @@ function TrendingIncompleteEmptyState({ onRetry }: { onRetry: () => void }) {
       onAction={onRetry}
       title="More content is still due"
     />
+  );
+}
+
+function TrendingUpgradeRequiredEmptyState() {
+  return (
+    <Empty role="status" className="min-h-[360px] text-foreground">
+      <EmptyHeader>
+        <EmptyTitle>Your free trial has ended</EmptyTitle>
+        <EmptyDescription>
+          Upgrade to generate the remaining daily content pieces.
+        </EmptyDescription>
+      </EmptyHeader>
+      <Link
+        href="/pricing"
+        className="mt-5 inline-flex h-10 items-center justify-center rounded-[8px] bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
+        View plans
+      </Link>
+    </Empty>
   );
 }
 
@@ -1382,6 +1418,7 @@ function TrendingFeed({
   pendingSlotCount,
   remainingCount,
   onRetry,
+  upgradeRequired,
 }: {
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   headerActionsRoot: HTMLDivElement | null;
@@ -1389,6 +1426,7 @@ function TrendingFeed({
   pendingSlotCount: number;
   remainingCount: number;
   onRetry: () => void;
+  upgradeRequired: boolean;
 }) {
   const [activeSlideByCarouselId, setActiveSlideByCarouselId] = useState<
     Record<string, number>
@@ -1469,6 +1507,7 @@ function TrendingFeed({
           pendingSlotCount={pendingSlotCount}
           remainingCount={remainingCount}
           onRetry={onRetry}
+          upgradeRequired={upgradeRequired}
           onActiveSlideChange={setActiveSlide}
           onActiveSlideMove={moveActiveSlide}
           onHookCompose={(item, edit) => setHookComposition({ edit, item })}
@@ -1700,6 +1739,7 @@ function TrendingDeck({
   onRetry,
   pendingSlotCount,
   remainingCount,
+  upgradeRequired,
 }: {
   activeSlideByCarouselId: Record<string, number>;
   candidates: TrendingCandidate[];
@@ -1718,6 +1758,7 @@ function TrendingDeck({
   onRetry: () => void;
   pendingSlotCount: number;
   remainingCount: number;
+  upgradeRequired: boolean;
 }) {
   const swipeTimerRef = useRef<number | null>(null);
   const swipeCompletionRef = useRef<(() => void) | null>(null);
@@ -2524,6 +2565,8 @@ function TrendingDeck({
             {visibleCandidates.length}. {deckProgressLabel}.
           </span>
         </>
+      ) : upgradeRequired ? (
+        <TrendingUpgradeRequiredEmptyState />
       ) : pendingSlotCount > 0 ? (
         <TrendingPreparingEmptyState pendingSlotCount={pendingSlotCount} />
       ) : remainingCount > 0 ? (

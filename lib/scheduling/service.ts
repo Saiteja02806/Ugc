@@ -77,6 +77,10 @@ import {
   canRetrySchedulerCreateFailure,
   getRenderFinalizationDecision,
 } from "@/lib/scheduling/render-finalization-policy";
+import {
+  normalizeScheduleMetadata,
+  type ScheduleMetadata,
+} from "@/lib/scheduling/schedule-metadata";
 import { scheduleTargetRowsWithDependencies } from "@/lib/scheduling/target-scheduling";
 import { deliverSocialPublishRetry } from "@/lib/scheduling/publish-retry";
 import type {
@@ -875,7 +879,7 @@ export async function updateUserSchedule(params: {
     });
     const metadata = applyTrustedPlannedTargetMetadata({
       metadata: {
-        ...normalizeMetadata(existing.metadata),
+        ...normalizeScheduleMetadata(existing.metadata),
         ...normalized.metadata,
         mediaMode: "carousel",
       },
@@ -956,7 +960,7 @@ export async function updateUserSchedule(params: {
     userId: params.userId,
   });
   const mergedMetadata = {
-    ...normalizeMetadata(existing.metadata),
+    ...normalizeScheduleMetadata(existing.metadata),
     ...normalized.metadata,
     demoMediaId: normalized.source.id,
     scheduledVideoId: normalized.source.id,
@@ -1297,7 +1301,7 @@ async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
   const timezone = normalizeTimezone(input.timezone);
   const targets = normalizeTargets(input.targets);
   const plannedTargets = normalizeTargets(input.plannedTargets);
-  const rawMetadata = normalizeMetadata(input.metadata);
+  const rawMetadata = normalizeScheduleMetadata(input.metadata);
   const scheduleTime = normalizeScheduleTime(
     {
       scheduledDate: input.scheduledDate,
@@ -1913,10 +1917,10 @@ function assertTaskCreationBuffer(scheduledFor: string) {
 }
 
 function applyTrustedScheduleTimeMetadata(
-  metadata: ScheduleTargetSettings,
+  metadata: ScheduleMetadata,
   scheduleTime: NormalizedScheduleTime | null,
 ) {
-  const normalized: ScheduleTargetSettings = { ...metadata };
+  const normalized: ScheduleMetadata = { ...metadata };
 
   delete normalized.plannedScheduledFor;
   delete normalized.scheduledDate;
@@ -1932,7 +1936,7 @@ function applyTrustedScheduleTimeMetadata(
 }
 
 function applyTrustedPlannedTargetMetadata(params: {
-  metadata: ScheduleTargetSettings;
+  metadata: ScheduleMetadata;
   plannedTargets: Array<{
     id: string;
     platform: SchedulePlatform;
@@ -2025,29 +2029,6 @@ function normalizeSettings(value: unknown): ScheduleTargetSettings {
   }
 
   return settings;
-}
-
-function normalizeMetadata(value: unknown): ScheduleTargetSettings {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-
-  const metadata: ScheduleTargetSettings = {};
-
-  for (const [key, entryValue] of Object.entries(
-    value as Record<string, unknown>,
-  )) {
-    if (
-      key.length <= 80 &&
-      (typeof entryValue === "boolean" ||
-        typeof entryValue === "number" ||
-        typeof entryValue === "string")
-    ) {
-      metadata[key] = entryValue;
-    }
-  }
-
-  return metadata;
 }
 
 function normalizeText(value: unknown, maxLength: number) {

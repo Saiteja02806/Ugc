@@ -769,7 +769,7 @@ test("rejects the reported overflow and synchronizes a safe fallback font", () =
   assert.ok(result.lines.length >= 5 && result.lines.length <= 8);
 });
 
-test("uses Inter Regular 400 with the restored 44-52px Wall scale", () => {
+test("uses packaged Inter 400 with the restored 44-52px Wall scale", () => {
   assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 400/);
   assert.match(visualStyleSource, /WALL_TEXT_MINIMUM_FONT_SIZE = 44/);
   assert.match(visualStyleSource, /WALL_TEXT_MAXIMUM_FONT_SIZE = 52/);
@@ -777,14 +777,15 @@ test("uses Inter Regular 400 with the restored 44-52px Wall scale", () => {
   assert.match(layoutEngineSource, /getVerifiedWallTextInterFontPath/);
   assert.match(renderValidationSource, /Inter Regular \$\{params\.fontSize\}/);
   assert.match(renderValidationSource, /getVerifiedWallTextInterFontPath/);
-  assert.match(fontMeasurementSource, /inter-latin-400-normal\.woff/);
+  assert.match(fontMeasurementSource, /inter-variable\.ttf/);
+  assert.match(fontMeasurementSource, /FONTCONFIG_FILE/);
   assert.match(
     fontMeasurementSource,
     /stat\(INTER_REGULAR_FONT_PATH\)[\s\S]+font\.size === 0[\s\S]+packaged Inter Regular font is unavailable/,
   );
   assert.match(
     nextConfigSource,
-    /outputFileTracingIncludes[\s\S]+inter-latin-400-normal\.woff/,
+    /outputFileTracingIncludes[\s\S]+inter-variable\.ttf[\s\S]+fontconfig[\\/]fonts\.conf/,
   );
   assert.match(overlaySource, /fontWeight: WALL_TEXT_FONT_WEIGHT/);
   assert.match(editorSource, /fontWeight: WALL_TEXT_FONT_WEIGHT/);

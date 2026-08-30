@@ -46,12 +46,12 @@ export function LandingHeroShowcase() {
       />
 
       {/* 3-Card Showcase Stage */}
-      <div className="relative flex flex-col items-center justify-center gap-6 sm:gap-4 md:flex-row md:items-end md:justify-center">
+      <div className="relative flex flex-col items-center justify-center gap-6 sm:gap-4 lg:flex-row lg:items-end lg:justify-center">
         {/* ========================================================= */}
         {/* 1. Left Card: Wall of Text (Tilted -5°, Left corner dipped) */}
         {/* ========================================================= */}
-        <div className="relative z-0 order-2 w-[240px] sm:w-[260px] lg:w-[290px] md:order-1 shrink-0">
-          <div className="transform-gpu transition-transform duration-300 md:-rotate-[5deg] md:origin-top-right md:translate-y-4 hover:scale-[1.02]">
+        <div className="relative z-0 order-2 hidden w-[240px] shrink-0 lg:order-1 lg:block lg:w-[290px]">
+          <div className="transform-gpu transition-transform duration-300 lg:-rotate-[5deg] lg:origin-top-right lg:translate-y-4 hover:scale-[1.02]">
             <article className="group relative aspect-[9/16] w-full overflow-hidden rounded-[20px] sm:rounded-[24px] border border-border/80 bg-black shadow-card ring-1 ring-white/10">
               {/* Subtle format pill */}
               <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/65 px-3 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-md shadow-sm">
@@ -87,7 +87,7 @@ export function LandingHeroShowcase() {
         {/* ========================================================= */}
         {/* 2. Center Card: Hook Video (100% visible, Upright 0°, z-20) */}
         {/* ========================================================= */}
-        <div className="relative z-20 order-1 w-[260px] sm:w-[290px] lg:w-[325px] md:order-2 shrink-0">
+        <div className="relative z-20 order-1 w-[min(72vw,260px)] shrink-0 sm:w-[290px] lg:order-2 lg:w-[325px]">
           <div className="transform-gpu transition-transform duration-300 hover:scale-[1.02]">
             <article className="group relative aspect-[9/16] w-full overflow-hidden rounded-[22px] sm:rounded-[26px] border-2 border-border-strong bg-black shadow-floating ring-1 ring-white/20">
               {/* Format pill with accent */}
@@ -128,8 +128,8 @@ export function LandingHeroShowcase() {
         {/* ========================================================= */}
         {/* 3. Right Card: Slideshow (Tilted +5°, Right corner dipped) */}
         {/* ========================================================= */}
-        <div className="relative z-0 order-3 w-[240px] sm:w-[260px] lg:w-[290px] shrink-0">
-          <div className="transform-gpu transition-transform duration-300 md:rotate-[5deg] md:origin-top-left md:translate-y-4 hover:scale-[1.02]">
+        <div className="relative z-0 order-3 hidden w-[240px] shrink-0 lg:block lg:w-[290px]">
+          <div className="transform-gpu transition-transform duration-300 lg:rotate-[5deg] lg:origin-top-left lg:translate-y-4 hover:scale-[1.02]">
             {/* Stacked card deck layer underneath to immediately signal a multi-slide carousel */}
             <div
               className="absolute -right-1.5 -top-1.5 bottom-1.5 w-full rounded-[22px] sm:rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-[2px]"

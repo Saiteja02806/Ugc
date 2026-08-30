@@ -1473,7 +1473,7 @@ async function getWallTextFontPath() {
     "@fontsource",
     "inter",
     "files",
-    "inter-latin-400-normal.woff",
+    "inter-latin-400-normal.woff2",
   ];
   const candidatePaths = [
     join(process.cwd(), ...fontParts),

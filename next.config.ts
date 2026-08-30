@@ -8,10 +8,12 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
   outputFileTracingIncludes: {
     "/api/internal/jobs/prepare-wall-text": [
-      "./node_modules/@fontsource/inter/files/inter-latin-400-normal.woff",
+      "./lib/trending/fonts/inter-variable.ttf",
+      "./fontconfig/fonts.conf",
     ],
     "/api/trending/creatives/*": [
-      "./node_modules/@fontsource/inter/files/inter-latin-400-normal.woff",
+      "./lib/trending/fonts/inter-variable.ttf",
+      "./fontconfig/fonts.conf",
     ],
   },
   images: {

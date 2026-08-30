@@ -82,50 +82,69 @@ export default async function Home() {
     <main className="instagram-theme min-h-screen overflow-x-hidden bg-background text-foreground">
       <LandingHeader initialHasSession={initialHasSession} />
 
-      <section className="relative z-0 px-4 pb-0 pt-28 sm:px-6 sm:pb-0 sm:pt-32 lg:px-8 lg:pb-0 lg:pt-36">
-        <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-12 lg:gap-16">
+      <section className="relative z-0 px-4 pb-0 pt-24 sm:px-6 sm:pb-0 sm:pt-32 lg:px-8 lg:pb-0 lg:pt-36">
+        <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-8 sm:gap-12 lg:gap-16">
           <div className="w-full max-w-[1200px] text-center">
             {/* Announcement Pill Badge */}
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+            <div className="mb-5 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold leading-4 text-foreground shadow-sm sm:mb-6 sm:px-4 sm:text-xs">
               <span className="text-primary font-semibold">Instagram-First</span>
               <span className="text-border-strong">•</span>
-              <span className="text-muted">The All-in-One Content Workspace</span>
+              <span className="min-w-0 text-muted">The All-in-One Content Workspace</span>
             </div>
 
-            <h1 className="mx-auto max-w-[1200px] text-[clamp(2rem,5.28vw,4.8rem)] font-semibold leading-[0.94] tracking-[-0.055em] text-foreground-strong">
+            <h1 className="mx-auto max-w-[1200px] text-[clamp(2.25rem,5.28vw,4.8rem)] font-semibold leading-[0.94] tracking-[-0.055em] text-foreground-strong">
               <span className="block lg:whitespace-nowrap">
-                Stop guessing. Start posting.
-              </span>
-              <span className="mt-1 block lg:whitespace-nowrap sm:mt-2">
-                Your next post is{" "}
+                Stop guessing!{" "}
                 <span className="relative inline-block">
-                  ready to go.
+                  Start posting
                   <svg
-                    viewBox="0 0 320 18"
+                    viewBox="0 0 320 20"
                     preserveAspectRatio="none"
-                    className="pointer-events-none absolute -bottom-[0.16em] left-[4%] h-[0.18em] w-[92%] overflow-visible opacity-90"
+                    className="pointer-events-none absolute -bottom-[0.12em] left-[1%] h-[0.18em] w-[99%] overflow-visible"
                     aria-hidden="true"
                   >
-                    <defs>
-                      <linearGradient
-                        id="ready-underline-gradient"
-                        x1="0"
-                        y1="9"
-                        x2="320"
-                        y2="9"
-                        gradientUnits="userSpaceOnUse"
-                      >
-                        <stop stopColor="var(--instagram-orange)" />
-                        <stop offset="0.52" stopColor="var(--instagram-rose)" />
-                        <stop offset="1" stopColor="var(--instagram-violet)" />
-                      </linearGradient>
-                    </defs>
                     <path
-                      d="M4 10.8C76 4.1 188 4.5 316 8.7"
+                      d="M5 12C75 4 203 3.5 316 10"
                       fill="none"
-                      stroke="url(#ready-underline-gradient)"
-                      strokeWidth="3.6"
+                      stroke="currentColor"
                       strokeLinecap="round"
+                      strokeWidth="3.4"
+                    />
+                  </svg>
+                </span>
+                <svg
+                  viewBox="0 0 52 86"
+                  className="ml-[0.18em] inline-block h-[0.82em] w-[0.5em] -translate-y-[0.04em] overflow-visible"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M31 2 5 45h18L18 84l29-48H29L31 2Z"
+                    fill="currentColor"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                  />
+                </svg>
+              </span>
+              <span className="mt-3 block lg:whitespace-nowrap sm:mt-4">
+                Your next post is{" "}
+                <span className="relative inline-block px-[0.06em]">
+                  ready to go
+                  <svg
+                    viewBox="0 0 520 130"
+                    preserveAspectRatio="none"
+                    className="pointer-events-none absolute -left-[0.08em] -top-[0.14em] h-[1.29em] w-[116%] overflow-visible"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M24 20C104 7 401 7 486 20C503 23 512 40 514 64C516 89 510 108 489 112C378 124 127 123 25 112C9 109 4 88 6 64C7 39 10 24 24 20Z"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="4.5"
                     />
                   </svg>
                 </span>
@@ -139,9 +158,9 @@ export default async function Home() {
               action.
             </p>
 
-            <div className="mt-8 flex justify-center">
+            <div className="mt-7 flex justify-center sm:mt-8">
               <LandingAuthCta
-                className="group inline-flex h-12 items-center justify-center rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="group inline-flex h-12 w-full max-w-[220px] items-center justify-center rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-auto sm:max-w-none sm:px-7"
                 initialHasSession={initialHasSession}
               />
             </div>

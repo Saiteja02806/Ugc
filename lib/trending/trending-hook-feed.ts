@@ -392,7 +392,9 @@ export class TrendingHookPreparationError extends Error {
 }
 
 function toHookCopyJobCandidate(
-  candidate: ReturnType<typeof selectTrendingHookCandidates>[number],
+  candidate: ReturnType<
+    typeof selectFreshThenRecycledTrendingHookCandidates
+  >[number],
 ) {
   return {
     candidateIndex: candidate.candidateIndex,

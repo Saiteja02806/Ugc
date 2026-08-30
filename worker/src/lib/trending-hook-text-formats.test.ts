@@ -85,7 +85,7 @@ test("the Trending reaction map selects the exact compatible format", () => {
   );
 });
 
-test("the strict map rejects unknown reactions and missing required evidence", () => {
+test("the reaction map requires a business name only when it needs the safe fallback", () => {
   assert.deepEqual(
     selectHookTextFormats({
       campaignPurpose: "product_discovery",
@@ -118,13 +118,17 @@ test("the strict map rejects unknown reactions and missing required evidence", (
   );
 });
 
-test("the reaction map uses name-grounded discovery for every reviewed reaction when only a business name exists", () => {
+test("the reaction map uses name-grounded discovery for every reaction when only a business name exists", () => {
   const eligibility = {
     businessContext: { businessName: "Calorie Fit" },
     evidence: [{ key: "businessName", text: "Calorie Fit" }],
   };
 
-  for (const reactionType of Object.keys(HOOK_REACTION_FORMAT_RULES)) {
+  for (const reactionType of [
+    ...Object.keys(HOOK_REACTION_FORMAT_RULES),
+    "unreviewed",
+    null,
+  ]) {
     assert.deepEqual(
       selectHookTextFormats({
         campaignPurpose: "product_discovery",

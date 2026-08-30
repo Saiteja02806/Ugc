@@ -25,7 +25,7 @@ import {
   isTrendingWallTextCreativeCurrent,
   listActiveWallTextInstagramReelTemplates,
   listActiveTrendingWallTextIdeas,
-  listRecentWallTextBackgroundAssetIds,
+  listUsedWallTextBackgroundAssetIds,
   listTrendingWallTextCreatives,
   listWallTextDuplicateSignatures,
   listWallTextOverlayAssetsByIds,
@@ -66,7 +66,7 @@ import {
 } from "@/lib/trending/wall-text-render-validation";
 import { resolveTrendingVideoSource } from "@/lib/trending/video-source-selection";
 import { enqueueTrendingWallTextJob } from "@/lib/trending/wall-text-jobs";
-import { selectWallTextGenerationSources } from "@/lib/trending/wall-text-source-selector";
+import { selectFreshThenRecycledWallTextGenerationSources } from "@/lib/trending/wall-text-source-selector";
 
 const DEFAULT_WALL_TEXT_ACTIVE_TARGET = 6;
 
@@ -257,12 +257,12 @@ export async function prepareTrendingWallTextIdeas(
 
   const [
     fullInventory,
-    recentBackgrounds,
+    usedBackgroundAssetIds,
     activeInstagramTemplates,
     reservedBackgroundAssetIds,
   ] = await Promise.all([
     selectedInventory ?? listWallTextVideoAssetInventory(),
-    listRecentWallTextBackgroundAssetIds({ userId: profile.userId }),
+    listUsedWallTextBackgroundAssetIds({ userId: profile.userId }),
     source.selection
       ? Promise.resolve([])
       : listActiveWallTextInstagramReelTemplates(),
@@ -272,61 +272,50 @@ export async function prepareTrendingWallTextIdeas(
       userId: profile.userId,
     }),
   ]);
-  const unavailableBackgroundAssetIds = new Set([
-    ...existing.map((creative) => creative.overlay_media_asset_id),
-    ...reservedBackgroundAssetIds,
-  ]);
-  // A profile/version may have one persisted creative per overlay asset. Do
-  // not rotate back to an old asset after the unused pool is exhausted: it
-  // would fail at persistence and leave the feed waiting. A smaller batch is
-  // preferable; recovery can then surface a terminal, diagnosable shortfall.
-  const inventory = fullInventory.filter(
-    (asset) => !unavailableBackgroundAssetIds.has(asset.id),
+  // A reservation is temporary and cannot be shared with another live batch.
+  // Completed ideas remain available as the recycle pool once new uploads have
+  // been consumed.
+  const availableInventory = fullInventory.filter(
+    (asset) => !reservedBackgroundAssetIds.has(asset.id),
   );
-  const groupFreshInventory = inventory.filter(
-    (asset) =>
-      !recentBackgrounds.assetIds.has(asset.id) &&
-      !recentBackgrounds.visualGroups.has(asset.visualGroup ?? ""),
+  const freshUgcpilotCandidates = selectTrendingWallTextCandidates(
+    availableInventory.filter(
+      (asset) => !usedBackgroundAssetIds.has(asset.id),
+    ),
+    requestedCount,
   );
-  const assetFreshInventory = inventory.filter(
-    (asset) => !recentBackgrounds.assetIds.has(asset.id),
+  const recycledUgcpilotCandidates = selectTrendingWallTextCandidates(
+    availableInventory.filter((asset) => usedBackgroundAssetIds.has(asset.id)),
+    requestedCount,
   );
-  const groupFreshCandidates =
-    selectTrendingWallTextCandidates(groupFreshInventory, requestedCount);
-  const assetFreshCandidates =
-    selectTrendingWallTextCandidates(assetFreshInventory, requestedCount);
-  const ugcpilotCandidates =
-    groupFreshCandidates.length >= requestedCount
-      ? groupFreshCandidates
-      : assetFreshCandidates.length > 0
-        ? assetFreshCandidates
-        : selectTrendingWallTextCandidates(inventory, requestedCount);
   const availableInstagramTemplates = activeInstagramTemplates.filter(
-    (template) => !unavailableBackgroundAssetIds.has(template.asset.id),
+    (template) => !reservedBackgroundAssetIds.has(template.asset.id),
   );
   const freshInstagramTemplates = availableInstagramTemplates.filter(
-    (template) => !recentBackgrounds.assetIds.has(template.asset.id),
+    (template) => !usedBackgroundAssetIds.has(template.asset.id),
   );
-  const instagramTemplatePool = rotateEntries(
-    freshInstagramTemplates.length > 0
-      ? [
-          ...freshInstagramTemplates,
-          ...availableInstagramTemplates.filter(
-            (template) => recentBackgrounds.assetIds.has(template.asset.id),
-          ),
-        ]
-      : availableInstagramTemplates,
+  const recycledInstagramTemplates = rotateEntries(
+    availableInstagramTemplates.filter((template) =>
+      usedBackgroundAssetIds.has(template.asset.id),
+    ),
     existing.filter((creative) => creative.source_kind === "instagram_reel").length,
   );
   const selectedSources = source.selection
-    ? ugcpilotCandidates.map((candidate) => ({
-        kind: "creative_asset" as const,
-        value: candidate,
-      }))
-    : selectWallTextGenerationSources({
-        instagramTemplates: instagramTemplatePool,
+    ? [
+        ...freshUgcpilotCandidates,
+        ...recycledUgcpilotCandidates,
+      ]
+        .slice(0, requestedCount)
+        .map((candidate) => ({
+          kind: "creative_asset" as const,
+          value: candidate,
+        }))
+    : selectFreshThenRecycledWallTextGenerationSources({
+        freshInstagramTemplates,
+        freshUgcpilotCandidates,
+        recycledInstagramTemplates,
+        recycledUgcpilotCandidates,
         requestedCount,
-        ugcpilotCandidates,
       });
   const generationSources = selectedSources.map((selected, candidateIndex) =>
     selected.kind === "instagram_reel"

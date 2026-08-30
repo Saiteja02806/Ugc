@@ -759,7 +759,7 @@ export function selectHookTextFormats(params: {
   if (params.selectionStrategy === "reaction_mapped") {
     const rule = getHookReactionFormatRule(params.reactionType);
     if (!rule) {
-      return [];
+      return getNameGroundedDiscoveryFormat(params.eligibility);
     }
 
     const format = getHookTextFormat(rule.formatId);
@@ -779,12 +779,7 @@ export function selectHookTextFormats(params: {
       // is the only supplied business fact, use the name-grounded discovery
       // format rather than dropping a reviewed Hook video before generation.
       // The copy contract still prohibits invented product claims.
-      if (!params.eligibility.businessContext.businessName?.trim()) {
-        return [];
-      }
-
-      const brandDiscoveryFormat = getHookTextFormat("GF_015");
-      return brandDiscoveryFormat ? [brandDiscoveryFormat] : [];
+      return getNameGroundedDiscoveryFormat(params.eligibility);
     }
 
     return [format];
@@ -894,6 +889,15 @@ export function selectHookTextFormats(params: {
     );
 
   return ranked.slice(0, count).map(({ format }) => format);
+}
+
+function getNameGroundedDiscoveryFormat(eligibility: HookTextEligibilityContext) {
+  if (!eligibility.businessContext.businessName?.trim()) {
+    return [];
+  }
+
+  const brandDiscoveryFormat = getHookTextFormat("GF_015");
+  return brandDiscoveryFormat ? [brandDiscoveryFormat] : [];
 }
 
 export function isHookTextFormatEligible(

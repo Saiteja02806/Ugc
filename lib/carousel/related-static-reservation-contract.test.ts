@@ -5,6 +5,9 @@ import test from "node:test";
 const migration = read(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260820054247_add_carousel_related_static_reservation_v2.sql",
 );
+const freshFirstMigration = read(
+  "supabase/migrations/20260830214000_prioritize_fresh_carousel_images_before_reuse.sql",
+);
 const v1Migration = read(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260817123000_add_carousel_role_image_library_v1.sql",
 );
@@ -75,6 +78,21 @@ test("reservation is idempotent, locks rotations consistently, and falls back sa
     /order by md5\([\s\S]*p_business_profile_id::text[\s\S]*v_category[\s\S]*v_role[\s\S]*v_cycle::text/i,
   );
   assert.match(migration, /not \(image_asset\.id = any\(v_selected_asset_ids\)\)/i);
+});
+
+test("uses every approved Carousel image that is new to the profile before reuse", () => {
+  assert.match(freshFirstMigration, /carousel_fresh_first:20260830214000/i);
+  assert.match(
+    freshFirstMigration,
+    /image_usage\.business_profile_id = p_business_profile_id[\s\S]*image_usage\.asset_id = image_asset\.id[\s\S]*image_usage\.usage_type = 'assigned'/i,
+  );
+  assert.match(freshFirstMigration, /order by image_asset\.created_at desc, image_asset\.id/i);
+  assert.match(
+    freshFirstMigration,
+    /v_fresh_selector\s*\|\|\s*v_existing_selector/i,
+    "the fresh selector must be inserted before the existing rotation-cycle selector",
+  );
+  assert.match(freshFirstMigration, /image_usage\.cycle_number = v_cycle/i);
 });
 
 test("tracking records requested and actual categories without image tags", () => {

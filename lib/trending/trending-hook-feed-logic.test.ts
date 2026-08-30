@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { selectTrendingHookCandidates } from "./trending-hook-feed-logic.ts";
+import {
+  selectFreshThenRecycledTrendingHookCandidates,
+  selectTrendingHookCandidates,
+} from "./trending-hook-feed-logic.ts";
 import type { HookVideoBrowseEntry } from "./hook-video-types.ts";
 
 function createEntry(params: {
@@ -9,7 +12,7 @@ function createEntry(params: {
   id: string;
   influencerKey?: string;
   ratio?: "4:5" | "9:16";
-  reactionType?: string;
+  reactionType?: string | null;
   trimEnd?: number | null;
   trimStart?: number;
   visualGroup?: string;
@@ -31,7 +34,10 @@ function createEntry(params: {
       influencerId: `catalog:${influencerKey}`,
       influencerKey,
       ratio: params.ratio ?? "9:16",
-      reactionType: params.reactionType ?? "focused_attention",
+      reactionType:
+        params.reactionType === undefined
+          ? "focused_attention"
+          : params.reactionType,
       sourceKind: "catalog",
       thumbnailUrl: null,
       title: params.id,
@@ -79,7 +85,7 @@ test("uses the actual trimmed duration and ignores unsuitable sources", () => {
   assert.equal(candidates[0]?.sourceDurationSeconds, 8);
 });
 
-test("does not queue a Trending source whose reaction is not reviewed", () => {
+test("queues a technically valid Trending source even without a catalog reaction", () => {
   const candidates = selectTrendingHookCandidates([
     createEntry({ durationSeconds: 4, id: "reviewed" }),
     createEntry({
@@ -87,15 +93,20 @@ test("does not queue a Trending source whose reaction is not reviewed", () => {
       id: "unreviewed",
       reactionType: "unreviewed",
     }),
+    createEntry({
+      durationSeconds: 4,
+      id: "user-upload",
+      reactionType: null,
+    }),
   ]);
 
   assert.deepEqual(
     candidates.map((candidate) => candidate.entry.video.id),
-    ["reviewed"],
+    ["reviewed", "unreviewed", "user-upload"],
   );
 });
 
-test("queues every technically valid reviewed source for every business", () => {
+test("queues every technically valid Hook source for every business", () => {
   const candidates = selectTrendingHookCandidates([
     createEntry({
       durationSeconds: 4,
@@ -117,6 +128,26 @@ test("queues every technically valid reviewed source for every business", () => 
   assert.deepEqual(
     candidates.map((candidate) => candidate.entry.video.id),
     ["amusement", "reveal", "concern"],
+  );
+});
+
+test("uses fresh Hook videos first, then fills the request with recycled videos", () => {
+  const candidates = selectFreshThenRecycledTrendingHookCandidates({
+    inventory: [
+      createEntry({ durationSeconds: 4, id: "old-1", influencerKey: "old-1" }),
+      createEntry({ durationSeconds: 4, id: "old-2", influencerKey: "old-2" }),
+      createEntry({ durationSeconds: 4, id: "old-3", influencerKey: "old-3" }),
+      createEntry({ durationSeconds: 4, id: "new-1", influencerKey: "new-1" }),
+      createEntry({ durationSeconds: 4, id: "new-2", influencerKey: "new-2" }),
+      createEntry({ durationSeconds: 4, id: "new-3", influencerKey: "new-3" }),
+    ],
+    requestedCount: 5,
+    usedVideoIds: new Set(["old-1", "old-2", "old-3"]),
+  });
+
+  assert.deepEqual(
+    candidates.map((candidate) => candidate.entry.video.id),
+    ["new-1", "new-2", "new-3", "old-1", "old-2"],
   );
 });
 

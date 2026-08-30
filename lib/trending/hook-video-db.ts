@@ -299,6 +299,29 @@ export async function listTrendingHookVideoSuggestions(params: {
   return data;
 }
 
+/**
+ * Source freshness belongs to the user, not to one Business Profile version.
+ * A profile refresh must not make every old Hook source look newly uploaded.
+ */
+export async function listUsedTrendingHookVideoIds(params: { userId: string }) {
+  const { data, error } = await getClient()
+    .from("hook_video_suggestions")
+    .select("influencer_video_id")
+    .eq("user_id", params.userId)
+    .eq("suggestion_context", "trending");
+
+  if (error) {
+    throw new Error(`Could not load used Trending Hook videos: ${error.message}`);
+  }
+
+  return new Set(
+    data.flatMap((suggestion) => {
+      const videoId = suggestion.influencer_video_id.trim();
+      return videoId ? [videoId] : [];
+    }),
+  );
+}
+
 export async function listActiveTrendingHookIdeas(params: {
   businessProfileId: string;
   businessProfileVersion: number;

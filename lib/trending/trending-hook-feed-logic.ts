@@ -4,19 +4,6 @@ const DEFAULT_TRENDING_HOOK_IDEA_COUNT = 6;
 // This is the durable source-metadata cap. The database reserves only the
 // exact outstanding target for each worker attempt.
 const MAX_TRENDING_HOOK_IDEA_COUNT = 600;
-// This mirrors the worker's strict reaction map. Keep unknown/unreviewed
-// sources out of the queue rather than spending a generation attempt on them.
-const REVIEWED_TRENDING_HOOK_REACTIONS = new Set([
-  "shock_surprise",
-  "curiosity_discovery",
-  "secret_reveal",
-  "confidence_approval",
-  "amusement_laughter",
-  "concern_anxiety",
-  "confusion_skepticism",
-  "focused_attention",
-]);
-
 export function selectTrendingHookCandidates(
   inventory: readonly HookVideoBrowseEntry[],
   requestedCount = DEFAULT_TRENDING_HOOK_IDEA_COUNT,
@@ -28,7 +15,6 @@ export function selectTrendingHookCandidates(
     if (
       entry.video.ratio !== "9:16" ||
       durationSeconds === null ||
-      !REVIEWED_TRENDING_HOOK_REACTIONS.has(entry.video.reactionType ?? "") ||
       seenVideoIds.has(entry.video.id)
     ) {
       return [];
@@ -55,6 +41,51 @@ export function selectTrendingHookCandidates(
       ...candidate,
       candidateIndex,
     }));
+}
+
+/**
+ * Chooses unseen sources first, then fills the same request from sources the
+ * user has already seen. This keeps a partial fresh upload from stalling a
+ * Trending refill: for example, three new clips plus two older clips can
+ * immediately produce five ideas.
+ */
+export function selectFreshThenRecycledTrendingHookCandidates(params: {
+  inventory: readonly HookVideoBrowseEntry[];
+  requestedCount: number;
+  usedVideoIds: ReadonlySet<string>;
+}) {
+  const requestedCount = Math.min(
+    Math.max(Math.trunc(params.requestedCount), 0),
+    MAX_TRENDING_HOOK_IDEA_COUNT,
+  );
+  if (requestedCount === 0) return [];
+
+  const fresh = selectTrendingHookCandidates(
+    params.inventory.filter(
+      (entry) => !params.usedVideoIds.has(entry.video.id),
+    ),
+    requestedCount,
+  );
+  const remaining = requestedCount - fresh.length;
+  const selectedVideoIds = new Set(
+    fresh.map((candidate) => candidate.entry.video.id),
+  );
+  const recycled =
+    remaining > 0
+      ? selectTrendingHookCandidates(
+          params.inventory.filter(
+            (entry) =>
+              params.usedVideoIds.has(entry.video.id) &&
+              !selectedVideoIds.has(entry.video.id),
+          ),
+          remaining,
+        )
+      : [];
+
+  return [...fresh, ...recycled].map((candidate, candidateIndex) => ({
+    ...candidate,
+    candidateIndex,
+  }));
 }
 
 function selectDiverseCandidates<T extends {

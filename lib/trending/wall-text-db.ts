@@ -895,6 +895,29 @@ export async function reserveWallTextGenerationBatch(params: {
 }
 
 /**
+ * Freshness is evaluated over the user's complete displayed Wall library,
+ * including earlier Business Profile versions. New uploads therefore win over
+ * older assets after a profile refresh.
+ */
+export async function listUsedWallTextBackgroundAssetIds(params: {
+  userId: string;
+}) {
+  const { data, error } = await getClient()
+    .from("wall_text_creatives")
+    .select("overlay_media_asset_id")
+    .eq("user_id", params.userId)
+    .eq("status", "preview_ready");
+
+  if (error) {
+    throw new Error(
+      `Could not load used Wall-of-text backgrounds: ${error.message}`,
+    );
+  }
+
+  return new Set(data.map((creative) => creative.overlay_media_asset_id));
+}
+
+/**
  * Background selection happens before the reservation transaction. Exclude
  * work that has already been reserved by another live batch so a retry can
  * choose a different background instead of retrying a write that the
@@ -925,7 +948,7 @@ export async function listReservedWallTextBackgroundAssetIds(params: {
     .from("wall_text_generation_assignments")
     .select("overlay_media_asset_id")
     .in("batch_id", batchIds)
-    .neq("status", "completed");
+    .in("status", ["pending", "processing", "retry_pending"]);
   if (assignmentError) {
     throw new Error(
       `Could not load reserved Wall-of-text assignments: ${assignmentError.message}`,

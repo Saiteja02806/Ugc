@@ -73,3 +73,41 @@ export function selectWallTextGenerationSources<TInstagram, TUgcpilot>(params: {
 
   return selected;
 }
+
+/**
+ * Freshness takes priority over the normal source mix. After every fresh
+ * source has been considered, the same mix fills any remaining slots from
+ * recycled sources.
+ */
+export function selectFreshThenRecycledWallTextGenerationSources<
+  TInstagram,
+  TUgcpilot,
+>(params: {
+  freshInstagramTemplates: readonly TInstagram[];
+  freshUgcpilotCandidates: readonly TUgcpilot[];
+  recycledInstagramTemplates: readonly TInstagram[];
+  recycledUgcpilotCandidates: readonly TUgcpilot[];
+  requestedCount: number;
+}) {
+  const requestedCount = Math.min(
+    Math.max(Math.trunc(params.requestedCount), 0),
+    50,
+  );
+  const fresh = selectWallTextGenerationSources({
+    instagramTemplates: params.freshInstagramTemplates,
+    requestedCount,
+    ugcpilotCandidates: params.freshUgcpilotCandidates,
+  });
+  const remaining = requestedCount - fresh.length;
+
+  if (remaining <= 0) return fresh;
+
+  return [
+    ...fresh,
+    ...selectWallTextGenerationSources({
+      instagramTemplates: params.recycledInstagramTemplates,
+      requestedCount: remaining,
+      ugcpilotCandidates: params.recycledUgcpilotCandidates,
+    }),
+  ];
+}

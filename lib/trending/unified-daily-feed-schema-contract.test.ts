@@ -216,10 +216,10 @@ test("does not select a prior-day Carousel assignment for a new daily feed", () 
   );
 });
 
-test("uses reviewed Hook clips for every business and exposes a recovery for old blocked feeds", () => {
+test("uses every vertical Hook clip for every business and exposes a recovery for old blocked feeds", () => {
   assert.match(
     trendingHookFeed,
-    /if \(candidates\.length === 0\) \{[\s\S]*throw new TrendingHookPreparationError\([\s\S]*No reviewed vertical Hook video sources are available/,
+    /if \(candidates\.length === 0\) \{[\s\S]*throw new TrendingHookPreparationError\([\s\S]*No vertical Hook video sources are available/,
   );
   assert.doesNotMatch(
     trendingHookFeed,

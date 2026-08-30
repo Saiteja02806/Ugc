@@ -115,6 +115,13 @@ const reservationCollisionMigration = readFileSync(
   ),
   "utf8",
 );
+const backgroundReuseMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260830213000_allow_wall_text_background_reuse_after_fresh_rotation.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const generatorSource = readFileSync(
   new URL("./generate-trending-wall-text-ideas.ts", import.meta.url),
   "utf8",
@@ -464,31 +471,29 @@ test("persists stable batches, original chunks, assignments, budgets, and placem
   );
 });
 
-test("prevents concurrent Wall refills from reserving an already-used background", () => {
+test("prevents concurrent Wall refills while allowing completed backgrounds to recycle", () => {
   assert.match(
     databaseSource,
-    /export async function listReservedWallTextBackgroundAssetIds[\s\S]+\.in\("status", \["pending", "processing"\]\)[\s\S]+\.neq\("status", "completed"\)/,
+    /export async function listReservedWallTextBackgroundAssetIds[\s\S]+\.in\("status", \["pending", "processing", "retry_pending"\]\)/,
   );
   assert.match(
     feedSource,
-    /listReservedWallTextBackgroundAssetIds[\s\S]+reservedBackgroundAssetIds[\s\S]+unavailableBackgroundAssetIds/,
+    /listReservedWallTextBackgroundAssetIds[\s\S]+reservedBackgroundAssetIds[\s\S]+availableInventory/,
   );
   assert.match(
     feedSource,
-    /const inventory = fullInventory\.filter\([\s\S]+!unavailableBackgroundAssetIds\.has\(asset\.id\)/,
+    /freshUgcpilotCandidates[\s\S]+recycledUgcpilotCandidates[\s\S]+selectFreshThenRecycledWallTextGenerationSources/,
   );
-  assert.match(
-    reservationCollisionMigration,
-    /create or replace function public\.enforce_wall_text_generation_assignment_background_uniqueness\(\)[\s\S]+pg_advisory_xact_lock[\s\S]+wall_text_background_already_used[\s\S]+wall_text_background_already_reserved/i,
-  );
+  assert.doesNotMatch(feedSource, /unavailableBackgroundAssetIds/);
   assert.match(
     reservationCollisionMigration,
     /create trigger enforce_wall_text_generation_assignment_background_uniqueness_trigger[\s\S]+before insert or update of batch_id, overlay_media_asset_id/i,
   );
   assert.match(
-    reservationCollisionMigration,
-    /revoke all on function public\.enforce_wall_text_generation_assignment_background_uniqueness\(\) from public/i,
+    backgroundReuseMigration,
+    /create or replace function public\.enforce_wall_text_generation_assignment_background_uniqueness\(\)[\s\S]+pg_catalog\.pg_advisory_xact_lock[\s\S]+assignment\.status in \('pending', 'processing', 'retry_pending'\)[\s\S]+wall_text_background_already_reserved/i,
   );
+  assert.doesNotMatch(backgroundReuseMigration, /wall_text_background_already_used/);
 });
 
 test("keeps each Instagram Reel video, reference, safe box, and locked audio together", () => {

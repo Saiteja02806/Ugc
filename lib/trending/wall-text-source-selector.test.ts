@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  selectFreshThenRecycledWallTextGenerationSources,
   selectWallTextGenerationSources,
   WALL_TEXT_INSTAGRAM_TEMPLATE_SHARE,
 } from "./wall-text-source-selector.ts";
@@ -79,4 +80,19 @@ test("source selector returns all available sources without repeating them", () 
 
   assert.equal(selected.length, 3);
   assert.equal(new Set(selected.map((entry) => entry.value)).size, 3);
+});
+
+test("fresh Wall videos fill first and recycled videos complete a partial upload", () => {
+  const selected = selectFreshThenRecycledWallTextGenerationSources({
+    freshInstagramTemplates: [],
+    freshUgcpilotCandidates: ["new-1", "new-2", "new-3"],
+    recycledInstagramTemplates: [],
+    recycledUgcpilotCandidates: ["old-1", "old-2", "old-3"],
+    requestedCount: 5,
+  });
+
+  assert.deepEqual(
+    selected.map((entry) => entry.value),
+    ["new-1", "new-2", "new-3", "old-1", "old-2"],
+  );
 });

@@ -3893,6 +3893,17 @@ Name: **Verify v26 and replace the stale production assignment**
   immediately while its immutable edited slide URLs are displayed only after
   the render state is ready.
 
+## 2026-08-31 Carousel Fresh-First Source Rotation
+
+- A Carousel first selects an approved, safe image that has never previously
+  been assigned to that business profile for the requested category and role.
+  It only resumes the existing shuffled reuse cycle after that fresh pool is
+  empty. An image uploaded later is new to the profile and therefore wins over
+  an old image that would otherwise be recycled.
+- This rule does not weaken the image-library safety, readiness, ownership,
+  role, or per-Carousel no-duplicate checks. It changes only the ordering
+  between fresh and previously used eligible images.
+
 ## 2026-08-30 Daily Feed Recovery and Planner Shortfall Handling
 
 - A unified daily feed remains `preparing` while any reserved slot is pending,

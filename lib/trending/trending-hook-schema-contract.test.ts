@@ -444,7 +444,7 @@ test("does not repeat a Hook job that failed a deterministic persistence contrac
   );
 });
 
-test("continues one durable Hook run with unused videos instead of completing a partial batch", () => {
+test("continues one durable Hook run and recycles only after fresh Hook videos", () => {
   assert.match(
     hookFeedSource,
     /mode\?: "initial" \| "refill"[\s\S]+active\.length >= targetActive/,
@@ -455,7 +455,7 @@ test("continues one durable Hook run with unused videos instead of completing a 
   );
   assert.match(
     hookFeedSource,
-    /usedVideoIds[\s\S]+!usedVideoIds\.has\(entry\.video\.id\)/,
+    /listUsedTrendingHookVideoIds[\s\S]+selectFreshThenRecycledTrendingHookCandidates[\s\S]+usedVideoIds/,
   );
   assert.match(
     hookFeedSource,

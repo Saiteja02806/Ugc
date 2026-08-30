@@ -8,6 +8,7 @@ import { listReadyAvatarAssets } from "@/lib/avatars/avatar-storage";
 import {
   listActiveTrendingHookIdeas,
   listTrendingHookVideoSuggestions,
+  listUsedTrendingHookVideoIds,
   type TrendingHookIdeaRecord,
 } from "@/lib/trending/hook-video-db";
 import {
@@ -31,7 +32,7 @@ import {
   parseHookVideoTextPlacement,
   type HookVideoTextPosition,
 } from "@/lib/trending/hook-video-text-placement";
-import { selectTrendingHookCandidates } from "@/lib/trending/trending-hook-feed-logic";
+import { selectFreshThenRecycledTrendingHookCandidates } from "@/lib/trending/trending-hook-feed-logic";
 import { resolveTrendingVideoSource } from "@/lib/trending/video-source-selection";
 import {
   createHookTrendingFeedProvider,
@@ -98,35 +99,30 @@ export async function prepareTrendingHookIdeas(
     }
   }
 
-  const fullInventory = await listHookVideoBrowseInventory(
-    profile.userId,
-    selectedAssetIds
-      ? { mediaAssetIds: [...selectedAssetIds] }
-      : undefined,
-  );
-  const usedVideoIds = new Set(
-    existing.map((idea) => idea.influencer_video_id),
-  );
-  const unusedInventory = fullInventory.filter(
-    (entry) => !usedVideoIds.has(entry.video.id),
-  );
-  // Once the approved Hook library has completed a full rotation, start a new
-  // rotation instead of permanently exhausting the user's daily allowance.
-  const inventory =
-    mode === "refill" && unusedInventory.length > 0
-      ? unusedInventory
-      : fullInventory;
+  const [fullInventory, usedVideoIds] = await Promise.all([
+    listHookVideoBrowseInventory(
+      profile.userId,
+      selectedAssetIds
+        ? { mediaAssetIds: [...selectedAssetIds] }
+        : undefined,
+    ),
+    listUsedTrendingHookVideoIds({ userId: profile.userId }),
+  ]);
   const targetValidCount = Math.max(targetActive - activeCount, 1);
-  // Keep eligible source metadata available to the durable run, but send only
+  // Keep source metadata available to the durable run, but send only
   // the exact outstanding target to a worker. Backup metadata is not an AI
   // generation attempt; it lets a continuation choose a fresh source if one
   // result still fails the lean technical checks.
   const candidatePoolCount = 600;
-  const candidates = selectTrendingHookCandidates(inventory, candidatePoolCount);
+  const candidates = selectFreshThenRecycledTrendingHookCandidates({
+    inventory: fullInventory,
+    requestedCount: candidatePoolCount,
+    usedVideoIds,
+  });
 
   if (candidates.length === 0) {
     throw new TrendingHookPreparationError(
-      "No reviewed vertical Hook video sources are available.",
+      "No vertical Hook video sources are available.",
       409,
     );
   }
@@ -168,7 +164,7 @@ export async function prepareTrendingHookIdeas(
 
   if (chunk.status === "source_exhausted") {
     throw new TrendingHookPreparationError(
-      "No unused eligible Hook videos remain to complete this feed.",
+      "No Hook video sources remain to complete this feed.",
       409,
     );
   }

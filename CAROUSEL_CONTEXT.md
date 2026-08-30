@@ -3872,3 +3872,23 @@ Name: **Verify v26 and replace the stale production assignment**
   triggers for daily feed creation and Instagram schedule target insertion.
   Existing ready content remains readable, but an expired trial may not trigger
   more background preparation.
+
+## 2026-08-30 Carousel Edit Preview Parity and Immutable Slide Reuse
+
+- The Carousel editor keeps the immutable rendered image until a user changes
+  that slide. Once a drag or copy edit requires a live preview, both Carousel
+  structures use the renderer's direct white, 44px Geist SemiBold text with a
+  3px black 72%-opacity outline. The retired white SVG text rectangles and
+  white line pills must not return in the editor, because a position-only edit
+  must preserve the same visual language as the saved creative.
+- A Carousel edit render reuses the original immutable `rendered_url` and
+  `rendered_s3_key` for a slide whose source asset, copy, normalized position,
+  and visual role are unchanged. It renders and uploads only changed slides,
+  while still saving one complete ordered output containing every slide. This
+  reduces a Slide 1 Hook-library update from a serial five-slide render to the
+  one changed slide without changing the final asset contract.
+- Carousel next/previous controls advance from the latest stored slide index,
+  not an index captured by an earlier render. Their full pointer interaction is
+  isolated from the deck swipe gesture, so an edited Carousel can navigate
+  immediately while its immutable edited slide URLs are displayed only after
+  the render state is ready.

@@ -115,6 +115,151 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
   assert.equal(result.renderedSlideCount, 1);
 });
 
+test("reuses immutable output for unchanged Carousel slides", async () => {
+  const renderedSlideNumbers: number[] = [];
+  const uploadedSlideNumbers: number[] = [];
+  let readyOutput: unknown;
+  const store = {
+    getCarouselGeneration: async () => ({
+      content_plan_normalized: null,
+      format: "4:5",
+      project_id: "project-1",
+      slide_count: 2,
+      status: "completed",
+      trigger_run_id: null,
+      user_id: "user-1",
+    }),
+    getJobById: async () => null,
+    getTrendingCarouselEdit: async () => ({
+      content_json: {
+        format: "carousel",
+        slides: [
+          {
+            backgroundAssetId: "asset-1",
+            backgroundUrl: "https://storage.example/source-1.webp",
+            ctaText: "",
+            headline: "Original slide one",
+            slideId: "slide-1",
+            slideNumber: 1,
+            subtext: "Original support one",
+            textPosition: { x: 0.5, y: 0.5 },
+            visualRole: "static",
+          },
+          {
+            backgroundAssetId: "asset-2",
+            backgroundUrl: "https://storage.example/source-2.webp",
+            ctaText: "",
+            headline: "Updated slide two",
+            slideId: "slide-2",
+            slideNumber: 2,
+            subtext: "Original support two",
+            textPosition: { x: 0.5, y: 0.5 },
+            visualRole: "static",
+          },
+        ],
+      },
+      creative_id: "carousel-1",
+      id: "edit-1",
+      render_job_id: "job-1",
+      render_output_json: null,
+      render_status: "queued",
+      revision: 4,
+    }),
+    listCarouselSlides: async () => [
+      {
+        category_image_asset_id: "asset-1",
+        cta_text: null,
+        headline: "Original slide one",
+        id: "slide-1",
+        image_direction: null,
+        layout_preset: "middle-statement",
+        rendered_s3_key: "carousels/original/slide-1.webp",
+        rendered_url: "https://storage.example/original-1.webp",
+        slide_number: 1,
+        slide_type: "solution",
+        subtext: "Original support one",
+        text_position: "center",
+        visual_role: "static",
+      },
+      {
+        category_image_asset_id: "asset-2",
+        cta_text: null,
+        headline: "Original slide two",
+        id: "slide-2",
+        image_direction: null,
+        layout_preset: "middle-statement",
+        rendered_s3_key: "carousels/original/slide-2.webp",
+        rendered_url: "https://storage.example/original-2.webp",
+        slide_number: 2,
+        slide_type: "solution",
+        subtext: "Original support two",
+        text_position: "center",
+        visual_role: "static",
+      },
+    ],
+    markTrendingCarouselEditReady: async (params: { output: unknown }) => {
+      readyOutput = params.output;
+    },
+    markTrendingCarouselEditRendering: async () => undefined,
+  } as unknown as SupabaseJobStore;
+  const job = {
+    id: "job-1",
+    input_json: {
+      carouselId: "carousel-1",
+      editId: "edit-1",
+      revision: 4,
+      userId: "user-1",
+    },
+    job_type: "render_trending_carousel_edit",
+  } as unknown as BackgroundJobRow;
+
+  const result = await runRenderTrendingCarouselEditJob(job, {
+    checkpoint: async () => undefined,
+    dependencies: {
+      renderCarouselSlide: async (input) => {
+        renderedSlideNumbers.push(input.slide.slideNumber);
+        return {
+          buffer: Buffer.from("rendered"),
+          diagnostics: {
+            bubbleShapeStrategy: "plain-white-text-with-shadow",
+            fontFamily: "Geist",
+            maxTextWidth: 700,
+            whiteBackgroundGroupCount: 0,
+          },
+        };
+      },
+      uploadRenderedCarouselSlide: async (input) => {
+        uploadedSlideNumbers.push(input.slideNumber);
+        return {
+          key: "carousels/edited/slide-2.webp",
+          url: "https://storage.example/edited-2.webp",
+        };
+      },
+    },
+    store,
+  });
+
+  assert.deepEqual(renderedSlideNumbers, [2]);
+  assert.deepEqual(uploadedSlideNumbers, [2]);
+  assert.deepEqual(readyOutput, {
+    rendererVersion:
+      "social-plain-text-renderer-v16-followup-copy-50-normalized-edit-v1",
+    slides: [
+      {
+        renderedS3Key: "carousels/original/slide-1.webp",
+        renderedUrl: "https://storage.example/original-1.webp",
+        slideNumber: 1,
+      },
+      {
+        renderedS3Key: "carousels/edited/slide-2.webp",
+        renderedUrl: "https://storage.example/edited-2.webp",
+        slideNumber: 2,
+      },
+    ],
+  });
+  assert.equal(result.renderedSlideCount, 2);
+});
+
 test("renders Structure 2 screenshot edits with the story-native renderer", async () => {
   const receivedSpecs: Array<Record<string, unknown>> = [];
   let readyOutput: unknown;

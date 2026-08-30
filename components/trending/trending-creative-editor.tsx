@@ -17,7 +17,6 @@ import {
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -1207,12 +1206,12 @@ function EditorPreview({
             <Structure2StoryText layout={structure2Layout} />
           ) : (
             <div className="w-[82cqw] text-center">
-              <CarouselBubbleText
+              <CarouselOutlinedText
                 kind="headline"
                 text={slide.headline || "Add a headline"}
               />
               {supportingText ? (
-                <CarouselBubbleText kind="body" text={supportingText} />
+                <CarouselOutlinedText kind="body" text={supportingText} />
               ) : null}
             </div>
           )}
@@ -1302,8 +1301,7 @@ const STRUCTURE_2_RENDER_WIDTH = 1080;
 const STRUCTURE_2_SAFE_X = 72;
 const STRUCTURE_2_SAFE_TOP = 84;
 const STRUCTURE_2_SAFE_BOTTOM = 92;
-const STRUCTURE_2_STORY_HORIZONTAL_PADDING = 34;
-const STRUCTURE_2_STORY_VERTICAL_PADDING = 10;
+const STRUCTURE_2_DIRECT_TEXT_SIDE_BUFFER = 34;
 const CAROUSEL_FIXED_EDITOR_FONT_SIZE = 44;
 
 type Structure2EditorTextLayout = {
@@ -1446,38 +1444,21 @@ function Structure2StoryText({ layout }: { layout: Structure2EditorLayout }) {
     <div
       className="text-center"
       style={{
-        color: "#141518",
+        color: "#ffffff",
         fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
         fontSize: `${layout.story.fontSize / 10.8}cqw`,
         fontWeight: 600,
         letterSpacing: 0,
         lineHeight: layout.story.lineHeight / layout.story.fontSize,
-        paddingBlock: `${STRUCTURE_2_STORY_VERTICAL_PADDING / 2 / 10.8}cqw`,
+        paintOrder: "stroke fill",
+        WebkitTextStroke: "0.278cqw rgba(0, 0, 0, 0.72)",
         width: `${layout.storyBounds.width / 10.8}cqw`,
       }}
     >
       {layout.story.lines.map((line, index) => (
         <span
           key={`${index}:${line}`}
-          className={cn(
-            "mx-auto block w-fit whitespace-nowrap rounded-[1.7cqw] bg-white",
-          )}
-          style={{
-            marginTop:
-              index > 0
-                ? `${-STRUCTURE_2_STORY_VERTICAL_PADDING / 10.8}cqw`
-                : undefined,
-            paddingBlock: `${STRUCTURE_2_STORY_VERTICAL_PADDING / 2 / 10.8}cqw`,
-            width: `${Math.min(
-              layout.storyBounds.width,
-              Math.ceil(
-                estimateStructure2EditorTextWidth(
-                  line,
-                  layout.story.fontSize,
-                ) + STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
-              ),
-            ) / 10.8}cqw`,
-          }}
+          className="block whitespace-nowrap"
         >
           {line}
         </span>
@@ -1495,7 +1476,7 @@ function Structure2CtaText({
 }) {
   return (
     <div
-      className="pointer-events-none absolute flex flex-col items-center justify-center text-center text-[#141518]"
+      className="pointer-events-none absolute flex flex-col items-center justify-center text-center text-white"
       style={{
         fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
         fontSize: `${layout.text.fontSize / 10.8}cqw`,
@@ -1504,25 +1485,16 @@ function Structure2CtaText({
         left: `${(layout.bounds.x / STRUCTURE_2_RENDER_WIDTH) * 100}%`,
         letterSpacing: 0,
         lineHeight: layout.text.lineHeight / layout.text.fontSize,
+        paintOrder: "stroke fill",
         top: `${(layout.bounds.y / layout.renderHeight) * 100}%`,
+        WebkitTextStroke: "0.278cqw rgba(0, 0, 0, 0.72)",
         width: `${(layout.bounds.width / STRUCTURE_2_RENDER_WIDTH) * 100}%`,
       }}
     >
       {layout.text.lines.map((line, index) => (
         <span
           key={`${index}:${line}`}
-          className="mx-auto block whitespace-nowrap rounded-[1.7cqw] bg-white"
-          style={{
-            marginTop:
-              index > 0
-                ? `${-STRUCTURE_2_STORY_VERTICAL_PADDING / 10.8}cqw`
-                : undefined,
-            paddingBlock: `${STRUCTURE_2_STORY_VERTICAL_PADDING / 2 / 10.8}cqw`,
-            width: `${Math.ceil(
-              estimateStructure2EditorTextWidth(line, layout.text.fontSize) +
-                STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
-            ) / 10.8}cqw`,
-          }}
+          className="block whitespace-nowrap"
         >
           {line}
         </span>
@@ -1536,11 +1508,11 @@ function createStructure2EditorLayout(
 ): Structure2EditorLayout {
   const height = getStructure2RenderHeight(slide.renderFormat);
   const maximumTextWidth = STRUCTURE_2_RENDER_WIDTH - STRUCTURE_2_SAFE_X * 2;
-  const treatment = "pill" as const;
+  const treatment = "overlay" as const;
   const story = fitStructure2EditorText({
-    maximumLines: 6,
+    maximumLines: 12,
     maximumWidth:
-      maximumTextWidth - STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
+      maximumTextWidth - STRUCTURE_2_DIRECT_TEXT_SIDE_BUFFER * 2,
     value:
       (slide.subtext
         ? `${slide.headline} ${slide.subtext}`
@@ -1548,39 +1520,24 @@ function createStructure2EditorLayout(
   });
   const cta = slide.ctaText
     ? fitStructure2EditorText({
-        maximumLines: 3,
+        maximumLines: 6,
         maximumWidth:
-          maximumTextWidth - STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
+          maximumTextWidth - STRUCTURE_2_DIRECT_TEXT_SIDE_BUFFER * 2,
         value: slide.ctaText,
       })
     : null;
-  const storyWidth = Math.min(
-    maximumTextWidth,
-    story.maximumLineWidth +
-      STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
-  );
-  const storyHeight =
-    story.blockHeight + STRUCTURE_2_STORY_VERTICAL_PADDING * 2;
-  const ctaHeight = cta
-    ? cta.blockHeight + STRUCTURE_2_STORY_VERTICAL_PADDING * 2
-    : 0;
-  const ctaWidth = cta
-    ? Math.min(
-        maximumTextWidth,
-        cta.maximumLineWidth + STRUCTURE_2_STORY_HORIZONTAL_PADDING * 2,
-      )
-    : 0;
-  const ctaBottom = height - STRUCTURE_2_SAFE_BOTTOM;
-  const ctaTop = cta ? ctaBottom - ctaHeight : null;
-  const maximumStoryBottom = ctaTop
-    ? ctaTop - 46
-    : height - STRUCTURE_2_SAFE_BOTTOM;
+  const storyWidth = story.maximumLineWidth;
+  const storyHeight = story.blockHeight;
+  const ctaHeight = cta?.blockHeight ?? 0;
+  const ctaWidth = cta?.maximumLineWidth ?? 0;
+  const textBlockHeight = storyHeight + (cta ? 46 + ctaHeight : 0);
   const storyTop = resolveStructure2StoryTop({
-    blockHeight: storyHeight,
+    blockHeight: textBlockHeight,
     height,
-    maximumBottom: maximumStoryBottom,
+    maximumBottom: height - STRUCTURE_2_SAFE_BOTTOM,
     position: getStructure2TextPosition(slide.textPosition.y),
   });
+  const ctaTop = cta ? storyTop + storyHeight + 46 : null;
   const storyBounds = {
     height: storyHeight,
     width: storyWidth,
@@ -1727,143 +1684,30 @@ function getStructure2ReadabilityBackground({
   return `linear-gradient(to bottom,rgba(0,0,0,${topOpacity}),rgba(0,0,0,.04) 48%,rgba(0,0,0,${bottomOpacity}))`;
 }
 
-type CarouselBubbleGeometry = {
-  height: number;
-  rects: Array<{
-    height: number;
-    radius: number;
-    width: number;
-    x: number;
-    y: number;
-  }>;
-  width: number;
-};
-
-function CarouselBubbleText({
+function CarouselOutlinedText({
   kind,
   text,
 }: {
   kind: "body" | "headline";
   text: string;
 }) {
-  const containerRef = useRef<HTMLParagraphElement>(null);
-  const textRef = useRef<HTMLSpanElement>(null);
-  const [geometry, setGeometry] = useState<CarouselBubbleGeometry>({
-    height: 0,
-    rects: [],
-    width: 0,
-  });
-
-  const measureBubble = useCallback(() => {
-    const container = containerRef.current;
-    const textElement = textRef.current;
-
-    if (!container || !textElement) {
-      return;
-    }
-
-    const containerRect = container.getBoundingClientRect();
-    if (containerRect.width <= 0 || containerRect.height <= 0) {
-      return;
-    }
-
-    const paddingX = containerRect.width * (18 / 842.4);
-    const paddingY =
-      containerRect.width * (kind === "headline" ? 7 / 842.4 : 6 / 842.4);
-    const radius = containerRect.width * (20 / 842.4);
-    const nextGeometry: CarouselBubbleGeometry = {
-      height: roundBubbleCoordinate(containerRect.height),
-      rects: Array.from(textElement.getClientRects())
-        .filter((rect) => rect.width > 0 && rect.height > 0)
-        .map((rect) => ({
-          height: roundBubbleCoordinate(rect.height + paddingY * 2),
-          radius: roundBubbleCoordinate(radius),
-          width: roundBubbleCoordinate(rect.width + paddingX * 2),
-          x: roundBubbleCoordinate(rect.left - containerRect.left - paddingX),
-          y: roundBubbleCoordinate(rect.top - containerRect.top - paddingY),
-        })),
-      width: roundBubbleCoordinate(containerRect.width),
-    };
-
-    setGeometry((current) =>
-      hasMatchingBubbleGeometry(current, nextGeometry) ? current : nextGeometry,
-    );
-  }, [kind]);
-
-  useLayoutEffect(() => {
-    measureBubble();
-
-    const container = containerRef.current;
-    if (!container || typeof ResizeObserver === "undefined") {
-      return;
-    }
-
-    const observer = new ResizeObserver(measureBubble);
-    observer.observe(container);
-
-    void document.fonts?.ready.then(measureBubble);
-
-    return () => observer.disconnect();
-  }, [measureBubble, text]);
-
   return (
     <p
-      ref={containerRef}
       className={cn(
-        "relative isolate mx-auto max-w-[78cqw] text-center text-[#111316]",
+        "mx-auto max-w-[78cqw] text-center text-white",
         kind === "headline"
-          ? "text-[4.074cqw] font-bold leading-[1.04]"
+          ? "text-[4.074cqw] font-semibold leading-[1.04]"
           : "mt-[2.2cqw] text-[4.074cqw] font-semibold leading-[1.05]",
       )}
+      style={{
+        fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
+        letterSpacing: 0,
+        paintOrder: "stroke fill",
+        WebkitTextStroke: "0.278cqw rgba(0, 0, 0, 0.72)",
+      }}
     >
-      {geometry.width > 0 && geometry.height > 0 ? (
-        <svg
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -z-10 size-full overflow-visible"
-          viewBox={`0 0 ${geometry.width} ${geometry.height}`}
-          preserveAspectRatio="none"
-        >
-          {geometry.rects.map((rect, index) => (
-            <rect
-              key={index}
-              fill="#ffffff"
-              height={rect.height}
-              rx={rect.radius}
-              width={rect.width}
-              x={rect.x}
-              y={rect.y}
-            />
-          ))}
-        </svg>
-      ) : null}
-      <span ref={textRef}>{text}</span>
+      {text}
     </p>
-  );
-}
-
-function roundBubbleCoordinate(value: number) {
-  return Math.round(value * 10) / 10;
-}
-
-function hasMatchingBubbleGeometry(
-  current: CarouselBubbleGeometry,
-  next: CarouselBubbleGeometry,
-) {
-  return (
-    current.height === next.height &&
-    current.width === next.width &&
-    current.rects.length === next.rects.length &&
-    current.rects.every((rect, index) => {
-      const nextRect = next.rects[index];
-      return (
-        nextRect !== undefined &&
-        rect.height === nextRect.height &&
-        rect.radius === nextRect.radius &&
-        rect.width === nextRect.width &&
-        rect.x === nextRect.x &&
-        rect.y === nextRect.y
-      );
-    })
   );
 }
 

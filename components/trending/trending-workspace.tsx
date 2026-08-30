@@ -1423,6 +1423,28 @@ function TrendingFeed({
     }));
   }
 
+  function moveActiveSlide(
+    carouselId: string,
+    direction: -1 | 1,
+    slideCount: number,
+  ) {
+    if (slideCount < 2) {
+      return;
+    }
+
+    setActiveSlideByCarouselId((current) => {
+      const currentIndex = Math.min(
+        current[carouselId] ?? 0,
+        Math.max(slideCount - 1, 0),
+      );
+
+      return {
+        ...current,
+        [carouselId]: (currentIndex + direction + slideCount) % slideCount,
+      };
+    });
+  }
+
   if (hookComposition) {
     return (
       <TrendingHookComposer
@@ -1447,6 +1469,7 @@ function TrendingFeed({
           remainingCount={remainingCount}
           onRetry={onRetry}
           onActiveSlideChange={setActiveSlide}
+          onActiveSlideMove={moveActiveSlide}
           onHookCompose={(item, edit) => setHookComposition({ edit, item })}
         />
       ) : null}
@@ -1671,6 +1694,7 @@ function TrendingDeck({
   enqueueDecision,
   headerActionsRoot,
   onActiveSlideChange,
+  onActiveSlideMove,
   onHookCompose,
   onRetry,
   pendingSlotCount,
@@ -1681,6 +1705,11 @@ function TrendingDeck({
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   headerActionsRoot: HTMLDivElement | null;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
+  onActiveSlideMove: (
+    carouselId: string,
+    direction: -1 | 1,
+    slideCount: number,
+  ) => void;
   onHookCompose: (
     item: TrendingHookVideoFeedItem,
     edit: TrendingCreativeEditRecord | null,
@@ -2434,6 +2463,7 @@ function TrendingDeck({
                   itemCount={visibleCandidates.length}
                   itemIndex={slot.itemIndex}
                   onActiveSlideChange={onActiveSlideChange}
+                  onActiveSlideMove={onActiveSlideMove}
                   onHookPreviewStatusChange={handleHookPreviewStatusChange}
                   onPointerCancel={cancelPointerInteraction}
                   onPointerDown={handlePointerDown}
@@ -2949,6 +2979,11 @@ type TrendingDeckCardProps = {
   itemCount: number;
   itemIndex: number;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
+  onActiveSlideMove: (
+    carouselId: string,
+    direction: -1 | 1,
+    slideCount: number,
+  ) => void;
   onHookPreviewStatusChange: (
     creativeId: string,
     status: HookPreviewStatus,
@@ -3517,6 +3552,7 @@ function CarouselDeckCard({
   exitDirection,
   isDragging,
   onActiveSlideChange,
+  onActiveSlideMove,
   onPointerCancel,
   onPointerDown,
   onPointerMove,
@@ -3533,6 +3569,11 @@ function CarouselDeckCard({
   exitDirection: "left" | "right" | null;
   isDragging: boolean;
   onActiveSlideChange: (carouselId: string, nextIndex: number) => void;
+  onActiveSlideMove: (
+    carouselId: string,
+    direction: -1 | 1,
+    slideCount: number,
+  ) => void;
   onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void;
   onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
   onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
@@ -3562,18 +3603,21 @@ function CarouselDeckCard({
     isDragging,
   });
 
-  function moveSlide(event: ReactMouseEvent<HTMLButtonElement>, direction: number) {
-    event.stopPropagation();
-    onActiveSlideChange(
+  function moveSlide(direction: -1 | 1) {
+    onActiveSlideMove(
       candidate.carousel.carouselId,
-      (activeSlideIndex + direction + candidate.slides.length) %
-        candidate.slides.length,
+      direction,
+      candidate.slides.length,
     );
   }
 
   function selectSlide(event: ReactMouseEvent<HTMLButtonElement>, nextIndex: number) {
     event.stopPropagation();
     onActiveSlideChange(candidate.carousel.carouselId, nextIndex);
+  }
+
+  function stopDeckControlPointer(event: ReactPointerEvent<HTMLElement>) {
+    event.stopPropagation();
   }
 
   return (
@@ -3630,8 +3674,11 @@ function CarouselDeckCard({
               <button
                 type="button"
                 data-deck-control
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) => moveSlide(event, -1)}
+                onPointerCancel={stopDeckControlPointer}
+                onPointerDown={stopDeckControlPointer}
+                onPointerMove={stopDeckControlPointer}
+                onPointerUp={stopDeckControlPointer}
+                onClick={() => moveSlide(-1)}
                 className="absolute left-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white transition-[background-color,transform] hover:scale-105 hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none"
                 aria-label={`Previous slide for ${title}`}
               >
@@ -3640,8 +3687,11 @@ function CarouselDeckCard({
               <button
                 type="button"
                 data-deck-control
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) => moveSlide(event, 1)}
+                onPointerCancel={stopDeckControlPointer}
+                onPointerDown={stopDeckControlPointer}
+                onPointerMove={stopDeckControlPointer}
+                onPointerUp={stopDeckControlPointer}
+                onClick={() => moveSlide(1)}
                 className="absolute right-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white transition-[background-color,transform] hover:scale-105 hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none"
                 aria-label={`Next slide for ${title}`}
               >
@@ -3653,7 +3703,7 @@ function CarouselDeckCard({
           {isActive ? (
             <div
               data-deck-control
-              onPointerDown={(event) => event.stopPropagation()}
+              onPointerDown={stopDeckControlPointer}
               className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1.5"
               aria-label={`${title} slides`}
             >
@@ -3662,7 +3712,10 @@ function CarouselDeckCard({
                   key={slide.slideNumber}
                   type="button"
                   data-deck-control
-                  onPointerDown={(event) => event.stopPropagation()}
+                  onPointerCancel={stopDeckControlPointer}
+                  onPointerDown={stopDeckControlPointer}
+                  onPointerMove={stopDeckControlPointer}
+                  onPointerUp={stopDeckControlPointer}
                   onClick={(event) => selectSlide(event, index)}
                   aria-label={`Show slide ${index + 1} for ${title}`}
                   aria-current={activeSlideIndex === index ? "true" : undefined}

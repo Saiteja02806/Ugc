@@ -151,14 +151,43 @@ export async function runRenderTrendingCarouselEditJob(
       renderedUrl: string;
       slideNumber: number;
     }> = [];
-
-    for (const [index, editedSlide] of editedSlides.entries()) {
+    const editSlidesWithSource = editedSlides.map((editedSlide) => {
       const originalSlide = originalSlideByNumber.get(editedSlide.slideNumber);
 
       if (!originalSlide || originalSlide.id !== editedSlide.slideId) {
         throw new Error(
           `Carousel slide ${editedSlide.slideNumber} changed before rendering.`,
         );
+      }
+
+      return {
+        editedSlide,
+        originalSlide,
+        reusableRender: getReusableOriginalRender(originalSlide, editedSlide),
+      };
+    });
+    const slideRenderCount = editSlidesWithSource.filter(
+      (slide) => slide.reusableRender === null,
+    ).length;
+    let completedSlideRenderCount = 0;
+
+    for (const {
+      editedSlide,
+      originalSlide,
+      reusableRender,
+    } of editSlidesWithSource) {
+      if (reusableRender) {
+        renderedSlides.push({
+          ...reusableRender,
+          slideNumber: editedSlide.slideNumber,
+        });
+        logger.info("Trending Carousel edit slide reused", {
+          editId: input.editId,
+          jobId: job.id,
+          revision: input.revision,
+          slideNumber: editedSlide.slideNumber,
+        });
+        continue;
       }
 
       if (!originalSlide.category_image_asset_id) {
@@ -185,7 +214,10 @@ export async function runRenderTrendingCarouselEditJob(
               ),
               textStyle: originalTextStyle,
             });
-      const progressAfterRender = 10 + Math.round(((index + 1) / editedSlides.length) * 70);
+      completedSlideRenderCount += 1;
+      const progressAfterRender =
+        10 +
+        Math.round((completedSlideRenderCount / Math.max(slideRenderCount, 1)) * 70);
 
       await context.checkpoint({
         progress: progressAfterRender,
@@ -437,6 +469,55 @@ function parsePlannedSlide(value: Json): PlannedCarouselSlide {
     textMode,
     textPosition,
   };
+}
+
+function getReusableOriginalRender(
+  original: CarouselSlideRow,
+  edited: EditableCarouselSlide,
+): {
+  renderedS3Key: string;
+  renderedUrl: string;
+} | null {
+  if (!original.rendered_s3_key || !original.rendered_url) {
+    return null;
+  }
+
+  const originalTextPosition = getOriginalNormalizedTextPosition(
+    original.text_position,
+  );
+
+  if (
+    edited.backgroundAssetId !== original.category_image_asset_id ||
+    edited.ctaText !== (original.cta_text ?? "") ||
+    edited.headline !== original.headline ||
+    edited.subtext !== (original.subtext ?? "") ||
+    edited.textPosition.x !== originalTextPosition.x ||
+    edited.textPosition.y !== originalTextPosition.y ||
+    edited.visualRole !== original.visual_role
+  ) {
+    return null;
+  }
+
+  return {
+    renderedS3Key: original.rendered_s3_key,
+    renderedUrl: original.rendered_url,
+  };
+}
+
+function getOriginalNormalizedTextPosition(
+  value: string | null,
+): CarouselNormalizedTextPosition {
+  const normalized = value?.trim().toLowerCase() ?? "";
+
+  if (normalized.includes("top") || normalized.includes("upper")) {
+    return { x: 0.5, y: 0.3 };
+  }
+
+  if (normalized.includes("bottom") || normalized.includes("lower")) {
+    return { x: 0.5, y: 0.7 };
+  }
+
+  return { x: 0.5, y: 0.5 };
 }
 
 function createFallbackPlannedSlide(slide: CarouselSlideRow): PlannedCarouselSlide {

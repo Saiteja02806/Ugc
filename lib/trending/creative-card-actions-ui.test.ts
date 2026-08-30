@@ -563,19 +563,33 @@ test("defers the Trending Hook composer until an accepted Hook opens it", () => 
   assert.match(workspace, /function HookVideoComposerLoading\(\)/);
 });
 
-test("Carousel editing starts from the exact render and keeps live previews structure-aware", () => {
+test("Carousel editing keeps the renderer's outlined white text treatment while dragging", () => {
   assert.match(editor, /data-carousel-editor-preview=\{/);
   assert.match(editor, /showExactRender \? "exact-render" : "live-render"/);
   assert.match(editor, /function getExactCarouselPreviewUrl/);
   assert.match(editor, /function Structure2StoryText/);
-  assert.match(editor, /color: "#141518"/);
+  assert.match(editor, /color: "#ffffff"/);
   assert.match(editor, /fontWeight: 600/);
+  assert.match(editor, /WebkitTextStroke: "0\.278cqw rgba\(0, 0, 0, 0\.72\)"/);
   assert.match(editor, /function CarouselEditorBackground/);
   assert.match(editor, /story_product_reveal/);
-  assert.match(editor, /function CarouselBubbleText/);
-  assert.match(editor, /fill="#ffffff"/);
+  assert.match(editor, /function CarouselOutlinedText/);
+  assert.doesNotMatch(editor, /function CarouselBubbleText/);
+  assert.doesNotMatch(editor, /fill="#ffffff"/);
+  assert.doesNotMatch(editor, /bg-white/);
   assert.doesNotMatch(editor, /<feDropShadow/);
   assert.match(editor, /Rendered as the bottom action label\./);
+});
+
+test("moves the real edited Carousel slide from the latest state instead of a stale closure", () => {
+  assert.match(workspace, /function moveActiveSlide\([\s\S]*setActiveSlideByCarouselId\(\(current\) =>/);
+  assert.match(workspace, /\[carouselId\]: \(currentIndex \+ direction \+ slideCount\) % slideCount/);
+  assert.match(workspace, /onActiveSlideMove=\{moveActiveSlide\}/);
+  assert.match(workspace, /onClick=\{\(\) => moveSlide\(1\)\}/);
+  assert.match(workspace, /function stopDeckControlPointer/);
+  assert.match(workspace, /onPointerMove=\{stopDeckControlPointer\}/);
+  assert.match(workspace, /edit\?\.format === "carousel" && edit\.renderState === "ready"/);
+  assert.match(workspace, /src=\{editedRenderedUrl \?\? activeSlide\.renderedUrl\}/);
 });
 
 test("Carousel editor presents a quiet Hook library folder", () => {

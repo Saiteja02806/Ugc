@@ -1,6 +1,5 @@
 import {
   createUserSchedule,
-  getUserSchedule,
   SchedulingRequestError,
 } from "@/lib/scheduling/service";
 import {
@@ -8,10 +7,7 @@ import {
   hookVideoErrorResponse,
   hookVideoJson,
 } from "@/lib/trending/hook-video-api";
-import {
-  attachScheduleDraftToHookVideo,
-  getHookVideoDraftForUser,
-} from "@/lib/trending/hook-video-db";
+import { attachScheduleDraftToHookVideo } from "@/lib/trending/hook-video-db";
 import { createHookVideoScheduleIdempotencyKey } from "@/lib/trending/hook-video-scheduling";
 import { persistHookVideoSelection } from "@/lib/trending/hook-video-service";
 import { prepareOwnedHookMediaAsset } from "@/lib/trending/hook-video-sources";
@@ -40,43 +36,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const existingDraft = parsed.data.draftId
-      ? await getHookVideoDraftForUser({
-          draftId: parsed.data.draftId,
-          userId: auth.user.uid,
-        })
-      : null;
-
-    if (existingDraft?.scheduledPostId) {
-      const existingSchedule = await getUserSchedule({
-        postId: existingDraft.scheduledPostId,
-        userId: auth.user.uid,
-      });
-      const requestedIdempotencyKey =
-        createHookVideoScheduleIdempotencyKey({
-          ...parsed.data,
-          draftId: existingDraft.id,
-        });
-
-      if (
-        existingSchedule &&
-        existingSchedule.idempotencyKey === requestedIdempotencyKey &&
-        existingSchedule.status !== "cancelled"
-      ) {
-        return hookVideoJson({
-          draft: existingDraft,
-          ok: true,
-          scheduleId: existingSchedule.id,
-        });
-      }
-
-      throw new SchedulingRequestError(
-        "This Hook video already has a schedule. Open Scheduling to edit or cancel it.",
-        409,
-        "hook_video_already_scheduled",
-      );
-    }
-
     const composition = await persistHookVideoSelection({
       input: parsed.data,
       librarySaved: false,

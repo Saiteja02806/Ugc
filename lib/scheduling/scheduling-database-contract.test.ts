@@ -46,6 +46,9 @@ const hookVideoScheduleMigration = readProjectFile(
 const hookVideoScheduleRecoveryMigration = readProjectFile(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260829093000_restore_hook_video_schedule_uniqueness_guards.sql",
 );
+const hookVideoScheduleDuplicatesMigration = readProjectFile(
+  "supabase/migrations/20260830081949_allow_multiple_hook_video_schedules.sql",
+);
 const hookVideoScheduleRoute = readProjectFile(
   "app/api/trending/hook-videos/drafts/schedule/route.ts",
 );
@@ -1200,7 +1203,7 @@ test("Calendar starts at the fixed rollout boundary and hides historical posts",
   );
 });
 
-test("each saved Hook video links to at most one valid schedule", () => {
+test("a Hook video can be scheduled intentionally more than once", () => {
   assert.match(
     hookVideoScheduleMigration,
     /foreign key \(scheduled_post_id\)[\s\S]*references public\.scheduled_posts\(id\)[\s\S]*on delete set null/,
@@ -1210,12 +1213,22 @@ test("each saved Hook video links to at most one valid schedule", () => {
     /create unique index if not exists hook_video_drafts_unique_schedule_idx[\s\S]*where scheduled_post_id is not null/,
   );
   assert.match(
-    hookVideoScheduleMigration,
-    /create unique index if not exists scheduled_posts_active_hook_video_draft_idx[\s\S]*metadata \? 'hookVideoDraftId'[\s\S]*status <> 'cancelled'/,
+    hookVideoScheduleDuplicatesMigration,
+    /create index if not exists scheduled_posts_hook_video_draft_idx[\s\S]*metadata \? 'hookVideoDraftId'/,
   );
   assert.match(
-    hookVideoScheduleRoute,
-    /existingDraft\?\.scheduledPostId[\s\S]*existingSchedule\.idempotencyKey === requestedIdempotencyKey[\s\S]*hook_video_already_scheduled/,
+    hookVideoScheduleDuplicatesMigration,
+    /drop index if exists public\.scheduled_posts_active_hook_video_draft_idx/,
+  );
+  assert.doesNotMatch(hookVideoScheduleRoute, /hook_video_already_scheduled/);
+  assert.match(schedulingService, /getScheduledPostByIdempotency/);
+  assert.match(
+    schedulingDb,
+    /eq\("idempotency_key", params\.idempotencyKey\)[\s\S]*neq\("status", "cancelled"\)/,
+  );
+  assert.match(
+    hookVideoScheduleDuplicatesMigration,
+    /create unique index if not exists scheduled_posts_active_user_idempotency_idx[\s\S]*status <> 'cancelled'[\s\S]*drop index if exists public\.scheduled_posts_user_idempotency_idx/,
   );
 });
 

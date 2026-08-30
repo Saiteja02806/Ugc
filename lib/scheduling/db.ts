@@ -349,6 +349,7 @@ export async function getScheduledPostByIdempotency(params: {
     .select("*")
     .eq("user_id", params.userId)
     .eq("idempotency_key", params.idempotencyKey)
+    .neq("status", "cancelled")
     .maybeSingle();
 
   if (error) {

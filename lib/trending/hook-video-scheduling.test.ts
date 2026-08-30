@@ -85,3 +85,22 @@ test("Hook schedule idempotency changes with composition and timezone", () => {
     }),
   );
 });
+
+test("Hook schedule idempotency changes with the requested publish time", () => {
+  const first = createHookVideoScheduleIdempotencyKey(baseInput);
+
+  assert.notEqual(
+    first,
+    createHookVideoScheduleIdempotencyKey({
+      ...baseInput,
+      scheduledDate: "2026-07-21",
+    }),
+  );
+  assert.notEqual(
+    first,
+    createHookVideoScheduleIdempotencyKey({
+      ...baseInput,
+      scheduledTime: "15:00",
+    }),
+  );
+});

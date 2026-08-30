@@ -135,7 +135,7 @@ export default async function Home() {
                   <svg
                     viewBox="0 0 520 130"
                     preserveAspectRatio="none"
-                    className="pointer-events-none absolute -left-[0.08em] -top-[0.14em] h-[1.29em] w-[116%] overflow-visible"
+                    className="pointer-events-none absolute -left-[0.08em] -top-[0.14em] h-[1.29em] w-[108%] overflow-visible"
                     fill="none"
                     aria-hidden="true"
                   >
@@ -144,7 +144,7 @@ export default async function Home() {
                       stroke="currentColor"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      strokeWidth="4.5"
+                      strokeWidth="3.2"
                     />
                   </svg>
                 </span>

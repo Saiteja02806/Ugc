@@ -731,6 +731,7 @@ export function TrendingWorkspace() {
   const existingMemoryCache = user
     ? getInMemoryTrendingFeed(user.uid, currentBrowserLocalDate)
     : null;
+  const trendingFeedSessionKey = `${user?.uid ?? "signed-out"}:${currentBrowserLocalDate}`;
 
   const loadedFeedLocalDate = useRef<string | null>(
     existingMemoryCache ? existingMemoryCache.localDate : null,
@@ -751,6 +752,24 @@ export function TrendingWorkspace() {
     }
     return [];
   });
+  const [presentedTrendingFeedSessionKey, setPresentedTrendingFeedSessionKey] = useState(
+    () => {
+      if (!existingMemoryCache || !user) {
+        return null;
+      }
+
+      const pendingDecisionAssignmentIds = getPendingDecisionAssignmentIds(
+        user.uid,
+      );
+      return existingMemoryCache.items.some(
+        (item) => !pendingDecisionAssignmentIds.has(item.assignmentId),
+      )
+        ? `${user.uid}:${currentBrowserLocalDate}`
+        : null;
+    },
+  );
+  const hasPresentedTrendingFeed =
+    presentedTrendingFeedSessionKey === trendingFeedSessionKey;
   const [trendingFeedState, setTrendingFeedState] =
     useState<TrendingDailyFeedState | null>(() => {
       return existingMemoryCache ? existingMemoryCache.feedState : null;
@@ -875,6 +894,7 @@ export function TrendingWorkspace() {
 
       if (isInitialUserLoad || isNewLocalDate || loadedFeedFailed.current) {
         setTrendingItems([]);
+        setPresentedTrendingFeedSessionKey(null);
         setTrendingFeedFailure(null);
         setTrendingFeedState(null);
         setTrendingFeedProgress(null);
@@ -973,6 +993,9 @@ export function TrendingWorkspace() {
           (item) => !pendingDecisionAssignmentIds.has(item.assignmentId),
         );
         setTrendingItems(nextVisibleItems);
+        if (nextVisibleItems.length > 0) {
+          setPresentedTrendingFeedSessionKey(`${userId}:${currentLocalDate}`);
+        }
         setTrendingFeedFailure(data.feed?.failure ?? null);
         setTrendingFeedState(data.feed?.state ?? null);
         setTrendingUpgradeRequired(Boolean(data.upgradeRequired));
@@ -1203,9 +1226,11 @@ export function TrendingWorkspace() {
           >
             <div className="min-w-0 flex-1">
               <TrendingFeedGallery
+                key={trendingFeedSessionKey}
                 enqueueDecision={enqueueDecision}
                 failure={trendingFeedFailure}
                 headerActionsRoot={headerActionsRoot}
+                hasPresentedFeed={hasPresentedTrendingFeed}
                 items={orderedTrendingItems}
                 error={visibleCarouselHistoryError}
                 loading={carouselFeedLoading}
@@ -1251,6 +1276,7 @@ function TrendingFeedGallery({
   error,
   failure,
   headerActionsRoot,
+  hasPresentedFeed,
   items,
   loading,
   pendingSlotCount,
@@ -1265,6 +1291,7 @@ function TrendingFeedGallery({
   error: string | null;
   failure: TrendingFeedFailure | null;
   headerActionsRoot: HTMLDivElement | null;
+  hasPresentedFeed: boolean;
   items: TrendingFeedItem[];
   loading: boolean;
   pendingSlotCount: number;
@@ -1276,8 +1303,14 @@ function TrendingFeedGallery({
   upgradeRequired: boolean;
 }) {
   const showSkeleton = loading;
+  // A right swipe records the decision and removes its card immediately. Keep
+  // the already-presented review shell alive for this user/day so the accepted
+  // Carousel or Wall action dialog can paint even when that was the final
+  // ready card.
+  const retainingReviewShell = hasPresentedFeed && items.length === 0;
+  const shouldRenderFeed = items.length > 0 || hasPresentedFeed;
 
-  if (!loading && error && items.length === 0) {
+  if (!retainingReviewShell && !loading && error && items.length === 0) {
     return (
       <TrendingFeedFailureState
         failure={failure}
@@ -1287,23 +1320,33 @@ function TrendingFeedGallery({
     );
   }
 
-  if (!loading && profile?.state === "missing") {
+  if (!retainingReviewShell && !loading && profile?.state === "missing") {
     return <CarouselProfilePrompt onAction={onCompleteProfile} />;
   }
 
-  if (!showSkeleton && items.length === 0 && upgradeRequired) {
+  if (!retainingReviewShell && !showSkeleton && items.length === 0 && upgradeRequired) {
     return <TrendingUpgradeRequiredEmptyState />;
   }
 
-  if (!showSkeleton && items.length === 0 && (preparing || pendingSlotCount > 0)) {
+  if (
+    !retainingReviewShell &&
+    !showSkeleton &&
+    items.length === 0 &&
+    (preparing || pendingSlotCount > 0)
+  ) {
     return <TrendingPreparingEmptyState pendingSlotCount={pendingSlotCount} />;
   }
 
-  if (!showSkeleton && items.length === 0 && remainingCount > 0) {
+  if (
+    !retainingReviewShell &&
+    !showSkeleton &&
+    items.length === 0 &&
+    remainingCount > 0
+  ) {
     return <TrendingIncompleteEmptyState onRetry={onRetryHistory} />;
   }
 
-  if (!showSkeleton && items.length === 0) {
+  if (!retainingReviewShell && !showSkeleton && items.length === 0) {
     return <TrendingReadyEmptyState />;
   }
 
@@ -1326,13 +1369,13 @@ function TrendingFeedGallery({
           showSkeleton ? "pointer-events-none opacity-0" : "opacity-100",
         )}
       >
-        {items.length > 0 ? (
-        <TrendingFeed
-          enqueueDecision={enqueueDecision}
-          failure={failure}
-          headerActionsRoot={headerActionsRoot}
-          items={items}
-          pendingSlotCount={pendingSlotCount}
+        {shouldRenderFeed ? (
+          <TrendingFeed
+            enqueueDecision={enqueueDecision}
+            failure={failure}
+            headerActionsRoot={headerActionsRoot}
+            items={items}
+            pendingSlotCount={pendingSlotCount}
             remainingCount={remainingCount}
             onRetry={onRetryHistory}
             upgradeRequired={upgradeRequired}
@@ -1556,22 +1599,20 @@ function TrendingFeed({
 
   return (
     <div className="flex w-full flex-col gap-10">
-      {candidates.length > 0 ? (
-        <TrendingDeck
-          activeSlideByCarouselId={activeSlideByCarouselId}
-          candidates={candidates}
-          enqueueDecision={enqueueDecision}
-          failure={failure}
-          headerActionsRoot={headerActionsRoot}
-          pendingSlotCount={pendingSlotCount}
-          remainingCount={remainingCount}
-          onRetry={onRetry}
-          upgradeRequired={upgradeRequired}
-          onActiveSlideChange={setActiveSlide}
-          onActiveSlideMove={moveActiveSlide}
-          onHookCompose={(item, edit) => setHookComposition({ edit, item })}
-        />
-      ) : null}
+      <TrendingDeck
+        activeSlideByCarouselId={activeSlideByCarouselId}
+        candidates={candidates}
+        enqueueDecision={enqueueDecision}
+        failure={failure}
+        headerActionsRoot={headerActionsRoot}
+        pendingSlotCount={pendingSlotCount}
+        remainingCount={remainingCount}
+        onRetry={onRetry}
+        upgradeRequired={upgradeRequired}
+        onActiveSlideChange={setActiveSlide}
+        onActiveSlideMove={moveActiveSlide}
+        onHookCompose={(item, edit) => setHookComposition({ edit, item })}
+      />
     </div>
   );
 }

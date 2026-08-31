@@ -20,25 +20,14 @@ export async function generateGeminiImageBuffer(
   const referenceImage = referenceImageUrl
     ? await downloadReferenceImage(referenceImageUrl)
     : null;
-  const interaction = await ai.interactions.create({
-    input: referenceImage
-      ? [
-          {
-            data: referenceImage.data,
-            mime_type: referenceImage.mimeType,
-            type: "image" as const,
-          },
-          { text: prompt, type: "text" as const },
-        ]
-      : prompt,
-    model,
-    response_format: {
-      aspect_ratio: aspectRatio,
-      delivery: "inline",
-      image_size: "1K",
-      type: "image",
-    },
-  });
+  const interaction = await ai.interactions.create(
+    buildGeminiImageRequest({
+      aspectRatio,
+      model,
+      prompt,
+      referenceImage,
+    }),
+  );
 
   if (interaction.status !== "completed") {
     throw new Error(
@@ -54,6 +43,32 @@ export async function generateGeminiImageBuffer(
     buffer: Buffer.from(interaction.output_image.data, "base64"),
     model,
     requestId: interaction.id,
+  };
+}
+
+export function buildGeminiImageRequest(params: {
+  aspectRatio: AIStudioImageRatio;
+  model: string;
+  prompt: string;
+  referenceImage: { data: string; mimeType: string } | null;
+}) {
+  return {
+    input: params.referenceImage
+      ? [
+          {
+            data: params.referenceImage.data,
+            mime_type: params.referenceImage.mimeType,
+            type: "image" as const,
+          },
+          { text: params.prompt, type: "text" as const },
+        ]
+      : params.prompt,
+    model: params.model,
+    response_format: {
+      aspect_ratio: params.aspectRatio,
+      image_size: "1K",
+      type: "image",
+    },
   };
 }
 

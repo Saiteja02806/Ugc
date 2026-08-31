@@ -116,6 +116,33 @@ test("finalizes rendered Wall MP4s automatically and preserves retry paths", () 
   );
 });
 
+test("shows a pending Wall video as preparation, not a missing Reel", () => {
+  const selectedDayCard =
+    schedulingWorkspace.match(
+      /function SelectedDayDraftCard\([\s\S]+?type CalendarDay =/,
+    )?.[0] ?? "";
+
+  assert.match(selectedDayCard, /draft\.sourceType === "wall_text_render"/);
+  assert.match(selectedDayCard, /\? "Wall video"/);
+  assert.match(selectedDayCard, /\? "Preparation failed"[\s\S]*: "Preparing"/);
+  assert.match(
+    selectedDayCard,
+    /\{primaryMediaLabel\}: \{primaryMediaValue\}/,
+  );
+  assert.doesNotMatch(
+    selectedDayCard,
+    /\{primaryMediaLabel\}: \{demoMedia\?\.title \?\? "Missing"\}/,
+  );
+  assert.match(
+    schedulingWorkspace,
+    /isWallTextSchedule && renderStatus === "not_requested"\)\s*\)\s*\{\s*return "rendering"/,
+  );
+  assert.doesNotMatch(
+    schedulingWorkspace,
+    /isWallTextSchedule && renderStatus === "not_requested"\)\s*\{\s*return "render_required"/,
+  );
+});
+
 function readProjectFile(relativePath: string) {
   return readFileSync(new URL(`../../${relativePath}`, import.meta.url), "utf8");
 }

@@ -3948,3 +3948,18 @@ Name: **Verify v26 and replace the stale production assignment**
   Hook line fitting, placement, and the existing fixed 52px type contract.
   Existing source copy remains intact; no historic Hook record is rewritten
   solely for this presentation change.
+
+## 2026-08-31 Trending Accepted-Action Persistence
+
+- A right swipe remains one immediate, durable `accepted` decision. It removes
+  the decided card from the current feed without waiting for the subsequent
+  save or scheduling choice.
+- Once a user/day Trending review shell has shown content, it stays mounted
+  when the final ready card is removed. This keeps the accepted Carousel or
+  Wall-of-Text `Save to Creative Assets` / `Schedule Post` chooser alive until
+  the user completes or closes it; the state is reset for a different user or
+  local day.
+- The retained shell uses the existing caught-up, preparation, retry, or
+  failure state behind the chooser. It does not re-add the decided card, change
+  the durable decision outbox, or alter Hook composition, saving, scheduling,
+  rendering, or worker behavior.

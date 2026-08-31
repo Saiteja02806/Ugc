@@ -280,6 +280,62 @@ test("keeps swiped cards dismissed when the Hook composer temporarily replaces t
   );
 });
 
+test("keeps the accepted Carousel and Wall action chooser mounted after the final ready card", () => {
+  const gallery = workspace.slice(
+    workspace.indexOf("function TrendingFeedGallery("),
+    workspace.indexOf("function TrendingIncompleteEmptyState("),
+  );
+  const feed = workspace.slice(
+    workspace.indexOf("function TrendingFeed({"),
+    workspace.indexOf("function TrendingHookComposer("),
+  );
+
+  assert.match(
+    workspace,
+    /const trendingFeedSessionKey = `\$\{user\?\.uid \?\? "signed-out"\}:\$\{currentBrowserLocalDate\}`;/,
+  );
+  assert.match(
+    gallery,
+    /hasPresentedFeed: boolean;/,
+  );
+  assert.match(
+    workspace,
+    /const \[presentedTrendingFeedSessionKey, setPresentedTrendingFeedSessionKey\] = useState\(/,
+  );
+  assert.match(
+    workspace,
+    /const hasPresentedTrendingFeed =\s*presentedTrendingFeedSessionKey === trendingFeedSessionKey;/,
+  );
+  assert.match(
+    workspace,
+    /if \(nextVisibleItems\.length > 0\) \{\s*setPresentedTrendingFeedSessionKey\(`\$\{userId\}:\$\{currentLocalDate\}`\);/,
+  );
+  assert.match(
+    workspace,
+    /setPresentedTrendingFeedSessionKey\(null\);/,
+  );
+  assert.match(
+    workspace,
+    /<TrendingFeedGallery[\s\S]*key=\{trendingFeedSessionKey\}[\s\S]*hasPresentedFeed=\{hasPresentedTrendingFeed\}/,
+  );
+  assert.match(
+    gallery,
+    /const retainingReviewShell = hasPresentedFeed && items\.length === 0;/,
+  );
+  assert.match(
+    gallery,
+    /const shouldRenderFeed = items\.length > 0 \|\| hasPresentedFeed;/,
+  );
+  assert.match(gallery, /\{shouldRenderFeed \? \(\s*<TrendingFeed/);
+  assert.match(feed, /<TrendingDeck[\s\S]*candidates=\{candidates\}/);
+  assert.doesNotMatch(feed, /\{candidates\.length > 0 \? \(/);
+  assert.match(
+    workspace,
+    /candidate\.format === "wall_text"[\s\S]*setWallTextCandidate\(candidate\)/,
+  );
+  assert.match(workspace, /setActionCandidate\(candidate\)/);
+});
+
 test("raises only the Slideshow label above its stacked preview", () => {
   assert.match(
     workspace,
@@ -647,11 +703,11 @@ test("shows ready ideas while other daily slots are still preparing or failed", 
   );
   assert.match(
     workspace,
-    /items\.length === 0 && \(preparing \|\| pendingSlotCount > 0\)[\s\S]*TrendingPreparingEmptyState/,
+    /!retainingReviewShell[\s\S]*items\.length === 0[\s\S]*\(preparing \|\| pendingSlotCount > 0\)[\s\S]*TrendingPreparingEmptyState/,
   );
   assert.match(
     workspace,
-    /if \(!loading && error && items\.length === 0\)/,
+    /if \(!retainingReviewShell && !loading && error && items\.length === 0\)/,
   );
   assert.match(
     workspace,

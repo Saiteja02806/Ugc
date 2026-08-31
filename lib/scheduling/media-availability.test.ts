@@ -94,6 +94,46 @@ test("does not treat a saved carousel as missing video media", () => {
   );
 });
 
+test("does not mistake a pending Wall video for missing Hook or Demo media", () => {
+  assert.equal(
+    getScheduleMediaIssue({
+      activeDemoIds: new Set(),
+      activeOpeningIds: new Set(),
+      mediaLoaded: true,
+      schedule: {
+        ...createSchedule({
+          mediaMode: "single_video",
+          wallTextAssignmentId: "wall-assignment",
+          wallTextRenderStatus: "not_requested",
+        }),
+        sourceKind: "wall_text_pending",
+      },
+    }),
+    null,
+  );
+});
+
+test("does not reclassify a rendered Wall video through the Hook or Demo catalog", () => {
+  assert.equal(
+    getScheduleMediaIssue({
+      activeDemoIds: new Set(),
+      activeOpeningIds: new Set(),
+      mediaLoaded: true,
+      schedule: {
+        ...createSchedule({
+          mediaMode: "single_video",
+          scheduledVideoId: "rendered-wall-asset",
+          wallTextAssignmentId: "wall-assignment",
+          wallTextRenderStatus: "ready",
+        }),
+        mediaAssetId: "rendered-wall-asset",
+        sourceKind: "media_asset",
+      },
+    }),
+    null,
+  );
+});
+
 test("does not report stale source media after preparation is queued or ready", () => {
   for (const combinedRenderStatus of ["queued", "rendering", "ready"]) {
     assert.equal(

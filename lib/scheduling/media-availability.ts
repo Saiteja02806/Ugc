@@ -29,8 +29,12 @@ export function getScheduleMediaIssue(params: {
     getString(params.schedule.metadata.demoMediaId) ??
     params.schedule.mediaAssetId;
   const mediaMode = getString(params.schedule.metadata.mediaMode);
+  const isWallTextSchedule = Boolean(
+    getString(params.schedule.metadata.wallTextAssignmentId),
+  );
 
   if (
+    isWallTextSchedule ||
     params.schedule.sourceKind === "library_item" ||
     mediaMode === "carousel"
   ) {

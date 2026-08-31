@@ -2588,9 +2588,17 @@ function SelectedDayDraftCard({
 }) {
   const { combinedMedia, demoMedia, hookMedia } = getDraftMediaParts(draft);
   const combinedDraft = isCombinedVideoDraft(draft);
+  const isWallTextDraft = draft.sourceType === "wall_text_render";
   const primaryMediaLabel = isCarouselDraft(draft)
     ? "Carousel"
-    : "Reel clip";
+    : isWallTextDraft
+      ? "Wall video"
+      : "Reel clip";
+  const primaryMediaValue = isWallTextDraft && !demoMedia
+    ? draft.status === "render_failed"
+      ? "Preparation failed"
+      : "Preparing"
+    : (demoMedia?.title ?? "Missing");
 
   return (
     <article className="rounded-[var(--radius-card)] border border-border bg-card px-3 py-3 transition-colors hover:border-border-strong">
@@ -2626,7 +2634,7 @@ function SelectedDayDraftCard({
       ) : (
         <div className="mt-3 text-xs font-bold">
           <span className="block truncate rounded-lg bg-card-muted px-2 py-1 text-muted">
-            {primaryMediaLabel}: {demoMedia?.title ?? "Missing"}
+            {primaryMediaLabel}: {primaryMediaValue}
           </span>
         </div>
       )}
@@ -3681,16 +3689,16 @@ function getDraftStatusFromScheduledPost(
     return "media_required";
   }
 
-  if (renderStatus === "queued" || renderStatus === "rendering") {
+  if (
+    renderStatus === "queued" ||
+    renderStatus === "rendering" ||
+    (isWallTextSchedule && renderStatus === "not_requested")
+  ) {
     return "rendering";
   }
 
   if (renderStatus === "failed") {
     return "render_failed";
-  }
-
-  if (isWallTextSchedule && renderStatus === "not_requested") {
-    return "render_required";
   }
 
   if (isWallTextSchedule && finalScheduleStatus === "failed") {

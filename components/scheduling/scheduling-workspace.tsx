@@ -3404,6 +3404,15 @@ function hasActiveSchedulingWork(schedule: ScheduledPost) {
     (renderStatus === "queued" || renderStatus === "rendering") &&
     Number.isFinite(renderQueuedAt) &&
     now - renderQueuedAt < ACTIVE_JOB_TIMEOUT_MS;
+  // The initial Wall schedule is returned before the server-side `after()`
+  // continuation has claimed its render. Keep the directly opened Scheduling
+  // page fresh through that small hand-off window instead of leaving it on an
+  // old "Video needs preparation" state until the user refreshes.
+  const isAwaitingWallRenderStart =
+    isWallText &&
+    renderStatus === "not_requested" &&
+    Number.isFinite(renderQueuedAt) &&
+    now - renderQueuedAt < ACTIVE_JOB_TIMEOUT_MS;
 
   const finalScheduleStartedAt = Date.parse(
     getString(schedule.metadata.finalScheduleQueuedAt) ?? schedule.updatedAt,
@@ -3434,7 +3443,12 @@ function hasActiveSchedulingWork(schedule: ScheduledPost) {
     );
   });
 
-  return isRecentRender || isRecentFinalize || hasDuePublishingTarget;
+  return (
+    isRecentRender ||
+    isAwaitingWallRenderStart ||
+    isRecentFinalize ||
+    hasDuePublishingTarget
+  );
 }
 
 async function queueCombinationRender({

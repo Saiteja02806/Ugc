@@ -1,6 +1,4 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-
+import { after, NextResponse } from "next/server";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
@@ -9,33 +7,15 @@ import {
   createUserSchedule,
   SchedulingRequestError,
 } from "@/lib/scheduling/service";
+import {
+  startWallTextScheduleRender,
+} from "@/lib/scheduling/wall-text-render-start";
 import { getSavedWallTextDraft } from "@/lib/trending/wall-text-db";
+import { WallTextScheduleRequestSchema } from "@/lib/trending/wall-text-scheduling-contract";
 import { getWallTextPreviewTitle } from "@/lib/trending/wall-text-text-logic";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const WallTextScheduleRequestSchema = z
-  .object({
-    assignmentId: z.string().uuid(),
-    scheduledDate: z.string().trim().max(32).optional(),
-    scheduledTime: z.string().trim().max(32).optional(),
-    targets: z
-      .array(
-        z
-          .object({
-            connectionId: z.string().uuid(),
-            platform: z.enum(["instagram", "tiktok", "youtube"]).optional(),
-            settings: z.record(z.string(), z.unknown()).optional(),
-          })
-          .strict(),
-      )
-      .min(1)
-      .max(10),
-    timezone: z.string().trim().min(1).max(100),
-    useDefaultScheduleTime: z.boolean(),
-  })
-  .strict();
 
 export async function POST(request: Request) {
   let userId: string;
@@ -95,12 +75,26 @@ export async function POST(request: Request) {
       userId,
     });
 
-    // This acknowledgement is intentionally independent of queue delivery.
-    // The selected account/time is already durable if render delivery is slow
-    // or temporarily unavailable.
+    // Acknowledge the user's saved account/time now. `after` keeps this
+    // server-side continuation alive after the response; it creates the
+    // durable render job and delivers it without relying on this browser
+    // remaining open. Any error is persisted on the saved schedule for Retry.
+    after(() =>
+      startWallTextScheduleRender({
+        schedule: pending.schedule,
+        userId,
+      }).catch((error) => {
+        console.error("Could not start the saved Wall-of-text render:", {
+          error: error instanceof Error ? error.message : "Unknown error",
+          scheduleId: pending.schedule.id,
+          userId,
+        });
+      }),
+    );
+
     return json({
       ok: true,
-      renderStatus: getRenderStatus(pending.schedule.metadata.wallTextRenderStatus),
+      renderStatus: "queued",
       schedule: pending.schedule,
     });
   } catch (error) {
@@ -132,16 +126,6 @@ function authErrorResponse(error: unknown) {
 
   console.error("Failed to verify Wall-of-text schedule requester:", error);
   return json({ message: "Could not verify your sign-in session.", ok: false }, 500);
-}
-
-function getRenderStatus(value: unknown) {
-  return value === "not_requested" ||
-    value === "failed" ||
-    value === "ready" ||
-    value === "rendering" ||
-    value === "queued"
-    ? value
-    : "queued";
 }
 
 function json(body: unknown, status = 200) {

@@ -19,6 +19,9 @@ const mediaLibraryVisibility = readProjectFile(
 const scheduleRoute = readProjectFile(
   "app/api/trending/hook-videos/drafts/schedule/route.ts",
 );
+const wallTextScheduleRoute = readProjectFile(
+  "app/api/trending/wall-text/schedules/route.ts",
+);
 const schedulingService = readProjectFile("lib/scheduling/service.ts");
 const scheduleDrawer = readProjectFile(
   "components/trending/hook-video-schedule-drawer.tsx",
@@ -146,9 +149,11 @@ test("Wall-of-text scheduling saves first and starts rendering after confirmatio
     wallScheduleConfirmation,
     /showActionNotice\([\s\S]*actionLabel: "View Scheduling"[\s\S]*message: "Scheduled ·"[\s\S]*tone: "success"/,
   );
+  assert.doesNotMatch(wallScheduleConfirmation, /startPendingWallTextRender/);
+  assert.match(wallTextScheduleRoute, /await createUserSchedule/);
   assert.match(
-    wallScheduleConfirmation,
-    /void startPendingWallTextRender\(schedule\.id\)/,
+    wallTextScheduleRoute,
+    /after\(\(\) =>[\s\S]*startWallTextScheduleRender/,
   );
   const wallDrawer = getSection(
     trendingWorkspace,

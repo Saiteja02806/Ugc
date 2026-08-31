@@ -64,6 +64,7 @@ import {
   createAndPublishCarouselSchedule,
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
+import { createWallTextScheduleRequest } from "@/lib/trending/wall-text-scheduling-contract";
 import {
   getTrendingDecisionOutboxKey,
   parseTrendingDecisionOutbox,
@@ -2489,11 +2490,6 @@ function TrendingDeck({
       message: "Scheduled ·",
       tone: "success",
     });
-    // The acknowledgement is not coupled to background delivery. If this
-    // request cannot leave the browser, Scheduling offers the same retry.
-    void startPendingWallTextRender(schedule.id).catch((error) => {
-      console.error("Could not start the saved Wall-of-text render:", error);
-    });
   }
 
   const wallTextActionCandidate =
@@ -4251,7 +4247,7 @@ async function createPendingWallTextSchedule(params: {
   }
 
   const response = await fetch("/api/trending/wall-text/schedules", {
-    body: JSON.stringify({
+    body: JSON.stringify(createWallTextScheduleRequest({
       assignmentId: params.candidate.item.assignmentId,
       scheduledDate: params.selection.scheduledDate,
       scheduledTime: params.selection.scheduledTime,
@@ -4261,9 +4257,8 @@ async function createPendingWallTextSchedule(params: {
         settings: target.settings,
       })),
       timezone: params.selection.timezone,
-      title: params.candidate.item.creative.title,
       useDefaultScheduleTime: params.selection.useDefaultScheduleTime,
-    }),
+    })),
     cache: "no-store",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -4284,27 +4279,6 @@ async function createPendingWallTextSchedule(params: {
   }
 
   return data.schedule;
-}
-
-async function startPendingWallTextRender(scheduleId: string) {
-  const token = await getCurrentUserIdToken();
-
-  if (!token) {
-    throw new Error("Sign in before preparing this Wall-of-text Reel.");
-  }
-
-  const response = await fetch(`/api/schedules/${scheduleId}/wall-text-render`, {
-    cache: "no-store",
-    headers: { Authorization: `Bearer ${token}` },
-    method: "POST",
-  });
-  const data = (await response.json().catch(() => null)) as
-    | { message?: string; ok?: boolean }
-    | null;
-
-  if (!response.ok || !data?.ok) {
-    throw new Error(data?.message || "Could not start Wall-of-text video preparation.");
-  }
 }
 
 async function scheduleTrendingCarousel(params: {

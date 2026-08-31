@@ -14,6 +14,9 @@ const scheduleRoute = readProjectFile(
 const retryRoute = readProjectFile(
   "app/api/schedules/[scheduleId]/wall-text-render/route.ts",
 );
+const renderRequest = readProjectFile(
+  "lib/trending/wall-text-render-request.ts",
+);
 const worker = readProjectFile("worker/src/jobs/render-wall-text-video.ts");
 const schedulingWorkspace = readProjectFile(
   "components/scheduling/scheduling-workspace.tsx",
@@ -47,18 +50,27 @@ test("opens Wall scheduling without the old preparation gate", () => {
   assert.match(workspace, /message: "Scheduled ·"/);
 });
 
-test("acknowledges the pending schedule before background render delivery", () => {
+test("saves the pending schedule before server-side background render delivery", () => {
   const routeBody =
     scheduleRoute.match(/export async function POST[\s\S]+/)?.[0] ?? "";
 
   assert.match(routeBody, /await createUserSchedule/);
-  assert.doesNotMatch(routeBody, /requestWallTextRender/);
+  assert.match(routeBody, /after\(\(\) =>[\s\S]*startWallTextScheduleRender/);
+  assert.ok(
+    routeBody.indexOf("after(() =>") > routeBody.indexOf("await createUserSchedule"),
+  );
+  assert.match(routeBody, /schedule: pending\.schedule/);
   assert.match(routeBody, /kind: "wall_text_pending"/);
   assert.match(routeBody, /plannedTargets: parsed\.data\.targets/);
   assert.match(routeBody, /useDefaultScheduleTime: parsed\.data\.useDefaultScheduleTime/);
   assert.match(routeBody, /wallTextRenderStatus: "not_requested"/);
-  assert.match(workspace, /void startPendingWallTextRender\(schedule\.id\)/);
-  assert.match(workspace, /startPendingWallTextRender[\s\S]+\/wall-text-render/);
+  assert.match(workspace, /createWallTextScheduleRequest/);
+  assert.doesNotMatch(workspace, /startPendingWallTextRender/);
+  assert.match(
+    readProjectFile("lib/scheduling/wall-text-render-start.ts"),
+    /requestWallTextRender/,
+  );
+  assert.match(renderRequest, /createBackgroundJobWithCreationResult/);
 });
 
 test("calculates Wall schedule identity from the server-confirmed time", () => {
@@ -73,11 +85,14 @@ test("calculates Wall schedule identity from the server-confirmed time", () => {
 test("finalizes rendered Wall MP4s automatically and preserves retry paths", () => {
   assert.match(worker, /finalizeRenderedWallTextSchedules/);
   assert.match(worker, /markWallTextScheduleFinalizationFailed/);
-  assert.match(retryRoute, /requestWallTextRender/);
-  assert.match(retryRoute, /finalizeWallTextSchedulesFromWorker/);
+  assert.match(retryRoute, /startWallTextScheduleRender/);
   assert.match(schedulingWorkspace, /queueWallTextRender/);
   assert.match(schedulingWorkspace, /wallTextRenderStatus/);
   assert.match(schedulingWorkspace, /sourceKind === "wall_text_pending"/);
+  assert.match(
+    schedulingWorkspace,
+    /isAwaitingWallRenderStart[\s\S]*renderStatus === "not_requested"/,
+  );
 });
 
 function readProjectFile(relativePath: string) {
